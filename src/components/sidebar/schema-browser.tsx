@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import { ChevronRight, ChevronDown, Table as TableIcon, RefreshCw } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '@/components/ui/button'
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from './ui/accordion'
+} from '@/components/ui/accordion'
 import type { Schema } from '@/types/database'
 
 type SchemaBrowserProps = {

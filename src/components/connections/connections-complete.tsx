@@ -1,7 +1,7 @@
 'use client'
 
 import { Cable, Plus, Settings2, Unplug } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '@/components/ui/button'
 import type { ConnectionInfo } from '@/types/database'
 
 type ConnectionsCompleteProps = {
@@ -94,11 +94,10 @@ export function ConnectionsComplete({
             <Button
               key={connection.id}
               variant="ghost"
-              className={`w-full justify-start rounded-sm p-1 transition-all duration-200 ${
-                selectedConnection === connection.id
+              className={`w-full justify-start rounded-sm p-1 transition-all duration-200 ${selectedConnection === connection.id
                   ? 'bg-primary/20'
                   : 'hover:bg-background hover:bg-primary/20'
-              }`}
+                }`}
               onClick={() => onSelectConnection?.(connection.id)}
               onDoubleClick={() => onConnectToDatabase?.(connection.id)}
             >
