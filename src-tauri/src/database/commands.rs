@@ -524,3 +524,19 @@ pub async fn get_session_state(state: tauri::State<'_, AppState>) -> Result<Opti
     let session_data = state.storage.get_setting("session_state")?;
     Ok(session_data)
 }
+
+#[tauri::command]
+pub async fn get_setting(key: String, state: tauri::State<'_, AppState>) -> Result<Option<String>, Error> {
+    let value = state.storage.get_setting(&key)?;
+    Ok(value)
+}
+
+#[tauri::command]
+pub async fn set_setting(
+    key: String,
+    value: String,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), Error> {
+    state.storage.set_setting(&key, &value)?;
+    Ok(())
+}

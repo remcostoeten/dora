@@ -16,22 +16,44 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light')
 
   useEffect(() => {
-    const stored = localStorage.getItem('theme') as Theme | null
-    if (stored) {
-      setThemeState(stored)
-      document.documentElement.classList.toggle('dark', stored === 'dark')
+    // 1. Initial optimistic load (fast path)
+    const storedLocal = localStorage.getItem('theme') as Theme | null
+    if (storedLocal) {
+      applyTheme(storedLocal)
     } else {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      const initial = prefersDark ? 'dark' : 'light'
-      setThemeState(initial)
-      document.documentElement.classList.toggle('dark', initial === 'dark')
+      applyTheme(prefersDark ? 'dark' : 'light')
     }
+
+    // 2. Fetch from DB (source of truth)
+    import('@/lib/tauri-commands').then(({ getSetting }) => {
+      getSetting<Theme>('theme')
+        .then(storedDb => {
+          if (storedDb && (storedDb === 'light' || storedDb === 'dark')) {
+            applyTheme(storedDb)
+            // Sync local storage if drifted
+            if (localStorage.getItem('theme') !== storedDb) {
+              localStorage.setItem('theme', storedDb)
+            }
+          }
+        })
+        .catch(console.error)
+    })
   }, [])
 
-  function setTheme(newTheme: Theme) {
+  function applyTheme(newTheme: Theme) {
     setThemeState(newTheme)
-    localStorage.setItem('theme', newTheme)
     document.documentElement.classList.toggle('dark', newTheme === 'dark')
+  }
+
+  function setTheme(newTheme: Theme) {
+    applyTheme(newTheme)
+    localStorage.setItem('theme', newTheme)
+
+    // Persist to DB asynchronously
+    import('@/lib/tauri-commands').then(({ setSetting }) => {
+      setSetting('theme', newTheme).catch(console.error)
+    })
   }
 
   function toggleTheme() {

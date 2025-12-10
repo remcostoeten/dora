@@ -145,6 +145,21 @@ export async function getSessionState(): Promise<string | null> {
   return await invoke('get_session_state')
 }
 
+export async function getSetting<T = string>(key: string): Promise<T | null> {
+  const value = await invoke<string | null>('get_setting', { key })
+  if (value === null) return null
+  try {
+    return JSON.parse(value) as T
+  } catch {
+    return value as unknown as T
+  }
+}
+
+export async function setSetting(key: string, value: any): Promise<void> {
+  const stringValue = typeof value === 'string' ? value : JSON.stringify(value)
+  return await invoke('set_setting', { key, value: stringValue })
+}
+
 export async function pickSqliteDbDialog(): Promise<string | null> {
   return await invoke('open_sqlite_db')
 }
@@ -183,11 +198,11 @@ export async function executeQuery(
 ): Promise<StatementInfo[]> {
   const queryIds = await startQuery(connectionId, query)
   const results: StatementInfo[] = []
-  
+
   for (const queryId of queryIds) {
     const result = await fetchQuery(queryId)
     results.push(result)
   }
-  
+
   return results
 }
