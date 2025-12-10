@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { TitleBar } from '@/components/title-bar'
 import { AppSidebarComplete } from '@/components/app-sidebar-complete'
 import { ResizeHandle } from '@/components/resize-handle'
@@ -10,6 +10,7 @@ import { Table } from '@/components/table'
 import { ConnectionForm } from '@/components/connection-form'
 import { useResizable } from '@/core/hooks'
 import { useTabs } from '@/core/state'
+import { Vigilo, type CategoryConfig } from '@remcostoeten/vigilo/react'
 import {
   getConnections,
   initializeConnections,
@@ -437,6 +438,23 @@ export default function Home() {
   const currentConnection = connections.find((c) => c.id === selectedConnection)
   const activeTab = getActiveTab()
 
+  const vigiloCategories = useMemo<CategoryConfig[]>(
+    () => [
+      {
+        id: 'workspace',
+        displayName: 'Workspace Tasks',
+        items: [
+          { text: 'Review database connection setup flow', status: 'working' },
+          { text: 'Polish query history empty states', status: 'todo' },
+          { text: 'Validate editor shortcut hints', status: 'done' }
+        ]
+      }
+    ],
+    []
+  )
+
+  const vigiloCategoryId = vigiloCategories[0]?.id ?? 'workspace'
+
   return (
     <div id="app" className="flex h-screen w-screen flex-col bg-background">
       <TitleBar
@@ -625,6 +643,8 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <Vigilo category={vigiloCategoryId} instanceId="home-overlay" categories={vigiloCategories} />
     </div>
   )
 }
