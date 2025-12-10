@@ -1,10 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dora</title>
   <style>
+    :root {
+      /* Light Theme (matching globals.css) */
+      --bg: #f5f5f7;
+      /* neutral-50/100ish */
+      --text: #1a1a1a;
+      --text-muted: #737373;
+      --primary: #6366f1;
+      /* approximate primary */
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        /* Dark Theme */
+        --bg: #1c1c1e;
+        /* deeper dark */
+        --text: #f5f5f7;
+        --text-muted: #a1a1aa;
+        --primary: #818cf8;
+      }
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -18,78 +40,78 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      overflow: hidden;
+      background-color: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      user-select: none;
+      cursor: default;
     }
 
-    .logo-container {
+    .container {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 24px;
-      animation: fadeInUp 0.8s ease-out;
+      animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .logo {
-      width: 120px;
-      height: 120px;
-      background: white;
-      border-radius: 24px;
+    .logo-frame {
+      width: 96px;
+      height: 96px;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      animation: pulse 2s ease-in-out infinite;
+      /* Subtle shadow, no massive glows */
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
     }
 
-    .logo svg {
-      width: 80px;
-      height: 80px;
+    .logo-frame svg {
+      width: 100%;
+      height: 100%;
     }
 
-    .app-name {
-      font-size: 42px;
-      font-weight: 700;
-      color: white;
-      letter-spacing: -1px;
-      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    .content {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .tagline {
-      font-size: 16px;
-      color: rgba(255, 255, 255, 0.9);
+    .title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--text-muted);
       font-weight: 400;
-      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .loader {
-      margin-top: 40px;
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top-color: white;
+    /* Minimal loading indicator */
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--text-muted);
+      border-top-color: transparent;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+      animation: spin 0.8s linear infinite;
+      opacity: 0.5;
     }
 
-    @keyframes fadeInUp {
+    @keyframes fade-in {
       from {
         opacity: 0;
-        transform: translateY(20px);
+        transform: scale(0.98);
       }
+
       to {
         opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes pulse {
-      0%, 100% {
         transform: scale(1);
-      }
-      50% {
-        transform: scale(1.05);
       }
     }
 
@@ -100,33 +122,27 @@
     }
   </style>
 </head>
+
 <body>
-  <div class="logo-container">
-    <div class="logo">
-      <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
-        <!-- Modern SaaS-style logo - stylized "D" -->
-        <defs>
-          <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-          </linearGradient>
-        </defs>
-        <!-- D shape with modern design -->
-        <path d="M 20 20 L 20 100 L 60 100 Q 80 100 80 80 L 80 60 Q 80 40 60 40 L 40 40 L 40 20 Z" fill="url(#logoGradient)" />
-        <path d="M 40 40 L 60 40 Q 70 40 70 50 L 70 70 Q 70 80 60 80 L 40 80 Z" fill="white" opacity="0.3" />
-        <!-- Accent dot -->
-        <circle cx="85" cy="35" r="8" fill="#ffd700" />
+  <div class="container">
+    <div class="logo-frame">
+      <!-- Clean Logo SVG -->
+      <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="128" height="128" rx="28" fill="var(--primary)" />
+        <path
+          d="M44 38V90H74C88.3594 90 100 78.3594 100 64C100 49.6406 88.3594 38 74 38H44ZM56 50H74C81.732 50 88 56.268 88 64C88 71.732 81.732 78 74 78H56V50Z"
+          fill="white" />
       </svg>
     </div>
-    <div>
-      <div class="app-name">Dora</div>
-      <div class="tagline">Database Client</div>
+
+    <div class="content">
+      <div class="title">Dora</div>
+      <div class="status">
+        <div class="spinner"></div>
+        <span>Initializing...</span>
+      </div>
     </div>
-    <div class="loader"></div>
   </div>
 </body>
+
 </html>
-
-
-
-
