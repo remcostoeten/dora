@@ -15,7 +15,7 @@ import {
   ContextMenuSeparator,
   ContextMenuShortcut,
 } from '@/components/ui/context-menu'
-import { EditorToolbar } from '@/components/editor-toolbar'
+import { EditorToolbar } from './editor-toolbar'
 import { prettifySQL, minifySQL, prettifyJSON } from '@/core/formatters'
 import { Wand2, Minimize2, Copy, Clipboard, Scissors, Database, FileJson } from 'lucide-react'
 

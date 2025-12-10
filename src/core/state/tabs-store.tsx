@@ -10,6 +10,7 @@ interface BaseTab {
   isDirty: boolean
   canClose: boolean
   canRename: boolean
+  isPinned: boolean
 }
 
 export interface ScriptTab extends BaseTab {
@@ -81,6 +82,14 @@ type TabsContextType = {
   setQueryResults: (tabId: string, results: { columns: string[], rows: unknown[][], affectedRows?: number } | null) => void
   setQueryError: (tabId: string, error: string | null) => void
   setQueryStatus: (tabId: string, status: 'idle' | 'running' | 'completed' | 'error') => void
+  // Tab management
+  pinTab: (tabId: string) => void
+  unpinTab: (tabId: string) => void
+  closeTabsToLeft: (tabId: string) => void
+  closeTabsToRight: (tabId: string) => void
+  closeAllTabs: () => void
+  closeOtherTabs: (tabId: string) => void
+  reorderTabs: (fromIndex: number, toIndex: number) => void
 }
 
 const TabsContext = createContext<TabsContextType | undefined>(undefined)
@@ -93,7 +102,7 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
   const [nextTempId, setNextTempId] = useState(-1)
   const [currentEditorContent, setCurrentEditorContent] = useState('')
   const [shouldSaveSessionState, setShouldSaveSession] = useState(false)
-  
+
   const sqlEditorRef = useRef<any>(null)
   const sessionSaveCallbacks = useRef<(() => void)[]>([])
 
@@ -113,7 +122,7 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
 
     setTabs((prevTabs) => {
       let existingTab = prevTabs.find((t) => t.id === tabId) as ScriptTab | undefined
-      
+
       if (!existingTab) {
         const scriptTab: ScriptTab = {
           id: tabId,
@@ -123,13 +132,14 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
           isDirty: false,
           canClose: true,
           canRename: true,
+          isPinned: false,
           script: script,
           content: script.query_text,
           isNewScript: newScripts.has(script.id),
         }
         return [...prevTabs, scriptTab]
       }
-      
+
       existingTab.content = script.query_text
       return prevTabs
     })
@@ -144,7 +154,7 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
     if (!tab) return
 
     const currentTab = tabs.find((t) => t.id === activeTabId) as ScriptTab | undefined
-    
+
     if (currentTab?.type === 'script' && sqlEditorRef.current && !skipSaveCurrentContent) {
       setTabs((prevTabs) =>
         prevTabs.map((t) => {
@@ -204,7 +214,7 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
 
   const handleEditorContentChange = useCallback((newContent: string) => {
     setCurrentEditorContent(newContent)
-    
+
     setTabs((prevTabs) =>
       prevTabs.map((tab) => {
         if (tab.id === activeTabId && tab.type === 'script') {
@@ -347,6 +357,7 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
       isDirty: false,
       canClose: true,
       canRename: false,
+      isPinned: false,
       tableName,
       schema,
       connectionId,
@@ -505,6 +516,106 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
     )
   }, [])
 
+  // Pin a tab (moves it to the left with other pinned tabs)
+  const pinTab = useCallback((tabId: string) => {
+    setTabs((prevTabs) => {
+      const tabIndex = prevTabs.findIndex((t) => t.id === tabId)
+      if (tabIndex === -1) return prevTabs
+
+      const tab = prevTabs[tabIndex]
+      if (tab.isPinned) return prevTabs
+
+      const pinnedTab = { ...tab, isPinned: true }
+      const newTabs = prevTabs.filter((t) => t.id !== tabId)
+      const lastPinnedIndex = newTabs.findIndex((t) => !t.isPinned)
+      const insertIndex = lastPinnedIndex === -1 ? newTabs.length : lastPinnedIndex
+
+      newTabs.splice(insertIndex, 0, pinnedTab as AnyTab)
+      return newTabs
+    })
+    markSessionDirty()
+  }, [markSessionDirty])
+
+  // Unpin a tab
+  const unpinTab = useCallback((tabId: string) => {
+    setTabs((prevTabs) =>
+      prevTabs.map((tab) =>
+        tab.id === tabId ? { ...tab, isPinned: false } : tab
+      ) as AnyTab[]
+    )
+    markSessionDirty()
+  }, [markSessionDirty])
+
+  // Close all tabs to the left of a given tab (except pinned)
+  const closeTabsToLeft = useCallback((tabId: string) => {
+    setTabs((prevTabs) => {
+      const tabIndex = prevTabs.findIndex((t) => t.id === tabId)
+      if (tabIndex === -1) return prevTabs
+
+      return prevTabs.filter((tab, index) => {
+        if (index >= tabIndex) return true
+        if (tab.isPinned) return true
+        return false
+      })
+    })
+    markSessionDirty()
+  }, [markSessionDirty])
+
+  // Close all tabs to the right of a given tab
+  const closeTabsToRight = useCallback((tabId: string) => {
+    setTabs((prevTabs) => {
+      const tabIndex = prevTabs.findIndex((t) => t.id === tabId)
+      if (tabIndex === -1) return prevTabs
+
+      return prevTabs.filter((_, index) => index <= tabIndex)
+    })
+    markSessionDirty()
+  }, [markSessionDirty])
+
+  // Close all tabs (except pinned)
+  const closeAllTabs = useCallback(() => {
+    setTabs((prevTabs) => prevTabs.filter((tab) => tab.isPinned))
+    setActiveTabId(null)
+    setCurrentEditorContent('')
+    markSessionDirty()
+  }, [markSessionDirty])
+
+  // Close all other tabs (except the current one and pinned)
+  const closeOtherTabs = useCallback((tabId: string) => {
+    setTabs((prevTabs) =>
+      prevTabs.filter((tab) => tab.id === tabId || tab.isPinned)
+    )
+    markSessionDirty()
+  }, [markSessionDirty])
+
+  // Reorder tabs via drag and drop
+  const reorderTabs = useCallback((fromIndex: number, toIndex: number) => {
+    setTabs((prevTabs) => {
+      if (fromIndex === toIndex) return prevTabs
+      if (fromIndex < 0 || fromIndex >= prevTabs.length) return prevTabs
+      if (toIndex < 0 || toIndex >= prevTabs.length) return prevTabs
+
+      const movingTab = prevTabs[fromIndex]
+      const targetTab = prevTabs[toIndex]
+
+      // Prevent moving unpinned tabs before pinned tabs
+      if (!movingTab.isPinned && targetTab.isPinned && toIndex < fromIndex) {
+        return prevTabs
+      }
+
+      // Prevent moving pinned tabs after unpinned tabs
+      if (movingTab.isPinned && !targetTab.isPinned && toIndex > fromIndex) {
+        return prevTabs
+      }
+
+      const newTabs = [...prevTabs]
+      newTabs.splice(fromIndex, 1)
+      newTabs.splice(toIndex, 0, movingTab)
+      return newTabs
+    })
+    markSessionDirty()
+  }, [markSessionDirty])
+
   return (
     <TabsContext.Provider
       value={{
@@ -535,6 +646,13 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
         setQueryResults,
         setQueryError,
         setQueryStatus,
+        pinTab,
+        unpinTab,
+        closeTabsToLeft,
+        closeTabsToRight,
+        closeAllTabs,
+        closeOtherTabs,
+        reorderTabs,
       }}
     >
       {children}

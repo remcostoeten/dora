@@ -1,7 +1,7 @@
 'use client'
 
 import { FileJson } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '@/components/ui/button'
 import type { Script } from '@/types/database'
 
 type ScriptsCompleteProps = {
@@ -36,11 +36,10 @@ export function ScriptsComplete({
           <div key={script.id} className="group">
             <Button
               variant="ghost"
-              className={`h-auto w-full justify-start rounded-sm p-1 transition-all duration-200 ${
-                activeScriptId === script.id
+              className={`h-auto w-full justify-start rounded-sm p-1 transition-all duration-200 ${activeScriptId === script.id
                   ? 'bg-primary/20'
                   : 'hover:bg-background hover:bg-primary/20'
-              }`}
+                }`}
               onClick={() => onSelectScript?.(script)}
             >
               <div className="flex w-full items-center gap-3">

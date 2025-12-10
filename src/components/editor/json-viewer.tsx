@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronRight, ChevronDown, Copy } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '@/components/ui/button'
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 
@@ -99,13 +99,13 @@ export function JsonViewer({ data, name, depth = 0 }: JsonViewerProps) {
         <div className="ml-6 border-l border-border pl-4">
           {isArray
             ? (data as JsonValue[]).map((item, index) => (
-                <div key={index}>{renderValue(item, `[${index}]`)}</div>
-              ))
+              <div key={index}>{renderValue(item, `[${index}]`)}</div>
+            ))
             : Object.entries(data as { [key: string]: JsonValue }).map(
-                ([key, value]) => (
-                  <div key={key}>{renderValue(value, key)}</div>
-                )
-              )}
+              ([key, value]) => (
+                <div key={key}>{renderValue(value, key)}</div>
+              )
+            )}
         </div>
       )}
     </div>

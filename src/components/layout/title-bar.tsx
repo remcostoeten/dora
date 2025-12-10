@@ -1,8 +1,8 @@
 'use client'
 
 import { Minus, Square, X, Play, Save } from 'lucide-react'
-import { Button } from './ui/button'
-import { ThemeSwitcher } from './theme-switcher'
+import { Button } from '@/components/ui/button'
+import { ThemeSwitcher } from '@/components/shared/theme-switcher'
 import { minimizeWindow, maximizeWindow, closeWindow } from '@/core/tauri'
 import { isTauri } from '@/core/tauri'
 
