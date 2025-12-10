@@ -60,13 +60,12 @@ export function TitleBar({
             <div className="h-4 w-px bg-border" />
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div
-                className={`h-2 w-2 rounded-full ${
-                  isConnecting
+                className={`h-2 w-2 rounded-full ${isConnecting
                     ? 'bg-warning animate-pulse'
                     : connected
-                    ? 'bg-success'
-                    : 'bg-error'
-                }`}
+                      ? 'bg-success'
+                      : 'bg-error'
+                  }`}
               />
               {connectionName}
             </div>

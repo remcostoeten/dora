@@ -242,6 +242,18 @@
 		-webkit-user-select: none;
 	}
 
+	/* Allow text selection in editable/content areas */
+	input,
+	textarea,
+	[contenteditable="true"],
+	pre,
+	code,
+	.monaco-editor,
+	.selectable-text {
+		user-select: text;
+		-webkit-user-select: text;
+	}
+
 	html,
 	body,
 	#app {

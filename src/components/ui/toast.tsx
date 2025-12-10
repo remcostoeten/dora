@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/lib/utils'
+import { cn } from '@/core/utilities/cn'
 import { X } from 'lucide-react'
 
 const toastVariants = cva(
@@ -26,7 +26,7 @@ const toastCloseVariants = cva(
 
 export interface ToastProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof toastVariants> {
+  VariantProps<typeof toastVariants> {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   title?: string

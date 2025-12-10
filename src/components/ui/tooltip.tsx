@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/core/utilities/cn'
 
 interface TooltipProps {
   children: React.ReactNode
@@ -127,21 +127,21 @@ export function Tooltip({
             // Base styles
             'fixed z-50 px-3 py-1.5 text-xs font-medium rounded-md',
             'pointer-events-none select-none',
-            
+
             // Theme-aware colors with glass effect
             'bg-[var(--glass-bg)] border border-[var(--glass-border)]',
             'text-[var(--foreground)]',
-            
+
             // Poppy animations
             'animate-in fade-in-0 zoom-in-95',
             'transition-all duration-200 ease-out',
-            
+
             // Shadow for depth
             'shadow-lg shadow-[var(--shadow-lg)]',
-            
+
             // Backdrop blur for glass effect
             'backdrop-blur-md',
-            
+
             className
           )}
           style={{

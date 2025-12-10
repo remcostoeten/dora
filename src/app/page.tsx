@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { TitleBar } from '@/components/title-bar'
 import { AppSidebarComplete } from '@/components/app-sidebar-complete'
+import { ResizeHandle } from '@/components/resize-handle'
+import { useResizable } from '@/lib/use-resizable'
 import { ScriptTabs } from '@/components/script-tabs'
 import { SqlEditor } from '@/components/sql-editor'
 import { Table } from '@/components/table'
@@ -45,6 +47,8 @@ export default function Home() {
   const [sidebarTabState, setSidebarTabState] = useState<SidebarTabState>('connections')
   const [executing, setExecuting] = useState(false)
   const [lastLoadedSchemaConnectionId, setLastLoadedSchemaConnectionId] = useState<string | null>(null)
+
+  const { width: sidebarWidth, isResizing, startResizing } = useResizable()
 
   const sqlEditorRef = useRef<any>(null)
   const sessionSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -445,38 +449,51 @@ export default function Home() {
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <AppSidebarComplete
-          connections={connections}
-          selectedConnection={selectedConnection}
-          establishingConnections={establishingConnections}
-          scripts={scripts}
-          activeScriptId={activeScriptId}
-          unsavedChanges={unsavedChanges}
-          databaseSchema={databaseSchema}
-          loadingSchema={loadingSchema}
-          queryHistory={queryHistory}
-          isSidebarCollapsed={isSidebarCollapsed}
-          sidebarTabState={sidebarTabState}
-          onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          onSelectConnection={handleSelectConnection}
-          onConnectToDatabase={handleConnectToDatabase}
-          onShowConnectionForm={() => {
-            setEditingConnection(null)
-            setShowConnectionForm(true)
+        {/* Resizable Sidebar Container */}
+        <div
+          className="relative flex-shrink-0"
+          style={{
+            width: isSidebarCollapsed ? 'auto' : sidebarWidth,
+            transition: isResizing ? 'none' : 'width 0.2s ease-out'
           }}
-          onEditConnection={(conn) => {
-            setEditingConnection(conn)
-            setShowConnectionForm(true)
-          }}
-          onDeleteConnection={handleDeleteConnection}
-          onDisconnectConnection={handleDisconnectConnection}
-          onSelectScript={handleSelectScript}
-          onCreateNewScript={handleCreateNewScript}
-          onDeleteScript={handleDeleteScript}
-          onTableClick={handleTableClick}
-          onLoadFromHistory={handleLoadFromHistory}
-          onSidebarTabChange={setSidebarTabState}
-        />
+        >
+          <AppSidebarComplete
+            connections={connections}
+            selectedConnection={selectedConnection}
+            establishingConnections={establishingConnections}
+            scripts={scripts}
+            activeScriptId={activeScriptId}
+            unsavedChanges={unsavedChanges}
+            databaseSchema={databaseSchema}
+            loadingSchema={loadingSchema}
+            queryHistory={queryHistory}
+            isSidebarCollapsed={isSidebarCollapsed}
+            sidebarTabState={sidebarTabState}
+            onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            onSelectConnection={handleSelectConnection}
+            onConnectToDatabase={handleConnectToDatabase}
+            onShowConnectionForm={() => {
+              setEditingConnection(null)
+              setShowConnectionForm(true)
+            }}
+            onEditConnection={(conn) => {
+              setEditingConnection(conn)
+              setShowConnectionForm(true)
+            }}
+            onDeleteConnection={handleDeleteConnection}
+            onDisconnectConnection={handleDisconnectConnection}
+            onSelectScript={handleSelectScript}
+            onCreateNewScript={handleCreateNewScript}
+            onDeleteScript={handleDeleteScript}
+            onTableClick={handleTableClick}
+            onLoadFromHistory={handleLoadFromHistory}
+            onSidebarTabChange={setSidebarTabState}
+          />
+          {/* Resize Handle - only show when sidebar is expanded */}
+          {!isSidebarCollapsed && (
+            <ResizeHandle onMouseDown={startResizing} isResizing={isResizing} />
+          )}
+        </div>
 
         <div className="flex flex-1 flex-col overflow-hidden bg-card">
           <ScriptTabs />
