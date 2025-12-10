@@ -4,7 +4,6 @@ pub mod sqlite;
 pub use postgres::tls::Certificates;
 
 pub mod commands;
-mod connect;
 mod connection_monitor;
 pub mod parser;
 pub mod stmt_manager;

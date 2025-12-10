@@ -12,6 +12,7 @@ const toastVariants = cva(
         success: 'border-success/50 bg-success text-success-foreground shadow-lg',
         error: 'border-error/50 bg-error text-error-foreground shadow-lg',
         warning: 'border-warning/50 bg-warning text-warning-foreground shadow-lg',
+        info: 'border-primary/50 bg-primary/10 text-foreground shadow-lg',
       },
     },
     defaultVariants: {
@@ -22,7 +23,7 @@ const toastVariants = cva(
 
 export interface SimpleToastProps
   extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof toastVariants> {
+  VariantProps<typeof toastVariants> {
   title?: string
   description?: string
   duration?: number

@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { SimpleToast, SimpleToastContainer } from './ui/simple-toast'
 import { testConnection } from '@/lib/tauri-commands'
+import {
+  analyzeConnectionString,
+  formatCorrectionMessage,
+  suggestConnectionName,
+  validateConnectionString,
+} from '@/lib/connection-string-utils'
 import type { DatabaseInfo, ConnectionInfo } from '@/types/database'
 
 type ConnectionFormProps = {
@@ -23,6 +29,8 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [testing, setTesting] = useState(false)
+  const [correctionInfo, setCorrectionInfo] = useState<string | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
   const [toasts, setToasts] = useState<Array<{ id: string } & Parameters<typeof SimpleToast>[0]>>([])
 
   // Load editing connection data
@@ -48,6 +56,98 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
   const removeToast = (id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
+
+  // Handle connection string paste with auto-fill
+  const handleConnectionStringPaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text')
+    const analysis = analyzeConnectionString(pastedText)
+
+    if (analysis.wasModified) {
+      e.preventDefault()
+      setConnectionString(analysis.cleaned)
+
+      const message = formatCorrectionMessage(analysis)
+      if (message) {
+        setCorrectionInfo(message)
+        addToast({
+          title: 'Auto-corrected connection string',
+          description: message,
+          variant: 'info',
+          duration: 5000
+        })
+      }
+
+      // Auto-detect database type
+      if (analysis.detectedType !== 'unknown' && analysis.detectedType !== dbType) {
+        setDbType(analysis.detectedType)
+        addToast({
+          title: 'Database type detected',
+          description: `Switched to ${analysis.detectedType === 'postgres' ? 'PostgreSQL' : 'SQLite'}`,
+          variant: 'info',
+          duration: 3000
+        })
+      }
+
+      // Auto-suggest name if empty
+      if (!name && analysis.detectedType !== 'unknown') {
+        const suggestedName = suggestConnectionName(analysis.cleaned, analysis.detectedType)
+        setName(suggestedName)
+      }
+    }
+  }, [dbType, name])
+
+  // Handle SQLite path paste with auto-fill
+  const handleDbPathPaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text')
+    const analysis = analyzeConnectionString(pastedText)
+
+    if (analysis.wasModified) {
+      e.preventDefault()
+      setDbPath(analysis.cleaned)
+
+      const message = formatCorrectionMessage(analysis)
+      if (message) {
+        setCorrectionInfo(message)
+        addToast({
+          title: 'Auto-corrected path',
+          description: message,
+          variant: 'info',
+          duration: 5000
+        })
+      }
+
+      // Auto-suggest name if empty
+      if (!name) {
+        const suggestedName = suggestConnectionName(analysis.cleaned, 'sqlite')
+        setName(suggestedName)
+      }
+    }
+  }, [name])
+
+  // Validate on change
+  const handleConnectionStringChange = useCallback((value: string) => {
+    setConnectionString(value)
+    setCorrectionInfo(null)
+
+    if (value) {
+      const validation = validateConnectionString(value, 'postgres')
+      setValidationError(validation.valid ? null : validation.error || null)
+    } else {
+      setValidationError(null)
+    }
+  }, [])
+
+  const handleDbPathChange = useCallback((value: string) => {
+    setDbPath(value)
+    setCorrectionInfo(null)
+
+    if (value) {
+      const validation = validateConnectionString(value, 'sqlite')
+      setValidationError(validation.valid ? null : validation.error || null)
+    } else {
+      setValidationError(null)
+    }
+  }, [])
 
   async function handleTest() {
     setTesting(true)
@@ -97,6 +197,10 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
     }
   }
 
+  const isValid = dbType === 'sqlite'
+    ? dbPath.trim().length > 0
+    : connectionString.trim().length > 0 && !validationError
+
   return (
     <>
       <Card className="w-full max-w-2xl">
@@ -113,6 +217,9 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
                 placeholder="My Database"
                 required
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Tip: Paste a connection string below to auto-suggest a name
+              </p>
             </div>
 
             <div>
@@ -133,10 +240,15 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
                 <label className="text-sm font-medium mb-2 block">Database Path</label>
                 <Input
                   value={dbPath}
-                  onChange={(e) => setDbPath(e.target.value)}
+                  onChange={(e) => handleDbPathChange(e.target.value)}
+                  onPaste={handleDbPathPaste}
                   placeholder="/path/to/database.db"
                   required
+                  className={validationError ? 'border-error' : ''}
                 />
+                {validationError && (
+                  <p className="text-xs text-error mt-1">{validationError}</p>
+                )}
               </div>
             ) : (
               <div>
@@ -145,15 +257,30 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
                 </label>
                 <Input
                   value={connectionString}
-                  onChange={(e) => setConnectionString(e.target.value)}
+                  onChange={(e) => handleConnectionStringChange(e.target.value)}
+                  onPaste={handleConnectionStringPaste}
                   placeholder="postgresql://user:password@localhost:5432/database"
                   required
+                  className={validationError ? 'border-error' : ''}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Paste DATABASE_URL= or similar — prefixes are auto-stripped
+                </p>
+                {validationError && (
+                  <p className="text-xs text-error mt-1">{validationError}</p>
+                )}
+              </div>
+            )}
+
+            {correctionInfo && (
+              <div className="text-sm text-info bg-info/10 border border-info/20 p-3 rounded-md flex items-start gap-2">
+                <span className="text-info">ℹ</span>
+                <span>{correctionInfo}</span>
               </div>
             )}
 
             {error && (
-              <div className="text-sm text-error bg-error-light p-3 rounded-md">
+              <div className="text-sm text-error bg-error/10 border border-error/20 p-3 rounded-md">
                 {error}
               </div>
             )}
@@ -168,11 +295,11 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
                 type="button"
                 variant="outline"
                 onClick={handleTest}
-                disabled={testing || loading}
+                disabled={testing || loading || !isValid}
               >
                 {testing ? 'Testing...' : 'Test Connection'}
               </Button>
-              <Button type="submit" disabled={loading || testing}>
+              <Button type="submit" disabled={loading || testing || !isValid}>
                 {loading ? 'Saving...' : editingConnection ? 'Update Connection' : 'Create Connection'}
               </Button>
             </div>
