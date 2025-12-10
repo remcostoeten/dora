@@ -2,8 +2,8 @@
 
 import { Minus, Square, X, Play, Save } from 'lucide-react'
 import { Button } from './ui/button'
-import { minimizeWindow, maximizeWindow, closeWindow } from '@/lib/tauri-commands'
-import { useTheme } from '@/lib/theme-provider'
+import { minimizeWindow, maximizeWindow, closeWindow } from '@/core/tauri'
+import { useTheme } from '@/core/state'
 
 type TitleBarProps = {
   connectionName?: string
@@ -61,10 +61,10 @@ export function TitleBar({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div
                 className={`h-2 w-2 rounded-full ${isConnecting
-                    ? 'bg-warning animate-pulse'
-                    : connected
-                      ? 'bg-success'
-                      : 'bg-error'
+                  ? 'bg-warning animate-pulse'
+                  : connected
+                    ? 'bg-success'
+                    : 'bg-error'
                   }`}
               />
               {connectionName}

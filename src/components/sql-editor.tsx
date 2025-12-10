@@ -6,7 +6,7 @@ import { EditorState } from '@codemirror/state'
 import { sql } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { autocompletion } from '@codemirror/autocomplete'
-import { useTheme } from '@/lib/theme-provider'
+import { useTheme } from '@/core/state'
 
 type SqlEditorProps = {
   value: string
@@ -28,10 +28,10 @@ export function SqlEditor({ value, onChange, schema }: SqlEditorProps) {
 
     const completions = schema
       ? [
-          ...schema.tables.map((name) => ({ label: name, type: 'table' })),
-          ...schema.columns.map((name) => ({ label: name, type: 'column' })),
-          ...schema.schemas.map((name) => ({ label: name, type: 'schema' })),
-        ]
+        ...schema.tables.map((name) => ({ label: name, type: 'table' })),
+        ...schema.columns.map((name) => ({ label: name, type: 'column' })),
+        ...schema.schemas.map((name) => ({ label: name, type: 'schema' })),
+      ]
       : []
 
     const sqlCompletion = autocompletion({

@@ -1,6 +1,6 @@
 'use client'
 
-import { CellFormatter } from '@/lib/cell-formatter'
+import { CellFormatter } from '@/core/formatters'
 
 type TableProps = {
   columns: string[]

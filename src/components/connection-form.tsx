@@ -7,14 +7,14 @@ import { AutocompleteInput } from './ui/autocomplete-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { SimpleToast, SimpleToastContainer } from './ui/simple-toast'
-import { testConnection } from '@/lib/tauri-commands'
+import { testConnection } from '@/core/tauri'
 import {
   analyzeConnectionString,
   formatCorrectionMessage,
   suggestConnectionName,
   validateConnectionString,
   getConnectionStringSuggestions,
-} from '@/lib/connection-string-utils'
+} from '@/core/database'
 import type { DatabaseInfo, ConnectionInfo } from '@/types/database'
 
 type ConnectionFormProps = {

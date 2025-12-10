@@ -1,6 +1,6 @@
 /**
  * Tests for connection-string-utils.ts
- * Run with: bun test src/lib/connection-string-utils.test.ts
+ * Run with: bun test src/__tests__/core/database/connection-string.test.ts
  */
 
 import { describe, it, expect } from 'bun:test'
@@ -9,7 +9,7 @@ import {
     formatCorrectionMessage,
     suggestConnectionName,
     validateConnectionString,
-} from './connection-string-utils'
+} from '@/core/database'
 
 describe('analyzeConnectionString', () => {
     describe('prefix stripping', () => {

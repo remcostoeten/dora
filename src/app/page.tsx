@@ -4,12 +4,12 @@ import { useState, useEffect, useRef } from 'react'
 import { TitleBar } from '@/components/title-bar'
 import { AppSidebarComplete } from '@/components/app-sidebar-complete'
 import { ResizeHandle } from '@/components/resize-handle'
-import { useResizable } from '@/lib/use-resizable'
 import { ScriptTabs } from '@/components/script-tabs'
 import { SqlEditor } from '@/components/sql-editor'
 import { Table } from '@/components/table'
 import { ConnectionForm } from '@/components/connection-form'
-import { useTabs } from '@/lib/tabs-store-complete'
+import { useResizable } from '@/core/hooks'
+import { useTabs } from '@/core/state'
 import {
   getConnections,
   initializeConnections,
@@ -26,7 +26,7 @@ import {
   deleteScript,
   executeQuery,
   saveSessionState
-} from '@/lib/tauri-commands'
+} from '@/core/tauri'
 import type { ConnectionInfo, DatabaseSchema, QueryHistoryEntry, Script, DatabaseInfo } from '@/types/database'
 
 type SidebarTabState = 'connections' | 'items' | 'scripts' | 'history'

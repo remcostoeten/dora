@@ -1,6 +1,6 @@
 'use client'
 
-import { useTabs } from '@/lib/tabs-store-complete'
+import { useTabs } from '@/core/state'
 import { Plus, X, Circle } from 'lucide-react'
 import { Button } from './ui/button'
 import { useState } from 'react'
@@ -61,19 +61,17 @@ export function ScriptTabs() {
           return (
             <div
               key={tab.id}
-              className={`group relative flex max-w-48 min-w-0 items-center ${
-                isActive
+              className={`group relative flex max-w-48 min-w-0 items-center ${isActive
                   ? 'bg-card border-x border-border shadow-lg'
                   : 'bg-transparent hover:bg-muted/60'
-              }`}
+                }`}
             >
               <button
                 type="button"
-                className={`relative flex min-w-0 flex-1 items-center gap-2 px-4 py-1.5 text-sm transition-all duration-200 ${
-                  isActive
+                className={`relative flex min-w-0 flex-1 items-center gap-2 px-4 py-1.5 text-sm transition-all duration-200 ${isActive
                     ? 'text-foreground font-medium'
                     : 'text-muted-foreground hover:text-foreground'
-                }`}
+                  }`}
                 onClick={() => handleTabClick(tab.id)}
                 onDoubleClick={() => startEditingName(tab.id, tab.title)}
                 onAuxClick={(e) => {
@@ -104,9 +102,8 @@ export function ScriptTabs() {
               {tabs.length > 1 && (
                 <button
                   type="button"
-                  className={`mr-2 flex-shrink-0 rounded p-1 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive ${
-                    isActive ? 'text-muted-foreground' : ''
-                  }`}
+                  className={`mr-2 flex-shrink-0 rounded p-1 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive ${isActive ? 'text-muted-foreground' : ''
+                    }`}
                   onClick={(e) => handleTabClose(e, tab.id)}
                   title="Close tab"
                 >
