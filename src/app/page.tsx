@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
 import { TitleBar } from '@/components/layout/title-bar'
 import { AppSidebarComplete } from '@/components/sidebar/app-sidebar-complete'
 import { ResizeHandle } from '@/components/layout/resize-handle'
@@ -487,22 +486,11 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
 
         {/* Resizable Sidebar Container */}
-        <motion.div
+        <div
           className="relative flex-shrink-0"
-          initial={false}
-          animate={{
-            // If dragging, follow the mouse (sidebarWidth). 
-            // If not dragging, respect isSidebarCollapsed state.
-            width: (isSidebarCollapsed && !isSidebarResizing) ? 80 : sidebarWidth,
-          }}
-          transition={isSidebarResizing ? { duration: 0 } : {
-            type: "spring",
-            stiffness: 500,
-            damping: 25,
-            mass: 0.5
-          }}
           style={{
-            willChange: "width" // Optimize performance
+            width: isSidebarResizing ? sidebarWidth : (isSidebarCollapsed ? 56 : sidebarWidth),
+            transition: isSidebarResizing ? 'none' : 'width 200ms ease-out',
           }}
         >
           <AppSidebarComplete
@@ -541,9 +529,9 @@ export default function Home() {
             onLoadFromHistory={handleLoadFromHistory}
             onSidebarTabChange={setSidebarTabState}
           />
-          {/* Resize Handle - always show */}
+          {/* Resize Handle */}
           <ResizeHandle onMouseDown={handleResizeStart} isResizing={isSidebarResizing} />
-        </motion.div>
+        </div>
 
         <div className="flex flex-1 flex-col overflow-hidden bg-card">
           <ScriptTabs />
