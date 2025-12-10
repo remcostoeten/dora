@@ -11,7 +11,7 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use tauri::Manager;
 use uuid::Uuid;
-
+pub mod security;
 use crate::{
     database::{
         stmt_manager::StatementManager,

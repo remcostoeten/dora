@@ -155,6 +155,10 @@ impl Storage {
             }
         };
 
+        // Encrypt sensitive data
+        let encrypted_data = crate::security::encrypt(connection_data)
+            .context("Failed to encrypt connection data")?;
+
         conn.execute(
             "INSERT OR REPLACE INTO connections 
              (id, name, connection_data, database_type_id, created_at, updated_at, sort_order) 
@@ -163,7 +167,7 @@ impl Storage {
             (
                 &connection.id.to_string(),
                 &connection.name,
-                connection_data,
+                &encrypted_data,
                 db_type_id,
                 now,
                 now,
@@ -187,6 +191,10 @@ impl Storage {
             }
         };
 
+        // Encrypt sensitive data
+        let encrypted_data = crate::security::encrypt(connection_data)
+            .context("Failed to encrypt connection data")?;
+
         let updated_rows = conn
             .execute(
                 "UPDATE connections 
@@ -195,7 +203,7 @@ impl Storage {
                 (
                     &connection.id.to_string(),
                     &connection.name,
-                    connection_data,
+                    &encrypted_data,
                     db_type_id,
                     now,
                 ),
@@ -227,8 +235,14 @@ impl Storage {
 
         let rows = stmt
             .query_map([], |row| {
-                let connection_data: String = row.get(2)?;
+                let raw_data: String = row.get(2)?;
                 let db_type: String = row.get(3)?;
+
+                // Try to decrypt, otherwise assume plaintext (lazy migration)
+                let connection_data = match crate::security::decrypt(&raw_data) {
+                    Ok(decrypted) => decrypted,
+                    Err(_) => raw_data, // Fallback to plaintext
+                };
 
                 let database_type = match db_type.as_str() {
                     "postgres" => crate::database::types::DatabaseInfo::Postgres {
