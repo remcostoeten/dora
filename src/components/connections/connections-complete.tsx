@@ -2,6 +2,13 @@
 
 import { Cable, Plus, Settings2, Unplug } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import type { ConnectionInfo } from '@/types/database'
 
 type ConnectionsCompleteProps = {
@@ -91,37 +98,71 @@ export function ConnectionsComplete({
           </div>
         ) : (
           connections.map((connection) => (
-            <Button
-              key={connection.id}
-              variant="ghost"
-              className={`w-full justify-start rounded-sm p-1 transition-all duration-200 ${selectedConnection === connection.id
-                  ? 'bg-primary/20'
-                  : 'hover:bg-background hover:bg-primary/20'
-                }`}
-              onClick={() => onSelectConnection?.(connection.id)}
-              onDoubleClick={() => onConnectToDatabase?.(connection.id)}
-            >
-              <div className="flex w-full items-center gap-2.5">
-                <div className="flex shrink-0 items-center gap-2 pl-1">
-                  {/* Connection status dot */}
-                  {connection.connected ? (
-                    <div className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-sm" />
-                  ) : establishingConnections.has(connection.id) ? (
-                    <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500 shadow-sm" />
-                  ) : (
-                    <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
-                  )}
+            <ContextMenu key={connection.id}>
+              <ContextMenuTrigger>
+                <Button
+                  variant="ghost"
+                  className={`w-full justify-start rounded-sm p-1 transition-all duration-200 ${selectedConnection === connection.id
+                    ? 'bg-primary/20'
+                    : 'hover:bg-background hover:bg-primary/20'
+                    }`}
+                  onClick={() => onSelectConnection?.(connection.id)}
+                  onDoubleClick={() => onConnectToDatabase?.(connection.id)}
+                >
+                  <div className="flex w-full items-center gap-2.5">
+                    <div className="flex shrink-0 items-center gap-2 pl-1">
+                      {/* Connection status dot */}
+                      {connection.connected ? (
+                        <div className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-sm" />
+                      ) : establishingConnections.has(connection.id) ? (
+                        <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500 shadow-sm" />
+                      ) : (
+                        <div className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                      )}
 
-                  {getDatabaseIcon(connection)}
-                </div>
-                <div className="truncate text-sm font-medium text-foreground">
-                  <div className="min-w-0 flex-1 text-left">{connection.name}</div>
-                  <div className="truncate font-mono text-xs text-muted-foreground">
-                    {getDatabaseDisplay(connection)}
+                      {getDatabaseIcon(connection)}
+                    </div>
+                    <div className="truncate text-sm font-medium text-foreground">
+                      <div className="min-w-0 flex-1 text-left">{connection.name}</div>
+                      <div className="truncate font-mono text-xs text-muted-foreground">
+                        {getDatabaseDisplay(connection)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </Button>
+                </Button>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  onClick={() => {
+                    if (connection.connected) {
+                      onDisconnectConnection?.(connection.id)
+                    } else {
+                      onConnectToDatabase?.(connection.id)
+                    }
+                  }}
+                >
+                  {connection.connected ? 'Disconnect' : 'Connect'}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => onEditConnection?.(connection)}>
+                  Edit Connection
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => {
+                    const str = getDatabaseDisplay(connection)
+                    if (str) navigator.clipboard.writeText(str)
+                  }}
+                >
+                  Copy Connection String
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  className="text-error focus:text-error"
+                  onClick={() => onDeleteConnection?.(connection.id)}
+                >
+                  Delete Connection
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           ))
         )}
       </div>
