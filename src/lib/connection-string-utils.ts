@@ -88,15 +88,19 @@ export function analyzeConnectionString(input: string): ConnectionStringAnalysis
         cleaned = cleaned.slice(1, -1)
     }
 
-    // Step 3: Detect and correct typos
-    const lowerCleaned = cleaned.toLowerCase()
-    for (const [typo, correction] of Object.entries(TYPO_CORRECTIONS)) {
-        if (lowerCleaned.includes(typo)) {
-            // Find the actual case in the string
-            const index = lowerCleaned.indexOf(typo)
+    // Step 3: Detect and correct typos (apply longest match first to avoid overlapping)
+    let lowerCleaned = cleaned.toLowerCase()
+    const sortedTypos = Object.entries(TYPO_CORRECTIONS).sort((a, b) => b[0].length - a[0].length)
+
+    for (const [typo, correction] of sortedTypos) {
+        const lowerCheck = cleaned.toLowerCase()
+        if (lowerCheck.includes(typo)) {
+            const index = lowerCheck.indexOf(typo)
             const actualTypo = cleaned.substring(index, index + typo.length)
             cleaned = cleaned.substring(0, index) + correction + cleaned.substring(index + typo.length)
             corrections.push({ original: actualTypo, corrected: correction })
+            // Only apply one correction to avoid overlapping issues
+            break
         }
     }
 
@@ -205,3 +209,122 @@ export function validateConnectionString(
 
     return { valid: true }
 }
+
+/**
+ * Get autocomplete suggestions for connection strings
+ */
+export function getConnectionStringSuggestions(
+    currentValue: string,
+    dbType: 'postgres' | 'sqlite',
+    history: string[] = []
+): Array<{ value: string; label?: string; description?: string }> {
+    const suggestions: Array<{ value: string; label?: string; description?: string }> = []
+
+    if (dbType === 'postgres') {
+        // Protocol prefixes
+        if (!currentValue || 'postgresql://'.startsWith(currentValue.toLowerCase())) {
+            suggestions.push({
+                value: 'postgresql://',
+                label: 'postgresql://',
+                description: 'Standard PostgreSQL protocol'
+            })
+        }
+        if (!currentValue || 'postgres://'.startsWith(currentValue.toLowerCase())) {
+            suggestions.push({
+                value: 'postgres://',
+                label: 'postgres://',
+                description: 'Short PostgreSQL protocol'
+            })
+        }
+
+        // Common templates
+        if (currentValue.endsWith('://') || !currentValue) {
+            suggestions.push({
+                value: 'postgresql://localhost:5432/',
+                label: 'postgresql://localhost:5432/',
+                description: 'Local PostgreSQL (default port)'
+            })
+            suggestions.push({
+                value: 'postgresql://user:password@localhost:5432/database',
+                label: 'postgresql://...@localhost/database',
+                description: 'Full connection template'
+            })
+        }
+
+        // User templates after protocol
+        if (currentValue.match(/postgresql:\/\/$/i) || currentValue.match(/postgres:\/\/$/i)) {
+            const prefix = currentValue
+            suggestions.push({
+                value: prefix + 'localhost:5432/',
+                label: prefix + 'localhost:5432/',
+                description: 'Local connection'
+            })
+            suggestions.push({
+                value: prefix + 'user:password@',
+                label: prefix + 'user:password@',
+                description: 'With credentials'
+            })
+        }
+
+        // Host suggestions after @
+        if (currentValue.includes('@') && !currentValue.includes('@localhost') && !currentValue.match(/@[\w.-]+:/)) {
+            const beforeAt = currentValue.split('@')[0]
+            suggestions.push({
+                value: beforeAt + '@localhost:5432/',
+                label: '...@localhost:5432/',
+                description: 'Local host'
+            })
+            suggestions.push({
+                value: beforeAt + '@127.0.0.1:5432/',
+                label: '...@127.0.0.1:5432/',
+                description: 'Loopback address'
+            })
+        }
+    } else {
+        // SQLite suggestions
+        if (!currentValue) {
+            suggestions.push({
+                value: './database.db',
+                label: './database.db',
+                description: 'Current directory'
+            })
+            suggestions.push({
+                value: '~/.local/share/',
+                label: '~/.local/share/',
+                description: 'User data directory'
+            })
+        }
+
+        // File extension
+        if (currentValue && !currentValue.endsWith('.db') && !currentValue.endsWith('.sqlite')) {
+            suggestions.push({
+                value: currentValue + '.db',
+                label: currentValue + '.db',
+                description: 'Add .db extension'
+            })
+            suggestions.push({
+                value: currentValue + '.sqlite',
+                label: currentValue + '.sqlite',
+                description: 'Add .sqlite extension'
+            })
+        }
+    }
+
+    // Add history items
+    const filteredHistory = history
+        .filter(h => !currentValue || h.toLowerCase().includes(currentValue.toLowerCase()))
+        .slice(0, 5)
+
+    for (const item of filteredHistory) {
+        if (!suggestions.find(s => s.value === item)) {
+            suggestions.push({
+                value: item,
+                label: item.length > 40 ? item.slice(0, 37) + '...' : item,
+                description: 'Recent connection'
+            })
+        }
+    }
+
+    return suggestions
+}
+

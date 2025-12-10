@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { AutocompleteInput } from './ui/autocomplete-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { SimpleToast, SimpleToastContainer } from './ui/simple-toast'
@@ -12,6 +13,7 @@ import {
   formatCorrectionMessage,
   suggestConnectionName,
   validateConnectionString,
+  getConnectionStringSuggestions,
 } from '@/lib/connection-string-utils'
 import type { DatabaseInfo, ConnectionInfo } from '@/types/database'
 
@@ -238,12 +240,11 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
             {dbType === 'sqlite' ? (
               <div>
                 <label className="text-sm font-medium mb-2 block">Database Path</label>
-                <Input
+                <AutocompleteInput
                   value={dbPath}
-                  onChange={(e) => handleDbPathChange(e.target.value)}
-                  onPaste={handleDbPathPaste}
+                  onChange={handleDbPathChange}
+                  suggestions={getConnectionStringSuggestions(dbPath, 'sqlite')}
                   placeholder="/path/to/database.db"
-                  required
                   className={validationError ? 'border-error' : ''}
                 />
                 {validationError && (
@@ -255,16 +256,15 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
                 <label className="text-sm font-medium mb-2 block">
                   Connection String
                 </label>
-                <Input
+                <AutocompleteInput
                   value={connectionString}
-                  onChange={(e) => handleConnectionStringChange(e.target.value)}
-                  onPaste={handleConnectionStringPaste}
+                  onChange={handleConnectionStringChange}
+                  suggestions={getConnectionStringSuggestions(connectionString, 'postgres')}
                   placeholder="postgresql://user:password@localhost:5432/database"
-                  required
                   className={validationError ? 'border-error' : ''}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Paste DATABASE_URL= or similar — prefixes are auto-stripped
+                  Tab to accept • ↑↓ to navigate • Paste to auto-strip prefixes
                 </p>
                 {validationError && (
                   <p className="text-xs text-error mt-1">{validationError}</p>
