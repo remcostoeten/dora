@@ -27,11 +27,12 @@
 	--text-dark-secondary: oklch(0.75 0.02 240);
 	--text-dark-tertiary: oklch(0.55 0.025 240);
 
-	--background: oklch(0.92 0.01 240);
+	/* Simplified surface hierarchy - L0 is base, higher = more prominent */
+	--background: oklch(0.965 0.005 240);
 	--foreground: var(--text-light-primary);
-	--card: oklch(0.98 0.005 240);
+	--card: oklch(0.995 0.002 240);
 	--card-foreground: var(--text-light-primary);
-	--popover: oklch(0.98 0.005 240);
+	--popover: oklch(0.995 0.002 240);
 	--popover-foreground: var(--text-light-primary);
 
 	--primary: oklch(0.52 0.16 250);
@@ -54,25 +55,29 @@
 	--error-foreground: oklch(0.98 0.005 25);
 	--error-light: oklch(0.94 0.06 25);
 
-	--muted: oklch(0.88 0.015 240);
+	--muted: oklch(0.94 0.004 240);
 	--muted-foreground: var(--text-light-secondary);
-	--accent: oklch(0.85 0.02 240);
+	--accent: oklch(0.90 0.006 240);
 	--accent-foreground: var(--text-light-primary);
 
-	--border: var(--color-neutral-200);
-	--border-light: var(--color-neutral-100);
+	/* Unified border system */
+	--border: oklch(0.87 0.006 240);
+	--border-light: oklch(0.92 0.004 240);
 	--input: var(--color-white);
 	--ring: oklch(0.52 0.16 250 / 35%);
 
-	--sidebar: oklch(0.9 0.012 240);
+	--surface: var(--card);
+
+	/* Sidebar inherits from main hierarchy */
+	--sidebar: var(--background);
 	--sidebar-foreground: var(--text-light-primary);
 	--sidebar-primary: var(--primary);
 	--sidebar-primary-foreground: var(--primary-foreground);
-	--sidebar-accent: oklch(0.86 0.018 240);
+	--sidebar-accent: var(--accent);
 	--sidebar-accent-foreground: var(--text-light-primary);
-	--sidebar-border: oklch(0.82 0.025 240);
+	--sidebar-border: var(--border);
 	--sidebar-ring: var(--ring);
-	--titlebar-bg: oklch(0.9726 0.0055 211.04);
+
 
 	--shadow-sm: 0 1px 2px oklch(0.08 0.05 240 / 6%);
 	--shadow-md: 0 4px 6px -1px oklch(0.08 0.05 240 / 8%), 0 2px 4px -1px oklch(0.08 0.05 240 / 6%);
@@ -123,6 +128,8 @@
 	--input: var(--color-neutral-900);
 	--ring: oklch(0.68 0.14 250 / 40%);
 
+	--surface: var(--card);
+
 	--sidebar: oklch(0.12 0.018 240);
 	--sidebar-foreground: var(--text-dark-primary);
 	--sidebar-primary: var(--primary);
@@ -131,7 +138,7 @@
 	--sidebar-accent-foreground: var(--text-dark-primary);
 	--sidebar-border: oklch(40% 1% 286deg);
 	--sidebar-ring: var(--ring);
-	--titlebar-bg: oklch(33% 0% 266deg);
+
 
 	--shadow-sm: 0 1px 2px oklch(0.02 0.02 240 / 25%);
 	--shadow-md: 0 4px 6px -1px oklch(0.02 0.02 240 / 30%), 0 2px 4px -1px oklch(0.02 0.02 240 / 20%);
@@ -205,7 +212,9 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
-	--color-titlebar-bg: var(--titlebar-bg);
+
+	--color-surface: var(--surface);
+
 
 	--shadow-sm: var(--shadow-sm);
 	--shadow-md: var(--shadow-md);
@@ -235,11 +244,15 @@
 	}
 
 	#app {
-		border-radius: 12px;
+		/* border-radius: 12px; Only in Tauri */
 		overflow: hidden;
 		background: transparent;
 		user-select: none;
 		-webkit-user-select: none;
+	}
+
+	body.is-tauri #app {
+		border-radius: 12px;
 	}
 
 	/* Allow text selection in editable/content areas */

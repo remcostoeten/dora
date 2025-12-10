@@ -151,47 +151,43 @@ export function AppSidebarComplete({
         <div className="flex h-full flex-col">
           {/* Tab Triggers */}
           <div className="border-b p-2">
-            <div className="flex h-8 w-full flex-row justify-evenly gap-1 rounded-sm border-none bg-background p-0.5 text-sm font-semibold leading-[0.01em] shadow-inner dark:border dark:border-neutral-600/30">
+            <div className="flex h-9 w-full flex-row justify-evenly gap-1 rounded-sm p-1.5 bg-muted/30 text-sm font-semibold leading-[0.01em] shadow-inner dark:border dark:border-neutral-600/30">
               <button
                 onClick={() => onSidebarTabChange?.('connections')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'connections'
-                    ? 'bg-white shadow dark:bg-muted'
-                    : ''
-                }`}
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'connections'
+                  ? 'bg-card shadow dark:bg-muted'
+                  : ''
+                  }`}
                 title="Connections"
               >
                 <Cable className="w-4 text-sidebar-foreground/70" />
               </button>
               <button
                 onClick={() => onSidebarTabChange?.('items')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'items'
-                    ? 'bg-white shadow dark:bg-muted'
-                    : ''
-                }`}
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'items'
+                  ? 'bg-card shadow dark:bg-muted'
+                  : ''
+                  }`}
                 title="Items"
               >
                 <TableProperties className="w-4 text-sidebar-foreground/70" />
               </button>
               <button
                 onClick={() => onSidebarTabChange?.('scripts')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'scripts'
-                    ? 'bg-white shadow dark:bg-muted'
-                    : ''
-                }`}
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'scripts'
+                  ? 'bg-card shadow dark:bg-muted'
+                  : ''
+                  }`}
                 title="Scripts"
               >
                 <FileJson className="w-4 text-sidebar-foreground/70" />
               </button>
               <button
                 onClick={() => onSidebarTabChange?.('history')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'history'
-                    ? 'bg-white shadow dark:bg-muted'
-                    : ''
-                }`}
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'history'
+                  ? 'bg-card shadow dark:bg-muted'
+                  : ''
+                  }`}
                 title="History"
               >
                 <History className="w-4 text-sidebar-foreground/70" />

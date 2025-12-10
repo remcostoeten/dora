@@ -2,10 +2,11 @@
 
 import { Minus, Square, X, Play, Save } from 'lucide-react'
 import { Button } from './ui/button'
+import { ThemeSwitcher } from './theme-switcher'
 import { minimizeWindow, maximizeWindow, closeWindow } from '@/core/tauri'
-import { useTheme } from '@/core/state'
+import { isTauri } from '@/core/tauri'
 
-type TitleBarProps = {
+type Props = {
   connectionName?: string
   connected?: boolean
   isConnecting?: boolean
@@ -21,9 +22,7 @@ export function TitleBar({
   hasUnsavedChanges = false,
   onRunQuery,
   onSaveScript,
-}: TitleBarProps) {
-  const { theme, toggleTheme } = useTheme()
-
+}: Props) {
   async function handleMinimize() {
     try {
       await minimizeWindow()
@@ -50,7 +49,7 @@ export function TitleBar({
 
   return (
     <div
-      className="flex h-12 items-center justify-between border-b border-border bg-[var(--titlebar-bg)] px-4"
+      className="flex h-12 items-center justify-between border-b border-border bg-background px-4"
       data-tauri-drag-region
     >
       <div className="flex items-center gap-4">
@@ -84,45 +83,45 @@ export function TitleBar({
           </Button>
         )}
         {onSaveScript && (
-          <Button size="sm" variant="outline" onClick={onSaveScript} className="gap-1">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={onSaveScript}
+            className="gap-1"
+          >
             <Save className="h-4 w-4" />
             Save
           </Button>
         )}
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={toggleTheme}
-          className="h-8 w-8"
-        >
-          {theme === 'dark' ? '🌙' : '☀️'}
-        </Button>
-        <div className="ml-2 flex items-center gap-1">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleMinimize}
-            className="h-8 w-8"
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleMaximize}
-            className="h-8 w-8"
-          >
-            <Square className="h-3 w-3" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={handleClose}
-            className="h-8 w-8 hover:bg-error hover:text-error-foreground"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
+        <ThemeSwitcher />
+        {isTauri() && (
+          <div className="ml-2 flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleMinimize}
+              className="h-8 w-8"
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleMaximize}
+              className="h-8 w-8"
+            >
+              <Square className="h-3 w-3" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={handleClose}
+              className="h-8 w-8 hover:bg-error hover:text-error-foreground"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

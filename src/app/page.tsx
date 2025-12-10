@@ -498,7 +498,7 @@ export default function Home() {
         <div className="flex flex-1 flex-col overflow-hidden bg-card">
           <ScriptTabs />
 
-          <div className="flex flex-1 flex-col overflow-hidden border border-border bg-card shadow-sm">
+          <div className="flex flex-1 flex-col overflow-hidden border-l border-border bg-card">
             <div className="flex flex-1 flex-col border-b border-border">
               <div className="flex-1 p-4">
                 <SqlEditor

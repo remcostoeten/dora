@@ -1,9 +1,23 @@
 'use client'
 
+/**
+ * @description Autocomplete input for structured values like Postgres URLs with inline ghost hints.
+ * @example Type a URL prefix and press Tab to complete the first match.
+ * <AutocompleteInput
+ *   value={value}
+ *   onChange={setValue}
+ *   suggestions={[
+ *     { value: 'https://example.com' },
+ *     { value: 'https://example.org' },
+ *   ]}
+ * />
+ */
+
+
 import * as React from 'react'
 import { cn } from '@/core/utilities/cn'
 
-export type Suggestion = {
+type Props = {
     value: string
     label?: string
     description?: string
@@ -13,11 +27,11 @@ export interface AutocompleteInputProps
     extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'onSelect'> {
     value: string
     onChange: (value: string) => void
-    suggestions: Suggestion[]
+    suggestions: Props[]
     /** Show ghost text inline for the first matching suggestion */
     showInlineGhost?: boolean
     /** Called when a suggestion is selected */
-    onSuggestionSelect?: (suggestion: Suggestion) => void
+    onSuggestionSelect?: (suggestion: Props) => void
     /** Placeholder when no suggestions */
     emptyMessage?: string
 }
@@ -39,7 +53,6 @@ export function AutocompleteInput({
     const [selectedIndex, setSelectedIndex] = React.useState(-1)
     const [ghostText, setGhostText] = React.useState('')
 
-    // Filter suggestions based on current input
     const filteredSuggestions = React.useMemo(() => {
         if (!value.trim()) return suggestions.slice(0, 10)
         const lower = value.toLowerCase()
