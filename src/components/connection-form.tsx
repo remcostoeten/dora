@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { Label } from './ui/label'
 import { AutocompleteInput } from './ui/autocomplete-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -211,9 +212,10 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Connection Name</label>
+            <div className="space-y-2">
+              <Label htmlFor="connection-name">Connection Name</Label>
               <Input
+                id="connection-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="My Database"
@@ -224,10 +226,10 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
               </p>
             </div>
 
-            <div>
-              <label className="text-sm font-medium mb-2 block">Database Type</label>
+            <div className="space-y-2">
+              <Label htmlFor="db-type">Database Type</Label>
               <Select value={dbType} onValueChange={(value) => setDbType(value as 'postgres' | 'sqlite')}>
-                <SelectTrigger>
+                <SelectTrigger id="db-type">
                   <SelectValue placeholder="Select database type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -238,9 +240,10 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
             </div>
 
             {dbType === 'sqlite' ? (
-              <div>
-                <label className="text-sm font-medium mb-2 block">Database Path</label>
+              <div className="space-y-2">
+                <Label htmlFor="db-path">Database Path</Label>
                 <AutocompleteInput
+                  id="db-path"
                   value={dbPath}
                   onChange={handleDbPathChange}
                   suggestions={getConnectionStringSuggestions(dbPath, 'sqlite')}
@@ -252,11 +255,12 @@ export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Conne
                 )}
               </div>
             ) : (
-              <div>
-                <label className="text-sm font-medium mb-2 block">
+              <div className="space-y-2">
+                <Label htmlFor="connection-string">
                   Connection String
-                </label>
+                </Label>
                 <AutocompleteInput
+                  id="connection-string"
                   value={connectionString}
                   onChange={handleConnectionStringChange}
                   suggestions={getConnectionStringSuggestions(connectionString, 'postgres')}
