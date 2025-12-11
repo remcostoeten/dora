@@ -540,3 +540,17 @@ pub async fn set_setting(
     state.storage.set_setting(&key, &value)?;
     Ok(())
 }
+
+#[tauri::command]
+pub async fn get_connection_history(
+    db_type_filter: Option<String>,
+    success_filter: Option<bool>,
+    limit: Option<i64>,
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<crate::storage::ConnectionHistoryEntry>, Error> {
+    state.storage.get_connection_history(
+        db_type_filter.as_deref(),
+        success_filter,
+        limit,
+    )
+}

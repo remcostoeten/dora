@@ -105,6 +105,7 @@ pub fn run() {
             database::commands::get_session_state,
             database::commands::get_setting,
             database::commands::set_setting,
+            database::commands::get_connection_history,
             window::commands::minimize_window,
             window::commands::maximize_window,
             window::commands::close_window,

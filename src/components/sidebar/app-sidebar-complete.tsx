@@ -1,15 +1,16 @@
 'use client'
 
-import { Cable, Plus, ChevronLeft, ChevronRight, FileJson, TableProperties, History } from 'lucide-react'
+import { Cable, Plus, ChevronLeft, ChevronRight, FileJson, TableProperties, History, Activity } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConnectionsComplete } from '@/components/connections/connections-complete'
 import { DatabaseSchemaItems } from './database-schema-items'
 import { ScriptsComplete } from './scripts-complete'
 import { QueryHistoryComplete } from './query-history-complete'
+import { ConnectionHistoryPanel } from './connection-history-panel'
 import { Logo } from '@/components/shared/logo'
 import type { ConnectionInfo, Schema, Script, QueryHistoryEntry } from '@/types/database'
 
-type SidebarTabState = 'connections' | 'items' | 'scripts' | 'history'
+type SidebarTabState = 'connections' | 'items' | 'scripts' | 'history' | 'conn-history'
 
 type AppSidebarProps = {
   connections: ConnectionInfo[]
@@ -127,9 +128,18 @@ export function AppSidebarComplete({
             className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${sidebarTabState === 'history' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             onClick={() => switchTab('history')}
-            title="History"
+            title="Query History"
           >
             <History className="h-4 w-4" />
+          </button>
+
+          <button
+            className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${sidebarTabState === 'conn-history' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              }`}
+            onClick={() => switchTab('conn-history')}
+            title="Connection History"
+          >
+            <Activity className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -160,8 +170,8 @@ export function AppSidebarComplete({
             <button
               onClick={() => onSidebarTabChange?.('connections')}
               className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'connections'
-                  ? 'bg-background text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
                 }`}
               title="Connections"
             >
@@ -170,8 +180,8 @@ export function AppSidebarComplete({
             <button
               onClick={() => onSidebarTabChange?.('items')}
               className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'items'
-                  ? 'bg-background text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
                 }`}
               title="Tables"
             >
@@ -180,8 +190,8 @@ export function AppSidebarComplete({
             <button
               onClick={() => onSidebarTabChange?.('scripts')}
               className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'scripts'
-                  ? 'bg-background text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
                 }`}
               title="Scripts"
             >
@@ -190,8 +200,8 @@ export function AppSidebarComplete({
             <button
               onClick={() => onSidebarTabChange?.('history')}
               className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'history'
-                  ? 'bg-background text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-background text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
                 }`}
               title="History"
             >
@@ -239,6 +249,9 @@ export function AppSidebarComplete({
                 queryHistory={queryHistory}
                 onLoadFromHistory={onLoadFromHistory}
               />
+            )}
+            {sidebarTabState === 'conn-history' && (
+              <ConnectionHistoryPanel />
             )}
           </div>
         </div>

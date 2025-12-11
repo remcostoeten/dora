@@ -64,20 +64,20 @@ export type Table = TableInfo
 
 export type QueryExecEvent =
   | {
-      type: 'types-resolved'
-      columns: string[]
-    }
+    type: 'types-resolved'
+    columns: string[]
+  }
   | {
-      type: 'page'
-      pageAmount: number
-      page: Page
-    }
+    type: 'page'
+    pageAmount: number
+    page: Page
+  }
   | {
-      type: 'finished'
-      elapsedMs: number
-      affectedRows: number
-      error: string | null
-    }
+    type: 'finished'
+    elapsedMs: number
+    affectedRows: number
+    error: string | null
+  }
 
 export type QueryHistory = Entity & {
   query: string
@@ -97,6 +97,17 @@ export type QueryHistoryEntry = {
   status: string
   row_count: number
   error_message: string | null
+}
+
+export type ConnectionHistoryEntry = {
+  id: number
+  connection_id: string
+  connection_name: string
+  database_type: string
+  attempted_at: number
+  success: boolean
+  error_message: string | null
+  duration_ms: number | null
 }
 
 export type Script = {

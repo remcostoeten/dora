@@ -206,3 +206,15 @@ export async function executeQuery(
 
   return results
 }
+
+export async function getConnectionHistory(
+  dbTypeFilter?: string,
+  successFilter?: boolean,
+  limit?: number
+): Promise<import('@/types/database').ConnectionHistoryEntry[]> {
+  return await invoke('get_connection_history', {
+    dbTypeFilter: dbTypeFilter || null,
+    successFilter: successFilter ?? null,
+    limit: limit || null,
+  })
+}
