@@ -29,7 +29,7 @@ import {
 } from '@/core/tauri'
 import type { ConnectionInfo, DatabaseSchema, QueryHistoryEntry, Script, DatabaseInfo } from '@/types/database'
 
-type SidebarTabState = 'connections' | 'items' | 'scripts' | 'history'
+type SidebarTabState = 'connections' | 'items' | 'scripts' | 'history' | 'conn-history'
 
 export default function Home() {
   const [showConnectionForm, setShowConnectionForm] = useState(false)
