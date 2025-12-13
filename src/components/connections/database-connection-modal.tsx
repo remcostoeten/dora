@@ -836,11 +836,6 @@ export function DatabaseConnectionModal({
       const updated = [historyEntry, ...connectionHistory].slice(0, 20)
       setConnectionHistory(updated)
       localStorage.setItem('db_connection_history', JSON.stringify(updated))
-    } else if (activeTab === 'libsql' && libsqlUrl) {
-      const historyEntry = formatHistoryEntry(libsqlUrl, 'libsql')
-      const updated = [historyEntry, ...connectionHistory].slice(0, 20)
-      setConnectionHistory(updated)
-      localStorage.setItem('db_connection_history', JSON.stringify(updated))
     }
 
     await onSubmit(name.trim(), databaseInfo)

@@ -160,7 +160,7 @@ export function ScriptTabs() {
                       ? 'bg-card border-x border-border shadow-lg'
                       : 'bg-transparent hover:bg-muted/60'
                     } ${isDragging ? 'opacity-50' : ''
-                    } ${isDragOver ? 'border-l-2 border-l-blue-500' : ''
+                    } ${isDragOver ? 'border-l-2 border-l-primary' : ''
                     }`}
                 >
                   <button
@@ -178,7 +178,7 @@ export function ScriptTabs() {
                     }}
                   >
                     {isPinned && (
-                      <Pin className="h-3 w-3 flex-shrink-0 text-blue-500" />
+                      <Pin className="h-3 w-3 flex-shrink-0 text-primary" />
                     )}
 
                     {/* Tab type icon */}
@@ -186,7 +186,7 @@ export function ScriptTabs() {
                       tab.type === 'table-view' ? (
                         <TableProperties className="h-3.5 w-3.5 flex-shrink-0 text-green-500" />
                       ) : (
-                        <FileJson2 className="h-3.5 w-3.5 flex-shrink-0 text-blue-400" />
+                        <FileJson2 className="h-3.5 w-3.5 flex-shrink-0 text-primary-light" />
                       )
                     )}
 
@@ -222,7 +222,7 @@ export function ScriptTabs() {
                   )}
 
                   {isActive && (
-                    <div className="absolute right-0 bottom-0 left-0 h-0.5 bg-blue-500 transition-all duration-200" />
+                    <div className="absolute right-0 bottom-0 left-0 h-0.5 bg-primary transition-all duration-200" />
                   )}
                 </div>
               </ContextMenuTrigger>

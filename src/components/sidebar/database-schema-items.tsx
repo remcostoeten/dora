@@ -88,7 +88,7 @@ export function DatabaseSchemaItems({
             </div>
             {onTableClick && (
               <button
-                className="flex-shrink-0 cursor-pointer rounded-md p-1.5 text-muted-foreground/70 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                className="flex-shrink-0 cursor-pointer rounded-md p-1.5 text-muted-foreground/70 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-primary/10 hover:text-primary"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()

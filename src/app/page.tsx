@@ -4,11 +4,13 @@ import { useState, useEffect, useRef } from 'react'
 import { TitleBar } from '@/components/layout/title-bar'
 import { AppSidebarComplete } from '@/components/sidebar/app-sidebar-complete'
 import { ResizeHandle } from '@/components/layout/resize-handle'
+import { MainViewTabs, useMainViewMode } from '@/components/layout/main-view-tabs'
 import { ScriptTabs } from '@/components/editor/script-tabs'
 import { SqlEditor } from '@/components/editor/sql-editor'
 import { CommandPalette } from '@/components/ui/command-palette'
 import { Table } from '@/components/data/table'
 import { TableBrowser } from '@/components/data/table-browser'
+import { DataBrowserView } from '@/components/data/data-browser-view'
 import { useCommands } from '@/core/hooks/use-commands'
 import { COMMAND_IDS } from '@/core/commands/constants'
 import { DatabaseConnectionModal } from '@/components/connections/database-connection-modal'
@@ -51,6 +53,9 @@ export default function Home() {
   const [sidebarTabState, setSidebarTabState] = useState<SidebarTabState>('connections')
   const [executing, setExecuting] = useState(false)
   const [lastLoadedSchemaConnectionId, setLastLoadedSchemaConnectionId] = useState<string | null>(null)
+
+  // Main view mode (Query Runner or Data Browser)
+  const { mode: mainViewMode, setMode: setMainViewMode } = useMainViewMode()
 
   const { size: sidebarWidth, isResizing: isSidebarResizing, startResizing: startSidebarResizing } = useResizable({
     direction: 'horizontal',
@@ -641,13 +646,17 @@ export default function Home() {
         </div>
 
         <div className="flex flex-1 flex-col overflow-hidden bg-card">
-          <ScriptTabs />
+          {/* Main View Mode Tabs */}
+          <MainViewTabs
+            mode={mainViewMode}
+            onModeChange={setMainViewMode}
+            disabled={!currentConnection?.connected}
+          />
 
-
-          <div className="flex flex-1 flex-col overflow-hidden border-l border-border bg-card">
-            {/* Render based on active tab type */}
-            {activeTab?.type === 'table-view' ? (
-              /* Table Browser View - Full height */
+          {/* Content based on view mode */}
+          {mainViewMode === 'data-browser' ? (
+            /* Data Browser View - Show table picker or active table */
+            activeTab?.type === 'table-view' ? (
               <TableBrowser
                 tableName={(activeTab as any).tableName}
                 schema={(activeTab as any).schema}
@@ -658,7 +667,6 @@ export default function Home() {
                 loading={(activeTab as any).loading}
                 totalRows={(activeTab as any).totalRows}
                 onRefresh={() => {
-                  // Reload the table data
                   handleTableClick((activeTab as any).tableName, (activeTab as any).schema)
                 }}
                 onExecuteUpdate={async (sql: string) => {
@@ -675,144 +683,188 @@ export default function Home() {
                 }}
               />
             ) : (
-              /* SQL Editor View with Results Panel */
-              <>
-                {/* Top Pane (Editor) - Takes remaining space */}
-                <div className="flex flex-1 flex-col min-h-0 border-b border-border">
-                  <div className="flex-1 p-4">
-                    <SqlEditor
-                      value={currentEditorContent}
-                      onChange={handleEditorContentChange}
-                      schema={
-                        databaseSchema
-                          ? {
-                            tables: databaseSchema.tables.map((t) => t.name),
-                            columns: databaseSchema.unique_columns,
-                            schemas: databaseSchema.schemas,
-                          }
-                          : undefined
+              <DataBrowserView
+                schema={databaseSchema}
+                connectionId={selectedConnection}
+                connected={currentConnection?.connected || false}
+                onTableSelect={handleTableClick}
+              />
+            )
+          ) : (
+            /* Query Runner View */
+            <>
+              <ScriptTabs />
+              <div className="flex flex-1 flex-col overflow-hidden border-l border-border bg-card">
+                {/* Render based on active tab type */}
+                {activeTab?.type === 'table-view' ? (
+                  /* Table Browser View - Full height */
+                  <TableBrowser
+                    tableName={(activeTab as any).tableName}
+                    schema={(activeTab as any).schema}
+                    connectionId={(activeTab as any).connectionId}
+                    columns={(activeTab as any).columns || []}
+                    data={(activeTab as any).data || []}
+                    primaryKeyColumn={(activeTab as any).primaryKeyColumn}
+                    loading={(activeTab as any).loading}
+                    totalRows={(activeTab as any).totalRows}
+                    onRefresh={() => {
+                      // Reload the table data
+                      handleTableClick((activeTab as any).tableName, (activeTab as any).schema)
+                    }}
+                    onExecuteUpdate={async (sql: string) => {
+                      if (!selectedConnection) return { success: false, error: 'No connection selected' }
+                      try {
+                        const results = await executeQuery(selectedConnection, sql)
+                        if (results.length > 0 && results[0].error) {
+                          return { success: false, error: results[0].error }
+                        }
+                        return { success: true }
+                      } catch (error) {
+                        return { success: false, error: error instanceof Error ? error.message : 'Update failed' }
                       }
-                    />
-                  </div>
-
-                  <div className="border-t border-border bg-muted/50 px-4 py-2">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center gap-4">
-                        <span className="font-medium">Connection: {currentConnection?.name || 'None'}</span>
-                        {selectedConnection && (
-                          <span className="flex items-center gap-1">
-                            <span className={`h-2 w-2 rounded-full ${currentConnection?.connected ? 'bg-green-500' : 'bg-red-500'}`} />
-                            <span className={currentConnection?.connected ? 'text-success' : 'text-error'}>
-                              {currentConnection?.connected ? 'Connected' : 'Disconnected'}
-                            </span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span>Lines: {currentEditorContent.split('\n').length}</span>
-                        <span>Length: {currentEditorContent.length}</span>
-                        {activeTab?.isDirty && (
-                          <span className="text-warning font-medium">● Modified</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Enter</kbd> to execute query • Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+S</kbd> to save script
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Pane (Results) - Resizable */}
-                <div
-                  className="relative flex flex-col overflow-hidden bg-card border-t border-border"
-                  style={{ height: bottomHeight }}
-                >
-                  <ResizeHandle
-                    orientation="horizontal"
-                    isResizing={isBottomResizing}
-                    onMouseDown={startBottomResizing}
+                    }}
                   />
-
-                  <div className="flex-1 overflow-auto bg-card pt-1">
-                    {/* pt-1 to avoid overlap with resize handle */}
-                    {executing && (
-                      <div className="flex h-full items-center justify-center">
-                        <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                          <div className="font-medium">Executing query...</div>
-                        </div>
+                ) : (
+                  /* SQL Editor View with Results Panel */
+                  <>
+                    {/* Top Pane (Editor) - Takes remaining space */}
+                    <div className="flex flex-1 flex-col min-h-0 border-b border-border">
+                      <div className="flex-1 p-4">
+                        <SqlEditor
+                          value={currentEditorContent}
+                          onChange={handleEditorContentChange}
+                          schema={
+                            databaseSchema
+                              ? {
+                                tables: databaseSchema.tables.map((t) => t.name),
+                                columns: databaseSchema.unique_columns,
+                                schemas: databaseSchema.schemas,
+                              }
+                              : undefined
+                          }
+                        />
                       </div>
-                    )}
 
-                    {!executing && activeTab?.type === 'script' && activeTab.error && (
-                      <div className="p-4">
-                        <div className="bg-error/10 border border-error/30 text-error p-4 rounded-lg">
-                          <div className="font-semibold mb-2 flex items-center gap-2">
-                            <div className="h-4 w-4 rounded-full bg-error" />
-                            Query Error
-                          </div>
-                          <div className="text-sm font-mono">{String(activeTab.error)}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!executing && activeTab?.type === 'script' && activeTab.results && (
-                      <div className="h-full flex flex-col">
-                        <div className="border-b border-border bg-muted/30 px-4 py-3">
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-4">
-                              <span className="font-semibold text-foreground">Query Results</span>
-                              {activeTab.results.affectedRows !== undefined && (
-                                <span className="text-success bg-success/10 px-2 py-1 rounded text-xs font-medium">
-                                  {activeTab.results.affectedRows} rows affected
+                      <div className="border-t border-border bg-muted/50 px-4 py-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-4">
+                            <span className="font-medium">Connection: {currentConnection?.name || 'None'}</span>
+                            {selectedConnection && (
+                              <span className="flex items-center gap-1">
+                                <span className={`h-2 w-2 rounded-full ${currentConnection?.connected ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className={currentConnection?.connected ? 'text-success' : 'text-error'}>
+                                  {currentConnection?.connected ? 'Connected' : 'Disconnected'}
                                 </span>
-                              )}
-                            </div>
-                            <span className="text-muted-foreground bg-muted px-2 py-1 rounded text-xs">
-                              {activeTab.results.rows.length} rows returned
-                            </span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span>Lines: {currentEditorContent.split('\n').length}</span>
+                            <span>Length: {currentEditorContent.length}</span>
+                            {activeTab?.isDirty && (
+                              <span className="text-warning font-medium">● Modified</span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex-1">
-                          <Table
-                            columns={activeTab.results.columns}
-                            data={activeTab.results.rows}
-                          />
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+Enter</kbd> to execute query • Press <kbd className="px-1 py-0.5 bg-muted rounded text-xs">Ctrl+S</kbd> to save script
                         </div>
                       </div>
-                    )}
+                    </div>
 
-                    {!executing && activeTab?.type === 'script' && !activeTab.results && !activeTab.error && (
-                      <div className="flex h-full items-center justify-center text-muted-foreground">
-                        <div className="text-center max-w-md">
-                          <div className="text-2xl font-medium mb-3 text-foreground">Ready to run queries</div>
-                          <div className="text-sm mb-4">Execute a query to see results here</div>
-                          <div className="flex items-center justify-center gap-2 text-xs bg-muted px-3 py-2 rounded-full">
-                            <kbd className="px-1 py-0.5 bg-background rounded border border-border">Ctrl</kbd>
-                            <span>+</span>
-                            <kbd className="px-1 py-0.5 bg-background rounded border border-border">Enter</kbd>
-                            <span className="mx-1">to run</span>
+                    {/* Bottom Pane (Results) - Resizable */}
+                    <div
+                      className="relative flex flex-col overflow-hidden bg-card border-t border-border"
+                      style={{ height: bottomHeight }}
+                    >
+                      <ResizeHandle
+                        orientation="horizontal"
+                        isResizing={isBottomResizing}
+                        onMouseDown={startBottomResizing}
+                      />
+
+                      <div className="flex-1 overflow-auto bg-card pt-1">
+                        {/* pt-1 to avoid overlap with resize handle */}
+                        {executing && (
+                          <div className="flex h-full items-center justify-center">
+                            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                              <div className="font-medium">Executing query...</div>
+                            </div>
                           </div>
-                        </div>
+                        )}
+
+                        {!executing && activeTab?.type === 'script' && activeTab.error && (
+                          <div className="p-4">
+                            <div className="bg-error/10 border border-error/30 text-error p-4 rounded-lg">
+                              <div className="font-semibold mb-2 flex items-center gap-2">
+                                <div className="h-4 w-4 rounded-full bg-error" />
+                                Query Error
+                              </div>
+                              <div className="text-sm font-mono">{String(activeTab.error)}</div>
+                            </div>
+                          </div>
+                        )}
+
+                        {!executing && activeTab?.type === 'script' && activeTab.results && (
+                          <div className="h-full flex flex-col">
+                            <div className="border-b border-border bg-muted/30 px-4 py-3">
+                              <div className="flex items-center justify-between text-sm">
+                                <div className="flex items-center gap-4">
+                                  <span className="font-semibold text-foreground">Query Results</span>
+                                  {activeTab.results.affectedRows !== undefined && (
+                                    <span className="text-success bg-success/10 px-2 py-1 rounded text-xs font-medium">
+                                      {activeTab.results.affectedRows} rows affected
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-muted-foreground bg-muted px-2 py-1 rounded text-xs">
+                                  {activeTab.results.rows.length} rows returned
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <Table
+                                columns={activeTab.results.columns}
+                                data={activeTab.results.rows}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {!executing && activeTab?.type === 'script' && !activeTab.results && !activeTab.error && (
+                          <div className="flex h-full items-center justify-center text-muted-foreground">
+                            <div className="text-center max-w-md">
+                              <div className="text-2xl font-medium mb-3 text-foreground">Ready to run queries</div>
+                              <div className="text-sm mb-4">Execute a query to see results here</div>
+                              <div className="flex items-center justify-center gap-2 text-xs bg-muted px-3 py-2 rounded-full">
+                                <kbd className="px-1 py-0.5 bg-background rounded border border-border">Ctrl</kbd>
+                                <span>+</span>
+                                <kbd className="px-1 py-0.5 bg-background rounded border border-border">Enter</kbd>
+                                <span className="mx-1">to run</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          <DatabaseConnectionModal
+            open={showConnectionForm}
+            onOpenChange={(open) => {
+              setShowConnectionForm(open)
+              if (!open) setEditingConnection(null)
+            }}
+            onSubmit={handleConnectionSubmit}
+            editingConnection={editingConnection}
+          />
         </div>
       </div>
-
-      <DatabaseConnectionModal
-        open={showConnectionForm}
-        onOpenChange={(open) => {
-          setShowConnectionForm(open)
-          if (!open) setEditingConnection(null)
-        }}
-        onSubmit={handleConnectionSubmit}
-        editingConnection={editingConnection}
-      />
-    </div >
+    </div>
   )
 }

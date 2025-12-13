@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 import { ThemeProvider, TabsProvider } from '@/core/state'
+import { AccentProvider } from '@/core/state/accent-provider'
+import { ThemeConfigProvider } from '@/core/state/theme-config-provider'
 import { isTauri } from '@/core/tauri'
 
 import { useRouter } from 'next/navigation'
@@ -51,10 +53,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
-      <TabsProvider>
-        {children}
-        <CommandSystem />
-      </TabsProvider>
+      <AccentProvider>
+        <ThemeConfigProvider>
+          <TabsProvider>
+            {children}
+            <CommandSystem />
+          </TabsProvider>
+        </ThemeConfigProvider>
+      </AccentProvider>
     </ThemeProvider>
   )
 }

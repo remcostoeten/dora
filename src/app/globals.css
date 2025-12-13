@@ -35,10 +35,14 @@
 	--popover: oklch(0.995 0.002 240);
 	--popover-foreground: var(--text-light-primary);
 
-	--primary: oklch(0.52 0.16 250);
+	/* Primary/Accent color system - hue is the single source of truth */
+	--primary-hue: 250;
+	--primary: oklch(0.52 0.16 var(--primary-hue));
 	--primary-foreground: oklch(0.98 0.005 240);
-	--primary-light: oklch(0.62 0.12 250);
-	--primary-dark: oklch(0.42 0.2 250);
+	--primary-light: oklch(0.62 0.12 var(--primary-hue));
+	--primary-dark: oklch(0.42 0.2 var(--primary-hue));
+	--primary-subtle: oklch(0.52 0.16 var(--primary-hue) / 10%);
+	--primary-muted: oklch(0.52 0.16 var(--primary-hue) / 20%);
 
 	--secondary: var(--color-neutral-100);
 	--secondary-foreground: var(--text-light-primary);
@@ -64,7 +68,7 @@
 	--border: oklch(0.87 0.006 240);
 	--border-light: oklch(0.92 0.004 240);
 	--input: var(--color-white);
-	--ring: oklch(0.52 0.16 250 / 35%);
+	--ring: oklch(0.52 0.16 var(--primary-hue) / 35%);
 
 	--surface: var(--card);
 
@@ -98,10 +102,12 @@
 	--popover: oklch(24% 0% 106deg);
 	--popover-foreground: var(--text-dark-primary);
 
-	--primary: oklch(65% 48% 251deg);
+	--primary: oklch(0.65 0.18 var(--primary-hue));
 	--primary-foreground: var(--color-neutral-950);
-	--primary-light: oklch(63% 50% 254deg);
-	--primary-dark: oklch(56% 29% 234deg);
+	--primary-light: oklch(0.72 0.14 var(--primary-hue));
+	--primary-dark: oklch(0.55 0.22 var(--primary-hue));
+	--primary-subtle: oklch(0.65 0.18 var(--primary-hue) / 15%);
+	--primary-muted: oklch(0.65 0.18 var(--primary-hue) / 25%);
 
 	--secondary: var(--color-neutral-800);
 	--secondary-foreground: var(--text-dark-primary);
@@ -126,7 +132,7 @@
 	--border: oklch(40% 1% 286deg);
 	--border-light: var(--color-neutral-800);
 	--input: var(--color-neutral-900);
-	--ring: oklch(0.68 0.14 250 / 40%);
+	--ring: oklch(0.68 0.14 var(--primary-hue) / 40%);
 
 	--surface: var(--card);
 
@@ -181,6 +187,8 @@
 	--color-primary-foreground: var(--primary-foreground);
 	--color-primary-light: var(--primary-light);
 	--color-primary-dark: var(--primary-dark);
+	--color-primary-subtle: var(--primary-subtle);
+	--color-primary-muted: var(--primary-muted);
 
 	--color-secondary: var(--secondary);
 	--color-secondary-foreground: var(--secondary-foreground);
@@ -316,6 +324,37 @@
 
 	.scrollable-container:hover {
 		scrollbar-color: var(--muted-foreground) transparent;
+	}
+
+	/* CodeMirror Editor Styles - Full height gutter */
+	.cm-editor {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.cm-editor .cm-scroller {
+		flex: 1;
+		overflow: auto;
+	}
+
+	.cm-editor .cm-gutters {
+		height: 100%;
+		flex-shrink: 0;
+	}
+
+	.cm-editor .cm-gutter {
+		min-height: 100%;
+	}
+
+	.cm-editor .cm-lineNumbers {
+		min-height: 100%;
+	}
+
+	/* Make active line stand out more */
+	.cm-editor .cm-activeLineGutter {
+		position: relative;
+		z-index: 1;
 	}
 }
 
