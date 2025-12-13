@@ -165,54 +165,54 @@ export function AppSidebarComplete({
         </div>
 
         {/* Tab Bar */}
-        <div className="border-b border-border px-2 py-2">
-          <div className="flex gap-1 rounded bg-muted/50 p-1">
+        <div className="border-b border-border px-3 py-3">
+          <div className="flex gap-1.5 rounded-lg bg-muted/40 p-1.5">
             <button
               onClick={() => onSidebarTabChange?.('connections')}
-              className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'connections'
-                ? 'bg-background text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+              className={`flex flex-1 items-center justify-center rounded-md py-2 text-xs font-medium transition-all duration-200 ${sidebarTabState === 'connections'
+                ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               title="Connections"
             >
-              <Cable className="h-3.5 w-3.5" />
+              <Cable className="h-4 w-4" />
             </button>
             <button
               onClick={() => onSidebarTabChange?.('items')}
-              className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'items'
-                ? 'bg-background text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+              className={`flex flex-1 items-center justify-center rounded-md py-2 text-xs font-medium transition-all duration-200 ${sidebarTabState === 'items'
+                ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               title="Tables"
             >
-              <TableProperties className="h-3.5 w-3.5" />
+              <TableProperties className="h-4 w-4" />
             </button>
             <button
               onClick={() => onSidebarTabChange?.('scripts')}
-              className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'scripts'
-                ? 'bg-background text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+              className={`flex flex-1 items-center justify-center rounded-md py-2 text-xs font-medium transition-all duration-200 ${sidebarTabState === 'scripts'
+                ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               title="Scripts"
             >
-              <FileJson className="h-3.5 w-3.5" />
+              <FileJson className="h-4 w-4" />
             </button>
             <button
               onClick={() => onSidebarTabChange?.('history')}
-              className={`flex flex-1 items-center justify-center rounded py-1.5 text-xs font-medium transition-colors ${sidebarTabState === 'history'
-                ? 'bg-background text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
+              className={`flex flex-1 items-center justify-center rounded-md py-2 text-xs font-medium transition-all duration-200 ${sidebarTabState === 'history'
+                ? 'bg-background text-foreground shadow-sm ring-1 ring-border/50'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                 }`}
               title="History"
             >
-              <History className="h-3.5 w-3.5" />
+              <History className="h-4 w-4" />
             </button>
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          <div className="h-full overflow-y-auto p-2">
+          <div className="h-full overflow-y-auto px-3 py-2">
             {sidebarTabState === 'connections' && (
               <ConnectionsComplete
                 connections={connections}

@@ -2,7 +2,7 @@
 
 import { Minus, Square, X, Play, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ThemeSwitcher } from '@/components/shared/theme-switcher'
+import { ThemeSettings } from '@/components/settings/theme-settings'
 import { minimizeWindow, maximizeWindow, closeWindow } from '@/core/tauri'
 import { isTauri } from '@/core/tauri'
 
@@ -93,7 +93,7 @@ export function TitleBar({
             Save
           </Button>
         )}
-        <ThemeSwitcher />
+        <ThemeSettings />
         {isTauri() && (
           <div className="ml-2 flex items-center gap-1">
             <Button

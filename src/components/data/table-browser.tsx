@@ -498,14 +498,14 @@ export function TableBrowser({
                             {filters.map(filter => (
                                 <div
                                     key={filter.column}
-                                    className="flex items-center gap-1 bg-blue-500/10 text-blue-500 px-2 py-0.5 rounded text-xs"
+                                    className="flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded text-xs"
                                 >
                                     <span className="font-medium">{filter.column}</span>
                                     <span className="opacity-70">{filter.operator}</span>
                                     <span>"{filter.value}"</span>
                                     <button
                                         onClick={() => removeFilter(filter.column)}
-                                        className="hover:bg-blue-500/20 rounded p-0.5"
+                                        className="hover:bg-primary/20 rounded p-0.5"
                                     >
                                         <X className="h-3 w-3" />
                                     </button>
@@ -676,7 +676,7 @@ export function TableBrowser({
                                                 >
                                                     <PopoverTrigger asChild>
                                                         <button
-                                                            className={`p-1 rounded hover:bg-muted transition-colors ${hasFilter ? 'text-blue-500' : 'text-muted-foreground opacity-50 hover:opacity-100'
+                                                            className={`p-1 rounded hover:bg-muted transition-colors ${hasFilter ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'
                                                                 }`}
                                                         >
                                                             <Filter className="h-3 w-3" />
@@ -835,7 +835,7 @@ export function TableBrowser({
                             <div className="text-muted-foreground">
                                 Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, sortedData.length)} of {sortedData.length} results
                                 {filters.length > 0 && data.length !== sortedData.length && (
-                                    <span className="ml-1 text-blue-500">
+                                    <span className="ml-1 text-primary">
                                         (filtered from {data.length})
                                     </span>
                                 )}
