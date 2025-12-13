@@ -1,20 +1,12 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useCommandStore } from '@/core/state/commands'
 import { COMMAND_IDS } from '@/core/commands/constants'
 
 type CommandHandler = () => void | Promise<void>
 
 export function useCommands() {
-    const { commands, loadCommands, setIsOpen, isOpen, trackCommandUsage } = useCommandStore()
-    const handlersRef = useRef<Record<string, CommandHandler>>({})
+    const { commands, loadCommands, setIsOpen, isOpen, trackCommandUsage, getHandler, registerHandler } = useCommandStore()
 
-    // Register a handler for a command
-    const registerHandler = useCallback((commandId: string, handler: CommandHandler) => {
-        handlersRef.current[commandId] = handler
-        return () => {
-            delete handlersRef.current[commandId]
-        }
-    }, [])
 
     // Execute a command by ID
     const executeCommand = useCallback(async (commandId: string) => {
@@ -27,7 +19,7 @@ export function useCommands() {
             return
         }
 
-        const handler = handlersRef.current[commandId]
+        const handler = getHandler(commandId)
         if (handler) {
             try {
                 await handler()

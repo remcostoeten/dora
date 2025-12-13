@@ -10,7 +10,7 @@ import { CommandPalette } from '@/components/ui/command-palette'
 import { Table } from '@/components/data/table'
 import { useCommands } from '@/core/hooks/use-commands'
 import { COMMAND_IDS } from '@/core/commands/constants'
-import { ConnectionForm } from '@/components/connections/connection-form'
+import { DatabaseConnectionModal } from '@/components/connections/database-connection-modal'
 import { useResizable } from '@/core/hooks'
 import { useTabs, useTheme } from '@/core/state'
 import {
@@ -44,7 +44,7 @@ export default function Home() {
   const [loadingSchema, setLoadingSchema] = useState(false)
   const [queryHistory, setQueryHistory] = useState<QueryHistoryEntry[]>([])
   const [scripts, setScripts] = useState<Script[]>([])
-  const [activeScriptId, setActiveScriptId] = useState<number | null>(null)
+  // activeScriptId is now derived from the active tab (see below)
   const [unsavedChanges, setUnsavedChanges] = useState<Set<number>>(new Set())
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [sidebarTabState, setSidebarTabState] = useState<SidebarTabState>('connections')
@@ -103,6 +103,10 @@ export default function Home() {
     setQueryError,
     setQueryStatus,
   } = useTabs()
+
+  // Derive activeScriptId from the active tab
+  const activeTab = getActiveTab()
+  const activeScriptId = activeTab?.type === 'script' ? (activeTab as any).scriptId : null
 
   useEffect(() => {
     setTabsScripts(scripts)
@@ -356,7 +360,7 @@ export default function Home() {
   }
 
   async function handleSelectScript(script: Script) {
-    setActiveScriptId(script.id)
+    // activeScriptId is now derived from active tab, no need to set it manually
     openScript(script)
   }
 
@@ -374,9 +378,7 @@ export default function Home() {
 
       setScripts((prev) => prev.filter((s) => s.id !== script.id))
 
-      if (activeScriptId === script.id) {
-        setActiveScriptId(null)
-      }
+      // activeScriptId is derived from active tab, no need to clear manually
     } catch (error) {
       console.error('Failed to delete script:', error)
     }
@@ -449,7 +451,7 @@ export default function Home() {
 
         updateScriptId(activeScriptId, scriptId, updatedScript)
         markScriptSaved(scriptId, currentEditorContent)
-        setActiveScriptId(scriptId)
+        // activeScriptId is auto-updated via updateScriptId
       } else {
         await updateScript(
           activeScriptId,
@@ -476,29 +478,50 @@ export default function Home() {
 
   // Command System Integration
   const { registerHandler } = useCommands()
-
-  // Theme integration
   const { theme, setTheme } = useTheme()
 
-  // Register command handlers
+  // Stable references for command handlers to prevent infinite update loops
+  const handleRunQueryRef = useRef(handleRunQuery)
+  const handleSaveScriptRef = useRef(handleSaveScript)
+  const handleCreateNewScriptRef = useRef(handleCreateNewScript)
+  const themeRef = useRef(theme)
+  const setThemeRef = useRef(setTheme)
+  const setIsSidebarCollapsedRef = useRef(setIsSidebarCollapsed)
+  const setShowConnectionFormRef = useRef(setShowConnectionForm)
+  const setEditingConnectionRef = useRef(setEditingConnection)
+
+  // Update refs on every render
   useEffect(() => {
-    const unregisterRun = registerHandler(COMMAND_IDS.QUERIES_RUN, handleRunQuery)
-    const unregisterSave = registerHandler(COMMAND_IDS.QUERIES_SAVE, handleSaveScript)
+    handleRunQueryRef.current = handleRunQuery
+    handleSaveScriptRef.current = handleSaveScript
+    handleCreateNewScriptRef.current = handleCreateNewScript
+    themeRef.current = theme
+    setThemeRef.current = setTheme
+    setIsSidebarCollapsedRef.current = setIsSidebarCollapsed
+    setShowConnectionFormRef.current = setShowConnectionForm
+    setEditingConnectionRef.current = setEditingConnection
+  })
+
+  // Register command handlers - only runs once or when registerHandler changes
+  useEffect(() => {
+    const unregisterRun = registerHandler(COMMAND_IDS.QUERIES_RUN, () => handleRunQueryRef.current())
+    const unregisterSave = registerHandler(COMMAND_IDS.QUERIES_SAVE, () => handleSaveScriptRef.current())
 
     const unregisterTheme = registerHandler(COMMAND_IDS.THEME_TOGGLE, () => {
-      setTheme(theme === 'dark' ? 'light' : 'dark')
+      const currentTheme = themeRef.current
+      setThemeRef.current(currentTheme === 'dark' ? 'light' : 'dark')
     })
 
     const unregisterNewConn = registerHandler(COMMAND_IDS.CONNECTIONS_NEW, () => {
-      setShowConnectionForm(true)
-      setEditingConnection(null)
+      setShowConnectionFormRef.current(true)
+      setEditingConnectionRef.current(null)
     })
 
     const unregisterSidebar = registerHandler(COMMAND_IDS.VIEW_SIDEBAR, () => {
-      setIsSidebarCollapsed(prev => !prev)
+      setIsSidebarCollapsedRef.current(prev => !prev)
     })
 
-    const unregisterNewScript = registerHandler(COMMAND_IDS.SCRIPTS_NEW, handleCreateNewScript)
+    const unregisterNewScript = registerHandler(COMMAND_IDS.SCRIPTS_NEW, () => handleCreateNewScriptRef.current())
 
     return () => {
       unregisterRun()
@@ -508,7 +531,7 @@ export default function Home() {
       unregisterSidebar()
       unregisterNewScript()
     }
-  }, [registerHandler, handleRunQuery, handleSaveScript, handleCreateNewScript, theme, setTheme])
+  }, [registerHandler])
   // handleRunQuery and handleSaveScript use state, but are they stable?
   // They are defined within the component scope, so they change on every render if not memoized.
   // The implementations in original file are just functions, not wrapped in useCallback.
@@ -519,7 +542,7 @@ export default function Home() {
   /* Previous keydown listener removed */
 
   const currentConnection = connections.find((c) => c.id === selectedConnection)
-  const activeTab = getActiveTab()
+  // activeTab is already defined above
 
   // Handle start resizing, accounting for collapsed state
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -721,22 +744,15 @@ export default function Home() {
         </div>
       </div>
 
-      {
-        showConnectionForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-card p-6 shadow-xl border border-border">
-              <ConnectionForm
-                onSuccess={handleConnectionSubmit}
-                onCancel={() => {
-                  setShowConnectionForm(false)
-                  setEditingConnection(null)
-                }}
-                editingConnection={editingConnection}
-              />
-            </div>
-          </div>
-        )
-      }
+      <DatabaseConnectionModal
+        open={showConnectionForm}
+        onOpenChange={(open) => {
+          setShowConnectionForm(open)
+          if (!open) setEditingConnection(null)
+        }}
+        onSubmit={handleConnectionSubmit}
+        editingConnection={editingConnection}
+      />
     </div >
   )
 }

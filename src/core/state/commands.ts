@@ -22,6 +22,11 @@ interface CommandStore {
     loadCommands: () => Promise<void>
     getCommand: (id: string) => CommandDefinition | undefined
     trackCommandUsage: (id: string) => void
+
+    // Handlers
+    handlers: Record<string, () => void | Promise<void>>
+    registerHandler: (id: string, handler: () => void | Promise<void>) => () => void
+    getHandler: (id: string) => (() => void | Promise<void>) | undefined
 }
 
 export const useCommandStore = create<CommandStore>()(
@@ -59,6 +64,31 @@ export const useCommandStore = create<CommandStore>()(
                     }
                 }
             }),
+
+            // Handler Registry
+            handlers: {},
+            registerHandler: (id, handler) => {
+                set((state) => ({
+                    handlers: {
+                        ...state.handlers,
+                        [id]: handler
+                    }
+                }))
+                // Return cleanup function
+                return () => {
+                    set((state) => {
+                        // Only remove if it's the specific handler we registered
+                        // (Handle cases where a new handler might have replaced it immediately)
+                        if (state.handlers[id] === handler) {
+                            const newHandlers = { ...state.handlers }
+                            delete newHandlers[id]
+                            return { handlers: newHandlers }
+                        }
+                        return state
+                    })
+                }
+            },
+            getHandler: (id) => get().handlers[id],
         }),
         {
             name: 'command-store',
