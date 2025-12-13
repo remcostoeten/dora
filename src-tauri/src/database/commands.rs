@@ -151,7 +151,8 @@ pub async fn connect_to_database(
                     .map(|(k, v)| format!("{}={}", k, v))
                     .collect();
                 
-                url.set_query(if params.is_empty() { None } else { Some(&params.join("&")) });
+                let query_string = params.join("&");
+                url.set_query(if params.is_empty() { None } else { Some(&query_string) });
                 url.to_string()
             } else {
                 connection_string.clone()
@@ -346,7 +347,8 @@ pub async fn test_connection(
                     .map(|(k, v)| format!("{}={}", k, v))
                     .collect();
                 
-                url.set_query(if params.is_empty() { None } else { Some(&params.join("&")) });
+                let query_string = params.join("&");
+                url.set_query(if params.is_empty() { None } else { Some(&query_string) });
                 url.to_string()
             } else {
                 connection_string.clone()
