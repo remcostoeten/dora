@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Code2, Table2 } from 'lucide-react'
+import { Code2, Table2, Network } from 'lucide-react'
 import { getSetting, setSetting } from '@/core/tauri'
 
-export type MainViewMode = 'query-runner' | 'data-browser'
+export type MainViewMode = 'query-runner' | 'data-browser' | 'schema-view'
 
 type MainViewTabsProps = {
     mode: MainViewMode
@@ -19,8 +19,8 @@ export function MainViewTabs({ mode, onModeChange, disabled }: MainViewTabsProps
                 onClick={() => onModeChange('query-runner')}
                 disabled={disabled}
                 className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors rounded-t-md ${mode === 'query-runner'
-                        ? 'bg-card text-foreground border-b-2 border-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'bg-card text-foreground border-b-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
                 <Code2 className="h-4 w-4" />
@@ -30,12 +30,23 @@ export function MainViewTabs({ mode, onModeChange, disabled }: MainViewTabsProps
                 onClick={() => onModeChange('data-browser')}
                 disabled={disabled}
                 className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors rounded-t-md ${mode === 'data-browser'
-                        ? 'bg-card text-foreground border-b-2 border-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'bg-card text-foreground border-b-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
                 <Table2 className="h-4 w-4" />
                 Data Browser
+            </button>
+            <button
+                onClick={() => onModeChange('schema-view')}
+                disabled={disabled}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition-colors rounded-t-md ${mode === 'schema-view'
+                    ? 'bg-card text-foreground border-b-2 border-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+                <Network className="h-4 w-4" />
+                Schema View
             </button>
         </div>
     )

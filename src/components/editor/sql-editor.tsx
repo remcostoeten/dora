@@ -221,16 +221,16 @@ export const SqlEditor = forwardRef<SqlEditorRef, SqlEditorProps>(function SqlEd
           backgroundColor: 'var(--primary-subtle)',
           outline: '1px solid var(--primary-light)',
         },
-        // SQL syntax highlighting with theme colors
+        // SQL syntax highlighting with theme colors - High contrast for readability
         '.cm-keyword': {
-          color: 'var(--primary)',
+          color: 'oklch(0.85 0.15 var(--primary-hue))', // Bright primary
           fontWeight: 'bold',
         },
         '.cm-string': {
-          color: 'var(--success)',
+          color: 'oklch(0.85 0.12 150)', // Bright green
         },
         '.cm-number': {
-          color: 'var(--warning)',
+          color: 'oklch(0.90 0.15 55)', // Bright orange/gold
         },
         '.cm-comment': {
           color: 'var(--muted-foreground)',
@@ -240,13 +240,13 @@ export const SqlEditor = forwardRef<SqlEditorRef, SqlEditorProps>(function SqlEd
           color: 'var(--foreground)',
         },
         '.cm-atom': {
-          color: 'var(--warning)',
+          color: 'oklch(0.90 0.15 55)', // Bright orange/gold
         },
         '.cm-property': {
-          color: 'var(--primary-light)',
+          color: 'oklch(0.80 0.12 var(--primary-hue))', // Lighter primary
         },
         '.cm-operator': {
-          color: 'var(--primary-light)',
+          color: 'oklch(0.90 0.05 var(--primary-hue))', // Very bright primary
         },
         '.cm-punctuation': {
           color: 'var(--muted-foreground)',

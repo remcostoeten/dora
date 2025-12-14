@@ -5,7 +5,7 @@
   "identifier": "com.Dora.dev",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:42069",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
     "removeUnusedCommands": true

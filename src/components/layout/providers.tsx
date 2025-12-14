@@ -11,6 +11,7 @@ import { CommandPalette } from '@/components/ui/command-palette'
 import { useCommands } from '@/core/hooks/use-commands'
 import { useTabs } from '@/core/state/tabs-store'
 import { COMMAND_IDS } from '@/core/commands/constants'
+import { ToastProvider } from '@/components/ui/toast'
 
 function CommandSystem() {
   const { registerHandler } = useCommands()
@@ -56,8 +57,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <AccentProvider>
         <ThemeConfigProvider>
           <TabsProvider>
-            {children}
-            <CommandSystem />
+            <ToastProvider>
+              {children}
+              <CommandSystem />
+            </ToastProvider>
           </TabsProvider>
         </ThemeConfigProvider>
       </AccentProvider>

@@ -20,7 +20,8 @@ import {
     Edit3,
     Undo2,
     Loader2,
-    Eye
+    Eye,
+    ArrowLeft
 } from 'lucide-react'
 import {
     Popover,
@@ -63,6 +64,7 @@ type TableBrowserProps = {
     onExecuteUpdate?: (sql: string) => Promise<{ success: boolean; error?: string }>
     loading?: boolean
     totalRows?: number
+    onBack?: () => void
 }
 
 export function TableBrowser({
@@ -76,6 +78,7 @@ export function TableBrowser({
     onExecuteUpdate,
     loading = false,
     totalRows,
+    onBack,
 }: TableBrowserProps) {
     const [sortColumn, setSortColumn] = useState<number | null>(null)
     const [sortDirection, setSortDirection] = useState<SortDirection>(null)
@@ -481,6 +484,17 @@ export function TableBrowser({
             {/* Toolbar */}
             <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2">
                 <div className="flex items-center gap-3">
+                    {onBack && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={onBack}
+                            className="h-7 w-7 p-0 mr-1"
+                            title="Back to tables"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                        </Button>
+                    )}
                     <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-foreground">
                             {schema ? `${schema}.${tableName}` : tableName}

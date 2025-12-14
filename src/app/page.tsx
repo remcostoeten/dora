@@ -11,11 +11,13 @@ import { CommandPalette } from '@/components/ui/command-palette'
 import { Table } from '@/components/data/table'
 import { TableBrowser } from '@/components/data/table-browser'
 import { DataBrowserView } from '@/components/data/data-browser-view'
+import { SchemaVisualization } from '@/components/schema/schema-visualization'
 import { useCommands } from '@/core/hooks/use-commands'
 import { COMMAND_IDS } from '@/core/commands/constants'
 import { DatabaseConnectionModal } from '@/components/connections/database-connection-modal'
 import { useResizable } from '@/core/hooks'
 import { useTabs, useTheme } from '@/core/state'
+import { useToast } from '@/components/ui/toast'
 import {
   getConnections,
   initializeConnections,
@@ -38,6 +40,7 @@ import type { ConnectionInfo, DatabaseSchema, QueryHistoryEntry, Script, Databas
 type SidebarTabState = 'connections' | 'items' | 'scripts' | 'history' | 'conn-history'
 
 export default function Home() {
+  const { addToast } = useToast()
   const [showConnectionForm, setShowConnectionForm] = useState(false)
   const [editingConnection, setEditingConnection] = useState<ConnectionInfo | null>(null)
   const [connections, setConnections] = useState<ConnectionInfo[]>([])
@@ -112,6 +115,7 @@ export default function Home() {
     setTableData,
     setTableLoading,
     setTableError,
+    closeTab,
   } = useTabs()
 
   // Derive activeScriptId from the active tab
@@ -416,9 +420,15 @@ export default function Home() {
   }
 
   async function handleRunQuery() {
+    console.log('[handleRunQuery] Called')
     const activeTab = getActiveTab()
-    if (!activeTab || activeTab.type !== 'script' || !selectedConnection) return
+    console.log('[handleRunQuery] activeTab:', activeTab?.type, 'selectedConnection:', selectedConnection)
+    if (!activeTab || activeTab.type !== 'script' || !selectedConnection) {
+      console.log('[handleRunQuery] Early return - missing activeTab, wrong type, or no connection')
+      return
+    }
 
+    console.log('[handleRunQuery] Executing query:', currentEditorContent.substring(0, 100))
     setExecuting(true)
     setQueryStatus(activeTab.id, 'running')
 
@@ -450,13 +460,25 @@ export default function Home() {
   }
 
   async function handleSaveScript() {
-    if (!activeScriptId) return
+    console.log('[handleSaveScript] Called, activeScriptId:', activeScriptId)
+    if (!activeScriptId) {
+      console.log('[handleSaveScript] Early return - no activeScriptId')
+      return
+    }
 
     const activeTab = getActiveTab()
-    if (!activeTab || activeTab.type !== 'script') return
+    console.log('[handleSaveScript] activeTab type:', activeTab?.type)
+    if (!activeTab || activeTab.type !== 'script') {
+      console.log('[handleSaveScript] Early return - no activeTab or wrong type')
+      return
+    }
 
     const script = scripts.find((s) => s.id === activeScriptId)
-    if (!script) return
+    console.log('[handleSaveScript] Found script:', script?.name)
+    if (!script) {
+      console.log('[handleSaveScript] Early return - script not found')
+      return
+    }
 
     try {
       const isNewScript = newScripts.has(activeScriptId)
@@ -502,8 +524,19 @@ export default function Home() {
 
         markScriptSaved(activeScriptId, currentEditorContent)
       }
+      addToast({
+        title: 'Script saved',
+        description: `Successfully saved "${script.name}"`,
+        variant: 'success',
+        duration: 2000,
+      })
     } catch (error) {
       console.error('Failed to save script:', error)
+      addToast({
+        title: 'Save failed',
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: 'error',
+      })
     }
   }
 
@@ -669,6 +702,7 @@ export default function Home() {
                 onRefresh={() => {
                   handleTableClick((activeTab as any).tableName, (activeTab as any).schema)
                 }}
+                onBack={() => closeTab(activeTab.id)}
                 onExecuteUpdate={async (sql: string) => {
                   if (!selectedConnection) return { success: false, error: 'No connection selected' }
                   try {
@@ -690,6 +724,13 @@ export default function Home() {
                 onTableSelect={handleTableClick}
               />
             )
+          ) : mainViewMode === 'schema-view' ? (
+            /* Schema Visualization View */
+            <SchemaVisualization
+              schema={databaseSchema}
+              connectionId={selectedConnection}
+              connected={currentConnection?.connected || false}
+            />
           ) : (
             /* Query Runner View */
             <>
