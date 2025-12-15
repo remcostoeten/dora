@@ -18,13 +18,13 @@ import {
 } from '@/core/database'
 import type { DatabaseInfo, ConnectionInfo } from '@/types/database'
 
-type ConnectionFormProps = {
+type Props = {
   onSuccess?: (name: string, databaseInfo: DatabaseInfo) => void
   onCancel?: () => void
   editingConnection?: ConnectionInfo | null
 }
 
-export function ConnectionForm({ onSuccess, onCancel, editingConnection }: ConnectionFormProps) {
+export function ConnectionForm({ onSuccess, onCancel, editingConnection }: Props) {
   const [name, setName] = useState('')
   const [dbType, setDbType] = useState<'postgres' | 'sqlite'>('postgres')
   const [connectionString, setConnectionString] = useState('')

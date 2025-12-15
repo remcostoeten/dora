@@ -30,13 +30,13 @@ import { pickSqliteDbDialog, testConnection } from '@/core/tauri'
 import { cn } from '@/core/utilities/cn'
 import type { ConnectionInfo, DatabaseInfo } from '@/types/database'
 
-type DialogProps = {
+type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   children: React.ReactNode
 }
 
-function Dialog({ open, onOpenChange, children }: DialogProps) {
+function Dialog({ open, onOpenChange, children }: Props) {
   if (!open) return null
 
   return (
@@ -215,7 +215,7 @@ function Alert({
       className={cn(
         'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
         variant === 'destructive'
-          ? 'border-error/40 bg-error/10 text-error'
+          ? 'border-destructive/50 bg-destructive/10 text-destructive'
           : 'border-border bg-muted/50 text-foreground',
         className
       )}
@@ -836,11 +836,6 @@ export function DatabaseConnectionModal({
       const updated = [historyEntry, ...connectionHistory].slice(0, 20)
       setConnectionHistory(updated)
       localStorage.setItem('db_connection_history', JSON.stringify(updated))
-    } else if (activeTab === 'libsql' && libsqlUrl) {
-      const historyEntry = formatHistoryEntry(libsqlUrl, 'libsql')
-      const updated = [historyEntry, ...connectionHistory].slice(0, 20)
-      setConnectionHistory(updated)
-      localStorage.setItem('db_connection_history', JSON.stringify(updated))
     }
 
     await onSubmit(name.trim(), databaseInfo)
@@ -951,7 +946,7 @@ export function DatabaseConnectionModal({
                       onBlur={() => {
                         setTimeout(() => setShowHistory(false), 200)
                       }}
-                      className={!urlValidation.isValid ? 'border-error' : ''}
+                      className={!urlValidation.isValid ? 'border-destructive focus-visible:ring-destructive' : ''}
                     />
                     <Button
                       ref={historyButtonRef}
@@ -989,8 +984,8 @@ export function DatabaseConnectionModal({
                   )}
 
                   {(showHistory || showHistoryDropdown) && filteredHistory.length > 0 && (
-                    <div className="absolute z-50 mt-1 w-[calc(100%-3.5rem)] overflow-hidden rounded-md border border-border bg-popover shadow-lg">
-                      <ScrollArea className="max-h-60">
+                    <div className="absolute z-50 mt-1 w-[calc(100%-3.5rem)] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg">
+                      <ScrollArea className="max-h-60 overflow-y-auto">
                         <div className="space-y-1 p-2">
                           {filteredHistory.map((item, index) => (
                             <button
@@ -1129,7 +1124,7 @@ export function DatabaseConnectionModal({
                       onBlur={() => {
                         setTimeout(() => setShowHistory(false), 200)
                       }}
-                      className={!libsqlValidation.isValid ? 'border-error' : ''}
+                      className={!libsqlValidation.isValid ? 'border-destructive focus-visible:ring-destructive' : ''}
                     />
                     <Button
                       type="button"
@@ -1163,8 +1158,8 @@ export function DatabaseConnectionModal({
                   )}
 
                   {(showHistory || showHistoryDropdown) && filteredHistory.length > 0 && (
-                    <div className="absolute z-50 mt-1 w-[calc(100%-3.5rem)] overflow-hidden rounded-md border border-border bg-popover shadow-lg">
-                      <ScrollArea className="max-h-60">
+                    <div className="absolute z-50 mt-1 w-[calc(100%-3.5rem)] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg">
+                      <ScrollArea className="max-h-60 overflow-y-auto">
                         <div className="space-y-1 p-2">
                           {filteredHistory.map((item, index) => (
                             <button
@@ -1214,7 +1209,7 @@ export function DatabaseConnectionModal({
                       value={sqlitePath}
                       onChange={(e) => applySqlitePath(e.target.value)}
                       onPaste={handlePaste}
-                      className={!sqliteValidation.isValid ? 'border-error' : ''}
+                      className={!sqliteValidation.isValid ? 'border-destructive focus-visible:ring-destructive' : ''}
                     />
                     <Button variant="outline" onClick={handleBrowseSqlite}>
                       <Upload className="mr-2 h-4 w-4" />
@@ -1224,7 +1219,7 @@ export function DatabaseConnectionModal({
                   {sqliteValidation.hint && (
                     <Alert variant="destructive" className="py-2">
                       <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{sqliteValidation.hint}</AlertDescription>
+                      <AlertDescription className="text-destructive">{sqliteValidation.hint}</AlertDescription>
                     </Alert>
                   )}
                   <p className="text-xs text-muted-foreground">
@@ -1243,7 +1238,7 @@ export function DatabaseConnectionModal({
                   <Loader2 className="h-4 w-4 animate-spin" />
                 )}
                 {testResult.status === 'success' && (
-                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
                 )}
                 {testResult.status === 'error' && <XCircle className="h-4 w-4" />}
                 <AlertDescription>

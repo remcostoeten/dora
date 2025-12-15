@@ -6,7 +6,7 @@ import type { ConnectionHistoryEntry } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, XCircle, Database, RefreshCw } from 'lucide-react'
 
-type FilterState = {
+type Props = {
     dbType: string | null
     success: boolean | null
 }
@@ -14,7 +14,7 @@ type FilterState = {
 export function ConnectionHistoryPanel() {
     const [history, setHistory] = useState<ConnectionHistoryEntry[]>([])
     const [loading, setLoading] = useState(true)
-    const [filter, setFilter] = useState<FilterState>({ dbType: null, success: null })
+    const [filter, setFilter] = useState<Props>({ dbType: null, success: null })
 
     async function loadHistory() {
         setLoading(true)

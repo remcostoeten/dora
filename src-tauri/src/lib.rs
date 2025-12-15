@@ -95,6 +95,7 @@ pub fn run() {
             database::commands::test_connection,
             database::commands::add_connection,
             database::commands::update_connection,
+            database::commands::update_connection_color,
             database::commands::connect_to_database,
             database::commands::disconnect_from_database,
             database::commands::start_query,

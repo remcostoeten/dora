@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback, useState, forwardRef, useImperativeHand
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { sql } from '@codemirror/lang-sql'
-import { oneDark } from '@codemirror/theme-one-dark'
 import { autocompletion } from '@codemirror/autocomplete'
 import { useTheme } from '@/core/state'
 import {
@@ -173,72 +172,188 @@ export const SqlEditor = forwardRef<SqlEditorRef, SqlEditorProps>(function SqlEd
     ]
 
     if (theme === 'dark') {
-      extensions.push(oneDark)
-    } else {
-      // Light theme styling
+      // Dark theme styling - uses CSS variables for theme awareness
       extensions.push(EditorView.theme({
         '&': {
           color: 'var(--foreground)',
           backgroundColor: 'var(--card)',
         },
         '.cm-content': {
-          caretColor: 'var(--foreground)',
+          caretColor: 'var(--primary)',
+        },
+        '.cm-cursor': {
+          borderLeftColor: 'var(--primary)',
+        },
+        '.cm-scroller': {
+          overflow: 'auto',
         },
         '.cm-gutters': {
-          backgroundColor: 'var(--surface)',
+          backgroundColor: 'transparent',
           color: 'var(--muted-foreground)',
           border: 'none',
+          minWidth: '2.5em',
+        },
+        '.cm-lineNumbers .cm-gutterElement': {
+          padding: '0 8px 0 8px',
+          minWidth: '2em',
+          textAlign: 'right',
+          opacity: '0.6',
         },
         '.cm-activeLineGutter': {
-          backgroundColor: '#e9ecef',
+          backgroundColor: 'var(--primary-subtle)',
+          color: 'var(--primary)',
+          opacity: '1',
+        },
+        '.cm-activeLine': {
+          backgroundColor: 'var(--primary-subtle)',
         },
         '.cm-line': {
           padding: '0 0.5em',
         },
         '.cm-focused': {
-          outline: '1px solid #007acc',
-          outlineOffset: '-1px',
+          outline: '2px solid var(--primary)',
+          outlineOffset: '-2px',
         },
         '.cm-selectionBackground, ::selection': {
-          backgroundColor: '#b3d4fc',
+          backgroundColor: 'var(--primary-muted)',
         },
+        '.cm-matchingBracket': {
+          backgroundColor: 'var(--primary-subtle)',
+          outline: '1px solid var(--primary-light)',
+        },
+        // SQL syntax highlighting with theme colors - High contrast for readability
         '.cm-keyword': {
-          color: '#0000ff',
+          color: 'oklch(0.85 0.15 var(--primary-hue))', // Bright primary
           fontWeight: 'bold',
         },
         '.cm-string': {
-          color: '#008000',
+          color: 'oklch(0.85 0.12 150)', // Bright green
         },
         '.cm-number': {
-          color: '#ff6600',
+          color: 'oklch(0.90 0.15 55)', // Bright orange/gold
         },
         '.cm-comment': {
-          color: '#999999',
+          color: 'var(--muted-foreground)',
           fontStyle: 'italic',
         },
         '.cm-variableName': {
-          color: '#333333',
+          color: 'var(--foreground)',
         },
         '.cm-atom': {
-          color: '#ff6600',
+          color: 'oklch(0.90 0.15 55)', // Bright orange/gold
         },
         '.cm-property': {
-          color: '#333333',
+          color: 'oklch(0.80 0.12 var(--primary-hue))', // Lighter primary
         },
         '.cm-operator': {
-          color: '#333333',
+          color: 'oklch(0.90 0.05 var(--primary-hue))', // Very bright primary
         },
         '.cm-punctuation': {
-          color: '#333333',
+          color: 'var(--muted-foreground)',
         },
         '.cm-bracket': {
-          color: '#333333',
+          color: 'var(--primary-light)',
+        },
+      }, { dark: true }))
+    } else {
+      // Light theme styling - uses CSS variables for theme awareness
+      extensions.push(EditorView.theme({
+        '&': {
+          color: 'var(--foreground)',
+          backgroundColor: 'var(--card)',
+        },
+        '.cm-content': {
+          caretColor: 'var(--primary)',
+        },
+        '.cm-cursor': {
+          borderLeftColor: 'var(--primary)',
+        },
+        '.cm-scroller': {
+          overflow: 'auto',
+        },
+        '.cm-gutters': {
+          backgroundColor: 'transparent',
+          color: 'var(--muted-foreground)',
+          border: 'none',
+          minWidth: '2.5em',
+        },
+        '.cm-lineNumbers .cm-gutterElement': {
+          padding: '0 8px 0 8px',
+          minWidth: '2em',
+          textAlign: 'right',
+          opacity: '0.6',
+        },
+        '.cm-activeLineGutter': {
+          backgroundColor: 'var(--primary-subtle)',
+          color: 'var(--primary)',
+          opacity: '1',
+        },
+        '.cm-activeLine': {
+          backgroundColor: 'var(--primary-subtle)',
+        },
+        '.cm-line': {
+          padding: '0 0.5em',
+        },
+        '.cm-focused': {
+          outline: '2px solid var(--primary)',
+          outlineOffset: '-2px',
+        },
+        '.cm-selectionBackground, ::selection': {
+          backgroundColor: 'var(--primary-muted)',
+        },
+        '.cm-matchingBracket': {
+          backgroundColor: 'var(--primary-subtle)',
+          outline: '1px solid var(--primary-light)',
+        },
+        // SQL syntax highlighting with theme colors
+        '.cm-keyword': {
+          color: 'var(--primary)',
+          fontWeight: 'bold',
+        },
+        '.cm-string': {
+          color: 'var(--success)',
+        },
+        '.cm-number': {
+          color: 'var(--warning)',
+        },
+        '.cm-comment': {
+          color: 'var(--muted-foreground)',
+          fontStyle: 'italic',
+        },
+        '.cm-variableName': {
+          color: 'var(--foreground)',
+        },
+        '.cm-atom': {
+          color: 'var(--warning)',
+        },
+        '.cm-property': {
+          color: 'var(--primary-dark)',
+        },
+        '.cm-operator': {
+          color: 'var(--primary-light)',
+        },
+        '.cm-punctuation': {
+          color: 'var(--muted-foreground)',
+        },
+        '.cm-bracket': {
+          color: 'var(--primary-light)',
         },
       }))
     }
 
+    // Pad with newlines to show at least 30 line numbers
+    // If empty, add a placeholder query on line 1
+    const minLines = 30
+    const effectiveValue = value.trim() === ''
+      ? 'SELECT * FROM your_table LIMIT 100;'
+      : value
+    const currentLines = effectiveValue.split('\n').length
+    const paddedValue = currentLines >= minLines
+      ? effectiveValue
+      : effectiveValue + '\n'.repeat(minLines - currentLines)
+
     const state = EditorState.create({
-      doc: value,
+      doc: paddedValue,
       extensions,
     })
 

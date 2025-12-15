@@ -1,7 +1,7 @@
 {
   "name": "Dora",
   "description": "A modern and lightweight database client",
-  "license": "MIT",
+  "license": "GPL-3",
   "author": {
     "name": "Remco Stoeten",
     "email": "stoetenremco.rs@gmail.com",
@@ -10,7 +10,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev --port 42069",
     "build": "next build",
     "start": "next start",
     "tauri": "tauri",
@@ -39,12 +39,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "codemirror": "^6.0.1",
+    "elkjs": "^0.11.0",
     "framer-motion": "^12.23.26",
     "lucide-react": "^0.552.0",
     "motion": "^12.23.26",
     "next": "^16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "reactflow": "^11.11.4",
     "sql-formatter": "^15.6.11",
     "tailwind-merge": "^3.3.0",
     "tailwindcss-animate": "^1.0.7",
