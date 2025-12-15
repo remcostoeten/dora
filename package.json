@@ -1,7 +1,7 @@
 {
   "name": "Dora",
   "description": "A modern and lightweight database client",
-  "license": "MIT",
+  "license": "GPL-3",
   "author": {
     "name": "Remco Stoeten",
     "email": "stoetenremco.rs@gmail.com",

@@ -20,7 +20,7 @@ pub enum Error {
 impl<T: Debug> From<tokio::sync::mpsc::error::SendError<T>> for Error {
     fn from(error: tokio::sync::mpsc::error::SendError<T>) -> Self {
         Error::Any(anyhow::anyhow!(
-            "Tried sending {:?} over channel, but it was closed. This should not happen, please report at https://github.com/vrmiguel/Dora/issues",
+            "Tried sending {:?} over channel, but it was closed. This should not happen, please report at https://github.com/remcostoeten/Dora/issues",
             error
         ))
     }

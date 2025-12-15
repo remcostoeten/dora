@@ -2,7 +2,7 @@
 name = "app"
 version = "1.0.0"
 description = ""
-authors = ["vrmiguel"]
+authors = ["Remco Stoeten"]
 license = "GPLv3"
 edition = "2021"
 

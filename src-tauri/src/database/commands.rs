@@ -27,6 +27,7 @@ use crate::{
 pub async fn add_connection(
     name: String,
     database_info: DatabaseInfo,
+    color: Option<i32>,
     state: tauri::State<'_, AppState>,
 ) -> Result<ConnectionInfo, Error> {
     let id = Uuid::new_v4();
@@ -40,7 +41,12 @@ pub async fn add_connection(
     }
 
     let connection = DatabaseConnection::new(id, name, database_info);
-    let info = connection.to_connection_info();
+    let mut info = connection.to_connection_info();
+    
+    // Set color if provided
+    if let Some(color_hue) = color {
+        info.color = Some(color_hue.to_string());
+    }
 
     state.storage.save_connection(&info)?;
     state.connections.insert(id, connection);
@@ -53,6 +59,7 @@ pub async fn update_connection(
     conn_id: Uuid,
     name: String,
     database_info: DatabaseInfo,
+    color: Option<i32>,
     state: tauri::State<'_, AppState>,
 ) -> Result<ConnectionInfo, Error> {
     let (database_info, password) = credentials::extract_sensitive_data(database_info)?;
@@ -102,15 +109,43 @@ pub async fn update_connection(
         };
     }
 
-    let updated_info = state
+    let mut updated_info = state
         .connections
         .get(&conn_id)
         .map(|conn| conn.to_connection_info())
         .with_context(|| format!("Connection not found: {}", conn_id))?;
 
+    // Update color if provided
+    if let Some(color_hue) = color {
+        updated_info.color = Some(color_hue.to_string());
+    }
+
     state.storage.update_connection(&updated_info)?;
 
     Ok(updated_info)
+}
+
+#[tauri::command]
+pub async fn update_connection_color(
+    connection_id: Uuid,
+    color: Option<i32>,
+    state: tauri::State<'_, AppState>,
+) -> Result<(), Error> {
+    let mut connection_info = state.storage.get_connection(&connection_id)?
+        .with_context(|| format!("Connection not found: {}", connection_id))?;
+
+    // Update color
+    connection_info.color = color.map(|c| c.to_string());
+
+    state.storage.update_connection(&connection_info)?;
+    
+    // Update in-memory connection if it exists
+    if let Some(mut connection_entry) = state.connections.get_mut(&connection_id) {
+        let connection = connection_entry.value_mut();
+        connection.name = connection_info.name.clone();
+    }
+
+    Ok(())
 }
 
 #[tauri::command]

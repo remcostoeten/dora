@@ -181,9 +181,9 @@ impl Storage {
 
         conn.execute(
             "INSERT OR REPLACE INTO connections 
-             (id, name, connection_data, database_type_id, created_at, updated_at, sort_order) 
+             (id, name, connection_data, database_type_id, created_at, updated_at, sort_order, color) 
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, 
-                (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM connections))",
+                (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM connections), ?7)",
             (
                 &connection.id.to_string(),
                 &connection.name,
@@ -191,6 +191,7 @@ impl Storage {
                 db_type_id,
                 now,
                 now,
+                connection.color.as_deref(),
             ),
         )
         .context("Failed to save connection")?;
@@ -217,7 +218,7 @@ impl Storage {
         let updated_rows = conn
             .execute(
                 "UPDATE connections 
-             SET name = ?2, connection_data = ?3, database_type_id = ?4, updated_at = ?5
+             SET name = ?2, connection_data = ?3, database_type_id = ?4, updated_at = ?5, color = ?6
              WHERE id = ?1",
                 (
                     &connection.id.to_string(),
@@ -225,6 +226,7 @@ impl Storage {
                     &encrypted_data,
                     db_type_id,
                     now,
+                    connection.color.as_deref(),
                 ),
             )
             .context("Failed to update connection")?;
