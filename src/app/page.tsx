@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { TitleBar } from '@/components/layout/title-bar'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { UnifiedHeader } from '@/components/layout/unified-header'
 import { AppSidebarComplete } from '@/components/sidebar/app-sidebar-complete'
 import { ResizeHandle } from '@/components/layout/resize-handle'
 import { MainViewTabs, useMainViewMode } from '@/components/layout/main-view-tabs'
@@ -91,6 +91,14 @@ export default function Home() {
 
   const sqlEditorRef = useRef<any>(null)
   const sessionSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const mainContentRef = useRef<HTMLDivElement>(null)
+
+  // Function to focus the main content area
+  const focusMainContent = useCallback(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.focus()
+    }
+  }, [])
 
   const {
     openScript,
@@ -310,6 +318,8 @@ export default function Home() {
           // Auto-preview first table after schema loads
           await autoPreviewFirstTable()
         }
+        // Focus main content after successful connection
+        focusMainContent()
       }
     } catch (error) {
       console.error('Failed to connect:', error)
@@ -326,6 +336,8 @@ export default function Home() {
     try {
       await disconnectFromDatabase(connectionId)
       await loadConnections()
+      // Focus main content after disconnection
+      focusMainContent()
     } catch (error) {
       console.error('Failed to disconnect:', error)
     }
@@ -605,6 +617,36 @@ export default function Home() {
 
   /* Previous keydown listener removed */
 
+  // Keyboard shortcuts for main view tabs (1, 2, 3)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      // Don't trigger when typing in input fields, textareas, or contenteditable elements
+      if (['INPUT', 'TEXTAREA', 'BUTTON'].includes(target.tagName) || target.isContentEditable) {
+        return
+      }
+
+      // Only trigger when no modifier keys are pressed
+      if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) {
+        return
+      }
+
+      if (e.key === '1') {
+        e.preventDefault()
+        setMainViewMode('query-runner')
+      } else if (e.key === '2') {
+        e.preventDefault()
+        setMainViewMode('data-browser')
+      } else if (e.key === '3') {
+        e.preventDefault()
+        setMainViewMode('schema-view')
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [setMainViewMode])
+
   const currentConnection = connections.find((c) => c.id === selectedConnection)
   // activeTab is already defined above
 
@@ -619,13 +661,21 @@ export default function Home() {
 
   return (
     <div id="app" className="flex h-screen w-screen flex-col bg-background">
-      <TitleBar
+      {/* Unified Header */}
+      <UnifiedHeader
         connectionName={currentConnection?.name}
+        connectionType={currentConnection?.database_type ? ('Postgres' in currentConnection.database_type ? 'postgres' : 'sqlite') : undefined}
         connected={currentConnection?.connected}
         isConnecting={establishingConnections.has(selectedConnection || '')}
-        hasUnsavedChanges={activeTab?.isDirty || false}
+        isSidebarCollapsed={isSidebarCollapsed}
+        sidebarWidth={sidebarWidth}
+        mainViewMode={mainViewMode}
+        onModeChange={setMainViewMode}
+        onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         onRunQuery={handleRunQuery}
         onSaveScript={handleSaveScript}
+        hasUnsavedChanges={activeTab?.isDirty || false}
+        disabled={!currentConnection?.connected}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -654,6 +704,8 @@ export default function Home() {
             onSelectConnection={(id) => {
               if (isSidebarCollapsed) setIsSidebarCollapsed(false)
               setSelectedConnection(id)
+              // Focus main content after selecting connection
+              focusMainContent()
             }}
             onConnectToDatabase={handleConnectToDatabase}
             onShowConnectionForm={() => {
@@ -678,14 +730,17 @@ export default function Home() {
           <ResizeHandle onMouseDown={handleResizeStart} isResizing={isSidebarResizing} />
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden bg-card">
-          {/* Main View Mode Tabs */}
-          <MainViewTabs
-            mode={mainViewMode}
-            onModeChange={setMainViewMode}
-            disabled={!currentConnection?.connected}
-          />
-
+        <div 
+          ref={mainContentRef}
+          className="flex flex-1 flex-col overflow-hidden bg-card"
+          tabIndex={-1}
+          onKeyDown={(e) => {
+            // This ensures the main content can receive keyboard events
+            if (e.key === 'Tab') {
+              e.preventDefault()
+            }
+          }}
+        >
           {/* Content based on view mode */}
           {mainViewMode === 'data-browser' ? (
             /* Data Browser View - Show table picker or active table */

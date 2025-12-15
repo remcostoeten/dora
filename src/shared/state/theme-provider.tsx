@@ -16,6 +16,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light')
 
   useEffect(() => {
+    // Force light theme initially for testing new colors
+    applyTheme('light')
+    
     // 1. Initial optimistic load (fast path)
     const storedLocal = localStorage.getItem('theme') as Theme | null
     if (storedLocal) {

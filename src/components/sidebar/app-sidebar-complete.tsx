@@ -72,33 +72,14 @@ export function AppSidebarComplete({
 
   return (
     <div className="flex h-full flex-col border-r border-border bg-background overflow-hidden">
-      {/* Collapsed Sidebar */}
+      {/* Collapsed Sidebar - Icon Rail */}
       <div
         className={`absolute inset-0 flex flex-col bg-background transition-opacity duration-200 ${isSidebarCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
           }`}
       >
-        <div className="flex flex-col items-center gap-2 p-2 border-b border-border">
+        <div className="flex flex-col items-center gap-1 p-2 pt-3">
           <button
-            className="rounded p-2 hover:bg-muted transition-colors"
-            onClick={onToggleSidebar}
-            title="Expand sidebar"
-          >
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8"
-            onClick={onShowConnectionForm}
-            title="Add Connection"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="flex flex-1 flex-col items-center gap-1 p-2">
-          <button
-            className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${sidebarTabState === 'connections' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${sidebarTabState === 'connections' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             onClick={() => switchTab('connections')}
             title="Connections"
@@ -107,7 +88,7 @@ export function AppSidebarComplete({
           </button>
 
           <button
-            className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${sidebarTabState === 'items' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${sidebarTabState === 'items' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             onClick={() => switchTab('items')}
             title="Tables"
@@ -116,7 +97,7 @@ export function AppSidebarComplete({
           </button>
 
           <button
-            className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${sidebarTabState === 'scripts' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${sidebarTabState === 'scripts' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             onClick={() => switchTab('scripts')}
             title="Scripts"
@@ -125,7 +106,7 @@ export function AppSidebarComplete({
           </button>
 
           <button
-            className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${sidebarTabState === 'history' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${sidebarTabState === 'history' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             onClick={() => switchTab('history')}
             title="Query History"
@@ -134,13 +115,25 @@ export function AppSidebarComplete({
           </button>
 
           <button
-            className={`flex h-10 w-10 items-center justify-center rounded transition-colors ${sidebarTabState === 'conn-history' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${sidebarTabState === 'conn-history' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             onClick={() => switchTab('conn-history')}
             title="Connection History"
           >
             <Activity className="h-4 w-4" />
           </button>
+
+          <div className="my-2 h-px w-6 bg-border" />
+
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9"
+            onClick={onShowConnectionForm}
+            title="Add Connection"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -149,21 +142,7 @@ export function AppSidebarComplete({
         className={`flex h-full flex-col transition-opacity duration-200 ${!isSidebarCollapsed ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
           }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Logo className="text-primary" size="sm" />
-            <span className="text-sm font-semibold text-foreground">Dora</span>
-          </div>
-          <button
-            className="rounded p-1.5 hover:bg-muted transition-colors"
-            onClick={onToggleSidebar}
-            title="Collapse sidebar"
-          >
-            <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-
+        
         {/* Tab Bar */}
         <div className="border-b border-border px-3 py-3">
           <div className="flex gap-1.5 rounded-lg bg-muted/40 p-1.5">
