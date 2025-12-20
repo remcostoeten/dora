@@ -32,6 +32,15 @@ export const COMMAND_IDS = {
     // Tabs
     TABS_CLOSE: 'tabs.close',
     TABS_NEXT: 'tabs.next',
+
+    // Test Queries
+    TEST_QUERY_CREATE: 'test_query.create',
+    TEST_QUERY_INSERT: 'test_query.insert',
+    TEST_QUERY_READ: 'test_query.read',
+    TEST_QUERY_UPDATE: 'test_query.update',
+    TEST_QUERY_DELETE: 'test_query.delete',
+    TEST_QUERY_ADVANCED: 'test_query.advanced',
+    TEST_QUERY_PERFORMANCE: 'test_query.performance',
 } as const
 
 export type CommandId = typeof COMMAND_IDS[keyof typeof COMMAND_IDS]

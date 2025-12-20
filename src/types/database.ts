@@ -42,17 +42,33 @@ export type Connection = Entity & {
   databaseType: DatabaseInfo
 }
 
+export type ForeignKeyInfo = {
+  referenced_table: string
+  referenced_column: string
+  referenced_schema: string
+}
+
 export type ColumnInfo = {
   name: string
   data_type: string
   is_nullable: boolean
   default_value: string | null
+  /** Whether this column is part of the primary key */
+  is_primary_key?: boolean
+  /** Whether this column auto-increments (SERIAL, AUTOINCREMENT, etc.) */
+  is_auto_increment?: boolean
+  /** Foreign key relationship, if any */
+  foreign_key?: ForeignKeyInfo | null
 }
 
 export type TableInfo = {
   name: string
   schema: string
   columns: ColumnInfo[]
+  /** Names of columns that form the primary key (supports composite keys) */
+  primary_key_columns?: string[]
+  /** Estimated row count (may be approximate for performance) */
+  row_count_estimate?: number
 }
 
 export type DatabaseSchema = {

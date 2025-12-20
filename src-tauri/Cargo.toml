@@ -43,6 +43,8 @@ rfd = "0.15.4"
 keyring = { version = "3.2.0", features = ["apple-native", "windows-native", "sync-secret-service"] }
 url = "2.5.4"
 aes-gcm = "0.10.3"
+async-trait = "0.1"
+base64 = "0.22"
 
 [profile.release]
 panic = "abort"

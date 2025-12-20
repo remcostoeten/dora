@@ -637,7 +637,7 @@ impl Storage {
         let limit = limit.unwrap_or(50);
         let conn = self.conn.lock().unwrap();
 
-        let query = match (db_type_filter, success_filter) {
+        let _query = match (db_type_filter, success_filter) {
             (Some(db_type), Some(success)) => {
                 let mut stmt = conn.prepare(
                     "SELECT id, connection_id, connection_name, database_type, attempted_at, success, error_message, duration_ms

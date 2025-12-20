@@ -7,6 +7,6 @@ mod types;
 mod registry;
 mod commands;
 
-pub use types::*;
+// pub use types::*; // Commented out to remove unused import warning
 pub use registry::CommandRegistry;
 pub use commands::*;

@@ -17,8 +17,10 @@ import {
     minifySQL,
     type SupportedLanguage,
 } from '@/core/formatters'
-import { Wand2, ChevronDown, Minimize2, Code2, Database, FileJson } from 'lucide-react'
+import { Wand2, ChevronDown, Minimize2, Code2, Database, FileJson, Play } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
+import { populateTestQueries } from '@/core/tauri'
+import { useToast } from '@/components/ui/toast'
 
 type EditorToolbarProps = {
     /** Current content of the editor */
@@ -42,6 +44,24 @@ export function EditorToolbar({
 }: EditorToolbarProps) {
     const [isFormatting, setIsFormatting] = useState(false)
     const [lastResult, setLastResult] = useState<{ success: boolean; message?: string } | null>(null)
+    const { addToast } = useToast()
+
+    const handlePopulateTestQueries = useCallback(async () => {
+        try {
+            const result = await populateTestQueries()
+            addToast({
+                title: 'Test Queries Added',
+                description: result,
+                variant: 'default'
+            })
+        } catch (error) {
+            addToast({
+                title: 'Error',
+                description: error instanceof Error ? error.message : 'Failed to populate test queries',
+                variant: 'error'
+            })
+        }
+    }, [addToast])
 
     const handleFormat = useCallback(
         async (targetLanguage?: SupportedLanguage) => {
@@ -216,6 +236,19 @@ export function EditorToolbar({
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Test queries button */}
+            <Tooltip content="Populate test queries (CRUD examples)" side="bottom">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handlePopulateTestQueries}
+                    className="h-7 px-2 text-xs"
+                >
+                    <Play className="mr-1.5 h-3.5 w-3.5" />
+                    Test Queries
+                </Button>
+            </Tooltip>
 
             {/* Status indicator */}
             {lastResult && (

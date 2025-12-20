@@ -178,12 +178,32 @@ impl DatabaseConnection {
     }
 }
 
+/// Information about a foreign key relationship
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForeignKeyInfo {
+    /// The table that this foreign key references
+    pub referenced_table: String,
+    /// The column in the referenced table
+    pub referenced_column: String,
+    /// The schema of the referenced table (empty for SQLite)
+    pub referenced_schema: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ColumnInfo {
     pub name: String,
     pub data_type: String,
     pub is_nullable: bool,
     pub default_value: Option<String>,
+    /// Whether this column is part of the primary key
+    #[serde(default)]
+    pub is_primary_key: bool,
+    /// Whether this column auto-increments (SERIAL, AUTOINCREMENT, etc.)
+    #[serde(default)]
+    pub is_auto_increment: bool,
+    /// Foreign key relationship, if any
+    #[serde(default)]
+    pub foreign_key: Option<ForeignKeyInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,6 +211,12 @@ pub struct TableInfo {
     pub name: String,
     pub schema: String,
     pub columns: Vec<ColumnInfo>,
+    /// Names of columns that form the primary key (supports composite keys)
+    #[serde(default)]
+    pub primary_key_columns: Vec<String>,
+    /// Estimated row count (may be approximate for performance)
+    #[serde(default)]
+    pub row_count_estimate: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

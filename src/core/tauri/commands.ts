@@ -218,3 +218,100 @@ export async function getConnectionHistory(
     limit: limit || null,
   })
 }
+
+export async function populateTestQueries(): Promise<string> {
+  return await invoke('populate_test_queries_command')
+}
+
+// =============================================================================
+// Mutation API Commands
+// =============================================================================
+// These commands provide structured data manipulation for spreadsheet-style UIs
+
+/** Export format options for table data */
+export type ExportFormat = 'json' | 'sql_insert' | 'csv'
+
+/** Result of a mutation operation */
+export type MutationResult = {
+  success: boolean
+  affected_rows: number
+  message: string | null
+}
+
+/**
+ * Update a single cell value in a table
+ * @param connectionId - UUID of the database connection
+ * @param tableName - Name of the table to update
+ * @param schemaName - Schema name (optional, for PostgreSQL)
+ * @param primaryKeyColumn - Name of the primary key column
+ * @param primaryKeyValue - Value of the primary key for the row to update
+ * @param columnName - Name of the column to update
+ * @param newValue - New value to set
+ */
+export async function updateCell(
+  connectionId: string,
+  tableName: string,
+  schemaName: string | null,
+  primaryKeyColumn: string,
+  primaryKeyValue: unknown,
+  columnName: string,
+  newValue: unknown
+): Promise<MutationResult> {
+  return await invoke('update_cell', {
+    connectionId,
+    tableName,
+    schemaName,
+    primaryKeyColumn,
+    primaryKeyValue,
+    columnName,
+    newValue,
+  })
+}
+
+/**
+ * Delete one or more rows from a table
+ * @param connectionId - UUID of the database connection
+ * @param tableName - Name of the table
+ * @param schemaName - Schema name (optional, for PostgreSQL)
+ * @param primaryKeyColumn - Name of the primary key column
+ * @param primaryKeyValues - Array of primary key values for rows to delete
+ */
+export async function deleteRows(
+  connectionId: string,
+  tableName: string,
+  schemaName: string | null,
+  primaryKeyColumn: string,
+  primaryKeyValues: unknown[]
+): Promise<MutationResult> {
+  return await invoke('delete_rows', {
+    connectionId,
+    tableName,
+    schemaName,
+    primaryKeyColumn,
+    primaryKeyValues,
+  })
+}
+
+/**
+ * Export table data to a specific format
+ * @param connectionId - UUID of the database connection
+ * @param tableName - Name of the table to export
+ * @param schemaName - Schema name (optional, for PostgreSQL)
+ * @param format - Export format: 'json', 'sql_insert', or 'csv'
+ * @param limit - Optional row limit
+ */
+export async function exportTable(
+  connectionId: string,
+  tableName: string,
+  schemaName: string | null,
+  format: ExportFormat,
+  limit?: number
+): Promise<string> {
+  return await invoke('export_table', {
+    connectionId,
+    tableName,
+    schemaName,
+    format,
+    limit: limit ?? null,
+  })
+}

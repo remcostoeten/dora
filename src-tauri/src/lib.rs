@@ -4,6 +4,7 @@ mod database;
 mod error;
 mod init;
 mod storage;
+mod test_queries;
 mod utils;
 mod window;
 
@@ -41,7 +42,7 @@ impl AppState {
         let db_path = data_dir.join("Dora").join("Dora.db");
 
         let storage = Storage::new(db_path)?;
-        
+
         // Initialize command registry and load custom shortcuts from database
         let mut command_registry = CommandRegistry::new();
         if let Err(e) = commands_system::load_custom_shortcuts(&storage, &mut command_registry) {
@@ -119,6 +120,10 @@ pub fn run() {
             database::commands::get_setting,
             database::commands::set_setting,
             database::commands::get_connection_history,
+            // Mutation API commands
+            database::commands::update_cell,
+            database::commands::delete_rows,
+            database::commands::export_table,
             // Window commands
             window::commands::minimize_window,
             window::commands::maximize_window,
@@ -130,6 +135,8 @@ pub fn run() {
             commands_system::get_command,
             commands_system::update_command_shortcut,
             commands_system::get_custom_shortcuts,
+            // Test queries
+            test_queries::populate_test_queries_command,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
