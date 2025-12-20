@@ -63,8 +63,19 @@ pub struct ConnectionInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DatabaseInfo {
-    Postgres { connection_string: String },
-    SQLite { db_path: String },
+    Postgres {
+        connection_string: String,
+    },
+    SQLite {
+        db_path: String,
+    },
+    /// LibSQL/Turso database - can be local path or remote URL with auth token
+    LibSQL {
+        /// Either a local file path or remote URL (libsql://...)
+        url: String,
+        /// Auth token for remote connections (optional for local)
+        auth_token: Option<String>,
+    },
 }
 
 #[derive(Debug)]
@@ -83,6 +94,9 @@ pub enum DatabaseClient {
     SQLite {
         connection: Arc<Mutex<rusqlite::Connection>>,
     },
+    LibSQL {
+        connection: Arc<libsql::Connection>,
+    },
 }
 
 #[derive(Debug)]
@@ -94,6 +108,11 @@ pub enum Database {
     SQLite {
         db_path: String,
         connection: Option<Arc<Mutex<rusqlite::Connection>>>,
+    },
+    LibSQL {
+        url: String,
+        auth_token: Option<String>,
+        connection: Option<Arc<libsql::Connection>>,
     },
 }
 
@@ -111,6 +130,12 @@ impl DatabaseConnection {
                 },
                 Database::SQLite { db_path, .. } => DatabaseInfo::SQLite {
                     db_path: db_path.clone(),
+                },
+                Database::LibSQL {
+                    url, auth_token, ..
+                } => DatabaseInfo::LibSQL {
+                    url: url.clone(),
+                    auth_token: auth_token.clone(),
                 },
             },
             last_connected_at: None,
@@ -130,6 +155,11 @@ impl DatabaseConnection {
                 db_path,
                 connection: None,
             },
+            DatabaseInfo::LibSQL { url, auth_token } => Database::LibSQL {
+                url,
+                auth_token,
+                connection: None,
+            },
         };
 
         Self {
@@ -144,6 +174,7 @@ impl DatabaseConnection {
         match &self.database {
             Database::Postgres { client, .. } => client.is_some(),
             Database::SQLite { connection, .. } => connection.is_some(),
+            Database::LibSQL { connection, .. } => connection.is_some(),
         }
     }
 
@@ -171,6 +202,17 @@ impl DatabaseConnection {
                 connection: None, ..
             } => {
                 return Err(Error::Any(anyhow::anyhow!("SQLite connection not active")));
+            }
+            Database::LibSQL {
+                connection: Some(libsql_conn),
+                ..
+            } => DatabaseClient::LibSQL {
+                connection: libsql_conn.clone(),
+            },
+            Database::LibSQL {
+                connection: None, ..
+            } => {
+                return Err(Error::Any(anyhow::anyhow!("LibSQL connection not active")));
             }
         };
 

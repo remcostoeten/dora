@@ -1,4 +1,5 @@
 pub mod adapter;
+pub mod libsql;
 pub mod postgres;
 pub mod sqlite;
 

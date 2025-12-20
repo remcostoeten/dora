@@ -92,6 +92,9 @@ pub async fn update_connection(
                 Database::SQLite {
                     connection: conn, ..
                 } => *conn = None,
+                Database::LibSQL {
+                    connection: conn, ..
+                } => *conn = None,
             }
             connection.connected = false;
         }
@@ -104,6 +107,11 @@ pub async fn update_connection(
             },
             DatabaseInfo::SQLite { db_path } => Database::SQLite {
                 db_path,
+                connection: None,
+            },
+            DatabaseInfo::LibSQL { url, auth_token } => Database::LibSQL {
+                url,
+                auth_token,
                 connection: None,
             },
         };
@@ -248,6 +256,49 @@ pub async fn connect_to_database(
                 Ok(false)
             }
         },
+        Database::LibSQL {
+            url,
+            auth_token,
+            connection: libsql_conn,
+        } => {
+            // Connect to libSQL (local or remote Turso)
+            let result = if url.starts_with("libsql://") || url.starts_with("https://") {
+                // Remote Turso database
+                let token = auth_token.clone().unwrap_or_default();
+                libsql::Builder::new_remote(url.clone(), token)
+                    .build()
+                    .await
+            } else {
+                // Local libSQL database
+                libsql::Builder::new_local(url).build().await
+            };
+
+            match result {
+                Ok(db) => match db.connect() {
+                    Ok(conn) => {
+                        *libsql_conn = Some(Arc::new(conn));
+                        connection.connected = true;
+
+                        if let Err(e) = state.storage.update_last_connected(&connection_id) {
+                            log::warn!("Failed to update last connected timestamp: {}", e);
+                        }
+
+                        log::info!("Successfully connected to LibSQL database: {}", url);
+                        Ok(true)
+                    }
+                    Err(e) => {
+                        log::error!("Failed to connect to LibSQL database {}: {}", url, e);
+                        connection.connected = false;
+                        Ok(false)
+                    }
+                },
+                Err(e) => {
+                    log::error!("Failed to build LibSQL database {}: {}", url, e);
+                    connection.connected = false;
+                    Ok(false)
+                }
+            }
+        }
     }
 }
 
@@ -268,6 +319,10 @@ pub async fn disconnect_from_database(
             connection: sqlite_conn,
             ..
         } => *sqlite_conn = None,
+        Database::LibSQL {
+            connection: libsql_conn,
+            ..
+        } => *libsql_conn = None,
     }
     connection.connected = false;
     Ok(())
@@ -419,6 +474,35 @@ pub async fn test_connection(
                 Err(Error::from(e))
             }
         },
+        DatabaseInfo::LibSQL { url, auth_token } => {
+            log::info!("Testing LibSQL connection: {}", url);
+
+            let result = if url.starts_with("libsql://") || url.starts_with("https://") {
+                let token = auth_token.unwrap_or_default();
+                libsql::Builder::new_remote(url.clone(), token)
+                    .build()
+                    .await
+            } else {
+                libsql::Builder::new_local(&url).build().await
+            };
+
+            match result {
+                Ok(db) => match db.connect() {
+                    Ok(_) => Ok(true),
+                    Err(e) => {
+                        log::error!("LibSQL connection test failed: {}", e);
+                        Err(Error::Any(anyhow::anyhow!(
+                            "LibSQL connection failed: {}",
+                            e
+                        )))
+                    }
+                },
+                Err(e) => {
+                    log::error!("LibSQL build failed: {}", e);
+                    Err(Error::Any(anyhow::anyhow!("LibSQL build failed: {}", e)))
+                }
+            }
+        }
     }
 }
 
@@ -511,6 +595,13 @@ pub async fn get_database_schema(
         Database::SQLite {
             connection: None, ..
         } => return Err(Error::Any(anyhow::anyhow!("SQLite connection not active"))),
+        Database::LibSQL {
+            connection: Some(conn),
+            ..
+        } => crate::database::libsql::schema::get_database_schema(Arc::clone(conn)).await?,
+        Database::LibSQL {
+            connection: None, ..
+        } => return Err(Error::Any(anyhow::anyhow!("LibSQL connection not active"))),
     };
 
     let schema = Arc::new(schema);
@@ -675,7 +766,7 @@ pub async fn update_cell(
     let client = connection.get_client()?;
 
     // Build the UPDATE query
-    let (query, is_postgres) = match &client {
+    let (query, db_type) = match &client {
         crate::database::types::DatabaseClient::Postgres { .. } => {
             let schema_prefix = schema_name
                 .as_ref()
@@ -685,21 +776,31 @@ pub async fn update_cell(
                 "UPDATE {}\"{table_name}\" SET \"{column_name}\" = $1 WHERE \"{primary_key_column}\" = $2",
                 schema_prefix
             );
-            (query, true)
+            (query, "postgres")
         }
         crate::database::types::DatabaseClient::SQLite { .. } => {
             let query = format!(
                 "UPDATE \"{table_name}\" SET \"{column_name}\" = ? WHERE \"{primary_key_column}\" = ?"
             );
-            (query, false)
+            (query, "sqlite")
+        }
+        crate::database::types::DatabaseClient::LibSQL { .. } => {
+            // LibSQL uses SQLite-compatible syntax
+            let query = format!(
+                "UPDATE \"{table_name}\" SET \"{column_name}\" = ? WHERE \"{primary_key_column}\" = ?"
+            );
+            (query, "libsql")
         }
     };
 
     // Execute the query
-    let result = if is_postgres {
-        execute_postgres_update(&client, &query, &new_value, &primary_key_value).await?
-    } else {
-        execute_sqlite_update(&client, &query, &new_value, &primary_key_value)?
+    let result = match db_type {
+        "postgres" => {
+            execute_postgres_update(&client, &query, &new_value, &primary_key_value).await?
+        }
+        "sqlite" => execute_sqlite_update(&client, &query, &new_value, &primary_key_value)?,
+        "libsql" => execute_libsql_update(&client, &query, &new_value, &primary_key_value).await?,
+        _ => unreachable!(),
     };
 
     // Invalidate cached schema as data changed
@@ -791,6 +892,26 @@ pub async fn delete_rows(
 
             conn.execute(&query, params_ref.as_slice())? as usize
         }
+        crate::database::types::DatabaseClient::LibSQL { connection } => {
+            // Build IN clause with placeholders (SQLite-compatible)
+            let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
+            let query = format!(
+                "DELETE FROM \"{table_name}\" WHERE \"{primary_key_column}\" IN ({})",
+                placeholders.join(", ")
+            );
+
+            // LibSQL execute with params
+            let params: Vec<libsql::Value> = primary_key_values
+                .iter()
+                .map(json_to_libsql_value)
+                .collect();
+
+            connection
+                .execute(&query, params)
+                .await
+                .map_err(|e| Error::Any(anyhow::anyhow!("LibSQL delete failed: {}", e)))?
+                as usize
+        }
     };
 
     // Invalidate cached schema
@@ -822,7 +943,7 @@ pub async fn export_table(
     let client = connection.get_client()?;
 
     // Build SELECT query
-    let (query, is_postgres) = match &client {
+    let (query, db_type) = match &client {
         crate::database::types::DatabaseClient::Postgres { .. } => {
             let schema_prefix = schema_name
                 .as_ref()
@@ -831,26 +952,34 @@ pub async fn export_table(
             let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
             (
                 format!(
-                    "SELECT * FROM {}\"{}\"{}",
-                    schema_prefix, table_name, limit_clause
+                    "SELECT * FROM \"{}\"{}{}",
+                    table_name, schema_prefix, limit_clause
                 ),
-                true,
+                "postgres",
             )
         }
         crate::database::types::DatabaseClient::SQLite { .. } => {
             let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
             (
                 format!("SELECT * FROM \"{}\"{}", table_name, limit_clause),
-                false,
+                "sqlite",
+            )
+        }
+        crate::database::types::DatabaseClient::LibSQL { .. } => {
+            let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+            (
+                format!("SELECT * FROM \"{}\"{}", table_name, limit_clause),
+                "libsql",
             )
         }
     };
 
     // Execute and get results
-    let (columns, rows) = if is_postgres {
-        fetch_postgres_data(&client, &query).await?
-    } else {
-        fetch_sqlite_data(&client, &query)?
+    let (columns, rows) = match db_type {
+        "postgres" => fetch_postgres_data(&client, &query).await?,
+        "sqlite" => fetch_sqlite_data(&client, &query)?,
+        "libsql" => fetch_libsql_data(&client, &query).await?,
+        _ => unreachable!(),
     };
 
     // Format output
@@ -1114,4 +1243,100 @@ fn sqlite_value_to_json(row: &rusqlite::Row, idx: usize) -> serde_json::Value {
         }
         Err(_) => serde_json::Value::Null,
     }
+}
+
+// =============================================================================
+// LibSQL-specific helper functions
+// =============================================================================
+
+fn json_to_libsql_value(value: &serde_json::Value) -> libsql::Value {
+    match value {
+        serde_json::Value::Null => libsql::Value::Null,
+        serde_json::Value::Bool(b) => libsql::Value::Integer(if *b { 1 } else { 0 }),
+        serde_json::Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                libsql::Value::Integer(i)
+            } else if let Some(f) = n.as_f64() {
+                libsql::Value::Real(f)
+            } else {
+                libsql::Value::Text(n.to_string())
+            }
+        }
+        serde_json::Value::String(s) => libsql::Value::Text(s.clone()),
+        other => libsql::Value::Text(other.to_string()),
+    }
+}
+
+async fn execute_libsql_update(
+    client: &crate::database::types::DatabaseClient,
+    query: &str,
+    new_value: &serde_json::Value,
+    pk_value: &serde_json::Value,
+) -> Result<usize, Error> {
+    if let crate::database::types::DatabaseClient::LibSQL { connection } = client {
+        let new_val = json_to_libsql_value(new_value);
+        let pk_val = json_to_libsql_value(pk_value);
+
+        let result = connection
+            .execute(query, vec![new_val, pk_val])
+            .await
+            .map_err(|e| Error::Any(anyhow::anyhow!("LibSQL update failed: {}", e)))?;
+        Ok(result as usize)
+    } else {
+        Err(Error::Any(anyhow::anyhow!("Expected LibSQL client")))
+    }
+}
+
+async fn fetch_libsql_data(
+    client: &crate::database::types::DatabaseClient,
+    query: &str,
+) -> Result<(Vec<String>, Vec<Vec<serde_json::Value>>), Error> {
+    if let crate::database::types::DatabaseClient::LibSQL { connection } = client {
+        let mut rows = connection
+            .query(query, ())
+            .await
+            .map_err(|e| Error::Any(anyhow::anyhow!("LibSQL query failed: {}", e)))?;
+
+        let column_count = rows.column_count();
+        let mut columns = Vec::with_capacity(column_count as usize);
+        for i in 0..column_count {
+            columns.push(rows.column_name(i as i32).unwrap_or("?").to_string());
+        }
+
+        let mut data = Vec::new();
+        while let Some(row) = rows
+            .next()
+            .await
+            .map_err(|e| Error::Any(anyhow::anyhow!("LibSQL row fetch failed: {}", e)))?
+        {
+            let mut row_data = Vec::with_capacity(column_count as usize);
+            for i in 0..column_count {
+                let value = libsql_value_to_json(&row, i as i32)?;
+                row_data.push(value);
+            }
+            data.push(row_data);
+        }
+
+        Ok((columns, data))
+    } else {
+        Err(Error::Any(anyhow::anyhow!("Expected LibSQL client")))
+    }
+}
+
+fn libsql_value_to_json(row: &libsql::Row, idx: i32) -> Result<serde_json::Value, Error> {
+    use base64::Engine;
+
+    let value = row
+        .get_value(idx)
+        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to get libSQL value: {}", e)))?;
+
+    Ok(match value {
+        libsql::Value::Null => serde_json::Value::Null,
+        libsql::Value::Integer(i) => serde_json::Value::from(i),
+        libsql::Value::Real(f) => serde_json::Value::from(f),
+        libsql::Value::Text(s) => serde_json::Value::from(s),
+        libsql::Value::Blob(b) => {
+            serde_json::Value::from(base64::engine::general_purpose::STANDARD.encode(&b))
+        }
+    })
 }
