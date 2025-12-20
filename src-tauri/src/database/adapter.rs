@@ -175,6 +175,10 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))
         }
+        crate::database::types::DatabaseClient::LibSQL { .. } => {
+            // TODO: Implement LibSQLAdapter when needed
+            panic!("LibSQL adapter not yet implemented")
+        }
     }
 }
 

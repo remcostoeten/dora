@@ -262,6 +262,7 @@ pub async fn connect_to_database(
             connection: libsql_conn,
         } => {
             // Connect to libSQL (local or remote Turso)
+            let url_str = url.clone();
             let result = if url.starts_with("libsql://") || url.starts_with("https://") {
                 // Remote Turso database
                 let token = auth_token.clone().unwrap_or_default();
@@ -283,17 +284,17 @@ pub async fn connect_to_database(
                             log::warn!("Failed to update last connected timestamp: {}", e);
                         }
 
-                        log::info!("Successfully connected to LibSQL database: {}", url);
+                        log::info!("Successfully connected to LibSQL database: {}", url_str);
                         Ok(true)
                     }
                     Err(e) => {
-                        log::error!("Failed to connect to LibSQL database {}: {}", url, e);
+                        log::error!("Failed to connect to LibSQL database {}: {}", url_str, e);
                         connection.connected = false;
                         Ok(false)
                     }
                 },
                 Err(e) => {
-                    log::error!("Failed to build LibSQL database {}: {}", url, e);
+                    log::error!("Failed to build LibSQL database {}: {}", url_str, e);
                     connection.connected = false;
                     Ok(false)
                 }
