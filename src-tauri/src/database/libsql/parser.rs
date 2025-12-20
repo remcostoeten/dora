@@ -7,5 +7,5 @@ use crate::{database::parser::ParsedStatement, Error};
 /// Parse SQL statements using SQLite dialect (libSQL is SQLite-compatible)
 pub fn parse_statements(query: &str) -> Result<Vec<ParsedStatement>, Error> {
     // LibSQL uses SQLite dialect
-    crate::database::sqlite::parser::parse_statements(query)
+    Ok(crate::database::sqlite::parser::parse_statements(query)?)
 }

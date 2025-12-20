@@ -160,7 +160,8 @@ impl Storage {
 
     /// Get a reference to the underlying connection (locked)
     pub fn get_sqlite_connection(&self) -> Result<std::sync::MutexGuard<'_, Connection>> {
-        self.conn.lock()
+        self.conn
+            .lock()
             .map_err(|e| crate::Error::Any(anyhow::anyhow!("Failed to lock connection: {}", e)))
     }
     pub fn save_connection(&self, connection: &ConnectionInfo) -> Result<()> {
@@ -169,14 +170,22 @@ impl Storage {
 
         let (db_type_id, connection_data) = match &connection.database_type {
             crate::database::types::DatabaseInfo::Postgres { connection_string } => {
-                (DB_TYPE_POSTGRES, connection_string.as_str())
+                (DB_TYPE_POSTGRES, connection_string.clone())
             }
             crate::database::types::DatabaseInfo::SQLite { db_path } => {
-                (DB_TYPE_SQLITE, db_path.as_str())
+                (DB_TYPE_SQLITE, db_path.clone())
+            }
+            crate::database::types::DatabaseInfo::LibSQL { url, auth_token } => {
+                // Serialize URL and auth_token as JSON for storage
+                let data = serde_json::json!({
+                    "url": url,
+                    "auth_token": auth_token
+                });
+                (3, data.to_string()) // db_type_id 3 for LibSQL
             }
         };
 
-        let encrypted_data = crate::security::encrypt(connection_data)
+        let encrypted_data = crate::security::encrypt(&connection_data)
             .context("Failed to encrypt connection data")?;
 
         conn.execute(
@@ -205,14 +214,22 @@ impl Storage {
 
         let (db_type_id, connection_data) = match &connection.database_type {
             crate::database::types::DatabaseInfo::Postgres { connection_string } => {
-                (DB_TYPE_POSTGRES, connection_string.as_str())
+                (DB_TYPE_POSTGRES, connection_string.clone())
             }
             crate::database::types::DatabaseInfo::SQLite { db_path } => {
-                (DB_TYPE_SQLITE, db_path.as_str())
+                (DB_TYPE_SQLITE, db_path.clone())
+            }
+            crate::database::types::DatabaseInfo::LibSQL { url, auth_token } => {
+                // Serialize URL and auth_token as JSON for storage
+                let data = serde_json::json!({
+                    "url": url,
+                    "auth_token": auth_token
+                });
+                (3, data.to_string()) // db_type_id 3 for LibSQL
             }
         };
 
-        let encrypted_data = crate::security::encrypt(connection_data)
+        let encrypted_data = crate::security::encrypt(&connection_data)
             .context("Failed to encrypt connection data")?;
 
         let updated_rows = conn
@@ -296,11 +313,12 @@ impl Storage {
             .context("Failed to query connection")?;
 
         match rows.next() {
-            Some(row) => Ok(Some(row.map_err(|e| anyhow::anyhow!("Failed to process connection row: {}", e))?)),
+            Some(row) => Ok(Some(row.map_err(|e| {
+                anyhow::anyhow!("Failed to process connection row: {}", e)
+            })?)),
             None => Ok(None),
         }
     }
-
 
     pub fn get_connections(&self) -> Result<Vec<ConnectionInfo>> {
         let conn = self.conn.lock().unwrap();
@@ -646,20 +664,22 @@ impl Storage {
                      ORDER BY attempted_at DESC 
                      LIMIT ?3"
                 ).context("Failed to prepare connection history statement")?;
-                
-                let rows = stmt.query_map((db_type, success, limit), |row| {
-                    Ok(ConnectionHistoryEntry {
-                        id: row.get(0)?,
-                        connection_id: row.get(1)?,
-                        connection_name: row.get(2)?,
-                        database_type: row.get(3)?,
-                        attempted_at: row.get(4)?,
-                        success: row.get(5)?,
-                        error_message: row.get(6)?,
-                        duration_ms: row.get(7)?,
+
+                let rows = stmt
+                    .query_map((db_type, success, limit), |row| {
+                        Ok(ConnectionHistoryEntry {
+                            id: row.get(0)?,
+                            connection_id: row.get(1)?,
+                            connection_name: row.get(2)?,
+                            database_type: row.get(3)?,
+                            attempted_at: row.get(4)?,
+                            success: row.get(5)?,
+                            error_message: row.get(6)?,
+                            duration_ms: row.get(7)?,
+                        })
                     })
-                }).context("Failed to query connection history")?;
-                
+                    .context("Failed to query connection history")?;
+
                 let mut history = Vec::new();
                 for row in rows {
                     history.push(row.context("Failed to process history row")?);
@@ -674,20 +694,22 @@ impl Storage {
                      ORDER BY attempted_at DESC 
                      LIMIT ?2"
                 ).context("Failed to prepare connection history statement")?;
-                
-                let rows = stmt.query_map((db_type, limit), |row| {
-                    Ok(ConnectionHistoryEntry {
-                        id: row.get(0)?,
-                        connection_id: row.get(1)?,
-                        connection_name: row.get(2)?,
-                        database_type: row.get(3)?,
-                        attempted_at: row.get(4)?,
-                        success: row.get(5)?,
-                        error_message: row.get(6)?,
-                        duration_ms: row.get(7)?,
+
+                let rows = stmt
+                    .query_map((db_type, limit), |row| {
+                        Ok(ConnectionHistoryEntry {
+                            id: row.get(0)?,
+                            connection_id: row.get(1)?,
+                            connection_name: row.get(2)?,
+                            database_type: row.get(3)?,
+                            attempted_at: row.get(4)?,
+                            success: row.get(5)?,
+                            error_message: row.get(6)?,
+                            duration_ms: row.get(7)?,
+                        })
                     })
-                }).context("Failed to query connection history")?;
-                
+                    .context("Failed to query connection history")?;
+
                 let mut history = Vec::new();
                 for row in rows {
                     history.push(row.context("Failed to process history row")?);
@@ -702,20 +724,22 @@ impl Storage {
                      ORDER BY attempted_at DESC 
                      LIMIT ?2"
                 ).context("Failed to prepare connection history statement")?;
-                
-                let rows = stmt.query_map((success, limit), |row| {
-                    Ok(ConnectionHistoryEntry {
-                        id: row.get(0)?,
-                        connection_id: row.get(1)?,
-                        connection_name: row.get(2)?,
-                        database_type: row.get(3)?,
-                        attempted_at: row.get(4)?,
-                        success: row.get(5)?,
-                        error_message: row.get(6)?,
-                        duration_ms: row.get(7)?,
+
+                let rows = stmt
+                    .query_map((success, limit), |row| {
+                        Ok(ConnectionHistoryEntry {
+                            id: row.get(0)?,
+                            connection_id: row.get(1)?,
+                            connection_name: row.get(2)?,
+                            database_type: row.get(3)?,
+                            attempted_at: row.get(4)?,
+                            success: row.get(5)?,
+                            error_message: row.get(6)?,
+                            duration_ms: row.get(7)?,
+                        })
                     })
-                }).context("Failed to query connection history")?;
-                
+                    .context("Failed to query connection history")?;
+
                 let mut history = Vec::new();
                 for row in rows {
                     history.push(row.context("Failed to process history row")?);
@@ -729,20 +753,22 @@ impl Storage {
                      ORDER BY attempted_at DESC 
                      LIMIT ?1"
                 ).context("Failed to prepare connection history statement")?;
-                
-                let rows = stmt.query_map([limit], |row| {
-                    Ok(ConnectionHistoryEntry {
-                        id: row.get(0)?,
-                        connection_id: row.get(1)?,
-                        connection_name: row.get(2)?,
-                        database_type: row.get(3)?,
-                        attempted_at: row.get(4)?,
-                        success: row.get(5)?,
-                        error_message: row.get(6)?,
-                        duration_ms: row.get(7)?,
+
+                let rows = stmt
+                    .query_map([limit], |row| {
+                        Ok(ConnectionHistoryEntry {
+                            id: row.get(0)?,
+                            connection_id: row.get(1)?,
+                            connection_name: row.get(2)?,
+                            database_type: row.get(3)?,
+                            attempted_at: row.get(4)?,
+                            success: row.get(5)?,
+                            error_message: row.get(6)?,
+                            duration_ms: row.get(7)?,
+                        })
                     })
-                }).context("Failed to query connection history")?;
-                
+                    .context("Failed to query connection history")?;
+
                 let mut history = Vec::new();
                 for row in rows {
                     history.push(row.context("Failed to process history row")?);

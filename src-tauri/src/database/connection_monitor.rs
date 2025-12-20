@@ -51,6 +51,10 @@ impl ConnectionMonitor {
                 connection: sqlite_conn,
                 ..
             } => *sqlite_conn = None,
+            crate::database::types::Database::LibSQL {
+                connection: libsql_conn,
+                ..
+            } => *libsql_conn = None,
         }
     }
 

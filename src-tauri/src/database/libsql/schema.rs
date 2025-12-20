@@ -36,14 +36,14 @@ pub async fn get_database_schema(conn: Arc<libsql::Connection>) -> Result<Databa
             schema: String::new(), // SQLite/libSQL doesn't have schemas
             columns,
             primary_key_columns: pk_columns,
-            row_count_estimate: row_count,
+            row_count_estimate: row_count.map(|c| c as u64),
         });
     }
 
     Ok(DatabaseSchema {
         tables,
         schemas: vec![String::new()],
-        unique_columns,
+        unique_columns: unique_columns.into_keys().collect(),
     })
 }
 

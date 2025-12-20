@@ -59,10 +59,15 @@ impl StatementManager {
     pub fn submit_query(&self, client: DatabaseClient, query: &str) -> Result<Vec<QueryId>, Error> {
         self.queries.clear();
 
-        let parse_statements = match &client {
-            DatabaseClient::Postgres { .. } => postgres::parser::parse_statements,
-            DatabaseClient::SQLite { .. } => sqlite::parser::parse_statements,
-        };
+        let parse_statements: fn(&str) -> Result<Vec<ParsedStatement>, anyhow::Error> =
+            match &client {
+                DatabaseClient::Postgres { .. } => postgres::parser::parse_statements,
+                DatabaseClient::SQLite { .. } => sqlite::parser::parse_statements,
+                DatabaseClient::LibSQL { .. } => |query| {
+                    crate::database::libsql::parser::parse_statements(query)
+                        .map_err(|e| anyhow::anyhow!("{}", e))
+                },
+            };
 
         let statements = parse_statements(query)?;
         let mut query_ids = Vec::with_capacity(statements.len());
@@ -156,6 +161,16 @@ impl StatementManager {
                     let conn = connection.lock().unwrap();
                     if let Err(err) = sqlite::execute::execute_query(&conn, stmt, &sender) {
                         log::error!("Error executing SQLite query: {}", err);
+                    }
+                });
+            }
+            DatabaseClient::LibSQL { connection } => {
+                spawn(async move {
+                    if let Err(err) =
+                        crate::database::libsql::execute::execute_query(&connection, stmt, &sender)
+                            .await
+                    {
+                        log::error!("Error executing LibSQL query: {}", err);
                     }
                 });
             }
