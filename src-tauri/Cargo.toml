@@ -1,9 +1,9 @@
 [package]
-name = "app"
+name = "dora"
 version = "1.0.0"
 description = ""
-authors = ["vrmiguel"]
-license = "GPLv3"
+authors = ["By Remco Stoeten @remcostoeten"]
+license = "MIT"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
