@@ -165,7 +165,7 @@ export function ScriptTabs() {
                 >
                   <button
                     type="button"
-                    className={`relative flex min-w-0 flex-1 items-center gap-2 px-4 py-1.5 text-sm transition-all duration-200 ${isActive
+                    className={`relative flex min-w-0 flex-1 items-center gap-2 px-4 py-1.5 text-sm transition-all duration-200 focus:outline-none ${isActive
                       ? 'text-foreground font-medium'
                       : 'text-muted-foreground hover:text-foreground'
                       }`}
@@ -212,7 +212,7 @@ export function ScriptTabs() {
                   {tabs.length > 1 && !isPinned && (
                     <button
                       type="button"
-                      className={`mr-2 flex-shrink-0 rounded p-1 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive ${isActive ? 'text-muted-foreground' : ''
+                      className={`mr-2 flex-shrink-0 rounded p-1 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive focus:outline-none ${isActive ? 'text-muted-foreground' : ''
                         }`}
                       onClick={(e) => handleTabClose(e, tab.id)}
                       title="Close tab"
@@ -290,7 +290,7 @@ export function ScriptTabs() {
         <Button
           variant="ghost"
           size="sm"
-          className="ml-1 flex h-8 items-center gap-1 rounded-sm px-2 text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+          className="ml-1 flex h-8 items-center gap-1 rounded-sm px-2 text-muted-foreground hover:bg-muted/30 hover:text-foreground focus:outline-none"
           onClick={createNewScript}
           title="New Tab"
         >

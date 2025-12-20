@@ -6,7 +6,7 @@ import { AppSidebarComplete } from '@/components/sidebar/app-sidebar-complete'
 import { ResizeHandle } from '@/components/layout/resize-handle'
 import { MainViewTabs, useMainViewMode } from '@/components/layout/main-view-tabs'
 import { ScriptTabs } from '@/components/editor/script-tabs'
-import { SqlEditor } from '@/components/editor/sql-editor'
+import { SwitchableSqlEditor } from '@/components/editor/switchable-sql-editor'
 import { CommandPalette } from '@/components/ui/command-palette'
 import { Table } from '@/components/data/table'
 import { TableBrowser } from '@/components/data/table-browser'
@@ -826,7 +826,7 @@ export default function Home() {
                     {/* Top Pane (Editor) - Takes remaining space */}
                     <div className="flex flex-1 flex-col min-h-0 border-b border-border">
                       <div className="flex-1 p-4">
-                        <SqlEditor
+                        <SwitchableSqlEditor
                           value={currentEditorContent}
                           onChange={handleEditorContentChange}
                           schema={
