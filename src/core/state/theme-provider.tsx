@@ -21,14 +21,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (storedLocal) {
       applyTheme(storedLocal)
     } else {
-<<<<<<<< HEAD:src/core/state/theme-provider.tsx
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      applyTheme(prefersDark ? 'dark' : 'light')
-========
       // Default to dark as requested
       setThemeState('dark')
       document.documentElement.classList.toggle('dark', true)
->>>>>>>> e771597 (Migrate fresh frontend!):dora/src/lib/theme-provider.tsx
     }
 
     // 2. Fetch from DB (source of truth)
