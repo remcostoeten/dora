@@ -1,0 +1,518 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+	--radius: 0.75rem;
+	--color-black: oklch(0.05 0.01 240);
+	--color-white: oklch(0.98 0.005 240);
+	--color-neutral-50: oklch(0.97 0.007 240);
+	--color-neutral-100: oklch(0.94 0.01 240);
+	--color-neutral-200: oklch(0.89 0.015 240);
+	--color-neutral-300: oklch(0.83 0.02 240);
+	--color-neutral-400: oklch(0.65 0.025 240);
+	--color-neutral-500: oklch(0.45 0.03 240);
+	--color-neutral-600: oklch(0.35 0.035 240);
+	--color-neutral-700: oklch(0.25 0.04 240);
+	--color-neutral-800: oklch(0.15 0.045 240);
+	--color-neutral-900: oklch(0.08 0.05 240);
+	--color-neutral-950: oklch(0.04 0.055 240);
+
+	--text-light-primary: var(--color-neutral-800);
+	--text-light-secondary: var(--color-neutral-500);
+	--text-light-tertiary: var(--color-neutral-400);
+	--text-dark-primary: oklch(0.95 0.01 240);
+	--text-dark-secondary: oklch(0.75 0.02 240);
+	--text-dark-tertiary: oklch(0.55 0.025 240);
+
+	/* Light theme based on your palette */
+	--background: #FFFFFF;
+	--foreground: #1A1A1A;
+	--card: #FFFFFF;
+	--card-foreground: #1A1A1A;
+	--popover: #FFFFFF;
+	--popover-foreground: #1A1A1A;
+
+	/* Primary/Accent color system - hue is the single source of truth */
+	--primary-hue: 250;
+	--primary: oklch(0.52 0.16 var(--primary-hue));
+	--primary-foreground: oklch(0.98 0.005 240);
+	--primary-light: oklch(0.62 0.12 var(--primary-hue));
+	--primary-dark: oklch(0.42 0.2 var(--primary-hue));
+	--primary-subtle: oklch(0.52 0.16 var(--primary-hue) / 10%);
+	--primary-muted: oklch(0.52 0.16 var(--primary-hue) / 20%);
+
+	--secondary: #F7F7F7;
+	--secondary-foreground: #1A1A1A;
+
+	--success: oklch(0.58 0.14 150);
+	--success-foreground: oklch(0.98 0.005 150);
+	--success-light: oklch(0.92 0.06 150);
+
+	--warning: oklch(0.68 0.16 65);
+	--warning-foreground: oklch(0.12 0.04 65);
+	--warning-light: oklch(0.94 0.06 65);
+
+	--error: oklch(0.58 0.2 25);
+	--error-foreground: oklch(0.98 0.005 25);
+	--error-light: oklch(0.94 0.06 25);
+
+	--muted: #E5E5E5;
+	--muted-foreground: #666666;
+	--accent: #F0F0F0;
+	--accent-foreground: #1A1A1A;
+
+	/* Unified border system */
+	--border: #E0E0E0;
+	--border-light: #F0F0F0;
+	--input: #FFFFFF;
+	--ring: oklch(0.52 0.16 var(--primary-hue) / 35%);
+
+	--surface: var(--card);
+
+	/* Sidebar inherits from main hierarchy */
+	--sidebar: #FFFFFF;
+	--sidebar-foreground: #1A1A1A;
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--accent);
+	--sidebar-accent-foreground: #1A1A1A;
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
+
+
+	/* Enhanced shadows for depth */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+	--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+	/* Glass effects */
+	--glass-bg: rgba(255, 255, 255, 0.95);
+	--glass-border: rgba(224, 224, 224, 0.3);
+}
+
+.dark {
+<<<<<<< HEAD:src/app/globals.css
+	/* Modern dark theme based on your palette */
+	--background: #1A1A1A;
+	--foreground: #FFFFFF;
+	--card: #2A2A2A;
+	--card-foreground: #FFFFFF;
+	--popover: #333333;
+	--popover-foreground: #FFFFFF;
+
+	--primary: oklch(0.65 0.18 var(--primary-hue));
+	--primary-foreground: var(--color-neutral-950);
+	--primary-light: oklch(0.72 0.14 var(--primary-hue));
+	--primary-dark: oklch(0.55 0.22 var(--primary-hue));
+	--primary-subtle: oklch(0.65 0.18 var(--primary-hue) / 15%);
+	--primary-muted: oklch(0.65 0.18 var(--primary-hue) / 25%);
+
+	--secondary: #404040;
+	--secondary-foreground: #FFFFFF;
+=======
+	--background: oklch(0.02 0.01 240);
+	--foreground: oklch(0.98 0 0);
+	--card: oklch(0.04 0.01 240);
+	--card-foreground: oklch(0.98 0 0);
+	--popover: oklch(0.04 0.01 240);
+	--popover-foreground: oklch(0.98 0 0);
+
+	--primary: oklch(0.55 0.25 250);
+	--primary-foreground: oklch(0.98 0 0);
+	--primary-light: oklch(0.6 0.2 250);
+	--primary-dark: oklch(0.45 0.25 250);
+
+	--secondary: oklch(0.08 0.01 240);
+	--secondary-foreground: oklch(0.98 0 0);
+>>>>>>> e771597 (Migrate fresh frontend!):dora/src/app/globals.css
+
+	--success: oklch(0.65 0.2 150);
+	--success-foreground: oklch(0.02 0.01 240);
+	--success-light: oklch(0.15 0.05 150);
+
+	--warning: oklch(0.75 0.15 70);
+	--warning-foreground: oklch(0.02 0.01 240);
+	--warning-light: oklch(0.15 0.05 70);
+
+	--error: oklch(0.6 0.25 25);
+	--error-foreground: oklch(0.98 0 0);
+	--error-light: oklch(0.15 0.05 25);
+
+<<<<<<< HEAD:src/app/globals.css
+	--muted: #333333;
+	--muted-foreground: #CCCCCC;
+	--accent: #404040;
+	--accent-foreground: #FFFFFF;
+
+	--border: #404040;
+	--border-light: #333333;
+	--input: #2A2A2A;
+	--ring: oklch(0.68 0.14 var(--primary-hue) / 40%);
+
+	--surface: var(--card);
+
+	--sidebar: #1A1A1A;
+	--sidebar-foreground: #FFFFFF;
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: #404040;
+	--sidebar-accent-foreground: #FFFFFF;
+	--sidebar-border: #404040;
+	--sidebar-ring: var(--ring);
+
+
+	/* Enhanced shadows for dark mode depth */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+	--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.25);
+
+	/* Glass effects for dark mode */
+	--glass-bg: rgba(42, 42, 42, 0.95);
+	--glass-border: rgba(64, 64, 64, 0.3);
+=======
+	--muted: oklch(0.08 0.01 240 / 0.5);
+	--muted-foreground: oklch(0.6 0 0);
+	--accent: oklch(0.12 0.01 240 / 0.5);
+	--accent-foreground: oklch(0.98 0 0);
+
+	--border: oklch(0.12 0.01 240);
+	--border-light: oklch(0.08 0.01 240);
+	--input: oklch(0.06 0.01 240);
+	--ring: oklch(0.55 0.25 250 / 0.4);
+
+	--sidebar: oklch(0.03 0.01 240);
+	--sidebar-foreground: oklch(0.98 0 0);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: oklch(0.06 0.01 240);
+	--sidebar-accent-foreground: oklch(0.98 0 0);
+	--sidebar-border: oklch(0.12 0.01 240);
+	--sidebar-ring: var(--ring);
+	--titlebar-bg: oklch(0.04 0.01 240);
+
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.6), 0 2px 4px -1px rgb(0 0 0 / 0.4);
+	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -2px rgb(0 0 0 / 0.4);
+	--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.8), 0 10px 10px -5px rgb(0 0 0 / 0.6);
+
+	--glass-bg: oklch(0.04 0.01 240 / 0.8);
+	--glass-border: oklch(0.12 0.01 240 / 0.3);
+>>>>>>> e771597 (Migrate fresh frontend!):dora/src/app/globals.css
+}
+
+@theme inline {
+	--radius-xs: calc(var(--radius) - 8px);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+
+	--color-neutral-50: var(--color-neutral-50);
+	--color-neutral-100: var(--color-neutral-100);
+	--color-neutral-200: var(--color-neutral-200);
+	--color-neutral-300: var(--color-neutral-300);
+	--color-neutral-400: var(--color-neutral-400);
+	--color-neutral-500: var(--color-neutral-500);
+	--color-neutral-600: var(--color-neutral-600);
+	--color-neutral-700: var(--color-neutral-700);
+	--color-neutral-800: var(--color-neutral-800);
+	--color-neutral-900: var(--color-neutral-900);
+	--color-neutral-950: var(--color-neutral-950);
+
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary-light: var(--primary-light);
+	--color-primary-dark: var(--primary-dark);
+	--color-primary-subtle: var(--primary-subtle);
+	--color-primary-muted: var(--primary-muted);
+
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-success-light: var(--success-light);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-warning-light: var(--warning-light);
+	--color-error: var(--error);
+	--color-error-foreground: var(--error-foreground);
+	--color-error-light: var(--error-light);
+
+	--color-border: var(--border);
+	--color-border-light: var(--border-light);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+
+	--color-surface: var(--surface);
+
+
+	--shadow-sm: var(--shadow-sm);
+	--shadow-md: var(--shadow-md);
+	--shadow-lg: var(--shadow-lg);
+	--shadow-xl: var(--shadow-xl);
+
+	--color-glass-bg: var(--glass-bg);
+	--color-glass-border: var(--glass-border);
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+
+	body {
+		@apply bg-background text-foreground antialiased;
+		font-feature-settings:
+			'rlig' 1,
+			'calt' 1;
+		background: linear-gradient(135deg, var(--background) 0%, var(--card) 100%);
+	}
+
+	html,
+	body {
+		overflow: hidden;
+		background: transparent;
+	}
+
+	#app {
+		/* border-radius: 12px; Only in Tauri */
+		overflow: hidden;
+		background: var(--background);
+		user-select: none;
+		-webkit-user-select: none;
+		backdrop-filter: blur(20px);
+		-webkit-backdrop-filter: blur(20px);
+	}
+
+	body.is-tauri #app {
+		border-radius: 12px;
+		box-shadow: var(--shadow-xl);
+	}
+
+	/* Allow text selection in editable/content areas */
+	input,
+	textarea,
+	[contenteditable="true"],
+	pre,
+	code,
+	.monaco-editor,
+	.selectable-text {
+		user-select: text;
+		-webkit-user-select: text;
+	}
+
+	html,
+	body,
+	#app {
+		height: 100vh;
+		width: 100vw;
+	}
+
+	/* Enhanced Typography */
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		@apply font-semibold tracking-tight;
+	}
+
+	::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: transparent;
+		border-radius: 4px;
+		transition: background 0.2s ease;
+	}
+
+	*:hover::-webkit-scrollbar-thumb {
+		background: var(--muted-foreground);
+	}
+
+	*:hover::-webkit-scrollbar-thumb:hover {
+		background: var(--accent-foreground);
+	}
+
+	.scrollable-container {
+		scrollbar-width: none;
+		scrollbar-color: transparent transparent;
+		scrollbar-gutter: stable;
+		transition: scrollbar-color 0.2s ease;
+	}
+
+	.scrollable-container:hover {
+		scrollbar-color: var(--muted-foreground) transparent;
+	}
+
+	/* CodeMirror Editor Styles - Full height gutter */
+	.cm-editor {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.cm-editor .cm-scroller {
+		flex: 1;
+		overflow: auto;
+	}
+
+	.cm-editor .cm-gutters {
+		height: 100%;
+		flex-shrink: 0;
+	}
+
+	.cm-editor .cm-gutter {
+		min-height: 100%;
+	}
+
+	.cm-editor .cm-lineNumbers {
+		min-height: 100%;
+	}
+
+	/* Make active line stand out more */
+	.cm-editor .cm-activeLineGutter {
+		position: relative;
+		z-index: 1;
+	}
+}
+
+@layer utilities {
+	.glass-card {
+		background: var(--glass-bg);
+		border: 1px solid var(--glass-border);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+		box-shadow: var(--shadow-lg);
+	}
+
+	.glass-subtle {
+		background: var(--glass-bg);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+	}
+
+	.modern-card {
+		background: var(--card);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		box-shadow: var(--shadow-sm);
+		transition: all 0.2s ease;
+	}
+
+	.modern-card:hover {
+		box-shadow: var(--shadow-md);
+		transform: translateY(-1px);
+	}
+
+	.animate-press {
+		@apply transition-transform duration-100 ease-out;
+	}
+
+	.animate-press:active {
+		@apply scale-[0.98];
+	}
+
+	.animate-fade-in {
+		animation: fadeIn 0.3s ease-out;
+	}
+
+	.animate-slide-up {
+		animation: slideUp 0.3s ease-out;
+	}
+
+	.hover-lift {
+		@apply transition-all duration-200 ease-out;
+	}
+
+	.hover-lift:hover {
+		@apply -translate-y-0.5 shadow-lg;
+	}
+
+	.focus-ring {
+		@apply focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none;
+	}
+
+	/* Modern button styles */
+	.btn-modern {
+		@apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+		box-shadow: var(--shadow-sm);
+	}
+
+	.btn-modern:hover {
+		box-shadow: var(--shadow-md);
+		transform: translateY(-1px);
+	}
+
+	.btn-modern:active {
+		transform: translateY(0);
+		box-shadow: var(--shadow-sm);
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes fadeOut {
+	from {
+		opacity: 1;
+	}
+
+	to {
+		opacity: 0;
+	}
+}
