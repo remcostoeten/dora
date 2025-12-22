@@ -14,6 +14,19 @@ export type DbClient = {
   duplicateTable: (req: DuplicateTableReq) => Promise<DuplicateTableRes>
   renameTable: (req: RenameTableReq) => Promise<RenameTableRes>
   dropTable: (table: string, schema?: string) => Promise<MutateRes>
+  getDatabaseSchema: () => Promise<SchemaList>
+}
+
+export type SchemaList = {
+  tables: TableSummary[]
+  schemas: string[]
+}
+
+export type TableSummary = {
+  name: string
+  schema: string
+  type: "table" | "view"
+  rowCount?: number
 }
 
 export type QueryResult = {

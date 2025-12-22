@@ -1,7 +1,19 @@
 import type { ConnService, ConnStatus } from "./types"
 
+export const DEMO_CONNECTION_ID = "demo-connection"
+
 const mockConns = new Map<string, ConnStatus>()
-let activeId: string | null = null
+let activeId: string | null = DEMO_CONNECTION_ID // Auto-set demo as active
+
+// Pre-populate with demo connection (already connected)
+mockConns.set(DEMO_CONNECTION_ID, {
+  id: DEMO_CONNECTION_ID,
+  name: "Demo Database",
+  type: "postgres",
+  connected: true, // Start connected on web
+  isDemo: true,
+  lastUsed: new Date(),
+})
 
 export const mockConn: ConnService = {
   test: async (config) => {
@@ -57,6 +69,10 @@ export const mockConn: ConnService = {
   getActive: () => {
     if (!activeId && typeof window !== "undefined") {
       activeId = localStorage.getItem("activeConnectionId")
+    }
+    // On web, always default to demo connection for instant UX
+    if (!activeId) {
+      activeId = DEMO_CONNECTION_ID
     }
     return activeId
   },

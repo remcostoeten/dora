@@ -9,8 +9,8 @@ const mockTablesResponse: TableListResponse = {
     { name: "products", schema: "public", rowCount: 156, type: "table" as const },
     { name: "categories", schema: "public", rowCount: 12, type: "table" as const },
     { name: "order_items", schema: "public", rowCount: 24891, type: "table" as const },
-    { name: "active_users", schema: "public", type: "view" as const },
-    { name: "order_summary", schema: "public", type: "view" as const },
+    { name: "active_users", schema: "public", rowCount: 0, type: "view" as const },
+    { name: "order_summary", schema: "public", rowCount: 0, type: "view" as const },
   ],
 }
 
@@ -53,13 +53,20 @@ export class ApiClient {
 
     return {
       queryId: `mock-${Date.now()}`,
+      statement: {
+        queryId: `mock-${Date.now()}`,
+        sql: `SELECT * FROM ${tableName}`,
+        executedAt: new Date().toISOString()
+      },
       columns,
       data: pageData.map(row => columns.map(col => row[col as keyof typeof row])),
       pagination: {
         page,
         pageSize,
         totalRows: data.length,
-        totalPages: Math.ceil(data.length / pageSize)
+        totalPages: Math.ceil(data.length / pageSize),
+        hasNext: page < Math.ceil(data.length / pageSize) - 1,
+        hasPrevious: page > 0
       }
     }
   }
@@ -69,9 +76,7 @@ export class ApiClient {
     return {
       queryId,
       data: result.data,
-      pageIndex,
-      pageSize,
-      hasMore: pageIndex < (result.pagination.totalPages - 1)
+      pagination: result.pagination
     }
   }
 

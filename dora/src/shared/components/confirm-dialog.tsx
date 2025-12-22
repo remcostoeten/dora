@@ -11,7 +11,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
+} from "@/components/ui/alert-dialog"
 import { AlertTriangle, Trash2, Info, CopyPlus } from "lucide-react"
 import { cn } from "@/shared/utils"
 

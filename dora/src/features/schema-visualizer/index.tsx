@@ -1,15 +1,17 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { GitBranch } from "lucide-react"
+import { GitBranch, Play } from "lucide-react"
 import { EmptyState } from "@/shared/components/empty-state"
 import { SchemaCanvas } from "./components/schema-canvas"
 import type { SchemaNode, SchemaRelation } from "./types"
 import type { ExampleSchema } from "./data/example-schemas"
 import { enhance } from "./utils/enhance-layout"
+import { useConn } from "@/store"
+import { db } from "@/services/database"
 
-// Mock data for development - will be replaced by Tauri API
-const MOCK_SCHEMA_NODES: SchemaNode[] = [
+// Fallback mock data for playground mode
+const PLAYGROUND_SCHEMA_NODES: SchemaNode[] = [
   {
     id: "users",
     name: "users",
@@ -118,7 +120,7 @@ const MOCK_SCHEMA_NODES: SchemaNode[] = [
   },
 ]
 
-const MOCK_RELATIONS: SchemaRelation[] = [
+const PLAYGROUND_RELATIONS: SchemaRelation[] = [
   {
     id: "r1",
     sourceTable: "users",
@@ -174,11 +176,20 @@ type SchemaVisualizerProps = {
   onOpenInDataView?: (tableName: string) => void
 }
 
-export function SchemaVisualizer({ isConnected = true, onOpenInDataView }: SchemaVisualizerProps) {
+export function SchemaVisualizer({ isConnected: propIsConnected, onOpenInDataView }: SchemaVisualizerProps) {
+  // Get connection state from store
+  const { activeId, tables, connections } = useConn()
+  const activeConnection = connections.find((c) => c.id === activeId)
+
+  // Use prop or derive from store
+  const isConnected = propIsConnected ?? !!activeId
+  const isPlayground = !isConnected
+
   const [nodes, setNodes] = useState<SchemaNode[]>([])
   const [relations, setRelations] = useState<SchemaRelation[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [currentSchemaId, setCurrentSchemaId] = useState<string | undefined>()
+  const [mode, setMode] = useState<"database" | "playground">("database")
 
   const applyLayout = useCallback((schemaNodes: SchemaNode[], schemaRelations: SchemaRelation[]) => {
     const enhanceInput = schemaNodes.map((node) => ({
@@ -203,19 +214,28 @@ export function SchemaVisualizer({ isConnected = true, onOpenInDataView }: Schem
     })
   }, [])
 
-  // Load schema data
+  // Load schema data based on mode
   useEffect(() => {
-    if (!isConnected) return
+    if (mode === "playground" || !isConnected) {
+      // Load playground/example schema
+      const enhancedNodes = applyLayout(PLAYGROUND_SCHEMA_NODES, PLAYGROUND_RELATIONS)
+      setNodes(enhancedNodes)
+      setRelations(PLAYGROUND_RELATIONS)
+      setCurrentSchemaId("playground")
+      return
+    }
 
     const loadSchema = async () => {
       setIsLoading(true)
       try {
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        console.log(`[Schema] Loading schema for: ${activeConnection?.name ?? "unknown"}`)
+        await new Promise((resolve) => setTimeout(resolve, 300))
 
-        const enhancedNodes = applyLayout(MOCK_SCHEMA_NODES, MOCK_RELATIONS)
+        // For demo, use playground data but could fetch from db.fetchSchema
+        const enhancedNodes = applyLayout(PLAYGROUND_SCHEMA_NODES, PLAYGROUND_RELATIONS)
         setNodes(enhancedNodes)
-        setRelations(MOCK_RELATIONS)
-        setCurrentSchemaId(undefined)
+        setRelations(PLAYGROUND_RELATIONS)
+        setCurrentSchemaId(activeId ?? undefined)
       } catch (err) {
         console.error("Failed to load schema:", err)
       } finally {
@@ -224,7 +244,7 @@ export function SchemaVisualizer({ isConnected = true, onOpenInDataView }: Schem
     }
 
     loadSchema()
-  }, [isConnected, applyLayout])
+  }, [isConnected, mode, activeId, activeConnection?.name, applyLayout])
 
   const handleNodesChange = useCallback((updatedNodes: SchemaNode[]) => {
     setNodes(updatedNodes)

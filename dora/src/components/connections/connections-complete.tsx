@@ -10,6 +10,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import type { ConnectionInfo } from '@/types/database'
+import { isTauri } from '@/shared/utils'
 
 type Props = {
   connections: ConnectionInfo[]
@@ -37,6 +38,10 @@ export function ConnectionsComplete({
   onUpdateConnectionColor,
 }: Props) {
   const selectedConnectionInfo = connections.find(conn => conn.id === selectedConnection)
+
+  // Web restrictions - disable create/edit/delete on web
+  const isWebDemo = !isTauri()
+  const canModify = !isWebDemo
 
   function getDatabaseDisplay(conn: ConnectionInfo): string {
     const dbType = conn.database_type
@@ -91,15 +96,16 @@ export function ConnectionsComplete({
       {/* Actions */}
       <div className="flex items-center gap-1.5 pb-3 mb-3 border-b border-border/50">
         <button
-          title="Add Connection"
-          className="h-8 w-8 rounded-md p-1.5 hover:bg-accent transition-colors flex items-center justify-center"
+          disabled={!canModify}
+          title={canModify ? "Add Connection" : "Download the app to add connections"}
+          className="h-8 w-8 rounded-md p-1.5 disabled:opacity-30 enabled:hover:bg-accent transition-colors flex items-center justify-center"
           onClick={onShowConnectionForm}
         >
           <Plus size={18} strokeWidth={1.5} />
         </button>
         <button
-          disabled={!selectedConnectionInfo}
-          title="Edit Connection"
+          disabled={!canModify || !selectedConnectionInfo}
+          title={canModify ? "Edit Connection" : "Download the app to edit connections"}
           className="h-8 w-8 rounded-md p-1.5 disabled:opacity-30 enabled:hover:bg-accent transition-colors flex items-center justify-center"
           onClick={() => selectedConnectionInfo && onEditConnection?.(selectedConnectionInfo)}
         >
@@ -219,11 +225,12 @@ export function ConnectionsComplete({
                 </ContextMenuItem>
 
                 <ContextMenuItem
-                  onClick={() => onEditConnection?.(connection)}
+                  disabled={!canModify}
+                  onClick={() => canModify && onEditConnection?.(connection)}
                   className="py-2"
                 >
                   <Edit className="h-4 w-4 mr-2" />
-                  Edit Connection
+                  {canModify ? "Edit Connection" : "Edit (Desktop only)"}
                 </ContextMenuItem>
 
                 {/* Favorite Toggle */}
@@ -282,15 +289,16 @@ export function ConnectionsComplete({
 
                 {/* Danger Zone */}
                 <ContextMenuItem
-                  className="py-2 text-error focus:text-error"
+                  disabled={!canModify}
+                  className="py-2 text-error focus:text-error disabled:opacity-50"
                   onClick={() => {
-                    if (confirm(`Are you sure you want to delete "${connection.name}"? This action cannot be undone.`)) {
+                    if (canModify && confirm(`Are you sure you want to delete "${connection.name}"? This action cannot be undone.`)) {
                       onDeleteConnection?.(connection.id)
                     }
                   }}
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Connection
+                  {canModify ? "Delete Connection" : "Delete (Desktop only)"}
                 </ContextMenuItem>
               </ContextMenuContent>
             </ContextMenu>

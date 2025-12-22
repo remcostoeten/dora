@@ -4,15 +4,15 @@ import type React from "react"
 
 import { useState } from "react"
 import { X, Plus, Table, Terminal, GripVertical, ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "@/shared/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
   ContextMenuSeparator,
-} from "@/shared/ui/context-menu"
+} from "@/components/ui/context-menu"
 import type { Tab, TabType } from "@/shared/types"
 import { cn } from "@/shared/utils"
 

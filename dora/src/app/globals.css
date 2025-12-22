@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-	--radius: 0.75rem;
+	--radius: 0;
 	--color-black: oklch(0.05 0.01 240);
 	--color-white: oklch(0.98 0.005 240);
 	--color-neutral-50: oklch(0.97 0.007 240);
@@ -95,114 +95,68 @@
 }
 
 .dark {
-<<<<<<< HEAD:src/app/globals.css
-	/* Modern dark theme based on your palette */
-	--background: #1A1A1A;
-	--foreground: #FFFFFF;
-	--card: #2A2A2A;
-	--card-foreground: #FFFFFF;
-	--popover: #333333;
-	--popover-foreground: #FFFFFF;
+	/* Pure black background for desktop app feel */
+	--background: oklch(0.08 0.005 240);
+	--foreground: oklch(0.92 0 0);
+	--card: oklch(0.10 0.005 240);
+	--card-foreground: oklch(0.92 0 0);
+	--popover: oklch(0.12 0.005 240);
+	--popover-foreground: oklch(0.92 0 0);
 
-	--primary: oklch(0.65 0.18 var(--primary-hue));
-	--primary-foreground: var(--color-neutral-950);
-	--primary-light: oklch(0.72 0.14 var(--primary-hue));
-	--primary-dark: oklch(0.55 0.22 var(--primary-hue));
-	--primary-subtle: oklch(0.65 0.18 var(--primary-hue) / 15%);
-	--primary-muted: oklch(0.65 0.18 var(--primary-hue) / 25%);
-
-	--secondary: #404040;
-	--secondary-foreground: #FFFFFF;
-=======
-	--background: oklch(0.02 0.01 240);
-	--foreground: oklch(0.98 0 0);
-	--card: oklch(0.04 0.01 240);
-	--card-foreground: oklch(0.98 0 0);
-	--popover: oklch(0.04 0.01 240);
-	--popover-foreground: oklch(0.98 0 0);
-
-	--primary: oklch(0.55 0.25 250);
+	/* Primary accent - subtle blue/purple */
+	--primary: oklch(0.55 0.20 250);
 	--primary-foreground: oklch(0.98 0 0);
-	--primary-light: oklch(0.6 0.2 250);
-	--primary-dark: oklch(0.45 0.25 250);
+	--primary-light: oklch(0.60 0.15 250);
+	--primary-dark: oklch(0.45 0.20 250);
 
-	--secondary: oklch(0.08 0.01 240);
-	--secondary-foreground: oklch(0.98 0 0);
->>>>>>> e771597 (Migrate fresh frontend!):dora/src/app/globals.css
+	--secondary: oklch(0.14 0.005 240);
+	--secondary-foreground: oklch(0.92 0 0);
 
-	--success: oklch(0.65 0.2 150);
+	/* Status colors */
+	--success: oklch(0.65 0.18 150);
 	--success-foreground: oklch(0.02 0.01 240);
-	--success-light: oklch(0.15 0.05 150);
+	--success-light: oklch(0.18 0.05 150);
 
-	--warning: oklch(0.75 0.15 70);
+	--warning: oklch(0.72 0.14 70);
 	--warning-foreground: oklch(0.02 0.01 240);
-	--warning-light: oklch(0.15 0.05 70);
+	--warning-light: oklch(0.18 0.05 70);
 
-	--error: oklch(0.6 0.25 25);
+	--error: oklch(0.58 0.22 25);
 	--error-foreground: oklch(0.98 0 0);
-	--error-light: oklch(0.15 0.05 25);
+	--error-light: oklch(0.18 0.05 25);
 
-<<<<<<< HEAD:src/app/globals.css
-	--muted: #333333;
-	--muted-foreground: #CCCCCC;
-	--accent: #404040;
-	--accent-foreground: #FFFFFF;
+	/* Muted and accent - subtle variations */
+	--muted: oklch(0.16 0.005 240);
+	--muted-foreground: oklch(0.55 0 0);
+	--accent: oklch(0.18 0.005 240);
+	--accent-foreground: oklch(0.92 0 0);
 
-	--border: #404040;
-	--border-light: #333333;
-	--input: #2A2A2A;
-	--ring: oklch(0.68 0.14 var(--primary-hue) / 40%);
+	/* Visible borders for dark mode */
+	--border: oklch(0.25 0.005 240);
+	--border-light: oklch(0.20 0.005 240);
+	--input: oklch(0.12 0.005 240);
+	--ring: oklch(0.55 0.20 250 / 0.5);
 
-	--surface: var(--card);
-
-	--sidebar: #1A1A1A;
-	--sidebar-foreground: #FFFFFF;
+	/* Sidebar uses same colors as main app */
+	--sidebar: var(--background);
+	--sidebar-foreground: var(--foreground);
 	--sidebar-primary: var(--primary);
 	--sidebar-primary-foreground: var(--primary-foreground);
-	--sidebar-accent: #404040;
-	--sidebar-accent-foreground: #FFFFFF;
-	--sidebar-border: #404040;
+	--sidebar-accent: var(--accent);
+	--sidebar-accent-foreground: var(--accent-foreground);
+	--sidebar-border: var(--border);
 	--sidebar-ring: var(--ring);
+	--titlebar-bg: oklch(0.10 0.005 240);
 
+	/* Subtle shadows */
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -1px rgb(0 0 0 / 0.3);
+	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.6), 0 4px 6px -2px rgb(0 0 0 / 0.3);
+	--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.7), 0 10px 10px -5px rgb(0 0 0 / 0.5);
 
-	/* Enhanced shadows for dark mode depth */
-	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
-	--shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
-	--shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.35), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
-	--shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.25);
-
-	/* Glass effects for dark mode */
-	--glass-bg: rgba(42, 42, 42, 0.95);
-	--glass-border: rgba(64, 64, 64, 0.3);
-=======
-	--muted: oklch(0.08 0.01 240 / 0.5);
-	--muted-foreground: oklch(0.6 0 0);
-	--accent: oklch(0.12 0.01 240 / 0.5);
-	--accent-foreground: oklch(0.98 0 0);
-
-	--border: oklch(0.12 0.01 240);
-	--border-light: oklch(0.08 0.01 240);
-	--input: oklch(0.06 0.01 240);
-	--ring: oklch(0.55 0.25 250 / 0.4);
-
-	--sidebar: oklch(0.03 0.01 240);
-	--sidebar-foreground: oklch(0.98 0 0);
-	--sidebar-primary: var(--primary);
-	--sidebar-primary-foreground: var(--primary-foreground);
-	--sidebar-accent: oklch(0.06 0.01 240);
-	--sidebar-accent-foreground: oklch(0.98 0 0);
-	--sidebar-border: oklch(0.12 0.01 240);
-	--sidebar-ring: var(--ring);
-	--titlebar-bg: oklch(0.04 0.01 240);
-
-	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
-	--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.6), 0 2px 4px -1px rgb(0 0 0 / 0.4);
-	--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.7), 0 4px 6px -2px rgb(0 0 0 / 0.4);
-	--shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.8), 0 10px 10px -5px rgb(0 0 0 / 0.6);
-
-	--glass-bg: oklch(0.04 0.01 240 / 0.8);
-	--glass-border: oklch(0.12 0.01 240 / 0.3);
->>>>>>> e771597 (Migrate fresh frontend!):dora/src/app/globals.css
+	/* Glass effects */
+	--glass-bg: oklch(0.10 0.005 240 / 0.85);
+	--glass-border: oklch(0.25 0.005 240 / 0.4);
 }
 
 @theme inline {

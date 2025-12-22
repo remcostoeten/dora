@@ -133,7 +133,7 @@ function HeaderComponent({
                   onMouseDown={(e) => onResizeStart(e, column.name)}
                   onDoubleClick={(e) => handleResizeDoubleClick(e, column.name)}
                   className={cn(
-                    "absolute right-0 top-0 h-full w-1 cursor-col-resize",
+                    "absolute right-0 top-0 h-full w-2 -mr-1 cursor-col-resize",
                     "hover:bg-primary/40 active:bg-primary/60",
                     resizingColumn === column.name && "bg-primary/60",
                   )}

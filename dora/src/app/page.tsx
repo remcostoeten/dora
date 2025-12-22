@@ -8,17 +8,19 @@ import { QueriesView } from "@/views/queries-view"
 import { SnippetsView } from "@/views/snippets-view"
 import { SchemaView } from "@/views/schema-view"
 import { SettingsView } from "@/views/settings-view"
+import { useConn } from "@/store"
 
 export default function Home() {
   const [activeRoute, setActiveRoute] = useState<NavRoute>("data")
-  const [isConnected, setIsConnected] = useState(true)
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
 
-  const [connectionInfo, setConnectionInfo] = useState({
-    name: "Local Database",
-    database: "my_app.db",
-    status: "connected" as const,
-  })
+  // Get connection state from store
+  const { connections, activeId } = useConn()
+  const activeConnection = connections.find((c) => c.id === activeId)
+
+  const connectionStatus = activeConnection
+    ? "connected" as const
+    : "disconnected" as const
 
   // Keyboard shortcuts for navigation
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function Home() {
       case "snippets":
         return <SnippetsView />
       case "schema":
-        return <SchemaView isConnected={isConnected} onOpenInDataView={handleOpenInDataView} />
+        return <SchemaView isConnected={!!activeConnection} onOpenInDataView={handleOpenInDataView} />
       case "settings":
         return <SettingsView />
       default:
@@ -82,9 +84,10 @@ export default function Home() {
   return (
     <main className="flex h-screen w-screen flex-col overflow-hidden">
       <TopBar
-        connectionName={connectionInfo.name}
-        databaseName={connectionInfo.database}
-        status={connectionInfo.status}
+        connectionName={activeConnection?.name}
+        databaseName={activeConnection?.database}
+        status={connectionStatus}
+        isDemo={activeConnection?.isDemo}
       />
 
       {/* Main content area */}

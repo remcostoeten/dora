@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { X, Copy, Check } from "lucide-react"
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/components/ui/button"
 import type { CellInfo, CellChange } from "@/shared/types"
 import { cn } from "@/shared/utils"
 

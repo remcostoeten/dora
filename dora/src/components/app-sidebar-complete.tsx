@@ -135,7 +135,7 @@ export function AppSidebarComplete({
     <div className="flex h-full flex-col border-r border-sidebar-border bg-card">
       <div className="flex justify-between border-b border-sidebar-border/50 p-6">
         <div className="flex items-center gap-4">
-          <Logo className="text-primary/90 drop-shadow-lg transition-all duration-300 hover:scale-105 hover:text-primary" size="md" />
+          <Logo className="text-primary/90 drop-shadow-lg transition-all duration-300 hover:scale-105 hover:text-primary" size={32} />
           <h1 className="text-xl font-bold text-foreground">Dora</h1>
         </div>
         <button
@@ -154,44 +154,40 @@ export function AppSidebarComplete({
             <div className="flex h-8 w-full flex-row justify-evenly gap-1 rounded-sm border-none bg-background p-0.5 text-sm font-semibold leading-[0.01em] shadow-inner dark:border dark:border-neutral-600/30">
               <button
                 onClick={() => onSidebarTabChange?.('connections')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'connections'
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'connections'
                     ? 'bg-white shadow dark:bg-muted'
                     : ''
-                }`}
+                  }`}
                 title="Connections"
               >
                 <Cable className="w-4 text-sidebar-foreground/70" />
               </button>
               <button
                 onClick={() => onSidebarTabChange?.('items')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'items'
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'items'
                     ? 'bg-white shadow dark:bg-muted'
                     : ''
-                }`}
+                  }`}
                 title="Items"
               >
                 <TableProperties className="w-4 text-sidebar-foreground/70" />
               </button>
               <button
                 onClick={() => onSidebarTabChange?.('scripts')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'scripts'
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'scripts'
                     ? 'bg-white shadow dark:bg-muted'
                     : ''
-                }`}
+                  }`}
                 title="Scripts"
               >
                 <FileJson className="w-4 text-sidebar-foreground/70" />
               </button>
               <button
                 onClick={() => onSidebarTabChange?.('history')}
-                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${
-                  sidebarTabState === 'history'
+                className={`flex w-20 items-center justify-center rounded-[7px] bg-transparent ${sidebarTabState === 'history'
                     ? 'bg-white shadow dark:bg-muted'
                     : ''
-                }`}
+                  }`}
                 title="History"
               >
                 <History className="w-4 text-sidebar-foreground/70" />

@@ -51,22 +51,22 @@ export function AppNav({ activeRoute, onRouteChange }: AppNavProps) {
       <nav
         role="navigation"
         aria-label="Main navigation"
-        className="flex h-full w-[52px] flex-col items-center border-r border-border bg-sidebar/90 backdrop-blur-xl py-4"
+        className="flex h-full w-14 flex-col items-center border-r border-border bg-background py-6"
       >
-        <div className="mb-6 flex h-8 w-8 items-center justify-center">
+        <div className="mb-8 flex h-9 w-9 items-center justify-center">
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/80 to-primary shadow-sm"
+            className="flex h-9 w-9 items-center justify-center bg-primary/20"
             aria-label="Application logo"
           >
-            <Database className="h-[18px] w-[18px] text-primary-foreground" strokeWidth={2} />
+            <Database className="h-5 w-5 text-foreground" strokeWidth={1.5} />
           </div>
         </div>
 
         {/* Separator */}
-        <div className="mb-2 h-px w-6 bg-border" aria-hidden="true" />
+        <div className="mb-4 h-px w-8 bg-border" aria-hidden="true" />
 
         {/* Main nav items */}
-        <div className="flex flex-1 flex-col items-center gap-2" role="list">
+        <div className="flex flex-1 flex-col items-center gap-4" role="list">
           {navItems.map((item) => (
             <NavButton
               key={item.id}
@@ -113,20 +113,19 @@ function NavButton({ item, isActive, onClick, onKeyDown }: NavButtonProps) {
           onClick={onClick}
           onKeyDown={onKeyDown}
           className={cn(
-            "group relative flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar",
+            "group relative flex h-10 w-10 items-center justify-center transition-all duration-150",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
             isActive
-              ? "bg-accent text-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+              ? "bg-accent/30 text-foreground"
+              : "text-muted-foreground hover:bg-accent/20 hover:text-foreground",
           )}
         >
           <Icon
             className={cn(
-              "h-[18px] w-[18px] transition-transform duration-200",
-              "group-hover:scale-110",
-              isActive && "scale-105",
+              "h-5 w-5 transition-transform duration-150",
+              "group-hover:scale-105",
             )}
-            strokeWidth={isActive ? 2 : 1.75}
+            strokeWidth={isActive ? 1.75 : 1.5}
           />
         </button>
       </TooltipTrigger>

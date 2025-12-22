@@ -1,7 +1,7 @@
 "use client"
 
 import { Play, Loader2, X, Maximize2, Minimize2, FlaskConical } from "lucide-react"
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/components/ui/button"
 import { useQuery } from "@/store"
 import { MonacoEditor } from "./monaco-editor"
 import { cn } from "@/lib/utils"

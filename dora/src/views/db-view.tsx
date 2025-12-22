@@ -46,6 +46,7 @@ export function DbView() {
     setFilters,
     loadTableData,
     loadSpecificPage,
+    lastQuery,
   } = useTableView()
 
   const { selectedRows, selectRow, toggleRow, selectRange, clearSelection } = useRowSelection()
@@ -67,14 +68,17 @@ export function DbView() {
 
   const activeTab = tabs.find((t) => t.id === activeId)
   const tableSchema = selectedTable ? tableSchemas[selectedTable] || null : null
+  const activeConnection = connections.find((c) => c.id === activeConnId)
 
+  const hasNoConnection = !activeConnId
   const hasNoTabs = tabs.length === 0
 
   useEffect(() => {
-    if (activeTab && activeTab.type === "table") {
+    // Only load data if we have an active connection and a table tab
+    if (activeConnId && activeTab && activeTab.type === "table") {
       loadTableData(activeTab.name)
     }
-  }, [activeTab])
+  }, [activeTab, activeConnId])
 
   const handleTableOpen = useCallback(
     (tableName: string) => {
@@ -205,6 +209,7 @@ export function DbView() {
       rowHeight: "normal" as const,
       totalRows,
       isLoading: isTableLoading,
+      lastQuery,
     }),
     [
       columns,
@@ -275,11 +280,17 @@ export function DbView() {
           )}
           <div className="flex flex-1 overflow-hidden">
             <div className="flex flex-1 flex-col overflow-hidden">
-              {hasNoTabs ? (
+              {hasNoConnection ? (
+                <EmptyState
+                  icon={Database}
+                  title="Not Connected"
+                  desc={`Select a connection from the sidebar to get started.${activeConnection?.isDemo ? " You are viewing demo data." : ""}`}
+                />
+              ) : hasNoTabs ? (
                 <EmptyState
                   icon={Database}
                   title="No tabs open"
-                  desc="Open a table from the sidebar to browse data, or create a new query to get started."
+                  desc={`Connected to ${activeConnection?.name ?? "database"}. Open a table from the sidebar to browse data.`}
                   act={{
                     label: "New Query",
                     onPress: () => handleAddTab("query"),

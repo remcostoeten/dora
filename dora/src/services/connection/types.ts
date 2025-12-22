@@ -17,6 +17,7 @@ export type ConnStatus = {
   name: string
   type: ConnType
   connected: boolean
+  isDemo?: boolean
   lastUsed?: Date
   favorite?: boolean
   color?: string

@@ -5,7 +5,9 @@ import { useCells } from "./cells"
 import { useQuery } from "./query"
 import { useTableView } from "./table-view"
 import { useSchema } from "./schema"
-import { apiClient } from "@/lib/api/client"
+import { conn } from "@/services/connection"
+import { db } from "@/services/database"
+import type { ConnConfig } from "@/services/connection/types"
 
 type ConnState = {
   connections: DbConnection[]
@@ -15,26 +17,17 @@ type ConnState = {
   tableSchemas: Record<string, TableSchema>
   isLoading: boolean
   error: string | null
-  setActive: (id: string) => void
+  loadConnections: () => Promise<void>
+  setActive: (id: string) => Promise<void>
   setTables: (tables: TableInfo[]) => void
   selectTable: (name: string | null) => void
-  addConnection: (conn: Omit<DbConnection, "id" | "status">) => void
-  editConnection: (id: string, conn: Partial<DbConnection>) => void
-  deleteConnection: (id: string) => void
+  addConnection: (config: ConnConfig) => Promise<void>
+  editConnection: (id: string, updates: Partial<DbConnection>) => void
+  deleteConnection: (id: string) => Promise<void>
   refreshTables: () => Promise<void>
   updateTableRowCount: (tableName: string, rowCount: number) => void
+  disconnect: () => void
 }
-
-const mockConnections: DbConnection[] = [
-  {
-    id: "1",
-    name: "Mock Database",
-    type: "postgresql",
-    host: "localhost",
-    database: "mock_api_db",
-    status: "connected",
-  },
-]
 
 const staticTableSchemas: Record<string, TableSchema> = {
   users: {
@@ -136,36 +129,56 @@ const staticTableSchemas: Record<string, TableSchema> = {
 }
 
 export const useConn = create<ConnState>((set, get) => ({
-  connections: mockConnections,
-  activeId: "1",
+  connections: [],
+  activeId: null,
   tables: [],
   selectedTable: null,
-  tableSchemas: staticTableSchemas,
+  tableSchemas: {},
   isLoading: false,
   error: null,
 
-  setActive: async (id) => {
-    console.log("[v0] Switching connection to:", id)
+  loadConnections: async () => {
+    set({ isLoading: true, error: null })
+    try {
+      const conns = await conn.list()
+      const mappedConns: DbConnection[] = conns.map((c) => ({
+        id: c.id,
+        name: c.name,
+        type: c.type === "postgres" ? "postgresql" : "sqlite",
+        database: c.name,
+        status: c.connected ? "connected" : "disconnected",
+        isDemo: c.isDemo ?? false,
+      }))
+      set({ connections: mappedConns, isLoading: false })
 
-    // Reset all dependent stores
-    useTabs.getState().closeAll()
-    useCells.getState().discardChanges()
-    useCells.getState().setSelected(null)
-    useQuery.getState().setQuery("")
-    useQuery.getState().setVisible(false)
-    useTableView.getState().setSort(null)
-    useTableView.getState().setFilters([])
-    useSchema.setState({ schemas: {} })
+      // Auto-set active if we have one in service
+      const activeId = conn.getActive()
+      if (activeId && mappedConns.find((c) => c.id === activeId)) {
+        get().setActive(activeId)
+      }
+    } catch (error) {
+      set({ error: String(error), isLoading: false })
+    }
+  },
+
+  setActive: async (id) => {
+    const { connections } = get()
+    const target = connections.find((c) => c.id === id)
+    if (!target) return
 
     set({ activeId: id, isLoading: true, error: null })
 
     try {
-      const response = await apiClient.getTables()
+      // If not already connected in backend, we might need a fuller config here
+      // But for now let's assume the backend handles the saved connection state
+      conn.setActive(id)
+
+      const response = await db.getDatabaseSchema()
       const tables: TableInfo[] = response.tables.map((t) => ({
         name: t.name,
         schema: t.schema,
         rowCount: t.rowCount,
-        type: t.type,
+        type: t.type as any,
       }))
 
       set({
@@ -174,9 +187,16 @@ export const useConn = create<ConnState>((set, get) => ({
         isLoading: false,
       })
 
-      console.log("[v0] Connection switched. Tables loaded:", tables.length)
+      // Reset dependent stores
+      useTabs.getState().closeAll()
+      useCells.getState().discardChanges()
+      useCells.getState().setSelected(null)
+      useQuery.getState().setQuery("")
+      useQuery.getState().setVisible(false)
+      useTableView.getState().setSort(null)
+      useTableView.getState().setFilters([])
+      useSchema.setState({ schemas: {} })
     } catch (error) {
-      console.error("[v0] Failed to load tables:", error)
       set({
         error: error instanceof Error ? error.message : "Failed to load tables",
         isLoading: false,
@@ -190,42 +210,36 @@ export const useConn = create<ConnState>((set, get) => ({
 
   selectTable: (name) => set({ selectedTable: name }),
 
-  addConnection: (conn) => {
-    const newConn: DbConnection = {
-      ...conn,
-      id: Date.now().toString(),
-      status: "disconnected",
+  addConnection: async (config) => {
+    set({ isLoading: true, error: null })
+    try {
+      await conn.connect(config)
+      await get().loadConnections()
+    } catch (error) {
+      set({ error: String(error), isLoading: false })
     }
-    set((state) => ({
-      connections: [...state.connections, newConn],
-    }))
-    console.log("[v0] Added connection:", newConn.name)
   },
 
   editConnection: (id, updates) => {
+    // This store doesn't currently support persistence of edits back to Tauri
+    // unless we add an update_connection command
     set((state) => ({
       connections: state.connections.map((conn) => (conn.id === id ? { ...conn, ...updates } : conn)),
     }))
-    console.log("[v0] Edited connection:", id)
   },
 
-  deleteConnection: (id) => {
-    const { connections, activeId } = get()
-    const newConnections = connections.filter((c) => c.id !== id)
+  deleteConnection: async (id) => {
+    const { activeId } = get()
+    try {
+      await conn.remove(id)
+      await get().loadConnections()
 
-    if (newConnections.length === 0) {
-      console.warn("[v0] Cannot delete last connection")
-      return
+      if (activeId === id) {
+        set({ activeId: null, tables: [], selectedTable: null })
+      }
+    } catch (error) {
+      set({ error: String(error) })
     }
-
-    set({ connections: newConnections })
-
-    // If deleting active connection, switch to first remaining
-    if (activeId === id) {
-      get().setActive(newConnections[0].id)
-    }
-
-    console.log("[v0] Deleted connection:", id)
   },
 
   refreshTables: async () => {
@@ -235,18 +249,16 @@ export const useConn = create<ConnState>((set, get) => ({
     set({ isLoading: true, error: null })
 
     try {
-      const response = await apiClient.getTables()
+      const response = await db.getDatabaseSchema()
       const tables: TableInfo[] = response.tables.map((t) => ({
         name: t.name,
         schema: t.schema,
         rowCount: t.rowCount,
-        type: t.type,
+        type: t.type as any,
       }))
 
       set({ tables, isLoading: false })
-      console.log("[v0] Refreshed tables for connection:", activeId)
     } catch (error) {
-      console.error("[v0] Failed to refresh tables:", error)
       set({
         error: error instanceof Error ? error.message : "Failed to refresh tables",
         isLoading: false,
@@ -259,8 +271,39 @@ export const useConn = create<ConnState>((set, get) => ({
       tables: state.tables.map((table) => (table.name === tableName ? { ...table, rowCount } : table)),
     }))
   },
+
+  disconnect: () => {
+    const { activeId } = get()
+    if (activeId) {
+      conn.disconnect(activeId)
+    }
+
+    // Clear active connection state
+    set({
+      activeId: null,
+      tables: [],
+      selectedTable: null,
+    })
+
+    // Clear localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("activeConnectionId")
+    }
+
+    // Reset dependent stores
+    useTabs.getState().closeAll()
+    useCells.getState().discardChanges()
+    useCells.getState().setSelected(null)
+    useQuery.getState().setQuery("")
+    useQuery.getState().setVisible(false)
+    useTableView.getState().setSort(null)
+    useTableView.getState().setFilters([])
+    useTableView.getState().setData([])
+    useTableView.getState().setColumns([])
+    useSchema.setState({ schemas: {} })
+  },
 }))
 
 if (typeof window !== "undefined") {
-  useConn.getState().setActive("1")
+  useConn.getState().loadConnections()
 }

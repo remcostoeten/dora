@@ -11,7 +11,7 @@ import {
   ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuTrigger,
-} from "@/shared/ui/context-menu"
+} from "@/components/ui/context-menu"
 import { Copy, ClipboardPaste, Trash2, RotateCcw, Pencil } from "lucide-react"
 
 type Props = {

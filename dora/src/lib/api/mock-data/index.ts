@@ -1,5 +1,6 @@
 import { generateUsers } from "./users"
 import { generateOrders } from "./orders"
+import { generateProducts } from "./products"
 import { generateProductCategories } from "./product-category"
 import { generateOrderItems } from "./order-items"
 import { generateActiveUsers } from "./active-users"
@@ -10,6 +11,7 @@ import { generateEmptyTable } from "./empty-table"
 export const MOCK_DATA = {
   users: generateUsers(),
   orders: generateOrders(),
+  products: generateProducts(),
   product_category: generateProductCategories(),
   order_items: generateOrderItems(),
   active_users: generateActiveUsers(),

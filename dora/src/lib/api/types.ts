@@ -141,4 +141,14 @@ export interface OrderSummaryRecord {
   totalRevenue: number
 }
 
+export interface ProductRecord {
+  id: number
+  name: string
+  description: string | null
+  price: number
+  category: string
+  inStock: boolean
+}
+
 export type EmptyTableRecord = {}
+

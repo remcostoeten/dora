@@ -6,6 +6,7 @@ export type DbConnection = BaseEntity & {
   host?: string
   database: string
   status: DbStatus
+  isDemo?: boolean
 }
 
 export type TableInfo = {

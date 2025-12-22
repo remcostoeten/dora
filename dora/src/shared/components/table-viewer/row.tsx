@@ -8,7 +8,7 @@ import {
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/shared/ui/context-menu"
+} from "@/components/ui/context-menu"
 import { cn } from "@/shared/utils"
 import { Cell } from "./cell"
 import { ConfirmDialog } from "@/shared/components/confirm-dialog"

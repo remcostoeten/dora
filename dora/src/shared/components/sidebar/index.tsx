@@ -46,7 +46,7 @@ export function Sidebar({
 
   return (
     <div
-      className={cn("relative flex h-full flex-col border-r border-sidebar-border bg-sidebar", className)}
+      className={cn("relative flex h-full flex-col border-r border-border bg-background", className)}
       style={{ width: size }}
     >
       <ConnStatus

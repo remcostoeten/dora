@@ -14,7 +14,7 @@ import {
   Edit3,
   CopyPlus,
 } from "lucide-react"
-import { Input } from "@/shared/ui/input"
+import { Input } from "@/components/ui/input"
 import {
   ContextMenu,
   ContextMenuContent,
@@ -25,7 +25,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
   ContextMenuShortcut,
-} from "@/shared/ui/context-menu"
+} from "@/components/ui/context-menu"
 import { ConfirmDialog } from "@/shared/components/confirm-dialog"
 import { cn } from "@/shared/utils"
 import type { TableInfo } from "@/shared/types"
@@ -125,20 +125,20 @@ export function TableList({
   return (
     <>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex items-center gap-1.5 border-b border-sidebar-border px-3 py-2">
+        <div className="flex items-center gap-1.5 border-b border-border px-3 py-2">
           <div className="relative flex-1">
             <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter tables..."
-              className="h-7 bg-sidebar-accent border-0 pl-7 text-xs placeholder:text-muted-foreground"
+              className="h-7 bg-accent/20 border-0 pl-7 text-xs placeholder:text-muted-foreground"
             />
           </div>
           {onRefresh && (
             <button
               onClick={onRefresh}
-              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              className="flex h-7 w-7 items-center justify-center text-muted-foreground hover:bg-accent/20 hover:text-foreground"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
@@ -149,7 +149,7 @@ export function TableList({
             <div key={schema}>
               <button
                 onClick={() => toggleSchema(schema)}
-                className="flex w-full items-center gap-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-sidebar-foreground"
+                className="flex w-full items-center gap-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground"
               >
                 <ChevronRight className={cn("h-3 w-3 transition-transform", expanded.has(schema) && "rotate-90")} />
                 {schema}
@@ -163,8 +163,8 @@ export function TableList({
                         <button
                           onClick={() => handleTableClick(table.name)}
                           className={cn(
-                            "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-sidebar-accent",
-                            selectedTable === table.name && "bg-sidebar-accent",
+                            "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent/20",
+                            selectedTable === table.name && "bg-accent/20",
                           )}
                         >
                           {table.type === "view" ? (
@@ -172,7 +172,7 @@ export function TableList({
                           ) : (
                             <Table2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                           )}
-                          <span className="flex-1 truncate text-sidebar-foreground">{table.name}</span>
+                          <span className="flex-1 truncate text-foreground">{table.name}</span>
                           {table.rowCount !== undefined && (
                             <span className="text-[10px] tabular-nums text-muted-foreground">
                               {table.rowCount.toLocaleString()}

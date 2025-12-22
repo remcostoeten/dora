@@ -8,6 +8,8 @@ export const tauriClient: DbClient = {
     const connId = getActiveConn()
     if (!connId) throw new Error("No active connection")
 
+    const start = performance.now() // Start timing
+
     const [queryId] = await invoke<QueryId[]>("start_query", {
       connectionId: connId,
       query: sql,
@@ -36,11 +38,13 @@ export const tauriClient: DbClient = {
       return obj
     })
 
+    const end = performance.now() // End timing
+
     return {
       columns: colMeta,
       rows,
-      total: rows.length,
-      time: 0,
+      total: rows.length, // Note: This might need adjustment for true server-side total count if pagination is fully offloaded
+      time: end - start,
     }
   },
 
@@ -155,6 +159,10 @@ export const tauriClient: DbClient = {
   },
 
   validateCell: async (req) => {
+    // TODO: Implement deeper server-side validation using column types
+    if (req.value === undefined) {
+      return { valid: false, message: "Value cannot be undefined" }
+    }
     return { valid: true }
   },
 
@@ -229,7 +237,7 @@ export const tauriClient: DbClient = {
     const result = await invoke<StatementInfo>("fetch_query", { queryId })
 
     if (result.status === "Error") {
-      return { success: false, data: "", rowCount: 0, error: result.error }
+      return { success: false, data: "", rowCount: 0, error: result.error || undefined }
     }
 
     const columns = await invoke<string[] | null>("get_columns", { queryId })
@@ -314,10 +322,30 @@ export const tauriClient: DbClient = {
     const connId = getActiveConn()
     if (!connId) throw new Error("No active connection")
 
-    const sql = `DROP TABLE IF EXISTS "${schema}"."${table}"`
-    await invoke<QueryId[]>("start_query", { connectionId: connId, query: sql })
+    const sql = `DROP TABLE "${schema}"."${table}"`
+    await invoke<QueryId[]>("start_query", {
+      connectionId: connId,
+      query: sql,
+    })
 
     return { success: true }
+  },
+  getDatabaseSchema: async () => {
+    const connId = getActiveConn()
+    if (!connId) throw new Error("No active connection")
+
+    const dbSchema = await invoke<DbSchema>("get_database_schema", {
+      connectionId: connId,
+    })
+
+    return {
+      tables: dbSchema.tables.map((t) => ({
+        name: t.name,
+        schema: t.schema,
+        type: "table", // Backend could be improved to return type
+      })),
+      schemas: dbSchema.schemas,
+    }
   },
 }
 

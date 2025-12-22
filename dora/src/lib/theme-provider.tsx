@@ -27,7 +27,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 2. Fetch from DB (source of truth)
-    import('@/core/tauri').then(({ getSetting }) => {
+    import('@/lib/tauri-commands').then(({ getSetting }) => {
       getSetting<Theme>('theme')
         .then(storedDb => {
           if (storedDb && (storedDb === 'light' || storedDb === 'dark')) {
@@ -52,7 +52,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('theme', newTheme)
 
     // Persist to DB asynchronously
-    import('@/core/tauri').then(({ setSetting }) => {
+    import('@/lib/tauri-commands').then(({ setSetting }) => {
       setSetting('theme', newTheme).catch(console.error)
     })
   }

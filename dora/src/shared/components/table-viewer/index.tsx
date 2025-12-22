@@ -32,6 +32,7 @@ type Props = {
   rowHeight?: RowHeight
   totalRows?: number
   isLoading?: boolean
+  lastQuery?: { sql: string; time: number } | null
 }
 
 const MemoizedHeader = memo(Header)
@@ -60,6 +61,7 @@ export function TableViewer({
   rowHeight = "normal",
   totalRows,
   isLoading = false,
+  lastQuery,
 }: Props) {
   const [editingCell, setEditingCell] = useState<{ row: number; col: string } | null>(null)
   const [focusedCell, setFocusedCell] = useState<{ row: number; colIndex: number }>({ row: 0, colIndex: 0 })
@@ -143,10 +145,11 @@ export function TableViewer({
   }, [sortedData, filters])
 
   const paginatedData = useMemo(() => {
-    if (!enablePagination || !pagination) return filteredData
+    // If onPaginationChange is provided, we assume the data is already paginated by the caller/store
+    if (!enablePagination || !pagination || onPaginationChange) return filteredData
     const start = pagination.page * pagination.pageSize
     return filteredData.slice(start, start + pagination.pageSize)
-  }, [filteredData, enablePagination, pagination])
+  }, [filteredData, enablePagination, pagination, onPaginationChange])
 
   const getCurrentValue = useCallback(
     (rowIndex: number, columnName: string, originalValue: unknown): string => {
@@ -370,6 +373,8 @@ export function TableViewer({
         pagination={pagination}
         onApplyChanges={onApplyChanges}
         onDiscardChanges={onDiscardChanges}
+        lastQuerySql={lastQuery?.sql}
+        lastQueryTime={lastQuery?.time}
       />
     </div>
   )

@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { Filter, X, Plus } from "lucide-react"
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import type { TableColumn, FilterConfig } from "@/shared/types"
 
 type Props = {

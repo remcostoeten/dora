@@ -1,7 +1,6 @@
 import { create } from "zustand"
 import type { SortConfig, FilterConfig, PageConfig, TableColumn } from "@/shared/types"
-import { apiClient } from "@/lib/api/client"
-import type { QueryId } from "@/lib/api/types"
+import { db } from "@/services/database"
 
 type TableState = {
   sort: SortConfig | null
@@ -9,8 +8,8 @@ type TableState = {
   page: PageConfig
   columns: TableColumn[]
   data: Record<string, unknown>[]
-  queryId: QueryId | null
   totalRows: number
+  lastQuery: { sql: string; time: number } | null
   isLoading: boolean
   error: string | null
   setSort: (config: SortConfig | null) => void
@@ -30,8 +29,8 @@ export const useTableView = create<TableState>((set, get) => ({
   page: { page: 0, pageSize: 100, total: 0 },
   columns: [],
   data: [],
-  queryId: null,
   totalRows: 0,
+  lastQuery: null,
   isLoading: false,
   error: null,
 
@@ -44,36 +43,56 @@ export const useTableView = create<TableState>((set, get) => ({
 
   loadTableData: async (tableName: string, page = 0, pageSize = 100) => {
     set({ isLoading: true, error: null })
+    const { loadTableData, filters } = get()
 
     try {
-      const response = await apiClient.getTableData(tableName, page, pageSize)
+      const offset = page * pageSize
+      let queryFn = `SELECT * FROM "${tableName}"`
 
-      // Convert array format to record format
-      const data: Record<string, unknown>[] = response.data.map((row) => {
-        const record: Record<string, unknown> = {}
-        response.columns.forEach((col, idx) => {
-          record[col] = row[idx]
+      const whereClauses = filters
+        .map((filter) => {
+          const column = `"${filter.column}"`
+          const value = typeof filter.value === "string" ? `'${filter.value}'` : filter.value
+
+          switch (filter.operator) {
+            case "equals": return `${column} = ${value}`
+            case "contains": return `${column} ILIKE '%${filter.value}%'`
+            case "starts_with": return `${column} ILIKE '${filter.value}%'`
+            case "ends_with": return `${column} ILIKE '%${filter.value}'`
+            case "is_null": return `${column} IS NULL`
+            case "is_not_null": return `${column} IS NOT NULL`
+            default: return null
+          }
         })
-        return record
-      })
+        .filter(Boolean)
 
-      // Convert columns to TableColumn format
-      const columns: TableColumn[] = response.columns.map((col) => ({
-        name: col,
-        type: "varchar", // Default type, could be enhanced
-        isPrimary: col === "id",
-        isNullable: true,
-      }))
+      if (whereClauses.length > 0) {
+        queryFn += ` WHERE ${whereClauses.join(" AND ")}`
+      }
+
+      const sql = `${queryFn} LIMIT ${pageSize} OFFSET ${offset}`
+      const response = await db.query(sql)
+
+      // Use the total from the response if available, or fall back to 0
+      const total = response.total
 
       set({
-        data,
-        columns,
-        queryId: response.queryId,
-        totalRows: response.pagination.totalRows,
+        data: response.rows,
+        columns: response.columns.map((col) => ({
+          name: col.name,
+          type: col.type,
+          isPrimary: col.isPrimary,
+          isNullable: col.isNullable,
+        })),
+        totalRows: total,
+        lastQuery: {
+          sql,
+          time: response.time,
+        },
         page: {
-          page: response.pagination.page,
-          pageSize: response.pagination.pageSize,
-          total: response.pagination.totalRows,
+          page,
+          pageSize,
+          total,
         },
         isLoading: false,
       })
@@ -88,102 +107,17 @@ export const useTableView = create<TableState>((set, get) => ({
 
   loadSpecificPage: async (tableName: string, pageNum: number) => {
     const { page: currentPage } = get()
-    set({ isLoading: true, error: null })
-
-    try {
-      await get().loadTableData(tableName, pageNum, currentPage.pageSize)
-    } catch (error) {
-      console.error("Failed to load page:", error)
-      set({
-        error: error instanceof Error ? error.message : "Failed to load page",
-        isLoading: false,
-      })
-    }
+    await get().loadTableData(tableName, pageNum, currentPage.pageSize)
   },
 
   loadNextPage: async (tableName: string) => {
-    const { queryId, page: currentPage } = get()
-    if (!queryId) {
-      console.error("No queryId available for pagination")
-      return
-    }
-
-    const nextPage = currentPage.page + 1
-    set({ isLoading: true, error: null })
-
-    try {
-      const response = await apiClient.getPage(tableName, queryId, nextPage, currentPage.pageSize)
-
-      // Convert array format to record format
-      const data: Record<string, unknown>[] = response.data.map((row) => {
-        const record: Record<string, unknown> = {}
-        const { columns } = get()
-        columns.forEach((col, idx) => {
-          record[col.name] = row[idx]
-        })
-        return record
-      })
-
-      set({
-        data,
-        totalRows: response.pagination.totalRows,
-        page: {
-          page: response.pagination.page,
-          pageSize: response.pagination.pageSize,
-          total: response.pagination.totalRows,
-        },
-        isLoading: false,
-      })
-    } catch (error) {
-      console.error("Failed to load next page:", error)
-      set({
-        error: error instanceof Error ? error.message : "Failed to load next page",
-        isLoading: false,
-      })
-    }
+    const { page: currentPage } = get()
+    await get().loadTableData(tableName, currentPage.page + 1, currentPage.pageSize)
   },
 
   loadPrevPage: async (tableName: string) => {
-    const { queryId, page: currentPage } = get()
-    if (!queryId) {
-      console.error("No queryId available for pagination")
-      return
-    }
-
-    const prevPage = currentPage.page - 1
-    if (prevPage < 0) return
-
-    set({ isLoading: true, error: null })
-
-    try {
-      const response = await apiClient.getPage(tableName, queryId, prevPage, currentPage.pageSize)
-
-      // Convert array format to record format
-      const data: Record<string, unknown>[] = response.data.map((row) => {
-        const record: Record<string, unknown> = {}
-        const { columns } = get()
-        columns.forEach((col, idx) => {
-          record[col.name] = row[idx]
-        })
-        return record
-      })
-
-      set({
-        data,
-        totalRows: response.pagination.totalRows,
-        page: {
-          page: response.pagination.page,
-          pageSize: response.pagination.pageSize,
-          total: response.pagination.totalRows,
-        },
-        isLoading: false,
-      })
-    } catch (error) {
-      console.error("Failed to load previous page:", error)
-      set({
-        error: error instanceof Error ? error.message : "Failed to load previous page",
-        isLoading: false,
-      })
-    }
+    const { page: currentPage } = get()
+    if (currentPage.page <= 0) return
+    await get().loadTableData(tableName, currentPage.page - 1, currentPage.pageSize)
   },
 }))

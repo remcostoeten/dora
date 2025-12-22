@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/shared/components/confirm-dialog"
 import type { DbConnection, DbType } from "@/shared/types"
 
@@ -34,24 +34,23 @@ export function ConnStatus({ connections, activeId, onSetActive, onAddConn, onEd
 
   return (
     <>
-      <div className="border-b border-sidebar-border px-3 py-2.5">
+      <div className="border-b border-border px-3 py-2.5">
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-sidebar-accent focus:outline-none">
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-sidebar-accent text-[10px] font-medium text-sidebar-foreground">
+          <DropdownMenuTrigger className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-accent/20 focus:outline-none">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-accent/20 text-[10px] font-medium text-foreground">
               {active ? dbIcons[active.type] : <Database className="h-3.5 w-3.5" />}
             </div>
             <div className="flex-1 truncate">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-sidebar-foreground">{active?.name || "No connection"}</span>
+                <span className="font-medium text-foreground">{active?.name || "No connection"}</span>
                 {active && (
                   <Circle
-                    className={`h-1.5 w-1.5 ${
-                      active.status === "connected"
+                    className={`h-1.5 w-1.5 ${active.status === "connected"
                         ? "fill-emerald-500 text-emerald-500"
                         : active.status === "connecting"
                           ? "fill-amber-500 text-amber-500"
                           : "fill-muted-foreground text-muted-foreground"
-                    }`}
+                      }`}
                   />
                 )}
               </div>
