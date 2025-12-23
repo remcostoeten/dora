@@ -27,6 +27,10 @@ type ConnState = {
   refreshTables: () => Promise<void>
   updateTableRowCount: (tableName: string, rowCount: number) => void
   disconnect: () => void
+  dropTable: (tableName: string, schema?: string) => Promise<void>
+  renameTable: (oldName: string, newName: string, schema?: string) => Promise<void>
+  duplicateTable: (source: string, newName: string, includeData: boolean, schema?: string) => Promise<void>
+  exportTable: (tableName: string, format: "sql" | "json") => Promise<void>
 }
 
 const staticTableSchemas: Record<string, TableSchema> = {
@@ -301,6 +305,45 @@ export const useConn = create<ConnState>((set, get) => ({
     useTableView.getState().setData([])
     useTableView.getState().setColumns([])
     useSchema.setState({ schemas: {} })
+  },
+
+  dropTable: async (tableName: string, schema?: string) => {
+    try {
+      await db.dropTable(tableName, schema)
+      await get().refreshTables()
+    } catch (error) {
+      console.error("Failed to drop table:", error)
+      throw error
+    }
+  },
+
+  renameTable: async (oldName: string, newName: string, schema?: string) => {
+    try {
+      await db.renameTable({ table: oldName, newName, schema })
+      await get().refreshTables()
+    } catch (error) {
+      console.error("Failed to rename table:", error)
+      throw error
+    }
+  },
+
+  duplicateTable: async (source: string, newName: string, includeData: boolean, schema?: string) => {
+    try {
+      await db.duplicateTable({ sourceTable: source, newTableName: newName, includeData, schema })
+      await get().refreshTables()
+    } catch (error) {
+      console.error("Failed to duplicate table:", error)
+      throw error
+    }
+  },
+
+  exportTable: async (tableName: string, format: "sql" | "json") => {
+    try {
+      await db.exportTable({ table: tableName, format })
+    } catch (error) {
+      console.error("Failed to export table:", error)
+      throw error
+    }
   },
 }))
 

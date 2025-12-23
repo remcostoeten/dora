@@ -21,6 +21,10 @@ type Props = {
   onRefresh?: () => void
   tableSchema: TableSchema | null
   className?: string
+  onDeleteTable?: (name: string) => void
+  onDuplicateTable?: (name: string, newName: string, includeData: boolean) => void
+  onRenameTable?: (name: string, newName: string) => void
+  onExportTable?: (name: string, format: "sql" | "json") => void
 }
 
 export function Sidebar({
@@ -37,6 +41,10 @@ export function Sidebar({
   onRefresh,
   tableSchema,
   className,
+  onDeleteTable,
+  onDuplicateTable,
+  onRenameTable,
+  onExportTable,
 }: Props) {
   const { size, isDragging, handleStart } = useResize({
     min: 180,
@@ -63,6 +71,10 @@ export function Sidebar({
         onSelectTable={onSelectTable}
         onTableOpen={onTableOpen}
         onRefresh={onRefresh}
+        onDeleteTable={onDeleteTable}
+        onDuplicateTable={onDuplicateTable}
+        onRenameTable={onRenameTable}
+        onExportTable={onExportTable}
       />
       <TableSchemaView schema={tableSchema} />
 

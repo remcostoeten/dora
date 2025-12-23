@@ -32,6 +32,10 @@ export function DbView() {
     editConnection,
     deleteConnection,
     refreshTables,
+    dropTable,
+    renameTable,
+    duplicateTable,
+    exportTable,
   } = useConn()
   const { visible, maximized, setVisible } = useQuery()
   const {
@@ -47,6 +51,7 @@ export function DbView() {
     loadTableData,
     loadSpecificPage,
     lastQuery,
+    deleteRows,
   } = useTableView()
 
   const { selectedRows, selectRow, toggleRow, selectRange, clearSelection } = useRowSelection()
@@ -138,6 +143,8 @@ export function DbView() {
 
   const handleDeleteRows = useCallback(
     async (rowIndices: number[]) => {
+      if (!activeTab || activeTab.type !== "table") return
+
       const pkColumn = columns.find((c) => c.isPrimary)
       if (!pkColumn) {
         console.error("No primary key column found")
@@ -149,10 +156,10 @@ export function DbView() {
         return { [pkColumn.name]: row[pkColumn.name] }
       })
 
-      const newData = data.filter((_, idx) => !rowIndices.includes(idx))
+      await deleteRows(activeTab.name, primaryKeys)
       clearSelection()
     },
-    [columns, data, clearSelection],
+    [activeTab, columns, data, clearSelection, deleteRows],
   )
 
   const handlePaginationChange = useCallback(
@@ -262,6 +269,10 @@ export function DbView() {
               onTableOpen={handleTableOpen}
               onRefresh={refreshTables}
               tableSchema={tableSchema}
+              onDeleteTable={dropTable}
+              onDuplicateTable={duplicateTable}
+              onRenameTable={renameTable}
+              onExportTable={exportTable}
             />
           ))}
         <div className="flex flex-1 flex-col overflow-hidden">

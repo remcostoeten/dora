@@ -21,6 +21,9 @@ type TableState = {
   loadNextPage: (tableName: string) => Promise<void>
   loadPrevPage: (tableName: string) => Promise<void>
   loadSpecificPage: (tableName: string, pageNum: number) => Promise<void>
+  deleteRows: (tableName: string, primaryKeys: Record<string, unknown>[]) => Promise<void>
+  insertRow: (tableName: string, values?: Record<string, unknown>) => Promise<void>
+  duplicateRow: (tableName: string, primaryKey: Record<string, unknown>) => Promise<void>
 }
 
 export const useTableView = create<TableState>((set, get) => ({
@@ -119,5 +122,38 @@ export const useTableView = create<TableState>((set, get) => ({
     const { page: currentPage } = get()
     if (currentPage.page <= 0) return
     await get().loadTableData(tableName, currentPage.page - 1, currentPage.pageSize)
+  },
+
+  deleteRows: async (tableName: string, primaryKeys: Record<string, unknown>[]) => {
+    try {
+      await db.bulkDelete({ table: tableName, primaryKeys })
+      const { page: currentPage } = get()
+      await get().loadTableData(tableName, currentPage.page, currentPage.pageSize)
+    } catch (error) {
+      console.error("Failed to delete rows:", error)
+      throw error
+    }
+  },
+
+  insertRow: async (tableName: string, values?: Record<string, unknown>) => {
+    try {
+      await db.insertRow({ table: tableName, values })
+      const { page: currentPage } = get()
+      await get().loadTableData(tableName, currentPage.page, currentPage.pageSize)
+    } catch (error) {
+      console.error("Failed to insert row:", error)
+      throw error
+    }
+  },
+
+  duplicateRow: async (tableName: string, primaryKey: Record<string, unknown>) => {
+    try {
+      await db.duplicateRow({ table: tableName, primaryKey })
+      const { page: currentPage } = get()
+      await get().loadTableData(tableName, currentPage.page, currentPage.pageSize)
+    } catch (error) {
+      console.error("Failed to duplicate row:", error)
+      throw error
+    }
   },
 }))

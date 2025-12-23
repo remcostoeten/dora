@@ -41,7 +41,7 @@ impl AppState {
         let db_path = data_dir.join("Dora").join("Dora.db");
 
         let storage = Storage::new(db_path)?;
-        
+
         // Initialize command registry and load custom shortcuts from database
         let mut command_registry = CommandRegistry::new();
         if let Err(e) = commands_system::load_custom_shortcuts(&storage, &mut command_registry) {
@@ -81,6 +81,10 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            app.handle().plugin(tauri_plugin_fs::init())?;
+            app.handle().plugin(tauri_plugin_dialog::init())?;
+            app.handle().plugin(tauri_plugin_notification::init())?;
 
             init::build_window(app)?;
             init::build_menu(app)?;

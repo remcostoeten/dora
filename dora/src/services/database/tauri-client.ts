@@ -1,4 +1,7 @@
 import { invoke } from "@tauri-apps/api/core"
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { sendNotification } from '@tauri-apps/plugin-notification';
 import type { DbClient } from "./types"
 import type { SchemaData, ColMeta, CellType } from "@/shared/types"
 import type { DbSchema, QueryId, StatementInfo } from "./tauri-types"
@@ -279,11 +282,23 @@ export const tauriClient: DbClient = {
         sql += `INSERT INTO "${req.table}" (${columns?.map((c) => `"${c}"`).join(", ")}) VALUES (${values});\n`
       }
 
-      return {
-        success: true,
-        data: sql,
-        rowCount: rows.length,
+      const filePath = await save({
+        filters: [{
+          name: 'SQL',
+          extensions: ['sql']
+        }]
+      });
+
+      if (filePath) {
+        await writeTextFile(filePath, sql);
+        await sendNotification({
+          title: "Export Successful",
+          body: `Table ${req.table} exported to ${filePath}`,
+        });
+        return { success: true, data: sql, rowCount: rows.length };
       }
+
+      return { success: false, data: "", rowCount: 0, error: "Export cancelled" };
     }
   },
 
