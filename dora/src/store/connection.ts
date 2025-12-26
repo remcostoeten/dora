@@ -291,7 +291,11 @@ export const useConn = create<ConnState>((set, get) => ({
 
     // Clear localStorage
     if (typeof window !== "undefined") {
-      localStorage.removeItem("activeConnectionId")
+      try {
+        localStorage.removeItem("activeConnectionId")
+      } catch {
+        // localStorage may be unavailable
+      }
     }
 
     // Reset dependent stores

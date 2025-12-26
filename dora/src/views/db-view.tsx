@@ -7,10 +7,12 @@ import { TableViewer } from "@/shared/components/table-viewer"
 import { InfoPanel } from "@/shared/components/info-panel"
 import { QueryPanel } from "@/shared/components/query-panel"
 import { Sidebar } from "@/shared/components/sidebar"
-import { ConnForm } from "@/shared/components/sidebar/conn-form"
+import { NewConnectionModal } from "@/components/connections/new-connection-modal"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import { SidebarSkeleton } from "@/shared/components/sidebar/sidebar-skeleton"
 import { EmptyState } from "@/shared/components/empty-state"
+import { addConnection as addConnectionApi, updateConnection as updateConnectionApi, connectToDatabase } from "@/core/tauri"
+import type { DatabaseInfo, ConnectionInfo } from "@/types/database"
 import { useTabs, useCells, useConn, useQuery, useTableView } from "@/store"
 import { useRowSelection } from "@/store/row-selection"
 import { useResize } from "@/shared/hooks"
@@ -57,7 +59,7 @@ export function DbView() {
   const { selectedRows, selectRow, toggleRow, selectRange, clearSelection } = useRowSelection()
 
   const [connFormOpen, setConnFormOpen] = useState(false)
-  const [editingConn, setEditingConn] = useState<DbConnection | null>(null)
+  const [editingConn, setEditingConn] = useState<ConnectionInfo | null>(null)
   const [sidebarVisible, setSidebarVisible] = useState(true)
   const [rightSidebarVisible, setRightSidebarVisible] = useState(true)
 
@@ -113,14 +115,21 @@ export function DbView() {
   }, [])
 
   const handleEditConn = useCallback(
-    (id: string) => {
-      const conn = connections.find((c) => c.id === id)
-      if (conn) {
-        setEditingConn(conn)
-        setConnFormOpen(true)
+    async (id: string) => {
+      try {
+        // Fetch actual ConnectionInfo from backend for editing
+        const { getConnections } = await import('@/core/tauri')
+        const allConnections = await getConnections()
+        const connInfo = allConnections.find((c) => c.id === id)
+        if (connInfo) {
+          setEditingConn(connInfo)
+          setConnFormOpen(true)
+        }
+      } catch (error) {
+        console.error('Failed to fetch connection for editing:', error)
       }
     },
-    [connections],
+    [],
   )
 
   const handleDeleteConn = useCallback(
@@ -131,14 +140,28 @@ export function DbView() {
   )
 
   const handleConnFormSubmit = useCallback(
-    (data: any) => {
-      if (data.id) {
-        editConnection(data.id, data)
-      } else {
-        addConnection(data)
+    async (name: string, databaseInfo: DatabaseInfo) => {
+      try {
+        if (editingConn) {
+          // Update existing connection
+          await updateConnectionApi(editingConn.id, name, databaseInfo)
+        } else {
+          // Add new connection and connect to it
+          const newConn = await addConnectionApi(name, databaseInfo)
+          if (newConn?.id) {
+            await connectToDatabase(newConn.id)
+          }
+        }
+        // Refresh the connections list
+        await useConn.getState().loadConnections()
+        setConnFormOpen(false)
+        setEditingConn(null)
+      } catch (error) {
+        console.error('Failed to save connection:', error)
+        throw error // Let the modal handle the error display
       }
     },
-    [editConnection, addConnection],
+    [editingConn],
   )
 
   const handleDeleteRows = useCallback(
@@ -343,10 +366,10 @@ export function DbView() {
         </div>
       </div>
 
-      <ConnForm
+      <NewConnectionModal
         open={connFormOpen}
         onOpenChange={setConnFormOpen}
-        connection={editingConn}
+        editingConnection={editingConn}
         onSubmit={handleConnFormSubmit}
       />
     </>

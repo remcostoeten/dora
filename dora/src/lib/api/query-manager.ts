@@ -40,6 +40,9 @@ export function createQuery(tableName: string, columns: string[], data: unknown[
 
   queryCache.set(queryId, cache)
 
+  // Start cleanup interval lazily when first query is created
+  startCleanupInterval()
+
   return cache
 }
 
@@ -61,12 +64,30 @@ export function deleteQuery(queryId: QueryId): boolean {
   return queryCache.delete(queryId)
 }
 
-// Cleanup expired queries periodically
-setInterval(() => {
-  const now = Date.now()
-  for (const [queryId, cache] of queryCache.entries()) {
-    if (now - cache.createdAt > CACHE_TTL) {
-      queryCache.delete(queryId)
+// Cleanup expired queries periodically - lazy start to avoid running when not needed
+let cleanupInterval: ReturnType<typeof setInterval> | null = null
+
+function startCleanupInterval() {
+  if (cleanupInterval) return
+  cleanupInterval = setInterval(() => {
+    const now = Date.now()
+    for (const [queryId, cache] of queryCache.entries()) {
+      if (now - cache.createdAt > CACHE_TTL) {
+        queryCache.delete(queryId)
+      }
     }
+    // Auto-stop if cache is empty
+    if (queryCache.size === 0 && cleanupInterval) {
+      clearInterval(cleanupInterval)
+      cleanupInterval = null
+    }
+  }, 60 * 1000) // Run every minute
+}
+
+// Export cleanup for testing and unmount scenarios
+export function stopCleanupInterval() {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval)
+    cleanupInterval = null
   }
-}, 60 * 1000) // Run every minute
+}

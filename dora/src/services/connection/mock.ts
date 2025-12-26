@@ -62,13 +62,21 @@ export const mockConn: ConnService = {
   setActive: (id) => {
     activeId = id
     if (typeof window !== "undefined") {
-      localStorage.setItem("activeConnectionId", id)
+      try {
+        localStorage.setItem("activeConnectionId", id)
+      } catch {
+        // localStorage may be unavailable (private mode, quota exceeded)
+      }
     }
   },
 
   getActive: () => {
     if (!activeId && typeof window !== "undefined") {
-      activeId = localStorage.getItem("activeConnectionId")
+      try {
+        activeId = localStorage.getItem("activeConnectionId")
+      } catch {
+        // localStorage may be unavailable
+      }
     }
     // On web, always default to demo connection for instant UX
     if (!activeId) {

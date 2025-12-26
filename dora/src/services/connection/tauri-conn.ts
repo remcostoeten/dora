@@ -37,13 +37,21 @@ export const tauriConn: ConnService = {
 
   setActive: (id) => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("activeConnectionId", id)
+      try {
+        localStorage.setItem("activeConnectionId", id)
+      } catch {
+        // localStorage may be unavailable (private mode, quota exceeded)
+      }
     }
   },
 
   getActive: () => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("activeConnectionId")
+      try {
+        return localStorage.getItem("activeConnectionId")
+      } catch {
+        // localStorage may be unavailable
+      }
     }
     return null
   },

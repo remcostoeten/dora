@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Database, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ThemeToggle } from "./theme-toggle"
@@ -14,7 +15,12 @@ interface TopBarProps {
 }
 
 export function TopBar({ connectionName, databaseName, status = "disconnected", isDemo, className }: TopBarProps) {
-  const isWebDemo = !isTauri()
+  // Check on client-side after hydration to avoid static build showing "Web Demo" in Tauri
+  const [isWebDemo, setIsWebDemo] = useState(false)
+
+  useEffect(() => {
+    setIsWebDemo(!isTauri())
+  }, [])
 
   return (
     <div className={cn("flex h-12 items-center justify-between border-b border-border bg-background px-4", className)}>
