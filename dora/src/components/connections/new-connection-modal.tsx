@@ -102,7 +102,7 @@ function DialogContent({ children, className }: { children: React.ReactNode; cla
     return (
         <div
             className={cn(
-                'max-h-[calc(100vh-8rem)] overflow-hidden overflow-x-hidden rounded-xl border border-border bg-card shadow-xl',
+                'max-h-[calc(100vh-8rem)] overflow-visible overflow-x-visible rounded-xl border border-border bg-card shadow-xl',
                 className
             )}
         >
@@ -1199,7 +1199,7 @@ export function NewConnectionModal({
 
                                     {(showHistory || showHistoryDropdown) && filteredHistory.length > 0 && (
                                         <div
-                                            className="absolute z-[60] mt-1 w-[calc(100%-3.5rem)] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg"
+                                            className="absolute z-[60] mt-1 min-w-[300px] max-w-[500px] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-lg"
                                             onMouseEnter={() => setIsMouseOverHistory(true)}
                                             onMouseLeave={() => setIsMouseOverHistory(false)}
                                         >
