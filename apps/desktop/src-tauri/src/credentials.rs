@@ -11,7 +11,7 @@ pub fn extract_sensitive_data(
     mut database_info: DatabaseInfo,
 ) -> Result<(DatabaseInfo, Option<String>), Error> {
     match &mut database_info {
-        DatabaseInfo::Postgres { connection_string } => {
+        DatabaseInfo::Postgres { connection_string, .. } => {
             let mut url =
                 Url::parse(connection_string).context("Failed to parse connection string")?;
             let password = url.password().map(ToOwned::to_owned);
@@ -110,13 +110,14 @@ mod tests {
         let original = "postgres://Dora:s3cr3t@localhost:5432/mydb";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
+            ssh_config: None,
         };
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
         assert_eq!(pw.as_deref(), Some("s3cr3t"));
 
         match sanitized {
-            DatabaseInfo::Postgres { connection_string } => {
+            DatabaseInfo::Postgres { connection_string, .. } => {
                 assert_eq!(connection_string, "postgres://Dora@localhost:5432/mydb");
             }
             _ => unreachable!(),
@@ -128,6 +129,7 @@ mod tests {
         let original = "postgres://bob:p%404ss@db.example.com/app";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
+            ssh_config: None,
         };
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
@@ -135,7 +137,7 @@ mod tests {
         assert_eq!(pw.as_deref(), Some("p%404ss"));
 
         match sanitized {
-            DatabaseInfo::Postgres { connection_string } => {
+            DatabaseInfo::Postgres { connection_string, .. } => {
                 assert_eq!(connection_string, "postgres://bob@db.example.com/app");
             }
             _ => panic!("expected Postgres variant"),
@@ -144,13 +146,14 @@ mod tests {
         let original = "postgres://u:pa%3Ass%40word@host/db";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
+            ssh_config: None,
         };
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
 
         assert_eq!(pw.as_deref(), Some("pa%3Ass%40word"));
         match sanitized {
-            DatabaseInfo::Postgres { connection_string } => {
+            DatabaseInfo::Postgres { connection_string, .. } => {
                 assert_eq!(connection_string, "postgres://u@host/db");
             }
             _ => panic!("expected Postgres variant"),
@@ -162,6 +165,7 @@ mod tests {
         let original = "postgres://john:@localhost/db";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
+            ssh_config: None,
         };
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
@@ -170,7 +174,7 @@ mod tests {
         assert_eq!(pw.as_deref(), None);
 
         match sanitized {
-            DatabaseInfo::Postgres { connection_string } => {
+            DatabaseInfo::Postgres { connection_string, .. } => {
                 assert_eq!(connection_string, "postgres://john@localhost/db");
             }
             _ => unreachable!(),
@@ -182,13 +186,14 @@ mod tests {
         let original = "postgres://dave@localhost/mydb";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
+            ssh_config: None,
         };
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
 
         assert!(pw.is_none());
         match sanitized {
-            DatabaseInfo::Postgres { connection_string } => {
+            DatabaseInfo::Postgres { connection_string, .. } => {
                 assert_eq!(connection_string, original);
             }
             _ => unreachable!(),
@@ -200,13 +205,14 @@ mod tests {
         let original = "postgresql://erin:pw@localhost:5432/dbname?sslmode=prefer";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
+            ssh_config: None,
         };
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
 
         assert_eq!(pw.as_deref(), Some("pw"));
         match sanitized {
-            DatabaseInfo::Postgres { connection_string } => {
+            DatabaseInfo::Postgres { connection_string, .. } => {
                 assert_eq!(
                     connection_string,
                     "postgresql://erin@localhost:5432/dbname?sslmode=prefer"
@@ -236,6 +242,7 @@ mod tests {
     fn invalid_url_yields_error() {
         let dbi = DatabaseInfo::Postgres {
             connection_string: "not a url".to_string(),
+            ssh_config: None,
         };
         let res = extract_sensitive_data(dbi);
         assert!(res.is_err(), "expected parse error for invalid URL");

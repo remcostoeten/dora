@@ -6,7 +6,7 @@ use tokio_postgres::Client;
 use crate::Error;
 
 /// Database-level metadata information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct DatabaseMetadata {
     /// Total size of the database in bytes
     pub size_bytes: u64,

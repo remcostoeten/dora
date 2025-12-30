@@ -85,7 +85,7 @@ impl Migrator {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, specta::Type)]
 pub struct QueryHistoryEntry {
     pub id: i64,
     pub connection_id: String,
@@ -97,7 +97,7 @@ pub struct QueryHistoryEntry {
     pub error_message: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, specta::Type)]
 pub struct SavedQuery {
     pub id: i64,
     pub name: String,
@@ -110,7 +110,7 @@ pub struct SavedQuery {
     pub favorite: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, specta::Type)]
 pub struct ConnectionHistoryEntry {
     pub id: i64,
     pub connection_id: String,
@@ -169,7 +169,7 @@ impl Storage {
         let conn = self.conn.lock().unwrap();
 
         let (db_type_id, connection_data) = match &connection.database_type {
-            crate::database::types::DatabaseInfo::Postgres { connection_string } => {
+            crate::database::types::DatabaseInfo::Postgres { connection_string, .. } => {
                 (DB_TYPE_POSTGRES, connection_string.clone())
             }
             crate::database::types::DatabaseInfo::SQLite { db_path } => {
@@ -213,7 +213,7 @@ impl Storage {
         let conn = self.conn.lock().unwrap();
 
         let (db_type_id, connection_data) = match &connection.database_type {
-            crate::database::types::DatabaseInfo::Postgres { connection_string } => {
+            crate::database::types::DatabaseInfo::Postgres { connection_string, .. } => {
                 (DB_TYPE_POSTGRES, connection_string.clone())
             }
             crate::database::types::DatabaseInfo::SQLite { db_path } => {
@@ -285,12 +285,14 @@ impl Storage {
                 let database_type = match db_type.as_str() {
                     "postgres" => crate::database::types::DatabaseInfo::Postgres {
                         connection_string: connection_data,
+                        ssh_config: None,
                     },
                     "sqlite" => crate::database::types::DatabaseInfo::SQLite {
                         db_path: connection_data,
                     },
                     _ => crate::database::types::DatabaseInfo::Postgres {
                         connection_string: connection_data,
+                        ssh_config: None,
                     },
                 };
 
@@ -308,6 +310,9 @@ impl Storage {
                     favorite: row.get(5).ok(),
                     color: row.get(6).ok(),
                     sort_order: row.get(7).ok(),
+                    created_at: None,
+                    updated_at: None,
+                    pin_hash: None,
                 })
             })
             .context("Failed to query connection")?;
@@ -347,12 +352,14 @@ impl Storage {
                 let database_type = match db_type.as_str() {
                     "postgres" => crate::database::types::DatabaseInfo::Postgres {
                         connection_string: connection_data,
+                        ssh_config: None,
                     },
                     "sqlite" => crate::database::types::DatabaseInfo::SQLite {
                         db_path: connection_data,
                     },
                     _ => crate::database::types::DatabaseInfo::Postgres {
                         connection_string: connection_data, // Default to postgres for unknown types
+                        ssh_config: None,
                     },
                 };
 
@@ -370,6 +377,9 @@ impl Storage {
                     favorite: row.get(5).ok(),
                     color: row.get(6).ok(),
                     sort_order: row.get(7).ok(),
+                    created_at: None,
+                    updated_at: None,
+                    pin_hash: None,
                 })
             })
             .context("Failed to query connections")?;

@@ -1,5 +1,5 @@
 use sqlparser::{
-    ast::{ObjectName, ObjectNamePart, Statement},
+    ast::{ObjectName, Statement},
     dialect::SQLiteDialect,
 };
 
@@ -15,7 +15,7 @@ pub fn parse_statements(query: &str) -> anyhow::Result<Vec<ParsedStatement>> {
 impl SqlDialectExt for SQLiteDialect {
     fn returns_values(stmt: &Statement) -> bool {
         match stmt {
-            Statement::Query { .. } => true,
+            Statement::Query(_) => true,
             Statement::Insert(insert) if insert.returning.is_some() => true,
             Statement::Update { returning, .. } if returning.is_some() => true,
             Statement::Delete(delete) if delete.returning.is_some() => true,
@@ -48,13 +48,8 @@ fn pragma_returns_values(name: &ObjectName) -> bool {
         "temp_store",
     ];
 
-    let Some(first_part) = name.0.first() else {
+    let Some(ident) = name.0.first() else {
         return false;
-    };
-
-    let ident = match first_part {
-        ObjectNamePart::Identifier(ident) => ident,
-        ObjectNamePart::Function(func) => &func.name,
     };
 
     VALUE_RETURNING_PRAGMAS

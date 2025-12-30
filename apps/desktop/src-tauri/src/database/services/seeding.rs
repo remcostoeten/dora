@@ -12,7 +12,7 @@ use rand::Rng;
 use crate::database::types::{DatabaseConnection, DatabaseSchema, ColumnInfo};
 use crate::error::Error;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct SeedResult {
     pub rows_inserted: u32,
     pub table: String,
@@ -55,15 +55,19 @@ impl<'a> SeedingService<'a> {
         }
 
         // 5. Generate fake data
-        let mut rng = rand::rng();
-        let mut all_values: Vec<String> = Vec::with_capacity(count as usize);
+        // 5. Generate fake data
+        let all_values = {
+            let mut rng = rand::rng();
+            let mut values = Vec::with_capacity(count as usize);
 
-        for _ in 0..count {
-            let row_values: Vec<String> = seedable_columns.iter()
-                .map(|col| generate_fake_value(col, &mut rng))
-                .collect();
-            all_values.push(format!("({})", row_values.join(", ")));
-        }
+            for _ in 0..count {
+                let row_values: Vec<String> = seedable_columns.iter()
+                    .map(|col| generate_fake_value(col, &mut rng))
+                    .collect();
+                values.push(format!("({})", row_values.join(", ")));
+            }
+            values
+        };
 
         // 6. Build INSERT statement
         let column_names: Vec<&str> = seedable_columns.iter().map(|c| c.name.as_str()).collect();

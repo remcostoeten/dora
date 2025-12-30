@@ -45,3 +45,9 @@ impl serde::Serialize for Error {
         name.serialize(serializer)
     }
 }
+
+impl specta::Type for Error {
+    fn inline(_: &mut specta::TypeCollection, _: specta::Generics) -> specta::DataType {
+        specta::DataType::Any
+    }
+}

@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 use serde_json::value::RawValue;
+use specta::Type;
 
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use uuid::Uuid;
@@ -21,17 +22,18 @@ pub type Page = Box<RawValue>;
 
 pub type ExecSender = UnboundedSender<QueryExecEvent>;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Type)]
 pub struct StatementInfo {
     pub returns_values: bool,
     pub status: QueryStatus,
+    #[specta(type = serde_json::Value)]
     pub first_page: Option<Box<RawValue>>,
     pub affected_rows: Option<usize>,
     pub error: Option<String>,
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Type)]
 pub enum QueryStatus {
     Pending = 0,
     Running = 1,
@@ -50,7 +52,7 @@ impl From<u8> for QueryStatus {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ConnectionInfo {
     pub id: Uuid,
     pub name: String,
@@ -65,7 +67,7 @@ pub struct ConnectionInfo {
     pub sort_order: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct SshConfig {
     pub host: String,
     pub port: u16,
@@ -74,7 +76,7 @@ pub struct SshConfig {
     pub password: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub enum DatabaseInfo {
     Postgres {
         connection_string: String,
@@ -284,7 +286,7 @@ impl DatabaseConnection {
 }
 
 /// Information about a foreign key relationship
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ForeignKeyInfo {
     /// The table that this foreign key references
     pub referenced_table: String,
@@ -294,7 +296,7 @@ pub struct ForeignKeyInfo {
     pub referenced_schema: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ColumnInfo {
     pub name: String,
     pub data_type: String,
@@ -311,7 +313,7 @@ pub struct ColumnInfo {
     pub foreign_key: Option<ForeignKeyInfo>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct TableInfo {
     pub name: String,
     pub schema: String,
@@ -324,7 +326,7 @@ pub struct TableInfo {
     pub row_count_estimate: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct DatabaseSchema {
     pub tables: Vec<TableInfo>,
     pub schemas: Vec<String>,

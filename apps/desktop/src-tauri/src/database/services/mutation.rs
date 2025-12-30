@@ -16,7 +16,7 @@ use crate::{
 use super::metadata::MetadataService;
 
 /// Export format options
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ExportFormat {
     Json,
@@ -25,7 +25,7 @@ pub enum ExportFormat {
 }
 
 /// Result of a mutation operation
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct MutationResult {
     pub success: bool,
     pub affected_rows: usize,
