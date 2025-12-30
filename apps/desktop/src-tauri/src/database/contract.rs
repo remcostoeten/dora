@@ -197,6 +197,58 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             stability: CommandStability::Stable,
             side_effects: vec![],
         },
+        // AI Commands
+        CommandDefinition {
+            name: "ai_complete",
+            description: "Send prompt to AI provider for SQL assistance.",
+            arguments: vec![
+                CommandArgument { name: "prompt", arg_type: "String", description: "User query or request", optional: false },
+                CommandArgument { name: "connection_id", arg_type: "Option<Uuid>", description: "Context connection (for schema)", optional: true },
+                CommandArgument { name: "max_tokens", arg_type: "Option<u32>", description: "Response limit", optional: true },
+            ],
+            return_type: "Result<AIResponse, Error>",
+            stability: CommandStability::Experimental,
+            side_effects: vec!["External API call (Gemini) or Local Inference (Ollama)"],
+        },
+        CommandDefinition {
+            name: "ai_set_provider",
+            description: "Switch between 'gemini' and 'ollama'.",
+            arguments: vec![
+                CommandArgument { name: "provider", arg_type: "String", description: "Provider name", optional: false },
+            ],
+            return_type: "Result<(), Error>",
+            stability: CommandStability::Stable,
+            side_effects: vec!["Persists setting"],
+        },
+        CommandDefinition {
+            name: "ai_set_gemini_key",
+            description: "Set Gemini API key (BYOK).",
+            arguments: vec![
+                CommandArgument { name: "api_key", arg_type: "String", description: "Google AI Studio Key", optional: false },
+            ],
+            return_type: "Result<(), Error>",
+            stability: CommandStability::Stable,
+            side_effects: vec!["Persists key securely"],
+        },
+        CommandDefinition {
+            name: "ai_configure_ollama",
+            description: "Configure Ollama endpoint and model.",
+            arguments: vec![
+                CommandArgument { name: "endpoint", arg_type: "Option<String>", description: "Ollama URL", optional: true },
+                CommandArgument { name: "model", arg_type: "Option<String>", description: "Model name", optional: true },
+            ],
+            return_type: "Result<(), Error>",
+            stability: CommandStability::Stable,
+            side_effects: vec!["Persists setting"],
+        },
+        CommandDefinition {
+            name: "ai_list_ollama_models",
+            description: "List models available in local Ollama instance.",
+            arguments: vec![],
+            return_type: "Result<Vec<String>, Error>",
+            stability: CommandStability::Stable,
+            side_effects: vec!["Local network call"],
+        },
     ]
 }
 

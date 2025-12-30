@@ -132,3 +132,19 @@ Protect saved credentials with an optional PIN.
 2.  User enters PIN -> call `verify_pin_and_get_credentials`.
 3.  On success, reveal password field.
 
+---
+
+## 6. AI Assistant (Gemini & Ollama)
+
+AI-powered SQL assistance for query writing and explanation.
+
+### Configuration
+1.  **Set Provider**: `ai_set_provider("gemini" | "ollama")`
+2.  **Gemini (BYOK)**: `ai_set_gemini_key("AIza...")`
+3.  **Ollama (Local)**: `ai_configure_ollama(endpoint="http://localhost:11434")`
+
+### Usage
+*   **Complete Prompt**: `ai_complete(prompt, connection_id)`
+    *   Injects schema context if `connection_id` is provided.
+    *   Returns text response + token usage.
+
