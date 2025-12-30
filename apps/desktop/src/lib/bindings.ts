@@ -256,6 +256,30 @@ async deleteScript(id: number) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
+async getSnippets(languageFilter: string | null, isSystemFilter: boolean | null) : Promise<Result<SavedQuery[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_snippets", { languageFilter, isSystemFilter }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async saveSnippet(name: string, content: string, language: string | null, tags: string | null, connectionId: string | null, description: string | null) : Promise<Result<number, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("save_snippet", { name, content, language, tags, connectionId, description }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async seedSystemSnippets() : Promise<Result<number, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("seed_system_snippets") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async saveSessionState(sessionData: string) : Promise<Result<null, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_session_state", { sessionData }) };
@@ -617,7 +641,7 @@ export type JsonValue = null | boolean | number | string | JsonValue[] | Partial
 export type MutationResult = { success: boolean; affected_rows: number; message: string | null }
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
-export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; created_at: number; updated_at: number; favorite: boolean }
+export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; created_at: number; updated_at: number; favorite: boolean; is_snippet: boolean; is_system: boolean; language: string | null }
 export type SeedResult = { rows_inserted: number; table: string }
 /**
  * Result of a soft delete operation

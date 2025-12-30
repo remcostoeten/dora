@@ -415,6 +415,183 @@ pub async fn delete_script(id: i64, state: State<'_, AppState>) -> Result<(), Er
     svc.delete_script(id).await
 }
 
+// =============================================================================
+// Snippet Commands
+// =============================================================================
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_snippets(
+    language_filter: Option<String>,
+    is_system_filter: Option<bool>,
+    state: State<'_, AppState>,
+) -> Result<Vec<SavedQuery>, Error> {
+    let conn = state.storage.get_sqlite_connection()?;
+    let mut sql = "SELECT id, name, description, query_text, connection_id, tags, created_at, updated_at, favorite, is_snippet, is_system, language FROM saved_queries WHERE is_snippet = 1".to_string();
+    
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![];
+    
+    if let Some(lang) = language_filter {
+        sql.push_str(" AND language = ?");
+        params.push(Box::new(lang));
+    }
+    
+    if let Some(is_sys) = is_system_filter {
+        sql.push_str(" AND is_system = ?");
+        params.push(Box::new(is_sys));
+    }
+    
+    sql.push_str(" ORDER BY is_system DESC, favorite DESC, created_at DESC");
+    
+    let mut stmt = conn.prepare(&sql)?;
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+    
+    let rows = stmt.query_map(param_refs.as_slice(), |row| {
+        Ok(SavedQuery {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            description: row.get(2)?,
+            query_text: row.get(3)?,
+            connection_id: {
+                let id: Option<String> = row.get(4)?;
+                id.and_then(|s| Uuid::parse_str(&s).ok())
+            },
+            tags: row.get(5)?,
+            created_at: row.get(6)?,
+            updated_at: row.get(7)?,
+            favorite: row.get(8)?,
+            is_snippet: row.get(9)?,
+            is_system: row.get(10)?,
+            language: row.get(11)?,
+        })
+    })?;
+    
+    let mut snippets = Vec::new();
+    for row in rows {
+        snippets.push(row?);
+    }
+    
+    Ok(snippets)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn save_snippet(
+    name: String,
+    content: String,
+    language: Option<String>,
+    tags: Option<String>,
+    connection_id: Option<Uuid>,
+    description: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<i64, Error> {
+    let now = chrono::Utc::now().timestamp();
+    let snippet = SavedQuery {
+        id: 0,
+        name,
+        description,
+        query_text: content,
+        connection_id,
+        tags,
+        created_at: now,
+        updated_at: now,
+        favorite: false,
+        is_snippet: true,
+        is_system: false,
+        language,
+    };
+    
+    state.storage.save_query(&snippet)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, Error> {
+    let snippets = vec![
+        // Dangerous Operations
+        SavedQuery {
+            id: 0,
+            name: "Drop All Tables".to_string(),
+            description: Some("⚠️ DANGER: Drops all tables in the current database".to_string()),
+            query_text: "-- WARNING: This query will drop ALL tables\n-- Uncomment to execute:\n-- SELECT 'DROP TABLE IF EXISTS \"' || tablename || '\" CASCADE;' FROM pg_tables WHERE schemaname = 'public';".to_string(),
+            connection_id: None,
+            tags: Some("dangerous,drop,admin".to_string()),
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
+            favorite: false,
+            is_snippet: true,
+            is_system: true,
+            language: Some("sql".to_string()),
+        },
+        SavedQuery {
+            id: 0,
+            name: "Truncate All Tables".to_string(),
+            description: Some("⚠️ DANGER: Deletes all data from all tables".to_string()),
+            query_text: "-- WARNING: This query will delete all data\n-- Uncomment to execute:\n-- TRUNCATE TABLE table_name RESTART IDENTITY CASCADE;".to_string(),
+            connection_id: None,
+            tags: Some("dangerous,truncate,admin,cleanup".to_string()),
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
+            favorite: false,
+            is_snippet: true,
+            is_system: true,
+            language: Some("sql".to_string()),
+        },
+        // Common Query Templates
+        SavedQuery {
+            id: 0,
+            name: "Select All".to_string(),
+            description: Some("Basic SELECT * template".to_string()),
+            query_text: "SELECT * FROM {table_name}\nLIMIT 100;".to_string(),
+            connection_id: None,
+            tags: Some("query-template,select,basic".to_string()),
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
+            favorite: true,
+            is_snippet: true,
+            is_system: true,
+            language: Some("sql".to_string()),
+        },
+        SavedQuery {
+            id: 0,
+            name: "Count Grouped".to_string(),
+            description: Some("COUNT with GROUP BY template".to_string()),
+            query_text: "SELECT {column_name}, COUNT(*) as count\nFROM {table_name}\nGROUP BY {column_name}\nORDER BY count DESC;".to_string(),
+            connection_id: None,
+            tags: Some("query-template,count,aggregate".to_string()),
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
+            favorite: true,
+            is_snippet: true,
+            is_system: true,
+            language: Some("sql".to_string()),
+        },
+        // Drizzle Templates
+        SavedQuery {
+            id: 0,
+            name: "Drizzle Table Schema".to_string(),
+            description: Some("Basic Drizzle table definition template".to_string()),
+            query_text: "import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';\n\nexport const {table_name} = pgTable('{table_name}', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n  createdAt: timestamp('created_at').defaultNow(),\n});".to_string(),
+            connection_id: None,
+            tags: Some("drizzle,template,schema".to_string()),
+            created_at: chrono::Utc::now().timestamp(),
+            updated_at: chrono::Utc::now().timestamp(),
+            favorite: true,
+            is_snippet: true,
+            is_system: true,
+            language: Some("drizzle".to_string()),
+        },
+    ];
+    
+    let mut count = 0;
+    for snippet in snippets {
+        state.storage.save_query(&snippet)?;
+        count += 1;
+    }
+    
+    Ok(count)
+}
+
 
 // =============================================================================
 // Setting / Session Commands
