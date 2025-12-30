@@ -1,0 +1,44 @@
+    Checking app v1.0.0 (/home/remco-stoeten/dora/apps/desktop/src-tauri)
+error[E0422]: cannot find struct, variant or union type `ShowObjects` in this scope
+  --> src/database/parser.rs:39:15
+   |
+39 |             | ShowObjects { .. }
+   |               ^^^^^^^^^^^ not found in this scope
+
+warning: unused import: `self`
+ --> src/database/services/connection.rs:9:20
+  |
+9 |         postgres::{self, connect::connect},
+  |                    ^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `Faker`
+ --> src/database/services/seeding.rs:5:18
+  |
+5 | use fake::{Fake, Faker};
+  |                  ^^^^^
+
+warning: unused import: `SchemaContext`
+ --> src/database/services/ai/gemini.rs:4:36
+  |
+4 | use super::{AIRequest, AIResponse, SchemaContext};
+  |                                    ^^^^^^^^^^^^^
+
+warning: unused variable: `conf`
+   --> src/database/services/connection.rs:516:101
+    |
+516 |                 let _temp_tunnel: Option<Arc<crate::database::ssh_tunnel::SshTunnel>> = if let Some(conf) = ssh_config {
+    |                                                                                                     ^^^^ help: if this is intentional, prefix it with an underscore: `_conf`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `handle`
+   --> src/database/ssh_tunnel.rs:246:21
+    |
+246 |         if let Some(handle) = self.handle.take() {
+    |                     ^^^^^^ help: if this is intentional, prefix it with an underscore: `_handle`
+
+For more information about this error, try `rustc --explain E0422`.
+warning: `app` (lib) generated 5 warnings
+error: could not compile `app` (lib) due to 1 previous error; 5 warnings emitted
