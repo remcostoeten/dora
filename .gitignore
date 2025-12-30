@@ -41,3 +41,4 @@ src-tauri/Cargo.lock
 tmp/
 apps/dora-v2.
 apps/dora-v2/*
+.turbo
