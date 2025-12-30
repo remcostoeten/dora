@@ -243,7 +243,7 @@ impl SshTunnel {
 impl Drop for SshTunnel {
     fn drop(&mut self) {
         self.stop_signal.store(true, Ordering::Relaxed);
-        if let Some(handle) = self.handle.take() {
+        if let Some(_handle) = self.handle.take() {
             // Signal stop and wait (optional, might block UI if loop is sleeping)
             // handle.join(); 
         }

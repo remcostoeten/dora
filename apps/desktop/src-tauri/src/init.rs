@@ -16,7 +16,7 @@ fn init_script() -> String {
         }}
     "#,
         if cfg!(debug_assertions) {
-            "http://localhost:1420"
+            "http://localhost:42069"
         } else {
             "tauri://localhost"
         },

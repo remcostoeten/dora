@@ -513,7 +513,7 @@ impl ConnectionService<'_> {
                 ssh_config,
             } => {
                 // If checking connection with SSH, we need to spin up a temp tunnel
-                let _temp_tunnel: Option<Arc<crate::database::ssh_tunnel::SshTunnel>> = if let Some(conf) = ssh_config {
+                let _temp_tunnel: Option<Arc<crate::database::ssh_tunnel::SshTunnel>> = if let Some(_conf) = ssh_config {
                      // ... logic to start temp tunnel ...
                      // For 'test_connection', we might want to test valid SSH too.
                      // But test_connection is static method, hard to refactor quickly.
