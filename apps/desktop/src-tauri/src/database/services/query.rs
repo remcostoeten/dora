@@ -37,6 +37,9 @@ impl<'a> QueryService<'a> {
             created_at: 0,
             updated_at: 0,
             favorite: false,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         };
 
         let script_id = self.storage.save_query(&script)?;
@@ -61,6 +64,9 @@ impl<'a> QueryService<'a> {
             created_at: 0,
             updated_at: 0,
             favorite: false,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         };
 
         self.storage.save_query(&script)?;

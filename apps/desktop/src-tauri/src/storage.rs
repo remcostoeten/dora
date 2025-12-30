@@ -23,6 +23,7 @@ impl Migrator {
                 include_str!("../migrations/001.sql"),
                 include_str!("../migrations/002.sql"),
                 include_str!("../migrations/003.sql"),
+                include_str!("../migrations/004.sql"),
             ],
         }
     }
@@ -108,6 +109,9 @@ pub struct SavedQuery {
     pub created_at: i64,
     pub updated_at: i64,
     pub favorite: bool,
+    pub is_snippet: bool,
+    pub is_system: bool,
+    pub language: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, specta::Type)]
@@ -506,17 +510,20 @@ impl Storage {
         if query.id == 0 {
             conn.execute(
                 "INSERT INTO saved_queries 
-                 (name, description, query_text, connection_id, tags, created_at, updated_at, favorite)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                 (name, description, query_text, connection_id, tags, created_at, updated_at, favorite, is_snippet, is_system, language) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 (
                     &query.name,
                     &query.description,
                     &query.query_text,
-                    &query.connection_id.map(|id| id.to_string()),
+                    query.connection_id.as_ref().map(|u| u.to_string()),
                     &query.tags,
                     now,
                     now,
                     query.favorite,
+                    query.is_snippet,
+                    query.is_system,
+                    &query.language,
                 ),
             ).context("Failed to insert saved query")?;
             Ok(conn.last_insert_rowid())
@@ -524,8 +531,8 @@ impl Storage {
             conn.execute(
                 "UPDATE saved_queries 
                  SET name = ?1, description = ?2, query_text = ?3, connection_id = ?4, 
-                     tags = ?5, updated_at = ?6, favorite = ?7
-                 WHERE id = ?8",
+                     tags = ?5, updated_at = ?6, favorite = ?7, is_snippet = ?8, is_system = ?9, language = ?10
+                 WHERE id = ?11",
                 (
                     &query.name,
                     &query.description,
@@ -534,6 +541,9 @@ impl Storage {
                     &query.tags,
                     now,
                     query.favorite,
+                    query.is_snippet,
+                    query.is_system,
+                    &query.language,
                     query.id,
                 ),
             )
@@ -549,7 +559,7 @@ impl Storage {
 
         if let Some(conn_id) = connection_id {
             let mut stmt = conn.prepare(
-                "SELECT id, name, description, query_text, connection_id, tags, created_at, updated_at, favorite
+                "SELECT id, name, description, query_text, connection_id, tags, created_at, updated_at, favorite, is_snippet, is_system, language
                  FROM saved_queries 
                  WHERE connection_id = ?1 OR connection_id IS NULL
                  ORDER BY favorite DESC, created_at DESC"
@@ -579,6 +589,9 @@ impl Storage {
                         created_at: row.get(6)?,
                         updated_at: row.get(7)?,
                         favorite: row.get(8)?,
+                        is_snippet: row.get(9)?,
+                        is_system: row.get(10)?,
+                        language: row.get(11)?,
                     })
                 })
                 .context("Failed to query saved queries")?;
@@ -588,7 +601,7 @@ impl Storage {
             }
         } else {
             let mut stmt = conn.prepare(
-                "SELECT id, name, description, query_text, connection_id, tags, created_at, updated_at, favorite
+                "SELECT id, name, description, query_text, connection_id, tags, created_at, updated_at, favorite, is_snippet, is_system, language
                  FROM saved_queries 
                  ORDER BY favorite DESC, created_at DESC"
             ).context("Failed to prepare saved queries statement")?;
@@ -617,6 +630,9 @@ impl Storage {
                         created_at: row.get(6)?,
                         updated_at: row.get(7)?,
                         favorite: row.get(8)?,
+                        is_snippet: row.get(9)?,
+                        is_system: row.get(10)?,
+                        language: row.get(11)?,
                     })
                 })
                 .context("Failed to query saved queries")?;

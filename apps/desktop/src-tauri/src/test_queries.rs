@@ -21,6 +21,9 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: true,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         },
         SavedQuery {
             id: 0,
@@ -33,6 +36,9 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: true,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         },
         SavedQuery {
             id: 0,
@@ -45,6 +51,9 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: true,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         },
         SavedQuery {
             id: 0,
@@ -57,6 +66,9 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: false,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         },
         SavedQuery {
             id: 0,
@@ -69,6 +81,9 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: false,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         },
         SavedQuery {
             id: 0,
@@ -81,6 +96,9 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: true,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         },
         SavedQuery {
             id: 0,
@@ -93,6 +111,9 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: false,
+            is_snippet: false,
+            is_system: false,
+            language: None,
         },
     ];
 
