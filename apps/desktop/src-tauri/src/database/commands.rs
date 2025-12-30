@@ -424,10 +424,11 @@ pub async fn delete_script(id: i64, state: State<'_, AppState>) -> Result<(), Er
 pub async fn get_snippets(
     language_filter: Option<String>,
     is_system_filter: Option<bool>,
+    category_filter: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<Vec<SavedQuery>, Error> {
     let conn = state.storage.get_sqlite_connection()?;
-    let mut sql = "SELECT id, name, description, query_text, connection_id, tags, created_at, updated_at, favorite, is_snippet, is_system, language FROM saved_queries WHERE is_snippet = 1".to_string();
+    let mut sql = "SELECT id, name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language FROM saved_queries WHERE is_snippet = 1".to_string();
     
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![];
     
@@ -439,6 +440,11 @@ pub async fn get_snippets(
     if let Some(is_sys) = is_system_filter {
         sql.push_str(" AND is_system = ?");
         params.push(Box::new(is_sys));
+    }
+
+    if let Some(cat) = category_filter {
+        sql.push_str(" AND category LIKE ?");
+        params.push(Box::new(format!("%{}%", cat)));
     }
     
     sql.push_str(" ORDER BY is_system DESC, favorite DESC, created_at DESC");
@@ -457,12 +463,13 @@ pub async fn get_snippets(
                 id.and_then(|s| Uuid::parse_str(&s).ok())
             },
             tags: row.get(5)?,
-            created_at: row.get(6)?,
-            updated_at: row.get(7)?,
-            favorite: row.get(8)?,
-            is_snippet: row.get(9)?,
-            is_system: row.get(10)?,
-            language: row.get(11)?,
+            category: row.get(6)?,
+            created_at: row.get(7)?,
+            updated_at: row.get(8)?,
+            favorite: row.get(9)?,
+            is_snippet: row.get(10)?,
+            is_system: row.get(11)?,
+            language: row.get(12)?,
         })
     })?;
     
@@ -481,6 +488,7 @@ pub async fn save_snippet(
     content: String,
     language: Option<String>,
     tags: Option<String>,
+    category: Option<String>,
     connection_id: Option<Uuid>,
     description: Option<String>,
     state: State<'_, AppState>,
@@ -493,6 +501,7 @@ pub async fn save_snippet(
         query_text: content,
         connection_id,
         tags,
+        category,
         created_at: now,
         updated_at: now,
         favorite: false,
@@ -515,7 +524,8 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             description: Some("⚠️ DANGER: Drops all tables in the current database".to_string()),
             query_text: "-- WARNING: This query will drop ALL tables\n-- Uncomment to execute:\n-- SELECT 'DROP TABLE IF EXISTS \"' || tablename || '\" CASCADE;' FROM pg_tables WHERE schemaname = 'public';".to_string(),
             connection_id: None,
-            tags: Some("dangerous,drop,admin".to_string()),
+            tags: Some("drop,admin".to_string()),
+            category: Some("Dangerous".to_string()),
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: false,
@@ -529,7 +539,8 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             description: Some("⚠️ DANGER: Deletes all data from all tables".to_string()),
             query_text: "-- WARNING: This query will delete all data\n-- Uncomment to execute:\n-- TRUNCATE TABLE table_name RESTART IDENTITY CASCADE;".to_string(),
             connection_id: None,
-            tags: Some("dangerous,truncate,admin,cleanup".to_string()),
+            tags: Some("truncate,admin,cleanup".to_string()),
+            category: Some("Dangerous".to_string()),
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: false,
@@ -544,7 +555,8 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             description: Some("Basic SELECT * template".to_string()),
             query_text: "SELECT * FROM {table_name}\nLIMIT 100;".to_string(),
             connection_id: None,
-            tags: Some("query-template,select,basic".to_string()),
+            tags: Some("select,basic".to_string()),
+            category: Some("Templates".to_string()),
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: true,
@@ -558,7 +570,8 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             description: Some("COUNT with GROUP BY template".to_string()),
             query_text: "SELECT {column_name}, COUNT(*) as count\nFROM {table_name}\nGROUP BY {column_name}\nORDER BY count DESC;".to_string(),
             connection_id: None,
-            tags: Some("query-template,count,aggregate".to_string()),
+            tags: Some("count,aggregate".to_string()),
+            category: Some("Templates".to_string()),
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: true,
@@ -573,7 +586,8 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             description: Some("Basic Drizzle table definition template".to_string()),
             query_text: "import { pgTable, serial, text, timestamp } from 'drizzle-orm/pg-core';\n\nexport const {table_name} = pgTable('{table_name}', {\n  id: serial('id').primaryKey(),\n  name: text('name').notNull(),\n  createdAt: timestamp('created_at').defaultNow(),\n});".to_string(),
             connection_id: None,
-            tags: Some("drizzle,template,schema".to_string()),
+            tags: Some("schema".to_string()),
+            category: Some("Drizzle".to_string()),
             created_at: chrono::Utc::now().timestamp(),
             updated_at: chrono::Utc::now().timestamp(),
             favorite: true,

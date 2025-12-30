@@ -78,6 +78,7 @@ impl<'a> MetadataService<'a> {
             Database::Postgres {
                 connection_string,
                 client: Some(client),
+                ..
             } => {
                 metadata::get_postgres_metadata(client, connection_string).await
             }

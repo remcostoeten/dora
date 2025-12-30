@@ -39,3 +39,5 @@ src-tauri/Cargo.lock
 
 # Project management
 tmp/
+apps/dora-v2.
+apps/dora-v2/*
