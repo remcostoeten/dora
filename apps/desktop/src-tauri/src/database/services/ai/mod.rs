@@ -10,7 +10,7 @@ use crate::storage::Storage;
 pub use gemini::GeminiClient;
 pub use ollama::OllamaClient;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub enum AIProvider {
     Gemini,
     Ollama,
@@ -22,18 +22,18 @@ impl Default for AIProvider {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct SchemaContext {
     pub tables: Vec<TableContext>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct TableContext {
     pub name: String,
     pub columns: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct AIRequest {
     pub prompt: String,
     pub context: Option<SchemaContext>,
@@ -41,7 +41,7 @@ pub struct AIRequest {
     pub max_tokens: Option<u32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct AIResponse {
     pub content: String,
     pub suggested_queries: Option<Vec<String>>,
