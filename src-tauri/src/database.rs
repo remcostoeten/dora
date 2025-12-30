@@ -6,7 +6,10 @@ pub mod sqlite;
 pub use postgres::tls::Certificates;
 
 pub mod commands;
+pub mod services;
 mod connection_monitor;
+pub mod maintenance;
+pub mod metadata;
 pub mod parser;
 pub mod stmt_manager;
 pub mod types;

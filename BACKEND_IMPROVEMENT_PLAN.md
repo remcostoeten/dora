@@ -504,3 +504,41 @@ This architectural improvement plan transforms the current monolithic Tauri back
 5. **Improved Performance**: Connection pooling and intelligent caching
 
 The phased approach minimizes risk while delivering immediate improvements in code quality and maintainability. By the end of this refactoring, you'll have a robust backend that can seamlessly serve both the current Tauri frontend and the new Next.js spreadsheet interface.
+
+## Execution Recap (Phase 1 Refactoring - Implemented)
+
+### 1. File and Module Changes
+- **Split:** Monolithic `commands.rs` -> `src-tauri/src/database/services/`.
+- **New Modules:** `connection.rs`, `query.rs`, `mutation.rs`, `metadata.rs`, `mod.rs`.
+- **Current Structure:**
+    ```text
+    src-tauri/src/database/
+    ├── commands.rs         (Facade layer)
+    └── services/           (Business logic)
+        ├── connection.rs
+        ├── query.rs
+        ├── mutation.rs
+        └── metadata.rs
+    ```
+
+### 2. Service Layer Status
+- **Architecture:** Static service methods (e.g., `QueryService::start_query`).
+- **Dependencies:** `AppState` (connections, storage, stmt_manager).
+- **Role:** Pure business logic; `commands.rs` handles Tauri-specific argument parsing.
+
+### 3. RPC Surface
+- **Compatibility:** All existing Tauri command names/signatures preserved 1:1.
+- **New Commands:**
+    - `insert_row`: Structured single-row insertion.
+    - `execute_batch`: Transactional execution of multiple SQL statements.
+
+### 4. Behavior & Features
+- **Parity:** Functional parity maintained for all existing operations.
+- **Enhancements:** 
+    - Auto-detection of soft delete columns.
+    - Transaction support via `execute_batch`.
+- **Gaps:** LibSQL `dump_database` remains unimplemented.
+
+### 5. Future Readiness
+- **Testing:** Service methods are now decoupled from Tauri runtime, enabling direct unit testing.
+- **Migration:** New `insert_row` and batching align with the spreadsheet UI requirements.

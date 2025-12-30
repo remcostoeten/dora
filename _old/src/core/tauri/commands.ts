@@ -315,3 +315,208 @@ export async function exportTable(
     limit: limit ?? null,
   })
 }
+
+// =============================================================================
+// Database Metadata Types & Commands
+// =============================================================================
+
+/** Database-level metadata information */
+export type DatabaseMetadata = {
+  size_bytes: number
+  created_at: number | null
+  last_updated: number | null
+  row_count_total: number
+  table_count: number
+  host: string
+  database_name: string | null
+}
+
+/**
+ * Get database-level metadata (size, row counts, dates, etc.)
+ * @param connectionId - UUID of the database connection
+ */
+export async function getDatabaseMetadata(connectionId: string): Promise<DatabaseMetadata> {
+  return await invoke('get_database_metadata', { connectionId })
+}
+
+// =============================================================================
+// Soft Delete Types & Commands
+// =============================================================================
+
+/** Result of a soft delete operation */
+export type SoftDeleteResult = {
+  success: boolean
+  affected_rows: number
+  message: string | null
+  deleted_at: number
+  undo_window_seconds: number
+}
+
+/**
+ * Soft delete rows (set deleted_at timestamp instead of hard delete)
+ * @param connectionId - UUID of the database connection
+ * @param tableName - Name of the table
+ * @param schemaName - Schema name (optional)
+ * @param primaryKeyColumn - Name of the primary key column
+ * @param primaryKeyValues - Array of primary key values for rows to soft delete
+ * @param softDeleteColumn - Name of the soft delete column (auto-detected if not provided)
+ */
+export async function softDeleteRows(
+  connectionId: string,
+  tableName: string,
+  schemaName: string | null,
+  primaryKeyColumn: string,
+  primaryKeyValues: unknown[],
+  softDeleteColumn?: string
+): Promise<SoftDeleteResult> {
+  return await invoke('soft_delete_rows', {
+    connectionId,
+    tableName,
+    schemaName,
+    primaryKeyColumn,
+    primaryKeyValues,
+    softDeleteColumn: softDeleteColumn ?? null,
+  })
+}
+
+/**
+ * Undo a soft delete (restore rows)
+ * @param connectionId - UUID of the database connection
+ * @param tableName - Name of the table
+ * @param schemaName - Schema name (optional)
+ * @param primaryKeyColumn - Name of the primary key column
+ * @param primaryKeyValues - Array of primary key values for rows to restore
+ * @param softDeleteColumn - Name of the soft delete column
+ */
+export async function undoSoftDelete(
+  connectionId: string,
+  tableName: string,
+  schemaName: string | null,
+  primaryKeyColumn: string,
+  primaryKeyValues: unknown[],
+  softDeleteColumn: string
+): Promise<MutationResult> {
+  return await invoke('undo_soft_delete', {
+    connectionId,
+    tableName,
+    schemaName,
+    primaryKeyColumn,
+    primaryKeyValues,
+    softDeleteColumn,
+  })
+}
+
+// =============================================================================
+// Truncate Types & Commands
+// =============================================================================
+
+/** Result of a truncate operation */
+export type TruncateResult = {
+  success: boolean
+  affected_rows: number
+  tables_truncated: string[]
+  message: string | null
+}
+
+/**
+ * Truncate a single table
+ * @param connectionId - UUID of the database connection
+ * @param tableName - Name of the table to truncate
+ * @param schemaName - Schema name (optional)
+ * @param cascade - Whether to cascade truncate to related tables (PostgreSQL only)
+ */
+export async function truncateTable(
+  connectionId: string,
+  tableName: string,
+  schemaName: string | null,
+  cascade?: boolean
+): Promise<TruncateResult> {
+  return await invoke('truncate_table', {
+    connectionId,
+    tableName,
+    schemaName,
+    cascade: cascade ?? false,
+  })
+}
+
+/**
+ * Truncate all tables in the database (DANGEROUS - requires confirmation)
+ * @param connectionId - UUID of the database connection
+ * @param schemaName - Schema name (optional, defaults to 'public' for PostgreSQL)
+ * @param confirm - Must be true to execute (safety check)
+ */
+export async function truncateDatabase(
+  connectionId: string,
+  schemaName: string | null,
+  confirm: boolean
+): Promise<TruncateResult> {
+  return await invoke('truncate_database', {
+    connectionId,
+    schemaName,
+    confirm,
+  })
+}
+
+// =============================================================================
+// Database Dump Types & Commands
+// =============================================================================
+
+/** Result of a database dump operation */
+export type DumpResult = {
+  success: boolean
+  file_path: string
+  size_bytes: number
+  tables_dumped: number
+  rows_dumped: number
+  message: string | null
+}
+
+/**
+ * Dump database to a SQL file
+ * @param connectionId - UUID of the database connection
+ * @param outputPath - Path where to save the dump file
+ */
+export async function dumpDatabase(
+  connectionId: string,
+  outputPath: string
+): Promise<DumpResult> {
+  return await invoke('dump_database', {
+    connectionId,
+    outputPath,
+  })
+}
+
+// =============================================================================
+// Recent Queries & Connections Commands
+// =============================================================================
+
+/**
+ * Get recent queries with enhanced filtering
+ * @param connectionId - Optional connection ID to filter by
+ * @param limit - Maximum number of results
+ * @param statusFilter - Optional status filter ('success', 'error', etc.)
+ */
+export async function getRecentQueries(
+  connectionId?: string,
+  limit?: number,
+  statusFilter?: string
+): Promise<QueryHistoryEntry[]> {
+  return await invoke('get_recent_queries', {
+    connectionId: connectionId ?? null,
+    limit: limit ?? null,
+    statusFilter: statusFilter ?? null,
+  })
+}
+
+/**
+ * Get recent connections (last connected databases)
+ * @param limit - Maximum number of results
+ */
+export async function getRecentConnections(
+  limit?: number
+): Promise<ConnectionInfo[]> {
+  return await invoke('get_recent_connections', {
+    limit: limit ?? null,
+  })
+}
+

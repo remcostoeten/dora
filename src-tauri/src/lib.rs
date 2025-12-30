@@ -123,7 +123,22 @@ pub fn run() {
             // Mutation API commands
             database::commands::update_cell,
             database::commands::delete_rows,
+            database::commands::insert_row,
+            database::commands::execute_batch,
             database::commands::export_table,
+            // Metadata commands
+            database::commands::get_database_metadata,
+            // Soft delete commands
+            database::commands::soft_delete_rows,
+            database::commands::undo_soft_delete,
+            // Truncate commands
+            database::commands::truncate_table,
+            database::commands::truncate_database,
+            // Dump commands
+            database::commands::dump_database,
+            // Recent queries/connections
+            database::commands::get_recent_queries,
+            database::commands::get_recent_connections,
             // Window commands
             window::commands::minimize_window,
             window::commands::maximize_window,
