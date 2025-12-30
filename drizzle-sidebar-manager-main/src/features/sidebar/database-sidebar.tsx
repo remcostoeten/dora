@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { SpotlightTrigger } from "./components/spotlight-trigger";
+// import { SpotlightTrigger } from "./components/spotlight-trigger"; // Replaced by ConnectionSwitcher
+import { ConnectionSwitcher } from "../connections/components/connection-switcher";
 import { NavButtons } from "./components/nav-buttons";
 import { SchemaSelector } from "./components/schema-selector";
 import { TableSearch, FilterState } from "./components/table-search";
@@ -11,6 +12,7 @@ import { SettingsPanel, SettingsState } from "./components/settings-panel";
 import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
 import { MOCK_SCHEMAS, MOCK_TABLES } from "./data";
 import { Schema, TableItem } from "./types";
+import { Connection } from "../connections/types";
 import { Button } from "@/shared/ui/button";
 import { Plus } from "lucide-react";
 
@@ -35,6 +37,13 @@ type Props = {
   onNavSelect?: (id: string) => void;
   onTableSelect?: (tableId: string, tableName: string) => void;
   selectedTableId?: string;
+
+  // Connection props
+  connections?: Connection[];
+  activeConnectionId?: string;
+  onConnectionSelect?: (id: string) => void;
+  onAddConnection?: () => void;
+  onManageConnections?: () => void;
 };
 
 export function DatabaseSidebar({
@@ -42,6 +51,11 @@ export function DatabaseSidebar({
   onNavSelect,
   onTableSelect,
   selectedTableId,
+  connections = [],
+  activeConnectionId,
+  onConnectionSelect = () => { },
+  onAddConnection = () => { },
+  onManageConnections = () => { },
 }: Props = {}) {
   const [internalNavId, setInternalNavId] = useState("database-studio");
   const activeNavId = controlledNavId ?? internalNavId;
@@ -61,7 +75,7 @@ export function DatabaseSidebar({
   const activeTableId = selectedTableId ?? internalTableId;
   const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  // const [showSettings, setShowSettings] = useState(false); // Removed in favor of Popover
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
 
   const filteredTables = useMemo(() => {
@@ -116,9 +130,8 @@ export function DatabaseSidebar({
   }
 
   function handleToolbarAction(action: ToolbarAction) {
-    if (action === "settings") {
-      setShowSettings(!showSettings);
-    } else {
+    // Settings is now handled by the Popover in BottomToolbar
+    if (action !== "settings") {
       console.log("Toolbar action:", action);
     }
   }
@@ -131,8 +144,14 @@ export function DatabaseSidebar({
     <div className="relative flex flex-col h-full w-[244px] bg-sidebar border-r border-sidebar-border">
       {/* Header section with spotlight and nav */}
       <div className="flex flex-col">
-        <div className="px-3 pt-3 pb-2">
-          <SpotlightTrigger onSpotlightOpen={() => console.log("Open spotlight")} />
+        <div className="px-0 pt-0 pb-2">
+          <ConnectionSwitcher
+            connections={connections}
+            activeConnectionId={activeConnectionId}
+            onConnectionSelect={onConnectionSelect}
+            onAddConnection={onAddConnection}
+            onManageConnections={onManageConnections}
+          />
         </div>
         <div className="px-2 pb-2">
           <NavButtons activeId={activeNavId} onSelect={handleNavSelect} />
@@ -182,15 +201,14 @@ export function DatabaseSidebar({
         />
       )}
 
-      {showSettings && (
-        <SettingsPanel
-          settings={settings}
-          onSettingsChange={setSettings}
-          onCopySchema={handleCopySchema}
-        />
-      )}
-
-      <BottomToolbar onAction={handleToolbarAction} />
+      <BottomToolbar
+        onAction={handleToolbarAction}
+        settingsProps={{
+          settings,
+          onSettingsChange: setSettings,
+          onCopySchema: handleCopySchema
+        }}
+      />
     </div>
   );
 }

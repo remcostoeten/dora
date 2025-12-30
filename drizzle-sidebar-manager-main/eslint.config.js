@@ -17,6 +17,11 @@ export default tseslint.config(
     plugins: {
       "react-hooks": reactHooks,
       "react-refresh": reactRefresh,
+      "prop-type-naming": {
+        rules: {
+          "prop-type-naming": propTypeNaming,
+        },
+      },
     },
     rules: {
       ...reactHooks.configs.recommended.rules,

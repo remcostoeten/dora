@@ -10,6 +10,10 @@ export default defineConfig({
     strictPort: true,
   },
   plugins: [react()],
+  build: {
+    minify: 'esbuild',
+    target: 'esnext',
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -17,4 +21,5 @@ export default defineConfig({
   },
   // Clear console on HMR (better dev experience)
   clearScreen: false,
+  bundle: 'rolldown',
 });

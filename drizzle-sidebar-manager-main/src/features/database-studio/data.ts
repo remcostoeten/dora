@@ -105,23 +105,76 @@ export const TABLE_DATA: Record<string, Record<string, unknown>[]> = {
     ],
 };
 
-// Function to get table data with pagination
+// Function to get table data with sort, filter, and pagination
 export async function getTableData(
-    tableId: string,
-    limit: number = 50,
-    offset: number = 0
+    params: {
+        tableId: string;
+        limit?: number;
+        offset?: number;
+        sort?: { column: string; direction: "asc" | "desc" };
+        filters?: { column: string; operator: string; value: unknown }[];
+    }
 ): Promise<TableData> {
+    const { tableId, limit = 50, offset = 0, sort, filters } = params;
+
     // Simulate network delay
     await new Promise((resolve) => setTimeout(resolve, 100 + Math.random() * 200));
 
     const columns = TABLE_COLUMNS[tableId] || [];
-    const allRows = TABLE_DATA[tableId] || [];
-    const paginatedRows = allRows.slice(offset, offset + limit);
+    let rows = [...(TABLE_DATA[tableId] || [])];
+
+    // 1. Filter
+    if (filters && filters.length > 0) {
+        rows = rows.filter((row) => {
+            return filters.every((filter) => {
+                const cellValue = row[filter.column];
+                const filterValue = filter.value;
+
+                switch (filter.operator) {
+                    case "eq":
+                        return String(cellValue) === String(filterValue);
+                    case "neq":
+                        return String(cellValue) !== String(filterValue);
+                    case "gt":
+                        return (cellValue as number) > (filterValue as number);
+                    case "gte":
+                        return (cellValue as number) >= (filterValue as number);
+                    case "lt":
+                        return (cellValue as number) < (filterValue as number);
+                    case "lte":
+                        return (cellValue as number) <= (filterValue as number);
+                    case "ilike":
+                        return String(cellValue)
+                            .toLowerCase()
+                            .includes(String(filterValue).toLowerCase());
+                    case "contains":
+                        return String(cellValue).includes(String(filterValue));
+                    default:
+                        return true;
+                }
+            });
+        });
+    }
+
+    // 2. Sort
+    if (sort) {
+        rows.sort((a, b) => {
+            const valA = a[sort.column] as string | number;
+            const valB = b[sort.column] as string | number;
+
+            if (valA < valB) return sort.direction === "asc" ? -1 : 1;
+            if (valA > valB) return sort.direction === "asc" ? 1 : -1;
+            return 0;
+        });
+    }
+
+    const totalCount = rows.length;
+    const paginatedRows = rows.slice(offset, offset + limit);
 
     return {
         columns,
         rows: paginatedRows,
-        totalCount: allRows.length,
+        totalCount,
         executionTime: Math.floor(50 + Math.random() * 100),
     };
 }

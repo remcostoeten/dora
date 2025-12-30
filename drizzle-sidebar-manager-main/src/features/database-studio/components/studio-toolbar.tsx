@@ -8,6 +8,7 @@ import {
     RefreshCw,
     Download,
     ChevronDown,
+    X,
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -19,7 +20,7 @@ import {
     DropdownMenuCheckboxItem,
 } from "@/shared/ui/dropdown-menu";
 import { cn } from "@/shared/utils/cn";
-import { ViewMode, PaginationState } from "../types";
+import { ViewMode, PaginationState, FilterDescriptor } from "../types";
 
 type Props = {
     tableName: string;
@@ -34,6 +35,8 @@ type Props = {
     onRefresh: () => void;
     onExport: () => void;
     isLoading?: boolean;
+    filters?: FilterDescriptor[];
+    onFiltersChange?: (filters: FilterDescriptor[]) => void;
 };
 
 export function StudioToolbar({
@@ -49,6 +52,8 @@ export function StudioToolbar({
     onRefresh,
     onExport,
     isLoading,
+    filters = [],
+    onFiltersChange,
 }: Props) {
     const [limitInput, setLimitInput] = useState(String(pagination.limit));
     const [offsetInput, setOffsetInput] = useState(String(pagination.offset));
@@ -67,6 +72,17 @@ export function StudioToolbar({
         if (!isNaN(num) && num >= 0) {
             onPaginationChange({ ...pagination, offset: num });
         }
+    };
+
+    const removeFilter = (index: number) => {
+        if (!onFiltersChange) return;
+        const newFilters = [...filters];
+        newFilters.splice(index, 1);
+        onFiltersChange(newFilters);
+    };
+
+    const clearFilters = () => {
+        onFiltersChange?.([]);
     };
 
     return (
@@ -156,20 +172,61 @@ export function StudioToolbar({
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 text-xs text-muted-foreground hover:text-sidebar-foreground gap-1"
+                                className={cn(
+                                    "h-7 px-2 text-xs gap-1",
+                                    filters.length > 0
+                                        ? "text-blue-400 bg-blue-400/10 hover:bg-blue-400/20"
+                                        : "text-muted-foreground hover:text-sidebar-foreground"
+                                )}
                             >
                                 <Filter className="h-3.5 w-3.5" />
                                 Filters
+                                {filters.length > 0 && <span className="ml-0.5 font-medium">{filters.length}</span>}
                                 <ChevronDown className="h-3 w-3" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-[200px] p-2">
+                        <DropdownMenuContent align="start" className="w-[280px] p-2">
                             <div className="flex flex-col gap-2">
-                                <span className="text-xs font-medium text-muted-foreground">Active filters</span>
-                                <div className="text-xs text-center py-4 border border-dashed rounded-md text-muted-foreground">
-                                    No active filters
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-muted-foreground">Active filters</span>
+                                    {filters.length > 0 && (
+                                        <button
+                                            onClick={clearFilters}
+                                            className="text-[10px] text-muted-foreground hover:text-primary transition-colors"
+                                        >
+                                            Clear all
+                                        </button>
+                                    )}
                                 </div>
-                                <Button size="sm" variant="outline" className="w-full text-xs h-7">
+
+                                {filters.length === 0 ? (
+                                    <div className="text-xs text-center py-4 border border-dashed rounded-md text-muted-foreground">
+                                        No active filters
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto">
+                                        {filters.map((filter, i) => (
+                                            <div key={i} className="flex items-center justify-between gap-2 p-1.5 bg-sidebar-accent/50 rounded text-xs group">
+                                                <div className="flex items-center gap-1.5 truncate">
+                                                    <span className="font-mono text-muted-foreground">{filter.column}</span>
+                                                    <span className="text-orange-400">{filter.operator}</span>
+                                                    <span className="font-medium truncate max-w-[100px]">{String(filter.value)}</span>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        removeFilter(i);
+                                                    }}
+                                                    className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-sidebar-accent rounded transition-all"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <Button size="sm" variant="outline" className="w-full text-xs h-7 mt-1">
                                     <Plus className="h-3 w-3 mr-1" /> Add filter
                                 </Button>
                             </div>

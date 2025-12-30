@@ -2,7 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
 import { getTableData } from "./data";
-import { TableData, PaginationState, ViewMode, ColumnDefinition } from "./types";
+import {
+    TableData,
+    PaginationState,
+    ViewMode,
+    ColumnDefinition,
+    SortDescriptor,
+    FilterDescriptor
+} from "./types";
 
 type Props = {
     tableId: string | null;
@@ -15,6 +22,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar }: Props) {
     const [isLoading, setIsLoading] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>("content");
     const [pagination, setPagination] = useState<PaginationState>({ limit: 50, offset: 0 });
+    const [sort, setSort] = useState<SortDescriptor | undefined>();
+    const [filters, setFilters] = useState<FilterDescriptor[]>([]);
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
 
     const loadTableData = useCallback(async () => {
@@ -24,7 +33,13 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar }: Props) {
         setSelectedRows(new Set());
 
         try {
-            const data = await getTableData(tableId, pagination.limit, pagination.offset);
+            const data = await getTableData({
+                tableId,
+                limit: pagination.limit,
+                offset: pagination.offset,
+                sort,
+                filters
+            });
             setTableData(data);
         } catch (error) {
             console.error("Failed to load table data:", error);
@@ -32,15 +47,17 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar }: Props) {
         } finally {
             setIsLoading(false);
         }
-    }, [tableId, pagination.limit, pagination.offset]);
+    }, [tableId, pagination.limit, pagination.offset, sort, filters]);
 
     useEffect(() => {
         loadTableData();
     }, [loadTableData]);
 
-    // Reset pagination when table changes
+    // Reset state when table changes
     useEffect(() => {
         setPagination({ limit: 50, offset: 0 });
+        setSort(undefined);
+        setFilters([]);
     }, [tableId]);
 
     const handleRowSelect = (rowIndex: number, checked: boolean) => {
@@ -186,6 +203,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar }: Props) {
                 onRefresh={loadTableData}
                 onExport={handleExport}
                 isLoading={isLoading}
+                filters={filters}
+                onFiltersChange={setFilters}
             />
 
             <div className="flex-1 overflow-hidden">
@@ -200,6 +219,9 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar }: Props) {
                         selectedRows={selectedRows}
                         onRowSelect={handleRowSelect}
                         onSelectAll={handleSelectAll}
+                        sort={sort}
+                        onSortChange={setSort}
+                        onFilterAdd={(filter) => setFilters(prev => [...prev, filter])}
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full">
