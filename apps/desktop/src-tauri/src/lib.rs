@@ -139,6 +139,23 @@ pub fn run() {
             // Recent queries/connections
             database::commands::get_recent_queries,
             database::commands::get_recent_connections,
+            database::commands::set_connection_pin,
+            database::commands::verify_pin_and_get_credentials,
+            // Seeding commands
+            database::commands::seed_table,
+            // Query Builder commands
+            database::commands::parse_sql,
+            database::commands::build_sql,
+            // Schema Export commands
+            database::commands::export_schema_sql,
+            database::commands::export_schema_drizzle,
+            // AI commands
+            database::commands::ai_complete,
+            database::commands::ai_set_provider,
+            database::commands::ai_get_provider,
+            database::commands::ai_set_gemini_key,
+            database::commands::ai_configure_ollama,
+            database::commands::ai_list_ollama_models,
             // Window commands
             window::commands::minimize_window,
             window::commands::maximize_window,

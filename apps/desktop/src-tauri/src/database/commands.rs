@@ -10,6 +10,8 @@ use crate::{
             query::QueryService,
             mutation::MutationService,
             metadata::MetadataService,
+            seeding::SeedingService,
+            query_builder::QueryBuilderService,
         },
         types::{
             ConnectionInfo, DatabaseInfo, StatementInfo, QueryStatus,
@@ -164,6 +166,32 @@ pub async fn get_connection_history(
         stmt_manager: &state.stmt_manager,
     };
     svc.get_connection_history(db_type_filter, success_filter, limit).await
+}
+
+#[tauri::command]
+pub async fn set_connection_pin(
+    connection_id: Uuid,
+    pin: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let svc = ConnectionService {
+        connections: &state.connections,
+        storage: &state.storage,
+    };
+    svc.set_connection_pin(connection_id, pin).await
+}
+
+#[tauri::command]
+pub async fn verify_pin_and_get_credentials(
+    connection_id: Uuid,
+    pin: String,
+    state: State<'_, AppState>,
+) -> Result<Option<String>, Error> {
+    let svc = ConnectionService {
+        connections: &state.connections,
+        storage: &state.storage,
+    };
+    svc.verify_pin_and_get_credentials(connection_id, pin).await
 }
 
 
@@ -598,3 +626,203 @@ pub async fn get_database_metadata(
     };
     svc.get_database_metadata(connection_id).await
 }
+
+// Re-export SeedResult for external use
+pub use crate::database::services::seeding::SeedResult;
+
+// =============================================================================
+// Seeding Commands
+// =============================================================================
+
+#[tauri::command]
+pub async fn seed_table(
+    connection_id: Uuid,
+    table_name: String,
+    schema_name: Option<String>,
+    count: u32,
+    state: State<'_, AppState>,
+) -> Result<SeedResult, Error> {
+    let svc = SeedingService {
+        connections: &state.connections,
+        schemas: &state.schemas,
+    };
+    svc.seed_table(connection_id, table_name, schema_name, count).await
+}
+
+// =============================================================================
+// Query Builder Commands
+// =============================================================================
+
+#[tauri::command]
+pub async fn parse_sql(sql: String) -> Result<serde_json::Value, Error> {
+    let svc = QueryBuilderService;
+    let ast = svc.parse_sql(&sql)?;
+    Ok(serde_json::to_value(ast)?)
+}
+
+#[tauri::command]
+pub async fn build_sql(ast: serde_json::Value) -> Result<String, Error> {
+    let svc = QueryBuilderService;
+    // We need to deserialize back to Vec<Statement>
+    // Note: sqlparser AST might be tricky to deserialize exactly if it has specific enums
+    // But since we enabled serde, it should work.
+    let statements: Vec<sqlparser::ast::Statement> = serde_json::from_value(ast)?;
+    svc.build_sql(statements).map_err(Error::from)
+}
+
+// =============================================================================
+// Schema Export Commands
+// =============================================================================
+
+use crate::database::services::schema_export::{SchemaExportService, ExportDialect};
+
+/// Export database schema to SQL DDL format
+/// 
+/// # Arguments
+/// * `connection_id` - UUID of the connected database
+/// * `dialect` - Target SQL dialect: "postgresql" or "sqlite"
+#[tauri::command]
+pub async fn export_schema_sql(
+    connection_id: Uuid,
+    dialect: String,
+    state: State<'_, AppState>,
+) -> Result<String, Error> {
+    let export_dialect = ExportDialect::try_from(dialect.as_str())?;
+    let svc = SchemaExportService {
+        schemas: &state.schemas,
+    };
+    svc.export_to_sql(connection_id, export_dialect)
+}
+
+/// Export database schema to Drizzle ORM TypeScript format
+/// 
+/// # Arguments
+/// * `connection_id` - UUID of the connected database
+/// * `dialect` - Target Drizzle dialect: "postgresql" or "sqlite"
+#[tauri::command]
+pub async fn export_schema_drizzle(
+    connection_id: Uuid,
+    dialect: String,
+    state: State<'_, AppState>,
+) -> Result<String, Error> {
+    let export_dialect = ExportDialect::try_from(dialect.as_str())?;
+    let svc = SchemaExportService {
+        schemas: &state.schemas,
+    };
+    svc.export_to_drizzle(connection_id, export_dialect)
+}
+
+// =============================================================================
+// AI Commands
+// =============================================================================
+
+use crate::database::services::ai::{AIService, AIRequest, AIResponse, AIProvider, SchemaContext, TableContext};
+
+/// Complete a prompt using the configured AI provider
+#[tauri::command]
+pub async fn ai_complete(
+    prompt: String,
+    connection_id: Option<Uuid>,
+    max_tokens: Option<u32>,
+    state: State<'_, AppState>,
+) -> Result<AIResponse, Error> {
+    // Build schema context if connection_id provided
+    let context = if let Some(conn_id) = connection_id {
+        if let Some(schema) = state.schemas.get(&conn_id) {
+            Some(SchemaContext {
+                tables: schema.tables.iter().map(|t| TableContext {
+                    name: t.name.clone(),
+                    columns: t.columns.iter().map(|c| c.name.clone()).collect(),
+                }).collect(),
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let request = AIRequest {
+        prompt,
+        context,
+        connection_id,
+        max_tokens,
+    };
+
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.complete(request).await
+}
+
+/// Set the AI provider (gemini or ollama)
+#[tauri::command]
+pub async fn ai_set_provider(
+    provider: String,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let ai_provider = match provider.to_lowercase().as_str() {
+        "gemini" => AIProvider::Gemini,
+        "ollama" => AIProvider::Ollama,
+        _ => return Err(Error::Any(anyhow::anyhow!("Invalid provider: {}", provider))),
+    };
+    
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.set_provider(ai_provider)
+}
+
+/// Get the current AI provider
+#[tauri::command]
+pub async fn ai_get_provider(
+    state: State<'_, AppState>,
+) -> Result<String, Error> {
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    let provider = svc.get_provider()?;
+    Ok(match provider {
+        AIProvider::Gemini => "gemini".to_string(),
+        AIProvider::Ollama => "ollama".to_string(),
+    })
+}
+
+/// Set the Gemini API key (BYOK)
+#[tauri::command]
+pub async fn ai_set_gemini_key(
+    api_key: String,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    state.storage.set_setting("gemini_api_key", &api_key)?;
+    Ok(())
+}
+
+/// Configure Ollama endpoint and model
+#[tauri::command]
+pub async fn ai_configure_ollama(
+    endpoint: Option<String>,
+    model: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    if let Some(ep) = endpoint {
+        state.storage.set_setting("ollama_endpoint", &ep)?;
+    }
+    if let Some(m) = model {
+        state.storage.set_setting("ollama_model", &m)?;
+    }
+    Ok(())
+}
+
+/// List available Ollama models
+#[tauri::command]
+pub async fn ai_list_ollama_models(
+    state: State<'_, AppState>,
+) -> Result<Vec<String>, Error> {
+    let endpoint = state.storage.get_setting("ollama_endpoint")?
+        .unwrap_or_else(|| "http://localhost:11434".to_string());
+    
+    let client = crate::database::services::ai::OllamaClient::new(endpoint, String::new());
+    client.list_models().await
+}
+

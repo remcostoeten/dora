@@ -6,6 +6,7 @@ use serde_json::value::RawValue;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use uuid::Uuid;
 
+use crate::database::ssh_tunnel::SshTunnel;
 use crate::Error;
 
 pub type QueryId = usize;
@@ -56,15 +57,28 @@ pub struct ConnectionInfo {
     pub connected: bool,
     pub database_type: DatabaseInfo,
     pub last_connected_at: Option<i64>,
+    pub created_at: Option<i64>,
+    pub updated_at: Option<i64>,
+    pub pin_hash: Option<String>,
     pub favorite: Option<bool>,
     pub color: Option<String>,
     pub sort_order: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SshConfig {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub private_key_path: Option<String>,
+    pub password: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DatabaseInfo {
     Postgres {
         connection_string: String,
+        ssh_config: Option<SshConfig>,
     },
     SQLite {
         db_path: String,
@@ -83,6 +97,9 @@ pub struct DatabaseConnection {
     pub id: Uuid,
     pub name: String,
     pub connected: bool,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub pin_hash: Option<String>,
     pub database: Database,
 }
 
@@ -103,7 +120,9 @@ pub enum DatabaseClient {
 pub enum Database {
     Postgres {
         connection_string: String,
+        ssh_config: Option<SshConfig>,
         client: Option<Arc<tokio_postgres::Client>>,
+        tunnel: Option<Arc<SshTunnel>>,
     },
     SQLite {
         db_path: String,
@@ -124,9 +143,12 @@ impl DatabaseConnection {
             connected: self.connected,
             database_type: match &self.database {
                 Database::Postgres {
-                    connection_string, ..
+                    connection_string,
+                    ssh_config,
+                    ..
                 } => DatabaseInfo::Postgres {
                     connection_string: connection_string.clone(),
+                    ssh_config: ssh_config.clone(),
                 },
                 Database::SQLite { db_path, .. } => DatabaseInfo::SQLite {
                     db_path: db_path.clone(),
@@ -139,6 +161,9 @@ impl DatabaseConnection {
                 },
             },
             last_connected_at: None,
+            created_at: Some(self.created_at),
+            updated_at: Some(self.updated_at),
+            pin_hash: self.pin_hash.clone(),
             favorite: None,
             color: None,
             sort_order: None,
@@ -147,9 +172,14 @@ impl DatabaseConnection {
 
     pub fn new(id: Uuid, name: String, database_info: DatabaseInfo) -> Self {
         let database = match database_info {
-            DatabaseInfo::Postgres { connection_string } => Database::Postgres {
+            DatabaseInfo::Postgres {
                 connection_string,
+                ssh_config,
+            } => Database::Postgres {
+                connection_string,
+                ssh_config,
                 client: None,
+                tunnel: None,
             },
             DatabaseInfo::SQLite { db_path } => Database::SQLite {
                 db_path,
@@ -166,6 +196,39 @@ impl DatabaseConnection {
             id,
             name,
             connected: false,
+            created_at: chrono::Utc::now().timestamp_millis(),
+            updated_at: chrono::Utc::now().timestamp_millis(),
+            pin_hash: None,
+            database,
+        }
+    }
+
+    pub fn from_connection_info(info: ConnectionInfo) -> Self {
+        let database = match info.database_type {
+            DatabaseInfo::Postgres { connection_string, ssh_config } => Database::Postgres {
+                connection_string,
+                ssh_config,
+                client: None,
+                tunnel: None,
+            },
+            DatabaseInfo::SQLite { db_path } => Database::SQLite {
+                db_path,
+                connection: None,
+            },
+            DatabaseInfo::LibSQL { url, auth_token } => Database::LibSQL {
+                url,
+                auth_token,
+                connection: None,
+            },
+        };
+
+        Self {
+            id: info.id,
+            name: info.name,
+            connected: false,
+            created_at: info.created_at.unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+            updated_at: info.updated_at.unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+            pin_hash: info.pin_hash,
             database,
         }
     }
