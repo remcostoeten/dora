@@ -14,6 +14,7 @@ pub mod metadata;
 pub mod parser;
 pub mod stmt_manager;
 pub mod types;
+pub mod ssh_tunnel;
 
 pub use connection_monitor::ConnectionMonitor;
 
