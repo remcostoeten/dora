@@ -12,20 +12,11 @@ export function getAllCommands(
 ): AppCommand[] {
   const allCommands = Array.from(commandRegistry.values())
     .filter(command => !command.isAvailable || command.isAvailable(context))
-    .map(cmd => {
-      // For backward compatibility with commands that still use labelKey/descriptionKey
-      const label = cmd.label || (cmd.labelKey ? cmd.labelKey.split('.').pop() : cmd.id) || cmd.id
-      const description = cmd.description || (cmd.descriptionKey ? cmd.descriptionKey.split('.').pop() : undefined)
-      
-      // Create a new command object with the resolved values
-      const resolvedCmd: AppCommand = {
-        ...cmd,
-        label,
-        description
-      }
-      
-      return resolvedCmd
-    })
+    .map(cmd => ({
+      ...cmd,
+      label: cmd.label,
+      description: cmd.description
+    }))
 
   if (searchValue.trim()) {
     const search = searchValue.toLowerCase()
@@ -33,7 +24,7 @@ export function getAllCommands(
       const label = cmd.label.toLowerCase()
       const description = cmd.description?.toLowerCase() || ''
       const keywords = cmd.keywords?.join(' ').toLowerCase() || ''
-      
+
       return (
         label.includes(search) ||
         description.includes(search) ||

@@ -3,6 +3,7 @@ import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
+import propTypeNaming from "./eslint-rules/prop-type-naming.js";
 
 export default tseslint.config(
   { ignores: ["dist"] },
@@ -21,6 +22,7 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      "prop-type-naming": "error",
     },
   },
 );

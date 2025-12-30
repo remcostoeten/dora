@@ -50,8 +50,8 @@ export function initializeCommandSystem(): void {
 ```typescript
 interface AppCommand {
   id: string
-  labelKey: string // Translation key (e.g., 'commands.myAction.label')
-  descriptionKey?: string // Translation key for description
+  id: string
+  label: string // Display label (e.g. 'My Action')
   icon?: LucideIcon
   group?: string // Grouping for command palette
   keywords?: string[] // Additional search terms
@@ -114,7 +114,7 @@ const commands = getAllCommands(commandContext, search, t)
 // Render command with translated text
 <CommandItem onSelect={() => handleCommandSelect(command.id)}>
   {command.icon && <command.icon />}
-  <span>{t(command.labelKey)}</span>
+  <span>{command.label}</span>
 </CommandItem>
 ```
 
@@ -150,29 +150,15 @@ listen('menu-preferences', () => {
 
 ## Adding New Commands
 
-### Step 1: Add Translation Keys
-
-```json
-// locales/en.json
-{
-  "commands": {
-    "myAction": {
-      "label": "My Action",
-      "description": "Does something useful"
-    }
-  }
-}
-```
-
-### Step 2: Create Command File
+### Step 1: Create Command File
 
 ```typescript
 // src/lib/commands/my-feature-commands.ts
 export const myFeatureCommands: AppCommand[] = [
   {
     id: 'my-action',
-    labelKey: 'commands.myAction.label',
-    descriptionKey: 'commands.myAction.description',
+    label: 'My Action',
+    description: 'Does something useful',
     group: 'my-feature',
 
     execute: context => {
@@ -183,7 +169,7 @@ export const myFeatureCommands: AppCommand[] = [
 ]
 ```
 
-### Step 3: Register in Index
+### Step 2: Register in Index
 
 ```typescript
 // src/lib/commands/index.ts
@@ -196,7 +182,7 @@ export function initializeCommandSystem(): void {
 }
 ```
 
-### Step 4: Extend Context (if needed)
+### Step 3: Extend Context (if needed)
 
 ```typescript
 // src/hooks/use-command-context.ts
@@ -230,7 +216,7 @@ Group labels are translated via `commands.group.{groupName}` keys.
 
 | Do                                                 | Don't                             |
 | -------------------------------------------------- | --------------------------------- |
-| Use `labelKey` with translation keys               | Hardcode label strings            |
+| Use `label` for display text               | Hardcode strings in code without centralized management |
 | Use `getState()` in execute functions              | Use hooks in commands             |
 | Check `isAvailable` for context-dependent commands | Show unavailable commands         |
 | Provide `keywords` for better searchability        | Rely only on label matching       |

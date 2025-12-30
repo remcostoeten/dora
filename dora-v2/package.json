@@ -42,7 +42,8 @@
     "knip": "knip",
     "jscpd": "jscpd",
     "ast:lint": "ast-grep scan",
-    "ast:fix": "ast-grep scan --fix"
+    "ast:fix": "ast-grep scan --fix",
+    "generate:icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.15",

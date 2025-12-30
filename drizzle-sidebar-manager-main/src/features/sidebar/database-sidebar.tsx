@@ -33,11 +33,15 @@ const DEFAULT_SETTINGS: SettingsState = {
 type Props = {
   activeNavId?: string;
   onNavSelect?: (id: string) => void;
+  onTableSelect?: (tableId: string, tableName: string) => void;
+  selectedTableId?: string;
 };
 
 export function DatabaseSidebar({
   activeNavId: controlledNavId,
-  onNavSelect
+  onNavSelect,
+  onTableSelect,
+  selectedTableId,
 }: Props = {}) {
   const [internalNavId, setInternalNavId] = useState("database-studio");
   const activeNavId = controlledNavId ?? internalNavId;
@@ -53,10 +57,10 @@ export function DatabaseSidebar({
   const [selectedSchema, setSelectedSchema] = useState<Schema>(MOCK_SCHEMAS[0]);
   const [searchValue, setSearchValue] = useState("");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
-  const [activeTableId, setActiveTableId] = useState<string | undefined>();
+  const [internalTableId, setInternalTableId] = useState<string | undefined>();
+  const activeTableId = selectedTableId ?? internalTableId;
   const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
-  const [showAddMenu, setShowAddMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
 
@@ -75,7 +79,11 @@ export function DatabaseSidebar({
   }, [searchValue, filters]);
 
   function handleTableSelect(tableId: string) {
-    setActiveTableId(tableId);
+    setInternalTableId(tableId);
+    if (onTableSelect) {
+      const table = MOCK_TABLES.find((t) => t.id === tableId);
+      onTableSelect(tableId, table?.name ?? tableId);
+    }
   }
 
   function handleTableMultiSelect(tableId: string, checked: boolean) {
@@ -94,7 +102,6 @@ export function DatabaseSidebar({
   }
 
   function handleAddAction(action: AddAction) {
-    setShowAddMenu(false);
     console.log("Add action:", action);
   }
 
@@ -146,16 +153,8 @@ export function DatabaseSidebar({
           filters={filters}
           onFiltersChange={setFilters}
           onRefresh={() => console.log("Refresh")}
-          onAddClick={() => setShowAddMenu(true)}
+          onAddAction={handleAddAction}
         />
-
-        <AddMenu
-          open={showAddMenu}
-          onOpenChange={setShowAddMenu}
-          onAction={handleAddAction}
-        >
-          <Button className="hidden" />
-        </AddMenu>
       </div>
 
       {/* Table list */}

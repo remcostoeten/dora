@@ -18,9 +18,7 @@ export interface AppCommand {
   isAvailable?: (context: CommandContext) => boolean
   /** Keyboard shortcut */
   shortcut?: string
-  // Legacy i18n support (kept for backward compatibility)
-  labelKey?: string
-  descriptionKey?: string
+
 }
 
 export interface CommandGroup {

@@ -80,9 +80,13 @@ function TableItemRow({
           {item.name}
         </span>
 
-        <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-          {formatRowCount(item.rowCount)}
-        </span>
+
+
+        {!showContextMenu && (
+          <span className="text-xs text-muted-foreground tabular-nums shrink-0 group-hover:hidden">
+            {formatRowCount(item.rowCount)}
+          </span>
+        )}
 
         <TableContextMenu
           open={showContextMenu}
@@ -93,8 +97,8 @@ function TableItemRow({
             variant="ghost"
             size="icon"
             className={cn(
-              "h-5 w-5 shrink-0 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent",
-              showContextMenu && "opacity-100"
+              "h-5 w-5 shrink-0 hidden group-hover:flex items-center justify-center opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent",
+              showContextMenu && "opacity-100 flex"
             )}
             onClick={(e) => {
               e.stopPropagation();

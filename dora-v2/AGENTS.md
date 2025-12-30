@@ -87,26 +87,7 @@ const prefs = await invoke('load_preferences')
 
 **Adding commands**: See `docs/developer/tauri-commands.md`
 
-### Internationalization (i18n)
 
-```typescript
-// ✅ GOOD: Use useTranslation hook in React components
-import { useTranslation } from 'react-i18next'
-
-function MyComponent() {
-  const { t } = useTranslation()
-  return <h1>{t('myFeature.title')}</h1>
-}
-
-// ✅ GOOD: Non-React contexts - bind for many calls, or use directly
-import i18n from '@/i18n/config'
-const t = i18n.t.bind(i18n)  // Bind once for many translations
-i18n.t('key')                 // Or call directly for occasional use
-```
-
-- **Translations**: All strings in `/locales/*.json`
-- **RTL Support**: Use CSS logical properties (`text-start` not `text-left`)
-- **Adding strings**: See `docs/developer/i18n-patterns.md`
 
 ### Documentation & Versions
 

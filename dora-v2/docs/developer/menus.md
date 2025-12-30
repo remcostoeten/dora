@@ -6,8 +6,6 @@ Cross-platform native menu system built with JavaScript for i18n support, integr
 
 This app builds menus from **JavaScript** using Tauri's JS Menu API (`@tauri-apps/api/menu`). This enables:
 
-- Runtime translation via react-i18next
-- Dynamic menu rebuilding when language changes
 - Direct integration with React state (Zustand)
 
 ## Current Menu Structure
@@ -35,7 +33,7 @@ View
 
 ### Menu Builder (`src/lib/menu.ts`)
 
-Menus are built using translated labels and direct action handlers:
+Menus are built using direct action handlers:
 
 ```typescript
 import {
@@ -44,18 +42,15 @@ import {
   Submenu,
   PredefinedMenuItem,
 } from '@tauri-apps/api/menu'
-import i18n from '@/i18n/config'
 import { useUIStore } from '@/store/ui-store'
 
 export async function buildAppMenu(): Promise<Menu> {
-  const t = i18n.t.bind(i18n)
-
   const appSubmenu = await Submenu.new({
     text: APP_NAME,
     items: [
       await MenuItem.new({
         id: 'preferences',
-        text: t('menu.preferences'),
+        text: 'Preferences',
         accelerator: 'CmdOrCtrl+,',
         action: handleOpenPreferences,
       }),
@@ -76,17 +71,7 @@ function handleOpenPreferences(): void {
 }
 ```
 
-### Language Change Handling
 
-Menus are automatically rebuilt when the language changes:
-
-```typescript
-export function setupMenuLanguageListener(): void {
-  i18n.on('languageChanged', async () => {
-    await buildAppMenu()
-  })
-}
-```
 
 ## Menu Item Types
 
@@ -126,22 +111,13 @@ const viewSubmenu = await Submenu.new({
 
 ## Adding New Menu Items
 
-### Step 1: Add Translation Key
-
-```json
-// locales/en.json
-{
-  "menu.myNewAction": "My New Action"
-}
-```
-
-### Step 2: Add to Menu Builder
+### Step 1: Add to Menu Builder
 
 ```typescript
 // src/lib/menu.ts
 await MenuItem.new({
   id: 'my-new-action',
-  text: t('menu.myNewAction'),
+  text: 'My New Action',
   accelerator: 'CmdOrCtrl+N',
   action: handleMyNewAction,
 })
@@ -152,10 +128,6 @@ function handleMyNewAction(): void {
   // Perform action
 }
 ```
-
-### Step 3: Add to Other Languages
-
-Add the same key to all language files in `/locales/`.
 
 ## Action Handlers
 

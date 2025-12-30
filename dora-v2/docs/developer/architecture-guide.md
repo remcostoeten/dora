@@ -92,7 +92,6 @@ Event-Driven Bridge
 | Native Menus         | [menus.md](./menus.md)                           |
 | Quick Panes          | [quick-panes.md](./quick-panes.md)               |
 | Data Persistence     | [data-persistence.md](./data-persistence.md)     |
-| Internationalization | [i18n-patterns.md](./i18n-patterns.md)           |
 | Cross-Platform       | [cross-platform.md](./cross-platform.md)         |
 
 ## Component Hierarchy
@@ -112,7 +111,6 @@ MainWindow (Top-level orchestrator)
 ## File Organization
 
 ```
-locales/                  # Translation JSON files
 src/
 ├── components/
 │   ├── layout/          # Layout components (MainWindow, sidebars)
@@ -120,7 +118,6 @@ src/
 │   ├── preferences/     # Preferences dialog system
 │   └── ui/              # Shadcn UI components
 ├── hooks/               # Custom React hooks
-├── i18n/                # Internationalization config
 ├── lib/
 │   ├── commands/        # Command system implementation
 │   └── menu.ts          # Native menu builder with i18n

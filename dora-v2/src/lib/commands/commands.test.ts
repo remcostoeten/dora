@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-  import type { CommandContext, AppCommand } from './types'
+import type { CommandContext, AppCommand } from './types'
 
 const mockUIStore = {
   getState: vi.fn(() => ({
@@ -22,24 +22,9 @@ const createMockContext = (): CommandContext => ({
   showToast: vi.fn(),
 })
 
-// Mock translation function for testing
-const mockT = (key: string): string => {
-  const translations: Record<string, string> = {
-    'commands.showLeftSidebar.label': 'Show Left Sidebar',
-    'commands.showLeftSidebar.description': 'Show the left sidebar',
-    'commands.hideLeftSidebar.label': 'Hide Left Sidebar',
-    'commands.hideLeftSidebar.description': 'Hide the left sidebar',
-    'commands.showRightSidebar.label': 'Show Right Sidebar',
-    'commands.showRightSidebar.description': 'Show the right sidebar',
-    'commands.hideRightSidebar.label': 'Hide Right Sidebar',
-    'commands.hideRightSidebar.description': 'Hide the right sidebar',
-    'commands.openPreferences.label': 'Open Preferences',
-    'commands.openPreferences.description': 'Open the application preferences',
-  }
-  return translations[key] || key
-}
+// Mock translation function removed as we now use direct strings
 
-  describe('Simplified Command System', () => {
+describe('Simplified Command System', () => {
   let mockContext: CommandContext
 
   beforeEach(() => {
@@ -60,7 +45,7 @@ const mockT = (key: string): string => {
         cmd => cmd.id === 'show-left-sidebar' || cmd.id === 'hide-left-sidebar'
       )
       expect(sidebarCommand).toBeDefined()
-      const label = sidebarCommand?.labelKey ? mockT(sidebarCommand.labelKey) : ''
+      const label = sidebarCommand?.label || ''
       expect(label).toContain('Sidebar')
     })
 
@@ -83,13 +68,13 @@ const mockT = (key: string): string => {
       expect(hideSidebarCommand).toBeUndefined()
     })
 
-    it('filters commands by search term using translations', () => {
+    it('filters commands by search term', () => {
       const searchResults = getAllCommands(mockContext, 'sidebar')
 
       expect(searchResults.length).toBeGreaterThan(0)
       searchResults.forEach(cmd => {
-        const label = cmd.labelKey?.toLowerCase() || ''
-        const description = cmd.descriptionKey?.toLowerCase() || ''
+        const label = cmd.label?.toLowerCase() || ''
+        const description = cmd.description?.toLowerCase() || ''
         const matchesSearch =
           label.includes('sidebar') || description.includes('sidebar')
 

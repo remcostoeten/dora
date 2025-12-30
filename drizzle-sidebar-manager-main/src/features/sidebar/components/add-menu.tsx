@@ -9,7 +9,9 @@ import {
   Users,
   Shield,
   Upload,
+  Search,
 } from "lucide-react";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,27 +45,61 @@ const ADD_MENU_ITEMS: AddMenuItem[] = [
 ];
 
 type Props = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onAction: (action: AddAction) => void;
   children: React.ReactNode;
 };
 
 export function AddMenu({ open, onOpenChange, onAction, children }: Props) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const isControlled = open !== undefined;
+  const isOpen = isControlled ? open : internalOpen;
+  const handleOpenChange = isControlled ? onOpenChange : setInternalOpen;
+
+  const filteredItems = ADD_MENU_ITEMS.filter((item) =>
+    item.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <DropdownMenu open={open} onOpenChange={onOpenChange}>
+    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[180px]">
-        {ADD_MENU_ITEMS.map((item) => (
-          <DropdownMenuItem
-            key={item.id}
-            onClick={() => onAction(item.id)}
-            className="gap-2"
-          >
-            <item.icon className="h-4 w-4" />
-            <span>{item.label}</span>
-          </DropdownMenuItem>
-        ))}
+      <DropdownMenuContent align="end" className="w-[180px] p-0">
+        <div className="flex items-center px-2 py-1.5 border-b border-sidebar-border/50 sticky top-0 bg-popover z-10">
+          <Search className="h-3.5 w-3.5 text-muted-foreground mr-2 shrink-0" />
+          <input
+            className="flex-1 bg-transparent outline-none text-xs placeholder:text-muted-foreground/70 min-w-0"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            autoFocus
+          />
+        </div>
+        <div className="p-1">
+          {filteredItems.length > 0 ? (
+            filteredItems.map((item) => (
+              <DropdownMenuItem
+                key={item.id}
+                onClick={() => {
+                  onAction(item.id);
+                  setSearchQuery("");
+                }}
+                className="gap-2"
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.label}</span>
+              </DropdownMenuItem>
+            ))
+          ) : (
+            <div className="px-2 py-2 text-xs text-muted-foreground text-center">
+              No results
+            </div>
+          )}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -43,8 +43,8 @@ import type { AppCommand } from '@/types/commands'
 export const myFeatureCommands: AppCommand[] = [
   {
     id: 'my-action',
-    labelKey: 'commands.myAction.label',
-    descriptionKey: 'commands.myAction.description', // optional
+    label: 'My Action',
+    description: 'My Action Description', // optional
 
     execute: context => {
       // Direct store access using getState() pattern
@@ -123,15 +123,14 @@ export function useCommandContext(): CommandContext {
 ```typescript
 interface AppCommand {
   id: string // Unique identifier
-  labelKey: string // Translation key (e.g., 'commands.myAction.label')
-  descriptionKey?: string // Optional translation key for description
+  label: string // Display label
   execute: (context) => void // Execution function
   isAvailable?: (context) => boolean // Optional availability check
   shortcut?: string // Optional keyboard shortcut
 }
 ```
 
-Labels use translation keys for runtime language switching. Add translations to `locales/*.json`.
+Labels use direct strings.
 
 ## Key Simplifications
 

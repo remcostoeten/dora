@@ -34,17 +34,17 @@ type PreferencePane = 'general' | 'appearance' | 'advanced'
 const navigationItems = [
   {
     id: 'general' as const,
-    labelKey: 'preferences.general',
+    label: 'General',
     icon: Settings,
   },
   {
     id: 'appearance' as const,
-    labelKey: 'preferences.appearance',
+    label: 'Appearance',
     icon: Palette,
   },
   {
     id: 'advanced' as const,
-    labelKey: 'preferences.advanced',
+    label: 'Advanced',
     icon: Zap,
   },
 ] as const
@@ -54,14 +54,7 @@ export function PreferencesDialog() {
   const preferencesOpen = useUIStore(state => state.preferencesOpen)
   const setPreferencesOpen = useUIStore(state => state.setPreferencesOpen)
 
-  const getPaneTitle = (pane: PreferencePane): string => {
-    switch (pane) {
-      case 'general': return 'General';
-      case 'appearance': return 'Appearance';
-      case 'advanced': return 'Advanced';
-      default: return '   Preferences';
-    }
-  }
+
 
   return (
     <Dialog open={preferencesOpen} onOpenChange={setPreferencesOpen}>
@@ -88,7 +81,7 @@ export function PreferencesDialog() {
                             className="w-full"
                           >
                             <item.icon />
-                            <span>{getPaneTitle(item.id)}</span>
+                            <span>{item.label}</span>
                           </button>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -105,14 +98,14 @@ export function PreferencesDialog() {
                 <Breadcrumb>
                   <BreadcrumbList>
                     <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink asChild>    
+                      <BreadcrumbLink asChild>
                         <span>Preferences</span>
                       </BreadcrumbLink>
                     </BreadcrumbItem>
                     <BreadcrumbSeparator className="hidden md:block" />
                     <BreadcrumbItem>
                       <BreadcrumbPage>
-                        {getPaneTitle(activePane)}
+                        {navigationItems.find(i => i.id === activePane)?.label}
                       </BreadcrumbPage>
                     </BreadcrumbItem>
                   </BreadcrumbList>

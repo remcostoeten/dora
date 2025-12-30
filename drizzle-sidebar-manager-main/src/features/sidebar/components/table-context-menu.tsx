@@ -25,13 +25,14 @@ type ContextMenuItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   variant?: "destructive";
+  shortcut?: string;
 };
 
 const CONTEXT_MENU_ITEMS: ContextMenuItem[] = [
-  { id: "browse-data", label: "Browse data", icon: Eye },
-  { id: "alter-table", label: "Alter table", icon: PenLine },
-  { id: "enable-rls", label: "Enable RLS", icon: Shield },
-  { id: "truncate", label: "Truncate", icon: Scissors },
+  { id: "browse-data", label: "Browse data", icon: Eye, shortcut: "B" },
+  { id: "alter-table", label: "Alter table", icon: PenLine, shortcut: "A" },
+  { id: "enable-rls", label: "Enable RLS", icon: Shield, shortcut: "R" },
+  { id: "truncate", label: "Truncate", icon: Scissors, shortcut: "T" },
   { id: "drop", label: "Drop", icon: Trash2, variant: "destructive" },
 ];
 
@@ -46,7 +47,7 @@ export function TableContextMenu({ open, onOpenChange, onAction, children }: Pro
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-[160px]">
+      <DropdownMenuContent align="start" className="w-[180px]">
         {CONTEXT_MENU_ITEMS.map((item, index) => (
           <div key={item.id}>
             {item.id === "truncate" && <DropdownMenuSeparator />}
@@ -56,6 +57,11 @@ export function TableContextMenu({ open, onOpenChange, onAction, children }: Pro
             >
               <item.icon className="h-4 w-4 mr-2" />
               <span>{item.label}</span>
+              {item.shortcut && (
+                <span className="ml-auto text-xs tracking-widest text-muted-foreground/50">
+                  {item.shortcut}
+                </span>
+              )}
             </DropdownMenuItem>
           </div>
         ))}
