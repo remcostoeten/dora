@@ -312,6 +312,14 @@ async deleteRows(connectionId: string, tableName: string, schemaName: string | n
     else return { status: "error", error: e  as any };
 }
 },
+async duplicateRow(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValue: JsonValue) : Promise<Result<MutationResult, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("duplicate_row", { connectionId, tableName, schemaName, primaryKeyColumn, primaryKeyValue }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async exportTable(connectionId: string, tableName: string, schemaName: string | null, format: ExportFormat, limit: number | null) : Promise<Result<string, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_table", { connectionId, tableName, schemaName, format, limit }) };

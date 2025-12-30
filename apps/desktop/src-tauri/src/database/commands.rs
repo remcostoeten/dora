@@ -530,6 +530,62 @@ pub async fn delete_rows(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn duplicate_row(
+    connection_id: Uuid,
+    table_name: String,
+    schema_name: Option<String>,
+    primary_key_column: String,
+    primary_key_value: serde_json::Value,
+    state: State<'_, AppState>,
+) -> Result<MutationResult, Error> {
+    // Fetch existing row data via a query
+    let query = if schema_name.is_some() {
+        format!("SELECT * FROM \"{}\".\"{}\" WHERE \"{}\" = $1 LIMIT 1", schema_name.as_ref().unwrap(), table_name, primary_key_column)
+    } else {
+        format!("SELECT * FROM \"{}\" WHERE \"{}\" = ? LIMIT 1", table_name, primary_key_column)
+    };
+
+    // Execute query using QueryService
+    let query_svc = QueryService {
+        connections: &state.connections,
+        storage: &state.storage,
+        stmt_manager: &state.stmt_manager,
+    };
+    
+    let query_ids = query_svc.start_query(connection_id, &query).await?;
+    if query_ids.is_empty() {
+        return Err(Error::Any(anyhow::anyhow!("No row found to duplicate")));
+    }
+
+    let query_id = query_ids[0];
+    let page_data = query_svc.fetch_page(query_id, 0).await?;
+    
+    if let Some(json_data) = page_data {
+        // Parse the first row
+        let parsed: serde_json::Value = serde_json::from_str(json_data.get())?;
+        if let Some(arr) = parsed.as_array() {
+            if let Some(first_row) = arr.get(0) {
+                if let Some(obj) = first_row.as_object() {
+                    // Remove primary key from the data
+                    let mut row_data = obj.clone();
+                    row_data.remove(&primary_key_column);
+                    
+                    // Insert the duplicate
+                    let mutation_svc = MutationService {
+                        connections: &state.connections,
+                        schemas: &state.schemas,
+                    };
+                    return mutation_svc.insert_row(connection_id, table_name, schema_name, row_data).await;
+                }
+            }
+        }
+    }
+
+    Err(Error::Any(anyhow::anyhow!("Failed to parse row data for duplication")))
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn export_table(
     connection_id: Uuid,
     table_name: String,

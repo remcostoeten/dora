@@ -46,6 +46,7 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::insert_row,
         db_commands::update_cell,
         db_commands::delete_rows,
+        db_commands::duplicate_row,
         db_commands::export_table,
         db_commands::soft_delete_rows,
         db_commands::undo_soft_delete,
