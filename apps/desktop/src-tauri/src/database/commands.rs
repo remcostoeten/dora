@@ -36,6 +36,7 @@ pub use crate::database::services::mutation::{json_to_pg_param, json_to_sqlite_v
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn add_connection(
     name: String,
     database_info: DatabaseInfo,
@@ -50,6 +51,7 @@ pub async fn add_connection(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_connection(
     conn_id: Uuid,
     name: String,
@@ -65,6 +67,7 @@ pub async fn update_connection(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_connection_color(
     connection_id: Uuid,
     color: Option<i32>,
@@ -78,6 +81,7 @@ pub async fn update_connection_color(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn connect_to_database(
     connection_id: Uuid,
     state: State<'_, AppState>,
@@ -92,6 +96,7 @@ pub async fn connect_to_database(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn disconnect_from_database(
     connection_id: Uuid,
     state: State<'_, AppState>,
@@ -104,6 +109,7 @@ pub async fn disconnect_from_database(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_connections(state: State<'_, AppState>) -> Result<Vec<ConnectionInfo>, Error> {
     let svc = ConnectionService {
         connections: &state.connections,
@@ -113,6 +119,7 @@ pub async fn get_connections(state: State<'_, AppState>) -> Result<Vec<Connectio
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remove_connection(
     connection_id: Uuid,
     state: State<'_, AppState>,
@@ -125,6 +132,7 @@ pub async fn remove_connection(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn test_connection(
     database_info: DatabaseInfo,
     certificates: State<'_, crate::database::Certificates>,
@@ -133,6 +141,7 @@ pub async fn test_connection(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn initialize_connections(state: State<'_, AppState>) -> Result<(), Error> {
     let svc = ConnectionService {
         connections: &state.connections,
@@ -142,6 +151,7 @@ pub async fn initialize_connections(state: State<'_, AppState>) -> Result<(), Er
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_recent_connections(
     limit: Option<u32>,
     state: State<'_, AppState>,
@@ -154,6 +164,7 @@ pub async fn get_recent_connections(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_connection_history(
     db_type_filter: Option<String>,
     success_filter: Option<bool>,
@@ -169,6 +180,7 @@ pub async fn get_connection_history(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn set_connection_pin(
     connection_id: Uuid,
     pin: Option<String>,
@@ -182,6 +194,7 @@ pub async fn set_connection_pin(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn verify_pin_and_get_credentials(
     connection_id: Uuid,
     pin: String,
@@ -200,6 +213,7 @@ pub async fn verify_pin_and_get_credentials(
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn start_query(
     connection_id: Uuid,
     query: &str,
@@ -214,6 +228,7 @@ pub async fn start_query(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn fetch_query(
     query_id: usize,
     state: State<'_, AppState>,
@@ -227,20 +242,23 @@ pub async fn fetch_query(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn fetch_page(
     query_id: usize,
     page_index: usize,
     state: State<'_, AppState>,
-) -> Result<Option<Box<RawValue>>, Error> {
+) -> Result<Option<serde_json::Value>, Error> {
     let svc = QueryService {
         connections: &state.connections,
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.fetch_page(query_id, page_index).await
+    let res = svc.fetch_page(query_id, page_index).await?;
+    Ok(res.map(|r| serde_json::from_str(r.get()).unwrap_or_default()))
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_query_status(
     query_id: usize,
     state: State<'_, AppState>,
@@ -254,6 +272,7 @@ pub async fn get_query_status(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_page_count(
     query_id: usize,
     state: State<'_, AppState>,
@@ -267,19 +286,22 @@ pub async fn get_page_count(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_columns(
     query_id: usize,
     state: State<'_, AppState>,
-) -> Result<Option<Box<RawValue>>, Error> {
+) -> Result<Option<serde_json::Value>, Error> {
     let svc = QueryService {
         connections: &state.connections,
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.get_columns(query_id).await
+    let res = svc.get_columns(query_id).await?;
+    Ok(res.map(|r| serde_json::from_str(r.get()).unwrap_or_default()))
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn save_query_to_history(
     connection_id: String,
     query: String,
@@ -298,6 +320,7 @@ pub async fn save_query_to_history(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_query_history(
     connection_id: String,
     limit: Option<u32>,
@@ -312,6 +335,7 @@ pub async fn get_query_history(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_recent_queries(
     connection_id: Option<String>,
     limit: Option<u32>,
@@ -332,6 +356,7 @@ pub async fn get_recent_queries(
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn save_script(
     name: String,
     content: String,
@@ -348,6 +373,7 @@ pub async fn save_script(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_script(
     id: i64,
     name: String,
@@ -365,6 +391,7 @@ pub async fn update_script(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_scripts(
     connection_id: Option<Uuid>,
     state: State<'_, AppState>,
@@ -378,6 +405,7 @@ pub async fn get_scripts(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn delete_script(id: i64, state: State<'_, AppState>) -> Result<(), Error> {
     let svc = QueryService {
         connections: &state.connections,
@@ -393,6 +421,7 @@ pub async fn delete_script(id: i64, state: State<'_, AppState>) -> Result<(), Er
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn save_session_state(
     session_data: &str,
     state: State<'_, AppState>,
@@ -406,6 +435,7 @@ pub async fn save_session_state(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_session_state(state: State<'_, AppState>) -> Result<Option<String>, Error> {
     let svc = QueryService {
         connections: &state.connections,
@@ -416,6 +446,7 @@ pub async fn get_session_state(state: State<'_, AppState>) -> Result<Option<Stri
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_setting(key: String, state: State<'_, AppState>) -> Result<Option<String>, Error> {
     let svc = QueryService {
         connections: &state.connections,
@@ -426,6 +457,7 @@ pub async fn get_setting(key: String, state: State<'_, AppState>) -> Result<Opti
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn set_setting(
     key: String,
     value: String,
@@ -445,6 +477,7 @@ pub async fn set_setting(
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn insert_row(
     connection_id: Uuid,
     table_name: String,
@@ -460,6 +493,7 @@ pub async fn insert_row(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn update_cell(
     connection_id: Uuid,
     table_name: String,
@@ -478,6 +512,7 @@ pub async fn update_cell(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn delete_rows(
     connection_id: Uuid,
     table_name: String,
@@ -494,6 +529,7 @@ pub async fn delete_rows(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn export_table(
     connection_id: Uuid,
     table_name: String,
@@ -510,6 +546,7 @@ pub async fn export_table(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn soft_delete_rows(
     connection_id: Uuid,
     table_name: String,
@@ -527,6 +564,7 @@ pub async fn soft_delete_rows(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn undo_soft_delete(
     connection_id: Uuid,
     table_name: String,
@@ -544,6 +582,7 @@ pub async fn undo_soft_delete(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn truncate_table(
     connection_id: Uuid,
     table_name: String,
@@ -559,6 +598,7 @@ pub async fn truncate_table(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn truncate_database(
     connection_id: Uuid,
     schema_name: Option<String>,
@@ -573,6 +613,7 @@ pub async fn truncate_database(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn dump_database(
     connection_id: Uuid,
     output_path: String,
@@ -586,6 +627,7 @@ pub async fn dump_database(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn execute_batch(
     connection_id: Uuid,
     statements: Vec<String>,
@@ -604,18 +646,20 @@ pub async fn execute_batch(
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_database_schema(
     connection_id: Uuid,
     state: State<'_, AppState>,
-) -> Result<Arc<DatabaseSchema>, Error> {
+) -> Result<DatabaseSchema, Error> {
     let svc = MetadataService {
         connections: &state.connections,
         schemas: &state.schemas,
     };
-    svc.get_database_schema(connection_id).await
+    svc.get_database_schema(connection_id).await.map(|s| (*s).clone())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn get_database_metadata(
     connection_id: Uuid,
     state: State<'_, AppState>,
@@ -635,6 +679,7 @@ pub use crate::database::services::seeding::SeedResult;
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn seed_table(
     connection_id: Uuid,
     table_name: String,
@@ -654,6 +699,7 @@ pub async fn seed_table(
 // =============================================================================
 
 #[tauri::command]
+#[specta::specta]
 pub async fn parse_sql(sql: String) -> Result<serde_json::Value, Error> {
     let svc = QueryBuilderService;
     let ast = svc.parse_sql(&sql)?;
@@ -661,6 +707,7 @@ pub async fn parse_sql(sql: String) -> Result<serde_json::Value, Error> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn build_sql(ast: serde_json::Value) -> Result<String, Error> {
     let svc = QueryBuilderService;
     // We need to deserialize back to Vec<Statement>
@@ -682,6 +729,7 @@ use crate::database::services::schema_export::{SchemaExportService, ExportDialec
 /// * `connection_id` - UUID of the connected database
 /// * `dialect` - Target SQL dialect: "postgresql" or "sqlite"
 #[tauri::command]
+#[specta::specta]
 pub async fn export_schema_sql(
     connection_id: Uuid,
     dialect: String,
@@ -700,6 +748,7 @@ pub async fn export_schema_sql(
 /// * `connection_id` - UUID of the connected database
 /// * `dialect` - Target Drizzle dialect: "postgresql" or "sqlite"
 #[tauri::command]
+#[specta::specta]
 pub async fn export_schema_drizzle(
     connection_id: Uuid,
     dialect: String,
@@ -720,6 +769,7 @@ use crate::database::services::ai::{AIService, AIRequest, AIResponse, AIProvider
 
 /// Complete a prompt using the configured AI provider
 #[tauri::command]
+#[specta::specta]
 pub async fn ai_complete(
     prompt: String,
     connection_id: Option<Uuid>,
@@ -757,6 +807,7 @@ pub async fn ai_complete(
 
 /// Set the AI provider (gemini or ollama)
 #[tauri::command]
+#[specta::specta]
 pub async fn ai_set_provider(
     provider: String,
     state: State<'_, AppState>,
@@ -775,6 +826,7 @@ pub async fn ai_set_provider(
 
 /// Get the current AI provider
 #[tauri::command]
+#[specta::specta]
 pub async fn ai_get_provider(
     state: State<'_, AppState>,
 ) -> Result<String, Error> {
@@ -790,6 +842,7 @@ pub async fn ai_get_provider(
 
 /// Set the Gemini API key (BYOK)
 #[tauri::command]
+#[specta::specta]
 pub async fn ai_set_gemini_key(
     api_key: String,
     state: State<'_, AppState>,
@@ -800,6 +853,7 @@ pub async fn ai_set_gemini_key(
 
 /// Configure Ollama endpoint and model
 #[tauri::command]
+#[specta::specta]
 pub async fn ai_configure_ollama(
     endpoint: Option<String>,
     model: Option<String>,
@@ -816,6 +870,7 @@ pub async fn ai_configure_ollama(
 
 /// List available Ollama models
 #[tauri::command]
+#[specta::specta]
 pub async fn ai_list_ollama_models(
     state: State<'_, AppState>,
 ) -> Result<Vec<String>, Error> {

@@ -1,3 +1,4 @@
+mod bindings;
 mod commands_system;
 mod credentials;
 mod database;
@@ -81,6 +82,13 @@ pub fn run() {
                         .level(log::LevelFilter::Info)
                         .build(),
                 )?;
+                #[cfg(debug_assertions)]
+                {
+                    match std::panic::catch_unwind(|| crate::bindings::export_ts_bindings()) {
+                        Ok(_) => log::info!("TypeScript bindings exported successfully"),
+                        Err(_) => log::error!("Failed to export TypeScript bindings"),
+                    }
+                }
             }
 
             init::build_window(app)?;

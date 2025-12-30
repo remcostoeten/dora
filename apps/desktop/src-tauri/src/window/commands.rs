@@ -5,6 +5,7 @@ use tauri::Manager;
 use crate::Error;
 
 #[tauri::command]
+#[specta::specta]
 pub async fn minimize_window(app: tauri::AppHandle) -> Result<(), Error> {
     app.get_webview_window("main")
         .context("Failed to get main window")?
@@ -15,6 +16,7 @@ pub async fn minimize_window(app: tauri::AppHandle) -> Result<(), Error> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn maximize_window(app: tauri::AppHandle) -> Result<(), Error> {
     app.get_webview_window("main")
         .context("Failed to get main window")?
@@ -25,6 +27,7 @@ pub async fn maximize_window(app: tauri::AppHandle) -> Result<(), Error> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn close_window(app: tauri::AppHandle) -> Result<(), Error> {
     app.get_webview_window("main")
         .context("Failed to get main window")?
@@ -35,6 +38,7 @@ pub async fn close_window(app: tauri::AppHandle) -> Result<(), Error> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn open_sqlite_db(app: tauri::AppHandle) -> Result<Option<String>, Error> {
     let chosen_file = run_dialog(app, || {
         AsyncFileDialog::new()
@@ -49,6 +53,7 @@ pub async fn open_sqlite_db(app: tauri::AppHandle) -> Result<Option<String>, Err
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn save_sqlite_db(app: tauri::AppHandle) -> Result<Option<String>, Error> {
     let chosen_file = run_dialog(app, || {
         AsyncFileDialog::new()
