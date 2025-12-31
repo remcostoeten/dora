@@ -515,6 +515,97 @@ pub async fn save_snippet(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn update_snippet(
+    id: i64,
+    name: String,
+    content: String,
+    language: Option<String>,
+    tags: Option<String>,
+    category: Option<String>,
+    description: Option<String>,
+    folder_id: Option<i64>,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let now = chrono::Utc::now().timestamp();
+    let conn = state.storage.get_sqlite_connection()?;
+    
+    conn.execute(
+        "UPDATE saved_queries 
+         SET name = ?1, query_text = ?2, language = ?3, tags = ?4, category = ?5, 
+             description = ?6, folder_id = ?7, updated_at = ?8
+         WHERE id = ?9 AND is_snippet = 1",
+        (
+            &name,
+            &content,
+            &language,
+            &tags,
+            &category,
+            &description,
+            folder_id,
+            now,
+            id,
+        ),
+    )?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_snippet(
+    id: i64,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let conn = state.storage.get_sqlite_connection()?;
+    conn.execute("DELETE FROM saved_queries WHERE id = ?1 AND is_snippet = 1", [id])?;
+    Ok(())
+}
+
+// =============================================================================
+// Snippet Folder Commands
+// =============================================================================
+
+#[tauri::command]
+#[specta::specta]
+pub async fn get_snippet_folders(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::storage::SnippetFolder>, Error> {
+    state.storage.get_snippet_folders()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_snippet_folder(
+    name: String,
+    parent_id: Option<i64>,
+    color: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<i64, Error> {
+    state.storage.create_snippet_folder(&name, parent_id, color.as_deref())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_snippet_folder(
+    id: i64,
+    name: String,
+    color: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    state.storage.update_snippet_folder(id, &name, color.as_deref())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_snippet_folder(
+    id: i64,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    state.storage.delete_snippet_folder(id)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, Error> {
     let snippets = vec![
         // Dangerous Operations

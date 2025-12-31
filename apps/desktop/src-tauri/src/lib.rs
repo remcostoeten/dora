@@ -149,6 +149,17 @@ pub fn run() {
             database::commands::get_recent_connections,
             database::commands::set_connection_pin,
             database::commands::verify_pin_and_get_credentials,
+            // Snippet commands
+            database::commands::get_snippets,
+            database::commands::save_snippet,
+            database::commands::update_snippet,
+            database::commands::delete_snippet,
+            database::commands::seed_system_snippets,
+            // Snippet folder commands
+            database::commands::get_snippet_folders,
+            database::commands::create_snippet_folder,
+            database::commands::update_snippet_folder,
+            database::commands::delete_snippet_folder,
             // Seeding commands
             database::commands::seed_table,
             // Query Builder commands

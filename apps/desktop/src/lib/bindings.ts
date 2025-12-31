@@ -272,9 +272,57 @@ async saveSnippet(name: string, content: string, language: string | null, tags: 
     else return { status: "error", error: e  as any };
 }
 },
+async updateSnippet(id: number, name: string, content: string, language: string | null, tags: string | null, category: string | null, description: string | null, folderId: number | null) : Promise<Result<null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_snippet", { id, name, content, language, tags, category, description, folderId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSnippet(id: number) : Promise<Result<null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_snippet", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async seedSystemSnippets() : Promise<Result<number, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("seed_system_snippets") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSnippetFolders() : Promise<Result<SnippetFolder[], any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_snippet_folders") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createSnippetFolder(name: string, parentId: number | null, color: string | null) : Promise<Result<number, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_snippet_folder", { name, parentId, color }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async updateSnippetFolder(id: number, name: string, color: string | null) : Promise<Result<null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("update_snippet_folder", { id, name, color }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async deleteSnippetFolder(id: number) : Promise<Result<null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("delete_snippet_folder", { id }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -643,6 +691,7 @@ export type QueryHistoryEntry = { id: number; connection_id: string; query_text:
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
 export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; category: string | null; created_at: number; updated_at: number; favorite: boolean; is_snippet: boolean; is_system: boolean; language: string | null }
 export type SeedResult = { rows_inserted: number; table: string }
+export type SnippetFolder = { id: number; name: string; parent_id: number | null; color: string | null; created_at: number; updated_at: number }
 /**
  * Result of a soft delete operation
  */
