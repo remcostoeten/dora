@@ -200,7 +200,7 @@ export function StudioToolbar({
                         </Button>
                     )}
 
-                    <div className="h-4 w-[1px] bg-sidebar-border mx-1" />
+                    <div className="h-4 w-px bg-sidebar-border mx-1" />
 
                     {/* View Switcher */}
                     <div className="flex items-center bg-sidebar-accent/50 rounded-md p-0.5">
@@ -210,7 +210,7 @@ export function StudioToolbar({
                             className={cn(
                                 "h-6 w-6 rounded-sm",
                                 viewMode === "content"
-                                    ? "bg-sidebar-accent text-sidebar-foreground shadow-sm"
+                                    ? "bg-sidebar-accent text-sidebar-foreground shadow-xs"
                                     : "text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent"
                             )}
                             onClick={() => onViewModeChange("content")}
@@ -224,7 +224,7 @@ export function StudioToolbar({
                             className={cn(
                                 "h-6 w-6 rounded-sm",
                                 viewMode === "structure"
-                                    ? "bg-sidebar-accent text-sidebar-foreground shadow-sm"
+                                    ? "bg-sidebar-accent text-sidebar-foreground shadow-xs"
                                     : "text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent"
                             )}
                             onClick={() => onViewModeChange("structure")}
@@ -234,7 +234,7 @@ export function StudioToolbar({
                         </Button>
                     </div>
 
-                    <div className="h-4 w-[1px] bg-sidebar-border mx-1" />
+                    <div className="h-4 w-px bg-sidebar-border mx-1" />
 
                     {/* Navigation History */}
                     <div className="flex items-center gap-0.5">
@@ -393,7 +393,7 @@ export function StudioToolbar({
                         <span className="hidden sm:inline">Add record</span>
                     </Button>
 
-                    <div className="h-4 w-[1px] bg-sidebar-border mx-1" />
+                    <div className="h-4 w-px bg-sidebar-border mx-1" />
 
                     <span className="text-xs text-muted-foreground whitespace-nowrap hidden md:inline">
                         {rowCount} rows • {executionTime}ms
@@ -414,7 +414,7 @@ export function StudioToolbar({
                             className="h-7 w-14 text-xs px-2 text-center"
                             title="Offset"
                         />
-                        <div className="flex items-center rounded-md border border-input shadow-sm">
+                        <div className="flex items-center rounded-md border border-input shadow-xs">
                             <Button
                                 variant="ghost"
                                 size="icon"
@@ -436,7 +436,7 @@ export function StudioToolbar({
                         </div>
                     </div>
 
-                    <div className="h-4 w-[1px] bg-sidebar-border mx-1" />
+                    <div className="h-4 w-px bg-sidebar-border mx-1" />
 
                     <Button
                         variant="ghost"

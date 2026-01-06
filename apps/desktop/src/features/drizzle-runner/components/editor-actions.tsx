@@ -27,7 +27,7 @@ export function EditorActions({
                 <Button
                     variant="secondary"
                     size="sm"
-                    className="h-7 px-2.5 gap-1.5 text-xs bg-background/90 backdrop-blur-sm border border-border/60 hover:bg-muted shadow-sm"
+                    className="h-7 px-2.5 gap-1.5 text-xs bg-background/90 backdrop-blur-xs border border-border/60 hover:bg-muted shadow-xs"
                     onClick={onPrettify}
                     title="Format code (Shift+Alt+F)"
                 >
@@ -40,7 +40,7 @@ export function EditorActions({
                 <Button
                     size="sm"
                     className={cn(
-                        "h-7 px-3 gap-1.5 text-xs font-medium shadow-sm",
+                        "h-7 px-3 gap-1.5 text-xs font-medium shadow-xs",
                         isExecuting
                             ? "bg-muted text-muted-foreground cursor-wait"
                             : "bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -66,7 +66,7 @@ export function EditorActions({
                     variant="secondary"
                     size="icon"
                     className={cn(
-                        "h-7 w-7 bg-background/90 backdrop-blur-sm border border-border/60 shadow-sm",
+                        "h-7 w-7 bg-background/90 backdrop-blur-xs border border-border/60 shadow-xs",
                         showJson ? "text-primary bg-primary/10 border-primary/30" : "hover:bg-muted"
                     )}
                     onClick={onShowJsonToggle}
@@ -80,7 +80,7 @@ export function EditorActions({
                 <Button
                     variant="secondary"
                     size="icon"
-                    className="h-7 w-7 bg-background/90 backdrop-blur-sm border border-border/60 hover:bg-muted shadow-sm"
+                    className="h-7 w-7 bg-background/90 backdrop-blur-xs border border-border/60 hover:bg-muted shadow-xs"
                     onClick={onExport}
                     disabled={!hasResults}
                     title="Export results as JSON"

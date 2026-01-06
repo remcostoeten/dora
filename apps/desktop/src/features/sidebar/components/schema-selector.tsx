@@ -39,12 +39,12 @@ export function SchemaSelector({ schemas, selectedSchema, onSchemaChange }: Prop
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        className="w-[var(--radix-dropdown-menu-trigger-width)] p-0"
+        className="w-(--radix-dropdown-menu-trigger-width) p-0"
       >
         <div className="flex items-center px-3 py-2 border-b border-sidebar-border/50 sticky top-0 bg-popover z-10">
           <Search className="h-3.5 w-3.5 text-muted-foreground mr-2 shrink-0" />
           <input
-            className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground/70 min-w-0"
+            className="flex-1 bg-transparent outline-hidden text-sm placeholder:text-muted-foreground/70 min-w-0"
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

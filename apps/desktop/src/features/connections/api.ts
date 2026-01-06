@@ -45,7 +45,20 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 
 export function frontendToBackendDatabaseInfo(conn: FrontendConnection): DatabaseInfo {
   if (conn.type === "postgres") {
-    const connectionString = `postgresql://${conn.user ? `${conn.user}:${conn.password}@` : ""}${conn.host || "localhost"}:${conn.port || 5432}/${conn.database || "postgres"}`;
+    // Use the URL directly if provided (connection string mode)
+    // Otherwise build from individual fields
+    let connectionString: string;
+    if (conn.url) {
+      connectionString = conn.url;
+    } else {
+      const user = conn.user || "postgres";
+      const password = conn.password || "";
+      const host = conn.host || "localhost";
+      const port = conn.port || 5432;
+      const database = conn.database || "postgres";
+      const ssl = conn.ssl ? "?sslmode=require" : "";
+      connectionString = `postgresql://${user}:${password}@${host}:${port}/${database}${ssl}`;
+    }
     return { Postgres: { connection_string: connectionString, ssh_config: null } };
   } else if (conn.type === "sqlite") {
     return { SQLite: { db_path: conn.url || ":memory:" } };
@@ -54,6 +67,7 @@ export function frontendToBackendDatabaseInfo(conn: FrontendConnection): Databas
   }
   throw new Error(`Unsupported database type: ${conn.type}`);
 }
+
 
 export async function loadConnections(): Promise<FrontendConnection[]> {
   const result = await commands.getConnections();

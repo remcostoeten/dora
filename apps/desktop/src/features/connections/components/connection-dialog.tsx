@@ -8,6 +8,38 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Connection, DatabaseType, DEFAULT_PORTS } from "../types";
 import { Database, Loader2, Save, Terminal, AlertCircle } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
+import { commands, DatabaseInfo } from "@/lib/bindings";
+
+/**
+ * Sanitizes a pasted connection URL by stripping:
+ * - psql command prefix (e.g., "psql 'postgresql://...'")
+ * - Environment variable prefixes (e.g., "DB_URL=", "DATABASE_URL=", "CONNECTION_STR=")
+ * - Surrounding single or double quotes
+ */
+function sanitizeConnectionUrl(input: string): string {
+    let value = input.trim();
+
+    // Strip psql command if present (e.g., "psql 'postgresql://...'")
+    const psqlMatch = value.match(/^psql\s+['"]?(.+?)['"]?\s*$/i);
+    if (psqlMatch) {
+        value = psqlMatch[1];
+    }
+
+    // Strip environment variable prefix (e.g., "DB_URL=", "DATABASE_URL=", "CONNECTION_STR=")
+    // Matches patterns like: VAR_NAME=value, VAR_NAME="value", VAR_NAME='value'
+    const envVarMatch = value.match(/^[A-Z_][A-Z0-9_]*\s*=\s*['"]?(.+?)['"]?\s*$/i);
+    if (envVarMatch) {
+        value = envVarMatch[1];
+    }
+
+    // Strip surrounding quotes if still present
+    if ((value.startsWith("'") && value.endsWith("'")) ||
+        (value.startsWith('"') && value.endsWith('"'))) {
+        value = value.slice(1, -1);
+    }
+
+    return value;
+}
 
 type Props = {
     open: boolean;
@@ -65,19 +97,85 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
         e.preventDefault();
         setIsTesting(true);
         setTestStatus("idle");
+        setTestMessage("");
 
-        // Simulate connection test
-        setTimeout(() => {
-            const success = Math.random() > 0.3; // Random success for demo
-            setIsTesting(false);
-            if (success) {
+        try {
+            // Build DatabaseInfo based on type
+            let databaseInfo: DatabaseInfo;
+
+            if (formData.type === "sqlite") {
+                if (!formData.url) {
+                    setTestStatus("error");
+                    setTestMessage("Database path is required");
+                    setIsTesting(false);
+                    return;
+                }
+                databaseInfo = { SQLite: { db_path: formData.url } };
+            } else if (formData.type === "libsql") {
+                if (!formData.url) {
+                    setTestStatus("error");
+                    setTestMessage("Database URL is required");
+                    setIsTesting(false);
+                    return;
+                }
+                databaseInfo = {
+                    LibSQL: {
+                        url: formData.url,
+                        auth_token: formData.authToken || null
+                    }
+                };
+            } else {
+                // Postgres or MySQL - build connection string
+                let connectionString: string;
+
+                if (formData.url !== undefined && formData.url) {
+                    // User provided a connection string
+                    connectionString = formData.url;
+                } else {
+                    // Build connection string from individual fields
+                    if (!formData.host) {
+                        setTestStatus("error");
+                        setTestMessage("Host is required");
+                        setIsTesting(false);
+                        return;
+                    }
+
+                    const user = formData.user || "postgres";
+                    const password = formData.password || "";
+                    const host = formData.host;
+                    const port = formData.port || DEFAULT_PORTS[formData.type as DatabaseType];
+                    const database = formData.database || "postgres";
+                    const sslParam = formData.ssl ? "?sslmode=require" : "";
+
+                    connectionString = `postgres://${user}:${password}@${host}:${port}/${database}${sslParam}`;
+                }
+
+                databaseInfo = {
+                    Postgres: {
+                        connection_string: connectionString,
+                        ssh_config: null
+                    }
+                };
+            }
+
+            const result = await commands.testConnection(databaseInfo);
+
+            if (result.status === "ok" && result.data) {
                 setTestStatus("success");
                 setTestMessage("Successfully connected!");
             } else {
                 setTestStatus("error");
-                setTestMessage("Failed to connect: Connection refused at 127.0.0.1");
+                const errorMsg = result.status === "error"
+                    ? String(result.error)
+                    : "Connection failed";
+                setTestMessage(`Failed to connect: ${errorMsg}`);
             }
-        }, 1500);
+        } catch (error) {
+            setTestStatus("error");
+            setTestMessage(`Failed to connect: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            setIsTesting(false);
+        }
     };
 
     const handleSave = () => {
@@ -224,7 +322,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                                         id="connection-string"
                                         placeholder={`${formData.type}://user:password@host:port/database`}
                                         value={formData.url || ""}
-                                        onChange={e => updateField("url", e.target.value)}
+                                        onChange={e => updateField("url", sanitizeConnectionUrl(e.target.value))}
                                     />
                                 </div>
                             ) : (

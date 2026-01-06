@@ -176,7 +176,7 @@ function TableItemRow({
               onKeyDown={handleEditKeyDown}
               onBlur={handleEditBlur}
               data-no-shortcuts="true"
-              className="flex-1 h-5 px-1 text-sm bg-transparent border-none outline-none"
+              className="flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden"
               onClick={(e) => e.stopPropagation()}
             />
             <Button

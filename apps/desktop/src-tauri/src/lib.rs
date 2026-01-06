@@ -63,6 +63,11 @@ impl AppState {
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Install ring as the default crypto provider for rustls
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("Failed to install rustls crypto provider");
+
     let app_state = match AppState::new() {
         Ok(app_state) => app_state,
         Err(e) => {

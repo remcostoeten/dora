@@ -1,4 +1,4 @@
-import { ChevronsUpDown, Plus, Settings, Database, Check } from "lucide-react";
+import { ChevronsUpDown, Plus, Settings, Database, Check, Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import {
     DropdownMenu,
@@ -8,6 +8,13 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuSeparator,
+    ContextMenuTrigger,
+} from "@/shared/ui/context-menu";
 import { cn } from "@/shared/utils/cn";
 import { Connection } from "../types";
 import { AlertCircle } from "lucide-react";
@@ -18,6 +25,9 @@ type Props = {
     onConnectionSelect: (id: string) => void;
     onAddConnection: () => void;
     onManageConnections: () => void;
+    onViewConnection?: (id: string) => void;
+    onEditConnection?: (id: string) => void;
+    onDeleteConnection?: (id: string) => void;
 };
 
 export function ConnectionSwitcher({
@@ -26,6 +36,9 @@ export function ConnectionSwitcher({
     onConnectionSelect,
     onAddConnection,
     onManageConnections,
+    onViewConnection,
+    onEditConnection,
+    onDeleteConnection,
 }: Props) {
     const activeConnection = connections.find((c) => c.id === activeConnectionId);
     const status = activeConnection?.status || "idle";
@@ -78,28 +91,64 @@ export function ConnectionSwitcher({
 
                 {connections.length > 0 ? (
                     connections.map((connection) => (
-                        <DropdownMenuItem
-                            key={connection.id}
-                            onClick={() => onConnectionSelect(connection.id)}
-                            className="gap-2 p-2"
-                        >
-                            <div className={cn(
-                                "flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background",
-                                connection.status === "error" && "border-destructive/50 bg-destructive/5"
-                            )}>
-                                {connection.status === "error" ? (
-                                    <AlertCircle className="h-3 w-3 text-destructive" />
-                                ) : (
-                                    <Database className="h-3 w-3 text-muted-foreground" />
-                                )}
-                            </div>
-                            <div className="flex-1 truncate text-sm">
-                                {connection.name}
-                            </div>
-                            {connection.id === activeConnectionId && (
-                                <Check className="h-4 w-4 text-primary ml-auto" />
-                            )}
-                        </DropdownMenuItem>
+                        <ContextMenu key={connection.id}>
+                            <ContextMenuTrigger asChild>
+                                <DropdownMenuItem
+                                    onClick={() => onConnectionSelect(connection.id)}
+                                    className="gap-2 p-2 cursor-pointer"
+                                    onSelect={(e) => e.preventDefault()}
+                                >
+                                    <div
+                                        className="flex items-center gap-2 w-full"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onConnectionSelect(connection.id);
+                                        }}
+                                    >
+                                        <div className={cn(
+                                            "flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background",
+                                            connection.status === "error" && "border-destructive/50 bg-destructive/5"
+                                        )}>
+                                            {connection.status === "error" ? (
+                                                <AlertCircle className="h-3 w-3 text-destructive" />
+                                            ) : (
+                                                <Database className="h-3 w-3 text-muted-foreground" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 truncate text-sm">
+                                            {connection.name}
+                                        </div>
+                                        {connection.id === activeConnectionId && (
+                                            <Check className="h-4 w-4 text-primary ml-auto" />
+                                        )}
+                                    </div>
+                                </DropdownMenuItem>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-48">
+                                <ContextMenuItem
+                                    onClick={() => onViewConnection?.(connection.id)}
+                                    className="gap-2"
+                                >
+                                    <Eye className="h-4 w-4" />
+                                    View Details
+                                </ContextMenuItem>
+                                <ContextMenuItem
+                                    onClick={() => onEditConnection?.(connection.id)}
+                                    className="gap-2"
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                    Edit Connection
+                                </ContextMenuItem>
+                                <ContextMenuSeparator />
+                                <ContextMenuItem
+                                    onClick={() => onDeleteConnection?.(connection.id)}
+                                    className="gap-2 text-destructive focus:text-destructive"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete Connection
+                                </ContextMenuItem>
+                            </ContextMenuContent>
+                        </ContextMenu>
                     ))
                 ) : (
                     <div className="px-2 py-3 text-xs text-center text-muted-foreground border border-dashed rounded-md m-1">

@@ -274,7 +274,7 @@ function AIHelper({ onInsert }: AIHelperProps) {
 
   return (
     <div className="space-y-4">
-      <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+      <div className="p-4 rounded-lg bg-linear-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
         <div className="flex items-center gap-2 mb-2">
           <Sparkles className="h-4 w-4 text-purple-500" />
           <span className="text-sm font-medium text-foreground">AI Assistant</span>
@@ -286,7 +286,7 @@ function AIHelper({ onInsert }: AIHelperProps) {
           <input
             type="text"
             placeholder="Ask AI anything..."
-            className="flex-1 h-8 px-2.5 text-xs rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 h-8 px-2.5 text-xs rounded-md border border-input bg-background focus:outline-hidden focus:ring-1 focus:ring-primary"
             disabled
           />
           <Button size="sm" className="h-8 px-3 text-xs gap-1" disabled>

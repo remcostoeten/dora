@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
+import { TableSkeleton } from "@/components/ui/skeleton";
 import { fetchTableData, updateCellValue, deleteRow as deleteRowApi } from "./api";
 import {
     TableData,
@@ -21,6 +22,7 @@ type Props = {
 export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId }: Props) {
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [showSkeleton, setShowSkeleton] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>("content");
     const [pagination, setPagination] = useState<PaginationState>({ limit: 50, offset: 0 });
     const [sort, setSort] = useState<SortDescriptor | undefined>();
@@ -30,19 +32,37 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     // Default to all visible initially
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
 
+    // Delay showing skeleton to avoid flash for fast queries
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
+        if (isLoading && !tableData) {
+            timer = setTimeout(() => setShowSkeleton(true), 150);
+        } else {
+            setShowSkeleton(false);
+        }
+        return () => clearTimeout(timer);
+    }, [isLoading, tableData]);
+
     const loadTableData = useCallback(async () => {
-        if (!tableId || !activeConnectionId) return;
+        console.log("[DatabaseStudio] loadTableData called", { tableId, activeConnectionId });
+
+        if (!tableId || !activeConnectionId) {
+            console.log("[DatabaseStudio] Skipping load - missing tableId or activeConnectionId");
+            return;
+        }
 
         setIsLoading(true);
         setSelectedRows(new Set());
 
         try {
+            console.log("[DatabaseStudio] Fetching data for table:", tableName || tableId);
             const data = await fetchTableData(
                 activeConnectionId,
                 tableName || tableId,
                 Math.floor(pagination.offset / pagination.limit),
                 pagination.limit
             );
+            console.log("[DatabaseStudio] Data received:", { columns: data?.columns.length, rows: data?.rows.length });
             setTableData(data);
 
             // If it's a new table or first load, reset visible columns to show all
@@ -58,7 +78,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 });
             }
         } catch (error) {
-            console.error("Failed to load table data:", error);
+            console.error("[DatabaseStudio] Failed to load table data:", error);
             setTableData(null);
         } finally {
             setIsLoading(false);
@@ -328,10 +348,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
             />
 
             <div className="flex-1 overflow-hidden">
-                {isLoading && !tableData ? (
-                    <div className="flex items-center justify-center h-full">
-                        <div className="text-muted-foreground text-sm">Loading...</div>
-                    </div>
+                {showSkeleton ? (
+                    <TableSkeleton rows={12} columns={Math.min(visibleColumns.size || 6, 8)} />
                 ) : tableData ? (
                     <DataGrid
                         columns={tableData.columns.filter(col => visibleColumns.has(col.name))}

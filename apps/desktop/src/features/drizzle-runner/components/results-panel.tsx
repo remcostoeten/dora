@@ -47,7 +47,7 @@ export function ResultsPanel({ result, showJson }: Props) {
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute top-2 right-2 h-7 w-7 bg-background/80 backdrop-blur-sm border border-border hover:bg-background z-10"
+                    className="absolute top-2 right-2 h-7 w-7 bg-background/80 backdrop-blur-xs border border-border hover:bg-background z-10"
                     onClick={() => navigator.clipboard.writeText(JSON.stringify(result.rows, null, 2))}
                     title="Copy JSON"
                 >
