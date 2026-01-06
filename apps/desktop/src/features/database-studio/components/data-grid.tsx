@@ -319,7 +319,7 @@ export function DataGrid({
                                                 {col.type}
                                             </span>
                                         </div>
-                                        {isSorted ? (
+                                        {isSorted && sort ? (
                                             sort.direction === "asc" ? (
                                                 <ArrowUp className="h-3 w-3 text-primary shrink-0" />
                                             ) : (
@@ -436,7 +436,7 @@ export function DataGrid({
                                                         onBlur={handleSaveEdit}
                                                         onKeyDown={handleEditKeyDown}
                                                         data-no-shortcuts="true"
-                                                        className="w-full h-full px-3 py-1.5 bg-primary/10 border-2 border-primary outline-none font-mono text-sm"
+                                                        className="w-full h-full px-3 py-1.5 bg-primary/10 border-2 border-primary outline-hidden font-mono text-sm"
                                                     />
                                                 ) : (
                                                     <div className="truncate">
