@@ -43,8 +43,8 @@ src/shared/
 
 ### Components
 - Use PascalCase for component names: `ConnectionForm`, `QueryHistory`
-- Props interfaces: `ComponentNameProps` (e.g., `ConnectionFormProps`)
-- Avoid generic names like `Props`
+- Exported props types: `ComponentNameProps` (e.g., `ConnectionFormProps`)
+- Non-exported props types: Use `Props` when there's only one non-exported type in the file
 
 ### Folders
 - Use kebab-case: `data-browser`, `connection-history`
@@ -113,9 +113,11 @@ import { useResizable } from '@/shared/hooks'
 - Use named exports, not default exports from index
 
 ### Type Safety
-- All components must have TypeScript interfaces for props
+- **Always use `type` instead of `interface`** unless not possible otherwise
+- All components must have TypeScript types for props
 - Use strict TypeScript settings
 - Prefer explicit types over `any`
+- For non-exported single types (e.g., component props), always name them `Props`
 
 ## Testing Structure
 

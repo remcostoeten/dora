@@ -1,0 +1,150 @@
+---
+title: Backend Features Integration
+description: Guide for integrating new backend capabilities.
+---
+
+# Feature Integration Guide
+
+This guide explains how to interface with the new backend features: SSH Tunneling, Visual Query Builder, and Data Seeding.
+
+---
+
+## 1. SSH Tunneling
+
+Securely connect to Postgres databases via a jump host.
+
+### Data Structure
+When creating a connection via `add_connection`, the `DatabaseInfo` object now supports an optional `ssh_config`.
+
+**JSON Structure:**
+```json
+{
+  "Postgres": {
+    "connection_string": "postgres://user:pass@internal-db:5432/dbname",
+    "ssh_config": {
+      "host": "jump.example.com",
+      "port": 22,
+      "username": "admin",
+      "private_key_path": "/path/to/id_rsa", // Optional
+      "password": "secret"                   // Optional
+    }
+  }
+}
+```
+
+### Frontend Responsibility
+1.  **Form Input**: Provide fields for SSH Host, Port, User, Auth Method (Key/Password).
+2.  **Construction**: If SSH fields are filled, construct the `SshConfig` object.
+3.  **Submission**: Pass this structure to the `add_connection` or `test_connection` command.
+
+The backend handles establishing the tunnel implicitly.
+
+---
+
+## 2. Visual Query Builder
+
+Convert between SQL strings and structured AST (Abstract Syntax Tree) for visual editing.
+
+### Commands
+
+**1. Parse SQL (`parse_sql`)**
+*   **Input**: `sql` (String) - e.g., `SELECT * FROM users`
+*   **Output**: `JSON` - The AST representation of the query.
+
+**2. Build SQL (`build_sql`)**
+*   **Input**: `ast` (JSON) - The AST received from `parse_sql` or modified by the UI.
+*   **Output**: `String` - The generated SQL query.
+
+### Frontend Responsibility
+1.  **Initial Load**: Call `parse_sql` with the current editor content.
+2.  **Visual Interaction**:
+    *   The frontend should render a UI based on the returned JSON AST (e.g., recursive blocks for SELECT, FROM, WHERE).
+    *   **Note**: The AST is verbose. You might want to map it to a simpler internal UI state and only map back to AST for generation.
+3.  **Update**: When UI changes, update the AST JSON and call `build_sql` to get the string for the code editor.
+
+---
+
+## 3. Data Seeding
+
+Populate tables with realistic mock data.
+
+### Command: `seed_table`
+
+**Inputs:**
+*   `connection_id`: UUID of the active connection.
+*   `table_name`: Name of the target table.
+*   `schema_name`: (Optional) Schema name, defaults to public on Postgres.
+*   `count`: Number of rows to generate (e.g., 100).
+
+### Frontend Responsibility
+1.  **Trigger**: Context menu on a table node -> "Seed Data".
+2.  **Confirmation**: Prompt the user for the number of rows.
+3.  **Execution**: Invoke `seed_table`.
+4.  **Refresh**: Refresh the data view to show the new rows.
+
+---
+
+## 4. Queryable Metrics & Export
+
+Reference table for accessing system metrics and export features.
+
+### Metrics Reference
+
+| Metric | Source Command | Field | Frontend Example Code |
+| :--- | :--- | :--- | :--- |
+| **Connection Created** | `get_connections` | `created_at` | `new Date(conn.created_at).toLocaleString()` |
+| **Connection Updated** | `get_connections` | `updated_at` | `new Date(conn.updated_at).toLocaleString()` |
+| **Last Connected** | `get_connections` | `last_connected_at` | `formatDistanceToNow(conn.last_connected_at)` |
+| **DB Size (Bytes)** | `get_database_metadata` | `size_bytes` | `formatBytes(meta.size_bytes)` |
+| **Total Rows** | `get_database_metadata` | `row_count_total` | `meta.row_count_total.toLocaleString()` |
+| **Last DB Activity** | `get_database_metadata` | `last_updated` | `formatRelative(meta.last_updated)` |
+| **Query Duration** | `fetch_query` | `execution_time_ms` | `event.payload.elapsed_ms` |
+
+### Export Capabilities
+
+| Feature | Command | Supported Formats | Frontend Logic |
+| :--- | :--- | :--- | :--- |
+| **Table Export** | `export_table` | CSV, JSON, SQL | Prompt user for format, then invoke command. Returns file path or content. |
+| **Database Dump** | `dump_database` | SQL | Prompt user for target path, invoke command to stream dump. |
+
+---
+
+## 5. Security (PIN Protection)
+
+Protect saved credentials with an optional PIN.
+
+### Commands
+
+**1. Set PIN (`set_connection_pin`)**
+*   **Input**:
+    *   `connection_id` (UUID)
+    *   `pin` (String?) - Pass `null` to remove PIN.
+*   **Result**: Hashes PIN securely (bcrypt) and stores it with the connection.
+
+**2. Verify & Reveal (`verify_pin_and_get_credentials`)**
+*   **Input**:
+    *   `connection_id` (UUID)
+    *   `pin` (String)
+*   **Result**: Returns `Option<String>` (the password) if PIN matches. Returns Error if PIN is invalid.
+
+### Frontend Flow
+1.  Check `conn.pin_hash`. If present, show "Unlock to view credentials".
+2.  User enters PIN -> call `verify_pin_and_get_credentials`.
+3.  On success, reveal password field.
+
+---
+
+## 6. AI Assistant (Gemini & Ollama)
+
+AI-powered SQL assistance for query writing and explanation.
+
+### Configuration
+1.  **Set Provider**: `ai_set_provider("gemini" | "ollama")`
+2.  **Gemini (BYOK)**: `ai_set_gemini_key("AIza...")`
+3.  **Ollama (Local)**: `ai_configure_ollama(endpoint="http://localhost:11434")`
+
+### Usage
+*   **Complete Prompt**: `ai_complete(prompt, connection_id)`
+    *   Injects schema context if `connection_id` is provided.
+    *   Returns text response + token usage.
+
