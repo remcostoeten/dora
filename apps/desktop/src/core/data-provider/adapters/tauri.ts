@@ -5,7 +5,8 @@ import type {
     MutationResult,
     QueryHistoryEntry,
     JsonValue,
-    DatabaseInfo
+    DatabaseInfo,
+    SavedQuery
 } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
 import type { TableData, SortDescriptor, FilterDescriptor, ColumnDefinition } from "@/features/database-studio/types";
@@ -100,6 +101,7 @@ export function createTauriAdapter(): DataAdapter {
             sort?: SortDescriptor,
             filters?: FilterDescriptor[]
         ): Promise<AdapterResult<TableData>> {
+            console.log("[TauriAdapter] fetchTableData called", { connectionId, tableName, page, pageSize });
             let query = `SELECT * FROM "${tableName}"`;
 
             if (filters && filters.length > 0) {
@@ -114,24 +116,43 @@ export function createTauriAdapter(): DataAdapter {
             }
 
             query += ` LIMIT ${pageSize} OFFSET ${page * pageSize}`;
+            console.log("[TauriAdapter] Executing query:", query);
 
             const startResult = await commands.startQuery(connectionId, query);
-            if (startResult.status !== "ok" || !startResult.data[0]) {
-                return err("Failed to start query");
+            console.log("[TauriAdapter] startResult:", JSON.stringify(startResult, null, 2));
+
+            if (startResult.status !== "ok") {
+                console.error("[TauriAdapter] Query failed to start:", startResult.error);
+                return err(String(startResult.error));
+            }
+
+            // The Rust command returns Vec<usize>, effectively [query_id]
+            if (!startResult.data || startResult.data.length === 0) {
+                console.error("[TauriAdapter] Unexpected empty data from start_query:", startResult);
+                return err("Backend returned no query ID");
             }
 
             const queryId = startResult.data[0];
+            console.log("[TauriAdapter] Query started with ID:", queryId);
+
             let pageInfo;
             let attempts = 0;
             const maxAttempts = 50;
 
             while (attempts < maxAttempts) {
+                // Poll for results
                 const fetchResult = await commands.fetchQuery(queryId);
                 if (fetchResult.status !== "ok") {
+                    console.error("[TauriAdapter] Failed to fetch query status for ID:", queryId, fetchResult);
                     return err("Failed to fetch query results");
                 }
 
                 pageInfo = fetchResult.data;
+                // Log status for debugging
+                if (attempts % 5 === 0) {
+                    console.log(`[TauriAdapter] Polling query ${queryId} (attempt ${attempts}): ${pageInfo.status}`);
+                }
+
                 if (pageInfo.status === "Completed" || pageInfo.status === "Error") {
                     break;
                 }
@@ -145,17 +166,21 @@ export function createTauriAdapter(): DataAdapter {
             }
 
             if (pageInfo.status === "Error") {
+                console.error("[TauriAdapter] Query execution error:", pageInfo.error);
                 return err(pageInfo.error || "Query failed");
             }
 
             const columnsResult = await commands.getColumns(queryId);
             if (columnsResult.status !== "ok" || !columnsResult.data) {
+                console.error("[TauriAdapter] Failed to get columns for query:", queryId, columnsResult);
                 return err("Failed to get columns");
             }
 
             const columns = parseColumns(columnsResult.data);
+            // pageInfo.first_page contains the rows for the first page
             const rows = parseRows(pageInfo.first_page, columns);
 
+            console.log(`[TauriAdapter] Successfully fetched ${rows.length} rows`);
             return ok({
                 columns,
                 rows,
@@ -244,6 +269,38 @@ export function createTauriAdapter(): DataAdapter {
             const result = await commands.getQueryHistory(connectionId, limit ?? null);
             if (result.status === "ok") {
                 return ok(result.data);
+            }
+            return err(String(result.error));
+        },
+
+        async getScripts(connectionId: string | null): Promise<AdapterResult<SavedQuery[]>> {
+            const result = await commands.getScripts(connectionId);
+            if (result.status === "ok") {
+                return ok(result.data);
+            }
+            return err(String(result.error));
+        },
+
+        async saveScript(name: string, content: string, connectionId: string | null, description?: string | null): Promise<AdapterResult<number>> {
+            const result = await commands.saveScript(name, content, connectionId, description ?? null);
+            if (result.status === "ok") {
+                return ok(result.data);
+            }
+            return err(String(result.error));
+        },
+
+        async updateScript(id: number, name: string, content: string, connectionId: string | null, description?: string | null): Promise<AdapterResult<void>> {
+            const result = await commands.updateScript(id, name, content, connectionId, description ?? null);
+            if (result.status === "ok") {
+                return ok(undefined);
+            }
+            return err(String(result.error));
+        },
+
+        async deleteScript(id: number): Promise<AdapterResult<void>> {
+            const result = await commands.deleteScript(id);
+            if (result.status === "ok") {
+                return ok(undefined);
             }
             return err(String(result.error));
         },

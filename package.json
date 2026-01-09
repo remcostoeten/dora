@@ -2,18 +2,22 @@
   "name": "dora",
   "version": "0.0.1",
   "private": true,
-  "packageManager": "pnpm@9.15.0",
+  "packageManager": "bun@1.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "desktop:dev": "pnpm --filter @dora/desktop dev",
-    "desktop:build": "pnpm --filter @dora/desktop build",
-    "docs:dev": "pnpm --filter @dora/api-docs dev",
-    "docs:build": "pnpm --filter @dora/api-docs build"
+    "desktop:run": "bun --cwd apps/desktop run dev",
+    "desktop:dev": "bun --cwd apps/desktop run tauri dev",
+    "desktop:build": "bun --cwd apps/desktop run tauri build",
+    "docs:dev": "bun --cwd apps/api-docs run dev",
+    "docs:build": "bun --cwd apps/api-docs run build",
+    "runner": "./dora-runner"
   },
   "devDependencies": {
-    "esbuild": "^0.27.2",
     "turbo": "^2.3.0"
   }
 }

@@ -1,5 +1,6 @@
 export { MOCK_CONNECTIONS } from "./connections";
 export { MOCK_SCHEMAS } from "./schemas";
+export { MOCK_SCRIPTS } from "./scripts";
 
 import { CUSTOMERS } from "./tables/customers";
 import { PRODUCTS } from "./tables/products";

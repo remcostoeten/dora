@@ -9,7 +9,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "sql-console", label: "Console", icon: Terminal },
-  { id: "database-studio", label: "Database studio", icon: Database },
+  { id: "database-studio", label: "Dora", icon: Database },
 ];
 
 type Props = {

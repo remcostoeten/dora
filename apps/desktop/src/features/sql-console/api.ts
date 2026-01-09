@@ -1,3 +1,6 @@
+/**
+ * @deprecated This API is deprecated. Use the DataAdapter pattern via useAdapter() hook instead.
+ */
 import { commands, type JsonValue } from "@/lib/bindings";
 import type { SqlQueryResult } from "./types";
 

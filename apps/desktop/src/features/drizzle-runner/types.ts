@@ -6,13 +6,7 @@ export type QueryTab = {
     isDirty: boolean;
 };
 
-export type QueryResult = {
-    columns: string[];
-    rows: Record<string, unknown>[];
-    rowCount: number;
-    executionTime: number;
-    error?: string;
-};
+export { type QueryResult } from "@/core/data-provider/types";
 
 export type RunnerTab = "queries" | "schema";
 
