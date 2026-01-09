@@ -191,6 +191,12 @@
     --table-row-selected: 0 0% 16%;
     --table-border: 0 0% 19%;
 
+    --cell-foreground: 0 0% 82%;
+    --cell-foreground-muted: 0 0% 55%;
+    --cell-selection-bg: 211 100% 45%;
+    --cell-selection-border: 211 100% 45%;
+    --cell-row-height: 32px;
+
     --warning: 45 100% 50%;
     --warning-foreground: 0 0% 6.7%;
 
@@ -242,6 +248,12 @@
     --table-row-hover: 0 0% 94%;
     --table-row-selected: 0 0% 90%;
     --table-border: 0 0% 89.8%;
+
+    --cell-foreground: 0 0% 15%;
+    --cell-foreground-muted: 0 0% 45%;
+    --cell-selection-bg: 211 100% 45%;
+    --cell-selection-border: 211 100% 45%;
+    --cell-row-height: 32px;
 
     --warning: 45 100% 45%;
     --warning-foreground: 0 0% 9%;
