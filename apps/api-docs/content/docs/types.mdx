@@ -1,0 +1,134 @@
+---
+title: Shared Types
+description: TypeScript interfaces for backend data structures.
+---
+
+# Shared Types
+
+The following TypeScript definitions match the Rust structs used in the API.
+
+---
+
+## `ConnectionInfo`
+
+Represents a saved connection profile.
+
+```typescript
+interface ConnectionInfo {
+  id: string; // UUID
+  name: string;
+  connected: boolean;
+  database_type: DatabaseInfo;
+  last_connected_at?: number | null; // Unix timestamp
+  created_at?: number | null;
+  updated_at?: number | null;
+  favorite?: boolean | null;
+  color?: string | null; // HTML Color Code or Hue ID
+  sort_order?: number | null;
+}
+```
+
+---
+
+## `DatabaseInfo`
+
+Discriminated union representing connection details for specific drivers.
+Defaults to external tagging in Serde.
+
+```typescript
+type DatabaseInfo = 
+  | { 
+      Postgres: { 
+        connection_string: string;
+        ssh_config?: SshConfig | null;
+      } 
+    }
+  | { 
+      SQLite: { 
+        db_path: string 
+      } 
+    }
+  | { 
+      LibSQL: { 
+        url: string; 
+        auth_token?: string | null 
+      } 
+    };
+
+interface SshConfig {
+  host: string;
+  port: number;
+  username: string;
+  private_key_path?: string | null;
+  password?: string | null;
+}
+```
+
+---
+
+## `QueryStatus`
+
+Status enum for asynchronous query execution.
+
+```typescript
+enum QueryStatus {
+  Pending = 0,
+  Running = 1,
+  Completed = 2,
+  Error = 3
+}
+```
+
+---
+
+## `StatementInfo`
+
+Metadata about a completed or running statement.
+
+```typescript
+interface StatementInfo {
+  returns_values: boolean;
+  status: QueryStatus;
+  first_page?: any[] | null; // Preview rows
+  affected_rows?: number | null;
+  error?: string | null;
+}
+```
+
+---
+
+## `DatabaseSchema`
+
+Full schema structure returned by `get_database_schema`.
+
+```typescript
+interface DatabaseSchema {
+  tables: TableInfo[];
+  schemas: string[];
+  unique_columns: string[]; // Autocomplete helpers
+}
+
+interface TableInfo {
+  name: string;
+  schema: string;
+  columns: ColumnInfo[];
+  primary_key_columns: string[];
+  row_count_estimate?: number | null;
+}
+
+interface ColumnInfo {
+  name: string;
+  data_type: string;
+  is_nullable: boolean;
+  default_value?: string | null;
+  is_primary_key: boolean;
+  is_auto_increment: boolean;
+  foreign_key?: ForeignKeyInfo | null;
+}
+
+interface ForeignKeyInfo {
+  referenced_table: string;
+  referenced_column: string;
+  referenced_schema: string;
+}
+```

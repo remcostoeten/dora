@@ -11,9 +11,9 @@ import { ResizablePanels } from "@/features/drizzle-runner/components/resizable-
 import { CheatsheetPanel } from "../../features/drizzle-runner/components/cheatsheet-panel";
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from "./types";
 import { DEFAULT_SQL } from "./data";
-import { executeSqlQuery as executeQueryApi, getSnippets, saveSnippet, updateSnippet, deleteSnippet } from "./api";
-import { DEFAULT_QUERY, executeQuery as executeDrizzleQuery } from "../../features/drizzle-runner/data";
-import { getSchema } from "@/features/database-studio/api";
+import { DEFAULT_QUERY } from "../../features/drizzle-runner/data";
+import { useAdapter } from "@/core/data-provider/context";
+import type { SavedQuery } from "@/lib/bindings";
 
 type Props = {
     onToggleSidebar?: () => void;
@@ -21,6 +21,7 @@ type Props = {
 };
 
 export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
+    const adapter = useAdapter();
     const [mode, setMode] = useState<"sql" | "drizzle">("sql");
     const [snippets, setSnippets] = useState<SqlSnippet[]>([]);
     const [activeSnippetId, setActiveSnippetId] = useState<string | null>("playground");
@@ -36,20 +37,36 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
     const [showCheatsheet, setShowCheatsheet] = useState(false);
     const [tables, setTables] = useState<TableInfo[]>([]);
 
+    const loadSnippets = useCallback(async () => {
+        const res = await adapter.getScripts(activeConnectionId || null);
+        if (res.ok) {
+            const mapped: SqlSnippet[] = res.data.map((s: SavedQuery) => ({
+                id: s.id.toString(),
+                name: s.name,
+                content: s.query_text,
+                createdAt: new Date(s.created_at),
+                updatedAt: new Date(s.updated_at),
+                isFolder: false,
+                parentId: null,
+            }));
+            setSnippets(mapped);
+        }
+    }, [adapter, activeConnectionId]);
+
     useEffect(function () {
         if (activeConnectionId) {
-            getSnippets(activeConnectionId).then(setSnippets).catch(console.error);
+            loadSnippets().catch(console.error);
         }
-    }, [activeConnectionId]);
+    }, [activeConnectionId, loadSnippets]);
 
     useEffect(function () {
         if (!activeConnectionId) {
             setTables([]);
             return;
         }
-        getSchema(activeConnectionId).then(function (schema) {
-            if (schema && schema.tables) {
-                const mapped: TableInfo[] = schema.tables.map(function (t) {
+        adapter.getSchema(activeConnectionId).then(function (res) {
+            if (res.ok && res.data.tables) {
+                const mapped: TableInfo[] = res.data.tables.map(function (t) {
                     return {
                         name: t.name,
                         type: "table" as const,
@@ -67,7 +84,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                 setTables(mapped);
             }
         }).catch(console.error);
-    }, [activeConnectionId]);
+    }, [activeConnectionId, adapter]);
 
     const handleExecute = useCallback(async (codeOverride?: string) => {
         if (isExecuting) return;
@@ -81,15 +98,58 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                 if (!activeConnectionId) {
                     throw new Error("No connection selected");
                 }
-                const queryResult = await executeQueryApi(activeConnectionId, queryToRun);
-                setResult(queryResult);
+                const res = await adapter.executeQuery(activeConnectionId, queryToRun);
+                if (res.ok) {
+                    const columns = Array.isArray(res.data.columns)
+                        ? res.data.columns.map((c: any) => typeof c === 'string' ? c : c.name)
+                        : [];
+
+                    const rows = Array.isArray(res.data.rows)
+                        ? res.data.rows.map((row: any) => {
+                            if (typeof row === 'object' && row !== null && !Array.isArray(row)) {
+                                return row;
+                            }
+                            if (Array.isArray(row)) {
+                                const obj: Record<string, any> = {};
+                                columns.forEach((col: string, i: number) => {
+                                    obj[col] = row[i];
+                                });
+                                return obj;
+                            }
+                            return {};
+                        })
+                        : [];
+
+                    setResult({
+                        columns,
+                        rows,
+                        rowCount: res.data.rowCount,
+                        executionTime: 0,
+                        queryType: getQueryType(queryToRun)
+                    });
+                } else {
+                    throw new Error(res.error);
+                }
             } else {
                 const queryToRun = codeOverride || currentDrizzleQuery;
-                const queryResult = await executeDrizzleQuery(queryToRun);
-                setResult({
-                    ...queryResult,
-                    queryType: "SELECT"
-                });
+                if (!activeConnectionId) {
+                    throw new Error("No connection selected");
+                }
+
+                const res = await adapter.executeQuery(activeConnectionId, queryToRun);
+
+                if (res.ok) {
+                    setResult({
+                        columns: res.data.columns,
+                        rows: res.data.rows,
+                        rowCount: res.data.rowCount,
+                        executionTime: res.data.executionTime || 0,
+                        error: res.data.error,
+                        queryType: "SELECT"
+                    });
+                } else {
+                    throw new Error(res.error);
+                }
             }
         } catch (error) {
             setResult({
@@ -103,7 +163,16 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
         } finally {
             setIsExecuting(false);
         }
-    }, [mode, currentSqlQuery, currentDrizzleQuery, isExecuting, activeConnectionId]);
+    }, [mode, currentSqlQuery, currentDrizzleQuery, isExecuting, activeConnectionId, adapter]);
+
+    function getQueryType(query: string): "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER" {
+        const trimmed = query.trim().toUpperCase();
+        if (trimmed.startsWith("SELECT")) return "SELECT";
+        if (trimmed.startsWith("INSERT")) return "INSERT";
+        if (trimmed.startsWith("UPDATE")) return "UPDATE";
+        if (trimmed.startsWith("DELETE")) return "DELETE";
+        return "OTHER";
+    }
 
     const handlePrettify = () => {
         if (mode === "sql") {
@@ -157,13 +226,12 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
         const name = `Snippet ${snippets.length + 1}`;
 
         try {
-            await saveSnippet(name, currentContent || (mode === "sql" ? "-- New SQL query" : "// New Drizzle query"), activeConnectionId, null);
-            const loaded = await getSnippets(activeConnectionId);
-            setSnippets(loaded);
+            await adapter.saveScript(name, currentContent || (mode === "sql" ? "-- New SQL query" : "// New Drizzle query"), activeConnectionId, null);
+            await loadSnippets();
         } catch (error) {
             console.error("Failed to save snippet:", error);
         }
-    }, [activeConnectionId, snippets.length, mode, currentSqlQuery, currentDrizzleQuery]);
+    }, [activeConnectionId, snippets.length, mode, currentSqlQuery, currentDrizzleQuery, adapter, loadSnippets]);
 
     const handleNewFolder = useCallback((parentId?: string | null) => {
         const newFolder: SqlSnippet = {
@@ -184,26 +252,24 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
         const snippet = snippets.find(s => s.id === id);
         if (snippet && !snippet.isFolder) {
             try {
-                await updateSnippet(parseInt(id), newName, snippet.content, activeConnectionId, null);
-                const loaded = await getSnippets(activeConnectionId);
-                setSnippets(loaded);
+                await adapter.updateScript(parseInt(id), newName, snippet.content, activeConnectionId, null);
+                await loadSnippets();
             } catch (error) {
                 console.error("Failed to rename snippet:", error);
             }
         }
-    }, [activeConnectionId, snippets]);
+    }, [activeConnectionId, snippets, adapter, loadSnippets]);
 
     const handleDeleteSnippet = useCallback(async (id: string) => {
         if (!activeConnectionId) return;
 
         try {
-            await deleteSnippet(parseInt(id));
-            const loaded = await getSnippets(activeConnectionId);
-            setSnippets(loaded);
+            await adapter.deleteScript(parseInt(id));
+            await loadSnippets();
         } catch (error) {
             console.error("Failed to delete snippet:", error);
         }
-    }, [activeConnectionId]);
+    }, [activeConnectionId, adapter, loadSnippets]);
 
     const handleTableSelect = (tableName: string) => {
         if (mode === "sql") {

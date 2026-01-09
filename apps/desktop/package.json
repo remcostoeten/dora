@@ -1,14 +1,15 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "@dora/desktop",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 1420 --strictPort",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "tauri": "tauri"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@latest"

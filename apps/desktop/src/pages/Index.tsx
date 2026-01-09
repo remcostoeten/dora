@@ -19,11 +19,13 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi } from "@/features/connections/api";
+import { useAdapter } from "@/core/data-provider";
 
 export default function Index() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const adapter = useAdapter();
 
   const urlView = searchParams.get("view");
   const urlTable = searchParams.get("table");
@@ -56,7 +58,7 @@ export default function Index() {
 
   useEffect(() => {
     loadConnectionsFromBackend();
-  }, []);
+  }, [adapter]);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -75,10 +77,14 @@ export default function Index() {
   const loadConnectionsFromBackend = async () => {
     try {
       setIsLoading(true);
-      const conns = await loadConnections();
-      setConnections(conns);
-      if (!activeConnectionId && conns.length > 0) {
-        setActiveConnectionId(conns[0].id);
+      const result = await adapter.getConnections();
+      if (result.ok) {
+        setConnections(result.data);
+        if (!activeConnectionId && result.data.length > 0) {
+          setActiveConnectionId(result.data[0].id);
+        }
+      } else {
+        throw new Error(result.error);
       }
     } catch (error) {
       toast({
@@ -93,13 +99,45 @@ export default function Index() {
 
   const handleAddConnection = async (newConnectionData: Omit<Connection, "id" | "createdAt">) => {
     try {
-      const newConnection = await addConnectionApi(newConnectionData as Connection);
-      setConnections(prev => [...prev, newConnection]);
-      setActiveConnectionId(newConnection.id);
-      toast({
-        title: "Connection Added",
-        description: `Successfully connected to ${newConnection.name}`,
-      });
+      // Create a temporary ID for the adapter call if needed, but the adapter should handle it
+      // For now, we need to map frontend Connection format to what adapter expects
+      // The adapter addConnection expects (name, databaseType, sshConfig)
+
+      // NOTE: This part is tricky because frontend uses `Connection` object but adapter expects expanded args
+      // We need to use the `frontendToBackendDatabaseInfo` helper or similar logic
+      // But `frontendToBackendDatabaseInfo` is in `api.ts`.
+      // Ideally, the adapter should accept a strictly typed object, but `addConnection` signature is:
+      // addConnection(name: string, databaseType: DatabaseInfo, sshConfig: JsonValue | null)
+
+      // Let's import the helper to convert type
+      // Wait, `adapter.addConnection` is the lower level API. 
+      // The `Connection` type in `Index.tsx` is `FrontendConnection`.
+
+      // Let's rely on the helper which we should import. 
+      // BUT `api.ts` is deprecated ideally. We should move that helper to a shared location or `types.ts`.
+
+      // For now, let's keep importing helper from `api.ts` since it's just a pure function
+      const { frontendToBackendDatabaseInfo } = await import("@/features/connections/api");
+
+      const dbInfo = frontendToBackendDatabaseInfo(newConnectionData as Connection);
+      const result = await adapter.addConnection(newConnectionData.name, dbInfo, null);
+
+      if (result.ok) {
+        // Adapter returns connection info, we might need to fetch all again or convert it back
+        // Adapter `addConnection` returns `ConnectionInfo` (backend type)
+        // We need `backendToFrontendConnection` to update state locally without refetch
+        const { backendToFrontendConnection } = await import("@/features/connections/api");
+        const newFrontendConn = backendToFrontendConnection(result.data);
+
+        setConnections(prev => [...prev, newFrontendConn]);
+        setActiveConnectionId(newFrontendConn.id);
+        toast({
+          title: "Connection Added",
+          description: `Successfully connected to ${newFrontendConn.name}`,
+        });
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -113,16 +151,24 @@ export default function Index() {
     if (!editingConnection) return;
 
     try {
-      const updatedConnection = await updateConnectionApi({
-        ...connectionData,
-        id: editingConnection.id,
-        createdAt: editingConnection.createdAt,
-      } as Connection);
-      setConnections(prev => prev.map(c => c.id === updatedConnection.id ? updatedConnection : c));
-      toast({
-        title: "Connection Updated",
-        description: `Successfully updated ${updatedConnection.name}`,
-      });
+      const { frontendToBackendDatabaseInfo, backendToFrontendConnection } = await import("@/features/connections/api");
+
+      // We need to construct a full connection object to get the DatabaseInfo
+      const tempConn = { ...connectionData, id: editingConnection.id, createdAt: editingConnection.createdAt } as Connection;
+      const dbInfo = frontendToBackendDatabaseInfo(tempConn);
+
+      const result = await adapter.updateConnection(editingConnection.id, connectionData.name, dbInfo, null);
+
+      if (result.ok) {
+        const updatedConnection = backendToFrontendConnection(result.data);
+        setConnections(prev => prev.map(c => c.id === updatedConnection.id ? updatedConnection : c));
+        toast({
+          title: "Connection Updated",
+          description: `Successfully updated ${updatedConnection.name}`,
+        });
+      } else {
+        throw new Error(result.error);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -165,16 +211,21 @@ export default function Index() {
     if (!connectionToDelete) return;
 
     try {
-      await removeConnectionApi(connectionToDelete.id);
-      setConnections(prev => prev.filter(c => c.id !== connectionToDelete.id));
-      if (activeConnectionId === connectionToDelete.id) {
-        const remaining = connections.filter(c => c.id !== connectionToDelete.id);
-        setActiveConnectionId(remaining.length > 0 ? remaining[0].id : "");
+      const result = await adapter.removeConnection(connectionToDelete.id);
+
+      if (result.ok) {
+        setConnections(prev => prev.filter(c => c.id !== connectionToDelete.id));
+        if (activeConnectionId === connectionToDelete.id) {
+          const remaining = connections.filter(c => c.id !== connectionToDelete.id);
+          setActiveConnectionId(remaining.length > 0 ? remaining[0].id : "");
+        }
+        toast({
+          title: "Connection Deleted",
+          description: `Successfully deleted ${connectionToDelete.name}`,
+        });
+      } else {
+        throw new Error(result.error);
       }
-      toast({
-        title: "Connection Deleted",
-        description: `Successfully deleted ${connectionToDelete.name}`,
-      });
     } catch (error) {
       toast({
         title: "Error",
