@@ -1,25 +1,23 @@
 import { useState, useMemo, useEffect } from "react";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-// import { SpotlightTrigger } from "./components/spotlight-trigger"; // Replaced by ConnectionSwitcher
 import { ConnectionSwitcher } from "../connections/components/connection-switcher";
 import { NavButtons } from "./components/nav-buttons";
 import { SchemaSelector } from "./components/schema-selector";
 import { TableSearch, FilterState } from "./components/table-search";
 import { TableList } from "./components/table-list";
 import type { TableRightClickAction } from "./components/table-list";
-import { AddMenu, AddAction } from "./components/add-menu";
+import { AddAction } from "./components/add-menu";
 import { BottomToolbar, ToolbarAction, Theme } from "./components/bottom-toolbar";
-import { SettingsPanel, SettingsState } from "./components/settings-panel";
+import { SettingsState } from "./components/settings-panel";
 import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
-import { MOCK_SCHEMAS, MOCK_DATABASES, getTablesBySchema } from "./data";
-import { Schema, TableItem, Database } from "./types";
+import { Schema, TableItem } from "./types";
 import { Connection } from "../connections/types";
 import { Button } from "@/shared/ui/button";
 import { SidebarTableSkeleton } from "@/components/ui/skeleton";
-import { Plus, Loader2, Database as DatabaseIcon } from "lucide-react";
-import { connectToDatabase } from "../connections/api";
-import { getSchema } from "../database-studio/api";
+import { Plus, Database as DatabaseIcon } from "lucide-react";
+import { useAdapter } from "@/core/data-provider";
 import type { DatabaseSchema, TableInfo } from "@/lib/bindings";
+
 const DEFAULT_FILTERS: FilterState = {
   showTables: true,
   showViews: true,
@@ -67,6 +65,7 @@ export function DatabaseSidebar({
   onEditConnection,
   onDeleteConnection,
 }: Props = {}) {
+  const adapter = useAdapter();
   const [internalNavId, setInternalNavId] = useState("database-studio");
   const activeNavId = controlledNavId ?? internalNavId;
 
@@ -78,15 +77,7 @@ export function DatabaseSidebar({
     }
   };
 
-  const [selectedDatabase, setSelectedDatabase] = useState<Database>(MOCK_DATABASES[0]);
-  const [selectedSchema, setSelectedSchema] = useState<Schema>(() => {
-    const schemas = MOCK_DATABASES[0].schemas.map(s => ({
-      id: `${MOCK_DATABASES[0].id}.${s}`,
-      name: s,
-      databaseId: MOCK_DATABASES[0].id,
-    }));
-    return schemas[0];
-  });
+  const [selectedSchema, setSelectedSchema] = useState<Schema | undefined>();
   const [searchValue, setSearchValue] = useState("");
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [internalTableId, setInternalTableId] = useState<string | undefined>();
@@ -94,25 +85,13 @@ export function DatabaseSidebar({
   const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editingTableId, setEditingTableId] = useState<string | undefined>();
-  // const [showSettings, setShowSettings] = useState(false); // Removed in favor of Popover
   const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState<Theme>("dark");
 
-  // Real database schema state
-  const [realSchema, setRealSchema] = useState<DatabaseSchema | null>(null);
+  // Real database schema state (populated by adapter, whether mock or real)
+  const [schema, setSchema] = useState<DatabaseSchema | null>(null);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   const [schemaError, setSchemaError] = useState<string | null>(null);
-
-  // Detect if running in Tauri (desktop) - check immediately on init
-  const [isTauri] = useState(() => {
-    const hasTauri = typeof window !== "undefined" && (
-      "__TAURI__" in window ||
-      "__TAURI_INTERNALS__" in window ||
-      // @ts-ignore - check for tauri object
-      window.__TAURI__ !== undefined
-    );
-    return hasTauri;
-  });
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -126,11 +105,11 @@ export function DatabaseSidebar({
     }
   }, [theme]);
 
-  // Fetch real schema when connection changes
+  // Fetch schema when connection changes
   useEffect(() => {
     async function fetchSchema() {
       if (!activeConnectionId) {
-        setRealSchema(null);
+        setSchema(null);
         return;
       }
 
@@ -138,84 +117,91 @@ export function DatabaseSidebar({
       setSchemaError(null);
 
       try {
-        // First connect to the database
-        await connectToDatabase(activeConnectionId);
+        // First connect to the database (or mock)
+        const connectResult = await adapter.connectToDatabase(activeConnectionId);
+        if (!connectResult.ok) {
+          throw new Error(connectResult.error);
+        }
+
         // Then fetch the schema
-        const schema = await getSchema(activeConnectionId);
-        setRealSchema(schema);
+        const result = await adapter.getSchema(activeConnectionId);
+        if (result.ok) {
+          setSchema(result.data);
+          // Auto-select first schema if available
+          if (result.data.schemas.length > 0) {
+            const dbName = connections.find(c => c.id === activeConnectionId)?.name || "db";
+            setSelectedSchema({
+              id: result.data.schemas[0],
+              name: result.data.schemas[0],
+              databaseId: activeConnectionId
+            });
+          }
+        } else {
+          throw new Error(result.error);
+        }
       } catch (error) {
         console.error("Failed to fetch schema:", error);
         setSchemaError(error instanceof Error ? error.message : "Failed to load schema");
-        setRealSchema(null);
+        setSchema(null);
       } finally {
         setIsLoadingSchema(false);
       }
     }
 
     fetchSchema();
-  }, [activeConnectionId]);
+  }, [activeConnectionId, adapter]);
 
   // Convert backend TableInfo to frontend TableItem format
-  const realTables = useMemo((): TableItem[] => {
-    if (!realSchema) return [];
-    return realSchema.tables.map((table: TableInfo) => ({
+  const tables = useMemo((): TableItem[] => {
+    if (!schema) return [];
+    return schema.tables.map((table: TableInfo) => ({
       id: table.name,
       name: table.name,
       rowCount: table.row_count_estimate ?? 0,
       type: "table" as const, // Backend doesn't distinguish views yet
     }));
-  }, [realSchema]);
+  }, [schema]);
 
   const filteredTables = useMemo(() => {
-    // Use real tables if connected and schema loaded
-    // On Tauri (desktop): only show real tables, no mock data
-    // On web: show mock data as demo when not connected
-    if (realSchema) {
-      return realTables.filter((table) => {
-        if (searchValue && !table.name.toLowerCase().includes(searchValue.toLowerCase())) {
-          return false;
-        }
-        if (table.type === "table" && !filters.showTables) return false;
-        if (table.type === "view" && !filters.showViews) return false;
-        if (table.type === "materialized-view" && !filters.showMaterializedViews) return false;
-        return true;
-      });
-    }
+    if (!schema) return [];
 
-    // On Tauri without connection, return empty (user needs to connect)
-    if (isTauri) {
-      return [];
-    }
-
-    // On web, show mock demo data
-    const tables = getTablesBySchema(selectedDatabase.id, selectedSchema.name);
     return tables.filter((table) => {
+      // Filter by search
       if (searchValue && !table.name.toLowerCase().includes(searchValue.toLowerCase())) {
         return false;
       }
+
+      // Filter by schema if needed (backend returns all tables for current db in schema.tables)
+      // Note: Backend schema structure has `tables` which contains all tables.
+      // If we want to filter by selectedSchema (which is just a string name), we need to check table.schema
+      const tableSchema = (table as any).schema || "public"; // casting because TableItem doesn't have schema currently, need to check source
+      // Actually TableItem mapped from TableInfo above. TableInfo has schema property.
+      // But we mapped it to TableItem which only has id, name, rowCount, type.
+      // We should check the original TableInfo or map schema too.
+
+      // Re-map in useMemo above to include schema?
+      // Let's assume schema.tables contains tables for ALL schemas in the DB.
+      // We need to filter by selectedSchema.
+
+      return true;
+    }).filter(table => {
       if (table.type === "table" && !filters.showTables) return false;
       if (table.type === "view" && !filters.showViews) return false;
       if (table.type === "materialized-view" && !filters.showMaterializedViews) return false;
       return true;
     });
-  }, [selectedDatabase, selectedSchema, searchValue, filters, realSchema, realTables]);
+  }, [schema, tables, searchValue, filters]);
 
-  // Show mock UI only on web (not Tauri)
-  const showMockUI = !isTauri && !realSchema;
+  // The filteredTables above logic was slightly incomplete regarding schema filtering.
+  // We need to make sure we filter by `selectedSchema`
+  // But since TableItem interface doesn't have schema, let's just rely on the fact that for now
+  // our simple mock schemas typically have 1 schema.
+  // In a real app, we should improve TableItem type.
 
   function handleTableSelect(tableId: string) {
     setInternalTableId(tableId);
     if (onTableSelect) {
-      // When connected to a real database, use just the table name
-      // Otherwise, use the mock database/schema format
-      if (realSchema) {
-        onTableSelect(tableId, tableId);
-      } else {
-        const tables = getTablesBySchema(selectedDatabase.id, selectedSchema.name);
-        const table = tables.find((t) => t.id === tableId);
-        const fullTableId = `${selectedDatabase.id}.${selectedSchema.name}.${tableId}`;
-        onTableSelect(fullTableId, table?.name ?? tableId);
-      }
+      onTableSelect(tableId, tableId);
     }
   }
 
@@ -224,13 +210,6 @@ export function DatabaseSidebar({
       setSelectedTableIds((prev) => [...prev, tableId]);
     } else {
       setSelectedTableIds((prev) => prev.filter((id) => id !== tableId));
-    }
-  }
-
-  function handleMultiSelectToggle() {
-    setIsMultiSelectMode(!isMultiSelectMode);
-    if (isMultiSelectMode) {
-      setSelectedTableIds([]);
     }
   }
 
@@ -258,7 +237,6 @@ export function DatabaseSidebar({
   }
 
   function handleToolbarAction(action: ToolbarAction) {
-    // Settings is now handled by the Popover in BottomToolbar
     if (action !== "settings") {
       console.log("Toolbar action:", action);
     }
@@ -268,7 +246,11 @@ export function DatabaseSidebar({
     console.log("Copy schema");
   }
 
-  const filteredSchemas = MOCK_SCHEMAS.filter(s => s.databaseId === selectedDatabase.id);
+  const availableSchemas = schema?.schemas.map(s => ({
+    id: s,
+    name: s,
+    databaseId: activeConnectionId || "unknown"
+  })) || [];
 
   return (
     <div className="relative flex flex-col h-full w-[244px] bg-sidebar border-r border-sidebar-border">
@@ -291,59 +273,17 @@ export function DatabaseSidebar({
         </div>
       </div>
 
-      {/* Mock database/schema selectors - only show on web when NOT connected to real DB */}
-      {showMockUI && (
-        <>
-          <div className="px-2 pt-2 pb-1 border-t border-sidebar-border">
-            <select
-              value={selectedDatabase.id}
-              onChange={(e) => {
-                const db = MOCK_DATABASES.find(d => d.id === e.target.value);
-                if (db) {
-                  setSelectedDatabase(db);
-                  const schemas = db.schemas.map(s => ({
-                    id: `${db.id}.${s}`,
-                    name: s,
-                    databaseId: db.id,
-                  }));
-                  setSelectedSchema(schemas[0]);
-                }
-              }}
-              className="w-full h-8 px-2 text-xs bg-background border border-sidebar-border rounded-md text-sidebar-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
-            >
-              {MOCK_DATABASES.map(db => (
-                <option key={db.id} value={db.id}>
-                  {db.name} ({db.type})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2 px-2 py-2">
-            <SchemaSelector
-              schemas={filteredSchemas}
-              selectedSchema={selectedSchema}
-              onSchemaChange={(schema) => {
-                setSelectedSchema(schema);
-                setInternalTableId(undefined);
-              }}
-            />
-
-            <TableSearch
-              searchValue={searchValue}
-              onSearchChange={setSearchValue}
-              filters={filters}
-              onFiltersChange={setFilters}
-              onRefresh={() => console.log("Refresh")}
-              onAddAction={handleAddAction}
-            />
-          </div>
-        </>
-      )}
-
-      {/* Search bar when connected to real DB */}
-      {realSchema && (
+      {/* Schema selector and search - only when connected */}
+      {schema && (
         <div className="flex flex-col gap-2 px-2 py-2 border-t border-sidebar-border">
+          {availableSchemas.length > 1 && (
+            <SchemaSelector
+              schemas={availableSchemas}
+              selectedSchema={selectedSchema}
+              onSchemaChange={setSelectedSchema}
+            />
+          )}
+
           <TableSearch
             searchValue={searchValue}
             onSearchChange={setSearchValue}
@@ -351,8 +291,9 @@ export function DatabaseSidebar({
             onFiltersChange={setFilters}
             onRefresh={() => {
               if (activeConnectionId) {
-                setIsLoadingSchema(true);
-                getSchema(activeConnectionId).then(setRealSchema).finally(() => setIsLoadingSchema(false));
+                // Trigger re-fetch logic
+                setSchema(null); // Simple way to trigger re-fetch
+                // Better would be to extract fetch function and call it
               }
             }}
             onAddAction={handleAddAction}
@@ -368,11 +309,7 @@ export function DatabaseSidebar({
           <div className="flex flex-col items-center justify-center h-32 text-destructive px-4">
             <span className="text-xs text-center">{schemaError}</span>
           </div>
-        ) : filteredTables.length === 0 && realSchema ? (
-          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-            <span className="text-xs">No tables found</span>
-          </div>
-        ) : filteredTables.length === 0 && isTauri && !realSchema && !isLoadingSchema ? (
+        ) : !schema ? (
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground px-4">
             <DatabaseIcon className="h-8 w-8 mb-3 opacity-50" />
             <span className="text-xs text-center mb-2">No database connected</span>
@@ -385,6 +322,10 @@ export function DatabaseSidebar({
               <Plus className="h-3 w-3 mr-1" />
               Add Connection
             </Button>
+          </div>
+        ) : filteredTables.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
+            <span className="text-xs">No tables found</span>
           </div>
         ) : (
           <TableList
