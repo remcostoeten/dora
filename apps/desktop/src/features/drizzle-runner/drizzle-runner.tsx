@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { PanelLeft, Code, Play, Sparkles, Download, Loader2, Braces } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { CodeEditor } from "./components/code-editor";
@@ -6,32 +6,74 @@ import { CodeEditor } from "./components/code-editor";
 import { ResultsPanel } from "./components/results-panel";
 import { SchemaViewer } from "./components/schema-viewer";
 import { CheatsheetPanel } from "./components/cheatsheet-panel";
-import { QueryResult } from "./types";
-import { DEFAULT_QUERY, MOCK_SCHEMA_TABLES, executeQuery } from "./data";
+import { QueryResult, SchemaTable } from "./types";
+import { DEFAULT_QUERY } from "./data";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { cn } from "@/shared/utils/cn";
+import { useAdapter, useIsTauri } from "@/core/data-provider";
 
 type Props = {
+    connectionId?: string;
     onToggleSidebar?: () => void;
 };
 
-export function DrizzleRunner({ onToggleSidebar }: Props) {
+export function DrizzleRunner({ connectionId, onToggleSidebar }: Props) {
+    const adapter = useAdapter();
+    const isTauri = useIsTauri();
     const [queryCode, setQueryCode] = useState(DEFAULT_QUERY);
     const [result, setResult] = useState<QueryResult | null>(null);
     const [isExecuting, setIsExecuting] = useState(false);
     const [showJson, setShowJson] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [showCheatsheet, setShowCheatsheet] = useState(false);
+    const [schemaTables, setSchemaTables] = useState<SchemaTable[]>([]);
 
-    const handleExecute = useCallback(async (codeToRun?: string) => {
+    const activeConnectionId = useMemo(function () {
+        return connectionId || "demo-ecommerce-001";
+    }, [connectionId]);
+
+    useEffect(function () {
+        async function loadSchema() {
+            const schemaResult = await adapter.getSchema(activeConnectionId);
+            if (schemaResult.ok && schemaResult.data.tables) {
+                const tables: SchemaTable[] = schemaResult.data.tables.map(function (t) {
+                    return {
+                        name: t.name,
+                        columns: t.columns.map(function (c) {
+                            return {
+                                name: c.name,
+                                type: c.data_type,
+                                nullable: c.is_nullable,
+                                primaryKey: c.is_primary_key || false,
+                            };
+                        }),
+                    };
+                });
+                setSchemaTables(tables);
+            }
+        }
+        loadSchema();
+    }, [adapter, activeConnectionId]);
+
+    const handleExecute = useCallback(async function (codeToRun?: string) {
         if (isExecuting) return;
 
         setIsExecuting(true);
         setResult(null);
 
         try {
-            const queryResult = await executeQuery(codeToRun || queryCode);
-            setResult(queryResult);
+            const queryResult = await adapter.executeQuery(activeConnectionId, codeToRun || queryCode);
+            if (queryResult.ok) {
+                setResult(queryResult.data);
+            } else {
+                setResult({
+                    columns: [],
+                    rows: [],
+                    rowCount: 0,
+                    executionTime: 0,
+                    error: queryResult.error,
+                });
+            }
         } catch (error) {
             setResult({
                 columns: [],
@@ -43,7 +85,7 @@ export function DrizzleRunner({ onToggleSidebar }: Props) {
         } finally {
             setIsExecuting(false);
         }
-    }, [queryCode, isExecuting]);
+    }, [adapter, activeConnectionId, queryCode, isExecuting]);
 
     const handlePrettify = useCallback(() => {
         const lines = queryCode.split("\n");
@@ -186,7 +228,7 @@ export function DrizzleRunner({ onToggleSidebar }: Props) {
                         <div className="p-3 border-b border-sidebar-border/50 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Schema
                         </div>
-                        <SchemaViewer tables={MOCK_SCHEMA_TABLES} />
+                        <SchemaViewer tables={schemaTables} />
                     </div>
                 </Panel>
 
@@ -203,7 +245,7 @@ export function DrizzleRunner({ onToggleSidebar }: Props) {
                                     onChange={setQueryCode}
                                     onExecute={handleExecute}
                                     isExecuting={isExecuting}
-                                    tables={MOCK_SCHEMA_TABLES}
+                                    tables={schemaTables}
                                 />
                                 {/* Overlay Editor Actions on bottom-right of editor or top-right? 
                                     Let's keep existing EditorActions usage but position it better.

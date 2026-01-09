@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { fetchTableData, updateCellValue, deleteRow as deleteRowApi } from "./api";
+import { useAdapter } from "@/core/data-provider";
 import {
     TableData,
     PaginationState,
@@ -20,6 +20,7 @@ type Props = {
 };
 
 export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId }: Props) {
+    const adapter = useAdapter();
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
@@ -56,34 +57,40 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
 
         try {
             console.log("[DatabaseStudio] Fetching data for table:", tableName || tableId);
-            const data = await fetchTableData(
+            const result = await adapter.fetchTableData(
                 activeConnectionId,
                 tableName || tableId,
                 Math.floor(pagination.offset / pagination.limit),
-                pagination.limit
+                pagination.limit,
+                sort,
+                filters
             );
-            console.log("[DatabaseStudio] Data received:", { columns: data?.columns.length, rows: data?.rows.length });
-            setTableData(data);
 
-            // If it's a new table or first load, reset visible columns to show all
-            if (data && data.columns.length > 0) {
-                setVisibleColumns(prev => {
-                    // Only reset if empty (initial load) or if table changed (handled by useEffect below)
-                    // But here we might want to preserve visibility if reloading same table?
-                    // For now, let's just ensure if it's empty we fill it.
-                    if (prev.size === 0) {
-                        return new Set(data.columns.map(c => c.name));
-                    }
-                    return prev;
-                });
+            if (result.ok) {
+                const data = result.data;
+                console.log("[DatabaseStudio] Data received:", { columns: data.columns.length, rows: data.rows.length });
+                setTableData(data);
+
+                // If it's a new table or first load, reset visible columns to show all
+                if (data.columns.length > 0) {
+                    setVisibleColumns(prev => {
+                        if (prev.size === 0) {
+                            return new Set(data.columns.map(c => c.name));
+                        }
+                        return prev;
+                    });
+                }
+            } else {
+                console.error("[DatabaseStudio] Failed to load table data:", result.error);
+                setTableData(null);
             }
         } catch (error) {
-            console.error("[DatabaseStudio] Failed to load table data:", error);
+            console.error("[DatabaseStudio] Unexpected error loading table data:", error);
             setTableData(null);
         } finally {
             setIsLoading(false);
         }
-    }, [tableId, tableName, activeConnectionId, pagination.limit, pagination.offset, sort, filters]);
+    }, [adapter, tableId, tableName, activeConnectionId, pagination.limit, pagination.offset, sort, filters]);
 
     useEffect(() => {
         loadTableData();
@@ -152,10 +159,22 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         }
 
         try {
-            await updateCellValue(activeConnectionId, tableName || tableId, columnName, primaryKeyColumn.name, row[primaryKeyColumn.name], newValue);
-            await loadTableData();
+            const result = await adapter.updateCell(
+                activeConnectionId,
+                tableName || tableId,
+                primaryKeyColumn.name,
+                row[primaryKeyColumn.name] as any, // Cast to JsonValue
+                columnName,
+                newValue as any
+            );
+
+            if (result.ok) {
+                await loadTableData();
+            } else {
+                console.error("Failed to update cell:", result.error);
+            }
         } catch (error) {
-            console.error("Failed to update cell:", { tableId, rowIndex, columnName, newValue });
+            console.error("Failed to update cell:", { tableId, rowIndex, columnName, newValue, error });
         }
     };
 
@@ -169,13 +188,25 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         }
 
         try {
+            // Note: DataAdapter doesn't support batch update natively yet, so we loop
+            // In a real implementation we should add batch update to the adapter
             for (const rowIndex of rowIndexes) {
                 const row = tableData.rows[rowIndex];
-                await updateCellValue(activeConnectionId, tableName || tableId, columnName, primaryKeyColumn.name, row[primaryKeyColumn.name], newValue);
+                const result = await adapter.updateCell(
+                    activeConnectionId,
+                    tableName || tableId,
+                    primaryKeyColumn.name,
+                    row[primaryKeyColumn.name] as any,
+                    columnName,
+                    newValue as any
+                );
+                if (!result.ok) {
+                    console.error(`Failed to update row ${rowIndex}:`, result.error);
+                }
             }
             await loadTableData();
         } catch (error) {
-            console.error("Failed to batch update cells:", { tableId, rowIndexes, columnName, newValue });
+            console.error("Failed to batch update cells:", { tableId, rowIndexes, columnName, newValue, error });
         }
     };
 
@@ -191,10 +222,20 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         switch (action) {
             case "delete":
                 try {
-                    await deleteRowApi(activeConnectionId, tableName || tableId, primaryKeyColumn.name, row[primaryKeyColumn.name]);
-                    await loadTableData();
+                    const result = await adapter.deleteRows(
+                        activeConnectionId,
+                        tableName || tableId,
+                        primaryKeyColumn.name,
+                        [row[primaryKeyColumn.name] as any]
+                    );
+
+                    if (result.ok) {
+                        await loadTableData();
+                    } else {
+                        console.error("Failed to delete row:", result.error);
+                    }
                 } catch (error) {
-                    console.error("Failed to delete row:", { tableId, rowIndex });
+                    console.error("Failed to delete row:", { tableId, rowIndex, error });
                 }
                 break;
             case "view":
@@ -212,8 +253,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     };
 
     const handleAddRecord = () => {
-        console.log("Add record - Will connect to Tauri backend");
-        // TODO: Call Tauri command to add new record
+        console.log("Add record - Will connect to adapter");
+        // TODO: Call adapter to add new record
     };
 
     const handleExport = () => {
@@ -245,14 +286,15 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                                 <line x1="9" y1="3" x2="9" y2="21" />
                             </svg>
                         </button>
-                        <span className="ml-3 text-sm text-sidebar-foreground">Database Studio</span>
+                        <span className="ml-3 text-sm text-sidebar-foreground font-medium tracking-tight">Dora</span>
+                        <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-widest opacity-50">The database explorah</span>
                     </div>
                 )}
 
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
                         <h1 className="text-2xl font-semibold text-foreground mb-2">
-                            Database Studio
+                            Dora
                         </h1>
                         <p className="text-muted-foreground">
                             Select a table from the sidebar to browse data

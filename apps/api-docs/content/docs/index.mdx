@@ -1,0 +1,25 @@
+---
+title: Introduction
+description: Welcome to the Dora documentation.
+---
+
+# Introduction
+
+**Dora** is a modern, lightweight, and blazing fast SQL client built with Tauri and Next.js.
+It supports Postgres, SQLite, and LibSQL (Turso) out of the box.
+
+## Architecture
+
+Dora is built on a split architecture:
+
+- **Frontend**: A Next.js application handling the UI, state, and visualization.
+- **Backend**: A Rust (Tauri) process handling database connections, query execution, and secure storage.
+
+Communication happens exclusively via the [Tauri Command API](./api).
+
+## Features
+
+- **Multi-Database Support**: Connect to Postgres, SQLite, and LibSQL.
+- **Visual Query Builder**: (Coming soon)
+- **Safe Mode**: Dangerous operations like `DROP TABLE` require explicit confirmation.
+- **Themeable**: Customizable UI with color accents per connection.
