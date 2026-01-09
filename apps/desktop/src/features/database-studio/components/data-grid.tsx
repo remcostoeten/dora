@@ -61,6 +61,7 @@ export function DataGrid({
     const someSelected = selectedRows.size > 0 && selectedRows.size < rows.length;
 
     const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
+    const gridRef = useRef<HTMLTableElement>(null);
 
     useEffect(() => {
         const shouldIgnoreShortcut = (target: HTMLElement, e: KeyboardEvent): boolean => {
@@ -247,23 +248,82 @@ export function DataGrid({
         }
     }, [editingCell]);
 
+    const handleGridKeyDown = useCallback(function (e: React.KeyboardEvent) {
+        if (!focusedCell) return;
+        if (editingCell) return;
+
+        const { row, col } = focusedCell;
+        const maxRow = rows.length - 1;
+        const maxCol = columns.length - 1;
+
+        switch (e.key) {
+            case "ArrowUp":
+                e.preventDefault();
+                if (row > 0) setFocusedCell({ row: row - 1, col });
+                break;
+            case "ArrowDown":
+                e.preventDefault();
+                if (row < maxRow) setFocusedCell({ row: row + 1, col });
+                break;
+            case "ArrowLeft":
+                e.preventDefault();
+                if (col > 0) setFocusedCell({ row, col: col - 1 });
+                break;
+            case "ArrowRight":
+                e.preventDefault();
+                if (col < maxCol) setFocusedCell({ row, col: col + 1 });
+                break;
+            case "Tab":
+                e.preventDefault();
+                if (e.shiftKey) {
+                    if (col > 0) {
+                        setFocusedCell({ row, col: col - 1 });
+                    } else if (row > 0) {
+                        setFocusedCell({ row: row - 1, col: maxCol });
+                    }
+                } else {
+                    if (col < maxCol) {
+                        setFocusedCell({ row, col: col + 1 });
+                    } else if (row < maxRow) {
+                        setFocusedCell({ row: row + 1, col: 0 });
+                    }
+                }
+                break;
+            case "Enter":
+                e.preventDefault();
+                handleCellDoubleClick(row, columns[col].name, rows[row][columns[col].name]);
+                break;
+            case "Escape":
+                e.preventDefault();
+                setFocusedCell(null);
+                break;
+            case " ":
+                e.preventDefault();
+                onRowSelect(row, !selectedRows.has(row));
+                break;
+        }
+    }, [focusedCell, editingCell, rows, columns, handleCellDoubleClick, onRowSelect, selectedRows]);
+
     if (columns.length === 0) {
         return (
-                <div className="flex items-center justify-center h-full text-foreground text-sm">
+            <div className="flex items-center justify-center h-full text-foreground text-sm">
                 No columns found for this table
             </div>
         );
     }
 
     return (
-        <ScrollArea className="h-full">
+        <ScrollArea className="h-full w-full" type="always">
             <table
-                className="min-w-full text-sm border-collapse select-none"
+                ref={gridRef}
+                className="min-w-max text-sm border-collapse select-none"
                 style={{ tableLayout: "fixed" }}
                 role="grid"
                 aria-label={tableName ? `Data grid for ${tableName}` : "Data grid"}
                 aria-rowcount={rows.length}
                 aria-colcount={columns.length + 1}
+                tabIndex={0}
+                onKeyDown={handleGridKeyDown}
             >
                 <colgroup>
                     <col style={{ width: 30 }} />
@@ -308,9 +368,11 @@ export function DataGrid({
                                     <div className="flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden">
                                         <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
                                             <span className="text-foreground text-xs truncate">{col.name}</span>
-                                            <span className="text-muted-foreground/50 text-[10px] font-normal font-mono lowercase shrink-0">
-                                                {col.type}
-                                            </span>
+                                            {col.type && col.type !== "unknown" && (
+                                                <span className="text-muted-foreground/50 text-[10px] font-normal font-mono lowercase shrink-0">
+                                                    {col.type}
+                                                </span>
+                                            )}
                                         </div>
                                         {isSorted && sort ? (
                                             sort.direction === "asc" ? (
@@ -409,9 +471,8 @@ export function DataGrid({
                                         >
                                             <td
                                                 className={cn(
-                                                    "border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell",
-                                                    isEditing ? "p-0" : "px-3 py-1.5",
-                                                    isFocused && !isEditing && "ring-2 ring-inset ring-primary bg-primary/5"
+                                                    "border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5",
+                                                    isFocused && !isEditing && "outline outline-1 outline-offset-[-1px] outline-primary/60 bg-primary/5"
                                                 )}
                                                 style={{ maxWidth: getColumnWidth(col.name) }}
                                                 onClick={(e) => {
@@ -429,7 +490,7 @@ export function DataGrid({
                                                         onBlur={handleSaveEdit}
                                                         onKeyDown={handleEditKeyDown}
                                                         data-no-shortcuts="true"
-                                                        className="w-full h-full px-3 py-1.5 bg-primary/10 border-2 border-primary outline-hidden font-mono text-sm"
+                                                        className="w-full h-full bg-primary/10 outline outline-1 outline-offset-[-1px] outline-primary font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content"
                                                     />
                                                 ) : (
                                                     <div className="truncate">

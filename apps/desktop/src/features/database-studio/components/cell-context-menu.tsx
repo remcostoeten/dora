@@ -26,30 +26,32 @@ type Props = {
 };
 
 export function CellContextMenu({ value, column, rowIndex, selectedRows, onAction, children }: Props) {
-    const handleCopy = () => {
+    function handleCopy() {
         const text = value === null || value === undefined ? "" : String(value);
         navigator.clipboard.writeText(text);
         onAction?.("copy", value, column);
-    };
+    }
 
-    const handleCopyJson = () => {
+    function handleCopyJson() {
         const json = JSON.stringify(value, null, 2);
         navigator.clipboard.writeText(json);
         onAction?.("copy-json", value, column);
-    };
+    }
 
-    const handleFilterByValue = () => {
+    function handleFilterByValue() {
         onAction?.("filter-by-value", value, column);
-    };
+    }
 
-    const handleEdit = () => {
-        onAction?.("edit", value, column);
-    };
+    function handleEdit() {
+        requestAnimationFrame(function () {
+            onAction?.("edit", value, column);
+        });
+    }
 
-    const handleSetNull = () => {
-        const hasSelectedRows = selectedRows && selectedRows.size > 0;
-        
-        if (hasSelectedRows && selectedRows!.has(rowIndex)) {
+    function handleSetNull() {
+        const hasSelected = selectedRows && selectedRows.size > 0;
+
+        if (hasSelected && selectedRows!.has(rowIndex)) {
             const batchAction: BatchAction = {
                 action: "set-null-batch",
                 rowIndexes: Array.from(selectedRows!),
@@ -59,10 +61,9 @@ export function CellContextMenu({ value, column, rowIndex, selectedRows, onActio
         } else {
             onAction?.("set-null", null, column);
         }
-    };
+    }
 
     const hasSelectedRows = selectedRows && selectedRows.size > 1 && selectedRows.has(rowIndex);
-
     const isComplexType = typeof value === "object" && value !== null;
 
     return (
