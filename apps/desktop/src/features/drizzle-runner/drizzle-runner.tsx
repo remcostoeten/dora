@@ -1,8 +1,8 @@
 import { useState, useCallback } from "react";
-import { PanelLeft, Code } from "lucide-react";
+import { PanelLeft, Code, Play, Sparkles, Download, Loader2, Braces } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { CodeEditor } from "./components/code-editor";
-import { EditorActions } from "./components/editor-actions";
+
 import { ResultsPanel } from "./components/results-panel";
 import { SchemaViewer } from "./components/schema-viewer";
 import { CheatsheetPanel } from "./components/cheatsheet-panel";
@@ -90,24 +90,84 @@ export function DrizzleRunner({ onToggleSidebar }: Props) {
                     <span className="font-semibold text-sidebar-foreground px-2">Drizzle Runner</span>
                 </div>
 
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn("h-7 text-xs", isSidebarCollapsed && "bg-sidebar-accent")}
-                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                >
-                    {isSidebarCollapsed ? "Show Schema" : "Hide Schema"}
-                </Button>
+                <div className="flex items-center gap-1 mx-4">
+                    <Button
+                        size="sm"
+                        variant="default"
+                        className={cn(
+                            "h-7 px-3 gap-1.5 text-xs font-medium shadow-sm transition-all",
+                            isExecuting
+                                ? "bg-muted text-muted-foreground cursor-wait"
+                                : "bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-105 active:scale-95"
+                        )}
+                        onClick={() => handleExecute()}
+                        disabled={isExecuting}
+                    >
+                        {isExecuting ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                            <Play className="h-3 w-3 fill-current" />
+                        )}
+                        <span>{isExecuting ? "Running..." : "Run"}</span>
+                    </Button>
 
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn("h-7 text-xs gap-1.5", showCheatsheet && "bg-sidebar-accent")}
-                    onClick={() => setShowCheatsheet(!showCheatsheet)}
-                >
-                    <Code className="h-3.5 w-3.5" />
-                    <span>{showCheatsheet ? "Hide" : "Cheatsheet"}</span>
-                </Button>
+                    <div className="w-px h-4 bg-border/50 mx-1" />
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={handlePrettify}
+                        title="Format code (Shift+Alt+F)"
+                    >
+                        <Sparkles className="h-3.5 w-3.5" />
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "h-7 w-7 text-muted-foreground hover:text-foreground",
+                            showJson && "text-primary bg-primary/10"
+                        )}
+                        onClick={() => setShowJson(!showJson)}
+                        title="Toggle JSON view"
+                    >
+                        <Braces className="h-3.5 w-3.5" />
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-7 w-7 text-muted-foreground hover:text-foreground", (!result || result.rows.length === 0) && "opacity-50 cursor-not-allowed")}
+                        onClick={handleExport}
+                        disabled={!result || result.rows.length === 0}
+                        title="Export results as JSON"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
+
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-7 text-xs", isSidebarCollapsed && "bg-sidebar-accent")}
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    >
+                        {isSidebarCollapsed ? "Show Schema" : "Hide Schema"}
+                    </Button>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn("h-7 text-xs gap-1.5", showCheatsheet && "bg-sidebar-accent")}
+                        onClick={() => setShowCheatsheet(!showCheatsheet)}
+                    >
+                        <Code className="h-3.5 w-3.5" />
+                        <span>{showCheatsheet ? "Hide" : "Cheatsheet"}</span>
+                    </Button>
+                </div>
             </div>
 
             <PanelGroup direction="horizontal" className="flex-1">
@@ -143,21 +203,13 @@ export function DrizzleRunner({ onToggleSidebar }: Props) {
                                     onChange={setQueryCode}
                                     onExecute={handleExecute}
                                     isExecuting={isExecuting}
+                                    tables={MOCK_SCHEMA_TABLES}
                                 />
                                 {/* Overlay Editor Actions on bottom-right of editor or top-right? 
                                     Let's keep existing EditorActions usage but position it better.
                                     Let's put it as floating or toolbar.
                                 */}
-                                <div className="absolute top-2 right-4 z-10 w-auto">
-                                    <EditorActions
-                                        showJson={showJson}
-                                        onShowJsonToggle={() => setShowJson(!showJson)}
-                                        onPrettify={handlePrettify}
-                                        onExport={handleExport}
-                                        isExecuting={isExecuting}
-                                        hasResults={!!result && result.rows.length > 0}
-                                    />
-                                </div>
+
                             </div>
                         </Panel>
 

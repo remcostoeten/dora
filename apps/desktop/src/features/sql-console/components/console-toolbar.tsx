@@ -1,4 +1,4 @@
-import { BookOpen, PanelLeftClose, PanelRightClose, Loader2 } from "lucide-react";
+import { BookOpen, PanelLeftClose, Loader2, Sparkles, Play, Download, Braces } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/ui/button";
 import {
@@ -10,14 +10,18 @@ import {
 
 type Props = {
     onToggleLeftSidebar: () => void;
-    onToggleRightSidebar: () => void;
     onToggleCheatsheet?: () => void;
     showLeftSidebar: boolean;
-    showRightSidebar: boolean;
     showCheatsheet?: boolean;
     isExecuting: boolean;
     mode: "sql" | "drizzle";
     onModeChange: (mode: "sql" | "drizzle") => void;
+    onRun?: () => void;
+    onPrettify?: () => void;
+    onExport?: () => void;
+    hasResults?: boolean;
+    showJson?: boolean;
+    onShowJsonToggle?: () => void;
 };
 
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -33,14 +37,18 @@ function Kbd({ children, className }: { children: React.ReactNode; className?: s
 
 export function ConsoleToolbar({
     onToggleLeftSidebar,
-    onToggleRightSidebar,
     onToggleCheatsheet,
     showLeftSidebar,
-    showRightSidebar,
     showCheatsheet = false,
     isExecuting,
     mode,
     onModeChange,
+    onRun,
+    onPrettify,
+    onExport,
+    hasResults,
+    showJson,
+    onShowJsonToggle,
 }: Props) {
     return (
         <div className="flex items-center justify-between h-10 px-3 border-b border-sidebar-border bg-sidebar shrink-0">
@@ -85,6 +93,74 @@ export function ConsoleToolbar({
                 </div>
             </div>
 
+            {/* Center - Editor Actions */}
+            <div className="flex items-center gap-1 mx-4">
+                {onRun && (
+                    <Button
+                        size="sm"
+                        variant="default"
+                        className={cn(
+                            "h-7 px-3 gap-1.5 text-xs font-medium shadow-sm transition-all",
+                            isExecuting
+                                ? "bg-muted text-muted-foreground cursor-wait"
+                                : "bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-105 active:scale-95"
+                        )}
+                        onClick={onRun}
+                        disabled={isExecuting}
+                    >
+                        {isExecuting ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                            <Play className="h-3 w-3 fill-current" />
+                        )}
+                        <span>{isExecuting ? "Running..." : "Run"}</span>
+                        <Kbd className="ml-1 bg-emerald-700/20 text-emerald-100 border-emerald-500/30">⌘+↵</Kbd>
+                    </Button>
+                )}
+
+                <div className="w-px h-4 bg-border/50 mx-1" />
+
+                {onPrettify && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                        onClick={onPrettify}
+                        title="Format code (Shift+Alt+F)"
+                    >
+                        <Sparkles className="h-3.5 w-3.5" />
+                    </Button>
+                )}
+
+                {onShowJsonToggle && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "h-7 w-7 text-muted-foreground hover:text-foreground",
+                            showJson && "text-primary bg-primary/10"
+                        )}
+                        onClick={onShowJsonToggle}
+                        title="Toggle JSON view"
+                    >
+                        <Braces className="h-3.5 w-3.5" />
+                    </Button>
+                )}
+
+                {onExport && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-7 w-7 text-muted-foreground hover:text-foreground", !hasResults && "opacity-50 cursor-not-allowed")}
+                        onClick={onExport}
+                        disabled={!hasResults}
+                        title="Export results as JSON"
+                    >
+                        <Download className="h-3.5 w-3.5" />
+                    </Button>
+                )}
+            </div>
+
             {/* Right side - sidebar toggle */}
             <div className="flex items-center gap-1">
                 <Button
@@ -96,15 +172,6 @@ export function ConsoleToolbar({
                 >
                     <BookOpen className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Cheatsheet</span>
-                </Button>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 text-muted-foreground hover:text-sidebar-foreground"
-                    onClick={onToggleRightSidebar}
-                    title={showRightSidebar ? "Hide schema browser" : "Show schema browser"}
-                >
-                    <PanelRightClose className={showRightSidebar ? "" : "rotate-180"} style={{ width: 16, height: 16 }} />
                 </Button>
             </div>
         </div>

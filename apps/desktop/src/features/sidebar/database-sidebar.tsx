@@ -15,6 +15,7 @@ import { MOCK_SCHEMAS, MOCK_DATABASES, getTablesBySchema } from "./data";
 import { Schema, TableItem, Database } from "./types";
 import { Connection } from "../connections/types";
 import { Button } from "@/shared/ui/button";
+import { SidebarTableSkeleton } from "@/components/ui/skeleton";
 import { Plus, Loader2, Database as DatabaseIcon } from "lucide-react";
 import { connectToDatabase } from "../connections/api";
 import { getSchema } from "../database-studio/api";
@@ -362,10 +363,7 @@ export function DatabaseSidebar({
       {/* Table list */}
       <ScrollArea className="flex-1">
         {isLoadingSchema ? (
-          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin mb-2" />
-            <span className="text-xs">Loading tables...</span>
-          </div>
+          <SidebarTableSkeleton rows={8} />
         ) : schemaError ? (
           <div className="flex flex-col items-center justify-center h-32 text-destructive px-4">
             <span className="text-xs text-center">{schemaError}</span>

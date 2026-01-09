@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap')
-layer(base);
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap') layer(base);
 
 @import 'tailwindcss';
 
@@ -10,10 +9,12 @@ layer(base);
 @utility container {
   margin-inline: auto;
   padding-inline: 2rem;
-  @media (width >= --theme(--breakpoint-sm)) {
+
+  @media (width >=--theme(--breakpoint-sm)) {
     max-width: none;
   }
-  @media (width >= 1400px) {
+
+  @media (width >=1400px) {
     max-width: 1400px;
   }
 }
@@ -80,14 +81,17 @@ layer(base);
     from {
       height: 0;
     }
+
     to {
       height: var(--radix-accordion-content-height);
     }
   }
+
   @keyframes accordion-up {
     from {
       height: var(--radix-accordion-content-height);
     }
+
     to {
       height: 0;
     }
@@ -103,6 +107,7 @@ layer(base);
   color utility to any element that depends on these defaults.
 */
 @layer base {
+
   *,
   ::after,
   ::before,
@@ -359,5 +364,109 @@ layer(base);
 
   .font-mono {
     font-family: var(--font-mono);
+  }
+}
+
+@utility glass {
+  background: hsl(var(--popover) / 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+@utility glass-subtle {
+  background: hsl(var(--popover) / 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+@layer utilities {
+  .db-card {
+    @apply relative overflow-hidden rounded-lg border border-border bg-card/50 p-3 cursor-pointer transition-all duration-200;
+  }
+
+  .db-card:hover {
+    @apply bg-card border-muted-foreground/30;
+  }
+
+  .db-card.active {
+    @apply border-primary/50 bg-primary/5;
+    box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.15);
+  }
+
+  .db-card.active::before {
+    content: '';
+    @apply absolute inset-0 rounded-lg;
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .db-card-icon {
+    @apply flex h-10 w-10 items-center justify-center rounded-md transition-transform duration-200;
+  }
+
+  .db-card:hover .db-card-icon {
+    @apply scale-110;
+  }
+
+  .form-section {
+    animation: formFadeIn 0.25s ease-out;
+  }
+
+  @keyframes formFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .connection-status-success {
+    animation: statusPulse 0.6s ease-out;
+  }
+
+  .connection-status-error {
+    animation: statusShake 0.4s ease-out;
+  }
+
+  @keyframes statusPulse {
+    0% {
+      transform: scale(0.95);
+      opacity: 0;
+    }
+
+    50% {
+      transform: scale(1.02);
+    }
+
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes statusShake {
+
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+
+    20%,
+    60% {
+      transform: translateX(-4px);
+    }
+
+    40%,
+    80% {
+      transform: translateX(4px);
+    }
+  }
+
+  .input-glow:focus {
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1), 0 0 20px -5px hsl(var(--primary) / 0.2);
   }
 }

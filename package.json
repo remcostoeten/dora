@@ -13,6 +13,7 @@
     "docs:build": "pnpm --filter @dora/docs build"
   },
   "devDependencies": {
+    "esbuild": "^0.27.2",
     "turbo": "^2.3.0"
   }
 }

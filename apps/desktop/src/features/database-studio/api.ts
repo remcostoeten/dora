@@ -102,24 +102,44 @@ export async function fetchTableData(
   }
 
   const columns = Array.isArray(columnsResult.data)
-    ? columnsResult.data.map((col: any) => ({
-      name: col.name,
-      type: col.data_type || col.type || "unknown",
-      nullable: col.is_nullable ?? col.nullable ?? false,
-      primaryKey: col.is_primary_key ?? col.primary_key ?? false,
-    }))
+    ? columnsResult.data.map((col: any) => {
+      if (typeof col === 'string') {
+        return {
+          name: col,
+          type: "unknown",
+          nullable: false,
+          primaryKey: false,
+        };
+      }
+      return {
+        name: col.name,
+        type: col.data_type || col.type || "unknown",
+        nullable: col.is_nullable ?? col.nullable ?? false,
+        primaryKey: col.is_primary_key ?? col.primary_key ?? false,
+      };
+    })
     : [];
   console.log("[API] columns:", columns);
 
   const rows: Record<string, unknown>[] = Array.isArray(pageInfo.first_page)
-    ? pageInfo.first_page.map((row): Record<string, unknown> => {
+    ? pageInfo.first_page.map((row, rowIdx): Record<string, unknown> => {
       if (typeof row === 'object' && row !== null && !Array.isArray(row)) {
         return row as Record<string, unknown>;
       }
+      if (Array.isArray(row)) {
+        const rowObj: Record<string, unknown> = {};
+        columns.forEach((col, colIdx) => {
+          rowObj[col.name] = row[colIdx] !== undefined ? row[colIdx] : null;
+        });
+        console.log(`[API] Converted row ${rowIdx} from array to object:`, rowObj);
+        return rowObj;
+      }
+      console.warn(`[API] Unexpected row format at index ${rowIdx}:`, typeof row, row);
       return {};
     })
     : [];
   console.log("[API] rows:", rows);
+  console.log("[API] First row sample:", rows[0]);
 
   const result = {
     columns,

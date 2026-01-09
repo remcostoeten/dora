@@ -1,10 +1,15 @@
 #!/bin/bash
 
-# Script to generate Tauri icons from SVG logo
+# Script to generate Tauri icons from SVG or PNG logo
 # Requires: ImageMagick (convert), rsvg-convert, or inkscape
 
-SVG_FILE="src-tauri/icons/logo.svg"
+SOURCE_FILE="src-tauri/icons/logo.svg"
 ICONS_DIR="src-tauri/icons"
+
+# Allow passing source file as argument
+if [ -n "$1" ]; then
+    SOURCE_FILE="$1"
+fi
 
 # Colors for status
 GREEN='\033[0;32m'
@@ -13,9 +18,20 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}Generating icons for Dora...${NC}"
 
-# Check if SVG exists
-if [ ! -f "$SVG_FILE" ]; then
-    echo -e "${YELLOW}Error: SVG file not found at $SVG_FILE${NC}"
+# Check if source file exists
+if [ ! -f "$SOURCE_FILE" ]; then
+    echo -e "${YELLOW}Error: Source file not found at $SOURCE_FILE${NC}"
+    exit 1
+fi
+
+# Determine file type
+FILE_EXT="${SOURCE_FILE##*.}"
+if [[ "$FILE_EXT" == "svg" || "$FILE_EXT" == "SVG" ]]; then
+    IS_SVG=true
+elif [[ "$FILE_EXT" == "png" || "$FILE_EXT" == "PNG" ]]; then
+    IS_SVG=false
+else
+    echo -e "${YELLOW}Error: Unsupported file format. Use SVG or PNG.${NC}"
     exit 1
 fi
 
@@ -25,31 +41,46 @@ command_exists() {
 }
 
 # Try different tools in order of preference
-if command_exists rsvg-convert; then
-    CONVERT_CMD="rsvg-convert"
-    CONVERT_ARGS="-w"
-elif command_exists inkscape; then
-    CONVERT_CMD="inkscape"
-    CONVERT_ARGS="--export-width"
-elif command_exists convert; then
-    CONVERT_CMD="convert"
-    CONVERT_ARGS="-resize"
+if [ "$IS_SVG" = true ]; then
+    if command_exists rsvg-convert; then
+        CONVERT_CMD="rsvg-convert"
+        CONVERT_ARGS="-w"
+    elif command_exists inkscape; then
+        CONVERT_CMD="inkscape"
+        CONVERT_ARGS="--export-width"
+    elif command_exists convert; then
+        CONVERT_CMD="convert"
+        CONVERT_ARGS="-resize"
+    else
+        echo -e "${YELLOW}Error: No suitable image conversion tool found.${NC}"
+        echo "Please install one of: rsvg-convert, inkscape, or ImageMagick (convert)"
+        exit 1
+    fi
 else
-    echo -e "${YELLOW}Error: No suitable image conversion tool found.${NC}"
-    echo "Please install one of: rsvg-convert, inkscape, or ImageMagick (convert)"
-    exit 1
+    if command_exists convert; then
+        CONVERT_CMD="convert"
+        CONVERT_ARGS="-resize"
+    else
+        echo -e "${YELLOW}Error: ImageMagick (convert) required for PNG files.${NC}"
+        echo "Please install ImageMagick"
+        exit 1
+    fi
 fi
 
 convert_icon() {
     local size=$1
     local output="$ICONS_DIR/${size}x${size}.png"
     
-    if [ "$CONVERT_CMD" = "rsvg-convert" ]; then
-        rsvg-convert -w "$size" -h "$size" "$SVG_FILE" -o "$output"
-    elif [ "$CONVERT_CMD" = "inkscape" ]; then
-        inkscape "$SVG_FILE" --export-width="$size" --export-height="$size" --export-filename="$output"
-    elif [ "$CONVERT_CMD" = "convert" ]; then
-        convert -background none -resize "${size}x${size}" "$SVG_FILE" "$output"
+    if [ "$IS_SVG" = true ]; then
+        if [ "$CONVERT_CMD" = "rsvg-convert" ]; then
+            rsvg-convert -w "$size" -h "$size" "$SOURCE_FILE" -o "$output"
+        elif [ "$CONVERT_CMD" = "inkscape" ]; then
+            inkscape "$SOURCE_FILE" --export-width="$size" --export-height="$size" --export-filename="$output"
+        elif [ "$CONVERT_CMD" = "convert" ]; then
+            convert -background none -resize "${size}x${size}" "$SOURCE_FILE" "$output"
+        fi
+    else
+        convert -background none -resize "${size}x${size}" "$SOURCE_FILE" "$output"
     fi
     
     if [ -f "$output" ]; then

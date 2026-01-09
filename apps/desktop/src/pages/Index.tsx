@@ -216,7 +216,13 @@ export default function Index() {
             activeConnectionId={activeConnectionId}
             onConnectionSelect={handleConnectionSelect}
             onAddConnection={handleOpenNewConnection}
-            onManageConnections={() => loadConnectionsFromBackend()}
+            onManageConnections={() => {
+              const activeConn = connections.find(c => c.id === activeConnectionId);
+              if (activeConn) {
+                setEditingConnection(activeConn);
+                setIsConnectionDialogOpen(true);
+              }
+            }}
             onViewConnection={handleViewConnection}
             onEditConnection={handleEditConnection}
             onDeleteConnection={handleDeleteConnection}

@@ -46,15 +46,12 @@ export function DataGrid({
     onRowAction,
     tableName
 }: Props) {
-    // Editing state
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [editValue, setEditValue] = useState<string>("");
     const editInputRef = useRef<HTMLInputElement>(null);
 
-    // Last clicked row for shift+click range selection
     const lastClickedRowRef = useRef<number | null>(null);
 
-    // Track column widths - keyed by column name
     const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
     const [resizingColumn, setResizingColumn] = useState<string | null>(null);
     const startXRef = useRef(0);
@@ -63,13 +60,10 @@ export function DataGrid({
     const allSelected = rows.length > 0 && selectedRows.size === rows.length;
     const someSelected = selectedRows.size > 0 && selectedRows.size < rows.length;
 
-    // Focused cell for keyboard navigation
     const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
 
-    // Global keyboard shortcuts for data grid
     useEffect(() => {
         const shouldIgnoreShortcut = (target: HTMLElement, e: KeyboardEvent): boolean => {
-            // Check for editable elements
             const tagName = target.tagName;
             if (
                 tagName === "INPUT" ||
@@ -79,18 +73,17 @@ export function DataGrid({
                 return true;
             }
 
-            // Check if target is inside a Monaco editor
             const isMonacoEditor = target.closest(".monaco-editor");
             if (isMonacoEditor) return true;
 
-            // Check if target is inside any element with data-no-shortcuts attribute
             const isInNoShortcutsZone = target.closest("[data-no-shortcuts]");
             if (isInNoShortcutsZone) return true;
 
             return false;
         };
 
-        const handleKeyDown = (e: KeyboardEvent) => {
+
+        function handleKeyDown(e: KeyboardEvent) {
             const target = e.target as HTMLElement;
             if (shouldIgnoreShortcut(target, e)) return;
 
@@ -256,7 +249,7 @@ export function DataGrid({
 
     if (columns.length === 0) {
         return (
-            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                <div className="flex items-center justify-center h-full text-foreground text-sm">
                 No columns found for this table
             </div>
         );
@@ -314,7 +307,7 @@ export function DataGrid({
                                 >
                                     <div className="flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden">
                                         <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
-                                            <span className="text-sidebar-foreground text-xs truncate">{col.name}</span>
+                                            <span className="text-foreground text-xs truncate">{col.name}</span>
                                             <span className="text-muted-foreground/50 text-[10px] font-normal font-mono lowercase shrink-0">
                                                 {col.type}
                                             </span>
@@ -477,5 +470,5 @@ function formatCellValue(value: unknown, column: ColumnDefinition): React.ReactN
         return <span className="text-warning">{JSON.stringify(value)}</span>;
     }
 
-    return <span className="text-sidebar-foreground">{String(value)}</span>;
+    return <span className="text-foreground">{String(value)}</span>;
 }
