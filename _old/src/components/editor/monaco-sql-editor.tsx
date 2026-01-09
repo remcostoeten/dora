@@ -52,7 +52,6 @@ export const MonacoSqlEditor = forwardRef<MonacoSqlEditorRef, MonacoSqlEditorPro
     setContent: (content: string) => onChange(content),
   }))
 
-  // Format handler
   const handleFormat = useCallback(() => {
     const result = prettifySQL(value)
     if (result.success) {
@@ -60,7 +59,6 @@ export const MonacoSqlEditor = forwardRef<MonacoSqlEditorRef, MonacoSqlEditorPro
     }
   }, [value, onChange])
 
-  // Minify handler
   const handleMinify = useCallback(() => {
     const result = minifySQL(value)
     if (result.success) {
@@ -76,7 +74,7 @@ export const MonacoSqlEditor = forwardRef<MonacoSqlEditorRef, MonacoSqlEditorPro
 
     // Configure SQL language
     monaco.languages.register({ id: 'sql' })
-    
+
     // Configure SQL syntax highlighting
     monaco.languages.setMonarchTokensProvider('sql', {
       tokenizer: {

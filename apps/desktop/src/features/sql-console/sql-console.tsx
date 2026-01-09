@@ -2,19 +2,18 @@ import { useState, useCallback, useEffect } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { PanelLeft } from "lucide-react";
 import { Button } from "@/shared/ui/button";
-import { QuerySidebar } from "./components/query-sidebar";
-import { SchemaBrowser } from "./components/schema-browser";
+import { UnifiedSidebar } from "./components/unified-sidebar";
 import { SqlEditor } from "./components/sql-editor";
 import { CodeEditor } from "../../features/drizzle-runner/components/code-editor";
-import { EditorActions } from "../../features/drizzle-runner/components/editor-actions";
 import { ConsoleToolbar } from "./components/console-toolbar";
 import { SqlResults } from "./components/sql-results";
 import { ResizablePanels } from "@/features/drizzle-runner/components/resizable-panels";
 import { CheatsheetPanel } from "../../features/drizzle-runner/components/cheatsheet-panel";
-import { SqlQueryResult, ResultViewMode, SqlSnippet } from "./types";
-import { MOCK_TABLES, DEFAULT_SQL } from "./data";
+import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from "./types";
+import { DEFAULT_SQL } from "./data";
 import { executeSqlQuery as executeQueryApi, getSnippets, saveSnippet, updateSnippet, deleteSnippet } from "./api";
 import { DEFAULT_QUERY, executeQuery as executeDrizzleQuery } from "../../features/drizzle-runner/data";
+import { getSchema } from "@/features/database-studio/api";
 
 type Props = {
     onToggleSidebar?: () => void;
@@ -34,13 +33,40 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
     const [isExecuting, setIsExecuting] = useState(false);
     const [viewMode, setViewMode] = useState<ResultViewMode>("table");
     const [showLeftSidebar, setShowLeftSidebar] = useState(true);
-    const [showRightSidebar, setShowRightSidebar] = useState(true);
     const [showCheatsheet, setShowCheatsheet] = useState(false);
+    const [tables, setTables] = useState<TableInfo[]>([]);
 
-    useEffect(() => {
+    useEffect(function () {
         if (activeConnectionId) {
             getSnippets(activeConnectionId).then(setSnippets).catch(console.error);
         }
+    }, [activeConnectionId]);
+
+    useEffect(function () {
+        if (!activeConnectionId) {
+            setTables([]);
+            return;
+        }
+        getSchema(activeConnectionId).then(function (schema) {
+            if (schema && schema.tables) {
+                const mapped: TableInfo[] = schema.tables.map(function (t) {
+                    return {
+                        name: t.name,
+                        type: "table" as const,
+                        rowCount: 0,
+                        columns: t.columns.map(function (c) {
+                            return {
+                                name: c.name,
+                                type: c.data_type,
+                                nullable: c.is_nullable,
+                                primaryKey: c.is_primary_key
+                            };
+                        })
+                    };
+                });
+                setTables(mapped);
+            }
+        }).catch(console.error);
     }, [activeConnectionId]);
 
     const handleExecute = useCallback(async (codeOverride?: string) => {
@@ -249,9 +275,18 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                             collapsible
                             onCollapse={() => setShowLeftSidebar(false)}
                         >
-                            <QuerySidebar
+                            <UnifiedSidebar
+                                tables={tables}
                                 snippets={snippets}
                                 activeSnippetId={activeSnippetId}
+                                onTableSelect={handleTableSelect}
+                                onInsertQuery={(query) => {
+                                    if (mode === "sql") {
+                                        setCurrentSqlQuery(query);
+                                    } else {
+                                        setCurrentDrizzleQuery(query);
+                                    }
+                                }}
                                 onSnippetSelect={handleSnippetSelect}
                                 onNewSnippet={handleNewSnippet}
                                 onNewFolder={handleNewFolder}
@@ -271,12 +306,14 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                             mode={mode}
                             onModeChange={setMode}
                             onToggleLeftSidebar={() => setShowLeftSidebar(!showLeftSidebar)}
-                            onToggleRightSidebar={() => setShowRightSidebar(!showRightSidebar)}
                             onToggleCheatsheet={() => setShowCheatsheet(!showCheatsheet)}
                             showLeftSidebar={showLeftSidebar}
-                            showRightSidebar={showRightSidebar}
                             showCheatsheet={showCheatsheet}
                             isExecuting={isExecuting}
+                            onRun={() => handleExecute()}
+                            onPrettify={handlePrettify}
+                            onExport={handleExport}
+                            hasResults={!!result}
                         />
 
                         {/* Editor and Results */}
@@ -297,22 +334,24 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                                             <CodeEditor
                                                 value={currentDrizzleQuery}
                                                 onChange={setCurrentDrizzleQuery}
-                                                onExecute={() => handleExecute()}
+                                                onExecute={function () { handleExecute(); }}
                                                 isExecuting={isExecuting}
-                                                tables={MOCK_TABLES.map(t => ({
-                                                    ...t,
-                                                    columns: t.columns || []
-                                                })) as any}
+                                                tables={tables.map(function (t) {
+                                                    return {
+                                                        name: t.name,
+                                                        columns: (t.columns || []).map(function (c) {
+                                                            return {
+                                                                name: c.name,
+                                                                type: c.type,
+                                                                nullable: c.nullable ?? false,
+                                                                primaryKey: c.primaryKey ?? false
+                                                            };
+                                                        })
+                                                    };
+                                                })}
                                             />
                                         )}
 
-                                        <EditorActions
-                                            onRun={() => handleExecute()}
-                                            onPrettify={handlePrettify}
-                                            isExecuting={isExecuting}
-                                            hasResults={!!result}
-                                            onExport={handleExport}
-                                        />
                                     </div>
                                 }
                                 bottomPanel={
@@ -328,31 +367,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                     </div>
                 </Panel>
 
-                {/* Right sidebar - Schema browser */}
-                {showRightSidebar && (
-                    <>
-                        <PanelResizeHandle className="w-1 bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize" />
-                        <Panel
-                            defaultSize={18}
-                            minSize={12}
-                            maxSize={30}
-                            collapsible
-                            onCollapse={() => setShowRightSidebar(false)}
-                        >
-                            <SchemaBrowser
-                                tables={MOCK_TABLES}
-                                onTableSelect={handleTableSelect}
-                                onInsertQuery={(query) => {
-                                    if (mode === "sql") {
-                                        setCurrentSqlQuery(query);
-                                    } else {
-                                        setCurrentDrizzleQuery(query);
-                                    }
-                                }}
-                            />
-                        </Panel>
-                    </>
-                )}
+
 
                 {/* Cheatsheet Panel */}
                 {showCheatsheet && (

@@ -126,23 +126,23 @@ export function ConnectionSwitcher({
                             </ContextMenuTrigger>
                             <ContextMenuContent className="w-48">
                                 <ContextMenuItem
-                                    onClick={() => onViewConnection?.(connection.id)}
-                                    className="gap-2"
+                                    onSelect={() => onViewConnection?.(connection.id)}
+                                    className="gap-2 cursor-pointer"
                                 >
                                     <Eye className="h-4 w-4" />
                                     View Details
                                 </ContextMenuItem>
                                 <ContextMenuItem
-                                    onClick={() => onEditConnection?.(connection.id)}
-                                    className="gap-2"
+                                    onSelect={() => onEditConnection?.(connection.id)}
+                                    className="gap-2 cursor-pointer"
                                 >
                                     <Pencil className="h-4 w-4" />
                                     Edit Connection
                                 </ContextMenuItem>
                                 <ContextMenuSeparator />
                                 <ContextMenuItem
-                                    onClick={() => onDeleteConnection?.(connection.id)}
-                                    className="gap-2 text-destructive focus:text-destructive"
+                                    onSelect={() => onDeleteConnection?.(connection.id)}
+                                    className="gap-2 text-destructive focus:text-destructive cursor-pointer"
                                 >
                                     <Trash2 className="h-4 w-4" />
                                     Delete Connection

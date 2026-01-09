@@ -71,18 +71,25 @@ export async function executeSqlQuery(
     console.log("[SQL Console API] columnsResult:", columnsResult);
 
     const columns = columnsResult.status === "ok" && Array.isArray(columnsResult.data)
-      ? columnsResult.data.map((col: any) => ({
-        name: col.name,
-        type: col.data_type || col.type || "unknown",
-        nullable: col.is_nullable ?? col.nullable ?? false,
-        primaryKey: col.is_primary_key ?? col.primary_key ?? false,
-      }))
+      ? columnsResult.data.map((col: any) => {
+        if (typeof col === 'string') {
+          return col;
+        }
+        return col.name;
+      })
       : [];
 
     const rows: Record<string, unknown>[] = Array.isArray(pageInfo.first_page)
       ? pageInfo.first_page.map((row): Record<string, unknown> => {
         if (typeof row === 'object' && row !== null && !Array.isArray(row)) {
           return row as Record<string, unknown>;
+        }
+        if (Array.isArray(row)) {
+          const rowObj: Record<string, unknown> = {};
+          columns.forEach((colName, colIdx) => {
+            rowObj[colName] = row[colIdx] !== undefined ? row[colIdx] : null;
+          });
+          return rowObj;
         }
         return {};
       })
