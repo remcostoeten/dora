@@ -1,7 +1,8 @@
 MutationResult,
     QueryHistoryEntry,
     JsonValue,
-    DatabaseInfo
+    DatabaseInfo,
+    SavedQuery
 } from "@/lib/bindings";
 import type { TableData, SortDescriptor, FilterDescriptor } from "@/features/database-studio/types";
 
@@ -14,9 +15,11 @@ export type AdapterResult<T> = {
 };
 
 export type QueryResult = {
-    rows: JsonValue;
-    columns: JsonValue;
+    rows: Record<string, unknown>[];
+    columns: string[];
     rowCount: number;
+    executionTime?: number;
+    error?: string;
 };
 
 export type DataAdapter = {
@@ -65,6 +68,12 @@ export type DataAdapter = {
     ): Promise<AdapterResult<MutationResult>>;
 
     getQueryHistory(connectionId: string, limit?: number): Promise<AdapterResult<QueryHistoryEntry[]>>;
+
+    // Script/Snippet management
+    getScripts(connectionId: string | null): Promise<AdapterResult<SavedQuery[]>>;
+    saveScript(name: string, content: string, connectionId: string | null, description?: string | null): Promise<AdapterResult<number>>;
+    updateScript(id: number, name: string, content: string, connectionId: string | null, description?: string | null): Promise<AdapterResult<void>>;
+    deleteScript(id: number): Promise<AdapterResult<void>>;
 };
 
 export type DataProviderContextValue = {

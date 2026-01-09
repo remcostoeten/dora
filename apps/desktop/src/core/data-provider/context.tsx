@@ -4,7 +4,9 @@ import { createTauriAdapter } from "./adapters/tauri";
 import { createMockAdapter } from "./adapters/mock";
 
 function detectTauri(): boolean {
-    return typeof window !== "undefined" && "__TAURI__" in window;
+    const isTauri = typeof window !== "undefined" && ("__TAURI__" in window || "__TAURI_INTERNALS__" in window);
+    console.log("[DataProvider] detectTauri:", isTauri, "window keys:", typeof window !== "undefined" ? Object.keys(window).filter(k => k.includes("TAURI")) : "N/A");
+    return isTauri;
 }
 
 const DataProviderContext = createContext<DataProviderContextValue | null>(null);
@@ -17,7 +19,9 @@ type Props = {
 export function DataProvider({ children, forceMock = false }: Props) {
     const [isReady, setIsReady] = useState(false);
     const [adapter, setAdapter] = useState<DataAdapter | null>(null);
-    const isTauri = !forceMock && detectTauri();
+
+    // Lazy initialization for isTauri to ensure it runs once and persists
+    const [isTauri] = useState(() => !forceMock && detectTauri());
 
     useEffect(function () {
         if (isTauri) {

@@ -286,14 +286,15 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                                 <line x1="9" y1="3" x2="9" y2="21" />
                             </svg>
                         </button>
-                        <span className="ml-3 text-sm text-sidebar-foreground">Database Studio</span>
+                        <span className="ml-3 text-sm text-sidebar-foreground font-medium tracking-tight">Dora</span>
+                        <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-widest opacity-50">The database explorah</span>
                     </div>
                 )}
 
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
                         <h1 className="text-2xl font-semibold text-foreground mb-2">
-                            Database Studio
+                            Dora
                         </h1>
                         <p className="text-muted-foreground">
                             Select a table from the sidebar to browse data

@@ -7,31 +7,36 @@ import type {
     JsonValue,
     TableInfo,
     ColumnInfo,
-    DatabaseInfo
+    DatabaseInfo,
+    SavedQuery
 } from "@/lib/bindings";
 import type { TableData, SortDescriptor, FilterDescriptor, ColumnDefinition } from "@/features/database-studio/types";
-import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA } from "../mock-data";
+import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA, MOCK_SCRIPTS } from "../mock-data";
 
 type InMemoryStore = {
     tables: Record<string, Record<string, unknown>[]>;
     nextId: Record<string, number>;
     connections: ConnectionInfo[];
+    scripts: SavedQuery[];
 };
 
 let store: InMemoryStore = {
     tables: {},
     nextId: {},
     connections: [],
+    scripts: [],
 };
 
 function initializeStore() {
-    store = { tables: {}, nextId: {}, connections: [] };
+    store = { tables: {}, nextId: {}, connections: [], scripts: [] };
 
     Object.keys(MOCK_TABLE_DATA).forEach(function (key) {
         const data = MOCK_TABLE_DATA[key as keyof typeof MOCK_TABLE_DATA];
         store.tables[key] = JSON.parse(JSON.stringify(data));
         store.nextId[key] = data.length + 1;
     });
+
+    store.scripts = JSON.parse(JSON.stringify(MOCK_SCRIPTS));
 }
 
 initializeStore();
@@ -215,25 +220,58 @@ export function createMockAdapter(): DataAdapter {
         },
 
         async executeQuery(connectionId: string, query: string): Promise<AdapterResult<QueryResult>> {
+            const startTime = Date.now();
             await delay(100 + Math.random() * 200);
 
-            const selectMatch = query.match(/SELECT\s+\*\s+FROM\s+["']?(\w+)["']?/i);
-            if (selectMatch) {
-                const tableName = selectMatch[1];
-                const key = connectionId + ":" + tableName;
-                const rows = store.tables[key] || [];
+            const drizzleFromMatch = query.match(/\.from\(\s*(\w+)\s*\)/);
+            const sqlSelectMatch = query.match(/SELECT\s+\*\s+FROM\s+["']?(\w+)["']?/i);
+            const tableName = drizzleFromMatch?.[1] || sqlSelectMatch?.[1];
 
+            if (!tableName) {
+                if (!query.includes("db.") && !query.includes("SELECT")) {
+                    return ok({
+                        rows: [],
+                        columns: [],
+                        rowCount: 0,
+                        executionTime: Date.now() - startTime,
+                        error: "Invalid query syntax. Use Drizzle ORM or SQL syntax.",
+                    });
+                }
                 return ok({
-                    rows: rows.slice(0, 50) as JsonValue,
-                    columns: Object.keys(rows[0] || {}) as JsonValue,
-                    rowCount: rows.length,
+                    rows: [],
+                    columns: [],
+                    rowCount: 0,
+                    executionTime: Date.now() - startTime,
                 });
             }
 
+            const key = connectionId + ":" + tableName;
+            let rows = store.tables[key] || [];
+
+            if (rows.length === 0) {
+                const allKeys = Object.keys(store.tables);
+                const matchingKey = allKeys.find(function (k) {
+                    return k.endsWith(":" + tableName);
+                });
+                if (matchingKey) {
+                    rows = store.tables[matchingKey];
+                }
+            }
+
+            const limitMatch = query.match(/\.limit\(\s*(\d+)\s*\)/);
+            const limit = limitMatch ? parseInt(limitMatch[1], 10) : 50;
+
+            const offsetMatch = query.match(/\.offset\(\s*(\d+)\s*\)/);
+            const offset = offsetMatch ? parseInt(offsetMatch[1], 10) : 0;
+
+            const slicedRows = rows.slice(offset, offset + limit);
+            const columns = Object.keys(slicedRows[0] || rows[0] || {});
+
             return ok({
-                rows: [],
-                columns: [],
-                rowCount: 0,
+                rows: slicedRows,
+                columns: columns,
+                rowCount: rows.length,
+                executionTime: Date.now() - startTime,
             });
         },
 
@@ -348,6 +386,59 @@ export function createMockAdapter(): DataAdapter {
             ];
 
             return ok(mockHistory.slice(0, limit || 10));
+        },
+
+        async getScripts(connectionId: string | null): Promise<AdapterResult<SavedQuery[]>> {
+            await randomDelay();
+            const filtered = connectionId
+                ? store.scripts.filter(function (s) { return s.connection_id === connectionId; })
+                : store.scripts;
+            return ok(filtered);
+        },
+
+        async saveScript(name: string, content: string, connectionId: string | null, description?: string | null): Promise<AdapterResult<number>> {
+            await randomDelay();
+            const id = Math.max(...store.scripts.map(s => s.id), 0) + 1;
+            const newScript: SavedQuery = {
+                id,
+                name,
+                content: content, // wait, SavedQuery uses query_text
+                query_text: content,
+                description: description || null,
+                connection_id: connectionId,
+                tags: null,
+                category: null,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                favorite: false,
+                is_snippet: true,
+                is_system: false,
+                language: "sql"
+            };
+            store.scripts.push(newScript);
+            return ok(id);
+        },
+
+        async updateScript(id: number, name: string, content: string, connectionId: string | null, description?: string | null): Promise<AdapterResult<void>> {
+            await randomDelay();
+            const idx = store.scripts.findIndex(function (s) { return s.id === id; });
+            if (idx === -1) return err("Script not found");
+
+            store.scripts[idx] = {
+                ...store.scripts[idx],
+                name,
+                query_text: content,
+                description: description || store.scripts[idx].description,
+                connection_id: connectionId,
+                updated_at: Date.now()
+            };
+            return ok(undefined);
+        },
+
+        async deleteScript(id: number): Promise<AdapterResult<void>> {
+            await randomDelay();
+            store.scripts = store.scripts.filter(function (s) { return s.id !== id; });
+            return ok(undefined);
         },
     };
 }
