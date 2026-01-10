@@ -58,12 +58,6 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
                 value: newFilterValue
             }
         ]);
-        // Keep adding mode open for quick successive adds, or close it?
-        // Drizzle Studio usually keeps the inline row or resets. 
-        // Let's reset the value but keep adding mode if we want to add another, 
-        // but for now let's just close it to mimic the "row added" feel.
-        // Actually, better UX: reset value and stay in adding mode? 
-        // Let's close for now to be simple.
         setIsAddingFilter(false);
         setNewFilterValue("");
     };
@@ -76,32 +70,54 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
     return (
         <div className="flex flex-col border-b border-sidebar-border bg-sidebar-accent/10">
             {/* Filter List */}
-            <div key={index} className="flex items-center gap-2 px-2 h-9 border-b border-sidebar-border/50 last:border-0 group bg-sidebar-accent/5 hover:bg-sidebar-accent/20 transition-colors">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity"
-                    onClick={() => removeFilter(index)}
-                >
-                    <X className="h-3 w-3" />
-                </Button>
+            {filters.map((filter, index) => (
+                <div key={index} className="flex items-center gap-2 px-2 h-9 border-b border-sidebar-border/50 last:border-0 group bg-sidebar-accent/5 hover:bg-sidebar-accent/20 transition-colors">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity"
+                        onClick={() => removeFilter(index)}
+                    >
+                        <X className="h-3 w-3" />
+                    </Button>
 
-                <span className="text-[10px] uppercase text-muted-foreground font-bold w-8 text-center tracking-wider select-none">
-                    {index === 0 ? "WHERE" : "AND"}
-                </span>
+                    <span className="text-[10px] uppercase text-muted-foreground font-bold w-8 text-center tracking-wider select-none">
+                        {index === 0 ? "WHERE" : "AND"}
+                    </span>
 
-                <div className="flex items-center gap-2 text-xs flex-1">
-                    <span className="font-mono text-primary font-medium px-1.5 py-0.5 rounded border border-primary/20 bg-primary/5">
-                        {filter.column}
-                    </span>
-                    <span className="text-muted-foreground font-medium px-1">
-                        {filter.operator}
-                    </span>
-                    <span className="font-mono text-foreground font-medium px-1.5 py-0.5 rounded border border-border bg-background">
-                        {String(filter.value)}
-                    </span>
+                    <div className="flex items-center gap-2 text-xs flex-1">
+                        <span className="font-mono text-primary font-medium px-1.5 py-0.5 rounded border border-primary/20 bg-primary/5">
+                            {filter.column}
+                        </span>
+                        <div className="relative">
+                            <select
+                                className="h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[110px] appearance-none focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
+                                value={filter.operator}
+                                onChange={(e) => {
+                                    const newFilters = [...filters];
+                                    newFilters[index].operator = e.target.value as FilterOperator;
+                                    onFiltersChange(newFilters);
+                                }}
+                            >
+                                <option value="eq">equals</option>
+                                <option value="neq">not equal</option>
+                                <option value="gt">greater than</option>
+                                <option value="lt">less than</option>
+                                <option value="gte">greater or equal</option>
+                                <option value="lte">less or equal</option>
+                                <option value="contains">contains</option>
+                                <option value="ilike">ilike</option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                                <ChevronDown className="h-3 w-3" />
+                            </div>
+                        </div>
+                        <span className="font-mono text-foreground font-medium px-1.5 py-0.5 rounded border border-border bg-background">
+                            {String(filter.value)}
+                        </span>
+                    </div>
                 </div>
-            </div>
+            ))}
 
             {/* Add Filter Row */}
             {isAddingFilter ? (
