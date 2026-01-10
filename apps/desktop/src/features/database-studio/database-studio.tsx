@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { useAdapter } from "@/core/data-provider";
+import { useAdapter, useDataMutation } from "@/core/data-provider";
 import {
     TableData,
     PaginationState,
@@ -21,6 +21,7 @@ type Props = {
 
 export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId }: Props) {
     const adapter = useAdapter();
+    const { updateCell, deleteRows } = useDataMutation();
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
@@ -158,24 +159,21 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
             return;
         }
 
-        try {
-            const result = await adapter.updateCell(
-                activeConnectionId,
-                tableName || tableId,
-                primaryKeyColumn.name,
-                row[primaryKeyColumn.name] as any, // Cast to JsonValue
-                columnName,
-                newValue as any
-            );
-
-            if (result.ok) {
-                await loadTableData();
-            } else {
-                console.error("Failed to update cell:", result.error);
+        updateCell.mutate({
+            connectionId: activeConnectionId,
+            tableName: tableName || tableId,
+            primaryKeyColumn: primaryKeyColumn.name,
+            primaryKeyValue: row[primaryKeyColumn.name],
+            columnName,
+            newValue
+        }, {
+            onSuccess: () => {
+                loadTableData();
+            },
+            onError: (error) => {
+                console.error("Failed to update cell:", error);
             }
-        } catch (error) {
-            console.error("Failed to update cell:", { tableId, rowIndex, columnName, newValue, error });
-        }
+        });
     };
 
     const handleBatchCellEdit = async (rowIndexes: number[], columnName: string, newValue: unknown) => {
@@ -187,26 +185,26 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
             return;
         }
 
+        // Sequential updates for now, as adapter lacks batch update
+        // We trigger reload only after all are initiated. 
+        // Note: Using mutateAsync would be better to await all, but mutate is fire-and-forget.
+        // Let's use mutateAsync.
+
         try {
-            // Note: DataAdapter doesn't support batch update natively yet, so we loop
-            // In a real implementation we should add batch update to the adapter
-            for (const rowIndex of rowIndexes) {
+            await Promise.all(rowIndexes.map(async (rowIndex) => {
                 const row = tableData.rows[rowIndex];
-                const result = await adapter.updateCell(
-                    activeConnectionId,
-                    tableName || tableId,
-                    primaryKeyColumn.name,
-                    row[primaryKeyColumn.name] as any,
+                return updateCell.mutateAsync({
+                    connectionId: activeConnectionId,
+                    tableName: tableName || tableId,
+                    primaryKeyColumn: primaryKeyColumn.name,
+                    primaryKeyValue: row[primaryKeyColumn.name],
                     columnName,
-                    newValue as any
-                );
-                if (!result.ok) {
-                    console.error(`Failed to update row ${rowIndex}:`, result.error);
-                }
-            }
-            await loadTableData();
+                    newValue
+                });
+            }));
+            loadTableData();
         } catch (error) {
-            console.error("Failed to batch update cells:", { tableId, rowIndexes, columnName, newValue, error });
+            console.error("Failed to batch update cells:", error);
         }
     };
 
@@ -221,22 +219,21 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
 
         switch (action) {
             case "delete":
-                try {
-                    const result = await adapter.deleteRows(
-                        activeConnectionId,
-                        tableName || tableId,
-                        primaryKeyColumn.name,
-                        [row[primaryKeyColumn.name] as any]
-                    );
+                if (!confirm("Are you sure you want to delete this row?")) return;
 
-                    if (result.ok) {
-                        await loadTableData();
-                    } else {
-                        console.error("Failed to delete row:", result.error);
+                deleteRows.mutate({
+                    connectionId: activeConnectionId,
+                    tableName: tableName || tableId,
+                    primaryKeyColumn: primaryKeyColumn.name,
+                    primaryKeyValues: [row[primaryKeyColumn.name]]
+                }, {
+                    onSuccess: () => {
+                        loadTableData();
+                    },
+                    onError: (error) => {
+                        console.error("Failed to delete row:", error);
                     }
-                } catch (error) {
-                    console.error("Failed to delete row:", { tableId, rowIndex, error });
-                }
+                });
                 break;
             case "view":
                 console.log("View row:", row);
