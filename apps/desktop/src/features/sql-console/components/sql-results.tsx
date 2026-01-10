@@ -6,7 +6,8 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Input } from "@/shared/ui/input";
 import { cn } from "@/shared/utils/cn";
 import { SqlQueryResult, ResultViewMode } from "../types";
-import { useAdapter, useDataMutation } from "@/core/data-provider";
+import { useAdapter } from "@/core/data-provider/context";
+import { useDataMutation } from "@/core/data-provider";
 import {
     ContextMenu,
     ContextMenuTrigger,
@@ -466,12 +467,10 @@ export function SqlResults({ result, viewMode, onViewModeChange, onExport, conne
                                     ))}
                                 </tbody>
                             </table>
-                        </tbody>
-                    </table>
-                            </ScrollArea>
-        </div>
-    )
-}
+                        </ScrollArea>
+                    </div>
+                )
+                }
             </div >
         </div >
     );
