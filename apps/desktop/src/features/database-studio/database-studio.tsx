@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
+import { AddRecordDialog } from "./components/add-record-dialog";
+import { RowDetailPanel } from "./components/row-detail-panel";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useAdapter, useDataMutation } from "@/core/data-provider";
 import {
@@ -21,8 +23,13 @@ type Props = {
 
 export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId }: Props) {
     const adapter = useAdapter();
-    const { updateCell, deleteRows } = useDataMutation();
+    const { updateCell, deleteRows, insertRow } = useDataMutation();
     const [tableData, setTableData] = useState<TableData | null>(null);
+    const [showAddDialog, setShowAddDialog] = useState(false);
+    const [addDialogMode, setAddDialogMode] = useState<"add" | "duplicate">("add");
+    const [duplicateInitialData, setDuplicateInitialData] = useState<Record<string, unknown> | undefined>(undefined);
+    const [showRowDetail, setShowRowDetail] = useState(false);
+    const [selectedRowForDetail, setSelectedRowForDetail] = useState<Record<string, unknown> | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>("content");
@@ -236,23 +243,51 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 });
                 break;
             case "view":
-                console.log("View row:", row);
+                setSelectedRowForDetail(row);
+                setShowRowDetail(true);
                 break;
             case "edit":
-                console.log("Edit row:", row);
+                setDuplicateInitialData(row);
+                setAddDialogMode("add");
+                setShowAddDialog(true);
                 break;
             case "duplicate":
-                console.log("Duplicate row:", row);
+                const duplicateData = { ...row };
+                if (primaryKeyColumn) {
+                    delete duplicateData[primaryKeyColumn.name];
+                }
+                setDuplicateInitialData(duplicateData);
+                setAddDialogMode("duplicate");
+                setShowAddDialog(true);
                 break;
             default:
                 console.log("Row action:", action, row);
         }
     };
 
-    const handleAddRecord = () => {
-        console.log("Add record - Will connect to adapter");
-        // TODO: Call adapter to add new record
-    };
+    function handleAddRecord() {
+        setDuplicateInitialData(undefined);
+        setAddDialogMode("add");
+        setShowAddDialog(true);
+    }
+
+    function handleAddRecordSubmit(rowData: Record<string, unknown>) {
+        if (!activeConnectionId || !tableId) return;
+
+        insertRow.mutate({
+            connectionId: activeConnectionId,
+            tableName: tableName || tableId,
+            rowData
+        }, {
+            onSuccess: function onInsertSuccess() {
+                setShowAddDialog(false);
+                loadTableData();
+            },
+            onError: function onInsertError(error) {
+                console.error("Failed to insert row:", error);
+            }
+        });
+    }
 
     const handleExport = () => {
         if (!tableData || tableData.rows.length === 0) return;
@@ -411,6 +446,26 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     </div>
                 )}
             </div>
+
+            <AddRecordDialog
+                open={showAddDialog}
+                onOpenChange={setShowAddDialog}
+                columns={tableData?.columns || []}
+                onSubmit={handleAddRecordSubmit}
+                isLoading={insertRow.isPending}
+                initialData={duplicateInitialData}
+                mode={addDialogMode}
+            />
+
+            {tableData && selectedRowForDetail && (
+                <RowDetailPanel
+                    open={showRowDetail}
+                    onClose={function closeRowDetail() { setShowRowDetail(false); }}
+                    row={selectedRowForDetail}
+                    columns={tableData.columns}
+                    tableName={tableName || tableId}
+                />
+            )}
         </div>
     );
 }
