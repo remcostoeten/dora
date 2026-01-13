@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import { useTheme } from "next-themes";
+import { useSetting } from "@/core/settings";
 
 type Props = {
     value: string;
@@ -11,6 +12,7 @@ type Props = {
 
 export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
     const { theme } = useTheme();
+    const [editorFontSize] = useSetting("editorFontSize");
     const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
     const monacoRef = useRef<any>(null);
 
@@ -127,7 +129,7 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
                 theme="vs-dark"
                 options={{
                     minimap: { enabled: false },
-                    fontSize: 14,
+                    fontSize: editorFontSize,
                     lineNumbers: "on",
                     glyphMargin: true,
                     scrollBeyondLastLine: false,

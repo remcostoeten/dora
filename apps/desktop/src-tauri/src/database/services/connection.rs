@@ -512,14 +512,34 @@ impl ConnectionService<'_> {
                 connection_string,
                 ssh_config,
             } => {
-                // If checking connection with SSH, we need to spin up a temp tunnel
-                let _temp_tunnel: Option<Arc<crate::database::ssh_tunnel::SshTunnel>> = if let Some(_conf) = ssh_config {
-                     // ... logic to start temp tunnel ...
-                     // For 'test_connection', we might want to test valid SSH too.
-                     // But test_connection is static method, hard to refactor quickly.
-                     // I will leave it for now or implement if easy.
-                     None // TODO: implement test tunneling
-                } else { None };
+                let temp_tunnel = if let Some(conf) = ssh_config {
+                    if let Ok(url) = url::Url::parse(&connection_string) {
+                        let target_host = url.host_str().unwrap_or("localhost").to_string();
+                        let target_port = url.port().unwrap_or(5432);
+                        
+                        log::info!("Testing SSH tunnel to {}:{}", target_host, target_port);
+                        
+                        match crate::database::ssh_tunnel::SshTunnel::start(
+                            &conf.host,
+                            conf.port,
+                            &conf.username,
+                            conf.private_key_path.as_deref(),
+                            conf.password.as_deref(),
+                            target_host,
+                            target_port
+                        ) {
+                            Ok(tun) => Some(Arc::new(tun)),
+                            Err(e) => {
+                                log::error!("SSH tunnel test failed: {}", e);
+                                return Err(Error::Any(anyhow::anyhow!("SSH tunnel failed: {}", e)));
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
 
                 let cleaned_string = if let Ok(mut url) = url::Url::parse(&connection_string) {
                     let params: Vec<_> = url
@@ -539,14 +559,26 @@ impl ConnectionService<'_> {
                     connection_string.clone()
                 };
 
-                let config: tokio_postgres::Config = cleaned_string.parse().with_context(|| {
+                let mut config: tokio_postgres::Config = cleaned_string.parse().with_context(|| {
                     format!("Failed to parse connection string: {}", cleaned_string)
                 })?;
+                
+                if let Some(ref tun) = temp_tunnel {
+                    let local_port = tun.local_port;
+                    log::info!("Tunneling test connection via 127.0.0.1:{}", local_port);
+                    config.host("127.0.0.1");
+                    config.port(local_port);
+                }
+                
                 log::info!("Testing Postgres connection: {config:?}");
                 match connect(&config, certificates).await {
-                    Ok(_) => Ok(true),
+                    Ok(_) => {
+                        drop(temp_tunnel);
+                        Ok(true)
+                    }
                     Err(e) => {
                         log::error!("Postgres connection test failed: {}", e);
+                        drop(temp_tunnel);
                         Err(Error::from(e))
                     }
                 }

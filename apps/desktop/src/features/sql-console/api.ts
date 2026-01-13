@@ -9,6 +9,7 @@ export async function executeSqlQuery(
   query: string
 ): Promise<SqlQueryResult> {
   console.log("[SQL Console API] Executing query:", query);
+  const startTime = performance.now();
   try {
     const startResult = await commands.startQuery(connectionId, query);
     console.log("[SQL Console API] startQuery result:", startResult);
@@ -64,7 +65,7 @@ export async function executeSqlQuery(
         columns: [],
         rows: [],
         rowCount: 0,
-        executionTime: 0,
+        executionTime: Math.round(performance.now() - startTime),
         error: pageInfo.error ?? "Query failed",
         queryType: getQueryType(query),
       };
@@ -105,7 +106,7 @@ export async function executeSqlQuery(
       columns: columns.map(c => c.name),
       rows,
       rowCount: pageInfo.affected_rows ?? rows.length,
-      executionTime: 0,
+      executionTime: Math.round(performance.now() - startTime),
       error: undefined,
       queryType: getQueryType(query),
     };
@@ -117,7 +118,7 @@ export async function executeSqlQuery(
       columns: [],
       rows: [],
       rowCount: 0,
-      executionTime: 0,
+      executionTime: Math.round(performance.now() - startTime),
       error: error instanceof Error ? error.message : "Unknown error",
       queryType: "OTHER",
     };

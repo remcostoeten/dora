@@ -1,4 +1,4 @@
-import { BookOpen, PanelLeftClose, Loader2, Sparkles, Play, Download, Braces } from "lucide-react";
+import { BookOpen, PanelLeftClose, Loader2, Sparkles, Play, Download, Braces, Filter } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/ui/button";
 import {
@@ -22,6 +22,8 @@ type Props = {
     hasResults?: boolean;
     showJson?: boolean;
     onShowJsonToggle?: () => void;
+    showFilter?: boolean;
+    onToggleFilter?: () => void;
 };
 
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -49,6 +51,8 @@ export function ConsoleToolbar({
     hasResults,
     showJson,
     onShowJsonToggle,
+    showFilter,
+    onToggleFilter,
 }: Props) {
     return (
         <div className="flex items-center justify-between h-10 px-3 border-b border-sidebar-border bg-sidebar shrink-0">
@@ -144,6 +148,21 @@ export function ConsoleToolbar({
                         title="Toggle JSON view"
                     >
                         <Braces className="h-3.5 w-3.5" />
+                    </Button>
+                )}
+
+                {onToggleFilter && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "h-7 w-7 text-muted-foreground hover:text-foreground",
+                            showFilter && "text-primary bg-primary/10"
+                        )}
+                        onClick={onToggleFilter}
+                        title="Toggle filter"
+                    >
+                        <Filter className="h-3.5 w-3.5" />
                     </Button>
                 )}
 

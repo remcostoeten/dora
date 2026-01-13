@@ -121,7 +121,7 @@ export const MOCK_TABLES: TableInfo[] = [
 ];
 
 export const DEFAULT_SQL = `-- Write your SQL query here
-SELECT * FROM customers LIMIT 10;`;
+-- Select a table from the sidebar to get started`;
 
 // Simulate SQL query execution
 export async function executeSqlQuery(sql: string): Promise<SqlQueryResult> {

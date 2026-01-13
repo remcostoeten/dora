@@ -35,6 +35,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
     const [viewMode, setViewMode] = useState<ResultViewMode>("table");
     const [showLeftSidebar, setShowLeftSidebar] = useState(true);
     const [showCheatsheet, setShowCheatsheet] = useState(false);
+    const [showFilter, setShowFilter] = useState(false);
     const [tables, setTables] = useState<TableInfo[]>([]);
 
     const loadSnippets = useCallback(async () => {
@@ -62,6 +63,8 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
     useEffect(function () {
         if (!activeConnectionId) {
             setTables([]);
+            setCurrentSqlQuery(DEFAULT_SQL);
+            setCurrentDrizzleQuery(DEFAULT_QUERY);
             return;
         }
         adapter.getSchema(activeConnectionId).then(function (res) {
@@ -82,6 +85,16 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                     };
                 });
                 setTables(mapped);
+
+                // Auto-populate queries with first available table from the connected database
+                if (mapped.length > 0) {
+                    const firstTable = mapped[0].name;
+                    setCurrentSqlQuery(`SELECT * FROM ${firstTable} LIMIT 100;`);
+                    setCurrentDrizzleQuery(`db.select().from(${firstTable}).limit(100);`);
+                } else {
+                    setCurrentSqlQuery(DEFAULT_SQL);
+                    setCurrentDrizzleQuery(DEFAULT_QUERY);
+                }
             }
         }).catch(console.error);
     }, [activeConnectionId, adapter]);
@@ -104,6 +117,12 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                         ? res.data.columns.map((c: any) => typeof c === 'string' ? c : c.name)
                         : [];
 
+                    // Extract column definitions if available from adapter
+                    const columnDefinitions = Array.isArray(res.data.columns)
+                        && typeof res.data.columns[0] !== 'string'
+                        ? (res.data.columns as any[])
+                        : undefined;
+
                     const rows = Array.isArray(res.data.rows)
                         ? res.data.rows.map((row: any) => {
                             if (typeof row === 'object' && row !== null && !Array.isArray(row)) {
@@ -124,8 +143,10 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                         columns,
                         rows,
                         rowCount: res.data.rowCount,
-                        executionTime: 0,
-                        queryType: getQueryType(queryToRun)
+                        executionTime: res.data.executionTime || 0,
+                        queryType: getQueryType(queryToRun),
+                        columnDefinitions,
+                        sourceTable: getTableName(queryToRun)
                     });
                 } else {
                     throw new Error(res.error);
@@ -145,7 +166,8 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                         rowCount: res.data.rowCount,
                         executionTime: res.data.executionTime || 0,
                         error: res.data.error,
-                        queryType: "SELECT"
+                        queryType: "SELECT",
+                        sourceTable: getTableName(queryToRun)
                     });
                 } else {
                     throw new Error(res.error);
@@ -172,6 +194,18 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
         if (trimmed.startsWith("UPDATE")) return "UPDATE";
         if (trimmed.startsWith("DELETE")) return "DELETE";
         return "OTHER";
+    }
+
+    function getTableName(query: string): string | undefined {
+        // Try Drizzle syntax first: db.select().from(users)
+        const drizzleMatch = query.match(/\.from\(\s*(\w+)\s*\)/);
+        if (drizzleMatch) return drizzleMatch[1];
+
+        // Try SQL syntax: SELECT * FROM users (basic support)
+        const sqlMatch = query.match(/FROM\s+["']?(\w+)["']?/i);
+        if (sqlMatch) return sqlMatch[1];
+
+        return undefined;
     }
 
     const handlePrettify = () => {
@@ -380,6 +414,8 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                             onPrettify={handlePrettify}
                             onExport={handleExport}
                             hasResults={!!result}
+                            showFilter={showFilter}
+                            onToggleFilter={() => setShowFilter(!showFilter)}
                         />
 
                         {/* Editor and Results */}
@@ -426,6 +462,9 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                                         viewMode={viewMode}
                                         onViewModeChange={setViewMode}
                                         onExport={handleExport}
+                                        connectionId={activeConnectionId}
+                                        showFilter={showFilter}
+                                        onRefresh={() => handleExecute()}
                                     />
                                 }
                             />

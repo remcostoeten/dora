@@ -101,6 +101,7 @@ export function createTauriAdapter(): DataAdapter {
             sort?: SortDescriptor,
             filters?: FilterDescriptor[]
         ): Promise<AdapterResult<TableData>> {
+            const startTime = performance.now();
             console.log("[TauriAdapter] fetchTableData called", { connectionId, tableName, page, pageSize });
             let query = `SELECT * FROM "${tableName}"`;
 
@@ -185,29 +186,72 @@ export function createTauriAdapter(): DataAdapter {
                 columns,
                 rows,
                 totalCount: pageInfo.affected_rows ?? 0,
-                executionTime: 0,
+                executionTime: Math.round(performance.now() - startTime),
             });
         },
 
         async executeQuery(connectionId: string, query: string): Promise<AdapterResult<QueryResult>> {
+            const startTime = performance.now();
+            console.log("[TauriAdapter] executeQuery called", { connectionId, query: query.substring(0, 100) });
+
             const startResult = await commands.startQuery(connectionId, query);
-            if (startResult.status !== "ok" || !startResult.data[0]) {
-                return err("Failed to start query");
+            console.log("[TauriAdapter] startResult:", JSON.stringify(startResult, null, 2));
+
+            if (startResult.status !== "ok") {
+                console.error("[TauriAdapter] Query failed to start:", startResult.error);
+                return err(String(startResult.error) || "Failed to start query");
+            }
+
+            if (!startResult.data || startResult.data.length === 0) {
+                console.error("[TauriAdapter] No query ID returned:", startResult);
+                return err("Backend returned no query ID");
             }
 
             const queryId = startResult.data[0];
-            const fetchResult = await commands.fetchQuery(queryId);
-            if (fetchResult.status !== "ok") {
-                return err("Failed to fetch query results");
+            console.log("[TauriAdapter] Query started with ID:", queryId);
+
+            // Poll for query completion (same as fetchTableData)
+            let pageInfo;
+            let attempts = 0;
+            const maxAttempts = 50;
+
+            while (attempts < maxAttempts) {
+                const fetchResult = await commands.fetchQuery(queryId);
+                if (fetchResult.status !== "ok") {
+                    console.error("[TauriAdapter] Failed to fetch query status:", fetchResult);
+                    return err("Failed to fetch query results");
+                }
+
+                pageInfo = fetchResult.data;
+                if (attempts % 5 === 0) {
+                    console.log(`[TauriAdapter] Polling query ${queryId} (attempt ${attempts}): ${pageInfo.status}`);
+                }
+
+                if (pageInfo.status === "Completed" || pageInfo.status === "Error") {
+                    break;
+                }
+
+                await delay(100);
+                attempts++;
             }
 
-            const pageInfo = fetchResult.data;
+            if (!pageInfo) {
+                return err("Query timed out");
+            }
+
+            if (pageInfo.status === "Error") {
+                console.error("[TauriAdapter] Query execution error:", pageInfo.error);
+                return err(pageInfo.error || "Query execution failed");
+            }
+
             const columnsResult = await commands.getColumns(queryId);
+            console.log("[TauriAdapter] Query completed successfully");
 
             return ok({
                 rows: pageInfo.first_page ?? [],
                 columns: columnsResult.status === "ok" ? columnsResult.data ?? [] : [],
                 rowCount: pageInfo.affected_rows ?? 0,
+                executionTime: Math.round(performance.now() - startTime),
             });
         },
 

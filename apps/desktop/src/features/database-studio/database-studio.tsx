@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { Database, Plus, PanelLeft } from "lucide-react";
+import { Button } from "@/shared/ui/button";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
+import { AddRecordDialog } from "./components/add-record-dialog";
+import { RowDetailPanel } from "./components/row-detail-panel";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { useAdapter } from "@/core/data-provider";
+import { useAdapter, useDataMutation } from "@/core/data-provider";
+import { useSettings } from "@/core/settings";
 import {
     TableData,
     PaginationState,
@@ -17,11 +22,19 @@ type Props = {
     tableName: string | null;
     onToggleSidebar?: () => void;
     activeConnectionId?: string;
+    onAddConnection?: () => void;
 };
 
-export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId }: Props) {
+export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId, onAddConnection }: Props) {
     const adapter = useAdapter();
+    const { updateCell, deleteRows, insertRow } = useDataMutation();
+    const { settings } = useSettings();
     const [tableData, setTableData] = useState<TableData | null>(null);
+    const [showAddDialog, setShowAddDialog] = useState(false);
+    const [addDialogMode, setAddDialogMode] = useState<"add" | "duplicate">("add");
+    const [duplicateInitialData, setDuplicateInitialData] = useState<Record<string, unknown> | undefined>(undefined);
+    const [showRowDetail, setShowRowDetail] = useState(false);
+    const [selectedRowForDetail, setSelectedRowForDetail] = useState<Record<string, unknown> | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showSkeleton, setShowSkeleton] = useState(false);
     const [viewMode, setViewMode] = useState<ViewMode>("content");
@@ -158,24 +171,21 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
             return;
         }
 
-        try {
-            const result = await adapter.updateCell(
-                activeConnectionId,
-                tableName || tableId,
-                primaryKeyColumn.name,
-                row[primaryKeyColumn.name] as any, // Cast to JsonValue
-                columnName,
-                newValue as any
-            );
-
-            if (result.ok) {
-                await loadTableData();
-            } else {
-                console.error("Failed to update cell:", result.error);
+        updateCell.mutate({
+            connectionId: activeConnectionId,
+            tableName: tableName || tableId,
+            primaryKeyColumn: primaryKeyColumn.name,
+            primaryKeyValue: row[primaryKeyColumn.name],
+            columnName,
+            newValue
+        }, {
+            onSuccess: () => {
+                loadTableData();
+            },
+            onError: (error) => {
+                console.error("Failed to update cell:", error);
             }
-        } catch (error) {
-            console.error("Failed to update cell:", { tableId, rowIndex, columnName, newValue, error });
-        }
+        });
     };
 
     const handleBatchCellEdit = async (rowIndexes: number[], columnName: string, newValue: unknown) => {
@@ -187,26 +197,26 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
             return;
         }
 
+        // Sequential updates for now, as adapter lacks batch update
+        // We trigger reload only after all are initiated. 
+        // Note: Using mutateAsync would be better to await all, but mutate is fire-and-forget.
+        // Let's use mutateAsync.
+
         try {
-            // Note: DataAdapter doesn't support batch update natively yet, so we loop
-            // In a real implementation we should add batch update to the adapter
-            for (const rowIndex of rowIndexes) {
+            await Promise.all(rowIndexes.map(async (rowIndex) => {
                 const row = tableData.rows[rowIndex];
-                const result = await adapter.updateCell(
-                    activeConnectionId,
-                    tableName || tableId,
-                    primaryKeyColumn.name,
-                    row[primaryKeyColumn.name] as any,
+                return updateCell.mutateAsync({
+                    connectionId: activeConnectionId,
+                    tableName: tableName || tableId,
+                    primaryKeyColumn: primaryKeyColumn.name,
+                    primaryKeyValue: row[primaryKeyColumn.name],
                     columnName,
-                    newValue as any
-                );
-                if (!result.ok) {
-                    console.error(`Failed to update row ${rowIndex}:`, result.error);
-                }
-            }
-            await loadTableData();
+                    newValue
+                });
+            }));
+            loadTableData();
         } catch (error) {
-            console.error("Failed to batch update cells:", { tableId, rowIndexes, columnName, newValue, error });
+            console.error("Failed to batch update cells:", error);
         }
     };
 
@@ -221,41 +231,68 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
 
         switch (action) {
             case "delete":
-                try {
-                    const result = await adapter.deleteRows(
-                        activeConnectionId,
-                        tableName || tableId,
-                        primaryKeyColumn.name,
-                        [row[primaryKeyColumn.name] as any]
-                    );
+                if (settings.confirmBeforeDelete && !confirm("Are you sure you want to delete this row?")) return;
 
-                    if (result.ok) {
-                        await loadTableData();
-                    } else {
-                        console.error("Failed to delete row:", result.error);
+                deleteRows.mutate({
+                    connectionId: activeConnectionId,
+                    tableName: tableName || tableId,
+                    primaryKeyColumn: primaryKeyColumn.name,
+                    primaryKeyValues: [row[primaryKeyColumn.name]]
+                }, {
+                    onSuccess: () => {
+                        loadTableData();
+                    },
+                    onError: (error) => {
+                        console.error("Failed to delete row:", error);
                     }
-                } catch (error) {
-                    console.error("Failed to delete row:", { tableId, rowIndex, error });
-                }
+                });
                 break;
             case "view":
-                console.log("View row:", row);
+                setSelectedRowForDetail(row);
+                setShowRowDetail(true);
                 break;
             case "edit":
-                console.log("Edit row:", row);
+                setDuplicateInitialData(row);
+                setAddDialogMode("add");
+                setShowAddDialog(true);
                 break;
             case "duplicate":
-                console.log("Duplicate row:", row);
+                const duplicateData = { ...row };
+                if (primaryKeyColumn) {
+                    delete duplicateData[primaryKeyColumn.name];
+                }
+                setDuplicateInitialData(duplicateData);
+                setAddDialogMode("duplicate");
+                setShowAddDialog(true);
                 break;
             default:
                 console.log("Row action:", action, row);
         }
     };
 
-    const handleAddRecord = () => {
-        console.log("Add record - Will connect to adapter");
-        // TODO: Call adapter to add new record
-    };
+    function handleAddRecord() {
+        setDuplicateInitialData(undefined);
+        setAddDialogMode("add");
+        setShowAddDialog(true);
+    }
+
+    function handleAddRecordSubmit(rowData: Record<string, unknown>) {
+        if (!activeConnectionId || !tableId) return;
+
+        insertRow.mutate({
+            connectionId: activeConnectionId,
+            tableName: tableName || tableId,
+            rowData
+        }, {
+            onSuccess: function onInsertSuccess() {
+                setShowAddDialog(false);
+                loadTableData();
+            },
+            onError: function onInsertError(error) {
+                console.error("Failed to insert row:", error);
+            }
+        });
+    }
 
     const handleExport = () => {
         if (!tableData || tableData.rows.length === 0) return;
@@ -270,36 +307,77 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         URL.revokeObjectURL(url);
     };
 
-    // No table selected
-    if (!tableId) {
+    // No connection selected
+    if (!activeConnectionId) {
         return (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full bg-background/50">
                 {onToggleSidebar && (
-                    <div className="flex items-center h-11 border-b border-sidebar-border bg-sidebar shrink-0 px-3">
-                        <button
-                            className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors"
+                    <div className="flex items-center h-10 border-b border-sidebar-border bg-sidebar/50 shrink-0 px-3">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-sidebar-foreground"
                             onClick={onToggleSidebar}
                             title="Toggle sidebar"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                <line x1="9" y1="3" x2="9" y2="21" />
-                            </svg>
-                        </button>
-                        <span className="ml-3 text-sm text-sidebar-foreground font-medium tracking-tight">Dora</span>
-                        <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-widest opacity-50">The database explorah</span>
+                            <PanelLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase">Database Studio</span>
                     </div>
                 )}
 
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                        <h1 className="text-2xl font-semibold text-foreground mb-2">
-                            Dora
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Select a table from the sidebar to browse data
-                        </p>
+                <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="w-20 h-20 bg-sidebar-accent/30 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/50 shadow-sm backdrop-blur-sm">
+                        <Database className="w-10 h-10 text-primary/60" strokeWidth={1.5} />
                     </div>
+                    <h2 className="text-xl font-semibold mb-2 text-foreground tracking-tight">No Database Connected</h2>
+                    <p className="text-muted-foreground text-center max-w-sm mb-8 leading-relaxed text-sm">
+                        Select a connection from the sidebar to view its tables, or create a new connection to get started.
+                    </p>
+
+                    {onAddConnection && (
+                        <Button onClick={onAddConnection} className="gap-2 shadow-md hover:shadow-lg transition-all">
+                            <Plus className="w-4 h-4" />
+                            Add Connection
+                        </Button>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // No table selected
+    if (!tableId) {
+        return (
+            <div className="flex flex-col h-full bg-background/50">
+                {onToggleSidebar && (
+                    <div className="flex items-center h-10 border-b border-sidebar-border bg-sidebar/50 shrink-0 px-3">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-sidebar-foreground"
+                            onClick={onToggleSidebar}
+                            title="Toggle sidebar"
+                        >
+                            <PanelLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase">Database Studio</span>
+                    </div>
+                )}
+
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300">
+                     <div className="w-20 h-20 bg-sidebar-accent/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/30">
+                        <svg className="h-10 w-10 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <line x1="9" y1="3" x2="9" y2="21" />
+                        </svg>
+                    </div>
+                    <h1 className="text-xl font-semibold text-foreground mb-2 tracking-tight">
+                        No Table Selected
+                    </h1>
+                    <p className="text-muted-foreground text-sm max-w-xs">
+                        Select a table from the sidebar list to browse its records, structure, and relationships.
+                    </p>
                 </div>
             </div>
         );
@@ -414,6 +492,26 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     </div>
                 )}
             </div>
+
+            <AddRecordDialog
+                open={showAddDialog}
+                onOpenChange={setShowAddDialog}
+                columns={tableData?.columns || []}
+                onSubmit={handleAddRecordSubmit}
+                isLoading={insertRow.isPending}
+                initialData={duplicateInitialData}
+                mode={addDialogMode}
+            />
+
+            {tableData && selectedRowForDetail && (
+                <RowDetailPanel
+                    open={showRowDetail}
+                    onClose={function closeRowDetail() { setShowRowDetail(false); }}
+                    row={selectedRowForDetail}
+                    columns={tableData.columns}
+                    tableName={tableName || tableId}
+                />
+            )}
         </div>
     );
 }

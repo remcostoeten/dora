@@ -20,12 +20,14 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi } from "@/features/connections/api";
 import { useAdapter } from "@/core/data-provider";
+import { useSettings } from "@/core/settings";
 
 export default function Index() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const adapter = useAdapter();
+  const { settings, updateSetting, isLoading: isSettingsLoading } = useSettings();
 
   const urlView = searchParams.get("view");
   const urlTable = searchParams.get("table");
@@ -43,9 +45,7 @@ export default function Index() {
 
   const [connections, setConnections] = useState<Connection[]>([]);
 
-  const [activeConnectionId, setActiveConnectionId] = useState<string>(() => {
-    return urlConnection || "";
-  });
+  const [activeConnectionId, setActiveConnectionId] = useState<string>("");
 
   const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined);
@@ -80,9 +80,6 @@ export default function Index() {
       const result = await adapter.getConnections();
       if (result.ok) {
         setConnections(result.data);
-        if (!activeConnectionId && result.data.length > 0) {
-          setActiveConnectionId(result.data[0].id);
-        }
       } else {
         throw new Error(result.error);
       }
@@ -96,6 +93,33 @@ export default function Index() {
       setIsLoading(false);
     }
   };
+
+  useEffect(function initializeConnection() {
+    if (isSettingsLoading || isLoading) return;
+    if (connections.length === 0) return;
+
+    if (urlConnection) {
+      setActiveConnectionId(urlConnection);
+      return;
+    }
+
+    if (settings.restoreLastConnection && settings.lastConnectionId) {
+      const lastConnection = connections.find(function (c) {
+        return c.id === settings.lastConnectionId;
+      });
+      if (lastConnection) {
+        setActiveConnectionId(lastConnection.id);
+        return;
+      }
+    }
+  }, [isSettingsLoading, isLoading, connections, urlConnection, settings.restoreLastConnection, settings.lastConnectionId]);
+
+  useEffect(function saveLastConnection() {
+    if (!activeConnectionId || isSettingsLoading) return;
+    if (settings.lastConnectionId !== activeConnectionId) {
+      updateSetting("lastConnectionId", activeConnectionId);
+    }
+  }, [activeConnectionId, isSettingsLoading, settings.lastConnectionId, updateSetting]);
 
   const handleAddConnection = async (newConnectionData: Omit<Connection, "id" | "createdAt">) => {
     try {
@@ -202,8 +226,12 @@ export default function Index() {
   const handleDeleteConnection = (connectionId: string) => {
     const connection = connections.find(c => c.id === connectionId);
     if (connection) {
-      setConnectionToDelete(connection);
-      setDeleteDialogOpen(true);
+      if (settings.confirmBeforeDelete) {
+        setConnectionToDelete(connection);
+        setDeleteDialogOpen(true);
+      } else {
+        confirmDeleteConnection();
+      }
     }
   };
 
@@ -287,6 +315,7 @@ export default function Index() {
               tableName={selectedTableName}
               onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
               activeConnectionId={activeConnectionId}
+              onAddConnection={handleOpenNewConnection}
             />
           ) : (
             <SqlConsole
