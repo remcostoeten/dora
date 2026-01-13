@@ -63,6 +63,8 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
     useEffect(function () {
         if (!activeConnectionId) {
             setTables([]);
+            setCurrentSqlQuery(DEFAULT_SQL);
+            setCurrentDrizzleQuery(DEFAULT_QUERY);
             return;
         }
         adapter.getSchema(activeConnectionId).then(function (res) {
@@ -83,6 +85,16 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                     };
                 });
                 setTables(mapped);
+
+                // Auto-populate queries with first available table from the connected database
+                if (mapped.length > 0) {
+                    const firstTable = mapped[0].name;
+                    setCurrentSqlQuery(`SELECT * FROM ${firstTable} LIMIT 100;`);
+                    setCurrentDrizzleQuery(`db.select().from(${firstTable}).limit(100);`);
+                } else {
+                    setCurrentSqlQuery(DEFAULT_SQL);
+                    setCurrentDrizzleQuery(DEFAULT_QUERY);
+                }
             }
         }).catch(console.error);
     }, [activeConnectionId, adapter]);
@@ -131,7 +143,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                         columns,
                         rows,
                         rowCount: res.data.rowCount,
-                        executionTime: 0,
+                        executionTime: res.data.executionTime || 0,
                         queryType: getQueryType(queryToRun),
                         columnDefinitions,
                         sourceTable: getTableName(queryToRun)

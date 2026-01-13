@@ -8,7 +8,6 @@ import { TableList } from "./components/table-list";
 import type { TableRightClickAction } from "./components/table-list";
 import { AddAction } from "./components/add-menu";
 import { BottomToolbar, ToolbarAction, Theme } from "./components/bottom-toolbar";
-import { SettingsState } from "./components/settings-panel";
 import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
 import { Schema, TableItem } from "./types";
 import { Connection } from "../connections/types";
@@ -22,16 +21,6 @@ const DEFAULT_FILTERS: FilterState = {
   showTables: true,
   showViews: true,
   showMaterializedViews: true,
-};
-
-const DEFAULT_SETTINGS: SettingsState = {
-  tableRowsCount: true,
-  expandSubviews: false,
-  paginationType: "LIMIT OFFSET",
-  flatSchemas: false,
-  byteaFormat: "HEX",
-  editorFontSize: 14,
-  editorKeybindings: "VS Code",
 };
 
 type Props = {
@@ -85,7 +74,6 @@ export function DatabaseSidebar({
   const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editingTableId, setEditingTableId] = useState<string | undefined>();
-  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
   const [theme, setTheme] = useState<Theme>("dark");
 
   // Real database schema state (populated by adapter, whether mock or real)
@@ -95,14 +83,8 @@ export function DatabaseSidebar({
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark", "bordered");
-
-    if (theme === "system") {
-      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      root.classList.add(systemTheme);
-    } else {
-      root.classList.add(theme);
-    }
+    root.classList.remove("light", "dark");
+    root.classList.add(theme);
   }, [theme]);
 
   // Fetch schema when connection changes
@@ -358,11 +340,7 @@ export function DatabaseSidebar({
 
       <BottomToolbar
         onAction={handleToolbarAction}
-        settingsProps={{
-          settings,
-          onSettingsChange: setSettings,
-          onCopySchema: handleCopySchema
-        }}
+        onCopySchema={handleCopySchema}
         themeProps={{
           theme,
           onThemeChange: setTheme
