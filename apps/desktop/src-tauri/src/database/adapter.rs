@@ -160,13 +160,45 @@ impl DatabaseAdapter for SqliteAdapter {
     }
 }
 
-/// A boxed database adapter for use in dynamic contexts.
+pub struct LibSqlAdapter {
+    connection: Arc<libsql::Connection>,
+}
+
+impl LibSqlAdapter {
+    pub fn new(connection: Arc<libsql::Connection>) -> Self {
+        Self { connection }
+    }
+
+    pub fn connection(&self) -> &Arc<libsql::Connection> {
+        &self.connection
+    }
+}
+
+#[async_trait]
+impl DatabaseAdapter for LibSqlAdapter {
+    fn parse_statements(&self, query: &str) -> Result<Vec<ParsedStatement>, Error> {
+        crate::database::libsql::parser::parse_statements(query).map_err(Into::into)
+    }
+
+    async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error> {
+        crate::database::libsql::execute::execute_query(&self.connection, stmt, sender).await
+    }
+
+    async fn get_schema(&self) -> Result<DatabaseSchema, Error> {
+        crate::database::libsql::schema::get_database_schema(self.connection.clone()).await
+    }
+
+    fn is_connected(&self) -> bool {
+        true
+    }
+
+    fn database_type(&self) -> DatabaseType {
+        DatabaseType::LibSQL
+    }
+}
+
 pub type BoxedAdapter = Box<dyn DatabaseAdapter>;
 
-/// Create an adapter from a DatabaseClient enum.
-///
-/// This is a convenience function for transitioning from the old enum-based
-/// approach to the new trait-based approach.
 pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> BoxedAdapter {
     match client {
         crate::database::types::DatabaseClient::Postgres { client } => {
@@ -175,12 +207,12 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))
         }
-        crate::database::types::DatabaseClient::LibSQL { .. } => {
-            // TODO: Implement LibSQLAdapter when needed
-            panic!("LibSQL adapter not yet implemented")
+        crate::database::types::DatabaseClient::LibSQL { connection } => {
+            Box::new(LibSqlAdapter::new(connection.clone()))
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {

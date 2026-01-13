@@ -17,6 +17,8 @@ export type SqlQueryResult = {
     error?: string;
     affectedRows?: number;
     queryType: "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
+    columnDefinitions?: ColumnDefinition[];
+    sourceTable?: string;
 };
 
 export type TableInfo = {

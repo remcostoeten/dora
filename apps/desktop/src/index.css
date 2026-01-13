@@ -19,6 +19,15 @@
   }
 }
 
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @theme {
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
@@ -166,8 +175,8 @@
     --accent: 0 0% 16%;
     --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 355 24% 21%;
+    --destructive-foreground: 355 98% 75%;
 
     --border: 0 0% 19%;
     --input: 0 0% 19%;
@@ -220,8 +229,8 @@
     --accent: 0 0% 90%;
     --accent-foreground: 0 0% 9%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 355 24% 21%;
+    --destructive-foreground: 355 98% 75%;
 
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
@@ -248,107 +257,6 @@
 
     --success: 0 0% 9%;
     --success-foreground: 0 0% 98%;
-  }
-
-  .bordered {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 96%;
-
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 96%;
-
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 96%;
-
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 94%;
-
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 64%;
-
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 0 0% 25%;
-    --input: 0 0% 15%;
-    --ring: 0 0% 83%;
-
-    --radius: 0rem;
-
-    --sidebar-background: 0 0% 7%;
-    --sidebar-foreground: 0 0% 88%;
-    --sidebar-foreground-muted: 0 0% 58%;
-    --sidebar-primary: 0 0% 98%;
-    --sidebar-primary-foreground: 0 0% 9%;
-    --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 25%;
-    --sidebar-ring: 0 0% 83%;
-
-    --table-header: 0 0% 10%;
-    --table-row-hover: 0 0% 14%;
-    --table-row-selected: 0 0% 18%;
-    --table-border: 0 0% 20%;
-
-    --warning: 45 100% 50%;
-    --warning-foreground: 0 0% 6.7%;
-
-    --success: 0 0% 83%;
-    --success-foreground: 0 0% 9%;
-  }
-}
-
-@layer utilities {
-  .bordered * {
-    border-color: hsl(var(--border)) !important;
-  }
-
-  .bordered button,
-  .bordered [role='button'],
-  .bordered .card,
-  .bordered [class*='border'] {
-    border: 1px solid hsl(var(--border));
-  }
-
-  .bordered button {
-    border-width: 1.5px;
-  }
-
-  .bordered button:hover {
-    border-color: hsl(var(--primary));
-  }
-
-  .bordered input,
-  .bordered textarea {
-    border-width: 1.5px;
-    border-style: solid;
-  }
-
-  .bordered input:focus,
-  .bordered textarea:focus {
-    border-color: hsl(var(--primary));
-    box-shadow: 0 0 0 2px hsl(var(--ring) / 0.3);
-  }
-
-  .bordered table,
-  .bordered th,
-  .bordered td {
-    border-width: 1px;
-    border-style: solid;
-  }
-
-  .bordered tbody tr {
-    border-bottom: 1px solid hsl(var(--border));
-  }
-
-  .bordered tbody tr:last-child {
-    border-bottom: none;
   }
 }
 

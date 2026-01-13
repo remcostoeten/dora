@@ -1,158 +1,105 @@
-import { useState } from "react";
 import { Copy } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Switch } from "@/shared/ui/switch";
 import { Slider } from "@/shared/ui/slider";
-import { cn } from "@/shared/utils/cn";
-
-type PaginationType = "LIMIT OFFSET" | "PAGES";
-type ByteaFormat = "HEX" | "UTF8";
-
-type SettingsState = {
-  tableRowsCount: boolean;
-  expandSubviews: boolean;
-  paginationType: PaginationType;
-  flatSchemas: boolean;
-  byteaFormat: ByteaFormat;
-  editorFontSize: number;
-  editorKeybindings: string;
-};
+import { Separator } from "@/shared/ui/separator";
+import { useSettings } from "@/core/settings";
 
 type Props = {
-  settings: SettingsState;
-  onSettingsChange: (settings: SettingsState) => void;
-  onCopySchema: () => void;
+  onCopySchema?: () => void;
 };
 
-export function SettingsPanel({ settings, onSettingsChange, onCopySchema }: Props) {
-  function handleChange<K extends keyof SettingsState>(key: K, value: SettingsState[K]) {
-    onSettingsChange({ ...settings, [key]: value });
-  }
+export function SettingsPanel({ onCopySchema }: Props) {
+  const { settings, updateSetting } = useSettings();
 
   return (
-    <div className="flex flex-col gap-4 p-4 border-t border-sidebar-border">
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="text-sm text-sidebar-foreground">Table rows count</div>
-          <div className="text-xs text-muted-foreground">
-            Beware count(*) operation performs light scan of the table which can be both slow and billed by serverless databases for row reads
-          </div>
-        </div>
-        <Switch
-          checked={settings.tableRowsCount}
-          onCheckedChange={(checked) => handleChange("tableRowsCount", checked)}
-        />
-      </div>
+    <div className="flex flex-col gap-4 p-4">
+      {/* Editor Section */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Editor
+        </h4>
 
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="text-sm text-sidebar-foreground">Expand subviews</div>
-          <div className="text-xs text-muted-foreground">
-            Always keep subviews visible
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-sidebar-foreground">Font size</span>
+            <span className="text-sm font-mono text-sidebar-foreground">{settings.editorFontSize}px</span>
           </div>
-        </div>
-        <Switch
-          checked={settings.expandSubviews}
-          onCheckedChange={(checked) => handleChange("expandSubviews", checked)}
-        />
-      </div>
-
-      <div>
-        <div className="text-sm text-sidebar-foreground mb-2">Pagination type</div>
-        <div className="flex flex-col gap-1">
-          <label className="flex items-center gap-2 text-sm text-sidebar-foreground cursor-pointer">
-            <input
-              type="radio"
-              name="paginationType"
-              checked={settings.paginationType === "LIMIT OFFSET"}
-              onChange={() => handleChange("paginationType", "LIMIT OFFSET")}
-              className="accent-primary"
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">A</span>
+            <Slider
+              value={[settings.editorFontSize]}
+              onValueChange={([value]) => updateSetting("editorFontSize", value)}
+              min={10}
+              max={24}
+              step={1}
             />
-            LIMIT OFFSET
-          </label>
-          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-            <input
-              type="radio"
-              name="paginationType"
-              checked={settings.paginationType === "PAGES"}
-              onChange={() => handleChange("paginationType", "PAGES")}
-              className="accent-primary"
-            />
-            PAGES
-          </label>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="text-sm text-sidebar-foreground">Flat schemas</div>
-          <div className="text-xs text-muted-foreground">
-            Show tables without grouping by schema
+            <span className="text-base text-muted-foreground">A</span>
           </div>
         </div>
-        <Switch
-          checked={settings.flatSchemas}
-          onCheckedChange={(checked) => handleChange("flatSchemas", checked)}
-        />
       </div>
 
-      <div>
-        <div className="text-sm text-sidebar-foreground mb-2">Show bytea as</div>
-        <div className="flex gap-2">
-          <Button
-            variant={settings.byteaFormat === "HEX" ? "secondary" : "ghost"}
-            size="sm"
-            className="font-mono text-xs"
-            onClick={() => handleChange("byteaFormat", "HEX")}
-          >
-            \x69643A3130303031
-          </Button>
-          <Button
-            variant={settings.byteaFormat === "UTF8" ? "secondary" : "ghost"}
-            size="sm"
-            className="font-mono text-xs"
-            onClick={() => handleChange("byteaFormat", "UTF8")}
-          >
-            id:10001
-          </Button>
+      <Separator className="bg-sidebar-border" />
+
+      {/* Safety Section */}
+      <div className="space-y-3">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Safety
+        </h4>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="text-sm text-sidebar-foreground">Confirm before delete</div>
+            <div className="text-xs text-muted-foreground leading-tight">
+              Show confirmation for destructive actions
+            </div>
+          </div>
+          <div className="flex-shrink-0 pt-0.5">
+            <Switch
+              checked={settings.confirmBeforeDelete}
+              onCheckedChange={(checked) => updateSetting("confirmBeforeDelete", checked)}
+            />
+          </div>
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-sidebar-foreground">Editor font size:</span>
-          <span className="text-sm text-sidebar-foreground">{settings.editorFontSize}px</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">A</span>
-          <Slider
-            value={[settings.editorFontSize]}
-            onValueChange={([value]) => handleChange("editorFontSize", value)}
-            min={10}
-            max={24}
-            step={1}
-            className="flex-1"
-          />
-          <span className="text-base text-muted-foreground">A</span>
+      <Separator className="bg-sidebar-border" />
+
+      <div className="space-y-3">
+        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          Startup
+        </h4>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="text-sm text-sidebar-foreground">Restore last connection</div>
+            <div className="text-xs text-muted-foreground leading-tight">
+              Automatically reconnect to the last used database on startup
+            </div>
+          </div>
+          <div className="flex-shrink-0 pt-0.5">
+            <Switch
+              checked={settings.restoreLastConnection}
+              onCheckedChange={(checked) => updateSetting("restoreLastConnection", checked)}
+            />
+          </div>
         </div>
       </div>
 
-      <div>
-        <div className="text-sm text-sidebar-foreground mb-1">Editor keybindings</div>
-        <div className="text-sm text-muted-foreground">{settings.editorKeybindings}</div>
-      </div>
+      <Separator className="bg-sidebar-border" />
 
-      <Button
-        variant="outline"
-        size="sm"
-        className="justify-center gap-2 border-sidebar-border"
-        onClick={onCopySchema}
-      >
-        <span>Copy database schema</span>
-        <Copy className="h-4 w-4" />
-      </Button>
+      {/* Actions */}
+      {onCopySchema && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="justify-center gap-2 border-sidebar-border"
+          onClick={onCopySchema}
+        >
+          <Copy className="h-4 w-4" />
+          <span>Copy database schema</span>
+        </Button>
+      )}
     </div>
   );
 }
-
-export type { SettingsState, PaginationType, ByteaFormat };

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, Plus, Filter, Trash2 } from "lucide-react";
+import { X, Plus, Filter, Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { ColumnDefinition, FilterDescriptor, FilterOperator } from "../types";
@@ -58,12 +58,6 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
                 value: newFilterValue
             }
         ]);
-        // Keep adding mode open for quick successive adds, or close it?
-        // Drizzle Studio usually keeps the inline row or resets. 
-        // Let's reset the value but keep adding mode if we want to add another, 
-        // but for now let's just close it to mimic the "row added" feel.
-        // Actually, better UX: reset value and stay in adding mode? 
-        // Let's close for now to be simple.
         setIsAddingFilter(false);
         setNewFilterValue("");
     };
@@ -77,35 +71,48 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
         <div className="flex flex-col border-b border-sidebar-border bg-sidebar-accent/10">
             {/* Filter List */}
             {filters.map((filter, index) => (
-                <div key={index} className="flex items-center gap-2 px-2 h-9 border-b border-sidebar-border/50 last:border-0 group">
+                <div key={index} className="flex items-center gap-2 px-2 h-9 border-b border-sidebar-border/50 last:border-0 group bg-sidebar-accent/5 hover:bg-sidebar-accent/20 transition-colors">
                     <Button
                         variant="ghost"
                         size="icon"
-                        className="h-5 w-5 text-muted-foreground hover:text-destructive"
+                        className="h-5 w-5 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity"
                         onClick={() => removeFilter(index)}
                     >
                         <X className="h-3 w-3" />
                     </Button>
 
-                    <span className="text-xs text-muted-foreground font-mono w-12 text-center">
-                        {index === 0 ? "where" : "and"}
+                    <span className="text-[10px] uppercase text-muted-foreground font-bold w-8 text-center tracking-wider select-none">
+                        {index === 0 ? "WHERE" : "AND"}
                     </span>
 
-                    {/* We display the active filter as read-only or editable? 
-                        For now, let's make them display-only but with a nice look, 
-                        matching the demo which shows them as editable rows or static pills.
-                        The demo actually has them as editable rows. Let's stick to static for now for simplicity 
-                        unless we want full edit capability.
-                        Let's just display them nicely.
-                    */}
-                    <div className="flex items-center gap-2 text-xs">
-                        <span className="font-medium text-sidebar-foreground bg-sidebar-accent px-1.5 py-0.5 rounded border border-sidebar-border">
+                    <div className="flex items-center gap-2 text-xs flex-1">
+                        <span className="font-mono text-primary font-medium px-1.5 py-0.5 rounded border border-primary/20 bg-primary/5">
                             {filter.column}
                         </span>
-                        <span className="text-muted-foreground">
-                            {filter.operator}
-                        </span>
-                        <span className="font-medium text-sidebar-foreground">
+                        <div className="relative">
+                            <select
+                                className="h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[110px] appearance-none focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
+                                value={filter.operator}
+                                onChange={(e) => {
+                                    const newFilters = [...filters];
+                                    newFilters[index].operator = e.target.value as FilterOperator;
+                                    onFiltersChange(newFilters);
+                                }}
+                            >
+                                <option value="eq">equals</option>
+                                <option value="neq">not equal</option>
+                                <option value="gt">greater than</option>
+                                <option value="lt">less than</option>
+                                <option value="gte">greater or equal</option>
+                                <option value="lte">less or equal</option>
+                                <option value="contains">contains</option>
+                                <option value="ilike">ilike</option>
+                            </select>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                                <ChevronDown className="h-3 w-3" />
+                            </div>
+                        </div>
+                        <span className="font-mono text-foreground font-medium px-1.5 py-0.5 rounded border border-border bg-background">
                             {String(filter.value)}
                         </span>
                     </div>
@@ -128,30 +135,40 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
                         {filters.length === 0 ? "where" : "and"}
                     </span>
 
-                    <select
-                        className="h-6 text-xs bg-sidebar border border-sidebar-border rounded px-1 min-w-[120px]"
-                        value={newFilterColumn}
-                        onChange={(e) => setNewFilterColumn(e.target.value)}
-                    >
-                        {columns.map(col => (
-                            <option key={col.name} value={col.name}>{col.name}</option>
-                        ))}
-                    </select>
+                    <div className="relative">
+                        <select
+                            className="h-6 text-xs bg-background border border-sidebar-border rounded px-2 min-w-[120px] appearance-none focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
+                            value={newFilterColumn}
+                            onChange={(e) => setNewFilterColumn(e.target.value)}
+                        >
+                            {columns.map(col => (
+                                <option key={col.name} value={col.name}>{col.name}</option>
+                            ))}
+                        </select>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                            <ChevronDown className="h-3 w-3" />
+                        </div>
+                    </div>
 
-                    <select
-                        className="h-6 text-xs bg-sidebar border border-sidebar-border rounded px-1 w-[100px]"
-                        value={newFilterOperator}
-                        onChange={(e) => setNewFilterOperator(e.target.value as FilterOperator)}
-                    >
-                        <option value="eq">equals</option>
-                        <option value="neq">not equal</option>
-                        <option value="gt">greater than</option>
-                        <option value="lt">less than</option>
-                        <option value="gte">greater or equal</option>
-                        <option value="lte">less or equal</option>
-                        <option value="contains">contains</option>
-                        <option value="ilike">ilike</option>
-                    </select>
+                    <div className="relative">
+                        <select
+                            className="h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[110px] appearance-none focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer"
+                            value={newFilterOperator}
+                            onChange={(e) => setNewFilterOperator(e.target.value as FilterOperator)}
+                        >
+                            <option value="eq">equals</option>
+                            <option value="neq">not equal</option>
+                            <option value="gt">greater than</option>
+                            <option value="lt">less than</option>
+                            <option value="gte">greater or equal</option>
+                            <option value="lte">less or equal</option>
+                            <option value="contains">contains</option>
+                            <option value="ilike">ilike</option>
+                        </select>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                            <ChevronDown className="h-3 w-3" />
+                        </div>
+                    </div>
 
                     <Input
                         ref={valueInputRef}

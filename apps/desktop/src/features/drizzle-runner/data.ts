@@ -1,1 +1,2 @@
-export const DEFAULT_QUERY = `db.select().from(customers).limit(10);`;
+export const DEFAULT_QUERY = `// Write your Drizzle query here
+// Select a table from the sidebar to get started`;

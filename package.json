@@ -11,7 +11,7 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "desktop:run": "bun --cwd apps/desktop run dev",
-    "desktop:dev": "bun --cwd apps/desktop run tauri dev",
+    "desktop:dev": "bun run --cwd apps/desktop tauri dev",
     "desktop:build": "bun --cwd apps/desktop run tauri build",
     "docs:dev": "bun --cwd apps/api-docs run dev",
     "docs:build": "bun --cwd apps/api-docs run build",

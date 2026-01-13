@@ -1,6 +1,7 @@
 import { useRef, useEffect } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
 import { useTheme } from "next-themes";
+import { useSetting } from "@/core/settings";
 import { generateDrizzleTypes } from "../utils/lsp-utils";
 import { SchemaTable } from "../types";
 
@@ -14,6 +15,7 @@ type Props = {
 
 export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
     const { theme } = useTheme();
+    const [editorFontSize] = useSetting("editorFontSize");
     const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
     const monacoRef = useRef<any>(null); // To access monaco instance later if needed
 
@@ -293,7 +295,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                 theme="vs-dark"
                 options={{
                     minimap: { enabled: false },
-                    fontSize: 14,
+                    fontSize: editorFontSize,
                     lineNumbers: "on",
                     glyphMargin: true,
                     scrollBeyondLastLine: false,
