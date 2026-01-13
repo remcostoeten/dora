@@ -8,6 +8,7 @@ import { cn } from "@/shared/utils/cn";
 import { SqlQueryResult, ResultViewMode } from "../types";
 import { useAdapter } from "@/core/data-provider/context";
 import { useDataMutation } from "@/core/data-provider";
+import { useSettings } from "@/core/settings";
 import {
     ContextMenu,
     ContextMenuTrigger,
@@ -37,6 +38,7 @@ type EditingCell = {
 export function SqlResults({ result, viewMode, onViewModeChange, onExport, connectionId, showFilter, onRefresh }: Props) {
     const adapter = useAdapter();
     const { updateCell, deleteRows } = useDataMutation();
+    const { settings } = useSettings();
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [filterText, setFilterText] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
@@ -230,7 +232,7 @@ export function SqlResults({ result, viewMode, onViewModeChange, onExport, conne
             return;
         }
 
-        if (confirm("Are you sure you want to delete this row?")) {
+        if (!settings.confirmBeforeDelete || confirm("Are you sure you want to delete this row?")) {
             deleteRows.mutate({
                 connectionId,
                 tableName,

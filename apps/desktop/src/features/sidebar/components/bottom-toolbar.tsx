@@ -2,10 +2,10 @@ import { Settings, Monitor, Bell, Bug, Heart } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@/shared/ui/popover";
-import { SettingsPanel, SettingsState } from "./settings-panel";
+import { SettingsPanel } from "./settings-panel";
 import { ThemePanel } from "./theme-panel";
 
-type Theme = "dark" | "light" | "system" | "bordered";
+type Theme = "dark" | "light";
 
 type ToolbarAction = "settings" | "theme" | "notifications" | "bug" | "sponsor";
 
@@ -25,18 +25,14 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
 
 type Props = {
   onAction: (action: ToolbarAction) => void;
-  settingsProps?: {
-    settings: SettingsState;
-    onSettingsChange: (settings: SettingsState) => void;
-    onCopySchema: () => void;
-  };
+  onCopySchema?: () => void;
   themeProps?: {
     theme: Theme;
     onThemeChange: (theme: Theme) => void;
   };
 };
 
-export function BottomToolbar({ onAction, settingsProps, themeProps }: Props) {
+export function BottomToolbar({ onAction, onCopySchema, themeProps }: Props) {
   return (
     <div className="flex items-center justify-around px-2 py-2.5 border-t border-sidebar-border mt-auto">
       {TOOLBAR_ITEMS.map((item) => {
@@ -65,15 +61,9 @@ export function BottomToolbar({ onAction, settingsProps, themeProps }: Props) {
                 side="right"
                 align="end"
                 sideOffset={16}
-                className="w-[300px] p-0 mb-2 ml-2"
+                className="w-[240px] p-0 mb-2 ml-2"
               >
-                {settingsProps && (
-                  <SettingsPanel
-                    settings={settingsProps.settings}
-                    onSettingsChange={settingsProps.onSettingsChange}
-                    onCopySchema={settingsProps.onCopySchema}
-                  />
-                )}
+                <SettingsPanel onCopySchema={onCopySchema} />
               </PopoverContent>
             </Popover>
           );
@@ -104,7 +94,7 @@ export function BottomToolbar({ onAction, settingsProps, themeProps }: Props) {
                 side="right"
                 align="end"
                 sideOffset={16}
-                className="w-[200px] p-0 mb-2 ml-2"
+                className="w-[340px] p-0 mb-2 ml-2"
               >
                 <ThemePanel
                   theme={themeProps.theme}

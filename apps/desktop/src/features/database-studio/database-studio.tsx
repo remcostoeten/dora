@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import { Database, Plus, PanelLeft } from "lucide-react";
+import { Button } from "@/shared/ui/button";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
 import { AddRecordDialog } from "./components/add-record-dialog";
 import { RowDetailPanel } from "./components/row-detail-panel";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useAdapter, useDataMutation } from "@/core/data-provider";
+import { useSettings } from "@/core/settings";
 import {
     TableData,
     PaginationState,
@@ -19,11 +22,13 @@ type Props = {
     tableName: string | null;
     onToggleSidebar?: () => void;
     activeConnectionId?: string;
+    onAddConnection?: () => void;
 };
 
-export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId }: Props) {
+export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId, onAddConnection }: Props) {
     const adapter = useAdapter();
     const { updateCell, deleteRows, insertRow } = useDataMutation();
+    const { settings } = useSettings();
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [addDialogMode, setAddDialogMode] = useState<"add" | "duplicate">("add");
@@ -226,7 +231,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
 
         switch (action) {
             case "delete":
-                if (!confirm("Are you sure you want to delete this row?")) return;
+                if (settings.confirmBeforeDelete && !confirm("Are you sure you want to delete this row?")) return;
 
                 deleteRows.mutate({
                     connectionId: activeConnectionId,
@@ -302,36 +307,77 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         URL.revokeObjectURL(url);
     };
 
-    // No table selected
-    if (!tableId) {
+    // No connection selected
+    if (!activeConnectionId) {
         return (
-            <div className="flex flex-col h-full">
+            <div className="flex flex-col h-full bg-background/50">
                 {onToggleSidebar && (
-                    <div className="flex items-center h-11 border-b border-sidebar-border bg-sidebar shrink-0 px-3">
-                        <button
-                            className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors"
+                    <div className="flex items-center h-10 border-b border-sidebar-border bg-sidebar/50 shrink-0 px-3">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-sidebar-foreground"
                             onClick={onToggleSidebar}
                             title="Toggle sidebar"
                         >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" />
-                                <line x1="9" y1="3" x2="9" y2="21" />
-                            </svg>
-                        </button>
-                        <span className="ml-3 text-sm text-sidebar-foreground font-medium tracking-tight">Dora</span>
-                        <span className="ml-2 text-[10px] text-muted-foreground uppercase tracking-widest opacity-50">The database explorah</span>
+                            <PanelLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase">Database Studio</span>
                     </div>
                 )}
 
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center">
-                        <h1 className="text-2xl font-semibold text-foreground mb-2">
-                            Dora
-                        </h1>
-                        <p className="text-muted-foreground">
-                            Select a table from the sidebar to browse data
-                        </p>
+                <div className="flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="w-20 h-20 bg-sidebar-accent/30 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/50 shadow-sm backdrop-blur-sm">
+                        <Database className="w-10 h-10 text-primary/60" strokeWidth={1.5} />
                     </div>
+                    <h2 className="text-xl font-semibold mb-2 text-foreground tracking-tight">No Database Connected</h2>
+                    <p className="text-muted-foreground text-center max-w-sm mb-8 leading-relaxed text-sm">
+                        Select a connection from the sidebar to view its tables, or create a new connection to get started.
+                    </p>
+
+                    {onAddConnection && (
+                        <Button onClick={onAddConnection} className="gap-2 shadow-md hover:shadow-lg transition-all">
+                            <Plus className="w-4 h-4" />
+                            Add Connection
+                        </Button>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // No table selected
+    if (!tableId) {
+        return (
+            <div className="flex flex-col h-full bg-background/50">
+                {onToggleSidebar && (
+                    <div className="flex items-center h-10 border-b border-sidebar-border bg-sidebar/50 shrink-0 px-3">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-sidebar-foreground"
+                            onClick={onToggleSidebar}
+                            title="Toggle sidebar"
+                        >
+                            <PanelLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase">Database Studio</span>
+                    </div>
+                )}
+
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300">
+                     <div className="w-20 h-20 bg-sidebar-accent/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/30">
+                        <svg className="h-10 w-10 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2" />
+                            <line x1="9" y1="3" x2="9" y2="21" />
+                        </svg>
+                    </div>
+                    <h1 className="text-xl font-semibold text-foreground mb-2 tracking-tight">
+                        No Table Selected
+                    </h1>
+                    <p className="text-muted-foreground text-sm max-w-xs">
+                        Select a table from the sidebar list to browse its records, structure, and relationships.
+                    </p>
                 </div>
             </div>
         );
