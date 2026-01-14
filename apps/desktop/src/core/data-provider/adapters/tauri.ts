@@ -107,7 +107,12 @@ export function createTauriAdapter(): DataAdapter {
 
             if (filters && filters.length > 0) {
                 const conditions = filters.map(function (f) {
-                    return `"${f.column}" ${operatorToSql(f.operator)} '${f.value}'`;
+                    const sqlOp = operatorToSql(f.operator);
+                    const escapedValue = String(f.value).replace(/'/g, "''");
+                    if (f.operator === "contains" || f.operator === "ilike") {
+                        return `"${f.column}" ${sqlOp} '%${escapedValue}%'`;
+                    }
+                    return `"${f.column}" ${sqlOp} '${escapedValue}'`;
                 });
                 query += " WHERE " + conditions.join(" AND ");
             }

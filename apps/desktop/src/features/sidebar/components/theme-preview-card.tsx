@@ -18,13 +18,21 @@ export function ThemePreviewCard({
 }: Props) {
   const isDark = variant === "dark";
 
+  function ActivePulseBorder() {
+    return (
+      <div className="absolute inset-0 w-full h-full rounded-lg animate-pulse">
+        <div className="w-full h-full rounded-lg bg-primary/10" />
+      </div>
+    );
+  }
+
   return (
     <button
       onClick={onClick}
       className={cn(
         "flex-shrink-0 flex flex-col rounded-lg transition-all cursor-pointer overflow-hidden",
         "hover:opacity-90",
-        isSelected && "ring-1 ring-primary/60 ring-offset-1 ring-offset-sidebar",
+        isSelected && "ring-1 ring-border/60 ring-offset-1 ring-offset-sidebar  relative ",
       )}
     >
       <div
@@ -33,6 +41,7 @@ export function ThemePreviewCard({
           isDark ? "bg-[#1a1a1a]" : "bg-[#f0f0f0]"
         )}
       >
+        {isSelected && <ActivePulseBorder />}
         <div className="flex items-center gap-1 px-2 py-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-[#ff5f57]" />
           <div className="w-1.5 h-1.5 rounded-full bg-[#febc2e]" />
