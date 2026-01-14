@@ -4,8 +4,8 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { Connection, DatabaseType } from "../types";
-import { Loader2, Save, Terminal, AlertCircle, CheckCircle2, Sparkles, FolderOpen } from "lucide-react";
+import { Connection, DatabaseType, SshTunnelConfig, SshAuthMethod } from "../types";
+import { Loader2, Save, Terminal, AlertCircle, CheckCircle2, Sparkles, FolderOpen, Key, Lock } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { commands, DatabaseInfo } from "@/lib/bindings";
 import {
@@ -31,7 +31,18 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
         type: "postgres",
         host: "localhost",
         port: 5432,
+        user: "postgres",
+        database: "postgres",
         ssl: false,
+        sshConfig: {
+            enabled: false,
+            host: "",
+            port: 22,
+            username: "",
+            authMethod: "password" as SshAuthMethod,
+            password: "",
+            privateKeyPath: "",
+        },
         ...initialValues,
     });
 
@@ -48,6 +59,8 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                 type: "postgres",
                 host: "localhost",
                 port: 5432,
+                user: "postgres",
+                database: "postgres",
                 ssl: false,
                 ...initialValues,
             });
@@ -187,10 +200,49 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                     });
                 }
 
+                const sshConfig = formData.sshConfig?.enabled ? {
+                    host: formData.sshConfig.host,
+                    port: formData.sshConfig.port,
+                    username: formData.sshConfig.username,
+                    private_key_path: formData.sshConfig.authMethod === "keyfile"
+                        ? (formData.sshConfig.privateKeyPath || null)
+                        : null,
+                    password: formData.sshConfig.authMethod === "password"
+                        ? (formData.sshConfig.password || null)
+                        : null,
+                } : null;
+
+                if (formData.sshConfig?.enabled) {
+                    if (!sshConfig?.host) {
+                        setTestStatus("error");
+                        setTestMessage("SSH Host is required");
+                        setIsTesting(false);
+                        return;
+                    }
+                    if (!sshConfig?.username) {
+                        setTestStatus("error");
+                        setTestMessage("SSH Username is required");
+                        setIsTesting(false);
+                        return;
+                    }
+                    if (formData.sshConfig.authMethod === "password" && !sshConfig?.password) {
+                        setTestStatus("error");
+                        setTestMessage("SSH Password is required");
+                        setIsTesting(false);
+                        return;
+                    }
+                    if (formData.sshConfig.authMethod === "keyfile" && !sshConfig?.private_key_path) {
+                        setTestStatus("error");
+                        setTestMessage("SSH Private Key is required");
+                        setIsTesting(false);
+                        return;
+                    }
+                }
+
                 databaseInfo = {
                     Postgres: {
                         connection_string: connectionString,
-                        ssh_config: null
+                        ssh_config: sshConfig
                     }
                 };
             }
@@ -268,7 +320,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[560px] glass border-border/50 p-0 gap-0 overflow-hidden">
+            <DialogContent className="sm:max-w-[560px] max-h-[85vh] flex flex-col glass border-border/50 p-0 gap-0 overflow-hidden">
                 <DialogHeader className="px-6 py-5 border-b border-border/50">
                     <div className="flex items-center gap-3">
                         <div className="relative">
@@ -288,7 +340,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                     </div>
                 </DialogHeader>
 
-                <div className="p-6 space-y-5">
+                <div className="flex-1 overflow-y-auto p-6 space-y-5">
                     <div className="space-y-2">
                         <Label htmlFor="name" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                             Connection Name
@@ -535,6 +587,242 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                                             Use SSL / TLS connection
                                         </Label>
                                     </div>
+
+                                    {formData.type === "postgres" && (
+                                        <div className="border-t border-border/50 pt-4 mt-4 space-y-4">
+                                            <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id="ssh-tunnel"
+                                                checked={formData.sshConfig?.enabled}
+                                                onCheckedChange={function (checked) {
+                                                    setFormData(function (prev) {
+                                                        return {
+                                                            ...prev,
+                                                            sshConfig: {
+                                                                ...prev.sshConfig,
+                                                                enabled: !!checked,
+                                                            } as SshTunnelConfig,
+                                                        };
+                                                    });
+                                                }}
+                                            />
+                                            <Label htmlFor="ssh-tunnel" className="text-sm cursor-pointer flex items-center gap-2">
+                                                <Key className="h-4 w-4 text-muted-foreground" />
+                                                Connect via SSH Tunnel
+                                            </Label>
+                                        </div>
+
+                                        {formData.sshConfig?.enabled && (
+                                            <div className="pl-6 space-y-4 border-l-2 border-border/50">
+                                                <div className="grid grid-cols-3 gap-3">
+                                                    <div className="col-span-2 space-y-2">
+                                                        <Label htmlFor="ssh-host" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                                            SSH Host
+                                                        </Label>
+                                                        <Input
+                                                            id="ssh-host"
+                                                            placeholder="ssh.example.com"
+                                                            value={formData.sshConfig?.host || ""}
+                                                            onChange={function (e) {
+                                                                setFormData(function (prev) {
+                                                                    return {
+                                                                        ...prev,
+                                                                        sshConfig: {
+                                                                            ...prev.sshConfig,
+                                                                            host: e.target.value,
+                                                                        } as SshTunnelConfig,
+                                                                    };
+                                                                });
+                                                            }}
+                                                            className="input-glow"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="ssh-port" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                                            SSH Port
+                                                        </Label>
+                                                        <Input
+                                                            id="ssh-port"
+                                                            type="number"
+                                                            value={formData.sshConfig?.port || 22}
+                                                            onChange={function (e) {
+                                                                setFormData(function (prev) {
+                                                                    return {
+                                                                        ...prev,
+                                                                        sshConfig: {
+                                                                            ...prev.sshConfig,
+                                                                            port: parseInt(e.target.value) || 22,
+                                                                        } as SshTunnelConfig,
+                                                                    };
+                                                                });
+                                                            }}
+                                                            className="input-glow"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="ssh-username" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                                        SSH Username
+                                                    </Label>
+                                                    <Input
+                                                        id="ssh-username"
+                                                        placeholder="root"
+                                                        value={formData.sshConfig?.username || ""}
+                                                        onChange={function (e) {
+                                                            setFormData(function (prev) {
+                                                                return {
+                                                                    ...prev,
+                                                                    sshConfig: {
+                                                                        ...prev.sshConfig,
+                                                                        username: e.target.value,
+                                                                    } as SshTunnelConfig,
+                                                                };
+                                                            });
+                                                        }}
+                                                        className="input-glow"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                                        Authentication Method
+                                                    </Label>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={function () {
+                                                                setFormData(function (prev) {
+                                                                    return {
+                                                                        ...prev,
+                                                                        sshConfig: {
+                                                                            ...prev.sshConfig,
+                                                                            authMethod: "password",
+                                                                        } as SshTunnelConfig,
+                                                                    };
+                                                                });
+                                                            }}
+                                                            className={cn(
+                                                                "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all",
+                                                                formData.sshConfig?.authMethod === "password"
+                                                                    ? "bg-primary/10 border-primary/50 text-primary"
+                                                                    : "bg-card/50 border-border hover:bg-muted/50"
+                                                            )}
+                                                        >
+                                                            <Lock className="h-4 w-4" />
+                                                            Password
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={function () {
+                                                                setFormData(function (prev) {
+                                                                    return {
+                                                                        ...prev,
+                                                                        sshConfig: {
+                                                                            ...prev.sshConfig,
+                                                                            authMethod: "keyfile",
+                                                                        } as SshTunnelConfig,
+                                                                    };
+                                                                });
+                                                            }}
+                                                            className={cn(
+                                                                "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all",
+                                                                formData.sshConfig?.authMethod === "keyfile"
+                                                                    ? "bg-primary/10 border-primary/50 text-primary"
+                                                                    : "bg-card/50 border-border hover:bg-muted/50"
+                                                            )}
+                                                        >
+                                                            <Key className="h-4 w-4" />
+                                                            Key File
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {formData.sshConfig?.authMethod === "password" && (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="ssh-password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                                            SSH Password
+                                                        </Label>
+                                                        <Input
+                                                            id="ssh-password"
+                                                            type="password"
+                                                            placeholder="••••••••"
+                                                            value={formData.sshConfig?.password || ""}
+                                                            onChange={function (e) {
+                                                                setFormData(function (prev) {
+                                                                    return {
+                                                                        ...prev,
+                                                                        sshConfig: {
+                                                                            ...prev.sshConfig,
+                                                                            password: e.target.value,
+                                                                        } as SshTunnelConfig,
+                                                                    };
+                                                                });
+                                                            }}
+                                                            className="input-glow"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {formData.sshConfig?.authMethod === "keyfile" && (
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="ssh-keyfile" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                                            Private Key Path
+                                                        </Label>
+                                                        <div className="flex gap-2">
+                                                            <Input
+                                                                id="ssh-keyfile"
+                                                                placeholder="~/.ssh/id_rsa"
+                                                                value={formData.sshConfig?.privateKeyPath || ""}
+                                                                onChange={function (e) {
+                                                                    setFormData(function (prev) {
+                                                                        return {
+                                                                            ...prev,
+                                                                            sshConfig: {
+                                                                                ...prev.sshConfig,
+                                                                                privateKeyPath: e.target.value,
+                                                                            } as SshTunnelConfig,
+                                                                        };
+                                                                    });
+                                                                }}
+                                                                className="flex-1 input-glow font-mono text-sm"
+                                                            />
+                                                            <Button
+                                                                variant="outline"
+                                                                size="icon"
+                                                                onClick={async function () {
+                                                                    try {
+                                                                        const result = await commands.openFile("Select SSH Private Key");
+                                                                        if (result.status === "ok" && result.data) {
+                                                                            setFormData(function (prev) {
+                                                                                return {
+                                                                                    ...prev,
+                                                                                    sshConfig: {
+                                                                                        ...prev.sshConfig,
+                                                                                        privateKeyPath: result.data,
+                                                                                    } as SshTunnelConfig,
+                                                                                };
+                                                                            });
+                                                                        }
+                                                                    } catch (error) {
+                                                                        console.error("Failed to open file picker:", error);
+                                                                    }
+                                                                }}
+                                                                className="shrink-0"
+                                                                title="Browse for key file"
+                                                            >
+                                                                <FolderOpen className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Path to your SSH private key file
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 </>
                             )}
                         </div>
@@ -575,7 +863,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                     )}
                 </div>
 
-                <DialogFooter className="px-6 py-4 bg-muted/20 border-t border-border/50">
+                <DialogFooter className="px-6 py-4 bg-muted/20 border-t border-border/50 mt-auto">
                     <Button
                         variant="ghost"
                         onClick={handleTestConnection}

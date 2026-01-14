@@ -11,6 +11,7 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         window_commands::close_window,
         window_commands::open_sqlite_db,
         window_commands::save_sqlite_db,
+        window_commands::open_file,
 
         // Database commands
         db_commands::add_connection,
