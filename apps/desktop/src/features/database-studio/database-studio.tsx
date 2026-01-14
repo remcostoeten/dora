@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
-import { Database, Plus, PanelLeft } from "lucide-react";
+import { Database, Plus, PanelLeft, Trash2, Columns } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
 import { AddRecordDialog } from "./components/add-record-dialog";
+import { AddColumnDialog, ColumnFormData } from "./components/add-column-dialog";
+import { DropTableDialog } from "./components/drop-table-dialog";
 import { RowDetailPanel } from "./components/row-detail-panel";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
+import { commands } from "@/lib/bindings";
 import {
     TableData,
     PaginationState,
@@ -42,6 +45,9 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const [sort, setSort] = useState<SortDescriptor | undefined>();
     const [filters, setFilters] = useState<FilterDescriptor[]>([]);
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+    const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
+    const [showDropTableDialog, setShowDropTableDialog] = useState(false);
+    const [isDdlLoading, setIsDdlLoading] = useState(false);
 
     // Default to all visible initially
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
@@ -307,6 +313,52 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         URL.revokeObjectURL(url);
     };
 
+    async function handleAddColumn(columnDef: ColumnFormData) {
+        if (!activeConnectionId || !tableName) return;
+
+        setIsDdlLoading(true);
+        try {
+            let sql = `ALTER TABLE "${tableName}" ADD COLUMN "${columnDef.name}" ${columnDef.type}`;
+            if (!columnDef.nullable) {
+                sql += " NOT NULL";
+            }
+            if (columnDef.defaultValue.trim()) {
+                sql += ` DEFAULT ${columnDef.defaultValue}`;
+            }
+
+            const result = await commands.executeBatch(activeConnectionId, [sql]);
+            if (result.status === "ok") {
+                setShowAddColumnDialog(false);
+                loadTableData();
+            } else {
+                console.error("Failed to add column:", result.error);
+            }
+        } catch (error) {
+            console.error("Failed to add column:", error);
+        } finally {
+            setIsDdlLoading(false);
+        }
+    }
+
+    async function handleDropTable() {
+        if (!activeConnectionId || !tableName) return;
+
+        setIsDdlLoading(true);
+        try {
+            const sql = `DROP TABLE IF EXISTS "${tableName}"`;
+            const result = await commands.executeBatch(activeConnectionId, [sql]);
+            if (result.status === "ok") {
+                setShowDropTableDialog(false);
+            } else {
+                console.error("Failed to drop table:", result.error);
+            }
+        } catch (error) {
+            console.error("Failed to drop table:", error);
+        } finally {
+            setIsDdlLoading(false);
+        }
+    }
+
     // No connection selected
     if (!activeConnectionId) {
         return (
@@ -437,8 +489,45 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                                 ))}
                             </tbody>
                         </table>
+
+                        <div className="flex gap-2 mt-6">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={function () { setShowAddColumnDialog(true); }}
+                                className="gap-2"
+                            >
+                                <Columns className="h-4 w-4" />
+                                Add Column
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={function () { setShowDropTableDialog(true); }}
+                                className="gap-2 text-destructive hover:text-destructive"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Drop Table
+                            </Button>
+                        </div>
                     </div>
                 </div>
+
+                <AddColumnDialog
+                    open={showAddColumnDialog}
+                    onOpenChange={setShowAddColumnDialog}
+                    tableName={tableName || tableId}
+                    onSubmit={handleAddColumn}
+                    isLoading={isDdlLoading}
+                />
+
+                <DropTableDialog
+                    open={showDropTableDialog}
+                    onOpenChange={setShowDropTableDialog}
+                    tableName={tableName || tableId}
+                    onConfirm={handleDropTable}
+                    isLoading={isDdlLoading}
+                />
             </div>
         );
     }
