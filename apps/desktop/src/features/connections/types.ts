@@ -1,5 +1,17 @@
 export type DatabaseType = "postgres" | "mysql" | "sqlite" | "libsql";
 
+export type SshAuthMethod = "password" | "keyfile";
+
+export interface SshTunnelConfig {
+    enabled: boolean;
+    host: string;
+    port: number;
+    username: string;
+    authMethod: SshAuthMethod;
+    password?: string;
+    privateKeyPath?: string;
+}
+
 export interface Connection {
     id: string;
     name: string;
@@ -10,10 +22,11 @@ export interface Connection {
     password?: string;
     database?: string;
     ssl?: boolean;
-    url?: string; // For full connection strings, SQLite paths, or Turso URLs
-    authToken?: string; // For LibSQL/Turso authentication
-    status?: "connected" | "error" | "idle"; // Connection health status
-    error?: string; // Error message if status is 'error'
+    url?: string;
+    authToken?: string;
+    status?: "connected" | "error" | "idle";
+    error?: string;
+    sshConfig?: SshTunnelConfig;
     createdAt: number;
 }
 
