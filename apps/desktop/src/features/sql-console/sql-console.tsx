@@ -14,6 +14,7 @@ import { DEFAULT_SQL } from "./data";
 import { DEFAULT_QUERY } from "../../features/drizzle-runner/data";
 import { useAdapter } from "@/core/data-provider/context";
 import type { SavedQuery } from "@/lib/bindings";
+import { useShortcut } from "@/core/shortcuts";
 
 type Props = {
     onToggleSidebar?: () => void;
@@ -321,46 +322,15 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
         }
     }, [mode]);
 
-    // Keyboard shortcuts for mode switching
-    useEffect(() => {
-        const shouldIgnoreShortcut = (target: HTMLElement, e: KeyboardEvent): boolean => {
-            if (e.ctrlKey || e.metaKey || e.altKey) return true;
+    const $ = useShortcut();
 
-            // Check for editable elements
-            const tagName = target.tagName;
-            if (
-                tagName === "INPUT" ||
-                tagName === "TEXTAREA" ||
-                target.isContentEditable
-            ) {
-                return true;
-            }
+    $.key("s").except("typing").on(function() {
+        setMode("sql");
+    }, { description: "Switch to SQL mode" });
 
-            // Check if target is inside a Monaco editor
-            const isMonacoEditor = target.closest(".monaco-editor");
-            if (isMonacoEditor) return true;
-
-            // Check if target is inside any element with data-no-shortcuts attribute
-            const isInNoShortcutsZone = target.closest("[data-no-shortcuts]");
-            if (isInNoShortcutsZone) return true;
-
-            return false;
-        };
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const target = e.target as HTMLElement;
-            if (shouldIgnoreShortcut(target, e)) return;
-
-            if (e.key.toLowerCase() === "s") {
-                setMode("sql");
-            } else if (e.key.toLowerCase() === "d") {
-                setMode("drizzle");
-            }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, []);
+    $.key("d").except("typing").on(function() {
+        setMode("drizzle");
+    }, { description: "Switch to Drizzle mode" });
 
     return (
         <div className="flex h-full w-full bg-background overflow-hidden">
