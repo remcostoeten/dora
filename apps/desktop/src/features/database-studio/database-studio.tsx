@@ -34,7 +34,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const adapter = useAdapter();
     const { updateCell, deleteRows, insertRow } = useDataMutation();
     const { settings } = useSettings();
-    const { isDryEditMode, addEdit, getEditsForTable, getEditCount, clearEdits, hasEdits } = usePendingEdits();
+    const { isDryEditMode, setDryEditMode, addEdit, getEditsForTable, getEditCount, clearEdits, hasEdits } = usePendingEdits();
     const [isApplyingEdits, setIsApplyingEdits] = useState(false);
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [showAddDialog, setShowAddDialog] = useState(false);
