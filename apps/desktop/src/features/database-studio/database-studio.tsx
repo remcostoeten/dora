@@ -367,32 +367,43 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         URL.revokeObjectURL(url);
     };
 
-    async function handleAddColumn(columnDef: ColumnFormData) {
-        if (!activeConnectionId || !tableName) return;
+function isValidDefaultValue(value: string): boolean {
+    // Allow: NULL, numbers, quoted strings, boolean
+    const pattern = /^(NULL|TRUE|FALSE|'[^']*'|\d+(\.\d+)?|CURRENT_TIMESTAMP)$/i;
+    return pattern.test(value.trim());
+}
 
-        setIsDdlLoading(true);
-        try {
-            let sql = `ALTER TABLE "${tableName}" ADD COLUMN "${columnDef.name}" ${columnDef.type}`;
-            if (!columnDef.nullable) {
-                sql += " NOT NULL";
-            }
-            if (columnDef.defaultValue.trim()) {
-                sql += ` DEFAULT ${columnDef.defaultValue}`;
-            }
+async function handleAddColumn(columnDef: ColumnFormData) {
+    if (!activeConnectionId || !tableName) return;
 
-            const result = await commands.executeBatch(activeConnectionId, [sql]);
-            if (result.status === "ok") {
-                setShowAddColumnDialog(false);
-                loadTableData();
-            } else {
-                console.error("Failed to add column:", result.error);
-            }
-        } catch (error) {
-            console.error("Failed to add column:", error);
-        } finally {
-            setIsDdlLoading(false);
-        }
+    if (columnDef.defaultValue.trim() && !isValidDefaultValue(columnDef.defaultValue)) {
+        console.error("Invalid default value format");
+        return;
     }
+
+    setIsDdlLoading(true);
+    try {
+        let sql = `ALTER TABLE "${tableName}" ADD COLUMN "${columnDef.name}" ${columnDef.type}`;
+        if (!columnDef.nullable) {
+            sql += " NOT NULL";
+        }
+        if (columnDef.defaultValue.trim()) {
+            sql += ` DEFAULT ${columnDef.defaultValue}`;
+        }
+
+        const result = await commands.executeBatch(activeConnectionId, [sql]);
+        if (result.status === "ok") {
+            setShowAddColumnDialog(false);
+            loadTableData();
+        } else {
+            console.error("Failed to add column:", result.error);
+        }
+    } catch (error) {
+        console.error("Failed to add column:", error);
+    } finally {
+        setIsDdlLoading(false);
+    }
+}
 
     async function handleDropTable() {
         if (!activeConnectionId || !tableName) return;
