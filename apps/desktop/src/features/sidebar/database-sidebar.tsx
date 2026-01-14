@@ -9,6 +9,8 @@ import type { TableRightClickAction } from "./components/table-list";
 import { AddAction } from "./components/add-menu";
 import { BottomToolbar, ToolbarAction, Theme } from "./components/bottom-toolbar";
 import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
+import { RenameTableDialog } from "./components/rename-table-dialog";
+import { DropTableDialog } from "../database-studio/components/drop-table-dialog";
 import { Schema, TableItem } from "./types";
 import { Connection } from "../connections/types";
 import { Button } from "@/shared/ui/button";
@@ -16,6 +18,7 @@ import { SidebarTableSkeleton } from "@/components/ui/skeleton";
 import { Plus, Database as DatabaseIcon } from "lucide-react";
 import { useAdapter } from "@/core/data-provider";
 import type { DatabaseSchema, TableInfo } from "@/lib/bindings";
+import { commands } from "@/lib/bindings";
 
 const DEFAULT_FILTERS: FilterState = {
   showTables: true,
@@ -80,6 +83,11 @@ export function DatabaseSidebar({
   const [schema, setSchema] = useState<DatabaseSchema | null>(null);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   const [schemaError, setSchemaError] = useState<string | null>(null);
+
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [showDropDialog, setShowDropDialog] = useState(false);
+  const [targetTableName, setTargetTableName] = useState<string>("");
+  const [isDdlLoading, setIsDdlLoading] = useState(false);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -204,12 +212,63 @@ export function DatabaseSidebar({
   }
 
   function handleRightClickAction(action: TableRightClickAction, tableId: string) {
-    console.log("Right-click action:", action, tableId);
+    if (action === "delete-table") {
+      setTargetTableName(tableId);
+      setShowDropDialog(true);
+    } else if (action === "edit-name") {
+      setTargetTableName(tableId);
+      setShowRenameDialog(true);
+    } else {
+      console.log("Right-click action:", action, tableId);
+    }
+  }
+
+  async function handleRenameTable(newName: string) {
+    if (!activeConnectionId || !targetTableName) return;
+
+    setIsDdlLoading(true);
+    try {
+      const sql = `ALTER TABLE "${targetTableName}" RENAME TO "${newName}"`;
+      const result = await commands.executeBatch(activeConnectionId, [sql]);
+      if (result.status === "ok") {
+        setShowRenameDialog(false);
+        setSchema(null);
+      } else {
+        console.error("Failed to rename table:", result.error);
+      }
+    } catch (error) {
+      console.error("Failed to rename table:", error);
+    } finally {
+      setIsDdlLoading(false);
+    }
+  }
+
+  async function handleDropTable() {
+    if (!activeConnectionId || !targetTableName) return;
+
+    setIsDdlLoading(true);
+    try {
+      const sql = `DROP TABLE IF EXISTS "${targetTableName}"`;
+      const result = await commands.executeBatch(activeConnectionId, [sql]);
+      if (result.status === "ok") {
+        setShowDropDialog(false);
+        setSchema(null);
+        if (activeTableId === targetTableName) {
+          setInternalTableId(undefined);
+        }
+      } else {
+        console.error("Failed to drop table:", result.error);
+      }
+    } catch (error) {
+      console.error("Failed to drop table:", error);
+    } finally {
+      setIsDdlLoading(false);
+    }
   }
 
   function handleTableRename(tableId: string, newName: string) {
-    console.log("Rename table:", tableId, newName);
-    setEditingTableId(undefined);
+    setTargetTableName(tableId);
+    handleRenameTable(newName);
   }
 
   function handleBulkAction(action: BulkAction) {
@@ -345,6 +404,22 @@ export function DatabaseSidebar({
           theme,
           onThemeChange: setTheme
         }}
+      />
+
+      <RenameTableDialog
+        open={showRenameDialog}
+        onOpenChange={setShowRenameDialog}
+        currentName={targetTableName}
+        onConfirm={handleRenameTable}
+        isLoading={isDdlLoading}
+      />
+
+      <DropTableDialog
+        open={showDropDialog}
+        onOpenChange={setShowDropDialog}
+        tableName={targetTableName}
+        onConfirm={handleDropTable}
+        isLoading={isDdlLoading}
       />
     </div>
   );
