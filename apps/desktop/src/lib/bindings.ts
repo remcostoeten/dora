@@ -48,6 +48,14 @@ async saveSqliteDb() : Promise<Result<string | null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
+async openFile(title: string | null) : Promise<Result<string | null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("open_file", { title }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("add_connection", { name, databaseInfo, color }) };

@@ -186,6 +186,7 @@ pub fn run() {
             window::commands::close_window,
             window::commands::open_sqlite_db,
             window::commands::save_sqlite_db,
+            window::commands::open_file,
             // Commands system
             commands_system::get_all_commands,
             commands_system::get_command,

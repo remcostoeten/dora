@@ -588,8 +588,9 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                                         </Label>
                                     </div>
 
-                                    <div className="border-t border-border/50 pt-4 mt-4 space-y-4">
-                                        <div className="flex items-center gap-2">
+                                    {formData.type === "postgres" && (
+                                        <div className="border-t border-border/50 pt-4 mt-4 space-y-4">
+                                            <div className="flex items-center gap-2">
                                             <Checkbox
                                                 id="ssh-tunnel"
                                                 checked={formData.sshConfig?.enabled}
@@ -791,7 +792,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                                                                 size="icon"
                                                                 onClick={async function () {
                                                                     try {
-                                                                        const result = await commands.openSqliteDb();
+                                                                        const result = await commands.openFile("Select SSH Private Key");
                                                                         if (result.status === "ok" && result.data) {
                                                                             setFormData(function (prev) {
                                                                                 return {
@@ -821,6 +822,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
                                             </div>
                                         )}
                                     </div>
+                                )}
                                 </>
                             )}
                         </div>
