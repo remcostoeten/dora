@@ -6,10 +6,12 @@ import { DataGrid } from "./components/data-grid";
 import { AddRecordDialog } from "./components/add-record-dialog";
 import { AddColumnDialog, ColumnFormData } from "./components/add-column-dialog";
 import { DropTableDialog } from "./components/drop-table-dialog";
+import { PendingChangesBar } from "./components/pending-changes-bar";
 import { RowDetailPanel } from "./components/row-detail-panel";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
+import { usePendingEdits } from "@/core/pending-edits";
 import { commands } from "@/lib/bindings";
 import {
     TableData,
@@ -32,6 +34,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const adapter = useAdapter();
     const { updateCell, deleteRows, insertRow } = useDataMutation();
     const { settings } = useSettings();
+    const { isDryEditMode, addEdit, getEditsForTable, getEditCount, clearEdits, hasEdits } = usePendingEdits();
+    const [isApplyingEdits, setIsApplyingEdits] = useState(false);
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [addDialogMode, setAddDialogMode] = useState<"add" | "duplicate">("add");
@@ -167,32 +171,82 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         }
     };
 
-    const handleCellEdit = async (rowIndex: number, columnName: string, newValue: unknown) => {
+    function handleCellEdit(rowIndex: number, columnName: string, newValue: unknown) {
         if (!tableId || !activeConnectionId || !tableData) return;
 
         const row = tableData.rows[rowIndex];
-        const primaryKeyColumn = tableData.columns.find(c => c.primaryKey);
+        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
         if (!primaryKeyColumn) {
             console.error("No primary key found");
             return;
         }
 
-        updateCell.mutate({
-            connectionId: activeConnectionId,
-            tableName: tableName || tableId,
-            primaryKeyColumn: primaryKeyColumn.name,
-            primaryKeyValue: row[primaryKeyColumn.name],
-            columnName,
-            newValue
-        }, {
-            onSuccess: () => {
-                loadTableData();
-            },
-            onError: (error) => {
-                console.error("Failed to update cell:", error);
+        if (isDryEditMode) {
+            addEdit(tableId, {
+                rowIndex,
+                primaryKeyColumn: primaryKeyColumn.name,
+                primaryKeyValue: row[primaryKeyColumn.name],
+                columnName,
+                oldValue: row[columnName],
+                newValue,
+            });
+            setTableData(function (prev) {
+                if (!prev) return prev;
+                const newRows = [...prev.rows];
+                newRows[rowIndex] = { ...newRows[rowIndex], [columnName]: newValue };
+                return { ...prev, rows: newRows };
+            });
+        } else {
+            updateCell.mutate({
+                connectionId: activeConnectionId,
+                tableName: tableName || tableId,
+                primaryKeyColumn: primaryKeyColumn.name,
+                primaryKeyValue: row[primaryKeyColumn.name],
+                columnName,
+                newValue
+            }, {
+                onSuccess: function () {
+                    loadTableData();
+                },
+                onError: function (error) {
+                    console.error("Failed to update cell:", error);
+                }
+            });
+        }
+    }
+
+    async function handleApplyPendingEdits() {
+        if (!activeConnectionId || !tableId) return;
+
+        const edits = getEditsForTable(tableId);
+        if (edits.length === 0) return;
+
+        setIsApplyingEdits(true);
+        try {
+            for (const edit of edits) {
+                await updateCell.mutateAsync({
+                    connectionId: activeConnectionId,
+                    tableName: tableName || tableId,
+                    primaryKeyColumn: edit.primaryKeyColumn,
+                    primaryKeyValue: edit.primaryKeyValue,
+                    columnName: edit.columnName,
+                    newValue: edit.newValue,
+                });
             }
-        });
-    };
+            clearEdits(tableId);
+            loadTableData();
+        } catch (error) {
+            console.error("Failed to apply edits:", error);
+        } finally {
+            setIsApplyingEdits(false);
+        }
+    }
+
+    function handleDiscardPendingEdits() {
+        if (!tableId) return;
+        clearEdits(tableId);
+        loadTableData();
+    }
 
     const handleBatchCellEdit = async (rowIndexes: number[], columnName: string, newValue: unknown) => {
         if (!tableId || !activeConnectionId || !tableData) return;
@@ -554,6 +608,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 columns={tableData?.columns || []}
                 visibleColumns={visibleColumns}
                 onToggleColumn={handleToggleColumn}
+                isDryEditMode={isDryEditMode}
+                onDryEditModeChange={setDryEditMode}
             />
 
             <div className="flex-1 overflow-hidden">
@@ -581,6 +637,15 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     </div>
                 )}
             </div>
+
+            {tableId && hasEdits(tableId) && (
+                <PendingChangesBar
+                    editCount={getEditCount(tableId)}
+                    isApplying={isApplyingEdits}
+                    onApply={handleApplyPendingEdits}
+                    onCancel={handleDiscardPendingEdits}
+                />
+            )}
 
             <AddRecordDialog
                 open={showAddDialog}
