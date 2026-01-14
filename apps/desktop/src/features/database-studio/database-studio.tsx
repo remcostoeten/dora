@@ -1,13 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import { Database, Plus, PanelLeft } from "lucide-react";
+import { Database, Plus, PanelLeft, Trash2, Columns } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
 import { AddRecordDialog } from "./components/add-record-dialog";
+import { AddColumnDialog, ColumnFormData } from "./components/add-column-dialog";
+import { DropTableDialog } from "./components/drop-table-dialog";
+import { PendingChangesBar } from "./components/pending-changes-bar";
 import { RowDetailPanel } from "./components/row-detail-panel";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
+import { usePendingEdits } from "@/core/pending-edits";
+import { commands } from "@/lib/bindings";
 import {
     TableData,
     PaginationState,
@@ -29,6 +34,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const adapter = useAdapter();
     const { updateCell, deleteRows, insertRow } = useDataMutation();
     const { settings } = useSettings();
+    const { isDryEditMode, setDryEditMode, addEdit, getEditsForTable, getEditCount, clearEdits, hasEdits } = usePendingEdits();
+    const [isApplyingEdits, setIsApplyingEdits] = useState(false);
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [showAddDialog, setShowAddDialog] = useState(false);
     const [addDialogMode, setAddDialogMode] = useState<"add" | "duplicate">("add");
@@ -42,6 +49,9 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const [sort, setSort] = useState<SortDescriptor | undefined>();
     const [filters, setFilters] = useState<FilterDescriptor[]>([]);
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+    const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
+    const [showDropTableDialog, setShowDropTableDialog] = useState(false);
+    const [isDdlLoading, setIsDdlLoading] = useState(false);
 
     // Default to all visible initially
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
@@ -161,32 +171,82 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         }
     };
 
-    const handleCellEdit = async (rowIndex: number, columnName: string, newValue: unknown) => {
+    function handleCellEdit(rowIndex: number, columnName: string, newValue: unknown) {
         if (!tableId || !activeConnectionId || !tableData) return;
 
         const row = tableData.rows[rowIndex];
-        const primaryKeyColumn = tableData.columns.find(c => c.primaryKey);
+        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
         if (!primaryKeyColumn) {
             console.error("No primary key found");
             return;
         }
 
-        updateCell.mutate({
-            connectionId: activeConnectionId,
-            tableName: tableName || tableId,
-            primaryKeyColumn: primaryKeyColumn.name,
-            primaryKeyValue: row[primaryKeyColumn.name],
-            columnName,
-            newValue
-        }, {
-            onSuccess: () => {
-                loadTableData();
-            },
-            onError: (error) => {
-                console.error("Failed to update cell:", error);
+        if (isDryEditMode) {
+            addEdit(tableId, {
+                rowIndex,
+                primaryKeyColumn: primaryKeyColumn.name,
+                primaryKeyValue: row[primaryKeyColumn.name],
+                columnName,
+                oldValue: row[columnName],
+                newValue,
+            });
+            setTableData(function (prev) {
+                if (!prev) return prev;
+                const newRows = [...prev.rows];
+                newRows[rowIndex] = { ...newRows[rowIndex], [columnName]: newValue };
+                return { ...prev, rows: newRows };
+            });
+        } else {
+            updateCell.mutate({
+                connectionId: activeConnectionId,
+                tableName: tableName || tableId,
+                primaryKeyColumn: primaryKeyColumn.name,
+                primaryKeyValue: row[primaryKeyColumn.name],
+                columnName,
+                newValue
+            }, {
+                onSuccess: function () {
+                    loadTableData();
+                },
+                onError: function (error) {
+                    console.error("Failed to update cell:", error);
+                }
+            });
+        }
+    }
+
+    async function handleApplyPendingEdits() {
+        if (!activeConnectionId || !tableId) return;
+
+        const edits = getEditsForTable(tableId);
+        if (edits.length === 0) return;
+
+        setIsApplyingEdits(true);
+        try {
+            for (const edit of edits) {
+                await updateCell.mutateAsync({
+                    connectionId: activeConnectionId,
+                    tableName: tableName || tableId,
+                    primaryKeyColumn: edit.primaryKeyColumn,
+                    primaryKeyValue: edit.primaryKeyValue,
+                    columnName: edit.columnName,
+                    newValue: edit.newValue,
+                });
             }
-        });
-    };
+            clearEdits(tableId);
+            loadTableData();
+        } catch (error) {
+            console.error("Failed to apply edits:", error);
+        } finally {
+            setIsApplyingEdits(false);
+        }
+    }
+
+    function handleDiscardPendingEdits() {
+        if (!tableId) return;
+        clearEdits(tableId);
+        loadTableData();
+    }
 
     const handleBatchCellEdit = async (rowIndexes: number[], columnName: string, newValue: unknown) => {
         if (!tableId || !activeConnectionId || !tableData) return;
@@ -306,6 +366,63 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         a.click();
         URL.revokeObjectURL(url);
     };
+
+function isValidDefaultValue(value: string): boolean {
+    // Allow: NULL, numbers, quoted strings, boolean
+    const pattern = /^(NULL|TRUE|FALSE|'[^']*'|\d+(\.\d+)?|CURRENT_TIMESTAMP)$/i;
+    return pattern.test(value.trim());
+}
+
+async function handleAddColumn(columnDef: ColumnFormData) {
+    if (!activeConnectionId || !tableName) return;
+
+    if (columnDef.defaultValue.trim() && !isValidDefaultValue(columnDef.defaultValue)) {
+        console.error("Invalid default value format");
+        return;
+    }
+
+    setIsDdlLoading(true);
+    try {
+        let sql = `ALTER TABLE "${tableName}" ADD COLUMN "${columnDef.name}" ${columnDef.type}`;
+        if (!columnDef.nullable) {
+            sql += " NOT NULL";
+        }
+        if (columnDef.defaultValue.trim()) {
+            sql += ` DEFAULT ${columnDef.defaultValue}`;
+        }
+
+        const result = await commands.executeBatch(activeConnectionId, [sql]);
+        if (result.status === "ok") {
+            setShowAddColumnDialog(false);
+            loadTableData();
+        } else {
+            console.error("Failed to add column:", result.error);
+        }
+    } catch (error) {
+        console.error("Failed to add column:", error);
+    } finally {
+        setIsDdlLoading(false);
+    }
+}
+
+    async function handleDropTable() {
+        if (!activeConnectionId || !tableName) return;
+
+        setIsDdlLoading(true);
+        try {
+            const sql = `DROP TABLE IF EXISTS "${tableName}"`;
+            const result = await commands.executeBatch(activeConnectionId, [sql]);
+            if (result.status === "ok") {
+                setShowDropTableDialog(false);
+            } else {
+                console.error("Failed to drop table:", result.error);
+            }
+        } catch (error) {
+            console.error("Failed to drop table:", error);
+        } finally {
+            setIsDdlLoading(false);
+        }
+    }
 
     // No connection selected
     if (!activeConnectionId) {
@@ -437,8 +554,45 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                                 ))}
                             </tbody>
                         </table>
+
+                        <div className="flex gap-2 mt-6">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={function () { setShowAddColumnDialog(true); }}
+                                className="gap-2"
+                            >
+                                <Columns className="h-4 w-4" />
+                                Add Column
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={function () { setShowDropTableDialog(true); }}
+                                className="gap-2 text-destructive hover:text-destructive"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                                Drop Table
+                            </Button>
+                        </div>
                     </div>
                 </div>
+
+                <AddColumnDialog
+                    open={showAddColumnDialog}
+                    onOpenChange={setShowAddColumnDialog}
+                    tableName={tableName || tableId}
+                    onSubmit={handleAddColumn}
+                    isLoading={isDdlLoading}
+                />
+
+                <DropTableDialog
+                    open={showDropTableDialog}
+                    onOpenChange={setShowDropTableDialog}
+                    tableName={tableName || tableId}
+                    onConfirm={handleDropTable}
+                    isLoading={isDdlLoading}
+                />
             </div>
         );
     }
@@ -465,6 +619,8 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 columns={tableData?.columns || []}
                 visibleColumns={visibleColumns}
                 onToggleColumn={handleToggleColumn}
+                isDryEditMode={isDryEditMode}
+                onDryEditModeChange={setDryEditMode}
             />
 
             <div className="flex-1 overflow-hidden">
@@ -492,6 +648,15 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     </div>
                 )}
             </div>
+
+            {tableId && hasEdits(tableId) && (
+                <PendingChangesBar
+                    editCount={getEditCount(tableId)}
+                    isApplying={isApplyingEdits}
+                    onApply={handleApplyPendingEdits}
+                    onCancel={handleDiscardPendingEdits}
+                />
+            )}
 
             <AddRecordDialog
                 open={showAddDialog}

@@ -1,4 +1,4 @@
-import { Settings, Monitor, Bell, Bug, Heart } from "lucide-react";
+import { Settings, Monitor } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { Popover, PopoverTrigger, PopoverContent } from "@/shared/ui/popover";
@@ -7,7 +7,7 @@ import { ThemePanel } from "./theme-panel";
 
 type Theme = "dark" | "light";
 
-type ToolbarAction = "settings" | "theme" | "notifications" | "bug" | "sponsor";
+type ToolbarAction = "settings" | "theme";
 
 type ToolbarItem = {
   id: ToolbarAction;
@@ -18,9 +18,6 @@ type ToolbarItem = {
 const TOOLBAR_ITEMS: ToolbarItem[] = [
   { id: "settings", icon: Settings, label: "Settings" },
   { id: "theme", icon: Monitor, label: "Toggle theme" },
-  { id: "notifications", icon: Bell, label: "Notifications" },
-  { id: "bug", icon: Bug, label: "Report a bug" },
-  { id: "sponsor", icon: Heart, label: "Support" },
 ];
 
 type Props = {

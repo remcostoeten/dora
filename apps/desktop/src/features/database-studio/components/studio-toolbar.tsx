@@ -13,7 +13,8 @@ import {
     Table,
     FileJson,
     Clock,
-    Trash2
+    Trash2,
+    Edit3
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -55,6 +56,8 @@ type Props = {
     columns?: ColumnDefinition[];
     visibleColumns?: Set<string>;
     onToggleColumn?: (columnName: string, visible: boolean) => void;
+    isDryEditMode?: boolean;
+    onDryEditModeChange?: (enabled: boolean) => void;
 };
 
 export function StudioToolbar({
@@ -76,6 +79,8 @@ export function StudioToolbar({
     columns = [],
     visibleColumns,
     onToggleColumn,
+    isDryEditMode,
+    onDryEditModeChange,
 }: Props) {
     const [limitInput, setLimitInput] = useState(String(pagination.limit));
     const [offsetInput, setOffsetInput] = useState(String(pagination.offset));
@@ -381,6 +386,22 @@ export function StudioToolbar({
 
                 {/* Right Section: Actions & Stats */}
                 <div className="flex items-center gap-2">
+                    {onDryEditModeChange && (
+                        <Button
+                            variant={isDryEditMode ? "secondary" : "ghost"}
+                            size="sm"
+                            className={cn(
+                                "h-7 px-2 text-xs gap-1.5",
+                                isDryEditMode && "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30"
+                            )}
+                            onClick={function () { onDryEditModeChange(!isDryEditMode); }}
+                            title={isDryEditMode ? "Disable dry edit mode" : "Enable dry edit mode (stage changes before saving)"}
+                        >
+                            <Edit3 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Dry Edit</span>
+                        </Button>
+                    )}
+
                     <Button
                         variant="default"
                         size="sm"

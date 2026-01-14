@@ -12,6 +12,11 @@ type EditingCell = {
     columnName: string;
 };
 
+type CellPosition = {
+    row: number;
+    col: number;
+};
+
 type Props = {
     columns: ColumnDefinition[];
     rows: Record<string, unknown>[];
@@ -26,6 +31,8 @@ type Props = {
     onBatchCellEdit?: (rowIndexes: number[], columnName: string, newValue: unknown) => void;
     onRowAction?: (action: RowAction, row: Record<string, unknown>, rowIndex: number) => void;
     tableName?: string;
+    selectedCells?: Set<string>;
+    onCellSelectionChange?: (cells: Set<string>) => void;
 };
 
 const MIN_COLUMN_WIDTH = 60;
@@ -44,7 +51,9 @@ export function DataGrid({
     onCellEdit,
     onBatchCellEdit,
     onRowAction,
-    tableName
+    tableName,
+    selectedCells: externalSelectedCells,
+    onCellSelectionChange
 }: Props) {
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [editValue, setEditValue] = useState<string>("");
@@ -62,6 +71,98 @@ export function DataGrid({
 
     const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
     const gridRef = useRef<HTMLTableElement>(null);
+
+    const [internalSelectedCells, setInternalSelectedCells] = useState<Set<string>>(new Set());
+    const selectedCellsSet = externalSelectedCells ?? internalSelectedCells;
+    const [anchorCell, setAnchorCell] = useState<CellPosition | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState<CellPosition | null>(null);
+
+    function updateCellSelection(cells: Set<string>) {
+        if (onCellSelectionChange) {
+            onCellSelectionChange(cells);
+        } else {
+            setInternalSelectedCells(cells);
+        }
+    }
+
+    function getCellKey(row: number, col: number): string {
+        return `${row}:${col}`;
+    }
+
+    function getCellsInRectangle(start: CellPosition, end: CellPosition): Set<string> {
+        const minRow = Math.min(start.row, end.row);
+        const maxRow = Math.max(start.row, end.row);
+        const minCol = Math.min(start.col, end.col);
+        const maxCol = Math.max(start.col, end.col);
+
+        const cells = new Set<string>();
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                cells.add(getCellKey(r, c));
+            }
+        }
+        return cells;
+    }
+
+    function handleCellMouseDown(e: React.MouseEvent, rowIndex: number, colIndex: number) {
+        if (e.button !== 0) return;
+        if (editingCell) return;
+
+        e.preventDefault();
+
+        const cellPos: CellPosition = { row: rowIndex, col: colIndex };
+
+        if (e.shiftKey && anchorCell) {
+            const rangeCells = getCellsInRectangle(anchorCell, cellPos);
+            if (e.ctrlKey || e.metaKey) {
+                const newSelection = new Set(selectedCellsSet);
+                rangeCells.forEach(function(key) { newSelection.add(key); });
+                updateCellSelection(newSelection);
+            } else {
+                updateCellSelection(rangeCells);
+            }
+        } else if (e.ctrlKey || e.metaKey) {
+            const key = getCellKey(rowIndex, colIndex);
+            const newSelection = new Set(selectedCellsSet);
+            if (newSelection.has(key)) {
+                newSelection.delete(key);
+            } else {
+                newSelection.add(key);
+            }
+            updateCellSelection(newSelection);
+            setAnchorCell(cellPos);
+        } else {
+            updateCellSelection(new Set([getCellKey(rowIndex, colIndex)]));
+            setAnchorCell(cellPos);
+            setDragStart(cellPos);
+            setIsDragging(true);
+        }
+
+        setFocusedCell(cellPos);
+    }
+
+    function handleCellMouseEnter(rowIndex: number, colIndex: number) {
+        if (!isDragging || !dragStart) return;
+
+        const cellPos: CellPosition = { row: rowIndex, col: colIndex };
+        const rangeCells = getCellsInRectangle(dragStart, cellPos);
+        updateCellSelection(rangeCells);
+    }
+
+    useEffect(function() {
+        if (!isDragging) return;
+
+        function handleMouseUp() {
+            setIsDragging(false);
+            setDragStart(null);
+        }
+
+        document.addEventListener("mouseup", handleMouseUp);
+        return function() {
+            document.removeEventListener("mouseup", handleMouseUp);
+        };
+    }, [isDragging]);
 
     useEffect(() => {
         const shouldIgnoreShortcut = (target: HTMLElement, e: KeyboardEvent): boolean => {
@@ -147,19 +248,26 @@ export function DataGrid({
         }
     };
 
-    // Get width for a column, defaulting to DEFAULT_COLUMN_WIDTH
-    const getColumnWidth = (colName: string) => {
-        return columnWidths[colName] || DEFAULT_COLUMN_WIDTH;
-    };
+    // Get width for a column, defaulting to undefined (fluid)
+    function getColumnWidth(colName: string) {
+        return columnWidths[colName];
+    }
 
     // Start resizing a column
-    const handleResizeStart = useCallback((e: React.MouseEvent, columnName: string) => {
+    const handleResizeStart = useCallback(function(e: React.MouseEvent, columnName: string) {
         e.preventDefault();
         e.stopPropagation();
 
         setResizingColumn(columnName);
         startXRef.current = e.clientX;
-        startWidthRef.current = getColumnWidth(columnName);
+        
+        const currentWidth = columnWidths[columnName];
+        if (typeof currentWidth === "number") {
+             startWidthRef.current = currentWidth;
+        } else {
+             const th = (e.target as HTMLElement).closest("th");
+             startWidthRef.current = th?.getBoundingClientRect().width ?? DEFAULT_COLUMN_WIDTH;
+        }
     }, [columnWidths]);
 
     // Handle mouse move during resize
@@ -256,22 +364,35 @@ export function DataGrid({
         const maxRow = rows.length - 1;
         const maxCol = columns.length - 1;
 
+        function moveAndMaybeSelect(newRow: number, newCol: number) {
+            const newPos: CellPosition = { row: newRow, col: newCol };
+            setFocusedCell(newPos);
+
+            if (e.shiftKey && anchorCell) {
+                const rangeCells = getCellsInRectangle(anchorCell, newPos);
+                updateCellSelection(rangeCells);
+            } else if (!e.shiftKey) {
+                setAnchorCell(newPos);
+                updateCellSelection(new Set([getCellKey(newRow, newCol)]));
+            }
+        }
+
         switch (e.key) {
             case "ArrowUp":
                 e.preventDefault();
-                if (row > 0) setFocusedCell({ row: row - 1, col });
+                if (row > 0) moveAndMaybeSelect(row - 1, col);
                 break;
             case "ArrowDown":
                 e.preventDefault();
-                if (row < maxRow) setFocusedCell({ row: row + 1, col });
+                if (row < maxRow) moveAndMaybeSelect(row + 1, col);
                 break;
             case "ArrowLeft":
                 e.preventDefault();
-                if (col > 0) setFocusedCell({ row, col: col - 1 });
+                if (col > 0) moveAndMaybeSelect(row, col - 1);
                 break;
             case "ArrowRight":
                 e.preventDefault();
-                if (col < maxCol) setFocusedCell({ row, col: col + 1 });
+                if (col < maxCol) moveAndMaybeSelect(row, col + 1);
                 break;
             case "Tab":
                 e.preventDefault();
@@ -296,13 +417,14 @@ export function DataGrid({
             case "Escape":
                 e.preventDefault();
                 setFocusedCell(null);
+                updateCellSelection(new Set());
                 break;
             case " ":
                 e.preventDefault();
                 onRowSelect(row, !selectedRows.has(row));
                 break;
         }
-    }, [focusedCell, editingCell, rows, columns, handleCellDoubleClick, onRowSelect, selectedRows]);
+    }, [focusedCell, editingCell, rows, columns, handleCellDoubleClick, onRowSelect, selectedRows, anchorCell, selectedCellsSet]);
 
     if (columns.length === 0) {
         return (
@@ -316,7 +438,7 @@ export function DataGrid({
         <ScrollArea className="h-full w-full" type="always">
             <table
                 ref={gridRef}
-                className="min-w-max text-sm border-collapse select-none"
+                className="w-full text-sm border-collapse select-none"
                 style={{ tableLayout: "fixed" }}
                 role="grid"
                 aria-label={tableName ? `Data grid for ${tableName}` : "Data grid"}
@@ -358,11 +480,11 @@ export function DataGrid({
                                 <th
                                     key={col.name}
                                     className={cn(
-                                        "text-left font-medium border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0 h-9 cursor-pointer transition-colors hover:bg-sidebar-accent relative select-none",
+                                        "text-left font-medium border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0 h-9 cursor-pointer transition-colors hover:bg-sidebar-accent relative select-none min-w-[60px]",
                                         isSorted && "bg-sidebar-accent",
                                         resizingColumn === col.name && "bg-sidebar-accent"
                                     )}
-                                    style={{ width }}
+                                    style={width ? { width } : undefined}
                                     onClick={() => handleSort(col.name)}
                                 >
                                     <div className="flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden">
@@ -443,6 +565,8 @@ export function DataGrid({
                                 {columns.map((col, colIndex) => {
                                     const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnName === col.name;
                                     const isFocused = focusedCell?.row === rowIndex && focusedCell?.col === colIndex;
+                                    const isSelected = selectedCellsSet.has(getCellKey(rowIndex, colIndex));
+                                    const width = getColumnWidth(col.name);
 
                                     return (
                                         <CellContextMenu
@@ -472,13 +596,12 @@ export function DataGrid({
                                             <td
                                                 className={cn(
                                                     "border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5",
+                                                    isSelected && !isEditing && "bg-primary/20",
                                                     isFocused && !isEditing && "outline outline-1 outline-offset-[-1px] outline-primary/60 bg-primary/5"
                                                 )}
-                                                style={{ maxWidth: getColumnWidth(col.name) }}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setFocusedCell({ row: rowIndex, col: colIndex });
-                                                }}
+                                                style={width ? { maxWidth: width } : undefined}
+                                                onMouseDown={(e) => handleCellMouseDown(e, rowIndex, colIndex)}
+                                                onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
                                                 onDoubleClick={() => handleCellDoubleClick(rowIndex, col.name, row[col.name])}
                                             >
                                                 {isEditing ? (
