@@ -1,23 +1,7 @@
 import { execSync } from "child_process";
+import readline from "readline";
 import { colors, log, logLevel, logHeader, logKeyValue } from "./_shared";
 
-// --- CLI Argument Parsing ---
-function hasFlag(flag: string): boolean {
-    return process.argv.includes(`--${flag}`) || process.argv.includes(`-${flag.charAt(0)}`);
-}
-
-function getFlagValue(flag: string): string | undefined {
-    const fullFlag = `--${flag}`;
-    const idx = process.argv.indexOf(fullFlag);
-    if (idx !== -1 && process.argv[idx + 1] && !process.argv[idx + 1].startsWith("-")) {
-        return process.argv[idx + 1];
-    }
-    // Also check for --flag=value format
-    const eqArg = process.argv.find(function (a) { return a.startsWith(fullFlag + "="); });
-    return eqArg ? eqArg.substring(fullFlag.length + 1) : undefined;
-}
-
-// --- Configuration ---
 const cliModel = getFlagValue("model");
 const CONFIG = {
     model: cliModel || process.env.OLLAMA_MODEL || "llama3",
@@ -28,7 +12,35 @@ const CONFIG = {
     get versionUrl() { return `http://${this.host}:${this.port}/api/version`; },
 };
 
-// --- Helpers ---
+async function askQuestion(query: string): Promise<string> {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+    });
+
+    return new Promise((resolve) => {
+        rl.question(`${colors.cyan}${query}${colors.reset} `, (answer) => {
+            rl.close();
+            resolve(answer);
+        });
+    });
+}
+
+function hasFlag(flag: string): boolean {
+    return process.argv.includes(`--${flag}`) || process.argv.includes(`-${flag.charAt(0)}`);
+}
+
+function getFlagValue(flag: string): string | undefined {
+    const fullFlag = `--${flag}`;
+    const idx = process.argv.indexOf(fullFlag);
+    if (idx !== -1 && process.argv[idx + 1] && !process.argv[idx + 1].startsWith("-")) {
+        return process.argv[idx + 1];
+    }
+    const eqArg = process.argv.find(function (a) { return a.startsWith(fullFlag + "="); });
+    return eqArg ? eqArg.substring(fullFlag.length + 1) : undefined;
+}
+
+
 function checkOllamaInstalled(): boolean {
     try {
         execSync("ollama --version", { stdio: "ignore" });
@@ -136,7 +148,7 @@ async function verifyModel(modelName: string) {
     }
 }
 
-// --- Diagnose Mode ---
+
 async function runDiagnose() {
     logHeader("Ollama Diagnostic Report");
 
@@ -186,9 +198,9 @@ async function runDiagnose() {
     logLevel("info", "Diagnosis complete");
 }
 
-// --- Main ---
+
 async function main() {
-    // --- Help Flag ---
+
     if (hasFlag("help") || hasFlag("h")) {
         console.log(`
 ${colors.bold}Usage:${colors.reset} bun setup:ai [options]
@@ -214,7 +226,7 @@ ${colors.bold}Popular Models:${colors.reset}
         process.exit(0);
     }
 
-    // --- Diagnose Flag ---
+
     if (hasFlag("diagnose")) {
         await runDiagnose();
         process.exit(0);
@@ -228,10 +240,24 @@ ${colors.bold}Popular Models:${colors.reset}
     if ((CONFIG.host === 'localhost' || CONFIG.host === '127.0.0.1')) {
         if (!checkOllamaInstalled()) {
             logLevel("error", "'ollama' is not installed or not in your PATH.");
-            log("Please install Ollama from https://ollama.com/download", colors.yellow);
-            process.exit(1);
+
+            const shouldInstall = await askQuestion("\nDo you want to run the automatic installation? (Requires sudo) [y/N]");
+            if (shouldInstall.toLowerCase() === 'y' || shouldInstall.toLowerCase() === 'yes') {
+                log("\nRunning: curl -fsSL https://ollama.com/install.sh | sh", colors.cyan);
+                try {
+                    execSync("curl -fsSL https://ollama.com/install.sh | sh", { stdio: "inherit" });
+                    logLevel("success", "Ollama installed successfully!");
+                } catch (e) {
+                    logLevel("error", "Installation failed.");
+                    process.exit(1);
+                }
+            } else {
+                log("Please install Ollama from https://ollama.com/download", colors.yellow);
+                process.exit(1);
+            }
+        } else {
+            logLevel("success", "Ollama is installed");
         }
-        logLevel("success", "Ollama is installed");
     }
 
     // Check if server is reachable

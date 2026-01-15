@@ -16,13 +16,13 @@ type scriptDef struct {
 var releaseScripts = []scriptDef{
 	{
 		label:       "Test API Connection",
-		description: "Verify Gemini/Ollama API is working",
+		description: "Verify LLM Providers (Gemini/Groq/Ollama)",
 		command:     "bun",
 		args:        []string{"run", "tools/scripts/generate-release.ts", "--test"},
 	},
 	{
 		label:       "List Available Models",
-		description: "Show available Gemini models",
+		description: "Show available models (Gemini only)",
 		command:     "bun",
 		args:        []string{"run", "tools/scripts/generate-release.ts", "--list-models"},
 	},

@@ -1,72 +1,140 @@
-# Dora
-_The database explorah!_
-Dora is a native database management tool for Linux, MacOS and Windows(?) focused on accessibility and ease of use with a keyboard centered approach([*][#notice]). performance. Back-end API is fully written in Rust, data is stored locally on your machine in SQLite([#storage]) and the front-end in TypeScript React utilizing Tauri for a native platform experience totalling under 10MB.
-Dora is a blazingly fast, private, and secure database management tool for Linux, MacOS, and Windows(?).  
+<div align="center">
+  <img src="dora-backgroundless.png" alt="Dora Logo" width="200" />
+  <h1>Dora</h1>
+  <p><i>The Database Explorer</i></p>
+
+  [![Rust](https://img.shields.io/badge/Rust-black?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+  [![Tauri](https://img.shields.io/badge/Tauri-24C8DB?logo=tauri&logoColor=black)](https://tauri.app/)
+  [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
+  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
+  [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)](https://github.com/remcostoeten/dora)
+
+</div>
+
+**Dora** is a high-performance, keyboard-centric database manager. Built with **Rust** and **Tauri**, it provides a native database management experience in a minimal package.
+
+> **At just ~8.5MB**, Dora is tiny compared to **pgAdmin (~400MB)** or **Beekeeper Studio (~120MB)**.
+
+> Manage connections, run queries, visualize data, and handle migrations efficiently without leaving your keyboard.
+
+### Key Features
+- **Performance**: Instant startup and negligible memory footprint (vs 100MB+ Electron apps).
+- **Keyboard-Centric**: Optimized for efficiency; navigate and query without a mouse.
+- **Local & Private**
+100% offline SQLite storage with no telemetry or cloud dependencies.
+- **Cross-Platform**: Native support for Linux, macOS, and Windows.
 
 ## Download
-Dora is natively available for Linux, MacOS and Windows(?) and offers building from source as well as the compiled release through the [releases](https://github.com/remco-stoeten/dora/releases) page or via common package managers.
-
+Dora is natively available for Linux, MacOS and Windows(?) and offers building from source as well as the compiled release through the [releases](https://github.com/remcostoeten/dora/releases) page or via common package managers.
+<small><i>Currently only linux builds are compiled, but macos and windows are supported.</i></small>
 ### Linux
 
-#### AppImage
+## Development & Building
 
+### Option 1: The Dora CLI (Recommended)
+Dora comes with a custom CLI tool to manage builds, releases, and databases.
+It is a single binary that works on any OS without any prerequisites. If you want to rebuild, or modify the CLI however you will need to have Go installed.
 
+1. **Running the CLI**
+    ```bash
+    // in the root directory
+    ./dora
+    ```
+    This opens an interactive menu to Run the app, Build artifacts, Generate release notes, or Manage your DB.
 
-## Latest Release: v0.0.9
+    **Example Output:**
+    ```text
+    ╭───────────────────────────────────────────────╮
+    │  DORA DEVELOPMENT CONSOLE           v0.0.9    │
+    ╰───────────────────────────────────────────────╯
+    > Run all
+      Run app...
+      Build all
+      Build specific platform...
+      Run compiled builds...
+      Install Build (.deb)...
+      Uninstall Dora...
+      Reinstall Build (.deb)...
+      Check Build Sizes
+      Database Management...
+      ─────────────────────────
+      Release Notes...
+      AI Setup...
+      Update/Rebuild Runner
+      ─────────────────────────
+      Visit GitHub Repo
+      Go to Releases
+    
+    [↑/↓] Move • [Enter] Select • [Esc] Back • [q] Quit
+    ```
 
-**[Read Release Notes](RELEASE_NOTES.md)**
+2. **Build the CLI**
+<small><i>Only needed if you want to modify the CLI</i></small>
+    ```bash
+    cd tools/dora-cli
+    go build -o ../../dora .  # Outputs binary named 'dora' to root
+    cd ../..
+    ```
+    This will output a binary named 'dora' to the root directory.
 
-- **New:** Changelog Panel, Undo/Redo, Editor Themes, DDL Support.
-- **Downloads (Linux):**
-  - [AppImage](apps/desktop/src-tauri/target/release/bundle/appimage/Dora_0.0.9_amd64.AppImage)
-  - [DEB](apps/desktop/src-tauri/target/release/bundle/deb/Dora_0.0.9_amd64.deb)
-  - [RPM](apps/desktop/src-tauri/target/release/bundle/rpm/Dora-0.0.9-1.x86_64.rpm)
+### Option 2: Manual Setup
+If you prefer standard tools, you can run Dora directly. I recommend **Bun** (or pnpm).
 
-## Roadmap & Goal
+```bash
+# Install dependencies
+bun install
 
-Dora aims to provide a desktop database tool so fast and intuitive that managing your databases feels effortless. Features include encrypted storage of connection strings, intelligent auto-filling, typo detection, and simplified connection flows. Our goal is to make connecting and interacting with your databases seamless.
+# Run web view (No database connection, purely frontned mock view stored in memory)
+bun run dev
 
-### Connecting
+# Run Desktop App (Dev Mode)
+bun run tauri dev
 
-- Save multiple hosts securely and encrypted  
-- Quick test & connect to PostgreSQL and SQLite  
-- Connection history for instant recall  
-- Auto-fill connection forms on paste (e.g., `ctrl + v`)  
-- Automatic stripping of prefixes (`DATABASE_URL=`)  
-- Detect minor typos in connection strings (`postttgr...` → `postgres`)  
+# Build React (Vite / Rolldown)
+bun run build
 
-### Once Connected
+# Build for Production
+bun run tauri build
+```
 
-- Spreadsheet-style data view  
-- Inline filtering (ascending/descending, newest/oldest, size)  
-- Advanced GUI search that generates SQL queries without manual writing  
-- Inline editing of records  
-  - Edit history tracking  
-  - Undo (`Ctrl + Z`) support  
-  - Default dry-run mode for safe editing  
+## Features (Early Beta)
 
-### Querying & Management
+Dora is in active development. Below is a list of implemented features available in the current build.
 
-- Full query runner with autocomplete and LSP support  
-- Query history and templates  
-- Smart autocorrect and syntax helper  
-- Safety warnings for destructive operations  
-- Save and reuse frequently used queries  
-- Export partials, or full data in various formats (SQL, JSON, Fax)
+| Category | Feature | Status | Description |
+| :--- | :--- | :---: | :--- |
+| **Connectivity** | **Connection Manager** | Done | Save, pin, and organize database connections. |
+| | **SSH Tunneling** | Done | Securely connect via SSH tunnels with key support. |
+| | **History** | Done | Track recent connections for quick access. |
+| **Data Studio** | **Spreadsheet View** | Done | Multi-cell selection, drag-select for rows/cols. |
+| | **Context Menu** | Done | Right-click to duplicate, delete, or export (JSON/CSV/SQL). |
+| | **Mutation History** | Done | Local undo/redo stack for data changes. |
+| | **Soft Delete** | Done | Mark rows as deleted without removal (recoverable). |
+| **Querying** | **Drizzle Query Runner** | Done | Custom **Drizzle LSP** for flawless autocompletion. |
+| | **Performance Stats** | Done | Accurate query duration and execution timing. |
+| | **Snippets** | WIP | Save/Delete scripts (Creation logic WIP). |
+| | **Visual Builder** | WIP | Drag-and-drop query building (In Progress). |
+| **Schema** | **Schema Export** | Done | Export schema as SQL or **Drizzle ORM** definitions. |
+| | **Inspector** | Done | View tables, keys, indices, and DDL. |
+| **Tools** | **Command Palette** | Done | Keyboard-driven command menu (`Ctrl/Cmd + K`). |
+| | **Custom Shortcuts** | WIP | Module ready, remapper UI under construction. |
 
-### Post minimal MVP
+## Roadmap & Under Construction
 
-- Implement LibSQL (turso)
-- Advanced query runner with LSP-based autocomplete and safety checks  
-- Performance optimizations for large datasets  
-- See if we can retrieve metrics
-- AI helper in the query tools
+| Feature | Status | details |
+| :--- | :---: | :--- |
+| **Microsoft SQL Server** | WIP | Initial implementation started. |
+| **Prisma Support** | Planned | Full LSP Query Runner, Snippets, and Schema Visualizer. |
+| **Schema Converters** | Planned | Two-way conversion between **Prisma** <=> **Drizzle** schemas. |
+| **AI Schema Gen** | Planned | AI-assisted schema creation and migration generation. |
+| **NoSQL Support** | Planned | MongoDB, Firebase (Planned). |
+| **Cloud Providers** | Planned | Amazon RDS, Azure, Cloudflare D1. |
+| **Detailed Metrics** | WIP | Database size, table stats, detailed storage analysis. |
+| **Docker Tools** | Planned | Container inspector & `docker-compose.yml` generator for DBs. |
+| **Snippet Folders** | Planned | Organizing scripts into folders (File system/Storage). |
 
-and much more
+> **Legend**: Done | WIP (Work in Progress) | Planned
 
-xxx
-
-_Remco Stoeten_
 
 ## License
 This project is licensed under the GNU General Public License v3.0 (GPL-3). See the [LICENSE](LICENSE) file for details.

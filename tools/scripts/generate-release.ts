@@ -6,7 +6,7 @@ import readline from "readline";
 import { Database } from "sqlite3";
 import { colors, log, logLevel, logHeader, logKeyValue } from "./_shared";
 
-// --- CLI Argument Parsing ---
+
 function hasFlag(flag: string): boolean {
     return process.argv.includes(`--${flag}`) || process.argv.includes(`-${flag.charAt(0)}`);
 }
@@ -17,7 +17,6 @@ function getFlagValue(flag: string): string | undefined {
     return arg ? arg.substring(fullFlag.length) : undefined;
 }
 
-// --- App Storage Integration ---
 function getApiKeyFromStorage(): Promise<string | undefined> {
     return new Promise((resolve) => {
         const dbPath = path.join(process.cwd(), "apps/desktop/src-tauri/data/dora.db"); // Assuming default location
@@ -27,7 +26,6 @@ function getApiKeyFromStorage(): Promise<string | undefined> {
             path.join(process.cwd(), "dora.db"),
             path.join(process.env.HOME || "", ".config/dora/dora.db")
         ];
-
         // Find first existing db
         const validPath = paths.find(fs.existsSync);
 
@@ -58,14 +56,15 @@ const CONFIG = {
     apiKey: process.env.GEMINI_API_KEY,
     geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
     ollamaModel: process.env.OLLAMA_MODEL || "llama3",
-    provider: (process.env.LLM_PROVIDER || "gemini") as "gemini" | "ollama",
+    groqApiKey: process.env.GROQ_API_KEY,
+    groqModel: process.env.GROQ_MODEL || "llama-3.3-70b-versatile", // Fast, good defaults
+    provider: (process.env.LLM_PROVIDER || "gemini") as string,
     ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434/api/generate",
     packageJsonPath: path.join(process.cwd(), "apps/desktop/package.json"),
-    releaseNotesPath: path.join(process.cwd(), "RELEASE_NOTES.md"),
+    releaseNotesPath: path.join(process.cwd(), "docs/RELEASE_NOTES.md"),
     changelogPath: path.join(process.cwd(), "CHANGELOG.md"),
 };
 
-// --- Version Bumping ---
 function bumpVersion(version: string, type: "major" | "minor" | "patch"): string {
     const parts = version.split(".").map(Number);
     if (parts.length !== 3 || parts.some(isNaN)) {
@@ -120,8 +119,6 @@ function getCurrentVersion(): string {
     }
 }
 
-// --- Interaction ---
-
 async function askQuestion(query: string): Promise<string> {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -142,7 +139,7 @@ You are an expert release manager. Analyze the git commits and generate structur
 <output_format>
 You MUST respond with ONLY valid JSON in this exact structure:
 {
-  "releaseNotes": "# Version X.X.X\n\n## Features\n- Feature description\n\n## Bug Fixes\n- Fix description\n\n## Other Changes\n- Other changes",
+  "releaseNotes": "# Version X.X.X\\n\\n## Features\\n- Feature description\\n\\n## Bug Fixes\\n- Fix description\\n\\n## Other Changes\\n- Other changes",
   "changelogEntry": {
     "title": "Short catchy title (max 50 chars)",
     "description": "One sentence summary describing the main changes.",
@@ -160,14 +157,16 @@ You MUST respond with ONLY valid JSON in this exact structure:
    - "fix" = mostly bug fixes
    - "refactor" = mostly code improvements
    - "breaking" = contains breaking changes
-5. The title should be catchy and marketing-friendly
+5. The title should be professional and technical (e.g., "SSH Tunneling & CLI Update")
 6. Remove merge commits and trivial changes from the notes
 7. DO NOT include any text outside the JSON structure
+8. CRITICAL: NO EMOJIS. Use plain text only (e.g., "Done", "Fixed" instead of icons).
+9. CRITICAL: Professional tone. No "marketing fluff" or "catchy" language.
 </rules>
 
 <example_output>
 {
-  "releaseNotes": "# Version 1.2.0\n\n## Features\n- Added dark mode support with system preference detection\n- New keyboard shortcuts for power users\n\n## Bug Fixes\n- Fixed crash when opening large databases\n- Resolved memory leak in query editor\n\n## Other Changes\n- Improved startup performance by 40%",
+  "releaseNotes": "# Version 1.2.0\\n\\n## Features\\n- Added dark mode support with system preference detection\\n- New keyboard shortcuts for power users\\n\\n## Bug Fixes\\n- Fixed crash when opening large databases\\n- Resolved memory leak in query editor\\n\\n## Other Changes\\n- Improved startup performance by 40%",
   "changelogEntry": {
     "title": "Dark Mode & Performance Boost",
     "description": "This release adds dark mode support and significantly improves startup performance.",
@@ -176,8 +175,6 @@ You MUST respond with ONLY valid JSON in this exact structure:
 }
 </example_output>
 `;
-
-// --- LLM Providers ---
 
 async function listGeminiModels() {
     if (!CONFIG.apiKey) {
@@ -199,7 +196,6 @@ async function listGeminiModels() {
     }
 }
 
-
 function cleanJson(text: string): string {
     // Remove markdown code blocks if present
     let cleaned = text.replace(/^```json\s*/, "").replace(/\s*```$/, "");
@@ -210,6 +206,56 @@ function cleanJson(text: string): string {
         cleaned = cleaned.substring(firstBrace, lastBrace + 1);
     }
     return cleaned;
+}
+
+async function generateWithGroq(prompt: string): Promise<string> {
+    if (!CONFIG.groqApiKey) {
+        throw new Error("GROQ_API_KEY is not set.");
+    }
+
+    if (process.argv.includes("--test-only") || process.argv.includes("--test")) {
+        const body = {
+            messages: [{ role: "user", content: "Test connection. Reply with 'OK'." }],
+            model: CONFIG.groqModel
+        };
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${CONFIG.groqApiKey}`
+            },
+            body: JSON.stringify(body),
+        });
+        if (!response.ok) throw new Error(`Groq Error: ${response.statusText}`);
+        const data = await response.json() as any;
+        return data.choices[0].message.content;
+    }
+
+    const body = {
+        messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: prompt }
+        ],
+        model: CONFIG.groqModel,
+        response_format: { type: "json_object" }
+    };
+
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${CONFIG.groqApiKey}`
+        },
+        body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Groq Error: ${response.statusText} - ${err}`);
+    }
+
+    const data = await response.json() as any;
+    return cleanJson(data.choices[0].message.content);
 }
 
 async function generateWithGemini(prompt: string): Promise<string> {
@@ -269,8 +315,6 @@ async function generateWithOllama(prompt: string): Promise<string> {
     return cleanJson(data.response);
 }
 
-// --- Main ---
-
 async function main() {
     const isDryRun = hasFlag("dry-run");
     const versionBumpType = getFlagValue("version-bump") as "major" | "minor" | "patch" | undefined;
@@ -290,30 +334,34 @@ ${colors.bold}Options:${colors.reset}
 ${colors.bold}Environment Variables:${colors.reset}
   GEMINI_API_KEY   Your Google Gemini API key
   GEMINI_MODEL     Model name (default: gemini-2.0-flash)
-  LLM_PROVIDER     'gemini' or 'ollama' (default: gemini)
+  GROQ_API_KEY      Your Groq API key
+  GROQ_MODEL        Model name (default: llama3-70b-8192)
+  LLM_PROVIDER     'gemini', 'ollama', or 'groq' (default: gemini)
   OLLAMA_MODEL     Ollama model name (default: llama3)
 
 ${colors.bold}Examples:${colors.reset}
   bun release:gen --test               # Test API connection
   bun release:gen --dry-run            # Preview without saving
-  bun release:gen --version-bump=patch # Bump patch version and generate
+  LLM_PROVIDER=groq bun release:gen    # Use Groq
         `);
         process.exit(0);
     }
 
-    // --- Early API Key Validation ---
-    if (CONFIG.provider === "gemini" && !CONFIG.apiKey) {
+
+    const providers = CONFIG.provider.split(",").map(p => p.trim().toLowerCase());
+    if (providers.includes("gemini") && !CONFIG.apiKey) {
         log("Checking app storage for API key...", colors.blue);
         const storedKey = await getApiKeyFromStorage();
         if (storedKey) {
             CONFIG.apiKey = storedKey;
-            logLevel("success", "Found API key in app database!");
+            logLevel("success", "Found Gemini API key in app database!");
         } else {
-            logLevel("error", "GEMINI_API_KEY is not set and not found in app storage.");
-            log("Set it in your environment or create a .env file.", colors.yellow);
-            log("See: tools/scripts/.env.example", colors.cyan);
-            process.exit(1);
+            logLevel("warning", "GEMINI_API_KEY is not set. Gemini provider may fail.");
         }
+    }
+
+    if (providers.includes("groq") && !CONFIG.groqApiKey) {
+        logLevel("warning", "GROQ_API_KEY is not set. Groq provider may fail.");
     }
 
     if (hasFlag("list-models")) {
@@ -324,29 +372,33 @@ ${colors.bold}Examples:${colors.reset}
     logKeyValue("Provider", CONFIG.provider.toUpperCase());
     if (CONFIG.provider === 'gemini') logKeyValue("Model", CONFIG.geminiModel);
     if (CONFIG.provider === 'ollama') logKeyValue("Model", CONFIG.ollamaModel);
+    if (CONFIG.provider === 'groq') logKeyValue("Model", CONFIG.groqModel);
     if (isDryRun) log("\n⚠️  DRY RUN MODE - No files will be modified\n", colors.yellow);
 
-    // --- API Key / Connection Test ---
+
     if (hasFlag("test-only") || hasFlag("test")) {
-        log(`Testing ${CONFIG.provider} connection...`, colors.cyan);
-        try {
-            let response = "";
-            if (CONFIG.provider === "gemini") {
-                response = await generateWithGemini("");
-            } else {
-                response = await generateWithOllama("");
+        log(`Testing connections for: ${providers.join(", ")}`, colors.cyan);
+        for (const provider of providers) {
+            try {
+                let response = "";
+                if (provider === "gemini") {
+                    if (!CONFIG.apiKey) throw new Error("Missing API Key");
+                    response = await generateWithGemini("");
+                } else if (provider === "groq") {
+                    if (!CONFIG.groqApiKey) throw new Error("Missing API Key");
+                    response = await generateWithGroq("");
+                } else if (provider === "ollama") {
+                    response = await generateWithOllama("");
+                }
+                logLevel("success", `${provider}: SUCCESS`);
+            } catch (error) {
+                logLevel("error", `${provider}: FAILED - ${error instanceof Error ? error.message : String(error)}`);
             }
-            logLevel("success", "Verification: SUCCESS");
-            log(`Response: ${response}`, colors.reset);
-            process.exit(0);
-        } catch (error) {
-            logLevel("error", "Verification: FAILED");
-            console.error(error);
-            process.exit(1);
         }
+        process.exit(0);
     }
 
-    // --- Version Bump ---
+
     let currentVersion = getCurrentVersion();
     if (versionBumpType) {
         if (!["major", "minor", "patch"].includes(versionBumpType)) {
@@ -381,14 +433,43 @@ ${colors.bold}Examples:${colors.reset}
   `;
 
     try {
+        const providers = CONFIG.provider.split(",").map(p => p.trim().toLowerCase()) as ("gemini" | "ollama" | "groq")[];
         let textResult = "";
+        let success = false;
+        let lastError = null;
 
-        if (CONFIG.provider === "gemini") {
-            textResult = await generateWithGemini(prompt);
-        } else if (CONFIG.provider === "ollama") {
-            textResult = await generateWithOllama(prompt);
-        } else {
-            throw new Error(`Unknown provider: ${CONFIG.provider}`);
+        for (const provider of providers) {
+            if (!["gemini", "ollama", "groq"].includes(provider)) {
+                logLevel("warning", `Unknown provider in list: ${provider}`);
+                continue;
+            }
+
+            // Skip checks if we know it will fail (e.g. key missing)
+            // But we already did early validation for single provider. For list, we might have skipped it.
+            if (provider === "gemini" && !CONFIG.apiKey) continue;
+            if (provider === "groq" && !CONFIG.groqApiKey) continue;
+
+            logLevel("info", `Attempting generation with: ${provider.toUpperCase()}`);
+            try {
+                if (provider === "gemini") {
+                    textResult = await generateWithGemini(prompt);
+                } else if (provider === "ollama") {
+                    textResult = await generateWithOllama(prompt);
+                } else if (provider === "groq") {
+                    textResult = await generateWithGroq(prompt);
+                }
+                success = true;
+                break; // Stop on success
+            } catch (error) {
+                logLevel("warning", `Failed with ${provider}: ${error instanceof Error ? error.message : String(error)}`);
+                lastError = error;
+            }
+        }
+
+        if (!success) {
+            logLevel("error", "All providers failed.");
+            if (lastError) console.error(lastError);
+            return;
         }
 
         let data;
@@ -425,7 +506,7 @@ ${colors.bold}Examples:${colors.reset}
             logLevel("warning", "Skipped saving files.");
         }
 
-        // --- Build Executables ---
+
         if (process.argv.includes("--build")) {
             const build = await askQuestion("\nDo you want to build the executables now? (y/N)");
             if (build.toLowerCase() === 'y') {

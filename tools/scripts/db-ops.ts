@@ -3,7 +3,7 @@ import path from "path";
 import { execSync } from "child_process";
 import { colors, log, logLevel, logHeader, logKeyValue } from "./_shared";
 
-// --- Configuration ---
+
 const DB_PATHS = [
     path.join(process.cwd(), "apps/desktop/src-tauri/data/dora.db"),
     path.join(process.cwd(), "dora.db"),
@@ -12,7 +12,7 @@ const DB_PATHS = [
 
 const BACKUP_DIR = path.join(process.cwd(), "backups");
 
-// --- Helpers ---
+
 function findDbPath(): string | undefined {
     return DB_PATHS.find(fs.existsSync);
 }
@@ -27,7 +27,7 @@ function getTimestamp(): string {
     return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-// --- commands ---
+
 
 function backup() {
     logHeader("Database Backup");
@@ -129,7 +129,7 @@ function introspect() {
     }
 }
 
-// --- Main ---
+
 const args = process.argv.slice(2);
 
 if (args.includes("--backup")) backup();

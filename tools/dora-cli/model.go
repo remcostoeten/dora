@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
@@ -35,12 +36,17 @@ const (
 	sectionRunApp
 	sectionBuildPlatform
 	sectionBuilds
+	sectionInstallBuild  // Now "Install Fresh"
+	sectionUninstall     // NEW
+	sectionReinstall     // NEW (Old Install Build logic)
 	sectionCheckSizes
 	sectionDatabase
 	sectionRelease
 	sectionAISetup
 	sectionPickVersion
 	sectionPickModel
+	sectionGitHub
+	sectionReleases
 )
 
 type model struct {
@@ -85,17 +91,23 @@ func initialModel() model {
 
 	return model{
 		mainMenu: []string{
-			"[1] Run all",
-			"[2] Run app...",
-			"[3] Build all",
-			"[4] Build specific platform...",
-			"[5] Run compiled builds...",
-			"[6] Check Build Sizes",
-			"[7] Database Management...",
+			"Run all",
+			"Run app...",
+			"Build all",
+			"Build specific platform...",
+			"Run compiled builds...",
+			"Install Build (.deb)...",
+			"Uninstall Dora...",
+			"Reinstall Build (.deb)...",
+			"Check Build Sizes",
+			"Database Management...",
 			"─────────────────────────",
-			"[8] Release Notes...",
-			"[9] AI Setup...",
-			"[10] Update/Rebuild Runner",
+			"Release Notes...",
+			"AI Setup...",
+			"Update/Rebuild Runner",
+			"─────────────────────────",
+			"Visit GitHub Repo",
+			"Go to Releases",
 		},
 		spinner: s,
 		currentSection: sectionMain,
@@ -136,7 +148,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.outputCmd = "Command finished successfully."
 		}
-		return m, tea.Quit
+		return m, nil
 
 	case spinner.TickMsg:
 		var cmd tea.Cmd
@@ -161,7 +173,7 @@ func (m model) moveCursorUp() model {
 		if m.subCursor > 0 {
 			m.subCursor--
 		}
-	case sectionBuilds, sectionCheckSizes:
+	case sectionBuilds, sectionCheckSizes, sectionInstallBuild, sectionReinstall:
 		if m.buildCursor > 0 {
 			m.buildCursor--
 		}
@@ -191,7 +203,7 @@ func (m model) moveCursorDown() model {
 		if m.subCursor < len(m.subMenu)-1 {
 			m.subCursor++
 		}
-	case sectionBuilds, sectionCheckSizes:
+	case sectionBuilds, sectionCheckSizes, sectionInstallBuild, sectionReinstall:
 		if m.buildCursor < len(m.buildFiles)-1 {
 			m.buildCursor++
 		}
@@ -228,11 +240,13 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 		switch m.cursor {
 		case 0: // Run all
 			return m, executeCommand("bun", "run", "turbo", "dev")
-		case 1: // Run app...
+		// Run app...
+		case 1:
 			m.currentSection = sectionRunApp
 			m.inSubmenu = true
 			m.subMenuTitle = "Select App to Run"
 			m.subCursor = 0
+			// Use the scripts defined in root package.json
 			m.subMenu = []subdir{
 				{label: "Desktop (Tauri)", command: "bun", args: []string{"run", "desktop:dev"}},
 				{label: "Docs (Next.js)", command: "bun", args: []string{"run", "docs:dev"}},
@@ -245,39 +259,83 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			m.inSubmenu = true
 			m.subMenuTitle = "Select Build Platform"
 			m.subCursor = 0
+			// Use desktop:build script from root, or explicit tauri build
+			// Note: desktop:build is "bun --cwd apps/desktop run tauri build"
 			m.subMenu = []subdir{
-				{label: "AppImage", command: "bun", args: []string{"run", "tauri", "build", "--", "--bundles", "appimage"}},
-				{label: "Debian (.deb)", command: "bun", args: []string{"run", "tauri", "build", "--", "--bundles", "deb"}},
-				{label: "RedHat (.rpm)", command: "bun", args: []string{"run", "tauri", "build", "--", "--bundles", "rpm"}},
+				{label: "AppImage", command: "bun", args: []string{"run", "desktop:build", "--", "--bundles", "appimage"}},
+				{label: "Debian (.deb)", command: "bun", args: []string{"run", "desktop:build", "--", "--bundles", "deb"}},
+				{label: "RedHat (.rpm)", command: "bun", args: []string{"run", "desktop:build", "--", "--bundles", "rpm"}},
 			}
 		case 4: // Run compiled...
 			m.currentSection = sectionBuilds
 			m.viewingBuilds = true
-			m.buildFiles = findBuilds()
+			m.buildFiles = findBuilds("exec")
 			m.buildCursor = 0
-		case 5: // Check Build Sizes
+		case 5: // Install Build (Fresh)
+			m.currentSection = sectionInstallBuild
+			m.viewingBuilds = true
+			m.buildFiles = findBuilds("deb")
+			m.buildCursor = 0
+		case 6: // Uninstall
+			// Direct action, but maybe confirm? For TUI simplicity, just run command.
+			cmd := "if dpkg -l | grep -q dora; then echo 'Uninstalling...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora; else echo 'Dora is not installed.'; fi"
+			return m, executeCommand("bash", "-c", cmd)
+		case 7: // Reinstall (Uninstall + Install)
+			m.currentSection = sectionReinstall
+			m.viewingBuilds = true
+			m.buildFiles = findBuilds("deb")
+			m.buildCursor = 0
+		case 8: // Check Build Sizes
 			m.currentSection = sectionCheckSizes
-			m.buildFiles = findBuilds()
+			m.buildFiles = findBuilds("all")
 			m.buildCursor = 0
-		case 6: // Separator - skip
-			return m, nil
-		case 7: // Database Management
+		case 9: // Database Management
 			m.currentSection = sectionDatabase
 			m.scriptTitle = "Database Management"
 			m.scriptMenu = dbScripts
 			m.scriptCursor = 0
-		case 8: // Release Notes...
+		case 10: // Separator - skip
+			return m, nil
+		case 11: // Release Notes...
 			m.currentSection = sectionRelease
 			m.scriptTitle = "Release Notes"
 			m.scriptMenu = releaseScripts
 			m.scriptCursor = 0
-		case 9: // AI Setup...
+		case 12: // AI Setup...
 			m.currentSection = sectionAISetup
 			m.scriptTitle = "AI Setup (Ollama)"
 			m.scriptMenu = aiSetupScripts
 			m.scriptCursor = 0
-		case 10: // Rebuild Runner
-			return m, executeCommand("bash", "-c", "if [ -d tools/dora-cli ]; then cd tools/dora-cli; fi; go build -o ../../dora-runner .")
+		case 13: // Rebuild Runner
+			rebuildScript := `
+if ! command -v go &> /dev/null; then
+    echo "Error: Go is not installed or not in PATH."
+    echo ""
+    echo "To install Go:"
+    echo "  - Arch/Manjaro: sudo pacman -S go"
+    echo "  - Ubuntu/Debian: sudo apt install golang-go"
+    echo "  - macOS: brew install go"
+    echo "  - Or visit: https://go.dev/dl/"
+    exit 1
+fi
+
+if [ -d tools/dora-cli ]; then
+    cd tools/dora-cli
+fi
+
+echo "Building dora-runner..."
+go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Build failed."
+`
+			return m, executeCommand("bash", "-c", rebuildScript)
+		case 14: // Separator - skip
+ 			return m, nil
+		case 15: // GitHub Repo
+			// Use xdg-open for Linux, open for Mac. 
+			// Since we know user is on Linux (deb files), xdg-open is safe bet.
+			// Or just "bun open <url>" if we have open package? No, keep it simple.
+			return m, executeCommand("xdg-open", "https://github.com/remcostoeten/dora")
+		case 16: // Releases
+			return m, executeCommand("xdg-open", "https://github.com/remcostoeten/dora/releases")
 		}
 
 	case sectionRunApp, sectionBuildPlatform:
@@ -289,8 +347,35 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			file := m.buildFiles[m.buildCursor]
 			return m, executeCommand(file.Path)
 		}
+	
+	case sectionInstallBuild:
+		if len(m.buildFiles) > 0 {
+			file := m.buildFiles[m.buildCursor]
+			// Fresh install: Check if installed first to avoid conflict? Or just dpkg -i directly?
+			// User asked for "Install" (implying fresh) vs "Uninstall" vs "Reinstall".
+			// "Install" usually implies just putting it there. If it's already there, dpkg -i upgrades/replaces it anyway.
+			// But user might want to know. 
+			// I'll assume standard dpkg -i behavior for "Install".
+			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Name, file.Path)
+			return m, executeCommand("bash", "-c", cmd)
+		}
 
-	case sectionRelease, sectionAISetup:
+	case sectionReinstall:
+		if len(m.buildFiles) > 0 {
+			file := m.buildFiles[m.buildCursor]
+			// Full nuke and pave
+			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Uninstalling...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora || true; echo 'Installing new version...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Path)
+			return m, executeCommand("bash", "-c", cmd)
+		}
+		if len(m.buildFiles) > 0 {
+			file := m.buildFiles[m.buildCursor]
+			// Uninstall old 'dora' and install new .deb
+			// Requires sudo
+			cmd := fmt.Sprintf("echo 'Refreshing sudo credentials...'; sudo -v; echo 'Uninstalling old Dora...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora || true; echo 'Installing new version...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Path)
+			return m, executeCommand("bash", "-c", cmd)
+		}
+
+	case sectionRelease, sectionAISetup, sectionDatabase:
 		script := m.scriptMenu[m.scriptCursor]
 		if script.needsInput {
 			m.pendingScript = &script
@@ -334,7 +419,40 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 type execFinishedMsg struct{ err error }
 
 func executeCommand(name string, args ...string) tea.Cmd {
-	return tea.ExecProcess(exec.Command(name, args...), func(err error) tea.Msg {
+	// Find project root by looking for package.json
+	// This ensures we always run commands from the root, regardless of where the binary is
+	rootDir, err := os.Getwd()
+	if err == nil {
+		for {
+			if _, err := os.Stat(filepath.Join(rootDir, "package.json")); err == nil {
+				break
+			}
+			parent := filepath.Dir(rootDir)
+			if parent == rootDir {
+				// Hit root of filesystem, fallback to original CWD or hardcoded assumption
+				// But let's check one specific typical case: tools/dora-cli -> ../../
+				if strings.HasSuffix(rootDir, "tools/dora-cli") {
+					rootDir = filepath.Join(rootDir, "../..")
+				}
+				break
+			}
+			rootDir = parent
+		}
+	}
+
+	// Wrap command in bash to ensure we pause in the foreground terminal
+	// And explicitely CD to rootDir before running
+	var commandStr string
+	if name == "bun" || name == "go" || name == "git" {
+		commandStr = fmt.Sprintf("cd %s && %s %s", rootDir, name, strings.Join(args, " "))
+	} else {
+		// For absolute paths (like running a build artifact), don't change dir or let it handle it
+		commandStr = fmt.Sprintf("%s %s", name, strings.Join(args, " "))
+	}
+
+	wrapperArgs := []string{"-c", fmt.Sprintf(`echo "Working Directory: %s"; %s; echo; read -rs -p "Press Enter to return to menu..."`, rootDir, commandStr)}
+	
+	return tea.ExecProcess(exec.Command("bash", wrapperArgs...), func(err error) tea.Msg {
 		return execFinishedMsg{err}
 	})
 }
@@ -352,9 +470,10 @@ func formatBytes(bytes int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
-func findBuilds() []buildFile {
+func findBuilds(mode string) []buildFile {
 	var files []buildFile
 	
+	// ... (path resolution same as before)
 	// Try to resolve the correct path based on CWD
 	// 1. From root (production runner)
 	pathFromRoot := "apps/desktop/src-tauri/target/release/bundle"
@@ -374,7 +493,17 @@ func findBuilds() []buildFile {
 		}
 		if !d.IsDir() {
 			ext := strings.ToLower(filepath.Ext(path))
-			if ext == ".appimage" || ext == ".deb" || ext == ".rpm" {
+			isValid := false
+			
+			if mode == "exec" {
+				if ext == ".appimage" { isValid = true }
+			} else if mode == "deb" {
+				if ext == ".deb" { isValid = true }
+			} else { // "all"
+				if ext == ".appimage" || ext == ".deb" || ext == ".rpm" { isValid = true }
+			}
+
+			if isValid {
 				info, _ := d.Info()
 				files = append(files, buildFile{
 					Name:    d.Name(),
@@ -387,8 +516,8 @@ func findBuilds() []buildFile {
 		}
 		return nil
 	})
-
-	// Sort by newest first
+	
+	// ... sort ...
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].ModTime.After(files[j].ModTime)
 	})
