@@ -510,7 +510,10 @@ func findBuilds(mode string) []buildFile {
 			}
 
 			if isValid {
-				info, _ := d.Info()
+				info, err := d.Info()
+				if err != nil {
+					continue // Skip this file
+				}
 				files = append(files, buildFile{
 					Name:    d.Name(),
 					Path:    path,
