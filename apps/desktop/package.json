@@ -1,7 +1,7 @@
 {
   "name": "@dora/desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.91",
   "type": "module",
   "scripts": {
     "dev": "bun vite --port 1420 --strictPort",
@@ -10,9 +10,6 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri"
-  },
-  "overrides": {
-    "vite": "npm:rolldown-vite@latest"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -85,6 +82,6 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^6.0.0"
+    "vite": "npm:rolldown-vite@latest"
   }
 }

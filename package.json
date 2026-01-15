@@ -15,12 +15,16 @@
     "desktop:build": "bun --cwd apps/desktop run tauri build",
     "docs:dev": "bun --cwd apps/api-docs run dev",
     "docs:build": "bun --cwd apps/api-docs run build",
+    "release:gen": "bun tools/scripts/generate-release.ts",
+    "ai:setup": "bun tools/scripts/setup-local-ai.ts",
     "runner": "./dora-runner"
   },
   "devDependencies": {
+    "@types/sqlite3": "^5.1.0",
     "turbo": "^2.3.0"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "zustand": "^5.0.10"
   }
 }

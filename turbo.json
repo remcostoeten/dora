@@ -9,7 +9,8 @@
                 "dist/**",
                 ".next/**",
                 "src-tauri/target/**"
-            ]
+            ],
+            "filter": "!api-docs"
         },
         "dev": {
             "cache": false,

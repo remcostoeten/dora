@@ -24,6 +24,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # Local env files
+# Local env files
+.env
 .env*.local
 
 # Vercel
@@ -42,3 +44,4 @@ tmp/
 apps/dora-v2.
 apps/dora-v2/*
 .turbo
+apps/desktop/build_log.txt

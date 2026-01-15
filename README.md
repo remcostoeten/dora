@@ -1,11 +1,18 @@
 # Dora
-
 _The database explorah!_
+Dora is a native database management tool for Linux, MacOS and Windows(?) focused on accessibility and ease of use with a keyboard centered approach([*][#notice]). performance. Back-end API is fully written in Rust, data is stored locally on your machine in SQLite([#storage]) and the front-end in TypeScript React utilizing Tauri for a native platform experience totalling under 10MB.
+Dora is a blazingly fast, private, and secure database management tool for Linux, MacOS, and Windows(?).  
 
-Dora is a blazingly fast, private, and secure database management tool for Linux, MacOS, and Windows.  
-Built with Rust (Tauri 2.0), TypeScript (Next.js), and local SQLite, with optional cloud storage via LibSQL (Turso).
+## Download
+Dora is natively available for Linux, MacOS and Windows(?) and offers building from source as well as the compiled release through the [releases](https://github.com/remco-stoeten/dora/releases) page or via common package managers.
 
-## 🚀 Latest Release: v0.0.9
+### Linux
+
+#### AppImage
+
+
+
+## Latest Release: v0.0.9
 
 **[Read Release Notes](RELEASE_NOTES.md)**
 
