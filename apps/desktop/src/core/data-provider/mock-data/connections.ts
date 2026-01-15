@@ -36,4 +36,41 @@ export const MOCK_CONNECTIONS: ConnectionInfo[] = [
         color: "#3b82f6",
         sort_order: 1,
     },
+    {
+        id: "demo-analytics-003",
+        name: "Analytics Platform (PostgreSQL)",
+        connected: false,
+        database_type: {
+            Postgres: {
+                connection_string: "postgresql://analytics:password@localhost:5432/analytics",
+                ssh_config: null
+            }
+        },
+        last_connected_at: Date.now() - 86400000 * 2,
+        created_at: Date.now() - 86400000 * 90,
+        updated_at: Date.now() - 86400000 * 2,
+        pin_hash: null,
+        favorite: true,
+        color: "#8b5cf6",
+        sort_order: 2,
+    },
+    {
+        id: "demo-hr-004",
+        name: "HR System (PostgreSQL)",
+        connected: false,
+        database_type: {
+            Postgres: {
+                connection_string: "postgresql://hr:password@localhost:5432/hr",
+                ssh_config: null
+            }
+        },
+        last_connected_at: Date.now() - 86400000 * 5,
+        created_at: Date.now() - 86400000 * 120,
+        updated_at: Date.now() - 86400000 * 5,
+        pin_hash: null,
+        favorite: false,
+        color: "#f59e0b",
+        sort_order: 3,
+    },
 ];
+

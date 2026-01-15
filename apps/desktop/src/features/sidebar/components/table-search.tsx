@@ -1,4 +1,4 @@
-import { Search, Filter, RefreshCw, Plus } from "lucide-react";
+import { Search, Filter, RefreshCw } from "lucide-react";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import {
@@ -7,7 +7,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { AddMenu, AddAction } from "./add-menu";
+
 
 type FilterState = {
   showTables: boolean;
@@ -21,7 +21,7 @@ type Props = {
   filters: FilterState;
   onFiltersChange: (filters: FilterState) => void;
   onRefresh: () => void;
-  onAddAction: (action: AddAction) => void;
+
 };
 
 export function TableSearch({
@@ -30,7 +30,7 @@ export function TableSearch({
   filters,
   onFiltersChange,
   onRefresh,
-  onAddAction,
+
 }: Props) {
   return (
     <div className="flex items-center gap-1.5">
@@ -90,19 +90,7 @@ export function TableSearch({
         <RefreshCw className="h-4 w-4" />
       </Button>
 
-      <AddMenu
-        open={undefined}
-        onOpenChange={() => { }}
-        onAction={onAddAction}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
-      </AddMenu>
+
     </div>
   );
 }

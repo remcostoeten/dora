@@ -93,6 +93,31 @@ export function createTauriAdapter(): DataAdapter {
             return err(String(result.error));
         },
 
+        async getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>> {
+            // Check connection first to get dialect
+            const connResult = await commands.getConnections();
+            if (connResult.status !== "ok") {
+                return err(String(connResult.error));
+            }
+            
+            const conn = connResult.data.find(function(c) { return c.id === connectionId; });
+            if (!conn) {
+                return err("Connection not found");
+            }
+
+            // Determine dialect from DatabaseInfo
+            let dialect = "postgresql";
+            if ('SQLite' in conn.database_type) dialect = "sqlite";
+            if ('LibSQL' in conn.database_type) dialect = "sqlite";
+            
+            const result = await commands.exportSchemaSql(connectionId, dialect);
+            if (result.status === "ok") {
+                return ok(result.data);
+            }
+            return err(String(result.error));
+        },
+
+
         async fetchTableData(
             connectionId: string,
             tableName: string,

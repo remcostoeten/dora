@@ -103,6 +103,27 @@ export default function Index() {
       return;
     }
 
+    // Auto-connect for Web Demo
+    const isWebDemo = 
+        import.meta.env.MODE === 'demo' || 
+        window.location.hostname.includes('demo') || 
+        import.meta.env.VITE_IS_WEB === 'true' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1';
+
+    if (isWebDemo) {
+        const demoConn = connections.find(c => c.id === 'demo-ecommerce-001') || connections[0];
+        if (demoConn) {
+            setActiveConnectionId(demoConn.id);
+            // Switch to products table since 'categories' might not exist
+            if (selectedTableId === "categories") {
+                setSelectedTableId("products");
+                setSelectedTableName("products");
+            }
+            return;
+        }
+    }
+
     if (settings.restoreLastConnection && settings.lastConnectionId) {
       const lastConnection = connections.find(function (c) {
         return c.id === settings.lastConnectionId;
@@ -112,7 +133,7 @@ export default function Index() {
         return;
       }
     }
-  }, [isSettingsLoading, isLoading, connections, urlConnection, settings.restoreLastConnection, settings.lastConnectionId]);
+  }, [isSettingsLoading, isLoading, connections, urlConnection, settings.restoreLastConnection, settings.lastConnectionId, selectedTableId]);
 
   useEffect(function saveLastConnection() {
     if (!activeConnectionId || isSettingsLoading) return;
@@ -281,7 +302,7 @@ export default function Index() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen w-full bg-background overflow-hidden">
+      <div className="flex h-full w-full bg-background overflow-hidden">
         {isSidebarOpen && (
           <DatabaseSidebar
             activeNavId={activeNavId}
