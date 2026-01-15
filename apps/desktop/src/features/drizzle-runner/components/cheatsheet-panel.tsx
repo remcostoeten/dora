@@ -19,6 +19,7 @@ import {
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { cn } from "@/shared/utils/cn";
+import { getAllShortcuts, formatShortcut } from "@/core/shortcuts";
 
 type Snippet = {
   id: string;
@@ -121,16 +122,13 @@ const HINTS: Snippet[] = [
   },
 ];
 
-const SHORTCUTS: Shortcut[] = [
-  { key: "Ctrl/Cmd + Enter", description: "Run query" },
-  { key: "Ctrl/Cmd + S", description: "Save" },
-  { key: "Ctrl/Cmd + F", description: "Find" },
-  { key: "Ctrl/Cmd + H", description: "Replace" },
-  { key: "Ctrl/Cmd + /", description: "Toggle comment" },
-  { key: "Ctrl/Cmd + D", description: "Select next occurrence" },
-  { key: "Alt + ↑/↓", description: "Move line up/down" },
-  { key: "Ctrl/Cmd + Shift + K", description: "Delete line" },
-];
+const SHORTCUTS: Shortcut[] = getAllShortcuts().map(function({ definition }) {
+  const combo = Array.isArray(definition.combo) ? definition.combo[0] : definition.combo;
+  return {
+    key: formatShortcut(combo),
+    description: definition.description
+  };
+});
 
 const OPERATORS: Snippet[] = [
   { id: "eq", label: "Equal (eq)", code: "eq(column, value)", description: "column = value", category: "Operators" },

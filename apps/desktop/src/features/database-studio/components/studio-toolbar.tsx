@@ -398,7 +398,7 @@ export function StudioToolbar({
                             title={isDryEditMode ? "Disable dry edit mode" : "Enable dry edit mode (stage changes before saving)"}
                         >
                             <Edit3 className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Dry Edit</span>
+                            <span className="hidden sm:inline">{isDryEditMode ? "Dry Edit" : "Dry Edit"}</span>
                         </Button>
                     )}
 
