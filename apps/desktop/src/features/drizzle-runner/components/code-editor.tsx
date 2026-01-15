@@ -1,10 +1,12 @@
 import { useRef, useEffect, useState } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
+import type * as Monaco from "monaco-editor";
 import { useSetting } from "@/core/settings";
 import { generateDrizzleTypes } from "../utils/lsp-utils";
-import { SchemaTable } from "../types";
+import { SchemaColumn, SchemaTable } from "../types";
 import { loadTheme, isBuiltinTheme, MonacoTheme } from "@/core/settings/editor-themes";
 import { initVimMode } from "monaco-vim";
+import type { VimAdapterInstance } from "monaco-vim";
 
 type Props = {
     value: string;
@@ -14,15 +16,148 @@ type Props = {
     tables: SchemaTable[];
 };
 
+type EditorRef = Parameters<OnMount>[0];
+type MonacoApi = Parameters<OnMount>[1];
+type Suggestion = Monaco.languages.CompletionItem;
+type SuggestList = Monaco.languages.CompletionList;
+type TextRange = Monaco.IRange;
+type TypeKind = "number" | "string" | "boolean" | "date" | "unknown";
+
+function getTypeKind(columnType: string): TypeKind {
+    if (/int|serial|decimal|double|float|numeric|real/.test(columnType)) {
+        return "number";
+    }
+    if (/char|text|uuid|json|enum/.test(columnType)) {
+        return "string";
+    }
+    if (/bool/.test(columnType)) {
+        return "boolean";
+    }
+    if (/timestamp|date|time/.test(columnType)) {
+        return "date";
+    }
+    return "unknown";
+}
+
+function getValueSnippet(kind: TypeKind): string {
+    if (kind === "number") return "0";
+    if (kind === "string") return "\"\"";
+    if (kind === "boolean") return "false";
+    if (kind === "date") return "new Date()";
+    return "null";
+}
+
+function getTable(tables: SchemaTable[], tableName: string): SchemaTable | undefined {
+    return tables.find(function (table) {
+        return table.name === tableName;
+    });
+}
+
+function getColumn(table: SchemaTable, columnName: string): SchemaColumn | undefined {
+    return table.columns.find(function (column) {
+        return column.name === columnName;
+    });
+}
+
+function getRange(monaco: MonacoApi, model: Monaco.editor.ITextModel, position: Monaco.Position): TextRange {
+    const word = model.getWordUntilPosition(position);
+    return new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
+}
+
+function tableSnippet(table: SchemaTable): string {
+    return table.name;
+}
+
+function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
+    const columns = table.columns.filter(function (column) {
+        if (includePrimary) return true;
+        return !column.primaryKey;
+    });
+    const items = columns.map(function (column, index) {
+        const value = getValueSnippet(getTypeKind(column.type));
+        if (index === 0) {
+            return `${column.name}: \${1:${value}}`;
+        }
+        return `${column.name}: ${value}`;
+    });
+    return `{ ${items.join(", ")} }`;
+}
+
+function shouldSuggest(text: string): boolean {
+    return /[a-zA-Z0-9_.(),\s]/.test(text);
+}
+
+function getTableMatch(text: string): RegExpMatchArray | null {
+    return text.match(/\b([a-zA-Z_][\w]*)\.$/);
+}
+
+function getDbName(text: string): "db" | "tx" | null {
+    const match = text.match(/\b(db|tx)\.[\w]*$/);
+    if (!match) return null;
+    if (match[1] === "tx") return "tx";
+    return "db";
+}
+
+function getColumnMatch(text: string): RegExpMatchArray | null {
+    return text.match(/\b([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\.$/);
+}
+
+function getValueMatch(text: string): RegExpMatchArray | null {
+    return text.match(/\b(eq|ne|gt|gte|lt|lte|inArray)\(\s*([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\s*,\s*$/);
+}
+
+function getJoinMatch(text: string): RegExpMatchArray | null {
+    return text.match(/\bfrom\(\s*([a-zA-Z_][\w]*)\s*\)\.[\w]*Join\(\s*([a-zA-Z_][\w]*)\s*,\s*$/);
+}
+
+function getChainMode(text: string): "select" | "insert" | "update" | "delete" | null {
+    if (
+        /db\.select\([^)]*\)\.$/.test(text)
+        || /\.from\([^)]*\)\.$/.test(text)
+        || /\.where\([^)]*\)\.$/.test(text)
+        || /\.leftJoin\([^)]*\)\.$/.test(text)
+        || /\.innerJoin\([^)]*\)\.$/.test(text)
+        || /\.orderBy\([^)]*\)\.$/.test(text)
+        || /\.limit\([^)]*\)\.$/.test(text)
+    ) {
+        return "select";
+    }
+    if (/db\.insert\([^)]*\)\.$/.test(text)) return "insert";
+    if (/db\.update\([^)]*\)\.$/.test(text)) return "update";
+    if (/db\.delete\([^)]*\)\.$/.test(text)) return "delete";
+    return null;
+}
+
+function hasChain(text: string, name: string): boolean {
+    return new RegExp(`\\.${name}\\(`).test(text);
+}
+
+function getJoinSnippet(leftTable: SchemaTable, rightTable: SchemaTable): string | null {
+    const leftId = leftTable.columns.find(function (column) {
+        return column.primaryKey || column.name === "id";
+    });
+    if (!leftId) return null;
+    const rightMatch = rightTable.columns.find(function (column) {
+        return column.name === `${leftTable.name}Id` || column.name === `${leftTable.name}_id`;
+    });
+    if (!rightMatch) return null;
+    return `eq(${leftTable.name}.${leftId.name}, ${rightTable.name}.${rightMatch.name})`;
+}
+
+function buildSuggestions(range: TextRange, suggestions: Suggestion[]): SuggestList {
+    return { suggestions: suggestions, incomplete: false };
+}
+
 export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
     const [editorFontSize] = useSetting("editorFontSize");
     const [editorThemeSetting] = useSetting("editorTheme");
     const [enableVimMode] = useSetting("enableVimMode");
-    const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
-    const monacoRef = useRef<any>(null);
-    const vimModeRef = useRef<any>(null);
+    const editorRef = useRef<EditorRef | null>(null);
+    const monacoRef = useRef<MonacoApi | null>(null);
+    const vimModeRef = useRef<VimAdapterInstance | null>(null);
     const statusBarRef = useRef<HTMLDivElement | null>(null);
     const loadedThemesRef = useRef<Set<string>>(new Set());
+    const decorRef = useRef<string[]>([]);
 
     function getThemeFromDocument(): MonacoTheme {
         if (typeof document !== "undefined") {
@@ -127,139 +262,619 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         }
 
         monaco.languages.registerCompletionItemProvider("typescript", {
-            triggerCharacters: ["."],
-            provideCompletionItems: function (model, position) {
+            triggerCharacters: [".", "(", ",", " "],
+            exclusive: true,
+            provideCompletionItems: function (model, position): SuggestList {
                 const textUntilPosition = model.getValueInRange({
                     startLineNumber: position.lineNumber,
                     startColumn: 1,
                     endLineNumber: position.lineNumber,
                     endColumn: position.column
                 });
+                const range = getRange(monaco, model, position);
 
-                const range = {
-                    startLineNumber: position.lineNumber,
-                    startColumn: position.column,
-                    endLineNumber: position.lineNumber,
-                    endColumn: position.column
-                };
-
-                if (/db\.$/.test(textUntilPosition)) {
-                    return {
-                        suggestions: [
-                            { label: "select", kind: monaco.languages.CompletionItemKind.Method, insertText: "select()", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Start a SELECT query", documentation: "Chain with .from(table)", range, sortText: "0", command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" } },
-                            { label: "insert", kind: monaco.languages.CompletionItemKind.Method, insertText: "insert(${1:table})$0", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Start an INSERT query", documentation: "Pass a table: db.insert(users)", range, sortText: "1" },
-                            { label: "update", kind: monaco.languages.CompletionItemKind.Method, insertText: "update(${1:table})$0", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Start an UPDATE query", documentation: "Pass a table: db.update(users)", range, sortText: "2" },
-                            { label: "delete", kind: monaco.languages.CompletionItemKind.Method, insertText: "delete(${1:table})$0", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Start a DELETE query", documentation: "Pass a table: db.delete(users)", range, sortText: "3" },
-                            { label: "execute", kind: monaco.languages.CompletionItemKind.Method, insertText: "execute(sql`${1:query}`)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Execute raw SQL", range, sortText: "4" },
-                        ]
-                    };
+                const dbName = getDbName(textUntilPosition);
+                if (dbName) {
+                    const suggestions: Suggestion[] = [
+                        {
+                            label: "select",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "select($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Start a SELECT query",
+                            range: range,
+                            sortText: "0",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "insert",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "insert($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Start an INSERT query",
+                            range: range,
+                            sortText: "1",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "update",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "update($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Start an UPDATE query",
+                            range: range,
+                            sortText: "2",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "delete",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "delete($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Start a DELETE query",
+                            range: range,
+                            sortText: "3",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "batch",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "batch([$0])",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Run a batch of queries",
+                            range: range,
+                            sortText: "4"
+                        }
+                    ];
+                    if (dbName === "db") {
+                        suggestions.splice(4, 0, {
+                            label: "transaction",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "transaction(async tx => {\n  $0\n})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Run queries in a transaction",
+                            range: range,
+                            sortText: "4"
+                        });
+                        suggestions[5].sortText = "5";
+                    }
+                    return buildSuggestions(range, suggestions);
                 }
 
-                const selectChainMatch = textUntilPosition.match(/\.select\([^)]*\)\.$|select\(\)\.$|\.from\([^)]+\)\.$|\.where\([^)]*\)\.$|\.orderBy\([^)]*\)\.$|\.groupBy\([^)]*\)\.$|\.limit\(\d*\)\.$|\.offset\(\d*\)\.$/);
-                if (selectChainMatch) {
-                    const hasFrom = /\.from\(/.test(textUntilPosition);
-                    const hasWhere = /\.where\(/.test(textUntilPosition);
+                if (/db\.select\(\s*$/.test(textUntilPosition)) {
+                    return buildSuggestions(range, tables.map(function (table, index) {
+                        return {
+                            label: table.name,
+                            kind: monaco.languages.CompletionItemKind.Variable,
+                            insertText: tableSnippet(table),
+                            detail: "Table",
+                            range: range,
+                            sortText: String(index).padStart(3, "0"),
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        };
+                    }));
+                }
 
-                    const suggestions: any[] = [];
+                if (/db\.insert\(\s*$/.test(textUntilPosition) || /db\.update\(\s*$/.test(textUntilPosition) || /db\.delete\(\s*$/.test(textUntilPosition)) {
+                    return buildSuggestions(range, tables.map(function (table, index) {
+                        return {
+                            label: table.name,
+                            kind: monaco.languages.CompletionItemKind.Variable,
+                            insertText: tableSnippet(table),
+                            detail: "Table",
+                            range: range,
+                            sortText: String(index).padStart(3, "0"),
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        };
+                    }));
+                }
 
+                if (/\.from\(\s*$/.test(textUntilPosition)) {
+                    return buildSuggestions(range, tables.map(function (table, index) {
+                        return {
+                            label: table.name,
+                            kind: monaco.languages.CompletionItemKind.Variable,
+                            insertText: tableSnippet(table),
+                            detail: "Table",
+                            range: range,
+                            sortText: String(index).padStart(3, "0"),
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        };
+                    }));
+                }
+
+                if (/\.leftJoin\(\s*$/.test(textUntilPosition) || /\.innerJoin\(\s*$/.test(textUntilPosition)) {
+                    return buildSuggestions(range, tables.map(function (table, index) {
+                        return {
+                            label: table.name,
+                            kind: monaco.languages.CompletionItemKind.Variable,
+                            insertText: `${table.name}, $0`,
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Join table",
+                            range: range,
+                            sortText: String(index).padStart(3, "0"),
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        };
+                    }));
+                }
+
+                if (/\.values\(\s*$/.test(textUntilPosition)) {
+                    const tableMatch = textUntilPosition.match(/db\.insert\(\s*([a-zA-Z_][\w]*)\s*\)/);
+                    if (tableMatch) {
+                        const table = getTable(tables, tableMatch[1]);
+                        if (table) {
+                            return buildSuggestions(range, [
+                                {
+                                    label: "values",
+                                    kind: monaco.languages.CompletionItemKind.Struct,
+                            insertText: valuesSnippet(table, true),
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Insert values",
+                                    range: range
+                                }
+                            ]);
+                        }
+                    }
+                }
+
+                if (/\.set\(\s*$/.test(textUntilPosition)) {
+                    const tableMatch = textUntilPosition.match(/db\.update\(\s*([a-zA-Z_][\w]*)\s*\)/);
+                    if (tableMatch) {
+                        const table = getTable(tables, tableMatch[1]);
+                        if (table) {
+                            return buildSuggestions(range, [
+                                {
+                                    label: "set",
+                                    kind: monaco.languages.CompletionItemKind.Struct,
+                            insertText: valuesSnippet(table, false),
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Update values",
+                                    range: range
+                                }
+                            ]);
+                        }
+                    }
+                }
+
+                if (/\.where\(\s*$/.test(textUntilPosition)) {
+                    const fromMatch = textUntilPosition.match(/\.from\(\s*([a-zA-Z_][\w]*)\s*\)/);
+                    const baseSuggestions = [
+                        {
+                            label: "eq",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "eq(${1:column}, ${2:value})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Equal",
+                            range: range,
+                            sortText: "0",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "ne",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "ne(${1:column}, ${2:value})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Not equal",
+                            range: range,
+                            sortText: "1",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "gt",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "gt(${1:column}, ${2:value})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Greater than",
+                            range: range,
+                            sortText: "2",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "gte",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "gte(${1:column}, ${2:value})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Greater or equal",
+                            range: range,
+                            sortText: "3",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "lt",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "lt(${1:column}, ${2:value})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Less than",
+                            range: range,
+                            sortText: "4",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "lte",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "lte(${1:column}, ${2:value})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Less or equal",
+                            range: range,
+                            sortText: "5",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "inArray",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "inArray(${1:column}, ${2:values})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "In array",
+                            range: range,
+                            sortText: "6",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "isNull",
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            insertText: "isNull(${1:column})",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Is null",
+                            range: range,
+                            sortText: "7",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        }
+                    ];
+
+                    if (fromMatch) {
+                        const table = getTable(tables, fromMatch[1]);
+                        if (table) {
+                            const tableSuggestions = table.columns.map(function (column, index) {
+                                return {
+                                    label: `${table.name}.${column.name}`,
+                                    kind: monaco.languages.CompletionItemKind.Field,
+                                    insertText: `eq(${table.name}.${column.name}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Condition",
+                                    range: range,
+                                    sortText: `9${String(index).padStart(3, "0")}`
+                                };
+                            });
+                            return buildSuggestions(range, baseSuggestions.concat(tableSuggestions));
+                        }
+                    }
+                    return buildSuggestions(range, baseSuggestions);
+                }
+
+                const joinMatch = getJoinMatch(textUntilPosition);
+                if (joinMatch) {
+                    const leftTable = getTable(tables, joinMatch[1]);
+                    const rightTable = getTable(tables, joinMatch[2]);
+                    if (leftTable && rightTable) {
+                        const joinSnippet = getJoinSnippet(leftTable, rightTable);
+                        if (joinSnippet) {
+                            return buildSuggestions(range, [
+                                {
+                                    label: joinSnippet,
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `${joinSnippet}$0`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Join condition",
+                                    range: range
+                                }
+                            ]);
+                        }
+                    }
+                }
+
+                const helperMatch = textUntilPosition.match(/\b(eq|ne|gt|gte|lt|lte|inArray)\(\s*$/);
+                if (helperMatch) {
+                    const suggestions: Suggestion[] = [];
+                    tables.forEach(function (table) {
+                        table.columns.forEach(function (column, index) {
+                            suggestions.push({
+                                label: `${table.name}.${column.name}`,
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: `${table.name}.${column.name}`,
+                                detail: column.type,
+                                range: range,
+                                sortText: String(index).padStart(3, "0")
+                            });
+                        });
+                    });
+                    return buildSuggestions(range, suggestions);
+                }
+
+                const valueMatch = getValueMatch(textUntilPosition);
+                if (valueMatch) {
+                    const table = getTable(tables, valueMatch[2]);
+                    if (table) {
+                        const column = getColumn(table, valueMatch[3]);
+                        if (column) {
+                            const kind = getTypeKind(column.type);
+                            const valueSuggestions: Suggestion[] = [];
+                            if (kind === "number") {
+                                valueSuggestions.push(
+                                    { label: "1", kind: monaco.languages.CompletionItemKind.Value, insertText: "1", range: range, sortText: "0" },
+                                    { label: "10", kind: monaco.languages.CompletionItemKind.Value, insertText: "10", range: range, sortText: "1" },
+                                    { label: "100", kind: monaco.languages.CompletionItemKind.Value, insertText: "100", range: range, sortText: "2" }
+                                );
+                            }
+                            if (kind === "string") {
+                                valueSuggestions.push(
+                                    { label: "\"test@example.com\"", kind: monaco.languages.CompletionItemKind.Value, insertText: "\"test@example.com\"", range: range, sortText: "0" }
+                                );
+                            }
+                            if (kind === "boolean") {
+                                valueSuggestions.push(
+                                    { label: "true", kind: monaco.languages.CompletionItemKind.Value, insertText: "true", range: range, sortText: "0" },
+                                    { label: "false", kind: monaco.languages.CompletionItemKind.Value, insertText: "false", range: range, sortText: "1" }
+                                );
+                            }
+                            if (kind === "date") {
+                                valueSuggestions.push(
+                                    { label: "new Date()", kind: monaco.languages.CompletionItemKind.Value, insertText: "new Date()", range: range, sortText: "0" }
+                                );
+                            }
+                            valueSuggestions.push({
+                                label: "param()",
+                                kind: monaco.languages.CompletionItemKind.Function,
+                                insertText: "param($0)",
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                detail: "Parameter",
+                                range: range,
+                                sortText: "9"
+                            });
+                            return buildSuggestions(range, valueSuggestions);
+                        }
+                    }
+                }
+
+                const columnMatch = getColumnMatch(textUntilPosition);
+                if (columnMatch) {
+                    const table = getTable(tables, columnMatch[1]);
+                    if (table) {
+                        const column = getColumn(table, columnMatch[2]);
+                        if (column) {
+                            const columnRef = `${table.name}.${column.name}`;
+                            return buildSuggestions(range, [
+                                {
+                                    label: "eq",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `eq(${columnRef}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Equal",
+                                    range: range,
+                                    sortText: "0",
+                                    command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                                },
+                                {
+                                    label: "ne",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `ne(${columnRef}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Not equal",
+                                    range: range,
+                                    sortText: "1",
+                                    command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                                },
+                                {
+                                    label: "gt",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `gt(${columnRef}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Greater than",
+                                    range: range,
+                                    sortText: "2",
+                                    command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                                },
+                                {
+                                    label: "gte",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `gte(${columnRef}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Greater or equal",
+                                    range: range,
+                                    sortText: "3",
+                                    command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                                },
+                                {
+                                    label: "lt",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `lt(${columnRef}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Less than",
+                                    range: range,
+                                    sortText: "4",
+                                    command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                                },
+                                {
+                                    label: "lte",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `lte(${columnRef}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Less or equal",
+                                    range: range,
+                                    sortText: "5",
+                                    command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                                },
+                                {
+                                    label: "inArray",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `inArray(${columnRef}, $0)`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "In array",
+                                    range: range,
+                                    sortText: "6",
+                                    command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                                },
+                                {
+                                    label: "isNull",
+                                    kind: monaco.languages.CompletionItemKind.Function,
+                                    insertText: `isNull(${columnRef})`,
+                                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                    detail: "Is null",
+                                    range: range,
+                                    sortText: "7"
+                                }
+                            ]);
+                        }
+                    }
+                }
+
+                const tableMatch = getTableMatch(textUntilPosition);
+                if (tableMatch) {
+                    const table = getTable(tables, tableMatch[1]);
+                    if (table) {
+                        return buildSuggestions(range, table.columns.map(function (column, index) {
+                            return {
+                                label: column.name,
+                                kind: monaco.languages.CompletionItemKind.Field,
+                                insertText: column.name,
+                                detail: column.type,
+                                range: range,
+                                sortText: String(index).padStart(3, "0"),
+                                command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                            };
+                        }));
+                    }
+                }
+
+                const chainMode = getChainMode(textUntilPosition);
+                if (chainMode === "select") {
+                    const suggestions: Suggestion[] = [];
+                    const hasFrom = hasChain(textUntilPosition, "from");
                     if (!hasFrom) {
                         suggestions.push({
                             label: "from",
                             kind: monaco.languages.CompletionItemKind.Method,
-                            insertText: "from(${1:table})",
+                            insertText: "from($0)",
                             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            detail: "Specify the table to select from",
-                            documentation: "Chain: .from(users)",
-                            range,
+                            detail: "Select from a table",
+                            range: range,
                             sortText: "0",
                             command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
                         });
-                    }
-
-                    if (hasFrom && !hasWhere) {
-                        suggestions.push({
-                            label: "where",
-                            kind: monaco.languages.CompletionItemKind.Method,
-                            insertText: "where(${1:condition})",
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            detail: "Filter results",
-                            documentation: "Use eq(), gt(), etc.",
-                            range,
-                            sortText: "0",
-                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
-                        });
-                    }
-
-                    if (hasFrom) {
+                    } else {
                         suggestions.push(
-                            { label: "orderBy", kind: monaco.languages.CompletionItemKind.Method, insertText: "orderBy(${1:column})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Order results", range, sortText: "1", command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" } },
-                            { label: "groupBy", kind: monaco.languages.CompletionItemKind.Method, insertText: "groupBy(${1:column})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Group results", range, sortText: "2", command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" } },
-                            { label: "limit", kind: monaco.languages.CompletionItemKind.Method, insertText: "limit(${1:10})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Limit rows", range, sortText: "3" },
-                            { label: "offset", kind: monaco.languages.CompletionItemKind.Method, insertText: "offset(${1:0})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Offset rows", range, sortText: "4" },
-                            { label: "leftJoin", kind: monaco.languages.CompletionItemKind.Method, insertText: "leftJoin(${1:table}, ${2:condition})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Left join table", range, sortText: "5" },
-                            { label: "innerJoin", kind: monaco.languages.CompletionItemKind.Method, insertText: "innerJoin(${1:table}, ${2:condition})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Inner join table", range, sortText: "6" },
-                            { label: "execute", kind: monaco.languages.CompletionItemKind.Method, insertText: "execute()", detail: "Execute query", range, sortText: "9" }
+                            {
+                                label: "where",
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: "where($0)",
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                detail: "Filter results",
+                                range: range,
+                                sortText: "1",
+                                command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                            },
+                            {
+                                label: "leftJoin",
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: "leftJoin($0)",
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                detail: "Left join",
+                                range: range,
+                                sortText: "2",
+                                command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                            },
+                            {
+                                label: "innerJoin",
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: "innerJoin($0)",
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                detail: "Inner join",
+                                range: range,
+                                sortText: "3",
+                                command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                            },
+                            {
+                                label: "orderBy",
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: "orderBy($0)",
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                detail: "Order results",
+                                range: range,
+                                sortText: "4"
+                            },
+                            {
+                                label: "limit",
+                                kind: monaco.languages.CompletionItemKind.Method,
+                                insertText: "limit($0)",
+                                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                detail: "Limit rows",
+                                range: range,
+                                sortText: "5"
+                            }
                         );
                     }
-
-                    return { suggestions };
+                    return buildSuggestions(range, suggestions);
                 }
 
-                const fromMatch = textUntilPosition.match(/\.from\(\s*$/);
-                if (fromMatch) {
-                    return {
-                        suggestions: tables.map(function (t, i) {
-                            return {
-                                label: t.name,
-                                kind: monaco.languages.CompletionItemKind.Variable,
-                                insertText: t.name + ")",
-                                detail: "Table: " + t.name + " (" + t.columns.length + " columns)",
-                                range: range,
-                                sortText: String(i),
-                                command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
-                            };
-                        })
-                    };
+                if (chainMode === "insert") {
+                    return buildSuggestions(range, [
+                        {
+                            label: "values",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "values($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Insert values",
+                            range: range,
+                            sortText: "0",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "returning",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "returning()",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Return rows",
+                            range: range,
+                            sortText: "1"
+                        }
+                    ]);
                 }
 
-                const whereMatch = textUntilPosition.match(/\.where\(\s*$/);
-                if (whereMatch) {
-                    return {
-                        suggestions: [
-                            { label: "eq", kind: monaco.languages.CompletionItemKind.Function, insertText: "eq($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Equal: column = value", range, sortText: "0" },
-                            { label: "ne", kind: monaco.languages.CompletionItemKind.Function, insertText: "ne($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Not equal", range, sortText: "1" },
-                            { label: "gt", kind: monaco.languages.CompletionItemKind.Function, insertText: "gt($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Greater than", range, sortText: "2" },
-                            { label: "lt", kind: monaco.languages.CompletionItemKind.Function, insertText: "lt($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Less than", range, sortText: "3" },
-                            { label: "gte", kind: monaco.languages.CompletionItemKind.Function, insertText: "gte($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Greater or equal", range, sortText: "4" },
-                            { label: "lte", kind: monaco.languages.CompletionItemKind.Function, insertText: "lte($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Less or equal", range, sortText: "5" },
-                            { label: "like", kind: monaco.languages.CompletionItemKind.Function, insertText: "like($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "LIKE pattern match", range, sortText: "6" },
-                            { label: "and", kind: monaco.languages.CompletionItemKind.Function, insertText: "and($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Combine with AND", range, sortText: "7" },
-                            { label: "or", kind: monaco.languages.CompletionItemKind.Function, insertText: "or($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Combine with OR", range, sortText: "8" },
-                            { label: "isNull", kind: monaco.languages.CompletionItemKind.Function, insertText: "isNull($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Check if NULL", range, sortText: "9" },
-                            { label: "isNotNull", kind: monaco.languages.CompletionItemKind.Function, insertText: "isNotNull($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Check if NOT NULL", range, sortText: "10" },
-                        ]
-                    };
+                if (chainMode === "update") {
+                    return buildSuggestions(range, [
+                        {
+                            label: "set",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "set($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Set values",
+                            range: range,
+                            sortText: "0",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        },
+                        {
+                            label: "where",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "where($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Filter rows",
+                            range: range,
+                            sortText: "1"
+                        }
+                    ]);
                 }
 
-                const helperMatch = textUntilPosition.match(/\b(eq|ne|gt|lt|gte|lte|like|ilike|inArray|isNull|isNotNull|asc|desc)\(\s*$/);
-                if (helperMatch) {
-                    const suggestions: any[] = [];
-                    tables.forEach(function (table) {
-                        table.columns.forEach(function (col, i) {
-                            suggestions.push({
-                                label: table.name + "." + col.name,
-                                kind: monaco.languages.CompletionItemKind.Field,
-                                insertText: table.name + "." + col.name,
-                                detail: col.type + (col.nullable ? " (nullable)" : ""),
-                                range: range,
-                                sortText: String(i).padStart(3, "0")
-                            });
-                        });
-                    });
-                    return { suggestions: suggestions };
+                if (chainMode === "delete") {
+                    return buildSuggestions(range, [
+                        {
+                            label: "where",
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: "where($0)",
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                            detail: "Filter rows",
+                            range: range,
+                            sortText: "0",
+                            command: { id: "editor.action.triggerSuggest", title: "Trigger Suggest" }
+                        }
+                    ]);
                 }
 
-                return { suggestions: [] };
+                return buildSuggestions(range, []);
+            }
+        });
+
+        editor.onDidType(function (text) {
+            if (shouldSuggest(text)) {
+                editor.trigger("drizzle", "editor.action.triggerSuggest", {});
             }
         });
 
@@ -269,7 +884,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         });
 
         // Add a "mif largin/glyph" click listener
-        editor.onMouseDown((e) => {
+        editor.onMouseDown(function (e) {
             if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
                 const lineNumber = e.target.position?.lineNumber;
                 if (lineNumber) {
@@ -288,7 +903,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
     };
 
     // Update decorations whenever content changes
-    useEffect(() => {
+    useEffect(function () {
         if (editorRef.current && monacoRef.current) {
             updateDecorations(editorRef.current, monacoRef.current);
         }
@@ -300,16 +915,15 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         }
     }, [editorTheme]);
 
-    const updateDecorations = (editor: any, monaco: any) => {
+    function updateDecorations(editor: EditorRef, monaco: MonacoApi): void {
         const model = editor.getModel();
         if (!model) return;
 
         const lineCount = model.getLineCount();
-        const newDecorations: any[] = [];
+        const newDecorations: Monaco.editor.IModelDeltaDecoration[] = [];
 
         for (let i = 1; i <= lineCount; i++) {
             const content = model.getLineContent(i).trim();
-            // Show run button for non-empty lines
             if (content.length > 0 && !content.startsWith("//") && !content.startsWith("/*")) {
                 newDecorations.push({
                     range: new monaco.Range(i, 1, i, 1),
@@ -322,11 +936,10 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
             }
         }
 
-        const previousDecorations = (editor as any)._previousDecorations || [];
-        (editor as any)._previousDecorations = editor.deltaDecorations(previousDecorations, newDecorations);
-    };
+        decorRef.current = editor.deltaDecorations(decorRef.current, newDecorations);
+    }
 
-    const triggerExecution = (editor: any) => {
+    function triggerExecution(editor: EditorRef): void {
         const selection = editor.getSelection();
         const model = editor.getModel();
 
@@ -346,7 +959,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         if (codeToRun.trim()) {
             onExecute(codeToRun);
         }
-    };
+    }
 
     return (
         <div className="h-full w-full overflow-hidden pt-2 relative group">
@@ -383,6 +996,9 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     automaticLayout: true,
                     tabSize: 2,
                     wordBasedSuggestions: "off",
+                    suggestOnTriggerCharacters: true,
+                    quickSuggestions: { other: true, comments: false, strings: true },
+                    suggest: { showKeywords: false, showSnippets: false, showWords: false },
                     readOnly: isExecuting,
                     padding: { top: 10, bottom: 10 },
                     renderLineHighlight: "all",
