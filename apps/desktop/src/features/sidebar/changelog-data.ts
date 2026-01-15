@@ -7,9 +7,17 @@ export type ChangelogEntry = {
   type: "feature" | "fix" | "refactor" | "breaking";
 };
 
-export const CURRENT_VERSION = "0.0.9";
+export const CURRENT_VERSION = "0.0.91";
 
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "0.0.91",
+    date: "2026-01-15",
+    commit: "HEAD",
+    title: "Rolldown Migration",
+    description: "Migrated build system to Rolldown for improved performance",
+    type: "refactor",
+  },
   {
     version: "0.0.9",
     date: "2026-01-15",
