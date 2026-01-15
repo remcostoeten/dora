@@ -10,6 +10,8 @@ import { AddColumnDialog, ColumnFormData } from "./components/add-column-dialog"
 import { DropTableDialog } from "./components/drop-table-dialog";
 import { PendingChangesBar } from "./components/pending-changes-bar";
 import { RowDetailPanel } from "./components/row-detail-panel";
+import { BulkEditDialog } from "./components/bulk-edit-dialog";
+import { SetNullDialog } from "./components/set-null-dialog";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
@@ -54,6 +56,9 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
     const [showAddColumnDialog, setShowAddColumnDialog] = useState(false);
     const [showDropTableDialog, setShowDropTableDialog] = useState(false);
+    const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
+    const [showSetNullDialog, setShowSetNullDialog] = useState(false);
+    const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
     const [isDdlLoading, setIsDdlLoading] = useState(false);
 
     const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null);
@@ -120,7 +125,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         }
     }, [adapter, tableId, tableName, activeConnectionId, pagination.limit, pagination.offset, sort, filters]);
 
-    useEffect(function() {
+    useEffect(function () {
         loadTableData();
     }, [loadTableData]);
 
@@ -247,7 +252,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     // If target is body or grid container, we perform our undo.
                     const target = e.target as HTMLElement;
                     const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-                    
+
                     if (!isInput) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -265,9 +270,9 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                                 // We trust rowIndex from the edit, assuming table hasn't been re-sorted/filtered in a way that invalidates indices.
                                 // Ideal: find row by PK. But for now using index as stored.
                                 if (newRows[lastEdit.rowIndex]) {
-                                    newRows[lastEdit.rowIndex] = { 
-                                        ...newRows[lastEdit.rowIndex], 
-                                        [lastEdit.columnName]: lastEdit.oldValue 
+                                    newRows[lastEdit.rowIndex] = {
+                                        ...newRows[lastEdit.rowIndex],
+                                        [lastEdit.columnName]: lastEdit.oldValue
                                     };
                                 }
                                 return { ...prev, rows: newRows };
@@ -318,13 +323,13 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     async function handleBatchCellEdit(rowIndexes: number[], columnName: string, newValue: unknown) {
         if (!tableId || !activeConnectionId || !tableData) return;
 
-        const primaryKeyColumn = tableData.columns.find(function(c) { return c.primaryKey; });
+        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
         if (!primaryKeyColumn) {
             console.error("No primary key found");
             return;
         }
 
-        const cellsToTrack = rowIndexes.map(function(rowIndex) {
+        const cellsToTrack = rowIndexes.map(function (rowIndex) {
             const row = tableData.rows[rowIndex];
             return {
                 primaryKeyValue: row[primaryKeyColumn.name],
@@ -335,7 +340,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         });
 
         try {
-            await Promise.all(rowIndexes.map(async function(rowIndex) {
+            await Promise.all(rowIndexes.map(async function (rowIndex) {
                 const row = tableData.rows[rowIndex];
                 return updateCell.mutateAsync({
                     connectionId: activeConnectionId,
@@ -405,7 +410,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 const defaults = createDefaultValues(tableData.columns);
                 setDraftRow({ ...defaults, ...duplicateData });
                 setDraftInsertIndex(rowIndex + 1);
-                
+
                 // Focus will be handled by the DataGrid effect for new draft row
                 break;
             default:
@@ -416,10 +421,10 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     function createDefaultValues(columns: ColumnDefinition[]): Record<string, unknown> {
         const defaults: Record<string, unknown> = {};
         const now = new Date().toISOString();
-        
+
         for (const col of columns) {
             if (col.primaryKey) continue;
-            
+
             const type = col.type.toLowerCase();
             const name = col.name.toLowerCase();
             if (type.includes('timestamp') || type.includes('datetime') || type.includes('date')) {
@@ -441,7 +446,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     }
 
     function handleDraftChange(columnName: string, value: unknown) {
-        setDraftRow(function(prev) {
+        setDraftRow(function (prev) {
             if (!prev) return prev;
             return { ...prev, [columnName]: value };
         });
@@ -607,7 +612,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 )}
 
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300">
-                     <div className="w-20 h-20 bg-sidebar-accent/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/30">
+                    <div className="w-20 h-20 bg-sidebar-accent/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/30">
                         <svg className="h-10 w-10 text-muted-foreground/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                             <rect x="3" y="3" width="18" height="18" rx="2" />
                             <line x1="9" y1="3" x2="9" y2="21" />
@@ -763,7 +768,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                         onSelectAll={handleSelectAll}
                         sort={sort}
                         onSortChange={setSort}
-                        onFilterAdd={function(filter) { setFilters(function(prev) { return [...prev, filter]; }); }}
+                        onFilterAdd={function (filter) { setFilters(function (prev) { return [...prev, filter]; }); }}
                         onCellEdit={handleCellEdit}
                         onBatchCellEdit={handleBatchCellEdit}
                         onRowAction={handleRowAction}
@@ -796,34 +801,116 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 <SelectionActionBar
                     selectedCount={selectedRows.size}
                     onDelete={function handleBulkDelete() {
-                        const primaryKeyColumn = tableData.columns.find(function(c) { return c.primaryKey; });
+                        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
                         if (!primaryKeyColumn || !activeConnectionId || !tableId) return;
-                        
+
                         if (settings.confirmBeforeDelete && !confirm(`Delete ${selectedRows.size} selected rows?`)) return;
-                        
-                        const primaryKeyValues = Array.from(selectedRows).map(function(rowIndex) {
+
+                        const primaryKeyValues = Array.from(selectedRows).map(function (rowIndex) {
                             return tableData.rows[rowIndex][primaryKeyColumn.name];
                         });
-                        
+
                         deleteRows.mutate({
                             connectionId: activeConnectionId,
                             tableName: tableName || tableId,
                             primaryKeyColumn: primaryKeyColumn.name,
                             primaryKeyValues
                         }, {
-                            onSuccess: function() {
+                            onSuccess: function () {
                                 setSelectedRows(new Set());
                                 loadTableData();
                             }
                         });
                     }}
                     onCopy={function handleBulkCopy() {
-                        const rowsData = Array.from(selectedRows).map(function(rowIndex) {
+                        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
                             return tableData.rows[rowIndex];
                         });
                         navigator.clipboard.writeText(JSON.stringify(rowsData, null, 2));
                     }}
-                    onClearSelection={function() { setSelectedRows(new Set()); }}
+                    onDuplicate={function handleBulkDuplicate() {
+                        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
+                        if (!activeConnectionId || !tableId) return;
+
+                        const rowsToDuplicate = Array.from(selectedRows).map(function (rowIndex) {
+                            const row = { ...tableData.rows[rowIndex] };
+                            // Remove primary key so DB generates a new one
+                            if (primaryKeyColumn) {
+                                delete row[primaryKeyColumn.name];
+                            }
+                            return row;
+                        });
+
+                        // Insert rows one by one
+                        setIsBulkActionLoading(true);
+                        Promise.all(rowsToDuplicate.map(function (rowData) {
+                            return insertRow.mutateAsync({
+                                connectionId: activeConnectionId,
+                                tableName: tableName || tableId,
+                                rowData
+                            });
+                        })).then(function () {
+                            setSelectedRows(new Set());
+                            loadTableData();
+                        }).catch(function (error) {
+                            console.error("Failed to duplicate rows:", error);
+                        }).finally(function () {
+                            setIsBulkActionLoading(false);
+                        });
+                    }}
+                    onExportJson={function handleExportJson() {
+                        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+                            return tableData.rows[rowIndex];
+                        });
+                        const jsonString = JSON.stringify(rowsData, null, 2);
+                        const blob = new Blob([jsonString], { type: "application/json" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${tableName || "data"}_selected.json`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }}
+                    onExportCsv={function handleExportCsv() {
+                        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+                            return tableData.rows[rowIndex];
+                        });
+
+                        if (rowsData.length === 0) return;
+
+                        const headers = Object.keys(rowsData[0]);
+                        const csvRows = [
+                            headers.join(","),
+                            ...rowsData.map(function (row) {
+                                return headers.map(function (header) {
+                                    const value = row[header];
+                                    if (value === null || value === undefined) return "";
+                                    const stringValue = String(value);
+                                    // Escape quotes and wrap in quotes if contains comma, quote, or newline
+                                    if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+                                        return `"${stringValue.replace(/"/g, '""')}"`;
+                                    }
+                                    return stringValue;
+                                }).join(",");
+                            })
+                        ];
+
+                        const csvString = csvRows.join("\n");
+                        const blob = new Blob([csvString], { type: "text/csv" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `${tableName || "data"}_selected.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }}
+                    onSetNull={function handleOpenSetNull() {
+                        setShowSetNullDialog(true);
+                    }}
+                    onBulkEdit={function handleOpenBulkEdit() {
+                        setShowBulkEditDialog(true);
+                    }}
+                    onClearSelection={function () { setSelectedRows(new Set()); }}
                 />
             )}
 
@@ -853,6 +940,90 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     row={selectedRowForDetail}
                     columns={tableData.columns}
                     tableName={tableName || tableId}
+                />
+            )}
+
+            {tableData && (
+                <BulkEditDialog
+                    open={showBulkEditDialog}
+                    onOpenChange={setShowBulkEditDialog}
+                    columns={tableData.columns}
+                    selectedCount={selectedRows.size}
+                    isLoading={isBulkActionLoading}
+                    onSubmit={function handleBulkEditSubmit(columnName: string, newValue: unknown) {
+                        if (!activeConnectionId || !tableId || !tableData) return;
+
+                        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
+                        if (!primaryKeyColumn) {
+                            console.error("No primary key found");
+                            return;
+                        }
+
+                        setIsBulkActionLoading(true);
+                        const rowIndexes = Array.from(selectedRows);
+
+                        Promise.all(rowIndexes.map(function (rowIndex) {
+                            const row = tableData.rows[rowIndex];
+                            return updateCell.mutateAsync({
+                                connectionId: activeConnectionId,
+                                tableName: tableName || tableId,
+                                primaryKeyColumn: primaryKeyColumn.name,
+                                primaryKeyValue: row[primaryKeyColumn.name],
+                                columnName,
+                                newValue
+                            });
+                        })).then(function () {
+                            setShowBulkEditDialog(false);
+                            setSelectedRows(new Set());
+                            loadTableData();
+                        }).catch(function (error) {
+                            console.error("Failed to bulk edit:", error);
+                        }).finally(function () {
+                            setIsBulkActionLoading(false);
+                        });
+                    }}
+                />
+            )}
+
+            {tableData && (
+                <SetNullDialog
+                    open={showSetNullDialog}
+                    onOpenChange={setShowSetNullDialog}
+                    columns={tableData.columns}
+                    selectedCount={selectedRows.size}
+                    isLoading={isBulkActionLoading}
+                    onSubmit={function handleSetNullSubmit(columnName: string) {
+                        if (!activeConnectionId || !tableId || !tableData) return;
+
+                        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
+                        if (!primaryKeyColumn) {
+                            console.error("No primary key found");
+                            return;
+                        }
+
+                        setIsBulkActionLoading(true);
+                        const rowIndexes = Array.from(selectedRows);
+
+                        Promise.all(rowIndexes.map(function (rowIndex) {
+                            const row = tableData.rows[rowIndex];
+                            return updateCell.mutateAsync({
+                                connectionId: activeConnectionId,
+                                tableName: tableName || tableId,
+                                primaryKeyColumn: primaryKeyColumn.name,
+                                primaryKeyValue: row[primaryKeyColumn.name],
+                                columnName,
+                                newValue: null
+                            });
+                        })).then(function () {
+                            setShowSetNullDialog(false);
+                            setSelectedRows(new Set());
+                            loadTableData();
+                        }).catch(function (error) {
+                            console.error("Failed to set null:", error);
+                        }).finally(function () {
+                            setIsBulkActionLoading(false);
+                        });
+                    }}
                 />
             )}
         </div>
