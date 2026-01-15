@@ -5,6 +5,16 @@ _The database explorah!_
 Dora is a blazingly fast, private, and secure database management tool for Linux, MacOS, and Windows.  
 Built with Rust (Tauri 2.0), TypeScript (Next.js), and local SQLite, with optional cloud storage via LibSQL (Turso).
 
+## 🚀 Latest Release: v0.0.9
+
+**[Read Release Notes](RELEASE_NOTES.md)**
+
+- **New:** Changelog Panel, Undo/Redo, Editor Themes, DDL Support.
+- **Downloads (Linux):**
+  - [AppImage](apps/desktop/src-tauri/target/release/bundle/appimage/Dora_0.0.9_amd64.AppImage)
+  - [DEB](apps/desktop/src-tauri/target/release/bundle/deb/Dora_0.0.9_amd64.deb)
+  - [RPM](apps/desktop/src-tauri/target/release/bundle/rpm/Dora-0.0.9-1.x86_64.rpm)
+
 ## Roadmap & Goal
 
 Dora aims to provide a desktop database tool so fast and intuitive that managing your databases feels effortless. Features include encrypted storage of connection strings, intelligent auto-filling, typo detection, and simplified connection flows. Our goal is to make connecting and interacting with your databases seamless.
