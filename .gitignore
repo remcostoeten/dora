@@ -42,3 +42,5 @@ tmp/
 apps/dora-v2.
 apps/dora-v2/*
 .turbo
+bun.lock
+apps/desktop/build_log.txt

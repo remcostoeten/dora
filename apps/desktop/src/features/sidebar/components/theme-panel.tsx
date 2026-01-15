@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { ThemePreviewCard } from "./theme-preview-card";
+import { SidebarPanel } from "./sidebar-panel";
 import { cn } from "@/shared/utils/cn";
 
 type Theme = "dark" | "light";
@@ -46,61 +47,63 @@ export function ThemePanel({ theme, onThemeChange }: Props) {
   }
 
   return (
-    <div className="p-4 pt-5">
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="text-sm font-semibold text-sidebar-foreground">
-            Choose Your Theme
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Pick a theme to change the look
-          </p>
+    <SidebarPanel>
+      <div className="p-4 pt-5">
+        {/* Header with navigation */}
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h3 className="text-sm font-semibold text-sidebar-foreground">
+              Choose Your Theme
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Pick a theme to change the look
+            </p>
+          </div>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7 rounded-md",
+                !canScrollLeft && "opacity-50 cursor-not-allowed"
+              )}
+              onClick={() => scroll("left")}
+              disabled={!canScrollLeft}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7 rounded-md",
+                !canScrollRight && "opacity-50 cursor-not-allowed"
+              )}
+              onClick={() => scroll("right")}
+              disabled={!canScrollRight}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-7 w-7 rounded-md",
-              !canScrollLeft && "opacity-50 cursor-not-allowed"
-            )}
-            onClick={() => scroll("left")}
-            disabled={!canScrollLeft}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-7 w-7 rounded-md",
-              !canScrollRight && "opacity-50 cursor-not-allowed"
-            )}
-            onClick={() => scroll("right")}
-            disabled={!canScrollRight}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
-      <div
-        ref={scrollRef}
-        onScroll={updateScrollButtons}
-        className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1"
-      >
-        {THEME_OPTIONS.map((option) => (
-          <ThemePreviewCard
-            key={option.value}
-            name={option.name}
-            isSelected={theme === option.value}
-            onClick={() => onThemeChange(option.value)}
-            variant={option.variant}
-            accentColor={option.accentColor}
-          />
-        ))}
+        <div
+          ref={scrollRef}
+          onScroll={updateScrollButtons}
+          className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1"
+        >
+          {THEME_OPTIONS.map((option) => (
+            <ThemePreviewCard
+              key={option.value}
+              name={option.name}
+              isSelected={theme === option.value}
+              onClick={() => onThemeChange(option.value)}
+              variant={option.variant}
+              accentColor={option.accentColor}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+    </SidebarPanel>
   );
 }
