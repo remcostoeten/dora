@@ -1,4 +1,4 @@
-import { ChevronsUpDown, Plus, Settings, Database, Check, Eye, Pencil, Trash2 } from "lucide-react";
+import { ChevronsUpDown, Plus, Settings, Database, Check, Eye, Pencil, Trash2, AlertCircle } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import {
     DropdownMenu,
@@ -17,7 +17,7 @@ import {
 } from "@/shared/ui/context-menu";
 import { cn } from "@/shared/utils/cn";
 import { Connection } from "../types";
-import { AlertCircle } from "lucide-react";
+import { DatabaseTypeIcon } from "./database-type-icon";
 
 type Props = {
     connections: Connection[];
@@ -58,6 +58,8 @@ export function ConnectionSwitcher({
                         )}>
                             {status === "error" ? (
                                 <AlertCircle className="h-4 w-4" />
+                            ) : activeConnection ? (
+                                <DatabaseTypeIcon type={activeConnection.type} className="h-4 w-4" />
                             ) : (
                                 <Database className="h-4 w-4" />
                             )}
@@ -71,7 +73,7 @@ export function ConnectionSwitcher({
                             </span>
                             <span className="truncate text-xs text-muted-foreground">
                                 {activeConnection ? (
-                                    status === "error" ? "Connection failed" : `${activeConnection.type} • ${activeConnection.host || "Local"}`
+                                    status === "error" ? "Connection failed" : `${activeConnection.type || "Unknown"} • ${activeConnection.host || "Local"}`
                                 ) : "No connection"}
                             </span>
                         </div>
@@ -94,7 +96,7 @@ export function ConnectionSwitcher({
                         <ContextMenu key={connection.id}>
                             <ContextMenuTrigger asChild>
                                 <DropdownMenuItem
-                                    onClick={function() { onConnectionSelect(connection.id); }}
+                                    onClick={function () { onConnectionSelect(connection.id); }}
                                     className="gap-2 p-2 cursor-pointer"
                                 >
                                     <div className="flex items-center gap-2 w-full">
@@ -105,7 +107,7 @@ export function ConnectionSwitcher({
                                             {connection.status === "error" ? (
                                                 <AlertCircle className="h-3 w-3 text-destructive" />
                                             ) : (
-                                                <Database className="h-3 w-3 text-muted-foreground" />
+                                                <DatabaseTypeIcon type={connection.type} className="h-3 w-3 text-muted-foreground" />
                                             )}
                                         </div>
                                         <div className="flex-1 truncate text-sm">
