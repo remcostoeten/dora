@@ -29,17 +29,17 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
 
     if (!isVisible) return null;
 
-    const removeFilter = (index: number) => {
+    function removeFilter(index: number) {
         const newFilters = [...filters];
         newFilters.splice(index, 1);
         onFiltersChange(newFilters);
     };
 
-    const clearFilters = () => {
+    function clearFilters() {
         onFiltersChange([]);
     };
 
-    const startAddingFilter = () => {
+    function startAddingFilter() {
         if (columns.length > 0) {
             setNewFilterColumn(columns[0].name);
         }
@@ -47,7 +47,7 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
         setNewFilterValue("");
     };
 
-    const saveNewFilter = () => {
+    function saveNewFilter() {
         if (!newFilterColumn) return;
 
         onFiltersChange([
@@ -62,14 +62,13 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
         setNewFilterValue("");
     };
 
-    const cancelAddingFilter = () => {
+    function cancelAddingFilter() {
         setIsAddingFilter(false);
         setNewFilterValue("");
     };
 
     return (
         <div className="flex flex-col border-b border-sidebar-border bg-sidebar-accent/10">
-            {/* Filter List */}
             {filters.map((filter, index) => (
                 <div key={index} className="flex items-center gap-2 px-2 h-9 border-b border-sidebar-border/50 last:border-0 group bg-sidebar-accent/5 hover:bg-sidebar-accent/20 transition-colors">
                     <Button

@@ -1,11 +1,10 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { ScrollArea } from "@/shared/ui/scroll-area";
 import { cn } from "@/shared/utils/cn";
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from "../types";
 import { CellContextMenu } from "./cell-context-menu";
 import { RowContextMenu, type RowAction } from "./row-context-menu";
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database } from "lucide-react";
 import { useShortcut } from "@/core/shortcuts";
 
 type EditingCell = {
@@ -34,9 +33,15 @@ type Props = {
     tableName?: string;
     selectedCells?: Set<string>;
     onCellSelectionChange?: (cells: Set<string>) => void;
+    draftRow?: Record<string, unknown> | null;
+    onDraftChange?: (columnName: string, value: unknown) => void;
+    onDraftSave?: () => void;
+    onDraftCancel?: () => void;
+    pendingEdits?: Set<string>; // Keys: `${primaryKeyValue}:${columnName}`
+    draftInsertIndex?: number | null; // Index to insert draft row at (null/undefined = top)
 };
 
-const MIN_COLUMN_WIDTH = 60;
+const MIN_COLUMN_WIDTH = 100;
 const DEFAULT_COLUMN_WIDTH = 150;
 
 export function DataGrid({
@@ -54,7 +59,13 @@ export function DataGrid({
     onRowAction,
     tableName,
     selectedCells: externalSelectedCells,
-    onCellSelectionChange
+    onCellSelectionChange,
+    draftRow,
+    onDraftChange,
+    onDraftSave,
+    onDraftCancel,
+    pendingEdits,
+    draftInsertIndex
 }: Props) {
     const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
     const [editValue, setEditValue] = useState<string>("");
@@ -273,16 +284,38 @@ export function DataGrid({
         };
     }, [resizingColumn]);
 
-    // Double-click to reset column width to auto/default
-    const handleResizeDoubleClick = useCallback((e: React.MouseEvent, columnName: string) => {
+    const handleResizeDoubleClick = useCallback(function(e: React.MouseEvent, columnName: string, columnType?: string) {
         e.preventDefault();
         e.stopPropagation();
 
-        // Reset to default width
-        setColumnWidths(prev => {
-            const next = { ...prev };
-            delete next[columnName];
-            return next;
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+            setColumnWidths(function(prev) {
+                const next = { ...prev };
+                delete next[columnName];
+                return next;
+            });
+            return;
+        }
+
+        ctx.font = "12px Inter, system-ui, sans-serif";
+        const nameWidth = ctx.measureText(columnName).width;
+        
+        let typeWidth = 0;
+        if (columnType && columnType !== "unknown") {
+            ctx.font = "10px 'JetBrains Mono', monospace";
+            typeWidth = ctx.measureText(columnType).width;
+        }
+
+        const sortIconWidth = 16;
+        const padding = 32;
+        const gap = typeWidth > 0 ? 8 : 0;
+        const optimalWidth = Math.ceil(nameWidth + typeWidth + sortIconWidth + padding + gap);
+        const finalWidth = Math.max(MIN_COLUMN_WIDTH, optimalWidth);
+
+        setColumnWidths(function(prev) {
+            return { ...prev, [columnName]: finalWidth };
         });
     }, []);
 
@@ -411,11 +444,14 @@ export function DataGrid({
     }
 
     return (
-        <ScrollArea className="h-full w-full" type="always">
+        <div 
+            className="h-full w-full overflow-auto"
+            style={{ scrollbarGutter: 'stable' }}
+        >
             <table
                 ref={gridRef}
-                className="w-full text-sm border-collapse select-none"
-                style={{ tableLayout: "fixed" }}
+                className="text-sm border-collapse select-none"
+                style={{ tableLayout: "auto", minWidth: "100%" }}
                 role="grid"
                 aria-label={tableName ? `Data grid for ${tableName}` : "Data grid"}
                 aria-rowcount={rows.length}
@@ -424,13 +460,19 @@ export function DataGrid({
                 onKeyDown={handleGridKeyDown}
             >
                 <colgroup>
-                    <col style={{ width: 30 }} />
-                    {columns.map((col) => (
-                        <col
-                            key={col.name}
-                            style={{ width: getColumnWidth(col.name) }}
-                        />
-                    ))}
+                    <col style={{ width: 30, minWidth: 30 }} />
+                    {columns.map(function(col) {
+                        const width = getColumnWidth(col.name);
+                        return (
+                            <col
+                                key={col.name}
+                                style={{ 
+                                    width: width || DEFAULT_COLUMN_WIDTH,
+                                    minWidth: MIN_COLUMN_WIDTH
+                                }}
+                            />
+                        );
+                    })}
                 </colgroup>
                 <thead className="sticky top-0 bg-sidebar z-10" role="rowgroup">
                     <tr role="row">
@@ -465,9 +507,9 @@ export function DataGrid({
                                 >
                                     <div className="flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden">
                                         <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
-                                            <span className="text-foreground text-xs truncate">{col.name}</span>
+                                            <span className="text-foreground text-xs shrink-0">{col.name}</span>
                                             {col.type && col.type !== "unknown" && (
-                                                <span className="text-muted-foreground/50 text-[10px] font-normal font-mono lowercase shrink-0">
+                                                <span className="text-muted-foreground/50 text-[10px] font-normal font-mono lowercase truncate min-w-0">
                                                     {col.type}
                                                 </span>
                                             )}
@@ -490,7 +532,7 @@ export function DataGrid({
                                             resizingColumn === col.name && "bg-primary"
                                         )}
                                         onMouseDown={(e) => handleResizeStart(e, col.name)}
-                                        onDoubleClick={(e) => handleResizeDoubleClick(e, col.name)}
+                                        onDoubleClick={function(e) { handleResizeDoubleClick(e, col.name, col.type); }}
                                         onClick={(e) => e.stopPropagation()}
                                     />
                                 </th>
@@ -499,8 +541,68 @@ export function DataGrid({
                     </tr>
                 </thead>
                 <tbody role="rowgroup">
+                    {/* Render draft row at TOP if no specific index is provided (-1 or null) */}
+                    {draftRow && (draftInsertIndex === undefined || draftInsertIndex === null || draftInsertIndex === -1) && (
+                        <tr className="bg-emerald-500/10 border-l-2 border-l-emerald-500">
+                            <td className="px-1 py-1.5 text-center border-b border-r border-sidebar-border">
+                                <div className="flex items-center justify-center gap-1">
+                                    <button
+                                        onClick={onDraftSave}
+                                        className="text-emerald-500 hover:text-emerald-400 text-xs font-medium"
+                                        title="Save (Enter)"
+                                    >
+                                        ✓
+                                    </button>
+                                    <button
+                                        onClick={onDraftCancel}
+                                        className="text-muted-foreground hover:text-destructive text-xs"
+                                        title="Cancel (Escape)"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </td>
+                            {columns.map(function(col, colIndex) {
+                                const width = getColumnWidth(col.name);
+                                const isPrimaryKey = col.primaryKey;
+                                
+                                return (
+                                    <td
+                                        key={col.name}
+                                        className="border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0"
+                                        style={width ? { maxWidth: width } : undefined}
+                                    >
+                                        {isPrimaryKey ? (
+                                            <div className="px-3 py-1.5 text-muted-foreground italic text-xs">auto</div>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                autoFocus={colIndex === 0 || (colIndex === 1 && columns[0]?.primaryKey)}
+                                                value={draftRow[col.name] === null ? '' : String(draftRow[col.name] ?? '')}
+                                                onChange={function(e) { onDraftChange?.(col.name, e.target.value); }}
+                                                onKeyDown={function(e) {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        onDraftSave?.();
+                                                    } else if (e.key === 'Escape') {
+                                                        e.preventDefault();
+                                                        onDraftCancel?.();
+                                                    }
+                                                }}
+                                                data-no-shortcuts="true"
+                                                className="w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm"
+                                                placeholder={col.nullable ? 'NULL' : ''}
+                                            />
+                                        )}
+                                    </td>
+                                );
+                            })}
+                        </tr>
+                    )}
+
                     {rows.map((row, rowIndex) => (
-                        <RowContextMenu
+                        <React.Fragment key={rowIndex}>
+                            <RowContextMenu
                             key={rowIndex}
                             row={row}
                             rowIndex={rowIndex}
@@ -543,6 +645,12 @@ export function DataGrid({
                                     const isFocused = focusedCell?.row === rowIndex && focusedCell?.col === colIndex;
                                     const isSelected = selectedCellsSet.has(getCellKey(rowIndex, colIndex));
                                     const width = getColumnWidth(col.name);
+                                    
+                                    // Check if cell has pending edits
+                                    const primaryKeyCol = columns.find(function(c) { return c.primaryKey; });
+                                    const isDirty = primaryKeyCol 
+                                        ? pendingEdits?.has(`${row[primaryKeyCol.name]}:${col.name}`)
+                                        : false;
 
                                     return (
                                         <CellContextMenu
@@ -571,9 +679,10 @@ export function DataGrid({
                                         >
                                             <td
                                                 className={cn(
-                                                    "border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5",
-                                                    isSelected && !isEditing && "bg-primary/20",
-                                                    isFocused && !isEditing && "outline outline-1 outline-offset-[-1px] outline-primary/60 bg-primary/5"
+                                                    "border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative",
+                                                    isSelected && !isEditing && "bg-muted-foreground/10",
+                                                    isFocused && !isEditing && "bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20",
+                                                    isDirty && "bg-amber-500/10"
                                                 )}
                                                 style={width ? { maxWidth: width } : undefined}
                                                 onMouseDown={(e) => handleCellMouseDown(e, rowIndex, colIndex)}
@@ -592,8 +701,11 @@ export function DataGrid({
                                                         className="w-full h-full bg-primary/10 outline outline-1 outline-offset-[-1px] outline-primary font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content"
                                                     />
                                                 ) : (
-                                                    <div className="truncate">
+                                                    <div className="truncate relative">
                                                         {formatCellValue(row[col.name], col)}
+                                                        {isDirty && (
+                                                            <div className="absolute top-0 right-0 -mr-3 -mt-1.5 w-0 h-0 border-t-[6px] border-r-[6px] border-t-transparent border-r-amber-500" />
+                                                        )}
                                                     </div>
                                                 )}
                                             </td>
@@ -602,10 +714,89 @@ export function DataGrid({
                                 })}
                             </tr>
                         </RowContextMenu>
+                        {draftRow && draftInsertIndex === rowIndex + 1 && (
+                        <tr className="bg-emerald-500/10 border-b border-sidebar-border group relative">
+                            <td className="w-[30px] border-r border-sidebar-border bg-emerald-500/20 text-center align-middle">
+                                <div className="h-full w-full flex items-center justify-center text-emerald-500 font-bold text-xs">
+                                    +
+                                </div>
+                            </td>
+                            {columns.map(function(col, colIndex) {
+                                const width = getColumnWidth(col.name);
+                                const isPrimaryKey = col.primaryKey;
+                                
+                                return (
+                                    <td
+                                        key={`draft-${col.name}`}
+                                        className="border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0"
+                                        style={width ? { maxWidth: width } : undefined}
+                                    >
+                                        {isPrimaryKey ? (
+                                            <div className="px-3 py-1.5 text-muted-foreground italic text-xs">auto</div>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                autoFocus={colIndex === 0 || (colIndex === 1 && columns[0]?.primaryKey)}
+                                                value={draftRow[col.name] === null ? '' : String(draftRow[col.name] ?? '')}
+                                                onChange={function(e) { onDraftChange?.(col.name, e.target.value); }}
+                                                onKeyDown={function(e) {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        onDraftSave?.();
+                                                    } else if (e.key === 'Escape') {
+                                                        e.preventDefault();
+                                                        onDraftCancel?.();
+                                                    }
+                                                }}
+                                                data-no-shortcuts="true"
+                                                className="w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm"
+                                                placeholder={col.nullable ? 'NULL' : ''}
+                                            />
+                                        )}
+                                    </td>
+                                );
+                            })}
+                            <td className="w-[80px] border-b border-sidebar-border p-0">
+                                <div className="flex items-center justify-center h-full gap-1 px-2">
+                                    <button
+                                        onClick={onDraftSave}
+                                        className="text-emerald-500 hover:text-emerald-400 text-xs font-medium"
+                                        title="Save (Enter)"
+                                    >
+                                        ✓
+                                    </button>
+                                    <button
+                                        onClick={onDraftCancel}
+                                        className="text-muted-foreground hover:text-destructive text-xs"
+                                        title="Cancel (Escape)"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    )}
+                    </React.Fragment>
                     ))}
+                    {rows.length === 0 && (
+                        <tr>
+                            <td 
+                                colSpan={columns.length + 1} 
+                                className="h-[400px] text-center text-muted-foreground border-b border-sidebar-border"
+                            >
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                    <div className="p-3 rounded-full bg-sidebar-accent">
+                                        <Database className="h-6 w-6 opacity-50" />
+                                    </div>
+                                    <p className="font-medium">No results found</p>
+                                    <p className="text-sm opacity-80">Try clearing filters or adding a new record</p>
+                                </div>
+                            </td>
+                        </tr>
+                    )}
                 </tbody>
             </table>
-        </ScrollArea>
+        </div>
     );
 }
 

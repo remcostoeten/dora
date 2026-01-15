@@ -6,7 +6,7 @@ import { SchemaSelector } from "./components/schema-selector";
 import { TableSearch, FilterState } from "./components/table-search";
 import { TableList } from "./components/table-list";
 import type { TableRightClickAction } from "./components/table-list";
-import { AddAction } from "./components/add-menu";
+
 import { BottomToolbar, ToolbarAction, Theme } from "./components/bottom-toolbar";
 import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
 import { RenameTableDialog } from "./components/rename-table-dialog";
@@ -203,9 +203,7 @@ export function DatabaseSidebar({
     }
   }
 
-  function handleAddAction(action: AddAction) {
-    console.log("Add action:", action);
-  }
+
 
   function handleContextAction(tableId: string, action: string) {
     console.log("Context action:", tableId, action);
@@ -337,7 +335,7 @@ export function DatabaseSidebar({
                 // Better would be to extract fetch function and call it
               }
             }}
-            onAddAction={handleAddAction}
+
           />
         </div>
       )}

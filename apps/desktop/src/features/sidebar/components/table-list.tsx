@@ -178,6 +178,7 @@ function TableItemRow({
               data-no-shortcuts="true"
               className="flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden"
               onClick={(e) => e.stopPropagation()}
+              autoFocus
             />
             <Button
               variant="ghost"

@@ -3,6 +3,7 @@ import { Button } from "@/shared/ui/button";
 import { Switch } from "@/shared/ui/switch";
 import { Slider } from "@/shared/ui/slider";
 import { Separator } from "@/shared/ui/separator";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { useSettings } from "@/core/settings";
 
 type Props = {
@@ -29,12 +30,50 @@ export function SettingsPanel({ onCopySchema }: Props) {
             <span className="text-xs text-muted-foreground">A</span>
             <Slider
               value={[settings.editorFontSize]}
-              onValueChange={([value]) => updateSetting("editorFontSize", value)}
+              onValueChange={function([value]) { updateSetting("editorFontSize", value); }}
               min={10}
               max={24}
               step={1}
             />
             <span className="text-base text-muted-foreground">A</span>
+          </div>
+        </div>
+
+        <div className="space-y-2 pt-2">
+          <div className="text-sm text-sidebar-foreground">Syntax theme</div>
+          <Select
+            value={settings.editorTheme}
+            onValueChange={function(value) { updateSetting("editorTheme", value as any); }}
+          >
+            <SelectTrigger className="w-full h-8 text-xs">
+              <SelectValue placeholder="Select theme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Auto (System)</SelectItem>
+              <SelectItem value="vs">Light (Default)</SelectItem>
+              <SelectItem value="vs-dark">Dark (Default)</SelectItem>
+              <SelectSeparator />
+              <SelectItem value="dracula">Dracula</SelectItem>
+              <SelectItem value="nord">Nord</SelectItem>
+              <SelectItem value="monokai">Monokai</SelectItem>
+              <SelectItem value="github-dark">GitHub Dark</SelectItem>
+              <SelectItem value="github-light">GitHub Light</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-start justify-between gap-4 pt-2">
+          <div className="flex-1">
+            <div className="text-sm text-sidebar-foreground">Vim keybindings</div>
+            <div className="text-xs text-muted-foreground leading-tight">
+              Use Vim-style keyboard shortcuts
+            </div>
+          </div>
+          <div className="flex-shrink-0 pt-0.5">
+            <Switch
+              checked={settings.enableVimMode}
+              onCheckedChange={function(checked) { updateSetting("enableVimMode", checked); }}
+            />
           </div>
         </div>
       </div>

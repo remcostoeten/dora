@@ -3,6 +3,8 @@ import { Database, Plus, PanelLeft, Trash2, Columns } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { StudioToolbar } from "./components/studio-toolbar";
 import { DataGrid } from "./components/data-grid";
+import { BottomStatusBar } from "./components/bottom-status-bar";
+import { SelectionActionBar } from "./components/selection-action-bar";
 import { AddRecordDialog } from "./components/add-record-dialog";
 import { AddColumnDialog, ColumnFormData } from "./components/add-column-dialog";
 import { DropTableDialog } from "./components/drop-table-dialog";
@@ -12,6 +14,7 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
 import { usePendingEdits } from "@/core/pending-edits";
+import { useUndo } from "@/core/undo";
 import { commands } from "@/lib/bindings";
 import {
     TableData,
@@ -34,7 +37,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const adapter = useAdapter();
     const { updateCell, deleteRows, insertRow } = useDataMutation();
     const { settings } = useSettings();
-    const { isDryEditMode, setDryEditMode, addEdit, getEditsForTable, getEditCount, clearEdits, hasEdits } = usePendingEdits();
+    const { isDryEditMode, setDryEditMode, addEdit, removeEdit, pendingEdits, getEditsForTable, getEditCount, clearEdits, hasEdits } = usePendingEdits();
     const [isApplyingEdits, setIsApplyingEdits] = useState(false);
     const [tableData, setTableData] = useState<TableData | null>(null);
     const [showAddDialog, setShowAddDialog] = useState(false);
@@ -53,7 +56,9 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const [showDropTableDialog, setShowDropTableDialog] = useState(false);
     const [isDdlLoading, setIsDdlLoading] = useState(false);
 
-    // Default to all visible initially
+    const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null);
+    const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null);
+
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
 
     // Delay showing skeleton to avoid flash for fast queries
@@ -115,9 +120,11 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         }
     }, [adapter, tableId, tableName, activeConnectionId, pagination.limit, pagination.offset, sort, filters]);
 
-    useEffect(() => {
+    useEffect(function() {
         loadTableData();
     }, [loadTableData]);
+
+    const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData });
 
     // Reset state when table changes
     useEffect(() => {
@@ -182,14 +189,20 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         }
 
         if (isDryEditMode) {
+            // Check if there's already a pending edit to preserve the ORIGINAL value
+            const key = `${tableId}:${String(row[primaryKeyColumn.name])}:${columnName}`;
+            const existingEdit = pendingEdits.get(key);
+            const oldValue = existingEdit ? existingEdit.oldValue : row[columnName];
+
             addEdit(tableId, {
                 rowIndex,
                 primaryKeyColumn: primaryKeyColumn.name,
                 primaryKeyValue: row[primaryKeyColumn.name],
                 columnName,
-                oldValue: row[columnName],
-                newValue,
+                oldValue,
+                newValue
             });
+
             setTableData(function (prev) {
                 if (!prev) return prev;
                 const newRows = [...prev.rows];
@@ -197,6 +210,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 return { ...prev, rows: newRows };
             });
         } else {
+            const previousValue = row[columnName];
             updateCell.mutate({
                 connectionId: activeConnectionId,
                 tableName: tableName || tableId,
@@ -206,6 +220,15 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 newValue
             }, {
                 onSuccess: function () {
+                    trackCellMutation(
+                        activeConnectionId,
+                        tableName || tableId,
+                        primaryKeyColumn.name,
+                        row[primaryKeyColumn.name],
+                        columnName,
+                        previousValue,
+                        newValue
+                    );
                     loadTableData();
                 },
                 onError: function (error) {
@@ -214,6 +237,50 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
             });
         }
     }
+
+    // Handle Undo for Pending Edits (Ctrl+Z)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                if (isDryEditMode && tableId && hasEdits(tableId)) {
+                    // Check if we are inside an input (default undo) vs grid navigation
+                    // If target is body or grid container, we perform our undo.
+                    const target = e.target as HTMLElement;
+                    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+                    
+                    if (!isInput) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const edits = getEditsForTable(tableId);
+                        const lastEdit = edits[edits.length - 1];
+
+                        if (lastEdit) {
+                            const key = `${tableId}:${String(lastEdit.primaryKeyValue)}:${lastEdit.columnName}`;
+                            removeEdit(tableId, key);
+
+                            setTableData(prev => {
+                                if (!prev) return prev;
+                                const newRows = [...prev.rows];
+                                // We trust rowIndex from the edit, assuming table hasn't been re-sorted/filtered in a way that invalidates indices.
+                                // Ideal: find row by PK. But for now using index as stored.
+                                if (newRows[lastEdit.rowIndex]) {
+                                    newRows[lastEdit.rowIndex] = { 
+                                        ...newRows[lastEdit.rowIndex], 
+                                        [lastEdit.columnName]: lastEdit.oldValue 
+                                    };
+                                }
+                                return { ...prev, rows: newRows };
+                            });
+                        }
+                    }
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => window.removeEventListener('keydown', handleKeyDown, true);
+    }, [isDryEditMode, tableId, hasEdits, getEditsForTable, removeEdit]);
 
     async function handleApplyPendingEdits() {
         if (!activeConnectionId || !tableId) return;
@@ -248,22 +315,27 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         loadTableData();
     }
 
-    const handleBatchCellEdit = async (rowIndexes: number[], columnName: string, newValue: unknown) => {
+    async function handleBatchCellEdit(rowIndexes: number[], columnName: string, newValue: unknown) {
         if (!tableId || !activeConnectionId || !tableData) return;
 
-        const primaryKeyColumn = tableData.columns.find(c => c.primaryKey);
+        const primaryKeyColumn = tableData.columns.find(function(c) { return c.primaryKey; });
         if (!primaryKeyColumn) {
             console.error("No primary key found");
             return;
         }
 
-        // Sequential updates for now, as adapter lacks batch update
-        // We trigger reload only after all are initiated. 
-        // Note: Using mutateAsync would be better to await all, but mutate is fire-and-forget.
-        // Let's use mutateAsync.
+        const cellsToTrack = rowIndexes.map(function(rowIndex) {
+            const row = tableData.rows[rowIndex];
+            return {
+                primaryKeyValue: row[primaryKeyColumn.name],
+                columnName,
+                previousValue: row[columnName],
+                newValue,
+            };
+        });
 
         try {
-            await Promise.all(rowIndexes.map(async (rowIndex) => {
+            await Promise.all(rowIndexes.map(async function(rowIndex) {
                 const row = tableData.rows[rowIndex];
                 return updateCell.mutateAsync({
                     connectionId: activeConnectionId,
@@ -274,11 +346,19 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     newValue
                 });
             }));
+
+            trackBatchCellMutation(
+                activeConnectionId,
+                tableName || tableId,
+                primaryKeyColumn.name,
+                cellsToTrack
+            );
+
             loadTableData();
         } catch (error) {
             console.error("Failed to batch update cells:", error);
         }
-    };
+    }
 
     const handleRowAction = async (action: string, row: Record<string, unknown>, rowIndex: number) => {
         if (!tableId || !activeConnectionId || !tableData) return;
@@ -321,19 +401,74 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 if (primaryKeyColumn) {
                     delete duplicateData[primaryKeyColumn.name];
                 }
-                setDuplicateInitialData(duplicateData);
-                setAddDialogMode("duplicate");
-                setShowAddDialog(true);
+                // Prefill any missing required timestamp fields if not present in source
+                const defaults = createDefaultValues(tableData.columns);
+                setDraftRow({ ...defaults, ...duplicateData });
+                setDraftInsertIndex(rowIndex + 1);
+                
+                // Focus will be handled by the DataGrid effect for new draft row
                 break;
             default:
                 console.log("Row action:", action, row);
         }
     };
 
+    function createDefaultValues(columns: ColumnDefinition[]): Record<string, unknown> {
+        const defaults: Record<string, unknown> = {};
+        const now = new Date().toISOString();
+        
+        for (const col of columns) {
+            if (col.primaryKey) continue;
+            
+            const type = col.type.toLowerCase();
+            const name = col.name.toLowerCase();
+            if (type.includes('timestamp') || type.includes('datetime') || type.includes('date')) {
+                defaults[col.name] = now;
+            } else if (name.includes('created') || name.includes('updated') || name === 'date') {
+                defaults[col.name] = now;
+            } else {
+                defaults[col.name] = col.nullable ? null : '';
+            }
+        }
+        return defaults;
+    }
+
     function handleAddRecord() {
-        setDuplicateInitialData(undefined);
-        setAddDialogMode("add");
-        setShowAddDialog(true);
+        if (!tableData) return;
+        const defaults = createDefaultValues(tableData.columns);
+        setDraftRow(defaults);
+        setDraftInsertIndex(-1); // -1 indicates top of the table
+    }
+
+    function handleDraftChange(columnName: string, value: unknown) {
+        setDraftRow(function(prev) {
+            if (!prev) return prev;
+            return { ...prev, [columnName]: value };
+        });
+    }
+
+    function handleDraftSave() {
+        if (!activeConnectionId || !tableId || !draftRow) return;
+
+        insertRow.mutate({
+            connectionId: activeConnectionId,
+            tableName: tableName || tableId,
+            rowData: draftRow
+        }, {
+            onSuccess: function onInsertSuccess() {
+                setDraftRow(null);
+                setDraftInsertIndex(null);
+                loadTableData();
+            },
+            onError: function onInsertError(error) {
+                console.error("Failed to insert row:", error);
+            }
+        });
+    }
+
+    function handleDraftCancel() {
+        setDraftRow(null);
+        setDraftInsertIndex(null);
     }
 
     function handleAddRecordSubmit(rowData: Record<string, unknown>) {
@@ -567,6 +702,14 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     </div>
                 </div>
 
+                <BottomStatusBar
+                    pagination={pagination}
+                    onPaginationChange={setPagination}
+                    rowCount={tableData.rows.length}
+                    totalCount={tableData.totalCount}
+                    executionTime={tableData.executionTime}
+                />
+
                 <AddColumnDialog
                     open={showAddColumnDialog}
                     onOpenChange={setShowAddColumnDialog}
@@ -593,11 +736,6 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 tableName={tableName || tableId}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
-                pagination={pagination}
-                onPaginationChange={setPagination}
-                rowCount={tableData?.rows.length ?? 0}
-                totalCount={tableData?.totalCount ?? 0}
-                executionTime={tableData?.executionTime ?? 0}
                 onToggleSidebar={onToggleSidebar}
                 onRefresh={loadTableData}
                 onExport={handleExport}
@@ -625,11 +763,17 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                         onSelectAll={handleSelectAll}
                         sort={sort}
                         onSortChange={setSort}
-                        onFilterAdd={(filter) => setFilters(prev => [...prev, filter])}
+                        onFilterAdd={function(filter) { setFilters(function(prev) { return [...prev, filter]; }); }}
                         onCellEdit={handleCellEdit}
                         onBatchCellEdit={handleBatchCellEdit}
                         onRowAction={handleRowAction}
                         tableName={tableName || tableId}
+                        draftRow={draftRow}
+                        onDraftChange={handleDraftChange}
+                        onDraftSave={handleDraftSave}
+                        onDraftCancel={handleDraftCancel}
+                        pendingEdits={tableId ? new Set(getEditsForTable(tableId).map(e => `${e.primaryKeyValue}:${e.columnName}`)) : undefined}
+                        draftInsertIndex={draftInsertIndex}
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full">
@@ -637,6 +781,51 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     </div>
                 )}
             </div>
+
+            {tableData && (
+                <BottomStatusBar
+                    pagination={pagination}
+                    onPaginationChange={setPagination}
+                    rowCount={tableData.rows.length}
+                    totalCount={tableData.totalCount}
+                    executionTime={tableData.executionTime}
+                />
+            )}
+
+            {tableData && selectedRows.size > 0 && (
+                <SelectionActionBar
+                    selectedCount={selectedRows.size}
+                    onDelete={function handleBulkDelete() {
+                        const primaryKeyColumn = tableData.columns.find(function(c) { return c.primaryKey; });
+                        if (!primaryKeyColumn || !activeConnectionId || !tableId) return;
+                        
+                        if (settings.confirmBeforeDelete && !confirm(`Delete ${selectedRows.size} selected rows?`)) return;
+                        
+                        const primaryKeyValues = Array.from(selectedRows).map(function(rowIndex) {
+                            return tableData.rows[rowIndex][primaryKeyColumn.name];
+                        });
+                        
+                        deleteRows.mutate({
+                            connectionId: activeConnectionId,
+                            tableName: tableName || tableId,
+                            primaryKeyColumn: primaryKeyColumn.name,
+                            primaryKeyValues
+                        }, {
+                            onSuccess: function() {
+                                setSelectedRows(new Set());
+                                loadTableData();
+                            }
+                        });
+                    }}
+                    onCopy={function handleBulkCopy() {
+                        const rowsData = Array.from(selectedRows).map(function(rowIndex) {
+                            return tableData.rows[rowIndex];
+                        });
+                        navigator.clipboard.writeText(JSON.stringify(rowsData, null, 2));
+                    }}
+                    onClearSelection={function() { setSelectedRows(new Set()); }}
+                />
+            )}
 
             {tableId && hasEdits(tableId) && (
                 <PendingChangesBar

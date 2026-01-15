@@ -1,9 +1,10 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import Editor, { OnMount } from "@monaco-editor/react";
-import { useTheme } from "next-themes";
 import { useSetting } from "@/core/settings";
 import { generateDrizzleTypes } from "../utils/lsp-utils";
 import { SchemaTable } from "../types";
+import { loadTheme, isBuiltinTheme, MonacoTheme } from "@/core/settings/editor-themes";
+import { initVimMode } from "monaco-vim";
 
 type Props = {
     value: string;
@@ -14,18 +15,92 @@ type Props = {
 };
 
 export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
-    const { theme } = useTheme();
     const [editorFontSize] = useSetting("editorFontSize");
+    const [editorThemeSetting] = useSetting("editorTheme");
+    const [enableVimMode] = useSetting("enableVimMode");
     const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
-    const monacoRef = useRef<any>(null); // To access monaco instance later if needed
+    const monacoRef = useRef<any>(null);
+    const vimModeRef = useRef<any>(null);
+    const statusBarRef = useRef<HTMLDivElement | null>(null);
+    const loadedThemesRef = useRef<Set<string>>(new Set());
 
-    const handleEditorDidMount: OnMount = (editor, monaco) => {
+    function getThemeFromDocument(): MonacoTheme {
+        if (typeof document !== "undefined") {
+            return document.documentElement.classList.contains("light") ? "vs" : "vs-dark";
+        }
+        return "vs-dark";
+    }
+
+    function deriveMonacoTheme(): string {
+        if (editorThemeSetting === "auto") {
+            return getThemeFromDocument();
+        }
+        if (editorThemeSetting === "light") return "vs";
+        if (editorThemeSetting === "dark") return "vs-dark";
+        return editorThemeSetting;
+    }
+
+    const [editorTheme, setEditorTheme] = useState<string>(deriveMonacoTheme);
+
+    useEffect(function syncFromSetting() {
+        setEditorTheme(deriveMonacoTheme());
+    }, [editorThemeSetting]);
+
+    useEffect(function observeTheme() {
+        if (editorThemeSetting !== "auto") return;
+        const observer = new MutationObserver(function() {
+            setEditorTheme(getThemeFromDocument());
+        });
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        return function() { observer.disconnect(); };
+    }, [editorThemeSetting]);
+
+    useEffect(function applyTheme() {
+        if (!monacoRef.current) return;
+        
+        async function apply() {
+            const themeName = editorTheme;
+            if (!isBuiltinTheme(themeName) && !loadedThemesRef.current.has(themeName)) {
+                const themeData = await loadTheme(themeName as MonacoTheme);
+                if (themeData && monacoRef.current) {
+                    monacoRef.current.editor.defineTheme(themeName, themeData);
+                    loadedThemesRef.current.add(themeName);
+                }
+            }
+            if (monacoRef.current) {
+                monacoRef.current.editor.setTheme(themeName);
+            }
+        }
+        apply();
+    }, [editorTheme]);
+
+    useEffect(function handleVimMode() {
+        if (!editorRef.current || !statusBarRef.current) return;
+
+        if (enableVimMode) {
+            if (!vimModeRef.current) {
+                vimModeRef.current = initVimMode(editorRef.current, statusBarRef.current);
+            }
+        } else {
+            if (vimModeRef.current) {
+                vimModeRef.current.dispose();
+                vimModeRef.current = null;
+            }
+        }
+
+        return function() {
+            if (vimModeRef.current) {
+                vimModeRef.current.dispose();
+                vimModeRef.current = null;
+            }
+        };
+    }, [enableVimMode]);
+
+    const handleEditorDidMount: OnMount = function(editor, monaco) {
         editorRef.current = editor;
         monacoRef.current = monaco;
 
-        // Use standard VS Dark theme for TypeScript to differentiate from SQL Console
-        // (SQL Console uses Pink/Green Drizzle style)
-        monaco.editor.setTheme("vs-dark");
+        monaco.editor.setTheme(editorTheme);
 
         // Compiler options for better intellisense
         monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
@@ -219,6 +294,12 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         }
     }, [value]);
 
+    useEffect(function syncTheme() {
+        if (monacoRef.current) {
+            monacoRef.current.editor.setTheme(editorTheme);
+        }
+    }, [editorTheme]);
+
     const updateDecorations = (editor: any, monaco: any) => {
         const model = editor.getModel();
         if (!model) return;
@@ -287,12 +368,12 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
              `}} />
 
             <Editor
-                height="100%"
+                height={enableVimMode ? "calc(100% - 24px)" : "100%"}
                 defaultLanguage="typescript"
                 value={value}
-                onChange={(newValue) => onChange(newValue || "")}
+                onChange={function(newValue) { onChange(newValue || ""); }}
                 onMount={handleEditorDidMount}
-                theme="vs-dark"
+                theme={editorTheme}
                 options={{
                     minimap: { enabled: false },
                     fontSize: editorFontSize,
@@ -308,6 +389,12 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
                 }}
             />
+            {enableVimMode && (
+                <div
+                    ref={statusBarRef}
+                    className="h-6 px-2 flex items-center text-xs font-mono bg-sidebar-accent text-sidebar-foreground border-t border-sidebar-border"
+                />
+            )}
         </div>
     );
 }

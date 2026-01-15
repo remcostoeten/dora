@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
 import { commands } from "@/lib/bindings";
+import { MonacoTheme } from "./editor-themes";
 
-// ============================================================================
-// Settings Types
-// ============================================================================
+export type EditorTheme = "auto" | MonacoTheme;
 
 export type SettingsState = {
   confirmBeforeDelete: boolean;
   editorFontSize: number;
+  editorTheme: EditorTheme;
+  enableVimMode: boolean;
   restoreLastConnection: boolean;
   lastConnectionId: string | null;
 };
@@ -15,6 +16,8 @@ export type SettingsState = {
 export const DEFAULT_SETTINGS: SettingsState = {
   confirmBeforeDelete: true,
   editorFontSize: 14,
+  editorTheme: "auto",
+  enableVimMode: false,
   restoreLastConnection: true,
   lastConnectionId: null,
 };
@@ -34,10 +37,6 @@ type SettingsContextValue = {
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
-
-// ============================================================================
-// Storage Helpers (using Tauri backend)
-// ============================================================================
 
 async function loadSettingsFromBackend(): Promise<SettingsState> {
   try {

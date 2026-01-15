@@ -27,7 +27,37 @@ let store: InMemoryStore = {
     scripts: [],
 };
 
+const STORAGE_KEY = 'dora_demo_store';
+
+function loadFromStorage(): InMemoryStore | null {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+            return null;
+        }
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : null;
+    } catch {
+        return null;
+    }
+}
+
+function saveToStorage() {
+    try {
+        if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
+            return;
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+    } catch {
+    }
+}
+
 function initializeStore() {
+    const saved = loadFromStorage();
+    if (saved && saved.tables && Object.keys(saved.tables).length > 0) {
+        store = saved;
+        return;
+    }
+
     store = { tables: {}, nextId: {}, connections: [], scripts: [] };
 
     Object.keys(MOCK_TABLE_DATA).forEach(function (key) {
@@ -37,6 +67,7 @@ function initializeStore() {
     });
 
     store.scripts = JSON.parse(JSON.stringify(MOCK_SCRIPTS));
+    saveToStorage();
 }
 
 initializeStore();
@@ -86,6 +117,7 @@ export function createMockAdapter(): DataAdapter {
                 sort_order: store.connections.length
             };
             store.connections.push(newConn);
+            saveToStorage();
             return ok(newConn);
         },
 
@@ -97,12 +129,14 @@ export function createMockAdapter(): DataAdapter {
             }
             const updated = { ...store.connections[idx], name, database_type: databaseType, updated_at: Date.now() };
             store.connections[idx] = updated;
+            saveToStorage();
             return ok(updated);
         },
 
         async removeConnection(id: string): Promise<AdapterResult<void>> {
             await randomDelay();
             store.connections = store.connections.filter(function (c) { return c.id !== id; });
+            saveToStorage();
             return ok(undefined);
         },
 
@@ -300,6 +334,10 @@ export function createMockAdapter(): DataAdapter {
                 }
             });
 
+            if (updated > 0) {
+                saveToStorage();
+            }
+
             return ok({
                 success: updated > 0,
                 affected_rows: updated,
@@ -328,6 +366,10 @@ export function createMockAdapter(): DataAdapter {
             });
             const deleted = before - store.tables[key].length;
 
+            if (deleted > 0) {
+                saveToStorage();
+            }
+
             return ok({
                 success: deleted > 0,
                 affected_rows: deleted,
@@ -351,6 +393,7 @@ export function createMockAdapter(): DataAdapter {
 
             const newRow = { ...rowData, id: store.nextId[key]++ };
             store.tables[key].push(newRow);
+            saveToStorage();
 
             return ok({
                 success: true,
@@ -416,6 +459,7 @@ export function createMockAdapter(): DataAdapter {
                 language: "sql"
             };
             store.scripts.push(newScript);
+            saveToStorage();
             return ok(id);
         },
 
@@ -432,17 +476,24 @@ export function createMockAdapter(): DataAdapter {
                 connection_id: connectionId,
                 updated_at: Date.now()
             };
+            saveToStorage();
             return ok(undefined);
         },
 
         async deleteScript(id: number): Promise<AdapterResult<void>> {
             await randomDelay();
             store.scripts = store.scripts.filter(function (s) { return s.id !== id; });
+            saveToStorage();
             return ok(undefined);
         },
     };
 }
 
 export function resetMockStore() {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+    } catch {}
     initializeStore();
 }

@@ -94,17 +94,10 @@ export function ConnectionSwitcher({
                         <ContextMenu key={connection.id}>
                             <ContextMenuTrigger asChild>
                                 <DropdownMenuItem
-                                    onClick={() => onConnectionSelect(connection.id)}
+                                    onClick={function() { onConnectionSelect(connection.id); }}
                                     className="gap-2 p-2 cursor-pointer"
-                                    onSelect={(e) => e.preventDefault()}
                                 >
-                                    <div
-                                        className="flex items-center gap-2 w-full"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            onConnectionSelect(connection.id);
-                                        }}
-                                    >
+                                    <div className="flex items-center gap-2 w-full">
                                         <div className={cn(
                                             "flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background",
                                             connection.status === "error" && "border-destructive/50 bg-destructive/5"
