@@ -6,6 +6,7 @@ import { ColumnDefinition, SortDescriptor, FilterDescriptor } from "../types";
 import { CellContextMenu } from "./cell-context-menu";
 import { RowContextMenu, type RowAction } from "./row-context-menu";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
+import { useShortcut } from "@/core/shortcuts";
 
 type EditingCell = {
     rowIndex: number;
@@ -164,46 +165,21 @@ export function DataGrid({
         };
     }, [isDragging]);
 
-    useEffect(() => {
-        const shouldIgnoreShortcut = (target: HTMLElement, e: KeyboardEvent): boolean => {
-            const tagName = target.tagName;
-            if (
-                tagName === "INPUT" ||
-                tagName === "TEXTAREA" ||
-                target.isContentEditable
-            ) {
-                return true;
-            }
+    const $ = useShortcut();
 
-            const isMonacoEditor = target.closest(".monaco-editor");
-            if (isMonacoEditor) return true;
+    $.mod.key("a").except("typing").on(function() {
+        onSelectAll(!allSelected);
+    }, { description: "Select all rows" });
 
-            const isInNoShortcutsZone = target.closest("[data-no-shortcuts]");
-            if (isInNoShortcutsZone) return true;
+    $.key("escape").except("typing").on(function() {
+        if (selectedRows.size > 0) {
+            onSelectAll(false);
+        }
+    }, { description: "Deselect all rows" });
 
-            return false;
-        };
-
-
-        function handleKeyDown(e: KeyboardEvent) {
-            const target = e.target as HTMLElement;
-            if (shouldIgnoreShortcut(target, e)) return;
-
-            // Ctrl/Cmd + A: Select all rows
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
-                e.preventDefault();
-                onSelectAll(!allSelected);
-            }
-
-            // Escape: Deselect all rows
-            if (e.key === "Escape" && selectedRows.size > 0) {
-                onSelectAll(false);
-            }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [allSelected, onSelectAll, selectedRows.size]);
+    $.mod.key("d").except("typing").on(function() {
+        onSelectAll(false);
+    }, { description: "Deselect all rows" });
 
     // Handle row click with Ctrl/Shift modifiers
     const handleRowClick = useCallback((e: React.MouseEvent, rowIndex: number) => {
