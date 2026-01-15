@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
+import readline from "readline";
 import { colors, log, logLevel, logHeader, logKeyValue } from "./_shared";
 
 
@@ -78,7 +79,7 @@ function dump() {
     }
 }
 
-function reset() {
+async function reset() {
     logHeader("Database Reset");
     const dbPath = findDbPath();
     if (!dbPath) {
@@ -88,6 +89,25 @@ function reset() {
 
     log("⚠️  WARNING: This will DELETE the current database.", colors.red);
     log("A new empty database will be created next time you start the app.", colors.yellow);
+
+    if (!args.includes("--force")) {
+        const rl = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+        });
+
+        const answer = await new Promise<string>(resolve => {
+            rl.question(`\n${colors.bold}Are you sure you want to proceed? (yes/N)${colors.reset} `, result => {
+                rl.close();
+                resolve(result);
+            });
+        });
+
+        if (answer.toLowerCase() !== "yes" && answer.toLowerCase() !== "y") {
+            log("\nOperation aborted.", colors.yellow);
+            return;
+        }
+    }
 
     // Backup first just in case
     log("\nCreating safety backup first...", colors.blue);
@@ -134,7 +154,7 @@ const args = process.argv.slice(2);
 
 if (args.includes("--backup")) backup();
 else if (args.includes("--dump")) dump();
-else if (args.includes("--reset")) reset();
+else if (args.includes("--reset")) await reset();
 else if (args.includes("--introspect")) introspect();
 else {
     console.log(`

@@ -36,9 +36,9 @@ const (
 	sectionRunApp
 	sectionBuildPlatform
 	sectionBuilds
-	sectionInstallBuild  // Now "Install Fresh"
-	sectionUninstall     // NEW
-	sectionReinstall     // NEW (Old Install Build logic)
+	sectionInstallBuild // Now "Install Fresh"
+	sectionUninstall    // NEW
+	sectionReinstall    // NEW (Old Install Build logic)
 	sectionCheckSizes
 	sectionDatabase
 	sectionRelease
@@ -50,18 +50,18 @@ const (
 )
 
 type model struct {
-	mainMenu      []string
-	cursor        int
-	
+	mainMenu []string
+	cursor   int
+
 	// Navigation state
-	currentSection menuSection
+	currentSection  menuSection
 	previousSection menuSection
 
 	// Legacy submenu support
-	inSubmenu     bool
-	subMenu       []subdir
-	subMenuTitle  string
-	subCursor     int
+	inSubmenu    bool
+	subMenu      []subdir
+	subMenuTitle string
+	subCursor    int
 
 	// Script selection
 	scriptMenu    []scriptDef
@@ -70,18 +70,18 @@ type model struct {
 	pendingScript *scriptDef
 
 	// Option picker (for version/model)
-	optionMenu    []string
-	optionCursor  int
-	optionTitle   string
+	optionMenu   []string
+	optionCursor int
+	optionTitle  string
 
 	viewingBuilds bool
 	buildFiles    []buildFile
 	buildCursor   int
 
-	executing     bool
-	spinner       spinner.Model
-	outputCmd     string
-	err           error
+	executing bool
+	spinner   spinner.Model
+	outputCmd string
+	err       error
 }
 
 func initialModel() model {
@@ -109,7 +109,7 @@ func initialModel() model {
 			"Visit GitHub Repo",
 			"Go to Releases",
 		},
-		spinner: s,
+		spinner:        s,
 		currentSection: sectionMain,
 	}
 }
@@ -177,7 +177,7 @@ func (m model) moveCursorUp() model {
 		if m.buildCursor > 0 {
 			m.buildCursor--
 		}
-	case sectionRelease, sectionAISetup:
+	case sectionRelease, sectionAISetup, sectionDatabase:
 		if m.scriptCursor > 0 {
 			m.scriptCursor--
 		}
@@ -328,9 +328,9 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 `
 			return m, executeCommand("bash", "-c", rebuildScript)
 		case 14: // Separator - skip
- 			return m, nil
+			return m, nil
 		case 15: // GitHub Repo
-			// Use xdg-open for Linux, open for Mac. 
+			// Use xdg-open for Linux, open for Mac.
 			// Since we know user is on Linux (deb files), xdg-open is safe bet.
 			// Or just "bun open <url>" if we have open package? No, keep it simple.
 			return m, executeCommand("xdg-open", "https://github.com/remcostoeten/dora")
@@ -347,14 +347,14 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 			file := m.buildFiles[m.buildCursor]
 			return m, executeCommand(file.Path)
 		}
-	
+
 	case sectionInstallBuild:
 		if len(m.buildFiles) > 0 {
 			file := m.buildFiles[m.buildCursor]
 			// Fresh install: Check if installed first to avoid conflict? Or just dpkg -i directly?
 			// User asked for "Install" (implying fresh) vs "Uninstall" vs "Reinstall".
 			// "Install" usually implies just putting it there. If it's already there, dpkg -i upgrades/replaces it anyway.
-			// But user might want to know. 
+			// But user might want to know.
 			// I'll assume standard dpkg -i behavior for "Install".
 			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Name, file.Path)
 			return m, executeCommand("bash", "-c", cmd)
@@ -451,7 +451,7 @@ func executeCommand(name string, args ...string) tea.Cmd {
 	}
 
 	wrapperArgs := []string{"-c", fmt.Sprintf(`echo "Working Directory: %s"; %s; echo; read -rs -p "Press Enter to return to menu..."`, rootDir, commandStr)}
-	
+
 	return tea.ExecProcess(exec.Command("bash", wrapperArgs...), func(err error) tea.Msg {
 		return execFinishedMsg{err}
 	})
@@ -472,21 +472,21 @@ func formatBytes(bytes int64) string {
 
 func findBuilds(mode string) []buildFile {
 	var files []buildFile
-	
+
 	// ... (path resolution same as before)
 	// Try to resolve the correct path based on CWD
 	// 1. From root (production runner)
 	pathFromRoot := "apps/desktop/src-tauri/target/release/bundle"
 	// 2. From tools/dora-cli (dev mode)
 	pathFromDev := "../../apps/desktop/src-tauri/target/release/bundle"
-	
+
 	root := pathFromRoot
 	if _, err := os.Stat(pathFromRoot); os.IsNotExist(err) {
 		if _, err := os.Stat(pathFromDev); err == nil {
 			root = pathFromDev
 		}
 	}
-	
+
 	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
@@ -494,13 +494,19 @@ func findBuilds(mode string) []buildFile {
 		if !d.IsDir() {
 			ext := strings.ToLower(filepath.Ext(path))
 			isValid := false
-			
+
 			if mode == "exec" {
-				if ext == ".appimage" { isValid = true }
+				if ext == ".appimage" {
+					isValid = true
+				}
 			} else if mode == "deb" {
-				if ext == ".deb" { isValid = true }
+				if ext == ".deb" {
+					isValid = true
+				}
 			} else { // "all"
-				if ext == ".appimage" || ext == ".deb" || ext == ".rpm" { isValid = true }
+				if ext == ".appimage" || ext == ".deb" || ext == ".rpm" {
+					isValid = true
+				}
 			}
 
 			if isValid {
@@ -516,7 +522,7 @@ func findBuilds(mode string) []buildFile {
 		}
 		return nil
 	})
-	
+
 	// ... sort ...
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].ModTime.After(files[j].ModTime)

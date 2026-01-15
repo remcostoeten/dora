@@ -105,7 +105,7 @@ func (m model) subMenuList() string {
 	var s strings.Builder
 	// Title of submenu
 	s.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#DDD")).Render(m.subMenuTitle) + "\n\n")
-	
+
 	for i, choice := range m.subMenu {
 		if m.subCursor == i {
 			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", choice.label)))
@@ -116,7 +116,6 @@ func (m model) subMenuList() string {
 	}
 	return s.String()
 }
-
 
 func (m model) buildsList() string {
 	if len(m.buildFiles) == 0 {
@@ -160,12 +159,12 @@ func (m model) sizesList() string {
 			name = name[:37] + "..."
 		}
 		line := fmt.Sprintf("%-40s %s", name, build.SizeStr)
-		
+
+		padding := ""
 		if m.buildCursor == i {
-			s.WriteString(style.Render(fmt.Sprintf(" %s ", line)))
-		} else {
-			s.WriteString(style.Render(fmt.Sprintf("%s", line)))
+			padding = " "
 		}
+		s.WriteString(style.Render(fmt.Sprintf("%s%s%s", padding, line, padding)))
 		s.WriteString("\n")
 	}
 	return s.String()

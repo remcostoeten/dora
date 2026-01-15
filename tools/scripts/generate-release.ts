@@ -180,9 +180,14 @@ async function listGeminiModels() {
     if (!CONFIG.apiKey) {
         throw new Error("GEMINI_API_KEY is not set.");
     }
-    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${CONFIG.apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models`;
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            headers: {
+                "x-goog-api-key": CONFIG.apiKey,
+                "Content-Type": "application/json"
+            }
+        });
         if (!response.ok) throw new Error(`Failed to list models: ${response.statusText}`);
         const data = await response.json() as any;
         log("Available Gemini Models:", colors.blue);

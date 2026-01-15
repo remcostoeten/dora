@@ -17,6 +17,7 @@
     "docs:build": "bun run --cwd apps/api-docs build",
     "release:gen": "bun tools/scripts/generate-release.ts",
     "ai:setup": "bun tools/scripts/setup-local-ai.ts",
+    "setup:ai": "bun tools/scripts/setup-local-ai.ts",
     "runner": "./dora-runner"
   },
   "devDependencies": {
@@ -25,6 +26,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
-    "zustand": "^5.0.10"
+    "zustand": "^5.0.10",
+    "sqlite3": "^5.1.7"
   }
 }

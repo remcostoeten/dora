@@ -5,6 +5,7 @@
       "name": "dora",
       "dependencies": {
         "@google/generative-ai": "^0.24.1",
+        "sqlite3": "^5.1.7",
         "zustand": "^5.0.10",
       },
       "devDependencies": {
