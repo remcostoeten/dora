@@ -94,7 +94,17 @@ async function checkModelExists(modelName: string): Promise<boolean> {
     }
 }
 
+function isValidModelName(name: string): boolean {
+    // Allow alphanumeric, colons (for tags), hyphens, and underscores
+    return /^[a-zA-Z0-9_:-]+$/.test(name);
+}
+
 function pullModel(modelName: string) {
+    if (!isValidModelName(modelName)) {
+        log(`Invalid model name: ${modelName}`, colors.red);
+        process.exit(1);
+    }
+
     log(`Pulling model '${modelName}'... This may take a while.`, colors.cyan);
 
     // Only works if ollama is local CLI
