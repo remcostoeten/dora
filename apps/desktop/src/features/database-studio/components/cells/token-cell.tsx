@@ -19,10 +19,10 @@ export function TokenCell({ value }: Props) {
     const start = text.slice(0, 8);
     const end = text.slice(-8);
 
-    const handleCopy = (e: React.MouseEvent) => {
+    function handleCopy(e: React.MouseEvent) {
         e.stopPropagation();
         copyToClipboard(text);
-    };
+    }
 
     return (
         <div className="group flex items-center gap-2 min-w-0">

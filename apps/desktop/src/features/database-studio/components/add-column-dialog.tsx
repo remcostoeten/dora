@@ -20,7 +20,7 @@ import {
 } from "@/shared/ui/select";
 import { Loader2 } from "lucide-react";
 
-type Props = {
+type props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     tableName: string;

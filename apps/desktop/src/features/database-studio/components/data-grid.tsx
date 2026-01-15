@@ -195,18 +195,14 @@ export function DataGrid({
         onSelectAll(false);
     }, { description: "Deselect all rows" });
 
-    // Handle row click with Ctrl/Shift modifiers
-    const handleRowClick = useCallback((e: React.MouseEvent, rowIndex: number) => {
-        // Don't interfere with cell context menu or editing
+    const handleRowClick = useCallback(function(e: React.MouseEvent, rowIndex: number) {
         if (e.button !== 0) return;
 
-        // Prevent text selection on shift+click
         if (e.shiftKey) {
             e.preventDefault();
         }
 
         if (e.shiftKey && lastClickedRowRef.current !== null && onRowsSelect) {
-            // Shift+click: select range from last clicked to current
             const start = Math.min(lastClickedRowRef.current, rowIndex);
             const end = Math.max(lastClickedRowRef.current, rowIndex);
             const range = [];
@@ -215,16 +211,14 @@ export function DataGrid({
             }
             onRowsSelect(range, true);
         } else if (e.ctrlKey || e.metaKey) {
-            // Ctrl+click: toggle single row
             onRowSelect(rowIndex, !selectedRows.has(rowIndex));
             lastClickedRowRef.current = rowIndex;
         } else {
-            // Regular click: just update last clicked (actual selection via checkbox)
             lastClickedRowRef.current = rowIndex;
         }
     }, [selectedRows, onRowSelect, onRowsSelect]);
 
-    const handleSort = (columnName: string) => {
+    function handleSort(columnName: string) {
         if (!onSortChange) return;
 
         if (sort?.column === columnName) {
@@ -236,14 +230,12 @@ export function DataGrid({
         } else {
             onSortChange({ column: columnName, direction: "asc" });
         }
-    };
+    }
 
-    // Get width for a column, defaulting to undefined (fluid)
     function getColumnWidth(colName: string) {
         return columnWidths[colName];
     }
 
-    // Start resizing a column
     const handleResizeStart = useCallback(function(e: React.MouseEvent, columnName: string) {
         e.preventDefault();
         e.stopPropagation();
@@ -261,27 +253,29 @@ export function DataGrid({
     }, [columnWidths]);
 
     // Handle mouse move during resize
-    useEffect(() => {
+    useEffect(function() {
         if (!resizingColumn) return;
 
-        const handleMouseMove = (e: MouseEvent) => {
+        const handleMouseMove = function(e: MouseEvent) {
             const delta = e.clientX - startXRef.current;
             const newWidth = Math.max(MIN_COLUMN_WIDTH, startWidthRef.current + delta);
 
-            setColumnWidths(prev => ({
-                ...prev,
-                [resizingColumn]: newWidth
-            }));
+            setColumnWidths(function(prev) {
+                return {
+                    ...prev,
+                    [resizingColumn]: newWidth
+                };
+            });
         };
 
-        const handleMouseUp = () => {
+        const handleMouseUp = function() {
             setResizingColumn(null);
         };
 
         document.addEventListener("mousemove", handleMouseMove);
         document.addEventListener("mouseup", handleMouseUp);
 
-        return () => {
+        return function() {
             document.removeEventListener("mousemove", handleMouseMove);
             document.removeEventListener("mouseup", handleMouseUp);
         };
@@ -322,14 +316,12 @@ export function DataGrid({
         });
     }, []);
 
-    // Start editing a cell
-    const handleCellDoubleClick = useCallback((rowIndex: number, columnName: string, currentValue: unknown) => {
+    const handleCellDoubleClick = useCallback(function(rowIndex: number, columnName: string, currentValue: unknown) {
         setEditingCell({ rowIndex, columnName });
         setEditValue(currentValue === null || currentValue === undefined ? "" : String(currentValue));
     }, []);
 
-    // Save edit and exit edit mode
-    const handleSaveEdit = useCallback(() => {
+    const handleSaveEdit = useCallback(function() {
         if (editingCell && onCellEdit) {
             onCellEdit(editingCell.rowIndex, editingCell.columnName, editValue);
         }
@@ -337,14 +329,12 @@ export function DataGrid({
         setEditValue("");
     }, [editingCell, editValue, onCellEdit]);
 
-    // Cancel edit
-    const handleCancelEdit = useCallback(() => {
+    const handleCancelEdit = useCallback(function() {
         setEditingCell(null);
         setEditValue("");
     }, []);
 
-    // Handle key press in edit input
-    const handleEditKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const handleEditKeyDown = useCallback(function(e: React.KeyboardEvent) {
         if (e.key === "Enter") {
             e.preventDefault();
             handleSaveEdit();
@@ -357,14 +347,13 @@ export function DataGrid({
     // Focus input when editing cell changes
     useEffect(() => {
         if (editingCell && editInputRef.current) {
-            // Small delay to ensure render is complete and focus works reliably
-            const timer = setTimeout(() => {
+            const timer = setTimeout(function() {
                 if (editInputRef.current) {
                     editInputRef.current.focus();
                     editInputRef.current.select();
                 }
             }, 10);
-            return () => clearTimeout(timer);
+            return function() { clearTimeout(timer); };
         }
     }, [editingCell]);
 
@@ -493,13 +482,13 @@ export function DataGrid({
                         >
                             <Checkbox
                                 checked={someSelected ? "indeterminate" : allSelected}
-                                onCheckedChange={(checked) => onSelectAll(!!checked)}
+                                onCheckedChange={function(checked) { onSelectAll(!!checked); }}
                                 className="h-4 w-4"
                                 aria-label={allSelected ? "Deselect all rows" : "Select all rows"}
                             />
                         </th>
                         {/* Data columns */}
-                        {columns.map((col) => {
+                        {columns.map(function(col) {
                             const isSorted = sort?.column === col.name;
                             const width = getColumnWidth(col.name);
 
@@ -512,7 +501,7 @@ export function DataGrid({
                                         resizingColumn === col.name && "bg-sidebar-accent"
                                     )}
                                     style={width ? { width } : undefined}
-                                    onClick={() => handleSort(col.name)}
+                                    onClick={function() { handleSort(col.name); }}
                                 >
                                     <div className="flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden">
                                         <div className="flex items-center gap-1.5 overflow-hidden min-w-0">
@@ -540,9 +529,9 @@ export function DataGrid({
                                             "absolute right-0 top-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 transition-colors",
                                             resizingColumn === col.name && "bg-primary"
                                         )}
-                                        onMouseDown={(e) => handleResizeStart(e, col.name)}
+                                        onMouseDown={function(e) { handleResizeStart(e, col.name); }}
                                         onDoubleClick={function(e) { handleResizeDoubleClick(e, col.name, col.type); }}
-                                        onClick={(e) => e.stopPropagation()}
+                                        onClick={function(e) { e.stopPropagation(); }}
                                     />
                                 </th>
                             );
@@ -609,7 +598,7 @@ export function DataGrid({
                         </tr>
                     )}
 
-                    {rows.map((row, rowIndex) => (
+                    {rows.map(function(row, rowIndex) { return (
                         <React.Fragment key={rowIndex}>
                             <RowContextMenu
                             key={rowIndex}
@@ -626,12 +615,12 @@ export function DataGrid({
                                         ? "bg-primary/10"
                                         : rowIndex % 2 === 1 ? "bg-muted/5 hover:bg-sidebar-accent/30" : "hover:bg-sidebar-accent/30"
                                 )}
-                                onClick={(e) => handleRowClick(e, rowIndex)}
+                                onClick={function(e) { handleRowClick(e, rowIndex); }}
                                 role="row"
                                 aria-rowindex={rowIndex + 2}
                                 aria-selected={selectedRows.has(rowIndex)}
                                 tabIndex={0}
-                                onKeyDown={(e) => {
+                                onKeyDown={function(e) {
                                     if (e.key === " " || e.key === "Enter") {
                                         e.preventDefault();
                                         onRowSelect(rowIndex, !selectedRows.has(rowIndex));
@@ -644,12 +633,12 @@ export function DataGrid({
                                 >
                                     <Checkbox
                                         checked={selectedRows.has(rowIndex)}
-                                        onCheckedChange={(checked) => onRowSelect(rowIndex, !!checked)}
+                                        onCheckedChange={function(checked) { onRowSelect(rowIndex, !!checked); }}
                                         className="h-4 w-4"
                                         aria-label={`Select row ${rowIndex + 1}`}
                                     />
                                 </td>
-                                {columns.map((col, colIndex) => {
+                                {columns.map(function(col, colIndex) {
                                     const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnName === col.name;
                                     const isFocused = focusedCell?.row === rowIndex && focusedCell?.col === colIndex;
                                     const isSelected = selectedCellsSet.has(getCellKey(rowIndex, colIndex));
@@ -668,7 +657,7 @@ export function DataGrid({
                                             column={col}
                                             rowIndex={rowIndex}
                                             selectedRows={selectedRows}
-                                            onAction={(action, value, column, batchAction) => {
+                                            onAction={function(action, value, column, batchAction) {
                                                 if (action === "filter-by-value" && onFilterAdd) {
                                                     onFilterAdd({
                                                         column: column.name,
@@ -694,16 +683,16 @@ export function DataGrid({
                                                     isDirty && "bg-amber-500/10"
                                                 )}
                                                 style={width ? { maxWidth: width } : undefined}
-                                                onMouseDown={(e) => handleCellMouseDown(e, rowIndex, colIndex)}
-                                                onMouseEnter={() => handleCellMouseEnter(rowIndex, colIndex)}
-                                                onDoubleClick={() => handleCellDoubleClick(rowIndex, col.name, row[col.name])}
+                                                onMouseDown={function(e) { handleCellMouseDown(e, rowIndex, colIndex); }}
+                                                onMouseEnter={function() { handleCellMouseEnter(rowIndex, colIndex); }}
+                                                onDoubleClick={function() { handleCellDoubleClick(rowIndex, col.name, row[col.name]); }}
                                             >
                                                 {isEditing ? (
                                                     <input
                                                         ref={editInputRef}
                                                         type="text"
                                                         value={editValue}
-                                                        onChange={(e) => setEditValue(e.target.value)}
+                                                        onChange={function(e) { setEditValue(e.target.value); }}
                                                         onBlur={handleSaveEdit}
                                                         onKeyDown={handleEditKeyDown}
                                                         data-no-shortcuts="true"
@@ -784,9 +773,9 @@ export function DataGrid({
                                 </div>
                             </td>
                         </tr>
-                    )}
-                    </React.Fragment>
-                    ))}
+                        )}
+                        </React.Fragment>
+                    ); })}
                     {rows.length === 0 && (
                         <tr>
                             <td 

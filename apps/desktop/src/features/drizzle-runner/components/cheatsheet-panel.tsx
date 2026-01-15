@@ -184,15 +184,15 @@ type SnippetCardProps = {
 function SnippetCard({ snippet, onInsert }: SnippetCardProps) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = () => {
+  function handleCopy() {
     navigator.clipboard.writeText(snippet.code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+    setTimeout(function() { setCopied(false); }, 2000);
+  }
 
-  const handleInsert = () => {
+  function handleInsert() {
     onInsert(snippet.code);
-  };
+  }
 
   return (
     <div className="group p-3 rounded-lg border border-border/50 hover:border-primary/50 hover:bg-accent/30 transition-all cursor-pointer">
@@ -264,8 +264,8 @@ export function CheatsheetPanel({ isOpen, onToggle, onInsertSnippet }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("snippets");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set(["Query"]));
 
-  const toggleCategory = (category: string) => {
-    setExpandedCategories(prev => {
+  function toggleCategory(category: string) {
+    setExpandedCategories(function(prev) {
       const next = new Set(prev);
       if (next.has(category)) {
         next.delete(category);
@@ -274,9 +274,9 @@ export function CheatsheetPanel({ isOpen, onToggle, onInsertSnippet }: Props) {
       }
       return next;
     });
-  };
+  }
 
-  const groupedSnippets = HINTS.reduce((acc, snippet) => {
+  const groupedSnippets = HINTS.reduce(function(acc, snippet) {
     if (!acc[snippet.category]) {
       acc[snippet.category] = [];
     }
@@ -337,7 +337,7 @@ export function CheatsheetPanel({ isOpen, onToggle, onInsertSnippet }: Props) {
                   {Object.entries(groupedSnippets).map(([category, snippets]) => (
                     <div key={category}>
                       <button
-                        onClick={() => toggleCategory(category)}
+                        onClick={function() { toggleCategory(category); }}
                         className="flex items-center gap-1.5 text-xs font-medium text-foreground mb-2 hover:text-primary transition-colors w-full"
                       >
                         {expandedCategories.has(category) ? (

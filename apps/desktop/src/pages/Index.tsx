@@ -75,7 +75,7 @@ export default function Index() {
     setSelectedTableName(selectedTableId);
   }, [selectedTableId]);
 
-  const loadConnectionsFromBackend = async () => {
+  async function loadConnectionsFromBackend() {
     try {
       setIsLoading(true);
       const result = await adapter.getConnections();
@@ -93,7 +93,7 @@ export default function Index() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   useEffect(function initializeConnection() {
     if (isSettingsLoading || isLoading) return;
@@ -144,7 +144,7 @@ export default function Index() {
     }
   }, [activeConnectionId, isSettingsLoading, settings.lastConnectionId, updateSetting]);
 
-  const handleAddConnection = async (newConnectionData: Omit<Connection, "id" | "createdAt">) => {
+  async function handleAddConnection(newConnectionData: Omit<Connection, "id" | "createdAt">) {
     try {
       // Create a temporary ID for the adapter call if needed, but the adapter should handle it
       // For now, we need to map frontend Connection format to what adapter expects
@@ -176,7 +176,7 @@ export default function Index() {
         const { backendToFrontendConnection } = await import("@/features/connections/api");
         const newFrontendConn = backendToFrontendConnection(result.data);
 
-        setConnections(prev => [...prev, newFrontendConn]);
+        setConnections(function(prev) { return [...prev, newFrontendConn]; });
         setActiveConnectionId(newFrontendConn.id);
         toast({
           title: "Connection Added",
@@ -192,9 +192,9 @@ export default function Index() {
         variant: "destructive",
       });
     }
-  };
+  }
 
-  const handleUpdateConnection = async (connectionData: Omit<Connection, "id" | "createdAt">) => {
+  async function handleUpdateConnection(connectionData: Omit<Connection, "id" | "createdAt">) {
     if (!editingConnection) return;
 
     try {
@@ -208,7 +208,7 @@ export default function Index() {
 
       if (result.ok) {
         const updatedConnection = backendToFrontendConnection(result.data);
-        setConnections(prev => prev.map(c => c.id === updatedConnection.id ? updatedConnection : c));
+        setConnections(function(prev) { return prev.map(function(c) { return c.id === updatedConnection.id ? updatedConnection : c; }); });
         toast({
           title: "Connection Updated",
           description: `Successfully updated ${updatedConnection.name}`,
@@ -223,31 +223,31 @@ export default function Index() {
         variant: "destructive",
       });
     }
-  };
+  }
 
-  const handleConnectionSelect = async (connectionId: string) => {
+  async function handleConnectionSelect(connectionId: string) {
     setActiveConnectionId(connectionId);
     await loadConnectionsFromBackend();
-  };
+  }
 
-  const handleViewConnection = (connectionId: string) => {
-    const connection = connections.find(c => c.id === connectionId);
+  function handleViewConnection(connectionId: string) {
+    const connection = connections.find(function(c) { return c.id === connectionId; });
     if (connection) {
       setEditingConnection(connection);
       setIsConnectionDialogOpen(true);
     }
-  };
+  }
 
-  const handleEditConnection = (connectionId: string) => {
-    const connection = connections.find(c => c.id === connectionId);
+  function handleEditConnection(connectionId: string) {
+    const connection = connections.find(function(c) { return c.id === connectionId; });
     if (connection) {
       setEditingConnection(connection);
       setIsConnectionDialogOpen(true);
     }
-  };
+  }
 
-  const handleDeleteConnection = (connectionId: string) => {
-    const connection = connections.find(c => c.id === connectionId);
+  function handleDeleteConnection(connectionId: string) {
+    const connection = connections.find(function(c) { return c.id === connectionId; });
     if (connection) {
       if (settings.confirmBeforeDelete) {
         setConnectionToDelete(connection);
@@ -256,18 +256,18 @@ export default function Index() {
         confirmDeleteConnection();
       }
     }
-  };
+  }
 
-  const confirmDeleteConnection = async () => {
+  async function confirmDeleteConnection() {
     if (!connectionToDelete) return;
 
     try {
       const result = await adapter.removeConnection(connectionToDelete.id);
 
       if (result.ok) {
-        setConnections(prev => prev.filter(c => c.id !== connectionToDelete.id));
+        setConnections(function(prev) { return prev.filter(function(c) { return c.id !== connectionToDelete.id; }); });
         if (activeConnectionId === connectionToDelete.id) {
-          const remaining = connections.filter(c => c.id !== connectionToDelete.id);
+          const remaining = connections.filter(function(c) { return c.id !== connectionToDelete.id; });
           setActiveConnectionId(remaining.length > 0 ? remaining[0].id : "");
         }
         toast({
@@ -287,20 +287,20 @@ export default function Index() {
       setDeleteDialogOpen(false);
       setConnectionToDelete(null);
     }
-  };
+  }
 
-  const handleOpenNewConnection = () => {
+  function handleOpenNewConnection() {
     setEditingConnection(undefined);
     setIsConnectionDialogOpen(true);
-  };
+  }
 
-  const handleDialogSave = async (connectionData: Omit<Connection, "id" | "createdAt">) => {
+  async function handleDialogSave(connectionData: Omit<Connection, "id" | "createdAt">) {
     if (editingConnection) {
       await handleUpdateConnection(connectionData);
     } else {
       await handleAddConnection(connectionData);
     }
-  };
+  }
 
   return (
     <TooltipProvider>

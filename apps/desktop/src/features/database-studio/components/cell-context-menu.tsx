@@ -43,8 +43,6 @@ export function CellContextMenu({ value, column, rowIndex, selectedRows, onActio
     }
 
     function handleEdit() {
-        // Small delay to allow context menu to close and focus to be restored
-        // before we switch to edit mode. Prevents immediate onBlur triggering.
         setTimeout(function () {
             onAction?.("edit", value, column);
         }, 100);

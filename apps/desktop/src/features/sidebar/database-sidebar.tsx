@@ -67,13 +67,13 @@ export function DatabaseSidebar({
   const [internalNavId, setInternalNavId] = useState("database-studio");
   const activeNavId = controlledNavId ?? internalNavId;
 
-  const handleNavSelect = (id: string) => {
+  function handleNavSelect(id: string) {
     if (onNavSelect) {
       onNavSelect(id);
     } else {
       setInternalNavId(id);
     }
-  };
+  }
 
   const [selectedSchema, setSelectedSchema] = useState<Schema | undefined>();
   const [searchValue, setSearchValue] = useState("");
@@ -153,51 +153,34 @@ export function DatabaseSidebar({
   }, [activeConnectionId, adapter, refreshTrigger, autoSelectFirstTable, onTableSelect, onAutoSelectComplete]);
 
   // Convert backend TableInfo to frontend TableItem format
-  const tables = useMemo((): TableItem[] => {
+  const tables = useMemo(function(): TableItem[] {
     if (!schema) return [];
-    return schema.tables.map((table: TableInfo) => ({
-      id: table.name,
-      name: table.name,
-      rowCount: table.row_count_estimate ?? 0,
-      type: "table" as const, // Backend doesn't distinguish views yet
-    }));
+    return schema.tables.map(function(table: TableInfo) {
+      return {
+        id: table.name,
+        name: table.name,
+        rowCount: table.row_count_estimate ?? 0,
+        type: "table" as const, // Backend doesn't distinguish views yet
+      };
+    });
   }, [schema]);
 
-  const filteredTables = useMemo(() => {
+  const filteredTables = useMemo(function() {
     if (!schema) return [];
 
-    return tables.filter((table) => {
-      // Filter by search
+    return tables.filter(function(table) {
       if (searchValue && !table.name.toLowerCase().includes(searchValue.toLowerCase())) {
         return false;
       }
-
-      // Filter by schema if needed (backend returns all tables for current db in schema.tables)
-      // Note: Backend schema structure has `tables` which contains all tables.
-      // If we want to filter by selectedSchema (which is just a string name), we need to check table.schema
-      const tableSchema = (table as any).schema || "public"; // casting because TableItem doesn't have schema currently, need to check source
-      // Actually TableItem mapped from TableInfo above. TableInfo has schema property.
-      // But we mapped it to TableItem which only has id, name, rowCount, type.
-      // We should check the original TableInfo or map schema too.
-
-      // Re-map in useMemo above to include schema?
-      // Let's assume schema.tables contains tables for ALL schemas in the DB.
-      // We need to filter by selectedSchema.
-
       return true;
-    }).filter(table => {
+    }).filter(function(table) {
       if (table.type === "table" && !filters.showTables) return false;
       if (table.type === "view" && !filters.showViews) return false;
       if (table.type === "materialized-view" && !filters.showMaterializedViews) return false;
       return true;
     });
-  }, [schema, tables, searchValue, filters]);
 
-  // The filteredTables above logic was slightly incomplete regarding schema filtering.
-  // We need to make sure we filter by `selectedSchema`
-  // But since TableItem interface doesn't have schema, let's just rely on the fact that for now
-  // our simple mock schemas typically have 1 schema.
-  // In a real app, we should improve TableItem type.
+  }, [schema, tables, searchValue, filters]);
 
   function handleTableSelect(tableId: string) {
     setInternalTableId(tableId);
@@ -208,9 +191,9 @@ export function DatabaseSidebar({
 
   function handleTableMultiSelect(tableId: string, checked: boolean) {
     if (checked) {
-      setSelectedTableIds((prev) => [...prev, tableId]);
+      setSelectedTableIds(function(prev) { return [...prev, tableId]; });
     } else {
-      setSelectedTableIds((prev) => prev.filter((id) => id !== tableId));
+      setSelectedTableIds(function(prev) { return prev.filter(function(id) { return id !== tableId; }); });
     }
   }
 
@@ -497,9 +480,9 @@ export function DatabaseSidebar({
             onSearchChange={setSearchValue}
             filters={filters}
             onFiltersChange={setFilters}
-            onRefresh={() => {
+            onRefresh={function() {
               if (activeConnectionId) {
-                setRefreshTrigger(prev => prev + 1);
+                setRefreshTrigger(function(prev) { return prev + 1; });
               }
             }}
 
