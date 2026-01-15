@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
 import { DatabaseStudio } from "@/features/database-studio/database-studio";
@@ -38,10 +38,11 @@ export default function Index() {
   });
 
   const [selectedTableId, setSelectedTableId] = useState<string>(() => {
-    return urlTable || "categories";
+    return urlTable || "";
   });
 
-  const [selectedTableName, setSelectedTableName] = useState("categories");
+  const [selectedTableName, setSelectedTableName] = useState("");
+  const autoSelectFirstTableRef = useRef(false);
 
   const [connections, setConnections] = useState<Connection[]>([]);
 
@@ -130,6 +131,7 @@ export default function Index() {
       });
       if (lastConnection) {
         setActiveConnectionId(lastConnection.id);
+        autoSelectFirstTableRef.current = true;
         return;
       }
     }
@@ -307,17 +309,21 @@ export default function Index() {
           <DatabaseSidebar
             activeNavId={activeNavId}
             onNavSelect={setActiveNavId}
-            onTableSelect={(id, name) => {
+            onTableSelect={function(id, name) {
               setSelectedTableId(id);
               setSelectedTableName(name);
             }}
             selectedTableId={selectedTableId}
+            autoSelectFirstTable={autoSelectFirstTableRef.current}
+            onAutoSelectComplete={function() {
+              autoSelectFirstTableRef.current = false;
+            }}
             connections={connections}
             activeConnectionId={activeConnectionId}
             onConnectionSelect={handleConnectionSelect}
             onAddConnection={handleOpenNewConnection}
-            onManageConnections={() => {
-              const activeConn = connections.find(c => c.id === activeConnectionId);
+            onManageConnections={function() {
+              const activeConn = connections.find(function(c) { return c.id === activeConnectionId; });
               if (activeConn) {
                 setEditingConnection(activeConn);
                 setIsConnectionDialogOpen(true);

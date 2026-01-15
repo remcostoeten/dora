@@ -4,8 +4,11 @@ import { cn } from "@/shared/utils/cn";
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from "../types";
 import { CellContextMenu } from "./cell-context-menu";
 import { RowContextMenu, type RowAction } from "./row-context-menu";
-import { ArrowDown, ArrowUp, ArrowUpDown, Database } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database, Check, X } from "lucide-react";
 import { useShortcut } from "@/core/shortcuts";
+import { DateCell } from "./cells/date-cell";
+import { TokenCell } from "./cells/token-cell";
+import { IpCell } from "./cells/ip-cell";
 
 type EditingCell = {
     rowIndex: number;
@@ -447,6 +450,12 @@ export function DataGrid({
         <div 
             className="h-full w-full overflow-auto"
             style={{ scrollbarGutter: 'stable' }}
+            onWheel={function(e) {
+                if (e.shiftKey) {
+                    e.preventDefault();
+                    e.currentTarget.scrollLeft += e.deltaY;
+                }
+            }}
         >
             <table
                 ref={gridRef}
@@ -800,21 +809,56 @@ export function DataGrid({
     );
 }
 
+
+
 function formatCellValue(value: unknown, column: ColumnDefinition): React.ReactNode {
     if (value === null || value === undefined) {
         return <span className="text-muted-foreground italic">NULL</span>;
     }
 
+    // Explicit column type handling based on name heuristics or type if available
+    const colName = column.name.toLowerCase();
+    
+    // IP Addresses
+    if (colName.includes('ip_address') || colName.includes('ip_addr')) {
+        return <IpCell value={String(value)} />;
+    }
+
+    // Tokens / Hashes (long strings)
+    if (
+        (colName.includes('token') || colName.includes('hash') || colName.includes('key') || colName.includes('signature')) &&
+        typeof value === 'string' && 
+        value.length > 20
+    ) {
+        return <TokenCell value={value} />;
+    }
+
+    // Dates
+    if (
+        colName.endsWith('_at') || 
+        colName.endsWith('_date') || 
+        colName === 'date' || 
+        colName === 'timestamp' ||
+        column.type?.includes('timestamp') ||
+        column.type?.includes('date')
+    ) {
+        return <DateCell value={value} columnName={colName} />;
+    }
+
     if (typeof value === "boolean") {
         return (
-            <span className={value ? "text-success" : "text-destructive"}>
-                {value ? "true" : "false"}
-            </span>
+            <div className="flex items-center justify-center">
+                {value ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-500" />
+                ) : (
+                    <X className="w-3.5 h-3.5 text-muted-foreground/30" />
+                )}
+            </div>
         );
     }
 
     if (typeof value === "number") {
-        return <span className="text-primary">{value}</span>;
+        return <div className="text-right font-mono text-primary w-full">{value}</div>;
     }
 
     if (typeof value === "object") {

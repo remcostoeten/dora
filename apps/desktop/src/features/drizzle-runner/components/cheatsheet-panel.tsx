@@ -143,7 +143,7 @@ const OPERATORS: Snippet[] = [
   { id: "or", label: "OR", code: "or(cond1, cond2)", description: "Combine with OR", category: "Operators" },
 ];
 
-type TabType = "snippets" | "shortcuts" | "operators" | "ai";
+type TabType = "snippets" | "shortcuts" | "operators";
 
 type Props = {
   isOpen: boolean;
@@ -258,64 +258,7 @@ function ShortcutRow({ shortcut }: ShortcutRowProps) {
   );
 }
 
-type AIHelperProps = {
-  onInsert: (code: string) => void;
-};
 
-function AIHelper({ onInsert }: AIHelperProps) {
-  const PROMPTS = [
-    { label: "Generate INSERT query", icon: FilePlus },
-    { label: "Optimize this query", icon: Zap },
-    { label: "Add pagination", icon: Search },
-    { label: "Add error handling", icon: HelpCircle },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <div className="p-4 rounded-lg bg-linear-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-4 w-4 text-purple-500" />
-          <span className="text-sm font-medium text-foreground">AI Assistant</span>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Ask AI to help you write queries, optimize code, or explain errors
-        </p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="Ask AI anything..."
-            className="flex-1 h-8 px-2.5 text-xs rounded-md border border-input bg-background focus:outline-hidden focus:ring-1 focus:ring-primary"
-            disabled
-          />
-          <Button size="sm" className="h-8 px-3 text-xs gap-1" disabled>
-            <Sparkles className="h-3 w-3" />
-            <span>Ask</span>
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h4 className="text-xs font-medium text-muted-foreground px-1">Quick Actions</h4>
-        {PROMPTS.map((prompt, i) => (
-          <button
-            key={i}
-            className="w-full flex items-center gap-2 p-2.5 rounded-md border border-border/50 hover:border-primary/50 hover:bg-accent/30 transition-all text-left"
-            disabled
-          >
-            <prompt.icon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">{prompt.label}</span>
-          </button>
-        ))}
-      </div>
-
-      <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-        <p className="text-[11px] text-muted-foreground text-center">
-          AI features coming soon
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export function CheatsheetPanel({ isOpen, onToggle, onInsertSnippet }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("snippets");
@@ -384,13 +327,7 @@ export function CheatsheetPanel({ isOpen, onToggle, onInsertSnippet }: Props) {
               active={activeTab}
               onClick={() => setActiveTab("operators")}
             />
-            <Tab
-              label="AI"
-              icon={Sparkles}
-              value="ai"
-              active={activeTab}
-              onClick={() => setActiveTab("ai")}
-            />
+
           </div>
 
           <ScrollArea className="flex-1">
@@ -447,9 +384,7 @@ export function CheatsheetPanel({ isOpen, onToggle, onInsertSnippet }: Props) {
                 </div>
               )}
 
-              {activeTab === "ai" && (
-                <AIHelper onInsert={onInsertSnippet} />
-              )}
+
             </div>
           </ScrollArea>
         </>

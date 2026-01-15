@@ -33,8 +33,9 @@ type Props = {
   onNavSelect?: (id: string) => void;
   onTableSelect?: (tableId: string, tableName: string) => void;
   selectedTableId?: string;
+  autoSelectFirstTable?: boolean;
+  onAutoSelectComplete?: () => void;
 
-  // Connection props
   connections?: Connection[];
   activeConnectionId?: string;
   onConnectionSelect?: (id: string) => void;
@@ -50,11 +51,13 @@ export function DatabaseSidebar({
   onNavSelect,
   onTableSelect,
   selectedTableId,
+  autoSelectFirstTable,
+  onAutoSelectComplete,
   connections = [],
   activeConnectionId,
-  onConnectionSelect = () => { },
-  onAddConnection = () => { },
-  onManageConnections = () => { },
+  onConnectionSelect = function() { },
+  onAddConnection = function() { },
+  onManageConnections = function() { },
   onViewConnection,
   onEditConnection,
   onDeleteConnection,
@@ -91,6 +94,7 @@ export function DatabaseSidebar({
   const [showDropDialog, setShowDropDialog] = useState(false);
   const [targetTableName, setTargetTableName] = useState<string>("");
   const [isDdlLoading, setIsDdlLoading] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -98,8 +102,7 @@ export function DatabaseSidebar({
     root.classList.add(theme);
   }, [theme]);
 
-  // Fetch schema when connection changes
-  useEffect(() => {
+  useEffect(function handleAutoSelectFirstTable() {
     async function fetchSchema() {
       if (!activeConnectionId) {
         setSchema(null);
@@ -110,24 +113,29 @@ export function DatabaseSidebar({
       setSchemaError(null);
 
       try {
-        // First connect to the database (or mock)
         const connectResult = await adapter.connectToDatabase(activeConnectionId);
         if (!connectResult.ok) {
           throw new Error(connectResult.error);
         }
 
-        // Then fetch the schema
         const result = await adapter.getSchema(activeConnectionId);
         if (result.ok) {
           setSchema(result.data);
-          // Auto-select first schema if available
           if (result.data.schemas.length > 0) {
-            const dbName = connections.find(c => c.id === activeConnectionId)?.name || "db";
+            const dbName = connections.find(function(c) { return c.id === activeConnectionId; })?.name || "db";
             setSelectedSchema({
               id: result.data.schemas[0],
               name: result.data.schemas[0],
               databaseId: activeConnectionId
             });
+          }
+
+          if (autoSelectFirstTable && result.data.tables.length > 0 && onTableSelect) {
+            const firstTable = result.data.tables[0];
+            onTableSelect(firstTable.name, firstTable.name);
+            if (onAutoSelectComplete) {
+              onAutoSelectComplete();
+            }
           }
         } else {
           throw new Error(result.error);
@@ -142,7 +150,7 @@ export function DatabaseSidebar({
     }
 
     fetchSchema();
-  }, [activeConnectionId, adapter]);
+  }, [activeConnectionId, adapter, refreshTrigger, autoSelectFirstTable, onTableSelect, onAutoSelectComplete]);
 
   // Convert backend TableInfo to frontend TableItem format
   const tables = useMemo((): TableItem[] => {
@@ -235,12 +243,12 @@ export function DatabaseSidebar({
         title: "Not Implemented",
         description: "Duplicate table is not yet supported.",
       });
-    } else if (["export-schema", "export-json", "export-sql"].includes(action)) {
-       // Future: Implement single table export
-       toast({
-        title: "Not Implemented",
-        description: `${action.replace(/-/g, ' ')} for single table is coming soon.`,
-      });
+    } else if (action === "export-schema") {
+      handleExportTableSchema(tableId);
+    } else if (action === "export-json") {
+      handleExportTableData(tableId, "json");
+    } else if (action === "export-sql") {
+      handleExportTableData(tableId, "sql_insert");
     } else {
       console.log("Right-click action:", action, tableId);
     }
@@ -366,8 +374,59 @@ export function DatabaseSidebar({
   }
 
   function handleToolbarAction(action: ToolbarAction) {
-    if (action !== "settings") {
-      console.log("Toolbar action:", action);
+    // Settings action is handled by BottomToolbar internally via SettingsPanel
+    // No other toolbar actions currently defined
+  }
+
+  async function handleExportTableSchema(tableName: string) {
+    if (!activeConnectionId) return;
+    
+    try {
+      const schemaResult = await adapter.getSchema(activeConnectionId);
+      if (!schemaResult.ok) throw new Error(schemaResult.error);
+      
+      const table = schemaResult.data.tables.find(t => t.name === tableName);
+      if (!table) throw new Error(`Table ${tableName} not found`);
+      
+      const ddl = `CREATE TABLE "${tableName}" (\n${table.columns.map(col => {
+        let line = `  "${col.name}" ${col.data_type}`;
+        if (!col.is_nullable) line += " NOT NULL";
+        if (col.default_value) line += ` DEFAULT ${col.default_value}`;
+        return line;
+      }).join(",\n")}\n);`;
+      
+      navigator.clipboard.writeText(ddl);
+      toast({
+        title: "Schema copied",
+        description: `DDL for table "${tableName}" copied to clipboard.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error exporting schema",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    }
+  }
+
+  async function handleExportTableData(tableName: string, format: "json" | "sql_insert") {
+    if (!activeConnectionId) return;
+    
+    try {
+      const result = await commands.exportTable(activeConnectionId, tableName, null, format, null);
+      if (result.status !== "ok") throw new Error(String(result.error));
+      
+      navigator.clipboard.writeText(result.data);
+      toast({
+        title: "Data exported",
+        description: `Table "${tableName}" exported as ${format.toUpperCase()} to clipboard.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error exporting data",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
     }
   }
 
@@ -440,9 +499,7 @@ export function DatabaseSidebar({
             onFiltersChange={setFilters}
             onRefresh={() => {
               if (activeConnectionId) {
-                // Trigger re-fetch logic
-                setSchema(null); // Simple way to trigger re-fetch
-                // Better would be to extract fetch function and call it
+                setRefreshTrigger(prev => prev + 1);
               }
             }}
 
