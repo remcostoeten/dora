@@ -1,32 +1,35 @@
 # Release Notes - v0.0.9
 
 **Date:** 2026-01-15
-**Commit:** `30747e35` (approx)
+**Commit:** `de9940f`
 
-## 🌟 Highlights
+## SSH Tunneling, Dora CLI & Bulk (dry mode) editing
 
-This release focuses on improving the editing experience, theming, and ensuring a robust release pipeline.
+This major update brings essential connectivity features, safe editing modes, and a complete CLI ecosystem.
 
-### ✨ New Features
-- **Changelog Panel**: A new "What's New" section in the sidebar to track updates.
-- **Undo/Redo Support**: Safer editing with undo/redo capabilities in the data grid.
-- **Editor Themes**: Integrated themes for the SQL editor matching the application theme.
-- **DDL & Dry Run Mode**: Support for Schema operations and safe query testing.
+### Key Highlights
 
-### 🛠 Improvements
-- **Code Style**: Enforced consistent code style (ESLint/Prettier) and removed arrow functions in key components.
-- **Performance**: Optimized data grid rendering and cell interactions.
-- **Builds**: Automated generation of Linux executables (AppImage, Deb, RPM).
+#### SSH Tunneling & Connectivity
+- **Secure Remote Access**: Connect to production databases securely via SSH tunneling.
+- **Connection Manager**: Save, pin, and organize your database connections.
 
-## 📦 Downloads
+#### Safe Editing & Bulk Operations
+- **Dry Run Mode**: Test schema operations and queries safely before applying changes.
+- **Bulk Editing**: Drag-select multiple cells/rows for mass updates.
+- **Undo/Redo**: Local mutation history stack for worry-free data manipulation.
+- **Soft Delete**: Mark rows for deletion without immediate removal.
 
-The following executables have been generated:
+#### The New Dora CLI
+- **Central Hub**: New `dora` binary to manage builds, releases, and database ops.
+- **Native Installers**: Generate and manage `.deb` packages directly from the CLI.
+- **Self-Update**: Rebuild the runner itself with a single command.
 
-### Linux
-- **AppImage**: `apps/desktop/src-tauri/target/release/bundle/appimage/Dora_0.0.9_amd64.AppImage`
-- **Debian/Ubuntu**: `apps/desktop/src-tauri/target/release/bundle/deb/Dora_0.0.9_amd64.deb`
-- **Fedora/RHEL**: `apps/desktop/src-tauri/target/release/bundle/rpm/Dora-0.0.9-1.x86_64.rpm`
+### Other Improvements
+- **Editor Themes**: SQL editor now matches your selected application theme.
+- **Performance**: Optimized data grid rendering and build size (~8.5MB).
+- **Cleanup**: Removed marketing fluff and emojis from documentation.
+- **Builds**: Automatic `.deb` generation for Debian/Ubuntu.
 
----
+### Assets
+- `dora_0.0.9_amd64.deb`
 
-*Verified by Antigravity Agent*
