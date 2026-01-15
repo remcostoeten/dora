@@ -168,6 +168,24 @@ export function createMockAdapter(): DataAdapter {
             return ok(schema);
         },
 
+        async getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>> {
+            await randomDelay();
+            return ok(`-- Mock DDL for connection ${connectionId}
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255) UNIQUE
+);
+
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    content TEXT,
+    user_id INTEGER REFERENCES users(id)
+);`);
+        },
+
+
         async fetchTableData(
             connectionId: string,
             tableName: string,

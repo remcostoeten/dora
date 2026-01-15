@@ -69,6 +69,9 @@ export type DataAdapter = {
 
     getQueryHistory(connectionId: string, limit?: number): Promise<AdapterResult<QueryHistoryEntry[]>>;
 
+    // Schema Management
+    getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>>;
+
     // Script/Snippet management
     getScripts(connectionId: string | null): Promise<AdapterResult<SavedQuery[]>>;
     saveScript(name: string, content: string, connectionId: string | null, description?: string | null): Promise<AdapterResult<number>>;

@@ -19,6 +19,8 @@ import { Plus, Database as DatabaseIcon } from "lucide-react";
 import { useAdapter } from "@/core/data-provider";
 import type { DatabaseSchema, TableInfo } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 const DEFAULT_FILTERS: FilterState = {
   showTables: true,
@@ -57,6 +59,7 @@ export function DatabaseSidebar({
   onEditConnection,
   onDeleteConnection,
 }: Props = {}) {
+  const { toast } = useToast();
   const adapter = useAdapter();
   const [internalNavId, setInternalNavId] = useState("database-studio");
   const activeNavId = controlledNavId ?? internalNavId;
@@ -206,7 +209,9 @@ export function DatabaseSidebar({
 
 
   function handleContextAction(tableId: string, action: string) {
-    console.log("Context action:", tableId, action);
+    // Re-use right click handler for simplicity if actions overlap
+    // Or map them if they have different action strings
+    handleRightClickAction(action as TableRightClickAction, tableId);
   }
 
   function handleRightClickAction(action: TableRightClickAction, tableId: string) {
@@ -216,6 +221,26 @@ export function DatabaseSidebar({
     } else if (action === "edit-name") {
       setTargetTableName(tableId);
       setShowRenameDialog(true);
+    } else if (action === "copy-name") {
+      navigator.clipboard.writeText(tableId);
+      toast({
+        title: "Copied to clipboard",
+        description: `Table name "${tableId}" copied.`,
+      });
+    } else if (action === "view-table") {
+      handleTableSelect(tableId);
+      handleNavSelect("database-studio");
+    } else if (action === "duplicate-table") {
+      toast({
+        title: "Not Implemented",
+        description: "Duplicate table is not yet supported.",
+      });
+    } else if (["export-schema", "export-json", "export-sql"].includes(action)) {
+       // Future: Implement single table export
+       toast({
+        title: "Not Implemented",
+        description: `${action.replace(/-/g, ' ')} for single table is coming soon.`,
+      });
     } else {
       console.log("Right-click action:", action, tableId);
     }
@@ -269,10 +294,75 @@ export function DatabaseSidebar({
     handleRenameTable(newName);
   }
 
-  function handleBulkAction(action: BulkAction) {
-    console.log("Bulk action:", action, selectedTableIds);
-    setSelectedTableIds([]);
-    setIsMultiSelectMode(false);
+  async function handleBulkAction(action: BulkAction) {
+    if (!activeConnectionId || selectedTableIds.length === 0) return;
+
+    if (action === "drop") {
+       // We can iterate and call drop table, or ideally update DropTableDialog to support multiple
+       // For now, let's use a simple confirmation via window.confirm (or better, a custom dialog, but let's stick to simple implementation first or re-use drop dialog sequentially?)
+       // Since DropTableDialog takes a single tableName, we should probably implement a bulk drop logic here utilizing commands.
+       if (confirm(`Are you sure you want to drop ${selectedTableIds.length} tables? This cannot be undone.`)) {
+           setIsDdlLoading(true);
+           try {
+               // Execute one by one or batch
+               const drops = selectedTableIds.map(id => `DROP TABLE IF EXISTS "${id}"`);
+               const result = await commands.executeBatch(activeConnectionId, drops);
+               if (result.status === "ok") {
+                   toast({
+                       title: "Tables dropped",
+                       description: `Successfully dropped ${selectedTableIds.length} tables.`,
+                   });
+                   setSelectedTableIds([]);
+                   setIsMultiSelectMode(false);
+                   setSchema(null);
+               } else {
+                   throw new Error(String(result.error));
+               }
+           } catch (e) {
+               console.error(e);
+               toast({
+                   title: "Error dropping tables",
+                   description: String(e),
+                   variant: "destructive"
+               });
+           } finally {
+               setIsDdlLoading(false);
+           }
+       }
+    } else if (action === "truncate") {
+        if (confirm(`Are you sure you want to truncate ${selectedTableIds.length} tables? All data will be lost.`)) {
+            setIsDdlLoading(true);
+            try {
+                const truncates = selectedTableIds.map(id => `TRUNCATE TABLE "${id}"`); // Note: SQLite might need DELETE FROM
+                // But let's assume standard SQL or let backend handle it? 
+                // executeBatch just runs raw SQL.
+                // SQLite doesn't strictly support TRUNCATE, so `DELETE FROM "table"` is safer if generic.
+                // But let's look at executeQuery implementation in generic adapter... it passes through.
+                // Let's us DELETE FROM which is standard.
+                const deletes = selectedTableIds.map(id => `DELETE FROM "${id}"`);
+                
+                const result = await commands.executeBatch(activeConnectionId, deletes);
+                if (result.status === "ok") {
+                    toast({
+                        title: "Tables truncated",
+                        description: `Successfully truncated ${selectedTableIds.length} tables.`,
+                    });
+                     setSelectedTableIds([]);
+                     setIsMultiSelectMode(false);
+                } else {
+                    throw new Error(String(result.error));
+                }
+            } catch (e) {
+                 toast({
+                   title: "Error truncating tables",
+                   description: String(e),
+                   variant: "destructive"
+               });
+            } finally {
+                setIsDdlLoading(false);
+            }
+        }
+    }
   }
 
   function handleToolbarAction(action: ToolbarAction) {
@@ -281,8 +371,28 @@ export function DatabaseSidebar({
     }
   }
 
-  function handleCopySchema() {
-    console.log("Copy schema");
+  async function handleCopySchema() {
+    if (!activeConnectionId) return;
+    
+    try {
+        const result = await adapter.getDatabaseDDL(activeConnectionId);
+        if (result.ok) {
+            navigator.clipboard.writeText(result.data);
+            toast({
+                title: "Schema copied",
+                description: "Database schema DDL copied to clipboard.",
+            });
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error) {
+        console.error("Failed to copy schema:", error);
+         toast({
+            title: "Error copying schema",
+            description: error instanceof Error ? error.message : "Unknown error",
+            variant: "destructive"
+        });
+    }
   }
 
   const availableSchemas = schema?.schemas.map(s => ({
