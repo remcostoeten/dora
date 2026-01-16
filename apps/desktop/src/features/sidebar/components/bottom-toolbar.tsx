@@ -9,7 +9,7 @@ import { ChangelogPanel } from "./changelog-panel";
 import { ProjectInfoPanel } from "./project-info-panel";
 import { CURRENT_VERSION } from "../changelog-data";
 
-type Theme = "dark" | "light";
+type Theme = "dark" | "light" | "midnight" | "forest" | "claude" | "claude-dark";
 
 type ToolbarAction = "settings" | "theme" | "changelog" | "project-info";
 

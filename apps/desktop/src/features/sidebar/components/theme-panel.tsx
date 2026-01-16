@@ -1,11 +1,7 @@
-import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/shared/ui/button";
 import { ThemePreviewCard } from "./theme-preview-card";
 import { SidebarPanel } from "./sidebar-panel";
-import { cn } from "@/shared/utils/cn";
 
-type Theme = "dark" | "light";
+type Theme = "dark" | "light" | "midnight" | "forest" | "claude" | "claude-dark";
 
 type ThemeConfig = {
   value: Theme;
@@ -15,8 +11,12 @@ type ThemeConfig = {
 };
 
 const THEME_OPTIONS: ThemeConfig[] = [
-  { value: "dark", name: "Dark", variant: "dark", accentColor: "#e5e5e5" },
+  { value: "dark", name: "Classic Dark", variant: "dark", accentColor: "#e5e5e5" },
   { value: "light", name: "Light", variant: "light", accentColor: "#171717" },
+  { value: "midnight", name: "Midnight", variant: "dark", accentColor: "#818cf8" },
+  { value: "forest", name: "Forest", variant: "dark", accentColor: "#34d399" },
+  { value: "claude", name: "Claude Light", variant: "light", accentColor: "#d97706" },
+  { value: "claude-dark", name: "Claude Dark", variant: "dark", accentColor: "#b45309" },
 ];
 
 type Props = {
@@ -25,73 +25,19 @@ type Props = {
 };
 
 export function ThemePanel({ theme, onThemeChange }: Props) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
-
-  function updateScrollButtons() {
-    if (!scrollRef.current) return;
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
-    setCanScrollLeft(scrollLeft > 0);
-    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
-  }
-
-  function scroll(direction: "left" | "right") {
-    if (!scrollRef.current) return;
-    const scrollAmount = 140;
-    scrollRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-    setTimeout(updateScrollButtons, 300);
-  }
-
   return (
     <SidebarPanel>
       <div className="p-4 pt-5">
-        {/* Header with navigation */}
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-sidebar-foreground">
-              Choose Your Theme
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Pick a theme to change the look
-            </p>
-          </div>
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "h-7 w-7 rounded-md",
-                !canScrollLeft && "opacity-50 cursor-not-allowed"
-              )}
-              onClick={() => scroll("left")}
-              disabled={!canScrollLeft}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "h-7 w-7 rounded-md",
-                !canScrollRight && "opacity-50 cursor-not-allowed"
-              )}
-              onClick={() => scroll("right")}
-              disabled={!canScrollRight}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="mb-4">
+          <h3 className="text-sm font-semibold text-sidebar-foreground">
+            Choose Your Theme
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pick a style that suits your workflow
+          </p>
         </div>
 
-        <div
-          ref={scrollRef}
-          onScroll={updateScrollButtons}
-          className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1"
-        >
+        <div className="grid grid-cols-2 gap-3 pb-2">
           {THEME_OPTIONS.map((option) => (
             <ThemePreviewCard
               key={option.value}

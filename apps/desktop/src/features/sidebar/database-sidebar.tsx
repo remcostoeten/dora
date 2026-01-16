@@ -55,9 +55,9 @@ export function DatabaseSidebar({
   onAutoSelectComplete,
   connections = [],
   activeConnectionId,
-  onConnectionSelect = function() { },
-  onAddConnection = function() { },
-  onManageConnections = function() { },
+  onConnectionSelect = function () { },
+  onAddConnection = function () { },
+  onManageConnections = function () { },
   onViewConnection,
   onEditConnection,
   onDeleteConnection,
@@ -98,7 +98,7 @@ export function DatabaseSidebar({
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
+    root.classList.remove("light", "dark", "midnight", "forest", "claude", "claude-dark");
     root.classList.add(theme);
   }, [theme]);
 
@@ -122,7 +122,7 @@ export function DatabaseSidebar({
         if (result.ok) {
           setSchema(result.data);
           if (result.data.schemas.length > 0) {
-            const dbName = connections.find(function(c) { return c.id === activeConnectionId; })?.name || "db";
+            const dbName = connections.find(function (c) { return c.id === activeConnectionId; })?.name || "db";
             setSelectedSchema({
               id: result.data.schemas[0],
               name: result.data.schemas[0],
@@ -153,9 +153,9 @@ export function DatabaseSidebar({
   }, [activeConnectionId, adapter, refreshTrigger, autoSelectFirstTable, onTableSelect, onAutoSelectComplete]);
 
   // Convert backend TableInfo to frontend TableItem format
-  const tables = useMemo(function(): TableItem[] {
+  const tables = useMemo(function (): TableItem[] {
     if (!schema) return [];
-    return schema.tables.map(function(table: TableInfo) {
+    return schema.tables.map(function (table: TableInfo) {
       return {
         id: table.name,
         name: table.name,
@@ -165,15 +165,15 @@ export function DatabaseSidebar({
     });
   }, [schema]);
 
-  const filteredTables = useMemo(function() {
+  const filteredTables = useMemo(function () {
     if (!schema) return [];
 
-    return tables.filter(function(table) {
+    return tables.filter(function (table) {
       if (searchValue && !table.name.toLowerCase().includes(searchValue.toLowerCase())) {
         return false;
       }
       return true;
-    }).filter(function(table) {
+    }).filter(function (table) {
       if (table.type === "table" && !filters.showTables) return false;
       if (table.type === "view" && !filters.showViews) return false;
       if (table.type === "materialized-view" && !filters.showMaterializedViews) return false;
@@ -191,9 +191,9 @@ export function DatabaseSidebar({
 
   function handleTableMultiSelect(tableId: string, checked: boolean) {
     if (checked) {
-      setSelectedTableIds(function(prev) { return [...prev, tableId]; });
+      setSelectedTableIds(function (prev) { return [...prev, tableId]; });
     } else {
-      setSelectedTableIds(function(prev) { return prev.filter(function(id) { return id !== tableId; }); });
+      setSelectedTableIds(function (prev) { return prev.filter(function (id) { return id !== tableId; }); });
     }
   }
 
@@ -289,70 +289,70 @@ export function DatabaseSidebar({
     if (!activeConnectionId || selectedTableIds.length === 0) return;
 
     if (action === "drop") {
-       // We can iterate and call drop table, or ideally update DropTableDialog to support multiple
-       // For now, let's use a simple confirmation via window.confirm (or better, a custom dialog, but let's stick to simple implementation first or re-use drop dialog sequentially?)
-       // Since DropTableDialog takes a single tableName, we should probably implement a bulk drop logic here utilizing commands.
-       if (confirm(`Are you sure you want to drop ${selectedTableIds.length} tables? This cannot be undone.`)) {
-           setIsDdlLoading(true);
-           try {
-               // Execute one by one or batch
-               const drops = selectedTableIds.map(id => `DROP TABLE IF EXISTS "${id}"`);
-               const result = await commands.executeBatch(activeConnectionId, drops);
-               if (result.status === "ok") {
-                   toast({
-                       title: "Tables dropped",
-                       description: `Successfully dropped ${selectedTableIds.length} tables.`,
-                   });
-                   setSelectedTableIds([]);
-                   setIsMultiSelectMode(false);
-                   setSchema(null);
-               } else {
-                   throw new Error(String(result.error));
-               }
-           } catch (e) {
-               console.error(e);
-               toast({
-                   title: "Error dropping tables",
-                   description: String(e),
-                   variant: "destructive"
-               });
-           } finally {
-               setIsDdlLoading(false);
-           }
-       }
-    } else if (action === "truncate") {
-        if (confirm(`Are you sure you want to truncate ${selectedTableIds.length} tables? All data will be lost.`)) {
-            setIsDdlLoading(true);
-            try {
-                const truncates = selectedTableIds.map(id => `TRUNCATE TABLE "${id}"`); // Note: SQLite might need DELETE FROM
-                // But let's assume standard SQL or let backend handle it? 
-                // executeBatch just runs raw SQL.
-                // SQLite doesn't strictly support TRUNCATE, so `DELETE FROM "table"` is safer if generic.
-                // But let's look at executeQuery implementation in generic adapter... it passes through.
-                // Let's us DELETE FROM which is standard.
-                const deletes = selectedTableIds.map(id => `DELETE FROM "${id}"`);
-                
-                const result = await commands.executeBatch(activeConnectionId, deletes);
-                if (result.status === "ok") {
-                    toast({
-                        title: "Tables truncated",
-                        description: `Successfully truncated ${selectedTableIds.length} tables.`,
-                    });
-                     setSelectedTableIds([]);
-                     setIsMultiSelectMode(false);
-                } else {
-                    throw new Error(String(result.error));
-                }
-            } catch (e) {
-                 toast({
-                   title: "Error truncating tables",
-                   description: String(e),
-                   variant: "destructive"
-               });
-            } finally {
-                setIsDdlLoading(false);
-            }
+      // We can iterate and call drop table, or ideally update DropTableDialog to support multiple
+      // For now, let's use a simple confirmation via window.confirm (or better, a custom dialog, but let's stick to simple implementation first or re-use drop dialog sequentially?)
+      // Since DropTableDialog takes a single tableName, we should probably implement a bulk drop logic here utilizing commands.
+      if (confirm(`Are you sure you want to drop ${selectedTableIds.length} tables? This cannot be undone.`)) {
+        setIsDdlLoading(true);
+        try {
+          // Execute one by one or batch
+          const drops = selectedTableIds.map(id => `DROP TABLE IF EXISTS "${id}"`);
+          const result = await commands.executeBatch(activeConnectionId, drops);
+          if (result.status === "ok") {
+            toast({
+              title: "Tables dropped",
+              description: `Successfully dropped ${selectedTableIds.length} tables.`,
+            });
+            setSelectedTableIds([]);
+            setIsMultiSelectMode(false);
+            setSchema(null);
+          } else {
+            throw new Error(String(result.error));
+          }
+        } catch (e) {
+          console.error(e);
+          toast({
+            title: "Error dropping tables",
+            description: String(e),
+            variant: "destructive"
+          });
+        } finally {
+          setIsDdlLoading(false);
         }
+      }
+    } else if (action === "truncate") {
+      if (confirm(`Are you sure you want to truncate ${selectedTableIds.length} tables? All data will be lost.`)) {
+        setIsDdlLoading(true);
+        try {
+          const truncates = selectedTableIds.map(id => `TRUNCATE TABLE "${id}"`); // Note: SQLite might need DELETE FROM
+          // But let's assume standard SQL or let backend handle it? 
+          // executeBatch just runs raw SQL.
+          // SQLite doesn't strictly support TRUNCATE, so `DELETE FROM "table"` is safer if generic.
+          // But let's look at executeQuery implementation in generic adapter... it passes through.
+          // Let's us DELETE FROM which is standard.
+          const deletes = selectedTableIds.map(id => `DELETE FROM "${id}"`);
+
+          const result = await commands.executeBatch(activeConnectionId, deletes);
+          if (result.status === "ok") {
+            toast({
+              title: "Tables truncated",
+              description: `Successfully truncated ${selectedTableIds.length} tables.`,
+            });
+            setSelectedTableIds([]);
+            setIsMultiSelectMode(false);
+          } else {
+            throw new Error(String(result.error));
+          }
+        } catch (e) {
+          toast({
+            title: "Error truncating tables",
+            description: String(e),
+            variant: "destructive"
+          });
+        } finally {
+          setIsDdlLoading(false);
+        }
+      }
     }
   }
 
@@ -363,21 +363,21 @@ export function DatabaseSidebar({
 
   async function handleExportTableSchema(tableName: string) {
     if (!activeConnectionId) return;
-    
+
     try {
       const schemaResult = await adapter.getSchema(activeConnectionId);
       if (!schemaResult.ok) throw new Error(schemaResult.error);
-      
+
       const table = schemaResult.data.tables.find(t => t.name === tableName);
       if (!table) throw new Error(`Table ${tableName} not found`);
-      
+
       const ddl = `CREATE TABLE "${tableName}" (\n${table.columns.map(col => {
         let line = `  "${col.name}" ${col.data_type}`;
         if (!col.is_nullable) line += " NOT NULL";
         if (col.default_value) line += ` DEFAULT ${col.default_value}`;
         return line;
       }).join(",\n")}\n);`;
-      
+
       navigator.clipboard.writeText(ddl);
       toast({
         title: "Schema copied",
@@ -394,11 +394,11 @@ export function DatabaseSidebar({
 
   async function handleExportTableData(tableName: string, format: "json" | "sql_insert") {
     if (!activeConnectionId) return;
-    
+
     try {
       const result = await commands.exportTable(activeConnectionId, tableName, null, format, null);
       if (result.status !== "ok") throw new Error(String(result.error));
-      
+
       navigator.clipboard.writeText(result.data);
       toast({
         title: "Data exported",
@@ -415,25 +415,25 @@ export function DatabaseSidebar({
 
   async function handleCopySchema() {
     if (!activeConnectionId) return;
-    
+
     try {
-        const result = await adapter.getDatabaseDDL(activeConnectionId);
-        if (result.ok) {
-            navigator.clipboard.writeText(result.data);
-            toast({
-                title: "Schema copied",
-                description: "Database schema DDL copied to clipboard.",
-            });
-        } else {
-            throw new Error(result.error);
-        }
-    } catch (error) {
-        console.error("Failed to copy schema:", error);
-         toast({
-            title: "Error copying schema",
-            description: error instanceof Error ? error.message : "Unknown error",
-            variant: "destructive"
+      const result = await adapter.getDatabaseDDL(activeConnectionId);
+      if (result.ok) {
+        navigator.clipboard.writeText(result.data);
+        toast({
+          title: "Schema copied",
+          description: "Database schema DDL copied to clipboard.",
         });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error("Failed to copy schema:", error);
+      toast({
+        title: "Error copying schema",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
     }
   }
 
@@ -480,9 +480,9 @@ export function DatabaseSidebar({
             onSearchChange={setSearchValue}
             filters={filters}
             onFiltersChange={setFilters}
-            onRefresh={function() {
+            onRefresh={function () {
               if (activeConnectionId) {
-                setRefreshTrigger(function(prev) { return prev + 1; });
+                setRefreshTrigger(function (prev) { return prev + 1; });
               }
             }}
 
