@@ -59,8 +59,6 @@ declare const ${table.name}: Table<'${table.name}', ${capitalize(table.name)}Sch
  * Generated for Monaco Editor
  */
 
-// --- Base Types ---
-
 /** A column reference in a query (e.g. users.id) */
 interface Column<T> {
     _brand: 'Column';
@@ -82,13 +80,9 @@ interface Table<TName extends string, TSchema> {
     };
 }
 
-// Ensure TSchema is compliant with the shape of a table schema
 type AnyTable = Table<string, unknown>;
 
-// --- Generated Tables ---
 ${tableDefs}
-
-// --- Query Builder ---
 
 interface QueryBuilder<TResult> {
     /** 
@@ -127,8 +121,6 @@ interface QueryBuilder<TResult> {
     
     /** Get generated SQL */
 }
-
-// --- The Database Object ---
 
 interface DB {
     /**
@@ -172,10 +164,6 @@ interface SelectBuilder<TSelection = unknown> {
     ): QueryBuilder<InferModelFromSchema<TSchema>>;
 }
 
-// Helper to infer the Model from the Schema (hack since we generated them separately but structured similarly)
-// In reality, we just map Schema keys to types.
-// For the purpose of this mock, we used declared interfaces.
-// Let's use a trick: The Schema has Column<T>, the Result has T.
 type InferModelFromSchema<TSchema> = {
     [K in keyof TSchema]: TSchema[K] extends Column<infer T> ? T : never;
 };
@@ -206,15 +194,12 @@ interface DeleteBuilder {
     };
 }
 
-// Helper to extract T from Column<T> for insert models
 type InferInsertModel<TSchema> = {
     [K in keyof TSchema]?: TSchema[K] extends Column<infer T> ? T : never;
 };
 
 declare const db: DB;
 
-
-// --- Helper Functions (Strictly Typed) ---
 
 /** Checks if column equals value */
 declare function eq<T>(column: Column<T>, value: T): SQL<boolean>;
@@ -279,8 +264,6 @@ declare function param<T>(value?: T): T;
 function capitalize(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
-
-// Exports for the editor to use for completion triggers (if needed)
 
 export function getDrizzleHelpers(): string[] {
     return [

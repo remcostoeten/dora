@@ -65,7 +65,7 @@ function getRange(monaco: MonacoApi, model: Monaco.editor.ITextModel, position: 
 }
 
 function tableSnippet(table: SchemaTable): string {
-    return table.name;
+    return `${table.name}$0)`;
 }
 
 function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
@@ -237,25 +237,21 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 
         monaco.editor.setTheme(editorTheme);
 
-        // Compiler options for better intellisense
         monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
             target: monaco.languages.typescript.ScriptTarget.ES2016,
             allowNonTsExtensions: true,
             moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
             module: monaco.languages.typescript.ModuleKind.CommonJS,
             noEmit: true,
-            strict: true, // Enable strict mode for better type checking
+            strict: true,
             noImplicitAny: true,
             typeRoots: ["node_modules/@types"]
         });
 
-        // Generate and inject simplified Drizzle types
         const drizzleTypes = generateDrizzleTypes(tables);
-        // Using a "real" file path helps Monaco resolve it better
         const libUri = "file:///drizzle.d.ts";
         monaco.languages.typescript.typescriptDefaults.addExtraLib(drizzleTypes, libUri);
 
-        // Force the model to use the types
         const model = editor.getModel();
         if (model) {
             monaco.editor.setModelLanguage(model, "typescript");
@@ -347,6 +343,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                             label: table.name,
                             kind: monaco.languages.CompletionItemKind.Variable,
                             insertText: tableSnippet(table),
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                             detail: "Table",
                             range: range,
                             sortText: String(index).padStart(3, "0"),
@@ -361,6 +358,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                             label: table.name,
                             kind: monaco.languages.CompletionItemKind.Variable,
                             insertText: tableSnippet(table),
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                             detail: "Table",
                             range: range,
                             sortText: String(index).padStart(3, "0"),
@@ -375,6 +373,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                             label: table.name,
                             kind: monaco.languages.CompletionItemKind.Variable,
                             insertText: tableSnippet(table),
+                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                             detail: "Table",
                             range: range,
                             sortText: String(index).padStart(3, "0"),
@@ -388,7 +387,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                         return {
                             label: table.name,
                             kind: monaco.languages.CompletionItemKind.Variable,
-                            insertText: `${table.name}, $0`,
+                            insertText: `${table.name}, $0)`,
                             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                             detail: "Join table",
                             range: range,
@@ -407,7 +406,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                                 {
                                     label: "values",
                                     kind: monaco.languages.CompletionItemKind.Struct,
-                            insertText: valuesSnippet(table, true),
+                                    insertText: `${valuesSnippet(table, true)}$0)`,
                                     insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                                     detail: "Insert values",
                                     range: range
@@ -426,7 +425,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                                 {
                                     label: "set",
                                     kind: monaco.languages.CompletionItemKind.Struct,
-                            insertText: valuesSnippet(table, false),
+                                    insertText: `${valuesSnippet(table, false)}$0)`,
                                     insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                                     detail: "Update values",
                                     range: range
@@ -878,12 +877,10 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
             }
         });
 
-        // Register Execute command (Ctrl/Cmd + Enter)
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function () {
             triggerExecution(editor);
         });
 
-        // Add a "mif largin/glyph" click listener
         editor.onMouseDown(function (e) {
             if (e.target.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) {
                 const lineNumber = e.target.position?.lineNumber;
@@ -902,7 +899,6 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         updateDecorations(editor, monaco);
     };
 
-    // Update decorations whenever content changes
     useEffect(function () {
         if (editorRef.current && monacoRef.current) {
             updateDecorations(editorRef.current, monacoRef.current);
@@ -963,7 +959,6 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 
     return (
         <div className="h-full w-full overflow-hidden pt-2 relative group">
-            {/* Inject global styles for the glyph margin icon */}
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .run-glyph-margin {
