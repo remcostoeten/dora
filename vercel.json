@@ -1,0 +1,11 @@
+{
+  "framework": "vite",
+  "buildCommand": "cd apps/desktop && bun run build",
+  "outputDirectory": "apps/desktop/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
