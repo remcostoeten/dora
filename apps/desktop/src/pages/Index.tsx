@@ -105,24 +105,21 @@ export default function Index() {
     }
 
     // Auto-connect for Web Demo
-    const isWebDemo = 
-        import.meta.env.MODE === 'demo' || 
-        window.location.hostname.includes('demo') || 
-        import.meta.env.VITE_IS_WEB === 'true' ||
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1';
+    const isWebDemo =
+      import.meta.env.MODE === 'demo' ||
+      window.location.hostname.includes('demo') ||
+      import.meta.env.VITE_IS_WEB === 'true' ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
 
     if (isWebDemo) {
-        const demoConn = connections.find(c => c.id === 'demo-ecommerce-001') || connections[0];
-        if (demoConn) {
-            setActiveConnectionId(demoConn.id);
-            // Switch to products table since 'categories' might not exist
-            if (selectedTableId === "categories") {
-                setSelectedTableId("products");
-                setSelectedTableName("products");
-            }
-            return;
-        }
+      const demoConn = connections.find(function (c) { return c.id === 'demo-ecommerce-001'; }) || connections[0];
+      if (demoConn) {
+        setActiveConnectionId(demoConn.id);
+        // Auto-select first table so users see data immediately
+        autoSelectFirstTableRef.current = true;
+        return;
+      }
     }
 
     if (settings.restoreLastConnection && settings.lastConnectionId) {
@@ -176,7 +173,7 @@ export default function Index() {
         const { backendToFrontendConnection } = await import("@/features/connections/api");
         const newFrontendConn = backendToFrontendConnection(result.data);
 
-        setConnections(function(prev) { return [...prev, newFrontendConn]; });
+        setConnections(function (prev) { return [...prev, newFrontendConn]; });
         setActiveConnectionId(newFrontendConn.id);
         toast({
           title: "Connection Added",
@@ -208,7 +205,7 @@ export default function Index() {
 
       if (result.ok) {
         const updatedConnection = backendToFrontendConnection(result.data);
-        setConnections(function(prev) { return prev.map(function(c) { return c.id === updatedConnection.id ? updatedConnection : c; }); });
+        setConnections(function (prev) { return prev.map(function (c) { return c.id === updatedConnection.id ? updatedConnection : c; }); });
         toast({
           title: "Connection Updated",
           description: `Successfully updated ${updatedConnection.name}`,
@@ -231,7 +228,7 @@ export default function Index() {
   }
 
   function handleViewConnection(connectionId: string) {
-    const connection = connections.find(function(c) { return c.id === connectionId; });
+    const connection = connections.find(function (c) { return c.id === connectionId; });
     if (connection) {
       setEditingConnection(connection);
       setIsConnectionDialogOpen(true);
@@ -239,7 +236,7 @@ export default function Index() {
   }
 
   function handleEditConnection(connectionId: string) {
-    const connection = connections.find(function(c) { return c.id === connectionId; });
+    const connection = connections.find(function (c) { return c.id === connectionId; });
     if (connection) {
       setEditingConnection(connection);
       setIsConnectionDialogOpen(true);
@@ -247,7 +244,7 @@ export default function Index() {
   }
 
   function handleDeleteConnection(connectionId: string) {
-    const connection = connections.find(function(c) { return c.id === connectionId; });
+    const connection = connections.find(function (c) { return c.id === connectionId; });
     if (connection) {
       if (settings.confirmBeforeDelete) {
         setConnectionToDelete(connection);
@@ -265,9 +262,9 @@ export default function Index() {
       const result = await adapter.removeConnection(connectionToDelete.id);
 
       if (result.ok) {
-        setConnections(function(prev) { return prev.filter(function(c) { return c.id !== connectionToDelete.id; }); });
+        setConnections(function (prev) { return prev.filter(function (c) { return c.id !== connectionToDelete.id; }); });
         if (activeConnectionId === connectionToDelete.id) {
-          const remaining = connections.filter(function(c) { return c.id !== connectionToDelete.id; });
+          const remaining = connections.filter(function (c) { return c.id !== connectionToDelete.id; });
           setActiveConnectionId(remaining.length > 0 ? remaining[0].id : "");
         }
         toast({
@@ -309,21 +306,21 @@ export default function Index() {
           <DatabaseSidebar
             activeNavId={activeNavId}
             onNavSelect={setActiveNavId}
-            onTableSelect={function(id, name) {
+            onTableSelect={function (id, name) {
               setSelectedTableId(id);
               setSelectedTableName(name);
             }}
             selectedTableId={selectedTableId}
             autoSelectFirstTable={autoSelectFirstTableRef.current}
-            onAutoSelectComplete={function() {
+            onAutoSelectComplete={function () {
               autoSelectFirstTableRef.current = false;
             }}
             connections={connections}
             activeConnectionId={activeConnectionId}
             onConnectionSelect={handleConnectionSelect}
             onAddConnection={handleOpenNewConnection}
-            onManageConnections={function() {
-              const activeConn = connections.find(function(c) { return c.id === activeConnectionId; });
+            onManageConnections={function () {
+              const activeConn = connections.find(function (c) { return c.id === activeConnectionId; });
               if (activeConn) {
                 setEditingConnection(activeConn);
                 setIsConnectionDialogOpen(true);
