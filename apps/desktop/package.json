@@ -9,7 +9,10 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -83,6 +86,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "npm:rolldown-vite@latest"
+    "vite": "npm:rolldown-vite@latest",
+    "vitest": "^4.0.17"
   }
 }
