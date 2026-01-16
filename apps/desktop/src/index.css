@@ -261,187 +261,187 @@
   }
 
   .midnight {
-    --background: 226 25% 10%;
-    --foreground: 226 25% 98%;
+    --background: calc(226 + var(--hue-shift)) 25% 10%;
+    --foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-    --card: 226 25% 12%;
-    --card-foreground: 226 25% 98%;
+    --card: calc(226 + var(--hue-shift)) 25% 12%;
+    --card-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-    --popover: 226 25% 12%;
-    --popover-foreground: 226 25% 98%;
+    --popover: calc(226 + var(--hue-shift)) 25% 12%;
+    --popover-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
     --primary: calc(244 + var(--hue-shift)) 75% 65%;
-    --primary-foreground: 226 25% 10%;
+    --primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
 
-    --secondary: 226 25% 20%;
-    --secondary-foreground: 226 25% 98%;
+    --secondary: calc(226 + var(--hue-shift)) 25% 20%;
+    --secondary-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-    --muted: 226 25% 20%;
-    --muted-foreground: 226 15% 65%;
+    --muted: calc(226 + var(--hue-shift)) 25% 20%;
+    --muted-foreground: calc(226 + var(--hue-shift)) 15% 65%;
 
-    --accent: 226 25% 20%;
-    --accent-foreground: 226 25% 98%;
+    --accent: calc(226 + var(--hue-shift)) 25% 20%;
+    --accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
     --destructive: 0 62% 30%;
-    --destructive-foreground: 226 25% 98%;
+    --destructive-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-    --border: 226 25% 20%;
-    --input: 226 25% 20%;
+    --border: calc(226 + var(--hue-shift)) 25% 20%;
+    --input: calc(226 + var(--hue-shift)) 25% 20%;
     --ring: calc(244 + var(--hue-shift)) 75% 65%;
 
-    --sidebar-background: 226 25% 9%;
-    --sidebar-foreground: 226 25% 98%;
-    --sidebar-foreground-muted: 226 15% 65%;
+    --sidebar-background: calc(226 + var(--hue-shift)) 25% 9%;
+    --sidebar-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+    --sidebar-foreground-muted: calc(226 + var(--hue-shift)) 15% 65%;
     --sidebar-primary: calc(244 + var(--hue-shift)) 75% 65%;
-    --sidebar-primary-foreground: 226 25% 10%;
-    --sidebar-accent: 226 25% 20%;
-    --sidebar-accent-foreground: 226 25% 98%;
-    --sidebar-border: 226 25% 20%;
+    --sidebar-primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
+    --sidebar-accent: calc(226 + var(--hue-shift)) 25% 20%;
+    --sidebar-accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+    --sidebar-border: calc(226 + var(--hue-shift)) 25% 20%;
     --sidebar-ring: calc(244 + var(--hue-shift)) 75% 65%;
 
-    --table-header: 226 25% 13%;
-    --table-row-hover: 226 25% 16%;
-    --table-row-selected: 226 25% 20%;
-    --table-border: 226 25% 20%;
+    --table-header: calc(226 + var(--hue-shift)) 25% 13%;
+    --table-row-hover: calc(226 + var(--hue-shift)) 25% 16%;
+    --table-row-selected: calc(226 + var(--hue-shift)) 25% 20%;
+    --table-border: calc(226 + var(--hue-shift)) 25% 20%;
   }
 
   .forest {
-    --background: 150 20% 8%;
-    --foreground: 150 20% 95%;
+    --background: calc(150 + var(--hue-shift)) 20% 8%;
+    --foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-    --card: 150 20% 10%;
-    --card-foreground: 150 20% 95%;
+    --card: calc(150 + var(--hue-shift)) 20% 10%;
+    --card-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-    --popover: 150 20% 10%;
-    --popover-foreground: 150 20% 95%;
+    --popover: calc(150 + var(--hue-shift)) 20% 10%;
+    --popover-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
     --primary: calc(142 + var(--hue-shift)) 70% 50%;
-    --primary-foreground: 150 20% 5%;
+    --primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
 
-    --secondary: 150 20% 16%;
-    --secondary-foreground: 150 20% 95%;
+    --secondary: calc(150 + var(--hue-shift)) 20% 16%;
+    --secondary-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-    --muted: 150 20% 16%;
-    --muted-foreground: 150 10% 65%;
+    --muted: calc(150 + var(--hue-shift)) 20% 16%;
+    --muted-foreground: calc(150 + var(--hue-shift)) 10% 65%;
 
-    --accent: 150 20% 16%;
-    --accent-foreground: 150 20% 95%;
+    --accent: calc(150 + var(--hue-shift)) 20% 16%;
+    --accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
     --destructive: 0 62% 30%;
-    --destructive-foreground: 150 20% 95%;
+    --destructive-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-    --border: 150 20% 16%;
-    --input: 150 20% 16%;
+    --border: calc(150 + var(--hue-shift)) 20% 16%;
+    --input: calc(150 + var(--hue-shift)) 20% 16%;
     --ring: calc(142 + var(--hue-shift)) 70% 50%;
 
-    --sidebar-background: 150 25% 7%;
-    --sidebar-foreground: 150 20% 95%;
-    --sidebar-foreground-muted: 150 10% 65%;
+    --sidebar-background: calc(150 + var(--hue-shift)) 25% 7%;
+    --sidebar-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+    --sidebar-foreground-muted: calc(150 + var(--hue-shift)) 10% 65%;
     --sidebar-primary: calc(142 + var(--hue-shift)) 70% 50%;
-    --sidebar-primary-foreground: 150 20% 5%;
-    --sidebar-accent: 150 20% 16%;
-    --sidebar-accent-foreground: 150 20% 95%;
-    --sidebar-border: 150 20% 16%;
+    --sidebar-primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
+    --sidebar-accent: calc(150 + var(--hue-shift)) 20% 16%;
+    --sidebar-accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+    --sidebar-border: calc(150 + var(--hue-shift)) 20% 16%;
     --sidebar-ring: calc(142 + var(--hue-shift)) 70% 50%;
 
-    --table-header: 150 20% 11%;
-    --table-row-hover: 150 20% 14%;
-    --table-row-selected: 150 20% 18%;
-    --table-border: 150 20% 16%;
+    --table-header: calc(150 + var(--hue-shift)) 20% 11%;
+    --table-row-hover: calc(150 + var(--hue-shift)) 20% 14%;
+    --table-row-selected: calc(150 + var(--hue-shift)) 20% 18%;
+    --table-border: calc(150 + var(--hue-shift)) 20% 16%;
   }
 
   .claude {
-    --background: 32 30% 96%;
+    --background: calc(32 + var(--hue-shift)) 30% 96%;
     /* Warm Bisque/Beige */
-    --foreground: 25 10% 15%;
+    --foreground: calc(25 + var(--hue-shift)) 10% 15%;
     /* Deep warm charcoal */
 
-    --card: 32 30% 97%;
-    --card-foreground: 25 10% 15%;
+    --card: calc(32 + var(--hue-shift)) 30% 97%;
+    --card-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
-    --popover: 32 30% 98%;
-    --popover-foreground: 25 10% 15%;
+    --popover: calc(32 + var(--hue-shift)) 30% 98%;
+    --popover-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
     --primary: calc(25 + var(--hue-shift)) 70% 50%;
     /* 25 is Burnt orange base */
     /* Burnt Orange/Sienna */
-    --primary-foreground: 32 30% 98%;
+    --primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
 
-    --secondary: 32 20% 90%;
-    --secondary-foreground: 25 10% 15%;
+    --secondary: calc(32 + var(--hue-shift)) 20% 90%;
+    --secondary-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
-    --muted: 32 20% 92%;
-    --muted-foreground: 25 5% 45%;
+    --muted: calc(32 + var(--hue-shift)) 20% 92%;
+    --muted-foreground: calc(25 + var(--hue-shift)) 5% 45%;
 
-    --accent: 32 20% 90%;
-    --accent-foreground: 25 10% 15%;
+    --accent: calc(32 + var(--hue-shift)) 20% 90%;
+    --accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 32 30% 98%;
+    --destructive-foreground: calc(32 + var(--hue-shift)) 30% 98%;
 
-    --border: 32 15% 85%;
-    --input: 32 15% 85%;
+    --border: calc(32 + var(--hue-shift)) 15% 85%;
+    --input: calc(32 + var(--hue-shift)) 15% 85%;
     --ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-    --sidebar-background: 32 25% 94%;
-    --sidebar-foreground: 25 10% 15%;
-    --sidebar-foreground-muted: 25 5% 45%;
+    --sidebar-background: calc(32 + var(--hue-shift)) 25% 94%;
+    --sidebar-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+    --sidebar-foreground-muted: calc(25 + var(--hue-shift)) 5% 45%;
     --sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
-    --sidebar-primary-foreground: 32 30% 98%;
-    --sidebar-accent: 32 15% 88%;
-    --sidebar-accent-foreground: 25 10% 15%;
-    --sidebar-border: 32 15% 85%;
+    --sidebar-primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
+    --sidebar-accent: calc(32 + var(--hue-shift)) 15% 88%;
+    --sidebar-accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+    --sidebar-border: calc(32 + var(--hue-shift)) 15% 85%;
     --sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-    --table-header: 32 30% 95%;
-    --table-row-hover: 32 30% 92%;
-    --table-row-selected: 32 30% 88%;
-    --table-border: 32 15% 85%;
+    --table-header: calc(32 + var(--hue-shift)) 30% 95%;
+    --table-row-hover: calc(32 + var(--hue-shift)) 30% 92%;
+    --table-row-selected: calc(32 + var(--hue-shift)) 30% 88%;
+    --table-border: calc(32 + var(--hue-shift)) 15% 85%;
   }
 
   .claude-dark {
-    --background: 30 15% 12%;
-    --foreground: 30 30% 96%;
+    --background: calc(30 + var(--hue-shift)) 15% 12%;
+    --foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-    --card: 30 15% 13%;
-    --card-foreground: 30 30% 96%;
+    --card: calc(30 + var(--hue-shift)) 15% 13%;
+    --card-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-    --popover: 30 15% 13%;
-    --popover-foreground: 30 30% 96%;
+    --popover: calc(30 + var(--hue-shift)) 15% 13%;
+    --popover-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
     --primary: calc(25 + var(--hue-shift)) 70% 50%;
-    --primary-foreground: 30 30% 96%;
+    --primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-    --secondary: 30 20% 18%;
-    --secondary-foreground: 30 30% 96%;
+    --secondary: calc(30 + var(--hue-shift)) 20% 18%;
+    --secondary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-    --muted: 30 20% 18%;
-    --muted-foreground: 30 10% 65%;
+    --muted: calc(30 + var(--hue-shift)) 20% 18%;
+    --muted-foreground: calc(30 + var(--hue-shift)) 10% 65%;
 
-    --accent: 30 20% 18%;
-    --accent-foreground: 30 30% 96%;
+    --accent: calc(30 + var(--hue-shift)) 20% 18%;
+    --accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
     --destructive: 0 62% 30%;
-    --destructive-foreground: 30 30% 96%;
+    --destructive-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-    --border: 30 20% 18%;
-    --input: 30 20% 18%;
+    --border: calc(30 + var(--hue-shift)) 20% 18%;
+    --input: calc(30 + var(--hue-shift)) 20% 18%;
     --ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-    --sidebar-background: 30 15% 10%;
-    --sidebar-foreground: 30 30% 96%;
-    --sidebar-foreground-muted: 30 10% 65%;
+    --sidebar-background: calc(30 + var(--hue-shift)) 15% 10%;
+    --sidebar-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+    --sidebar-foreground-muted: calc(30 + var(--hue-shift)) 10% 65%;
     --sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
-    --sidebar-primary-foreground: 30 30% 96%;
-    --sidebar-accent: 30 20% 18%;
-    --sidebar-accent-foreground: 30 30% 96%;
-    --sidebar-border: 30 20% 18%;
+    --sidebar-primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+    --sidebar-accent: calc(30 + var(--hue-shift)) 20% 18%;
+    --sidebar-accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+    --sidebar-border: calc(30 + var(--hue-shift)) 20% 18%;
     --sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-    --table-header: 30 15% 13%;
-    --table-row-hover: 30 20% 16%;
-    --table-row-selected: 30 20% 20%;
-    --table-border: 30 20% 18%;
+    --table-header: calc(30 + var(--hue-shift)) 15% 13%;
+    --table-row-hover: calc(30 + var(--hue-shift)) 20% 16%;
+    --table-row-selected: calc(30 + var(--hue-shift)) 20% 20%;
+    --table-border: calc(30 + var(--hue-shift)) 20% 18%;
   }
 }
 

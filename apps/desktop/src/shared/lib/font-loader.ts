@@ -28,6 +28,16 @@ const FONT_CONFIGS: Record<Exclude<FontPair, "system">, FontConfig> = {
         mono: "Source Code Pro",
         url: "https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Source+Code+Pro:wght@400;500&display=swap",
     },
+    technical: {
+        sans: "Roboto",
+        mono: "Roboto Mono",
+        url: "https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap",
+    },
+    vintage: {
+        sans: "Space Grotesk",
+        mono: "Space Mono",
+        url: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap",
+    },
 };
 
 const loadedFonts = new Set<FontPair>(["system"]);

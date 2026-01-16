@@ -6,12 +6,14 @@ import { Slider } from "@/shared/ui/slider";
 import {
     type Theme,
     type FontPair,
-    type Density,
     type AppearanceSettings,
     getAppearanceSettings,
     saveAppearanceSettings,
     applyAppearanceToDOM,
+    DEFAULT_SETTINGS,
 } from "@/shared/lib/appearance-store";
+import { Button } from "@/shared/ui/button";
+import { RotateCcw } from "lucide-react";
 import { loadFontPair } from "@/shared/lib/font-loader";
 
 type ThemeConfig = {
@@ -27,10 +29,10 @@ type FontConfig = {
     description: string;
 };
 
-type DensityConfig = {
-    value: Density;
+type FontConfig = {
+    value: FontPair;
     name: string;
-    icon: string;
+    description: string;
 };
 
 const THEME_OPTIONS: ThemeConfig[] = [
@@ -45,15 +47,13 @@ const THEME_OPTIONS: ThemeConfig[] = [
 const FONT_OPTIONS: FontConfig[] = [
     { value: "system", name: "System", description: "Inter + JetBrains Mono" },
     { value: "serif", name: "Serif", description: "Merriweather + Fira Code" },
-    { value: "compact", name: "Compact", description: "IBM Plex Sans/Mono" },
+    { value: "compact", name: "Modern", description: "IBM Plex Sans/Mono" },
     { value: "playful", name: "Playful", description: "Nunito + Source Code Pro" },
+    { value: "technical", name: "Technical", description: "Roboto + Roboto Mono" },
+    { value: "vintage", name: "Vintage", description: "Space Grotesk + Mono" },
 ];
 
-const DENSITY_OPTIONS: DensityConfig[] = [
-    { value: "compact", name: "Compact", icon: "▪▪▪" },
-    { value: "comfortable", name: "Comfortable", icon: "▪ ▪ ▪" },
-    { value: "spacious", name: "Spacious", icon: "▪  ▪  ▪" },
-];
+
 
 export function AppearancePanel() {
     const [settings, setSettings] = useState<AppearanceSettings>(getAppearanceSettings);
@@ -75,10 +75,10 @@ export function AppearancePanel() {
         applyAppearanceToDOM(updated);
     }
 
-    function handleDensityChange(density: Density) {
-        const updated = saveAppearanceSettings({ density });
-        setSettings(updated);
-        applyAppearanceToDOM(updated);
+    function handleReset() {
+        const resetSettings = saveAppearanceSettings(DEFAULT_SETTINGS);
+        setSettings(resetSettings);
+        applyAppearanceToDOM(resetSettings);
     }
 
     function handleHueChange(hueShift: number) {
@@ -159,31 +159,18 @@ export function AppearancePanel() {
                     </div>
                 </section>
 
-                {/* Density Section */}
-                <section>
-                    <h3 className="text-sm font-semibold text-sidebar-foreground mb-1">Density</h3>
-                    <p className="text-xs text-muted-foreground mb-3">Adjust UI spacing</p>
-                    <div className="flex gap-2">
-                        {DENSITY_OPTIONS.map(function (option) {
-                            const isSelected = settings.density === option.value;
-                            return (
-                                <button
-                                    key={option.value}
-                                    onClick={function () { handleDensityChange(option.value); }}
-                                    className={cn(
-                                        "flex-1 flex flex-col items-center py-3 px-2 rounded-lg border transition-all",
-                                        isSelected
-                                            ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                                            : "border-border hover:border-muted-foreground/50 hover:bg-muted/50"
-                                    )}
-                                >
-                                    <span className="text-xs font-mono tracking-widest mb-1">{option.icon}</span>
-                                    <span className="text-xs text-foreground">{option.name}</span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
+                {/* Reset Section */}
+                <div className="pt-4 border-t border-sidebar-border">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleReset}
+                        className="w-full text-muted-foreground hover:text-foreground"
+                    >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset to Defaults
+                    </Button>
+                </div>
             </div>
         </SidebarPanel>
     );
