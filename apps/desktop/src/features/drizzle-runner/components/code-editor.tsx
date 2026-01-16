@@ -1,4 +1,5 @@
-import { useRef, useEffect, useState } from "react";
+import { LspDemoWidget } from "./lsp-demo-widget";
+import { useState, useEffect, useRef, } from 'react'
 import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { useSetting } from "@/core/settings";
@@ -180,6 +181,7 @@ function buildSuggestions(range: TextRange, suggestions: Suggestion[]): SuggestL
 }
 
 export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
+    const [showDemo, setShowDemo] = useState(false);
     const [editorFontSize] = useSetting("editorFontSize");
     const [editorThemeSetting] = useSetting("editorTheme");
     const [enableVimMode] = useSetting("enableVimMode");
@@ -1158,6 +1160,20 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 
     return (
         <div className="h-full w-full overflow-hidden pt-2 relative group">
+            {/* Demo Toggle Button */}
+            <button
+                onClick={() => setShowDemo(!showDemo)}
+                className="absolute top-4 right-8 z-10 px-2 py-1 text-xs bg-muted/50 hover:bg-muted text-muted-foreground rounded border border-border opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+                {showDemo ? "Hide Demo" : "LSP Demo"}
+            </button>
+
+            {showDemo && (
+                <LspDemoWidget
+                    editorRef={editorRef}
+                    onClose={() => setShowDemo(false)}
+                />
+            )}
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .run-glyph-margin {
