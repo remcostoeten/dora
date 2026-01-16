@@ -65,7 +65,7 @@ function getRange(monaco: MonacoApi, model: Monaco.editor.ITextModel, position: 
 }
 
 function tableSnippet(table: SchemaTable): string {
-    return `${table.name}$0)`;
+    return `${table.name})$0`;
 }
 
 function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
@@ -406,7 +406,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                                 {
                                     label: "values",
                                     kind: monaco.languages.CompletionItemKind.Struct,
-                                    insertText: `${valuesSnippet(table, true)}$0)`,
+                                    insertText: `${valuesSnippet(table, true)})$0`,
                                     insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                                     detail: "Insert values",
                                     range: range
@@ -425,7 +425,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                                 {
                                     label: "set",
                                     kind: monaco.languages.CompletionItemKind.Struct,
-                                    insertText: `${valuesSnippet(table, false)}$0)`,
+                                    insertText: `${valuesSnippet(table, false)})$0`,
                                     insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                                     detail: "Update values",
                                     range: range
