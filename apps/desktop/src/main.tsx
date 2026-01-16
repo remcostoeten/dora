@@ -8,7 +8,7 @@ import { loadFontPair } from "@/shared/lib/font-loader";
 const settings = getAppearanceSettings();
 applyAppearanceToDOM(settings);
 if (settings.fontPair !== "system") {
-    loadFontPair(settings.fontPair);
+    loadFontPair(settings.fontPair).catch(console.error);
 }
 
 createRoot(document.getElementById("root")!).render(<App />);

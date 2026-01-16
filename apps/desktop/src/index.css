@@ -510,6 +510,7 @@
 }
 
 /* ===== UI Density Classes ===== */
+/* These variables are used dynamically in components (e.g. NavButtons) to adjust spacing/sizing based on user preference. */
 .density-comfortable {
   --spacing-unit: 1rem;
   --spacing-xs: 0.25rem;

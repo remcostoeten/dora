@@ -76,7 +76,16 @@ export function getFontFamilies(fontPair: FontPair): { sans: string; mono: strin
             mono: "'JetBrains Mono', monospace",
         };
     }
-    const config = FONT_CONFIGS[fontPair];
+    const config = FONT_CONFIGS[fontPair as Exclude<FontPair, "system">];
+
+    if (!config) {
+        console.warn(`Unknown font pair: ${fontPair}, falling back to system`);
+        return {
+            sans: "'Inter', system-ui, sans-serif",
+            mono: "'JetBrains Mono', monospace",
+        };
+    }
+
     return {
         sans: `'${config.sans}', system-ui, sans-serif`,
         mono: `'${config.mono}', monospace`,
