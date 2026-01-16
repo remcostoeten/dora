@@ -11,6 +11,17 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function GlobalToaster() {
+    const { settings } = useSettings();
+    if (settings.showToasts === false) return null;
+    return (
+        <>
+            <Toaster />
+            <Sonner />
+        </>
+    );
+}
+
 function App() {
     return (
         <QueryClientProvider client={queryClient}>
@@ -20,8 +31,7 @@ function App() {
                         <div className="flex flex-col h-screen">
                             <DemoBanner />
                             <div className="flex-1 overflow-hidden">
-                                <Toaster />
-                                <Sonner />
+                                <GlobalToaster />
                                 <BrowserRouter>
                                     <Routes>
                                         <Route path="/" element={<Index />} />

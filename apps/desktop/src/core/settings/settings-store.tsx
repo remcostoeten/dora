@@ -11,6 +11,8 @@ export type SettingsState = {
   enableVimMode: boolean;
   restoreLastConnection: boolean;
   lastConnectionId: string | null;
+  selectionBarStyle: "floating" | "static";
+  showToasts: boolean;
 };
 
 export const DEFAULT_SETTINGS: SettingsState = {
@@ -20,6 +22,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
   enableVimMode: false,
   restoreLastConnection: true,
   lastConnectionId: null,
+  selectionBarStyle: "floating",
+  showToasts: true,
 };
 
 const STORAGE_KEY = "ui_settings";

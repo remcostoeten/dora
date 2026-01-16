@@ -735,8 +735,121 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     }
 
     // Content view (default)
+    const handleBulkDelete = useCallback(() => {
+        const primaryKeyColumn = tableData?.columns.find(c => c.primaryKey);
+        if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return;
+
+        if (settings.confirmBeforeDelete && !confirm(`Delete ${selectedRows.size} selected rows?`)) return;
+
+        const primaryKeyValues = Array.from(selectedRows).map(function (rowIndex) {
+            return tableData.rows[rowIndex][primaryKeyColumn.name];
+        });
+
+        deleteRows.mutate({
+            connectionId: activeConnectionId,
+            tableName: tableName || tableId,
+            primaryKeyColumn: primaryKeyColumn.name,
+            primaryKeyValues
+        }, {
+            onSuccess: function () {
+                setSelectedRows(new Set());
+                loadTableData();
+            }
+        });
+    }, [tableData, activeConnectionId, tableId, tableName, selectedRows, settings.confirmBeforeDelete, deleteRows, loadTableData]);
+
+    const handleBulkCopy = useCallback(() => {
+        if (!tableData) return;
+        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+            return tableData.rows[rowIndex];
+        });
+        navigator.clipboard.writeText(JSON.stringify(rowsData, null, 2));
+    }, [tableData, selectedRows]);
+
+    const handleBulkDuplicate = useCallback(() => {
+        const primaryKeyColumn = tableData?.columns.find(c => c.primaryKey);
+        if (!activeConnectionId || !tableId || !tableData) return;
+
+        const rowsToDuplicate = Array.from(selectedRows).map(function (rowIndex) {
+            const row = { ...tableData.rows[rowIndex] };
+            if (primaryKeyColumn) {
+                delete row[primaryKeyColumn.name];
+            }
+            return row;
+        });
+
+        setIsBulkActionLoading(true);
+        Promise.all(rowsToDuplicate.map(function (rowData) {
+            return insertRow.mutateAsync({
+                connectionId: activeConnectionId,
+                tableName: tableName || tableId,
+                rowData
+            });
+        })).then(function () {
+            setSelectedRows(new Set());
+            loadTableData();
+        }).catch(function (error) {
+            console.error("Failed to duplicate rows:", error);
+        }).finally(function () {
+            setIsBulkActionLoading(false);
+        });
+    }, [tableData, activeConnectionId, tableId, tableName, selectedRows, insertRow, loadTableData]);
+
+    const handleExportJson = useCallback(() => {
+        if (!tableData) return;
+        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+            return tableData.rows[rowIndex];
+        });
+        const jsonString = JSON.stringify(rowsData, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${tableName || "data"}_selected.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [tableData, selectedRows, tableName]);
+
+    const handleExportCsv = useCallback(() => {
+        if (!tableData) return;
+        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+            return tableData.rows[rowIndex];
+        });
+
+        if (rowsData.length === 0) return;
+
+        const headers = Object.keys(rowsData[0]);
+        const csvRows = [
+            headers.join(","),
+            ...rowsData.map(function (row) {
+                return headers.map(function (header) {
+                    const value = row[header];
+                    if (value === null || value === undefined) return "";
+                    const stringValue = String(value);
+                    if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+                        return `"${stringValue.replace(/"/g, '""')}"`;
+                    }
+                    return stringValue;
+                }).join(",");
+            })
+        ];
+
+        const csvString = csvRows.join("\n");
+        const blob = new Blob([csvString], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${tableName || "data"}_selected.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [tableData, selectedRows, tableName]);
+
+    const handleClearSelection = useCallback(() => setSelectedRows(new Set()), []);
+    const handleOpenSetNull = useCallback(() => setShowSetNullDialog(true), []);
+    const handleOpenBulkEdit = useCallback(() => setShowBulkEditDialog(true), []);
+
     return (
-        <div className="flex flex-col h-full bg-background">
+        <div className="flex flex-col h-full bg-background relative">
             <StudioToolbar
                 tableName={tableName || tableId}
                 viewMode={viewMode}
@@ -787,6 +900,21 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 )}
             </div>
 
+            {tableData && settings.selectionBarStyle === "static" && selectedRows.size > 0 && (
+                <SelectionActionBar
+                    selectedCount={selectedRows.size}
+                    onDelete={handleBulkDelete}
+                    onCopy={handleBulkCopy}
+                    onSetNull={handleOpenSetNull}
+                    onDuplicate={handleBulkDuplicate}
+                    onExportJson={handleExportJson}
+                    onExportCsv={handleExportCsv}
+                    onBulkEdit={handleOpenBulkEdit}
+                    onClearSelection={handleClearSelection}
+                    mode="static"
+                />
+            )}
+
             {tableData && (
                 <BottomStatusBar
                     pagination={pagination}
@@ -797,120 +925,19 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 />
             )}
 
-            {tableData && selectedRows.size > 0 && (
+            {/* Render floating bar if mode is floating OR default (undefined) */}
+            {tableData && (settings.selectionBarStyle === "floating" || !settings.selectionBarStyle) && selectedRows.size > 0 && (
                 <SelectionActionBar
                     selectedCount={selectedRows.size}
-                    onDelete={function handleBulkDelete() {
-                        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
-                        if (!primaryKeyColumn || !activeConnectionId || !tableId) return;
-
-                        if (settings.confirmBeforeDelete && !confirm(`Delete ${selectedRows.size} selected rows?`)) return;
-
-                        const primaryKeyValues = Array.from(selectedRows).map(function (rowIndex) {
-                            return tableData.rows[rowIndex][primaryKeyColumn.name];
-                        });
-
-                        deleteRows.mutate({
-                            connectionId: activeConnectionId,
-                            tableName: tableName || tableId,
-                            primaryKeyColumn: primaryKeyColumn.name,
-                            primaryKeyValues
-                        }, {
-                            onSuccess: function () {
-                                setSelectedRows(new Set());
-                                loadTableData();
-                            }
-                        });
-                    }}
-                    onCopy={function handleBulkCopy() {
-                        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
-                            return tableData.rows[rowIndex];
-                        });
-                        navigator.clipboard.writeText(JSON.stringify(rowsData, null, 2));
-                    }}
-                    onDuplicate={function handleBulkDuplicate() {
-                        const primaryKeyColumn = tableData.columns.find(function (c) { return c.primaryKey; });
-                        if (!activeConnectionId || !tableId) return;
-
-                        const rowsToDuplicate = Array.from(selectedRows).map(function (rowIndex) {
-                            const row = { ...tableData.rows[rowIndex] };
-                            // Remove primary key so DB generates a new one
-                            if (primaryKeyColumn) {
-                                delete row[primaryKeyColumn.name];
-                            }
-                            return row;
-                        });
-
-                        // Insert rows one by one
-                        setIsBulkActionLoading(true);
-                        Promise.all(rowsToDuplicate.map(function (rowData) {
-                            return insertRow.mutateAsync({
-                                connectionId: activeConnectionId,
-                                tableName: tableName || tableId,
-                                rowData
-                            });
-                        })).then(function () {
-                            setSelectedRows(new Set());
-                            loadTableData();
-                        }).catch(function (error) {
-                            console.error("Failed to duplicate rows:", error);
-                        }).finally(function () {
-                            setIsBulkActionLoading(false);
-                        });
-                    }}
-                    onExportJson={function handleExportJson() {
-                        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
-                            return tableData.rows[rowIndex];
-                        });
-                        const jsonString = JSON.stringify(rowsData, null, 2);
-                        const blob = new Blob([jsonString], { type: "application/json" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `${tableName || "data"}_selected.json`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                    }}
-                    onExportCsv={function handleExportCsv() {
-                        const rowsData = Array.from(selectedRows).map(function (rowIndex) {
-                            return tableData.rows[rowIndex];
-                        });
-
-                        if (rowsData.length === 0) return;
-
-                        const headers = Object.keys(rowsData[0]);
-                        const csvRows = [
-                            headers.join(","),
-                            ...rowsData.map(function (row) {
-                                return headers.map(function (header) {
-                                    const value = row[header];
-                                    if (value === null || value === undefined) return "";
-                                    const stringValue = String(value);
-                                    // Escape quotes and wrap in quotes if contains comma, quote, or newline
-                                    if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
-                                        return `"${stringValue.replace(/"/g, '""')}"`;
-                                    }
-                                    return stringValue;
-                                }).join(",");
-                            })
-                        ];
-
-                        const csvString = csvRows.join("\n");
-                        const blob = new Blob([csvString], { type: "text/csv" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = `${tableName || "data"}_selected.csv`;
-                        a.click();
-                        URL.revokeObjectURL(url);
-                    }}
-                    onSetNull={function handleOpenSetNull() {
-                        setShowSetNullDialog(true);
-                    }}
-                    onBulkEdit={function handleOpenBulkEdit() {
-                        setShowBulkEditDialog(true);
-                    }}
-                    onClearSelection={function () { setSelectedRows(new Set()); }}
+                    onDelete={handleBulkDelete}
+                    onCopy={handleBulkCopy}
+                    onDuplicate={handleBulkDuplicate}
+                    onExportJson={handleExportJson}
+                    onExportCsv={handleExportCsv}
+                    onSetNull={handleOpenSetNull}
+                    onBulkEdit={handleOpenBulkEdit}
+                    onClearSelection={handleClearSelection}
+                    mode="floating"
                 />
             )}
 
