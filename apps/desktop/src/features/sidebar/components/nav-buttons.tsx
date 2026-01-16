@@ -24,11 +24,19 @@ export function NavButtons({ activeId = "database-studio", onSelect }: Props) {
         <button
           key={item.id}
           className={cn(
-            "flex items-center gap-2.5 px-3 py-2 h-9 text-sm rounded-md transition-all text-left border",
+            "flex items-center rounded-md transition-all text-left border",
             activeId === item.id
               ? "bg-sidebar-accent border-sidebar-border text-sidebar-foreground"
               : "border-transparent text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:border-sidebar-border/50"
           )}
+          style={{
+            paddingLeft: 'var(--spacing-md)',
+            paddingRight: 'var(--spacing-md)',
+            paddingTop: 'var(--spacing-xs)',
+            paddingBottom: 'var(--spacing-xs)',
+            height: 'var(--component-height)',
+            gap: 'var(--spacing-sm)'
+          }}
           onClick={() => onSelect?.(item.id)}
         >
           <item.icon className="h-4 w-4 shrink-0" />

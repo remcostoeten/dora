@@ -1,12 +1,7 @@
 import { useState, useEffect } from "react";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-    DialogDescription
-} from "@/shared/ui/dialog";
+import { StudioDialog } from "./studio-dialog";
+import { Button } from "@/shared/ui/button";
+import { Loader2 } from "lucide-react";
 import type { ColumnDefinition } from "../types";
 
 type Props = {
@@ -81,70 +76,76 @@ export function AddRecordDialog({
     });
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>
-                        {mode === "duplicate" ? "Duplicate Record" : "Add New Record"}
-                    </DialogTitle>
-                    <DialogDescription>
-                        Fill in the values for the new record. Primary key fields with auto-increment are excluded.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                    <div className="flex-1 overflow-y-auto space-y-4 py-4">
-                        {editableColumns.map(function renderField(col) {
-                            return (
-                                <div key={col.name} className="grid grid-cols-3 items-center gap-4">
-                                    <label
-                                        htmlFor={col.name}
-                                        className="text-sm font-medium text-muted-foreground text-right"
-                                    >
-                                        {col.name}
-                                        {!col.nullable && <span className="text-destructive ml-1">*</span>}
-                                    </label>
-                                    <div className="col-span-2">
-                                        <input
-                                            id={col.name}
-                                            type="text"
-                                            value={formData[col.name] || ""}
-                                            onChange={function onFieldInput(e) {
-                                                handleFieldChange(col.name, e.target.value);
-                                            }}
-                                            placeholder={col.nullable ? "NULL" : `Enter ${col.type}`}
-                                            required={!col.nullable}
-                                            className="w-full h-9 px-3 rounded-md border border-sidebar-border bg-sidebar text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                        />
-                                        <span className="text-xs text-muted-foreground mt-1">
-                                            {col.type}
-                                        </span>
-                                    </div>
+        <StudioDialog
+            open={open}
+            onOpenChange={onOpenChange}
+            title={mode === "duplicate" ? "Duplicate Record" : "Add New Record"}
+            description="Fill in the values for the new record. Primary key fields with auto-increment are excluded."
+            className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+            contentClassName="flex flex-col overflow-hidden p-0"
+            footer={
+                <>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={function handleCancel() {
+                            onOpenChange(false);
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        form="add-record-form"
+                    >
+                        {isLoading ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Saving...
+                            </>
+                        ) : mode === "duplicate" ? (
+                            "Duplicate"
+                        ) : (
+                            "Add Record"
+                        )}
+                    </Button>
+                </>
+            }
+        >
+            <form id="add-record-form" onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden h-full">
+                <div className="flex-1 overflow-y-auto space-y-4 p-4">
+                    {editableColumns.map(function renderField(col) {
+                        return (
+                            <div key={col.name} className="grid grid-cols-3 items-center gap-4">
+                                <label
+                                    htmlFor={col.name}
+                                    className="text-sm font-medium text-muted-foreground text-right"
+                                >
+                                    {col.name}
+                                    {!col.nullable && <span className="text-destructive ml-1">*</span>}
+                                </label>
+                                <div className="col-span-2">
+                                    <input
+                                        id={col.name}
+                                        type="text"
+                                        value={formData[col.name] || ""}
+                                        onChange={function onFieldInput(e) {
+                                            handleFieldChange(col.name, e.target.value);
+                                        }}
+                                        placeholder={col.nullable ? "NULL" : `Enter ${col.type}`}
+                                        required={!col.nullable}
+                                        className="w-full h-9 px-3 rounded-md border border-sidebar-border bg-sidebar text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                    />
+                                    <span className="text-xs text-muted-foreground mt-1">
+                                        {col.type}
+                                    </span>
                                 </div>
-                            );
-                        })}
-                    </div>
-
-                    <DialogFooter className="pt-4 border-t border-sidebar-border">
-                        <button
-                            type="button"
-                            onClick={function handleCancel() {
-                                onOpenChange(false);
-                            }}
-                            className="h-9 px-4 rounded-md border border-sidebar-border text-sm font-medium hover:bg-sidebar-accent transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
-                        >
-                            {isLoading ? "Saving..." : mode === "duplicate" ? "Duplicate" : "Add Record"}
-                        </button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+                            </div>
+                        );
+                    })}
+                </div>
+            </form>
+        </StudioDialog>
     );
 }

@@ -153,6 +153,7 @@
   :root {
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --hue-shift: 0;
 
     --background: 0 0% 6.7%;
     --foreground: 0 0% 95%;
@@ -258,6 +259,190 @@
     --success: 0 0% 9%;
     --success-foreground: 0 0% 98%;
   }
+
+  .midnight {
+    --background: calc(226 + var(--hue-shift)) 25% 10%;
+    --foreground: calc(226 + var(--hue-shift)) 25% 98%;
+
+    --card: calc(226 + var(--hue-shift)) 25% 12%;
+    --card-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+
+    --popover: calc(226 + var(--hue-shift)) 25% 12%;
+    --popover-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+
+    --primary: calc(244 + var(--hue-shift)) 75% 65%;
+    --primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
+
+    --secondary: calc(226 + var(--hue-shift)) 25% 20%;
+    --secondary-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+
+    --muted: calc(226 + var(--hue-shift)) 25% 20%;
+    --muted-foreground: calc(226 + var(--hue-shift)) 15% 65%;
+
+    --accent: calc(226 + var(--hue-shift)) 25% 20%;
+    --accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+
+    --border: calc(226 + var(--hue-shift)) 25% 20%;
+    --input: calc(226 + var(--hue-shift)) 25% 20%;
+    --ring: calc(244 + var(--hue-shift)) 75% 65%;
+
+    --sidebar-background: calc(226 + var(--hue-shift)) 25% 9%;
+    --sidebar-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+    --sidebar-foreground-muted: calc(226 + var(--hue-shift)) 15% 65%;
+    --sidebar-primary: calc(244 + var(--hue-shift)) 75% 65%;
+    --sidebar-primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
+    --sidebar-accent: calc(226 + var(--hue-shift)) 25% 20%;
+    --sidebar-accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+    --sidebar-border: calc(226 + var(--hue-shift)) 25% 20%;
+    --sidebar-ring: calc(244 + var(--hue-shift)) 75% 65%;
+
+    --table-header: calc(226 + var(--hue-shift)) 25% 13%;
+    --table-row-hover: calc(226 + var(--hue-shift)) 25% 16%;
+    --table-row-selected: calc(226 + var(--hue-shift)) 25% 20%;
+    --table-border: calc(226 + var(--hue-shift)) 25% 20%;
+  }
+
+  .forest {
+    --background: calc(150 + var(--hue-shift)) 20% 8%;
+    --foreground: calc(150 + var(--hue-shift)) 20% 95%;
+
+    --card: calc(150 + var(--hue-shift)) 20% 10%;
+    --card-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+
+    --popover: calc(150 + var(--hue-shift)) 20% 10%;
+    --popover-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+
+    --primary: calc(142 + var(--hue-shift)) 70% 50%;
+    --primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
+
+    --secondary: calc(150 + var(--hue-shift)) 20% 16%;
+    --secondary-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+
+    --muted: calc(150 + var(--hue-shift)) 20% 16%;
+    --muted-foreground: calc(150 + var(--hue-shift)) 10% 65%;
+
+    --accent: calc(150 + var(--hue-shift)) 20% 16%;
+    --accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+
+    --border: calc(150 + var(--hue-shift)) 20% 16%;
+    --input: calc(150 + var(--hue-shift)) 20% 16%;
+    --ring: calc(142 + var(--hue-shift)) 70% 50%;
+
+    --sidebar-background: calc(150 + var(--hue-shift)) 25% 7%;
+    --sidebar-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+    --sidebar-foreground-muted: calc(150 + var(--hue-shift)) 10% 65%;
+    --sidebar-primary: calc(142 + var(--hue-shift)) 70% 50%;
+    --sidebar-primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
+    --sidebar-accent: calc(150 + var(--hue-shift)) 20% 16%;
+    --sidebar-accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+    --sidebar-border: calc(150 + var(--hue-shift)) 20% 16%;
+    --sidebar-ring: calc(142 + var(--hue-shift)) 70% 50%;
+
+    --table-header: calc(150 + var(--hue-shift)) 20% 11%;
+    --table-row-hover: calc(150 + var(--hue-shift)) 20% 14%;
+    --table-row-selected: calc(150 + var(--hue-shift)) 20% 18%;
+    --table-border: calc(150 + var(--hue-shift)) 20% 16%;
+  }
+
+  .claude {
+    --background: calc(32 + var(--hue-shift)) 30% 96%;
+    /* Warm Bisque/Beige */
+    --foreground: calc(25 + var(--hue-shift)) 10% 15%;
+    /* Deep warm charcoal */
+
+    --card: calc(32 + var(--hue-shift)) 30% 97%;
+    --card-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+
+    --popover: calc(32 + var(--hue-shift)) 30% 98%;
+    --popover-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+
+    --primary: calc(25 + var(--hue-shift)) 70% 50%;
+    /* 25 is Burnt orange base */
+    /* Burnt Orange/Sienna */
+    --primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
+
+    --secondary: calc(32 + var(--hue-shift)) 20% 90%;
+    --secondary-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+
+    --muted: calc(32 + var(--hue-shift)) 20% 92%;
+    --muted-foreground: calc(25 + var(--hue-shift)) 5% 45%;
+
+    --accent: calc(32 + var(--hue-shift)) 20% 90%;
+    --accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: calc(32 + var(--hue-shift)) 30% 98%;
+
+    --border: calc(32 + var(--hue-shift)) 15% 85%;
+    --input: calc(32 + var(--hue-shift)) 15% 85%;
+    --ring: calc(25 + var(--hue-shift)) 70% 50%;
+
+    --sidebar-background: calc(32 + var(--hue-shift)) 25% 94%;
+    --sidebar-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+    --sidebar-foreground-muted: calc(25 + var(--hue-shift)) 5% 45%;
+    --sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
+    --sidebar-primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
+    --sidebar-accent: calc(32 + var(--hue-shift)) 15% 88%;
+    --sidebar-accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+    --sidebar-border: calc(32 + var(--hue-shift)) 15% 85%;
+    --sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
+
+    --table-header: calc(32 + var(--hue-shift)) 30% 95%;
+    --table-row-hover: calc(32 + var(--hue-shift)) 30% 92%;
+    --table-row-selected: calc(32 + var(--hue-shift)) 30% 88%;
+    --table-border: calc(32 + var(--hue-shift)) 15% 85%;
+  }
+
+  .claude-dark {
+    --background: calc(30 + var(--hue-shift)) 15% 12%;
+    --foreground: calc(30 + var(--hue-shift)) 30% 96%;
+
+    --card: calc(30 + var(--hue-shift)) 15% 13%;
+    --card-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+
+    --popover: calc(30 + var(--hue-shift)) 15% 13%;
+    --popover-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+
+    --primary: calc(25 + var(--hue-shift)) 70% 50%;
+    --primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+
+    --secondary: calc(30 + var(--hue-shift)) 20% 18%;
+    --secondary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+
+    --muted: calc(30 + var(--hue-shift)) 20% 18%;
+    --muted-foreground: calc(30 + var(--hue-shift)) 10% 65%;
+
+    --accent: calc(30 + var(--hue-shift)) 20% 18%;
+    --accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+
+    --border: calc(30 + var(--hue-shift)) 20% 18%;
+    --input: calc(30 + var(--hue-shift)) 20% 18%;
+    --ring: calc(25 + var(--hue-shift)) 70% 50%;
+
+    --sidebar-background: calc(30 + var(--hue-shift)) 15% 10%;
+    --sidebar-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+    --sidebar-foreground-muted: calc(30 + var(--hue-shift)) 10% 65%;
+    --sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
+    --sidebar-primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+    --sidebar-accent: calc(30 + var(--hue-shift)) 20% 18%;
+    --sidebar-accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+    --sidebar-border: calc(30 + var(--hue-shift)) 20% 18%;
+    --sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
+
+    --table-header: calc(30 + var(--hue-shift)) 15% 13%;
+    --table-row-hover: calc(30 + var(--hue-shift)) 20% 16%;
+    --table-row-selected: calc(30 + var(--hue-shift)) 20% 20%;
+    --table-border: calc(30 + var(--hue-shift)) 20% 18%;
+  }
 }
 
 @layer base {
@@ -301,6 +486,59 @@
   ::-webkit-scrollbar-corner {
     background: transparent;
   }
+}
+
+/* ===== Font Pair Classes ===== */
+.font-system {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.font-serif {
+  --font-sans: 'Merriweather', Georgia, serif;
+  --font-mono: 'Fira Code', monospace;
+}
+
+.font-compact {
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+.font-playful {
+  --font-sans: 'Nunito', system-ui, sans-serif;
+  --font-mono: 'Source Code Pro', monospace;
+}
+
+/* ===== UI Density Classes ===== */
+/* These variables are used dynamically in components (e.g. NavButtons) to adjust spacing/sizing based on user preference. */
+.density-comfortable {
+  --spacing-unit: 1rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+  --component-height: 2.25rem;
+}
+
+.density-compact {
+  --spacing-unit: 0.75rem;
+  --spacing-xs: 0.125rem;
+  --spacing-sm: 0.25rem;
+  --spacing-md: 0.5rem;
+  --spacing-lg: 0.75rem;
+  --spacing-xl: 1rem;
+  --component-height: 1.75rem;
+}
+
+.density-spacious {
+  --spacing-unit: 1.25rem;
+  --spacing-xs: 0.375rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.25rem;
+  --spacing-xl: 2rem;
+  --component-height: 2.75rem;
 }
 
 @utility glass {

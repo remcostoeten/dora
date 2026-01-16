@@ -9,7 +9,7 @@
                 "dist/**",
                 ".next/**",
                 "src-tauri/target/**"
-            ]
+            ],
         },
         "dev": {
             "cache": false,

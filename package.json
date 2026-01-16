@@ -10,17 +10,23 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
-    "desktop:run": "bun --cwd apps/desktop run dev",
+    "desktop:run": "bun run --cwd apps/desktop dev",
     "desktop:dev": "bun run --cwd apps/desktop tauri dev",
-    "desktop:build": "bun --cwd apps/desktop run tauri build",
-    "docs:dev": "bun --cwd apps/api-docs run dev",
-    "docs:build": "bun --cwd apps/api-docs run build",
+    "desktop:build": "bun run --cwd apps/desktop tauri build",
+    "docs:dev": "bun run --cwd apps/api-docs dev",
+    "docs:build": "bun run --cwd apps/api-docs build",
+    "release:gen": "bun tools/scripts/generate-release.ts",
+    "ai:setup": "bun tools/scripts/setup-local-ai.ts",
+    "setup:ai": "bun tools/scripts/setup-local-ai.ts",
     "runner": "./dora-runner"
   },
   "devDependencies": {
+    "@types/sqlite3": "^5.1.0",
     "turbo": "^2.3.0"
   },
   "dependencies": {
-    "zustand": "^5.0.10"
+    "@google/generative-ai": "^0.24.1",
+    "zustand": "^5.0.10",
+    "sqlite3": "^5.1.7"
   }
 }
