@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { SidebarPanel } from "./sidebar-panel";
 import { ThemePreviewCard } from "./theme-preview-card";
 import { cn } from "@/shared/utils/cn";
+import { Slider } from "@/shared/ui/slider";
 import {
     type Theme,
     type FontPair,
@@ -80,6 +81,12 @@ export function AppearancePanel() {
         applyAppearanceToDOM(updated);
     }
 
+    function handleHueChange(hueShift: number) {
+        const updated = saveAppearanceSettings({ hueShift });
+        setSettings(updated);
+        applyAppearanceToDOM(updated);
+    }
+
     return (
         <SidebarPanel>
             <div className="p-4 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-thin">
@@ -100,6 +107,29 @@ export function AppearancePanel() {
                                 />
                             );
                         })}
+                    </div>
+                </section>
+
+                {/* Hue Shift Section */}
+                <section>
+                    <div className="flex items-center justify-between mb-3">
+                        <div>
+                            <h3 className="text-sm font-semibold text-sidebar-foreground">Color Shift</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5">Adjust the global hue</p>
+                        </div>
+                        <span className="text-xs font-mono text-muted-foreground bg-sidebar-accent px-2 py-1 rounded">
+                            {settings.hueShift > 0 ? "+" : ""}{settings.hueShift}°
+                        </span>
+                    </div>
+                    <div className="px-1">
+                        <Slider
+                            value={[settings.hueShift]}
+                            min={0}
+                            max={360}
+                            step={5}
+                            onValueChange={([val]) => handleHueChange(val)}
+                            className="w-full"
+                        />
                     </div>
                 </section>
 

@@ -11,6 +11,7 @@ export type AppearanceSettings = {
     theme: Theme;
     fontPair: FontPair;
     density: Density;
+    hueShift: number; // 0-360
 };
 
 const STORAGE_KEY = "dora-appearance";
@@ -19,6 +20,7 @@ const DEFAULT_SETTINGS: AppearanceSettings = {
     theme: "dark",
     fontPair: "system",
     density: "comfortable",
+    hueShift: 0,
 };
 
 export function getAppearanceSettings(): AppearanceSettings {
@@ -58,4 +60,7 @@ export function applyAppearanceToDOM(settings: AppearanceSettings): void {
     // Density
     root.classList.remove("density-comfortable", "density-compact", "density-spacious");
     root.classList.add(`density-${settings.density}`);
+
+    // Hue Shift
+    root.style.setProperty("--hue-shift", `${settings.hueShift}`);
 }
