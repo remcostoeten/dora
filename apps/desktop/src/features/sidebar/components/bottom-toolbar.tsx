@@ -169,7 +169,7 @@ export function BottomToolbar({ onAction, onCopySchema, themeProps }: Props) {
                 side="right"
                 align="end"
                 sideOffset={16}
-                className="w-[340px] p-0 mb-2 ml-2"
+                className="w-[400px] p-0 mb-2 ml-2"
               >
                 <AppearancePanel />
               </PopoverContent>

@@ -23,7 +23,20 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
 
     function getThemeFromDocument(): MonacoTheme {
         if (typeof document !== "undefined") {
-            return document.documentElement.classList.contains("light") ? "vs" : "vs-dark";
+            const classList = document.documentElement.classList;
+            
+            // Map custom app themes to included Monaco themes
+            if (classList.contains("midnight")) return "dracula";
+            if (classList.contains("forest")) return "nord";
+            if (classList.contains("monokai")) return "monokai";
+            if (classList.contains("github-dark")) return "github-dark";
+            
+            // Handle variants
+            if (classList.contains("claude-dark")) return "vs-dark";
+            if (classList.contains("claude")) return "vs"; // Light mode
+            
+            // Fallback to standard light/dark check
+            return classList.contains("light") ? "vs" : "vs-dark";
         }
         return "vs-dark";
     }
