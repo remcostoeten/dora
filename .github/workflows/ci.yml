@@ -12,9 +12,7 @@ env:
 jobs:
   test-typescript:
     name: TypeScript Tests
-    # Use Blacksmith runner for faster execution (2x speedup)
-    # Requires Blacksmith GitHub App installed: https://github.com/apps/blacksmith-sh
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,8 +30,7 @@ jobs:
 
   test-rust:
     name: Rust Tests
-    # Use Blacksmith runner for faster compilation (Rust benefits heavily from high CPU)
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16
@@ -89,7 +86,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -108,8 +105,7 @@ jobs:
   build:
     name: Build
     needs: [test-typescript, test-rust, lint]
-    # Build processes benefit massively from Blacksmith's faster CPUs
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
