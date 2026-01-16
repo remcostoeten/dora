@@ -33,7 +33,14 @@ const EXCEPT_PREDICATES: Record<ExceptPreset, ExceptPredicate> = {
     },
     typing: (e) => {
         const target = e.target as HTMLElement
-        return IGNORED_TAGS.has(target.tagName) || target.isContentEditable
+        if (!target || !target.tagName) return false
+
+        return (
+            IGNORED_TAGS.has(target.tagName) ||
+            target.isContentEditable ||
+            target.classList?.contains("inputarea") || // Monaco editor
+            target.getAttribute?.("role") === "textbox"
+        )
     },
     modal: () => {
         return document.querySelector('[data-modal="true"], [role="dialog"]') !== null

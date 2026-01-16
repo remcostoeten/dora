@@ -5,10 +5,9 @@ import { SchemaTable } from "../types";
  * This enables true "Pro" LSP support with type checking for Drizzle ORM.
  */
 export function generateDrizzleTypes(tables: SchemaTable[]): string {
-    const tableDefs = tables.map(table => {
-        const columns = table.columns.map(col => {
+    const tableDefs = tables.map(function (table) {
+        const columns = table.columns.map(function (col) {
             let tsType = "unknown";
-            // Map SQL types to TS types consistently
             if (/int|serial|decimal|double|float|numeric|real/.test(col.type)) {
                 tsType = "number";
             } else if (/char|text|uuid|json|enum/.test(col.type)) {
@@ -21,8 +20,7 @@ export function generateDrizzleTypes(tables: SchemaTable[]): string {
             return `    /** ${col.type} */\n    ${col.name}: Column<${tsType}>;`;
         }).join("\n");
 
-        // The "Model" - what a row looks like (e.g. { id: number, name: string })
-        const modelColumns = table.columns.map(col => {
+        const modelColumns = table.columns.map(function (col) {
             let tsType = "unknown";
             if (/int|serial|decimal|double|float|numeric|real/.test(col.type)) {
                 tsType = "number";
@@ -33,7 +31,6 @@ export function generateDrizzleTypes(tables: SchemaTable[]): string {
             } else if (/timestamp|date|time/.test(col.type)) {
                 tsType = "Date";
             }
-            // Nullability
             if (col.nullable) {
                 tsType = `${tsType} | null`;
             }
@@ -56,17 +53,11 @@ declare const ${table.name}: Table<'${table.name}', ${capitalize(table.name)}Sch
 `;
     }).join("\n");
 
-    const tableNamesUnion = tables.length > 0
-        ? tables.map(t => `typeof ${t.name}`).join(" | ")
-        : "never";
-
     return `
 /**
  * DRIZZLE ORM STRICT TYPE DEFINITIONS
  * Generated for Monaco Editor
  */
-
-// --- Base Types ---
 
 /** A column reference in a query (e.g. users.id) */
 interface Column<T> {
@@ -89,13 +80,9 @@ interface Table<TName extends string, TSchema> {
     };
 }
 
-// Ensure TSchema is compliant with the shape of a table schema
-type AnyTable = Table<string, any>;
+type AnyTable = Table<string, unknown>;
 
-// --- Generated Tables ---
 ${tableDefs}
-
-// --- Query Builder ---
 
 interface QueryBuilder<TResult> {
     /** 
@@ -105,10 +92,10 @@ interface QueryBuilder<TResult> {
     where(condition: SQL<boolean> | undefined): QueryBuilder<TResult>;
     
     /** Order results by specific columns */
-    orderBy(...columns: (Column<any> | SQL<any>)[]): QueryBuilder<TResult>;
+    orderBy(...columns: (Column<unknown> | SQL<unknown>)[]): QueryBuilder<TResult>;
     
     /** Group results by columns */
-    groupBy(...columns: Column<any>[]): QueryBuilder<TResult>; // Simplified for now but generic enough
+    groupBy(...columns: Column<unknown>[]): QueryBuilder<TResult>;
     
     /** Limit the number of returned rows */
     limit(limit: number): QueryBuilder<TResult>;
@@ -133,10 +120,7 @@ interface QueryBuilder<TResult> {
     execute(): Promise<TResult[]>;
     
     /** Get generated SQL */
-    toSQL(): { sql: string; params: any[] };
 }
-
-// --- The Database Object ---
 
 interface DB {
     /**
@@ -148,7 +132,7 @@ interface DB {
     /**
      * Start a SELECT query for specific fields.
      */
-    select<TSelection extends Record<string, Column<any> | SQL<any>>>(
+    select<TSelection extends Record<string, Column<unknown> | SQL<unknown>>>(
         fields: TSelection
     ): SelectBuilder<TSelection>;
 
@@ -161,11 +145,16 @@ interface DB {
     /** Start a DELETE query */
     delete<TName extends string, TSchema>(table: Table<TName, TSchema>): DeleteBuilder;
 
-    /** Execute raw SQL */
-    execute(query: SQL<any>): Promise<any>;
+    /** Run queries in a transaction */
+    transaction<T>(handler: (tx: Transaction) => Promise<T>): Promise<T>;
+
+    /** Batch multiple queries */
+    batch(queries: SQL<unknown>[]): Promise<unknown[]>;
 }
 
-interface SelectBuilder<TSelection = any> {
+interface Transaction extends Omit<DB, 'transaction'> {}
+
+interface SelectBuilder<TSelection = unknown> {
     /**
      * Specify the table to select from.
      * This infers the result type based on the table model.
@@ -175,10 +164,6 @@ interface SelectBuilder<TSelection = any> {
     ): QueryBuilder<InferModelFromSchema<TSchema>>;
 }
 
-// Helper to infer the Model from the Schema (hack since we generated them separately but structured similarly)
-// In reality, we just map Schema keys to types.
-// For the purpose of this mock, we used declared interfaces.
-// Let's use a trick: The Schema has Column<T>, the Result has T.
 type InferModelFromSchema<TSchema> = {
     [K in keyof TSchema]: TSchema[K] extends Column<infer T> ? T : never;
 };
@@ -204,20 +189,17 @@ interface UpdateBuilder<TSchema> {
 
 interface DeleteBuilder {
     where(condition: SQL<boolean>): {
-        returning(): Promise<any[]>;
+        returning(): Promise<unknown[]>;
         execute(): Promise<void>;
     };
 }
 
-// Helper to extract T from Column<T> for insert models
 type InferInsertModel<TSchema> = {
     [K in keyof TSchema]?: TSchema[K] extends Column<infer T> ? T : never;
 };
 
 declare const db: DB;
 
-
-// --- Helper Functions (Strictly Typed) ---
 
 /** Checks if column equals value */
 declare function eq<T>(column: Column<T>, value: T): SQL<boolean>;
@@ -244,10 +226,10 @@ declare function inArray<T>(column: Column<T>, values: T[]): SQL<boolean>;
 declare function notInArray<T>(column: Column<T>, values: T[]): SQL<boolean>;
 
 /** Checks if column is NULL */
-declare function isNull(column: Column<any>): SQL<boolean>;
+declare function isNull(column: Column<unknown>): SQL<boolean>;
 
 /** Checks if column is NOT NULL */
-declare function isNotNull(column: Column<any>): SQL<boolean>;
+declare function isNotNull(column: Column<unknown>): SQL<boolean>;
 
 /** 
  * Fuzzy match. 
@@ -262,19 +244,19 @@ declare function or(...conditions: (SQL<boolean> | undefined)[]): SQL<boolean>;
 declare function not(condition: SQL<boolean>): SQL<boolean>;
 
 /** Sorting */
-declare function asc(column: Column<any>): SQL<any>;
-declare function desc(column: Column<any>): SQL<any>;
+declare function asc(column: Column<unknown>): SQL<unknown>;
+declare function desc(column: Column<unknown>): SQL<unknown>;
 
 /** Aggregates */
 declare function count(): SQL<number>;
-declare function count(column: Column<any>): SQL<number>;
+declare function count(column: Column<unknown>): SQL<number>;
 declare function sum(column: Column<number>): SQL<number>;
 declare function avg(column: Column<number>): SQL<number>;
 declare function min<T>(column: Column<T>): SQL<T>;
 declare function max<T>(column: Column<T>): SQL<T>;
 
-/** Raw SQL */
-declare function sql<T = unknown>(strings: TemplateStringsArray, ...values: any[]): SQL<T>;
+/** Parameter helper */
+declare function param<T>(value?: T): T;
 
 `;
 }
@@ -282,8 +264,6 @@ declare function sql<T = unknown>(strings: TemplateStringsArray, ...values: any[
 function capitalize(s: string): string {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
-
-// Exports for the editor to use for completion triggers (if needed)
 
 export function getDrizzleHelpers(): string[] {
     return [
@@ -293,15 +273,22 @@ export function getDrizzleHelpers(): string[] {
         "and", "or", "not",
         "asc", "desc",
         "count", "sum", "avg", "min", "max",
-        "sql"
+        "param"
     ];
 }
 
 export function getTableNames(tables: SchemaTable[]): string[] {
-    return tables.map(t => t.name);
+    return tables.map(function (table) {
+        return table.name;
+    });
 }
 
 export function getColumnNames(tables: SchemaTable[], tableName: string): string[] {
-    const table = tables.find(t => t.name === tableName);
-    return table ? table.columns.map(c => c.name) : [];
+    const table = tables.find(function (item) {
+        return item.name === tableName;
+    });
+    if (!table) return [];
+    return table.columns.map(function (column) {
+        return column.name;
+    });
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
 import { DatabaseStudio } from "@/features/database-studio/database-studio";
@@ -104,6 +104,7 @@ export default function Index() {
       return;
     }
 
+    // Auto-connect for Web Demo
     const isWebDemo =
       import.meta.env.MODE === 'demo' ||
       window.location.hostname.includes('demo') ||
@@ -112,11 +113,14 @@ export default function Index() {
       window.location.hostname === '127.0.0.1';
 
     if (isWebDemo) {
-      const demoConn = connections.find(function (c) { return c.id === 'demo-ecommerce-001'; }) || connections[0];
+      const demoConn = connections.find(c => c.id === 'demo-ecommerce-001') || connections[0];
       if (demoConn) {
         setActiveConnectionId(demoConn.id);
-        // Auto-select first table so users see data immediately
-        autoSelectFirstTableRef.current = true;
+        // Switch to products table since 'categories' might not exist
+        if (selectedTableId === "categories") {
+          setSelectedTableId("products");
+          setSelectedTableName("products");
+        }
         return;
       }
     }
@@ -298,6 +302,15 @@ export default function Index() {
     }
   }
 
+  const handleTableSelect = useCallback((id: string, name: string) => {
+    setSelectedTableId(id);
+    setSelectedTableName(name);
+  }, []);
+
+  const handleAutoSelectComplete = useCallback(() => {
+    autoSelectFirstTableRef.current = false;
+  }, []);
+
   return (
     <TooltipProvider>
       <div className="flex h-full w-full bg-background overflow-hidden">
@@ -305,15 +318,10 @@ export default function Index() {
           <DatabaseSidebar
             activeNavId={activeNavId}
             onNavSelect={setActiveNavId}
-            onTableSelect={function (id, name) {
-              setSelectedTableId(id);
-              setSelectedTableName(name);
-            }}
+            onTableSelect={handleTableSelect}
             selectedTableId={selectedTableId}
             autoSelectFirstTable={autoSelectFirstTableRef.current}
-            onAutoSelectComplete={function () {
-              autoSelectFirstTableRef.current = false;
-            }}
+            onAutoSelectComplete={handleAutoSelectComplete}
             connections={connections}
             activeConnectionId={activeConnectionId}
             onConnectionSelect={handleConnectionSelect}

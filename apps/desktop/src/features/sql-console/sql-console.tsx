@@ -74,7 +74,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                     return {
                         name: t.name,
                         type: "table" as const,
-                        rowCount: 0,
+                        rowCount: t.row_count_estimate ?? 0,
                         columns: t.columns.map(function (c) {
                             return {
                                 name: c.name,
@@ -324,11 +324,11 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 
     const $ = useShortcut();
 
-    $.key("s").except("typing").on(function() {
+    $.key("s").except("typing").on(function () {
         setMode("sql");
     }, { description: "Switch to SQL mode" });
 
-    $.key("d").except("typing").on(function() {
+    $.key("d").except("typing").on(function () {
         setMode("drizzle");
     }, { description: "Switch to Drizzle mode" });
 
