@@ -1,0 +1,21 @@
+$ vite build
+vite v6.4.1 building for production...
+transforming...
+✓ 1091 modules transformed.
+✗ Build failed in 996ms
+error during build:
+[vite]: Rollup failed to resolve import "@tauri-apps/api/core" from "/home/remco-stoeten/dora/apps/desktop/src/lib/bindings.ts".
+This is most likely unintended because it can break your application at runtime.
+If you do want to externalize this module explicitly add it to
+`build.rollupOptions.external`
+    at viteLog (file:///home/remco-stoeten/dora/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:46374:15)
+    at file:///home/remco-stoeten/dora/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:46432:18
+    at onwarn (file:///home/remco-stoeten/dora/node_modules/@vitejs/plugin-react-swc/index.js:90:7)
+    at file:///home/remco-stoeten/dora/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:46430:7
+    at onRollupLog (file:///home/remco-stoeten/dora/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:46422:5)
+    at onLog (file:///home/remco-stoeten/dora/node_modules/vite/dist/node/chunks/dep-D4NMHUTW.js:46072:7)
+    at file:///home/remco-stoeten/dora/node_modules/rollup/dist/es/shared/node-entry.js:21081:32
+    at Object.logger [as onLog] (file:///home/remco-stoeten/dora/node_modules/rollup/dist/es/shared/node-entry.js:22968:9)
+    at ModuleLoader.handleInvalidResolvedId (file:///home/remco-stoeten/dora/node_modules/rollup/dist/es/shared/node-entry.js:21712:26)
+    at file:///home/remco-stoeten/dora/node_modules/rollup/dist/es/shared/node-entry.js:21670:26
+error: script "build" exited with code 1
