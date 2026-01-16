@@ -144,19 +144,111 @@ export function buildConnectionString(params: ConnectionParams): string {
 }
 
 /**
+ * Calculates the Levenshtein distance between two strings.
+ * Used for typo detection in connection protocols.
+ */
+function levenshtein(a: string, b: string): number {
+    const matrix = [];
+
+    for (let i = 0; i <= b.length; i++) {
+        matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= a.length; j++) {
+        matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+            if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                matrix[i][j] = matrix[i - 1][j - 1];
+            } else {
+                matrix[i][j] = Math.min(
+                    matrix[i - 1][j - 1] + 1, // substitution
+                    Math.min(
+                        matrix[i][j - 1] + 1, // insertion
+                        matrix[i - 1][j] + 1  // deletion
+                    )
+                );
+            }
+        }
+    }
+
+    return matrix[b.length][a.length];
+}
+
+interface ProtocolMatch {
+    type: DatabaseType;
+    normalizedDistance: number;
+    sharesPrefix: boolean;
+}
+
+function findClosestProtocol(input: string): DatabaseType | undefined {
+    const MIN_PROTOCOL_LENGTH = 4;
+    const MAX_NORMALIZED_DISTANCE = 0.4;
+    const PREFIX_BONUS_THRESHOLD = 0.6;
+    const PREFIX_LENGTH = 3;
+
+    if (input.length < MIN_PROTOCOL_LENGTH) {
+        return undefined;
+    }
+
+    const inputLower = input.toLowerCase();
+    let bestMatch: ProtocolMatch | undefined;
+
+    for (const [dbType, config] of Object.entries(PROVIDER_CONFIGS)) {
+        for (const proto of config.protocols) {
+            const protoLower = proto.toLowerCase();
+            const distance = levenshtein(inputLower, protoLower);
+            const maxLength = Math.max(inputLower.length, protoLower.length);
+            const normalizedDistance = distance / maxLength;
+
+            const sharesPrefix = inputLower.slice(0, PREFIX_LENGTH) === protoLower.slice(0, PREFIX_LENGTH);
+
+            const isAcceptable = sharesPrefix
+                ? normalizedDistance <= PREFIX_BONUS_THRESHOLD
+                : normalizedDistance <= MAX_NORMALIZED_DISTANCE;
+
+            if (!isAcceptable) {
+                continue;
+            }
+
+            if (!bestMatch || normalizedDistance < bestMatch.normalizedDistance) {
+                bestMatch = {
+                    type: dbType as DatabaseType,
+                    normalizedDistance,
+                    sharesPrefix,
+                };
+            }
+        }
+    }
+
+    return bestMatch?.type;
+}
+
+/**
  * Parses a connection URL to extract components
  */
 export function parseConnectionUrl(url: string): Partial<ConnectionParams> | null {
     try {
         const parsed = new URL(url);
+        // Remove trailing colon from protocol (e.g., "postgres:" -> "postgres")
+        const protocol = parsed.protocol.replace(":", "");
 
         // Determine database type from protocol
         let type: DatabaseType | undefined;
+        
+        // 1. Try exact match first
         for (const [dbType, config] of Object.entries(PROVIDER_CONFIGS)) {
-            if (config.protocols.includes(parsed.protocol.replace(":", ""))) {
+            if (config.protocols.includes(protocol)) {
                 type = dbType as DatabaseType;
                 break;
             }
+        }
+
+        // 2. If no exact match, try fuzzy matching (typo detection)
+        if (!type) {
+            type = findClosestProtocol(protocol);
         }
 
         if (!type) {
