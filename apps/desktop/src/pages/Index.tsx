@@ -104,7 +104,6 @@ export default function Index() {
       return;
     }
 
-    // Auto-connect for Web Demo
     const isWebDemo =
       import.meta.env.MODE === 'demo' ||
       window.location.hostname.includes('demo') ||
