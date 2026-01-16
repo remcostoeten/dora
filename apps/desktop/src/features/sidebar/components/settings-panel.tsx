@@ -109,6 +109,48 @@ export function SettingsPanel({ onCopySchema }: Props) {
             </div>
           </SidebarSection>
 
+          <SidebarSection title="Interface">
+              <div className="space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                          <div className="text-sm text-sidebar-foreground">Selection Bar</div>
+                          <div className="text-xs text-muted-foreground leading-tight">
+                              Choose the style of the row selection bar
+                          </div>
+                      </div>
+                      <div className="flex-shrink-0 pt-0.5 min-w-[120px]">
+                          <Select
+                              value={settings.selectionBarStyle || "floating"}
+                              onValueChange={(value) => updateSetting("selectionBarStyle", value as "floating" | "static")}
+                          >
+                              <SelectTrigger className="w-full h-8 text-xs">
+                                  <SelectValue placeholder="Select style" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                  <SelectItem value="floating">Floating Pill</SelectItem>
+                                  <SelectItem value="static">Static Bar</SelectItem>
+                              </SelectContent>
+                          </Select>
+                      </div>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                          <div className="text-sm text-sidebar-foreground">Show Toasts</div>
+                          <div className="text-xs text-muted-foreground leading-tight">
+                              Enable or disable toast notifications
+                          </div>
+                      </div>
+                      <div className="flex-shrink-0 pt-0.5">
+                          <Switch
+                              checked={settings.showToasts !== false} // Default to true if undefined
+                              onCheckedChange={(checked) => updateSetting("showToasts", checked)}
+                          />
+                      </div>
+                  </div>
+              </div>
+          </SidebarSection>
+
           {onCopySchema && (
             <Button
               variant="outline"

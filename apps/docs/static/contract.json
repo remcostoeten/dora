@@ -1,0 +1,445 @@
+[
+  {
+    "name": "add_connection",
+    "description": "Register a new database connection configuration.",
+    "arguments": [
+      {
+        "name": "name",
+        "arg_type": "String",
+        "description": "Display name for the connection",
+        "optional": false
+      },
+      {
+        "name": "database_info",
+        "arg_type": "DatabaseInfo",
+        "description": "Connection details (type, host, credentials)",
+        "optional": false
+      },
+      {
+        "name": "color",
+        "arg_type": "Option<i32>",
+        "description": "Color hue for UI accent",
+        "optional": true
+      }
+    ],
+    "return_type": "Result<ConnectionInfo, Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Persists connection config to storage",
+      "Stores credentials securely"
+    ]
+  },
+  {
+    "name": "update_connection",
+    "description": "Update an existing connection configuration.",
+    "arguments": [
+      {
+        "name": "conn_id",
+        "arg_type": "Uuid",
+        "description": "ID of the connection to update",
+        "optional": false
+      },
+      {
+        "name": "name",
+        "arg_type": "String",
+        "description": "New display name",
+        "optional": false
+      },
+      {
+        "name": "database_info",
+        "arg_type": "DatabaseInfo",
+        "description": "New connection details",
+        "optional": false
+      },
+      {
+        "name": "color",
+        "arg_type": "Option<i32>",
+        "description": "New color hue",
+        "optional": true
+      }
+    ],
+    "return_type": "Result<ConnectionInfo, Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Updates storage",
+      "MAY disconnect active connection if config changes"
+    ]
+  },
+  {
+    "name": "connect_to_database",
+    "description": "Establish an active connection to a database.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "ID of the connection",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<bool, Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Opened network connection",
+      "Starts connection monitoring"
+    ]
+  },
+  {
+    "name": "disconnect_from_database",
+    "description": "Close an active database connection.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "ID of the connection",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<(), Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Closes network connection",
+      "Stops monitoring"
+    ]
+  },
+  {
+    "name": "get_connections",
+    "description": "Retrieve all configured connections.",
+    "arguments": [],
+    "return_type": "Result<Vec<ConnectionInfo>, Error>",
+    "stability": "Stable",
+    "side_effects": []
+  },
+  {
+    "name": "set_connection_pin",
+    "description": "Set or remove the PIN for verifying connection credentials.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "Target connection ID",
+        "optional": false
+      },
+      {
+        "name": "pin",
+        "arg_type": "Option<String>",
+        "description": "New PIN (or null to remove)",
+        "optional": true
+      }
+    ],
+    "return_type": "Result<(), Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Persists hashed PIN"
+    ]
+  },
+  {
+    "name": "verify_pin_and_get_credentials",
+    "description": "Verify PIN and return sensitive connection credentials.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "Target connection ID",
+        "optional": false
+      },
+      {
+        "name": "pin",
+        "arg_type": "String",
+        "description": "PIN to verify",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<Option<String>, Error>",
+    "stability": "Stable",
+    "side_effects": []
+  },
+  {
+    "name": "start_query",
+    "description": "Execute a SQL query asynchronously.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "Active connection ID",
+        "optional": false
+      },
+      {
+        "name": "query",
+        "arg_type": "String",
+        "description": "SQL query string",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<Vec<usize>, Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Executes SQL on DB",
+      "Allocates query state"
+    ]
+  },
+  {
+    "name": "fetch_page",
+    "description": "Fetch a page of results for an executed query.",
+    "arguments": [
+      {
+        "name": "query_id",
+        "arg_type": "usize",
+        "description": "ID returned by start_query",
+        "optional": false
+      },
+      {
+        "name": "page_index",
+        "arg_type": "usize",
+        "description": "Zero-based page index",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<Option<Box<RawValue>>, Error>",
+    "stability": "Stable",
+    "side_effects": []
+  },
+  {
+    "name": "insert_row",
+    "description": "Insert a single row into a table.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "Active connection ID",
+        "optional": false
+      },
+      {
+        "name": "table_name",
+        "arg_type": "String",
+        "description": "Target table",
+        "optional": false
+      },
+      {
+        "name": "schema_name",
+        "arg_type": "Option<String>",
+        "description": "Target schema (optional)",
+        "optional": true
+      },
+      {
+        "name": "row_data",
+        "arg_type": "Map<String, Value>",
+        "description": "Column-value map",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<MutationResult, Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Modifies DB data"
+    ]
+  },
+  {
+    "name": "execute_batch",
+    "description": "Execute multiple SQL statements in a single batch/transaction.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "Active connection ID",
+        "optional": false
+      },
+      {
+        "name": "statements",
+        "arg_type": "Vec<String>",
+        "description": "List of SQL statements",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<MutationResult, Error>",
+    "stability": "Experimental",
+    "side_effects": [
+      "Modifies DB data",
+      "Invalidates schema cache"
+    ]
+  },
+  {
+    "name": "truncate_database",
+    "description": "Truncate ALL tables in the database.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "Active connection ID",
+        "optional": false
+      },
+      {
+        "name": "confirm",
+        "arg_type": "bool",
+        "description": "Safety confirmation flag",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<TruncateResult, Error>",
+    "stability": "Dangerous",
+    "side_effects": [
+      "DELETES ALL DATE",
+      "Irreversible operation"
+    ]
+  },
+  {
+    "name": "seed_table",
+    "description": "Populate a table with mock data.",
+    "arguments": [
+      {
+        "name": "connection_id",
+        "arg_type": "Uuid",
+        "description": "Active connection ID",
+        "optional": false
+      },
+      {
+        "name": "table_name",
+        "arg_type": "String",
+        "description": "Target table",
+        "optional": false
+      },
+      {
+        "name": "schema_name",
+        "arg_type": "Option<String>",
+        "description": "Target schema (optional)",
+        "optional": true
+      },
+      {
+        "name": "count",
+        "arg_type": "u32",
+        "description": "Number of rows to generate",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<SeedResult, Error>",
+    "stability": "Experimental",
+    "side_effects": [
+      "Inserts random data"
+    ]
+  },
+  {
+    "name": "parse_sql",
+    "description": "Parse SQL string into JSON AST.",
+    "arguments": [
+      {
+        "name": "sql",
+        "arg_type": "String",
+        "description": "SQL Query",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<Value, Error>",
+    "stability": "Stable",
+    "side_effects": []
+  },
+  {
+    "name": "build_sql",
+    "description": "Build SQL string from JSON AST.",
+    "arguments": [
+      {
+        "name": "ast",
+        "arg_type": "Value",
+        "description": "JSON AST",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<String, Error>",
+    "stability": "Stable",
+    "side_effects": []
+  },
+  {
+    "name": "ai_complete",
+    "description": "Send prompt to AI provider for SQL assistance.",
+    "arguments": [
+      {
+        "name": "prompt",
+        "arg_type": "String",
+        "description": "User query or request",
+        "optional": false
+      },
+      {
+        "name": "connection_id",
+        "arg_type": "Option<Uuid>",
+        "description": "Context connection (for schema)",
+        "optional": true
+      },
+      {
+        "name": "max_tokens",
+        "arg_type": "Option<u32>",
+        "description": "Response limit",
+        "optional": true
+      }
+    ],
+    "return_type": "Result<AIResponse, Error>",
+    "stability": "Experimental",
+    "side_effects": [
+      "External API call (Gemini) or Local Inference (Ollama)"
+    ]
+  },
+  {
+    "name": "ai_set_provider",
+    "description": "Switch between 'gemini' and 'ollama'.",
+    "arguments": [
+      {
+        "name": "provider",
+        "arg_type": "String",
+        "description": "Provider name",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<(), Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Persists setting"
+    ]
+  },
+  {
+    "name": "ai_set_gemini_key",
+    "description": "Set Gemini API key (BYOK).",
+    "arguments": [
+      {
+        "name": "api_key",
+        "arg_type": "String",
+        "description": "Google AI Studio Key",
+        "optional": false
+      }
+    ],
+    "return_type": "Result<(), Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Persists key securely"
+    ]
+  },
+  {
+    "name": "ai_configure_ollama",
+    "description": "Configure Ollama endpoint and model.",
+    "arguments": [
+      {
+        "name": "endpoint",
+        "arg_type": "Option<String>",
+        "description": "Ollama URL",
+        "optional": true
+      },
+      {
+        "name": "model",
+        "arg_type": "Option<String>",
+        "description": "Model name",
+        "optional": true
+      }
+    ],
+    "return_type": "Result<(), Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Persists setting"
+    ]
+  },
+  {
+    "name": "ai_list_ollama_models",
+    "description": "List models available in local Ollama instance.",
+    "arguments": [],
+    "return_type": "Result<Vec<String>, Error>",
+    "stability": "Stable",
+    "side_effects": [
+      "Local network call"
+    ]
+  }
+]
