@@ -7,7 +7,9 @@ import { TableSearch, FilterState } from "./components/table-search";
 import { TableList } from "./components/table-list";
 import type { TableRightClickAction } from "./components/table-list";
 
-import { BottomToolbar, ToolbarAction, Theme } from "./components/bottom-toolbar";
+import { BottomToolbar, ToolbarAction } from "./components/bottom-toolbar";
+import { getAppearanceSettings, applyAppearanceToDOM } from "@/shared/lib/appearance-store";
+import { loadFontPair } from "@/shared/lib/font-loader";
 import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
 import { RenameTableDialog } from "./components/rename-table-dialog";
 import { DropTableDialog } from "../database-studio/components/drop-table-dialog";
@@ -83,7 +85,6 @@ export function DatabaseSidebar({
   const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editingTableId, setEditingTableId] = useState<string | undefined>();
-  const [theme, setTheme] = useState<Theme>("dark");
 
   // Real database schema state (populated by adapter, whether mock or real)
   const [schema, setSchema] = useState<DatabaseSchema | null>(null);
@@ -96,11 +97,14 @@ export function DatabaseSidebar({
   const [isDdlLoading, setIsDdlLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove("light", "dark", "midnight", "forest", "claude", "claude-dark");
-    root.classList.add(theme);
-  }, [theme]);
+  // Initialize appearance settings on mount
+  useEffect(function initAppearance() {
+    const settings = getAppearanceSettings();
+    applyAppearanceToDOM(settings);
+    if (settings.fontPair !== "system") {
+      loadFontPair(settings.fontPair);
+    }
+  }, []);
 
   useEffect(function handleAutoSelectFirstTable() {
     async function fetchSchema() {
@@ -548,10 +552,6 @@ export function DatabaseSidebar({
       <BottomToolbar
         onAction={handleToolbarAction}
         onCopySchema={handleCopySchema}
-        themeProps={{
-          theme,
-          onThemeChange: setTheme
-        }}
       />
 
       <RenameTableDialog

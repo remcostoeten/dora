@@ -486,6 +486,55 @@
   }
 }
 
+/* ===== Font Pair Classes ===== */
+.font-system {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.font-serif {
+  --font-sans: 'Merriweather', Georgia, serif;
+  --font-mono: 'Fira Code', monospace;
+}
+
+.font-compact {
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+.font-playful {
+  --font-sans: 'Nunito', system-ui, sans-serif;
+  --font-mono: 'Source Code Pro', monospace;
+}
+
+/* ===== UI Density Classes ===== */
+.density-comfortable {
+  --spacing-unit: 1rem;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+}
+
+.density-compact {
+  --spacing-unit: 0.75rem;
+  --spacing-xs: 0.125rem;
+  --spacing-sm: 0.25rem;
+  --spacing-md: 0.5rem;
+  --spacing-lg: 0.75rem;
+  --spacing-xl: 1rem;
+}
+
+.density-spacious {
+  --spacing-unit: 1.25rem;
+  --spacing-xs: 0.375rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.25rem;
+  --spacing-xl: 2rem;
+}
+
 @utility glass {
   background: hsl(var(--popover) / 0.8);
   backdrop-filter: blur(12px);
