@@ -1,9 +1,8 @@
 /**
  * Connection Providers Utility Tests
  *
- * @module providers
- * @tested-by tests/apps/desktop/features/connections/providers.test.ts
- * @see apps/desktop/src/features/connections/utils/providers.ts
+ * `@module` providers
+ * `@see` apps/desktop/src/features/connections/utils/providers.ts
  *
  * Tests connection URL parsing, typo detection, and provider detection.
  */
