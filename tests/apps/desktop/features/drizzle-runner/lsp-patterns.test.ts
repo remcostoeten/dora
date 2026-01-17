@@ -2,7 +2,6 @@
  * LSP Autocomplete Pattern Tests
  *
  * @module lsp-patterns
- * @tested-by tests/apps/desktop/features/drizzle-runner/lsp-patterns.test.ts
  * @see apps/desktop/src/features/drizzle-runner/utils/lsp-patterns.ts
  *
  * These tests verify that the regex patterns used in the Drizzle runner's
@@ -10,79 +9,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-
-// Pattern definitions (copied from code-editor.tsx for testing)
-function getDbName(text: string): "db" | "tx" | null {
-    const match = text.match(/\b(db|tx)\.[\w]*$/);
-    if (!match) return null;
-    if (match[1] === "tx") return "tx";
-    return "db";
-}
-
-function getChainMode(text: string): "select" | "insert" | "update" | "delete" | null {
-    // Match chain patterns with optional partial method name typed after the dot
-    // Uses .*? for non-greedy match to handle nested parens like .where(eq(a, b))
-    // The key is looking for the final ).[letters] pattern at the end
-
-    // Check delete first to prevent it being caught by select's .where() check if detection is loose
-    if (/db\.delete\(.*?\)\.[a-zA-Z]*$/.test(text) || /\bdelete\(.*?\)\.(where|returning)\(/.test(text) || /\.delete\(.*?\)\.[a-zA-Z]*$/.test(text)) return "delete";
-
-    // For select chains: look for any of the select chain methods followed by ).[partial]
-    if (
-        /db\.select\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.from\([^)]*\)\.[a-zA-Z]*$/.test(text)
-        || /\.where\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.leftJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.rightJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.innerJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.fullJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.groupBy\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.having\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.orderBy\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.limit\([^)]*\)\.[a-zA-Z]*$/.test(text)
-        || /\.offset\([^)]*\)\.[a-zA-Z]*$/.test(text)
-        || /\.union\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.unionAll\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.intersect\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.except\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.select\(.*?\)\.[a-zA-Z]*$/.test(text) // Allow .select() after .with()
-    ) {
-        return "select";
-    }
-
-    // Insert with onConflict support
-    if (/db\.insert\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.values\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.onConflictDoUpdate\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.onConflictDoNothing\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.insert\(.*?\)\.[a-zA-Z]*$/.test(text)
-    ) return "insert";
-
-    // Update with returning support
-    if (/db\.update\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.set\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.returning\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.update\(.*?\)\.[a-zA-Z]*$/.test(text)
-    ) return "update";
-
-    return null;
-}
-
-function getTableMatch(text: string): RegExpMatchArray | null {
-    return text.match(/\b([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)?$/);
-}
-
-function isInsideFromParens(text: string): boolean {
-    return /\.from\(\s*[a-zA-Z_]?[\w]*$/.test(text);
-}
-
-function isInsideWhereParens(text: string): boolean {
-    return /\.where\(\s*$/.test(text) || /\b(and|or)\(\s*$/.test(text);
-}
-
-function getHelperMatch(text: string): RegExpMatchArray | null {
-    return text.match(/\b(eq|ne|gt|gte|lt|lte|and|or|inArray|notInArray|like|ilike|between|not|exists|notExists)\(/);
-}
+import {
+    getDbName,
+    getChainMode,
+    getTableMatch,
+    isInsideFromParens,
+    isInsideWhereParens,
+    getHelperMatch,
+} from '@/features/drizzle-runner/utils/lsp-patterns';
 
 describe('Drizzle LSP Pattern Tests', () => {
   describe('getDbName', () => {
