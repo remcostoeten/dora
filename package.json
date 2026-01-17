@@ -8,8 +8,13 @@
   ],
   "scripts": {
     "dev": "turbo dev",
+    "prebuild": "bun run tools/prebuild.ts",
     "build": "turbo build",
     "lint": "turbo lint",
+    "test": "turbo test",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "desktop:run": "bun --cwd apps/desktop run dev",
     "desktop:dev": "bun run --cwd apps/desktop tauri dev",
     "desktop:build": "bun --cwd apps/desktop run tauri build",
@@ -18,7 +23,12 @@
     "runner": "./dora-runner"
   },
   "devDependencies": {
-    "turbo": "^2.3.0"
+    "@testing-library/react": "^16.3.1",
+    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/ui": "^4.0.17",
+    "happy-dom": "^20.3.1",
+    "turbo": "^2.3.0",
+    "vitest": "^4.0.17"
   },
   "dependencies": {
     "zustand": "^5.0.10"

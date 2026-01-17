@@ -88,6 +88,11 @@ function shouldSuggest(text: string): boolean {
     return /[a-zA-Z0-9_.(),\s]/.test(text);
 }
 
+/**
+ * LSP autocomplete matchers.
+ *
+ * @tested-by tests/apps/desktop/features/drizzle-runner/lsp-patterns.test.ts
+ */
 function getTableMatch(text: string): RegExpMatchArray | null {
     return text.match(/\b([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)?$/);
 }

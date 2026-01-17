@@ -11,9 +11,9 @@ Built with Rust (Tauri 2.0), TypeScript (Next.js), and local SQLite, with option
 
 - **New:** Changelog Panel, Undo/Redo, Editor Themes, DDL Support.
 - **Downloads (Linux):**
-  - [AppImage](apps/desktop/src-tauri/target/release/bundle/appimage/Dora_0.0.9_amd64.AppImage)
-  - [DEB](apps/desktop/src-tauri/target/release/bundle/deb/Dora_0.0.9_amd64.deb)
-  - [RPM](apps/desktop/src-tauri/target/release/bundle/rpm/Dora-0.0.9-1.x86_64.rpm)
+    - [AppImage](apps/desktop/src-tauri/target/release/bundle/appimage/Dora_0.0.9_amd64.AppImage)
+    - [DEB](apps/desktop/src-tauri/target/release/bundle/deb/Dora_0.0.9_amd64.deb)
+    - [RPM](apps/desktop/src-tauri/target/release/bundle/rpm/Dora-0.0.9-1.x86_64.rpm)
 
 ## Roadmap & Goal
 
@@ -21,37 +21,37 @@ Dora aims to provide a desktop database tool so fast and intuitive that managing
 
 ### Connecting
 
-- Save multiple hosts securely and encrypted  
-- Quick test & connect to PostgreSQL and SQLite  
-- Connection history for instant recall  
-- Auto-fill connection forms on paste (e.g., `ctrl + v`)  
-- Automatic stripping of prefixes (`DATABASE_URL=`)  
-- Detect minor typos in connection strings (`postttgr...` → `postgres`)  
+- Save multiple hosts securely and encrypted
+- Quick test & connect to PostgreSQL and SQLite
+- Connection history for instant recall
+- Auto-fill connection forms on paste (e.g., `ctrl + v`)
+- Automatic stripping of prefixes (`DATABASE_URL=`)
+- Detect minor typos in connection strings (`postttgr...` → `postgres`)
 
 ### Once Connected
 
-- Spreadsheet-style data view  
-- Inline filtering (ascending/descending, newest/oldest, size)  
-- Advanced GUI search that generates SQL queries without manual writing  
-- Inline editing of records  
-  - Edit history tracking  
-  - Undo (`Ctrl + Z`) support  
-  - Default dry-run mode for safe editing  
+- Spreadsheet-style data view
+- Inline filtering (ascending/descending, newest/oldest, size)
+- Advanced GUI search that generates SQL queries without manual writing
+- Inline editing of records
+    - Edit history tracking
+    - Undo (`Ctrl + Z`) support
+    - Default dry-run mode for safe editing
 
 ### Querying & Management
 
-- Full query runner with autocomplete and LSP support  
-- Query history and templates  
-- Smart autocorrect and syntax helper  
-- Safety warnings for destructive operations  
-- Save and reuse frequently used queries  
+- Full query runner with autocomplete and LSP support
+- Query history and templates
+- Smart autocorrect and syntax helper
+- Safety warnings for destructive operations
+- Save and reuse frequently used queries
 - Export partials, or full data in various formats (SQL, JSON, Fax)
 
 ### Post minimal MVP
 
 - Implement LibSQL (turso)
-- Advanced query runner with LSP-based autocomplete and safety checks  
-- Performance optimizations for large datasets  
+- Advanced query runner with LSP-based autocomplete and safety checks
+- Performance optimizations for large datasets
 - See if we can retrieve metrics
 - AI helper in the query tools
 
@@ -62,4 +62,7 @@ xxx
 _Remco Stoeten_
 
 ## License
+
 This project is licensed under the GNU General Public License v3.0 (GPL-3). See the [LICENSE](LICENSE) file for details.
+
+ignore this https://svg-sparkle-clean.lovable.app/

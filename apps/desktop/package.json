@@ -9,7 +9,11 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test": "vitest run -c ../../vitest.config.ts",
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "test:ui": "vitest --ui -c ../../vitest.config.ts",
+    "test:coverage": "vitest run --coverage -c ../../vitest.config.ts"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@latest"
