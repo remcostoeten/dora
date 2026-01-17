@@ -10,9 +10,13 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml"
+    "test": "vitest run -c ../../vitest.config.ts",
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "test:ui": "vitest --ui -c ../../vitest.config.ts",
+    "test:coverage": "vitest run --coverage -c ../../vitest.config.ts"
+  },
+  "overrides": {
+    "vite": "npm:rolldown-vite@latest"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

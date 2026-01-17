@@ -112,7 +112,7 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
     const [autoAdvance, setAutoAdvance] = useState(true);
     const [demos, setDemos] = useState<DemoQuery[]>(DEFAULT_DEMOS);
 
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isPlayingRef = useRef(false);
 
     const currentDemo = demos[currentDemoIndex];

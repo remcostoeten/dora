@@ -4,6 +4,7 @@ import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { useSetting } from "@/core/settings";
 import { generateDrizzleTypes } from "../utils/lsp-utils";
+import { getDbName, getTableMatch, getChainMode, getColumnMatch, getValueMatch, getJoinMatch } from "../utils/lsp-patterns";
 import { SchemaColumn, SchemaTable } from "../types";
 import { loadTheme, isBuiltinTheme, MonacoTheme } from "@/core/settings/editor-themes";
 import { initVimMode } from "monaco-vim";
@@ -88,77 +89,6 @@ function shouldSuggest(text: string): boolean {
     return /[a-zA-Z0-9_.(),\s]/.test(text);
 }
 
-function getTableMatch(text: string): RegExpMatchArray | null {
-    return text.match(/\b([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)?$/);
-}
-
-function getDbName(text: string): "db" | "tx" | null {
-    const match = text.match(/\b(db|tx)\.[\w]*$/);
-    if (!match) return null;
-    if (match[1] === "tx") return "tx";
-    return "db";
-}
-
-function getColumnMatch(text: string): RegExpMatchArray | null {
-    return text.match(/\b([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)?$/);
-}
-
-function getValueMatch(text: string): RegExpMatchArray | null {
-    return text.match(/\b(eq|ne|gt|gte|lt|lte|inArray|notInArray|like|ilike)\(\s*([a-zA-Z_][\w]*)\.([a-zA-Z_][\w]*)\s*,\s*$/);
-}
-
-function getJoinMatch(text: string): RegExpMatchArray | null {
-    return text.match(/\bfrom\(\s*([a-zA-Z_][\w]*)\s*\)\.[\w]*Join\(\s*([a-zA-Z_][\w]*)\s*,\s*$/);
-}
-
-function getChainMode(text: string): "select" | "insert" | "update" | "delete" | null {
-    // Match chain patterns with optional partial method name typed after the dot
-    // Uses .*? for non-greedy match to handle nested parens like .where(eq(a, b))
-    // The key is looking for the final ).[letters] pattern at the end
-
-    // Check delete first to prevent it being caught by select's .where() check if detection is loose
-    if (/db\.delete\(.*?\)\.[a-zA-Z]*$/.test(text) || /\bdelete\(.*?\)\.(where|returning)\(/.test(text) || /\.delete\(.*?\)\.[a-zA-Z]*$/.test(text)) return "delete";
-
-    // For select chains: look for any of the select chain methods followed by ).[partial]
-    if (
-        /db\.select\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.from\([^)]*\)\.[a-zA-Z]*$/.test(text)
-        || /\.where\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.leftJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.rightJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.innerJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.fullJoin\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.groupBy\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.having\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.orderBy\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.limit\([^)]*\)\.[a-zA-Z]*$/.test(text)
-        || /\.offset\([^)]*\)\.[a-zA-Z]*$/.test(text)
-        || /\.union\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.unionAll\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.intersect\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.except\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.select\(.*?\)\.[a-zA-Z]*$/.test(text) // Allow .select() after .with()
-    ) {
-        return "select";
-    }
-
-    // Insert with onConflict support
-    if (/db\.insert\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.values\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.onConflictDoUpdate\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.onConflictDoNothing\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.insert\(.*?\)\.[a-zA-Z]*$/.test(text)
-    ) return "insert";
-
-    // Update with returning support
-    if (/db\.update\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.set\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.returning\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.update\(.*?\)\.[a-zA-Z]*$/.test(text)
-    ) return "update";
-
-    return null;
-}
 
 function hasChain(text: string, name: string): boolean {
     return new RegExp(`\\.${name}\\(`).test(text);
@@ -370,13 +300,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                             detail: "Run queries in a transaction",
                             range: range,
                             sortText: "4"
-                        });
-                        suggestions[5].sortText = "5";
-                    }
-                    return buildSuggestions(range, suggestions);
-                }
-
-                if (/db\.select\(\s*$/.test(textUntilPosition)) {
+                if (/\b(?:db|tx)\.select\(\s*$/.test(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -391,7 +315,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     }));
                 }
 
-                if (/db\.insert\(\s*$/.test(textUntilPosition) || /db\.update\(\s*$/.test(textUntilPosition) || /db\.delete\(\s*$/.test(textUntilPosition)) {
+                if (/\b(?:db|tx)\.insert\(\s*$/.test(textUntilPosition) || /\b(?:db|tx)\.update\(\s*$/.test(textUntilPosition) || /\b(?:db|tx)\.delete\(\s*$/.test(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -437,7 +361,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                 }
 
                 if (/\.values\(\s*$/.test(textUntilPosition)) {
-                    const tableMatch = textUntilPosition.match(/db\.insert\(\s*([a-zA-Z_][\w]*)\s*\)/);
+                    const tableMatch = textUntilPosition.match(/\b(?:db|tx)\.insert\(\s*([a-zA-Z_][\w]*)\s*\)/);
                     if (tableMatch) {
                         const table = getTable(tables, tableMatch[1]);
                         if (table) {
@@ -456,7 +380,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                 }
 
                 if (/\.set\(\s*$/.test(textUntilPosition)) {
-                    const tableMatch = textUntilPosition.match(/db\.update\(\s*([a-zA-Z_][\w]*)\s*\)/);
+                    const tableMatch = textUntilPosition.match(/\b(?:db|tx)\.update\(\s*([a-zA-Z_][\w]*)\s*\)/);
                     if (tableMatch) {
                         const table = getTable(tables, tableMatch[1]);
                         if (table) {
@@ -1043,17 +967,14 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     { label: "min", kind: monaco.languages.CompletionItemKind.Function, insertText: "min(${1:column})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Minimum value", range: range, sortText: "35" },
                     { label: "max", kind: monaco.languages.CompletionItemKind.Function, insertText: "max(${1:column})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Maximum value", range: range, sortText: "36" },
 
-                    // SQL Template
-                    { label: "sql", kind: monaco.languages.CompletionItemKind.Function, insertText: "sql`$0`", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Raw SQL", range: range, sortText: "37" },
-
                     // Root / Other
-                    { label: "with", kind: monaco.languages.CompletionItemKind.Function, insertText: "with(\"${1:alias}\").as($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Common Table Expression", range: range, sortText: "38" },
-                    { label: "query", kind: monaco.languages.CompletionItemKind.Property, insertText: "query", detail: "Relational Queries", range: range, sortText: "39" },
+                    { label: "with", kind: monaco.languages.CompletionItemKind.Function, insertText: "with(\"${1:alias}\").as($0)", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Common Table Expression", range: range, sortText: "37" },
+                    { label: "query", kind: monaco.languages.CompletionItemKind.Property, insertText: "query", detail: "Relational Queries", range: range, sortText: "38" },
 
                     // Postgres Array Operators
-                    { label: "arrayContains", kind: monaco.languages.CompletionItemKind.Function, insertText: "arrayContains(${1:column}, ${2:values})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Array contains", range: range, sortText: "40" },
-                    { label: "arrayContained", kind: monaco.languages.CompletionItemKind.Function, insertText: "arrayContained(${1:column}, ${2:values})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Array contained by", range: range, sortText: "41" },
-                    { label: "arrayOverlaps", kind: monaco.languages.CompletionItemKind.Function, insertText: "arrayOverlaps(${1:column}, ${2:values})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Array overlaps", range: range, sortText: "42" },
+                    { label: "arrayContains", kind: monaco.languages.CompletionItemKind.Function, insertText: "arrayContains(${1:column}, ${2:values})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Array contains", range: range, sortText: "39" },
+                    { label: "arrayContained", kind: monaco.languages.CompletionItemKind.Function, insertText: "arrayContained(${1:column}, ${2:values})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Array contained by", range: range, sortText: "40" },
+                    { label: "arrayOverlaps", kind: monaco.languages.CompletionItemKind.Function, insertText: "arrayOverlaps(${1:column}, ${2:values})", insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet, detail: "Array overlaps", range: range, sortText: "41" },
                 ];
 
                 // Add table names
