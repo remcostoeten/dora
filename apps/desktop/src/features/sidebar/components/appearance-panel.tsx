@@ -29,12 +29,6 @@ type FontConfig = {
     description: string;
 };
 
-type FontConfig = {
-    value: FontPair;
-    name: string;
-    description: string;
-};
-
 const THEME_OPTIONS: ThemeConfig[] = [
     { value: "dark", name: "Classic Dark", variant: "dark", accentColor: "#e5e5e5" },
     { value: "light", name: "Light", variant: "light", accentColor: "#171717" },
@@ -94,7 +88,7 @@ export function AppearancePanel() {
                 <section>
                     <h3 className="text-sm font-semibold text-sidebar-foreground mb-1">Theme</h3>
                     <p className="text-xs text-muted-foreground mb-3">Choose your color scheme</p>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                         {THEME_OPTIONS.map(function (option) {
                             return (
                                 <ThemePreviewCard
