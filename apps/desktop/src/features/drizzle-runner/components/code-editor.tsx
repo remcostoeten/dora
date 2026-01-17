@@ -300,6 +300,11 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                             detail: "Run queries in a transaction",
                             range: range,
                             sortText: "4"
+                        });
+                    }
+                    return buildSuggestions(range, suggestions);
+                }
+
                 if (/\b(?:db|tx)\.select\(\s*$/.test(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
