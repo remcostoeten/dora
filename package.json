@@ -1,4 +1,4 @@
-{
+    {
   "name": "dora",
   "version": "0.0.1",
   "private": true,
@@ -17,9 +17,10 @@
     "test:coverage": "vitest run --coverage",
     "desktop:run": "bun --cwd apps/desktop run dev",
     "desktop:dev": "bun run --cwd apps/desktop tauri dev",
-    "desktop:build": "bun --cwd apps/desktop run tauri build",
-    "docs:dev": "bun --cwd apps/api-docs run dev",
-    "docs:build": "bun --cwd apps/api-docs run build",
+    "desktop:build": "bun run --cwd apps/desktop tauri build",
+    "release:gen": "bun tools/scripts/generate-release.ts",
+    "ai:setup": "bun tools/scripts/setup-local-ai.ts",
+    "setup:ai": "bun tools/scripts/setup-local-ai.ts",
     "runner": "./dora-runner"
   },
   "devDependencies": {
@@ -31,6 +32,8 @@
     "vitest": "^4.0.17"
   },
   "dependencies": {
-    "zustand": "^5.0.10"
+    "@google/generative-ai": "^0.24.1",
+    "zustand": "^5.0.10",
+    "sqlite3": "^5.1.7"
   }
 }

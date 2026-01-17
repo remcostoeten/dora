@@ -1,6 +1,5 @@
 import { Badge } from "@/shared/ui/badge";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Separator } from "@/shared/ui/separator";
+import { SidebarPanel, SidebarPanelHeader, SidebarPanelContent } from "./sidebar-panel";
 import { CHANGELOG, CURRENT_VERSION, type ChangelogEntry } from "../changelog-data";
 import { cn } from "@/shared/utils/cn";
 import { Sparkles, Wrench, RefreshCw, AlertTriangle } from "lucide-react";
@@ -44,19 +43,12 @@ function formatDate(dateString: string): string {
   });
 }
 
-export function ChangelogPanel({ maxHeight = 400 }: Props) {
+export function ChangelogPanel({ maxHeight = 320 }: Props) {
   return (
-    <div className="flex flex-col">
-      <div className="flex items-center justify-between p-4 pb-2">
-        <h3 className="text-sm font-medium text-sidebar-foreground">Changelog</h3>
-        <Badge variant="outline" className="text-xs font-mono">
-          v{CURRENT_VERSION}
-        </Badge>
-      </div>
+    <SidebarPanel>
+      <SidebarPanelHeader title="Changelog" version={CURRENT_VERSION} />
 
-      <Separator className="bg-sidebar-border" />
-
-      <ScrollArea className="flex-1" style={{ maxHeight }}>
+      <SidebarPanelContent maxHeight={maxHeight}>
         <div className="p-2 space-y-1">
           {CHANGELOG.map(function (entry, index) {
             const Icon = getTypeIcon(entry.type);
@@ -120,7 +112,7 @@ export function ChangelogPanel({ maxHeight = 400 }: Props) {
             );
           })}
         </div>
-      </ScrollArea>
-    </div>
+      </SidebarPanelContent>
+    </SidebarPanel>
   );
 }

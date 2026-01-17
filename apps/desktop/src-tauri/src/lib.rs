@@ -1,12 +1,12 @@
 mod bindings;
-mod commands_system;
-mod credentials;
-mod database;
+pub mod commands_system;
+pub mod credentials;
+pub mod database;
 mod error;
 mod init;
 mod storage;
 mod test_queries;
-mod utils;
+pub mod utils;
 mod window;
 
 use std::sync::{Arc, RwLock};

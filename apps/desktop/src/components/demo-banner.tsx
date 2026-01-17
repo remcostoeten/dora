@@ -1,48 +1,44 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { X, Download, Github } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { X, Download } from 'lucide-react';
 
 type Props = {
   githubUrl?: string;
   onClose?: () => void;
-  position?: 'top' | 'bottom';
   defaultVisible?: boolean;
 }
 
 export function DemoBanner({
   githubUrl = 'https://github.com/remcostoeten/dora/releases',
   onClose,
-  position = 'top',
   defaultVisible = true,
 }: Props) {
-  const [os, setOs] = useState<string>('your operating system');
+  const [os, setOs] = useState<string>('');
   const [isVisible, setIsVisible] = useState<boolean>(defaultVisible);
   const [isDemo, setIsDemo] = useState(false);
 
-  useEffect(() => {
-    const isWebDemo = 
-        import.meta.env.MODE === 'demo' || 
-        window.location.hostname.includes('demo') || 
-        import.meta.env.VITE_IS_WEB === 'true' ||
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1';
-        
+  useEffect(function detectDemoAndOs() {
+    const isWebDemo =
+      import.meta.env.MODE === 'demo' ||
+      window.location.hostname.includes('demo') ||
+      import.meta.env.VITE_IS_WEB === 'true' ||
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1';
+
     setIsDemo(isWebDemo);
 
     if (isWebDemo) {
-        const userAgent = window.navigator.userAgent.toLowerCase();
-        if (userAgent.indexOf('win') !== -1) {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      if (userAgent.indexOf('win') !== -1) {
         setOs('Windows');
-        } else if (userAgent.indexOf('mac') !== -1) {
+      } else if (userAgent.indexOf('mac') !== -1) {
         setOs('macOS');
-        } else if (userAgent.indexOf('linux') !== -1) {
+      } else if (userAgent.indexOf('linux') !== -1) {
         setOs('Linux');
-        } else {
-        setOs('your operating system');
-        }
+      }
     }
   }, []);
 
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(function onCloseBanner() {
     setIsVisible(false);
     if (onClose) {
       onClose();
@@ -53,56 +49,48 @@ export function DemoBanner({
 
   return (
     <div
-      className={`relative w-full flex items-center justify-center px-4 py-3 transition-all duration-300 ${
-        position === 'top' ? 'border-b' : 'border-t'
-      } ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
-      }`}
-      style={{
-        backgroundColor: '#111111',
-        borderColor: '#303030',
-      }}
+      className={`
+        fixed bottom-6 right-6 z-50
+        flex items-center gap-3 px-5 py-2.5
+        bg-popover/90 backdrop-blur-md
+        border border-border/50
+        rounded-full shadow-2xl
+        ring-1 ring-white/10
+        overflow-hidden
+        transition-all duration-300 ease-out
+        ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}
+      `}
     >
-      <div className="flex items-center gap-3 max-w-5xl w-full">
-        <div className="flex items-center justify-center w-8 h-8 rounded-md" style={{ backgroundColor: 'oklab(0.24 0 0 / 0.3)' }}>
-          <Github className="w-4 h-4" style={{ color: 'oklab(1 0 0 / 0.8)' }} />
-        </div>
-                
-        <div className="flex-1 flex items-center gap-2 text-sm">
-          <span style={{ color: 'oklab(1 0 0 / 0.6)' }}>
-            You're viewing the demo application.
-          </span>
-          <span style={{ color: 'oklab(1 0 0 / 0.95)' }}>
-            Download the desktop client for {os}
-          </span>
-        </div>
+      <span className="text-sm font-medium">
+        You're viewing the demo.
+      </span>
 
-        <a
-          href={githubUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all hover:opacity-90"
-          style={{
-            backgroundColor: '#fafafa',
-            color: '#111111',
-          }}
-        >
-          <Download className="w-4 h-4" />
-          Download
-        </a>
+      <a
+        href={githubUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          flex items-center gap-2 px-3 py-1.5 
+          bg-primary text-primary-foreground
+          rounded-full text-xs font-bold
+          transition-opacity hover:opacity-90
+        "
+      >
+        <Download className="w-3.5 h-3.5" />
+        {os ? `Download for ${os}` : 'Download'}
+      </a>
 
-        <button
-          onClick={handleClose}
-          className="flex items-center justify-center w-8 h-8 rounded-md transition-all hover:opacity-80"
-          style={{
-            backgroundColor: 'oklab(0.24 0 0 / 0.3)',
-            color: 'oklab(1 0 0 / 0.6)',
-          }}
-          aria-label="Close banner"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+      <button
+        onClick={handleClose}
+        className="
+          flex items-center justify-center w-5 h-5 ml-1
+          rounded-full text-muted-foreground/70
+          transition-colors hover:text-foreground hover:bg-muted
+        "
+        aria-label="Close banner"
+      >
+        <X className="w-3 h-3" />
+      </button>
     </div>
   );
 }

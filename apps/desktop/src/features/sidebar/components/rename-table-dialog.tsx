@@ -29,9 +29,17 @@ export function RenameTableDialog({
 }: Props) {
     const [newName, setNewName] = useState(currentName);
 
-    useEffect(function syncName() {
+    useEffect(function syncAndFocus() {
         if (open) {
             setNewName(currentName);
+            // Small timeout to ensure dialog animation doesn't interfere with focus/selection
+            setTimeout(() => {
+                const input = document.getElementById("new-table-name") as HTMLInputElement;
+                if (input) {
+                    input.focus();
+                    input.select();
+                }
+            }, 50);
         }
     }, [open, currentName]);
 
