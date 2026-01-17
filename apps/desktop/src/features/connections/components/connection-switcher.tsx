@@ -18,6 +18,7 @@ import {
 import { cn } from "@/shared/utils/cn";
 import { Connection } from "../types";
 import { DatabaseTypeIcon } from "./database-type-icon";
+import { DoraLogo } from "@/components/dora-logo";
 
 type Props = {
     connections: Connection[];
@@ -52,8 +53,16 @@ export function ConnectionSwitcher({
                     className="w-full justify-between px-3 py-6 hover:bg-sidebar-accent text-sidebar-foreground group"
                 >
                     <div className="flex items-center gap-3 text-left">
+                        {/* New App Logo - Neutral Variant */}
+                        <div className="shrink-0 mr-1">
+                             <DoraLogo className="!size-14" variant="neutral" />
+                        </div>
+                        
+                        {/* Divider */}
+                        <div className="h-8 w-px bg-border/50 mx-1" />
+
                         <div className={cn(
-                            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors shrink-0",
                             status === "error" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary group-hover:bg-primary/20"
                         )}>
                             {status === "error" ? (

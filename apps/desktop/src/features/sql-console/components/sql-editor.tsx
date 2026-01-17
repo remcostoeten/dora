@@ -3,6 +3,7 @@ import Editor, { OnMount } from "@monaco-editor/react";
 import { useSetting } from "@/core/settings";
 import { loadTheme, isBuiltinTheme, MonacoTheme } from "@/core/settings/editor-themes";
 import { initVimMode } from "monaco-vim";
+import { usePromotionalDemo } from "../hooks/use-promotional-demo";
 
 type Props = {
     value: string;
@@ -196,6 +197,8 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
         }
     };
 
+    const { isActive: isDemoActive, toggleDemoMode } = usePromotionalDemo(editorRef.current);
+
     return (
         <div className="h-full w-full overflow-hidden pt-2 relative group">
             {/* Inject global styles for the glyph margin icon */}
@@ -215,6 +218,15 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
                 }
              `}} />
 
+            <div className="absolute top-2 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                 <button 
+                    onClick={toggleDemoMode}
+                    className={`text-[10px] px-2 py-0.5 rounded border ${isDemoActive ? 'bg-primary text-primary-foreground border-primary' : 'bg-background/50 border-border text-muted-foreground'}`}
+                 >
+                    {isDemoActive ? 'DEMO ON' : 'DEMO'}
+                 </button>
+            </div>
+
             <Editor
                 height={enableVimMode ? "calc(100% - 24px)" : "100%"}
                 defaultLanguage="sql"
@@ -231,7 +243,7 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
                     automaticLayout: true,
                     tabSize: 2,
                     wordBasedSuggestions: "off",
-                    readOnly: isExecuting,
+                    readOnly: isExecuting, // We might want to allow typing in demo mode? actually hook handles typing
                     padding: { top: 10, bottom: 10 },
                     renderLineHighlight: "all",
                     fontFamily: "'JetBrains Mono', 'Fira Code', monospace",

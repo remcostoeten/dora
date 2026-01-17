@@ -30,14 +30,14 @@ export function ThemePreviewCard({
     <button
       onClick={onClick}
       className={cn(
-        "flex-shrink-0 flex flex-col rounded-lg transition-all cursor-pointer overflow-hidden",
+        "flex-shrink-0 flex flex-col rounded-lg transition-all cursor-pointer overflow-hidden w-full",
         "hover:opacity-90",
         isSelected && "ring-1 ring-border/60 ring-offset-1 ring-offset-sidebar  relative ",
       )}
     >
       <div
         className={cn(
-          "w-[100px] h-[68px] rounded-lg overflow-hidden relative",
+          "w-full aspect-[3/2] rounded-lg overflow-hidden relative",
           isDark ? "bg-[#1a1a1a]" : "bg-[#f0f0f0]"
         )}
       >

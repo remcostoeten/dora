@@ -1,4 +1,4 @@
-import { Terminal, Play, Database } from "lucide-react";
+import { Terminal, Database } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 
 type NavItem = {
@@ -9,7 +9,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "sql-console", label: "Console", icon: Terminal },
-  { id: "database-studio", label: "Dora", icon: Database },
+  { id: "database-studio", label: "Data Viewer", icon: Database },
 ];
 
 type Props = {
