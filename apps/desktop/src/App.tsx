@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { DataProvider } from "@/core/data-provider";
 import { SettingsProvider, useSettings } from "@/core/settings";
 import { PendingEditsProvider } from "@/core/pending-edits";
+import { RecordingProvider, RecordingOverlay } from "@/core/recording";
 import { DemoBanner } from "@/components/demo-banner";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -24,26 +25,29 @@ function GlobalToaster() {
 
 function App() {
     return (
-        <QueryClientProvider client={queryClient}>
-            <SettingsProvider>
-                <PendingEditsProvider>
-                    <DataProvider>
-                        <div className="flex flex-col h-screen">
-                            <DemoBanner />
-                            <div className="flex-1 overflow-hidden">
-                                <GlobalToaster />
-                                <BrowserRouter>
-                                    <Routes>
-                                        <Route path="/" element={<Index />} />
-                                        <Route path="*" element={<NotFound />} />
-                                    </Routes>
-                                </BrowserRouter>
+        <RecordingProvider>
+            <QueryClientProvider client={queryClient}>
+                <SettingsProvider>
+                    <PendingEditsProvider>
+                        <DataProvider>
+                            <RecordingOverlay />
+                            <div className="flex flex-col h-screen">
+                                <DemoBanner />
+                                <div className="flex-1 overflow-hidden">
+                                    <GlobalToaster />
+                                    <BrowserRouter>
+                                        <Routes>
+                                            <Route path="/" element={<Index />} />
+                                            <Route path="*" element={<NotFound />} />
+                                        </Routes>
+                                    </BrowserRouter>
+                                </div>
                             </div>
-                        </div>
-                    </DataProvider>
-                </PendingEditsProvider>
-            </SettingsProvider>
-        </QueryClientProvider>
+                        </DataProvider>
+                    </PendingEditsProvider>
+                </SettingsProvider>
+            </QueryClientProvider>
+        </RecordingProvider>
     );
 }
 
