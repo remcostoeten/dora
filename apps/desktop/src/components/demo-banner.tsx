@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { X, Download } from 'lucide-react';
+import { useRecording } from '@/core/recording';
 
 type Props = {
   githubUrl?: string;
@@ -12,6 +13,7 @@ export function DemoBanner({
   onClose,
   defaultVisible = true,
 }: Props) {
+  const { shouldHide } = useRecording();
   const [os, setOs] = useState<string>('');
   const [isVisible, setIsVisible] = useState<boolean>(defaultVisible);
   const [isDemo, setIsDemo] = useState(false);
@@ -45,7 +47,7 @@ export function DemoBanner({
     }
   }, [onClose]);
 
-  if (!isVisible || !isDemo) return null;
+  if (!isVisible || !isDemo || shouldHide('hideDemoBanner')) return null;
 
   return (
     <div
