@@ -300,13 +300,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                             detail: "Run queries in a transaction",
                             range: range,
                             sortText: "4"
-                        });
-                        suggestions[5].sortText = "5";
-                    }
-                    return buildSuggestions(range, suggestions);
-                }
-
-                if (/db\.select\(\s*$/.test(textUntilPosition)) {
+                if (/\b(?:db|tx)\.select\(\s*$/.test(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -321,7 +315,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     }));
                 }
 
-                if (/db\.insert\(\s*$/.test(textUntilPosition) || /db\.update\(\s*$/.test(textUntilPosition) || /db\.delete\(\s*$/.test(textUntilPosition)) {
+                if (/\b(?:db|tx)\.insert\(\s*$/.test(textUntilPosition) || /\b(?:db|tx)\.update\(\s*$/.test(textUntilPosition) || /\b(?:db|tx)\.delete\(\s*$/.test(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -367,7 +361,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                 }
 
                 if (/\.values\(\s*$/.test(textUntilPosition)) {
-                    const tableMatch = textUntilPosition.match(/db\.insert\(\s*([a-zA-Z_][\w]*)\s*\)/);
+                    const tableMatch = textUntilPosition.match(/\b(?:db|tx)\.insert\(\s*([a-zA-Z_][\w]*)\s*\)/);
                     if (tableMatch) {
                         const table = getTable(tables, tableMatch[1]);
                         if (table) {
@@ -386,7 +380,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                 }
 
                 if (/\.set\(\s*$/.test(textUntilPosition)) {
-                    const tableMatch = textUntilPosition.match(/db\.update\(\s*([a-zA-Z_][\w]*)\s*\)/);
+                    const tableMatch = textUntilPosition.match(/\b(?:db|tx)\.update\(\s*([a-zA-Z_][\w]*)\s*\)/);
                     if (tableMatch) {
                         const table = getTable(tables, tableMatch[1]);
                         if (table) {
