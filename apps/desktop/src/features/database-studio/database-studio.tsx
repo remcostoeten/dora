@@ -17,7 +17,7 @@ import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
 import { usePendingEdits } from "@/core/pending-edits";
 import { useUndo } from "@/core/undo";
-import { useUrlState } from "@/core/url-state";
+import { useUrlState, ContextMenuState } from "@/core/url-state";
 import { commands } from "@/lib/bindings";
 import {
     TableData,
@@ -69,7 +69,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
 
     const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
     const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
-    const [contextMenuState, setContextMenuState] = useState<{ cell: { row: number; col: number }; x: number; y: number } | null>(null);
+    const [contextMenuState, setContextMenuState] = useState<ContextMenuState>(null);
 
     const { urlState, setSelectedRow, setSelectedCells: setUrlSelectedCells, setFocusedCell: setUrlFocusedCell, setContextMenu, setAddRecordMode } = useUrlState();
     const initializedFromUrlRef = useRef(false);
@@ -153,21 +153,54 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         initializedFromUrlRef.current = true;
 
         if (urlState.selectedRow !== null) {
-            setSelectedRows(new Set([urlState.selectedRow]));
+            if (urlState.selectedRow >= 0 && urlState.selectedRow < tableData.rows.length) {
+                setSelectedRows(new Set([urlState.selectedRow]));
+            }
         }
         if (urlState.selectedCells.size > 0) {
-            setSelectedCells(urlState.selectedCells);
+            const validCells = new Set<string>();
+            for (const cellKey of urlState.selectedCells) {
+                const parts = cellKey.split(':');
+                if (parts.length === 2) {
+                    const r = parseInt(parts[0], 10);
+                    const c = parseInt(parts[1], 10);
+                    if (
+                        !isNaN(r) && !isNaN(c) &&
+                        r >= 0 && r < tableData.rows.length &&
+                        c >= 0 && c < tableData.columns.length
+                    ) {
+                        validCells.add(cellKey);
+                    }
+                }
+            }
+            if (validCells.size > 0) {
+                setSelectedCells(validCells);
+            }
         }
         if (urlState.focusedCell) {
-            setFocusedCell(urlState.focusedCell);
+            const { row, col } = urlState.focusedCell;
+            if (
+                row >= 0 && row < tableData.rows.length &&
+                col >= 0 && col < tableData.columns.length
+            ) {
+                setFocusedCell(urlState.focusedCell);
+            }
         }
         if (urlState.contextMenu) {
-            setContextMenuState(urlState.contextMenu);
+            const { cell } = urlState.contextMenu;
+            if (cell.row >= 0 && cell.row < tableData.rows.length) {
+                setContextMenuState(urlState.contextMenu);
+            }
         }
         if (urlState.addRecordMode && tableData) {
-            const defaults = createDefaultValues(tableData.columns);
-            setDraftRow(defaults);
-            setDraftInsertIndex(urlState.addRecordIndex ?? -1);
+            if (
+                urlState.addRecordIndex === null ||
+                (urlState.addRecordIndex >= -1 && urlState.addRecordIndex <= tableData.rows.length)
+            ) {
+                const defaults = createDefaultValues(tableData.columns);
+                setDraftRow(defaults);
+                setDraftInsertIndex(urlState.addRecordIndex ?? -1);
+            }
         }
     }, [tableData, urlState]);
 
