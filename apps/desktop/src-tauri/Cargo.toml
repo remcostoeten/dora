@@ -50,7 +50,7 @@ url = "2.5.4"
 aes-gcm = "0.10.3"
 async-trait = "0.1"
 base64 = "0.22"
-libsql = { version = "0.9", default-features = false, features = ["core", "remote", "replication"] }
+libsql = { version = "0.9", default-features = false, features = ["core", "remote", "replication", "tls"] }
 ssh2 = "0.9"
 sqlparser = { version = "0.52", features = ["serde"] }
 fake = { version = "3", features = ["derive"] }

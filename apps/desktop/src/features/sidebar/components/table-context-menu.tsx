@@ -4,6 +4,7 @@ import {
   Shield,
   Scissors,
   Trash2,
+  Info,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -14,7 +15,8 @@ import {
 } from "@/shared/ui/dropdown-menu";
 
 type TableAction =
-  | "browse-data"
+  | "view-table"
+  | "view-info"
   | "alter-table"
   | "enable-rls"
   | "truncate"
@@ -29,7 +31,8 @@ type ContextMenuItem = {
 };
 
 const CONTEXT_MENU_ITEMS: ContextMenuItem[] = [
-  { id: "browse-data", label: "Browse data", icon: Eye, shortcut: "B" },
+  { id: "view-table", label: "View table", icon: Eye, shortcut: "V" },
+  { id: "view-info", label: "View info", icon: Info, shortcut: "I" },
   { id: "alter-table", label: "Alter table", icon: PenLine, shortcut: "A" },
   { id: "enable-rls", label: "Enable RLS", icon: Shield, shortcut: "R" },
   { id: "truncate", label: "Truncate", icon: Scissors, shortcut: "T" },
