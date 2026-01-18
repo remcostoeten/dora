@@ -21,6 +21,7 @@ type CellPosition = {
 };
 
 type ContextMenuState = {
+    kind: 'cell' | 'row';
     cell: { row: number; col: number };
     x: number;
     y: number;
@@ -145,6 +146,7 @@ export function DataGrid({
         if (onContextMenuChange) {
             if (open) {
                 onContextMenuChange({
+                    kind: 'cell',
                     cell: { row, col },
                     x: lastContextMenuCoordsRef.current.x,
                     y: lastContextMenuCoordsRef.current.y
@@ -159,6 +161,7 @@ export function DataGrid({
         if (onContextMenuChange) {
             if (open) {
                 onContextMenuChange({
+                    kind: 'row',
                     cell: { row, col: 0 },
                     x: lastContextMenuCoordsRef.current.x,
                     y: lastContextMenuCoordsRef.current.y

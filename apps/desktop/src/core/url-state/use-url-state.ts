@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+const MAX_SERIALIZED_CELLS = 50;
+
 type CellPosition = {
     row: number;
     col: number;
 };
 
-type ContextMenuState = {
+export type ContextMenuState = {
+    kind: 'cell' | 'row';
     cell: CellPosition;
     x: number;
     y: number;
 } | null;
 
-type UrlTableState = {
+export type UrlTableState = {
     focusedCell: CellPosition | null;
     selectedRow: number | null;
     selectedCells: Set<string>;
@@ -32,7 +35,7 @@ function parseCellPosition(value: string): CellPosition | null {
 
 function parseSelectedCells(value: string): Set<string> {
     const cells = new Set<string>();
-    if (!value) return cells;
+    if (!value || value === "truncated") return cells;
 
     const pairs = value.split(",");
     for (const pair of pairs) {
@@ -46,15 +49,32 @@ function parseSelectedCells(value: string): Set<string> {
 
 function parseContextMenu(value: string): ContextMenuState {
     const parts = value.split(":");
-    if (parts.length !== 4) return null;
+    // cell:row:col:x:y (5 parts)
+    // row:row:x:y (4 parts check, but we can treat row as cell with col=0 internal, but format logic is safer explicit)
+    // Actually user request: "cell:row:col:x:y" or "row:row:x:y".
 
-    const row = parseInt(parts[0], 10);
-    const col = parseInt(parts[1], 10);
-    const x = parseInt(parts[2], 10);
-    const y = parseInt(parts[3], 10);
+    if (parts.length < 4) return null;
 
-    if (isNaN(row) || isNaN(col) || isNaN(x) || isNaN(y)) return null;
-    return { cell: { row, col }, x, y };
+    const kind = parts[0];
+    if (kind !== 'cell' && kind !== 'row') return null;
+
+    if (kind === 'cell') {
+        if (parts.length !== 5) return null;
+        const row = parseInt(parts[1], 10);
+        const col = parseInt(parts[2], 10);
+        const x = parseInt(parts[3], 10);
+        const y = parseInt(parts[4], 10);
+        if (isNaN(row) || isNaN(col) || isNaN(x) || isNaN(y)) return null;
+        return { kind, cell: { row, col }, x, y };
+    } else {
+        // row:row:x:y
+        if (parts.length !== 4) return null;
+        const row = parseInt(parts[1], 10);
+        const x = parseInt(parts[2], 10);
+        const y = parseInt(parts[3], 10);
+        if (isNaN(row) || isNaN(x) || isNaN(y)) return null;
+        return { kind, cell: { row, col: 0 }, x, y };
+    }
 }
 
 function parseAddRecord(value: string | null): { enabled: boolean; index: number | null } {
@@ -112,7 +132,11 @@ export function serializeUrlState(
 
     if (state.selectedCells !== undefined) {
         if (state.selectedCells.size > 0) {
-            params.set("cells", Array.from(state.selectedCells).join(","));
+            if (state.selectedCells.size > MAX_SERIALIZED_CELLS) {
+                params.set("cells", "truncated");
+            } else {
+                params.set("cells", Array.from(state.selectedCells).join(","));
+            }
         } else {
             params.delete("cells");
         }
@@ -120,8 +144,12 @@ export function serializeUrlState(
 
     if (state.contextMenu !== undefined) {
         if (state.contextMenu) {
-            const { cell, x, y } = state.contextMenu;
-            params.set("ctx", `${cell.row}:${cell.col}:${x}:${y}`);
+            const { kind, cell, x, y } = state.contextMenu;
+            if (kind === 'cell') {
+                params.set("ctx", `cell:${cell.row}:${cell.col}:${x}:${y}`);
+            } else {
+                params.set("ctx", `row:${cell.row}:${x}:${y}`);
+            }
         } else {
             params.delete("ctx");
         }
