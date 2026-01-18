@@ -20,6 +20,12 @@ type CellPosition = {
     col: number;
 };
 
+type ContextMenuState = {
+    cell: { row: number; col: number };
+    x: number;
+    y: number;
+} | null;
+
 type Props = {
     columns: ColumnDefinition[];
     rows: Record<string, unknown>[];
@@ -36,12 +42,15 @@ type Props = {
     tableName?: string;
     selectedCells?: Set<string>;
     onCellSelectionChange?: (cells: Set<string>) => void;
+    initialFocusedCell?: { row: number; col: number } | null;
+    onFocusedCellChange?: (cell: { row: number; col: number } | null) => void;
+    onContextMenuChange?: (ctx: ContextMenuState) => void;
     draftRow?: Record<string, unknown> | null;
     onDraftChange?: (columnName: string, value: unknown) => void;
     onDraftSave?: () => void;
     onDraftCancel?: () => void;
-    pendingEdits?: Set<string>; // Keys: `${primaryKeyValue}:${columnName}`
-    draftInsertIndex?: number | null; // Index to insert draft row at (null/undefined = top)
+    pendingEdits?: Set<string>;
+    draftInsertIndex?: number | null;
 };
 
 const MIN_COLUMN_WIDTH = 100;
@@ -63,6 +72,9 @@ export function DataGrid({
     tableName,
     selectedCells: externalSelectedCells,
     onCellSelectionChange,
+    initialFocusedCell,
+    onFocusedCellChange,
+    onContextMenuChange,
     draftRow,
     onDraftChange,
     onDraftSave,
@@ -84,7 +96,9 @@ export function DataGrid({
     const allSelected = rows.length > 0 && selectedRows.size === rows.length;
     const someSelected = selectedRows.size > 0 && selectedRows.size < rows.length;
 
-    const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
+    const [focusedCell, setFocusedCellInternal] = useState<{ row: number; col: number } | null>(
+        initialFocusedCell ?? null
+    );
     const gridRef = useRef<HTMLTableElement>(null);
 
     const [internalSelectedCells, setInternalSelectedCells] = useState<Set<string>>(new Set());
@@ -93,12 +107,53 @@ export function DataGrid({
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState<CellPosition | null>(null);
 
+    function setFocusedCell(cell: { row: number; col: number } | null) {
+        setFocusedCellInternal(cell);
+        if (onFocusedCellChange) {
+            onFocusedCellChange(cell);
+        }
+    }
+
     function updateCellSelection(cells: Set<string>) {
         if (onCellSelectionChange) {
             onCellSelectionChange(cells);
         } else {
             setInternalSelectedCells(cells);
         }
+    }
+
+    const lastContextMenuCoordsRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+    function handleCellContextMenuChange(open: boolean, row: number, col: number) {
+        if (onContextMenuChange) {
+            if (open) {
+                onContextMenuChange({
+                    cell: { row, col },
+                    x: lastContextMenuCoordsRef.current.x,
+                    y: lastContextMenuCoordsRef.current.y
+                });
+            } else {
+                onContextMenuChange(null);
+            }
+        }
+    }
+
+    function handleRowContextMenuChange(open: boolean, row: number) {
+        if (onContextMenuChange) {
+            if (open) {
+                onContextMenuChange({
+                    cell: { row, col: 0 },
+                    x: lastContextMenuCoordsRef.current.x,
+                    y: lastContextMenuCoordsRef.current.y
+                });
+            } else {
+                onContextMenuChange(null);
+            }
+        }
+    }
+
+    function handleContextMenuCapture(e: React.MouseEvent) {
+        lastContextMenuCoordsRef.current = { x: e.clientX, y: e.clientY };
     }
 
     function getCellKey(row: number, col: number): string {
@@ -419,6 +474,7 @@ export function DataGrid({
         <div
             className="h-full w-full overflow-auto"
             style={{ scrollbarGutter: 'stable' }}
+            onContextMenuCapture={handleContextMenuCapture}
             onWheel={function (e) {
                 if (e.shiftKey) {
                     e.preventDefault();
@@ -588,6 +644,9 @@ export function DataGrid({
                                     columns={columns}
                                     tableName={tableName}
                                     onAction={onRowAction}
+                                    onOpenChange={function (open, row) {
+                                        handleRowContextMenuChange(open, row);
+                                    }}
                                 >
                                     <tr
                                         className={cn(
@@ -637,6 +696,7 @@ export function DataGrid({
                                                     value={row[col.name]}
                                                     column={col}
                                                     rowIndex={rowIndex}
+                                                    colIndex={colIndex}
                                                     selectedRows={selectedRows}
                                                     onAction={function (action, value, column, batchAction) {
                                                         if (action === "filter-by-value" && onFilterAdd) {
@@ -654,6 +714,9 @@ export function DataGrid({
                                                         } else {
                                                             console.log("Cell action:", action, value, column.name);
                                                         }
+                                                    }}
+                                                    onOpenChange={function (open, row, col) {
+                                                        handleCellContextMenuChange(open, row, col);
                                                     }}
                                                 >
                                                     <td

@@ -41,6 +41,7 @@ export function saveAppearanceSettings(settings: Partial<AppearanceSettings>): A
     const updated = { ...current, ...settings };
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("dora-appearance-change", { detail: updated }));
     } catch (e) {
         console.warn("Failed to save appearance settings:", e);
     }

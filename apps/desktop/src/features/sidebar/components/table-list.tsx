@@ -13,6 +13,7 @@ import {
   Download,
   Check,
   X,
+  Info,
 } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 import { Button } from "@/shared/ui/button";
@@ -32,6 +33,7 @@ import { TableContextMenu } from "./table-context-menu";
 
 type TableRightClickAction =
   | "view-table"
+  | "view-info"
   | "edit-name"
   | "delete-table"
   | "duplicate-table"
@@ -155,99 +157,99 @@ function TableItemRow({
             )}
             onClick={onSelect}
           >
-        {isMultiSelectMode && (
-          <Checkbox
-            checked={isSelected}
-            onCheckedChange={onMultiSelect}
-            onClick={(e) => e.stopPropagation()}
-            className="shrink-0"
-          />
-        )}
-
-        <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-
-        {isEditing ? (
-          <div className="flex-1 flex items-center gap-1">
-            <input
-              ref={inputRef}
-              type="text"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleEditKeyDown}
-              onBlur={handleEditBlur}
-              data-no-shortcuts="true"
-              className="flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden"
-              onClick={(e) => e.stopPropagation()}
-              autoFocus
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (editValue.trim() && editValue !== item.name) {
-                  onEditSave?.(item.id, editValue.trim());
-                }
-              }}
-            >
-              <Check className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-5 w-5 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditCancel?.();
-              }}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
-        ) : (
-          <span className="flex-1 text-sm text-sidebar-foreground truncate">
-            {item.name}
-          </span>
-        )}
-
-
-
-        {!showContextMenu && (
-          <span className="text-xs text-muted-foreground tabular-nums shrink-0 group-hover:hidden">
-            {formatRowCount(item.rowCount)}
-          </span>
-        )}
-
-        <TableContextMenu
-          open={showContextMenu}
-          onOpenChange={setShowContextMenu}
-          onAction={(action) => onContextAction?.(action)}
-        >
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-5 w-5 shrink-0 hidden group-hover:flex items-center justify-center opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent",
-              showContextMenu && "opacity-100 flex"
+            {isMultiSelectMode && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={onMultiSelect}
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0"
+              />
             )}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowContextMenu(true);
-            }}
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </Button>
-        </TableContextMenu>
-      </div>
 
-      {hasSortedColumns && (
-        <div className="ml-4">
-          {item.sortedColumns?.map((col) => (
-            <SortedColumnRow key={col.id} column={col} />
-          ))}
-        </div>
-      )}
+            <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+
+            {isEditing ? (
+              <div className="flex-1 flex items-center gap-1">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={handleEditKeyDown}
+                  onBlur={handleEditBlur}
+                  data-no-shortcuts="true"
+                  className="flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden"
+                  onClick={(e) => e.stopPropagation()}
+                  autoFocus
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (editValue.trim() && editValue !== item.name) {
+                      onEditSave?.(item.id, editValue.trim());
+                    }
+                  }}
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditCancel?.();
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ) : (
+              <span className="flex-1 text-sm text-sidebar-foreground truncate">
+                {item.name}
+              </span>
+            )}
+
+
+
+            {!showContextMenu && (
+              <span className="text-xs text-muted-foreground tabular-nums shrink-0 group-hover:hidden">
+                {formatRowCount(item.rowCount)}
+              </span>
+            )}
+
+            <TableContextMenu
+              open={showContextMenu}
+              onOpenChange={setShowContextMenu}
+              onAction={(action) => onContextAction?.(action)}
+            >
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-5 w-5 shrink-0 hidden group-hover:flex items-center justify-center opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent",
+                  showContextMenu && "opacity-100 flex"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowContextMenu(true);
+                }}
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </Button>
+            </TableContextMenu>
+          </div>
+
+          {hasSortedColumns && (
+            <div className="ml-4">
+              {item.sortedColumns?.map((col) => (
+                <SortedColumnRow key={col.id} column={col} />
+              ))}
+            </div>
+          )}
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent className="w-[200px]">
@@ -262,6 +264,10 @@ function TableItemRow({
         <ContextMenuItem onClick={() => handleRightClickAction("duplicate-table")}>
           <CopyPlus className="h-4 w-4 mr-2" />
           <span>Duplicate table</span>
+        </ContextMenuItem>
+        <ContextMenuItem onClick={() => handleRightClickAction("view-info")}>
+          <Info className="h-4 w-4 mr-2" />
+          <span>View info</span>
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem onClick={handleCopyName}>

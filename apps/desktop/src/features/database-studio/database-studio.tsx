@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Database, Plus, PanelLeft, Trash2, Columns } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { StudioToolbar } from "./components/studio-toolbar";
@@ -17,6 +17,7 @@ import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
 import { usePendingEdits } from "@/core/pending-edits";
 import { useUndo } from "@/core/undo";
+import { useUrlState } from "@/core/url-state";
 import { commands } from "@/lib/bindings";
 import {
     TableData,
@@ -65,6 +66,13 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null);
 
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
+
+    const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+    const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
+    const [contextMenuState, setContextMenuState] = useState<{ cell: { row: number; col: number }; x: number; y: number } | null>(null);
+
+    const { urlState, setSelectedRow, setSelectedCells: setUrlSelectedCells, setFocusedCell: setUrlFocusedCell, setContextMenu, setAddRecordMode } = useUrlState();
+    const initializedFromUrlRef = useRef(false);
 
     // Delay showing skeleton to avoid flash for fast queries
     useEffect(() => {
@@ -136,8 +144,59 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         setPagination({ limit: 50, offset: 0 });
         setSort(undefined);
         setFilters([]);
-        setVisibleColumns(new Set()); // Will be repopulated on data load
+        setVisibleColumns(new Set());
+        initializedFromUrlRef.current = false;
     }, [tableId]);
+
+    useEffect(function initializeFromUrl() {
+        if (initializedFromUrlRef.current || !tableData) return;
+        initializedFromUrlRef.current = true;
+
+        if (urlState.selectedRow !== null) {
+            setSelectedRows(new Set([urlState.selectedRow]));
+        }
+        if (urlState.selectedCells.size > 0) {
+            setSelectedCells(urlState.selectedCells);
+        }
+        if (urlState.focusedCell) {
+            setFocusedCell(urlState.focusedCell);
+        }
+        if (urlState.contextMenu) {
+            setContextMenuState(urlState.contextMenu);
+        }
+        if (urlState.addRecordMode && tableData) {
+            const defaults = createDefaultValues(tableData.columns);
+            setDraftRow(defaults);
+            setDraftInsertIndex(urlState.addRecordIndex ?? -1);
+        }
+    }, [tableData, urlState]);
+
+    useEffect(function syncSelectedRowToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null;
+        setSelectedRow(firstSelected);
+    }, [selectedRows, setSelectedRow]);
+
+    useEffect(function syncCellsToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        setUrlSelectedCells(selectedCells);
+    }, [selectedCells, setUrlSelectedCells]);
+
+    useEffect(function syncFocusedCellToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        setUrlFocusedCell(focusedCell);
+    }, [focusedCell, setUrlFocusedCell]);
+
+    useEffect(function syncContextMenuToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        setContextMenu(contextMenuState);
+    }, [contextMenuState, setContextMenu]);
+
+    useEffect(function syncAddRecordToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        const isAddRecordActive = draftRow !== null;
+        setAddRecordMode(isAddRecordActive, draftInsertIndex);
+    }, [draftRow, draftInsertIndex, setAddRecordMode]);
 
     // Define all callbacks before any conditional returns
     const handleBulkDelete = useCallback(() => {
@@ -887,6 +946,11 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                         onBatchCellEdit={handleBatchCellEdit}
                         onRowAction={handleRowAction}
                         tableName={tableName || tableId}
+                        selectedCells={selectedCells}
+                        onCellSelectionChange={setSelectedCells}
+                        initialFocusedCell={focusedCell}
+                        onFocusedCellChange={setFocusedCell}
+                        onContextMenuChange={setContextMenuState}
                         draftRow={draftRow}
                         onDraftChange={handleDraftChange}
                         onDraftSave={handleDraftSave}

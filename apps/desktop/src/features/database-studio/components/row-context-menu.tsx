@@ -25,23 +25,24 @@ type Props = {
     columns: ColumnDefinition[];
     tableName?: string;
     onAction?: (action: RowAction, row: Record<string, unknown>, rowIndex: number) => void;
+    onOpenChange?: (open: boolean, rowIndex: number) => void;
     children: React.ReactNode;
 };
 
-export function RowContextMenu({ row, rowIndex, columns, tableName, onAction, children }: Props) {
-    const handleAction = (action: RowAction) => {
+export function RowContextMenu({ row, rowIndex, columns, tableName, onAction, onOpenChange, children }: Props) {
+    function handleAction(action: RowAction) {
         onAction?.(action, row, rowIndex);
-    };
+    }
 
-    const handleExportJson = () => {
+    function handleExportJson() {
         const json = JSON.stringify(row, null, 2);
         navigator.clipboard.writeText(json);
         handleAction("export-json");
-    };
+    }
 
-    const handleExportSql = () => {
-        const columnNames = columns.map(c => c.name).join(", ");
-        const values = columns.map(c => {
+    function handleExportSql() {
+        const columnNames = columns.map(function (c) { return c.name; }).join(", ");
+        const values = columns.map(function (c) {
             const val = row[c.name];
             if (val === null || val === undefined) return "NULL";
             if (typeof val === "string") return `'${val.replace(/'/g, "''")}'`;
@@ -53,21 +54,27 @@ export function RowContextMenu({ row, rowIndex, columns, tableName, onAction, ch
         const sql = `INSERT INTO ${tableName || "table_name"} (${columnNames}) VALUES (${values});`;
         navigator.clipboard.writeText(sql);
         handleAction("export-sql");
-    };
+    }
+
+    function handleOpenChange(open: boolean) {
+        if (onOpenChange) {
+            onOpenChange(open, rowIndex);
+        }
+    }
 
     return (
-        <ContextMenu>
+        <ContextMenu onOpenChange={handleOpenChange}>
             <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
             <ContextMenuContent className="w-[180px]">
-                <ContextMenuItem onClick={() => handleAction("view")}>
+                <ContextMenuItem onClick={function () { handleAction("view"); }}>
                     <Eye className="h-4 w-4 mr-2" />
                     <span>View details</span>
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => handleAction("edit")}>
+                <ContextMenuItem onClick={function () { handleAction("edit"); }}>
                     <Pencil className="h-4 w-4 mr-2" />
                     <span>Edit row</span>
                 </ContextMenuItem>
-                <ContextMenuItem onClick={() => handleAction("duplicate")}>
+                <ContextMenuItem onClick={function () { handleAction("duplicate"); }}>
                     <CopyPlus className="h-4 w-4 mr-2" />
                     <span>Duplicate below</span>
                 </ContextMenuItem>
@@ -94,7 +101,7 @@ export function RowContextMenu({ row, rowIndex, columns, tableName, onAction, ch
                 <ContextMenuSeparator />
 
                 <ContextMenuItem
-                    onClick={() => handleAction("delete")}
+                    onClick={function () { handleAction("delete"); }}
                     className="text-destructive focus:text-destructive"
                 >
                     <Trash2 className="h-4 w-4 mr-2" />

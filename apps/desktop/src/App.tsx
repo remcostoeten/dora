@@ -9,6 +9,7 @@ import { RecordingProvider, RecordingOverlay } from "@/core/recording";
 import { DemoBanner } from "@/components/demo-banner";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { ThemeSync } from "@/features/sidebar/components/theme-sync";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ function App() {
                                 <div className="flex-1 overflow-hidden">
                                     <GlobalToaster />
                                     <BrowserRouter>
+                                        <ThemeSync />
                                         <Routes>
                                             <Route path="/" element={<Index />} />
                                             <Route path="*" element={<NotFound />} />
@@ -52,4 +54,3 @@ function App() {
 }
 
 export default App;
-
