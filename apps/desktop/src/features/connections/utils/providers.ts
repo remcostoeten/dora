@@ -1,9 +1,11 @@
 /**
  * Database Provider Utilities
- * 
+ *
  * Centralized provider configuration and connection URL handling.
  * This module provides enterprise-grade utilities for managing database connections
  * across different providers (PostgreSQL, MySQL, SQLite, LibSQL, etc.).
+ *
+ * @tested-by tests/apps/desktop/features/connections/providers.test.ts
  */
 
 import { DatabaseType } from "../types";

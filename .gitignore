@@ -44,7 +44,9 @@ tmp/
 apps/dora-v2.
 apps/dora-v2/*
 .turbo
-apps/desktop/build_log.txt
 .env
+apps/desktop/build_log.txt
+.envx
+.env.local
 test1.db
 test2.db

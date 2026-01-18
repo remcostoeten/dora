@@ -28,6 +28,12 @@
                 "^lint"
             ]
         },
+        "test": {
+            "dependsOn": [
+                "^test"
+            ],
+            "outputs": []
+        },
         "typecheck": {
             "dependsOn": [
                 "^typecheck"

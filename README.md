@@ -137,4 +137,7 @@ Dora is in active development. Below is a list of implemented features available
 
 
 ## License
+
 This project is licensed under the GNU General Public License v3.0 (GPL-3). See the [LICENSE](LICENSE) file for details.
+
+ignore this https://svg-sparkle-clean.lovable.app/
