@@ -23,7 +23,7 @@ type Props = {
     colIndex?: number;
     selectedRows?: Set<number>;
     onAction?: (action: CellAction, value: unknown, column: ColumnDefinition, batchAction?: BatchAction) => void;
-    onOpenChange?: (open: boolean, rowIndex: number, colIndex: number, x: number, y: number) => void;
+    onOpenChange?: (open: boolean, rowIndex: number, colIndex: number) => void;
     children: React.ReactNode;
 };
 
@@ -66,9 +66,7 @@ export function CellContextMenu({ value, column, rowIndex, colIndex = 0, selecte
     }
 
     function handleOpenChange(open: boolean) {
-        if (onOpenChange) {
-            onOpenChange(open, rowIndex, colIndex, 0, 0);
-        }
+        onOpenChange?.(open, rowIndex, colIndex);
     }
 
     const hasSelectedRows = selectedRows && selectedRows.size > 1 && selectedRows.has(rowIndex);

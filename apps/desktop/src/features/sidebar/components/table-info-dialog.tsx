@@ -55,17 +55,29 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
     useEffect(function fetchMetrics() {
         if (!open || !tableName || !connectionId) return;
 
+        // Check for Postgres adapter
+        // @ts-ignore - adapter types might not be fully explicit
+        const isPostgres = adapter && (adapter.type === 'postgres' || adapter.engine === 'postgres' || adapter.dialect === 'postgres');
+
+        if (!isPostgres) {
+            setError("Table metrics are only available for PostgreSQL connections.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
         setMetrics(null);
 
         async function loadMetrics() {
             try {
+                // simple escape for single quotes
+                const safeTableName = tableName.replace(/'/g, "''");
+
                 const sizeQuery = `
           SELECT
-            pg_table_size('"${tableName}"') as table_size,
-            pg_indexes_size('"${tableName}"') as index_size,
-            pg_total_relation_size('"${tableName}"') as total_size
+            pg_table_size('"${safeTableName}"') as table_size,
+            pg_indexes_size('"${safeTableName}"') as index_size,
+            pg_total_relation_size('"${safeTableName}"') as total_size
         `;
 
                 const statsQuery = `
@@ -75,7 +87,7 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
             last_vacuum,
             last_analyze
           FROM pg_stat_user_tables
-          WHERE relname = '${tableName}'
+          WHERE relname = '${safeTableName}'
         `;
 
                 const [sizeResult, statsResult] = await Promise.all([

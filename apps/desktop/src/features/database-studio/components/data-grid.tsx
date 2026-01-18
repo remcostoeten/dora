@@ -99,6 +99,23 @@ export function DataGrid({
     const [focusedCell, setFocusedCellInternal] = useState<{ row: number; col: number } | null>(
         initialFocusedCell ?? null
     );
+
+    useEffect(() => {
+        if (
+            initialFocusedCell &&
+            (!focusedCell ||
+                focusedCell.row !== initialFocusedCell.row ||
+                focusedCell.col !== initialFocusedCell.col)
+        ) {
+            setFocusedCellInternal(initialFocusedCell);
+            return;
+        }
+
+        if (!initialFocusedCell && focusedCell) {
+            setFocusedCellInternal(null);
+        }
+    }, [initialFocusedCell, focusedCell]);
+
     const gridRef = useRef<HTMLTableElement>(null);
 
     const [internalSelectedCells, setInternalSelectedCells] = useState<Set<string>>(new Set());
