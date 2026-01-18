@@ -142,9 +142,7 @@ export function serializeUrlState(
     return params;
 }
 
-type UseUrlStateOptions = {
-    debounceMs?: number;
-};
+type UseUrlStateOptions = {};
 
 type UseUrlStateReturn = {
     urlState: UrlTableState;
@@ -157,7 +155,6 @@ type UseUrlStateReturn = {
 };
 
 export function useUrlState(options: UseUrlStateOptions = {}): UseUrlStateReturn {
-    const { debounceMs = 100 } = options;
     const [searchParams, setSearchParams] = useSearchParams();
 
     const urlState = useMemo(function () {
