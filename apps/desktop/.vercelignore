@@ -1,5 +1,17 @@
+# Tauri build artifacts (prevents uploading GBs)
 src-tauri/target
+src-tauri/gen
+
+# Dependencies
 node_modules
-.git
+
+# Build outputs (if not needed)
+.turbo
+
+# Environment files
+.env.local
+.env*.local
+
+# Development
+*.log
 .DS_Store
-dist
