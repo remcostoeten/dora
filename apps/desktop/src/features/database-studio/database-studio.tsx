@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Database, Plus, PanelLeft, Trash2, Columns } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { StudioToolbar } from "./components/studio-toolbar";
@@ -17,6 +17,7 @@ import { useAdapter, useDataMutation } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
 import { usePendingEdits } from "@/core/pending-edits";
 import { useUndo } from "@/core/undo";
+import { useUrlState, ContextMenuState } from "@/core/url-state";
 import { commands } from "@/lib/bindings";
 import {
     TableData,
@@ -65,6 +66,13 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
     const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null);
 
     const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set());
+
+    const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set());
+    const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null);
+    const [contextMenuState, setContextMenuState] = useState<ContextMenuState>(null);
+
+    const { urlState, setSelectedRow, setSelectedCells: setUrlSelectedCells, setFocusedCell: setUrlFocusedCell, setContextMenu, setAddRecordMode } = useUrlState();
+    const initializedFromUrlRef = useRef(false);
 
     // Delay showing skeleton to avoid flash for fast queries
     useEffect(() => {
@@ -136,8 +144,92 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
         setPagination({ limit: 50, offset: 0 });
         setSort(undefined);
         setFilters([]);
-        setVisibleColumns(new Set()); // Will be repopulated on data load
+        setVisibleColumns(new Set());
+        initializedFromUrlRef.current = false;
     }, [tableId]);
+
+    useEffect(function initializeFromUrl() {
+        if (initializedFromUrlRef.current || !tableData) return;
+        initializedFromUrlRef.current = true;
+
+        if (urlState.selectedRow !== null) {
+            if (urlState.selectedRow >= 0 && urlState.selectedRow < tableData.rows.length) {
+                setSelectedRows(new Set([urlState.selectedRow]));
+            }
+        }
+        if (urlState.selectedCells.size > 0) {
+            const validCells = new Set<string>();
+            for (const cellKey of urlState.selectedCells) {
+                const parts = cellKey.split(':');
+                if (parts.length === 2) {
+                    const r = parseInt(parts[0], 10);
+                    const c = parseInt(parts[1], 10);
+                    if (
+                        !isNaN(r) && !isNaN(c) &&
+                        r >= 0 && r < tableData.rows.length &&
+                        c >= 0 && c < tableData.columns.length
+                    ) {
+                        validCells.add(cellKey);
+                    }
+                }
+            }
+            if (validCells.size > 0) {
+                setSelectedCells(validCells);
+            }
+        }
+        if (urlState.focusedCell) {
+            const { row, col } = urlState.focusedCell;
+            if (
+                row >= 0 && row < tableData.rows.length &&
+                col >= 0 && col < tableData.columns.length
+            ) {
+                setFocusedCell(urlState.focusedCell);
+            }
+        }
+        if (urlState.contextMenu) {
+            const { cell } = urlState.contextMenu;
+            if (cell.row >= 0 && cell.row < tableData.rows.length) {
+                setContextMenuState(urlState.contextMenu);
+            }
+        }
+        if (urlState.addRecordMode && tableData) {
+            if (
+                urlState.addRecordIndex === null ||
+                (urlState.addRecordIndex >= -1 && urlState.addRecordIndex <= tableData.rows.length)
+            ) {
+                const defaults = createDefaultValues(tableData.columns);
+                setDraftRow(defaults);
+                setDraftInsertIndex(urlState.addRecordIndex ?? -1);
+            }
+        }
+    }, [tableData, urlState]);
+
+    useEffect(function syncSelectedRowToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null;
+        setSelectedRow(firstSelected);
+    }, [selectedRows, setSelectedRow]);
+
+    useEffect(function syncCellsToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        setUrlSelectedCells(selectedCells);
+    }, [selectedCells, setUrlSelectedCells]);
+
+    useEffect(function syncFocusedCellToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        setUrlFocusedCell(focusedCell);
+    }, [focusedCell, setUrlFocusedCell]);
+
+    useEffect(function syncContextMenuToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        setContextMenu(contextMenuState);
+    }, [contextMenuState, setContextMenu]);
+
+    useEffect(function syncAddRecordToUrl() {
+        if (!initializedFromUrlRef.current) return;
+        const isAddRecordActive = draftRow !== null;
+        setAddRecordMode(isAddRecordActive, draftInsertIndex);
+    }, [draftRow, draftInsertIndex, setAddRecordMode]);
 
     // Define all callbacks before any conditional returns
     const handleBulkDelete = useCallback(() => {
@@ -887,6 +979,11 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                         onBatchCellEdit={handleBatchCellEdit}
                         onRowAction={handleRowAction}
                         tableName={tableName || tableId}
+                        selectedCells={selectedCells}
+                        onCellSelectionChange={setSelectedCells}
+                        initialFocusedCell={focusedCell}
+                        onFocusedCellChange={setFocusedCell}
+                        onContextMenuChange={setContextMenuState}
                         draftRow={draftRow}
                         onDraftChange={handleDraftChange}
                         onDraftSave={handleDraftSave}

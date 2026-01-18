@@ -20,12 +20,14 @@ type Props = {
     value: unknown;
     column: ColumnDefinition;
     rowIndex: number;
+    colIndex?: number;
     selectedRows?: Set<number>;
     onAction?: (action: CellAction, value: unknown, column: ColumnDefinition, batchAction?: BatchAction) => void;
+    onOpenChange?: (open: boolean, rowIndex: number, colIndex: number) => void;
     children: React.ReactNode;
 };
 
-export function CellContextMenu({ value, column, rowIndex, selectedRows, onAction, children }: Props) {
+export function CellContextMenu({ value, column, rowIndex, colIndex = 0, selectedRows, onAction, onOpenChange, children }: Props) {
     function handleCopy() {
         const text = value === null || value === undefined ? "" : String(value);
         navigator.clipboard.writeText(text);
@@ -63,11 +65,15 @@ export function CellContextMenu({ value, column, rowIndex, selectedRows, onActio
         }
     }
 
+    function handleOpenChange(open: boolean) {
+        onOpenChange?.(open, rowIndex, colIndex);
+    }
+
     const hasSelectedRows = selectedRows && selectedRows.size > 1 && selectedRows.has(rowIndex);
     const isComplexType = typeof value === "object" && value !== null;
 
     return (
-        <ContextMenu>
+        <ContextMenu onOpenChange={handleOpenChange}>
             <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
             <ContextMenuContent className="w-[180px]">
                 <ContextMenuItem onClick={handleEdit}>

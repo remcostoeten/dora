@@ -12,6 +12,7 @@ import { getAppearanceSettings, applyAppearanceToDOM } from "@/shared/lib/appear
 import { loadFontPair } from "@/shared/lib/font-loader";
 import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
 import { RenameTableDialog } from "./components/rename-table-dialog";
+import { TableInfoDialog } from "./components/table-info-dialog";
 import { DropTableDialog } from "../database-studio/components/drop-table-dialog";
 import { Schema, TableItem } from "./types";
 import { Connection } from "../connections/types";
@@ -96,6 +97,8 @@ export function DatabaseSidebar({
   const [targetTableName, setTargetTableName] = useState<string>("");
   const [isDdlLoading, setIsDdlLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showTableInfoDialog, setShowTableInfoDialog] = useState(false);
+  const [tableInfoTarget, setTableInfoTarget] = useState<string>("");
 
   // Initialize appearance settings on mount
   useEffect(function initAppearance() {
@@ -230,6 +233,9 @@ export function DatabaseSidebar({
         title: "Not Implemented",
         description: "Duplicate table is not yet supported.",
       });
+    } else if (action === "view-info") {
+      setTableInfoTarget(tableId);
+      setShowTableInfoDialog(true);
     } else if (action === "export-schema") {
       handleExportTableSchema(tableId);
     } else if (action === "export-json") {
@@ -569,6 +575,15 @@ export function DatabaseSidebar({
         onConfirm={handleDropTable}
         isLoading={isDdlLoading}
       />
+
+      {activeConnectionId && (
+        <TableInfoDialog
+          open={showTableInfoDialog}
+          onOpenChange={setShowTableInfoDialog}
+          tableName={tableInfoTarget}
+          connectionId={activeConnectionId}
+        />
+      )}
     </div>
   );
 }
