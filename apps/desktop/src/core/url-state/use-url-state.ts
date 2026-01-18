@@ -142,7 +142,9 @@ export function serializeUrlState(
     return params;
 }
 
-type UseUrlStateOptions = {};
+type UseUrlStateOptions = {
+    debounceMs?: number;
+};
 
 type UseUrlStateReturn = {
     urlState: UrlTableState;
