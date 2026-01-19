@@ -32,14 +32,10 @@ export function getTableMatch(text: string): RegExpMatchArray | null {
  * Returns the mode name or null if not in a recognized chain context.
  */
 export function getChainMode(text: string): "select" | "insert" | "update" | "delete" | null {
-    // Match chain patterns with optional partial method name typed after the dot
-    // Uses .*? for non-greedy match to handle nested parens like .where(eq(a, b))
-    // The key is looking for the final ).[letters] pattern at the end
+    // Check delete first
+    if (/db\.delete\(.*?\)\.[a-zA-Z]*$/.test(text) || /\bdelete\(.*?\)\.(where|returning)\(/.test(text) || /\.delete\(.*?\)\.[a-zA-Z]*$/.test(text) || /^db\.delete\(/.test(text)) return "delete";
 
-    // Check delete first to prevent it being caught by select's .where() check if detection is loose
-    if (/db\.delete\(.*?\)\.[a-zA-Z]*$/.test(text) || /\bdelete\(.*?\)\.(where|returning)\(/.test(text) || /\.delete\(.*?\)\.[a-zA-Z]*$/.test(text)) return "delete";
-
-    // For select chains: look for any of the select chain methods followed by ).[partial]
+    // For select chains
     if (
         /db\.select\(.*?\)\.[a-zA-Z]*$/.test(text)
         || /\.from\([^)]*\)\.[a-zA-Z]*$/.test(text)
@@ -53,28 +49,22 @@ export function getChainMode(text: string): "select" | "insert" | "update" | "de
         || /\.orderBy\(.*\)\.[a-zA-Z]*$/.test(text)
         || /\.limit\([^)]*\)\.[a-zA-Z]*$/.test(text)
         || /\.offset\([^)]*\)\.[a-zA-Z]*$/.test(text)
-        || /\.union\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.unionAll\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.intersect\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.except\(.*\)\.[a-zA-Z]*$/.test(text)
-        || /\.select\(.*?\)\.[a-zA-Z]*$/.test(text) // Allow .select() after .with()
+        || /\.select\(.*?\)\.[a-zA-Z]*$/.test(text)
+        || /^db\.select\(/.test(text)
     ) {
         return "select";
     }
 
-    // Insert with onConflict support
+    // Insert
     if (/db\.insert\(.*?\)\.[a-zA-Z]*$/.test(text)
         || /\.values\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.onConflictDoUpdate\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.onConflictDoNothing\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.insert\(.*?\)\.[a-zA-Z]*$/.test(text)
+        || /^db\.insert\(/.test(text)
     ) return "insert";
 
-    // Update with returning support
+    // Update
     if (/db\.update\(.*?\)\.[a-zA-Z]*$/.test(text)
         || /\.set\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.returning\(.*?\)\.[a-zA-Z]*$/.test(text)
-        || /\.update\(.*?\)\.[a-zA-Z]*$/.test(text)
+        || /^db\.update\(/.test(text)
     ) return "update";
 
     return null;
@@ -104,18 +94,34 @@ export function getJoinMatch(text: string): RegExpMatchArray | null {
     return text.match(/\bfrom\(\s*([a-zA-Z_][\w]*)\s*\)\.[\w]*Join\(\s*([a-zA-Z_][\w]*)\s*,\s*$/);
 }
 
-/**
- * Detects if cursor is inside .from( parentheses.
- */
-export function isInsideFromParens(text: string): boolean {
-    return /\.from\(\s*[a-zA-Z_]?[\w]*$/.test(text);
+// --- Context Detectors with Partial Matching Support ---
+
+export function isInsideSelectParens(text: string): boolean {
+    return /\b(?:db|tx)\.select\(\s*[\w]*$/.test(text);
 }
 
-/**
- * Detects if cursor is inside .where( or condition parentheses.
- */
+export function isInsideInsertParens(text: string): boolean {
+    return /\b(?:db|tx)\.insert\(\s*[\w]*$/.test(text);
+}
+
+export function isInsideUpdateParens(text: string): boolean {
+    return /\b(?:db|tx)\.update\(\s*[\w]*$/.test(text);
+}
+
+export function isInsideDeleteParens(text: string): boolean {
+    return /\b(?:db|tx)\.delete\(\s*[\w]*$/.test(text);
+}
+
+export function isInsideFromParens(text: string): boolean {
+    return /\.from\(\s*[\w]*$/.test(text);
+}
+
+export function isInsideJoinParens(text: string): boolean {
+    return /\.(left|right|inner|full)Join\(\s*[\w]*$/.test(text);
+}
+
 export function isInsideWhereParens(text: string): boolean {
-    return /\.where\(\s*$/.test(text) || /\b(and|or)\(\s*$/.test(text);
+    return /\.where\(\s*[\w]*$/.test(text) || /\b(and|or)\(\s*[\w]*$/.test(text);
 }
 
 /**
@@ -124,3 +130,4 @@ export function isInsideWhereParens(text: string): boolean {
 export function getHelperMatch(text: string): RegExpMatchArray | null {
     return text.match(/\b(eq|ne|gt|gte|lt|lte|and|or|inArray|notInArray|like|ilike|between|not|exists|notExists)\(/);
 }
+

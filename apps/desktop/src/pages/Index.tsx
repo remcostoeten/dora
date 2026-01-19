@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { AppSidebar, SidebarProvider } from "@/features/app-sidebar";
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
 import { DatabaseStudio } from "@/features/database-studio/database-studio";
 import { SqlConsole } from "@/features/sql-console/sql-console";
@@ -8,6 +9,7 @@ import { ConnectionDialog } from "@/features/connections/components/connection-d
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Wand2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
-import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi } from "@/features/connections/api";
+import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi, backendToFrontendConnection } from "@/features/connections/api";
 import { useAdapter } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
 
@@ -80,7 +82,7 @@ export default function Index() {
       setIsLoading(true);
       const result = await adapter.getConnections();
       if (result.ok) {
-        setConnections(result.data);
+        setConnections(result.data.map(backendToFrontendConnection));
       } else {
         throw new Error(result.error);
       }
@@ -311,81 +313,107 @@ export default function Index() {
     autoSelectFirstTableRef.current = false;
   }, []);
 
+  // Show database panel for sql-console and database-studio views
+  const showDatabasePanel = activeNavId === "sql-console" || activeNavId === "database-studio";
+
   return (
     <TooltipProvider>
-      <div className="flex h-full w-full bg-background overflow-hidden">
-        {isSidebarOpen && (
-          <DatabaseSidebar
+      <SidebarProvider defaultPanelOpen={isSidebarOpen}>
+        <div className="flex h-full w-full bg-background overflow-hidden">
+          {/* Icon Sidebar */}
+          <AppSidebar
             activeNavId={activeNavId}
             onNavSelect={setActiveNavId}
-            onTableSelect={handleTableSelect}
-            selectedTableId={selectedTableId}
-            autoSelectFirstTable={autoSelectFirstTableRef.current}
-            onAutoSelectComplete={handleAutoSelectComplete}
-            connections={connections}
-            activeConnectionId={activeConnectionId}
-            onConnectionSelect={handleConnectionSelect}
-            onAddConnection={handleOpenNewConnection}
-            onManageConnections={function () {
-              const activeConn = connections.find(function (c) { return c.id === activeConnectionId; });
-              if (activeConn) {
-                setEditingConnection(activeConn);
-                setIsConnectionDialogOpen(true);
-              }
-            }}
-            onViewConnection={handleViewConnection}
-            onEditConnection={handleEditConnection}
-            onDeleteConnection={handleDeleteConnection}
           />
-        )}
 
-        <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-          {activeNavId === "database-studio" ? (
-            <DatabaseStudio
-              tableId={selectedTableId}
-              tableName={selectedTableName}
-              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          {/* Database Panel - shown for sql-console and database-studio views */}
+          {showDatabasePanel && isSidebarOpen && (
+            <DatabaseSidebar
+              activeNavId={activeNavId}
+              onNavSelect={setActiveNavId}
+              onTableSelect={handleTableSelect}
+              selectedTableId={selectedTableId}
+              autoSelectFirstTable={autoSelectFirstTableRef.current}
+              onAutoSelectComplete={handleAutoSelectComplete}
+              connections={connections}
               activeConnectionId={activeConnectionId}
+              onConnectionSelect={handleConnectionSelect}
               onAddConnection={handleOpenNewConnection}
-            />
-          ) : (
-            <SqlConsole
-              onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-              activeConnectionId={activeConnectionId}
+              onManageConnections={function () {
+                const activeConn = connections.find(function (c) { return c.id === activeConnectionId; });
+                if (activeConn) {
+                  setEditingConnection(activeConn);
+                  setIsConnectionDialogOpen(true);
+                }
+              }}
+              onViewConnection={handleViewConnection}
+              onEditConnection={handleEditConnection}
+              onDeleteConnection={handleDeleteConnection}
             />
           )}
-        </main>
 
-        <ConnectionDialog
-          open={isConnectionDialogOpen}
-          onOpenChange={(open) => {
-            setIsConnectionDialogOpen(open);
-            if (!open) setEditingConnection(undefined);
-          }}
-          onSave={handleDialogSave}
-          initialValues={editingConnection}
-        />
+          <main className="flex-1 flex flex-col h-full overflow-hidden relative">
+            {activeNavId === "database-studio" ? (
+              <DatabaseStudio
+                tableId={selectedTableId}
+                tableName={selectedTableName}
+                isSidebarOpen={isSidebarOpen}
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                activeConnectionId={activeConnectionId}
+                onAddConnection={handleOpenNewConnection}
+              />
+            ) : activeNavId === "sql-console" ? (
+              <SqlConsole
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                activeConnectionId={activeConnectionId}
+              />
+            ) : activeNavId === "dora" ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <Wand2 className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <h2 className="text-xl font-semibold mb-2">Dora AI Assistant</h2>
+                  <p className="text-sm">Coming soon...</p>
+                </div>
+              </div>
+            ) : (
+              <SqlConsole
+                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                activeConnectionId={activeConnectionId}
+              />
+            )}
+          </main>
 
-        {/* Delete Confirmation Dialog */}
-        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Connection</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete "{connectionToDelete?.name}"? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setConnectionToDelete(null)}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={confirmDeleteConnection}>
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+          <ConnectionDialog
+            open={isConnectionDialogOpen}
+            onOpenChange={(open) => {
+              setIsConnectionDialogOpen(open);
+              if (!open) setEditingConnection(undefined);
+            }}
+            onSave={handleDialogSave}
+            initialValues={editingConnection}
+          />
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Connection</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete "{connectionToDelete?.name}"? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setConnectionToDelete(null)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteConnection}>
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </SidebarProvider>
     </TooltipProvider>
   );
 }

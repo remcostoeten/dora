@@ -741,7 +741,7 @@ export function DataGrid({
                                                 >
                                                     <td
                                                         className={cn(
-                                                            "border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative",
+                                                            "border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px]",
                                                             isSelected && !isEditing && "bg-muted-foreground/10",
                                                             isFocused && !isEditing && "bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20",
                                                             isDirty && "bg-amber-500/10"

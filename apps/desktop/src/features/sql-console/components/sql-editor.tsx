@@ -21,21 +21,26 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
     const vimModeRef = useRef<any>(null);
     const statusBarRef = useRef<HTMLDivElement | null>(null);
     const loadedThemesRef = useRef<Set<string>>(new Set());
+    const onExecuteRef = useRef(onExecute);
+
+    useEffect(() => {
+        onExecuteRef.current = onExecute;
+    }, [onExecute]);
 
     function getThemeFromDocument(): MonacoTheme {
         if (typeof document !== "undefined") {
             const classList = document.documentElement.classList;
-            
+
             // Map custom app themes to included Monaco themes
             if (classList.contains("midnight")) return "dracula";
             if (classList.contains("forest")) return "nord";
             if (classList.contains("monokai")) return "monokai";
             if (classList.contains("github-dark")) return "github-dark";
-            
+
             // Handle variants
             if (classList.contains("claude-dark")) return "vs-dark";
             if (classList.contains("claude")) return "vs"; // Light mode
-            
+
             // Fallback to standard light/dark check
             return classList.contains("light") ? "vs" : "vs-dark";
         }
@@ -59,16 +64,16 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
 
     useEffect(function observeTheme() {
         if (editorThemeSetting !== "auto") return;
-        const observer = new MutationObserver(function() {
+        const observer = new MutationObserver(function () {
             setEditorTheme(getThemeFromDocument());
         });
         observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-        return function() { observer.disconnect(); };
+        return function () { observer.disconnect(); };
     }, [editorThemeSetting]);
 
     useEffect(function applyTheme() {
         if (!monacoRef.current) return;
-        
+
         async function apply() {
             const themeName = editorTheme;
             if (!isBuiltinTheme(themeName) && !loadedThemesRef.current.has(themeName)) {
@@ -99,7 +104,7 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
             }
         }
 
-        return function() {
+        return function () {
             if (vimModeRef.current) {
                 vimModeRef.current.dispose();
                 vimModeRef.current = null;
@@ -107,7 +112,7 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
         };
     }, [enableVimMode]);
 
-    const handleEditorDidMount: OnMount = function(editor, monaco) {
+    const handleEditorDidMount: OnMount = function (editor, monaco) {
         editorRef.current = editor;
         monacoRef.current = monaco;
 
@@ -127,7 +132,7 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
                     if (model) {
                         const content = model.getLineContent(lineNumber);
                         if (content && content.trim() && !content.trim().startsWith("--")) {
-                            onExecute(content);
+                            onExecuteRef.current(content);
                         }
                     }
                 }
@@ -193,7 +198,7 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
         }
 
         if (codeToRun.trim()) {
-            onExecute(codeToRun);
+            onExecuteRef.current(codeToRun);
         }
     };
 
@@ -219,19 +224,19 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
              `}} />
 
             <div className="absolute top-2 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                 <button 
+                <button
                     onClick={toggleDemoMode}
                     className={`text-[10px] px-2 py-0.5 rounded border ${isDemoActive ? 'bg-primary text-primary-foreground border-primary' : 'bg-background/50 border-border text-muted-foreground'}`}
-                 >
+                >
                     {isDemoActive ? 'DEMO ON' : 'DEMO'}
-                 </button>
+                </button>
             </div>
 
             <Editor
                 height={enableVimMode ? "calc(100% - 24px)" : "100%"}
                 defaultLanguage="sql"
                 value={value}
-                onChange={function(newValue) { onChange(newValue || ""); }}
+                onChange={function (newValue) { onChange(newValue || ""); }}
                 onMount={handleEditorDidMount}
                 theme={editorTheme}
                 options={{

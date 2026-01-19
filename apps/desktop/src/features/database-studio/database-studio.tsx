@@ -34,9 +34,10 @@ type Props = {
     onToggleSidebar?: () => void;
     activeConnectionId?: string;
     onAddConnection?: () => void;
+    isSidebarOpen?: boolean;
 };
 
-export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId, onAddConnection }: Props) {
+export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConnectionId, onAddConnection, isSidebarOpen }: Props) {
     const adapter = useAdapter();
     const { updateCell, deleteRows, insertRow } = useDataMutation();
     const { settings } = useSettings();
@@ -772,7 +773,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                             onClick={onToggleSidebar}
                             title="Toggle sidebar"
                         >
-                            <PanelLeft className="h-4 w-4" />
+                            <PanelLeft className={`h-4 w-4 transition-transform duration-300 ${isSidebarOpen ? "" : "rotate-180"}`} />
                         </Button>
                         <span className="ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase">Database Studio</span>
                     </div>
@@ -811,7 +812,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                             onClick={onToggleSidebar}
                             title="Toggle sidebar"
                         >
-                            <PanelLeft className="h-4 w-4" />
+                            <PanelLeft className={`h-4 w-4 transition-transform duration-300 ${isSidebarOpen ? "" : "rotate-180"}`} />
                         </Button>
                         <span className="ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase">Database Studio</span>
                     </div>
@@ -849,6 +850,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                     totalCount={tableData.totalCount}
                     executionTime={tableData.executionTime}
                     onToggleSidebar={onToggleSidebar}
+                    isSidebarOpen={isSidebarOpen}
                     onRefresh={loadTableData}
                     onExport={handleExport}
                     isLoading={isLoading}
@@ -948,6 +950,7 @@ export function DatabaseStudio({ tableId, tableName, onToggleSidebar, activeConn
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
                 onToggleSidebar={onToggleSidebar}
+                isSidebarOpen={isSidebarOpen}
                 onRefresh={loadTableData}
                 onExport={handleExport}
                 onAddRecord={handleAddRecord}
