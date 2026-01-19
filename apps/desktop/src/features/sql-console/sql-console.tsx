@@ -399,14 +399,14 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
                                             <SqlEditor
                                                 value={currentSqlQuery}
                                                 onChange={setCurrentSqlQuery}
-                                                onExecute={() => handleExecute()}
+                                                onExecute={(code) => handleExecute(code)}
                                                 isExecuting={isExecuting}
                                             />
                                         ) : (
                                             <CodeEditor
                                                 value={currentDrizzleQuery}
                                                 onChange={setCurrentDrizzleQuery}
-                                                onExecute={function () { handleExecute(); }}
+                                                onExecute={function (code) { handleExecute(code); }}
                                                 isExecuting={isExecuting}
                                                 tables={tables.map(function (t) {
                                                     return {

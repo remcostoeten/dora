@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { ConnectionSwitcher } from "../connections/components/connection-switcher";
-import { NavButtons } from "./components/nav-buttons";
 import { SchemaSelector } from "./components/schema-selector";
 import { TableSearch, FilterState } from "./components/table-search";
 import { TableList } from "./components/table-list";
@@ -23,7 +22,8 @@ import { useAdapter } from "@/core/data-provider";
 import type { DatabaseSchema, TableInfo } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { SidebarBottomPanel } from "./components/sidebar-bottom-panel";
+
 
 const DEFAULT_FILTERS: FilterState = {
   showTables: true,
@@ -87,7 +87,6 @@ export function DatabaseSidebar({
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editingTableId, setEditingTableId] = useState<string | undefined>();
 
-  // Real database schema state (populated by adapter, whether mock or real)
   const [schema, setSchema] = useState<DatabaseSchema | null>(null);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   const [schemaError, setSchemaError] = useState<string | null>(null);
@@ -100,7 +99,39 @@ export function DatabaseSidebar({
   const [showTableInfoDialog, setShowTableInfoDialog] = useState(false);
   const [tableInfoTarget, setTableInfoTarget] = useState<string>("");
 
-  // Initialize appearance settings on mount
+  // Resize logic
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(300);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const toolbarHeight = 33; // h-8 (32px) + border
+      const newHeight = window.innerHeight - e.clientY - toolbarHeight;
+      const clamped = Math.max(150, Math.min(newHeight, window.innerHeight * 0.7));
+      setBottomPanelHeight(clamped);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = "default";
+      document.body.style.userSelect = "auto";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none"; // Prevent text selection while resizing
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "default";
+      document.body.style.userSelect = "auto";
+    };
+  }, [isResizing]);
+
   useEffect(function initAppearance() {
     const settings = getAppearanceSettings();
     applyAppearanceToDOM(settings);
@@ -129,7 +160,6 @@ export function DatabaseSidebar({
         if (result.ok) {
           setSchema(result.data);
           if (result.data.schemas.length > 0) {
-            const dbName = connections.find(function (c) { return c.id === activeConnectionId; })?.name || "db";
             setSelectedSchema({
               id: result.data.schemas[0],
               name: result.data.schemas[0],
@@ -159,7 +189,6 @@ export function DatabaseSidebar({
     fetchSchema();
   }, [activeConnectionId, adapter, refreshTrigger, autoSelectFirstTable, onTableSelect, onAutoSelectComplete]);
 
-  // Convert backend TableInfo to frontend TableItem format
   const tables = useMemo(function (): TableItem[] {
     if (!schema) return [];
     return schema.tables.map(function (table: TableInfo) {
@@ -167,7 +196,7 @@ export function DatabaseSidebar({
         id: table.name,
         name: table.name,
         rowCount: table.row_count_estimate ?? 0,
-        type: "table" as const, // Backend doesn't distinguish views yet
+        type: "table" as const,
       };
     });
   }, [schema]);
@@ -189,6 +218,11 @@ export function DatabaseSidebar({
 
   }, [schema, tables, searchValue, filters]);
 
+  const activeTable = useMemo(function () {
+    if (!schema || !activeTableId) return null;
+    return schema.tables.find(function (t) { return t.name === activeTableId; });
+  }, [schema, activeTableId]);
+
   function handleTableSelect(tableId: string) {
     setInternalTableId(tableId);
     if (onTableSelect) {
@@ -204,11 +238,7 @@ export function DatabaseSidebar({
     }
   }
 
-
-
   function handleContextAction(tableId: string, action: string) {
-    // Re-use right click handler for simplicity if actions overlap
-    // Or map them if they have different action strings
     handleRightClickAction(action as TableRightClickAction, tableId);
   }
 
@@ -299,14 +329,10 @@ export function DatabaseSidebar({
     if (!activeConnectionId || selectedTableIds.length === 0) return;
 
     if (action === "drop") {
-      // We can iterate and call drop table, or ideally update DropTableDialog to support multiple
-      // For now, let's use a simple confirmation via window.confirm (or better, a custom dialog, but let's stick to simple implementation first or re-use drop dialog sequentially?)
-      // Since DropTableDialog takes a single tableName, we should probably implement a bulk drop logic here utilizing commands.
       if (confirm(`Are you sure you want to drop ${selectedTableIds.length} tables? This cannot be undone.`)) {
         setIsDdlLoading(true);
         try {
-          // Execute one by one or batch
-          const drops = selectedTableIds.map(id => `DROP TABLE IF EXISTS "${id}"`);
+          const drops = selectedTableIds.map(function (id) { return `DROP TABLE IF EXISTS "${id}"`; });
           const result = await commands.executeBatch(activeConnectionId, drops);
           if (result.status === "ok") {
             toast({
@@ -334,14 +360,7 @@ export function DatabaseSidebar({
       if (confirm(`Are you sure you want to truncate ${selectedTableIds.length} tables? All data will be lost.`)) {
         setIsDdlLoading(true);
         try {
-          const truncates = selectedTableIds.map(id => `TRUNCATE TABLE "${id}"`); // Note: SQLite might need DELETE FROM
-          // But let's assume standard SQL or let backend handle it? 
-          // executeBatch just runs raw SQL.
-          // SQLite doesn't strictly support TRUNCATE, so `DELETE FROM "table"` is safer if generic.
-          // But let's look at executeQuery implementation in generic adapter... it passes through.
-          // Let's us DELETE FROM which is standard.
-          const deletes = selectedTableIds.map(id => `DELETE FROM "${id}"`);
-
+          const deletes = selectedTableIds.map(function (id) { return `DELETE FROM "${id}"`; });
           const result = await commands.executeBatch(activeConnectionId, deletes);
           if (result.status === "ok") {
             toast({
@@ -367,8 +386,6 @@ export function DatabaseSidebar({
   }
 
   function handleToolbarAction(action: ToolbarAction) {
-    // Settings action is handled by BottomToolbar internally via SettingsPanel
-    // No other toolbar actions currently defined
   }
 
   async function handleExportTableSchema(tableName: string) {
@@ -378,10 +395,10 @@ export function DatabaseSidebar({
       const schemaResult = await adapter.getSchema(activeConnectionId);
       if (!schemaResult.ok) throw new Error(schemaResult.error);
 
-      const table = schemaResult.data.tables.find(t => t.name === tableName);
+      const table = schemaResult.data.tables.find(function (t) { return t.name === tableName; });
       if (!table) throw new Error(`Table ${tableName} not found`);
 
-      const ddl = `CREATE TABLE "${tableName}" (\n${table.columns.map(col => {
+      const ddl = `CREATE TABLE "${tableName}" (\n${table.columns.map(function (col) {
         let line = `  "${col.name}" ${col.data_type}`;
         if (!col.is_nullable) line += " NOT NULL";
         if (col.default_value) line += ` DEFAULT ${col.default_value}`;
@@ -447,15 +464,18 @@ export function DatabaseSidebar({
     }
   }
 
-  const availableSchemas = schema?.schemas.map(s => ({
-    id: s,
-    name: s,
-    databaseId: activeConnectionId || "unknown"
-  })) || [];
+  const availableSchemas = schema?.schemas.map(function (s) {
+    return {
+      id: s,
+      name: s,
+      databaseId: activeConnectionId || "unknown"
+    };
+  }) || [];
 
   return (
     <div className="relative flex flex-col h-full w-[244px] bg-sidebar border-r border-sidebar-border">
-      {/* Header section with spotlight and nav */}
+
+
       <div className="flex flex-col">
         <div className="px-0 pt-0 pb-2">
           <ConnectionSwitcher
@@ -469,12 +489,8 @@ export function DatabaseSidebar({
             onDeleteConnection={onDeleteConnection}
           />
         </div>
-        <div className="px-2 pb-2">
-          <NavButtons activeId={activeNavId} onSelect={handleNavSelect} />
-        </div>
       </div>
 
-      {/* Schema selector and search - only when connected */}
       {schema && (
         <div className="flex flex-col gap-2 px-2 py-2 border-t border-sidebar-border">
           {availableSchemas.length > 1 && (
@@ -495,12 +511,10 @@ export function DatabaseSidebar({
                 setRefreshTrigger(function (prev) { return prev + 1; });
               }
             }}
-
           />
         </div>
       )}
 
-      {/* Table list */}
       <ScrollArea className="flex-1">
         {isLoadingSchema ? (
           <SidebarTableSkeleton rows={8} />
@@ -543,11 +557,24 @@ export function DatabaseSidebar({
         )}
       </ScrollArea>
 
+      {activeTable && (
+        <>
+          <div
+            className="h-2 -mb-1 cursor-row-resize hover:bg-primary/50 bg-transparent transition-colors z-10 shrink-0 w-full"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setIsResizing(true);
+            }}
+          />
+          <SidebarBottomPanel table={activeTable} height={bottomPanelHeight} />
+        </>
+      )}
+
       {isMultiSelectMode && selectedTableIds.length > 0 && (
         <ManageTablesDialog
           selectedCount={selectedTableIds.length}
           onAction={handleBulkAction}
-          onClose={() => {
+          onClose={function () {
             setIsMultiSelectMode(false);
             setSelectedTableIds([]);
             setInternalTableId(undefined);

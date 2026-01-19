@@ -43,6 +43,7 @@ type Props = {
     onToggleColumn?: (columnName: string, visible: boolean) => void;
     isDryEditMode?: boolean;
     onDryEditModeChange?: (enabled: boolean) => void;
+    isSidebarOpen?: boolean;
 };
 
 export function StudioToolbar({
@@ -61,6 +62,7 @@ export function StudioToolbar({
     onToggleColumn,
     isDryEditMode,
     onDryEditModeChange,
+    isSidebarOpen,
 }: Props) {
     const [showFilters, setShowFilters] = useState(filters.length > 0);
 
@@ -72,6 +74,18 @@ export function StudioToolbar({
         }
     }, [filters.length]);
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+                e.preventDefault();
+                onToggleSidebar?.();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onToggleSidebar]);
+
     return (
         <div className="flex flex-col shrink-0 bg-sidebar border-b border-sidebar-border">
             <div className="flex items-center h-10 px-2 gap-2 text-sm">
@@ -82,15 +96,33 @@ export function StudioToolbar({
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-sidebar-foreground"
                             onClick={onToggleSidebar}
-                            title="Toggle sidebar"
+                            title="Toggle sidebar (Ctrl+B)"
                         >
-                            <PanelLeft className="h-4 w-4" />
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="lucide lucide-panel-left"
+                            >
+                                <rect width="18" height="18" x="3" y="3" rx="2" />
+                                <path
+                                    d="M9 3v18"
+                                    className={cn("transition-all duration-300 ease-in-out", !isSidebarOpen && "-translate-x-[6px]")}
+                                    style={{ transformBox: "fill-box" }}
+                                />
+                            </svg>
                         </Button>
                     )}
 
                     <div className="h-4 w-px bg-sidebar-border mx-1" />
 
-                                <div className="flex items-center bg-sidebar-accent/50 rounded-md p-0.5">
+                    <div className="flex items-center bg-sidebar-accent/50 rounded-md p-0.5">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -141,7 +173,7 @@ export function StudioToolbar({
                         )}
                     </Button>
 
-3                    <DropdownMenu>
+                    3                    <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="ghost"

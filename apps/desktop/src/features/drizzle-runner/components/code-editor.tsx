@@ -4,7 +4,20 @@ import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { useSetting } from "@/core/settings";
 import { generateDrizzleTypes } from "../utils/lsp-utils";
-import { getDbName, getTableMatch, getChainMode, getColumnMatch, getValueMatch, getJoinMatch } from "../utils/lsp-patterns";
+import {
+    getDbName,
+    getTableMatch,
+    getChainMode,
+    getColumnMatch,
+    getValueMatch,
+    getJoinMatch,
+    isInsideSelectParens,
+    isInsideInsertParens,
+    isInsideUpdateParens,
+    isInsideDeleteParens,
+    isInsideFromParens,
+    isInsideJoinParens
+} from "../utils/lsp-patterns";
 import { SchemaColumn, SchemaTable } from "../types";
 import { loadTheme, isBuiltinTheme, MonacoTheme } from "@/core/settings/editor-themes";
 import { initVimMode } from "monaco-vim";
@@ -121,6 +134,12 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
     const statusBarRef = useRef<HTMLDivElement | null>(null);
     const loadedThemesRef = useRef<Set<string>>(new Set());
     const decorRef = useRef<string[]>([]);
+    const completionProviderRef = useRef<Monaco.IDisposable | null>(null);
+    const onExecuteRef = useRef(onExecute);
+
+    useEffect(function syncOnExecute() {
+        onExecuteRef.current = onExecute;
+    }, [onExecute]);
 
     function getThemeFromDocument(): MonacoTheme {
         if (typeof document !== "undefined") {
@@ -133,8 +152,6 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         if (editorThemeSetting === "auto") {
             return getThemeFromDocument();
         }
-        if (editorThemeSetting === "light") return "vs";
-        if (editorThemeSetting === "dark") return "vs-dark";
         return editorThemeSetting;
     }
 
@@ -194,6 +211,15 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         };
     }, [enableVimMode]);
 
+    useEffect(() => {
+        return () => {
+            if (completionProviderRef.current) {
+                completionProviderRef.current.dispose();
+                completionProviderRef.current = null;
+            }
+        };
+    }, []);
+
     const handleEditorDidMount: OnMount = function (editor, monaco) {
         editorRef.current = editor;
         monacoRef.current = monaco;
@@ -211,7 +237,6 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
             typeRoots: []
         });
 
-        // Disable TypeScript's built-in diagnostics - we provide our own Drizzle-specific completions
         monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
             noSemanticValidation: true,
             noSyntaxValidation: true,
@@ -226,7 +251,11 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
             monaco.editor.setModelLanguage(model, "typescript");
         }
 
-        monaco.languages.registerCompletionItemProvider("typescript", {
+        if (completionProviderRef.current) {
+            completionProviderRef.current.dispose();
+        }
+
+        completionProviderRef.current = monaco.languages.registerCompletionItemProvider("typescript", {
             triggerCharacters: [".", "(", ",", " "],
             exclusive: true,
             provideCompletionItems: function (model, position): SuggestList {
@@ -244,7 +273,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                         {
                             label: "select",
                             kind: monaco.languages.CompletionItemKind.Method,
-                            insertText: "select()$0",
+                            insertText: "select($1)$0",
                             insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                             detail: "Start a SELECT query → chain .from()",
                             range: range,
@@ -305,7 +334,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     return buildSuggestions(range, suggestions);
                 }
 
-                if (/\b(?:db|tx)\.select\(\s*$/.test(textUntilPosition)) {
+                if (isInsideSelectParens(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -320,7 +349,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     }));
                 }
 
-                if (/\b(?:db|tx)\.insert\(\s*$/.test(textUntilPosition) || /\b(?:db|tx)\.update\(\s*$/.test(textUntilPosition) || /\b(?:db|tx)\.delete\(\s*$/.test(textUntilPosition)) {
+                if (isInsideInsertParens(textUntilPosition) || isInsideUpdateParens(textUntilPosition) || isInsideDeleteParens(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -335,7 +364,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     }));
                 }
 
-                if (/\.from\(\s*$/.test(textUntilPosition)) {
+                if (isInsideFromParens(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -350,7 +379,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     }));
                 }
 
-                if (/\.leftJoin\(\s*$/.test(textUntilPosition) || /\.innerJoin\(\s*$/.test(textUntilPosition)) {
+                if (isInsideJoinParens(textUntilPosition)) {
                     return buildSuggestions(range, tables.map(function (table, index) {
                         return {
                             label: table.name,
@@ -1016,7 +1045,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
                     if (model) {
                         const content = model.getLineContent(lineNumber);
                         if (content && content.trim()) {
-                            onExecute(content);
+                            onExecuteRef.current(content);
                         }
                     }
                 }
@@ -1080,7 +1109,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
         }
 
         if (codeToRun.trim()) {
-            onExecute(codeToRun);
+            onExecuteRef.current(codeToRun);
         }
     }
 
