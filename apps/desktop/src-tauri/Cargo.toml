@@ -57,6 +57,7 @@ fake = { version = "3", features = ["derive"] }
 rand = "0.9"
 bcrypt = "0.15"
 reqwest = { version = "0.12", features = ["json"] }
+tauri-plugin-shell = "2.3.4"
 
 [profile.release]
 panic = "abort"

@@ -11,9 +11,7 @@ type ValidationResult =
     | { allowed: false; reason: string };
 
 export function validateConnectionTarget(
-    host: string,
-    containers: DockerContainer[],
-    allowedConnections: AllowedConnection[]
+    host: string
 ): ValidationResult {
     const normalizedHost = host.toLowerCase().trim();
 

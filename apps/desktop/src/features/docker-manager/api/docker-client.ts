@@ -52,7 +52,7 @@ type DockerPsResult = {
     CreatedAt: string;
 };
 
-async function executeDockerCommand(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+export async function executeDockerCommand(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     if (typeof window !== "undefined" && "Tauri" in window) {
         const { Command } = await import("@tauri-apps/plugin-shell");
         const command = Command.create("docker", args);
@@ -115,19 +115,24 @@ export async function listContainers(
     }
 
     const lines = result.stdout.trim().split("\n").filter(Boolean);
-    const containers: DockerContainer[] = [];
 
+    const containerIds: string[] = [];
     for (const line of lines) {
         try {
             const parsed: DockerPsResult = JSON.parse(line);
-            const container = await getContainerDetails(parsed.ID);
-            if (container) {
-                containers.push(container);
-            }
+            containerIds.push(parsed.ID);
         } catch {
             continue;
         }
     }
+
+    const inspectedContainers = await Promise.all(
+        containerIds.map((id) => getContainerDetails(id)),
+    );
+
+    const containers: DockerContainer[] = inspectedContainers.filter(
+        (container): container is DockerContainer => container !== null,
+    );
 
     return containers;
 }

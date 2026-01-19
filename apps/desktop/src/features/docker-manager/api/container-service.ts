@@ -22,22 +22,8 @@ import {
     removeContainer as clientRemoveContainer,
     pullImage,
     imageExists,
+    executeDockerCommand,
 } from "./docker-client";
-
-async function executeDockerCommand(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-    if (typeof window !== "undefined" && "Tauri" in window) {
-        const { Command } = await import("@tauri-apps/plugin-shell");
-        const command = Command.create("docker", args);
-        const output = await command.execute();
-        return {
-            stdout: output.stdout,
-            stderr: output.stderr,
-            exitCode: output.code ?? 0,
-        };
-    }
-
-    throw new Error("Docker commands require Tauri shell plugin");
-}
 
 export async function createPostgresContainer(
     config: PostgresContainerConfig
