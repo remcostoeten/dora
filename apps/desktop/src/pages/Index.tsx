@@ -23,6 +23,7 @@ import {
 import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi, backendToFrontendConnection } from "@/features/connections/api";
 import { useAdapter } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
+import { DockerView } from "@/features/docker-manager";
 
 export default function Index() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -366,6 +367,13 @@ export default function Index() {
               <SqlConsole
                 onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                 activeConnectionId={activeConnectionId}
+              />
+            ) : activeNavId === "docker" ? (
+              <DockerView
+                onOpenInDataViewer={(container) => {
+                  /* Logic to bridge connection will go here later */
+                  setActiveNavId("database-studio");
+                }}
               />
             ) : activeNavId === "dora" ? (
               <div className="flex-1 flex items-center justify-center text-muted-foreground">

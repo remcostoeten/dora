@@ -188,7 +188,7 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
       id: "docker",
       label: "Docker Manager",
       icon: Container,
-      disabled: true,
+      onClick: () => onNavSelect?.("docker"),
     },
   ];
 
