@@ -1,2 +1,2 @@
-export { createTauriAdapter } from "./tauri";
-export { createMockAdapter, resetMockStore } from "./mock";
+export { createTauriAdapter } from './tauri'
+export { createMockAdapter, resetMockStore } from './mock'

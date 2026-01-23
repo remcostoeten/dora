@@ -1,0 +1,6 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"rules": {
+		"@typescript-eslint/consistent-type-definitions": ["error", "type"]
+	}
+}

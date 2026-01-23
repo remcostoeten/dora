@@ -1,15 +1,15 @@
-export { DataProvider, useDataProvider, useAdapter, useIsTauri } from "./context";
-export { createTauriAdapter } from "./adapters/tauri";
-export { createMockAdapter, resetMockStore } from "./adapters/mock";
-export type { DataAdapter, AdapterResult, QueryResult, DataProviderContextValue } from "./types";
+export { DataProvider, useDataProvider, useAdapter, useIsTauri } from './context'
+export { createTauriAdapter } from './adapters/tauri'
+export { createMockAdapter, resetMockStore } from './adapters/mock'
+export type { DataAdapter, AdapterResult, QueryResult, DataProviderContextValue } from './types'
 export {
-    useConnections,
-    useConnectionMutations,
-    useSchema,
-    useTableData,
-    useExecuteQuery,
-    useDataMutation,
-    useQueryHistory,
-    useScripts,
-    useScriptMutations
-} from "./hooks";
+	useConnections,
+	useConnectionMutations,
+	useSchema,
+	useTableData,
+	useExecuteQuery,
+	useDataMutation,
+	useQueryHistory,
+	useScripts,
+	useScriptMutations
+} from './hooks'

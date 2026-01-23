@@ -7,6 +7,7 @@ Based on a comprehensive audit of the Dora Tauri backend, I've identified critic
 ## Current Architecture Assessment
 
 ### Strengths ✅
+
 - **Clean Database Abstraction**: Good separation between PostgreSQL and SQLite implementations
 - **Security Implementation**: AES-256 encryption with OS keyring integration
 - **SQL Parsing**: Robust SQL parsing with `sqlparser` crate
@@ -14,6 +15,7 @@ Based on a comprehensive audit of the Dora Tauri backend, I've identified critic
 - **Streaming**: Pagination support with 50-row batch processing
 
 ### Critical Issues ❌
+
 - **Monolithic Commands**: 40+ commands in single 800-line file (`database/commands.rs`)
 - **Tight Tauri Coupling**: Business logic mixed with UI framework code
 - **Inconsistent Error Handling**: Mix of custom errors and `anyhow::Error`
@@ -26,6 +28,7 @@ Based on a comprehensive audit of the Dora Tauri backend, I've identified critic
 ### Phase 1: Architectural Refactoring (Week 1-2)
 
 #### 1.1 Command System Decomposition
+
 **Current**: Single massive file with 40+ commands
 **Target**: Domain-specific command modules
 
@@ -52,6 +55,7 @@ src-tauri/src/
 ```
 
 #### 1.2 Service Layer Extraction
+
 Extract business logic from Tauri commands into pure service functions:
 
 ```rust
@@ -72,6 +76,7 @@ impl ConnectionService {
 ```
 
 #### 1.3 Error Handling Standardization
+
 Replace inconsistent error handling with domain-specific errors:
 
 ```rust
@@ -94,6 +99,7 @@ pub enum DomainError {
 ### Phase 2: API Layer Development (Week 3-4)
 
 #### 2.1 Web Framework Integration
+
 Add Axum/Warp layer alongside Tauri commands:
 
 ```rust
@@ -132,6 +138,7 @@ pub async fn execute_query_web(
 ```
 
 #### 2.2 Authentication & Authorization
+
 Implement web-ready auth system:
 
 ```rust
@@ -159,6 +166,7 @@ pub async fn auth_middleware(
 ### Phase 3: Database Enhancements (Week 5-6)
 
 #### 3.1 Extensible Database Adapter System
+
 Design for future database support:
 
 ```rust
@@ -187,6 +195,7 @@ impl DatabaseRegistry {
 ```
 
 #### 3.2 Connection Pooling
+
 Implement proper connection pooling:
 
 ```rust
@@ -214,6 +223,7 @@ pub struct SqlitePool {
 ```
 
 #### 3.3 Performance Optimizations
+
 Add intelligent caching and streaming improvements:
 
 ```rust
@@ -239,6 +249,7 @@ pub struct QueryStreamer {
 ### Phase 4: Testing Infrastructure (Week 7)
 
 #### 4.1 Test Architecture
+
 Implement comprehensive testing strategy:
 
 ```rust
@@ -289,6 +300,7 @@ mod api_tests {
 ```
 
 #### 4.2 Test Utilities
+
 Provide testing helpers and fixtures:
 
 ```rust
@@ -325,6 +337,7 @@ pub mod fixtures {
 ### Phase 5: Migration Preparation (Week 8)
 
 #### 5.1 Configuration Management
+
 Externalize configuration and environment-specific settings:
 
 ```rust
@@ -357,6 +370,7 @@ impl AppConfig {
 ```
 
 #### 5.2 Feature Flags
+
 Implement feature flag system for gradual migration:
 
 ```rust
@@ -385,6 +399,7 @@ impl FeatureFlags {
 Based on your mention of spreadsheet-style UI with context menus, here are backend preparations needed:
 
 ### 1. Enhanced CRUD Operations
+
 ```rust
 pub struct SpreadsheetService {
     query_service: Arc<dyn QueryService>,
@@ -425,6 +440,7 @@ impl SpreadsheetService {
 ```
 
 ### 2. Permission System
+
 ```rust
 pub struct PermissionService {
     user_permissions: DashMap<Uuid, Vec<Permission>>,
@@ -448,6 +464,7 @@ pub struct SecurityContext {
 ```
 
 ### 3. Real-time Updates
+
 ```rust
 pub struct RealtimeService {
     connections: DashMap<Uuid, WebSocketConnection>,
@@ -465,13 +482,13 @@ pub enum RealtimeEvent {
 
 ## Implementation Timeline
 
-| Week | Milestone | Deliverables |
-|------|-----------|--------------|
-| 1-2 | Architectural Refactoring | Service layer, command decomposition, error handling |
-| 3-4 | API Layer | Web framework, authentication, REST endpoints |
-| 5-6 | Database Enhancements | Connection pooling, multi-DB support, caching |
-| 7 | Testing Infrastructure | Unit/integration tests, test utilities |
-| 8 | Migration Prep | Configuration, feature flags, documentation |
+| Week | Milestone                 | Deliverables                                         |
+| ---- | ------------------------- | ---------------------------------------------------- |
+| 1-2  | Architectural Refactoring | Service layer, command decomposition, error handling |
+| 3-4  | API Layer                 | Web framework, authentication, REST endpoints        |
+| 5-6  | Database Enhancements     | Connection pooling, multi-DB support, caching        |
+| 7    | Testing Infrastructure    | Unit/integration tests, test utilities               |
+| 8    | Migration Prep            | Configuration, feature flags, documentation          |
 
 ## Success Metrics
 
@@ -484,11 +501,13 @@ pub enum RealtimeEvent {
 ## Risk Mitigation
 
 ### Technical Risks
+
 - **Breaking Changes**: Maintain backward compatibility during refactoring
 - **Performance Degradation**: Implement performance benchmarks
 - **Complexity Increase**: Use incremental refactoring approach
 
 ### Migration Risks
+
 - **Data Loss**: Comprehensive backup and migration testing
 - **Feature Regression**: Maintain feature parity testing
 - **Security Issues**: Security audit of web API layer
@@ -508,6 +527,7 @@ The phased approach minimizes risk while delivering immediate improvements in co
 ## Execution Recap (Phase 1 Refactoring - Implemented)
 
 ### 1. File and Module Changes
+
 - **Split:** Monolithic `commands.rs` -> `src-tauri/src/database/services/`.
 - **New Modules:** `connection.rs`, `query.rs`, `mutation.rs`, `metadata.rs`, `mod.rs`.
 - **Current Structure:**
@@ -522,23 +542,27 @@ The phased approach minimizes risk while delivering immediate improvements in co
     ```
 
 ### 2. Service Layer Status
+
 - **Architecture:** Static service methods (e.g., `QueryService::start_query`).
 - **Dependencies:** `AppState` (connections, storage, stmt_manager).
 - **Role:** Pure business logic; `commands.rs` handles Tauri-specific argument parsing.
 
 ### 3. RPC Surface
+
 - **Compatibility:** All existing Tauri command names/signatures preserved 1:1.
 - **New Commands:**
     - `insert_row`: Structured single-row insertion.
     - `execute_batch`: Transactional execution of multiple SQL statements.
 
 ### 4. Behavior & Features
+
 - **Parity:** Functional parity maintained for all existing operations.
-- **Enhancements:** 
+- **Enhancements:**
     - Auto-detection of soft delete columns.
     - Transaction support via `execute_batch`.
 - **Gaps:** LibSQL `dump_database` remains unimplemented.
 
 ### 5. Future Readiness
+
 - **Testing:** Service methods are now decoupled from Tauri runtime, enabling direct unit testing.
 - **Migration:** New `insert_row` and batching align with the spreadsheet UI requirements.

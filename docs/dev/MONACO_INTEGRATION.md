@@ -5,6 +5,7 @@ This integration provides a toggle between CodeMirror and Monaco editors, allowi
 ## Features Implemented
 
 ### CodeMirror Editor (Current)
+
 - Lightweight and fast
 - Custom SQL syntax highlighting
 - Schema-aware autocompletion
@@ -12,6 +13,7 @@ This integration provides a toggle between CodeMirror and Monaco editors, allowi
 - Custom styling and animations
 
 ### Monaco Editor (New)
+
 - Rich editing experience (VS Code editor)
 - Advanced IntelliSense
 - Built-in minimap (disabled for cleaner look)
@@ -20,6 +22,7 @@ This integration provides a toggle between CodeMirror and Monaco editors, allowi
 - Industry-standard editor used in VS Code
 
 ### Toggle Interface
+
 - Simple button toggle between editors
 - Maintains editor state during switches
 - Preserves content and cursor position
@@ -35,28 +38,34 @@ The editors can be toggled using the buttons in the editor toolbar:
 ## Files Created/Modified
 
 ### New Files
+
 - `src/components/editor/monaco-sql-editor.tsx` - Monaco editor wrapper
 - `src/components/editor/switchable-sql-editor.tsx` - Toggle component
 
 ### Modified Files
+
 - `src/app/page.tsx` - Updated to use SwitchableSqlEditor
 - `package.json` - Added Monaco dependencies
 
 ### Dependencies Added
+
 - `@monaco-editor/react` - React wrapper for Monaco
 - `monaco-editor` - Core Monaco editor
 
 ## Key Differences
 
 ### Performance
+
 - **CodeMirror**: Faster startup, lower memory usage
 - **Monaco**: Slightly heavier but more feature-rich
 
 ### Features
+
 - **CodeMirror**: Basic SQL completion, custom themes
 - **Monaco**: Advanced IntelliSense, better error detection, richer editing
 
 ### Aesthetics
+
 - **CodeMirror**: Minimal, clean interface with custom styling
 - **Monaco**: Professional VS Code-like appearance
 

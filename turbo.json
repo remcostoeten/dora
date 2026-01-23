@@ -1,43 +1,28 @@
 {
-    "$schema": "https://turbo.build/schema.json",
-    "tasks": {
-        "test": {
-            "dependsOn": [
-                "^test"
-            ],
-            "outputs": [],
-            "cache": false
-        },
-        "build": {
-            "dependsOn": [
-                "^build",
-                "test"
-            ],
-            "outputs": [
-                "dist/**",
-                ".next/**",
-                "src-tauri/target/**"
-            ],
-        },
-        "dev": {
-            "cache": false,
-            "persistent": true
-        },
-        "lint": {
-            "dependsOn": [
-                "^lint"
-            ]
-        },
-        "test": {
-            "dependsOn": [
-                "^test"
-            ],
-            "outputs": []
-        },
-        "typecheck": {
-            "dependsOn": [
-                "^typecheck"
-            ]
-        }
-    }
+	"$schema": "https://turbo.build/schema.json",
+	"tasks": {
+		"test": {
+			"dependsOn": ["^test"],
+			"outputs": [],
+			"cache": false
+		},
+		"build": {
+			"dependsOn": ["^build", "test"],
+			"outputs": ["dist/**", ".next/**", "src-tauri/target/**"]
+		},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"lint": {
+			"dependsOn": ["^lint"]
+		},
+		"test": {
+			"dependsOn": ["^test"],
+			"outputs": []
+		},
+		"typecheck": {
+			"dependsOn": ["^typecheck"]
+		}
+	}
 }

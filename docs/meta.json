@@ -1,9 +1,3 @@
 {
-    "pages": [
-        "index",
-        "installation",
-        "api",
-        "types",
-        "guides"
-    ]
+	"pages": ["index", "installation", "api", "types", "guides"]
 }

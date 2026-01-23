@@ -7,6 +7,7 @@ Generate a complete, production-ready React UI for a Docker container management
 ## Design System Context
 
 This UI integrates into an existing Tauri desktop application with:
+
 - Dark theme by default
 - `shadcn/ui` components
 - Tailwind CSS
@@ -14,6 +15,7 @@ This UI integrates into an existing Tauri desktop application with:
 - React Query for data fetching
 
 Use this color palette:
+
 - Background: `bg-background` (dark charcoal)
 - Cards: `bg-card` with subtle borders
 - Accent: emerald/green tones for positive actions
@@ -27,6 +29,7 @@ Use this color palette:
 ### 1. DockerView (Main Container)
 
 Full-height layout with:
+
 - Header bar with title "Docker Containers" and "Sandbox Mode Active" badge (green pill, lock icon)
 - Toolbar: search input, filter toggles, "+ New Container" button
 - Split view: container list (left/main) + details panel (right, collapsible)
@@ -68,12 +71,12 @@ Full-height layout with:
 
 - Scrollable list of container cards
 - Each card shows:
-  - Status indicator (colored dot: green=running, gray=stopped, yellow=starting)
-  - Container name (bold)
-  - Image name and tag
-  - Port mapping (host:container)
-  - Relative creation time
-  - "external" badge if not created by this feature
+    - Status indicator (colored dot: green=running, gray=stopped, yellow=starting)
+    - Container name (bold)
+    - Image name and tag
+    - Port mapping (host:container)
+    - Relative creation time
+    - "external" badge if not created by this feature
 - Hover state with subtle highlight
 - Click to select (updates details panel)
 - Context menu on right-click: Start, Stop, Remove, Copy ID
@@ -82,13 +85,14 @@ Full-height layout with:
 
 ```tsx
 type ContainerCardProps = {
-  container: DockerContainer;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-};
+	container: DockerContainer
+	isSelected: boolean
+	onSelect: (id: string) => void
+}
 ```
 
 Visual states:
+
 - Default: subtle border
 - Selected: accent border + slight background tint
 - Hover: border highlight
@@ -145,17 +149,18 @@ Modal dialog with form:
 ### 5. ContainerDetailsPanel
 
 Right panel showing selected container details:
+
 - Header: container name + status badge
 - Connection section:
-  - All connection parameters in copyable format
-  - "Copy Env" button (copies DATABASE_URL, PG* vars)
-  - "Open in Data Viewer" button
+    - All connection parameters in copyable format
+    - "Copy Env" button (copies DATABASE_URL, PG\* vars)
+    - "Open in Data Viewer" button
 - Actions section:
-  - Start/Stop/Restart buttons
-  - Remove button (with confirmation)
+    - Start/Stop/Restart buttons
+    - Remove button (with confirmation)
 - Tabbed section:
-  - Logs tab: scrollable log output with auto-scroll
-  - Seed tab: database population options
+    - Logs tab: scrollable log output with auto-scroll
+    - Seed tab: database population options
 
 ### 6. EnvCopyButton
 
@@ -274,6 +279,7 @@ Show toast on copy success.
 ### 9. SandboxIndicator
 
 Prominent badge in header:
+
 - Green background with lock icon
 - Text: "Sandbox Mode Active"
 - Tooltip explaining sandbox protection
@@ -328,18 +334,19 @@ Use React Query for server state:
 
 ```typescript
 const { data: containers } = useQuery({
-  queryKey: ["docker-containers", { prefix, showAll }],
-  queryFn: fetchContainers,
-  refetchInterval: 2000,
-});
+	queryKey: ['docker-containers', { prefix, showAll }],
+	queryFn: fetchContainers,
+	refetchInterval: 2000
+})
 
 const createMutation = useMutation({
-  mutationFn: createContainer,
-  onSuccess: () => queryClient.invalidateQueries(["docker-containers"]),
-});
+	mutationFn: createContainer,
+	onSuccess: () => queryClient.invalidateQueries(['docker-containers'])
+})
 ```
 
 Local state for UI:
+
 - `selectedContainerId: string | null`
 - `isCreateDialogOpen: boolean`
 - `detailsTab: "logs" | "seed"`
@@ -350,10 +357,12 @@ Local state for UI:
 ## Interactions
 
 ### Container Selection
+
 - Click container card → update `selectedContainerId`
 - Details panel slides in/updates with selected container
 
 ### Create Container Flow
+
 1. Click "+ New Container" → open dialog
 2. Fill form (auto-suggest name, auto-detect port)
 3. Submit → show loading state
@@ -361,12 +370,14 @@ Local state for UI:
 5. Error → show error in dialog, keep open
 
 ### Copy Env
+
 1. Click "Copy Env" button
 2. Build env string from container config
 3. Copy to clipboard via `navigator.clipboard`
 4. Show success toast
 
 ### Seed Database
+
 1. Select strategy
 2. Configure (upload files / select profile)
 3. Click execute
@@ -374,6 +385,7 @@ Local state for UI:
 5. Show summary on complete
 
 ### Remove Container
+
 1. Click "Remove"
 2. Show confirmation dialog
 3. Optional: check "remove volumes"
