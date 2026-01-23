@@ -373,3 +373,23 @@ export async function imageExists(image: string, tag: string = 'latest'): Promis
 	const result = await executeDockerCommand(['image', 'inspect', imageSpec])
 	return result.exitCode === 0
 }
+
+export async function copyToContainer(
+	containerId: string,
+	hostPath: string,
+	containerPath: string
+): Promise<void> {
+	const result = await executeDockerCommand(['cp', hostPath, `${containerId}:${containerPath}`])
+
+	if (result.exitCode !== 0) {
+		throw new Error(result.stderr || `Failed to copy file to container`)
+	}
+}
+
+export async function execCommand(
+	containerId: string,
+	command: string[]
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+	const args = ['exec', containerId, ...command]
+	return executeDockerCommand(args)
+}

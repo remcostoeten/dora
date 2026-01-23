@@ -7,16 +7,24 @@ export type ChangelogEntry = {
 	type: 'feature' | 'fix' | 'refactor' | 'breaking'
 }
 
-export const CURRENT_VERSION = '0.0.91'
+export const CURRENT_VERSION = '0.0.92'
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
+		version: '0.0.92',
+		date: '2026-01-23',
+		commit: '88a6727',
+		title: 'Docker Manager & UI Overhaul',
+		description: 'Docker container manager MVP, window controls, auto-connect to first database, right-click drag scrolling, Vercel-style dark theme, and improved Structure panel',
+		type: 'feature'
+	},
+	{
 		version: '0.0.91',
 		date: '2026-01-15',
-		commit: 'HEAD',
-		title: 'Rolldown Migration',
-		description: 'Migrated build system to Rolldown for improved performance',
-		type: 'refactor'
+		commit: '32c1b88',
+		title: 'Application Sidebar & URL State',
+		description: 'New application sidebar with animated toggle, URL state management for selected rows/cells, theme synchronization, and enhanced context menu handling',
+		type: 'feature'
 	},
 	{
 		version: '0.0.9',

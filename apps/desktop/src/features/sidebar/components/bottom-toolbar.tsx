@@ -9,7 +9,7 @@ import { ChangelogPanel } from "./changelog-panel";
 import { ProjectInfoPanel } from "./project-info-panel";
 import { SettingsPanel } from "./settings-panel";
 
-type Theme = 'dark' | 'light' | 'midnight' | 'forest' | 'claude' | 'claude-dark'
+type Theme = 'dark' | 'light' | 'midnight' | 'forest' | 'claude' | 'claude-dark' | 'haptic'
 
 type ToolbarAction = 'settings' | 'theme' | 'changelog' | 'project-info'
 
@@ -103,7 +103,7 @@ export function BottomToolbar({ onAction, onCopySchema, themeProps }: Props) {
 								side='right'
 								align='end'
 								sideOffset={16}
-								className='w-[340px] p-0 mb-2 ml-2'
+								className='w-[340px] p-0 mb-2 ml-2 max-h-[600px]'
 							>
 								<ChangelogPanel />
 							</PopoverContent>

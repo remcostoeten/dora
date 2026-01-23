@@ -1,4 +1,4 @@
-import { RefreshCw, Loader2, Eye, EyeOff } from "lucide-react";
+import { RefreshCw, Loader2, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
@@ -10,6 +10,7 @@ import { POSTGRES_VERSIONS, DEFAULT_POSTGRES_VERSION, DEFAULT_POSTGRES_USER, DEF
 import type { PostgresContainerConfig, DockerContainer } from "../types";
 import { suggestContainerName, validateContainerName, generateVolumeName } from "../utilities/container-naming";
 import { findFreePort } from "../utilities/port-utils";
+import { Collapsible, CollapsibleContent,  CollapsibleTrigger } from "@/shared/ui/collapsible";
 
 type Props = {
 	open: boolean
@@ -36,6 +37,10 @@ export function CreateContainerDialog({
 	const [showPassword, setShowPassword] = useState(false)
 	const [isFindingPort, setIsFindingPort] = useState(false)
 	const [nameError, setNameError] = useState<string | null>(null)
+
+	const [cpuLimit, setCpuLimit] = useState<number | undefined>(undefined)
+	const [memoryLimit, setMemoryLimit] = useState<number | undefined>(undefined)
+	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
 	useEffect(
 		function initializeDefaults() {
@@ -97,7 +102,9 @@ export function CreateContainerDialog({
 			password,
 			database,
 			ephemeral,
-			volumeName: ephemeral ? undefined : generateVolumeName(name)
+			volumeName: ephemeral ? undefined : generateVolumeName(name),
+			cpuLimit,
+			memoryLimitMb: memoryLimit
 		}
 
 		onSubmit(config)
@@ -120,6 +127,9 @@ export function CreateContainerDialog({
 		setEphemeral(true)
 		setShowPassword(false)
 		setNameError(null)
+		setCpuLimit(undefined)
+		setMemoryLimit(undefined)
+		setIsAdvancedOpen(false)
 	}
 
 	return (
@@ -267,6 +277,42 @@ export function CreateContainerDialog({
 							Volume: {generateVolumeName(name || `${CONTAINER_PREFIX}container`)}
 						</p>
 					)}
+
+					<Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen} className="space-y-2">
+						<CollapsibleTrigger asChild>
+							<Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent text-muted-foreground hover:text-foreground flex items-center gap-1">
+								{isAdvancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+								Advanced Options
+							</Button>
+						</CollapsibleTrigger>
+						<CollapsibleContent className="space-y-4 pt-2">
+							<div className="grid grid-cols-2 gap-4">
+								<div className="space-y-2">
+									<Label htmlFor="cpu">CPU Limit (cores)</Label>
+									<Input
+										id="cpu"
+										type="number"
+										step="0.1"
+										min="0.1"
+										placeholder="e.g. 1.0"
+										value={cpuLimit ?? ''}
+										onChange={(e) => setCpuLimit(e.target.value ? parseFloat(e.target.value) : undefined)}
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="memory">Memory Limit (MB)</Label>
+									<Input
+										id="memory"
+										type="number"
+										min="64"
+										placeholder="e.g. 512"
+										value={memoryLimit ?? ''}
+										onChange={(e) => setMemoryLimit(e.target.value ? parseInt(e.target.value) : undefined)}
+									/>
+								</div>
+							</div>
+						</CollapsibleContent>
+					</Collapsible>
 
 					<DialogFooter>
 						<Button

@@ -103,16 +103,29 @@ export function ScrollHint({ containerRef, className }: Props) {
                             </motion.div>
                         </div>
 
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-sm font-medium text-foreground">
-                                Horizontal Scroll
-                            </span>
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <span className="px-1.5 py-0.5 rounded bg-muted/50 border border-border/30 font-mono text-[10px]">SHIFT</span>
-                                <span>+</span>
-                                <span className="px-1.5 py-0.5 rounded bg-muted/50 border border-border/30 font-mono text-[10px]">SCROLL</span>
-                            </div>
-                        </div>
+                         <div className="flex flex-col gap-1">
+                             <div className="flex flex-col gap-0.5">
+                                 <span className="text-sm font-medium text-foreground">
+                                     Horizontal Scroll
+                                 </span>
+                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                     <span className="px-1.5 py-0.5 rounded bg-muted/50 border border-border/30 font-mono text-[10px]">SHIFT</span>
+                                     <span>+</span>
+                                     <span className="px-1.5 py-0.5 rounded bg-muted/50 border border-border/30 font-mono text-[10px]">SCROLL</span>
+                                 </div>
+                             </div>
+                             
+                             <div className="flex flex-col gap-0.5">
+                                 <span className="text-sm font-medium text-foreground">
+                                     or Drag to Scroll
+                                 </span>
+                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                     <span className="px-1.5 py-0.5 rounded bg-muted/50 border border-border/30 font-mono text-[10px]">RIGHT-CLICK</span>
+                                     <span>+</span>
+                                     <span className="px-1.5 py-0.5 rounded bg-muted/50 border border-border/30 font-mono text-[10px]">DRAG</span>
+                                 </div>
+                             </div>
+                         </div>
 
                         {/* Arrows Animation */}
                         <div className="flex items-center gap-1 ml-2 text-primary/50">

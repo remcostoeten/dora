@@ -127,6 +127,11 @@ export function DataGrid({
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragStart, setDragStart] = useState<CellPosition | null>(null)
 
+	// Right-click drag state
+	const [isRightDragging, setIsRightDragging] = useState(false)
+	const rightDragStartRef = useRef<{ x: number; scrollLeft: number } | null>(null)
+	const hasRightDraggedRef = useRef(false)
+
 	function setFocusedCell(cell: { row: number; col: number } | null) {
 		setFocusedCellInternal(cell)
 		if (onFocusedCellChange) {
@@ -552,13 +557,75 @@ export function DataGrid({
 		)
 	}
 
+	function handleRightDragValues(e: React.MouseEvent | MouseEvent) {
+		if (!rightDragStartRef.current || !scrollContainerRef.current) return
+
+		const delta = rightDragStartRef.current.x - e.clientX
+		if (Math.abs(delta) > 5) {
+			hasRightDraggedRef.current = true
+		}
+
+		if (hasRightDraggedRef.current) {
+			scrollContainerRef.current.scrollLeft = rightDragStartRef.current.scrollLeft + delta
+		}
+	}
+
+	useEffect(() => {
+		if (!isRightDragging) return
+
+		function handleGlobalMouseMove(e: MouseEvent) {
+			handleRightDragValues(e)
+		}
+
+		function handleGlobalMouseUp(e: MouseEvent) {
+			if (isRightDragging) {
+				setIsRightDragging(false)
+				rightDragStartRef.current = null
+				// We don't reset hasRightDragged yet because we need it for onContextMenu prevention
+				setTimeout(() => {
+					hasRightDraggedRef.current = false
+				}, 50)
+			}
+		}
+
+		document.addEventListener('mousemove', handleGlobalMouseMove)
+		document.addEventListener('mouseup', handleGlobalMouseUp)
+
+		return () => {
+			document.removeEventListener('mousemove', handleGlobalMouseMove)
+			document.removeEventListener('mouseup', handleGlobalMouseUp)
+		}
+	}, [isRightDragging])
+
 	return (
 		<div className="relative h-full w-full">
 			<div
 				ref={scrollContainerRef}
-				className='h-full w-full overflow-auto'
+				className={cn(
+					'h-full w-full overflow-auto',
+					isRightDragging && 'cursor-grabbing select-none'
+				)}
 				style={{ scrollbarGutter: 'stable' }}
-				onContextMenuCapture={handleContextMenuCapture}
+				onContextMenuCapture={function (e) {
+					if (hasRightDraggedRef.current) {
+						e.preventDefault()
+						e.stopPropagation()
+						return
+					}
+					handleContextMenuCapture(e)
+				}}
+				onMouseDown={function (e) {
+					if (e.button === 2) { // Right click
+						if (scrollContainerRef.current) {
+							setIsRightDragging(true)
+							rightDragStartRef.current = {
+								x: e.clientX,
+								scrollLeft: scrollContainerRef.current.scrollLeft
+							}
+							hasRightDraggedRef.current = false
+						}
+					}
+				}}
 				onWheel={function (e) {
 					if (e.shiftKey) {
 						e.preventDefault()

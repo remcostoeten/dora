@@ -43,7 +43,7 @@ function formatDate(dateString: string): string {
 	})
 }
 
-export function ChangelogPanel({ maxHeight = 320 }: Props) {
+export function ChangelogPanel({ maxHeight = 500 }: Props) {
 	return (
 		<SidebarPanel>
 			<SidebarPanelHeader title='Changelog' version={CURRENT_VERSION} />

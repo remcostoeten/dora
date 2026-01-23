@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { useAdapter } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
-import { AppSidebar, SidebarProvider } from "@/features/app-sidebar";
+import { NavigationSidebar, SidebarProvider } from "@/features/app-sidebar";
 import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi, backendToFrontendConnection } from "@/features/connections/api";
 import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
 import { Connection } from "@/features/connections/types";
@@ -14,6 +14,7 @@ import { DatabaseStudio } from "@/features/database-studio/database-studio";
 import { DockerView } from "@/features/docker-manager";
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
 import { SqlConsole } from "@/features/sql-console/sql-console";
+import { WindowControls } from "@/components/window-controls";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/ui/alert-dialog";
 
 export default function Index() {
@@ -109,29 +110,11 @@ export default function Index() {
 
 			if (urlConnection) {
 				setActiveConnectionId(urlConnection)
+				autoSelectFirstTableRef.current = true
 				return
 			}
 
-			// Auto-connect for Web Demo
-			// NOTE: We do NOT include localhost here as it conflicts with the "Restore last connection" feature during development
-			const isWebDemo =
-				import.meta.env.MODE === 'demo' ||
-				window.location.hostname.includes('demo') ||
-				import.meta.env.VITE_IS_WEB === 'true'
-
-			if (isWebDemo) {
-				const demoConn =
-					connections.find((c) => c.id === 'demo-ecommerce-001') || connections[0]
-				if (demoConn) {
-					setActiveConnectionId(demoConn.id)
-					// Switch to products table since 'categories' might not exist
-					if (selectedTableId === 'categories') {
-						setSelectedTableId('products')
-						setSelectedTableName('products')
-					}
-					return
-				}
-			}
+			if (activeConnectionId) return
 
 			if (settings.restoreLastConnection && settings.lastConnectionId) {
 				const lastConnection = connections.find(function (c) {
@@ -146,16 +129,37 @@ export default function Index() {
 					return
 				}
 			}
+
+			const isWebDemo =
+				import.meta.env.MODE === 'demo' ||
+				window.location.hostname.includes('demo') ||
+				import.meta.env.VITE_IS_WEB === 'true'
+
+			if (isWebDemo) {
+				const demoConn =
+					connections.find(function (c) { return c.id === 'demo-ecommerce-001' }) || connections[0]
+				if (demoConn) {
+					setActiveConnectionId(demoConn.id)
+					autoSelectFirstTableRef.current = true
+					return
+				}
+			}
+
+			const firstConnection = connections[0]
+			if (firstConnection) {
+				setActiveConnectionId(firstConnection.id)
+				autoSelectFirstTableRef.current = true
+			}
 		},
 		[
 			isSettingsLoading,
 			isLoading,
 			connections,
 			urlConnection,
+			activeConnectionId,
 			settings.restoreLastConnection,
 			settings.lastConnectionId,
-			settings.lastTableId,
-			selectedTableId
+			settings.lastTableId
 		]
 	)
 
@@ -383,12 +387,17 @@ export default function Index() {
 
 	return (
 		<TooltipProvider>
-			<SidebarProvider defaultPanelOpen={isSidebarOpen}>
-				<div className='flex h-full w-full bg-background overflow-hidden'>
-					{/* Icon Sidebar */}
-					<AppSidebar activeNavId={activeNavId} onNavSelect={setActiveNavId} />
+			<SidebarProvider>
+				<div className='flex flex-col h-full w-full bg-background overflow-hidden'>
+					<div
+						className='flex items-center justify-end h-8 w-full shrink-0 bg-sidebar border-b border-border'
+						data-tauri-drag-region="true"
+					>
+						<WindowControls className="pr-2" />
+					</div>
+					<div className='flex flex-1 overflow-hidden'>
+						<NavigationSidebar activeNavId={activeNavId} onNavSelect={setActiveNavId} />
 
-					{/* Database Panel - shown for sql-console and database-studio views */}
 					{showDatabasePanel && isSidebarOpen && (
 						<DatabaseSidebar
 							activeNavId={activeNavId}
@@ -416,7 +425,7 @@ export default function Index() {
 						/>
 					)}
 
-					<main className='flex-1 flex flex-col h-full overflow-hidden relative'>
+					<main className='flex-1 flex flex-col h-full overflow-hidden relative px-0 pb-2'>
 						{activeNavId === 'database-studio' ? (
 							<DatabaseStudio
 								tableId={selectedTableId}
@@ -439,8 +448,28 @@ export default function Index() {
 							/>
 						) : activeNavId === 'docker' ? (
 							<DockerView
-								onOpenInDataViewer={(container) => {
-									/* Logic to bridge connection will go here later */
+								onOpenInDataViewer={async function (container) {
+									const userEnv = container.env.find(function (e) { return e.startsWith('POSTGRES_USER=') })
+									const passEnv = container.env.find(function (e) { return e.startsWith('POSTGRES_PASSWORD=') })
+									const dbEnv = container.env.find(function (e) { return e.startsWith('POSTGRES_DB=') })
+									const primaryPort = container.ports.find(function (p) { return p.containerPort === 5432 })
+
+									const user = userEnv ? userEnv.split('=')[1] : 'postgres'
+									const password = passEnv ? passEnv.split('=')[1] : 'postgres'
+									const database = dbEnv ? dbEnv.split('=')[1] : 'postgres'
+									const port = primaryPort ? primaryPort.hostPort : 5432
+
+									const connectionData = {
+										name: container.name,
+										type: 'postgres' as const,
+										host: 'localhost',
+										port,
+										user,
+										password,
+										database
+									}
+
+									await handleAddConnection(connectionData)
 									setActiveNavId('database-studio')
 								}}
 							/>
@@ -472,7 +501,6 @@ export default function Index() {
 						initialValues={editingConnection}
 					/>
 
-					{/* Delete Confirmation Dialog */}
 					<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
 						<AlertDialogContent>
 							<AlertDialogHeader>
@@ -492,6 +520,7 @@ export default function Index() {
 							</AlertDialogFooter>
 						</AlertDialogContent>
 					</AlertDialog>
+					</div>
 				</div>
 			</SidebarProvider>
 		</TooltipProvider>

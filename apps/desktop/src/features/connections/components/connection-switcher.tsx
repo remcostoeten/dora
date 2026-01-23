@@ -122,7 +122,7 @@ export function ConnectionSwitcher({
 											className={cn(
 												'flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background',
 												connection.status === 'error' &&
-													'border-destructive/50 bg-destructive/5'
+												'border-destructive/50 bg-destructive/5'
 											)}
 										>
 											{connection.status === 'error' ? (
@@ -161,7 +161,7 @@ export function ConnectionSwitcher({
 								<ContextMenuSeparator />
 								<ContextMenuItem
 									onSelect={() => onDeleteConnection?.(connection.id)}
-									className='gap-2 text-destructive focus:text-destructive cursor-pointer'
+									className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
 								>
 									<Trash2 className='h-4 w-4' />
 									Delete Connection

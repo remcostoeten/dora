@@ -49,8 +49,6 @@ export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange }: Pr
 						</SelectContent>
 					</Select>
 				</div>
-
-				</div>
 			</div>
 
 			<pre
@@ -59,6 +57,6 @@ export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange }: Pr
 			>
 				{logs || <span className='text-zinc-500'>No logs available</span>}
 			</pre>
-		</div >
+		</div>
 	)
 }

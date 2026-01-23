@@ -1,4 +1,4 @@
-import { Play, Square, RotateCcw, Trash2, ExternalLink } from "lucide-react";
+import { Play, Square, RotateCcw, Trash2, ExternalLink, FileCode } from "lucide-react";
 import { Package } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/shared/ui/button";
@@ -9,7 +9,11 @@ import { DEFAULT_LOG_TAIL } from "../constants";
 import type { DockerContainer } from "../types";
 import { ConnectionDetails } from "./connection-details";
 import { LogsViewer } from "./logs-viewer";
+import { SeedView } from "./seed-view";
 import { StatusBadge } from "./status-badge";
+import { ComposeExportDialog } from "./compose-export-dialog";
+import { RemoveContainerDialog } from "./remove-container-dialog";
+import { RemoveContainerOptions } from "../types";
 
 type Props = {
 	container: DockerContainer | null
@@ -20,6 +24,8 @@ type Props = {
 export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveComplete }: Props) {
 	const [tailLines, setTailLines] = useState(DEFAULT_LOG_TAIL)
 	const [activeTab, setActiveTab] = useState('logs')
+	const [showExportDialog, setShowExportDialog] = useState(false)
+	const [showRemoveDialog, setShowRemoveDialog] = useState(false)
 
 	const {
 		data: logs,
@@ -70,12 +76,15 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 	}
 
 	function handleRemove() {
-		if (confirm(`Are you sure you want to remove "${container.name}"?`)) {
-			removeContainer.mutate({
-				containerId: container.id,
-				options: { force: true, removeVolumes: false }
-			})
-		}
+		setShowRemoveDialog(true)
+	}
+
+	function handleConfirmRemove(options: RemoveContainerOptions) {
+		removeContainer.mutate({
+			containerId: container!.id,
+			options
+		})
+		setShowRemoveDialog(false)
 	}
 
 	function handleOpenInViewer() {
@@ -148,6 +157,16 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 					<Button
 						variant='outline'
 						size='sm'
+						className='h-8 gap-1.5'
+						onClick={() => setShowExportDialog(true)}
+					>
+						<FileCode className='h-3.5 w-3.5' />
+						Export
+					</Button>
+
+					<Button
+						variant='outline'
+						size='sm'
 						className='h-8 gap-1.5 text-destructive hover:text-destructive'
 						onClick={handleRemove}
 						disabled={removeContainer.isPending}
@@ -194,12 +213,25 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 					</TabsContent>
 
 					<TabsContent value='seed' className='flex-1 mt-3'>
-						<div className='text-center py-8 text-muted-foreground'>
-							<p className='text-sm'>Seed functionality coming soon</p>
-						</div>
+						<SeedView container={container} />
 					</TabsContent>
 				</Tabs>
 			</div>
-		</div>
+
+
+			<ComposeExportDialog
+				container={container}
+				open={showExportDialog}
+				onOpenChange={setShowExportDialog}
+			/>
+
+			<RemoveContainerDialog
+				containerName={container.name}
+				open={showRemoveDialog}
+				onOpenChange={setShowRemoveDialog}
+				onConfirm={handleConfirmRemove}
+				isRemoving={removeContainer.isPending}
+			/>
+		</div >
 	)
 }

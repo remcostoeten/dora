@@ -19,12 +19,14 @@ export function DemoBanner({
 	const [isDemo, setIsDemo] = useState(false)
 
 	useEffect(function detectDemoAndOs() {
+		const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
 		const isWebDemo =
-			import.meta.env.MODE === 'demo' ||
-			window.location.hostname.includes('demo') ||
-			import.meta.env.VITE_IS_WEB === 'true' ||
-			window.location.hostname === 'localhost' ||
-			window.location.hostname === '127.0.0.1'
+			!isTauri &&
+			(import.meta.env.MODE === 'demo' ||
+				window.location.hostname.includes('demo') ||
+				import.meta.env.VITE_IS_WEB === 'true' ||
+				window.location.hostname === 'localhost' ||
+				window.location.hostname === '127.0.0.1')
 
 		setIsDemo(isWebDemo)
 
@@ -66,34 +68,33 @@ export function DemoBanner({
         ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}
       `}
 		>
-			<span className='text-sm font-medium'>You're viewing the demo.</span>
+			<div className="-translate-x-2 flex flex-row-reverse items-center"><span className='text-sm font-medium'>You're viewing the demo.</span>
+				<button
+					onClick={handleClose}
+					className='
+          flex items-center justify-center w-6 h-6 mr-1
+          rounded-full text-muted-foreground/70
+          transition-colors hover:text-foreground hover:bg-muted
+        '
+					aria-label='Close banner'
+				>
+					<X className='w-3 h-3' />
+				</button>
+			</div>
 
 			<a
 				href={githubUrl}
 				target='_blank'
 				rel='noopener noreferrer'
-				className='
-          flex items-center gap-2 px-3 py-1.5 
-          bg-primary text-primary-foreground
-          rounded-full text-xs font-bold
-          transition-opacity hover:opacity-90
-        '
+				className='flex items-center gap-2 py-1.5 bg-primary text-primary-foreground rounded-full text-xs font-bold transition-opacity hover:opacity-90 translate-x-10 -my-56 h-14 w-48 pl-5 pr-4'
 			>
-				<Download className='w-3.5 h-3.5' />
-				{os ? `Download for ${os}` : 'Download'}
+				<span className='-translate-x-0.5 flex items-center gap-2'>
+					<Download className='w-3.5 h-3.5' />
+					{os ? `Download for ${os}` : 'Download'}
+				</span>
 			</a>
 
-			<button
-				onClick={handleClose}
-				className='
-          flex items-center justify-center w-5 h-5 ml-1
-          rounded-full text-muted-foreground/70
-          transition-colors hover:text-foreground hover:bg-muted
-        '
-				aria-label='Close banner'
-			>
-				<X className='w-3 h-3' />
-			</button>
+		
 		</div>
 	)
 }
