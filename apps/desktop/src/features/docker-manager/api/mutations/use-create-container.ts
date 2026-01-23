@@ -17,7 +17,14 @@ export function useCreateContainer(options: UseCreateContainerOptions = {}) {
 			const result = await createPostgresContainer(config)
 
 			if (result.success && result.containerId && waitForHealth) {
-				await waitForHealthy(result.containerId, 30000, 1000)
+				const isHealthy = await waitForHealthy(result.containerId, 30000, 1000)
+				if (!isHealthy) {
+					throw new Error('Container created but failed to become healthy within 30s')
+				}
+			}
+
+			if (!result.success) {
+				throw new Error(result.error || 'Failed to create container')
 			}
 
 			return result

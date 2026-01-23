@@ -28,6 +28,7 @@ export type DockerContainer = {
 	ports: PortMapping[]
 	labels: Record<string, string>
 	volumes: VolumeMount[]
+	env: string[]
 }
 
 export type PostgresContainerConfig = {
@@ -89,7 +90,7 @@ export type DockerAvailability = {
 	error?: string
 }
 
-export type ContainerActionType = 'start' | 'stop' | 'restart' | 'pause' | 'unpause'
+export type ContainerActionType = 'start' | 'stop' | 'restart'
 
 export type GeneratorProfile = {
 	id: string
@@ -117,7 +118,6 @@ export type ConnectionEnvVars = {
 export type ContainerLogsOptions = {
 	tail?: number
 	since?: string
-	follow?: boolean
 }
 
 export type CreateContainerResult = {

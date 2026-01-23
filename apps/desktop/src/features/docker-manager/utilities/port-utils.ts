@@ -18,43 +18,16 @@ export async function findFreePort(
 	throw new Error(`No available ports found in range ${startPort}-${endPort}`)
 }
 
+import { invoke } from '@tauri-apps/api/core';
+
 export async function isPortAvailable(port: number): Promise<boolean> {
-	const controller = new AbortController()
-	const timeoutId = setTimeout(() => controller.abort(), 200)
-
 	try {
-		await fetch(`http://localhost:${port}`, {
-			method: 'HEAD',
-			signal:
-				typeof AbortSignal.timeout === 'function'
-					? AbortSignal.timeout(200)
-					: controller.signal
-		})
-		clearTimeout(timeoutId)
-		return false
+		// Returns true if bind succeeds (port is free), false otherwise
+		return await invoke<boolean>('check_tcp_port', { port })
 	} catch (error) {
-		clearTimeout(timeoutId)
-
-		// If the fetch failed, it might be because nothing is listening (good)
-		// or because of a network error.
-
-		if (error instanceof TypeError) {
-			// "Failed to fetch" usually means connection refused (nothing listening)
-			return true
-		}
-
-		if (error instanceof DOMException && error.name === 'AbortError') {
-			// Timeout implies something might be there but not responding,
-			// or it's just slow. For safety, we treat timeouts as "occupied"
-			// to avoid conflicts, or at least "unknown".
-			// However, strictly speaking, we don't know.
-			// The previous code returned true (available) on abort,
-			// but the review says that's "brittle".
-			// Let's assume if it times out, we shouldn't try to use it.
-			return false
-		}
-
-		return true
+		console.warn(`Failed to check port ${port}:`, error)
+		// Fail safe: assume occupied if check fails
+		return false
 	}
 }
 

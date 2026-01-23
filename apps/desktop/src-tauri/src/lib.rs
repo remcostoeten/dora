@@ -195,6 +195,8 @@ pub fn run() {
             commands_system::get_custom_shortcuts,
             // Test queries
             test_queries::populate_test_queries_command,
+            // Utils
+            utils::check_tcp_port,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

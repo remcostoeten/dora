@@ -8,6 +8,7 @@ type DockerInspectResult = {
 	Config: {
 		Image: string
 		Labels: Record<string, string>
+		Env: string[]
 	}
 	State: {
 		Status: string
@@ -50,7 +51,7 @@ export async function executeDockerCommand(
 		return {
 			stdout: output.stdout,
 			stderr: output.stderr,
-			exitCode: output.code ?? 0
+			exitCode: output.code ?? -1
 		}
 	}
 
@@ -102,6 +103,7 @@ export async function listContainers(
 
 	const lines = result.stdout.trim().split('\n').filter(Boolean)
 
+	// Parallelize container inspection to avoid N+1
 	const containerIds: string[] = []
 	for (const line of lines) {
 		try {
@@ -112,7 +114,11 @@ export async function listContainers(
 		}
 	}
 
-	const inspectedContainers = await Promise.all(containerIds.map((id) => getContainerDetails(id)))
+	const inspectedContainers = await Promise.all(
+		containerIds.map(function (id) {
+			return getContainerDetails(id)
+		})
+	)
 
 	const containers: DockerContainer[] = inspectedContainers.filter(
 		(container): container is DockerContainer => container !== null
@@ -159,15 +165,19 @@ function parseInspectResult(data: DockerInspectResult): DockerContainer {
 		createdAt: new Date(data.Created).getTime(),
 		ports: parsePortBindings(data.HostConfig.PortBindings),
 		labels: data.Config.Labels || {},
-		volumes: parseVolumeMounts(data.Mounts)
+		volumes: parseVolumeMounts(data.Mounts),
+		env: data.Config.Env || []
 	}
 }
 
 function parseImageTag(imageString: string): [string, string] {
-	const parts = imageString.split(':')
-	if (parts.length === 2) {
-		return [parts[0], parts[1]]
+	const lastSlashIndex = imageString.lastIndexOf('/')
+	const tagSeparatorIndex = imageString.indexOf(':', lastSlashIndex)
+
+	if (tagSeparatorIndex !== -1) {
+		return [imageString.slice(0, tagSeparatorIndex), imageString.slice(tagSeparatorIndex + 1)]
 	}
+
 	return [imageString, 'latest']
 }
 
@@ -264,6 +274,42 @@ export async function getContainerLogs(
 	const result = await executeDockerCommand(args)
 
 	return result.stdout + result.stderr
+}
+
+export async function streamContainerLogs(
+	containerId: string,
+	onLog: (line: string) => void,
+	onError: (error: string) => void
+): Promise<() => void> {
+	if (typeof window !== 'undefined' && 'Tauri' in window) {
+		const { Command } = await import('@tauri-apps/plugin-shell')
+		const command = Command.create('docker', ['logs', '-f', '--tail', '100', containerId])
+
+		command.on('close', (data) => {
+			console.log(`command finished with code ${data.code} and signal ${data.signal}`)
+		})
+
+		command.on('error', (error) => {
+			console.error(`command error: "${error}"`)
+			onError(String(error))
+		})
+
+		command.stdout.on('data', (line) => {
+			onLog(line)
+		})
+
+		command.stderr.on('data', (line) => {
+			onLog(line)
+		})
+
+		const child = await command.spawn()
+
+		return async () => {
+			await child.kill()
+		}
+	}
+
+	throw new Error('Streaming logs requires Tauri shell plugin')
 }
 
 export async function startContainer(containerId: string): Promise<void> {

@@ -1,29 +1,86 @@
-import { useQuery } from "@tanstack/react-query";
-import { DEFAULT_LOG_TAIL } from "../../constants";
-import type { ContainerLogsOptions } from "../../types";
-import { getContainerLogs } from "../container-service";
+import { useEffect, useState, useRef } from 'react';
+import { streamContainerLogs } from '../docker-client';
+import { DEFAULT_LOG_TAIL } from '../../constants';
+import type { ContainerLogsOptions } from '../../types';
 
 type UseContainerLogsOptions = ContainerLogsOptions & {
 	enabled?: boolean
-	refetchInterval?: number
 }
 
 export function useContainerLogs(
 	containerId: string | null,
 	options: UseContainerLogsOptions = {}
 ) {
-	const { tail = DEFAULT_LOG_TAIL, since, enabled = true, refetchInterval = 5000 } = options
+	const { enabled = true } = options
+	const [logs, setLogs] = useState<string>('')
+	const [isLoading, setIsLoading] = useState(false)
+	const [error, setError] = useState<string | null>(null)
+	const activeStreamRef = useRef<(() => Promise<void>) | null>(null)
 
-	return useQuery<string, Error>({
-		queryKey: ['docker-container-logs', containerId, { tail, since }],
-		queryFn: function () {
-			if (!containerId) {
-				return Promise.resolve('')
+	useEffect(() => {
+		if (!containerId || !enabled) {
+			return
+		}
+
+		setIsLoading(true)
+		setLogs('')
+		setError(null)
+		let isMounted = true
+
+		async function startStream() {
+			// Cleanup previous stream
+			if (activeStreamRef.current) {
+				try {
+					await activeStreamRef.current()
+				} catch (e) {
+					console.error('Failed to cleanup stream:', e)
+				}
 			}
-			return getContainerLogs(containerId, { tail, since })
-		},
-		enabled: enabled && Boolean(containerId),
-		refetchInterval,
-		staleTime: 2000
-	})
+
+			try {
+				const cleanup = await streamContainerLogs(
+					containerId!,
+					(line) => {
+						if (isMounted) {
+							setLogs((prev) => prev + line) // Append logs (Note: might need buffering for perf)
+						}
+					},
+					(err) => {
+						if (isMounted) {
+							console.error('Stream error:', err)
+						}
+					}
+				)
+
+				if (isMounted) {
+					activeStreamRef.current = cleanup
+					setIsLoading(false)
+				} else {
+					// If unmounted during setup, clean up immediately
+					cleanup()
+				}
+			} catch (e) {
+				if (isMounted) {
+					setError(String(e))
+					setIsLoading(false)
+				}
+			}
+		}
+
+		startStream()
+
+		return () => {
+			isMounted = false
+			if (activeStreamRef.current) {
+				activeStreamRef.current().catch(console.error)
+			}
+		}
+	}, [containerId, enabled])
+
+	return {
+		data: logs,
+		isLoading,
+		error,
+		refetch: () => { /* No-op for stream */ }
+	}
 }

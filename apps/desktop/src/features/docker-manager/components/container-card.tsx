@@ -27,16 +27,16 @@ export function ContainerCard({ container, isSelected, onSelect }: Props) {
 	return (
 		<div
 			role='button'
+			aria-pressed={isSelected}
 			tabIndex={0}
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
 			className={`
         group relative p-3 rounded-lg border transition-all cursor-pointer
-        ${
-			isSelected
-				? 'border-emerald-500/50 bg-emerald-500/5'
-				: 'border-border/50 hover:border-border hover:bg-accent/50'
-		}
+        ${isSelected
+					? 'border-emerald-500/50 bg-emerald-500/5'
+					: 'border-border/50 hover:border-border hover:bg-accent/50'
+				}
       `}
 		>
 			<div className='flex items-start justify-between gap-2'>

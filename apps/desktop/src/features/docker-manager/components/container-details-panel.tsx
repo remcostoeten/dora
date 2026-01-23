@@ -23,8 +23,7 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 
 	const {
 		data: logs,
-		isLoading: logsLoading,
-		refetch: refetchLogs
+		isLoading: logsLoading
 	} = useContainerLogs(container?.id ?? null, { tail: tailLines, enabled: activeTab === 'logs' })
 
 	const containerActions = useContainerActions()
@@ -52,7 +51,11 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 	}
 
 	const isRunning = container.state === 'running'
-	const password = container.labels['POSTGRES_PASSWORD'] || 'postgres'
+
+	const passwordEnv = container.env.find((e) => e.startsWith('POSTGRES_PASSWORD='))
+	const password = passwordEnv
+		? passwordEnv.split('=')[1]
+		: (container.labels['POSTGRES_PASSWORD'] || 'postgres')
 
 	function handleStart() {
 		containerActions.mutate({ containerId: container.id, action: 'start' })
@@ -81,9 +84,7 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 		}
 	}
 
-	function handleRefreshLogs() {
-		refetchLogs()
-	}
+
 
 	return (
 		<div className='w-80 flex flex-col border-l border-border bg-card'>
@@ -189,7 +190,6 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 							isLoading={logsLoading}
 							tailLines={tailLines}
 							onTailLinesChange={setTailLines}
-							onRefresh={handleRefreshLogs}
 						/>
 					</TabsContent>
 

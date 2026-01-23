@@ -9,10 +9,11 @@ type Props = {
 	isLoading: boolean
 	tailLines: number
 	onTailLinesChange: (lines: number) => void
-	onRefresh: () => void
+	tailLines: number
+	onTailLinesChange: (lines: number) => void
 }
 
-export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange, onRefresh }: Props) {
+export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange }: Props) {
 	const logsContainerRef = useRef<HTMLPreElement>(null)
 
 	useEffect(
@@ -49,15 +50,7 @@ export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange, onRe
 					</Select>
 				</div>
 
-				<Button
-					variant='ghost'
-					size='sm'
-					className='h-7 w-7 p-0'
-					onClick={onRefresh}
-					disabled={isLoading}
-				>
-					<RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-				</Button>
+				</div>
 			</div>
 
 			<pre
@@ -66,6 +59,6 @@ export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange, onRe
 			>
 				{logs || <span className='text-zinc-500'>No logs available</span>}
 			</pre>
-		</div>
+		</div >
 	)
 }

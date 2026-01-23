@@ -54,7 +54,7 @@ describe('docker-client', () => {
     });
 
     describe('listContainers', () => {
-        it('should list and parse containers correctly', async () => {
+        it('should list and parse containers correctly including Env', async () => {
             // Mock 'ps' command
             mockExecute.mockResolvedValueOnce({
                 stdout: '{"ID":"123","Names":"test-container","Image":"postgres:14","State":"running","Status":"Up 2 hours","Ports":"0.0.0.0:5432->5432/tcp","Labels":"","CreatedAt":"2023-01-01"}\n',
@@ -69,7 +69,8 @@ describe('docker-client', () => {
                     Name: '/test-container',
                     Config: {
                         Image: 'postgres:14',
-                        Labels: {}
+                        Labels: {},
+                        Env: ['POSTGRES_PASSWORD=secret']
                     },
                     State: {
                         Status: 'running',
@@ -95,7 +96,8 @@ describe('docker-client', () => {
                 id: '123',
                 name: 'test-container',
                 state: 'running',
-                health: 'healthy'
+                health: 'healthy',
+                env: ['POSTGRES_PASSWORD=secret']
             });
         });
 
