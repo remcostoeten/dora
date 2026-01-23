@@ -1,0 +1,24 @@
+{
+	"name": "@repo/style",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"lint": "cd ../.. && oxlint -c packages/style/.oxlintrc.json . && bun run packages/style/tools/run-lint-style.ts",
+		"lint:fix": "cd ../.. && oxlint --fix -c packages/style/.oxlintrc.json . && bun run packages/style/tools/run-lint-style-fix.ts",
+		"format": "cd ../.. && oxfmt --check -c packages/style/.oxfmtrc.json .",
+		"format:fix": "cd ../.. && oxfmt --write -c packages/style/.oxfmtrc.json . && bun run packages/style/tools/run-fix-imports.ts",
+		"fix": "bun run format:fix && bun run lint:fix",
+		"lint:style": "cd ../.. && tsx packages/style/tools/run-lint-style.ts",
+		"lint:style:fix": "cd ../.. && tsx packages/style/tools/run-lint-style-fix.ts",
+		"fmt:imports:fix": "cd ../.. && tsx packages/style/tools/run-fix-imports.ts"
+	},
+	"devDependencies": {
+		"@types/node": "latest",
+		"oxfmt": "latest",
+		"oxlint": "latest",
+		"ts-morph": "latest",
+		"tsx": "latest",
+		"typescript": "latest"
+	}
+}

@@ -5,19 +5,21 @@ This document outlines the critical features and improvements required to make D
 ## 🚨 Technical Debt / Blockers
 
 - [ ] **Fix Dev Server Port Conflict**
-  - **Issue:** `turbo dev` fails with `Port 1420 is already in use`.
-  - **Action:** Ensure Tauri or Vite process cleans up correctly, or configure a dynamic port.
+    - **Issue:** `turbo dev` fails with `Port 1420 is already in use`.
+    - **Action:** Ensure Tauri or Vite process cleans up correctly, or configure a dynamic port.
 
 ---
 
 ## 🚀 Feature Checklist
 
 ### 1. SSH Tunneling (Security)
+
 **Priority:** Critical
 **Backend Support:** `DatabaseInfo.Postgres.ssh_config` (Stubbed in `connection-dialog.tsx` line 193).
 **Files:** `src/features/connections/components/connection-dialog.tsx`
 
 **Specification:**
+
 1.  **UI Update:**
     - Add an "SSH Tunnel" toggle or tab in the `Postgres` / `MySQL` form sections.
     - Fields needed:
@@ -33,11 +35,13 @@ This document outlines the critical features and improvements required to make D
     - Pass this populated object in `handleTestConnection` and `onSave`.
 
 ### 2. Schema Management (DDL)
+
 **Priority:** High
 **Backend Support:** `executeBatch` is available. Specific DDL commands might need raw SQL generation.
 **Files:** `src/features/database-studio/**`
 
 **Specification:**
+
 1.  **Structure View Actions:**
     - In "Structure" view (`ViewMode.Structure`), add action buttons: "Add Column", "Drop Table".
 2.  **Modals:**
@@ -47,11 +51,13 @@ This document outlines the critical features and improvements required to make D
     - Since there isn't a direct `create_column` command in `commands`, construct the raw SQL `ALTER TABLE ... ADD COLUMN ...` and execute it via `commands.executeBatch` or `commands.startQuery`.
 
 ### 3. Advanced Export
+
 **Priority:** Medium
 **Backend Support:** `commands.exportTable(connectionId, tableName, schemaName, format, limit)`
 **Files:** `src/features/database-studio/components/studio-toolbar.tsx`
 
 **Specification:**
+
 1.  **UI Update:**
     - Change the `Download` button in the toolbar to a `DropdownMenu`.
     - Options: "Export as JSON", "Export as CSV", "Export as SQL Insert".
@@ -61,11 +67,13 @@ This document outlines the critical features and improvements required to make D
     - Handle the response: The command returns a `file_path` or content. If path, show "Exported to..." toast.
 
 ### 4. AI Query Copilot
+
 **Priority:** Medium (Differentiator)
 **Backend Support:** `commands.aiComplete(prompt, connectionId, maxTokens)`
 **Files:** `src/features/sql-console/**`, `src/features/sql-console/components/console-toolbar.tsx`
 
 **Specification:**
+
 1.  **UI Update:**
     - Add an "✨ Ask AI" button to `ConsoleToolbar`.
     - Opens a small popover or input bar above the editor.
@@ -75,11 +83,13 @@ This document outlines the critical features and improvements required to make D
     - **Response handling**: The result contains `content` (SQL). Insert this SQL into the Monaco Editor at cursor position.
 
 ### 5. Data Seeding
+
 **Priority:** Low (Dev Tool)
 **Backend Support:** `commands.seedTable(connectionId, tableName, schemaName, count)`
 **Files:** `src/features/sidebar/components/sidebar-context-menu.tsx` (or similar)
 
 **Specification:**
+
 1.  **Context Menu:**
     - Add "Seed Data..." option when right-clicking a table in the Sidebar.
 2.  **Dialog:**
@@ -89,11 +99,13 @@ This document outlines the critical features and improvements required to make D
     - On success, trigger `onRefresh` for the grid.
 
 ### 6. Database Dump/Restore
+
 **Priority:** Low
 **Backend Support:** `commands.dumpDatabase`
 **Files:** `src/features/sidebar/components/bottom-toolbar.tsx` or Connection Context Menu.
 
 **Specification:**
+
 1.  Add "Backup Database" option to the connection context menu.
 2.  Use Tauri's `save` dialog to pick a destination path.
 3.  Call `commands.dumpDatabase`.
@@ -101,16 +113,17 @@ This document outlines the critical features and improvements required to make D
 ---
 
 ## 📜 Reference: Relevant Bindings
+
 (Verify these in `src/lib/bindings.ts`)
 
 ```typescript
 // SSH Config Structure
-export type SshConfig = { 
-    host: string; 
-    port: number; 
-    username: string; 
-    private_key_path: string | null; 
-    password: string | null 
+export type SshConfig = {
+    host: string;
+    port: number;
+    username: string;
+    private_key_path: string | null;
+    password: string | null
 }
 
 // Export

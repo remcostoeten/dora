@@ -80,6 +80,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(app_state)
         .manage(certificates)
+        .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -194,6 +195,8 @@ pub fn run() {
             commands_system::get_custom_shortcuts,
             // Test queries
             test_queries::populate_test_queries_command,
+            // Utils
+            utils::check_tcp_port,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,419 +1,499 @@
+import { Wand2 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AppSidebar, SidebarProvider } from "@/features/app-sidebar";
-import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
-import { DatabaseStudio } from "@/features/database-studio/database-studio";
-import { SqlConsole } from "@/features/sql-console/sql-console";
-import { Connection } from "@/features/connections/types";
-import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
 import { Toaster } from "@/components/ui/toaster";
-import { useToast } from "@/components/ui/use-toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Wand2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog";
-import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi, backendToFrontendConnection } from "@/features/connections/api";
+import { useToast } from "@/components/ui/use-toast";
 import { useAdapter } from "@/core/data-provider";
 import { useSettings } from "@/core/settings";
+import { AppSidebar, SidebarProvider } from "@/features/app-sidebar";
+import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi, backendToFrontendConnection } from "@/features/connections/api";
+import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
+import { Connection } from "@/features/connections/types";
+import { DatabaseStudio } from "@/features/database-studio/database-studio";
+import { DockerView } from "@/features/docker-manager";
+import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
+import { SqlConsole } from "@/features/sql-console/sql-console";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/ui/alert-dialog";
 
 export default function Index() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const adapter = useAdapter();
-  const { settings, updateSetting, isLoading: isSettingsLoading } = useSettings();
+	const [searchParams, setSearchParams] = useSearchParams()
+	const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+	const [isLoading, setIsLoading] = useState(true)
+	const adapter = useAdapter()
+	const { settings, updateSetting, updateSettings, isLoading: isSettingsLoading } = useSettings()
 
-  const urlView = searchParams.get("view");
-  const urlTable = searchParams.get("table");
-  const urlConnection = searchParams.get("connection");
+	const urlView = searchParams.get('view')
+	const urlTable = searchParams.get('table')
+	const urlConnection = searchParams.get('connection')
 
-  const [activeNavId, setActiveNavId] = useState<string>(() => {
-    return urlView || "database-studio";
-  });
+	const [activeNavId, setActiveNavId] = useState<string>(() => {
+		return urlView || 'database-studio'
+	})
 
-  const [selectedTableId, setSelectedTableId] = useState<string>(() => {
-    return urlTable || "";
-  });
+	const [selectedTableId, setSelectedTableId] = useState<string>(() => {
+		return urlTable || ''
+	})
 
-  const [selectedTableName, setSelectedTableName] = useState("");
-  const autoSelectFirstTableRef = useRef(false);
+	const [selectedTableName, setSelectedTableName] = useState('')
+	const autoSelectFirstTableRef = useRef(false)
 
-  const [connections, setConnections] = useState<Connection[]>([]);
+	const [connections, setConnections] = useState<Connection[]>([])
 
-  const [activeConnectionId, setActiveConnectionId] = useState<string>("");
+	const [activeConnectionId, setActiveConnectionId] = useState<string>('')
 
-  const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined);
+	const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false)
+	const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined)
 
-  // Delete confirmation dialog state
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [connectionToDelete, setConnectionToDelete] = useState<Connection | null>(null);
+	// Delete confirmation dialog state
+	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+	const [connectionToDelete, setConnectionToDelete] = useState<Connection | null>(null)
 
-  const { toast } = useToast();
+	const { toast } = useToast()
 
-  useEffect(() => {
-    loadConnectionsFromBackend();
-  }, [adapter]);
+	useEffect(() => {
+		loadConnectionsFromBackend()
+	}, [adapter])
 
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
+	useEffect(
+		function syncUrlParams() {
+			const currentView = searchParams.get('view')
+			const currentTable = searchParams.get('table')
+			const currentConnection = searchParams.get('connection')
 
-    if (activeNavId) params.set("view", activeNavId);
-    if (selectedTableId) params.set("table", selectedTableId);
-    if (activeConnectionId) params.set("connection", activeConnectionId);
+			const viewChanged = activeNavId && currentView !== activeNavId
+			const tableChanged = selectedTableId && currentTable !== selectedTableId
+			const connectionChanged = activeConnectionId && currentConnection !== activeConnectionId
 
-    setSearchParams(params, { replace: true });
-  }, [activeNavId, selectedTableId, activeConnectionId, setSearchParams]);
+			if (!viewChanged && !tableChanged && !connectionChanged) return
 
-  useEffect(() => {
-    setSelectedTableName(selectedTableId);
-  }, [selectedTableId]);
+			const params = new URLSearchParams(searchParams)
 
-  async function loadConnectionsFromBackend() {
-    try {
-      setIsLoading(true);
-      const result = await adapter.getConnections();
-      if (result.ok) {
-        setConnections(result.data.map(backendToFrontendConnection));
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load connections",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
+			if (activeNavId) params.set('view', activeNavId)
+			if (selectedTableId) params.set('table', selectedTableId)
+			if (activeConnectionId) params.set('connection', activeConnectionId)
 
-  useEffect(function initializeConnection() {
-    if (isSettingsLoading || isLoading) return;
-    if (connections.length === 0) return;
+			setSearchParams(params, { replace: true })
+		},
+		[activeNavId, selectedTableId, activeConnectionId, searchParams, setSearchParams]
+	)
 
-    if (urlConnection) {
-      setActiveConnectionId(urlConnection);
-      return;
-    }
+	useEffect(() => {
+		setSelectedTableName(selectedTableId)
+	}, [selectedTableId])
 
-    // Auto-connect for Web Demo
-    const isWebDemo =
-      import.meta.env.MODE === 'demo' ||
-      window.location.hostname.includes('demo') ||
-      import.meta.env.VITE_IS_WEB === 'true' ||
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1';
+	async function loadConnectionsFromBackend() {
+		try {
+			setIsLoading(true)
+			const result = await adapter.getConnections()
+			if (result.ok) {
+				setConnections(result.data.map(backendToFrontendConnection))
+			} else {
+				throw new Error(result.error)
+			}
+		} catch (error) {
+			toast({
+				title: 'Error',
+				description: error instanceof Error ? error.message : 'Failed to load connections',
+				variant: 'destructive'
+			})
+		} finally {
+			setIsLoading(false)
+		}
+	}
 
-    if (isWebDemo) {
-      const demoConn = connections.find(c => c.id === 'demo-ecommerce-001') || connections[0];
-      if (demoConn) {
-        setActiveConnectionId(demoConn.id);
-        // Switch to products table since 'categories' might not exist
-        if (selectedTableId === "categories") {
-          setSelectedTableId("products");
-          setSelectedTableName("products");
-        }
-        return;
-      }
-    }
+	useEffect(
+		function initializeConnection() {
+			if (isSettingsLoading || isLoading) return
+			if (connections.length === 0) return
 
-    if (settings.restoreLastConnection && settings.lastConnectionId) {
-      const lastConnection = connections.find(function (c) {
-        return c.id === settings.lastConnectionId;
-      });
-      if (lastConnection) {
-        setActiveConnectionId(lastConnection.id);
-        autoSelectFirstTableRef.current = true;
-        return;
-      }
-    }
-  }, [isSettingsLoading, isLoading, connections, urlConnection, settings.restoreLastConnection, settings.lastConnectionId, selectedTableId]);
+			if (urlConnection) {
+				setActiveConnectionId(urlConnection)
+				return
+			}
 
-  useEffect(function saveLastConnection() {
-    if (!activeConnectionId || isSettingsLoading) return;
-    if (settings.lastConnectionId !== activeConnectionId) {
-      updateSetting("lastConnectionId", activeConnectionId);
-    }
-  }, [activeConnectionId, isSettingsLoading, settings.lastConnectionId, updateSetting]);
+			// Auto-connect for Web Demo
+			// NOTE: We do NOT include localhost here as it conflicts with the "Restore last connection" feature during development
+			const isWebDemo =
+				import.meta.env.MODE === 'demo' ||
+				window.location.hostname.includes('demo') ||
+				import.meta.env.VITE_IS_WEB === 'true'
 
-  async function handleAddConnection(newConnectionData: Omit<Connection, "id" | "createdAt">) {
-    try {
-      // Create a temporary ID for the adapter call if needed, but the adapter should handle it
-      // For now, we need to map frontend Connection format to what adapter expects
-      // The adapter addConnection expects (name, databaseType, sshConfig)
+			if (isWebDemo) {
+				const demoConn =
+					connections.find((c) => c.id === 'demo-ecommerce-001') || connections[0]
+				if (demoConn) {
+					setActiveConnectionId(demoConn.id)
+					// Switch to products table since 'categories' might not exist
+					if (selectedTableId === 'categories') {
+						setSelectedTableId('products')
+						setSelectedTableName('products')
+					}
+					return
+				}
+			}
 
-      // NOTE: This part is tricky because frontend uses `Connection` object but adapter expects expanded args
-      // We need to use the `frontendToBackendDatabaseInfo` helper or similar logic
-      // But `frontendToBackendDatabaseInfo` is in `api.ts`.
-      // Ideally, the adapter should accept a strictly typed object, but `addConnection` signature is:
-      // addConnection(name: string, databaseType: DatabaseInfo, sshConfig: JsonValue | null)
+			if (settings.restoreLastConnection && settings.lastConnectionId) {
+				const lastConnection = connections.find(function (c) {
+					return c.id === settings.lastConnectionId
+				})
+				if (lastConnection) {
+					setActiveConnectionId(lastConnection.id)
+					if (settings.lastTableId) {
+						setSelectedTableId(settings.lastTableId)
+					}
+					autoSelectFirstTableRef.current = true
+					return
+				}
+			}
+		},
+		[
+			isSettingsLoading,
+			isLoading,
+			connections,
+			urlConnection,
+			settings.restoreLastConnection,
+			settings.lastConnectionId,
+			settings.lastTableId,
+			selectedTableId
+		]
+	)
 
-      // Let's import the helper to convert type
-      // Wait, `adapter.addConnection` is the lower level API. 
-      // The `Connection` type in `Index.tsx` is `FrontendConnection`.
+	useEffect(
+		function saveLastConnection() {
+			if (!activeConnectionId || isSettingsLoading) return
 
-      // Let's rely on the helper which we should import. 
-      // BUT `api.ts` is deprecated ideally. We should move that helper to a shared location or `types.ts`.
+			const updates: Partial<typeof settings> = {}
+			let hasUpdates = false
 
-      // For now, let's keep importing helper from `api.ts` since it's just a pure function
-      const { frontendToBackendDatabaseInfo } = await import("@/features/connections/api");
+			if (settings.lastConnectionId !== activeConnectionId) {
+				updates.lastConnectionId = activeConnectionId
+				hasUpdates = true
+			}
 
-      const dbInfo = frontendToBackendDatabaseInfo(newConnectionData as Connection);
-      const result = await adapter.addConnection(newConnectionData.name, dbInfo, null);
+			if (selectedTableId && settings.lastTableId !== selectedTableId) {
+				updates.lastTableId = selectedTableId
+				hasUpdates = true
+			}
 
-      if (result.ok) {
-        // Adapter returns connection info, we might need to fetch all again or convert it back
-        // Adapter `addConnection` returns `ConnectionInfo` (backend type)
-        // We need `backendToFrontendConnection` to update state locally without refetch
-        const { backendToFrontendConnection } = await import("@/features/connections/api");
-        const newFrontendConn = backendToFrontendConnection(result.data);
+			if (hasUpdates) {
+				updateSettings(updates)
+			}
+		},
+		[activeConnectionId, selectedTableId, isSettingsLoading, settings.lastConnectionId, settings.lastTableId, updateSettings]
+	)
 
-        setConnections(function (prev) { return [...prev, newFrontendConn]; });
-        setActiveConnectionId(newFrontendConn.id);
-        toast({
-          title: "Connection Added",
-          description: `Successfully connected to ${newFrontendConn.name}`,
-        });
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to add connection",
-        variant: "destructive",
-      });
-    }
-  }
+	async function handleAddConnection(newConnectionData: Omit<Connection, 'id' | 'createdAt'>) {
+		try {
+			// Create a temporary ID for the adapter call if needed, but the adapter should handle it
+			// For now, we need to map frontend Connection format to what adapter expects
+			// The adapter addConnection expects (name, databaseType, sshConfig)
 
-  async function handleUpdateConnection(connectionData: Omit<Connection, "id" | "createdAt">) {
-    if (!editingConnection) return;
+			// NOTE: This part is tricky because frontend uses `Connection` object but adapter expects expanded args
+			// We need to use the `frontendToBackendDatabaseInfo` helper or similar logic
+			// But `frontendToBackendDatabaseInfo` is in `api.ts`.
+			// Ideally, the adapter should accept a strictly typed object, but `addConnection` signature is:
+			// addConnection(name: string, databaseType: DatabaseInfo, sshConfig: JsonValue | null)
 
-    try {
-      const { frontendToBackendDatabaseInfo, backendToFrontendConnection } = await import("@/features/connections/api");
+			// Let's import the helper to convert type
+			// Wait, `adapter.addConnection` is the lower level API.
+			// The `Connection` type in `Index.tsx` is `FrontendConnection`.
 
-      // We need to construct a full connection object to get the DatabaseInfo
-      const tempConn = { ...connectionData, id: editingConnection.id, createdAt: editingConnection.createdAt } as Connection;
-      const dbInfo = frontendToBackendDatabaseInfo(tempConn);
+			// Let's rely on the helper which we should import.
+			// BUT `api.ts` is deprecated ideally. We should move that helper to a shared location or `types.ts`.
 
-      const result = await adapter.updateConnection(editingConnection.id, connectionData.name, dbInfo, null);
+			// For now, let's keep importing helper from `api.ts` since it's just a pure function
+			const { frontendToBackendDatabaseInfo } = await import('@/features/connections/api')
 
-      if (result.ok) {
-        const updatedConnection = backendToFrontendConnection(result.data);
-        setConnections(function (prev) { return prev.map(function (c) { return c.id === updatedConnection.id ? updatedConnection : c; }); });
-        toast({
-          title: "Connection Updated",
-          description: `Successfully updated ${updatedConnection.name}`,
-        });
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update connection",
-        variant: "destructive",
-      });
-    }
-  }
+			const dbInfo = frontendToBackendDatabaseInfo(newConnectionData as Connection)
+			const result = await adapter.addConnection(newConnectionData.name, dbInfo, null)
 
-  async function handleConnectionSelect(connectionId: string) {
-    setActiveConnectionId(connectionId);
-    await loadConnectionsFromBackend();
-  }
+			if (result.ok) {
+				// Adapter returns connection info, we might need to fetch all again or convert it back
+				// Adapter `addConnection` returns `ConnectionInfo` (backend type)
+				// We need `backendToFrontendConnection` to update state locally without refetch
+				const { backendToFrontendConnection } = await import('@/features/connections/api')
+				const newFrontendConn = backendToFrontendConnection(result.data)
 
-  function handleViewConnection(connectionId: string) {
-    const connection = connections.find(function (c) { return c.id === connectionId; });
-    if (connection) {
-      setEditingConnection(connection);
-      setIsConnectionDialogOpen(true);
-    }
-  }
+				setConnections(function (prev) {
+					return [...prev, newFrontendConn]
+				})
+				setActiveConnectionId(newFrontendConn.id)
+				toast({
+					title: 'Connection Added',
+					description: `Successfully connected to ${newFrontendConn.name}`
+				})
+			} else {
+				throw new Error(result.error)
+			}
+		} catch (error) {
+			toast({
+				title: 'Error',
+				description: error instanceof Error ? error.message : 'Failed to add connection',
+				variant: 'destructive'
+			})
+		}
+	}
 
-  function handleEditConnection(connectionId: string) {
-    const connection = connections.find(function (c) { return c.id === connectionId; });
-    if (connection) {
-      setEditingConnection(connection);
-      setIsConnectionDialogOpen(true);
-    }
-  }
+	async function handleUpdateConnection(connectionData: Omit<Connection, 'id' | 'createdAt'>) {
+		if (!editingConnection) return
 
-  function handleDeleteConnection(connectionId: string) {
-    const connection = connections.find(function (c) { return c.id === connectionId; });
-    if (connection) {
-      if (settings.confirmBeforeDelete) {
-        setConnectionToDelete(connection);
-        setDeleteDialogOpen(true);
-      } else {
-        confirmDeleteConnection();
-      }
-    }
-  }
+		try {
+			const { frontendToBackendDatabaseInfo, backendToFrontendConnection } =
+				await import('@/features/connections/api')
 
-  async function confirmDeleteConnection() {
-    if (!connectionToDelete) return;
+			// We need to construct a full connection object to get the DatabaseInfo
+			const tempConn = {
+				...connectionData,
+				id: editingConnection.id,
+				createdAt: editingConnection.createdAt
+			} as Connection
+			const dbInfo = frontendToBackendDatabaseInfo(tempConn)
 
-    try {
-      const result = await adapter.removeConnection(connectionToDelete.id);
+			const result = await adapter.updateConnection(
+				editingConnection.id,
+				connectionData.name,
+				dbInfo,
+				null
+			)
 
-      if (result.ok) {
-        setConnections(function (prev) { return prev.filter(function (c) { return c.id !== connectionToDelete.id; }); });
-        if (activeConnectionId === connectionToDelete.id) {
-          const remaining = connections.filter(function (c) { return c.id !== connectionToDelete.id; });
-          setActiveConnectionId(remaining.length > 0 ? remaining[0].id : "");
-        }
-        toast({
-          title: "Connection Deleted",
-          description: `Successfully deleted ${connectionToDelete.name}`,
-        });
-      } else {
-        throw new Error(result.error);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete connection",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteDialogOpen(false);
-      setConnectionToDelete(null);
-    }
-  }
+			if (result.ok) {
+				const updatedConnection = backendToFrontendConnection(result.data)
+				setConnections(function (prev) {
+					return prev.map(function (c) {
+						return c.id === updatedConnection.id ? updatedConnection : c
+					})
+				})
+				toast({
+					title: 'Connection Updated',
+					description: `Successfully updated ${updatedConnection.name}`
+				})
+			} else {
+				throw new Error(result.error)
+			}
+		} catch (error) {
+			toast({
+				title: 'Error',
+				description: error instanceof Error ? error.message : 'Failed to update connection',
+				variant: 'destructive'
+			})
+		}
+	}
 
-  function handleOpenNewConnection() {
-    setEditingConnection(undefined);
-    setIsConnectionDialogOpen(true);
-  }
+	async function handleConnectionSelect(connectionId: string) {
+		setActiveConnectionId(connectionId)
+		await loadConnectionsFromBackend()
+	}
 
-  async function handleDialogSave(connectionData: Omit<Connection, "id" | "createdAt">) {
-    if (editingConnection) {
-      await handleUpdateConnection(connectionData);
-    } else {
-      await handleAddConnection(connectionData);
-    }
-  }
+	function handleViewConnection(connectionId: string) {
+		const connection = connections.find(function (c) {
+			return c.id === connectionId
+		})
+		if (connection) {
+			setEditingConnection(connection)
+			setIsConnectionDialogOpen(true)
+		}
+	}
 
-  const handleTableSelect = useCallback((id: string, name: string) => {
-    setSelectedTableId(id);
-    setSelectedTableName(name);
-  }, []);
+	function handleEditConnection(connectionId: string) {
+		const connection = connections.find(function (c) {
+			return c.id === connectionId
+		})
+		if (connection) {
+			setEditingConnection(connection)
+			setIsConnectionDialogOpen(true)
+		}
+	}
 
-  const handleAutoSelectComplete = useCallback(() => {
-    autoSelectFirstTableRef.current = false;
-  }, []);
+	function handleDeleteConnection(connectionId: string) {
+		const connection = connections.find(function (c) {
+			return c.id === connectionId
+		})
+		if (connection) {
+			if (settings.confirmBeforeDelete) {
+				setConnectionToDelete(connection)
+				setDeleteDialogOpen(true)
+			} else {
+				confirmDeleteConnection()
+			}
+		}
+	}
 
-  // Show database panel for sql-console and database-studio views
-  const showDatabasePanel = activeNavId === "sql-console" || activeNavId === "database-studio";
+	async function confirmDeleteConnection() {
+		if (!connectionToDelete) return
 
-  return (
-    <TooltipProvider>
-      <SidebarProvider defaultPanelOpen={isSidebarOpen}>
-        <div className="flex h-full w-full bg-background overflow-hidden">
-          {/* Icon Sidebar */}
-          <AppSidebar
-            activeNavId={activeNavId}
-            onNavSelect={setActiveNavId}
-          />
+		try {
+			const result = await adapter.removeConnection(connectionToDelete.id)
 
-          {/* Database Panel - shown for sql-console and database-studio views */}
-          {showDatabasePanel && isSidebarOpen && (
-            <DatabaseSidebar
-              activeNavId={activeNavId}
-              onNavSelect={setActiveNavId}
-              onTableSelect={handleTableSelect}
-              selectedTableId={selectedTableId}
-              autoSelectFirstTable={autoSelectFirstTableRef.current}
-              onAutoSelectComplete={handleAutoSelectComplete}
-              connections={connections}
-              activeConnectionId={activeConnectionId}
-              onConnectionSelect={handleConnectionSelect}
-              onAddConnection={handleOpenNewConnection}
-              onManageConnections={function () {
-                const activeConn = connections.find(function (c) { return c.id === activeConnectionId; });
-                if (activeConn) {
-                  setEditingConnection(activeConn);
-                  setIsConnectionDialogOpen(true);
-                }
-              }}
-              onViewConnection={handleViewConnection}
-              onEditConnection={handleEditConnection}
-              onDeleteConnection={handleDeleteConnection}
-            />
-          )}
+			if (result.ok) {
+				setConnections(function (prev) {
+					return prev.filter(function (c) {
+						return c.id !== connectionToDelete.id
+					})
+				})
+				if (activeConnectionId === connectionToDelete.id) {
+					const remaining = connections.filter(function (c) {
+						return c.id !== connectionToDelete.id
+					})
+					setActiveConnectionId(remaining.length > 0 ? remaining[0].id : '')
+				}
+				toast({
+					title: 'Connection Deleted',
+					description: `Successfully deleted ${connectionToDelete.name}`
+				})
+			} else {
+				throw new Error(result.error)
+			}
+		} catch (error) {
+			toast({
+				title: 'Error',
+				description: error instanceof Error ? error.message : 'Failed to delete connection',
+				variant: 'destructive'
+			})
+		} finally {
+			setDeleteDialogOpen(false)
+			setConnectionToDelete(null)
+		}
+	}
 
-          <main className="flex-1 flex flex-col h-full overflow-hidden relative">
-            {activeNavId === "database-studio" ? (
-              <DatabaseStudio
-                tableId={selectedTableId}
-                tableName={selectedTableName}
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                activeConnectionId={activeConnectionId}
-                onAddConnection={handleOpenNewConnection}
-              />
-            ) : activeNavId === "sql-console" ? (
-              <SqlConsole
-                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                activeConnectionId={activeConnectionId}
-              />
-            ) : activeNavId === "dora" ? (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Wand2 className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <h2 className="text-xl font-semibold mb-2">Dora AI Assistant</h2>
-                  <p className="text-sm">Coming soon...</p>
-                </div>
-              </div>
-            ) : (
-              <SqlConsole
-                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                activeConnectionId={activeConnectionId}
-              />
-            )}
-          </main>
+	function handleOpenNewConnection() {
+		setEditingConnection(undefined)
+		setIsConnectionDialogOpen(true)
+	}
 
-          <ConnectionDialog
-            open={isConnectionDialogOpen}
-            onOpenChange={(open) => {
-              setIsConnectionDialogOpen(open);
-              if (!open) setEditingConnection(undefined);
-            }}
-            onSave={handleDialogSave}
-            initialValues={editingConnection}
-          />
+	async function handleDialogSave(connectionData: Omit<Connection, 'id' | 'createdAt'>) {
+		if (editingConnection) {
+			await handleUpdateConnection(connectionData)
+		} else {
+			await handleAddConnection(connectionData)
+		}
+	}
 
-          {/* Delete Confirmation Dialog */}
-          <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Connection</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete "{connectionToDelete?.name}"? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setConnectionToDelete(null)}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDeleteConnection}>
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </SidebarProvider>
-    </TooltipProvider>
-  );
+	const handleTableSelect = useCallback((id: string, name: string) => {
+		setSelectedTableId(id)
+		setSelectedTableName(name)
+	}, [])
+
+	const handleAutoSelectComplete = useCallback(() => {
+		autoSelectFirstTableRef.current = false
+	}, [])
+
+	// Show database panel for sql-console and database-studio views
+	const showDatabasePanel = activeNavId === 'sql-console' || activeNavId === 'database-studio'
+
+	return (
+		<TooltipProvider>
+			<SidebarProvider defaultPanelOpen={isSidebarOpen}>
+				<div className='flex h-full w-full bg-background overflow-hidden'>
+					{/* Icon Sidebar */}
+					<AppSidebar activeNavId={activeNavId} onNavSelect={setActiveNavId} />
+
+					{/* Database Panel - shown for sql-console and database-studio views */}
+					{showDatabasePanel && isSidebarOpen && (
+						<DatabaseSidebar
+							activeNavId={activeNavId}
+							onNavSelect={setActiveNavId}
+							onTableSelect={handleTableSelect}
+							selectedTableId={selectedTableId}
+							autoSelectFirstTable={autoSelectFirstTableRef.current}
+							onAutoSelectComplete={handleAutoSelectComplete}
+							connections={connections}
+							activeConnectionId={activeConnectionId}
+							onConnectionSelect={handleConnectionSelect}
+							onAddConnection={handleOpenNewConnection}
+							onManageConnections={function () {
+								const activeConn = connections.find(function (c) {
+									return c.id === activeConnectionId
+								})
+								if (activeConn) {
+									setEditingConnection(activeConn)
+									setIsConnectionDialogOpen(true)
+								}
+							}}
+							onViewConnection={handleViewConnection}
+							onEditConnection={handleEditConnection}
+							onDeleteConnection={handleDeleteConnection}
+						/>
+					)}
+
+					<main className='flex-1 flex flex-col h-full overflow-hidden relative'>
+						{activeNavId === 'database-studio' ? (
+							<DatabaseStudio
+								tableId={selectedTableId}
+								tableName={selectedTableName}
+								isSidebarOpen={isSidebarOpen}
+								onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+								initialRowPK={settings.lastRowPK}
+								onRowSelectionChange={(pk) => {
+									if (pk !== settings.lastRowPK) {
+										updateSetting('lastRowPK', pk)
+									}
+								}}
+								activeConnectionId={activeConnectionId}
+								onAddConnection={handleOpenNewConnection}
+							/>
+						) : activeNavId === 'sql-console' ? (
+							<SqlConsole
+								onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+								activeConnectionId={activeConnectionId}
+							/>
+						) : activeNavId === 'docker' ? (
+							<DockerView
+								onOpenInDataViewer={(container) => {
+									/* Logic to bridge connection will go here later */
+									setActiveNavId('database-studio')
+								}}
+							/>
+						) : activeNavId === 'dora' ? (
+							<div className='flex-1 flex items-center justify-center text-muted-foreground'>
+								<div className='text-center'>
+									<Wand2 className='h-16 w-16 mx-auto mb-4 opacity-50' />
+									<h2 className='text-xl font-semibold mb-2'>
+										Dora AI Assistant
+									</h2>
+									<p className='text-sm'>Coming soon...</p>
+								</div>
+							</div>
+						) : (
+							<SqlConsole
+								onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+								activeConnectionId={activeConnectionId}
+							/>
+						)}
+					</main>
+
+					<ConnectionDialog
+						open={isConnectionDialogOpen}
+						onOpenChange={(open) => {
+							setIsConnectionDialogOpen(open)
+							if (!open) setEditingConnection(undefined)
+						}}
+						onSave={handleDialogSave}
+						initialValues={editingConnection}
+					/>
+
+					{/* Delete Confirmation Dialog */}
+					<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Delete Connection</AlertDialogTitle>
+								<AlertDialogDescription>
+									Are you sure you want to delete "{connectionToDelete?.name}"?
+									This action cannot be undone.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel onClick={() => setConnectionToDelete(null)}>
+									Cancel
+								</AlertDialogCancel>
+								<AlertDialogAction onClick={confirmDeleteConnection}>
+									Delete
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
+				</div>
+			</SidebarProvider>
+		</TooltipProvider>
+	)
 }

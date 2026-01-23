@@ -1,121 +1,121 @@
 import { create } from "zustand";
 
 type CellMutation = {
-    type: "cell";
-    connectionId: string;
-    tableName: string;
-    primaryKeyColumn: string;
-    primaryKeyValue: unknown;
-    columnName: string;
-    previousValue: unknown;
-    newValue: unknown;
-};
-
-type BatchCellMutation = {
-    type: "batch-cell";
-    connectionId: string;
-    tableName: string;
-    primaryKeyColumn: string;
-    cells: Array<{
-        primaryKeyValue: unknown;
-        columnName: string;
-        previousValue: unknown;
-        newValue: unknown;
-    }>;
-};
-
-type Mutation = CellMutation | BatchCellMutation;
-
-type UndoableAction = {
-    id: string;
-    description: string;
-    mutation: Mutation;
-    timestamp: number;
-    expiresAt: number;
-};
-
-type UndoStore = {
-    actions: UndoableAction[];
-    timeoutDuration: number;
-    addAction: (description: string, mutation: Mutation) => string;
-    removeAction: (id: string) => void;
-    getAction: (id: string) => UndoableAction | undefined;
-    getLatestAction: () => UndoableAction | undefined;
-    clearExpired: () => void;
-    setTimeoutDuration: (duration: number) => void;
-};
-
-function generateId(): string {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	type: 'cell'
+	connectionId: string
+	tableName: string
+	primaryKeyColumn: string
+	primaryKeyValue: unknown
+	columnName: string
+	previousValue: unknown
+	newValue: unknown
 }
 
-export const useUndoStore = create<UndoStore>(function(set, get) {
-    return {
-        actions: [],
-        timeoutDuration: 10000,
+type BatchCellMutation = {
+	type: 'batch-cell'
+	connectionId: string
+	tableName: string
+	primaryKeyColumn: string
+	cells: Array<{
+		primaryKeyValue: unknown
+		columnName: string
+		previousValue: unknown
+		newValue: unknown
+	}>
+}
 
-        addAction: function(description, mutation) {
-            const id = generateId();
-            const now = Date.now();
-            const action: UndoableAction = {
-                id,
-                description,
-                mutation,
-                timestamp: now,
-                expiresAt: now + get().timeoutDuration,
-            };
+type Mutation = CellMutation | BatchCellMutation
 
-            set(function(state) {
-                const filtered = state.actions.filter(function(a) {
-                    return a.expiresAt > now;
-                });
-                return { actions: [...filtered, action] };
-            });
+type UndoableAction = {
+	id: string
+	description: string
+	mutation: Mutation
+	timestamp: number
+	expiresAt: number
+}
 
-            setTimeout(function() {
-                get().removeAction(id);
-            }, get().timeoutDuration);
+type UndoStore = {
+	actions: UndoableAction[]
+	timeoutDuration: number
+	addAction: (description: string, mutation: Mutation) => string
+	removeAction: (id: string) => void
+	getAction: (id: string) => UndoableAction | undefined
+	getLatestAction: () => UndoableAction | undefined
+	clearExpired: () => void
+	setTimeoutDuration: (duration: number) => void
+}
 
-            return id;
-        },
+function generateId(): string {
+	return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+}
 
-        removeAction: function(id) {
-            set(function(state) {
-                return {
-                    actions: state.actions.filter(function(a) {
-                        return a.id !== id;
-                    }),
-                };
-            });
-        },
+export const useUndoStore = create<UndoStore>(function (set, get) {
+	return {
+		actions: [],
+		timeoutDuration: 10000,
 
-        getAction: function(id) {
-            return get().actions.find(function(a) {
-                return a.id === id;
-            });
-        },
+		addAction: function (description, mutation) {
+			const id = generateId()
+			const now = Date.now()
+			const action: UndoableAction = {
+				id,
+				description,
+				mutation,
+				timestamp: now,
+				expiresAt: now + get().timeoutDuration
+			}
 
-        getLatestAction: function() {
-            const actions = get().actions;
-            if (actions.length === 0) return undefined;
-            return actions[actions.length - 1];
-        },
+			set(function (state) {
+				const filtered = state.actions.filter(function (a) {
+					return a.expiresAt > now
+				})
+				return { actions: [...filtered, action] }
+			})
 
-        clearExpired: function() {
-            const now = Date.now();
-            set(function(state) {
-                return {
-                    actions: state.actions.filter(function(a) {
-                        return a.expiresAt > now;
-                    }),
-                };
-            });
-        },
+			setTimeout(function () {
+				get().removeAction(id)
+			}, get().timeoutDuration)
 
-        setTimeoutDuration: function(duration) {
-            set({ timeoutDuration: duration });
-        },
-    };
-});
+			return id
+		},
 
-export type { Mutation, CellMutation, BatchCellMutation, UndoableAction };
+		removeAction: function (id) {
+			set(function (state) {
+				return {
+					actions: state.actions.filter(function (a) {
+						return a.id !== id
+					})
+				}
+			})
+		},
+
+		getAction: function (id) {
+			return get().actions.find(function (a) {
+				return a.id === id
+			})
+		},
+
+		getLatestAction: function () {
+			const actions = get().actions
+			if (actions.length === 0) return undefined
+			return actions[actions.length - 1]
+		},
+
+		clearExpired: function () {
+			const now = Date.now()
+			set(function (state) {
+				return {
+					actions: state.actions.filter(function (a) {
+						return a.expiresAt > now
+					})
+				}
+			})
+		},
+
+		setTimeoutDuration: function (duration) {
+			set({ timeoutDuration: duration })
+		}
+	}
+})
+
+export type { Mutation, CellMutation, BatchCellMutation, UndoableAction }

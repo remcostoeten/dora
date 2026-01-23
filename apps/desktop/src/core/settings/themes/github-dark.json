@@ -1,31 +1,31 @@
 {
-  "base": "vs-dark",
-  "inherit": true,
-  "rules": [
-    { "background": "24292e", "token": "" },
-    { "foreground": "959da5", "token": "comment" },
-    { "foreground": "c8e1ff", "token": "constant" },
-    { "foreground": "c8e1ff", "token": "entity.name.constant" },
-    { "foreground": "c8e1ff", "token": "variable.other.constant" },
-    { "foreground": "c8e1ff", "token": "variable.language" },
-    { "foreground": "b392f0", "token": "entity" },
-    { "foreground": "b392f0", "token": "entity.name" },
-    { "foreground": "f6f8fa", "token": "variable.parameter.function" },
-    { "foreground": "7bcc72", "token": "entity.name.tag" },
-    { "foreground": "ea4a5a", "token": "keyword" },
-    { "foreground": "ea4a5a", "token": "storage" },
-    { "foreground": "ea4a5a", "token": "storage.type" },
-    { "foreground": "79b8ff", "token": "string" },
-    { "foreground": "c8e1ff", "token": "support" },
-    { "foreground": "fb8532", "token": "variable" }
-  ],
-  "colors": {
-    "editor.foreground": "#f6f8fa",
-    "editor.background": "#24292e",
-    "editor.selectionBackground": "#4c2889",
-    "editor.inactiveSelectionBackground": "#444d56",
-    "editor.lineHighlightBackground": "#444d56",
-    "editorCursor.foreground": "#ffffff",
-    "editorWhitespace.foreground": "#6a737d"
-  }
+	"base": "vs-dark",
+	"inherit": true,
+	"rules": [
+		{ "background": "24292e", "token": "" },
+		{ "foreground": "959da5", "token": "comment" },
+		{ "foreground": "c8e1ff", "token": "constant" },
+		{ "foreground": "c8e1ff", "token": "entity.name.constant" },
+		{ "foreground": "c8e1ff", "token": "variable.other.constant" },
+		{ "foreground": "c8e1ff", "token": "variable.language" },
+		{ "foreground": "b392f0", "token": "entity" },
+		{ "foreground": "b392f0", "token": "entity.name" },
+		{ "foreground": "f6f8fa", "token": "variable.parameter.function" },
+		{ "foreground": "7bcc72", "token": "entity.name.tag" },
+		{ "foreground": "ea4a5a", "token": "keyword" },
+		{ "foreground": "ea4a5a", "token": "storage" },
+		{ "foreground": "ea4a5a", "token": "storage.type" },
+		{ "foreground": "79b8ff", "token": "string" },
+		{ "foreground": "c8e1ff", "token": "support" },
+		{ "foreground": "fb8532", "token": "variable" }
+	],
+	"colors": {
+		"editor.foreground": "#f6f8fa",
+		"editor.background": "#24292e",
+		"editor.selectionBackground": "#4c2889",
+		"editor.inactiveSelectionBackground": "#444d56",
+		"editor.lineHighlightBackground": "#444d56",
+		"editorCursor.foreground": "#ffffff",
+		"editorWhitespace.foreground": "#6a737d"
+	}
 }

@@ -2,66 +2,70 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback,
 import { commands } from "@/lib/bindings";
 import { MonacoTheme } from "./editor-themes";
 
-export type EditorTheme = "auto" | MonacoTheme;
+export type EditorTheme = 'auto' | MonacoTheme
 
 export type SettingsState = {
-  confirmBeforeDelete: boolean;
-  editorFontSize: number;
-  editorTheme: EditorTheme;
-  enableVimMode: boolean;
-  restoreLastConnection: boolean;
-  lastConnectionId: string | null;
-  selectionBarStyle: "floating" | "static";
-  showToasts: boolean;
-};
+	confirmBeforeDelete: boolean
+	editorFontSize: number
+	editorTheme: EditorTheme
+	enableVimMode: boolean
+	restoreLastConnection: boolean
+	lastConnectionId: string | null
+	lastTableId: string | null
+	lastRowPK: string | number | null
+	selectionBarStyle: 'floating' | 'static'
+	showToasts: boolean
+}
 
 export const DEFAULT_SETTINGS: SettingsState = {
-  confirmBeforeDelete: true,
-  editorFontSize: 14,
-  editorTheme: "auto",
-  enableVimMode: false,
-  restoreLastConnection: true,
-  lastConnectionId: null,
-  selectionBarStyle: "floating",
-  showToasts: true,
-};
+	confirmBeforeDelete: true,
+	editorFontSize: 14,
+	editorTheme: 'auto',
+	enableVimMode: false,
+	restoreLastConnection: true,
+	lastConnectionId: null,
+	lastTableId: null,
+	lastRowPK: null,
+	selectionBarStyle: 'floating',
+	showToasts: true
+}
 
-const STORAGE_KEY = "ui_settings";
+const STORAGE_KEY = 'ui_settings'
 
 // ============================================================================
 // Settings Context
 // ============================================================================
 
 type SettingsContextValue = {
-  settings: SettingsState;
-  isLoading: boolean;
-  updateSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void;
-  updateSettings: (partial: Partial<SettingsState>) => void;
-  resetSettings: () => void;
-};
+	settings: SettingsState
+	isLoading: boolean
+	updateSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void
+	updateSettings: (partial: Partial<SettingsState>) => void
+	resetSettings: () => void
+}
 
-const SettingsContext = createContext<SettingsContextValue | null>(null);
+const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 async function loadSettingsFromBackend(): Promise<SettingsState> {
-  try {
-    const result = await commands.getSetting(STORAGE_KEY);
-    if (result.status === "ok" && result.data) {
-      const parsed = JSON.parse(result.data);
-      return { ...DEFAULT_SETTINGS, ...parsed };
-    }
-  } catch (error) {
-    console.warn("Failed to load settings from backend:", error);
-  }
-  return DEFAULT_SETTINGS;
+	try {
+		const result = await commands.getSetting(STORAGE_KEY)
+		if (result.status === 'ok' && result.data) {
+			const parsed = JSON.parse(result.data)
+			return { ...DEFAULT_SETTINGS, ...parsed }
+		}
+	} catch (error) {
+		console.warn('Failed to load settings from backend:', error)
+	}
+	return DEFAULT_SETTINGS
 }
 
 async function saveSettingsToBackend(settings: SettingsState): Promise<void> {
-  try {
-    const serialized = JSON.stringify(settings);
-    await commands.setSetting(STORAGE_KEY, serialized);
-  } catch (error) {
-    console.warn("Failed to save settings to backend:", error);
-  }
+	try {
+		const serialized = JSON.stringify(settings)
+		await commands.setSetting(STORAGE_KEY, serialized)
+	} catch (error) {
+		console.warn('Failed to save settings to backend:', error)
+	}
 }
 
 // ============================================================================
@@ -69,71 +73,71 @@ async function saveSettingsToBackend(settings: SettingsState): Promise<void> {
 // ============================================================================
 
 type SettingsProviderProps = {
-  children: ReactNode;
-};
+	children: ReactNode
+}
 
 export function SettingsProvider({ children }: SettingsProviderProps) {
-  const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS);
-  const [isLoading, setIsLoading] = useState(true);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialLoadDone = useRef(false);
+	const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS)
+	const [isLoading, setIsLoading] = useState(true)
+	const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const initialLoadDone = useRef(false)
 
-  useEffect(() => {
-    async function load() {
-      const loaded = await loadSettingsFromBackend();
-      setSettings(loaded);
-      setIsLoading(false);
-      initialLoadDone.current = true;
-    }
-    load();
-  }, []);
+	useEffect(() => {
+		async function load() {
+			const loaded = await loadSettingsFromBackend()
+			setSettings(loaded)
+			setIsLoading(false)
+			initialLoadDone.current = true
+		}
+		load()
+	}, [])
 
-  useEffect(() => {
-    if (!initialLoadDone.current) return;
+	useEffect(() => {
+		if (!initialLoadDone.current) return
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+		if (saveTimeoutRef.current) {
+			clearTimeout(saveTimeoutRef.current)
+		}
 
-    saveTimeoutRef.current = setTimeout(() => {
-      saveSettingsToBackend(settings);
-    }, 300);
+		saveTimeoutRef.current = setTimeout(() => {
+			saveSettingsToBackend(settings)
+		}, 300)
 
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [settings]);
+		return () => {
+			if (saveTimeoutRef.current) {
+				clearTimeout(saveTimeoutRef.current)
+			}
+		}
+	}, [settings])
 
-  const updateSetting = useCallback(<K extends keyof SettingsState>(
-    key: K,
-    value: SettingsState[K]
-  ) => {
-    setSettings((prev) => ({ ...prev, [key]: value }));
-  }, []);
+	const updateSetting = useCallback(
+		<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
+			setSettings((prev) => ({ ...prev, [key]: value }))
+		},
+		[]
+	)
 
-  const updateSettings = useCallback((partial: Partial<SettingsState>) => {
-    setSettings((prev) => ({ ...prev, ...partial }));
-  }, []);
+	const updateSettings = useCallback((partial: Partial<SettingsState>) => {
+		setSettings((prev) => ({ ...prev, ...partial }))
+	}, [])
 
-  const resetSettings = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
-  }, []);
+	const resetSettings = useCallback(() => {
+		setSettings(DEFAULT_SETTINGS)
+	}, [])
 
-  return (
-    <SettingsContext.Provider
-      value={{
-        settings,
-        isLoading,
-        updateSetting,
-        updateSettings,
-        resetSettings,
-      }}
-    >
-      {children}
-    </SettingsContext.Provider>
-  );
+	return (
+		<SettingsContext.Provider
+			value={{
+				settings,
+				isLoading,
+				updateSetting,
+				updateSettings,
+				resetSettings
+			}}
+		>
+			{children}
+		</SettingsContext.Provider>
+	)
 }
 
 // ============================================================================
@@ -141,20 +145,20 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 // ============================================================================
 
 export function useSettings(): SettingsContextValue {
-  const context = useContext(SettingsContext);
-  if (!context) {
-    throw new Error("useSettings must be used within a SettingsProvider");
-  }
-  return context;
+	const context = useContext(SettingsContext)
+	if (!context) {
+		throw new Error('useSettings must be used within a SettingsProvider')
+	}
+	return context
 }
 
 export function useSetting<K extends keyof SettingsState>(
-  key: K
+	key: K
 ): [SettingsState[K], (value: SettingsState[K]) => void] {
-  const { settings, updateSetting } = useSettings();
-  const setValue = useCallback(
-    (value: SettingsState[K]) => updateSetting(key, value),
-    [key, updateSetting]
-  );
-  return [settings[key], setValue];
+	const { settings, updateSetting } = useSettings()
+	const setValue = useCallback(
+		(value: SettingsState[K]) => updateSetting(key, value),
+		[key, updateSetting]
+	)
+	return [settings[key], setValue]
 }

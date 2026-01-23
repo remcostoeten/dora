@@ -3,7 +3,7 @@ title: API Reference
 description: Complete reference for all Tauri backend commands.
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from 'fumadocs-ui/components/callout'
 
 # API Reference
 
@@ -14,9 +14,10 @@ This page documents the complete list of remote procedure calls (RPC) available 
 ## Connection Commands
 
 ### `add_connection`
+
 Register a new database connection.
 
-<Callout type="info" title="Stable" />
+<Callout type='info' title='Stable' />
 
 **Inputs:**
 | Name | Type | Description |
@@ -28,15 +29,18 @@ Register a new database connection.
 **Returns:** `Promise<ConnectionInfo>`
 
 ```typescript
-await invoke('add_connection', { name, database_info, color });
+await invoke('add_connection', { name, database_info, color })
 ```
 
 ---
 
 ### `update_connection`
+
 Update an existing connection configuration.
 
-<Callout type="warn" title="Side Effect">May disconnect active session.</Callout>
+<Callout type='warn' title='Side Effect'>
+	May disconnect active session.
+</Callout>
 
 **Inputs:**
 | Name | Type | Description |
@@ -49,12 +53,13 @@ Update an existing connection configuration.
 **Returns:** `Promise<ConnectionInfo>`
 
 ```typescript
-await invoke('update_connection', { conn_id, name, database_info, color });
+await invoke('update_connection', { conn_id, name, database_info, color })
 ```
 
 ---
 
 ### `update_connection_color`
+
 Update only the color of a connection.
 
 **Inputs:**
@@ -66,12 +71,13 @@ Update only the color of a connection.
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('update_connection_color', { connection_id, color });
+await invoke('update_connection_color', { connection_id, color })
 ```
 
 ---
 
 ### `connect_to_database`
+
 Establish an active connection.
 
 **Inputs:**
@@ -82,12 +88,13 @@ Establish an active connection.
 **Returns:** `Promise<boolean>`
 
 ```typescript
-await invoke('connect_to_database', { connection_id });
+await invoke('connect_to_database', { connection_id })
 ```
 
 ---
 
 ### `disconnect_from_database`
+
 Close the active connection.
 
 **Inputs:**
@@ -98,23 +105,25 @@ Close the active connection.
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('disconnect_from_database', { connection_id });
+await invoke('disconnect_from_database', { connection_id })
 ```
 
 ---
 
 ### `get_connections`
+
 List all configured connections.
 
 **Returns:** `Promise<ConnectionInfo[]>`
 
 ```typescript
-const conns = await invoke('get_connections');
+const conns = await invoke('get_connections')
 ```
 
 ---
 
 ### `remove_connection`
+
 Delete a connection configuration.
 
 **Inputs:**
@@ -125,12 +134,13 @@ Delete a connection configuration.
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('remove_connection', { connection_id });
+await invoke('remove_connection', { connection_id })
 ```
 
 ---
 
 ### `test_connection`
+
 Test connectivity without saving.
 
 **Inputs:**
@@ -141,23 +151,25 @@ Test connectivity without saving.
 **Returns:** `Promise<boolean>`
 
 ```typescript
-await invoke('test_connection', { database_info });
+await invoke('test_connection', { database_info })
 ```
 
 ---
 
 ### `initialize_connections`
+
 Loads and initializes connections from storage on startup.
 
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('initialize_connections');
+await invoke('initialize_connections')
 ```
 
 ---
 
 ### `get_recent_connections`
+
 Get recently used connections.
 
 **Inputs:**
@@ -168,12 +180,13 @@ Get recently used connections.
 **Returns:** `Promise<ConnectionInfo[]>`
 
 ```typescript
-await invoke('get_recent_connections', { limit: 5 });
+await invoke('get_recent_connections', { limit: 5 })
 ```
 
 ---
 
 ### `get_connection_history`
+
 Get historical connection attempts.
 
 **Inputs:**
@@ -186,7 +199,7 @@ Get historical connection attempts.
 **Returns:** `Promise<ConnectionHistoryEntry[]>`
 
 ```typescript
-await invoke('get_connection_history', { limit: 20 });
+await invoke('get_connection_history', { limit: 20 })
 ```
 
 ---
@@ -194,6 +207,7 @@ await invoke('get_connection_history', { limit: 20 });
 ## Query Commands
 
 ### `start_query`
+
 Execute a SQL query. Returns partial results immediately if possible or Query IDs.
 
 **Inputs:**
@@ -205,12 +219,13 @@ Execute a SQL query. Returns partial results immediately if possible or Query ID
 **Returns:** `Promise<number[]>` (Query IDs)
 
 ```typescript
-await invoke('start_query', { connection_id, query });
+await invoke('start_query', { connection_id, query })
 ```
 
 ---
 
 ### `fetch_query`
+
 Get info about a query execution.
 
 **Inputs:**
@@ -221,12 +236,13 @@ Get info about a query execution.
 **Returns:** `Promise<StatementInfo>`
 
 ```typescript
-await invoke('fetch_query', { query_id });
+await invoke('fetch_query', { query_id })
 ```
 
 ---
 
 ### `fetch_page`
+
 Fetch a specific page of results.
 
 **Inputs:**
@@ -238,12 +254,13 @@ Fetch a specific page of results.
 **Returns:** `Promise<Record<string, any>[] | null>`
 
 ```typescript
-await invoke('fetch_page', { query_id, page_index: 0 });
+await invoke('fetch_page', { query_id, page_index: 0 })
 ```
 
 ---
 
 ### `get_query_status`
+
 Check execution status.
 
 **Inputs:**
@@ -254,12 +271,13 @@ Check execution status.
 **Returns:** `Promise<QueryStatus>`
 
 ```typescript
-await invoke('get_query_status', { query_id });
+await invoke('get_query_status', { query_id })
 ```
 
 ---
 
 ### `get_page_count`
+
 Get total pages for a query.
 
 **Inputs:**
@@ -270,12 +288,13 @@ Get total pages for a query.
 **Returns:** `Promise<number>`
 
 ```typescript
-await invoke('get_page_count', { query_id });
+await invoke('get_page_count', { query_id })
 ```
 
 ---
 
 ### `get_columns`
+
 Get column definitions for a query result.
 
 **Inputs:**
@@ -286,12 +305,13 @@ Get column definitions for a query result.
 **Returns:** `Promise<ColumnDef[] | null>`
 
 ```typescript
-await invoke('get_columns', { query_id });
+await invoke('get_columns', { query_id })
 ```
 
 ---
 
 ### `save_query_to_history`
+
 Manually record a query execution.
 
 **Inputs:**
@@ -313,6 +333,7 @@ await invoke('save_query_to_history', { ... });
 ---
 
 ### `get_query_history`
+
 Get history for a specific connection.
 
 **Inputs:**
@@ -324,12 +345,13 @@ Get history for a specific connection.
 **Returns:** `Promise<QueryHistoryEntry[]>`
 
 ```typescript
-await invoke('get_query_history', { connection_id });
+await invoke('get_query_history', { connection_id })
 ```
 
 ---
 
 ### `get_recent_queries`
+
 Get global query history.
 
 **Inputs:**
@@ -342,7 +364,7 @@ Get global query history.
 **Returns:** `Promise<QueryHistoryEntry[]>`
 
 ```typescript
-await invoke('get_recent_queries', { limit: 50 });
+await invoke('get_recent_queries', { limit: 50 })
 ```
 
 ---
@@ -350,6 +372,7 @@ await invoke('get_recent_queries', { limit: 50 });
 ## Script Commands
 
 ### `save_script`
+
 Save a SQL script.
 
 **Inputs:**
@@ -363,12 +386,13 @@ Save a SQL script.
 **Returns:** `Promise<number>` (Script ID)
 
 ```typescript
-const id = await invoke('save_script', { name, content });
+const id = await invoke('save_script', { name, content })
 ```
 
 ---
 
 ### `update_script`
+
 Update an existing script.
 
 **Inputs:**
@@ -383,12 +407,13 @@ Update an existing script.
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('update_script', { id, name, content });
+await invoke('update_script', { id, name, content })
 ```
 
 ---
 
 ### `get_scripts`
+
 List saved scripts.
 
 **Inputs:**
@@ -399,12 +424,13 @@ List saved scripts.
 **Returns:** `Promise<SavedQuery[]>`
 
 ```typescript
-await invoke('get_scripts');
+await invoke('get_scripts')
 ```
 
 ---
 
 ### `delete_script`
+
 Delete a saved script.
 
 **Inputs:**
@@ -415,7 +441,7 @@ Delete a saved script.
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('delete_script', { id });
+await invoke('delete_script', { id })
 ```
 
 ---
@@ -423,6 +449,7 @@ await invoke('delete_script', { id });
 ## Setting / Session Commands
 
 ### `save_session_state`
+
 Persist UI session state (tabs, etc.).
 
 **Inputs:**
@@ -433,23 +460,25 @@ Persist UI session state (tabs, etc.).
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('save_session_state', { session_data });
+await invoke('save_session_state', { session_data })
 ```
 
 ---
 
 ### `get_session_state`
+
 Retrieve persisted session state.
 
 **Returns:** `Promise<String | null>`
 
 ```typescript
-await invoke('get_session_state');
+await invoke('get_session_state')
 ```
 
 ---
 
 ### `get_setting`
+
 Get a user preference.
 
 **Inputs:**
@@ -460,12 +489,13 @@ Get a user preference.
 **Returns:** `Promise<String | null>`
 
 ```typescript
-await invoke('get_setting', { key: 'theme' });
+await invoke('get_setting', { key: 'theme' })
 ```
 
 ---
 
 ### `set_setting`
+
 Set a user preference.
 
 **Inputs:**
@@ -477,7 +507,7 @@ Set a user preference.
 **Returns:** `Promise<void>`
 
 ```typescript
-await invoke('set_setting', { key: 'theme', value: 'dark' });
+await invoke('set_setting', { key: 'theme', value: 'dark' })
 ```
 
 ---
@@ -485,6 +515,7 @@ await invoke('set_setting', { key: 'theme', value: 'dark' });
 ## Mutation Commands
 
 ### `insert_row`
+
 Insert a record.
 
 **Inputs:**
@@ -498,12 +529,13 @@ Insert a record.
 **Returns:** `Promise<MutationResult>`
 
 ```typescript
-await invoke('insert_row', { connection_id, table_name, row_data });
+await invoke('insert_row', { connection_id, table_name, row_data })
 ```
 
 ---
 
 ### `update_cell`
+
 Update a single cell value.
 
 **Inputs:**
@@ -526,6 +558,7 @@ await invoke('update_cell', { ... });
 ---
 
 ### `delete_rows`
+
 Delete rows by PK.
 
 **Inputs:**
@@ -546,6 +579,7 @@ await invoke('delete_rows', { ... });
 ---
 
 ### `export_table`
+
 Export table data.
 
 **Inputs:**
@@ -566,6 +600,7 @@ await invoke('export_table', { ... });
 ---
 
 ### `soft_delete_rows`
+
 Perform a soft delete (update flag).
 
 **Inputs:**
@@ -587,6 +622,7 @@ await invoke('soft_delete_rows', { ... });
 ---
 
 ### `undo_soft_delete`
+
 Restore soft-deleted rows.
 
 **Inputs:**
@@ -610,9 +646,12 @@ await invoke('undo_soft_delete', { ... });
 ---
 
 ### `seed_table`
+
 Populate a table with mock data for testing. All seedable columns (non-PK) will be filled with realistic data based on their type and name.
 
-<Callout type="warn" title="Experimental">May fail on complex constraints.</Callout>
+<Callout type='warn' title='Experimental'>
+	May fail on complex constraints.
+</Callout>
 
 **Inputs:**
 | Name | Type | Description |
@@ -625,19 +664,20 @@ Populate a table with mock data for testing. All seedable columns (non-PK) will 
 **Returns:** `Promise<SeedResult>`
 
 ```typescript
-await invoke('seed_table', { 
-    connection_id, 
-    table_name: 'users',
-    count: 100 
-});
+await invoke('seed_table', {
+	connection_id,
+	table_name: 'users',
+	count: 100
+})
 ```
 
 ---
 
 ### `truncate_table`
+
 Truncate a table.
 
-<Callout type="warn">Irreversible</Callout>
+<Callout type='warn'>Irreversible</Callout>
 
 **Inputs:**
 | Name | Type | Description |
@@ -656,9 +696,10 @@ await invoke('truncate_table', { ... });
 ---
 
 ### `truncate_database`
+
 Truncate ALL tables.
 
-<Callout type="error">EXTREMELY DANGEROUS</Callout>
+<Callout type='error'>EXTREMELY DANGEROUS</Callout>
 
 **Inputs:**
 | Name | Type | Description |
@@ -676,6 +717,7 @@ await invoke('truncate_database', { confirm: true, ... });
 ---
 
 ### `dump_database`
+
 Create a database dump.
 
 **Inputs:**
@@ -687,12 +729,13 @@ Create a database dump.
 **Returns:** `Promise<DumpResult>`
 
 ```typescript
-await invoke('dump_database', { output_path: '/tmp/dump.sql' });
+await invoke('dump_database', { output_path: '/tmp/dump.sql' })
 ```
 
 ---
 
 ### `execute_batch`
+
 Execute multiple raw SQL statements.
 
 **Inputs:**
@@ -712,6 +755,7 @@ await invoke('execute_batch', { statements: [...] });
 ## Metadata Commands
 
 ### `get_database_schema`
+
 Get full schema tree.
 
 **Inputs:**
@@ -722,12 +766,13 @@ Get full schema tree.
 **Returns:** `Promise<DatabaseSchema>`
 
 ```typescript
-await invoke('get_database_schema', { connection_id });
+await invoke('get_database_schema', { connection_id })
 ```
 
 ---
 
 ### `get_database_metadata`
+
 Get simple metadata (version, size).
 
 **Inputs:**
@@ -738,5 +783,5 @@ Get simple metadata (version, size).
 **Returns:** `Promise<DatabaseMetadata>`
 
 ```typescript
-await invoke('get_database_metadata', { connection_id });
+await invoke('get_database_metadata', { connection_id })
 ```

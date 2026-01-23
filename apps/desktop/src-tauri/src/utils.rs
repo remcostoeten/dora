@@ -26,6 +26,11 @@ pub fn is_json(input: &[u8]) -> bool {
     serde_json::from_slice::<IgnoredAny>(input).is_ok()
 }
 
+#[tauri::command]
+pub fn check_tcp_port(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

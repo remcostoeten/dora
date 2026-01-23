@@ -5,39 +5,44 @@ import { SchemaTable } from "../types";
  * This enables true "Pro" LSP support with type checking for Drizzle ORM.
  */
 export function generateDrizzleTypes(tables: SchemaTable[]): string {
-    const tableDefs = tables.map(function (table) {
-        const columns = table.columns.map(function (col) {
-            let tsType = "unknown";
-            if (/int|serial|decimal|double|float|numeric|real/.test(col.type)) {
-                tsType = "number";
-            } else if (/char|text|uuid|json|enum/.test(col.type)) {
-                tsType = "string";
-            } else if (/bool/.test(col.type)) {
-                tsType = "boolean";
-            } else if (/timestamp|date|time/.test(col.type)) {
-                tsType = "Date";
-            }
-            return `    /** ${col.type} */\n    ${col.name}: Column<${tsType}>;`;
-        }).join("\n");
+	const tableDefs = tables
+		.map(function (table) {
+			const columns = table.columns
+				.map(function (col) {
+					let tsType = 'unknown'
+					if (/int|serial|decimal|double|float|numeric|real/.test(col.type)) {
+						tsType = 'number'
+					} else if (/char|text|uuid|json|enum/.test(col.type)) {
+						tsType = 'string'
+					} else if (/bool/.test(col.type)) {
+						tsType = 'boolean'
+					} else if (/timestamp|date|time/.test(col.type)) {
+						tsType = 'Date'
+					}
+					return `    /** ${col.type} */\n    ${col.name}: Column<${tsType}>;`
+				})
+				.join('\n')
 
-        const modelColumns = table.columns.map(function (col) {
-            let tsType = "unknown";
-            if (/int|serial|decimal|double|float|numeric|real/.test(col.type)) {
-                tsType = "number";
-            } else if (/char|text|uuid|json|enum/.test(col.type)) {
-                tsType = "string";
-            } else if (/bool/.test(col.type)) {
-                tsType = "boolean";
-            } else if (/timestamp|date|time/.test(col.type)) {
-                tsType = "Date";
-            }
-            if (col.nullable) {
-                tsType = `${tsType} | null`;
-            }
-            return `    ${col.name}: ${tsType};`;
-        }).join("\n");
+			const modelColumns = table.columns
+				.map(function (col) {
+					let tsType = 'unknown'
+					if (/int|serial|decimal|double|float|numeric|real/.test(col.type)) {
+						tsType = 'number'
+					} else if (/char|text|uuid|json|enum/.test(col.type)) {
+						tsType = 'string'
+					} else if (/bool/.test(col.type)) {
+						tsType = 'boolean'
+					} else if (/timestamp|date|time/.test(col.type)) {
+						tsType = 'Date'
+					}
+					if (col.nullable) {
+						tsType = `${tsType} | null`
+					}
+					return `    ${col.name}: ${tsType};`
+				})
+				.join('\n')
 
-        return `
+			return `
 /** Table definition for ${table.name} usage in query builder */
 interface ${capitalize(table.name)}Schema {
 ${columns}
@@ -50,10 +55,11 @@ ${modelColumns}
 
 /** The table object for '${table.name}' */
 declare const ${table.name}: Table<'${table.name}', ${capitalize(table.name)}Schema>;
-`;
-    }).join("\n");
+`
+		})
+		.join('\n')
 
-    return `
+	return `
 /**
  * DRIZZLE ORM STRICT TYPE DEFINITIONS
  * Generated for Monaco Editor
@@ -258,37 +264,53 @@ declare function max<T>(column: Column<T>): SQL<T>;
 /** Parameter helper */
 declare function param<T>(value?: T): T;
 
-`;
+`
 }
 
 function capitalize(s: string): string {
-    return s.charAt(0).toUpperCase() + s.slice(1);
+	return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export function getDrizzleHelpers(): string[] {
-    return [
-        "eq", "ne", "gt", "lt", "gte", "lte",
-        "like", "ilike", "inArray", "notInArray",
-        "isNull", "isNotNull",
-        "and", "or", "not",
-        "asc", "desc",
-        "count", "sum", "avg", "min", "max",
-        "param"
-    ];
+	return [
+		'eq',
+		'ne',
+		'gt',
+		'lt',
+		'gte',
+		'lte',
+		'like',
+		'ilike',
+		'inArray',
+		'notInArray',
+		'isNull',
+		'isNotNull',
+		'and',
+		'or',
+		'not',
+		'asc',
+		'desc',
+		'count',
+		'sum',
+		'avg',
+		'min',
+		'max',
+		'param'
+	]
 }
 
 export function getTableNames(tables: SchemaTable[]): string[] {
-    return tables.map(function (table) {
-        return table.name;
-    });
+	return tables.map(function (table) {
+		return table.name
+	})
 }
 
 export function getColumnNames(tables: SchemaTable[], tableName: string): string[] {
-    const table = tables.find(function (item) {
-        return item.name === tableName;
-    });
-    if (!table) return [];
-    return table.columns.map(function (column) {
-        return column.name;
-    });
+	const table = tables.find(function (item) {
+		return item.name === tableName
+	})
+	if (!table) return []
+	return table.columns.map(function (column) {
+		return column.name
+	})
 }

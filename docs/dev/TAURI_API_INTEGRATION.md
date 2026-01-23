@@ -6,7 +6,7 @@
 
 The Dora application is built with a **Tauri (Rust) backend** and **Next.js frontend**. The backend supports:
 
-- **PostgreSQL** connections (via `tokio-postgres`)  
+- **PostgreSQL** connections (via `tokio-postgres`)
 - **SQLite** connections (via `rusqlite`)
 
 All commands are invoked via Tauri's `invoke()` IPC mechanism.
@@ -17,26 +17,24 @@ All commands are invoked via Tauri's `invoke()` IPC mechanism.
 
 ### Tauri Commands
 
-| Command | Parameters | Returns | Description |
-|---------|------------|---------|-------------|
-| `test_connection` | `databaseInfo: DatabaseInfo` | `boolean` | Tests if a connection can be established |
-| `add_connection` | `name: string, databaseInfo: DatabaseInfo, color?: number` | `ConnectionInfo` | Creates a new connection |
-| `update_connection` | `connId: UUID, name: string, databaseInfo: DatabaseInfo, color?: number` | `ConnectionInfo` | Updates existing connection |
-| `update_connection_color` | `connectionId: UUID, color?: number` | `void` | Updates only the color of a connection |
-| `connect_to_database` | `connectionId: UUID` | `boolean` | Establishes active connection |
-| `disconnect_from_database` | `connectionId: UUID` | `void` | Disconnects from database |
-| `get_connections` | none | `ConnectionInfo[]` | Lists all saved connections |
-| `remove_connection` | `connectionId: UUID` | `void` | Deletes a connection |
-| `initialize_connections` | none | `void` | Loads connections from storage into memory |
-| `get_connection_history` | `dbTypeFilter?: string, successFilter?: boolean, limit?: number` | `ConnectionHistoryEntry[]` | Gets connection attempt history |
+| Command                    | Parameters                                                               | Returns                    | Description                                |
+| -------------------------- | ------------------------------------------------------------------------ | -------------------------- | ------------------------------------------ |
+| `test_connection`          | `databaseInfo: DatabaseInfo`                                             | `boolean`                  | Tests if a connection can be established   |
+| `add_connection`           | `name: string, databaseInfo: DatabaseInfo, color?: number`               | `ConnectionInfo`           | Creates a new connection                   |
+| `update_connection`        | `connId: UUID, name: string, databaseInfo: DatabaseInfo, color?: number` | `ConnectionInfo`           | Updates existing connection                |
+| `update_connection_color`  | `connectionId: UUID, color?: number`                                     | `void`                     | Updates only the color of a connection     |
+| `connect_to_database`      | `connectionId: UUID`                                                     | `boolean`                  | Establishes active connection              |
+| `disconnect_from_database` | `connectionId: UUID`                                                     | `void`                     | Disconnects from database                  |
+| `get_connections`          | none                                                                     | `ConnectionInfo[]`         | Lists all saved connections                |
+| `remove_connection`        | `connectionId: UUID`                                                     | `void`                     | Deletes a connection                       |
+| `initialize_connections`   | none                                                                     | `void`                     | Loads connections from storage into memory |
+| `get_connection_history`   | `dbTypeFilter?: string, successFilter?: boolean, limit?: number`         | `ConnectionHistoryEntry[]` | Gets connection attempt history            |
 
 ### Connection Parameters
 
 ```typescript
 // DatabaseInfo - Discriminated union by database type
-type DatabaseInfo =
-  | { Postgres: { connection_string: string } }
-  | { SQLite: { db_path: string } }
+type DatabaseInfo = { Postgres: { connection_string: string } } | { SQLite: { db_path: string } }
 
 // PostgreSQL connection string format:
 // postgres://username:password@host:port/database?sslmode=require
@@ -50,14 +48,14 @@ type DatabaseInfo =
 
 ```typescript
 type ConnectionInfo = {
-  id: string                    // UUID
-  name: string                  // User-friendly name
-  connected: boolean            // Runtime connection state
-  database_type: DatabaseInfo   // Connection parameters
-  last_connected_at?: number    // Unix timestamp
-  favorite?: boolean            // User preference
-  color?: string                // Hue value as string
-  sort_order?: number           // Display order
+	id: string // UUID
+	name: string // User-friendly name
+	connected: boolean // Runtime connection state
+	database_type: DatabaseInfo // Connection parameters
+	last_connected_at?: number // Unix timestamp
+	favorite?: boolean // User preference
+	color?: string // Hue value as string
+	sort_order?: number // Display order
 }
 ```
 
@@ -74,8 +72,8 @@ type ConnectionInfo = {
 import { listen } from '@tauri-apps/api/event'
 
 listen<string>('end-of-connection', (event) => {
-  const connectionId = event.payload
-  // Handle disconnect - connection was dropped by server
+	const connectionId = event.payload
+	// Handle disconnect - connection was dropped by server
 })
 ```
 
@@ -85,38 +83,39 @@ listen<string>('end-of-connection', (event) => {
 
 ### Command
 
-| Command | Parameters | Returns | Description |
-|---------|------------|---------|-------------|
+| Command               | Parameters           | Returns          | Description                  |
+| --------------------- | -------------------- | ---------------- | ---------------------------- |
 | `get_database_schema` | `connectionId: UUID` | `DatabaseSchema` | Returns full schema metadata |
 
 ### Response Structure
 
 ```typescript
 type DatabaseSchema = {
-  tables: TableInfo[]      // All tables with columns
-  schemas: string[]        // PostgreSQL schemas (empty for SQLite)
-  unique_columns: string[] // Deduplicated column names for autocomplete
+	tables: TableInfo[] // All tables with columns
+	schemas: string[] // PostgreSQL schemas (empty for SQLite)
+	unique_columns: string[] // Deduplicated column names for autocomplete
 }
 
 type TableInfo = {
-  name: string             // Table name
-  schema: string           // Schema name (e.g., 'public') - empty for SQLite
-  columns: ColumnInfo[]    // Column definitions
+	name: string // Table name
+	schema: string // Schema name (e.g., 'public') - empty for SQLite
+	columns: ColumnInfo[] // Column definitions
 }
 
 type ColumnInfo = {
-  name: string             // Column name
-  data_type: string        // Native type (e.g., 'integer', 'varchar', 'TEXT')
-  is_nullable: boolean     // Whether NULL is allowed
-  default_value: string | null  // Default expression if set
+	name: string // Column name
+	data_type: string // Native type (e.g., 'integer', 'varchar', 'TEXT')
+	is_nullable: boolean // Whether NULL is allowed
+	default_value: string | null // Default expression if set
 }
 ```
 
 ### Implementation Details
 
 **PostgreSQL Schema Query:**
+
 ```sql
-SELECT 
+SELECT
   t.table_schema,
   t.table_name,
   c.column_name,
@@ -124,8 +123,8 @@ SELECT
   c.is_nullable::boolean,
   c.column_default
 FROM information_schema.tables t
-JOIN information_schema.columns c 
-  ON t.table_name = c.table_name 
+JOIN information_schema.columns c
+  ON t.table_name = c.table_name
   AND t.table_schema = c.table_schema
 WHERE t.table_type = 'BASE TABLE'
   AND t.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
@@ -133,8 +132,9 @@ ORDER BY t.table_schema, t.table_name, c.ordinal_position
 ```
 
 **SQLite Schema Query:**
+
 ```sql
-SELECT name FROM sqlite_master 
+SELECT name FROM sqlite_master
 WHERE type='table' AND name NOT LIKE 'sqlite_%'
 
 -- Then for each table:
@@ -154,28 +154,28 @@ PRAGMA table_info('table_name')
 
 ### Commands
 
-| Command | Parameters | Returns | Description |
-|---------|------------|---------|-------------|
-| `start_query` | `connectionId: UUID, query: string` | `QueryId[]` | Starts executing one or more statements |
-| `fetch_query` | `queryId: number` | `StatementInfo` | Gets execution status and first page |
-| `fetch_page` | `queryId: number, pageIndex: number` | `Page \| null` | Fetches a specific results page |
-| `get_query_status` | `queryId: number` | `QueryStatus` | Gets current execution status |
-| `get_page_count` | `queryId: number` | `number` | Gets total number of pages available |
-| `get_columns` | `queryId: number` | `string[] \| null` | Gets column names for results |
+| Command            | Parameters                           | Returns            | Description                             |
+| ------------------ | ------------------------------------ | ------------------ | --------------------------------------- |
+| `start_query`      | `connectionId: UUID, query: string`  | `QueryId[]`        | Starts executing one or more statements |
+| `fetch_query`      | `queryId: number`                    | `StatementInfo`    | Gets execution status and first page    |
+| `fetch_page`       | `queryId: number, pageIndex: number` | `Page \| null`     | Fetches a specific results page         |
+| `get_query_status` | `queryId: number`                    | `QueryStatus`      | Gets current execution status           |
+| `get_page_count`   | `queryId: number`                    | `number`           | Gets total number of pages available    |
+| `get_columns`      | `queryId: number`                    | `string[] \| null` | Gets column names for results           |
 
 ### Query Types
 
 ```typescript
-type QueryId = number  // Index into statement array
+type QueryId = number // Index into statement array
 
 type QueryStatus = 'Pending' | 'Running' | 'Completed' | 'Error'
 
 type StatementInfo = {
-  returns_values: boolean     // true for SELECT, false for UPDATE/INSERT/DELETE
-  status: QueryStatus         // Current execution state
-  first_page: Page | null     // First page of results if available
-  affected_rows: number | null  // For mutations
-  error: string | null        // Error message if failed
+	returns_values: boolean // true for SELECT, false for UPDATE/INSERT/DELETE
+	status: QueryStatus // Current execution state
+	first_page: Page | null // First page of results if available
+	affected_rows: number | null // For mutations
+	error: string | null // Error message if failed
 }
 
 // Page is a 2D JSON array: rows × columns
@@ -195,11 +195,14 @@ type Json = string | number | boolean | null | Json[] | { [key: string]: Json }
 When a query contains multiple SQL statements (separated by semicolons):
 
 ```typescript
-const queryIds = await startQuery(connectionId, `
+const queryIds = await startQuery(
+	connectionId,
+	`
   SELECT 1;
   SELECT 2;
   UPDATE users SET name = 'test' WHERE id = 1;
-`)
+`
+)
 // Returns: [0, 1, 2] - one QueryId per statement
 ```
 
@@ -207,17 +210,17 @@ const queryIds = await startQuery(connectionId, `
 
 All data is serialized as JSON. Special handling:
 
-| PostgreSQL Type | JSON Output |
-|-----------------|-------------|
-| `integer`, `bigint` | number |
-| `numeric`, `decimal` | string (preserves precision) |
-| `boolean` | boolean |
-| `json`, `jsonb` | object/array |
-| `timestamp`, `date`, `time` | string (ISO format) |
-| `uuid` | string |
-| `bytea` | base64 string |
-| `array` | JSON array |
-| `NULL` | null |
+| PostgreSQL Type             | JSON Output                  |
+| --------------------------- | ---------------------------- |
+| `integer`, `bigint`         | number                       |
+| `numeric`, `decimal`        | string (preserves precision) |
+| `boolean`                   | boolean                      |
+| `json`, `jsonb`             | object/array                 |
+| `timestamp`, `date`, `time` | string (ISO format)          |
+| `uuid`                      | string                       |
+| `bytea`                     | base64 string                |
+| `array`                     | JSON array                   |
+| `NULL`                      | null                         |
 
 ---
 
@@ -229,19 +232,28 @@ All data is serialized as JSON. Special handling:
 
 ```typescript
 // INSERT
-await startQuery(connectionId, `
+await startQuery(
+	connectionId,
+	`
   INSERT INTO users (name, email) VALUES ('John', 'john@example.com')
-`)
+`
+)
 
-// UPDATE  
-await startQuery(connectionId, `
+// UPDATE
+await startQuery(
+	connectionId,
+	`
   UPDATE users SET name = 'Jane' WHERE id = 1
-`)
+`
+)
 
 // DELETE
-await startQuery(connectionId, `
+await startQuery(
+	connectionId,
+	`
   DELETE FROM users WHERE id = 1
-`)
+`
+)
 ```
 
 ### Transaction Support
@@ -249,12 +261,15 @@ await startQuery(connectionId, `
 Transactions must be handled via raw SQL:
 
 ```typescript
-await startQuery(connectionId, `
+await startQuery(
+	connectionId,
+	`
   BEGIN;
   UPDATE accounts SET balance = balance - 100 WHERE id = 1;
   UPDATE accounts SET balance = balance + 100 WHERE id = 2;
   COMMIT;
-`)
+`
+)
 ```
 
 ### Rollback
@@ -280,14 +295,17 @@ There is **no built-in server-side validation** before mutations. The backend ex
 Database constraint violations return errors via `StatementInfo.error`:
 
 ```typescript
-const [queryId] = await startQuery(connectionId, `
+const [queryId] = await startQuery(
+	connectionId,
+	`
   INSERT INTO users (email) VALUES ('duplicate@example.com')
-`)
+`
+)
 const result = await fetchQuery(queryId)
 
 if (result.status === 'Error') {
-  console.log(result.error)
-  // Example: "duplicate key value violates unique constraint \"users_email_key\""
+	console.log(result.error)
+	// Example: "duplicate key value violates unique constraint \"users_email_key\""
 }
 ```
 
@@ -316,13 +334,14 @@ The only real-time feature is **connection health monitoring**:
 ```typescript
 // Tauri event emitted when connection drops
 listen('end-of-connection', (event) => {
-  // event.payload is the connection UUID
+	// event.payload is the connection UUID
 })
 ```
 
 ### Future Considerations
 
 For real-time updates, potential approaches:
+
 - PostgreSQL: LISTEN/NOTIFY with async polling
 - Tauri events for frontend notification
 - Manual refresh triggers
@@ -333,12 +352,12 @@ For real-time updates, potential approaches:
 
 ### Commands
 
-| Command | Parameters | Returns | Description |
-|---------|------------|---------|-------------|
-| `save_session_state` | `sessionData: string` | `void` | Persists UI session state |
-| `get_session_state` | none | `string \| null` | Retrieves saved session |
-| `set_setting` | `key: string, value: string` | `void` | Saves app setting |
-| `get_setting` | `key: string` | `string \| null` | Retrieves app setting |
+| Command              | Parameters                   | Returns          | Description               |
+| -------------------- | ---------------------------- | ---------------- | ------------------------- |
+| `save_session_state` | `sessionData: string`        | `void`           | Persists UI session state |
+| `get_session_state`  | none                         | `string \| null` | Retrieves saved session   |
+| `set_setting`        | `key: string, value: string` | `void`           | Saves app setting         |
+| `get_setting`        | `key: string`                | `string \| null` | Retrieves app setting     |
 
 ### Usage
 
@@ -347,7 +366,7 @@ For real-time updates, potential approaches:
 await setSetting('theme', JSON.stringify({ mode: 'dark', accent: 'blue' }))
 
 // Retrieve and parse
-const theme = await getSetting<{ mode: string, accent: string }>('theme')
+const theme = await getSetting<{ mode: string; accent: string }>('theme')
 ```
 
 ---
@@ -356,23 +375,23 @@ const theme = await getSetting<{ mode: string, accent: string }>('theme')
 
 ### Commands
 
-| Command | Parameters | Returns | Description |
-|---------|------------|---------|-------------|
-| `save_query_to_history` | `connectionId, query, durationMs?, status, rowCount, errorMessage?` | `void` | Records executed query |
-| `get_query_history` | `connectionId: string, limit?: number` | `QueryHistoryEntry[]` | Retrieves query history |
+| Command                 | Parameters                                                          | Returns               | Description             |
+| ----------------------- | ------------------------------------------------------------------- | --------------------- | ----------------------- |
+| `save_query_to_history` | `connectionId, query, durationMs?, status, rowCount, errorMessage?` | `void`                | Records executed query  |
+| `get_query_history`     | `connectionId: string, limit?: number`                              | `QueryHistoryEntry[]` | Retrieves query history |
 
 ### QueryHistoryEntry
 
 ```typescript
 type QueryHistoryEntry = {
-  id: number
-  connection_id: string
-  query_text: string
-  executed_at: number      // Unix timestamp
-  duration_ms: number | null
-  status: string           // 'success', 'error', etc.
-  row_count: number
-  error_message: string | null
+	id: number
+	connection_id: string
+	query_text: string
+	executed_at: number // Unix timestamp
+	duration_ms: number | null
+	status: string // 'success', 'error', etc.
+	row_count: number
+	error_message: string | null
 }
 ```
 
@@ -382,26 +401,26 @@ type QueryHistoryEntry = {
 
 ### Commands
 
-| Command | Parameters | Returns | Description |
-|---------|------------|---------|-------------|
-| `save_script` | `name, content, connectionId?, description?` | `number` | Saves new script, returns ID |
-| `update_script` | `id, name, content, connectionId?, description?` | `void` | Updates existing script |
-| `get_scripts` | `connectionId?: UUID` | `Script[]` | Lists scripts |
-| `delete_script` | `id: number` | `void` | Deletes a script |
+| Command         | Parameters                                       | Returns    | Description                  |
+| --------------- | ------------------------------------------------ | ---------- | ---------------------------- |
+| `save_script`   | `name, content, connectionId?, description?`     | `number`   | Saves new script, returns ID |
+| `update_script` | `id, name, content, connectionId?, description?` | `void`     | Updates existing script      |
+| `get_scripts`   | `connectionId?: UUID`                            | `Script[]` | Lists scripts                |
+| `delete_script` | `id: number`                                     | `void`     | Deletes a script             |
 
 ### Script Type
 
 ```typescript
 type Script = {
-  id: number
-  name: string
-  description: string | null
-  query_text: string
-  connection_id: string | null  // Associated connection
-  tags: string | null           // Comma-separated tags
-  created_at: number            // Unix timestamp
-  updated_at: number
-  favorite?: boolean
+	id: number
+	name: string
+	description: string | null
+	query_text: string
+	connection_id: string | null // Associated connection
+	tags: string | null // Comma-separated tags
+	created_at: number // Unix timestamp
+	updated_at: number
+	favorite?: boolean
 }
 ```
 
@@ -411,13 +430,13 @@ type Script = {
 
 ### Commands
 
-| Command | Returns | Description |
-|---------|---------|-------------|
-| `minimize_window` | `void` | Minimizes app window |
-| `maximize_window` | `void` | Toggles maximize state |
-| `close_window` | `void` | Closes the window |
-| `open_sqlite_db` | `string \| null` | Opens file picker for SQLite |
-| `save_sqlite_db` | `string \| null` | Opens save dialog for SQLite |
+| Command           | Returns          | Description                  |
+| ----------------- | ---------------- | ---------------------------- |
+| `minimize_window` | `void`           | Minimizes app window         |
+| `maximize_window` | `void`           | Toggles maximize state       |
+| `close_window`    | `void`           | Closes the window            |
+| `open_sqlite_db`  | `string \| null` | Opens file picker for SQLite |
+| `save_sqlite_db`  | `string \| null` | Opens save dialog for SQLite |
 
 ---
 
@@ -425,12 +444,12 @@ type Script = {
 
 ### Commands
 
-| Command | Parameters | Returns | Description |
-|---------|------------|---------|-------------|
-| `get_all_commands` | none | `Command[]` | Lists all available commands |
-| `get_command` | `commandId: string` | `Command \| null` | Gets specific command |
-| `update_command_shortcut` | `commandId: string, shortcut: string` | `void` | Updates keyboard binding |
-| `get_custom_shortcuts` | none | `{ [id: string]: string }` | Gets user customizations |
+| Command                   | Parameters                            | Returns                    | Description                  |
+| ------------------------- | ------------------------------------- | -------------------------- | ---------------------------- |
+| `get_all_commands`        | none                                  | `Command[]`                | Lists all available commands |
+| `get_command`             | `commandId: string`                   | `Command \| null`          | Gets specific command        |
+| `update_command_shortcut` | `commandId: string, shortcut: string` | `void`                     | Updates keyboard binding     |
+| `get_custom_shortcuts`    | none                                  | `{ [id: string]: string }` | Gets user customizations     |
 
 ---
 
@@ -442,16 +461,16 @@ type Script = {
 pub struct AppState {
     // In-memory connection pool
     pub connections: DashMap<Uuid, DatabaseConnection>,
-    
+
     // Cached schemas
     pub schemas: DashMap<Uuid, Arc<DatabaseSchema>>,
-    
+
     // Local SQLite database for app data
     pub storage: Storage,
-    
+
     // Manages query execution workers
     pub stmt_manager: StatementManager,
-    
+
     // Keyboard shortcuts registry
     pub command_registry: RwLock<CommandRegistry>,
 }
@@ -473,11 +492,13 @@ pub struct AppState {
 ### Storage
 
 Application data is stored in a local SQLite database at:
+
 - **Linux**: `~/.local/share/Dora/Dora.db`
 - **macOS**: `~/Library/Application Support/Dora/Dora.db`
 - **Windows**: `%APPDATA%\Dora\Dora.db`
 
 Tables:
+
 - `connections` - Saved database connections (encrypted)
 - `database_types` - Reference table (1: postgres, 2: sqlite)
 - `query_history` - Executed query log
@@ -498,7 +519,7 @@ import { invoke } from '@tauri-apps/api/core'
 
 // Main command wrapper pattern:
 export async function startQuery(connectionId: string, query: string): Promise<QueryId[]> {
-  return await invoke('start_query', { connectionId, query })
+	return await invoke('start_query', { connectionId, query })
 }
 ```
 
@@ -507,7 +528,7 @@ export async function startQuery(connectionId: string, query: string): Promise<Q
 ```typescript
 // Check if running in Tauri context
 export function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI__' in window
+	return typeof window !== 'undefined' && '__TAURI__' in window
 }
 ```
 
@@ -531,10 +552,10 @@ pub enum Error {
 
 ```typescript
 try {
-  const result = await connectToDatabase(connectionId)
+	const result = await connectToDatabase(connectionId)
 } catch (error) {
-  // Error format: { name: "error", message: "description" }
-  const errorMessage = (error as { message: string }).message
+	// Error format: { name: "error", message: "description" }
+	const errorMessage = (error as { message: string }).message
 }
 ```
 
@@ -567,6 +588,7 @@ To add LibSQL or other databases:
 ## Complete Command Reference
 
 ### Database Commands
+
 - `test_connection`
 - `add_connection`
 - `update_connection`
@@ -596,6 +618,7 @@ To add LibSQL or other databases:
 - `get_connection_history`
 
 ### Window Commands
+
 - `minimize_window`
 - `maximize_window`
 - `close_window`
@@ -603,10 +626,12 @@ To add LibSQL or other databases:
 - `save_sqlite_db`
 
 ### Commands System
+
 - `get_all_commands`
 - `get_command`
 - `update_command_shortcut`
 - `get_custom_shortcuts`
 
 ### Test/Development
+
 - `populate_test_queries_command`

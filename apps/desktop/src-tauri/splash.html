@@ -1,148 +1,155 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Dora</title>
+		<style>
+			:root {
+				/* Light Theme (matching globals.css) */
+				--bg: #f5f5f7;
+				/* neutral-50/100ish */
+				--text: #1a1a1a;
+				--text-muted: #737373;
+				--primary: #6366f1;
+				/* approximate primary */
+			}
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dora</title>
-  <style>
-    :root {
-      /* Light Theme (matching globals.css) */
-      --bg: #f5f5f7;
-      /* neutral-50/100ish */
-      --text: #1a1a1a;
-      --text-muted: #737373;
-      --primary: #6366f1;
-      /* approximate primary */
-    }
+			@media (prefers-color-scheme: dark) {
+				:root {
+					/* Dark Theme */
+					--bg: #1c1c1e;
+					/* deeper dark */
+					--text: #f5f5f7;
+					--text-muted: #a1a1aa;
+					--primary: #818cf8;
+				}
+			}
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        /* Dark Theme */
-        --bg: #1c1c1e;
-        /* deeper dark */
-        --text: #f5f5f7;
-        --text-muted: #a1a1aa;
-        --primary: #818cf8;
-      }
-    }
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+			body {
+				width: 100vw;
+				height: 100vh;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				background-color: var(--bg);
+				font-family:
+					-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+					sans-serif;
+				user-select: none;
+				cursor: default;
+			}
 
-    body {
-      width: 100vw;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background-color: var(--bg);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      user-select: none;
-      cursor: default;
-    }
+			.container {
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 24px;
+				animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+			}
 
-    .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 24px;
-      animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-    }
+			.logo-frame {
+				width: 96px;
+				height: 96px;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				/* Subtle shadow, no massive glows */
+				filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+			}
 
-    .logo-frame {
-      width: 96px;
-      height: 96px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      /* Subtle shadow, no massive glows */
-      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
-    }
+			.logo-frame svg {
+				width: 100%;
+				height: 100%;
+			}
 
-    .logo-frame svg {
-      width: 100%;
-      height: 100%;
-    }
+			.content {
+				text-align: center;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+			}
 
-    .content {
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
+			.title {
+				font-size: 24px;
+				font-weight: 600;
+				color: var(--text);
+				letter-spacing: -0.5px;
+			}
 
-    .title {
-      font-size: 24px;
-      font-weight: 600;
-      color: var(--text);
-      letter-spacing: -0.5px;
-    }
+			.status {
+				font-size: 13px;
+				color: var(--text-muted);
+				font-weight: 400;
+				display: flex;
+				align-items: center;
+				gap: 8px;
+			}
 
-    .status {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-weight: 400;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+			/* Minimal loading indicator */
+			.spinner {
+				width: 12px;
+				height: 12px;
+				border: 2px solid var(--text-muted);
+				border-top-color: transparent;
+				border-radius: 50%;
+				animation: spin 0.8s linear infinite;
+				opacity: 0.5;
+			}
 
-    /* Minimal loading indicator */
-    .spinner {
-      width: 12px;
-      height: 12px;
-      border: 2px solid var(--text-muted);
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      opacity: 0.5;
-    }
+			@keyframes fade-in {
+				from {
+					opacity: 0;
+					transform: scale(0.98);
+				}
 
-    @keyframes fade-in {
-      from {
-        opacity: 0;
-        transform: scale(0.98);
-      }
+				to {
+					opacity: 1;
+					transform: scale(1);
+				}
+			}
 
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
-    }
+			@keyframes spin {
+				to {
+					transform: rotate(360deg);
+				}
+			}
+		</style>
+	</head>
 
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-  </style>
-</head>
+	<body>
+		<div class="container">
+			<div class="logo-frame">
+				<!-- Clean Logo SVG -->
+				<svg
+					width="128"
+					height="128"
+					viewBox="0 0 128 128"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<rect width="128" height="128" rx="28" fill="var(--primary)" />
+					<path
+						d="M44 38V90H74C88.3594 90 100 78.3594 100 64C100 49.6406 88.3594 38 74 38H44ZM56 50H74C81.732 50 88 56.268 88 64C88 71.732 81.732 78 74 78H56V50Z"
+						fill="white"
+					/>
+				</svg>
+			</div>
 
-<body>
-  <div class="container">
-    <div class="logo-frame">
-      <!-- Clean Logo SVG -->
-      <svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="128" height="128" rx="28" fill="var(--primary)" />
-        <path
-          d="M44 38V90H74C88.3594 90 100 78.3594 100 64C100 49.6406 88.3594 38 74 38H44ZM56 50H74C81.732 50 88 56.268 88 64C88 71.732 81.732 78 74 78H56V50Z"
-          fill="white" />
-      </svg>
-    </div>
-
-    <div class="content">
-      <div class="title">Dora</div>
-      <div class="status">
-        <div class="spinner"></div>
-        <span>Initializing...</span>
-      </div>
-    </div>
-  </div>
-</body>
-
+			<div class="content">
+				<div class="title">Dora</div>
+				<div class="status">
+					<div class="spinner"></div>
+					<span>Initializing...</span>
+				</div>
+			</div>
+		</div>
+	</body>
 </html>

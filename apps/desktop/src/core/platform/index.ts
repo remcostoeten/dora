@@ -1,1 +1,1 @@
-export * from "./platform-guard";
+export * from './platform-guard'
