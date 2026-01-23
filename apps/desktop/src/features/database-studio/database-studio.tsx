@@ -28,6 +28,8 @@ type Props = {
 	activeConnectionId?: string
 	onAddConnection?: () => void
 	isSidebarOpen?: boolean
+	initialRowPK?: string | number | null
+	onRowSelectionChange?: (pk: string | number | null) => void
 }
 
 export function DatabaseStudio({
@@ -36,7 +38,9 @@ export function DatabaseStudio({
 	onToggleSidebar,
 	activeConnectionId,
 	onAddConnection,
-	isSidebarOpen
+	isSidebarOpen,
+	initialRowPK,
+	onRowSelectionChange
 }: Props) {
 	const adapter = useAdapter()
 	const { updateCell, deleteRows, insertRow } = useDataMutation()
@@ -256,8 +260,42 @@ export function DatabaseStudio({
 			if (!initializedFromUrlRef.current) return
 			const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null
 			setSelectedRow(firstSelected)
+
+			// Notify selection change with PK
+			if (onRowSelectionChange && tableData) {
+				if (firstSelected !== null && tableData.rows[firstSelected]) {
+					const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
+					if (primaryKeyColumn) {
+						const pkValue = tableData.rows[firstSelected][primaryKeyColumn.name] as string | number
+						onRowSelectionChange(pkValue)
+					}
+				} else if (selectedRows.size === 0) {
+					onRowSelectionChange(null)
+				}
+			}
 		},
-		[selectedRows, setSelectedRow]
+		[selectedRows, setSelectedRow, onRowSelectionChange, tableData]
+	)
+
+	// Restore selection from initialRowPK
+	useEffect(
+		function restoreSelectionFromPK() {
+			if (!tableData || !initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current) return
+
+			const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
+			if (!primaryKeyColumn) return
+
+			const rowIndex = tableData.rows.findIndex((row) =>
+				String(row[primaryKeyColumn.name]) === String(initialRowPK)
+			)
+
+			if (rowIndex !== -1) {
+				setSelectedRows(new Set([rowIndex]))
+				// Mark as initialized so URL sync doesn't overwrite it immediately?
+				// Actually syncSelectedRowToUrl will run and update URL, which is fine.
+			}
+		},
+		[tableData, initialRowPK] // Run when data loads or initialPK changes
 	)
 
 	useEffect(
@@ -432,48 +470,48 @@ export function DatabaseStudio({
 	const handleOpenBulkEdit = useCallback(() => setShowBulkEditDialog(true), [])
 
 	function handleToggleColumn(columnName: string, visible: boolean) {
-    setVisibleColumns((prev) => {
-    	const next = new Set(prev)
-    	if (visible) {
-    		next.add(columnName)
-    	} else {
-    		next.delete(columnName)
-    	}
-    	return next
-    })
-    }
+		setVisibleColumns((prev) => {
+			const next = new Set(prev)
+			if (visible) {
+				next.add(columnName)
+			} else {
+				next.delete(columnName)
+			}
+			return next
+		})
+	}
 
 	function handleRowSelect(rowIndex: number, checked: boolean) {
-    setSelectedRows((prev) => {
-    	const next = new Set(prev)
-    	if (checked) {
-    		next.add(rowIndex)
-    	} else {
-    		next.delete(rowIndex)
-    	}
-    	return next
-    })
-    }
+		setSelectedRows((prev) => {
+			const next = new Set(prev)
+			if (checked) {
+				next.add(rowIndex)
+			} else {
+				next.delete(rowIndex)
+			}
+			return next
+		})
+	}
 
 	function handleRowsSelect(rowIndices: number[], checked: boolean) {
-    setSelectedRows((prev) => {
-    	const next = new Set(prev)
-    	if (checked) {
-    		rowIndices.forEach((i) => next.add(i))
-    	} else {
-    		rowIndices.forEach((i) => next.delete(i))
-    	}
-    	return next
-    })
-    }
+		setSelectedRows((prev) => {
+			const next = new Set(prev)
+			if (checked) {
+				rowIndices.forEach((i) => next.add(i))
+			} else {
+				rowIndices.forEach((i) => next.delete(i))
+			}
+			return next
+		})
+	}
 
 	function handleSelectAll(checked: boolean) {
-    if (checked && tableData) {
-    	setSelectedRows(new Set(tableData.rows.map((_, i) => i)))
-    } else {
-    	setSelectedRows(new Set())
-    }
-    }
+		if (checked && tableData) {
+			setSelectedRows(new Set(tableData.rows.map((_, i) => i)))
+		} else {
+			setSelectedRows(new Set())
+		}
+	}
 
 	function handleCellEdit(rowIndex: number, columnName: string, newValue: unknown) {
 		if (!tableId || !activeConnectionId || !tableData) return
@@ -543,45 +581,45 @@ export function DatabaseStudio({
 	// Handle Undo for Pending Edits (Ctrl+Z)
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        	if (isDryEditMode && tableId && hasEdits(tableId)) {
-        		// Check if we are inside an input (default undo) vs grid navigation
-        		// If target is body or grid container, we perform our undo.
-        		const target = e.target as HTMLElement
-        		const isInput =
-        			target.tagName === 'INPUT' ||
-        			target.tagName === 'TEXTAREA' ||
-        			target.isContentEditable
+			if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+				if (isDryEditMode && tableId && hasEdits(tableId)) {
+					// Check if we are inside an input (default undo) vs grid navigation
+					// If target is body or grid container, we perform our undo.
+					const target = e.target as HTMLElement
+					const isInput =
+						target.tagName === 'INPUT' ||
+						target.tagName === 'TEXTAREA' ||
+						target.isContentEditable
 
-        		if (!isInput) {
-        			e.preventDefault()
-        			e.stopPropagation()
+					if (!isInput) {
+						e.preventDefault()
+						e.stopPropagation()
 
-        			const edits = getEditsForTable(tableId)
-        			const lastEdit = edits[edits.length - 1]
+						const edits = getEditsForTable(tableId)
+						const lastEdit = edits[edits.length - 1]
 
-        			if (lastEdit) {
-        				const key = `${tableId}:${String(lastEdit.primaryKeyValue)}:${lastEdit.columnName}`
-        				removeEdit(tableId, key)
+						if (lastEdit) {
+							const key = `${tableId}:${String(lastEdit.primaryKeyValue)}:${lastEdit.columnName}`
+							removeEdit(tableId, key)
 
-        				setTableData((prev) => {
-        					if (!prev) return prev
-        					const newRows = [...prev.rows]
-        					// We trust rowIndex from the edit, assuming table hasn't been re-sorted/filtered in a way that invalidates indices.
-        					// Ideal: find row by PK. But for now using index as stored.
-        					if (newRows[lastEdit.rowIndex]) {
-        						newRows[lastEdit.rowIndex] = {
-        							...newRows[lastEdit.rowIndex],
-        							[lastEdit.columnName]: lastEdit.oldValue
-        						}
-        					}
-        					return { ...prev, rows: newRows }
-        				})
-        			}
-        		}
-        	}
-        }
-        }
+							setTableData((prev) => {
+								if (!prev) return prev
+								const newRows = [...prev.rows]
+								// We trust rowIndex from the edit, assuming table hasn't been re-sorted/filtered in a way that invalidates indices.
+								// Ideal: find row by PK. But for now using index as stored.
+								if (newRows[lastEdit.rowIndex]) {
+									newRows[lastEdit.rowIndex] = {
+										...newRows[lastEdit.rowIndex],
+										[lastEdit.columnName]: lastEdit.oldValue
+									}
+								}
+								return { ...prev, rows: newRows }
+							})
+						}
+					}
+				}
+			}
+		}
 
 		window.addEventListener('keydown', handleKeyDown, true)
 		return () => window.removeEventListener('keydown', handleKeyDown, true)
@@ -674,64 +712,64 @@ export function DatabaseStudio({
 	}
 
 	async function handleRowAction(action: string, row: Record<string, unknown>, rowIndex: number) {
-    if (!tableId || !activeConnectionId || !tableData) return
+		if (!tableId || !activeConnectionId || !tableData) return
 
-    const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
-    if (!primaryKeyColumn) {
-    	console.error('No primary key found')
-    	return
-    }
+		const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
+		if (!primaryKeyColumn) {
+			console.error('No primary key found')
+			return
+		}
 
-    switch (action) {
-    	case 'delete':
-    		if (
-    			settings.confirmBeforeDelete &&
-    			!confirm('Are you sure you want to delete this row?')
-    		)
-    			return
+		switch (action) {
+			case 'delete':
+				if (
+					settings.confirmBeforeDelete &&
+					!confirm('Are you sure you want to delete this row?')
+				)
+					return
 
-    		deleteRows.mutate(
-    			{
-    				connectionId: activeConnectionId,
-    				tableName: tableName || tableId,
-    				primaryKeyColumn: primaryKeyColumn.name,
-    				primaryKeyValues: [row[primaryKeyColumn.name]]
-    			},
-    			{
-    				onSuccess: () => {
-    					loadTableData()
-    				},
-    				onError: (error) => {
-    					console.error('Failed to delete row:', error)
-    				}
-    			}
-    		)
-    		break
-    	case 'view':
-    		setSelectedRowForDetail(row)
-    		setShowRowDetail(true)
-    		break
-    	case 'edit':
-    		setDuplicateInitialData(row)
-    		setAddDialogMode('add')
-    		setShowAddDialog(true)
-    		break
-    	case 'duplicate':
-    		const duplicateData = { ...row }
-    		if (primaryKeyColumn) {
-    			delete duplicateData[primaryKeyColumn.name]
-    		}
-    		// Prefill any missing required timestamp fields if not present in source
-    		const defaults = createDefaultValues(tableData.columns)
-    		setDraftRow({ ...defaults, ...duplicateData })
-    		setDraftInsertIndex(rowIndex + 1)
+				deleteRows.mutate(
+					{
+						connectionId: activeConnectionId,
+						tableName: tableName || tableId,
+						primaryKeyColumn: primaryKeyColumn.name,
+						primaryKeyValues: [row[primaryKeyColumn.name]]
+					},
+					{
+						onSuccess: () => {
+							loadTableData()
+						},
+						onError: (error) => {
+							console.error('Failed to delete row:', error)
+						}
+					}
+				)
+				break
+			case 'view':
+				setSelectedRowForDetail(row)
+				setShowRowDetail(true)
+				break
+			case 'edit':
+				setDuplicateInitialData(row)
+				setAddDialogMode('add')
+				setShowAddDialog(true)
+				break
+			case 'duplicate':
+				const duplicateData = { ...row }
+				if (primaryKeyColumn) {
+					delete duplicateData[primaryKeyColumn.name]
+				}
+				// Prefill any missing required timestamp fields if not present in source
+				const defaults = createDefaultValues(tableData.columns)
+				setDraftRow({ ...defaults, ...duplicateData })
+				setDraftInsertIndex(rowIndex + 1)
 
-    		// Focus will be handled by the DataGrid effect for new draft row
-    		break
-    	default:
-    		console.log('Row action:', action, row)
-    }
-    }
+				// Focus will be handled by the DataGrid effect for new draft row
+				break
+			default:
+				console.log('Row action:', action, row)
+		}
+	}
 
 	function createDefaultValues(columns: ColumnDefinition[]): Record<string, unknown> {
 		const defaults: Record<string, unknown> = {}
@@ -816,17 +854,17 @@ export function DatabaseStudio({
 	}
 
 	function handleExport() {
-    if (!tableData || tableData.rows.length === 0) return
+		if (!tableData || tableData.rows.length === 0) return
 
-    const jsonString = JSON.stringify(tableData.rows, null, 2)
-    const blob = new Blob([jsonString], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${tableName || 'data'}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    }
+		const jsonString = JSON.stringify(tableData.rows, null, 2)
+		const blob = new Blob([jsonString], { type: 'application/json' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = `${tableName || 'data'}.json`
+		a.click()
+		URL.revokeObjectURL(url)
+	}
 
 	async function handleAddColumn(columnDef: ColumnFormData) {
 		if (!activeConnectionId || !tableName) return
@@ -1152,10 +1190,10 @@ export function DatabaseStudio({
 						pendingEdits={
 							tableId
 								? new Set(
-										getEditsForTable(tableId).map(
-											(e) => `${e.primaryKeyValue}:${e.columnName}`
-										)
+									getEditsForTable(tableId).map(
+										(e) => `${e.primaryKeyValue}:${e.columnName}`
 									)
+								)
 								: undefined
 						}
 						draftInsertIndex={draftInsertIndex}

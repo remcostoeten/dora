@@ -14,12 +14,9 @@ export type NavItem = {
 export type SidebarState = {
 	variant: SidebarVariant
 	activeItemId: string | null
-	isPanelOpen: boolean
 }
 
 export type SidebarContextValue = {
 	setVariant: (variant: SidebarVariant) => void
 	setActiveItemId: (id: string | null) => void
-	setPanelOpen: (open: boolean) => void
-	togglePanel: () => void
 } & SidebarState

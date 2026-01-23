@@ -9,6 +9,7 @@ import { DateCell } from "./cells/date-cell";
 import { IpCell } from "./cells/ip-cell";
 import { TokenCell } from "./cells/token-cell";
 import { RowContextMenu, RowAction } from "./row-context-menu";
+import { ScrollHint } from "./scroll-hint";
 
 type EditingCell = {
 	rowIndex: number
@@ -118,6 +119,7 @@ export function DataGrid({
 	}, [initialFocusedCell, focusedCell])
 
 	const gridRef = useRef<HTMLTableElement>(null)
+	const scrollContainerRef = useRef<HTMLDivElement>(null)
 
 	const [internalSelectedCells, setInternalSelectedCells] = useState<Set<string>>(new Set())
 	const selectedCellsSet = externalSelectedCells ?? internalSelectedCells
@@ -551,488 +553,492 @@ export function DataGrid({
 	}
 
 	return (
-		<div
-			className='h-full w-full overflow-auto'
-			style={{ scrollbarGutter: 'stable' }}
-			onContextMenuCapture={handleContextMenuCapture}
-			onWheel={function (e) {
-				if (e.shiftKey) {
-					e.preventDefault()
-					e.currentTarget.scrollLeft += e.deltaY
-				}
-			}}
-		>
-			<table
-				ref={gridRef}
-				className='text-sm border-collapse select-none'
-				style={{ tableLayout: 'auto', minWidth: '100%' }}
-				role='grid'
-				aria-label={tableName ? `Data grid for ${tableName}` : 'Data grid'}
-				aria-rowcount={rows.length}
-				aria-colcount={columns.length + 1}
-				tabIndex={0}
-				onKeyDown={handleGridKeyDown}
+		<div className="relative h-full w-full">
+			<div
+				ref={scrollContainerRef}
+				className='h-full w-full overflow-auto'
+				style={{ scrollbarGutter: 'stable' }}
+				onContextMenuCapture={handleContextMenuCapture}
+				onWheel={function (e) {
+					if (e.shiftKey) {
+						e.preventDefault()
+						e.currentTarget.scrollLeft += e.deltaY
+					}
+				}}
 			>
-				<colgroup>
-					<col style={{ width: 30, minWidth: 30 }} />
-					{columns.map(function (col) {
-						const width = getColumnWidth(col.name)
-						return (
-							<col
-								key={col.name}
-								style={{
-									width: width || DEFAULT_COLUMN_WIDTH,
-									minWidth: MIN_COLUMN_WIDTH
-								}}
-							/>
-						)
-					})}
-				</colgroup>
-				<thead className='sticky top-0 bg-sidebar z-10' role='rowgroup'>
-					<tr role='row'>
-						{/* Checkbox column */}
-						<th
-							className='w-[30px] px-1 py-2 text-center border-b border-r border-sidebar-border bg-sidebar-accent/50'
-							role='columnheader'
-							aria-label='Select all rows'
-						>
-							<Checkbox
-								checked={someSelected ? 'indeterminate' : allSelected}
-								onCheckedChange={function (checked) {
-									onSelectAll(!!checked)
-								}}
-								className='h-4 w-4'
-								aria-label={allSelected ? 'Deselect all rows' : 'Select all rows'}
-							/>
-						</th>
-						{/* Data columns */}
+				<table
+					ref={gridRef}
+					className='text-sm border-collapse select-none'
+					style={{ tableLayout: 'auto', minWidth: '100%' }}
+					role='grid'
+					aria-label={tableName ? `Data grid for ${tableName}` : 'Data grid'}
+					aria-rowcount={rows.length}
+					aria-colcount={columns.length + 1}
+					tabIndex={0}
+					onKeyDown={handleGridKeyDown}
+				>
+					<colgroup>
+						<col style={{ width: 30, minWidth: 30 }} />
 						{columns.map(function (col) {
-							const isSorted = sort?.column === col.name
 							const width = getColumnWidth(col.name)
-
 							return (
-								<th
+								<col
 									key={col.name}
-									className={cn(
-										'text-left font-medium border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0 h-9 cursor-pointer transition-colors hover:bg-sidebar-accent relative select-none min-w-[60px]',
-										isSorted && 'bg-sidebar-accent',
-										resizingColumn === col.name && 'bg-sidebar-accent'
-									)}
-									style={width ? { width } : undefined}
-									onClick={function () {
-										handleSort(col.name)
+									style={{
+										width: width || DEFAULT_COLUMN_WIDTH,
+										minWidth: MIN_COLUMN_WIDTH
 									}}
-								>
-									<div className='flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden'>
-										<div className='flex items-center gap-1.5 overflow-hidden min-w-0'>
-											<span className='text-foreground text-xs shrink-0'>
-												{col.name}
-											</span>
-											{col.type && col.type !== 'unknown' && (
-												<span className='text-muted-foreground/50 text-[10px] font-normal font-mono lowercase truncate min-w-0'>
-													{col.type}
-												</span>
-											)}
-										</div>
-										{isSorted && sort ? (
-											sort.direction === 'asc' ? (
-												<ArrowUp className='h-3 w-3 text-primary shrink-0' />
-											) : (
-												<ArrowDown className='h-3 w-3 text-primary shrink-0' />
-											)
-										) : (
-											<ArrowUpDown className='h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors shrink-0' />
-										)}
-									</div>
-
-									{/* Resize handle */}
-									<div
-										className={cn(
-											'absolute right-0 top-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 transition-colors',
-											resizingColumn === col.name && 'bg-primary'
-										)}
-										onMouseDown={function (e) {
-											handleResizeStart(e, col.name)
-										}}
-										onDoubleClick={function (e) {
-											handleResizeDoubleClick(e, col.name, col.type)
-										}}
-										onClick={function (e) {
-											e.stopPropagation()
-										}}
-									/>
-								</th>
+								/>
 							)
 						})}
-					</tr>
-				</thead>
-				<tbody role='rowgroup'>
-					{/* Render draft row at TOP if no specific index is provided (-1 or null) */}
-					{draftRow &&
-						(draftInsertIndex === undefined ||
-							draftInsertIndex === null ||
-							draftInsertIndex === -1) && (
-							<tr className='bg-emerald-500/10 border-l-2 border-l-emerald-500'>
-								<td className='px-1 py-1.5 text-center border-b border-r border-sidebar-border'>
-									<div className='flex items-center justify-center gap-1'>
-										<button
-											onClick={onDraftSave}
-											className='text-emerald-500 hover:text-emerald-400 text-xs font-medium'
-											title='Save (Enter)'
-										>
-											✓
-										</button>
-										<button
-											onClick={onDraftCancel}
-											className='text-muted-foreground hover:text-destructive text-xs'
-											title='Cancel (Escape)'
-										>
-											✕
-										</button>
-									</div>
-								</td>
-								{columns.map(function (col, colIndex) {
-									const width = getColumnWidth(col.name)
-									const isPrimaryKey = col.primaryKey
-
-									return (
-										<td
-											key={col.name}
-											className='border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0'
-											style={width ? { maxWidth: width } : undefined}
-										>
-											{isPrimaryKey ? (
-												<div className='px-3 py-1.5 text-muted-foreground italic text-xs'>
-													auto
-												</div>
-											) : (
-												<input
-													type='text'
-													autoFocus={
-														colIndex === 0 ||
-														(colIndex === 1 && columns[0]?.primaryKey)
-													}
-													value={
-														draftRow[col.name] === null
-															? ''
-															: String(draftRow[col.name] ?? '')
-													}
-													onChange={function (e) {
-														onDraftChange?.(col.name, e.target.value)
-													}}
-													onKeyDown={function (e) {
-														if (e.key === 'Enter') {
-															e.preventDefault()
-															onDraftSave?.()
-														} else if (e.key === 'Escape') {
-															e.preventDefault()
-															onDraftCancel?.()
-														}
-													}}
-													data-no-shortcuts='true'
-													className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
-													placeholder={col.nullable ? 'NULL' : ''}
-												/>
-											)}
-										</td>
-									)
-								})}
-							</tr>
-						)}
-
-					{rows.map(function (row, rowIndex) {
-						return (
-							<React.Fragment key={rowIndex}>
-								<RowContextMenu
-									key={rowIndex}
-									row={row}
-									rowIndex={rowIndex}
-									columns={columns}
-									tableName={tableName}
-									onAction={onRowAction}
-									onOpenChange={function (open, row) {
-										handleRowContextMenuChange(open, row)
+					</colgroup>
+					<thead className='sticky top-0 bg-sidebar z-10' role='rowgroup'>
+						<tr role='row'>
+							{/* Checkbox column */}
+							<th
+								className='w-[30px] px-1 py-2 text-center border-b border-r border-sidebar-border bg-sidebar-accent/50'
+								role='columnheader'
+								aria-label='Select all rows'
+							>
+								<Checkbox
+									checked={someSelected ? 'indeterminate' : allSelected}
+									onCheckedChange={function (checked) {
+										onSelectAll(!!checked)
 									}}
-								>
-									<tr
+									className='h-4 w-4'
+									aria-label={allSelected ? 'Deselect all rows' : 'Select all rows'}
+								/>
+							</th>
+							{/* Data columns */}
+							{columns.map(function (col) {
+								const isSorted = sort?.column === col.name
+								const width = getColumnWidth(col.name)
+
+								return (
+									<th
+										key={col.name}
 										className={cn(
-											'transition-colors cursor-pointer',
-											selectedRows.has(rowIndex)
-												? 'bg-primary/10'
-												: rowIndex % 2 === 1
-													? 'bg-muted/5 hover:bg-sidebar-accent/30'
-													: 'hover:bg-sidebar-accent/30'
+											'text-left font-medium border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0 h-9 cursor-pointer transition-colors hover:bg-sidebar-accent relative select-none min-w-[60px]',
+											isSorted && 'bg-sidebar-accent',
+											resizingColumn === col.name && 'bg-sidebar-accent'
 										)}
-										onClick={function (e) {
-											handleRowClick(e, rowIndex)
-										}}
-										role='row'
-										aria-rowindex={rowIndex + 2}
-										aria-selected={selectedRows.has(rowIndex)}
-										tabIndex={0}
-										onKeyDown={function (e) {
-											if (e.key === ' ' || e.key === 'Enter') {
-												e.preventDefault()
-												onRowSelect(rowIndex, !selectedRows.has(rowIndex))
-											}
+										style={width ? { width } : undefined}
+										onClick={function () {
+											handleSort(col.name)
 										}}
 									>
-										<td
-											className='px-1 py-1.5 text-center border-b border-r border-sidebar-border'
-											role='gridcell'
-										>
-											<Checkbox
-												checked={selectedRows.has(rowIndex)}
-												onCheckedChange={function (checked) {
-													onRowSelect(rowIndex, !!checked)
-												}}
-												className='h-4 w-4'
-												aria-label={`Select row ${rowIndex + 1}`}
-											/>
-										</td>
-										{columns.map(function (col, colIndex) {
-											const isEditing =
-												editingCell?.rowIndex === rowIndex &&
-												editingCell?.columnName === col.name
-											const isFocused =
-												focusedCell?.row === rowIndex &&
-												focusedCell?.col === colIndex
-											const isSelected = selectedCellsSet.has(
-												getCellKey(rowIndex, colIndex)
-											)
-											const width = getColumnWidth(col.name)
+										<div className='flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden'>
+											<div className='flex items-center gap-1.5 overflow-hidden min-w-0'>
+												<span className='text-foreground text-xs shrink-0'>
+													{col.name}
+												</span>
+												{col.type && col.type !== 'unknown' && (
+													<span className='text-muted-foreground/50 text-[10px] font-normal font-mono lowercase truncate min-w-0'>
+														{col.type}
+													</span>
+												)}
+											</div>
+											{isSorted && sort ? (
+												sort.direction === 'asc' ? (
+													<ArrowUp className='h-3 w-3 text-primary shrink-0' />
+												) : (
+													<ArrowDown className='h-3 w-3 text-primary shrink-0' />
+												)
+											) : (
+												<ArrowUpDown className='h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors shrink-0' />
+											)}
+										</div>
 
-											// Check if cell has pending edits
-											const primaryKeyCol = columns.find(function (c) {
-												return c.primaryKey
-											})
-											const isDirty = primaryKeyCol
-												? pendingEdits?.has(
+										{/* Resize handle */}
+										<div
+											className={cn(
+												'absolute right-0 top-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 transition-colors',
+												resizingColumn === col.name && 'bg-primary'
+											)}
+											onMouseDown={function (e) {
+												handleResizeStart(e, col.name)
+											}}
+											onDoubleClick={function (e) {
+												handleResizeDoubleClick(e, col.name, col.type)
+											}}
+											onClick={function (e) {
+												e.stopPropagation()
+											}}
+										/>
+									</th>
+								)
+							})}
+						</tr>
+					</thead>
+					<tbody role='rowgroup'>
+						{/* Render draft row at TOP if no specific index is provided (-1 or null) */}
+						{draftRow &&
+							(draftInsertIndex === undefined ||
+								draftInsertIndex === null ||
+								draftInsertIndex === -1) && (
+								<tr className='bg-emerald-500/10 border-l-2 border-l-emerald-500'>
+									<td className='px-1 py-1.5 text-center border-b border-r border-sidebar-border'>
+										<div className='flex items-center justify-center gap-1'>
+											<button
+												onClick={onDraftSave}
+												className='text-emerald-500 hover:text-emerald-400 text-xs font-medium'
+												title='Save (Enter)'
+											>
+												✓
+											</button>
+											<button
+												onClick={onDraftCancel}
+												className='text-muted-foreground hover:text-destructive text-xs'
+												title='Cancel (Escape)'
+											>
+												✕
+											</button>
+										</div>
+									</td>
+									{columns.map(function (col, colIndex) {
+										const width = getColumnWidth(col.name)
+										const isPrimaryKey = col.primaryKey
+
+										return (
+											<td
+												key={col.name}
+												className='border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0'
+												style={width ? { maxWidth: width } : undefined}
+											>
+												{isPrimaryKey ? (
+													<div className='px-3 py-1.5 text-muted-foreground italic text-xs'>
+														auto
+													</div>
+												) : (
+													<input
+														type='text'
+														autoFocus={
+															colIndex === 0 ||
+															(colIndex === 1 && columns[0]?.primaryKey)
+														}
+														value={
+															draftRow[col.name] === null
+																? ''
+																: String(draftRow[col.name] ?? '')
+														}
+														onChange={function (e) {
+															onDraftChange?.(col.name, e.target.value)
+														}}
+														onKeyDown={function (e) {
+															if (e.key === 'Enter') {
+																e.preventDefault()
+																onDraftSave?.()
+															} else if (e.key === 'Escape') {
+																e.preventDefault()
+																onDraftCancel?.()
+															}
+														}}
+														data-no-shortcuts='true'
+														className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
+														placeholder={col.nullable ? 'NULL' : ''}
+													/>
+												)}
+											</td>
+										)
+									})}
+								</tr>
+							)}
+
+						{rows.map(function (row, rowIndex) {
+							return (
+								<React.Fragment key={rowIndex}>
+									<RowContextMenu
+										key={rowIndex}
+										row={row}
+										rowIndex={rowIndex}
+										columns={columns}
+										tableName={tableName}
+										onAction={onRowAction}
+										onOpenChange={function (open, row) {
+											handleRowContextMenuChange(open, row)
+										}}
+									>
+										<tr
+											className={cn(
+												'transition-colors cursor-pointer',
+												selectedRows.has(rowIndex)
+													? 'bg-primary/10'
+													: rowIndex % 2 === 1
+														? 'bg-muted/5 hover:bg-sidebar-accent/30'
+														: 'hover:bg-sidebar-accent/30'
+											)}
+											onClick={function (e) {
+												handleRowClick(e, rowIndex)
+											}}
+											role='row'
+											aria-rowindex={rowIndex + 2}
+											aria-selected={selectedRows.has(rowIndex)}
+											tabIndex={0}
+											onKeyDown={function (e) {
+												if (e.key === ' ' || e.key === 'Enter') {
+													e.preventDefault()
+													onRowSelect(rowIndex, !selectedRows.has(rowIndex))
+												}
+											}}
+										>
+											<td
+												className='px-1 py-1.5 text-center border-b border-r border-sidebar-border'
+												role='gridcell'
+											>
+												<Checkbox
+													checked={selectedRows.has(rowIndex)}
+													onCheckedChange={function (checked) {
+														onRowSelect(rowIndex, !!checked)
+													}}
+													className='h-4 w-4'
+													aria-label={`Select row ${rowIndex + 1}`}
+												/>
+											</td>
+											{columns.map(function (col, colIndex) {
+												const isEditing =
+													editingCell?.rowIndex === rowIndex &&
+													editingCell?.columnName === col.name
+												const isFocused =
+													focusedCell?.row === rowIndex &&
+													focusedCell?.col === colIndex
+												const isSelected = selectedCellsSet.has(
+													getCellKey(rowIndex, colIndex)
+												)
+												const width = getColumnWidth(col.name)
+
+												// Check if cell has pending edits
+												const primaryKeyCol = columns.find(function (c) {
+													return c.primaryKey
+												})
+												const isDirty = primaryKeyCol
+													? pendingEdits?.has(
 														`${row[primaryKeyCol.name]}:${col.name}`
 													)
-												: false
+													: false
 
-											return (
-												<CellContextMenu
-													key={col.name}
-													value={row[col.name]}
-													column={col}
-													rowIndex={rowIndex}
-													colIndex={colIndex}
-													selectedRows={selectedRows}
-													onAction={function (
-														action,
-														value,
-														column,
-														batchAction
-													) {
-														if (
-															action === 'filter-by-value' &&
-															onFilterAdd
+												return (
+													<CellContextMenu
+														key={col.name}
+														value={row[col.name]}
+														column={col}
+														rowIndex={rowIndex}
+														colIndex={colIndex}
+														selectedRows={selectedRows}
+														onAction={function (
+															action,
+															value,
+															column,
+															batchAction
 														) {
-															onFilterAdd({
-																column: column.name,
-																operator: 'eq',
-																value: value
-															})
-														} else if (action === 'edit') {
-															handleCellDoubleClick(
-																rowIndex,
-																column.name,
-																value
-															)
-														} else if (
-															action === 'set-null' &&
-															onCellEdit
-														) {
-															onCellEdit(rowIndex, column.name, null)
-														} else if (
-															action === 'set-null-batch' &&
-															batchAction &&
-															onBatchCellEdit
-														) {
-															onBatchCellEdit(
-																batchAction.rowIndexes,
-																column.name,
-																null
-															)
-														} else {
-															console.log(
-																'Cell action:',
-																action,
-																value,
-																column.name
-															)
-														}
-													}}
-													onOpenChange={function (open, row, col) {
-														handleCellContextMenuChange(open, row, col)
-													}}
-												>
-													<td
-														className={cn(
-															'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px]',
-															isSelected &&
-																!isEditing &&
-																'bg-muted-foreground/10',
-															isFocused &&
-																!isEditing &&
-																'bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20',
-															isDirty && 'bg-amber-500/10'
-														)}
-														style={
-															width ? { maxWidth: width } : undefined
-														}
-														onMouseDown={function (e) {
-															handleCellMouseDown(
-																e,
-																rowIndex,
-																colIndex
-															)
+															if (
+																action === 'filter-by-value' &&
+																onFilterAdd
+															) {
+																onFilterAdd({
+																	column: column.name,
+																	operator: 'eq',
+																	value: value
+																})
+															} else if (action === 'edit') {
+																handleCellDoubleClick(
+																	rowIndex,
+																	column.name,
+																	value
+																)
+															} else if (
+																action === 'set-null' &&
+																onCellEdit
+															) {
+																onCellEdit(rowIndex, column.name, null)
+															} else if (
+																action === 'set-null-batch' &&
+																batchAction &&
+																onBatchCellEdit
+															) {
+																onBatchCellEdit(
+																	batchAction.rowIndexes,
+																	column.name,
+																	null
+																)
+															} else {
+																console.log(
+																	'Cell action:',
+																	action,
+																	value,
+																	column.name
+																)
+															}
 														}}
-														onMouseEnter={function () {
-															handleCellMouseEnter(rowIndex, colIndex)
-														}}
-														onDoubleClick={function () {
-															handleCellDoubleClick(
-																rowIndex,
-																col.name,
-																row[col.name]
-															)
+														onOpenChange={function (open, row, col) {
+															handleCellContextMenuChange(open, row, col)
 														}}
 													>
-														{isEditing ? (
-															<input
-																ref={editInputRef}
-																type='text'
-																value={editValue}
-																onChange={function (e) {
-																	setEditValue(e.target.value)
-																}}
-																onBlur={handleSaveEdit}
-																onKeyDown={handleEditKeyDown}
-																data-no-shortcuts='true'
-																className='w-full h-full bg-primary/10 outline outline-1 outline-offset-[-1px] outline-primary font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
-															/>
-														) : (
-															<div className='truncate relative'>
-																{formatCellValue(
-																	row[col.name],
-																	col
-																)}
-																{isDirty && (
-																	<div className='absolute top-0 right-0 -mr-3 -mt-1.5 w-0 h-0 border-t-[6px] border-r-[6px] border-t-transparent border-r-amber-500' />
-																)}
-															</div>
-														)}
-													</td>
-												</CellContextMenu>
-											)
-										})}
-									</tr>
-								</RowContextMenu>
-								{draftRow && draftInsertIndex === rowIndex + 1 && (
-									<tr className='bg-emerald-500/10 border-b border-sidebar-border group relative'>
-										<td className='w-[30px] border-r border-sidebar-border bg-emerald-500/20 text-center align-middle'>
-											<div className='h-full w-full flex items-center justify-center text-emerald-500 font-bold text-xs'>
-												+
-											</div>
-										</td>
-										{columns.map(function (col, colIndex) {
-											const width = getColumnWidth(col.name)
-											const isPrimaryKey = col.primaryKey
-
-											return (
-												<td
-													key={`draft-${col.name}`}
-													className='border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0'
-													style={width ? { maxWidth: width } : undefined}
-												>
-													{isPrimaryKey ? (
-														<div className='px-3 py-1.5 text-muted-foreground italic text-xs'>
-															auto
-														</div>
-													) : (
-														<input
-															type='text'
-															autoFocus={
-																colIndex === 0 ||
-																(colIndex === 1 &&
-																	columns[0]?.primaryKey)
+														<td
+															className={cn(
+																'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px]',
+																isSelected &&
+																!isEditing &&
+																'bg-muted-foreground/10',
+																isFocused &&
+																!isEditing &&
+																'bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20',
+																isDirty && 'bg-amber-500/10'
+															)}
+															style={
+																width ? { maxWidth: width } : undefined
 															}
-															value={
-																draftRow[col.name] === null
-																	? ''
-																	: String(
-																			draftRow[col.name] ?? ''
-																		)
-															}
-															onChange={function (e) {
-																onDraftChange?.(
-																	col.name,
-																	e.target.value
+															onMouseDown={function (e) {
+																handleCellMouseDown(
+																	e,
+																	rowIndex,
+																	colIndex
 																)
 															}}
-															onKeyDown={function (e) {
-																if (e.key === 'Enter') {
-																	e.preventDefault()
-																	onDraftSave?.()
-																} else if (e.key === 'Escape') {
-																	e.preventDefault()
-																	onDraftCancel?.()
-																}
+															onMouseEnter={function () {
+																handleCellMouseEnter(rowIndex, colIndex)
 															}}
-															data-no-shortcuts='true'
-															className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
-															placeholder={col.nullable ? 'NULL' : ''}
-														/>
-													)}
-												</td>
-											)
-										})}
-										<td className='w-[80px] border-b border-sidebar-border p-0'>
-											<div className='flex items-center justify-center h-full gap-1 px-2'>
-												<button
-													onClick={onDraftSave}
-													className='text-emerald-500 hover:text-emerald-400 text-xs font-medium'
-													title='Save (Enter)'
-												>
-													✓
-												</button>
-												<button
-													onClick={onDraftCancel}
-													className='text-muted-foreground hover:text-destructive text-xs'
-													title='Cancel (Escape)'
-												>
-													✕
-												</button>
-											</div>
-										</td>
-									</tr>
-								)}
-							</React.Fragment>
-						)
-					})}
-					{rows.length === 0 && (
-						<tr>
-							<td
-								colSpan={columns.length + 1}
-								className='h-[400px] text-center text-muted-foreground border-b border-sidebar-border'
-							>
-								<div className='flex flex-col items-center justify-center gap-2'>
-									<div className='p-3 rounded-full bg-sidebar-accent'>
-										<Database className='h-6 w-6 opacity-50' />
+															onDoubleClick={function () {
+																handleCellDoubleClick(
+																	rowIndex,
+																	col.name,
+																	row[col.name]
+																)
+															}}
+														>
+															{isEditing ? (
+																<input
+																	ref={editInputRef}
+																	type='text'
+																	value={editValue}
+																	onChange={function (e) {
+																		setEditValue(e.target.value)
+																	}}
+																	onBlur={handleSaveEdit}
+																	onKeyDown={handleEditKeyDown}
+																	data-no-shortcuts='true'
+																	className='w-full h-full bg-primary/10 outline outline-1 outline-offset-[-1px] outline-primary font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
+																/>
+															) : (
+																<div className='truncate relative'>
+																	{formatCellValue(
+																		row[col.name],
+																		col
+																	)}
+																	{isDirty && (
+																		<div className='absolute top-0 right-0 -mr-3 -mt-1.5 w-0 h-0 border-t-[6px] border-r-[6px] border-t-transparent border-r-amber-500' />
+																	)}
+																</div>
+															)}
+														</td>
+													</CellContextMenu>
+												)
+											})}
+										</tr>
+									</RowContextMenu>
+									{draftRow && draftInsertIndex === rowIndex + 1 && (
+										<tr className='bg-emerald-500/10 border-b border-sidebar-border group relative'>
+											<td className='w-[30px] border-r border-sidebar-border bg-emerald-500/20 text-center align-middle'>
+												<div className='h-full w-full flex items-center justify-center text-emerald-500 font-bold text-xs'>
+													+
+												</div>
+											</td>
+											{columns.map(function (col, colIndex) {
+												const width = getColumnWidth(col.name)
+												const isPrimaryKey = col.primaryKey
+
+												return (
+													<td
+														key={`draft-${col.name}`}
+														className='border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0'
+														style={width ? { maxWidth: width } : undefined}
+													>
+														{isPrimaryKey ? (
+															<div className='px-3 py-1.5 text-muted-foreground italic text-xs'>
+																auto
+															</div>
+														) : (
+															<input
+																type='text'
+																autoFocus={
+																	colIndex === 0 ||
+																	(colIndex === 1 &&
+																		columns[0]?.primaryKey)
+																}
+																value={
+																	draftRow[col.name] === null
+																		? ''
+																		: String(
+																			draftRow[col.name] ?? ''
+																		)
+																}
+																onChange={function (e) {
+																	onDraftChange?.(
+																		col.name,
+																		e.target.value
+																	)
+																}}
+																onKeyDown={function (e) {
+																	if (e.key === 'Enter') {
+																		e.preventDefault()
+																		onDraftSave?.()
+																	} else if (e.key === 'Escape') {
+																		e.preventDefault()
+																		onDraftCancel?.()
+																	}
+																}}
+																data-no-shortcuts='true'
+																className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
+																placeholder={col.nullable ? 'NULL' : ''}
+															/>
+														)}
+													</td>
+												)
+											})}
+											<td className='w-[80px] border-b border-sidebar-border p-0'>
+												<div className='flex items-center justify-center h-full gap-1 px-2'>
+													<button
+														onClick={onDraftSave}
+														className='text-emerald-500 hover:text-emerald-400 text-xs font-medium'
+														title='Save (Enter)'
+													>
+														✓
+													</button>
+													<button
+														onClick={onDraftCancel}
+														className='text-muted-foreground hover:text-destructive text-xs'
+														title='Cancel (Escape)'
+													>
+														✕
+													</button>
+												</div>
+											</td>
+										</tr>
+									)}
+								</React.Fragment>
+							)
+						})}
+						{rows.length === 0 && (
+							<tr>
+								<td
+									colSpan={columns.length + 1}
+									className='h-[400px] text-center text-muted-foreground border-b border-sidebar-border'
+								>
+									<div className='flex flex-col items-center justify-center gap-2'>
+										<div className='p-3 rounded-full bg-sidebar-accent'>
+											<Database className='h-6 w-6 opacity-50' />
+										</div>
+										<p className='font-medium'>No results found</p>
+										<p className='text-sm opacity-80'>
+											Try clearing filters or adding a new record
+										</p>
 									</div>
-									<p className='font-medium'>No results found</p>
-									<p className='text-sm opacity-80'>
-										Try clearing filters or adding a new record
-									</p>
-								</div>
-							</td>
-						</tr>
-					)}
-				</tbody>
-			</table>
+								</td>
+							</tr>
+						)}
+					</tbody>
+				</table>
+			</div>
+			<ScrollHint containerRef={scrollContainerRef} />
 		</div>
 	)
 }

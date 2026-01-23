@@ -39,7 +39,7 @@ export function TableContextMenu({ open, onOpenChange, onAction, children }: Pro
 							onClick={() => onAction(item.id)}
 							className={
 								item.variant === 'destructive'
-									? 'text-destructive focus:text-destructive'
+									? 'text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
 									: ''
 							}
 						>

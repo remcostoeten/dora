@@ -11,6 +11,8 @@ export type SettingsState = {
 	enableVimMode: boolean
 	restoreLastConnection: boolean
 	lastConnectionId: string | null
+	lastTableId: string | null
+	lastRowPK: string | number | null
 	selectionBarStyle: 'floating' | 'static'
 	showToasts: boolean
 }
@@ -22,6 +24,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
 	enableVimMode: false,
 	restoreLastConnection: true,
 	lastConnectionId: null,
+	lastTableId: null,
+	lastRowPK: null,
 	selectionBarStyle: 'floating',
 	showToasts: true
 }

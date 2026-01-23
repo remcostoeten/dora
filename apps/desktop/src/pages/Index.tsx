@@ -21,7 +21,7 @@ export default function Index() {
 	const [isSidebarOpen, setIsSidebarOpen] = useState(true)
 	const [isLoading, setIsLoading] = useState(true)
 	const adapter = useAdapter()
-	const { settings, updateSetting, isLoading: isSettingsLoading } = useSettings()
+	const { settings, updateSetting, updateSettings, isLoading: isSettingsLoading } = useSettings()
 
 	const urlView = searchParams.get('view')
 	const urlTable = searchParams.get('table')
@@ -55,15 +55,28 @@ export default function Index() {
 		loadConnectionsFromBackend()
 	}, [adapter])
 
-	useEffect(() => {
-		const params = new URLSearchParams(searchParams)
+	useEffect(
+		function syncUrlParams() {
+			const currentView = searchParams.get('view')
+			const currentTable = searchParams.get('table')
+			const currentConnection = searchParams.get('connection')
 
-		if (activeNavId) params.set('view', activeNavId)
-		if (selectedTableId) params.set('table', selectedTableId)
-		if (activeConnectionId) params.set('connection', activeConnectionId)
+			const viewChanged = activeNavId && currentView !== activeNavId
+			const tableChanged = selectedTableId && currentTable !== selectedTableId
+			const connectionChanged = activeConnectionId && currentConnection !== activeConnectionId
 
-		setSearchParams(params, { replace: true })
-	}, [activeNavId, selectedTableId, activeConnectionId, setSearchParams])
+			if (!viewChanged && !tableChanged && !connectionChanged) return
+
+			const params = new URLSearchParams(searchParams)
+
+			if (activeNavId) params.set('view', activeNavId)
+			if (selectedTableId) params.set('table', selectedTableId)
+			if (activeConnectionId) params.set('connection', activeConnectionId)
+
+			setSearchParams(params, { replace: true })
+		},
+		[activeNavId, selectedTableId, activeConnectionId, searchParams, setSearchParams]
+	)
 
 	useEffect(() => {
 		setSelectedTableName(selectedTableId)
@@ -100,12 +113,11 @@ export default function Index() {
 			}
 
 			// Auto-connect for Web Demo
+			// NOTE: We do NOT include localhost here as it conflicts with the "Restore last connection" feature during development
 			const isWebDemo =
 				import.meta.env.MODE === 'demo' ||
 				window.location.hostname.includes('demo') ||
-				import.meta.env.VITE_IS_WEB === 'true' ||
-				window.location.hostname === 'localhost' ||
-				window.location.hostname === '127.0.0.1'
+				import.meta.env.VITE_IS_WEB === 'true'
 
 			if (isWebDemo) {
 				const demoConn =
@@ -127,6 +139,9 @@ export default function Index() {
 				})
 				if (lastConnection) {
 					setActiveConnectionId(lastConnection.id)
+					if (settings.lastTableId) {
+						setSelectedTableId(settings.lastTableId)
+					}
 					autoSelectFirstTableRef.current = true
 					return
 				}
@@ -139,6 +154,7 @@ export default function Index() {
 			urlConnection,
 			settings.restoreLastConnection,
 			settings.lastConnectionId,
+			settings.lastTableId,
 			selectedTableId
 		]
 	)
@@ -146,11 +162,25 @@ export default function Index() {
 	useEffect(
 		function saveLastConnection() {
 			if (!activeConnectionId || isSettingsLoading) return
+
+			const updates: Partial<typeof settings> = {}
+			let hasUpdates = false
+
 			if (settings.lastConnectionId !== activeConnectionId) {
-				updateSetting('lastConnectionId', activeConnectionId)
+				updates.lastConnectionId = activeConnectionId
+				hasUpdates = true
+			}
+
+			if (selectedTableId && settings.lastTableId !== selectedTableId) {
+				updates.lastTableId = selectedTableId
+				hasUpdates = true
+			}
+
+			if (hasUpdates) {
+				updateSettings(updates)
 			}
 		},
-		[activeConnectionId, isSettingsLoading, settings.lastConnectionId, updateSetting]
+		[activeConnectionId, selectedTableId, isSettingsLoading, settings.lastConnectionId, settings.lastTableId, updateSettings]
 	)
 
 	async function handleAddConnection(newConnectionData: Omit<Connection, 'id' | 'createdAt'>) {
@@ -393,6 +423,12 @@ export default function Index() {
 								tableName={selectedTableName}
 								isSidebarOpen={isSidebarOpen}
 								onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+								initialRowPK={settings.lastRowPK}
+								onRowSelectionChange={(pk) => {
+									if (pk !== settings.lastRowPK) {
+										updateSetting('lastRowPK', pk)
+									}
+								}}
 								activeConnectionId={activeConnectionId}
 								onAddConnection={handleOpenNewConnection}
 							/>

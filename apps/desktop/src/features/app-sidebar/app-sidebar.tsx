@@ -1,4 +1,4 @@
-import { Sparkles, SquareTerminal, Table2, Network, Container, SunMedium, MoonStar, PanelLeft, PanelLeftDashed, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, SquareTerminal, Table2, Network, Container, SunMedium, MoonStar, PanelLeft, PanelLeftDashed } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, KeyboardEvent } from "react";
 import { DoraLogo } from "@/components/dora-logo";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,9 +21,9 @@ function ThemeToggle({ variant }: TTogle) {
 		const settings = getAppearanceSettings()
 		setIsDark(
 			settings.theme === 'dark' ||
-				settings.theme === 'midnight' ||
-				settings.theme === 'forest' ||
-				settings.theme === 'claude-dark'
+			settings.theme === 'midnight' ||
+			settings.theme === 'forest' ||
+			settings.theme === 'claude-dark'
 		)
 	}, [])
 
@@ -98,38 +98,6 @@ function ModeToggle() {
 	)
 }
 
-function PanelToggle() {
-	const { isPanelOpen, togglePanel, variant } = useSidebar()
-	const isFloating = variant === 'floating'
-
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<button
-					type='button'
-					onClick={togglePanel}
-					className={cn(
-						'flex h-10 w-10 items-center justify-center transition-colors',
-						'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-						'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
-						isFloating ? 'rounded-xl' : 'rounded-md'
-					)}
-					aria-label={isPanelOpen ? 'Collapse database panel' : 'Expand database panel'}
-					aria-expanded={isPanelOpen}
-				>
-					{isPanelOpen ? (
-						<ChevronLeft className='h-5 w-5' aria-hidden='true' />
-					) : (
-						<ChevronRight className='h-5 w-5' aria-hidden='true' />
-					)}
-				</button>
-			</TooltipTrigger>
-			<TooltipContent side='right'>
-				{isPanelOpen ? 'Collapse Panel' : 'Expand Panel'}
-			</TooltipContent>
-		</Tooltip>
-	)
-}
 
 type ContentProps = {
 	activeNavId?: string
@@ -231,11 +199,17 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 			<div className='flex flex-col items-center justify-center py-4 gap-4'>
 				<Tooltip>
 					<TooltipTrigger asChild>
-						<div className='cursor-default'>
+						<button
+							type='button'
+							onClick={() => onNavSelect?.('database-studio')}
+							className='cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar rounded-md'
+							aria-label='Go to home'
+							title='Dora AI Home'
+						>
 							<DoraLogo size={28} variant='neutral' />
-						</div>
+						</button>
 					</TooltipTrigger>
-					<TooltipContent side='right'>Dora AI</TooltipContent>
+					<TooltipContent side='right'>Go to Home</TooltipContent>
 				</Tooltip>
 				<div
 					className='w-8 h-px bg-sidebar-border'
@@ -287,7 +261,6 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 				role='group'
 				aria-label='Sidebar controls'
 			>
-				<PanelToggle />
 				<ModeToggle />
 				<ThemeToggle variant={variant} />
 			</div>
@@ -295,25 +268,19 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 	)
 }
 
-// ============================================================================
-// MAIN EXPORT
-// ============================================================================
-
 export type AppSidebarProps = {
 	variant?: SidebarVariant
 	activeNavId?: string
 	onNavSelect?: (id: string) => void
-	defaultPanelOpen?: boolean
 }
 
 export function AppSidebar({
 	variant = 'default',
 	activeNavId,
-	onNavSelect,
-	defaultPanelOpen = true
+	onNavSelect
 }: AppSidebarProps) {
 	return (
-		<SidebarProvider defaultVariant={variant} defaultPanelOpen={defaultPanelOpen}>
+		<SidebarProvider defaultVariant={variant}>
 			<SidebarContent activeNavId={activeNavId} onNavSelect={onNavSelect} />
 		</SidebarProvider>
 	)

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useMemo, ReactNode } from "react";
 import type { SidebarContextValue, SidebarVariant } from "./types";
 
 const SidebarContext = createContext<SidebarContextValue | null>(null)
@@ -7,34 +7,24 @@ type SidebarProviderProps = {
 	children: ReactNode
 	defaultVariant?: SidebarVariant
 	defaultActiveItemId?: string | null
-	defaultPanelOpen?: boolean
 }
 
 export function SidebarProvider({
 	children,
 	defaultVariant = 'default',
-	defaultActiveItemId = null,
-	defaultPanelOpen = true
+	defaultActiveItemId = null
 }: SidebarProviderProps) {
 	const [variant, setVariant] = useState<SidebarVariant>(defaultVariant)
 	const [activeItemId, setActiveItemId] = useState<string | null>(defaultActiveItemId)
-	const [isPanelOpen, setPanelOpen] = useState(defaultPanelOpen)
-
-	const togglePanel = useCallback(() => {
-		setPanelOpen((prev) => !prev)
-	}, [])
 
 	const value = useMemo(
 		() => ({
 			variant,
 			activeItemId,
-			isPanelOpen,
 			setVariant,
-			setActiveItemId,
-			setPanelOpen,
-			togglePanel
+			setActiveItemId
 		}),
-		[variant, activeItemId, isPanelOpen, togglePanel]
+		[variant, activeItemId]
 	)
 
 	return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>

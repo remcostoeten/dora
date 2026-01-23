@@ -115,7 +115,7 @@ export function RowContextMenu({
 					onClick={function () {
 						handleAction('delete')
 					}}
-					className='text-destructive focus:text-destructive'
+					className='text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
 				>
 					<Trash2 className='h-4 w-4 mr-2' />
 					<span>Delete row</span>

@@ -8,7 +8,8 @@ const __dirname = dirname(__filename)
 export default defineConfig({
 	test: {
 		include: ['tests/**/*.test.ts'],
-		globals: true
+		globals: true,
+		environment: 'happy-dom'
 	},
 	resolve: {
 		alias: {

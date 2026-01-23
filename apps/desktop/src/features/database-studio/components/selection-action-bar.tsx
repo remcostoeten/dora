@@ -179,8 +179,8 @@ export function SelectionActionBar({
 						className={cn(
 							'text-xs gap-1.5',
 							mode === 'floating'
-								? 'h-8 rounded-full px-3 text-destructive hover:bg-destructive/10 hover:text-destructive'
-								: 'h-7 px-2 text-destructive hover:bg-destructive/10'
+								? 'h-8 rounded-full px-3 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300'
+								: 'h-7 px-2 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
 						)}
 						onClick={onDelete}
 					>
