@@ -478,7 +478,7 @@ export function SqlResults({
 																) : (
 																	<div
 																		className='truncate max-w-[300px]'
-																		title={String(cellValue)}
+																		title={formatCellValue(cellValue)}
 																	>
 																		{formatCellValue(cellValue)}
 																	</div>

@@ -107,10 +107,10 @@ export function WindowControls({ className }: Props) {
 					<button
 						type='button'
 						onClick={handleMinimize}
-						className='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+						className='flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/80 transition-colors hover:bg-muted hover:text-foreground'
 						aria-label='Minimize window'
 					>
-						<Minus className='h-3.5 w-3.5' />
+						<Minus className='h-4 w-4' />
 					</button>
 				</TooltipTrigger>
 				<TooltipContent side='bottom'>Minimize</TooltipContent>
@@ -121,10 +121,10 @@ export function WindowControls({ className }: Props) {
 					<button
 						type='button'
 						onClick={handleMaximize}
-						className='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+						className='flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/80 transition-colors hover:bg-muted hover:text-foreground'
 						aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
 					>
-						<Square className='h-3 w-3' />
+						<Square className='h-3.5 w-3.5' />
 					</button>
 				</TooltipTrigger>
 				<TooltipContent side='bottom'>
@@ -137,10 +137,10 @@ export function WindowControls({ className }: Props) {
 					<button
 						type='button'
 						onClick={handleClose}
-						className='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/90 hover:text-destructive-foreground'
+						className='flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/80 transition-colors hover:bg-destructive/90 hover:text-destructive-foreground'
 						aria-label='Close window'
 					>
-						<X className='h-3.5 w-3.5' />
+						<X className='h-4 w-4' />
 					</button>
 				</TooltipTrigger>
 				<TooltipContent side='bottom'>Close</TooltipContent>

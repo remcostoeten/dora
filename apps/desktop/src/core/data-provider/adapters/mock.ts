@@ -313,11 +313,11 @@ CREATE TABLE posts (
 			await delay(100 + Math.random() * 200)
 
 			const drizzleFromMatch = query.match(/\.from\(\s*(\w+)\s*\)/)
-			const sqlSelectMatch = query.match(/SELECT\s+\*\s+FROM\s+["']?(\w+)["']?/i)
-			const tableName = drizzleFromMatch?.[1] || sqlSelectMatch?.[1]
+			const sqlFromMatch = query.match(/FROM\s+["']?(\w+)["']?/i)
+			const tableName = drizzleFromMatch?.[1] || sqlFromMatch?.[1]
 
 			if (!tableName) {
-				if (!query.includes('db.') && !query.includes('SELECT')) {
+				if (!query.includes('db.') && !query.toUpperCase().includes('SELECT')) {
 					return ok({
 						rows: [],
 						columns: [],
@@ -347,11 +347,34 @@ CREATE TABLE posts (
 				}
 			}
 
-			const limitMatch = query.match(/\.limit\(\s*(\d+)\s*\)/)
-			const limit = limitMatch ? parseInt(limitMatch[1], 10) : 50
+			// Handle aggregate queries (COUNT, SUM, AVG, etc.)
+			const countMatch = query.match(/SELECT\s+COUNT\s*\(\s*\*?\s*\)/i)
+			if (countMatch) {
+				return ok({
+					rows: [{ count: rows.length }],
+					columns: ['count'],
+					rowCount: 1,
+					executionTime: Date.now() - startTime
+				})
+			}
 
-			const offsetMatch = query.match(/\.offset\(\s*(\d+)\s*\)/)
-			const offset = offsetMatch ? parseInt(offsetMatch[1], 10) : 0
+			// Parse LIMIT from SQL or Drizzle syntax
+			const sqlLimitMatch = query.match(/LIMIT\s+(\d+)/i)
+			const drizzleLimitMatch = query.match(/\.limit\(\s*(\d+)\s*\)/)
+			const limit = sqlLimitMatch
+				? parseInt(sqlLimitMatch[1], 10)
+				: drizzleLimitMatch
+					? parseInt(drizzleLimitMatch[1], 10)
+					: 50
+
+			// Parse OFFSET from SQL or Drizzle syntax
+			const sqlOffsetMatch = query.match(/OFFSET\s+(\d+)/i)
+			const drizzleOffsetMatch = query.match(/\.offset\(\s*(\d+)\s*\)/)
+			const offset = sqlOffsetMatch
+				? parseInt(sqlOffsetMatch[1], 10)
+				: drizzleOffsetMatch
+					? parseInt(drizzleOffsetMatch[1], 10)
+					: 0
 
 			const slicedRows = rows.slice(offset, offset + limit)
 			const columns = Object.keys(slicedRows[0] || rows[0] || {})

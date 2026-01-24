@@ -20,13 +20,15 @@ export function DemoBanner({
 
 	useEffect(function detectDemoAndOs() {
 		const isTauri = typeof window !== 'undefined' && '__TAURI__' in window
+		const isTauriProtocol = window.location.protocol === 'tauri:'
 		const isWebDemo =
 			!isTauri &&
+			!isTauriProtocol &&
 			(import.meta.env.MODE === 'demo' ||
 				window.location.hostname.includes('demo') ||
 				import.meta.env.VITE_IS_WEB === 'true' ||
-				window.location.hostname === 'localhost' ||
-				window.location.hostname === '127.0.0.1')
+				(window.location.hostname === 'localhost' && window.location.protocol.startsWith('http')) ||
+				(window.location.hostname === '127.0.0.1' && window.location.protocol.startsWith('http')))
 
 		setIsDemo(isWebDemo)
 

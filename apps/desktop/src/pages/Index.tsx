@@ -365,32 +365,35 @@ export default function Index() {
 				setConnectionToDelete(connection)
 				setDeleteDialogOpen(true)
 			} else {
-				confirmDeleteConnection()
+				performDelete(connection)
 			}
 		}
 	}
 
 	async function confirmDeleteConnection() {
 		if (!connectionToDelete) return
+		await performDelete(connectionToDelete)
+	}
 
+	async function performDelete(connection: Connection) {
 		try {
-			const result = await adapter.removeConnection(connectionToDelete.id)
+			const result = await adapter.removeConnection(connection.id)
 
 			if (result.ok) {
 				setConnections(function (prev) {
 					return prev.filter(function (c) {
-						return c.id !== connectionToDelete.id
+						return c.id !== connection.id
 					})
 				})
-				if (activeConnectionId === connectionToDelete.id) {
+				if (activeConnectionId === connection.id) {
 					const remaining = connections.filter(function (c) {
-						return c.id !== connectionToDelete.id
+						return c.id !== connection.id
 					})
 					setActiveConnectionId(remaining.length > 0 ? remaining[0].id : '')
 				}
 				toast({
 					title: 'Connection Deleted',
-					description: `Successfully deleted ${connectionToDelete.name}`
+					description: `Successfully deleted ${connection.name}`
 				})
 			} else {
 				throw new Error(result.error)
