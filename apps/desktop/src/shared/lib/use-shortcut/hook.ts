@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useMemo } from "react";
-import { createShortcutBuilder } from "./builder";
-import type { ShortcutBuilder, UseShortcutOptions } from "./types";
+import { useEffect, useRef, useMemo } from 'react'
+import { createShortcutBuilder } from './builder'
+import type { ShortcutBuilder, UseShortcutOptions } from './types'
 
 export function useShortcut(options: UseShortcutOptions = {}): ShortcutBuilder {
 	const optionsRef = useRef(options)

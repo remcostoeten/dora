@@ -1,6 +1,12 @@
-import { useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { getAppearanceSettings, saveAppearanceSettings, applyAppearanceToDOM, Theme, AppearanceSettings } from "@/shared/lib/appearance-store";
+import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import {
+	getAppearanceSettings,
+	saveAppearanceSettings,
+	applyAppearanceToDOM,
+	Theme,
+	AppearanceSettings
+} from '@/shared/lib/appearance-store'
 
 const THEME_PARAM = 'theme'
 

@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { createMockAdapter } from "./adapters/mock";
-import { createTauriAdapter } from "./adapters/tauri";
-import type { DataAdapter, DataProviderContextValue } from "./types";
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createMockAdapter } from './adapters/mock'
+import { createTauriAdapter } from './adapters/tauri'
+import type { DataAdapter, DataProviderContextValue } from './types'
 
 function detectTauri(): boolean {
 	const isTauri =

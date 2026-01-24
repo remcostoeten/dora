@@ -1,7 +1,29 @@
-import { POSTGRES_IMAGE, POSTGRES_CONTAINER_PORT, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from "../constants";
-import type { PostgresContainerConfig, DockerContainer, CreateContainerResult, ContainerActionResult, RemoveContainerOptions } from "../types";
-import { validateContainerName, generateVolumeName } from "../utilities/container-naming";
-import { checkDockerAvailability, listContainers, getContainerDetails, startContainer as clientStartContainer, stopContainer as clientStopContainer, restartContainer as clientRestartContainer, removeContainer as clientRemoveContainer, pullImage, imageExists, executeDockerCommand } from "./docker-client";
+import {
+	POSTGRES_IMAGE,
+	POSTGRES_CONTAINER_PORT,
+	MANAGED_LABEL_KEY,
+	MANAGED_LABEL_VALUE
+} from '../constants'
+import type {
+	PostgresContainerConfig,
+	DockerContainer,
+	CreateContainerResult,
+	ContainerActionResult,
+	RemoveContainerOptions
+} from '../types'
+import { validateContainerName, generateVolumeName } from '../utilities/container-naming'
+import {
+	checkDockerAvailability,
+	listContainers,
+	getContainerDetails,
+	startContainer as clientStartContainer,
+	stopContainer as clientStopContainer,
+	restartContainer as clientRestartContainer,
+	removeContainer as clientRemoveContainer,
+	pullImage,
+	imageExists,
+	executeDockerCommand
+} from './docker-client'
 
 export async function createPostgresContainer(
 	config: PostgresContainerConfig

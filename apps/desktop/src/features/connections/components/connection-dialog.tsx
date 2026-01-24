@@ -1,14 +1,27 @@
-import { Sparkles } from "lucide-react";
-import { useState, useEffect } from "react";
-import { commands, DatabaseInfo } from "@/lib/bindings";
-import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/shared/ui/dialog";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Connection, DatabaseType, SshAuthMethod, SshTunnelConfig } from "../types";
-import { sanitizeConnectionUrl, isValidConnectionUrl, detectProviderName, buildConnectionString, PROVIDER_CONFIGS } from "../utils/providers";
-import { ConnectionForm } from "./connection-dialog/connection-form";
-import { DatabaseTypeSelector } from "./connection-dialog/database-type-selector";
+import { Sparkles } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { commands, DatabaseInfo } from '@/lib/bindings'
+import { Button } from '@/shared/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+	DialogDescription
+} from '@/shared/ui/dialog'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { Connection, DatabaseType, SshAuthMethod, SshTunnelConfig } from '../types'
+import {
+	sanitizeConnectionUrl,
+	isValidConnectionUrl,
+	detectProviderName,
+	buildConnectionString,
+	PROVIDER_CONFIGS
+} from '../utils/providers'
+import { ConnectionForm } from './connection-dialog/connection-form'
+import { DatabaseTypeSelector } from './connection-dialog/database-type-selector'
 
 type Props = {
 	open: boolean

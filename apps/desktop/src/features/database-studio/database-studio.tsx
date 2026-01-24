@@ -1,25 +1,32 @@
-import { Database, Plus, PanelLeft, Trash2, Columns } from "lucide-react";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { TableSkeleton } from "@/components/ui/skeleton";
-import { useAdapter, useDataMutation } from "@/core/data-provider";
-import { usePendingEdits } from "@/core/pending-edits";
-import { useSettings } from "@/core/settings";
-import { useUndo } from "@/core/undo";
-import { useUrlState, ContextMenuState } from "@/core/url-state";
-import { commands } from "@/lib/bindings";
-import { Button } from "@/shared/ui/button";
-import { AddColumnDialog, ColumnFormData } from "./components/add-column-dialog";
-import { AddRecordDialog } from "./components/add-record-dialog";
-import { BottomStatusBar } from "./components/bottom-status-bar";
-import { BulkEditDialog } from "./components/bulk-edit-dialog";
-import { DataGrid } from "./components/data-grid";
-import { DropTableDialog } from "./components/drop-table-dialog";
-import { PendingChangesBar } from "./components/pending-changes-bar";
-import { RowDetailPanel } from "./components/row-detail-panel";
-import { SelectionActionBar } from "./components/selection-action-bar";
-import { SetNullDialog } from "./components/set-null-dialog";
-import { StudioToolbar } from "./components/studio-toolbar";
-import { TableData, PaginationState, ViewMode, ColumnDefinition, SortDescriptor, FilterDescriptor } from "./types";
+import { Database, Plus, PanelLeft, Trash2, Columns } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { useAdapter, useDataMutation } from '@/core/data-provider'
+import { usePendingEdits } from '@/core/pending-edits'
+import { useSettings } from '@/core/settings'
+import { useUndo } from '@/core/undo'
+import { useUrlState, ContextMenuState } from '@/core/url-state'
+import { commands } from '@/lib/bindings'
+import { Button } from '@/shared/ui/button'
+import { AddColumnDialog, ColumnFormData } from './components/add-column-dialog'
+import { AddRecordDialog } from './components/add-record-dialog'
+import { BottomStatusBar } from './components/bottom-status-bar'
+import { BulkEditDialog } from './components/bulk-edit-dialog'
+import { DataGrid } from './components/data-grid'
+import { DropTableDialog } from './components/drop-table-dialog'
+import { PendingChangesBar } from './components/pending-changes-bar'
+import { RowDetailPanel } from './components/row-detail-panel'
+import { SelectionActionBar } from './components/selection-action-bar'
+import { SetNullDialog } from './components/set-null-dialog'
+import { StudioToolbar } from './components/studio-toolbar'
+import {
+	TableData,
+	PaginationState,
+	ViewMode,
+	ColumnDefinition,
+	SortDescriptor,
+	FilterDescriptor
+} from './types'
 
 type Props = {
 	tableId: string | null
@@ -100,6 +107,20 @@ export function DatabaseStudio({
 		setAddRecordMode
 	} = useUrlState()
 	const initializedFromUrlRef = useRef(false)
+	const isUpdatingUrlRef = useRef(false)
+
+	const stableUrlState = useMemo(
+		function () {
+			return urlState
+		},
+		[
+			urlState.selectedRow,
+			urlState.focusedCell?.row,
+			urlState.focusedCell?.col,
+			urlState.addRecordMode,
+			urlState.addRecordIndex
+		]
+	)
 
 	// Delay showing skeleton to avoid flash for fast queries
 	useEffect(() => {
@@ -172,11 +193,12 @@ export function DatabaseStudio({
 		filters
 	])
 
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(
 		function () {
 			loadTableData()
 		},
-		[loadTableData]
+		[tableId, activeConnectionId, pagination.limit, pagination.offset, sort, filters]
 	)
 
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
@@ -195,14 +217,17 @@ export function DatabaseStudio({
 			if (initializedFromUrlRef.current || !tableData) return
 			initializedFromUrlRef.current = true
 
-			if (urlState.selectedRow !== null) {
-				if (urlState.selectedRow >= 0 && urlState.selectedRow < tableData.rows.length) {
-					setSelectedRows(new Set([urlState.selectedRow]))
+			if (stableUrlState.selectedRow !== null) {
+				if (
+					stableUrlState.selectedRow >= 0 &&
+					stableUrlState.selectedRow < tableData.rows.length
+				) {
+					setSelectedRows(new Set([stableUrlState.selectedRow]))
 				}
 			}
-			if (urlState.selectedCells.size > 0) {
+			if (stableUrlState.selectedCells.size > 0) {
 				const validCells = new Set<string>()
-				for (const cellKey of urlState.selectedCells) {
+				for (const cellKey of stableUrlState.selectedCells) {
 					const parts = cellKey.split(':')
 					if (parts.length === 2) {
 						const r = parseInt(parts[0], 10)
@@ -223,50 +248,59 @@ export function DatabaseStudio({
 					setSelectedCells(validCells)
 				}
 			}
-			if (urlState.focusedCell) {
-				const { row, col } = urlState.focusedCell
+			if (stableUrlState.focusedCell) {
+				const { row, col } = stableUrlState.focusedCell
 				if (
 					row >= 0 &&
 					row < tableData.rows.length &&
 					col >= 0 &&
 					col < tableData.columns.length
 				) {
-					setFocusedCell(urlState.focusedCell)
+					setFocusedCell(stableUrlState.focusedCell)
 				}
 			}
-			if (urlState.contextMenu) {
-				const { cell } = urlState.contextMenu
+			if (stableUrlState.contextMenu) {
+				const { cell } = stableUrlState.contextMenu
 				if (cell.row >= 0 && cell.row < tableData.rows.length) {
-					setContextMenuState(urlState.contextMenu)
+					setContextMenuState(stableUrlState.contextMenu)
 				}
 			}
-			if (urlState.addRecordMode && tableData) {
+			if (stableUrlState.addRecordMode && tableData) {
 				if (
-					urlState.addRecordIndex === null ||
-					(urlState.addRecordIndex >= -1 &&
-						urlState.addRecordIndex <= tableData.rows.length)
+					stableUrlState.addRecordIndex === null ||
+					(stableUrlState.addRecordIndex >= -1 &&
+						stableUrlState.addRecordIndex <= tableData.rows.length)
 				) {
 					const defaults = createDefaultValues(tableData.columns)
 					setDraftRow(defaults)
-					setDraftInsertIndex(urlState.addRecordIndex ?? -1)
+					setDraftInsertIndex(stableUrlState.addRecordIndex ?? -1)
 				}
 			}
 		},
-		[tableData, urlState]
+		[tableData, stableUrlState]
 	)
 
 	useEffect(
 		function syncSelectedRowToUrl() {
-			if (!initializedFromUrlRef.current) return
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 			const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null
-			setSelectedRow(firstSelected)
+			if (firstSelected === urlState.selectedRow) return
 
-			// Notify selection change with PK
+			isUpdatingUrlRef.current = true
+			setSelectedRow(firstSelected)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
+
 			if (onRowSelectionChange && tableData) {
 				if (firstSelected !== null && tableData.rows[firstSelected]) {
-					const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
+					const primaryKeyColumn = tableData.columns.find(function (c) {
+						return c.primaryKey
+					})
 					if (primaryKeyColumn) {
-						const pkValue = tableData.rows[firstSelected][primaryKeyColumn.name] as string | number
+						const pkValue = tableData.rows[firstSelected][primaryKeyColumn.name] as
+							| string
+							| number
 						onRowSelectionChange(pkValue)
 					}
 				} else if (selectedRows.size === 0) {
@@ -274,19 +308,25 @@ export function DatabaseStudio({
 				}
 			}
 		},
-		[selectedRows, setSelectedRow, onRowSelectionChange, tableData]
+		[selectedRows, onRowSelectionChange, tableData, urlState.selectedRow, setSelectedRow]
 	)
 
 	// Restore selection from initialRowPK
 	useEffect(
 		function restoreSelectionFromPK() {
-			if (!tableData || !initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current) return
+			if (
+				!tableData ||
+				!initialRowPK ||
+				selectedRows.size > 0 ||
+				initializedFromUrlRef.current
+			)
+				return
 
 			const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
 			if (!primaryKeyColumn) return
 
-			const rowIndex = tableData.rows.findIndex((row) =>
-				String(row[primaryKeyColumn.name]) === String(initialRowPK)
+			const rowIndex = tableData.rows.findIndex(
+				(row) => String(row[primaryKeyColumn.name]) === String(initialRowPK)
 			)
 
 			if (rowIndex !== -1) {
@@ -300,35 +340,89 @@ export function DatabaseStudio({
 
 	useEffect(
 		function syncCellsToUrl() {
-			if (!initializedFromUrlRef.current) return
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
+
+			const currentCellsStr = Array.from(urlState.selectedCells).sort().join(',')
+			const newCellsStr = Array.from(selectedCells).sort().join(',')
+			if (currentCellsStr === newCellsStr) return
+
+			isUpdatingUrlRef.current = true
 			setUrlSelectedCells(selectedCells)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
 		},
-		[selectedCells, setUrlSelectedCells]
+		[selectedCells, urlState.selectedCells, setUrlSelectedCells]
 	)
 
 	useEffect(
 		function syncFocusedCellToUrl() {
-			if (!initializedFromUrlRef.current) return
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
+
+			const urlCell = urlState.focusedCell
+			const isSame =
+				(urlCell === null && focusedCell === null) ||
+				(urlCell !== null &&
+					focusedCell !== null &&
+					urlCell.row === focusedCell.row &&
+					urlCell.col === focusedCell.col)
+			if (isSame) return
+
+			isUpdatingUrlRef.current = true
 			setUrlFocusedCell(focusedCell)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
 		},
-		[focusedCell, setUrlFocusedCell]
+		[focusedCell, urlState.focusedCell, setUrlFocusedCell]
 	)
 
 	useEffect(
 		function syncContextMenuToUrl() {
-			if (!initializedFromUrlRef.current) return
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
+
+			const urlCtx = urlState.contextMenu
+			const isSame =
+				(urlCtx === null && contextMenuState === null) ||
+				(urlCtx !== null &&
+					contextMenuState !== null &&
+					urlCtx.kind === contextMenuState.kind &&
+					urlCtx.cell.row === contextMenuState.cell.row &&
+					urlCtx.cell.col === contextMenuState.cell.col)
+			if (isSame) return
+
+			isUpdatingUrlRef.current = true
 			setContextMenu(contextMenuState)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
 		},
-		[contextMenuState, setContextMenu]
+		[contextMenuState, urlState.contextMenu, setContextMenu]
 	)
 
 	useEffect(
 		function syncAddRecordToUrl() {
-			if (!initializedFromUrlRef.current) return
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
+
 			const isAddRecordActive = draftRow !== null
+			const isSame =
+				urlState.addRecordMode === isAddRecordActive &&
+				urlState.addRecordIndex === draftInsertIndex
+			if (isSame) return
+
+			isUpdatingUrlRef.current = true
 			setAddRecordMode(isAddRecordActive, draftInsertIndex)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
 		},
-		[draftRow, draftInsertIndex, setAddRecordMode]
+		[
+			draftRow,
+			draftInsertIndex,
+			urlState.addRecordMode,
+			urlState.addRecordIndex,
+			setAddRecordMode
+		]
 	)
 
 	// Define all callbacks before any conditional returns
@@ -1190,10 +1284,10 @@ export function DatabaseStudio({
 						pendingEdits={
 							tableId
 								? new Set(
-									getEditsForTable(tableId).map(
-										(e) => `${e.primaryKeyValue}:${e.columnName}`
+										getEditsForTable(tableId).map(
+											(e) => `${e.primaryKeyValue}:${e.columnName}`
+										)
 									)
-								)
 								: undefined
 						}
 						draftInsertIndex={draftInsertIndex}

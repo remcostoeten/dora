@@ -1,4 +1,4 @@
-import { SqlSnippet, SqlQueryResult, TableInfo } from "./types";
+import { SqlSnippet, SqlQueryResult, TableInfo } from './types'
 
 // Mock snippets data
 export const MOCK_SNIPPETS: SqlSnippet[] = [

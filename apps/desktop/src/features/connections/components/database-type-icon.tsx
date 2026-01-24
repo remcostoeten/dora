@@ -1,6 +1,6 @@
-import { Sqlite, Turso, Postgres, Sql } from "@/components/provider.icons";
-import { cn } from "@/shared/utils/cn";
-import type { DatabaseType } from "../types";
+import { Sqlite, Turso, Postgres, Sql } from '@/components/provider.icons'
+import { cn } from '@/shared/utils/cn'
+import type { DatabaseType } from '../types'
 
 type Props = {
 	type: DatabaseType | undefined

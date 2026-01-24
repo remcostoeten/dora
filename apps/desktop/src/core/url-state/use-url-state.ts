@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 const MAX_SERIALIZED_CELLS = 50
 

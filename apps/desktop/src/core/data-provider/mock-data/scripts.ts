@@ -1,4 +1,4 @@
-import type { SavedQuery } from "@/lib/bindings";
+import type { SavedQuery } from '@/lib/bindings'
 
 export const MOCK_SCRIPTS: SavedQuery[] = [
 	{

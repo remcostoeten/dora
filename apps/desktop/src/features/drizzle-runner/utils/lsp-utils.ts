@@ -1,4 +1,4 @@
-import { SchemaTable } from "../types";
+import { SchemaTable } from '../types'
 
 /**
  * Generates comprehensive, STRICT TypeScript type definitions for Monaco Editor.

@@ -1,13 +1,13 @@
-import { FolderOpen, Key } from "lucide-react";
-import { useState } from "react";
-import { commands } from "@/lib/bindings";
-import { Button } from "@/shared/ui/button";
-import { Checkbox } from "@/shared/ui/checkbox";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Connection, DatabaseType, SshTunnelConfig } from "../../types";
-import { PROVIDER_CONFIGS, sanitizeConnectionUrl } from "../../utils/providers";
-import { SshTunnelConfigForm } from "./ssh-tunnel-config-form";
+import { FolderOpen, Key } from 'lucide-react'
+import { useState } from 'react'
+import { commands } from '@/lib/bindings'
+import { Button } from '@/shared/ui/button'
+import { Checkbox } from '@/shared/ui/checkbox'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { Connection, DatabaseType, SshTunnelConfig } from '../../types'
+import { PROVIDER_CONFIGS, sanitizeConnectionUrl } from '../../utils/providers'
+import { SshTunnelConfigForm } from './ssh-tunnel-config-form'
 
 type Props = {
 	formData: Partial<Connection>

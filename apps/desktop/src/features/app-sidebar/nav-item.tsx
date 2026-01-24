@@ -1,8 +1,8 @@
-import { cva, VariantProps } from "class-variance-authority";
-import { forwardRef } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/shared/utils/cn";
-import type { NavItem } from "./types";
+import { cva, VariantProps } from 'class-variance-authority'
+import { forwardRef } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/shared/utils/cn'
+import type { NavItem } from './types'
 
 const navItemVariants = cva(
 	[
@@ -40,7 +40,8 @@ export type NavItemProps = {
 	item: NavItem
 	isActive?: boolean
 	tooltipSide?: 'top' | 'right' | 'bottom' | 'left'
-} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> & VariantProps<typeof navItemVariants>
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> &
+	VariantProps<typeof navItemVariants>
 
 export const SidebarNavItem = forwardRef<HTMLButtonElement, NavItemProps>(function SidebarNavItem(
 	{

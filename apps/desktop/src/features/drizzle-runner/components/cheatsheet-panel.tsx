@@ -1,10 +1,25 @@
-import { ChevronDown, ChevronRight, Copy, Sparkles, BookOpen, Keyboard, Code, Zap, FileText, Database, Search, FilePlus, Settings, HelpCircle } from "lucide-react";
-import { useState } from "react";
-import React from "react";
-import { getAllShortcuts, formatShortcut } from "@/core/shortcuts";
-import { Button } from "@/shared/ui/button";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { cn } from "@/shared/utils/cn";
+import {
+	ChevronDown,
+	ChevronRight,
+	Copy,
+	Sparkles,
+	BookOpen,
+	Keyboard,
+	Code,
+	Zap,
+	FileText,
+	Database,
+	Search,
+	FilePlus,
+	Settings,
+	HelpCircle
+} from 'lucide-react'
+import { useState } from 'react'
+import React from 'react'
+import { getAllShortcuts, formatShortcut } from '@/core/shortcuts'
+import { Button } from '@/shared/ui/button'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { cn } from '@/shared/utils/cn'
 
 type Snippet = {
 	id: string

@@ -1,17 +1,21 @@
-import { Plus, Search, Container, AlertTriangle } from "lucide-react";
-import { useState, useMemo } from "react";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Switch } from "@/shared/ui/switch";
-import { useCreateContainer } from "../api/mutations/use-create-container";
-import { useContainers, useContainerSearch, useDockerAvailability } from "../api/queries/use-containers";
-import type { PostgresContainerConfig, DockerContainer } from "../types";
-import { ContainerDetailsPanel } from "./container-details-panel";
-import { ContainerList } from "./container-list";
-import { CreateContainerDialog } from "./create-container-dialog";
-import { SandboxIndicator } from "./sandbox-indicator";
+import { Plus, Search, Container, AlertTriangle } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useToast } from '@/components/ui/use-toast'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { Switch } from '@/shared/ui/switch'
+import { useCreateContainer } from '../api/mutations/use-create-container'
+import {
+	useContainers,
+	useContainerSearch,
+	useDockerAvailability
+} from '../api/queries/use-containers'
+import type { PostgresContainerConfig, DockerContainer } from '../types'
+import { ContainerDetailsPanel } from './container-details-panel'
+import { ContainerList } from './container-list'
+import { CreateContainerDialog } from './create-container-dialog'
+import { SandboxIndicator } from './sandbox-indicator'
 
 type Props = {
 	onOpenInDataViewer?: (container: DockerContainer) => void
@@ -106,10 +110,15 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 						{dockerStatus?.error ||
 							'Unable to connect to Docker. Make sure Docker is installed and running on your system.'}
 					</p>
-					<div className='text-left p-3 rounded bg-muted font-mono text-xs space-y-1'>
-						<p>$ sudo systemctl start docker</p>
-						<p>$ sudo usermod -aG docker $USER</p>
-					</div>
+					{(dockerStatus?.error?.toLowerCase().includes('permission') ||
+						dockerStatus?.error?.toLowerCase().includes('connect') ||
+						dockerStatus?.error?.toLowerCase().includes('socket') ||
+						!dockerStatus?.error) && (
+						<div className='text-left p-3 rounded bg-muted font-mono text-xs space-y-1'>
+							<p>$ sudo systemctl start docker</p>
+							<p>$ sudo usermod -aG docker $USER</p>
+						</div>
+					)}
 					<Button
 						variant='outline'
 						className='mt-4'

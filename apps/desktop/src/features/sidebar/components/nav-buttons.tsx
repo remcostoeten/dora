@@ -1,5 +1,5 @@
-import { Terminal, Database } from "lucide-react";
-import { cn } from "@/shared/utils/cn";
+import { Terminal, Database } from 'lucide-react'
+import { cn } from '@/shared/utils/cn'
 
 type NavItem = {
 	id: string

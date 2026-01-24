@@ -1,5 +1,5 @@
-import { X, Scissors, Trash2 } from "lucide-react";
-import { Button } from "@/shared/ui/button";
+import { X, Scissors, Trash2 } from 'lucide-react'
+import { Button } from '@/shared/ui/button'
 
 type BulkAction = 'truncate' | 'drop'
 

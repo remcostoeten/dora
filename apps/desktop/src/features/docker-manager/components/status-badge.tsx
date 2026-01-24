@@ -1,4 +1,4 @@
-import type { ContainerHealth, ContainerState } from "../types";
+import type { ContainerHealth, ContainerState } from '../types'
 
 type Props = {
 	state: ContainerState

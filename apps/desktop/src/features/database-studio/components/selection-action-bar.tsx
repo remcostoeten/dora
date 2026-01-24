@@ -1,7 +1,22 @@
-import { Trash2, Copy, X, Ban, Download, FileJson, FileSpreadsheet, CopyPlus, Pencil } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
-import { cn } from "@/shared/utils/cn";
+import {
+	Trash2,
+	Copy,
+	X,
+	Ban,
+	Download,
+	FileJson,
+	FileSpreadsheet,
+	CopyPlus,
+	Pencil
+} from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	selectedCount: number

@@ -1,16 +1,34 @@
-import { RefreshCw, Loader2, Eye, EyeOff, ChevronDown, ChevronRight } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Switch } from "@/shared/ui/switch";
-import { POSTGRES_VERSIONS, DEFAULT_POSTGRES_VERSION, DEFAULT_POSTGRES_USER, DEFAULT_POSTGRES_PASSWORD, DEFAULT_POSTGRES_DATABASE, CONTAINER_PREFIX } from "../constants";
-import type { PostgresContainerConfig, DockerContainer } from "../types";
-import { suggestContainerName, validateContainerName, generateVolumeName } from "../utilities/container-naming";
-import { findFreePort } from "../utilities/port-utils";
-import { Collapsible, CollapsibleContent,  CollapsibleTrigger } from "@/shared/ui/collapsible";
+import { RefreshCw, Loader2, Eye, EyeOff, ChevronDown, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle
+} from '@/shared/ui/dialog'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import { Switch } from '@/shared/ui/switch'
+import {
+	POSTGRES_VERSIONS,
+	DEFAULT_POSTGRES_VERSION,
+	DEFAULT_POSTGRES_USER,
+	DEFAULT_POSTGRES_PASSWORD,
+	DEFAULT_POSTGRES_DATABASE,
+	CONTAINER_PREFIX
+} from '../constants'
+import type { PostgresContainerConfig, DockerContainer } from '../types'
+import {
+	suggestContainerName,
+	validateContainerName,
+	generateVolumeName
+} from '../utilities/container-naming'
+import { findFreePort } from '../utilities/port-utils'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/ui/collapsible'
 
 type Props = {
 	open: boolean
@@ -278,36 +296,60 @@ export function CreateContainerDialog({
 						</p>
 					)}
 
-					<Collapsible open={isAdvancedOpen} onOpenChange={setIsAdvancedOpen} className="space-y-2">
+					<Collapsible
+						open={isAdvancedOpen}
+						onOpenChange={setIsAdvancedOpen}
+						className='space-y-2'
+					>
 						<CollapsibleTrigger asChild>
-							<Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent text-muted-foreground hover:text-foreground flex items-center gap-1">
-								{isAdvancedOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+							<Button
+								variant='ghost'
+								size='sm'
+								className='p-0 h-auto hover:bg-transparent text-muted-foreground hover:text-foreground flex items-center gap-1'
+							>
+								{isAdvancedOpen ? (
+									<ChevronDown className='h-4 w-4' />
+								) : (
+									<ChevronRight className='h-4 w-4' />
+								)}
 								Advanced Options
 							</Button>
 						</CollapsibleTrigger>
-						<CollapsibleContent className="space-y-4 pt-2">
-							<div className="grid grid-cols-2 gap-4">
-								<div className="space-y-2">
-									<Label htmlFor="cpu">CPU Limit (cores)</Label>
+						<CollapsibleContent className='space-y-4 pt-2'>
+							<div className='grid grid-cols-2 gap-4'>
+								<div className='space-y-2'>
+									<Label htmlFor='cpu'>CPU Limit (cores)</Label>
 									<Input
-										id="cpu"
-										type="number"
-										step="0.1"
-										min="0.1"
-										placeholder="e.g. 1.0"
+										id='cpu'
+										type='number'
+										step='0.1'
+										min='0.1'
+										placeholder='e.g. 1.0'
 										value={cpuLimit ?? ''}
-										onChange={(e) => setCpuLimit(e.target.value ? parseFloat(e.target.value) : undefined)}
+										onChange={(e) =>
+											setCpuLimit(
+												e.target.value
+													? parseFloat(e.target.value)
+													: undefined
+											)
+										}
 									/>
 								</div>
-								<div className="space-y-2">
-									<Label htmlFor="memory">Memory Limit (MB)</Label>
+								<div className='space-y-2'>
+									<Label htmlFor='memory'>Memory Limit (MB)</Label>
 									<Input
-										id="memory"
-										type="number"
-										min="64"
-										placeholder="e.g. 512"
+										id='memory'
+										type='number'
+										min='64'
+										placeholder='e.g. 512'
 										value={memoryLimit ?? ''}
-										onChange={(e) => setMemoryLimit(e.target.value ? parseInt(e.target.value) : undefined)}
+										onChange={(e) =>
+											setMemoryLimit(
+												e.target.value
+													? parseInt(e.target.value)
+													: undefined
+											)
+										}
 									/>
 								</div>
 							</div>

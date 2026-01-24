@@ -1,5 +1,13 @@
-import type { TableData, SortDescriptor, FilterDescriptor } from "@/features/database-studio/types";
-import { ConnectionInfo, DatabaseSchema, MutationResult, QueryHistoryEntry, JsonValue, DatabaseInfo, SavedQuery } from "@/lib/bindings";
+import type { TableData, SortDescriptor, FilterDescriptor } from '@/features/database-studio/types'
+import {
+	ConnectionInfo,
+	DatabaseSchema,
+	MutationResult,
+	QueryHistoryEntry,
+	JsonValue,
+	DatabaseInfo,
+	SavedQuery
+} from '@/lib/bindings'
 
 export type AdapterResult<T> =
 	| {

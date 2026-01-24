@@ -1,4 +1,4 @@
-import { USERS } from "./users";
+import { USERS } from './users'
 
 const POST_TITLES = [
 	'Getting Started with TypeScript in 2024',

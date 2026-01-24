@@ -1,10 +1,10 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
-import readline from "readline";
-import { Database } from "sqlite3";
-import { colors, log, logLevel, logHeader, logKeyValue } from "./_shared";
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { execSync } from 'child_process'
+import fs from 'fs'
+import path from 'path'
+import readline from 'readline'
+import { Database } from 'sqlite3'
+import { colors, log, logLevel, logHeader, logKeyValue } from './_shared'
 
 function hasFlag(flag: string): boolean {
 	return process.argv.includes(`--${flag}`) || process.argv.includes(`-${flag.charAt(0)}`)

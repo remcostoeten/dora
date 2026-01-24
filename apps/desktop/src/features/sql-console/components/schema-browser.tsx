@@ -1,10 +1,30 @@
-import { Search, Table2, Eye, ChevronRight, ChevronDown, Key, Hash, Type, Calendar, ToggleLeft, Copy, Database, FileText } from "lucide-react";
-import { useState, useCallback } from "react";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator } from "@/shared/ui/context-menu";
-import { Input } from "@/shared/ui/input";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { cn } from "@/shared/utils/cn";
-import { TableInfo } from "../types";
+import {
+	Search,
+	Table2,
+	Eye,
+	ChevronRight,
+	ChevronDown,
+	Key,
+	Hash,
+	Type,
+	Calendar,
+	ToggleLeft,
+	Copy,
+	Database,
+	FileText
+} from 'lucide-react'
+import { useState, useCallback } from 'react'
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+	ContextMenuSeparator
+} from '@/shared/ui/context-menu'
+import { Input } from '@/shared/ui/input'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { cn } from '@/shared/utils/cn'
+import { TableInfo } from '../types'
 
 type Props = {
 	tables: TableInfo[]
@@ -36,14 +56,14 @@ export function SchemaBrowser({ tables, onTableSelect, onInsertQuery }: Props) {
 	const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set())
 
 	function toggleTable(tableName: string) {
-    const next = new Set(expandedTables)
-    if (next.has(tableName)) {
-    	next.delete(tableName)
-    } else {
-    	next.add(tableName)
-    }
-    setExpandedTables(next)
-    }
+		const next = new Set(expandedTables)
+		if (next.has(tableName)) {
+			next.delete(tableName)
+		} else {
+			next.add(tableName)
+		}
+		setExpandedTables(next)
+	}
 
 	const copyToClipboard = useCallback((text: string) => {
 		navigator.clipboard.writeText(text)

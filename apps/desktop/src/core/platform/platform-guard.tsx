@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { useIsTauri } from "../data-provider/context";
+import { ReactNode } from 'react'
+import { useIsTauri } from '../data-provider/context'
 
 type Props = {
 	children: ReactNode

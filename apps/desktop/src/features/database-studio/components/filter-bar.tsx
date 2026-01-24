@@ -1,9 +1,9 @@
-import { X, Plus, Filter, Trash2, ChevronDown } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { cn } from "@/shared/utils/cn";
-import { ColumnDefinition, FilterDescriptor, FilterOperator } from "../types";
+import { X, Plus, Filter, Trash2, ChevronDown } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { cn } from '@/shared/utils/cn'
+import { ColumnDefinition, FilterDescriptor, FilterOperator } from '../types'
 
 type Props = {
 	filters: FilterDescriptor[]

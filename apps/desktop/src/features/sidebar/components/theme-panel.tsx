@@ -1,5 +1,5 @@
-import { SidebarPanel } from "./sidebar-panel";
-import { ThemePreviewCard } from "./theme-preview-card";
+import { SidebarPanel } from './sidebar-panel'
+import { ThemePreviewCard } from './theme-preview-card'
 
 type Theme = 'dark' | 'light' | 'midnight' | 'forest' | 'claude' | 'claude-dark' | 'haptic'
 

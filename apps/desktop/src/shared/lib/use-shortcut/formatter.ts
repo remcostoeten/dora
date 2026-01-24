@@ -1,5 +1,12 @@
-import { ModifierDisplayOrder, ModifierDisplaySymbols, Platform, detectPlatform, ModifierKeyType, PlatformType } from "./constants";
-import { parseShortcut } from "./parser";
+import {
+	ModifierDisplayOrder,
+	ModifierDisplaySymbols,
+	Platform,
+	detectPlatform,
+	ModifierKeyType,
+	PlatformType
+} from './constants'
+import { parseShortcut } from './parser'
 
 export function formatShortcut(shortcut: string, platform?: PlatformType): string {
 	const targetPlatform = platform ?? detectPlatform()

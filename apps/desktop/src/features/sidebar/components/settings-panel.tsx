@@ -1,10 +1,17 @@
-import { Copy } from "lucide-react";
-import { useSettings } from "@/core/settings";
-import { Button } from "@/shared/ui/button";
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Slider } from "@/shared/ui/slider";
-import { Switch } from "@/shared/ui/switch";
-import { SidebarPanel, SidebarPanelContent, SidebarSection } from "./sidebar-panel";
+import { Copy } from 'lucide-react'
+import { useSettings } from '@/core/settings'
+import { Button } from '@/shared/ui/button'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectSeparator,
+	SelectTrigger,
+	SelectValue
+} from '@/shared/ui/select'
+import { Slider } from '@/shared/ui/slider'
+import { Switch } from '@/shared/ui/switch'
+import { SidebarPanel, SidebarPanelContent, SidebarSection } from './sidebar-panel'
 
 type Props = {
 	onCopySchema?: () => void

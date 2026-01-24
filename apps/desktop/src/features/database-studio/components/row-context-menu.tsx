@@ -1,6 +1,15 @@
-import { Eye, Pencil, CopyPlus, Trash2, FileDown, FileJson, FileCode } from "lucide-react";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/shared/ui/context-menu";
-import { ColumnDefinition } from "../types";
+import { Eye, Pencil, CopyPlus, Trash2, FileDown, FileJson, FileCode } from 'lucide-react'
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+	ContextMenuSub,
+	ContextMenuSubTrigger,
+	ContextMenuSubContent
+} from '@/shared/ui/context-menu'
+import { ColumnDefinition } from '../types'
 
 type RowAction = 'view' | 'edit' | 'duplicate' | 'delete' | 'export-json' | 'export-sql'
 

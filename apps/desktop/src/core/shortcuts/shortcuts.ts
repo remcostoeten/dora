@@ -1,6 +1,6 @@
 'use client'
 
-import { useShortcut as useShortcutBase, UseShortcutOptions } from "@/shared/lib/use-shortcut";
+import { useShortcut as useShortcutBase, UseShortcutOptions } from '@/shared/lib/use-shortcut'
 
 export type ShortcutDefinition = {
 	combo: string | string[]

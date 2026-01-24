@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import type { DockerContainer, ContainerHealth } from "../../types";
-import { getContainer } from "../container-service";
+import { useQuery } from '@tanstack/react-query'
+import type { DockerContainer, ContainerHealth } from '../../types'
+import { getContainer } from '../container-service'
 
 type UseContainerHealthOptions = {
 	enabled?: boolean

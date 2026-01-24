@@ -1,10 +1,33 @@
-import { ChevronsUpDown, Plus, Settings, Database, Check, Eye, Pencil, Trash2, AlertCircle } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/shared/ui/context-menu";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
-import { cn } from "@/shared/utils/cn";
-import { Connection, DatabaseType } from "../types";
-import { DatabaseTypeIcon } from "./database-type-icon";
+import {
+	ChevronsUpDown,
+	Plus,
+	Settings,
+	Database,
+	Check,
+	Eye,
+	Pencil,
+	Trash2,
+	AlertCircle
+} from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger
+} from '@/shared/ui/context-menu'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
+import { cn } from '@/shared/utils/cn'
+import { Connection, DatabaseType } from '../types'
+import { DatabaseTypeIcon } from './database-type-icon'
 
 function formatDatabaseType(type: DatabaseType | undefined): string {
 	if (!type) return 'Database'
@@ -122,7 +145,7 @@ export function ConnectionSwitcher({
 											className={cn(
 												'flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background',
 												connection.status === 'error' &&
-												'border-destructive/50 bg-destructive/5'
+													'border-destructive/50 bg-destructive/5'
 											)}
 										>
 											{connection.status === 'error' ? (

@@ -1,6 +1,6 @@
-import { X, Download } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
-import { useRecording } from "@/core/recording";
+import { X, Download } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { useRecording } from '@/core/recording'
 
 type Props = {
 	githubUrl?: string
@@ -68,7 +68,8 @@ export function DemoBanner({
         ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'}
       `}
 		>
-			<div className="-translate-x-2 flex flex-row-reverse items-center"><span className='text-sm font-medium'>You're viewing the demo.</span>
+			<div className='-translate-x-2 flex flex-row-reverse items-center'>
+				<span className='text-sm font-medium'>You're viewing the demo.</span>
 				<button
 					onClick={handleClose}
 					className='
@@ -93,8 +94,6 @@ export function DemoBanner({
 					{os ? `Download for ${os}` : 'Download'}
 				</span>
 			</a>
-
-		
 		</div>
 	)
 }

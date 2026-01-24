@@ -1,7 +1,13 @@
-import { Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useAdapter } from "@/core/data-provider";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
+import { Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useAdapter } from '@/core/data-provider'
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription
+} from '@/shared/ui/dialog'
 
 type TableMetrics = {
 	tableSizeMb: string

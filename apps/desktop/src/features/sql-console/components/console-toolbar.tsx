@@ -1,7 +1,21 @@
-import { BookOpen, PanelLeftClose, Loader2, Sparkles, Play, Download, Braces, Filter } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
-import { cn } from "@/shared/utils/cn";
+import {
+	BookOpen,
+	PanelLeftClose,
+	Loader2,
+	Sparkles,
+	Play,
+	Download,
+	Braces,
+	Filter
+} from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	onToggleLeftSidebar: () => void

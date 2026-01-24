@@ -1,11 +1,35 @@
-import { Table2, MoreHorizontal, CornerDownRight, Eye, Copy, FileJson, FileCode, Pencil, Trash2, CopyPlus, Download, Check, X, Info } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { Checkbox } from "@/shared/ui/checkbox";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuTrigger } from "@/shared/ui/context-menu";
-import { cn } from "@/shared/utils/cn";
-import { TableItem, SortedColumn } from "../types";
-import { TableContextMenu } from "./table-context-menu";
+import {
+	Table2,
+	MoreHorizontal,
+	CornerDownRight,
+	Eye,
+	Copy,
+	FileJson,
+	FileCode,
+	Pencil,
+	Trash2,
+	CopyPlus,
+	Download,
+	Check,
+	X,
+	Info
+} from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Checkbox } from '@/shared/ui/checkbox'
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuSub,
+	ContextMenuSubTrigger,
+	ContextMenuSubContent,
+	ContextMenuTrigger
+} from '@/shared/ui/context-menu'
+import { cn } from '@/shared/utils/cn'
+import { TableItem, SortedColumn } from '../types'
+import { TableContextMenu } from './table-context-menu'
 
 type TableRightClickAction =
 	| 'view-table'
@@ -86,40 +110,40 @@ function TableItemRow({
 	}, [item.name])
 
 	function handleEditKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter') {
-    	e.preventDefault()
-    	if (editValue.trim() && editValue !== item.name) {
-    		onEditSave?.(item.id, editValue.trim())
-    	} else {
-    		onEditCancel?.()
-    	}
-    } else if (e.key === 'Escape') {
-    	e.preventDefault()
-    	onEditCancel?.()
-    }
-    }
+		if (e.key === 'Enter') {
+			e.preventDefault()
+			if (editValue.trim() && editValue !== item.name) {
+				onEditSave?.(item.id, editValue.trim())
+			} else {
+				onEditCancel?.()
+			}
+		} else if (e.key === 'Escape') {
+			e.preventDefault()
+			onEditCancel?.()
+		}
+	}
 
 	function handleEditBlur() {
-    if (editValue.trim() && editValue !== item.name) {
-    	onEditSave?.(item.id, editValue.trim())
-    } else {
-    	onEditCancel?.()
-    }
-    }
+		if (editValue.trim() && editValue !== item.name) {
+			onEditSave?.(item.id, editValue.trim())
+		} else {
+			onEditCancel?.()
+		}
+	}
 
 	function handleRightClickAction(action: TableRightClickAction) {
-    if (action === 'edit-name') {
-    	onEditStart?.(item.id)
-    	setShowContextMenu(false)
-    } else {
-    	onRightClickAction?.(action, item.id)
-    }
-    }
+		if (action === 'edit-name') {
+			onEditStart?.(item.id)
+			setShowContextMenu(false)
+		} else {
+			onRightClickAction?.(action, item.id)
+		}
+	}
 
 	function handleCopyName() {
-    navigator.clipboard.writeText(item.name)
-    handleRightClickAction('copy-name')
-    }
+		navigator.clipboard.writeText(item.name)
+		handleRightClickAction('copy-name')
+	}
 
 	return (
 		<ContextMenu>
@@ -326,17 +350,17 @@ export function TableList({
 	const effectiveEditingId = editingTableId ?? internalEditingId
 
 	function handleEditStart(tableId: string) {
-    setInternalEditingId(tableId)
-    }
+		setInternalEditingId(tableId)
+	}
 
 	function handleEditSave(tableId: string, newName: string) {
-    onTableRename?.(tableId, newName)
-    setInternalEditingId(undefined)
-    }
+		onTableRename?.(tableId, newName)
+		setInternalEditingId(undefined)
+	}
 
 	function handleEditCancel() {
-    setInternalEditingId(undefined)
-    }
+		setInternalEditingId(undefined)
+	}
 	return (
 		<div className='flex flex-col py-1'>
 			{tables.map((table) => (

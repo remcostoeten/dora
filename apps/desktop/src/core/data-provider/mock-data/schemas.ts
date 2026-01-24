@@ -1,4 +1,4 @@
-import type { DatabaseSchema, TableInfo, ColumnInfo } from "@/lib/bindings";
+import type { DatabaseSchema, TableInfo, ColumnInfo } from '@/lib/bindings'
 
 function col(
 	name: string,

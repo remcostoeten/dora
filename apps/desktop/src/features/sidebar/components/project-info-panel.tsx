@@ -1,8 +1,13 @@
-import { Github, User, Download, ExternalLink, Globe, Heart } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { cn } from "@/shared/utils/cn";
-import { CURRENT_VERSION } from "../changelog-data";
-import { SidebarPanel, SidebarPanelHeader, SidebarPanelContent, SidebarSection } from "./sidebar-panel";
+import { Github, User, Download, ExternalLink, Globe, Heart } from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import { cn } from '@/shared/utils/cn'
+import { CURRENT_VERSION } from '../changelog-data'
+import {
+	SidebarPanel,
+	SidebarPanelHeader,
+	SidebarPanelContent,
+	SidebarSection
+} from './sidebar-panel'
 
 type Props = {
 	maxHeight?: number

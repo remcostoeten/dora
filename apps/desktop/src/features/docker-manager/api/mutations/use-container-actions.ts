@@ -1,6 +1,10 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ContainerActionResult, ContainerActionType, RemoveContainerOptions } from "../../types";
-import { performContainerAction, deleteContainer } from "../container-service";
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type {
+	ContainerActionResult,
+	ContainerActionType,
+	RemoveContainerOptions
+} from '../../types'
+import { performContainerAction, deleteContainer } from '../container-service'
 
 type ContainerActionParams = {
 	containerId: string

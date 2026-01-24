@@ -1,4 +1,4 @@
-import { useRecording } from "./recording-provider";
+import { useRecording } from './recording-provider'
 
 export function RecordingOverlay() {
 	const { isRecordingMode } = useRecording()

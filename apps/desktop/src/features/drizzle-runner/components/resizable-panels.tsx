@@ -1,6 +1,6 @@
-import { GripHorizontal } from "lucide-react";
-import { useState, useCallback, useRef, useEffect } from "react";
-import { cn } from "@/shared/utils/cn";
+import { GripHorizontal } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	topPanel: React.ReactNode
@@ -28,26 +28,26 @@ export function ResizablePanels({
 		if (!isDragging) return
 
 		function handleMouseMove(e: MouseEvent) {
-        if (!containerRef.current) return
+			if (!containerRef.current) return
 
-        const rect = containerRef.current.getBoundingClientRect()
-        const containerHeight = rect.height
-        const mouseY = e.clientY - rect.top
+			const rect = containerRef.current.getBoundingClientRect()
+			const containerHeight = rect.height
+			const mouseY = e.clientY - rect.top
 
-        // Calculate percentage
-        let percent = (mouseY / containerHeight) * 100
+			// Calculate percentage
+			let percent = (mouseY / containerHeight) * 100
 
-        // Apply minimum sizes
-        const minPercent = (minSize / containerHeight) * 100
-        const maxPercent = 100 - minPercent
+			// Apply minimum sizes
+			const minPercent = (minSize / containerHeight) * 100
+			const maxPercent = 100 - minPercent
 
-        percent = Math.max(minPercent, Math.min(maxPercent, percent))
-        setSplitPercent(percent)
-        }
+			percent = Math.max(minPercent, Math.min(maxPercent, percent))
+			setSplitPercent(percent)
+		}
 
 		function handleMouseUp() {
-        setIsDragging(false)
-        }
+			setIsDragging(false)
+		}
 
 		document.addEventListener('mousemove', handleMouseMove)
 		document.addEventListener('mouseup', handleMouseUp)

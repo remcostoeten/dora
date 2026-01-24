@@ -1,7 +1,12 @@
-import { Search, Filter, RefreshCw } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
-import { Input } from "@/shared/ui/input";
+import { Search, Filter, RefreshCw } from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuCheckboxItem,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
+import { Input } from '@/shared/ui/input'
 
 type FilterState = {
 	showTables: boolean

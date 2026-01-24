@@ -1,8 +1,8 @@
-import { Key, Link, Hash, Type, TextQuote, Lock, Calendar } from "lucide-react";
-import { TableInfo } from "@/lib/bindings";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
-import { cn } from "@/shared/utils/cn";
+import { Key, Link, Hash, Type, TextQuote, Lock, Calendar } from 'lucide-react'
+import { TableInfo } from '@/lib/bindings'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	table: TableInfo
@@ -78,7 +78,7 @@ export function SidebarBottomPanel({ table }: Props) {
 											)}
 										/>
 									</TooltipTrigger>
-									<TooltipContent side="right" className="text-xs">
+									<TooltipContent side='right' className='text-xs'>
 										{tooltip}
 									</TooltipContent>
 								</Tooltip>
@@ -110,4 +110,3 @@ export function SidebarBottomPanel({ table }: Props) {
 		</div>
 	)
 }
-

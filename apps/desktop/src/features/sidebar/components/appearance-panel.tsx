@@ -1,12 +1,20 @@
-import { RotateCcw } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Theme, FontPair, AppearanceSettings, getAppearanceSettings, saveAppearanceSettings, applyAppearanceToDOM, DEFAULT_SETTINGS } from "@/shared/lib/appearance-store";
-import { loadFontPair } from "@/shared/lib/font-loader";
-import { Button } from "@/shared/ui/button";
-import { Slider } from "@/shared/ui/slider";
-import { cn } from "@/shared/utils/cn";
-import { SidebarPanel } from "./sidebar-panel";
-import { ThemePreviewCard } from "./theme-preview-card";
+import { RotateCcw } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import {
+	Theme,
+	FontPair,
+	AppearanceSettings,
+	getAppearanceSettings,
+	saveAppearanceSettings,
+	applyAppearanceToDOM,
+	DEFAULT_SETTINGS
+} from '@/shared/lib/appearance-store'
+import { loadFontPair } from '@/shared/lib/font-loader'
+import { Button } from '@/shared/ui/button'
+import { Slider } from '@/shared/ui/slider'
+import { cn } from '@/shared/utils/cn'
+import { SidebarPanel } from './sidebar-panel'
+import { ThemePreviewCard } from './theme-preview-card'
 
 type ThemeConfig = {
 	value: Theme

@@ -31,7 +31,10 @@
 	},
 	"bundle": {
 		"active": true,
-		"targets": "all",
+		"targets": ["deb", "snap", "appimage"],
+		"shortDescription": "A modern database client",
+		"longDescription": "Dora is a modern, fast, and efficient database client for PostgreSQL, SQLite, and more.",
+		"category": "Development",
 		"icon": [
 			"icons/32x32.png",
 			"icons/128x128.png",

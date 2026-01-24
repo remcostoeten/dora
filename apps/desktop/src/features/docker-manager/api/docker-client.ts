@@ -1,6 +1,14 @@
-import { CONTAINER_PREFIX, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from "../constants";
-import type { DockerContainer, DockerAvailability, ContainerState, ContainerHealth, PortMapping, VolumeMount, ContainerLogsOptions } from "../types";
-import { isManaged } from "../utilities/container-naming";
+import { CONTAINER_PREFIX, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from '../constants'
+import type {
+	DockerContainer,
+	DockerAvailability,
+	ContainerState,
+	ContainerHealth,
+	PortMapping,
+	VolumeMount,
+	ContainerLogsOptions
+} from '../types'
+import { isManaged } from '../utilities/container-naming'
 
 type DockerInspectResult = {
 	Id: string
@@ -60,7 +68,7 @@ export async function executeDockerCommand(
 
 export async function checkDockerAvailability(): Promise<DockerAvailability> {
 	try {
-		const result = await executeDockerCommand(['version', '--format', '{{.Server.Version}}'])
+		const result = await executeDockerCommand(['info', '--format', '{{.ServerVersion}}'])
 
 		if (result.exitCode !== 0) {
 			return {

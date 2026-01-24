@@ -1,5 +1,5 @@
-import * as React from "react";
-import { cn } from "@/shared/utils/cn";
+import * as React from 'react'
+import { cn } from '@/shared/utils/cn'
 
 type Props = React.ComponentProps<'input'>
 

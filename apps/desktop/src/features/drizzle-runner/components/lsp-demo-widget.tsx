@@ -1,9 +1,9 @@
 'use client'
 
-import { Play, Pause, SkipForward, RotateCcw, Settings2, X } from "lucide-react";
-import * as monaco from "monaco-editor";
-import { useState, useRef, useCallback, useEffect } from "react";
-import { useRecording } from "@/core/recording";
+import { Play, Pause, SkipForward, RotateCcw, Settings2, X } from 'lucide-react'
+import * as monaco from 'monaco-editor'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useRecording } from '@/core/recording'
 
 // Support for advanced steps that simulate partial typing + autocomplete (Enter press)
 type DemoStep = string | { text: string; typeChars?: number }
@@ -318,38 +318,32 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 	)
 
 	// UI Helper Components (Inlined to avoid missing deps)
-	function Button({
-    		className,
-    		variant = 'default',
-    		size = 'default',
-    		onClick,
-    		children
-    	}: any) {
-    const base =
-    	'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
-    const variants: Record<string, string> = {
-    	default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90',
-    	destructive:
-    		'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-    	outline:
-    		'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
-    	secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-    	ghost: 'hover:bg-accent hover:text-accent-foreground'
-    }
-    const sizes: Record<string, string> = {
-    	default: 'h-9 px-4 py-2',
-    	sm: 'h-8 rounded-md px-3 text-xs',
-    	icon: 'h-9 w-9'
-    }
-    return (
-    	<button
-    		className={`${base} ${variants[variant] || variants.default} ${sizes[size] || sizes.default} ${className || ''}`}
-    		onClick={onClick}
-    	>
-    		{children}
-    	</button>
-    )
-    }
+	function Button({ className, variant = 'default', size = 'default', onClick, children }: any) {
+		const base =
+			'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50'
+		const variants: Record<string, string> = {
+			default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90',
+			destructive:
+				'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
+			outline:
+				'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
+			secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
+			ghost: 'hover:bg-accent hover:text-accent-foreground'
+		}
+		const sizes: Record<string, string> = {
+			default: 'h-9 px-4 py-2',
+			sm: 'h-8 rounded-md px-3 text-xs',
+			icon: 'h-9 w-9'
+		}
+		return (
+			<button
+				className={`${base} ${variants[variant] || variants.default} ${sizes[size] || sizes.default} ${className || ''}`}
+				onClick={onClick}
+			>
+				{children}
+			</button>
+		)
+	}
 
 	if (shouldHide('hideWidget')) return null
 

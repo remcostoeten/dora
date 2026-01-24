@@ -78,10 +78,10 @@ It is a single binary that works on any OS without any prerequisites. If you wan
 2. **Build the CLI**
    <small><i>Only needed if you want to modify the CLI</i></small>
    `bash
- cd tools/dora-cli
- go build -o ../../dora .  # Outputs binary named 'dora' to root
- cd ../..
- `
+cd tools/dora-cli
+go build -o ../../dora .  # Outputs binary named 'dora' to root
+cd ../..
+`
    This will output a binary named 'dora' to the root directory.
 
 ### Option 2: Manual Setup

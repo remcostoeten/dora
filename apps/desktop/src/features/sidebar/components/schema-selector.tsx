@@ -1,8 +1,13 @@
-import { ChevronDown, Search } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/shared/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
-import { Schema } from "../types";
+import { ChevronDown, Search } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/shared/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
+import { Schema } from '../types'
 
 type Props = {
 	schemas: Schema[]

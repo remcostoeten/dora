@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { CONTAINER_POLL_INTERVAL_MS } from "../../constants";
-import type { DockerContainer, DockerAvailability } from "../../types";
-import { getContainers, checkDockerAvailability } from "../container-service";
+import { useQuery } from '@tanstack/react-query'
+import { CONTAINER_POLL_INTERVAL_MS } from '../../constants'
+import type { DockerContainer, DockerAvailability } from '../../types'
+import { getContainers, checkDockerAvailability } from '../container-service'
 
 type UseContainersOptions = {
 	showExternal?: boolean

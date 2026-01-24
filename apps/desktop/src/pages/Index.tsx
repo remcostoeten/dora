@@ -1,21 +1,36 @@
-import { Wand2 } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useToast } from "@/components/ui/use-toast";
-import { useAdapter } from "@/core/data-provider";
-import { useSettings } from "@/core/settings";
-import { NavigationSidebar, SidebarProvider } from "@/features/app-sidebar";
-import { loadConnections, addConnection as addConnectionApi, updateConnection as updateConnectionApi, removeConnection as removeConnectionApi, backendToFrontendConnection } from "@/features/connections/api";
-import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
-import { Connection } from "@/features/connections/types";
-import { DatabaseStudio } from "@/features/database-studio/database-studio";
-import { DockerView } from "@/features/docker-manager";
-import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
-import { SqlConsole } from "@/features/sql-console/sql-console";
-import { WindowControls } from "@/components/window-controls";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/shared/ui/alert-dialog";
+import { Wand2 } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Toaster } from '@/components/ui/toaster'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { useToast } from '@/components/ui/use-toast'
+import { useAdapter } from '@/core/data-provider'
+import { useSettings } from '@/core/settings'
+import { NavigationSidebar, SidebarProvider } from '@/features/app-sidebar'
+import {
+	loadConnections,
+	addConnection as addConnectionApi,
+	updateConnection as updateConnectionApi,
+	removeConnection as removeConnectionApi,
+	backendToFrontendConnection
+} from '@/features/connections/api'
+import { ConnectionDialog } from '@/features/connections/components/connection-dialog'
+import { Connection } from '@/features/connections/types'
+import { DatabaseStudio } from '@/features/database-studio/database-studio'
+import { DockerView } from '@/features/docker-manager'
+import { DatabaseSidebar } from '@/features/sidebar/database-sidebar'
+import { SqlConsole } from '@/features/sql-console/sql-console'
+import { WindowControls } from '@/components/window-controls'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle
+} from '@/shared/ui/alert-dialog'
 
 export default function Index() {
 	const [searchParams, setSearchParams] = useSearchParams()
@@ -38,6 +53,7 @@ export default function Index() {
 
 	const [selectedTableName, setSelectedTableName] = useState('')
 	const autoSelectFirstTableRef = useRef(false)
+	const connectionInitializedRef = useRef(false)
 
 	const [connections, setConnections] = useState<Connection[]>([])
 
@@ -56,8 +72,12 @@ export default function Index() {
 		loadConnectionsFromBackend()
 	}, [adapter])
 
+	const isUpdatingUrlRef = useRef(false)
+
 	useEffect(
 		function syncUrlParams() {
+			if (isUpdatingUrlRef.current) return
+
 			const currentView = searchParams.get('view')
 			const currentTable = searchParams.get('table')
 			const currentConnection = searchParams.get('connection')
@@ -68,15 +88,19 @@ export default function Index() {
 
 			if (!viewChanged && !tableChanged && !connectionChanged) return
 
-			const params = new URLSearchParams(searchParams)
+			const params = new URLSearchParams()
 
 			if (activeNavId) params.set('view', activeNavId)
 			if (selectedTableId) params.set('table', selectedTableId)
 			if (activeConnectionId) params.set('connection', activeConnectionId)
 
+			isUpdatingUrlRef.current = true
 			setSearchParams(params, { replace: true })
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
 		},
-		[activeNavId, selectedTableId, activeConnectionId, searchParams, setSearchParams]
+		[activeNavId, selectedTableId, activeConnectionId, setSearchParams]
 	)
 
 	useEffect(() => {
@@ -107,14 +131,19 @@ export default function Index() {
 		function initializeConnection() {
 			if (isSettingsLoading || isLoading) return
 			if (connections.length === 0) return
+			if (connectionInitializedRef.current) return
 
 			if (urlConnection) {
 				setActiveConnectionId(urlConnection)
 				autoSelectFirstTableRef.current = true
+				connectionInitializedRef.current = true
 				return
 			}
 
-			if (activeConnectionId) return
+			if (activeConnectionId) {
+				connectionInitializedRef.current = true
+				return
+			}
 
 			if (settings.restoreLastConnection && settings.lastConnectionId) {
 				const lastConnection = connections.find(function (c) {
@@ -126,6 +155,7 @@ export default function Index() {
 						setSelectedTableId(settings.lastTableId)
 					}
 					autoSelectFirstTableRef.current = true
+					connectionInitializedRef.current = true
 					return
 				}
 			}
@@ -137,10 +167,13 @@ export default function Index() {
 
 			if (isWebDemo) {
 				const demoConn =
-					connections.find(function (c) { return c.id === 'demo-ecommerce-001' }) || connections[0]
+					connections.find(function (c) {
+						return c.id === 'demo-ecommerce-001'
+					}) || connections[0]
 				if (demoConn) {
 					setActiveConnectionId(demoConn.id)
 					autoSelectFirstTableRef.current = true
+					connectionInitializedRef.current = true
 					return
 				}
 			}
@@ -149,6 +182,7 @@ export default function Index() {
 			if (firstConnection) {
 				setActiveConnectionId(firstConnection.id)
 				autoSelectFirstTableRef.current = true
+				connectionInitializedRef.current = true
 			}
 		},
 		[
@@ -184,7 +218,14 @@ export default function Index() {
 				updateSettings(updates)
 			}
 		},
-		[activeConnectionId, selectedTableId, isSettingsLoading, settings.lastConnectionId, settings.lastTableId, updateSettings]
+		[
+			activeConnectionId,
+			selectedTableId,
+			isSettingsLoading,
+			settings.lastConnectionId,
+			settings.lastTableId,
+			updateSettings
+		]
 	)
 
 	async function handleAddConnection(newConnectionData: Omit<Connection, 'id' | 'createdAt'>) {
@@ -223,6 +264,7 @@ export default function Index() {
 					return [...prev, newFrontendConn]
 				})
 				setActiveConnectionId(newFrontendConn.id)
+				autoSelectFirstTableRef.current = true
 				toast({
 					title: 'Connection Added',
 					description: `Successfully connected to ${newFrontendConn.name}`
@@ -286,7 +328,12 @@ export default function Index() {
 
 	async function handleConnectionSelect(connectionId: string) {
 		setActiveConnectionId(connectionId)
-		await loadConnectionsFromBackend()
+		// Reset table selection when switching connections
+		setSelectedTableId('')
+		setSelectedTableName('')
+		autoSelectFirstTableRef.current = true
+		// No need to reload all connections when selecting one
+		// The connection state will be updated by the backend when connecting
 	}
 
 	function handleViewConnection(connectionId: string) {
@@ -391,135 +438,145 @@ export default function Index() {
 				<div className='flex flex-col h-full w-full bg-background overflow-hidden'>
 					<div
 						className='flex items-center justify-end h-8 w-full shrink-0 bg-sidebar border-b border-border'
-						data-tauri-drag-region="true"
+						data-tauri-drag-region='true'
 					>
-						<WindowControls className="pr-2" />
+						<WindowControls className='pr-2' />
 					</div>
 					<div className='flex flex-1 overflow-hidden'>
 						<NavigationSidebar activeNavId={activeNavId} onNavSelect={setActiveNavId} />
 
-					{showDatabasePanel && isSidebarOpen && (
-						<DatabaseSidebar
-							activeNavId={activeNavId}
-							onNavSelect={setActiveNavId}
-							onTableSelect={handleTableSelect}
-							selectedTableId={selectedTableId}
-							autoSelectFirstTable={autoSelectFirstTableRef.current}
-							onAutoSelectComplete={handleAutoSelectComplete}
-							connections={connections}
-							activeConnectionId={activeConnectionId}
-							onConnectionSelect={handleConnectionSelect}
-							onAddConnection={handleOpenNewConnection}
-							onManageConnections={function () {
-								const activeConn = connections.find(function (c) {
-									return c.id === activeConnectionId
-								})
-								if (activeConn) {
-									setEditingConnection(activeConn)
-									setIsConnectionDialogOpen(true)
-								}
-							}}
-							onViewConnection={handleViewConnection}
-							onEditConnection={handleEditConnection}
-							onDeleteConnection={handleDeleteConnection}
-						/>
-					)}
-
-					<main className='flex-1 flex flex-col h-full overflow-hidden relative px-0 pb-2'>
-						{activeNavId === 'database-studio' ? (
-							<DatabaseStudio
-								tableId={selectedTableId}
-								tableName={selectedTableName}
-								isSidebarOpen={isSidebarOpen}
-								onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-								initialRowPK={settings.lastRowPK}
-								onRowSelectionChange={(pk) => {
-									if (pk !== settings.lastRowPK) {
-										updateSetting('lastRowPK', pk)
-									}
-								}}
+						{showDatabasePanel && isSidebarOpen && (
+							<DatabaseSidebar
+								activeNavId={activeNavId}
+								onNavSelect={setActiveNavId}
+								onTableSelect={handleTableSelect}
+								selectedTableId={selectedTableId}
+								autoSelectFirstTable={autoSelectFirstTableRef.current}
+								onAutoSelectComplete={handleAutoSelectComplete}
+								connections={connections}
 								activeConnectionId={activeConnectionId}
+								onConnectionSelect={handleConnectionSelect}
 								onAddConnection={handleOpenNewConnection}
-							/>
-						) : activeNavId === 'sql-console' ? (
-							<SqlConsole
-								onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-								activeConnectionId={activeConnectionId}
-							/>
-						) : activeNavId === 'docker' ? (
-							<DockerView
-								onOpenInDataViewer={async function (container) {
-									const userEnv = container.env.find(function (e) { return e.startsWith('POSTGRES_USER=') })
-									const passEnv = container.env.find(function (e) { return e.startsWith('POSTGRES_PASSWORD=') })
-									const dbEnv = container.env.find(function (e) { return e.startsWith('POSTGRES_DB=') })
-									const primaryPort = container.ports.find(function (p) { return p.containerPort === 5432 })
-
-									const user = userEnv ? userEnv.split('=')[1] : 'postgres'
-									const password = passEnv ? passEnv.split('=')[1] : 'postgres'
-									const database = dbEnv ? dbEnv.split('=')[1] : 'postgres'
-									const port = primaryPort ? primaryPort.hostPort : 5432
-
-									const connectionData = {
-										name: container.name,
-										type: 'postgres' as const,
-										host: 'localhost',
-										port,
-										user,
-										password,
-										database
+								onManageConnections={function () {
+									const activeConn = connections.find(function (c) {
+										return c.id === activeConnectionId
+									})
+									if (activeConn) {
+										setEditingConnection(activeConn)
+										setIsConnectionDialogOpen(true)
 									}
-
-									await handleAddConnection(connectionData)
-									setActiveNavId('database-studio')
 								}}
-							/>
-						) : activeNavId === 'dora' ? (
-							<div className='flex-1 flex items-center justify-center text-muted-foreground'>
-								<div className='text-center'>
-									<Wand2 className='h-16 w-16 mx-auto mb-4 opacity-50' />
-									<h2 className='text-xl font-semibold mb-2'>
-										Dora AI Assistant
-									</h2>
-									<p className='text-sm'>Coming soon...</p>
-								</div>
-							</div>
-						) : (
-							<SqlConsole
-								onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-								activeConnectionId={activeConnectionId}
+								onViewConnection={handleViewConnection}
+								onEditConnection={handleEditConnection}
+								onDeleteConnection={handleDeleteConnection}
 							/>
 						)}
-					</main>
 
-					<ConnectionDialog
-						open={isConnectionDialogOpen}
-						onOpenChange={(open) => {
-							setIsConnectionDialogOpen(open)
-							if (!open) setEditingConnection(undefined)
-						}}
-						onSave={handleDialogSave}
-						initialValues={editingConnection}
-					/>
+						<main className='flex-1 flex flex-col h-full overflow-hidden relative px-0 pb-2'>
+							{activeNavId === 'database-studio' ? (
+								<DatabaseStudio
+									tableId={selectedTableId}
+									tableName={selectedTableName}
+									isSidebarOpen={isSidebarOpen}
+									onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+									initialRowPK={settings.lastRowPK}
+									onRowSelectionChange={(pk) => {
+										if (pk !== settings.lastRowPK) {
+											updateSetting('lastRowPK', pk)
+										}
+									}}
+									activeConnectionId={activeConnectionId}
+									onAddConnection={handleOpenNewConnection}
+								/>
+							) : activeNavId === 'sql-console' ? (
+								<SqlConsole
+									onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+									activeConnectionId={activeConnectionId}
+								/>
+							) : activeNavId === 'docker' ? (
+								<DockerView
+									onOpenInDataViewer={async function (container) {
+										const userEnv = container.env.find(function (e) {
+											return e.startsWith('POSTGRES_USER=')
+										})
+										const passEnv = container.env.find(function (e) {
+											return e.startsWith('POSTGRES_PASSWORD=')
+										})
+										const dbEnv = container.env.find(function (e) {
+											return e.startsWith('POSTGRES_DB=')
+										})
+										const primaryPort = container.ports.find(function (p) {
+											return p.containerPort === 5432
+										})
 
-					<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-						<AlertDialogContent>
-							<AlertDialogHeader>
-								<AlertDialogTitle>Delete Connection</AlertDialogTitle>
-								<AlertDialogDescription>
-									Are you sure you want to delete "{connectionToDelete?.name}"?
-									This action cannot be undone.
-								</AlertDialogDescription>
-							</AlertDialogHeader>
-							<AlertDialogFooter>
-								<AlertDialogCancel onClick={() => setConnectionToDelete(null)}>
-									Cancel
-								</AlertDialogCancel>
-								<AlertDialogAction onClick={confirmDeleteConnection}>
-									Delete
-								</AlertDialogAction>
-							</AlertDialogFooter>
-						</AlertDialogContent>
-					</AlertDialog>
+										const user = userEnv ? userEnv.split('=')[1] : 'postgres'
+										const password = passEnv
+											? passEnv.split('=')[1]
+											: 'postgres'
+										const database = dbEnv ? dbEnv.split('=')[1] : 'postgres'
+										const port = primaryPort ? primaryPort.hostPort : 5432
+
+										const connectionData = {
+											name: container.name,
+											type: 'postgres' as const,
+											host: 'localhost',
+											port,
+											user,
+											password,
+											database
+										}
+
+										await handleAddConnection(connectionData)
+										setActiveNavId('database-studio')
+									}}
+								/>
+							) : activeNavId === 'dora' ? (
+								<div className='flex-1 flex items-center justify-center text-muted-foreground'>
+									<div className='text-center'>
+										<Wand2 className='h-16 w-16 mx-auto mb-4 opacity-50' />
+										<h2 className='text-xl font-semibold mb-2'>
+											Dora AI Assistant
+										</h2>
+										<p className='text-sm'>Coming soon...</p>
+									</div>
+								</div>
+							) : (
+								<SqlConsole
+									onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+									activeConnectionId={activeConnectionId}
+								/>
+							)}
+						</main>
+
+						<ConnectionDialog
+							open={isConnectionDialogOpen}
+							onOpenChange={(open) => {
+								setIsConnectionDialogOpen(open)
+								if (!open) setEditingConnection(undefined)
+							}}
+							onSave={handleDialogSave}
+							initialValues={editingConnection}
+						/>
+
+						<AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+							<AlertDialogContent>
+								<AlertDialogHeader>
+									<AlertDialogTitle>Delete Connection</AlertDialogTitle>
+									<AlertDialogDescription>
+										Are you sure you want to delete "{connectionToDelete?.name}
+										"? This action cannot be undone.
+									</AlertDialogDescription>
+								</AlertDialogHeader>
+								<AlertDialogFooter>
+									<AlertDialogCancel onClick={() => setConnectionToDelete(null)}>
+										Cancel
+									</AlertDialogCancel>
+									<AlertDialogAction onClick={confirmDeleteConnection}>
+										Delete
+									</AlertDialogAction>
+								</AlertDialogFooter>
+							</AlertDialogContent>
+						</AlertDialog>
 					</div>
 				</div>
 			</SidebarProvider>

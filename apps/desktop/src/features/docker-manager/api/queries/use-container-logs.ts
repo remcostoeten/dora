@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
-import { streamContainerLogs } from '../docker-client';
-import { DEFAULT_LOG_TAIL } from '../../constants';
-import type { ContainerLogsOptions } from '../../types';
+import { useEffect, useState, useRef } from 'react'
+import { streamContainerLogs } from '../docker-client'
+import { DEFAULT_LOG_TAIL } from '../../constants'
+import type { ContainerLogsOptions } from '../../types'
 
 type UseContainerLogsOptions = ContainerLogsOptions & {
 	enabled?: boolean
@@ -81,6 +81,8 @@ export function useContainerLogs(
 		data: logs,
 		isLoading,
 		error,
-		refetch: () => { /* No-op for stream */ }
+		refetch: () => {
+			/* No-op for stream */
+		}
 	}
 }

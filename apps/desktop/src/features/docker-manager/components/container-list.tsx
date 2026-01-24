@@ -1,6 +1,6 @@
-import { Container } from "lucide-react";
-import type { DockerContainer } from "../types";
-import { ContainerCard } from "./container-card";
+import { Container } from 'lucide-react'
+import type { DockerContainer } from '../types'
+import { ContainerCard } from './container-card'
 
 type Props = {
 	containers: DockerContainer[]

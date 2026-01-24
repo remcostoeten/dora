@@ -1,7 +1,7 @@
-import { CheckCircle2 } from "lucide-react";
-import { cn } from "@/shared/utils/cn";
-import { DatabaseType } from "../../types";
-import { DatabaseIcon, DATABASE_META } from "../database-icons";
+import { CheckCircle2 } from 'lucide-react'
+import { cn } from '@/shared/utils/cn'
+import { DatabaseType } from '../../types'
+import { DatabaseIcon, DATABASE_META } from '../database-icons'
 
 type Props = {
 	selectedType: DatabaseType

@@ -1,4 +1,4 @@
-import { colors, emoji } from "./colors";
+import { colors, emoji } from './colors'
 
 type LogLevel = 'info' | 'success' | 'warning' | 'error' | 'debug'
 

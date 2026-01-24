@@ -1,27 +1,27 @@
-import { Plus, Database as DatabaseIcon } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
-import { SidebarTableSkeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
-import { useAdapter } from "@/core/data-provider";
-import type { DatabaseSchema, TableInfo } from "@/lib/bindings";
-import { commands } from "@/lib/bindings";
-import { getAppearanceSettings, applyAppearanceToDOM } from "@/shared/lib/appearance-store";
-import { loadFontPair } from "@/shared/lib/font-loader";
-import { Button } from "@/shared/ui/button";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { ConnectionSwitcher } from "../connections/components/connection-switcher";
-import { Connection } from "../connections/types";
-import { DropTableDialog } from "../database-studio/components/drop-table-dialog";
-import { BottomToolbar, ToolbarAction } from "./components/bottom-toolbar";
-import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
-import { RenameTableDialog } from "./components/rename-table-dialog";
-import { SchemaSelector } from "./components/schema-selector";
-import { SidebarBottomPanel } from "./components/sidebar-bottom-panel";
-import { TableInfoDialog } from "./components/table-info-dialog";
-import { TableList } from "./components/table-list";
-import type { TableRightClickAction } from "./components/table-list";
-import { TableSearch, FilterState } from "./components/table-search";
-import { Schema, TableItem } from "./types";
+import { Plus, Database as DatabaseIcon } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { SidebarTableSkeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/components/ui/use-toast'
+import { useAdapter } from '@/core/data-provider'
+import type { DatabaseSchema, TableInfo } from '@/lib/bindings'
+import { commands } from '@/lib/bindings'
+import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appearance-store'
+import { loadFontPair } from '@/shared/lib/font-loader'
+import { Button } from '@/shared/ui/button'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { ConnectionSwitcher } from '../connections/components/connection-switcher'
+import { Connection } from '../connections/types'
+import { DropTableDialog } from '../database-studio/components/drop-table-dialog'
+import { BottomToolbar, ToolbarAction } from './components/bottom-toolbar'
+import { ManageTablesDialog, BulkAction } from './components/manage-tables-dialog'
+import { RenameTableDialog } from './components/rename-table-dialog'
+import { SchemaSelector } from './components/schema-selector'
+import { SidebarBottomPanel } from './components/sidebar-bottom-panel'
+import { TableInfoDialog } from './components/table-info-dialog'
+import { TableList } from './components/table-list'
+import type { TableRightClickAction } from './components/table-list'
+import { TableSearch, FilterState } from './components/table-search'
+import { Schema, TableItem } from './types'
 
 const DEFAULT_FILTERS: FilterState = {
 	showTables: true,
@@ -55,9 +55,9 @@ export function DatabaseSidebar({
 	onAutoSelectComplete,
 	connections = [],
 	activeConnectionId,
-	onConnectionSelect = function () { },
-	onAddConnection = function () { },
-	onManageConnections = function () { },
+	onConnectionSelect = function () {},
+	onAddConnection = function () {},
+	onManageConnections = function () {},
 	onViewConnection,
 	onEditConnection,
 	onDeleteConnection
@@ -95,8 +95,6 @@ export function DatabaseSidebar({
 	const [refreshTrigger, setRefreshTrigger] = useState(0)
 	const [showTableInfoDialog, setShowTableInfoDialog] = useState(false)
 	const [tableInfoTarget, setTableInfoTarget] = useState<string>('')
-
-
 
 	useEffect(function initAppearance() {
 		const settings = getAppearanceSettings()
@@ -159,13 +157,12 @@ export function DatabaseSidebar({
 
 			fetchSchema()
 		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[
 			activeConnectionId,
-			adapter,
 			refreshTrigger,
-			autoSelectFirstTable,
-			onTableSelect,
-			onAutoSelectComplete
+			autoSelectFirstTable
+			// adapter is stable, onTableSelect and onAutoSelectComplete are useCallback with stable deps
 		]
 	)
 
@@ -261,10 +258,7 @@ export function DatabaseSidebar({
 			handleTableSelect(tableId)
 			handleNavSelect('database-studio')
 		} else if (action === 'duplicate-table') {
-			toast({
-				title: 'Not Implemented',
-				description: 'Duplicate table is not yet supported.'
-			})
+			handleDuplicateTable(tableId)
 		} else if (action === 'view-info') {
 			setTableInfoTarget(tableId)
 			setShowTableInfoDialog(true)
@@ -289,6 +283,9 @@ export function DatabaseSidebar({
 			if (result.status === 'ok') {
 				setShowRenameDialog(false)
 				setSchema(null)
+				setRefreshTrigger(function (prev) {
+					return prev + 1
+				})
 			} else {
 				console.error('Failed to rename table:', result.error)
 			}
@@ -309,6 +306,9 @@ export function DatabaseSidebar({
 			if (result.status === 'ok') {
 				setShowDropDialog(false)
 				setSchema(null)
+				setRefreshTrigger(function (prev) {
+					return prev + 1
+				})
 				if (activeTableId === targetTableName) {
 					setInternalTableId(undefined)
 				}
@@ -325,6 +325,52 @@ export function DatabaseSidebar({
 	function handleTableRename(tableId: string, newName: string) {
 		setTargetTableName(tableId)
 		handleRenameTable(newName)
+	}
+
+	async function handleDuplicateTable(tableName: string) {
+		if (!activeConnectionId) return
+
+		setIsDdlLoading(true)
+		try {
+			// Find a unique name
+			let newName = `${tableName}_copy`
+			let counter = 1
+			while (
+				schema?.tables.some(function (t) {
+					return t.name === newName
+				})
+			) {
+				counter++
+				newName = `${tableName}_copy${counter}`
+			}
+
+			const sqlCreate = `CREATE TABLE "${newName}" (LIKE "${tableName}" INCLUDING ALL)`
+			const sqlData = `INSERT INTO "${newName}" SELECT * FROM "${tableName}"`
+
+			const result = await commands.executeBatch(activeConnectionId, [sqlCreate, sqlData])
+
+			if (result.status === 'ok') {
+				toast({
+					title: 'Table duplicated',
+					description: `Table "${tableName}" duplicated as "${newName}".`
+				})
+				setSchema(null)
+				setRefreshTrigger(function (prev) {
+					return prev + 1
+				})
+			} else {
+				throw new Error(String(result.error))
+			}
+		} catch (error) {
+			console.error('Failed to duplicate table:', error)
+			toast({
+				title: 'Error duplicating table',
+				description: error instanceof Error ? error.message : 'Unknown error',
+				variant: 'destructive'
+			})
+		} finally {
+			setIsDdlLoading(false)
+		}
 	}
 
 	async function handleBulkAction(action: BulkAction) {
@@ -350,6 +396,9 @@ export function DatabaseSidebar({
 						setSelectedTableIds([])
 						setIsMultiSelectMode(false)
 						setSchema(null)
+						setRefreshTrigger(function (prev) {
+							return prev + 1
+						})
 					} else {
 						throw new Error(String(result.error))
 					}
@@ -383,6 +432,9 @@ export function DatabaseSidebar({
 						})
 						setSelectedTableIds([])
 						setIsMultiSelectMode(false)
+						setRefreshTrigger(function (prev) {
+							return prev + 1
+						})
 					} else {
 						throw new Error(String(result.error))
 					}
@@ -399,7 +451,7 @@ export function DatabaseSidebar({
 		}
 	}
 
-	function handleToolbarAction(action: ToolbarAction) { }
+	function handleToolbarAction(action: ToolbarAction) {}
 
 	async function handleExportTableSchema(tableName: string) {
 		if (!activeConnectionId) return
@@ -582,7 +634,7 @@ export function DatabaseSidebar({
 			</ScrollArea>
 
 			{activeTable && (
-				<div className="mt-auto shrink-0 z-20 bg-sidebar">
+				<div className='mt-auto shrink-0 z-20 bg-sidebar'>
 					<SidebarBottomPanel table={activeTable} />
 				</div>
 			)}

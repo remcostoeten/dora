@@ -1,8 +1,8 @@
-import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
-import readline from "readline";
-import { colors, log, logLevel, logHeader, logKeyValue } from "./_shared";
+import { execSync } from 'child_process'
+import fs from 'fs'
+import path from 'path'
+import readline from 'readline'
+import { colors, log, logLevel, logHeader, logKeyValue } from './_shared'
 
 const DB_PATHS = [
 	path.join(process.cwd(), 'apps/desktop/src-tauri/data/dora.db'),

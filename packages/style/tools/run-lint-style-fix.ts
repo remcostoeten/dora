@@ -1,4 +1,4 @@
-import { Project, SyntaxKind, VariableDeclarationKind } from "ts-morph";
+import { Project, SyntaxKind, VariableDeclarationKind } from 'ts-morph'
 
 const project = new Project()
 project.addSourceFilesAtPaths([

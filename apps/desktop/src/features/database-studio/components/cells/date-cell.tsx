@@ -1,6 +1,6 @@
-import { format, formatDistanceToNow, isPast, isFuture, isValid, parseISO } from "date-fns";
-import React from "react";
-import { cn } from "@/shared/utils/cn";
+import { format, formatDistanceToNow, isPast, isFuture, isValid, parseISO } from 'date-fns'
+import React from 'react'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	value: unknown

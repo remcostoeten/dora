@@ -1,7 +1,7 @@
-import { Minus, Square, X } from "lucide-react";
-import { useCallback, useState, useEffect } from "react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/shared/utils/cn";
+import { Minus, Square, X } from 'lucide-react'
+import { useCallback, useState, useEffect } from 'react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	className?: string
@@ -15,124 +15,135 @@ export function WindowControls({ className }: Props) {
 		setIsTauri(typeof window !== 'undefined' && '__TAURI__' in window)
 	}, [])
 
-	useEffect(function listenToWindowResize() {
-		if (!isTauri) return
+	useEffect(
+		function listenToWindowResize() {
+			if (!isTauri) return
 
-		async function checkMaximized() {
-			try {
-				const { getCurrentWindow } = await import('@tauri-apps/api/window')
-				const appWindow = getCurrentWindow()
-				const maximized = await appWindow.isMaximized()
-				setIsMaximized(maximized)
-			} catch {}
-		}
-
-		checkMaximized()
-
-		async function setupListener() {
-			try {
-				const { getCurrentWindow } = await import('@tauri-apps/api/window')
-				const appWindow = getCurrentWindow()
-				const unlisten = await appWindow.onResized(function () {
-					checkMaximized()
-				})
-				return unlisten
-			} catch {
-				return undefined
+			async function checkMaximized() {
+				try {
+					const { getCurrentWindow } = await import('@tauri-apps/api/window')
+					const appWindow = getCurrentWindow()
+					const maximized = await appWindow.isMaximized()
+					setIsMaximized(maximized)
+				} catch {}
 			}
-		}
 
-		let cleanup: (() => void) | undefined
+			checkMaximized()
 
-		setupListener().then(function (unlisten) {
-			cleanup = unlisten
-		})
+			async function setupListener() {
+				try {
+					const { getCurrentWindow } = await import('@tauri-apps/api/window')
+					const appWindow = getCurrentWindow()
+					const unlisten = await appWindow.onResized(function () {
+						checkMaximized()
+					})
+					return unlisten
+				} catch {
+					return undefined
+				}
+			}
 
-		return function () {
-			if (cleanup) cleanup()
-		}
-	}, [isTauri])
+			let cleanup: (() => void) | undefined
 
-	const handleMinimize = useCallback(async function () {
-		if (!isTauri) return
-		try {
-			const { getCurrentWindow } = await import('@tauri-apps/api/window')
-			const appWindow = getCurrentWindow()
-			await appWindow.minimize()
-		} catch (error) {
-			console.error('Failed to minimize window:', error)
-		}
-	}, [isTauri])
+			setupListener().then(function (unlisten) {
+				cleanup = unlisten
+			})
 
-	const handleMaximize = useCallback(async function () {
-		if (!isTauri) return
-		try {
-			const { getCurrentWindow } = await import('@tauri-apps/api/window')
-			const appWindow = getCurrentWindow()
-			await appWindow.toggleMaximize()
-		} catch (error) {
-			console.error('Failed to toggle maximize:', error)
-		}
-	}, [isTauri])
+			return function () {
+				if (cleanup) cleanup()
+			}
+		},
+		[isTauri]
+	)
 
-	const handleClose = useCallback(async function () {
-		if (!isTauri) return
-		try {
-			const { getCurrentWindow } = await import('@tauri-apps/api/window')
-			const appWindow = getCurrentWindow()
-			await appWindow.close()
-		} catch (error) {
-			console.error('Failed to close window:', error)
-		}
-	}, [isTauri])
+	const handleMinimize = useCallback(
+		async function () {
+			if (!isTauri) return
+			try {
+				const { getCurrentWindow } = await import('@tauri-apps/api/window')
+				const appWindow = getCurrentWindow()
+				await appWindow.minimize()
+			} catch (error) {
+				console.error('Failed to minimize window:', error)
+			}
+		},
+		[isTauri]
+	)
+
+	const handleMaximize = useCallback(
+		async function () {
+			if (!isTauri) return
+			try {
+				const { getCurrentWindow } = await import('@tauri-apps/api/window')
+				const appWindow = getCurrentWindow()
+				await appWindow.toggleMaximize()
+			} catch (error) {
+				console.error('Failed to toggle maximize:', error)
+			}
+		},
+		[isTauri]
+	)
+
+	const handleClose = useCallback(
+		async function () {
+			if (!isTauri) return
+			try {
+				const { getCurrentWindow } = await import('@tauri-apps/api/window')
+				const appWindow = getCurrentWindow()
+				await appWindow.close()
+			} catch (error) {
+				console.error('Failed to close window:', error)
+			}
+		},
+		[isTauri]
+	)
 
 	if (!isTauri) return null
 
 	return (
-		<div
-			className={cn('flex items-center gap-1', className)}
-			data-tauri-drag-region="false"
-		>
+		<div className={cn('flex items-center gap-1', className)} data-tauri-drag-region='false'>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<button
-						type="button"
+						type='button'
 						onClick={handleMinimize}
-						className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-						aria-label="Minimize window"
+						className='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+						aria-label='Minimize window'
 					>
-						<Minus className="h-3.5 w-3.5" />
+						<Minus className='h-3.5 w-3.5' />
 					</button>
 				</TooltipTrigger>
-				<TooltipContent side="bottom">Minimize</TooltipContent>
+				<TooltipContent side='bottom'>Minimize</TooltipContent>
 			</Tooltip>
 
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<button
-						type="button"
+						type='button'
 						onClick={handleMaximize}
-						className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-						aria-label={isMaximized ? "Restore window" : "Maximize window"}
+						className='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+						aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
 					>
-						<Square className="h-3 w-3" />
+						<Square className='h-3 w-3' />
 					</button>
 				</TooltipTrigger>
-				<TooltipContent side="bottom">{isMaximized ? 'Restore' : 'Maximize'}</TooltipContent>
+				<TooltipContent side='bottom'>
+					{isMaximized ? 'Restore' : 'Maximize'}
+				</TooltipContent>
 			</Tooltip>
 
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<button
-						type="button"
+						type='button'
 						onClick={handleClose}
-						className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/90 hover:text-destructive-foreground"
-						aria-label="Close window"
+						className='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/90 hover:text-destructive-foreground'
+						aria-label='Close window'
 					>
-						<X className="h-3.5 w-3.5" />
+						<X className='h-3.5 w-3.5' />
 					</button>
 				</TooltipTrigger>
-				<TooltipContent side="bottom">Close</TooltipContent>
+				<TooltipContent side='bottom'>Close</TooltipContent>
 			</Tooltip>
 		</div>
 	)

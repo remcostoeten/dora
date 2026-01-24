@@ -1,7 +1,7 @@
-import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
-import { Check, ChevronRight, Circle } from "lucide-react";
-import * as React from "react";
-import { cn } from "@/shared/utils/cn";
+import * as ContextMenuPrimitive from '@radix-ui/react-context-menu'
+import { Check, ChevronRight, Circle } from 'lucide-react'
+import * as React from 'react'
+import { cn } from '@/shared/utils/cn'
 
 const ContextMenu = ContextMenuPrimitive.Root
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger

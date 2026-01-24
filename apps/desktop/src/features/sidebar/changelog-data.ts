@@ -15,7 +15,8 @@ export const CHANGELOG: ChangelogEntry[] = [
 		date: '2026-01-23',
 		commit: '88a6727',
 		title: 'Docker Manager & UI Overhaul',
-		description: 'Docker container manager MVP, window controls, auto-connect to first database, right-click drag scrolling, Vercel-style dark theme, and improved Structure panel',
+		description:
+			'Docker container manager MVP, window controls, auto-connect to first database, right-click drag scrolling, Vercel-style dark theme, and improved Structure panel',
 		type: 'feature'
 	},
 	{
@@ -23,7 +24,8 @@ export const CHANGELOG: ChangelogEntry[] = [
 		date: '2026-01-15',
 		commit: '32c1b88',
 		title: 'Application Sidebar & URL State',
-		description: 'New application sidebar with animated toggle, URL state management for selected rows/cells, theme synchronization, and enhanced context menu handling',
+		description:
+			'New application sidebar with animated toggle, URL state management for selected rows/cells, theme synchronization, and enhanced context menu handling',
 		type: 'feature'
 	},
 	{

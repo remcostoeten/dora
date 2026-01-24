@@ -1,5 +1,5 @@
-import type { Connection as FrontendConnection } from "@/features/connections/types";
-import { commands, ConnectionInfo as BackendConnection, DatabaseInfo } from "@/lib/bindings";
+import type { Connection as FrontendConnection } from '@/features/connections/types'
+import { commands, ConnectionInfo as BackendConnection, DatabaseInfo } from '@/lib/bindings'
 
 export function backendToFrontendConnection(conn: BackendConnection): FrontendConnection {
 	let type: 'postgres' | 'mysql' | 'sqlite' | 'libsql' = 'sqlite'

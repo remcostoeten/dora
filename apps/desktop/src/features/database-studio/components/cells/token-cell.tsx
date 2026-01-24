@@ -1,7 +1,7 @@
-import { Copy, Check } from "lucide-react";
-import React from "react";
-import { useClipboard } from "@/shared/hooks/use-clipboard";
-import { cn } from "@/shared/utils/cn";
+import { Copy, Check } from 'lucide-react'
+import React from 'react'
+import { useClipboard } from '@/shared/hooks/use-clipboard'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	value: string

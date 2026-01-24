@@ -1,11 +1,41 @@
-import { Search, Table2, Eye, ChevronRight, ChevronDown, Key, Hash, Type, Calendar, ToggleLeft, Copy, Database, FileText, FolderPlus, FilePlus, FileCode, Folder, Edit2, Trash2, Wand2 } from "lucide-react";
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger, ContextMenuSeparator, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/shared/ui/context-menu";
-import { Input } from "@/shared/ui/input";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { cn } from "@/shared/utils/cn";
-import { TableInfo, SqlSnippet } from "../types";
+import {
+	Search,
+	Table2,
+	Eye,
+	ChevronRight,
+	ChevronDown,
+	Key,
+	Hash,
+	Type,
+	Calendar,
+	ToggleLeft,
+	Copy,
+	Database,
+	FileText,
+	FolderPlus,
+	FilePlus,
+	FileCode,
+	Folder,
+	Edit2,
+	Trash2,
+	Wand2
+} from 'lucide-react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+	ContextMenuSeparator,
+	ContextMenuSub,
+	ContextMenuSubTrigger,
+	ContextMenuSubContent
+} from '@/shared/ui/context-menu'
+import { Input } from '@/shared/ui/input'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { cn } from '@/shared/utils/cn'
+import { TableInfo, SqlSnippet } from '../types'
 
 type Props = {
 	tables: TableInfo[]

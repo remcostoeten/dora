@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { PaginationState } from "../types";
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { PaginationState } from '../types'
 
 type Props = {
 	pagination: PaginationState

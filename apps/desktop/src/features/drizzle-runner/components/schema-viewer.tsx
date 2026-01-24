@@ -1,8 +1,8 @@
-import { Table2, ChevronRight, ChevronDown } from "lucide-react";
-import { useState } from "react";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { cn } from "@/shared/utils/cn";
-import { SchemaTable } from "../types";
+import { Table2, ChevronRight, ChevronDown } from 'lucide-react'
+import { useState } from 'react'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { cn } from '@/shared/utils/cn'
+import { SchemaTable } from '../types'
 
 type Props = {
 	tables: SchemaTable[]

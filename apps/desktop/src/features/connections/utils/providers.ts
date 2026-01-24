@@ -1,4 +1,4 @@
-import { DatabaseType } from "../types";
+import { DatabaseType } from '../types'
 
 /**
  * Provider metadata including defaults and URL patterns

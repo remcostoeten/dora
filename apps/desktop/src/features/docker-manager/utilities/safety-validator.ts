@@ -1,5 +1,10 @@
-import { LOCAL_HOST_PATTERNS, LOCAL_IP_REGEX_PATTERNS, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from "../constants";
-import type { DockerContainer, AllowedConnection } from "../types";
+import {
+	LOCAL_HOST_PATTERNS,
+	LOCAL_IP_REGEX_PATTERNS,
+	MANAGED_LABEL_KEY,
+	MANAGED_LABEL_VALUE
+} from '../constants'
+import type { DockerContainer, AllowedConnection } from '../types'
 
 type ValidationResult = { allowed: true } | { allowed: false; reason: string }
 

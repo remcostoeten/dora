@@ -11,7 +11,7 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, TableInfo},
+    database::types::{ColumnInfo, DatabaseSchema, TableInfo},
     Error,
 };
 

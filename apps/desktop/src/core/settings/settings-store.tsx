@@ -1,6 +1,14 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef } from "react";
-import { commands } from "@/lib/bindings";
-import { MonacoTheme } from "./editor-themes";
+import {
+	createContext,
+	useContext,
+	useEffect,
+	useState,
+	ReactNode,
+	useCallback,
+	useRef
+} from 'react'
+import { commands } from '@/lib/bindings'
+import { MonacoTheme } from './editor-themes'
 
 export type EditorTheme = 'auto' | MonacoTheme
 

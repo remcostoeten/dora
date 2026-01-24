@@ -1,5 +1,5 @@
-import { commands, JsonValue } from "@/lib/bindings";
-import type { SqlQueryResult } from "./types";
+import { commands, JsonValue } from '@/lib/bindings'
+import type { SqlQueryResult } from './types'
 
 export async function executeSqlQuery(
 	connectionId: string,

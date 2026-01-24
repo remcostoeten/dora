@@ -1,8 +1,8 @@
-import { createRoot } from "react-dom/client";
-import { getAppearanceSettings, applyAppearanceToDOM } from "@/shared/lib/appearance-store";
-import { loadFontPair } from "@/shared/lib/font-loader";
-import App from "./App.tsx";
-import "./index.css";
+import { createRoot } from 'react-dom/client'
+import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appearance-store'
+import { loadFontPair } from '@/shared/lib/font-loader'
+import App from './App.tsx'
+import './index.css'
 
 // Initialize appearance before rendering to prevent theme flash
 const settings = getAppearanceSettings()

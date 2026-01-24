@@ -1,10 +1,14 @@
-import { Copy, Check, Eye, EyeOff, Terminal, Code2 } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/shared/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
-import type { DockerContainer } from "../types";
-import { buildConnectionEnvVars, formatEnvVarsForClipboard, maskPassword } from "../utilities/connection-string-builder";
-import { generateSnippet, SnippetLanguage } from "../utilities/connection-snippet-generator";
+import { Copy, Check, Eye, EyeOff, Terminal, Code2 } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
+import type { DockerContainer } from '../types'
+import {
+	buildConnectionEnvVars,
+	formatEnvVarsForClipboard,
+	maskPassword
+} from '../utilities/connection-string-builder'
+import { generateSnippet, SnippetLanguage } from '../utilities/connection-snippet-generator'
 
 type Props = {
 	container: DockerContainer
@@ -88,14 +92,22 @@ export function ConnectionDetails({ container, password }: Props) {
 				</Button>
 			</div>
 
-			<Tabs defaultValue="env" className="w-full">
-				<TabsList className="grid w-full grid-cols-2">
-					<TabsTrigger value="env">Env Vars</TabsTrigger>
-					<TabsTrigger value="snippets">Snippets</TabsTrigger>
+			<Tabs defaultValue='env' className='w-full'>
+				<TabsList className='grid w-full grid-cols-2'>
+					<TabsTrigger value='env'>Env Vars</TabsTrigger>
+					<TabsTrigger value='snippets'>Snippets</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="env" className="space-y-2 mt-2 text-sm">
-					<div classNflex-1 flex flex-col h-full overflow-hidden relative pt-4ame='flex items-center justify-between py-1.5 px-2 rounded bg-muted/50'>
+				<TabsContent value='env' className='space-y-2 mt-2 text-sm'>
+					<div
+						classNflex-1
+						flex
+						flex-col
+						h-full
+						overflow-hidden
+						relative
+						pt-4ame='flex items-center justify-between py-1.5 px-2 rounded bg-muted/50'
+					>
 						<span className='text-muted-foreground'>Host</span>
 						<code className='text-xs font-mono'>{host}</code>
 					</div>
@@ -136,35 +148,37 @@ export function ConnectionDetails({ container, password }: Props) {
 					</div>
 				</TabsContent>
 
-				<TabsContent value="snippets" className="mt-2 text-sm space-y-2">
-					<div className="flex gap-2 mb-2">
-						{(['terminal', 'nodejs', 'python', 'prisma'] as SnippetLanguage[]).map((lang) => (
-							<Button
-								key={lang}
-								variant={activeLanguage === lang ? 'secondary' : 'ghost'}
-								size="sm"
-								className="h-6 px-2 text-xs capitalize"
-								onClick={() => setActiveLanguage(lang)}
-							>
-								{lang}
-							</Button>
-						))}
+				<TabsContent value='snippets' className='mt-2 text-sm space-y-2'>
+					<div className='flex gap-2 mb-2'>
+						{(['terminal', 'nodejs', 'python', 'prisma'] as SnippetLanguage[]).map(
+							(lang) => (
+								<Button
+									key={lang}
+									variant={activeLanguage === lang ? 'secondary' : 'ghost'}
+									size='sm'
+									className='h-6 px-2 text-xs capitalize'
+									onClick={() => setActiveLanguage(lang)}
+								>
+									{lang}
+								</Button>
+							)
+						)}
 					</div>
 
-					<div className="relative group">
-						<pre className="p-3 rounded bg-zinc-950 text-xs font-mono text-zinc-300 overflow-x-auto whitespace-pre-wrap border border-border min-h-[100px]">
+					<div className='relative group'>
+						<pre className='p-3 rounded bg-zinc-950 text-xs font-mono text-zinc-300 overflow-x-auto whitespace-pre-wrap border border-border min-h-[100px]'>
 							{generateSnippet(container, activeLanguage)}
 						</pre>
 						<Button
-							variant="ghost"
-							size="icon"
-							className="absolute top-2 right-2 h-6 w-6 bg-zinc-900/50 hover:bg-zinc-800"
+							variant='ghost'
+							size='icon'
+							className='absolute top-2 right-2 h-6 w-6 bg-zinc-900/50 hover:bg-zinc-800'
 							onClick={handleCopySnippet}
 						>
 							{snippetCopied ? (
-								<Check className="h-3.5 w-3.5 text-emerald-500" />
+								<Check className='h-3.5 w-3.5 text-emerald-500' />
 							) : (
-								<Copy className="h-3.5 w-3.5" />
+								<Copy className='h-3.5 w-3.5' />
 							)}
 						</Button>
 					</div>
@@ -177,6 +191,6 @@ export function ConnectionDetails({ container, password }: Props) {
 					<code className='text-xs font-mono break-all'>{displayUrl}</code>
 				</div>
 			</div>
-		</div >
+		</div>
 	)
 }

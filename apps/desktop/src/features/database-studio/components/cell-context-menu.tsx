@@ -1,6 +1,12 @@
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/shared/ui/context-menu";
-import { Copy, FileJson, Filter, Pencil, Trash2 } from "lucide-react";
-import { ColumnDefinition } from "../types";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger
+} from '@/shared/ui/context-menu'
+import { Copy, FileJson, Filter, Pencil, Trash2 } from 'lucide-react'
+import { ColumnDefinition } from '../types'
 
 type CellAction = 'copy' | 'copy-json' | 'filter-by-value' | 'edit' | 'set-null' | 'set-null-batch'
 
@@ -121,5 +127,4 @@ export function CellContextMenu({
 	)
 }
 
-export type { CellAction };
-
+export type { CellAction }

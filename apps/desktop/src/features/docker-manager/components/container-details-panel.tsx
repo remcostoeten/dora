@@ -1,19 +1,19 @@
-import { Play, Square, RotateCcw, Trash2, ExternalLink, FileCode } from "lucide-react";
-import { Package } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/shared/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
-import { useContainerActions, useRemoveContainer } from "../api/mutations/use-container-actions";
-import { useContainerLogs } from "../api/queries/use-container-logs";
-import { DEFAULT_LOG_TAIL } from "../constants";
-import type { DockerContainer } from "../types";
-import { ConnectionDetails } from "./connection-details";
-import { LogsViewer } from "./logs-viewer";
-import { SeedView } from "./seed-view";
-import { StatusBadge } from "./status-badge";
-import { ComposeExportDialog } from "./compose-export-dialog";
-import { RemoveContainerDialog } from "./remove-container-dialog";
-import { RemoveContainerOptions } from "../types";
+import { Play, Square, RotateCcw, Trash2, ExternalLink, FileCode } from 'lucide-react'
+import { Package } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
+import { useContainerActions, useRemoveContainer } from '../api/mutations/use-container-actions'
+import { useContainerLogs } from '../api/queries/use-container-logs'
+import { DEFAULT_LOG_TAIL } from '../constants'
+import type { DockerContainer } from '../types'
+import { ConnectionDetails } from './connection-details'
+import { LogsViewer } from './logs-viewer'
+import { SeedView } from './seed-view'
+import { StatusBadge } from './status-badge'
+import { ComposeExportDialog } from './compose-export-dialog'
+import { RemoveContainerDialog } from './remove-container-dialog'
+import { RemoveContainerOptions } from '../types'
 
 type Props = {
 	container: DockerContainer | null
@@ -27,10 +27,10 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 	const [showExportDialog, setShowExportDialog] = useState(false)
 	const [showRemoveDialog, setShowRemoveDialog] = useState(false)
 
-	const {
-		data: logs,
-		isLoading: logsLoading
-	} = useContainerLogs(container?.id ?? null, { tail: tailLines, enabled: activeTab === 'logs' })
+	const { data: logs, isLoading: logsLoading } = useContainerLogs(container?.id ?? null, {
+		tail: tailLines,
+		enabled: activeTab === 'logs'
+	})
 
 	const containerActions = useContainerActions()
 	const removeContainer = useRemoveContainer({
@@ -61,7 +61,7 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 	const passwordEnv = container.env.find((e) => e.startsWith('POSTGRES_PASSWORD='))
 	const password = passwordEnv
 		? passwordEnv.split('=')[1]
-		: (container.labels['POSTGRES_PASSWORD'] || 'postgres')
+		: container.labels['POSTGRES_PASSWORD'] || 'postgres'
 
 	function handleStart() {
 		containerActions.mutate({ containerId: container.id, action: 'start' })
@@ -92,8 +92,6 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 			onOpenInDataViewer(container)
 		}
 	}
-
-
 
 	return (
 		<div className='w-80 flex flex-col border-l border-border bg-card'>
@@ -218,7 +216,6 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 				</Tabs>
 			</div>
 
-
 			<ComposeExportDialog
 				container={container}
 				open={showExportDialog}
@@ -232,6 +229,6 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 				onConfirm={handleConfirmRemove}
 				isRemoving={removeContainer.isPending}
 			/>
-		</div >
+		</div>
 	)
 }

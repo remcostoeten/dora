@@ -1,5 +1,11 @@
-import { Eye, PenLine, Shield, Scissors, Trash2, Info } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Eye, PenLine, Shield, Scissors, Trash2, Info } from 'lucide-react'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
 
 type TableAction = 'view-table' | 'view-info' | 'alter-table' | 'enable-rls' | 'truncate' | 'drop'
 
