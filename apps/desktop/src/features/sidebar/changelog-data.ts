@@ -5,6 +5,7 @@ export type ChangelogEntry = {
 	title: string
 	description: string
 	type: 'feature' | 'fix' | 'refactor' | 'breaking'
+	details?: string[]
 }
 
 export const CURRENT_VERSION = '0.0.92'
@@ -17,7 +18,15 @@ export const CHANGELOG: ChangelogEntry[] = [
 		title: 'Docker Manager & UI Overhaul',
 		description:
 			'Docker container manager MVP, window controls, auto-connect to first database, right-click drag scrolling, Vercel-style dark theme, and improved Structure panel',
-		type: 'feature'
+		type: 'feature',
+		details: [
+			'Added Docker container management MVP',
+			'Implemented window controls',
+			'Added auto-connect feature for the first database',
+			'Enabled right-click drag scrolling',
+			'Applied Vercel-style dark theme',
+			'Improved Structure panel'
+		]
 	},
 	{
 		version: '0.0.91',

@@ -52,7 +52,7 @@ type DockerPsResult = {
 export async function executeDockerCommand(
 	args: string[]
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	if (typeof window !== 'undefined' && 'Tauri' in window) {
+	if (typeof window !== 'undefined' && '__TAURI__' in window) {
 		const { Command } = await import('@tauri-apps/plugin-shell')
 		const command = Command.create('docker', args)
 		const output = await command.execute()
