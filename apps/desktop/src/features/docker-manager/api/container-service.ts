@@ -1,7 +1,29 @@
-import { POSTGRES_IMAGE, POSTGRES_CONTAINER_PORT, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from "../constants";
-import type { PostgresContainerConfig, DockerContainer, CreateContainerResult, ContainerActionResult, RemoveContainerOptions } from "../types";
-import { validateContainerName, generateVolumeName } from "../utilities/container-naming";
-import { checkDockerAvailability, listContainers, getContainerDetails, startContainer as clientStartContainer, stopContainer as clientStopContainer, restartContainer as clientRestartContainer, removeContainer as clientRemoveContainer, pullImage, imageExists, executeDockerCommand } from "./docker-client";
+import {
+	POSTGRES_IMAGE,
+	POSTGRES_CONTAINER_PORT,
+	MANAGED_LABEL_KEY,
+	MANAGED_LABEL_VALUE
+} from '../constants'
+import type {
+	PostgresContainerConfig,
+	DockerContainer,
+	CreateContainerResult,
+	ContainerActionResult,
+	RemoveContainerOptions
+} from '../types'
+import { validateContainerName, generateVolumeName } from '../utilities/container-naming'
+import {
+	checkDockerAvailability,
+	listContainers,
+	getContainerDetails,
+	startContainer as clientStartContainer,
+	stopContainer as clientStopContainer,
+	restartContainer as clientRestartContainer,
+	removeContainer as clientRemoveContainer,
+	pullImage,
+	imageExists,
+	executeDockerCommand
+} from './docker-client'
 
 export async function createPostgresContainer(
 	config: PostgresContainerConfig
@@ -198,3 +220,42 @@ function sleep(ms: number): Promise<void> {
 }
 
 export { checkDockerAvailability, getContainerLogs } from './docker-client'
+
+export async function seedDatabase(
+	containerId: string,
+	filePath: string,
+	connectionConfig: { user: string; database: string }
+): Promise<{ success: boolean; error?: string }> {
+	try {
+		const { copyToContainer, execCommand } = await import('./docker-client')
+		const targetPath = '/tmp/seed.sql'
+
+		// 1. Copy file to container
+		await copyToContainer(containerId, filePath, targetPath)
+
+		// 2. Execute SQL file
+		const result = await execCommand(containerId, [
+			'psql',
+			'-U',
+			connectionConfig.user,
+			'-d',
+			connectionConfig.database,
+			'-f',
+			targetPath
+		])
+
+		if (result.exitCode !== 0) {
+			throw new Error(result.stderr || 'Failed to execute SQL seed file')
+		}
+
+		// 3. Cleanup
+		await execCommand(containerId, ['rm', targetPath])
+
+		return { success: true }
+	} catch (error) {
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : 'Unknown error during seeding'
+		}
+	}
+}

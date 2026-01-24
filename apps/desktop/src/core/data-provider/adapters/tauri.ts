@@ -1,7 +1,20 @@
-import type { TableData, SortDescriptor, FilterDescriptor, ColumnDefinition } from "@/features/database-studio/types";
-import type { ConnectionInfo, DatabaseSchema, MutationResult, QueryHistoryEntry, JsonValue, DatabaseInfo, SavedQuery } from "@/lib/bindings";
-import { commands } from "@/lib/bindings";
-import type { DataAdapter, AdapterResult, QueryResult } from "../types";
+import type {
+	TableData,
+	SortDescriptor,
+	FilterDescriptor,
+	ColumnDefinition
+} from '@/features/database-studio/types'
+import type {
+	ConnectionInfo,
+	DatabaseSchema,
+	MutationResult,
+	QueryHistoryEntry,
+	JsonValue,
+	DatabaseInfo,
+	SavedQuery
+} from '@/lib/bindings'
+import { commands } from '@/lib/bindings'
+import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 
 function ok<T>(data: T): AdapterResult<T> {
 	return { ok: true, data }

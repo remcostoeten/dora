@@ -1,6 +1,6 @@
-import { Loader2, Check, X, Edit3 } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { cn } from "@/shared/utils/cn";
+import { Loader2, Check, X, Edit3 } from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	editCount: number

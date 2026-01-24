@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SortDescriptor, FilterDescriptor } from "@/features/database-studio/types";
-import { useAdapter } from "./context";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { SortDescriptor, FilterDescriptor } from '@/features/database-studio/types'
+import { useAdapter } from './context'
 
 export function useConnections() {
 	const adapter = useAdapter()

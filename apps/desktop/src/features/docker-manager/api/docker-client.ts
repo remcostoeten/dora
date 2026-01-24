@@ -1,6 +1,14 @@
-import { CONTAINER_PREFIX, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from "../constants";
-import type { DockerContainer, DockerAvailability, ContainerState, ContainerHealth, PortMapping, VolumeMount, ContainerLogsOptions } from "../types";
-import { isManaged } from "../utilities/container-naming";
+import { CONTAINER_PREFIX, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from '../constants'
+import type {
+	DockerContainer,
+	DockerAvailability,
+	ContainerState,
+	ContainerHealth,
+	PortMapping,
+	VolumeMount,
+	ContainerLogsOptions
+} from '../types'
+import { isManaged } from '../utilities/container-naming'
 
 type DockerInspectResult = {
 	Id: string
@@ -60,7 +68,7 @@ export async function executeDockerCommand(
 
 export async function checkDockerAvailability(): Promise<DockerAvailability> {
 	try {
-		const result = await executeDockerCommand(['version', '--format', '{{.Server.Version}}'])
+		const result = await executeDockerCommand(['info', '--format', '{{.ServerVersion}}'])
 
 		if (result.exitCode !== 0) {
 			return {
@@ -372,4 +380,24 @@ export async function imageExists(image: string, tag: string = 'latest'): Promis
 	const imageSpec = `${image}:${tag}`
 	const result = await executeDockerCommand(['image', 'inspect', imageSpec])
 	return result.exitCode === 0
+}
+
+export async function copyToContainer(
+	containerId: string,
+	hostPath: string,
+	containerPath: string
+): Promise<void> {
+	const result = await executeDockerCommand(['cp', hostPath, `${containerId}:${containerPath}`])
+
+	if (result.exitCode !== 0) {
+		throw new Error(result.stderr || `Failed to copy file to container`)
+	}
+}
+
+export async function execCommand(
+	containerId: string,
+	command: string[]
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+	const args = ['exec', containerId, ...command]
+	return executeDockerCommand(args)
 }

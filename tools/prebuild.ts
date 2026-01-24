@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 
 const root = process.cwd()
 const appsDir = join(root, 'apps')

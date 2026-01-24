@@ -1,20 +1,20 @@
-import { PanelLeft } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { useAdapter } from "@/core/data-provider/context";
-import { useShortcut } from "@/core/shortcuts";
-import { ResizablePanels } from "@/features/drizzle-runner/components/resizable-panels";
-import type { SavedQuery } from "@/lib/bindings";
-import { Button } from "@/shared/ui/button";
-import { CheatsheetPanel } from "../../features/drizzle-runner/components/cheatsheet-panel";
-import { CodeEditor } from "../../features/drizzle-runner/components/code-editor";
-import { DEFAULT_QUERY } from "../../features/drizzle-runner/data";
-import { ConsoleToolbar } from "./components/console-toolbar";
-import { SqlEditor } from "./components/sql-editor";
-import { SqlResults } from "./components/sql-results";
-import { UnifiedSidebar } from "./components/unified-sidebar";
-import { DEFAULT_SQL } from "./data";
-import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from "./types";
+import { PanelLeft } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { useAdapter } from '@/core/data-provider/context'
+import { useShortcut } from '@/core/shortcuts'
+import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
+import type { SavedQuery } from '@/lib/bindings'
+import { Button } from '@/shared/ui/button'
+import { CheatsheetPanel } from '../../features/drizzle-runner/components/cheatsheet-panel'
+import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
+import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
+import { ConsoleToolbar } from './components/console-toolbar'
+import { SqlEditor } from './components/sql-editor'
+import { SqlResults } from './components/sql-results'
+import { UnifiedSidebar } from './components/unified-sidebar'
+import { DEFAULT_SQL } from './data'
+import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 
 type Props = {
 	onToggleSidebar?: () => void
@@ -227,22 +227,22 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 	}
 
 	function handlePrettify() {
-    if (mode === 'sql') {
-    	const lines = currentSqlQuery.split('\n')
-    	const prettified = lines
-    		.map((line) => line.trim())
-    		.filter((line) => line.length > 0)
-    		.join('\n')
-    	setCurrentSqlQuery(prettified)
-    } else {
-    	const lines = currentDrizzleQuery.split('\n')
-    	const prettified = lines
-    		.map((line) => line.trim())
-    		.filter((line) => line.length > 0)
-    		.join('\n')
-    	setCurrentDrizzleQuery(prettified)
-    }
-    }
+		if (mode === 'sql') {
+			const lines = currentSqlQuery.split('\n')
+			const prettified = lines
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0)
+				.join('\n')
+			setCurrentSqlQuery(prettified)
+		} else {
+			const lines = currentDrizzleQuery.split('\n')
+			const prettified = lines
+				.map((line) => line.trim())
+				.filter((line) => line.length > 0)
+				.join('\n')
+			setCurrentDrizzleQuery(prettified)
+		}
+	}
 
 	const handleExport = useCallback(() => {
 		if (!result || result.rows.length === 0) return
@@ -359,12 +359,12 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 	)
 
 	function handleTableSelect(tableName: string) {
-    if (mode === 'sql') {
-    	setCurrentSqlQuery(`SELECT * FROM ${tableName} LIMIT 100;`)
-    } else {
-    	setCurrentDrizzleQuery(`db.select().from(${tableName}).limit(100);`)
-    }
-    }
+		if (mode === 'sql') {
+			setCurrentSqlQuery(`SELECT * FROM ${tableName} LIMIT 100;`)
+		} else {
+			setCurrentDrizzleQuery(`db.select().from(${tableName}).limit(100);`)
+		}
+	}
 
 	const handleInsertSnippet = useCallback(
 		(code: string) => {

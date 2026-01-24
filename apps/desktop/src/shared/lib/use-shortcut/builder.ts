@@ -1,7 +1,23 @@
-import { detectPlatform, Platform, ModifierDisplaySymbols, ModifierKey, ModifierDisplayOrder } from "./constants";
-import type { ModifierKeyType } from "./constants";
-import { parseShortcut, matchesShortcut } from "./parser";
-import type { ActionKey, ModifierFlags, ShortcutHandler, HandlerOptions, ShortcutResult, UseShortcutOptions, ExceptPreset, ExceptPredicate, ShortcutBuilder as IShortcutBuilder } from "./types";
+import {
+	detectPlatform,
+	Platform,
+	ModifierDisplaySymbols,
+	ModifierKey,
+	ModifierDisplayOrder
+} from './constants'
+import type { ModifierKeyType } from './constants'
+import { parseShortcut, matchesShortcut } from './parser'
+import type {
+	ActionKey,
+	ModifierFlags,
+	ShortcutHandler,
+	HandlerOptions,
+	ShortcutResult,
+	UseShortcutOptions,
+	ExceptPreset,
+	ExceptPredicate,
+	ShortcutBuilder as IShortcutBuilder
+} from './types'
 
 const MODIFIER_KEYS = new Set(['ctrl', 'shift', 'alt', 'cmd', 'mod'])
 const IGNORED_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])

@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { PostgresContainerConfig, CreateContainerResult } from "../../types";
-import { createPostgresContainer, waitForHealthy } from "../container-service";
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { PostgresContainerConfig, CreateContainerResult } from '../../types'
+import { createPostgresContainer, waitForHealthy } from '../container-service'
 
 type UseCreateContainerOptions = {
 	onSuccess?: (result: CreateContainerResult) => void

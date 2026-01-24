@@ -41,7 +41,11 @@ async fn execute_query_with_results(
         Ok(stmt) => stmt,
         Err(e) => {
             log::error!("Query preparation failed: {:?}", e);
-            let error_msg = format!("Query failed: {}", e);
+            let error_msg = if let Some(db_error) = e.as_db_error() {
+                format!("Database error: {}", db_error.message())
+            } else {
+                format!("Query preparation failed: {}", e)
+            };
 
             sender.send(QueryExecEvent::Finished {
                 elapsed_ms: started_at.elapsed().as_millis() as u64,
@@ -125,7 +129,11 @@ async fn execute_query_with_results(
         }
         Err(e) => {
             log::error!("Query execution failed: {:?}", e);
-            let error_msg = format!("Query failed: {}", e);
+            let error_msg = if let Some(db_error) = e.as_db_error() {
+                format!("Database error: {}", db_error.message())
+            } else {
+                format!("Query execution failed: {}", e)
+            };
 
             sender.send(QueryExecEvent::Finished {
                 elapsed_ms: started_at.elapsed().as_millis() as u64,
@@ -158,7 +166,11 @@ async fn execute_modification_query(
         }
         Err(e) => {
             log::error!("Modification query failed: {:?}", e);
-            let error_msg = format!("Query failed: {}", e);
+            let error_msg = if let Some(db_error) = e.as_db_error() {
+                format!("Database error: {}", db_error.message())
+            } else {
+                format!("Modification query failed: {}", e)
+            };
 
             sender.send(QueryExecEvent::Finished {
                 elapsed_ms: started_at.elapsed().as_millis() as u64,

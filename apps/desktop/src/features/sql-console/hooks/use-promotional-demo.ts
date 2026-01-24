@@ -1,5 +1,5 @@
-import type { editor } from "monaco-editor";
-import { useState, useEffect, useRef, useCallback } from "react";
+import type { editor } from 'monaco-editor'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 // Define the steps for our script
 const DEMO_SCRIPT = [

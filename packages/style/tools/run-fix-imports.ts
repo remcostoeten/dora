@@ -1,6 +1,6 @@
 'use client'
 
-import { Project, ImportDeclaration } from "ts-morph";
+import { Project, ImportDeclaration } from 'ts-morph'
 
 const project = new Project()
 project.addSourceFilesAtPaths([

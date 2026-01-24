@@ -1,8 +1,8 @@
-import { Sparkles, Wrench, RefreshCw, AlertTriangle } from "lucide-react";
-import { Badge } from "@/shared/ui/badge";
-import { cn } from "@/shared/utils/cn";
-import { CHANGELOG, CURRENT_VERSION, ChangelogEntry } from "../changelog-data";
-import { SidebarPanel, SidebarPanelHeader, SidebarPanelContent } from "./sidebar-panel";
+import { Sparkles, Wrench, RefreshCw, AlertTriangle } from 'lucide-react'
+import { Badge } from '@/shared/ui/badge'
+import { cn } from '@/shared/utils/cn'
+import { CHANGELOG, CURRENT_VERSION, ChangelogEntry } from '../changelog-data'
+import { SidebarPanel, SidebarPanelHeader, SidebarPanelContent } from './sidebar-panel'
 
 type Props = {
 	maxHeight?: number
@@ -43,7 +43,7 @@ function formatDate(dateString: string): string {
 	})
 }
 
-export function ChangelogPanel({ maxHeight = 320 }: Props) {
+export function ChangelogPanel({ maxHeight = 500 }: Props) {
 	return (
 		<SidebarPanel>
 			<SidebarPanelHeader title='Changelog' version={CURRENT_VERSION} />

@@ -1,4 +1,4 @@
-import { CONTAINER_PREFIX } from "../constants";
+import { CONTAINER_PREFIX } from '../constants'
 
 export function generateContainerName(baseName?: string): string {
 	const timestamp = Date.now().toString(36)

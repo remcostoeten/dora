@@ -1,5 +1,5 @@
-import type { ColumnDefinition, TableData } from "@/features/database-studio/types";
-import { DatabaseSchema, StatementInfo, JsonValue } from "@/lib/bindings";
+import type { ColumnDefinition, TableData } from '@/features/database-studio/types'
+import { DatabaseSchema, StatementInfo, JsonValue } from '@/lib/bindings'
 
 export function backendToColumnDefinition(col: {
 	name: string

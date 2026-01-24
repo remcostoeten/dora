@@ -1,6 +1,13 @@
-import { ReactNode } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/shared/ui/dialog";
-import { cn } from "@/shared/utils/cn";
+import { ReactNode } from 'react'
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+	DialogFooter
+} from '@/shared/ui/dialog'
+import { cn } from '@/shared/utils/cn'
 
 export type StudioDialogProps = {
 	open: boolean

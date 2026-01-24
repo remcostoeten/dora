@@ -1,5 +1,17 @@
-import { describe, it, expect } from "vitest";
-import { getDbName, getChainMode, isInsideSelectParens, isInsideInsertParens, isInsideUpdateParens, isInsideDeleteParens, isInsideFromParens, isInsideWhereParens, isInsideJoinParens, getTableMatch, getColumnMatch } from "@/features/drizzle-runner/utils/lsp-patterns";
+import { describe, it, expect } from 'vitest'
+import {
+	getDbName,
+	getChainMode,
+	isInsideSelectParens,
+	isInsideInsertParens,
+	isInsideUpdateParens,
+	isInsideDeleteParens,
+	isInsideFromParens,
+	isInsideWhereParens,
+	isInsideJoinParens,
+	getTableMatch,
+	getColumnMatch
+} from '@/features/drizzle-runner/utils/lsp-patterns'
 
 describe('Drizzle LSP Patterns', () => {
 	describe('getDbName', () => {

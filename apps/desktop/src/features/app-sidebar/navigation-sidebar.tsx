@@ -1,12 +1,26 @@
-import { Sparkles, SquareTerminal, Table2, Network, Container, SunMedium, MoonStar, PanelLeft, PanelLeftDashed } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, KeyboardEvent } from "react";
-import { DoraLogo } from "@/components/dora-logo";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { applyAppearanceToDOM, getAppearanceSettings, saveAppearanceSettings } from "@/shared/lib/appearance-store";
-import { cn } from "@/shared/utils/cn";
-import { SidebarProvider, useSidebar } from "./context";
-import { SidebarNavItem } from "./nav-item";
-import type { NavItem, SidebarVariant } from "./types";
+import {
+	Sparkles,
+	SquareTerminal,
+	Table2,
+	Network,
+	Container,
+	SunMedium,
+	MoonStar,
+	PanelLeft,
+	PanelLeftDashed
+} from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, KeyboardEvent } from 'react'
+import { DoraLogo } from '@/components/dora-logo'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+	applyAppearanceToDOM,
+	getAppearanceSettings,
+	saveAppearanceSettings
+} from '@/shared/lib/appearance-store'
+import { cn } from '@/shared/utils/cn'
+import { SidebarProvider, useSidebar } from './context'
+import { SidebarNavItem } from './nav-item'
+import type { NavItem, SidebarVariant } from './types'
 
 type TTogle = {
 	variant: SidebarVariant
@@ -21,9 +35,9 @@ function ThemeToggle({ variant }: TTogle) {
 		const settings = getAppearanceSettings()
 		setIsDark(
 			settings.theme === 'dark' ||
-			settings.theme === 'midnight' ||
-			settings.theme === 'forest' ||
-			settings.theme === 'claude-dark'
+				settings.theme === 'midnight' ||
+				settings.theme === 'forest' ||
+				settings.theme === 'claude-dark'
 		)
 	}, [])
 
@@ -97,7 +111,6 @@ function ModeToggle() {
 		</Tooltip>
 	)
 }
-
 
 type ContentProps = {
 	activeNavId?: string
@@ -196,7 +209,7 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 			role='complementary'
 			aria-label='Main sidebar'
 		>
-			<div className='flex flex-col items-center justify-center py-4 gap-4'>
+			<div className='flex flex-col items-center justify-center pt-2 gap-4'>
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<button
@@ -226,7 +239,11 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 				onKeyDown={handleKeyDown}
 			>
 				{/* Primary nav items */}
-				<div role='group' aria-label='Primary features' className='flex flex-col gap-1'>
+				<div
+					role='group'
+					aria-label='Primary features'
+					className='mx-auto flex flex-col gap-1'
+				>
 					{mainNavItems.map((item) => (
 						<SidebarNavItem
 							key={item.id}
@@ -245,7 +262,11 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 				/>
 
 				{/* Coming Soon Items */}
-				<div role='group' aria-label='Coming soon features' className='flex flex-col gap-1'>
+				<div
+					role='group'
+					aria-label='Coming soon features'
+					className='mx-auto flex flex-col gap-1'
+				>
 					{comingSoonItems.map((item) => (
 						<SidebarNavItem key={item.id} item={item} variant={variant} />
 					))}
@@ -274,7 +295,7 @@ export type AppSidebarProps = {
 	onNavSelect?: (id: string) => void
 }
 
-export function AppSidebar({
+export function NavigationSidebar({
 	variant = 'default',
 	activeNavId,
 	onNavSelect

@@ -1,4 +1,4 @@
-import type { GeneratorProfile, GeneratorScale } from "./types";
+import type { GeneratorProfile, GeneratorScale } from './types'
 
 export const CONTAINER_PREFIX = 'dora_'
 

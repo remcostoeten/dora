@@ -1,10 +1,33 @@
-import { ChevronsUpDown, Plus, Settings, Database, Check, Eye, Pencil, Trash2, AlertCircle } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/shared/ui/context-menu";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
-import { cn } from "@/shared/utils/cn";
-import { Connection, DatabaseType } from "../types";
-import { DatabaseTypeIcon } from "./database-type-icon";
+import {
+	ChevronsUpDown,
+	Plus,
+	Settings,
+	Database,
+	Check,
+	Eye,
+	Pencil,
+	Trash2,
+	AlertCircle
+} from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger
+} from '@/shared/ui/context-menu'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
+import { cn } from '@/shared/utils/cn'
+import { Connection, DatabaseType } from '../types'
+import { DatabaseTypeIcon } from './database-type-icon'
 
 function formatDatabaseType(type: DatabaseType | undefined): string {
 	if (!type) return 'Database'
@@ -161,7 +184,7 @@ export function ConnectionSwitcher({
 								<ContextMenuSeparator />
 								<ContextMenuItem
 									onSelect={() => onDeleteConnection?.(connection.id)}
-									className='gap-2 text-destructive focus:text-destructive cursor-pointer'
+									className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
 								>
 									<Trash2 className='h-4 w-4' />
 									Delete Connection

@@ -1,10 +1,20 @@
-import { COMMENTS } from "./tables/comments";
-import { CUSTOMERS } from "./tables/customers";
-import { EMPLOYEES, TRANSACTIONS, PAGE_VIEWS, INVENTORY, AUDIT_LOGS, SUPPORT_TICKETS, EMAIL_CAMPAIGNS, API_LOGS, SUBSCRIPTIONS } from "./tables/extended";
-import { ORDERS, ORDER_ITEMS } from "./tables/orders";
-import { POSTS } from "./tables/posts";
-import { PRODUCTS } from "./tables/products";
-import { USERS } from "./tables/users";
+import { COMMENTS } from './tables/comments'
+import { CUSTOMERS } from './tables/customers'
+import {
+	EMPLOYEES,
+	TRANSACTIONS,
+	PAGE_VIEWS,
+	INVENTORY,
+	AUDIT_LOGS,
+	SUPPORT_TICKETS,
+	EMAIL_CAMPAIGNS,
+	API_LOGS,
+	SUBSCRIPTIONS
+} from './tables/extended'
+import { ORDERS, ORDER_ITEMS } from './tables/orders'
+import { POSTS } from './tables/posts'
+import { PRODUCTS } from './tables/products'
+import { USERS } from './tables/users'
 
 export { MOCK_CONNECTIONS } from './connections'
 export { MOCK_SCHEMAS } from './schemas'

@@ -1,4 +1,4 @@
-import type { FontPair } from "./appearance-store";
+import type { FontPair } from './appearance-store'
 
 type FontConfig = {
 	sans: string

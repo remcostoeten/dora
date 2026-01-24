@@ -1,9 +1,16 @@
-import { Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/shared/ui/dialog";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
+import { Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogFooter,
+	DialogDescription
+} from '@/shared/ui/dialog'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
 
 type Props = {
 	open: boolean
@@ -27,13 +34,14 @@ export function RenameTableDialog({
 			if (open) {
 				setNewName(currentName)
 				// Small timeout to ensure dialog animation doesn't interfere with focus/selection
-				setTimeout(() => {
+				setTimeout(function () {
 					const input = document.getElementById('new-table-name') as HTMLInputElement
 					if (input) {
 						input.focus()
-						input.select()
+						const len = input.value.length
+						input.setSelectionRange(len, len)
 					}
-				}, 50)
+				}, 100)
 			}
 		},
 		[open, currentName]
@@ -69,7 +77,6 @@ export function RenameTableDialog({
 							}}
 							placeholder='table_name'
 							className='font-mono'
-							autoFocus
 						/>
 					</div>
 

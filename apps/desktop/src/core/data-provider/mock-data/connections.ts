@@ -1,4 +1,4 @@
-import type { ConnectionInfo } from "@/lib/bindings";
+import type { ConnectionInfo } from '@/lib/bindings'
 
 export const MOCK_CONNECTIONS: ConnectionInfo[] = [
 	{

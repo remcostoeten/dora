@@ -1,5 +1,5 @@
-import { POSTS } from "./posts";
-import { USERS } from "./users";
+import { POSTS } from './posts'
+import { USERS } from './users'
 
 const COMMENT_BODIES = [
 	'Great article! This really helped me understand the topic.',

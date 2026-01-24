@@ -1,7 +1,7 @@
-import { Copy } from "lucide-react";
-import { Button } from "@/shared/ui/button";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { QueryResult } from "../types";
+import { Copy } from 'lucide-react'
+import { Button } from '@/shared/ui/button'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { QueryResult } from '../types'
 
 type Props = {
 	result: QueryResult | null

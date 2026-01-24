@@ -1,5 +1,8 @@
-import { MOCK_TABLE_DATA as SIDEBAR_MOCK_DATA, MOCK_TABLE_COLUMNS as SIDEBAR_MOCK_COLUMNS } from "../sidebar/database-data";
-import { ColumnDefinition, TableData } from "./types";
+import {
+	MOCK_TABLE_DATA as SIDEBAR_MOCK_DATA,
+	MOCK_TABLE_COLUMNS as SIDEBAR_MOCK_COLUMNS
+} from '../sidebar/database-data'
+import { ColumnDefinition, TableData } from './types'
 
 export const TABLE_COLUMNS = SIDEBAR_MOCK_COLUMNS
 export const TABLE_DATA = SIDEBAR_MOCK_DATA

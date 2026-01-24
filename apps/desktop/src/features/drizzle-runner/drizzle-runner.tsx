@@ -1,15 +1,15 @@
-import { PanelLeft, Code, Play, Sparkles, Download, Loader2, Braces } from "lucide-react";
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { useAdapter, useIsTauri } from "@/core/data-provider";
-import { Button } from "@/shared/ui/button";
-import { cn } from "@/shared/utils/cn";
-import { CheatsheetPanel } from "./components/cheatsheet-panel";
-import { CodeEditor } from "./components/code-editor";
-import { ResultsPanel } from "./components/results-panel";
-import { SchemaViewer } from "./components/schema-viewer";
-import { DEFAULT_QUERY } from "./data";
-import { QueryResult, SchemaTable } from "./types";
+import { PanelLeft, Code, Play, Sparkles, Download, Loader2, Braces } from 'lucide-react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { useAdapter, useIsTauri } from '@/core/data-provider'
+import { Button } from '@/shared/ui/button'
+import { cn } from '@/shared/utils/cn'
+import { CheatsheetPanel } from './components/cheatsheet-panel'
+import { CodeEditor } from './components/code-editor'
+import { ResultsPanel } from './components/results-panel'
+import { SchemaViewer } from './components/schema-viewer'
+import { DEFAULT_QUERY } from './data'
+import { QueryResult, SchemaTable } from './types'
 
 type Props = {
 	connectionId?: string

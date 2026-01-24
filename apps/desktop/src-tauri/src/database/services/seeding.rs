@@ -2,7 +2,7 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use uuid::Uuid;
 use serde::Serialize;
-use fake::{Fake, Faker};
+use fake::Fake;
 use fake::faker::lorem::en::Sentence;
 use fake::faker::name::en::{FirstName, LastName, Name};
 use fake::faker::internet::en::{FreeEmail, Username};

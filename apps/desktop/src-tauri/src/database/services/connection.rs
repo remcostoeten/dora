@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::{
     credentials,
     database::{
-        postgres::{self, connect::connect},
+        postgres::connect::connect,
         types::{
             ConnectionInfo, Database, DatabaseConnection, DatabaseInfo,
         },
@@ -169,6 +169,14 @@ impl<'a> ConnectionService<'a> {
             if let Some(stored_connection) = stored_connections.iter().find(|c| c.id == connection_id) {
                 let connection = DatabaseConnection::from_connection_info(stored_connection.clone());
                 self.connections.insert(connection_id, connection);
+            }
+        }
+
+        // Check if already connected to avoid reconnection loops
+        if let Some(connection_entry) = self.connections.get(&connection_id) {
+            if connection_entry.connected {
+                log::debug!("Already connected to database: {}", connection_id);
+                return Ok(true);
             }
         }
 

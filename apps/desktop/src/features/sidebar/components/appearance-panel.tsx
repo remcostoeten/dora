@@ -1,12 +1,20 @@
-import { RotateCcw } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Theme, FontPair, AppearanceSettings, getAppearanceSettings, saveAppearanceSettings, applyAppearanceToDOM, DEFAULT_SETTINGS } from "@/shared/lib/appearance-store";
-import { loadFontPair } from "@/shared/lib/font-loader";
-import { Button } from "@/shared/ui/button";
-import { Slider } from "@/shared/ui/slider";
-import { cn } from "@/shared/utils/cn";
-import { SidebarPanel } from "./sidebar-panel";
-import { ThemePreviewCard } from "./theme-preview-card";
+import { RotateCcw } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import {
+	Theme,
+	FontPair,
+	AppearanceSettings,
+	getAppearanceSettings,
+	saveAppearanceSettings,
+	applyAppearanceToDOM,
+	DEFAULT_SETTINGS
+} from '@/shared/lib/appearance-store'
+import { loadFontPair } from '@/shared/lib/font-loader'
+import { Button } from '@/shared/ui/button'
+import { Slider } from '@/shared/ui/slider'
+import { cn } from '@/shared/utils/cn'
+import { SidebarPanel } from './sidebar-panel'
+import { ThemePreviewCard } from './theme-preview-card'
 
 type ThemeConfig = {
 	value: Theme
@@ -27,7 +35,8 @@ const THEME_OPTIONS: ThemeConfig[] = [
 	{ value: 'midnight', name: 'Midnight', variant: 'dark', accentColor: '#818cf8' },
 	{ value: 'forest', name: 'Forest', variant: 'dark', accentColor: '#34d399' },
 	{ value: 'claude', name: 'Claude Light', variant: 'light', accentColor: '#d97706' },
-	{ value: 'claude-dark', name: 'Claude Dark', variant: 'dark', accentColor: '#b45309' }
+	{ value: 'claude-dark', name: 'Claude Dark', variant: 'dark', accentColor: '#b45309' },
+	{ value: 'haptic', name: 'Haptic', variant: 'dark', accentColor: '#f5f5f5' }
 ]
 
 const FONT_OPTIONS: FontConfig[] = [

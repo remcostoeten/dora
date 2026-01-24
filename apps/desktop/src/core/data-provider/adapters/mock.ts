@@ -1,7 +1,22 @@
-import type { TableData, SortDescriptor, FilterDescriptor, ColumnDefinition } from "@/features/database-studio/types";
-import type { ConnectionInfo, DatabaseSchema, MutationResult, QueryHistoryEntry, JsonValue, TableInfo, ColumnInfo, DatabaseInfo, SavedQuery } from "@/lib/bindings";
-import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA, MOCK_SCRIPTS } from "../mock-data";
-import type { DataAdapter, AdapterResult, QueryResult } from "../types";
+import type {
+	TableData,
+	SortDescriptor,
+	FilterDescriptor,
+	ColumnDefinition
+} from '@/features/database-studio/types'
+import type {
+	ConnectionInfo,
+	DatabaseSchema,
+	MutationResult,
+	QueryHistoryEntry,
+	JsonValue,
+	TableInfo,
+	ColumnInfo,
+	DatabaseInfo,
+	SavedQuery
+} from '@/lib/bindings'
+import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA, MOCK_SCRIPTS } from '../mock-data'
+import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 
 type InMemoryStore = {
 	tables: Record<string, Record<string, unknown>[]>

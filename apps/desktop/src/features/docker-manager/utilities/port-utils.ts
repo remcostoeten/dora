@@ -1,4 +1,4 @@
-import { DEFAULT_HOST_PORT_START, DEFAULT_HOST_PORT_END } from "../constants";
+import { DEFAULT_HOST_PORT_START, DEFAULT_HOST_PORT_END } from '../constants'
 
 export async function findFreePort(
 	preferredPort?: number,
@@ -18,7 +18,7 @@ export async function findFreePort(
 	throw new Error(`No available ports found in range ${startPort}-${endPort}`)
 }
 
-import { invoke } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core'
 
 export async function isPortAvailable(port: number): Promise<boolean> {
 	try {

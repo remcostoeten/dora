@@ -1,5 +1,5 @@
-import { ModifierAliases, SpecialKeyMap, detectPlatform, Platform } from "./constants";
-import type { ModifierState, ParsedShortcut } from "./types";
+import { ModifierAliases, SpecialKeyMap, detectPlatform, Platform } from './constants'
+import type { ModifierState, ParsedShortcut } from './types'
 
 export function parseShortcut(shortcut: string): ParsedShortcut {
 	const platform = detectPlatform()

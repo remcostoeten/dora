@@ -1,15 +1,15 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Database, Check, X } from "lucide-react";
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { useShortcut } from "@/core/shortcuts";
-import { Checkbox } from "@/shared/ui/checkbox";
-import { cn } from "@/shared/utils/cn";
-import { ColumnDefinition, SortDescriptor, FilterDescriptor } from "../types";
-import { CellContextMenu } from "./cell-context-menu";
-import { DateCell } from "./cells/date-cell";
-import { IpCell } from "./cells/ip-cell";
-import { TokenCell } from "./cells/token-cell";
-import { RowContextMenu, RowAction } from "./row-context-menu";
-import { ScrollHint } from "./scroll-hint";
+import { ArrowDown, ArrowUp, ArrowUpDown, Database, Check, X } from 'lucide-react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { useShortcut } from '@/core/shortcuts'
+import { Checkbox } from '@/shared/ui/checkbox'
+import { cn } from '@/shared/utils/cn'
+import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
+import { CellContextMenu } from './cell-context-menu'
+import { DateCell } from './cells/date-cell'
+import { IpCell } from './cells/ip-cell'
+import { TokenCell } from './cells/token-cell'
+import { RowContextMenu, RowAction } from './row-context-menu'
+import { ScrollHint } from './scroll-hint'
 
 type EditingCell = {
 	rowIndex: number
@@ -126,6 +126,11 @@ export function DataGrid({
 	const [anchorCell, setAnchorCell] = useState<CellPosition | null>(null)
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragStart, setDragStart] = useState<CellPosition | null>(null)
+
+	// Right-click drag state
+	const [isRightDragging, setIsRightDragging] = useState(false)
+	const rightDragStartRef = useRef<{ x: number; scrollLeft: number } | null>(null)
+	const hasRightDraggedRef = useRef(false)
 
 	function setFocusedCell(cell: { row: number; col: number } | null) {
 		setFocusedCellInternal(cell)
@@ -552,13 +557,76 @@ export function DataGrid({
 		)
 	}
 
+	function handleRightDragValues(e: React.MouseEvent | MouseEvent) {
+		if (!rightDragStartRef.current || !scrollContainerRef.current) return
+
+		const delta = rightDragStartRef.current.x - e.clientX
+		if (Math.abs(delta) > 5) {
+			hasRightDraggedRef.current = true
+		}
+
+		if (hasRightDraggedRef.current) {
+			scrollContainerRef.current.scrollLeft = rightDragStartRef.current.scrollLeft + delta
+		}
+	}
+
+	useEffect(() => {
+		if (!isRightDragging) return
+
+		function handleGlobalMouseMove(e: MouseEvent) {
+			handleRightDragValues(e)
+		}
+
+		function handleGlobalMouseUp(e: MouseEvent) {
+			if (isRightDragging) {
+				setIsRightDragging(false)
+				rightDragStartRef.current = null
+				// We don't reset hasRightDragged yet because we need it for onContextMenu prevention
+				setTimeout(() => {
+					hasRightDraggedRef.current = false
+				}, 50)
+			}
+		}
+
+		document.addEventListener('mousemove', handleGlobalMouseMove)
+		document.addEventListener('mouseup', handleGlobalMouseUp)
+
+		return () => {
+			document.removeEventListener('mousemove', handleGlobalMouseMove)
+			document.removeEventListener('mouseup', handleGlobalMouseUp)
+		}
+	}, [isRightDragging])
+
 	return (
-		<div className="relative h-full w-full">
+		<div className='relative h-full w-full'>
 			<div
 				ref={scrollContainerRef}
-				className='h-full w-full overflow-auto'
+				className={cn(
+					'h-full w-full overflow-auto',
+					isRightDragging && 'cursor-grabbing select-none'
+				)}
 				style={{ scrollbarGutter: 'stable' }}
-				onContextMenuCapture={handleContextMenuCapture}
+				onContextMenuCapture={function (e) {
+					if (hasRightDraggedRef.current) {
+						e.preventDefault()
+						e.stopPropagation()
+						return
+					}
+					handleContextMenuCapture(e)
+				}}
+				onMouseDown={function (e) {
+					if (e.button === 2) {
+						// Right click
+						if (scrollContainerRef.current) {
+							setIsRightDragging(true)
+							rightDragStartRef.current = {
+								x: e.clientX,
+								scrollLeft: scrollContainerRef.current.scrollLeft
+							}
+							hasRightDraggedRef.current = false
+						}
+					}
+				}}
 				onWheel={function (e) {
 					if (e.shiftKey) {
 						e.preventDefault()
@@ -606,7 +674,9 @@ export function DataGrid({
 										onSelectAll(!!checked)
 									}}
 									className='h-4 w-4'
-									aria-label={allSelected ? 'Deselect all rows' : 'Select all rows'}
+									aria-label={
+										allSelected ? 'Deselect all rows' : 'Select all rows'
+									}
 								/>
 							</th>
 							{/* Data columns */}
@@ -714,7 +784,8 @@ export function DataGrid({
 														type='text'
 														autoFocus={
 															colIndex === 0 ||
-															(colIndex === 1 && columns[0]?.primaryKey)
+															(colIndex === 1 &&
+																columns[0]?.primaryKey)
 														}
 														value={
 															draftRow[col.name] === null
@@ -722,7 +793,10 @@ export function DataGrid({
 																: String(draftRow[col.name] ?? '')
 														}
 														onChange={function (e) {
-															onDraftChange?.(col.name, e.target.value)
+															onDraftChange?.(
+																col.name,
+																e.target.value
+															)
 														}}
 														onKeyDown={function (e) {
 															if (e.key === 'Enter') {
@@ -777,7 +851,10 @@ export function DataGrid({
 											onKeyDown={function (e) {
 												if (e.key === ' ' || e.key === 'Enter') {
 													e.preventDefault()
-													onRowSelect(rowIndex, !selectedRows.has(rowIndex))
+													onRowSelect(
+														rowIndex,
+														!selectedRows.has(rowIndex)
+													)
 												}
 											}}
 										>
@@ -812,8 +889,8 @@ export function DataGrid({
 												})
 												const isDirty = primaryKeyCol
 													? pendingEdits?.has(
-														`${row[primaryKeyCol.name]}:${col.name}`
-													)
+															`${row[primaryKeyCol.name]}:${col.name}`
+														)
 													: false
 
 												return (
@@ -849,7 +926,11 @@ export function DataGrid({
 																action === 'set-null' &&
 																onCellEdit
 															) {
-																onCellEdit(rowIndex, column.name, null)
+																onCellEdit(
+																	rowIndex,
+																	column.name,
+																	null
+																)
 															} else if (
 																action === 'set-null-batch' &&
 																batchAction &&
@@ -870,22 +951,28 @@ export function DataGrid({
 															}
 														}}
 														onOpenChange={function (open, row, col) {
-															handleCellContextMenuChange(open, row, col)
+															handleCellContextMenuChange(
+																open,
+																row,
+																col
+															)
 														}}
 													>
 														<td
 															className={cn(
 																'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px]',
 																isSelected &&
-																!isEditing &&
-																'bg-muted-foreground/10',
+																	!isEditing &&
+																	'bg-muted-foreground/10',
 																isFocused &&
-																!isEditing &&
-																'bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20',
+																	!isEditing &&
+																	'bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20',
 																isDirty && 'bg-amber-500/10'
 															)}
 															style={
-																width ? { maxWidth: width } : undefined
+																width
+																	? { maxWidth: width }
+																	: undefined
 															}
 															onMouseDown={function (e) {
 																handleCellMouseDown(
@@ -895,7 +982,10 @@ export function DataGrid({
 																)
 															}}
 															onMouseEnter={function () {
-																handleCellMouseEnter(rowIndex, colIndex)
+																handleCellMouseEnter(
+																	rowIndex,
+																	colIndex
+																)
 															}}
 															onDoubleClick={function () {
 																handleCellDoubleClick(
@@ -950,7 +1040,9 @@ export function DataGrid({
 													<td
 														key={`draft-${col.name}`}
 														className='border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0'
-														style={width ? { maxWidth: width } : undefined}
+														style={
+															width ? { maxWidth: width } : undefined
+														}
 													>
 														{isPrimaryKey ? (
 															<div className='px-3 py-1.5 text-muted-foreground italic text-xs'>
@@ -968,8 +1060,10 @@ export function DataGrid({
 																	draftRow[col.name] === null
 																		? ''
 																		: String(
-																			draftRow[col.name] ?? ''
-																		)
+																				draftRow[
+																					col.name
+																				] ?? ''
+																			)
 																}
 																onChange={function (e) {
 																	onDraftChange?.(
@@ -988,7 +1082,9 @@ export function DataGrid({
 																}}
 																data-no-shortcuts='true'
 																className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
-																placeholder={col.nullable ? 'NULL' : ''}
+																placeholder={
+																	col.nullable ? 'NULL' : ''
+																}
 															/>
 														)}
 													</td>

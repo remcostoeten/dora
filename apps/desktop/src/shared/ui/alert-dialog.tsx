@@ -1,6 +1,6 @@
-import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog";
-import * as React from "react";
-import { cn } from "@/shared/utils/cn";
+import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog'
+import * as React from 'react'
+import { cn } from '@/shared/utils/cn'
 
 const AlertDialog = AlertDialogPrimitive.Root
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger
@@ -42,18 +42,24 @@ const AlertDialogContent = React.forwardRef<
 })
 
 function AlertDialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-return (
-	<div className={cn('flex flex-col space-y-2 text-center sm:text-left', className)} {...props} />
-);
+	return (
+		<div
+			className={cn('flex flex-col space-y-2 text-center sm:text-left', className)}
+			{...props}
+		/>
+	)
 }
 
 function AlertDialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-return (
-	<div
-		className={cn('flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2', className)}
-		{...props}
-	/>
-);
+	return (
+		<div
+			className={cn(
+				'flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2',
+				className
+			)}
+			{...props}
+		/>
+	)
 }
 
 const AlertDialogTitle = React.forwardRef<

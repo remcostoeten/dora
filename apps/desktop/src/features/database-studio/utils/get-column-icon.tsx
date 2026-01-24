@@ -1,4 +1,14 @@
-import { Hash, Type, Calendar, ToggleLeft, Braces, Fingerprint, FileText, List, Clock } from "lucide-react";
+import {
+	Hash,
+	Type,
+	Calendar,
+	ToggleLeft,
+	Braces,
+	Fingerprint,
+	FileText,
+	List,
+	Clock
+} from 'lucide-react'
 
 export function getColumnIcon(type: string) {
 	const normalizeType = type.toLowerCase()

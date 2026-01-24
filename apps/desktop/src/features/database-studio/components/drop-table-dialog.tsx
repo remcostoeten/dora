@@ -1,9 +1,9 @@
-import { AlertTriangle, Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { StudioDialog } from "./studio-dialog";
+import { AlertTriangle, Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { StudioDialog } from './studio-dialog'
 
 type Props = {
 	open: boolean

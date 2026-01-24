@@ -1,10 +1,10 @@
-import { Loader2, AlertTriangle } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@/shared/ui/button";
-import { Label } from "@/shared/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import type { ColumnDefinition } from "../types";
-import { StudioDialog } from "./studio-dialog";
+import { Loader2, AlertTriangle } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@/shared/ui/button'
+import { Label } from '@/shared/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
+import type { ColumnDefinition } from '../types'
+import { StudioDialog } from './studio-dialog'
 
 type Props = {
 	open: boolean

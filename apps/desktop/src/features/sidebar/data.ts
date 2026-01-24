@@ -1,5 +1,5 @@
-import { MOCK_TABLE_DATA, MOCK_TABLE_COLUMNS } from "./database-data";
-import { TableItem, Schema, Database } from "./types";
+import { MOCK_TABLE_DATA, MOCK_TABLE_COLUMNS } from './database-data'
+import { TableItem, Schema, Database } from './types'
 
 export const MOCK_DATABASES: Database[] = [
 	{
@@ -43,8 +43,8 @@ export const MOCK_SCHEMAS: Schema[] = MOCK_DATABASES.flatMap((db) =>
 )
 
 export function getTablesBySchema(databaseId: string, schemaName: string): TableItem[] {
-const schemaKey = `${databaseId}.${schemaName}`
-return (SCHEMA_TABLES as Record<string, TableItem[]>)[schemaKey] || []
+	const schemaKey = `${databaseId}.${schemaName}`
+	return (SCHEMA_TABLES as Record<string, TableItem[]>)[schemaKey] || []
 }
 
 const SCHEMA_TABLES: Record<string, TableItem[]> = {

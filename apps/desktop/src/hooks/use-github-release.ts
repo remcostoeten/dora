@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { siteConfig } from "@/config/site";
+import { useQuery } from '@tanstack/react-query'
+import { siteConfig } from '@/config/site'
 
 type ReleaseAsset = {
 	name: string

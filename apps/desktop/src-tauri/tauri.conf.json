@@ -1,7 +1,7 @@
 {
 	"$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
 	"productName": "Dora",
-	"version": "0.0.9",
+	"version": "0.0.92",
 	"identifier": "com.Dora.dev",
 	"build": {
 		"frontendDist": "../dist",
@@ -20,7 +20,7 @@
 				"height": 900,
 				"resizable": true,
 				"fullscreen": false,
-				"decorations": true,
+				"decorations": false,
 				"transparent": true
 			}
 		],
@@ -31,7 +31,10 @@
 	},
 	"bundle": {
 		"active": true,
-		"targets": "all",
+		"targets": ["deb", "snap", "appimage"],
+		"shortDescription": "A modern database client",
+		"longDescription": "Dora is a modern, fast, and efficient database client for PostgreSQL, SQLite, and more.",
+		"category": "Development",
 		"icon": [
 			"icons/32x32.png",
 			"icons/128x128.png",

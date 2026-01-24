@@ -1,14 +1,27 @@
-import Editor, { OnMount } from "@monaco-editor/react";
-import type * as Monaco from "monaco-editor";
-import { initVimMode } from "monaco-vim";
-import type { VimAdapterInstance } from "monaco-vim";
-import { useState, useEffect, useRef } from "react";
-import { useSetting } from "@/core/settings";
-import { loadTheme, isBuiltinTheme, MonacoTheme } from "@/core/settings/editor-themes";
-import { SchemaColumn, SchemaTable } from "../types";
-import { getDbName, getTableMatch, getChainMode, getColumnMatch, getValueMatch, getJoinMatch, isInsideSelectParens, isInsideInsertParens, isInsideUpdateParens, isInsideDeleteParens, isInsideFromParens, isInsideJoinParens } from "../utils/lsp-patterns";
-import { generateDrizzleTypes } from "../utils/lsp-utils";
-import { LspDemoWidget } from "./lsp-demo-widget";
+import Editor, { OnMount } from '@monaco-editor/react'
+import type * as Monaco from 'monaco-editor'
+import { initVimMode } from 'monaco-vim'
+import type { VimAdapterInstance } from 'monaco-vim'
+import { useState, useEffect, useRef } from 'react'
+import { useSetting } from '@/core/settings'
+import { loadTheme, isBuiltinTheme, MonacoTheme } from '@/core/settings/editor-themes'
+import { SchemaColumn, SchemaTable } from '../types'
+import {
+	getDbName,
+	getTableMatch,
+	getChainMode,
+	getColumnMatch,
+	getValueMatch,
+	getJoinMatch,
+	isInsideSelectParens,
+	isInsideInsertParens,
+	isInsideUpdateParens,
+	isInsideDeleteParens,
+	isInsideFromParens,
+	isInsideJoinParens
+} from '../utils/lsp-patterns'
+import { generateDrizzleTypes } from '../utils/lsp-utils'
+import { LspDemoWidget } from './lsp-demo-widget'
 
 type Props = {
 	value: string

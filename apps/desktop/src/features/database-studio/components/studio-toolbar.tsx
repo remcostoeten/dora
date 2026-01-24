@@ -1,11 +1,29 @@
-import { Table, FileJson, Trash2, Edit3, PanelLeft, Filter, Columns, Download, Plus, RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator } from "@/shared/ui/dropdown-menu";
-import { Input } from "@/shared/ui/input";
-import { cn } from "@/shared/utils/cn";
-import { ViewMode, PaginationState, FilterDescriptor, ColumnDefinition } from "../types";
-import { FilterBar } from "./filter-bar";
+import {
+	Table,
+	FileJson,
+	Trash2,
+	Edit3,
+	PanelLeft,
+	Filter,
+	Columns,
+	Download,
+	Plus,
+	RefreshCw
+} from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+	DropdownMenuCheckboxItem,
+	DropdownMenuSeparator
+} from '@/shared/ui/dropdown-menu'
+import { Input } from '@/shared/ui/input'
+import { cn } from '@/shared/utils/cn'
+import { ViewMode, PaginationState, FilterDescriptor, ColumnDefinition } from '../types'
+import { FilterBar } from './filter-bar'
 
 type Props = {
 	tableName: string
@@ -54,11 +72,11 @@ export function StudioToolbar({
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
-        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
-        	e.preventDefault()
-        	onToggleSidebar?.()
-        }
-        }
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+				e.preventDefault()
+				onToggleSidebar?.()
+			}
+		}
 
 		window.addEventListener('keydown', handleKeyDown)
 		return () => window.removeEventListener('keydown', handleKeyDown)

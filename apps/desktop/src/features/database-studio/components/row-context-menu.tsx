@@ -1,6 +1,15 @@
-import { Eye, Pencil, CopyPlus, Trash2, FileDown, FileJson, FileCode } from "lucide-react";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent } from "@/shared/ui/context-menu";
-import { ColumnDefinition } from "../types";
+import { Eye, Pencil, CopyPlus, Trash2, FileDown, FileJson, FileCode } from 'lucide-react'
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+	ContextMenuSub,
+	ContextMenuSubTrigger,
+	ContextMenuSubContent
+} from '@/shared/ui/context-menu'
+import { ColumnDefinition } from '../types'
 
 type RowAction = 'view' | 'edit' | 'duplicate' | 'delete' | 'export-json' | 'export-sql'
 
@@ -115,7 +124,7 @@ export function RowContextMenu({
 					onClick={function () {
 						handleAction('delete')
 					}}
-					className='text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
+					className='text-destructive focus:text-destructive focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
 				>
 					<Trash2 className='h-4 w-4 mr-2' />
 					<span>Delete row</span>

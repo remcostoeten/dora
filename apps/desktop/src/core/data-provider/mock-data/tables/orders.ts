@@ -1,5 +1,5 @@
-import { CUSTOMERS } from "./customers";
-import { PRODUCTS } from "./products";
+import { CUSTOMERS } from './customers'
+import { PRODUCTS } from './products'
 
 const ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled']
 const ADDRESSES = [

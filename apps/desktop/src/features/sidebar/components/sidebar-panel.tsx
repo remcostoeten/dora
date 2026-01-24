@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
-import { Badge } from "@/shared/ui/badge";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Separator } from "@/shared/ui/separator";
-import { cn } from "@/shared/utils/cn";
+import type { ReactNode } from 'react'
+import { Badge } from '@/shared/ui/badge'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { Separator } from '@/shared/ui/separator'
+import { cn } from '@/shared/utils/cn'
 
 export function SidebarPanel({ children, className }: { children: ReactNode; className?: string }) {
 	return <div className={cn('flex flex-col', className)}>{children}</div>

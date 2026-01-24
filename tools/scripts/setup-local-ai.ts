@@ -1,6 +1,6 @@
-import { execSync } from "child_process";
-import readline from "readline";
-import { colors, log, logLevel, logHeader, logKeyValue } from "./_shared";
+import { execSync } from 'child_process'
+import readline from 'readline'
+import { colors, log, logLevel, logHeader, logKeyValue } from './_shared'
 
 const cliModel = getFlagValue('model')
 const CONFIG = {

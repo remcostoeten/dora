@@ -1,4 +1,4 @@
-import type { ConnectionEnvVars } from "../types";
+import type { ConnectionEnvVars } from '../types'
 
 export function buildDatabaseUrl(
 	host: string,

@@ -1,4 +1,4 @@
-import type { ColumnDefinition } from "../types";
+import type { ColumnDefinition } from '../types'
 
 type Props = {
 	open: boolean

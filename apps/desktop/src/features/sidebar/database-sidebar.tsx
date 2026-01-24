@@ -1,27 +1,27 @@
-import { Plus, Database as DatabaseIcon } from "lucide-react";
-import { useState, useMemo, useEffect } from "react";
-import { SidebarTableSkeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
-import { useAdapter } from "@/core/data-provider";
-import type { DatabaseSchema, TableInfo } from "@/lib/bindings";
-import { commands } from "@/lib/bindings";
-import { getAppearanceSettings, applyAppearanceToDOM } from "@/shared/lib/appearance-store";
-import { loadFontPair } from "@/shared/lib/font-loader";
-import { Button } from "@/shared/ui/button";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { ConnectionSwitcher } from "../connections/components/connection-switcher";
-import { Connection } from "../connections/types";
-import { DropTableDialog } from "../database-studio/components/drop-table-dialog";
-import { BottomToolbar, ToolbarAction } from "./components/bottom-toolbar";
-import { ManageTablesDialog, BulkAction } from "./components/manage-tables-dialog";
-import { RenameTableDialog } from "./components/rename-table-dialog";
-import { SchemaSelector } from "./components/schema-selector";
-import { SidebarBottomPanel } from "./components/sidebar-bottom-panel";
-import { TableInfoDialog } from "./components/table-info-dialog";
-import { TableList } from "./components/table-list";
-import type { TableRightClickAction } from "./components/table-list";
-import { TableSearch, FilterState } from "./components/table-search";
-import { Schema, TableItem } from "./types";
+import { Plus, Database as DatabaseIcon } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { SidebarTableSkeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/components/ui/use-toast'
+import { useAdapter } from '@/core/data-provider'
+import type { DatabaseSchema, TableInfo } from '@/lib/bindings'
+import { commands } from '@/lib/bindings'
+import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appearance-store'
+import { loadFontPair } from '@/shared/lib/font-loader'
+import { Button } from '@/shared/ui/button'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { ConnectionSwitcher } from '../connections/components/connection-switcher'
+import { Connection } from '../connections/types'
+import { DropTableDialog } from '../database-studio/components/drop-table-dialog'
+import { BottomToolbar, ToolbarAction } from './components/bottom-toolbar'
+import { ManageTablesDialog, BulkAction } from './components/manage-tables-dialog'
+import { RenameTableDialog } from './components/rename-table-dialog'
+import { SchemaSelector } from './components/schema-selector'
+import { SidebarBottomPanel } from './components/sidebar-bottom-panel'
+import { TableInfoDialog } from './components/table-info-dialog'
+import { TableList } from './components/table-list'
+import type { TableRightClickAction } from './components/table-list'
+import { TableSearch, FilterState } from './components/table-search'
+import { Schema, TableItem } from './types'
 
 const DEFAULT_FILTERS: FilterState = {
 	showTables: true,
@@ -36,7 +36,6 @@ type Props = {
 	selectedTableId?: string
 	autoSelectFirstTable?: boolean
 	onAutoSelectComplete?: () => void
-
 	connections?: Connection[]
 	activeConnectionId?: string
 	onConnectionSelect?: (id: string) => void
@@ -96,39 +95,6 @@ export function DatabaseSidebar({
 	const [refreshTrigger, setRefreshTrigger] = useState(0)
 	const [showTableInfoDialog, setShowTableInfoDialog] = useState(false)
 	const [tableInfoTarget, setTableInfoTarget] = useState<string>('')
-
-	// Resize logic
-	const [bottomPanelHeight, setBottomPanelHeight] = useState(300)
-	const [isResizing, setIsResizing] = useState(false)
-
-	useEffect(() => {
-		if (!isResizing) return
-
-		function handleMouseMove(e: MouseEvent) {
-        const toolbarHeight = 33 // h-8 (32px) + border
-        const newHeight = window.innerHeight - e.clientY - toolbarHeight
-        const clamped = Math.max(150, Math.min(newHeight, window.innerHeight * 0.7))
-        setBottomPanelHeight(clamped)
-        }
-
-		function handleMouseUp() {
-        setIsResizing(false)
-        document.body.style.cursor = 'default'
-        document.body.style.userSelect = 'auto'
-        }
-
-		document.addEventListener('mousemove', handleMouseMove)
-		document.addEventListener('mouseup', handleMouseUp)
-		document.body.style.cursor = 'row-resize'
-		document.body.style.userSelect = 'none' // Prevent text selection while resizing
-
-		return () => {
-			document.removeEventListener('mousemove', handleMouseMove)
-			document.removeEventListener('mouseup', handleMouseUp)
-			document.body.style.cursor = 'default'
-			document.body.style.userSelect = 'auto'
-		}
-	}, [isResizing])
 
 	useEffect(function initAppearance() {
 		const settings = getAppearanceSettings()
@@ -191,13 +157,12 @@ export function DatabaseSidebar({
 
 			fetchSchema()
 		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 		[
 			activeConnectionId,
-			adapter,
 			refreshTrigger,
-			autoSelectFirstTable,
-			onTableSelect,
-			onAutoSelectComplete
+			autoSelectFirstTable
+			// adapter is stable, onTableSelect and onAutoSelectComplete are useCallback with stable deps
 		]
 	)
 
@@ -293,10 +258,7 @@ export function DatabaseSidebar({
 			handleTableSelect(tableId)
 			handleNavSelect('database-studio')
 		} else if (action === 'duplicate-table') {
-			toast({
-				title: 'Not Implemented',
-				description: 'Duplicate table is not yet supported.'
-			})
+			handleDuplicateTable(tableId)
 		} else if (action === 'view-info') {
 			setTableInfoTarget(tableId)
 			setShowTableInfoDialog(true)
@@ -321,6 +283,9 @@ export function DatabaseSidebar({
 			if (result.status === 'ok') {
 				setShowRenameDialog(false)
 				setSchema(null)
+				setRefreshTrigger(function (prev) {
+					return prev + 1
+				})
 			} else {
 				console.error('Failed to rename table:', result.error)
 			}
@@ -341,6 +306,9 @@ export function DatabaseSidebar({
 			if (result.status === 'ok') {
 				setShowDropDialog(false)
 				setSchema(null)
+				setRefreshTrigger(function (prev) {
+					return prev + 1
+				})
 				if (activeTableId === targetTableName) {
 					setInternalTableId(undefined)
 				}
@@ -357,6 +325,52 @@ export function DatabaseSidebar({
 	function handleTableRename(tableId: string, newName: string) {
 		setTargetTableName(tableId)
 		handleRenameTable(newName)
+	}
+
+	async function handleDuplicateTable(tableName: string) {
+		if (!activeConnectionId) return
+
+		setIsDdlLoading(true)
+		try {
+			// Find a unique name
+			let newName = `${tableName}_copy`
+			let counter = 1
+			while (
+				schema?.tables.some(function (t) {
+					return t.name === newName
+				})
+			) {
+				counter++
+				newName = `${tableName}_copy${counter}`
+			}
+
+			const sqlCreate = `CREATE TABLE "${newName}" (LIKE "${tableName}" INCLUDING ALL)`
+			const sqlData = `INSERT INTO "${newName}" SELECT * FROM "${tableName}"`
+
+			const result = await commands.executeBatch(activeConnectionId, [sqlCreate, sqlData])
+
+			if (result.status === 'ok') {
+				toast({
+					title: 'Table duplicated',
+					description: `Table "${tableName}" duplicated as "${newName}".`
+				})
+				setSchema(null)
+				setRefreshTrigger(function (prev) {
+					return prev + 1
+				})
+			} else {
+				throw new Error(String(result.error))
+			}
+		} catch (error) {
+			console.error('Failed to duplicate table:', error)
+			toast({
+				title: 'Error duplicating table',
+				description: error instanceof Error ? error.message : 'Unknown error',
+				variant: 'destructive'
+			})
+		} finally {
+			setIsDdlLoading(false)
+		}
 	}
 
 	async function handleBulkAction(action: BulkAction) {
@@ -382,6 +396,9 @@ export function DatabaseSidebar({
 						setSelectedTableIds([])
 						setIsMultiSelectMode(false)
 						setSchema(null)
+						setRefreshTrigger(function (prev) {
+							return prev + 1
+						})
 					} else {
 						throw new Error(String(result.error))
 					}
@@ -415,6 +432,9 @@ export function DatabaseSidebar({
 						})
 						setSelectedTableIds([])
 						setIsMultiSelectMode(false)
+						setRefreshTrigger(function (prev) {
+							return prev + 1
+						})
 					} else {
 						throw new Error(String(result.error))
 					}
@@ -531,7 +551,7 @@ export function DatabaseSidebar({
 	return (
 		<div className='relative flex flex-col h-full w-[244px] bg-sidebar border-r border-sidebar-border'>
 			<div className='flex flex-col'>
-				<div className='px-0 pt-0 pb-2'>
+				<div className='p-0'>
 					<ConnectionSwitcher
 						connections={connections}
 						activeConnectionId={activeConnectionId}
@@ -571,7 +591,7 @@ export function DatabaseSidebar({
 				</div>
 			)}
 
-			<ScrollArea className='flex-1'>
+			<ScrollArea className='flex-1 min-h-0'>
 				{isLoadingSchema ? (
 					<SidebarTableSkeleton rows={8} />
 				) : schemaError ? (
@@ -614,16 +634,9 @@ export function DatabaseSidebar({
 			</ScrollArea>
 
 			{activeTable && (
-				<>
-					<div
-						className='h-2 -mb-1 cursor-row-resize hover:bg-primary/50 bg-transparent transition-colors z-10 shrink-0 w-full'
-						onMouseDown={(e) => {
-							e.preventDefault()
-							setIsResizing(true)
-						}}
-					/>
-					<SidebarBottomPanel table={activeTable} height={bottomPanelHeight} />
-				</>
+				<div className='mt-auto shrink-0 z-20 bg-sidebar'>
+					<SidebarBottomPanel table={activeTable} />
+				</div>
 			)}
 
 			{isMultiSelectMode && selectedTableIds.length > 0 && (

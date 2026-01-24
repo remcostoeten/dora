@@ -1,8 +1,8 @@
-import { Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { Button } from "@/shared/ui/button";
-import type { ColumnDefinition } from "../types";
-import { StudioDialog } from "./studio-dialog";
+import { Loader2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Button } from '@/shared/ui/button'
+import type { ColumnDefinition } from '../types'
+import { StudioDialog } from './studio-dialog'
 
 type Props = {
 	open: boolean

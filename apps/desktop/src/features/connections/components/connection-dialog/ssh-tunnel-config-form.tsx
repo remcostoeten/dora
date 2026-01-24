@@ -1,10 +1,10 @@
-import { Lock, Key } from "lucide-react";
-import { commands } from "@/lib/bindings";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { cn } from "@/shared/utils/cn";
-import { SshTunnelConfig } from "../../types";
+import { Lock, Key } from 'lucide-react'
+import { commands } from '@/lib/bindings'
+import { Button } from '@/shared/ui/button'
+import { Input } from '@/shared/ui/input'
+import { Label } from '@/shared/ui/label'
+import { cn } from '@/shared/utils/cn'
+import { SshTunnelConfig } from '../../types'
 
 type Props = {
 	config: SshTunnelConfig

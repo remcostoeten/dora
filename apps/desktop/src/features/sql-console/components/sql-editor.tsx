@@ -1,9 +1,9 @@
-import Editor, { OnMount } from "@monaco-editor/react";
-import { initVimMode } from "monaco-vim";
-import { useRef, useEffect, useState } from "react";
-import { useSetting } from "@/core/settings";
-import { loadTheme, isBuiltinTheme, MonacoTheme } from "@/core/settings/editor-themes";
-import { usePromotionalDemo } from "../hooks/use-promotional-demo";
+import Editor, { OnMount } from '@monaco-editor/react'
+import { initVimMode } from 'monaco-vim'
+import { useRef, useEffect, useState } from 'react'
+import { useSetting } from '@/core/settings'
+import { loadTheme, isBuiltinTheme, MonacoTheme } from '@/core/settings/editor-themes'
+import { usePromotionalDemo } from '../hooks/use-promotional-demo'
 
 type Props = {
 	value: string
@@ -176,54 +176,54 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
 	)
 
 	function updateDecorations(editor: any, monaco: any) {
-    const model = editor.getModel()
-    if (!model) return
+		const model = editor.getModel()
+		if (!model) return
 
-    const lineCount = model.getLineCount()
-    const newDecorations: any[] = []
+		const lineCount = model.getLineCount()
+		const newDecorations: any[] = []
 
-    for (let i = 1; i <= lineCount; i++) {
-    	const content = model.getLineContent(i).trim()
-    	// Show run button for non-empty executable lines
-    	if (content.length > 0 && !content.startsWith('--')) {
-    		newDecorations.push({
-    			range: new monaco.Range(i, 1, i, 1),
-    			options: {
-    				isWholeLine: false,
-    				glyphMarginClassName: 'run-glyph-margin',
-    				glyphMarginHoverMessage: { value: 'Run Line' }
-    			}
-    		})
-    	}
-    }
+		for (let i = 1; i <= lineCount; i++) {
+			const content = model.getLineContent(i).trim()
+			// Show run button for non-empty executable lines
+			if (content.length > 0 && !content.startsWith('--')) {
+				newDecorations.push({
+					range: new monaco.Range(i, 1, i, 1),
+					options: {
+						isWholeLine: false,
+						glyphMarginClassName: 'run-glyph-margin',
+						glyphMarginHoverMessage: { value: 'Run Line' }
+					}
+				})
+			}
+		}
 
-    const previousDecorations = (editor as any)._previousDecorations || []
-    ;(editor as any)._previousDecorations = editor.deltaDecorations(
-    	previousDecorations,
-    	newDecorations
-    )
-    }
+		const previousDecorations = (editor as any)._previousDecorations || []
+		;(editor as any)._previousDecorations = editor.deltaDecorations(
+			previousDecorations,
+			newDecorations
+		)
+	}
 
 	function triggerExecution(editor: any) {
-    const selection = editor.getSelection()
-    const model = editor.getModel()
+		const selection = editor.getSelection()
+		const model = editor.getModel()
 
-    if (!selection || !model) return
+		if (!selection || !model) return
 
-    let codeToRun = ''
+		let codeToRun = ''
 
-    if (!selection.isEmpty()) {
-    	codeToRun = model.getValueInRange(selection)
-    } else {
-    	// If no selection, run the whole query or current block (simplified to current line or all for now)
-    	// Ideally: Run all
-    	codeToRun = model.getValue()
-    }
+		if (!selection.isEmpty()) {
+			codeToRun = model.getValueInRange(selection)
+		} else {
+			// If no selection, run the whole query or current block (simplified to current line or all for now)
+			// Ideally: Run all
+			codeToRun = model.getValue()
+		}
 
-    if (codeToRun.trim()) {
-    	onExecuteRef.current(codeToRun)
-    }
-    }
+		if (codeToRun.trim()) {
+			onExecuteRef.current(codeToRun)
+		}
+	}
 
 	const { isActive: isDemoActive, toggleDemoMode } = usePromotionalDemo(editorRef.current)
 

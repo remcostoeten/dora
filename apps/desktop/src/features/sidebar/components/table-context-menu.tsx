@@ -1,5 +1,11 @@
-import { Eye, PenLine, Shield, Scissors, Trash2, Info } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Eye, PenLine, Shield, Scissors, Trash2, Info } from 'lucide-react'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger
+} from '@/shared/ui/dropdown-menu'
 
 type TableAction = 'view-table' | 'view-info' | 'alter-table' | 'enable-rls' | 'truncate' | 'drop'
 
@@ -39,7 +45,7 @@ export function TableContextMenu({ open, onOpenChange, onAction, children }: Pro
 							onClick={() => onAction(item.id)}
 							className={
 								item.variant === 'destructive'
-									? 'text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
+									? 'text-destructive focus:text-destructive focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
 									: ''
 							}
 						>

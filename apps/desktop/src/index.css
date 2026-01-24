@@ -176,7 +176,7 @@ layer(base);
 		--accent: 0 0% 16%;
 		--accent-foreground: 0 0% 98%;
 
-		--destructive: 355 24% 21%;
+		--destructive: 355 34% 40.5%;
 		--destructive-foreground: 355 98% 75%;
 
 		--border: 0 0% 19%;
@@ -397,6 +397,62 @@ layer(base);
 		--table-row-hover: calc(32 + var(--hue-shift)) 30% 92%;
 		--table-row-selected: calc(32 + var(--hue-shift)) 30% 88%;
 		--table-border: calc(32 + var(--hue-shift)) 15% 85%;
+	}
+
+	.haptic {
+		--background: 0 0% 0%;
+		/* #000000 */
+		--foreground: 0 0% 93%;
+		/* #ededed */
+
+		--card: 0 0% 3%;
+		/* #0a0a0a */
+		--card-foreground: 0 0% 93%;
+
+		--popover: 0 0% 3%;
+		/* #0a0a0a */
+		--popover-foreground: 0 0% 93%;
+
+		--primary: 0 0% 98%;
+		/* #fafafa */
+		--primary-foreground: 0 0% 0%;
+
+		--secondary: 0 0% 10%;
+		/* #1a1a1a */
+		--secondary-foreground: 0 0% 93%;
+
+		--muted: 0 0% 10%;
+		/* #1a1a1a */
+		--muted-foreground: 0 0% 60%;
+		/* #999999 */
+
+		--accent: 0 0% 10%;
+		/* #1a1a1a */
+		--accent-foreground: 0 0% 93%;
+
+		--destructive: 0 62% 30%;
+		--destructive-foreground: 0 0% 93%;
+
+		--border: 0 0% 20%;
+		/* #333333 */
+		--input: 0 0% 20%;
+		--ring: 0 0% 83%;
+
+		--sidebar-background: 0 0% 0%;
+		/* #000000 */
+		--sidebar-foreground: 0 0% 93%;
+		--sidebar-foreground-muted: 0 0% 60%;
+		--sidebar-primary: 0 0% 98%;
+		--sidebar-primary-foreground: 0 0% 0%;
+		--sidebar-accent: 0 0% 10%;
+		--sidebar-accent-foreground: 0 0% 93%;
+		--sidebar-border: 0 0% 20%;
+		--sidebar-ring: 0 0% 83%;
+
+		--table-header: 0 0% 0%;
+		--table-row-hover: 0 0% 5%;
+		--table-row-selected: 0 0% 10%;
+		--table-border: 0 0% 20%;
 	}
 
 	.claude-dark {

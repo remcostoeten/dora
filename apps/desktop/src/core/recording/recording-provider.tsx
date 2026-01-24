@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useMemo, useEffect, ReactNode } from "react";
-import type { RecordingConfig, RecordingContext as RecordingContextType } from "./types";
+import { createContext, useContext, useState, useMemo, useEffect, ReactNode } from 'react'
+import type { RecordingConfig, RecordingContext as RecordingContextType } from './types'
 
 const DEFAULT_CONFIG: RecordingConfig = {
 	hideUiChrome: true,

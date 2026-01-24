@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { parseConnectionUrl } from "@/features/connections/utils/providers";
+import { describe, it, expect } from 'vitest'
+import { parseConnectionUrl } from '@/features/connections/utils/providers'
 
 describe('Connection URL Parser - Typo Detection', () => {
 	describe('Exact Matches', () => {

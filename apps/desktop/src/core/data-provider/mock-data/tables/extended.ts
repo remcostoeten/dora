@@ -1,4 +1,4 @@
-import { randomFrom, randomDate, randomInt, randomFloat } from "./utils";
+import { randomFrom, randomDate, randomInt, randomFloat } from './utils'
 
 const EMPLOYEE_NAMES = [
 	'Alice Johnson',

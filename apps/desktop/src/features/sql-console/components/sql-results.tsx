@@ -1,15 +1,22 @@
-import Editor from "@monaco-editor/react";
-import { Table2, Braces, Download, Copy, Trash2, Pencil } from "lucide-react";
-import { useState, useRef, useEffect, useMemo } from "react";
-import { useDataMutation } from "@/core/data-provider";
-import { useAdapter } from "@/core/data-provider/context";
-import { useSettings } from "@/core/settings";
-import { Button } from "@/shared/ui/button";
-import { ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuShortcut } from "@/shared/ui/context-menu";
-import { Input } from "@/shared/ui/input";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { cn } from "@/shared/utils/cn";
-import { SqlQueryResult, ResultViewMode } from "../types";
+import Editor from '@monaco-editor/react'
+import { Table2, Braces, Download, Copy, Trash2, Pencil } from 'lucide-react'
+import { useState, useRef, useEffect, useMemo } from 'react'
+import { useDataMutation } from '@/core/data-provider'
+import { useAdapter } from '@/core/data-provider/context'
+import { useSettings } from '@/core/settings'
+import { Button } from '@/shared/ui/button'
+import {
+	ContextMenu,
+	ContextMenuTrigger,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuShortcut
+} from '@/shared/ui/context-menu'
+import { Input } from '@/shared/ui/input'
+import { ScrollArea } from '@/shared/ui/scroll-area'
+import { cn } from '@/shared/utils/cn'
+import { SqlQueryResult, ResultViewMode } from '../types'
 
 type Props = {
 	result: SqlQueryResult | null
@@ -51,162 +58,162 @@ export function SqlResults({
 	}, [editingCell])
 
 	function formatCellValue(value: unknown): string {
-    if (value === null || value === undefined) {
-    	return 'NULL'
-    }
-    if (typeof value === 'boolean') {
-    	return value ? 'TRUE' : 'FALSE'
-    }
-    if (typeof value === 'object') {
-    	return JSON.stringify(value)
-    }
-    return String(value)
-    }
+		if (value === null || value === undefined) {
+			return 'NULL'
+		}
+		if (typeof value === 'boolean') {
+			return value ? 'TRUE' : 'FALSE'
+		}
+		if (typeof value === 'object') {
+			return JSON.stringify(value)
+		}
+		return String(value)
+	}
 
 	function getPrimaryKey() {
-    if (!result?.columnDefinitions) return null
-    return result.columnDefinitions.find((c) => c.primaryKey)
-    }
+		if (!result?.columnDefinitions) return null
+		return result.columnDefinitions.find((c) => c.primaryKey)
+	}
 
 	function handleCellDoubleClick(rowIndex: number, column: string, value: unknown) {
-    // Only allow editing if we have a connectionId needed for mutation
-    if (!connectionId) return
+		// Only allow editing if we have a connectionId needed for mutation
+		if (!connectionId) return
 
-    // Check if we can identify the row (need PK)
-    // If we don't have column definitions (raw SQL), we might not be able to safely edit
-    // But for user experience, maybe we allow it and fail if backend can't handle it?
-    // Better to check for PK if possible.
-    // For now, let's allow it and assume the user knows what they are doing or the backend handles ROWID.
+		// Check if we can identify the row (need PK)
+		// If we don't have column definitions (raw SQL), we might not be able to safely edit
+		// But for user experience, maybe we allow it and fail if backend can't handle it?
+		// Better to check for PK if possible.
+		// For now, let's allow it and assume the user knows what they are doing or the backend handles ROWID.
 
-    setEditingCell({
-    	rowIndex,
-    	column,
-    	originalValue: value,
-    	value: value === null ? '' : String(value)
-    })
-    }
+		setEditingCell({
+			rowIndex,
+			column,
+			originalValue: value,
+			value: value === null ? '' : String(value)
+		})
+	}
 
 	async function handleSaveCell() {
-    if (!editingCell || !result || !connectionId) return
+		if (!editingCell || !result || !connectionId) return
 
-    const pkCol = getPrimaryKey()
-    // If no PK explicitly defined, we might default to 'id' or fail.
-    // For now, let's try to find a column named 'id' if no PK defined.
-    const pkName = pkCol?.name || result.columns.find((c) => c.toLowerCase() === 'id') || 'id'
+		const pkCol = getPrimaryKey()
+		// If no PK explicitly defined, we might default to 'id' or fail.
+		// For now, let's try to find a column named 'id' if no PK defined.
+		const pkName = pkCol?.name || result.columns.find((c) => c.toLowerCase() === 'id') || 'id'
 
-    const row = result.rows[editingCell.rowIndex]
-    const pkValue = row[pkName]
+		const row = result.rows[editingCell.rowIndex]
+		const pkValue = row[pkName]
 
-    if (pkValue === undefined) {
-    	console.error('Cannot update row: Primary key not found')
-    	setEditingCell(null)
-    	return
-    }
+		if (pkValue === undefined) {
+			console.error('Cannot update row: Primary key not found')
+			setEditingCell(null)
+			return
+		}
 
-    // Optimistic update? Or wait?
-    // Let's call adapter.
+		// Optimistic update? Or wait?
+		// Let's call adapter.
 
-    // Determine table name. We don't have it in SqlQueryResult directly from a raw query.
-    // However, if we came from "Data Browser", we might know it.
-    // But here we are in generic SQL Results.
-    // The adapter need table name.
-    // Limitation: Raw generic SQL queries might be hard to update back without parsing format.
-    // BUT, if this is a "SELECT * FROM table", we might infer it.
-    // Since we don't have table name prop, we rely on the adapter being smart or limitation.
+		// Determine table name. We don't have it in SqlQueryResult directly from a raw query.
+		// However, if we came from "Data Browser", we might know it.
+		// But here we are in generic SQL Results.
+		// The adapter need table name.
+		// Limitation: Raw generic SQL queries might be hard to update back without parsing format.
+		// BUT, if this is a "SELECT * FROM table", we might infer it.
+		// Since we don't have table name prop, we rely on the adapter being smart or limitation.
 
-    // Wait! The Plan said: "derived from result metadata or schema".
-    // If the query was `SELECT * FROM users`, result doesn't explicitly say "users".
-    // We need to pass `tableName` if this is a Table View context.
-    // Or if it's a raw query, we disable editing unless we can parse it.
-    // For now, I'll log a warning and skip if I can't guess.
-    // Actually, `updateCell` requries `tableName`.
+		// Wait! The Plan said: "derived from result metadata or schema".
+		// If the query was `SELECT * FROM users`, result doesn't explicitly say "users".
+		// We need to pass `tableName` if this is a Table View context.
+		// Or if it's a raw query, we disable editing unless we can parse it.
+		// For now, I'll log a warning and skip if I can't guess.
+		// Actually, `updateCell` requries `tableName`.
 
-    // Hack for now: try to use the query text? No, `SqlResults` doesn't know the query.
-    // Maybe we disable editing for generic SQL results component for now,
-    // OR we just hardcode it to work if the user is in "Table Mode".
-    // The `sql-console` knows the query.
+		// Hack for now: try to use the query text? No, `SqlResults` doesn't know the query.
+		// Maybe we disable editing for generic SQL results component for now,
+		// OR we just hardcode it to work if the user is in "Table Mode".
+		// The `sql-console` knows the query.
 
-    // Let's attempt to update. If we can't get table name, we fail.
-    // The `TauriAdapter.updateCell` needs generic table name.
-    // I will just use a placeholder or try to infer from context if I could...
+		// Let's attempt to update. If we can't get table name, we fail.
+		// The `TauriAdapter.updateCell` needs generic table name.
+		// I will just use a placeholder or try to infer from context if I could...
 
-    // CRITICAL FIX: We need `tableName` passed to SqlResults if available!
-    // `SqlConsole` has `handleTableSelect` which sets a query.
-    // If we are in `unified-sidebar`, table selection just sets query.
+		// CRITICAL FIX: We need `tableName` passed to SqlResults if available!
+		// `SqlConsole` has `handleTableSelect` which sets a query.
+		// If we are in `unified-sidebar`, table selection just sets query.
 
-    // For the MVP of this feature, I will assume we can't easily edit arbitrary SQL results
-    // UNLESS we pass metadata.
-    // But wait, the `TauriAdapter` actually might support `UPDATE` via raw SQL if we constructed it.
-    // But `updateCell` method expects `tableName`.
+		// For the MVP of this feature, I will assume we can't easily edit arbitrary SQL results
+		// UNLESS we pass metadata.
+		// But wait, the `TauriAdapter` actually might support `UPDATE` via raw SQL if we constructed it.
+		// But `updateCell` method expects `tableName`.
 
-    // Re-evaluating: Should I add `tableName` to `SqlQueryResult`?
-    // `TauriAdapter.executeQuery` could try to parse table name.
-    // `MockAdapter.executeQuery` acts like it knows.
+		// Re-evaluating: Should I add `tableName` to `SqlQueryResult`?
+		// `TauriAdapter.executeQuery` could try to parse table name.
+		// `MockAdapter.executeQuery` acts like it knows.
 
-    // Let's add `tableName?: string` to `SqlQueryResult` in `types.ts` as well?
-    // Or just `sourceTable`.
+		// Let's add `tableName?: string` to `SqlQueryResult` in `types.ts` as well?
+		// Or just `sourceTable`.
 
-    // For this step, I will implement the UI.
-    // If I lack table name, I will assume it's uneditable or try to find it.
-    // Actually, if `result.queryType` is SELECT, maybe we can find it?
+		// For this step, I will implement the UI.
+		// If I lack table name, I will assume it's uneditable or try to find it.
+		// Actually, if `result.queryType` is SELECT, maybe we can find it?
 
-    // Let's pause editing logic for a second and check if I can add `tableName` to `SqlQueryResult`.
-    // `TauriAdapter.fetchTableData` KNOWS the table name.
-    // `TauriAdapter.executeQuery` does NOT necessarily know.
+		// Let's pause editing logic for a second and check if I can add `tableName` to `SqlQueryResult`.
+		// `TauriAdapter.fetchTableData` KNOWS the table name.
+		// `TauriAdapter.executeQuery` does NOT necessarily know.
 
-    // If `SqlConsole` treats it as "Data Browser" via `fetchTableData`, we know.
-    // But `SqlConsole` uses `executeQuery` for everything currently.
+		// If `SqlConsole` treats it as "Data Browser" via `fetchTableData`, we know.
+		// But `SqlConsole` uses `executeQuery` for everything currently.
 
-    // I will add `tableName` to `SqlQueryResult` to be safe/future proof.
-    // I will parse it in `SqlConsole` (client side) or adapter.
-    // `SqlConsole` has `getQueryType`. I can also add `getTableName(query)`.
+		// I will add `tableName` to `SqlQueryResult` to be safe/future proof.
+		// I will parse it in `SqlConsole` (client side) or adapter.
+		// `SqlConsole` has `getQueryType`. I can also add `getTableName(query)`.
 
-    // proceeding with the UI implementation assuming `result.tableName` might exist or I have to hack it.
-    // I'll add `tableName` to `SqlQueryResult` in `types.ts` first? No I just edited it.
-    // I'll use `SqlConsole` to regex it.
+		// proceeding with the UI implementation assuming `result.tableName` might exist or I have to hack it.
+		// I'll add `tableName` to `SqlQueryResult` in `types.ts` first? No I just edited it.
+		// I'll use `SqlConsole` to regex it.
 
-    // Back to `handleSaveCell`:
-    // For now, let's assume we can get table name or fail.
-    // I'll use a helper to guess table name from... we don't have query here.
-    // I'll add `tableName` prop to `SqlResults`?
-    // The `SqlConsole` has the query. It can parse table name and pass it to `SqlResults`.
+		// Back to `handleSaveCell`:
+		// For now, let's assume we can get table name or fail.
+		// I'll use a helper to guess table name from... we don't have query here.
+		// I'll add `tableName` prop to `SqlResults`?
+		// The `SqlConsole` has the query. It can parse table name and pass it to `SqlResults`.
 
-    // OK, I'll modify `SqlConsole` to pass `tableName` (inferred) to `SqlResults`.
-    // And `SqlResults` takes `tableName` prop optionally.
+		// OK, I'll modify `SqlConsole` to pass `tableName` (inferred) to `SqlResults`.
+		// And `SqlResults` takes `tableName` prop optionally.
 
-    // This tool call is to write `SqlResults`. I will add `tableName` prop.
+		// This tool call is to write `SqlResults`. I will add `tableName` prop.
 
-    // And call `adapter.updateCell`.
+		// And call `adapter.updateCell`.
 
-    try {
-    	const tableName = result.sourceTable || 'unknown_table'
+		try {
+			const tableName = result.sourceTable || 'unknown_table'
 
-    	updateCell.mutate(
-    		{
-    			connectionId,
-    			tableName,
-    			primaryKeyColumn: pkName,
-    			primaryKeyValue: pkValue,
-    			columnName: editingCell.column,
-    			newValue: editingCell.value
-    		},
-    		{
-    			onError: (e) => console.error('Update failed', e),
-    			onSuccess: () => {
-    				// Ideally we should refresh the query.
-    				// But SqlResults doesn't have a refresh callback.
-    				// For now, simple console log.
-    				console.log('Update successful')
-    				onRefresh?.()
-    			}
-    		}
-    	)
+			updateCell.mutate(
+				{
+					connectionId,
+					tableName,
+					primaryKeyColumn: pkName,
+					primaryKeyValue: pkValue,
+					columnName: editingCell.column,
+					newValue: editingCell.value
+				},
+				{
+					onError: (e) => console.error('Update failed', e),
+					onSuccess: () => {
+						// Ideally we should refresh the query.
+						// But SqlResults doesn't have a refresh callback.
+						// For now, simple console log.
+						console.log('Update successful')
+						onRefresh?.()
+					}
+				}
+			)
 
-    	setEditingCell(null)
-    } catch (e) {
-    	console.error(e)
-    }
-    }
+			setEditingCell(null)
+		} catch (e) {
+			console.error(e)
+		}
+	}
 
 	// I need to add `sourceTable` to `SqlQueryResult` definition in `types.ts`?
 	// Yes, simpler.
@@ -222,38 +229,38 @@ export function SqlResults({
 	// This is safer.
 
 	async function handleDeleteRow(rowIndex: number) {
-    if (!result || !connectionId) return
-    const pkCol = getPrimaryKey()
-    const pkName = pkCol?.name || result.columns.find((c) => c.toLowerCase() === 'id') || 'id'
-    const row = result.rows[rowIndex]
-    const pkValue = row[pkName]
+		if (!result || !connectionId) return
+		const pkCol = getPrimaryKey()
+		const pkName = pkCol?.name || result.columns.find((c) => c.toLowerCase() === 'id') || 'id'
+		const row = result.rows[rowIndex]
+		const pkValue = row[pkName]
 
-    // Need table name
-    const tableName = (result as any).sourceTable // Cast for now until type updated
+		// Need table name
+		const tableName = (result as any).sourceTable // Cast for now until type updated
 
-    if (!tableName || pkValue === undefined) {
-    	console.error('Delete failed: missing table name or PK')
-    	return
-    }
+		if (!tableName || pkValue === undefined) {
+			console.error('Delete failed: missing table name or PK')
+			return
+		}
 
-    if (!settings.confirmBeforeDelete || confirm('Are you sure you want to delete this row?')) {
-    	deleteRows.mutate(
-    		{
-    			connectionId,
-    			tableName,
-    			primaryKeyColumn: pkName,
-    			primaryKeyValues: [pkValue]
-    		},
-    		{
-    			onError: (e) => console.error('Delete failed', e),
-    			onSuccess: () => {
-    				console.log('Delete successful')
-    				onRefresh?.()
-    			}
-    		}
-    	)
-    }
-    }
+		if (!settings.confirmBeforeDelete || confirm('Are you sure you want to delete this row?')) {
+			deleteRows.mutate(
+				{
+					connectionId,
+					tableName,
+					primaryKeyColumn: pkName,
+					primaryKeyValues: [pkValue]
+				},
+				{
+					onError: (e) => console.error('Delete failed', e),
+					onSuccess: () => {
+						console.log('Delete successful')
+						onRefresh?.()
+					}
+				}
+			)
+		}
+	}
 
 	const { filteredRows, filterTime } = useMemo(() => {
 		if (!result) return { filteredRows: [], filterTime: 0 }

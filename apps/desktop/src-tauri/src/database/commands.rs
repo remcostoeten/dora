@@ -1,7 +1,5 @@
-use std::sync::Arc;
 use uuid::Uuid;
 use tauri::State;
-use serde_json::value::RawValue;
 
 use crate::{
     database::{
@@ -817,7 +815,7 @@ pub async fn duplicate_row(
     table_name: String,
     schema_name: Option<String>,
     primary_key_column: String,
-    primary_key_value: serde_json::Value,
+    _primary_key_value: serde_json::Value,
     state: State<'_, AppState>,
 ) -> Result<MutationResult, Error> {
     // Fetch existing row data via a query
