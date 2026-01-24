@@ -129,6 +129,7 @@ Dora is in active development. Below is a list of implemented features available
 |                  | **Custom Shortcuts**     |  WIP   | Module ready, remapper UI under construction.               |
 | **UI/UX**        | **URL State**            |  Done  | Deep linking for selected rows, cells, and active tables.   |
 |                  | **Sidebar**              |  Done  | Collapsible, animated sidebar with unified navigation.      |
+|                  | **Theme Sync**           |  Done  | Seamless dark/light mode synchronization across windows.    |
 
 ## Roadmap & Under Construction
 
@@ -141,7 +142,6 @@ Dora is in active development. Below is a list of implemented features available
 | **NoSQL Support**        | Planned | MongoDB, Firebase (Planned).                                   |
 | **Cloud Providers**      | Planned | Amazon RDS, Azure, Cloudflare D1.                              |
 | **Detailed Metrics**     |   WIP   | Database size, table stats, detailed storage analysis.         |
-| **Docker Tools**         |  Beta   | Container inspector & `docker-compose.yml` generator for DBs.  |
 | **Snippet Folders**      | Planned | Organizing scripts into folders (File system/Storage).         |
 
 > **Legend**: Done | WIP (Work in Progress) | Planned
