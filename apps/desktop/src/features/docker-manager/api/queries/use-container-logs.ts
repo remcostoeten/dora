@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { streamContainerLogs } from '../docker-client'
+import { streamContainerLogs } from '../container-service'
 import { DEFAULT_LOG_TAIL } from '../../constants'
 import type { ContainerLogsOptions } from '../../types'
 

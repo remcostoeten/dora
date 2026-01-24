@@ -2,7 +2,9 @@ import {
 	POSTGRES_IMAGE,
 	POSTGRES_CONTAINER_PORT,
 	MANAGED_LABEL_KEY,
-	MANAGED_LABEL_VALUE
+	MANAGED_LABEL_VALUE,
+	PROJECT_LABEL_KEY,
+	COMPOSE_PATH_LABEL_KEY
 } from '../constants'
 import type {
 	PostgresContainerConfig,
@@ -13,7 +15,7 @@ import type {
 } from '../types'
 import { validateContainerName, generateVolumeName } from '../utilities/container-naming'
 import {
-	checkDockerAvailability,
+	checkDockerAvailability as clientCheckDocker,
 	listContainers,
 	getContainerDetails,
 	startContainer as clientStartContainer,
@@ -24,16 +26,23 @@ import {
 	imageExists,
 	executeDockerCommand
 } from './docker-client'
+import * as demoService from './demo-service'
+
+const isTauri =
+	typeof window !== 'undefined' &&
+	('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 
 export async function createPostgresContainer(
 	config: PostgresContainerConfig
 ): Promise<CreateContainerResult> {
+	if (!isTauri) return demoService.createPostgresContainer(config)
+
 	const validation = validateContainerName(config.name)
 	if (!validation.valid) {
 		return { success: false, error: validation.error }
 	}
 
-	const availability = await checkDockerAvailability()
+	const availability = await clientCheckDocker()
 	if (!availability.available) {
 		return { success: false, error: availability.error }
 	}
@@ -120,6 +129,14 @@ function buildCreateContainerArgs(config: PostgresContainerConfig, imageTag: str
 		args.push('-m', `${config.memoryLimitMb}m`)
 	}
 
+	if (config.projectName) {
+		args.push('--label', `${PROJECT_LABEL_KEY}=${config.projectName}`)
+	}
+
+	if (config.composePath) {
+		args.push('--label', `${COMPOSE_PATH_LABEL_KEY}=${config.composePath}`)
+	}
+
 	args.push(`${POSTGRES_IMAGE}:${imageTag}`)
 
 	return args
@@ -129,6 +146,8 @@ export async function performContainerAction(
 	containerId: string,
 	action: 'start' | 'stop' | 'restart'
 ): Promise<ContainerActionResult> {
+	if (!isTauri) return demoService.performContainerAction(containerId, action)
+
 	try {
 		switch (action) {
 			case 'start':
@@ -154,6 +173,8 @@ export async function deleteContainer(
 	containerId: string,
 	options: RemoveContainerOptions = { removeVolumes: false, force: true }
 ): Promise<ContainerActionResult> {
+	if (!isTauri) return demoService.deleteContainer(containerId, options)
+
 	try {
 		await clientRemoveContainer(containerId, {
 			force: options.force,
@@ -172,6 +193,8 @@ export async function getContainers(
 	showAll: boolean = true,
 	showExternal: boolean = false
 ): Promise<DockerContainer[]> {
+	if (!isTauri) return demoService.getContainers(showAll, showExternal)
+
 	const containers = await listContainers(showAll, !showExternal)
 
 	return containers.sort(function (a, b) {
@@ -182,6 +205,7 @@ export async function getContainers(
 }
 
 export async function getContainer(containerId: string): Promise<DockerContainer | null> {
+	if (!isTauri) return demoService.getContainer(containerId)
 	return getContainerDetails(containerId)
 }
 
@@ -190,6 +214,8 @@ export async function waitForHealthy(
 	timeoutMs: number = 30000,
 	intervalMs: number = 1000
 ): Promise<boolean> {
+	if (!isTauri) return demoService.waitForHealthy(containerId, timeoutMs, intervalMs)
+
 	const startTime = Date.now()
 
 	while (Date.now() - startTime < timeoutMs) {
@@ -219,13 +245,37 @@ function sleep(ms: number): Promise<void> {
 	})
 }
 
-export { checkDockerAvailability, getContainerLogs } from './docker-client'
+export async function checkDockerAvailability() {
+	if (!isTauri) return demoService.checkDockerAvailability()
+	return clientCheckDocker()
+}
+
+export async function getContainerLogs(
+	containerId: string,
+	options?: { tail?: number; since?: string }
+): Promise<string> {
+	if (!isTauri) return demoService.getContainerLogs(containerId, options)
+	const { getContainerLogs: clientGetLogs } = await import('./docker-client')
+	return clientGetLogs(containerId, options)
+}
+
+export async function streamContainerLogs(
+	containerId: string,
+	onLog: (line: string) => void,
+	onError: (error: string) => void
+): Promise<() => void> {
+	if (!isTauri) return demoService.streamContainerLogs(containerId, onLog, onError)
+	const { streamContainerLogs: clientStream } = await import('./docker-client')
+	return clientStream(containerId, onLog, onError)
+}
 
 export async function seedDatabase(
 	containerId: string,
 	filePath: string,
 	connectionConfig: { user: string; database: string }
 ): Promise<{ success: boolean; error?: string }> {
+	if (!isTauri) return demoService.seedDatabase(containerId, filePath, connectionConfig)
+
 	try {
 		const { copyToContainer, execCommand } = await import('./docker-client')
 		const targetPath = '/tmp/seed.sql'

@@ -1,5 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap')
-layer(base);
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap') layer(base);
 
 @import 'tailwindcss';
 
@@ -117,6 +116,7 @@ layer(base);
   color utility to any element that depends on these defaults.
 */
 @layer base {
+
 	*,
 	::after,
 	::before,
@@ -611,7 +611,7 @@ layer(base);
 
 @layer utilities {
 	.db-card {
-		@apply relative overflow-hidden rounded-lg border border-border bg-card/50 p-3 cursor-pointer transition-all duration-200;
+		@apply relative rounded-lg border border-border bg-card/50 p-3 cursor-pointer transition-all duration-200;
 	}
 
 	.db-card:hover {
@@ -679,6 +679,7 @@ layer(base);
 	}
 
 	@keyframes statusShake {
+
 		0%,
 		100% {
 			transform: translateX(0);

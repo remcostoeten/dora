@@ -2,9 +2,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type {
 	ContainerActionResult,
 	ContainerActionType,
+	ContainerEventType,
 	RemoveContainerOptions
 } from '../../types'
 import { performContainerAction, deleteContainer } from '../container-service'
+import { useDockerManagerStore } from '../../stores/docker-manager-store'
 
 type ContainerActionParams = {
 	containerId: string
@@ -16,9 +18,16 @@ type UseContainerActionsOptions = {
 	onError?: (error: Error, params: ContainerActionParams) => void
 }
 
+const ACTION_TO_EVENT: Record<ContainerActionType, ContainerEventType> = {
+	start: 'started',
+	stop: 'stopped',
+	restart: 'restarted'
+}
+
 export function useContainerActions(options: UseContainerActionsOptions = {}) {
 	const { onSuccess, onError } = options
 	const queryClient = useQueryClient()
+	const addEvent = useDockerManagerStore(function (s) { return s.addEvent })
 
 	return useMutation<ContainerActionResult, Error, ContainerActionParams>({
 		mutationFn: function (params) {
@@ -30,6 +39,13 @@ export function useContainerActions(options: UseContainerActionsOptions = {}) {
 			queryClient.invalidateQueries({
 				queryKey: ['docker-container-health', params.containerId]
 			})
+			if (result.success) {
+				addEvent({
+					containerId: params.containerId,
+					containerName: params.containerId,
+					type: ACTION_TO_EVENT[params.action]
+				})
+			}
 			if (onSuccess) {
 				onSuccess(result, params)
 			}
@@ -55,6 +71,7 @@ type UseRemoveContainerOptions = {
 export function useRemoveContainer(options: UseRemoveContainerOptions = {}) {
 	const { onSuccess, onError } = options
 	const queryClient = useQueryClient()
+	const addEvent = useDockerManagerStore(function (s) { return s.addEvent })
 
 	return useMutation<ContainerActionResult, Error, RemoveContainerParams>({
 		mutationFn: function (params) {
@@ -65,6 +82,13 @@ export function useRemoveContainer(options: UseRemoveContainerOptions = {}) {
 			queryClient.removeQueries({ queryKey: ['docker-container', params.containerId] })
 			queryClient.removeQueries({ queryKey: ['docker-container-health', params.containerId] })
 			queryClient.removeQueries({ queryKey: ['docker-container-logs', params.containerId] })
+			if (result.success) {
+				addEvent({
+					containerId: params.containerId,
+					containerName: params.containerId,
+					type: 'removed'
+				})
+			}
 			if (onSuccess) {
 				onSuccess(result)
 			}

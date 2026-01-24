@@ -18,6 +18,7 @@ import { PendingChangesBar } from './components/pending-changes-bar'
 import { RowDetailPanel } from './components/row-detail-panel'
 import { SelectionActionBar } from './components/selection-action-bar'
 import { SetNullDialog } from './components/set-null-dialog'
+import { DataSeederDialog } from './data-seeder-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
 import {
 	TableData,
@@ -86,6 +87,7 @@ export function DatabaseStudio({
 	const [showDropTableDialog, setShowDropTableDialog] = useState(false)
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 	const [showSetNullDialog, setShowSetNullDialog] = useState(false)
+	const [showDataSeederDialog, setShowDataSeederDialog] = useState(false)
 	const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 	const [isDdlLoading, setIsDdlLoading] = useState(false)
 
@@ -562,6 +564,22 @@ export function DatabaseStudio({
 	const handleClearSelection = useCallback(() => setSelectedRows(new Set()), [])
 	const handleOpenSetNull = useCallback(() => setShowSetNullDialog(true), [])
 	const handleOpenBulkEdit = useCallback(() => setShowBulkEditDialog(true), [])
+	const handleOpenDataSeeder = useCallback(() => setShowDataSeederDialog(true), [])
+
+	async function handleSeederGenerate(data: any[]) {
+		if (!activeConnectionId || !tableId) return
+
+		// Insert rows one by one (or batch if API supports it)
+		// For now, let's just loop locally
+		for (const row of data) {
+			await insertRow.mutateAsync({
+				connectionId: activeConnectionId,
+				tableName: tableName || tableId,
+				rowData: row
+			})
+		}
+		loadTableData()
+	}
 
 	function handleToggleColumn(columnName: string, visible: boolean) {
 		setVisibleColumns((prev) => {
@@ -1284,10 +1302,10 @@ export function DatabaseStudio({
 						pendingEdits={
 							tableId
 								? new Set(
-										getEditsForTable(tableId).map(
-											(e) => `${e.primaryKeyValue}:${e.columnName}`
-										)
+									getEditsForTable(tableId).map(
+										(e) => `${e.primaryKeyValue}:${e.columnName}`
 									)
+								)
 								: undefined
 						}
 						draftInsertIndex={draftInsertIndex}
@@ -1468,6 +1486,21 @@ export function DatabaseStudio({
 								setIsBulkActionLoading(false)
 							})
 					}}
+				/>
+			)}
+
+			{tableData && (
+				<DataSeederDialog
+					open={showDataSeederDialog}
+					onOpenChange={setShowDataSeederDialog}
+					tableName={tableName || tableId || ''}
+					columns={tableData.columns.map((c) => ({
+						name: c.name,
+						type: c.type,
+						isNullable: c.nullable,
+						isPrimaryKey: c.primaryKey
+					}))}
+					onGenerate={handleSeederGenerate}
 				/>
 			)}
 		</div>

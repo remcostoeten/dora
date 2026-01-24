@@ -1,6 +1,7 @@
 import { X, Download } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import { useRecording } from '@/core/recording'
+import { siteConfig } from '@/config/site'
 
 type Props = {
 	githubUrl?: string
@@ -9,7 +10,7 @@ type Props = {
 }
 
 export function DemoBanner({
-	githubUrl = 'https://github.com/remcostoeten/dora/releases',
+	githubUrl = siteConfig.links.releases,
 	onClose,
 	defaultVisible = true
 }: Props) {

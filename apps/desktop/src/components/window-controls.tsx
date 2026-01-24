@@ -12,7 +12,10 @@ export function WindowControls({ className }: Props) {
 	const [isTauri, setIsTauri] = useState(false)
 
 	useEffect(function checkTauriEnvironment() {
-		setIsTauri(typeof window !== 'undefined' && '__TAURI__' in window)
+		const isTauriCheck =
+			typeof window !== 'undefined' &&
+			('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+		setIsTauri(isTauriCheck)
 	}, [])
 
 	useEffect(
@@ -25,7 +28,7 @@ export function WindowControls({ className }: Props) {
 					const appWindow = getCurrentWindow()
 					const maximized = await appWindow.isMaximized()
 					setIsMaximized(maximized)
-				} catch {}
+				} catch { }
 			}
 
 			checkMaximized()

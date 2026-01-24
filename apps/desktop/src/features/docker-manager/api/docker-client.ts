@@ -4,6 +4,7 @@ import type {
 	DockerAvailability,
 	ContainerState,
 	ContainerHealth,
+	ContainerSize,
 	PortMapping,
 	VolumeMount,
 	ContainerLogsOptions
@@ -52,7 +53,7 @@ type DockerPsResult = {
 export async function executeDockerCommand(
 	args: string[]
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	if (typeof window !== 'undefined' && '__TAURI__' in window) {
+	if (typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)) {
 		const { Command } = await import('@tauri-apps/plugin-shell')
 		const command = Command.create('docker', args)
 		const output = await command.execute()
@@ -289,7 +290,7 @@ export async function streamContainerLogs(
 	onLog: (line: string) => void,
 	onError: (error: string) => void
 ): Promise<() => void> {
-	if (typeof window !== 'undefined' && 'Tauri' in window) {
+	if (typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)) {
 		const { Command } = await import('@tauri-apps/plugin-shell')
 		const command = Command.create('docker', ['logs', '-f', '--tail', '100', containerId])
 
@@ -400,4 +401,54 @@ export async function execCommand(
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
 	const args = ['exec', containerId, ...command]
 	return executeDockerCommand(args)
+}
+
+export async function getContainerSizes(): Promise<ContainerSize[]> {
+	const result = await executeDockerCommand([
+		'system', 'df', '-v', '--format', '{{json .}}'
+	])
+
+	if (result.exitCode !== 0) {
+		throw new Error(result.stderr || 'Failed to get container sizes')
+	}
+
+	const sizes: ContainerSize[] = []
+	const lines = result.stdout.trim().split('\n').filter(Boolean)
+
+	for (const line of lines) {
+		try {
+			const parsed = JSON.parse(line)
+			if (parsed.Containers) {
+				for (const container of parsed.Containers) {
+					sizes.push({
+						containerId: container.ID || '',
+						virtualSize: parseSize(container.Size || '0B'),
+						rwSize: parseSize(container.RWSize || '0B')
+					})
+				}
+			}
+		} catch {
+			continue
+		}
+	}
+
+	return sizes
+}
+
+function parseSize(sizeStr: string): number {
+	const match = sizeStr.match(/^([\d.]+)\s*([KMGT]?i?B?)$/i)
+	if (!match) return 0
+
+	const value = parseFloat(match[1])
+	const unit = match[2].toUpperCase().replace('I', '')
+
+	const multipliers: Record<string, number> = {
+		'B': 1,
+		'KB': 1024,
+		'MB': 1024 * 1024,
+		'GB': 1024 * 1024 * 1024,
+		'TB': 1024 * 1024 * 1024 * 1024
+	}
+
+	return value * (multipliers[unit] || 1)
 }

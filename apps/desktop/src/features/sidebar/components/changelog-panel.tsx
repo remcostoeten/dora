@@ -2,6 +2,7 @@ import { Sparkles, Wrench, RefreshCw, AlertTriangle, ChevronRight, ExternalLink 
 import { Badge } from '@/shared/ui/badge'
 import { cn } from '@/shared/utils/cn'
 import { CHANGELOG, CURRENT_VERSION, ChangelogEntry } from '../changelog-data'
+import { siteConfig } from '@/config/site'
 import { SidebarPanel, SidebarPanelHeader, SidebarPanelContent } from './sidebar-panel'
 import { useState } from 'react'
 
@@ -135,8 +136,14 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 												<span className='opacity-50'>•</span>
 												<span>{formatDate(entry.date)}</span>
 												<span className='opacity-50'>•</span>
+												import {siteConfig} from '@/config/site'
+
+												// ... imports
+
+												// ... inside component
+
 												<a
-													href={`https://github.com/remcostoeten/dora/commit/${entry.commit}`}
+													href={`${siteConfig.links.github}/commit/${entry.commit}`}
 													target='_blank'
 													rel='noopener noreferrer'
 													onClick={(e) => e.stopPropagation()}
