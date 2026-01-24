@@ -1,4 +1,4 @@
-import type { GeneratorProfile, GeneratorScale } from './types'
+import type { GeneratorProfile, GeneratorScale, ContainerSortConfig, ContainerFilterConfig } from './types'
 
 export const CONTAINER_PREFIX = 'dora_'
 
@@ -6,6 +6,20 @@ export const DOCKER_SOCKET_PATH = '/var/run/docker.sock'
 
 export const MANAGED_LABEL_KEY = 'com.dora.managed'
 export const MANAGED_LABEL_VALUE = 'true'
+
+export const PROJECT_LABEL_KEY = 'com.dora.project'
+export const COMPOSE_PATH_LABEL_KEY = 'com.dora.compose-file'
+
+export const DEFAULT_SORT: ContainerSortConfig = {
+	field: 'createdAt',
+	direction: 'desc'
+}
+
+export const DEFAULT_FILTER: ContainerFilterConfig = {
+	states: [],
+	healths: [],
+	origins: []
+}
 
 export const POSTGRES_IMAGE = 'postgres'
 

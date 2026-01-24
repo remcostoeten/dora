@@ -114,6 +114,7 @@ Dora is in active development. Below is a list of implemented features available
 | **Connectivity** | **Connection Manager**   |  Done  | Save, pin, and organize database connections.               |
 |                  | **SSH Tunneling**        |  Done  | Securely connect via SSH tunnels with key support.          |
 |                  | **History**              |  Done  | Track recent connections for quick access.                  |
+|                  | **Docker Manager**       |  Beta  | Manage containers, view logs, and auto-compose DBs.         |
 | **Data Studio**  | **Spreadsheet View**     |  Done  | Multi-cell selection, drag-select for rows/cols.            |
 |                  | **Context Menu**         |  Done  | Right-click to duplicate, delete, or export (JSON/CSV/SQL). |
 |                  | **Mutation History**     |  Done  | Local undo/redo stack for data changes.                     |
@@ -126,6 +127,9 @@ Dora is in active development. Below is a list of implemented features available
 |                  | **Inspector**            |  Done  | View tables, keys, indices, and DDL.                        |
 | **Tools**        | **Command Palette**      |  Done  | Keyboard-driven command menu (`Ctrl/Cmd + K`).              |
 |                  | **Custom Shortcuts**     |  WIP   | Module ready, remapper UI under construction.               |
+| **UI/UX**        | **URL State**            |  Done  | Deep linking for selected rows, cells, and active tables.   |
+|                  | **Sidebar**              |  Done  | Collapsible, animated sidebar with unified navigation.      |
+|                  | **Theme Sync**           |  Done  | Seamless dark/light mode synchronization across windows.    |
 
 ## Roadmap & Under Construction
 
@@ -138,7 +142,6 @@ Dora is in active development. Below is a list of implemented features available
 | **NoSQL Support**        | Planned | MongoDB, Firebase (Planned).                                   |
 | **Cloud Providers**      | Planned | Amazon RDS, Azure, Cloudflare D1.                              |
 | **Detailed Metrics**     |   WIP   | Database size, table stats, detailed storage analysis.         |
-| **Docker Tools**         | Planned | Container inspector & `docker-compose.yml` generator for DBs.  |
 | **Snippet Folders**      | Planned | Organizing scripts into folders (File system/Storage).         |
 
 > **Legend**: Done | WIP (Work in Progress) | Planned
@@ -147,4 +150,4 @@ Dora is in active development. Below is a list of implemented features available
 
 This project is licensed under the GNU General Public License v3.0 (GPL-3). See the [LICENSE](LICENSE) file for details.
 
-ignore this https://svg-sparkle-clean.lovable.app/
+ignore this <https://svg-sparkle-clean.lovable.app/>

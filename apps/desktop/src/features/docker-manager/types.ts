@@ -42,6 +42,8 @@ export type PostgresContainerConfig = {
 	volumeName?: string
 	cpuLimit?: number
 	memoryLimitMb?: number
+	projectName?: string
+	composePath?: string
 }
 
 export type SeedStrategy =
@@ -113,6 +115,43 @@ export type ConnectionEnvVars = {
 	PGUSER: string
 	PGPASSWORD: string
 	PGDATABASE: string
+}
+
+export type ContainerSortField = 'name' | 'createdAt' | 'state' | 'origin' | 'size'
+
+export type SortDirection = 'asc' | 'desc'
+
+export type ContainerSortConfig = {
+	field: ContainerSortField
+	direction: SortDirection
+}
+
+export type ContainerFilterConfig = {
+	states: ContainerState[]
+	healths: ContainerHealth[]
+	origins: ContainerOrigin[]
+}
+
+export type ContainerSize = {
+	containerId: string
+	virtualSize: number
+	rwSize: number
+}
+
+export type ContainerEventType = 'created' | 'started' | 'stopped' | 'restarted' | 'removed'
+
+export type ContainerEvent = {
+	id: string
+	containerId: string
+	containerName: string
+	type: ContainerEventType
+	timestamp: number
+}
+
+export type ProjectLink = {
+	containerId: string
+	projectName: string
+	composePath?: string
 }
 
 export type ContainerLogsOptions = {

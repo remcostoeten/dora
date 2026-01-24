@@ -72,9 +72,14 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				setCurrentDrizzleQuery(DEFAULT_QUERY)
 				return
 			}
-			adapter
-				.getSchema(activeConnectionId)
-				.then(function (res) {
+
+			let cancelled = false
+
+			async function fetchSchema() {
+				try {
+					await adapter.connectToDatabase(activeConnectionId!)
+					const res = await adapter.getSchema(activeConnectionId!)
+					if (cancelled) return
 					if (res.ok && res.data.tables) {
 						const mapped: TableInfo[] = res.data.tables.map(function (t) {
 							return {
@@ -93,7 +98,6 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 						})
 						setTables(mapped)
 
-						// Auto-populate queries with first available table from the connected database
 						if (mapped.length > 0) {
 							const firstTable = mapped[0].name
 							setCurrentSqlQuery(`SELECT * FROM ${firstTable} LIMIT 100;`)
@@ -103,8 +107,16 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							setCurrentDrizzleQuery(DEFAULT_QUERY)
 						}
 					}
-				})
-				.catch(console.error)
+				} catch (error) {
+					if (!cancelled) console.error('Failed to fetch schema:', error)
+				}
+			}
+
+			fetchSchema()
+
+			return function () {
+				cancelled = true
+			}
 		},
 		[activeConnectionId, adapter]
 	)

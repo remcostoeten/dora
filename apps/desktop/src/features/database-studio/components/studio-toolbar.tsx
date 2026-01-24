@@ -8,7 +8,8 @@ import {
 	Columns,
 	Download,
 	Plus,
-	RefreshCw
+	RefreshCw,
+	Sparkles
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/shared/ui/button'
@@ -41,7 +42,10 @@ type Props = {
 	onToggleColumn?: (columnName: string, visible: boolean) => void
 	isDryEditMode?: boolean
 	onDryEditModeChange?: (enabled: boolean) => void
+	isDryEditMode?: boolean
+	onDryEditModeChange?: (enabled: boolean) => void
 	isSidebarOpen?: boolean
+	onSeed?: () => void
 }
 
 export function StudioToolbar({
@@ -60,7 +64,8 @@ export function StudioToolbar({
 	onToggleColumn,
 	isDryEditMode,
 	onDryEditModeChange,
-	isSidebarOpen
+	isSidebarOpen,
+	onSeed
 }: Props) {
 	const [showFilters, setShowFilters] = useState(filters.length > 0)
 
@@ -156,7 +161,7 @@ export function StudioToolbar({
 						className={cn(
 							'h-7 px-2 text-xs gap-1.5 ml-1',
 							(showFilters || filters.length > 0) &&
-								'text-sidebar-foreground bg-sidebar-accent'
+							'text-sidebar-foreground bg-sidebar-accent'
 						)}
 						onClick={() => setShowFilters(!showFilters)}
 					>
@@ -216,7 +221,7 @@ export function StudioToolbar({
 							className={cn(
 								'h-7 px-2 text-xs gap-1.5',
 								isDryEditMode &&
-									'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+								'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
 							)}
 							onClick={function () {
 								onDryEditModeChange(!isDryEditMode)
@@ -231,6 +236,19 @@ export function StudioToolbar({
 							<span className='hidden sm:inline'>
 								{isDryEditMode ? 'Dry Edit' : 'Dry Edit'}
 							</span>
+						</Button>
+					)}
+
+					{onSeed && (
+						<Button
+							variant='ghost'
+							size='sm'
+							className='h-7 px-2 text-xs gap-1.5'
+							onClick={onSeed}
+							title='Generate mock data using AI'
+						>
+							<Sparkles className='h-3.5 w-3.5 text-blue-400' />
+							<span className='hidden sm:inline'>Seed Data</span>
 						</Button>
 					)}
 
@@ -275,9 +293,9 @@ export function StudioToolbar({
 			<FilterBar
 				isVisible={showFilters}
 				filters={filters}
-				onFiltersChange={onFiltersChange || (() => {})}
+				onFiltersChange={onFiltersChange || (() => { })}
 				columns={columns}
 			/>
-		</div>
+		</div >
 	)
 }

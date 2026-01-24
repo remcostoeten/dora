@@ -16,6 +16,15 @@ import { ContainerDetailsPanel } from './container-details-panel'
 import { ContainerList } from './container-list'
 import { CreateContainerDialog } from './create-container-dialog'
 import { SandboxIndicator } from './sandbox-indicator'
+import { Badge } from '@/shared/ui/badge'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue
+} from '@/shared/ui/select'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	onOpenInDataViewer?: (container: DockerContainer) => void
@@ -26,6 +35,8 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 	const [showExternal, setShowExternal] = useState(false)
 	const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+	const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped' | 'created'>('all')
+	const [sortBy, setSortBy] = useState<'name' | 'created' | 'status'>('name')
 
 	const { toast } = useToast()
 
@@ -35,7 +46,38 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		enabled: dockerStatus?.available ?? false
 	})
 
-	const filteredContainers = useContainerSearch(containers, searchQuery)
+	const searchedContainers = useContainerSearch(containers, searchQuery)
+
+	const filteredContainers = useMemo(
+		function () {
+			let result = searchedContainers
+
+			// Filter by status
+			if (statusFilter !== 'all') {
+				result = result.filter(function (c) {
+					if (statusFilter === 'running') return c.state === 'running'
+					if (statusFilter === 'stopped') return c.state === 'exited'
+					if (statusFilter === 'created') return c.state === 'created'
+					return true
+				})
+			}
+
+			// Sort
+			return [...result].sort(function (a, b) {
+				if (sortBy === 'name') {
+					return a.names[0].localeCompare(b.names[0])
+				}
+				if (sortBy === 'created') {
+					return b.created - a.created // Newest first
+				}
+				if (sortBy === 'status') {
+					return a.state.localeCompare(b.state)
+				}
+				return 0
+			})
+		},
+		[searchedContainers, statusFilter, sortBy]
+	)
 
 	const selectedContainer = useMemo(
 		function () {
@@ -114,11 +156,11 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 						dockerStatus?.error?.toLowerCase().includes('connect') ||
 						dockerStatus?.error?.toLowerCase().includes('socket') ||
 						!dockerStatus?.error) && (
-						<div className='text-left p-3 rounded bg-muted font-mono text-xs space-y-1'>
-							<p>$ sudo systemctl start docker</p>
-							<p>$ sudo usermod -aG docker $USER</p>
-						</div>
-					)}
+							<div className='text-left p-3 rounded bg-muted font-mono text-xs space-y-1'>
+								<p>$ sudo systemctl start docker</p>
+								<p>$ sudo usermod -aG docker $USER</p>
+							</div>
+						)}
 					<Button
 						variant='outline'
 						className='mt-4'
@@ -167,6 +209,37 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 					</Label>
 				</div>
 
+				<div className='h-4 w-px bg-border mx-2' />
+
+				<div className='flex items-center gap-2'>
+					<div className='flex gap-1'>
+						{(['all', 'running', 'stopped'] as const).map((status) => (
+							<Badge
+								key={status}
+								variant={statusFilter === status ? 'default' : 'outline'}
+								className={cn(
+									'cursor-pointer capitalize',
+									statusFilter !== status && 'hover:bg-muted'
+								)}
+								onClick={() => setStatusFilter(status)}
+							>
+								{status}
+							</Badge>
+						))}
+					</div>
+
+					<Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+						<SelectTrigger className='w-[120px] h-7 text-xs'>
+							<SelectValue placeholder='Sort by' />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value='name'>Name</SelectItem>
+							<SelectItem value='created'>Created</SelectItem>
+							<SelectItem value='status'>Status</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+
 				<Button
 					size='sm'
 					className='gap-1.5'
@@ -201,6 +274,6 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 				existingContainers={containers || []}
 				isSubmitting={createContainer.isPending}
 			/>
-		</div>
+		</div >
 	)
 }

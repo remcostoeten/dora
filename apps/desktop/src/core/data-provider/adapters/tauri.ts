@@ -24,6 +24,18 @@ function err<T>(error: string): AdapterResult<T> {
 	return { ok: false, error }
 }
 
+function formatError(error: unknown): string {
+	if (typeof error === 'string') return error
+	if (error instanceof Error) return error.message
+	if (error && typeof error === 'object') {
+		if ('message' in error && typeof (error as any).message === 'string') {
+			return (error as any).message
+		}
+		return JSON.stringify(error)
+	}
+	return String(error)
+}
+
 export function createTauriAdapter(): DataAdapter {
 	return {
 		async getConnections(): Promise<AdapterResult<ConnectionInfo[]>> {
@@ -31,7 +43,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async addConnection(
@@ -43,7 +55,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async updateConnection(
@@ -56,7 +68,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async removeConnection(id: string): Promise<AdapterResult<void>> {
@@ -64,7 +76,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(undefined)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async connectToDatabase(connectionId: string): Promise<AdapterResult<boolean>> {
@@ -72,7 +84,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async disconnectFromDatabase(connectionId: string): Promise<AdapterResult<void>> {
@@ -80,13 +92,13 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(undefined)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async testConnection(connectionId: string): Promise<AdapterResult<boolean>> {
 			const result = await commands.getConnections()
 			if (result.status !== 'ok') {
-				return err(String(result.error))
+				return err(formatError(result.error))
 			}
 			const conn = result.data.find(function (c) {
 				return c.id === connectionId
@@ -98,7 +110,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (testResult.status === 'ok') {
 				return ok(testResult.data)
 			}
-			return err(String(testResult.error))
+			return err(formatError(testResult.error))
 		},
 
 		async getSchema(connectionId: string): Promise<AdapterResult<DatabaseSchema>> {
@@ -106,14 +118,14 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>> {
 			// Check connection first to get dialect
 			const connResult = await commands.getConnections()
 			if (connResult.status !== 'ok') {
-				return err(String(connResult.error))
+				return err(formatError(connResult.error))
 			}
 
 			const conn = connResult.data.find(function (c) {
@@ -132,7 +144,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async fetchTableData(
@@ -176,7 +188,7 @@ export function createTauriAdapter(): DataAdapter {
 
 			if (startResult.status !== 'ok') {
 				console.error('[TauriAdapter] Query failed to start:', startResult.error)
-				return err(String(startResult.error))
+				return err(formatError(startResult.error))
 			}
 
 			// The Rust command returns Vec<usize>, effectively [query_id]
@@ -267,7 +279,7 @@ export function createTauriAdapter(): DataAdapter {
 
 			if (startResult.status !== 'ok') {
 				console.error('[TauriAdapter] Query failed to start:', startResult.error)
-				return err(String(startResult.error) || 'Failed to start query')
+				return err(formatError(startResult.error) || 'Failed to start query')
 			}
 
 			if (!startResult.data || startResult.data.length === 0) {
@@ -317,10 +329,12 @@ export function createTauriAdapter(): DataAdapter {
 			const columnsResult = await commands.getColumns(queryId)
 			console.log('[TauriAdapter] Query completed successfully')
 
+			const rows = Array.isArray(pageInfo.first_page) ? pageInfo.first_page : []
+
 			return ok({
-				rows: pageInfo.first_page ?? [],
+				rows,
 				columns: columnsResult.status === 'ok' ? (columnsResult.data ?? []) : [],
-				rowCount: pageInfo.affected_rows ?? 0,
+				rowCount: pageInfo.affected_rows ?? rows.length,
 				executionTime: Math.round(performance.now() - startTime)
 			})
 		},
@@ -345,7 +359,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async deleteRows(
@@ -364,7 +378,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async insertRow(
@@ -376,7 +390,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async getQueryHistory(
@@ -387,7 +401,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async getScripts(connectionId: string | null): Promise<AdapterResult<SavedQuery[]>> {
@@ -395,7 +409,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async saveScript(
@@ -413,7 +427,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async updateScript(
@@ -433,7 +447,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(undefined)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		},
 
 		async deleteScript(id: number): Promise<AdapterResult<void>> {
@@ -441,7 +455,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (result.status === 'ok') {
 				return ok(undefined)
 			}
-			return err(String(result.error))
+			return err(formatError(result.error))
 		}
 	}
 }
