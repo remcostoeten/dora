@@ -1,5 +1,5 @@
-import { Plus, Database as DatabaseIcon } from 'lucide-react'
-import { useState, useMemo, useEffect } from 'react'
+import { Plus, Database as DatabaseIcon, GripHorizontal } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { SidebarTableSkeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useAdapter } from '@/core/data-provider'
@@ -22,6 +22,7 @@ import { TableList } from './components/table-list'
 import type { TableRightClickAction } from './components/table-list'
 import { TableSearch, FilterState } from './components/table-search'
 import { Schema, TableItem } from './types'
+import { cn } from '@/shared/utils/cn'
 
 const DEFAULT_FILTERS: FilterState = {
 	showTables: true,
@@ -55,9 +56,9 @@ export function DatabaseSidebar({
 	onAutoSelectComplete,
 	connections = [],
 	activeConnectionId,
-	onConnectionSelect = function () {},
-	onAddConnection = function () {},
-	onManageConnections = function () {},
+	onConnectionSelect = function () { },
+	onAddConnection = function () { },
+	onManageConnections = function () { },
 	onViewConnection,
 	onEditConnection,
 	onDeleteConnection
@@ -451,7 +452,7 @@ export function DatabaseSidebar({
 		}
 	}
 
-	function handleToolbarAction(action: ToolbarAction) {}
+	function handleToolbarAction(action: ToolbarAction) { }
 
 	async function handleExportTableSchema(tableName: string) {
 		if (!activeConnectionId) return
@@ -539,6 +540,41 @@ export function DatabaseSidebar({
 		}
 	}
 
+	const [topPanelRatio, setTopPanelRatio] = useState(0.7)
+	const [isResizing, setIsResizing] = useState(false)
+	const sidebarRef = useRef<HTMLDivElement>(null)
+
+	useEffect(() => {
+		if (!isResizing) return
+
+		const handleMouseMove = (e: MouseEvent) => {
+			if (sidebarRef.current) {
+				const rect = sidebarRef.current.getBoundingClientRect()
+				const relativeY = e.clientY - rect.top
+				// Calculate used space by header (approx 40px + padding)
+				// We want ratio of the REMAINING space or total space? 
+				// Total space is simpler.
+				const newRatio = Math.max(0.2, Math.min(0.85, relativeY / rect.height))
+				setTopPanelRatio(newRatio)
+			}
+		}
+
+		const handleMouseUp = () => {
+			setIsResizing(false)
+			document.body.style.cursor = ''
+		}
+
+		document.body.style.cursor = 'row-resize'
+		document.addEventListener('mousemove', handleMouseMove)
+		document.addEventListener('mouseup', handleMouseUp)
+
+		return () => {
+			document.body.style.cursor = ''
+			document.removeEventListener('mousemove', handleMouseMove)
+			document.removeEventListener('mouseup', handleMouseUp)
+		}
+	}, [isResizing])
+
 	const availableSchemas =
 		schema?.schemas.map(function (s) {
 			return {
@@ -549,8 +585,11 @@ export function DatabaseSidebar({
 		}) || []
 
 	return (
-		<div className='relative flex flex-col h-full w-[244px] bg-sidebar border-r border-sidebar-border'>
-			<div className='flex flex-col'>
+		<div
+			ref={sidebarRef}
+			className='relative flex flex-col h-full w-[244px] bg-sidebar border-r border-sidebar-border select-none'
+		>
+			<div className='flex flex-col shrink-0'>
 				<div className='p-0'>
 					<ConnectionSwitcher
 						connections={connections}
@@ -566,7 +605,7 @@ export function DatabaseSidebar({
 			</div>
 
 			{schema && (
-				<div className='flex flex-col gap-2 px-2 py-2 border-t border-sidebar-border'>
+				<div className='flex flex-col gap-2 px-2 py-2 border-t border-sidebar-border shrink-0'>
 					{availableSchemas.length > 1 && (
 						<SchemaSelector
 							schemas={availableSchemas}
@@ -591,7 +630,10 @@ export function DatabaseSidebar({
 				</div>
 			)}
 
-			<ScrollArea className='flex-1 min-h-0'>
+			<ScrollArea
+				className={cn('min-h-0', !activeTable && 'flex-1')}
+				style={activeTable ? { height: `${topPanelRatio * 100}%` } : undefined}
+			>
 				{isLoadingSchema ? (
 					<SidebarTableSkeleton rows={8} />
 				) : schemaError ? (
@@ -634,9 +676,22 @@ export function DatabaseSidebar({
 			</ScrollArea>
 
 			{activeTable && (
-				<div className='mt-auto shrink-0 z-20 bg-sidebar'>
-					<SidebarBottomPanel table={activeTable} />
-				</div>
+				<>
+					{/* Resizer Handle */}
+					<div
+						className='h-1.5 shrink-0 bg-sidebar-border/30 hover:bg-primary/20 cursor-row-resize flex items-center justify-center transition-colors z-20 -my-0.5'
+						onMouseDown={(e) => {
+							e.preventDefault()
+							setIsResizing(true)
+						}}
+					>
+						<div className='w-8 h-0.5 bg-sidebar-border rounded-full' />
+					</div>
+
+					<div className='flex-1 min-h-0 flex flex-col bg-sidebar overflow-hidden'>
+						<SidebarBottomPanel table={activeTable} />
+					</div>
+				</>
 			)}
 
 			{isMultiSelectMode && selectedTableIds.length > 0 && (

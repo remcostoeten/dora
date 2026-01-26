@@ -1,15 +1,16 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DockerView } from '../../../../../../../apps/desktop/src/features/docker-manager/components/docker-view'
 import * as useContainersModule from '../../../../../../../apps/desktop/src/features/docker-manager/api/queries/use-containers'
 import * as useCreateContainerModule from '../../../../../../../apps/desktop/src/features/docker-manager/api/mutations/use-create-container'
+import { TooltipProvider } from '@/shared/ui/tooltip'
 
 // Mock UI components to avoid dependency issues and focus on logic
 vi.mock('@/components/ui/use-toast', () => ({
 	useToast: () => ({ toast: vi.fn() })
 }))
 
-vi.mock('./container-list', () => ({
+vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/container-list', () => ({
 	ContainerList: ({ containers, isLoading }: any) => (
 		<div data-testid='container-list'>
 			{isLoading ? 'Loading containers...' : `Containers: ${containers?.length || 0}`}
@@ -17,15 +18,15 @@ vi.mock('./container-list', () => ({
 	)
 }))
 
-vi.mock('./container-details-panel', () => ({
+vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/container-details-panel', () => ({
 	ContainerDetailsPanel: () => <div data-testid='container-details' />
 }))
 
-vi.mock('./create-container-dialog', () => ({
+vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/create-container-dialog', () => ({
 	CreateContainerDialog: ({ open }: any) => (open ? <div data-testid='create-dialog' /> : null)
 }))
 
-vi.mock('./sandbox-indicator', () => ({
+vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/sandbox-indicator', () => ({
 	SandboxIndicator: () => <div data-testid='sandbox-indicator' />
 }))
 
@@ -44,6 +45,14 @@ describe('DockerView', () => {
 		)
 	})
 
+	const renderWithProviders = (component: any) => {
+		return render(
+			<TooltipProvider>
+				{component}
+			</TooltipProvider>
+		)
+	}
+
 	it('shows loading state when checking docker availability', () => {
 		vi.spyOn(useContainersModule, 'useDockerAvailability').mockReturnValue({
 			data: undefined,
@@ -58,7 +67,7 @@ describe('DockerView', () => {
 		// Mock useContainerSearch to return empty array
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue([])
 
-		render(<DockerView />)
+		renderWithProviders(<DockerView />)
 		expect(screen.getByText('Checking Docker status...')).toBeInTheDocument()
 	})
 
@@ -75,7 +84,7 @@ describe('DockerView', () => {
 
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue([])
 
-		render(<DockerView />)
+		renderWithProviders(<DockerView />)
 		expect(screen.getByText('Docker Not Available')).toBeInTheDocument()
 		expect(screen.getByText('Connection failed')).toBeInTheDocument()
 	})
@@ -87,8 +96,8 @@ describe('DockerView', () => {
 		} as any)
 
 		const mockContainers = [
-			{ id: '1', name: 'test-1' },
-			{ id: '2', name: 'test-2' }
+			{ id: '1', names: ['test-1'], state: 'running', created: Date.now() },
+			{ id: '2', names: ['test-2'], state: 'exited', created: Date.now() }
 		]
 
 		vi.spyOn(useContainersModule, 'useContainers').mockReturnValue({
@@ -99,7 +108,7 @@ describe('DockerView', () => {
 		// Mock search to return all containers
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue(mockContainers as any)
 
-		render(<DockerView />)
+		renderWithProviders(<DockerView />)
 		expect(screen.getByText('Containers: 2')).toBeInTheDocument()
 		expect(screen.getByText('Docker Containers')).toBeInTheDocument()
 	})
@@ -117,7 +126,7 @@ describe('DockerView', () => {
 
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue([])
 
-		render(<DockerView />)
+		renderWithProviders(<DockerView />)
 
 		const newButton = screen.getByText('New Container')
 		fireEvent.click(newButton)

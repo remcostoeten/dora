@@ -11,7 +11,8 @@ import {
 	isInsideJoinParens,
 	getTableMatch,
 	getColumnMatch
-} from '../../../../src/features/drizzle-runner/utils/lsp-patterns'
+} from '../../../../../apps/desktop/src/features/drizzle-runner/utils/lsp-patterns'
+
 
 describe('Drizzle LSP Patterns', () => {
 	describe('getDbName', () => {

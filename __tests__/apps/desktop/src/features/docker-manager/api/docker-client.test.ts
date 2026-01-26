@@ -4,42 +4,20 @@ import {
 	checkDockerAvailability,
 	startContainer,
 	stopContainer,
-	removeContainer
+	removeContainer,
+	deps
 } from '../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client'
 
-// Mock the Tauri shell plugin
-const { mockExecute, mockCreate } = vi.hoisted(() => {
-	const execute = vi.fn(() => Promise.resolve({ stdout: '', stderr: '', code: 0 }))
-	const create = vi.fn(() => ({
-		execute: execute,
-		on: vi.fn(),
-		spawn: vi.fn().mockResolvedValue({
-			kill: vi.fn()
-		}),
-		stdout: { on: vi.fn() },
-		stderr: { on: vi.fn() }
-	}))
-	return { mockExecute: execute, mockCreate: create }
-})
-
-vi.mock('@tauri-apps/plugin-shell', () => ({
-	Command: {
-		create: (cmd: string, args: string[]) => mockCreate(cmd, args)
-	}
-}))
-
-// Mock Tauri API core directly to prevent "invoke" errors if leakage occurs
+// Mock Tauri API core
 vi.mock('@tauri-apps/api/core', () => ({
 	invoke: vi.fn().mockResolvedValue('')
 }))
 
-// Mock window to simulate Tauri environment
 Object.defineProperty(window, 'Tauri', {
 	value: {},
 	writable: true
 })
 
-// Mock Tauri internals required by some real modules if they slip through
 Object.defineProperty(window, '__TAURI_INTERNALS__', {
 	value: {
 		invoke: vi.fn()
@@ -48,9 +26,27 @@ Object.defineProperty(window, '__TAURI_INTERNALS__', {
 })
 
 describe('docker-client', () => {
+	let mockExecute: any
+	let mockCreate: any
+
 	beforeEach(() => {
 		vi.clearAllMocks()
-		mockExecute.mockResolvedValue({ stdout: '', stderr: '', code: 0 })
+		mockExecute = vi.fn().mockResolvedValue({ stdout: '', stderr: '', code: 0 })
+		mockCreate = vi.fn()
+
+		// Inject mock
+		deps.getCommand = async () => ({
+			create: (cmd: string, args: string[]) => {
+				mockCreate(cmd, args)
+				return {
+					execute: mockExecute,
+					on: vi.fn(),
+					spawn: vi.fn().mockResolvedValue({ kill: vi.fn() }),
+					stdout: { on: vi.fn() },
+					stderr: { on: vi.fn() }
+				}
+			}
+		} as any)
 	})
 
 	describe('checkDockerAvailability', () => {
@@ -65,9 +61,9 @@ describe('docker-client', () => {
 
 			expect(result).toEqual({ available: true, version: '20.10.21' })
 			expect(mockCreate).toHaveBeenCalledWith('docker', [
-				'version',
+				'info',
 				'--format',
-				'{{.Server.Version}}'
+				'{{.ServerVersion}}'
 			])
 		})
 
@@ -86,14 +82,13 @@ describe('docker-client', () => {
 
 	describe('listContainers', () => {
 		it('should list and parse containers correctly including Env', async () => {
-			// Mock 'ps' command
 			mockExecute.mockResolvedValueOnce({
-				stdout: '{"ID":"123","Names":"test-container","Image":"postgres:14","State":"running","Status":"Up 2 hours","Ports":"0.0.0.0:5432->5432/tcp","Labels":"","CreatedAt":"2023-01-01"}\n',
+				stdout:
+					'{"ID":"123","Names":"test-container","Image":"postgres:14","State":"running","Status":"Up 2 hours","Ports":"0.0.0.0:5432->5432/tcp","Labels":"","CreatedAt":"2023-01-01"}\n',
 				stderr: '',
 				code: 0
 			})
 
-			// Mock 'inspect' command
 			mockExecute.mockResolvedValueOnce({
 				stdout: JSON.stringify([
 					{

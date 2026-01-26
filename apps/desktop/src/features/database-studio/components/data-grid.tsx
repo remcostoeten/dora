@@ -549,14 +549,6 @@ export function DataGrid({
 		]
 	)
 
-	if (columns.length === 0) {
-		return (
-			<div className='flex items-center justify-center h-full text-foreground text-sm'>
-				No columns found for this table
-			</div>
-		)
-	}
-
 	function handleRightDragValues(e: React.MouseEvent | MouseEvent) {
 		if (!rightDragStartRef.current || !scrollContainerRef.current) return
 
@@ -596,6 +588,14 @@ export function DataGrid({
 			document.removeEventListener('mouseup', handleGlobalMouseUp)
 		}
 	}, [isRightDragging])
+
+	if (columns.length === 0) {
+		return (
+			<div className='flex items-center justify-center h-full text-foreground text-sm'>
+				No columns found for this table
+			</div>
+		)
+	}
 
 	return (
 		<div className='relative h-full w-full'>
@@ -889,8 +889,8 @@ export function DataGrid({
 												})
 												const isDirty = primaryKeyCol
 													? pendingEdits?.has(
-															`${row[primaryKeyCol.name]}:${col.name}`
-														)
+														`${row[primaryKeyCol.name]}:${col.name}`
+													)
 													: false
 
 												return (
@@ -962,11 +962,11 @@ export function DataGrid({
 															className={cn(
 																'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px]',
 																isSelected &&
-																	!isEditing &&
-																	'bg-muted-foreground/10',
+																!isEditing &&
+																'bg-muted-foreground/10',
 																isFocused &&
-																	!isEditing &&
-																	'bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20',
+																!isEditing &&
+																'bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20',
 																isDirty && 'bg-amber-500/10'
 															)}
 															style={
@@ -1060,10 +1060,10 @@ export function DataGrid({
 																	draftRow[col.name] === null
 																		? ''
 																		: String(
-																				draftRow[
-																					col.name
-																				] ?? ''
-																			)
+																			draftRow[
+																			col.name
+																			] ?? ''
+																		)
 																}
 																onChange={function (e) {
 																	onDraftChange?.(

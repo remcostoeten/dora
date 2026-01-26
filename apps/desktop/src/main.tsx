@@ -3,6 +3,7 @@ import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appear
 import { loadFontPair } from '@/shared/lib/font-loader'
 import App from './App.tsx'
 import './index.css'
+import './monaco-workers'
 
 // Initialize appearance before rendering to prevent theme flash
 const settings = getAppearanceSettings()
