@@ -36,7 +36,7 @@ const THEME_OPTIONS: ThemeConfig[] = [
 	{ value: 'forest', name: 'Forest', variant: 'dark', accentColor: '#34d399' },
 	{ value: 'claude', name: 'Claude Light', variant: 'light', accentColor: '#d97706' },
 	{ value: 'claude-dark', name: 'Claude Dark', variant: 'dark', accentColor: '#b45309' },
-	{ value: 'haptic', name: 'Haptic', variant: 'dark', accentColor: '#f5f5f5' }
+	{ value: 'night', name: 'Night', variant: 'dark', accentColor: '#f5f5f5' }
 ]
 
 const FONT_OPTIONS: FontConfig[] = [

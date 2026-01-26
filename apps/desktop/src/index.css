@@ -399,7 +399,7 @@
 		--table-border: calc(32 + var(--hue-shift)) 15% 85%;
 	}
 
-	.haptic {
+	.night {
 		--background: 0 0% 0%;
 		/* #000000 */
 		--foreground: 0 0% 93%;

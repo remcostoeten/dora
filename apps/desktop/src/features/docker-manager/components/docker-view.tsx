@@ -65,13 +65,15 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 			// Sort
 			return [...result].sort(function (a, b) {
 				if (sortBy === 'name') {
-					return a.names[0].localeCompare(b.names[0])
+					const nameA = a.names?.[0] || ''
+					const nameB = b.names?.[0] || ''
+					return nameA.localeCompare(nameB)
 				}
 				if (sortBy === 'created') {
 					return b.created - a.created // Newest first
 				}
 				if (sortBy === 'status') {
-					return a.state.localeCompare(b.state)
+					return (a.state || '').localeCompare(b.state || '')
 				}
 				return 0
 			})

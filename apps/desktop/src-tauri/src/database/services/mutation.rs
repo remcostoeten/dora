@@ -228,8 +228,12 @@ impl<'a> MutationService<'a> {
             });
         }
 
-        let columns: Vec<String> = row_data.keys().cloned().collect();
-        let values: Vec<serde_json::Value> = row_data.values().cloned().collect();
+        // Optimization: Use references to avoid cloning keys/values into new Vecs
+        // We still need to collect keys for the query string since we iterate twice (cols then values)
+        // But for values we can map directly to params.
+        
+        let columns: Vec<&String> = row_data.keys().collect();
+        let values_len = row_data.len();
 
         let (affected_rows, message) = match &client {
              DatabaseClient::Postgres { client } => {
@@ -243,7 +247,7 @@ impl<'a> MutationService<'a> {
                     .collect::<Vec<_>>()
                     .join(", ");
                 
-                let placeholders: String = (1..=values.len())
+                let placeholders: String = (1..=values_len)
                     .map(|i| format!("${}", i))
                     .collect::<Vec<_>>()
                     .join(", ");
@@ -253,8 +257,8 @@ impl<'a> MutationService<'a> {
                     schema_prefix, table_name, col_names, placeholders
                 );
 
-                let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = values
-                    .iter()
+                let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = row_data
+                    .values()
                     .map(|v| json_to_pg_param(v))
                     .collect();
                  let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
@@ -272,8 +276,8 @@ impl<'a> MutationService<'a> {
                     .collect::<Vec<_>>()
                     .join(", ");
                 
-                let placeholders: String = (0..values.len())
-                    .map(|_| "?")
+                let placeholders: String = std::iter::repeat("?")
+                    .take(values_len)
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -282,8 +286,8 @@ impl<'a> MutationService<'a> {
                      table_name, col_names, placeholders
                 );
 
-                let params: Vec<rusqlite::types::Value> = values
-                    .iter()
+                let params: Vec<rusqlite::types::Value> = row_data
+                    .values()
                     .map(json_to_sqlite_value)
                     .collect();
                 let params_ref: Vec<&dyn rusqlite::ToSql> =
@@ -298,18 +302,18 @@ impl<'a> MutationService<'a> {
                     .collect::<Vec<_>>()
                     .join(", ");
                 
-                let placeholders: String = (0..values.len())
-                    .map(|_| "?")
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let placeholders: String = std::iter::repeat("?")
+                     .take(values_len)
+                     .collect::<Vec<_>>()
+                     .join(", ");
 
                 let query = format!(
                      "INSERT INTO \"{}\" ({}) VALUES ({})",
                      table_name, col_names, placeholders
                 );
 
-                let params: Vec<libsql::Value> = values
-                     .iter()
+                let params: Vec<libsql::Value> = row_data
+                     .values()
                      .map(json_to_libsql_value)
                      .collect();
                 
