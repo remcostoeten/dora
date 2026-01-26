@@ -28,14 +28,13 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
 
 type Props = {
 	onAction: (action: ToolbarAction) => void
-	onCopySchema?: () => void
 	themeProps?: {
 		theme: Theme
 		onThemeChange: (theme: Theme) => void
 	}
 }
 
-export function BottomToolbar({ onAction, onCopySchema, themeProps }: Props) {
+export function BottomToolbar({ onAction, themeProps }: Props) {
 	return (
 		<div className='flex items-center justify-around px-2 h-8 border-t border-sidebar-border mt-auto'>
 			{TOOLBAR_ITEMS.map(function (item) {
@@ -138,7 +137,7 @@ export function BottomToolbar({ onAction, onCopySchema, themeProps }: Props) {
 								sideOffset={16}
 								className='w-[360px] p-0 mb-2 ml-2'
 							>
-								<SettingsPanel onCopySchema={onCopySchema} />
+								<SettingsPanel />
 							</PopoverContent>
 						</Popover>
 					)

@@ -4,7 +4,7 @@ use anyhow::Context;
 use tokio_postgres::Client;
 
 use crate::{
-    database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, TableInfo},
+    database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, IndexInfo, TableInfo},
     Error,
 };
 
@@ -113,6 +113,66 @@ pub async fn get_database_schema(client: &Client) -> Result<DatabaseSchema, Erro
         );
     }
 
+    // Query for indexes
+    let index_query = r#"
+        SELECT
+            schemaname,
+            tablename,
+            indexname,
+            indexdef
+        FROM
+            pg_indexes
+        WHERE
+            schemaname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
+    "#;
+
+    let index_rows = client
+        .query(index_query, &[])
+        .await
+        .context("Failed to query indexes")?;
+
+    let mut index_map: HashMap<(String, String), Vec<IndexInfo>> = HashMap::new();
+    for row in &index_rows {
+        let schema: &str = row.get(0);
+        let table: &str = row.get(1);
+        let index_name: &str = row.get(2);
+        let index_def: &str = row.get(3);
+
+        // Simple parsing of index definition to extract columns and uniqueness
+        // Example: CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)
+        let is_unique = index_def.to_uppercase().contains("UNIQUE INDEX");
+        let is_primary = index_name.ends_with("_pkey"); // simplistic check, but widely applicable
+
+        let columns_part = index_def
+            .split("USING")
+            .nth(1)
+            .unwrap_or("")
+            .split("(")
+            .nth(1)
+            .unwrap_or("")
+            .split(")")
+            .next()
+            .unwrap_or("");
+
+        let column_names: Vec<String> = columns_part
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        let index_info = IndexInfo {
+            name: index_name.to_owned(),
+            column_names,
+            is_unique,
+            is_primary,
+        };
+
+        index_map
+            .entry((schema.to_owned(), table.to_owned()))
+            .or_default()
+            .push(index_info);
+    }
+
     // Query for row count estimates (fast, uses pg_stat)
     let count_query = r#"
         SELECT 
@@ -161,12 +221,18 @@ pub async fn get_database_schema(client: &Client) -> Result<DatabaseSchema, Erro
             let row_count = count_map
                 .get(&(schema.to_owned(), table_name.to_owned()))
                 .copied();
+            
+            let indexes = index_map
+                .remove(&(schema.to_owned(), table_name.to_owned()))
+                .unwrap_or_default();
+
             TableInfo {
                 name: table_name.to_owned(),
                 schema: schema.to_owned(),
                 columns: Vec::new(),
                 primary_key_columns: Vec::new(),
                 row_count_estimate: row_count,
+                indexes,
             }
         });
 

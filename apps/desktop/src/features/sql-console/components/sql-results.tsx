@@ -1,5 +1,15 @@
 import Editor from '@monaco-editor/react'
 import { Table2, Braces, Download, Copy, Trash2, Pencil } from 'lucide-react'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle
+} from '@/shared/ui/alert-dialog'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useDataMutation } from '@/core/data-provider'
 import { useAdapter } from '@/core/data-provider/context'
@@ -49,6 +59,7 @@ export function SqlResults({
 	const { settings } = useSettings()
 	const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
 	const [filterText, setFilterText] = useState('')
+	const [rowToDelete, setRowToDelete] = useState<number | null>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
 
 	useEffect(() => {
@@ -228,7 +239,15 @@ export function SqlResults({
 	// And then I'll go back and fix `types.ts` and `SqlConsole`.
 	// This is safer.
 
-	async function handleDeleteRow(rowIndex: number) {
+	function handleDeleteRow(rowIndex: number) {
+		if (settings.confirmBeforeDelete) {
+			setRowToDelete(rowIndex)
+		} else {
+			performDeleteRow(rowIndex)
+		}
+	}
+
+	async function performDeleteRow(rowIndex: number) {
 		if (!result || !connectionId) return
 		const pkCol = getPrimaryKey()
 		const pkName = pkCol?.name || result.columns.find((c) => c.toLowerCase() === 'id') || 'id'
@@ -243,23 +262,22 @@ export function SqlResults({
 			return
 		}
 
-		if (!settings.confirmBeforeDelete || confirm('Are you sure you want to delete this row?')) {
-			deleteRows.mutate(
-				{
-					connectionId,
-					tableName,
-					primaryKeyColumn: pkName,
-					primaryKeyValues: [pkValue]
-				},
-				{
-					onError: (e) => console.error('Delete failed', e),
-					onSuccess: () => {
-						console.log('Delete successful')
-						onRefresh?.()
-					}
+		deleteRows.mutate(
+			{
+				connectionId,
+				tableName,
+				primaryKeyColumn: pkName,
+				primaryKeyValues: [pkValue]
+			},
+			{
+				onError: (e) => console.error('Delete failed', e),
+				onSuccess: () => {
+					console.log('Delete successful')
+					onRefresh?.()
+					setRowToDelete(null)
 				}
-			)
-		}
+			}
+		)
 	}
 
 	const { filteredRows, filterTime } = useMemo(() => {
@@ -516,6 +534,34 @@ export function SqlResults({
 					</div>
 				)}
 			</div>
+
+			<AlertDialog
+				open={rowToDelete !== null}
+				onOpenChange={(open) => !open && setRowToDelete(null)}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete Row?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete the selected row.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(e) => {
+								e.preventDefault()
+								if (rowToDelete !== null) {
+									performDeleteRow(rowToDelete)
+								}
+							}}
+							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	)
 }

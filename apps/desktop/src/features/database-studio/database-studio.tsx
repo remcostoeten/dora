@@ -1,7 +1,19 @@
-import { Database, Plus, PanelLeft, Trash2, Columns } from 'lucide-react'
+import { Database, Plus, PanelLeft, Trash2, Columns, AlertTriangle } from 'lucide-react'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle
+} from '@/shared/ui/alert-dialog'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { TableSkeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/components/ui/use-toast'
 import { useAdapter, useDataMutation } from '@/core/data-provider'
+import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
 import { usePendingEdits } from '@/core/pending-edits'
 import { useSettings } from '@/core/settings'
 import { useUndo } from '@/core/undo'
@@ -51,6 +63,7 @@ export function DatabaseStudio({
 	onRowSelectionChange
 }: Props) {
 	const adapter = useAdapter()
+	const { toast } = useToast()
 	const { updateCell, deleteRows, insertRow } = useDataMutation()
 	const { settings } = useSettings()
 	const {
@@ -86,6 +99,7 @@ export function DatabaseStudio({
 	const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
 	const [showAddColumnDialog, setShowAddColumnDialog] = useState(false)
 	const [showDropTableDialog, setShowDropTableDialog] = useState(false)
+	const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 	const [showSetNullDialog, setShowSetNullDialog] = useState(false)
 	const [showDataSeederDialog, setShowDataSeederDialog] = useState(false)
@@ -443,8 +457,17 @@ export function DatabaseStudio({
 		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
 		if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
 
-		if (settings.confirmBeforeDelete && !confirm(`Delete ${selectedRows.size} selected rows?`))
+		if (settings.confirmBeforeDelete) {
+			setShowDeleteConfirmDialog(true)
 			return
+		}
+
+		performBulkDelete()
+	}, [tableData, activeConnectionId, tableId, settings.confirmBeforeDelete])
+
+	const performBulkDelete = useCallback(() => {
+		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
+		if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
 
 		const primaryKeyValues = Array.from(selectedRows).map(function (rowIndex) {
 			return tableData.rows[rowIndex][primaryKeyColumn.name]
@@ -461,6 +484,7 @@ export function DatabaseStudio({
 				onSuccess: function () {
 					setSelectedRows(new Set())
 					loadTableData()
+					setShowDeleteConfirmDialog(false)
 				}
 			}
 		)
@@ -470,7 +494,6 @@ export function DatabaseStudio({
 		tableId,
 		tableName,
 		selectedRows,
-		settings.confirmBeforeDelete,
 		deleteRows,
 		loadTableData
 	])
@@ -989,6 +1012,55 @@ export function DatabaseStudio({
 		URL.revokeObjectURL(url)
 	}
 
+	async function handleCopySchema() {
+		if (!activeConnectionId) return
+
+		try {
+			const result = await adapter.getDatabaseDDL(activeConnectionId)
+			if (result.ok) {
+				navigator.clipboard.writeText(result.data)
+				toast({
+					title: 'Schema copied',
+					description: 'Database schema DDL copied to clipboard.'
+				})
+			} else {
+				throw new Error(result.error)
+			}
+		} catch (error) {
+			console.error('Failed to copy schema:', error)
+			toast({
+				title: 'Error copying schema',
+				description: error instanceof Error ? error.message : 'Unknown error',
+				variant: 'destructive'
+			})
+		}
+	}
+
+	async function handleCopyDrizzleSchema() {
+		if (!activeConnectionId) return
+
+		try {
+			const schemaResult = await adapter.getSchema(activeConnectionId)
+			if (schemaResult.ok) {
+				const drizzleSchema = convertSchemaToDrizzle(schemaResult.data)
+				navigator.clipboard.writeText(drizzleSchema)
+				toast({
+					title: 'Drizzle schema copied',
+					description: 'Database schema as Drizzle ORM format copied to clipboard.'
+				})
+			} else {
+				throw new Error(schemaResult.error)
+			}
+		} catch (error) {
+			console.error('Failed to copy Drizzle schema:', error)
+			toast({
+				title: 'Error copying schema',
+				description: error instanceof Error ? error.message : 'Unknown error',
+				variant: 'destructive'
+			})
+		}
+	}
+
 	async function handleAddColumn(columnDef: ColumnFormData) {
 		if (!activeConnectionId || !tableName) return
 
@@ -1150,6 +1222,8 @@ export function DatabaseStudio({
 					onRefresh={loadTableData}
 					onExport={handleExport}
 					isLoading={isLoading}
+					onCopySchema={handleCopySchema}
+					onCopyDrizzleSchema={handleCopyDrizzleSchema}
 				/>
 
 				<div className='flex-1 overflow-auto p-4'>
@@ -1277,6 +1351,8 @@ export function DatabaseStudio({
 				onToggleColumn={handleToggleColumn}
 				isDryEditMode={isDryEditMode}
 				onDryEditModeChange={setDryEditMode}
+				onCopySchema={handleCopySchema}
+				onCopyDrizzleSchema={handleCopyDrizzleSchema}
 			/>
 
 			<div className='flex-1 overflow-hidden relative'>
@@ -1416,53 +1492,85 @@ export function DatabaseStudio({
 				/>
 			)}
 
-			{tableData && (
-				<BulkEditDialog
-					open={showBulkEditDialog}
-					onOpenChange={setShowBulkEditDialog}
-					columns={tableData.columns}
-					selectedCount={selectedRows.size}
-					isLoading={isBulkActionLoading}
-					onSubmit={function handleBulkEditSubmit(columnName: string, newValue: unknown) {
-						if (!activeConnectionId || !tableId || !tableData) return
+			<DropTableDialog
+				open={showDropTableDialog}
+				onOpenChange={setShowDropTableDialog}
+				tableName={tableName || tableId || ''}
+				onConfirm={handleConfirmDropTable}
+				isLoading={isDdlLoading}
+			/>
 
-						const primaryKeyColumn = tableData.columns.find(function (c) {
-							return c.primaryKey
+			<AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete {selectedRows.size}{' '}
+							selected row{selectedRows.size !== 1 ? 's' : ''} from the database.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={(e) => {
+								e.preventDefault()
+								performBulkDelete()
+							}}
+							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<BulkEditDialog
+
+				open={showBulkEditDialog}
+				onOpenChange={setShowBulkEditDialog}
+				columns={tableData.columns}
+				selectedCount={selectedRows.size}
+				isLoading={isBulkActionLoading}
+				onSubmit={function handleBulkEditSubmit(columnName: string, newValue: unknown) {
+					if (!activeConnectionId || !tableId || !tableData) return
+
+					const primaryKeyColumn = tableData.columns.find(function (c) {
+						return c.primaryKey
+					})
+					if (!primaryKeyColumn) {
+						console.error('No primary key found')
+						return
+					}
+
+					setIsBulkActionLoading(true)
+					const rowIndexes = Array.from(selectedRows)
+
+					Promise.all(
+						rowIndexes.map(function (rowIndex) {
+							const row = tableData.rows[rowIndex]
+							return updateCell.mutateAsync({
+								connectionId: activeConnectionId,
+								tableName: tableName || tableId,
+								primaryKeyColumn: primaryKeyColumn.name,
+								primaryKeyValue: row[primaryKeyColumn.name],
+								columnName,
+								newValue
+							})
 						})
-						if (!primaryKeyColumn) {
-							console.error('No primary key found')
-							return
-						}
-
-						setIsBulkActionLoading(true)
-						const rowIndexes = Array.from(selectedRows)
-
-						Promise.all(
-							rowIndexes.map(function (rowIndex) {
-								const row = tableData.rows[rowIndex]
-								return updateCell.mutateAsync({
-									connectionId: activeConnectionId,
-									tableName: tableName || tableId,
-									primaryKeyColumn: primaryKeyColumn.name,
-									primaryKeyValue: row[primaryKeyColumn.name],
-									columnName,
-									newValue
-								})
-							})
-						)
-							.then(function () {
-								setShowBulkEditDialog(false)
-								setSelectedRows(new Set())
-								loadTableData()
-							})
-							.catch(function (error) {
-								console.error('Failed to bulk edit:', error)
-							})
-							.finally(function () {
-								setIsBulkActionLoading(false)
-							})
-					}}
-				/>
+					)
+						.then(function () {
+							setShowBulkEditDialog(false)
+							setSelectedRows(new Set())
+							loadTableData()
+						})
+						.catch(function (error) {
+							console.error('Failed to bulk edit:', error)
+						})
+						.finally(function () {
+							setIsBulkActionLoading(false)
+						})
+				}}
+			/>
 			)}
 
 			{tableData && (

@@ -706,7 +706,7 @@ export function DatabaseSidebar({
 				/>
 			)}
 
-			<BottomToolbar onAction={handleToolbarAction} onCopySchema={handleCopySchema} />
+			<BottomToolbar onAction={handleToolbarAction} />
 
 			<RenameTableDialog
 				open={showRenameDialog}

@@ -7,7 +7,7 @@ use anyhow::Context;
 use rusqlite::Connection;
 
 use crate::{
-    database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, TableInfo},
+    database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, IndexInfo, TableInfo},
     Error,
 };
 
@@ -78,6 +78,37 @@ pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<Databas
                 .ok()
                 .map(|c| c as u64);
 
+            // Get Indexes
+            let index_list_query = format!("PRAGMA index_list('{}')", table_name);
+            let mut index_stmt = conn.prepare(&index_list_query)?;
+            
+            // index_list returns: seq, name, unique, origin, partial
+            let mut indexes = Vec::new();
+            let index_info_rows = index_stmt.query_map([], |row| {
+                let name: String = row.get(1)?;
+                let is_unique: bool = row.get::<_, i32>(2)? != 0;
+                Ok((name, is_unique))
+            })?;
+
+            for idx in index_info_rows {
+                if let Ok((name, is_unique)) = idx {
+                    // Get columns for this index
+                    let index_info_query = format!("PRAGMA index_info('{}')", name);
+                    let mut info_stmt = conn.prepare(&index_info_query)?;
+                    
+                    let column_names: Vec<String> = info_stmt
+                        .query_map([], |row| row.get(2))?
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    indexes.push(IndexInfo {
+                        name,
+                        column_names,
+                        is_unique,
+                        is_primary: false, // SQLite PKs are handled separately usually, but explicit indexes are listed here
+                    });
+                }
+            }
+
             // Check if this table has AUTOINCREMENT by examining sqlite_master
             // AUTOINCREMENT only works with INTEGER PRIMARY KEY
             let autoincrement_query = format!(
@@ -126,6 +157,7 @@ pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<Databas
                 columns,
                 primary_key_columns,
                 row_count_estimate: row_count,
+                indexes,
             });
         }
 
