@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import type { SortDescriptor, FilterDescriptor } from '@/features/database-studio/types'
 import { useAdapter } from './context'
 
@@ -138,7 +138,10 @@ export function useTableData(
 			if (!res.ok) throw new Error(res.error)
 			return res.data
 		},
-		enabled: !!connectionId && !!tableName
+		enabled: !!connectionId && !!tableName,
+		placeholderData: keepPreviousData,
+		staleTime: 10000, // 10 seconds
+		gcTime: 5 * 60 * 1000 // 5 minutes
 	})
 }
 
@@ -178,7 +181,43 @@ export function useDataMutation() {
 			if (!res.ok) throw new Error(res.error)
 			return res.data
 		},
-		onSuccess: (_data, variables) => {
+		onMutate: async (newEdit) => {
+			// Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+			await queryClient.cancelQueries({ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] })
+
+			// Snapshot the previous value
+			const previousTableData = queryClient.getQueriesData({ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] })
+
+			// Optimistically update to the new value
+			queryClient.setQueriesData({ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] }, (old: any) => {
+				if (!old) return old
+				return {
+					...old,
+					rows: old.rows.map((row: any) => {
+						if (row[newEdit.primaryKeyColumn] === newEdit.primaryKeyValue) {
+							return {
+								...row,
+								[newEdit.columnName]: newEdit.newValue
+							}
+						}
+						return row
+					})
+				}
+			})
+
+			// Return a context object with the snapshotted value
+			return { previousTableData }
+		},
+		onError: (_err, _newEdit, context) => {
+			// If the mutation fails, use the context returned from onMutate to roll back
+			if (context?.previousTableData) {
+				context.previousTableData.forEach(([key, data]) => {
+					queryClient.setQueryData(key, data)
+				})
+			}
+		},
+		onSettled: (_data, _error, variables) => {
+			// Always refetch after error or success:
 			queryClient.invalidateQueries({
 				queryKey: ['tableData', variables.connectionId, variables.tableName]
 			})
