@@ -112,6 +112,8 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 	const [currentStepIndex, setCurrentStepIndex] = useState(0)
 	const [showSettings, setShowSettings] = useState(false)
 	const [autoAdvance, setAutoAdvance] = useState(true)
+	// ... existing state ...
+	const [isSuccess, setIsSuccess] = useState(false)
 	const [demos, setDemos] = useState<DemoQuery[]>(DEFAULT_DEMOS)
 
 	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -164,19 +166,11 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 			const stepText = typeof stepData === 'string' ? stepData : stepData.text
 			const typeCharsLimit = typeof stepData === 'object' ? stepData.typeChars : undefined
 
-			// Determine target length: existing text length + diff
-			// But here stepText IS the full text we want to achieve.
-			// We start typing from 'startTextLength' index.
-
 			const charsToType = stepText.slice(startTextLength)
-
-			// If simulated autocomplete is used, we only type 'typeCharsLimit' characters
-			// then pause, then jump to full text.
 
 			const effectiveLimit =
 				typeCharsLimit !== undefined ? typeCharsLimit : charsToType.length
 
-			// Current index relative to the diff part
 			const relativeIndex = charIndex - startTextLength
 
 			if (relativeIndex < effectiveLimit && charIndex < stepText.length) {
@@ -187,21 +181,13 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 					typeStep(stepData, charIndex + 1, startTextLength)
 				}, speed)
 			} else {
-				// Typing finished (either fully typed or hit the simulated limit)
-
-				// If we hit limit but haven't finished text, we do the "autocomplete jump"
 				if (charIndex < stepText.length) {
-					// Pause to simulate user looking at suggestions
 					timeoutRef.current = setTimeout(function performAutocomplete() {
 						if (!isPlayingRef.current) return
-						// Jump to full text
 						setEditorContent(stepText)
-
-						// Then schedule next step
 						scheduleNextStep()
-					}, pauseBetweenSteps) // Use same pause or separate shorter pause?
+					}, pauseBetweenSteps)
 				} else {
-					// Fully typed, just wait for next step
 					scheduleNextStep()
 				}
 			}
@@ -214,12 +200,16 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 					if (nextStepIndex < currentDemo.steps.length) {
 						setCurrentStepIndex(nextStepIndex)
 					} else if (autoAdvance) {
-						// Move to next demo
-						const nextDemoIndex = (currentDemoIndex + 1) % demos.length
-						setCurrentDemoIndex(nextDemoIndex)
-						setCurrentStepIndex(0)
+						const nextDemoIndex = currentDemoIndex + 1
+						if (nextDemoIndex < demos.length) {
+							setCurrentDemoIndex(nextDemoIndex)
+							setCurrentStepIndex(0)
+						} else {
+							// All demos finished
+							finishSequence()
+						}
 					} else {
-						// Stop at end of demo
+						// Single demo finished
 						setIsPlaying(false)
 						isPlayingRef.current = false
 					}
@@ -239,19 +229,39 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 		]
 	)
 
+	function finishSequence() {
+		setIsPlaying(false)
+		isPlayingRef.current = false
+		setIsSuccess(true)
+	}
+
+	// Auto-close on success
+	useEffect(
+		function handleSuccessAutoClose() {
+			if (isSuccess) {
+				const timer = setTimeout(function closeWidget() {
+					setIsSuccess(false)
+					if (onClose) onClose()
+				}, 2000)
+				return function cleanup() {
+					clearTimeout(timer)
+				}
+			}
+		},
+		[isSuccess, onClose]
+	)
+
 	// Start typing when step changes
 	useEffect(
 		function onStepChange() {
 			if (isPlayingRef.current && currentDemo) {
 				const stepData = currentDemo.steps[currentStepIndex]
 				if (stepData) {
-					// Get previous step to know where to start typing from
 					const prevStepData =
 						currentStepIndex > 0 ? currentDemo.steps[currentStepIndex - 1] : ''
 					const prevText =
 						typeof prevStepData === 'string' ? prevStepData : prevStepData.text
 
-					// Start typing from where previous left off
 					typeStep(stepData, prevText.length, prevText.length)
 				}
 			}
@@ -267,6 +277,13 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 		} else {
 			setIsPlaying(true)
 			isPlayingRef.current = true
+			if (isSuccess) {
+				// Restart if we were in success state
+				setIsSuccess(false)
+				setCurrentDemoIndex(0)
+				setCurrentStepIndex(0)
+				setEditorContent('')
+			}
 
 			// Start logic
 			const stepData = currentDemo.steps[currentStepIndex]
@@ -285,6 +302,7 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 		const nextDemoIndex = (currentDemoIndex + 1) % demos.length
 		setCurrentDemoIndex(nextDemoIndex)
 		setCurrentStepIndex(0)
+		setIsSuccess(false)
 
 		if (isPlaying) {
 			// Will auto-start via useEffect
@@ -295,6 +313,7 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 		clearTimeouts()
 		setIsPlaying(false)
 		isPlayingRef.current = false
+		setIsSuccess(false)
 		setCurrentDemoIndex(0)
 		setCurrentStepIndex(0)
 		setEditorContent('')
@@ -304,6 +323,7 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 		clearTimeouts()
 		setCurrentDemoIndex(index)
 		setCurrentStepIndex(0)
+		setIsSuccess(false)
 		setEditorContent('')
 	}
 
@@ -328,7 +348,8 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 			outline:
 				'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
 			secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-			ghost: 'hover:bg-accent hover:text-accent-foreground'
+			ghost: 'hover:bg-accent hover:text-accent-foreground',
+			success: 'bg-green-500 text-white shadow hover:bg-green-600'
 		}
 		const sizes: Record<string, string> = {
 			default: 'h-9 px-4 py-2',
@@ -352,7 +373,7 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 			{/* Header */}
 			<div className='flex flex-row items-center justify-between p-4 pb-2'>
 				<div className='font-semibold text-sm flex items-center gap-2'>
-					🎬 LSP Demo Widget
+					{isSuccess ? '🎉 Demo Complete!' : '🎬 LSP Demo Widget'}
 				</div>
 				<div className='flex gap-1'>
 					<Button
@@ -374,40 +395,57 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 			</div>
 
 			<div className='p-4 space-y-3 pt-0'>
-				{/* Current Demo Info */}
-				<div className='text-xs space-y-1'>
-					<div className='font-medium'>{currentDemo?.name}</div>
-					<div className='text-muted-foreground'>{currentDemo?.description}</div>
-					<div className='text-muted-foreground'>
-						Step {currentStepIndex + 1} of {currentDemo?.steps.length}
+				{isSuccess ? (
+					<div className='flex flex-col items-center justify-center py-4 space-y-2 animate-in fade-in zoom-in duration-300'>
+						<div className='h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center'>
+							<Play className='h-6 w-6 text-green-600 dark:text-green-400 fill-current' />
+						</div>
+						<div className='text-sm font-medium text-center'>
+							All demos finished!
+							<br />
+							<span className='text-xs text-muted-foreground font-normal'>
+								Closing in 2 seconds...
+							</span>
+						</div>
 					</div>
-				</div>
+				) : (
+					<>
+						{/* Current Demo Info */}
+						<div className='text-xs space-y-1'>
+							<div className='font-medium'>{currentDemo?.name}</div>
+							<div className='text-muted-foreground'>{currentDemo?.description}</div>
+							<div className='text-muted-foreground'>
+								Step {currentStepIndex + 1} of {currentDemo?.steps.length}
+							</div>
+						</div>
 
-				{/* Playback Controls */}
-				<div className='flex items-center gap-2'>
-					<Button
-						variant={isPlaying ? 'destructive' : 'default'}
-						size='sm'
-						onClick={handlePlay}
-						className='flex-1'
-					>
-						{isPlaying ? (
-							<Pause className='h-4 w-4 mr-1' />
-						) : (
-							<Play className='h-4 w-4 mr-1' />
-						)}
-						{isPlaying ? 'Pause' : 'Play'}
-					</Button>
-					<Button variant='outline' size='sm' onClick={handleSkip}>
-						<SkipForward className='h-4 w-4' />
-					</Button>
-					<Button variant='outline' size='sm' onClick={handleReset}>
-						<RotateCcw className='h-4 w-4' />
-					</Button>
-				</div>
+						{/* Playback Controls */}
+						<div className='flex items-center gap-2'>
+							<Button
+								variant={isPlaying ? 'destructive' : 'default'}
+								size='sm'
+								onClick={handlePlay}
+								className='flex-1'
+							>
+								{isPlaying ? (
+									<Pause className='h-4 w-4 mr-1' />
+								) : (
+									<Play className='h-4 w-4 mr-1' />
+								)}
+								{isPlaying ? 'Pause' : 'Play'}
+							</Button>
+							<Button variant='outline' size='sm' onClick={handleSkip}>
+								<SkipForward className='h-4 w-4' />
+							</Button>
+							<Button variant='outline' size='sm' onClick={handleReset}>
+								<RotateCcw className='h-4 w-4' />
+							</Button>
+						</div>
+					</>
+				)}
 
 				{/* Settings Panel */}
-				{showSettings && (
+				{showSettings && !isSuccess && (
 					<div className='space-y-3 pt-2 border-t mt-2'>
 						<div className='space-y-1'>
 							<div className='flex justify-between text-xs'>
@@ -457,26 +495,28 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 				)}
 
 				{/* Demo Selector */}
-				<div className='space-y-1 pt-2'>
-					<label className='text-xs font-medium'>Select Demo:</label>
-					<div className='grid grid-cols-2 gap-1'>
-						{demos.map(function renderDemo(demo, index) {
-							return (
-								<Button
-									key={demo.name}
-									variant={index === currentDemoIndex ? 'secondary' : 'ghost'}
-									size='sm'
-									className='text-xs h-7 justify-start truncate px-2'
-									onClick={function onClick() {
-										handleDemoSelect(index)
-									}}
-								>
-									{index + 1}. {demo.name.split(' ')[0]}
-								</Button>
-							)
-						})}
+				{!isSuccess && (
+					<div className='space-y-1 pt-2'>
+						<label className='text-xs font-medium'>Select Demo:</label>
+						<div className='grid grid-cols-2 gap-1'>
+							{demos.map(function renderDemo(demo, index) {
+								return (
+									<Button
+										key={demo.name}
+										variant={index === currentDemoIndex ? 'secondary' : 'ghost'}
+										size='sm'
+										className='text-xs h-7 justify-start truncate px-2'
+										onClick={function onClick() {
+											handleDemoSelect(index)
+										}}
+									>
+										{index + 1}. {demo.name.split(' ')[0]}
+									</Button>
+								)
+							})}
+						</div>
 					</div>
-				</div>
+				)}
 			</div>
 		</div>
 	)

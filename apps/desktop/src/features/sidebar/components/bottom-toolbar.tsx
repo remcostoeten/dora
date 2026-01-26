@@ -9,7 +9,7 @@ import { ChangelogPanel } from './changelog-panel'
 import { ProjectInfoPanel } from './project-info-panel'
 import { SettingsPanel } from './settings-panel'
 
-type Theme = 'dark' | 'light' | 'midnight' | 'forest' | 'claude' | 'claude-dark' | 'haptic'
+type Theme = 'dark' | 'light' | 'midnight' | 'forest' | 'claude' | 'claude-dark' | 'night'
 
 type ToolbarAction = 'settings' | 'theme' | 'changelog' | 'project-info'
 

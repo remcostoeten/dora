@@ -38,7 +38,7 @@ function getColumnTooltip(type: string, isPk?: boolean, isFk?: boolean): string 
 
 export function SidebarBottomPanel({ table }: Props) {
 	return (
-		<div className='flex flex-col border-t border-sidebar-border bg-sidebar shrink-0'>
+		<div className='flex flex-col border-t border-sidebar-border bg-sidebar h-full min-h-0'>
 			<div className='flex items-center justify-between px-3 py-2 border-b border-sidebar-border bg-sidebar/50'>
 				<span className='text-xs font-medium text-sidebar-foreground'>STRUCTURE</span>
 				<span className='text-xs text-muted-foreground'>
