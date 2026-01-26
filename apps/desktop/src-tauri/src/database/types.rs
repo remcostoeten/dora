@@ -297,6 +297,14 @@ pub struct ForeignKeyInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct IndexInfo {
+    pub name: String,
+    pub column_names: Vec<String>,
+    pub is_unique: bool,
+    pub is_primary: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct ColumnInfo {
     pub name: String,
     pub data_type: String,
@@ -321,6 +329,9 @@ pub struct TableInfo {
     /// Names of columns that form the primary key (supports composite keys)
     #[serde(default)]
     pub primary_key_columns: Vec<String>,
+    /// List of indexes on this table
+    #[serde(default)]
+    pub indexes: Vec<IndexInfo>,
     /// Estimated row count (may be approximate for performance)
     #[serde(default)]
     pub row_count_estimate: Option<u64>,

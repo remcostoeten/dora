@@ -1,6 +1,4 @@
-import { Copy } from 'lucide-react'
 import { useSettings } from '@/core/settings'
-import { Button } from '@/shared/ui/button'
 import {
 	Select,
 	SelectContent,
@@ -13,11 +11,7 @@ import { Slider } from '@/shared/ui/slider'
 import { Switch } from '@/shared/ui/switch'
 import { SidebarPanel, SidebarPanelContent, SidebarSection } from './sidebar-panel'
 
-type Props = {
-	onCopySchema?: () => void
-}
-
-export function SettingsPanel({ onCopySchema }: Props) {
+export function SettingsPanel() {
 	const { settings, updateSetting } = useSettings()
 
 	return (
@@ -186,18 +180,6 @@ export function SettingsPanel({ onCopySchema }: Props) {
 							</div>
 						</div>
 					</SidebarSection>
-
-					{onCopySchema && (
-						<Button
-							variant='outline'
-							size='sm'
-							className='justify-center gap-2 border-sidebar-border'
-							onClick={onCopySchema}
-						>
-							<Copy className='h-4 w-4' />
-							<span>Copy database schema</span>
-						</Button>
-					)}
 				</div>
 			</SidebarPanelContent>
 		</SidebarPanel>

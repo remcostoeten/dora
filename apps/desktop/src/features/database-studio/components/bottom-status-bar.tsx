@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
+import { NumberInput } from '@/shared/ui/number-input'
 import { PaginationState } from '../types'
 
 type Props = {
@@ -61,7 +61,7 @@ export function BottomStatusBar({
 	const endRow = Math.min(pagination.offset + rowCount, totalCount)
 
 	return (
-		<div className='flex items-center justify-between h-8 px-3 bg-sidebar border-t border-sidebar-border shrink-0'>
+		<div className='flex items-center justify-between h-10 px-3 bg-sidebar border-t border-sidebar-border shrink-0'>
 			<div className='flex items-center gap-3 text-xs text-muted-foreground'>
 				<div className='flex items-center gap-1.5'>
 					<Clock className='h-3.5 w-3.5' />
@@ -82,26 +82,24 @@ export function BottomStatusBar({
 			<div className='flex items-center gap-2'>
 				<div className='flex items-center gap-1.5 text-xs'>
 					<span className='text-muted-foreground'>Limit:</span>
-					<Input
-						type='number'
+					<NumberInput
 						value={limitInput}
 						onChange={function (e) {
 							handleLimitChange(e.target.value)
 						}}
-						className='h-6 w-16 text-xs px-2 text-center'
+						className='h-6 w-20 text-xs px-2 text-center'
 						title='Rows per page'
 					/>
 				</div>
 
 				<div className='flex items-center gap-1.5 text-xs'>
 					<span className='text-muted-foreground'>Offset:</span>
-					<Input
-						type='number'
+					<NumberInput
 						value={offsetInput}
 						onChange={function (e) {
 							handleOffsetChange(e.target.value)
 						}}
-						className='h-6 w-16 text-xs px-2 text-center'
+						className='h-6 w-20 text-xs px-2 text-center'
 						title='Starting row'
 					/>
 				</div>

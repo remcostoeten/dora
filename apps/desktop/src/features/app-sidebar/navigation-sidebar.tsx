@@ -5,9 +5,7 @@ import {
 	Network,
 	Container,
 	SunMedium,
-	MoonStar,
-	PanelLeft,
-	PanelLeftDashed
+	MoonStar
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, KeyboardEvent } from 'react'
 import { DoraLogo } from '@/components/dora-logo'
@@ -35,9 +33,9 @@ function ThemeToggle({ variant }: TTogle) {
 		const settings = getAppearanceSettings()
 		setIsDark(
 			settings.theme === 'dark' ||
-				settings.theme === 'midnight' ||
-				settings.theme === 'forest' ||
-				settings.theme === 'claude-dark'
+			settings.theme === 'midnight' ||
+			settings.theme === 'forest' ||
+			settings.theme === 'claude-dark'
 		)
 	}, [])
 
@@ -57,7 +55,7 @@ function ThemeToggle({ variant }: TTogle) {
 					type='button'
 					onClick={toggleTheme}
 					className={cn(
-						'flex h-10 w-10 items-center justify-center transition-colors',
+						'flex h-8 w-8 items-center justify-center transition-colors',
 						'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
 						'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
 						variant === 'floating' ? 'rounded-xl' : 'rounded-md'
@@ -77,40 +75,7 @@ function ThemeToggle({ variant }: TTogle) {
 	)
 }
 
-function ModeToggle() {
-	const { variant, setVariant } = useSidebar()
-	const isFloating = variant === 'floating'
 
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<button
-					type='button'
-					onClick={() => setVariant(isFloating ? 'default' : 'floating')}
-					className={cn(
-						'flex h-10 w-10 items-center justify-center transition-colors',
-						'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-						'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
-						isFloating ? 'rounded-xl' : 'rounded-md'
-					)}
-					aria-label={
-						isFloating ? 'Switch to docked sidebar' : 'Switch to floating sidebar'
-					}
-					aria-pressed={isFloating}
-				>
-					{isFloating ? (
-						<PanelLeft className='h-5 w-5' aria-hidden='true' />
-					) : (
-						<PanelLeftDashed className='h-5 w-5' aria-hidden='true' />
-					)}
-				</button>
-			</TooltipTrigger>
-			<TooltipContent side='right'>
-				{isFloating ? 'Docked Mode' : 'Floating Mode'}
-			</TooltipContent>
-		</Tooltip>
-	)
-}
 
 type ContentProps = {
 	activeNavId?: string
@@ -119,7 +84,7 @@ type ContentProps = {
 
 function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 	const { variant } = useSidebar()
-	const isFloating = variant === 'floating'
+	const isFloating = false
 	const navRef = useRef<HTMLElement>(null)
 
 	// Nav items configuration
@@ -276,13 +241,13 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 			{/* Footer */}
 			<div
 				className={cn(
-					'flex flex-col items-center gap-1 p-2',
+					'flex h-10 items-center justify-center gap-1',
 					!isFloating && 'border-t border-sidebar-border'
 				)}
 				role='group'
 				aria-label='Sidebar controls'
 			>
-				<ModeToggle />
+
 				<ThemeToggle variant={variant} />
 			</div>
 		</aside>

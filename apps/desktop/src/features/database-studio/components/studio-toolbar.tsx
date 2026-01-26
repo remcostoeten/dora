@@ -9,7 +9,8 @@ import {
 	Download,
 	Plus,
 	RefreshCw,
-	Sparkles
+	Sparkles,
+	Copy
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/shared/ui/button'
@@ -42,10 +43,10 @@ type Props = {
 	onToggleColumn?: (columnName: string, visible: boolean) => void
 	isDryEditMode?: boolean
 	onDryEditModeChange?: (enabled: boolean) => void
-	isDryEditMode?: boolean
-	onDryEditModeChange?: (enabled: boolean) => void
 	isSidebarOpen?: boolean
 	onSeed?: () => void
+	onCopySchema?: () => void
+	onCopyDrizzleSchema?: () => void
 }
 
 export function StudioToolbar({
@@ -65,7 +66,9 @@ export function StudioToolbar({
 	isDryEditMode,
 	onDryEditModeChange,
 	isSidebarOpen,
-	onSeed
+	onSeed,
+	onCopySchema,
+	onCopyDrizzleSchema
 }: Props) {
 	const [showFilters, setShowFilters] = useState(filters.length > 0)
 
@@ -286,6 +289,33 @@ export function StudioToolbar({
 					>
 						<Download className='h-3.5 w-3.5' />
 					</Button>
+
+					{(onCopySchema || onCopyDrizzleSchema) && (
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-7 w-7 text-muted-foreground hover:text-sidebar-foreground'
+									title='Copy Schema'
+								>
+									<Copy className='h-3.5 w-3.5' />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align='end'>
+								{onCopySchema && (
+									<DropdownMenuItem onClick={onCopySchema}>
+										Copy SQL Schema
+									</DropdownMenuItem>
+								)}
+								{onCopyDrizzleSchema && (
+									<DropdownMenuItem onClick={onCopyDrizzleSchema}>
+										Copy Drizzle Schema
+									</DropdownMenuItem>
+								)}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					)}
 				</div>
 			</div>
 
