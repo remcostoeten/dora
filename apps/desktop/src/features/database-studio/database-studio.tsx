@@ -1524,53 +1524,53 @@ export function DatabaseStudio({
 				</AlertDialogContent>
 			</AlertDialog>
 
-			<BulkEditDialog
+			{tableData && (
+				<BulkEditDialog
+					open={showBulkEditDialog}
+					onOpenChange={setShowBulkEditDialog}
+					columns={tableData.columns}
+					selectedCount={selectedRows.size}
+					isLoading={isBulkActionLoading}
+					onSubmit={function handleBulkEditSubmit(columnName: string, newValue: unknown) {
+						if (!activeConnectionId || !tableId || !tableData) return
 
-				open={showBulkEditDialog}
-				onOpenChange={setShowBulkEditDialog}
-				columns={tableData.columns}
-				selectedCount={selectedRows.size}
-				isLoading={isBulkActionLoading}
-				onSubmit={function handleBulkEditSubmit(columnName: string, newValue: unknown) {
-					if (!activeConnectionId || !tableId || !tableData) return
+						const primaryKeyColumn = tableData.columns.find(function (c) {
+							return c.primaryKey
+						})
+						if (!primaryKeyColumn) {
+							console.error('No primary key found')
+							return
+						}
 
-					const primaryKeyColumn = tableData.columns.find(function (c) {
-						return c.primaryKey
-					})
-					if (!primaryKeyColumn) {
-						console.error('No primary key found')
-						return
-					}
+						setIsBulkActionLoading(true)
+						const rowIndexes = Array.from(selectedRows)
 
-					setIsBulkActionLoading(true)
-					const rowIndexes = Array.from(selectedRows)
-
-					Promise.all(
-						rowIndexes.map(function (rowIndex) {
-							const row = tableData.rows[rowIndex]
-							return updateCell.mutateAsync({
-								connectionId: activeConnectionId,
-								tableName: tableName || tableId,
-								primaryKeyColumn: primaryKeyColumn.name,
-								primaryKeyValue: row[primaryKeyColumn.name],
-								columnName,
-								newValue
+						Promise.all(
+							rowIndexes.map(function (rowIndex) {
+								const row = tableData.rows[rowIndex]
+								return updateCell.mutateAsync({
+									connectionId: activeConnectionId,
+									tableName: tableName || tableId,
+									primaryKeyColumn: primaryKeyColumn.name,
+									primaryKeyValue: row[primaryKeyColumn.name],
+									columnName,
+									newValue
+								})
 							})
-						})
-					)
-						.then(function () {
-							setShowBulkEditDialog(false)
-							setSelectedRows(new Set())
-							loadTableData()
-						})
-						.catch(function (error) {
-							console.error('Failed to bulk edit:', error)
-						})
-						.finally(function () {
-							setIsBulkActionLoading(false)
-						})
-				}}
-			/>
+						)
+							.then(function () {
+								setShowBulkEditDialog(false)
+								setSelectedRows(new Set())
+								loadTableData()
+							})
+							.catch(function (error) {
+								console.error('Failed to bulk edit:', error)
+							})
+							.finally(function () {
+								setIsBulkActionLoading(false)
+							})
+					}}
+				/>
 			)}
 
 			{tableData && (
