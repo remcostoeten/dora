@@ -11,7 +11,9 @@ const PACKAGE_JSONS = [
 ];
 
 // Helper to read file content safely
-const readFile = (p: string) => fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : '';
+function readFile(p: string): string {
+    return fs.existsSync(p) ? fs.readFileSync(p, 'utf-8') : '';
+}
 
 async function scanPackage(pkgPath: string) {
     const fullPkgPath = path.join(ROOT_DIR, pkgPath);
