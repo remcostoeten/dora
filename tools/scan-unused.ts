@@ -3,16 +3,19 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Config
-const TARGET_DIR = path.resolve(__dirname, '../apps/desktop/src/features');
+const TARGET_DIR = path.resolve(__dirname, '../apps/desktop/src');
 const SEARCH_ROOT = path.resolve(__dirname, '../apps/desktop/src'); // Scope for references
-const EXCLUSIONS = ['index.ts', 'index.tsx', '.test.', '.spec.', '.css', '.scss'];
+const EXCLUSIONS = [
+    'index.ts', 'index.tsx', '.test.', '.spec.', '.css', '.scss',
+    'vite-env.d.ts', 'main.tsx', 'App.tsx'
+];
 
 async function main() {
     console.log(`🔎 Scanning for unused files in: ${TARGET_DIR}`);
 
-    // 1. Get all files in Features
+    // 1. Get all files in src
     const files = glob.sync('**/*.{ts,tsx}', { cwd: TARGET_DIR, absolute: true });
-    console.log(`Found ${files.length} files in features.`);
+    console.log(`Found ${files.length} files in src.`);
 
     // 2. Read all files in the Search Root to find references
     const allSourceFiles = glob.sync('**/*.{ts,tsx}', { cwd: SEARCH_ROOT, absolute: true });
@@ -33,8 +36,15 @@ async function main() {
         // Skip exclusions
         if (EXCLUSIONS.some(ex => filename.includes(ex))) continue;
 
-        // Specific exclusion: Layouts/Pages usually implicit (but in features, maybe not)
+        // Skip Pages (Entry points)
+        if (relativePath.startsWith('pages/')) continue;
+
+        // Skip specific config/entry files
         if (filename === 'layout.tsx' || filename === 'page.tsx') continue;
+
+        // Skip Features (Already audited, but re-scanning is fine -
+        // actually let's skip features if we want to focus on the rest,
+        // OR just scan everything. Let's scan everything for completeness.)
 
         // Check strict import references (simplified text search for basename)
         // We search for "basename" to catch imports like: import { X } from './basename'
@@ -43,7 +53,7 @@ async function main() {
 
         // Regex for import paths? No, simple text search is robust "double-verify".
         // If the filename (no ext) appears in the codebase, we assume it MIGHT be used.
-        // We check if it appears MORE than once (once is the definition itself, if inside the checked dir? 
+        // We check if it appears MORE than once (once is the definition itself, if inside the checked dir?
         // Wait, we concatenated ALL content. So the definition file content is in there.
 
         // Refined strategy:
@@ -67,7 +77,7 @@ async function main() {
             // Fallback: Check Global (Project Root - e.g. for dynamic or cross-package)
             // For now, let's stick to Desktop scope as per plan, but flag "Suspicious".
             console.log(`[UNUSED?] ${relativePath}`);
-            unusedFiles.push(file);
+            unusedFiles.push(relativePath); // Store relative path for easier reading
         }
     }
 

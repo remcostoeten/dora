@@ -28,6 +28,11 @@ FILES_TO_REMOVE=(
     "apps/desktop/src/features/sidebar/components/theme-panel.tsx"
     "apps/desktop/src/features/sidebar/components/spotlight-trigger.tsx"
     "apps/desktop/src/features/sidebar/components/nav-buttons.tsx"
+
+    # Round 2: Comprehensive Scan Findings
+    "apps/desktop/src/hooks/use-github-release.ts"
+    "apps/desktop/src/hooks/use-horizontal-scroll.ts"
+    "apps/desktop/src/features/docker-manager/api/queries/use-container-sizes.ts"
 )
 
 # ==========================================
@@ -39,9 +44,14 @@ for arg in "$@"; do
         DRY_RUN=false
         shift
         ;;
+        --force)
+        FORCE=true
+        shift
+        ;;
         --help)
-        echo "Usage: ./tools/audit-cleanup.sh [--execute]"
+        echo "Usage: ./tools/audit-cleanup.sh [--execute] [--force]"
         echo "  --execute  Perform actual backup and deletion (default is DRY RUN)"
+        echo "  --force    Bypass Pre-flight Git checks"
         exit 0
         ;;
     esac
@@ -56,7 +66,9 @@ if [ "$DRY_RUN" = false ]; then
     echo "⚠️  EXECUTION MODE ENABLED"
     
     # Git Safety Check
-    if ! git diff-index --quiet HEAD --; then
+    if [ "$FORCE" = true ]; then
+        echo "⚠️  Skipping Git Safety Check (--force used)"
+    elif ! git diff-index --quiet HEAD --; then
         echo "❌ Error: You have uncommitted changes."
         echo "   Please commit your changes before running cleanup."
         exit 1
