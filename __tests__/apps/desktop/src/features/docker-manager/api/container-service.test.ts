@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { seedDatabase } from '../../../../../../../apps/desktop/src/features/docker-manager/api/container-service'
+
 
 // Mock the docker-client module
 vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client', () => ({
@@ -10,15 +10,36 @@ vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/api/docke
 }))
 
 describe('seedDatabase', () => {
-	beforeEach(() => {
+	// We need to keep a reference to the dynamically imported module
+	let containerService: any;
+	let dockerClient: any;
+
+	beforeEach(async () => {
+		vi.resetModules() // Important: clear cache so isTauri is re-evaluated
 		vi.clearAllMocks()
+
+		// Mock Tauri environment to ensure we test the real implementation
+		Object.defineProperty(window, '__TAURI_INTERNALS__', {
+			value: {},
+			writable: true,
+			configurable: true
+		})
+
+		// Re-import modules after setting up environment
+		dockerClient = await import('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client')
+		containerService = await import('../../../../../../../apps/desktop/src/features/docker-manager/api/container-service')
+	})
+
+	afterEach(() => {
+		// Cleanup environment
+		// @ts-ignore
+		delete window['__TAURI_INTERNALS__']
 	})
 
 	it('should successfully copy, exec, and cleanup', async () => {
-		const { copyToContainer, execCommand } =
-			await import('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client')
+		const { copyToContainer, execCommand } = dockerClient
 
-		const result = await seedDatabase('container-123', '/path/to/seed.sql', {
+		const result = await containerService.seedDatabase('container-123', '/path/to/seed.sql', {
 			user: 'testuser',
 			database: 'testdb'
 		})
@@ -48,15 +69,15 @@ describe('seedDatabase', () => {
 	})
 
 	it('should handle exec failure', async () => {
-		const { execCommand } =
-			await import('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client')
+		const { execCommand } = dockerClient
+
 		vi.mocked(execCommand).mockResolvedValueOnce({
 			stdout: '',
 			stderr: 'psql error',
 			exitCode: 1
 		})
 
-		const result = await seedDatabase('container-123', 'file.sql', { user: 'u', database: 'd' })
+		const result = await containerService.seedDatabase('container-123', 'file.sql', { user: 'u', database: 'd' })
 
 		expect(result.success).toBe(false)
 		expect(result.error).toContain('psql error')

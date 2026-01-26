@@ -6,7 +6,7 @@
 	"build": {
 		"frontendDist": "../dist",
 		"devUrl": "http://localhost:1420",
-		"beforeDevCommand": "bun run dev",
+		"beforeDevCommand": "bun vite --port 1420 --strictPort",
 		"beforeBuildCommand": "bun run build",
 		"removeUnusedCommands": true
 	},
@@ -33,7 +33,9 @@
 		"active": true,
 		"targets": [
 			"deb",
-			"appimage"
+			"appimage",
+			"nsis",
+			"dmg"
 		],
 		"shortDescription": "A modern database client",
 		"longDescription": "Dora is a modern, fast, and efficient database client for PostgreSQL, SQLite, and more.",

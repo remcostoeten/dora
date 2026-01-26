@@ -77,8 +77,9 @@ export function DatabaseStudio({
 		unknown
 	> | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-	const [showSkeleton, setShowSkeleton] = useState(false)
+	const [isTableTransitioning, setIsTableTransitioning] = useState(false)
 	const [viewMode, setViewMode] = useState<ViewMode>('content')
+	const previousTableRef = useRef<{ columns: number; rows: number } | null>(null)
 	const [pagination, setPagination] = useState<PaginationState>({ limit: 50, offset: 0 })
 	const [sort, setSort] = useState<SortDescriptor | undefined>()
 	const [filters, setFilters] = useState<FilterDescriptor[]>([])
@@ -124,16 +125,14 @@ export function DatabaseStudio({
 		]
 	)
 
-	// Delay showing skeleton to avoid flash for fast queries
-	useEffect(() => {
-		let timer: ReturnType<typeof setTimeout>
-		if (isLoading && !tableData) {
-			timer = setTimeout(() => setShowSkeleton(true), 150)
-		} else {
-			setShowSkeleton(false)
+	useEffect(function cachePreviousTableDimensions() {
+		if (tableData && !isLoading) {
+			previousTableRef.current = {
+				columns: tableData.columns.length,
+				rows: Math.min(tableData.rows.length, 12)
+			}
 		}
-		return () => clearTimeout(timer)
-	}, [isLoading, tableData])
+	}, [tableData, isLoading])
 
 	const loadTableData = useCallback(async () => {
 		console.log('[DatabaseStudio] loadTableData called', { tableId, activeConnectionId })
@@ -205,14 +204,26 @@ export function DatabaseStudio({
 
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
 
-	// Reset state when table changes
-	useEffect(() => {
+	useEffect(function handleTableChange() {
+		if (!tableId) return
 		setPagination({ limit: 50, offset: 0 })
 		setSort(undefined)
 		setFilters([])
 		setVisibleColumns(new Set())
 		initializedFromUrlRef.current = false
+		setIsTableTransitioning(true)
 	}, [tableId])
+
+	useEffect(function clearTransitionOnLoad() {
+		if (!isLoading && tableData) {
+			const timer = setTimeout(function () {
+				setIsTableTransitioning(false)
+			}, 50)
+			return function () {
+				clearTimeout(timer)
+			}
+		}
+	}, [isLoading, tableData])
 
 	useEffect(
 		function initializeFromUrl() {
@@ -1268,49 +1279,63 @@ export function DatabaseStudio({
 				onDryEditModeChange={setDryEditMode}
 			/>
 
-			<div className='flex-1 overflow-hidden'>
-				{showSkeleton ? (
-					<TableSkeleton rows={12} columns={Math.min(visibleColumns.size || 6, 8)} />
-				) : tableData ? (
-					<DataGrid
-						columns={tableData.columns.filter((col) => visibleColumns.has(col.name))}
-						rows={tableData.rows}
-						selectedRows={selectedRows}
-						onRowSelect={handleRowSelect}
-						onRowsSelect={handleRowsSelect}
-						onSelectAll={handleSelectAll}
-						sort={sort}
-						onSortChange={setSort}
-						onFilterAdd={function (filter) {
-							setFilters(function (prev) {
-								return [...prev, filter]
-							})
-						}}
-						onCellEdit={handleCellEdit}
-						onBatchCellEdit={handleBatchCellEdit}
-						onRowAction={handleRowAction}
-						tableName={tableName || tableId}
-						selectedCells={selectedCells}
-						onCellSelectionChange={setSelectedCells}
-						initialFocusedCell={focusedCell}
-						onFocusedCellChange={setFocusedCell}
-						onContextMenuChange={setContextMenuState}
-						draftRow={draftRow}
-						onDraftChange={handleDraftChange}
-						onDraftSave={handleDraftSave}
-						onDraftCancel={handleDraftCancel}
-						pendingEdits={
-							tableId
-								? new Set(
-									getEditsForTable(tableId).map(
-										(e) => `${e.primaryKeyValue}:${e.columnName}`
+			<div className='flex-1 overflow-hidden relative'>
+				{tableData && (
+					<div
+						className='transition-opacity duration-150'
+						style={{ opacity: isTableTransitioning ? 0 : 1 }}
+					>
+						<DataGrid
+							columns={tableData.columns.filter(function (col) {
+								return visibleColumns.has(col.name)
+							})}
+							rows={tableData.rows}
+							selectedRows={selectedRows}
+							onRowSelect={handleRowSelect}
+							onRowsSelect={handleRowsSelect}
+							onSelectAll={handleSelectAll}
+							sort={sort}
+							onSortChange={setSort}
+							onFilterAdd={function (filter) {
+								setFilters(function (prev) {
+									return [...prev, filter]
+								})
+							}}
+							onCellEdit={handleCellEdit}
+							onBatchCellEdit={handleBatchCellEdit}
+							onRowAction={handleRowAction}
+							tableName={tableName || tableId}
+							selectedCells={selectedCells}
+							onCellSelectionChange={setSelectedCells}
+							initialFocusedCell={focusedCell}
+							onFocusedCellChange={setFocusedCell}
+							onContextMenuChange={setContextMenuState}
+							draftRow={draftRow}
+							onDraftChange={handleDraftChange}
+							onDraftSave={handleDraftSave}
+							onDraftCancel={handleDraftCancel}
+							pendingEdits={
+								tableId
+									? new Set(
+										getEditsForTable(tableId).map(function (e) {
+											return `${e.primaryKeyValue}:${e.columnName}`
+										})
 									)
-								)
-								: undefined
-						}
-						draftInsertIndex={draftInsertIndex}
-					/>
-				) : (
+									: undefined
+							}
+							draftInsertIndex={draftInsertIndex}
+						/>
+					</div>
+				)}
+				{isTableTransitioning && (
+					<div className='absolute inset-0 bg-background z-10 animate-in fade-in duration-100'>
+						<TableSkeleton
+							rows={previousTableRef.current?.rows || 12}
+							columns={Math.min(previousTableRef.current?.columns || visibleColumns.size || 6, 8)}
+						/>
+					</div>
+				)}
+				{!tableData && !isTableTransitioning && (
 					<div className='flex items-center justify-center h-full'>
 						<div className='text-muted-foreground text-sm'>No data available</div>
 					</div>
