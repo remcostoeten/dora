@@ -26,9 +26,6 @@ export function DisabledFeature({
                 description: 'This feature is not yet implemented'
             })
         }
-        if (typeof window !== 'undefined') {
-            console.log('[feature_gated]', feature)
-        }
     }
 
     return (

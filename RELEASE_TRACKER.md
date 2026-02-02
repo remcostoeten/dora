@@ -11,7 +11,7 @@
 | Phase | Status | Progress |
 |-------|--------|----------|
 | Core Features | Complete | 100% |
-| UX Polish | In Progress | 70% |
+| UX Polish | In Progress | 85% |
 | Error Handling | Complete | 100% |
 | Empty States | Complete | 100% |
 | Form Validation | Not Started | 0% |
@@ -37,9 +37,18 @@
 - [x] Updated Dora AI view to use NotImplemented component with proper description
 - [x] Schema Visualizer correctly shows "(Coming Soon)" in tooltip
 
+**Native Dialog Replacement**
+- [x] Replaced `alert()` with toast notifications in seed-view.tsx
+- [x] Replaced `confirm()` with AlertDialog in database-sidebar.tsx (bulk drop/truncate)
+- [x] Fixed stray "3" text in studio-toolbar.tsx
+
 **Cleanup**
 - [x] Removed AUDIT_REPORT.html, AUDIT_TASKS.md, recap.md
 - [x] Removed unused imports (Wand2, ToolbarAction, SshTunnelConfig)
+- [x] Removed debug console.log statements from:
+  - disabled-feature.tsx
+  - database-studio.tsx (loadTableData, row actions)
+  - sql-console/api.ts (query execution logs)
 
 ### New Files Created
 ```
@@ -59,6 +68,22 @@ apps/desktop/src/pages/Index.tsx
 apps/desktop/src/features/sidebar/database-sidebar.tsx
   - Removed dead handleToolbarAction function
   - Removed unused ToolbarAction import
+  - Replaced confirm() with AlertDialog for bulk drop/truncate
+
+apps/desktop/src/features/docker-manager/components/seed-view.tsx
+  - Replaced alert() with toast notifications
+
+apps/desktop/src/features/database-studio/components/studio-toolbar.tsx
+  - Fixed stray "3" text
+
+apps/desktop/src/features/database-studio/database-studio.tsx
+  - Removed debug console.log statements
+
+apps/desktop/src/features/sql-console/api.ts
+  - Removed debug console.log statements
+
+apps/desktop/src/shared/ui/disabled-feature.tsx
+  - Removed debug console.log statement
 
 apps/desktop/src/features/sidebar/components/bottom-toolbar.tsx
   - Made onAction prop optional

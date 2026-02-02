@@ -7,6 +7,16 @@ import type { DatabaseSchema, TableInfo } from '@/lib/bindings'
 import { commands } from '@/lib/bindings'
 import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appearance-store'
 import { loadFontPair } from '@/shared/lib/font-loader'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle
+} from '@/shared/ui/alert-dialog'
 import { Button } from '@/shared/ui/button'
 import { ScrollArea } from '@/shared/ui/scroll-area'
 import { ConnectionSwitcher } from '../connections/components/connection-switcher'
@@ -96,6 +106,10 @@ export function DatabaseSidebar({
 	const [refreshTrigger, setRefreshTrigger] = useState(0)
 	const [showTableInfoDialog, setShowTableInfoDialog] = useState(false)
 	const [tableInfoTarget, setTableInfoTarget] = useState<string>('')
+	const [bulkActionConfirm, setBulkActionConfirm] = useState<{
+		open: boolean
+		action: BulkAction | null
+	}>({ open: false, action: null })
 
 	useEffect(function initAppearance() {
 		const settings = getAppearanceSettings()
@@ -374,79 +388,79 @@ export function DatabaseSidebar({
 		}
 	}
 
-	async function handleBulkAction(action: BulkAction) {
+	function handleBulkAction(action: BulkAction) {
 		if (!activeConnectionId || selectedTableIds.length === 0) return
 
+		if (action === 'drop' || action === 'truncate') {
+			setBulkActionConfirm({ open: true, action })
+		}
+	}
+
+	async function executeBulkAction() {
+		if (!activeConnectionId || !bulkActionConfirm.action) return
+
+		const action = bulkActionConfirm.action
+		setBulkActionConfirm({ open: false, action: null })
+
 		if (action === 'drop') {
-			if (
-				confirm(
-					`Are you sure you want to drop ${selectedTableIds.length} tables? This cannot be undone.`
-				)
-			) {
-				setIsDdlLoading(true)
-				try {
-					const drops = selectedTableIds.map(function (id) {
-						return `DROP TABLE IF EXISTS "${id}"`
-					})
-					const result = await commands.executeBatch(activeConnectionId, drops)
-					if (result.status === 'ok') {
-						toast({
-							title: 'Tables dropped',
-							description: `Successfully dropped ${selectedTableIds.length} tables.`
-						})
-						setSelectedTableIds([])
-						setIsMultiSelectMode(false)
-						setSchema(null)
-						setRefreshTrigger(function (prev) {
-							return prev + 1
-						})
-					} else {
-						throw new Error(String(result.error))
-					}
-				} catch (e) {
-					console.error(e)
+			setIsDdlLoading(true)
+			try {
+				const drops = selectedTableIds.map(function (id) {
+					return `DROP TABLE IF EXISTS "${id}"`
+				})
+				const result = await commands.executeBatch(activeConnectionId, drops)
+				if (result.status === 'ok') {
 					toast({
-						title: 'Error dropping tables',
-						description: String(e),
-						variant: 'destructive'
+						title: 'Tables dropped',
+						description: `Successfully dropped ${selectedTableIds.length} tables.`
 					})
-				} finally {
-					setIsDdlLoading(false)
+					setSelectedTableIds([])
+					setIsMultiSelectMode(false)
+					setSchema(null)
+					setRefreshTrigger(function (prev) {
+						return prev + 1
+					})
+				} else {
+					throw new Error(String(result.error))
 				}
+			} catch (e) {
+				console.error(e)
+				toast({
+					title: 'Error dropping tables',
+					description: String(e),
+					variant: 'destructive'
+				})
+			} finally {
+				setIsDdlLoading(false)
 			}
 		} else if (action === 'truncate') {
-			if (
-				confirm(
-					`Are you sure you want to truncate ${selectedTableIds.length} tables? All data will be lost.`
-				)
-			) {
-				setIsDdlLoading(true)
-				try {
-					const deletes = selectedTableIds.map(function (id) {
-						return `DELETE FROM "${id}"`
-					})
-					const result = await commands.executeBatch(activeConnectionId, deletes)
-					if (result.status === 'ok') {
-						toast({
-							title: 'Tables truncated',
-							description: `Successfully truncated ${selectedTableIds.length} tables.`
-						})
-						setSelectedTableIds([])
-						setIsMultiSelectMode(false)
-						setRefreshTrigger(function (prev) {
-							return prev + 1
-						})
-					} else {
-						throw new Error(String(result.error))
-					}
-				} catch (e) {
+			setIsDdlLoading(true)
+			try {
+				const deletes = selectedTableIds.map(function (id) {
+					return `DELETE FROM "${id}"`
+				})
+				const result = await commands.executeBatch(activeConnectionId, deletes)
+				if (result.status === 'ok') {
 					toast({
-						title: 'Error truncating tables',
-						description: String(e),
-						variant: 'destructive'
+						title: 'Tables truncated',
+						description: `Successfully truncated ${selectedTableIds.length} tables.`
 					})
-				} finally {
-					setIsDdlLoading(false)
+					setSelectedTableIds([])
+					setIsMultiSelectMode(false)
+					setRefreshTrigger(function (prev) {
+						return prev + 1
+					})
+				} else {
+					throw new Error(String(result.error))
+				}
+			} catch (e) {
+				toast({
+					title: 'Error truncating tables',
+					description: String(e),
+					variant: 'destructive'
+				})
+			} finally {
+				setIsDdlLoading(false)
 				}
 			}
 		}
@@ -730,6 +744,35 @@ export function DatabaseSidebar({
 					connectionId={activeConnectionId}
 				/>
 			)}
+
+			<AlertDialog
+				open={bulkActionConfirm.open}
+				onOpenChange={(open) => {
+					if (!open) setBulkActionConfirm({ open: false, action: null })
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{bulkActionConfirm.action === 'drop' ? 'Drop Tables' : 'Truncate Tables'}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{bulkActionConfirm.action === 'drop'
+								? `Are you sure you want to drop ${selectedTableIds.length} table${selectedTableIds.length > 1 ? 's' : ''}? This action cannot be undone.`
+								: `Are you sure you want to truncate ${selectedTableIds.length} table${selectedTableIds.length > 1 ? 's' : ''}? All data will be permanently deleted.`}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={executeBulkAction}
+							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+						>
+							{bulkActionConfirm.action === 'drop' ? 'Drop' : 'Truncate'}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	)
 }

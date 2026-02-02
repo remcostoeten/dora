@@ -5,11 +5,9 @@ export async function executeSqlQuery(
 	connectionId: string,
 	query: string
 ): Promise<SqlQueryResult> {
-	console.log('[SQL Console API] Executing query:', query)
 	const startTime = performance.now()
 	try {
 		const startResult = await commands.startQuery(connectionId, query)
-		console.log('[SQL Console API] startQuery result:', startResult)
 
 		if (startResult.status !== 'ok') {
 			throw new Error('Failed to start query: ' + JSON.stringify(startResult.error))
@@ -20,7 +18,6 @@ export async function executeSqlQuery(
 		}
 
 		const queryId = startResult.data[0]
-		console.log('[SQL Console API] queryId:', queryId)
 
 		// Poll for query completion - backend may return "Running" initially
 		let pageInfo
@@ -29,12 +26,6 @@ export async function executeSqlQuery(
 
 		while (attempts < maxAttempts) {
 			const fetchResult = await commands.fetchQuery(queryId)
-			console.log(
-				'[SQL Console API] fetchQuery attempt',
-				attempts,
-				'status:',
-				fetchResult.status
-			)
 
 			if (fetchResult.status !== 'ok') {
 				throw new Error('Failed to fetch query results')
@@ -44,12 +35,10 @@ export async function executeSqlQuery(
 
 			// Check if query is complete
 			if (pageInfo.status === 'Completed' || pageInfo.status === 'Error') {
-				console.log('[SQL Console API] Query completed with status:', pageInfo.status)
 				break
 			}
 
 			// Query still running, wait and retry
-			console.log('[SQL Console API] Query still running, waiting...')
 			await new Promise((resolve) => setTimeout(resolve, 100))
 			attempts++
 		}
@@ -57,9 +46,6 @@ export async function executeSqlQuery(
 		if (!pageInfo) {
 			throw new Error('Query timed out')
 		}
-
-		console.log('[SQL Console API] pageInfo:', pageInfo)
-		console.log('[SQL Console API] first_page:', pageInfo.first_page)
 
 		// Handle query error
 		if (pageInfo.status === 'Error') {
@@ -74,7 +60,6 @@ export async function executeSqlQuery(
 		}
 
 		const columnsResult = await commands.getColumns(queryId)
-		console.log('[SQL Console API] columnsResult:', columnsResult)
 
 		const columns =
 			columnsResult.status === 'ok' && Array.isArray(columnsResult.data)
@@ -102,10 +87,7 @@ export async function executeSqlQuery(
 				})
 			: []
 
-		console.log('[SQL Console API] Transformed rows:', rows)
-		console.log('[SQL Console API] Transformed columns:', columns)
-
-		const result = {
+		return {
 			columns: columns.map((c) => c.name),
 			rows,
 			rowCount: pageInfo.affected_rows ?? rows.length,
@@ -113,8 +95,6 @@ export async function executeSqlQuery(
 			error: undefined,
 			queryType: getQueryType(query)
 		}
-		console.log('[SQL Console API] Final result:', result)
-		return result
 	} catch (error) {
 		console.error('[SQL Console API] Error:', error)
 		return {
