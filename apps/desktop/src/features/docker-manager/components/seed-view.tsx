@@ -1,5 +1,6 @@
 import { Upload, FileCode, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { useState, useRef } from 'react'
+import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/shared/ui/button'
 import { useSeedDatabase } from '../api/mutations/use-seed-database'
 import type { DockerContainer } from '../types'
@@ -11,6 +12,7 @@ type Props = {
 export function SeedView({ container }: Props) {
 	const [file, setFile] = useState<File | null>(null)
 	const fileInputRef = useRef<HTMLInputElement>(null)
+	const { toast } = useToast()
 
 	const seedMutation = useSeedDatabase()
 
@@ -34,7 +36,11 @@ export function SeedView({ container }: Props) {
 				setFile(droppedFile)
 				seedMutation.reset()
 			} else {
-				alert('Only .sql files are supported')
+				toast({
+					title: 'Invalid file type',
+					description: 'Only .sql files are supported',
+					variant: 'destructive'
+				})
 			}
 		}
 	}
@@ -67,7 +73,11 @@ export function SeedView({ container }: Props) {
 		const filePath = (file as any).path
 
 		if (!filePath) {
-			alert('Cannot determine file path. Please select file again.')
+			toast({
+				title: 'File path error',
+				description: 'Cannot determine file path. Please select the file again.',
+				variant: 'destructive'
+			})
 			return
 		}
 
