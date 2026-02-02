@@ -20,6 +20,7 @@ import {
 	buildConnectionString,
 	PROVIDER_CONFIGS
 } from '../utils/providers'
+import { validateConnection } from '../validation'
 import { ConnectionForm } from './connection-dialog/connection-form'
 import { DatabaseTypeSelector } from './connection-dialog/database-type-selector'
 
@@ -55,6 +56,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 	const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle')
 	const [testMessage, setTestMessage] = useState('')
 	const [useConnectionString, setUseConnectionString] = useState(false)
+	const [validationError, setValidationError] = useState<{ field?: string; message?: string } | null>(null)
 
 	useEffect(
 		function resetFormOnOpen() {
@@ -135,6 +137,10 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 			return newData
 		})
 		setTestStatus('idle')
+		// Clear validation error for this field
+		if (validationError?.field === field) {
+			setValidationError(null)
+		}
 	}
 
 	function handleTypeSelect(type: DatabaseType) {
@@ -290,8 +296,14 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 	}
 
 	function handleSave() {
-		if (!formData.name) return
+		const validation = validateConnection(formData as Record<string, unknown>, useConnectionString)
 
+		if (!validation.success) {
+			setValidationError({ field: validation.field, message: validation.error })
+			return
+		}
+
+		setValidationError(null)
 		setIsSaving(true)
 		setTimeout(function () {
 			setIsSaving(false)
