@@ -261,6 +261,89 @@ pub fn truncate_table_sqlite(
     })
 }
 
+/// Perform soft delete on LibSQL
+pub async fn soft_delete_libsql(
+    conn: &libsql::Connection,
+    table_name: &str,
+    primary_key_column: &str,
+    primary_key_values: &[serde_json::Value],
+    soft_delete_column: &str,
+) -> Result<SoftDeleteResult, Error> {
+    if primary_key_values.is_empty() {
+        return Ok(SoftDeleteResult {
+            success: true,
+            affected_rows: 0,
+            message: Some("No rows to soft delete".to_string()),
+            deleted_at: chrono::Utc::now().timestamp(),
+            undo_window_seconds: 30,
+        });
+    }
+
+    let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
+    let now = chrono::Utc::now().timestamp();
+    
+    let query = format!(
+        "UPDATE \"{}\" SET \"{}\" = ? WHERE \"{}\" IN ({}) AND \"{}\" IS NULL",
+        table_name, soft_delete_column, primary_key_column, placeholders.join(", "), soft_delete_column
+    );
+
+    let mut params: Vec<libsql::Value> = vec![libsql::Value::Integer(now)];
+    params.extend(primary_key_values.iter().map(|value| {
+        match value {
+            serde_json::Value::Null => libsql::Value::Null,
+            serde_json::Value::Bool(b) => libsql::Value::Integer(if *b { 1 } else { 0 }),
+            serde_json::Value::Number(n) => {
+                if let Some(i) = n.as_i64() {
+                    libsql::Value::Integer(i)
+                } else if let Some(f) = n.as_f64() {
+                    libsql::Value::Real(f)
+                } else {
+                    libsql::Value::Text(n.to_string())
+                }
+            }
+            serde_json::Value::String(s) => libsql::Value::Text(s.clone()),
+            _ => libsql::Value::Text(value.to_string()),
+        }
+    }));
+
+    let affected = conn.execute(&query, params).await
+        .map_err(|e| Error::Any(anyhow::anyhow!("Soft delete failed: {}", e)))?;
+
+    Ok(SoftDeleteResult {
+        success: affected > 0,
+        affected_rows: affected as usize,
+        message: Some(format!("Soft deleted {} row(s)", affected)),
+        deleted_at: now,
+        undo_window_seconds: 30,
+    })
+}
+
+/// Truncate a single table (LibSQL) - uses DELETE since LibSQL has no TRUNCATE
+pub async fn truncate_table_libsql(
+    conn: &libsql::Connection,
+    table_name: &str,
+) -> Result<TruncateResult, Error> {
+    let count_query = format!("SELECT COUNT(*) FROM \"{}\"", table_name);
+    let mut rows = conn.query(&count_query, ()).await
+        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to count rows: {}", e)))?;
+    
+    let row_count: i64 = if let Some(row) = rows.next().await.ok().flatten() {
+        row.get::<i64>(0).unwrap_or(0)
+    } else {
+        0
+    };
+
+    conn.execute(&format!("DELETE FROM \"{}\"", table_name), ()).await
+        .map_err(|e| Error::Any(anyhow::anyhow!("Truncate failed: {}", e)))?;
+
+    Ok(TruncateResult {
+        success: true,
+        affected_rows: row_count as usize,
+        tables_truncated: vec![table_name.to_string()],
+        message: Some(format!("Truncated table '{}', removed {} rows", table_name, row_count)),
+    })
+}
+
 /// Truncate all tables in the database (DANGEROUS!)
 pub async fn truncate_database_postgres(
     client: &tokio_postgres::Client,
@@ -436,3 +519,82 @@ fn format_pg_value_for_sql(row: &tokio_postgres::Row, idx: usize) -> String {
     }
     "NULL".to_string()
 }
+
+pub async fn dump_database_libsql(
+    conn: &libsql::Connection,
+    schema: &DatabaseSchema,
+    output_path: &str,
+) -> Result<DumpResult, Error> {
+    use std::io::Write;
+    
+    let mut file = std::fs::File::create(output_path)
+        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to create dump file: {}", e)))?;
+    
+    writeln!(file, "-- LibSQL Database dump generated at {}", chrono::Utc::now().to_rfc3339())
+        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to write to dump file: {}", e)))?;
+    writeln!(file, "-- Tables: {}\n", schema.tables.len())
+        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to write to dump file: {}", e)))?;
+
+    let mut total_rows: u64 = 0;
+    
+    for table in &schema.tables {
+        writeln!(file, "\n-- Table: {}", table.name)
+            .map_err(|e| Error::Any(anyhow::anyhow!("Failed to write to dump file: {}", e)))?;
+        
+        let query = format!("SELECT * FROM \"{}\"", table.name);
+        let mut rows = conn.query(&query, ()).await
+            .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query table {}: {}", table.name, e)))?;
+        
+        let columns: Vec<String> = table.columns.iter().map(|c| c.name.clone()).collect();
+        
+        while let Some(row) = rows.next().await.ok().flatten() {
+            let mut values = Vec::new();
+            for i in 0..columns.len() {
+                let value = format_libsql_value_for_sql(&row, i as i32);
+                values.push(value);
+            }
+            
+            writeln!(
+                file,
+                "INSERT INTO \"{}\" ({}) VALUES ({});",
+                table.name,
+                columns.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", "),
+                values.join(", ")
+            ).map_err(|e| Error::Any(anyhow::anyhow!("Failed to write to dump file: {}", e)))?;
+            
+            total_rows += 1;
+        }
+    }
+
+    let file_size = std::fs::metadata(output_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+
+    Ok(DumpResult {
+        success: true,
+        file_path: output_path.to_string(),
+        size_bytes: file_size,
+        tables_dumped: schema.tables.len() as u32,
+        rows_dumped: total_rows,
+        message: Some(format!(
+            "Dumped {} tables, {} rows to {}",
+            schema.tables.len(),
+            total_rows,
+            output_path
+        )),
+    })
+}
+
+fn format_libsql_value_for_sql(row: &libsql::Row, idx: i32) -> String {
+    if let Ok(v) = row.get::<i64>(idx) {
+        return v.to_string();
+    }
+    if let Ok(v) = row.get::<f64>(idx) {
+        return v.to_string();
+    }
+    if let Ok(v) = row.get::<String>(idx) {
+        return format!("'{}'", v.replace('\'', "''"));
+    }
+    "NULL".to_string()
+}
+

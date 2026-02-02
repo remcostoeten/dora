@@ -1,4 +1,3 @@
-import { Wand2 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
@@ -31,6 +30,11 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle
 } from '@/shared/ui/alert-dialog'
+import { ErrorBoundary } from '@/shared/ui/error-boundary'
+import { mapConnectionError } from '@/shared/utils/error-messages'
+import { EmptyState } from '@/shared/ui/empty-state'
+import { NotImplemented } from '@/shared/ui/not-implemented'
+import { Plug } from 'lucide-react'
 
 export default function Index() {
 	const [searchParams, setSearchParams] = useSearchParams()
@@ -118,8 +122,8 @@ export default function Index() {
 			}
 		} catch (error) {
 			toast({
-				title: 'Error',
-				description: error instanceof Error ? error.message : 'Failed to load connections',
+				title: 'Failed to Load Connections',
+				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
 				variant: 'destructive'
 			})
 		} finally {
@@ -274,8 +278,8 @@ export default function Index() {
 			}
 		} catch (error) {
 			toast({
-				title: 'Error',
-				description: error instanceof Error ? error.message : 'Failed to add connection',
+				title: 'Failed to Add Connection',
+				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
 				variant: 'destructive'
 			})
 		}
@@ -319,8 +323,8 @@ export default function Index() {
 			}
 		} catch (error) {
 			toast({
-				title: 'Error',
-				description: error instanceof Error ? error.message : 'Failed to update connection',
+				title: 'Failed to Update Connection',
+				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
 				variant: 'destructive'
 			})
 		}
@@ -400,8 +404,8 @@ export default function Index() {
 			}
 		} catch (error) {
 			toast({
-				title: 'Error',
-				description: error instanceof Error ? error.message : 'Failed to delete connection',
+				title: 'Failed to Delete Connection',
+				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
 				variant: 'destructive'
 			})
 		} finally {
@@ -476,28 +480,43 @@ export default function Index() {
 						)}
 
 						<main className='flex-1 flex flex-col h-full overflow-hidden relative px-0 pb-2'>
-							{activeNavId === 'database-studio' ? (
-								<DatabaseStudio
-									tableId={selectedTableId}
-									tableName={selectedTableName}
-									isSidebarOpen={isSidebarOpen}
-									onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-									initialRowPK={settings.lastRowPK}
-									onRowSelectionChange={(pk) => {
-										if (pk !== settings.lastRowPK) {
-											updateSetting('lastRowPK', pk)
-										}
+							{connections.length === 0 && !isLoading && (activeNavId === 'database-studio' || activeNavId === 'sql-console') ? (
+								<EmptyState
+									icon={<Plug className='h-16 w-16' />}
+									title='No Connections'
+									description='Add a database connection to start exploring your data.'
+									action={{
+										label: 'Add Connection',
+										onClick: handleOpenNewConnection
 									}}
-									activeConnectionId={activeConnectionId}
-									onAddConnection={handleOpenNewConnection}
 								/>
+							) : activeNavId === 'database-studio' ? (
+								<ErrorBoundary feature='Database Studio'>
+									<DatabaseStudio
+										tableId={selectedTableId}
+										tableName={selectedTableName}
+										isSidebarOpen={isSidebarOpen}
+										onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+										initialRowPK={settings.lastRowPK}
+										onRowSelectionChange={(pk) => {
+											if (pk !== settings.lastRowPK) {
+												updateSetting('lastRowPK', pk)
+											}
+										}}
+										activeConnectionId={activeConnectionId}
+										onAddConnection={handleOpenNewConnection}
+									/>
+								</ErrorBoundary>
 							) : activeNavId === 'sql-console' ? (
-								<SqlConsole
-									onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-									activeConnectionId={activeConnectionId}
-								/>
+								<ErrorBoundary feature='SQL Console'>
+									<SqlConsole
+										onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+										activeConnectionId={activeConnectionId}
+									/>
+								</ErrorBoundary>
 							) : activeNavId === 'docker' ? (
-								<DockerView
+								<ErrorBoundary feature='Docker Manager'>
+									<DockerView
 									onOpenInDataViewer={async function (container) {
 										const userEnv = container.env.find(function (e) {
 											return e.startsWith('POSTGRES_USER=')
@@ -533,21 +552,21 @@ export default function Index() {
 										setActiveNavId('database-studio')
 									}}
 								/>
+								</ErrorBoundary>
 							) : activeNavId === 'dora' ? (
-								<div className='flex-1 flex items-center justify-center text-muted-foreground'>
-									<div className='text-center'>
-										<Wand2 className='h-16 w-16 mx-auto mb-4 opacity-50' />
-										<h2 className='text-xl font-semibold mb-2'>
-											Dora AI Assistant
-										</h2>
-										<p className='text-sm'>Coming soon...</p>
-									</div>
+								<div className='flex-1 flex items-center justify-center'>
+									<NotImplemented
+										feature='Dora AI Assistant'
+										description='Natural language queries, schema explanations, and AI-powered SQL generation. Coming in v1.1.'
+									/>
 								</div>
 							) : (
-								<SqlConsole
-									onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-									activeConnectionId={activeConnectionId}
-								/>
+								<ErrorBoundary feature='SQL Console'>
+									<SqlConsole
+										onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+										activeConnectionId={activeConnectionId}
+									/>
+								</ErrorBoundary>
 							)}
 						</main>
 

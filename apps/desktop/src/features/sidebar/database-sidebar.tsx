@@ -12,7 +12,7 @@ import { ScrollArea } from '@/shared/ui/scroll-area'
 import { ConnectionSwitcher } from '../connections/components/connection-switcher'
 import { Connection } from '../connections/types'
 import { DropTableDialog } from '../database-studio/components/drop-table-dialog'
-import { BottomToolbar, ToolbarAction } from './components/bottom-toolbar'
+import { BottomToolbar } from './components/bottom-toolbar'
 import { ManageTablesDialog, BulkAction } from './components/manage-tables-dialog'
 import { RenameTableDialog } from './components/rename-table-dialog'
 import { SchemaSelector } from './components/schema-selector'
@@ -452,8 +452,6 @@ export function DatabaseSidebar({
 		}
 	}
 
-	function handleToolbarAction(action: ToolbarAction) { }
-
 	async function handleExportTableSchema(tableName: string) {
 		if (!activeConnectionId) return
 
@@ -706,7 +704,7 @@ export function DatabaseSidebar({
 				/>
 			)}
 
-			<BottomToolbar onAction={handleToolbarAction} />
+			<BottomToolbar />
 
 			<RenameTableDialog
 				open={showRenameDialog}

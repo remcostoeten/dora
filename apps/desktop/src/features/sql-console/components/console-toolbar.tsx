@@ -6,7 +6,8 @@ import {
 	Play,
 	Download,
 	Braces,
-	Filter
+	Filter,
+	Clock
 } from 'lucide-react'
 import { Button } from '@/shared/ui/button'
 import {
@@ -28,11 +29,14 @@ type Props = {
 	onRun?: () => void
 	onPrettify?: () => void
 	onExport?: () => void
+	onExportCsv?: () => void
 	hasResults?: boolean
 	showJson?: boolean
 	onShowJsonToggle?: () => void
 	showFilter?: boolean
 	onToggleFilter?: () => void
+	showHistory?: boolean
+	onToggleHistory?: () => void
 }
 
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -59,11 +63,14 @@ export function ConsoleToolbar({
 	onRun,
 	onPrettify,
 	onExport,
+	onExportCsv,
 	hasResults,
 	showJson,
 	onShowJsonToggle,
 	showFilter,
-	onToggleFilter
+	onToggleFilter,
+	showHistory,
+	onToggleHistory
 }: Props) {
 	return (
 		<div className='flex items-center justify-between h-10 px-3 border-b border-sidebar-border bg-sidebar shrink-0'>
@@ -81,6 +88,21 @@ export function ConsoleToolbar({
 						style={{ width: 16, height: 16 }}
 					/>
 				</Button>
+
+				{onToggleHistory && (
+					<Button
+						variant='ghost'
+						size='icon'
+						className={cn(
+							'h-7 w-7 text-muted-foreground hover:text-sidebar-foreground',
+							showHistory && 'bg-sidebar-accent'
+						)}
+						onClick={onToggleHistory}
+						title='Toggle history panel'
+					>
+						<Clock style={{ width: 16, height: 16 }} />
+					</Button>
+				)}
 
 				{/* Mode Switcher - Tab Style */}
 				<div className='flex items-end h-full ml-4 self-stretch'>
@@ -183,19 +205,30 @@ export function ConsoleToolbar({
 				)}
 
 				{onExport && (
-					<Button
-						variant='ghost'
-						size='icon'
-						className={cn(
-							'h-7 w-7 text-muted-foreground hover:text-foreground',
-							!hasResults && 'opacity-50 cursor-not-allowed'
-						)}
-						onClick={onExport}
-						disabled={!hasResults}
-						title='Export results as JSON'
-					>
-						<Download className='h-3.5 w-3.5' />
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant='ghost'
+								size='icon'
+								className={cn(
+									'h-7 w-7 text-muted-foreground hover:text-foreground',
+									!hasResults && 'opacity-50 cursor-not-allowed'
+								)}
+								disabled={!hasResults}
+								title='Export results'
+							>
+								<Download className='h-3.5 w-3.5' />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align='end'>
+							<DropdownMenuItem onClick={onExport}>
+								Export as JSON
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={onExportCsv}>
+								Export as CSV
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				)}
 			</div>
 

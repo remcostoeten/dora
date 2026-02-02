@@ -534,6 +534,65 @@ export function DataGrid({
 					e.preventDefault()
 					onRowSelect(row, !selectedRows.has(row))
 					break
+				case 'c':
+					if (e.ctrlKey || e.metaKey) {
+						e.preventDefault()
+						if (selectedCellsSet.size > 0) {
+							const cellsArray = Array.from(selectedCellsSet).map(function (key) {
+								const [r, c] = key.split(':').map(Number)
+								return { row: r, col: c }
+							})
+							cellsArray.sort(function (a, b) {
+								return a.row === b.row ? a.col - b.col : a.row - b.row
+							})
+							const minRow = Math.min(...cellsArray.map(function (c) { return c.row }))
+							const maxRow = Math.max(...cellsArray.map(function (c) { return c.row }))
+							const rowData: string[][] = []
+							for (let r = minRow; r <= maxRow; r++) {
+								const rowCells = cellsArray.filter(function (c) { return c.row === r })
+								const values = rowCells.map(function (cell) {
+									const value = rows[cell.row][columns[cell.col].name]
+									return value === null || value === undefined ? '' : String(value)
+								})
+								rowData.push(values)
+							}
+							const clipboardText = rowData.map(function (r) { return r.join('\t') }).join('\n')
+							navigator.clipboard.writeText(clipboardText)
+						} else if (focusedCell) {
+							const value = rows[focusedCell.row][columns[focusedCell.col].name]
+							const text = value === null || value === undefined ? '' : String(value)
+							navigator.clipboard.writeText(text)
+						}
+					}
+					break
+				case 'v':
+					if ((e.ctrlKey || e.metaKey) && focusedCell && onBatchCellEdit) {
+						e.preventDefault()
+						navigator.clipboard.readText().then(function (clipboardText) {
+							if (!clipboardText || !focusedCell) return
+							const pasteRows = clipboardText.split('\n').map(function (line) {
+								return line.split('\t')
+							})
+							const edits: { rowIndex: number; columnName: string; value: string }[] = []
+							pasteRows.forEach(function (pasteRow, pasteRowIndex) {
+								const targetRow = focusedCell.row + pasteRowIndex
+								if (targetRow >= rows.length) return
+								pasteRow.forEach(function (pasteValue, pasteColIndex) {
+									const targetCol = focusedCell.col + pasteColIndex
+									if (targetCol >= columns.length) return
+									edits.push({
+										rowIndex: targetRow,
+										columnName: columns[targetCol].name,
+										value: pasteValue
+									})
+								})
+							})
+							if (edits.length > 0) {
+								onBatchCellEdit(edits)
+							}
+						})
+					}
+					break
 			}
 		},
 		[

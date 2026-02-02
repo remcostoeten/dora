@@ -27,7 +27,7 @@ const TOOLBAR_ITEMS: ToolbarItem[] = [
 ]
 
 type Props = {
-	onAction: (action: ToolbarAction) => void
+	onAction?: (action: ToolbarAction) => void
 	themeProps?: {
 		theme: Theme
 		onThemeChange: (theme: Theme) => void

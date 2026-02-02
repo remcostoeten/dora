@@ -100,6 +100,11 @@ export function DatabaseStudio({
 	const [showAddColumnDialog, setShowAddColumnDialog] = useState(false)
 	const [showDropTableDialog, setShowDropTableDialog] = useState(false)
 	const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
+	const [pendingSingleDeleteRow, setPendingSingleDeleteRow] = useState<{
+		row: Record<string, unknown>
+		primaryKeyColumn: string
+		primaryKeyValue: unknown
+	} | null>(null)
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 	const [showSetNullDialog, setShowSetNullDialog] = useState(false)
 	const [showDataSeederDialog, setShowDataSeederDialog] = useState(false)
@@ -868,11 +873,15 @@ export function DatabaseStudio({
 
 		switch (action) {
 			case 'delete':
-				if (
-					settings.confirmBeforeDelete &&
-					!confirm('Are you sure you want to delete this row?')
-				)
+				if (settings.confirmBeforeDelete) {
+					setPendingSingleDeleteRow({
+						row,
+						primaryKeyColumn: primaryKeyColumn.name,
+						primaryKeyValue: row[primaryKeyColumn.name]
+					})
+					setShowDeleteConfirmDialog(true)
 					return
+				}
 
 				deleteRows.mutate(
 					{
@@ -882,10 +891,10 @@ export function DatabaseStudio({
 						primaryKeyValues: [row[primaryKeyColumn.name]]
 					},
 					{
-						onSuccess: () => {
+						onSuccess: function onDeleteSuccess() {
 							loadTableData()
 						},
-						onError: (error) => {
+						onError: function onDeleteError(error) {
 							console.error('Failed to delete row:', error)
 						}
 					}
@@ -1010,6 +1019,63 @@ export function DatabaseStudio({
 		a.download = `${tableName || 'data'}.json`
 		a.click()
 		URL.revokeObjectURL(url)
+	}
+
+	function handleExportCsvAll() {
+		if (!tableData || tableData.rows.length === 0) return
+
+		const headers = tableData.columns.map(function (col) { return col.name })
+		const csvRows = [
+			headers.join(','),
+			...tableData.rows.map(function (row) {
+				return headers
+					.map(function (header) {
+						const value = row[header]
+						if (value === null || value === undefined) return ''
+						const stringValue = String(value)
+						if (
+							stringValue.includes(',') ||
+							stringValue.includes('"') ||
+							stringValue.includes('\n')
+						) {
+							return `"${stringValue.replace(/"/g, '""')}"`
+						}
+						return stringValue
+					})
+					.join(',')
+			})
+		]
+
+		const csvString = csvRows.join('\n')
+		const blob = new Blob([csvString], { type: 'text/csv' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = `${tableName || 'data'}.csv`
+		a.click()
+		URL.revokeObjectURL(url)
+	}
+
+	async function handleExportSqlAll() {
+		if (!activeConnectionId || !tableId || !tableData || tableData.rows.length === 0) return
+
+		const result = await commands.exportTable(
+			activeConnectionId,
+			tableName || tableId,
+			null,
+			'sql_insert',
+			null
+		)
+
+		if (result.status === 'ok') {
+			const blob = new Blob([result.data], { type: 'text/sql' })
+			const url = URL.createObjectURL(blob)
+			const a = document.createElement('a')
+			a.href = url
+			a.download = `${tableName || 'data'}.sql`
+			a.click()
+			URL.revokeObjectURL(url)
+		}
 	}
 
 	async function handleCopySchema() {
@@ -1221,6 +1287,8 @@ export function DatabaseStudio({
 					isSidebarOpen={isSidebarOpen}
 					onRefresh={loadTableData}
 					onExport={handleExport}
+					onExportCsv={handleExportCsvAll}
+					onExportSql={handleExportSqlAll}
 					isLoading={isLoading}
 					onCopySchema={handleCopySchema}
 					onCopyDrizzleSchema={handleCopyDrizzleSchema}
@@ -1342,6 +1410,8 @@ export function DatabaseStudio({
 				isSidebarOpen={isSidebarOpen}
 				onRefresh={loadTableData}
 				onExport={handleExport}
+				onExportCsv={handleExportCsvAll}
+				onExportSql={handleExportSqlAll}
 				onAddRecord={handleAddRecord}
 				isLoading={isLoading}
 				filters={filters}
@@ -1500,21 +1570,51 @@ export function DatabaseStudio({
 				isLoading={isDdlLoading}
 			/>
 
-			<AlertDialog open={showDeleteConfirmDialog} onOpenChange={setShowDeleteConfirmDialog}>
+			<AlertDialog
+				open={showDeleteConfirmDialog}
+				onOpenChange={function handleDeleteDialogChange(open) {
+					setShowDeleteConfirmDialog(open)
+					if (!open) {
+						setPendingSingleDeleteRow(null)
+					}
+				}}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete {selectedRows.size}{' '}
-							selected row{selectedRows.size !== 1 ? 's' : ''} from the database.
+							This action cannot be undone. This will permanently delete{' '}
+							{pendingSingleDeleteRow ? '1 row' : `${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}`}{' '}
+							from the database.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
-							onClick={(e) => {
+							onClick={function handleConfirmDelete(e) {
 								e.preventDefault()
-								performBulkDelete()
+								if (pendingSingleDeleteRow && activeConnectionId && tableId) {
+									deleteRows.mutate(
+										{
+											connectionId: activeConnectionId,
+											tableName: tableName || tableId,
+											primaryKeyColumn: pendingSingleDeleteRow.primaryKeyColumn,
+											primaryKeyValues: [pendingSingleDeleteRow.primaryKeyValue]
+										},
+										{
+											onSuccess: function onSingleDeleteSuccess() {
+												loadTableData()
+												setShowDeleteConfirmDialog(false)
+												setPendingSingleDeleteRow(null)
+											},
+											onError: function onSingleDeleteError(error) {
+												console.error('Failed to delete row:', error)
+											}
+										}
+									)
+								} else {
+									performBulkDelete()
+								}
 							}}
 							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
 						>

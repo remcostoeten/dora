@@ -25,6 +25,7 @@ type Props = {
 	onSetNull?: () => void
 	onDuplicate?: () => void
 	onExportJson?: () => void
+	onExportCsv?: () => void
 	onBulkEdit?: () => void
 	onClearSelection: () => void
 	mode?: 'floating' | 'static'
