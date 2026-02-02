@@ -180,7 +180,7 @@ export function StudioToolbar({
 							</span>
 						)}
 					</Button>
-					3{' '}
+
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<Button

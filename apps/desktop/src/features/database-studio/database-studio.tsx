@@ -154,10 +154,7 @@ export function DatabaseStudio({
 	}, [tableData, isLoading])
 
 	const loadTableData = useCallback(async () => {
-		console.log('[DatabaseStudio] loadTableData called', { tableId, activeConnectionId })
-
 		if (!tableId || !activeConnectionId) {
-			console.log('[DatabaseStudio] Skipping load - missing tableId or activeConnectionId')
 			return
 		}
 
@@ -165,7 +162,6 @@ export function DatabaseStudio({
 		setSelectedRows(new Set())
 
 		try {
-			console.log('[DatabaseStudio] Fetching data for table:', tableName || tableId)
 			const result = await adapter.fetchTableData(
 				activeConnectionId,
 				tableName || tableId,
@@ -177,10 +173,6 @@ export function DatabaseStudio({
 
 			if (result.ok) {
 				const data = result.data
-				console.log('[DatabaseStudio] Data received:', {
-					columns: data.columns.length,
-					rows: data.rows.length
-				})
 				setTableData(data)
 
 				// If it's a new table or first load, reset visible columns to show all
@@ -922,7 +914,7 @@ export function DatabaseStudio({
 				// Focus will be handled by the DataGrid effect for new draft row
 				break
 			default:
-				console.log('Row action:', action, row)
+				break
 		}
 	}
 
