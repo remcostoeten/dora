@@ -10,10 +10,12 @@ import { CheatsheetPanel } from '../../features/drizzle-runner/components/cheats
 import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
 import { ConsoleToolbar } from './components/console-toolbar'
+import { QueryHistoryPanel } from './components/query-history-panel'
 import { SqlEditor } from './components/sql-editor'
 import { SqlResults } from './components/sql-results'
 import { UnifiedSidebar } from './components/unified-sidebar'
 import { DEFAULT_SQL } from './data'
+import { useQueryHistory } from './stores/query-history-store'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 
 type Props = {
@@ -37,7 +39,10 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 	const [showLeftSidebar, setShowLeftSidebar] = useState(true)
 	const [showCheatsheet, setShowCheatsheet] = useState(false)
 	const [showFilter, setShowFilter] = useState(false)
+	const [showHistory, setShowHistory] = useState(false)
 	const [tables, setTables] = useState<TableInfo[]>([])
+
+	const { addToHistory } = useQueryHistory()
 
 	const loadSnippets = useCallback(async () => {
 		const res = await adapter.getScripts(activeConnectionId || null)
@@ -143,28 +148,28 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 						// Extract column definitions if available from adapter
 						const columnDefinitions =
 							Array.isArray(res.data.columns) &&
-							typeof res.data.columns[0] !== 'string'
+								typeof res.data.columns[0] !== 'string'
 								? (res.data.columns as any[])
 								: undefined
 
 						const rows = Array.isArray(res.data.rows)
 							? res.data.rows.map((row: any) => {
-									if (
-										typeof row === 'object' &&
-										row !== null &&
-										!Array.isArray(row)
-									) {
-										return row
-									}
-									if (Array.isArray(row)) {
-										const obj: Record<string, any> = {}
-										columns.forEach((col: string, i: number) => {
-											obj[col] = row[i]
-										})
-										return obj
-									}
-									return {}
-								})
+								if (
+									typeof row === 'object' &&
+									row !== null &&
+									!Array.isArray(row)
+								) {
+									return row
+								}
+								if (Array.isArray(row)) {
+									const obj: Record<string, any> = {}
+									columns.forEach((col: string, i: number) => {
+										obj[col] = row[i]
+									})
+									return obj
+								}
+								return {}
+							})
 							: []
 
 						setResult({
@@ -175,6 +180,14 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							queryType: getQueryType(queryToRun),
 							columnDefinitions,
 							sourceTable: getTableName(queryToRun)
+						})
+
+						addToHistory({
+							query: queryToRun,
+							connectionId: activeConnectionId,
+							executionTimeMs: res.data.executionTime || 0,
+							success: true,
+							rowCount: res.data.rowCount
 						})
 					} else {
 						throw new Error(res.error)
@@ -202,13 +215,22 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 					}
 				}
 			} catch (error) {
+				const errorMsg = error instanceof Error ? error.message : 'An error occurred'
 				setResult({
 					columns: [],
 					rows: [],
 					rowCount: 0,
 					executionTime: 0,
-					error: error instanceof Error ? error.message : 'An error occurred',
+					error: errorMsg,
 					queryType: 'OTHER'
+				})
+
+				addToHistory({
+					query: mode === 'sql' ? currentSqlQuery : currentDrizzleQuery,
+					connectionId: activeConnectionId || null,
+					executionTimeMs: 0,
+					success: false,
+					error: errorMsg
 				})
 			} finally {
 				setIsExecuting(false)
@@ -256,7 +278,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		}
 	}
 
-	const handleExport = useCallback(() => {
+	const handleExport = useCallback(function () {
 		if (!result || result.rows.length === 0) return
 
 		const jsonString = JSON.stringify(result.rows, null, 2)
@@ -265,6 +287,32 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		const a = document.createElement('a')
 		a.href = url
 		a.download = 'query-results.json'
+		a.click()
+		URL.revokeObjectURL(url)
+	}, [result])
+
+	const handleExportCsv = useCallback(function () {
+		if (!result || result.rows.length === 0) return
+
+		const headers = result.columns.join(',')
+		const rows = result.rows.map(function (row) {
+			return result.columns.map(function (col) {
+				const value = row[col]
+				if (value === null || value === undefined) return ''
+				const stringValue = String(value)
+				if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+					return '"' + stringValue.replace(/"/g, '""') + '"'
+				}
+				return stringValue
+			}).join(',')
+		}).join('\n')
+
+		const csvContent = headers + '\n' + rows
+		const blob = new Blob([csvContent], { type: 'text/csv' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = 'query-results.csv'
 		a.click()
 		URL.revokeObjectURL(url)
 	}, [result])
@@ -297,7 +345,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				await adapter.saveScript(
 					name,
 					currentContent ||
-						(mode === 'sql' ? '-- New SQL query' : '// New Drizzle query'),
+					(mode === 'sql' ? '-- New SQL query' : '// New Drizzle query'),
 					activeConnectionId,
 					null
 				)
@@ -409,6 +457,15 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 			{ description: 'Switch to Drizzle mode' }
 		)
 
+	$.key('h')
+		.except('typing')
+		.on(
+			function () {
+				setShowHistory(!showHistory)
+			},
+			{ description: 'Toggle query history' }
+		)
+
 	return (
 		<div className='flex h-full w-full bg-background overflow-hidden'>
 			<PanelGroup direction='horizontal' className='flex-1'>
@@ -445,6 +502,30 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 					</>
 				)}
 
+				{showHistory && (
+					<>
+						<Panel
+							defaultSize={15}
+							minSize={10}
+							maxSize={25}
+							collapsible
+							onCollapse={function () { setShowHistory(false) }}
+						>
+							<QueryHistoryPanel
+								currentConnectionId={activeConnectionId}
+								onSelectQuery={function (query) {
+									if (mode === 'sql') {
+										setCurrentSqlQuery(query)
+									} else {
+										setCurrentDrizzleQuery(query)
+									}
+								}}
+							/>
+						</Panel>
+						<PanelResizeHandle className='w-1 bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize' />
+					</>
+				)}
+
 				{/* Main content */}
 				<Panel defaultSize={64} minSize={40}>
 					<div className='flex flex-col h-full overflow-hidden'>
@@ -452,17 +533,20 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 						<ConsoleToolbar
 							mode={mode}
 							onModeChange={setMode}
-							onToggleLeftSidebar={() => setShowLeftSidebar(!showLeftSidebar)}
-							onToggleCheatsheet={() => setShowCheatsheet(!showCheatsheet)}
+							onToggleLeftSidebar={function () { setShowLeftSidebar(!showLeftSidebar) }}
+							onToggleCheatsheet={function () { setShowCheatsheet(!showCheatsheet) }}
 							showLeftSidebar={showLeftSidebar}
 							showCheatsheet={showCheatsheet}
 							isExecuting={isExecuting}
-							onRun={() => handleExecute()}
+							onRun={function () { handleExecute() }}
 							onPrettify={handlePrettify}
 							onExport={handleExport}
+							onExportCsv={handleExportCsv}
 							hasResults={!!result}
 							showFilter={showFilter}
-							onToggleFilter={() => setShowFilter(!showFilter)}
+							onToggleFilter={function () { setShowFilter(!showFilter) }}
+							showHistory={showHistory}
+							onToggleHistory={function () { setShowHistory(!showHistory) }}
 						/>
 
 						{/* Editor and Results */}

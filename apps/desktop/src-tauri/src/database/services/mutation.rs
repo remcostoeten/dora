@@ -503,8 +503,14 @@ impl<'a> MutationService<'a> {
                     &soft_del_col,
                 )
             }
-            DatabaseClient::LibSQL { .. } => {
-                Err(Error::Any(anyhow!("Soft delete not yet implemented for LibSQL")))
+            DatabaseClient::LibSQL { connection } => {
+                maintenance::soft_delete_libsql(
+                    connection,
+                    &table_name,
+                    &primary_key_column,
+                    &primary_key_values,
+                    &soft_del_col,
+                ).await
             }
         }
     }
@@ -577,8 +583,8 @@ impl<'a> MutationService<'a> {
                 let conn = connection.lock().unwrap();
                 maintenance::truncate_table_sqlite(&conn, &table_name)?
             }
-            DatabaseClient::LibSQL { .. } => {
-                return Err(Error::Any(anyhow!("Truncate not yet implemented for LibSQL")));
+            DatabaseClient::LibSQL { connection } => {
+                maintenance::truncate_table_libsql(connection, &table_name).await?
             }
         };
 
@@ -658,8 +664,12 @@ impl<'a> MutationService<'a> {
                 let conn = connection.lock().unwrap();
                 maintenance::dump_database_sqlite(&conn, &output_path)
             }
-            DatabaseClient::LibSQL { .. } => {
-                Err(Error::Any(anyhow!("Dump not yet implemented for LibSQL")))
+            DatabaseClient::LibSQL { connection } => {
+                maintenance::dump_database_libsql(
+                    connection,
+                    &schema,
+                    &output_path,
+                ).await
             }
         }
     }

@@ -5,7 +5,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use crate::database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, TableInfo};
+use crate::database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, IndexInfo, TableInfo};
 use crate::Error;
 
 /// Get the database schema from a libSQL connection
@@ -19,8 +19,8 @@ pub async fn get_database_schema(conn: Arc<libsql::Connection>) -> Result<Databa
     for table_name in table_names {
         let (columns, pk_columns) = get_table_columns(&conn, &table_name).await?;
         let row_count = get_row_count(&conn, &table_name).await.unwrap_or(None);
+        let indexes = get_table_indexes(&conn, &table_name).await.unwrap_or_default();
 
-        // Track unique columns (primary keys are unique)
         let mut unique_cols = HashSet::new();
         for col in &columns {
             if col.is_primary_key {
@@ -33,9 +33,10 @@ pub async fn get_database_schema(conn: Arc<libsql::Connection>) -> Result<Databa
 
         tables.push(TableInfo {
             name: table_name,
-            schema: String::new(), // SQLite/libSQL doesn't have schemas
+            schema: String::new(),
             columns,
             primary_key_columns: pk_columns,
+            indexes,
             row_count_estimate: row_count.map(|c| c as u64),
         });
     }
@@ -196,3 +197,49 @@ async fn get_row_count(
         Ok(None)
     }
 }
+
+async fn get_table_indexes(
+    conn: &Arc<libsql::Connection>,
+    table_name: &str,
+) -> Result<Vec<IndexInfo>, Error> {
+    let mut indexes = Vec::new();
+
+    let query = format!("PRAGMA index_list(\"{}\")", table_name);
+    let mut rows = conn
+        .query(&query, ())
+        .await
+        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to get index list: {}", e)))?;
+
+    while let Some(row) = rows
+        .next()
+        .await
+        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to fetch index row: {}", e)))?
+    {
+        let name: String = row.get(1).unwrap_or_default();
+        let is_unique: i64 = row.get(2).unwrap_or(0);
+
+        let info_query = format!("PRAGMA index_info(\"{}\")", name);
+        let mut info_rows = conn
+            .query(&info_query, ())
+            .await
+            .map_err(|e| Error::Any(anyhow::anyhow!("Failed to get index info: {}", e)))?;
+
+        let mut column_names = Vec::new();
+        while let Some(info_row) = info_rows.next().await.ok().flatten() {
+            let col_name: String = info_row.get(2).unwrap_or_default();
+            if !col_name.is_empty() {
+                column_names.push(col_name);
+            }
+        }
+
+        indexes.push(IndexInfo {
+            name,
+            column_names,
+            is_unique: is_unique != 0,
+            is_primary: false,
+        });
+    }
+
+    Ok(indexes)
+}
+

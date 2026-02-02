@@ -245,13 +245,14 @@ pub async fn fetch_page(
     query_id: usize,
     page_index: usize,
     state: State<'_, AppState>,
-) -> Result<Option<Box<serde_json::value::RawValue>>, Error> {
+) -> Result<Option<serde_json::Value>, Error> {
     let svc = QueryService {
         connections: &state.connections,
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.fetch_page(query_id, page_index).await
+    let raw = svc.fetch_page(query_id, page_index).await?;
+    Ok(raw.map(|r| serde_json::from_str(r.get()).unwrap_or(serde_json::Value::Null)))
 }
 
 #[tauri::command]
@@ -287,13 +288,14 @@ pub async fn get_page_count(
 pub async fn get_columns(
     query_id: usize,
     state: State<'_, AppState>,
-) -> Result<Option<Box<serde_json::value::RawValue>>, Error> {
+) -> Result<Option<serde_json::Value>, Error> {
     let svc = QueryService {
         connections: &state.connections,
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.get_columns(query_id).await
+    let raw = svc.get_columns(query_id).await?;
+    Ok(raw.map(|r| serde_json::from_str(r.get()).unwrap_or(serde_json::Value::Null)))
 }
 
 #[tauri::command]

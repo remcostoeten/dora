@@ -7,6 +7,7 @@ import { DataProvider } from '@/core/data-provider'
 import { PendingEditsProvider } from '@/core/pending-edits'
 import { RecordingProvider, RecordingOverlay } from '@/core/recording'
 import { SettingsProvider, useSettings } from '@/core/settings'
+import { QueryHistoryProvider } from '@/features/sql-console/stores/query-history-store'
 import { ThemeSync } from '@/features/sidebar/components/theme-sync'
 import Index from './pages/Index'
 import NotFound from './pages/NotFound'
@@ -31,20 +32,22 @@ function App() {
 				<SettingsProvider>
 					<PendingEditsProvider>
 						<DataProvider>
-							<RecordingOverlay />
-							<div className='flex flex-col h-screen'>
-								<DemoBanner />
-								<div className='flex-1 overflow-hidden'>
-									<GlobalToaster />
-									<BrowserRouter>
-										<ThemeSync />
-										<Routes>
-											<Route path='/' element={<Index />} />
-											<Route path='*' element={<NotFound />} />
-										</Routes>
-									</BrowserRouter>
+							<QueryHistoryProvider>
+								<RecordingOverlay />
+								<div className='flex flex-col h-screen'>
+									<DemoBanner />
+									<div className='flex-1 overflow-hidden'>
+										<GlobalToaster />
+										<BrowserRouter>
+											<ThemeSync />
+											<Routes>
+												<Route path='/' element={<Index />} />
+												<Route path='*' element={<NotFound />} />
+											</Routes>
+										</BrowserRouter>
+									</div>
 								</div>
-							</div>
+							</QueryHistoryProvider>
 						</DataProvider>
 					</PendingEditsProvider>
 				</SettingsProvider>

@@ -34,6 +34,8 @@ type Props = {
 	onToggleSidebar?: () => void
 	onRefresh: () => void
 	onExport: () => void
+	onExportCsv?: () => void
+	onExportSql?: () => void
 	onAddRecord?: () => void
 	isLoading?: boolean
 	filters?: FilterDescriptor[]
@@ -56,6 +58,8 @@ export function StudioToolbar({
 	onToggleSidebar,
 	onRefresh,
 	onExport,
+	onExportCsv,
+	onExportSql,
 	onAddRecord,
 	isLoading,
 	filters = [],
@@ -280,15 +284,33 @@ export function StudioToolbar({
 						<RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
 					</Button>
 
-					<Button
-						variant='ghost'
-						size='icon'
-						className='h-7 w-7 text-muted-foreground hover:text-sidebar-foreground'
-						onClick={onExport}
-						title='Export JSON'
-					>
-						<Download className='h-3.5 w-3.5' />
-					</Button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button
+								variant='ghost'
+								size='icon'
+								className='h-7 w-7 text-muted-foreground hover:text-sidebar-foreground'
+								title='Export'
+							>
+								<Download className='h-3.5 w-3.5' />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align='end'>
+							<DropdownMenuItem onClick={onExport}>
+								Export JSON
+							</DropdownMenuItem>
+							{onExportCsv && (
+								<DropdownMenuItem onClick={onExportCsv}>
+									Export CSV
+								</DropdownMenuItem>
+							)}
+							{onExportSql && (
+								<DropdownMenuItem onClick={onExportSql}>
+									Export SQL INSERT
+								</DropdownMenuItem>
+							)}
+						</DropdownMenuContent>
+					</DropdownMenu>
 
 					{(onCopySchema || onCopyDrizzleSchema) && (
 						<DropdownMenu>

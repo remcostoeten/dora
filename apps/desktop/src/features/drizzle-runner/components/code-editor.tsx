@@ -89,7 +89,7 @@ function getRange(
 }
 
 function tableSnippet(table: SchemaTable): string {
-	return `${table.name})$0`
+	return `${table.name}).`
 }
 
 function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
@@ -703,10 +703,17 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 								suggestions.push({
 									label: `${table.name}.${column.name}`,
 									kind: monaco.languages.CompletionItemKind.Field,
-									insertText: `${table.name}.${column.name}`,
+									insertText: `${table.name}.${column.name}, \${1})`,
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
 									detail: column.type,
 									range: range,
-									sortText: String(index).padStart(3, '0')
+									sortText: String(index).padStart(3, '0'),
+									command: {
+										id: 'editor.action.triggerSuggest',
+										title: 'Trigger Suggest'
+									}
 								})
 							})
 						})
