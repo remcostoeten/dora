@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Database, Check, X } from 'lucide-react'
 import React, { useState, useRef, useCallback, useEffect } from 'react'
-import { useShortcut } from '@/core/shortcuts'
+import { useShortcut, useEffectiveShortcuts } from '@/core/shortcuts'
 import { Checkbox } from '@/shared/ui/checkbox'
 import { cn } from '@/shared/utils/cn'
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
@@ -237,19 +237,20 @@ export function DataGrid({
 		[isDragging]
 	)
 
+	/* ... existing code ... */
+	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
 
-	$.mod
-		.key('a')
+	$.bind(shortcuts.selectAll.combo)
 		.except('typing')
 		.on(
 			function () {
 				onSelectAll(!allSelected)
 			},
-			{ description: 'Select all rows' }
+			{ description: shortcuts.selectAll.description }
 		)
 
-	$.key('escape')
+	$.bind(shortcuts.deselect.combo)
 		.except('typing')
 		.on(
 			function () {
@@ -257,17 +258,7 @@ export function DataGrid({
 					onSelectAll(false)
 				}
 			},
-			{ description: 'Deselect all rows' }
-		)
-
-	$.mod
-		.key('d')
-		.except('typing')
-		.on(
-			function () {
-				onSelectAll(false)
-			},
-			{ description: 'Deselect all rows' }
+			{ description: shortcuts.deselect.description }
 		)
 
 	const handleRowClick = useCallback(
