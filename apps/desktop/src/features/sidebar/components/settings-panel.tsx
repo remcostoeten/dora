@@ -1,5 +1,11 @@
 import { useSettings } from '@/core/settings'
 import {
+	useShortcutStore,
+	useEffectiveShortcuts,
+	APP_SHORTCUTS,
+	ShortcutName
+} from '@/core/shortcuts'
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -9,15 +15,19 @@ import {
 } from '@/shared/ui/select'
 import { Slider } from '@/shared/ui/slider'
 import { Switch } from '@/shared/ui/switch'
+import { ShortcutRecorder } from './shortcut-recorder'
 import { SidebarPanel, SidebarPanelContent, SidebarSection } from './sidebar-panel'
 
 export function SettingsPanel() {
 	const { settings, updateSetting } = useSettings()
+	const { setShortcut, resetShortcut, overrides } = useShortcutStore()
+	const effectiveShortcuts = useEffectiveShortcuts()
 
 	return (
 		<SidebarPanel>
 			<SidebarPanelContent>
 				<div className='flex flex-col p-4'>
+					{/* Existing sections... */}
 					<SidebarSection title='Editor'>
 						<div className='space-y-2'>
 							<div className='flex items-center justify-between'>
@@ -83,6 +93,41 @@ export function SettingsPanel() {
 									}}
 								/>
 							</div>
+						</div>
+					</SidebarSection>
+
+					<SidebarSection title='Shortcuts'>
+						<div className='space-y-3'>
+							{Object.entries(effectiveShortcuts).map(function ([key, def]) {
+								const name = key as ShortcutName
+								const isDefault = !overrides[name]
+
+								return (
+									<div
+										key={name}
+										className='flex items-center justify-between gap-4'
+									>
+										<div className='flex-1 min-w-0'>
+											<div className='text-sm text-sidebar-foreground truncate'>
+												{def.description}
+											</div>
+											<div className='text-xs text-muted-foreground truncate opacity-50 capitalize'>
+												{def.scope || 'Global'}
+											</div>
+										</div>
+										<ShortcutRecorder
+											value={def.combo}
+											onChange={function (newCombo) {
+												setShortcut(name, newCombo)
+											}}
+											onReset={function () {
+												resetShortcut(name)
+											}}
+											isDefault={isDefault}
+										/>
+									</div>
+								)
+							})}
 						</div>
 					</SidebarSection>
 

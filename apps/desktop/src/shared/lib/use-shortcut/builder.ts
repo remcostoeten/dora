@@ -73,6 +73,7 @@ type BuilderState = {
 	key: ActionKey | null
 	options: UseShortcutOptions
 	except?: ExceptPreset | ExceptPreset[] | ExceptPredicate
+	combos?: string[]
 }
 
 type ShortcutRegistry = {
@@ -138,10 +139,10 @@ function debugLog(debug: boolean | undefined, ...args: unknown[]) {
 	}
 }
 
-function createBinding(
+function createSingleBinding(
 	state: BuilderState,
 	handler: ShortcutHandler,
-	handlerOptions: HandlerOptions = {},
+	handlerOptions: HandlerOptions,
 	registry: ShortcutRegistry
 ): ShortcutResult {
 	const { modifiers, key, options, except: stateExcept } = state
@@ -285,9 +286,61 @@ function createBinding(
 				entry.attemptCallbacks.add(callback)
 				return () => entry.attemptCallbacks.delete(callback)
 			}
-			return () => {}
+			return () => { }
 		}
 	}
+}
+
+function createBinding(
+	state: BuilderState,
+	handler: ShortcutHandler,
+	handlerOptions: HandlerOptions = {},
+	registry: ShortcutRegistry
+): ShortcutResult {
+	// Mixed usage of .bind() and .key()
+	if (state.combos && state.combos.length > 0) {
+		const results = state.combos.map((comboString) => {
+			try {
+				const { modifiers, key } = parseShortcut(comboString)
+				const subState: BuilderState = {
+					...state,
+					modifiers: {
+						ctrl: modifiers.ctrl,
+						shift: modifiers.shift,
+						alt: modifiers.alt,
+						cmd: modifiers.meta
+					},
+					key: key as any, // Cast loose key logic to strict ActionKey if possible, or trust parser
+					combos: undefined // Recursive stop
+				}
+				return createSingleBinding(subState, handler, handlerOptions, registry)
+			} catch (e) {
+				console.error(`[useShortcut] Failed to bind combo "${comboString}":`, e)
+				return null
+			}
+		})
+
+		const validResults = results.filter((r): r is ShortcutResult => r !== null)
+
+		return {
+			unbind: () => validResults.forEach((r) => r.unbind()),
+			display: validResults.map((r) => r.display).join(' / '),
+			combo: validResults.map((r) => r.combo).join(' | '),
+			trigger: () => validResults[0]?.trigger(),
+			get isEnabled() {
+				return validResults.some((r) => r.isEnabled)
+			},
+			enable: () => validResults.forEach((r) => r.enable()),
+			disable: () => validResults.forEach((r) => r.disable()),
+			onAttempt: (callback) => {
+				const unbinds = validResults.map((r) => r.onAttempt?.(callback) || (() => { }))
+				return () => unbinds.forEach((u) => u())
+			}
+		}
+	}
+
+	// Standard single binding
+	return createSingleBinding(state, handler, handlerOptions, registry)
 }
 
 export function createShortcutBuilder(options: UseShortcutOptions = {}): {
@@ -332,6 +385,18 @@ export function createShortcutBuilder(options: UseShortcutOptions = {}): {
 
 						debugLog(currentState.options.debug, `Chain: .key("${key}")`)
 
+						return createProxy(newState)
+					}
+				}
+
+				if (prop === 'bind') {
+					return (combo: string | string[]) => {
+						const combos = Array.isArray(combo) ? combo : [combo]
+						const newState: BuilderState = {
+							...currentState,
+							combos
+						}
+						debugLog(currentState.options.debug, `Chain: .bind("${combos.join('", "')}")`)
 						return createProxy(newState)
 					}
 				}

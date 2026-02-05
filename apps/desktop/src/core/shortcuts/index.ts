@@ -8,3 +8,5 @@ export {
 	type ShortcutDefinition,
 	type ShortcutName
 } from './shortcuts'
+
+export { useShortcutStore, useEffectiveShortcuts } from './store'

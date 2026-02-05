@@ -173,6 +173,7 @@ export type ShortcutBuilder = ModifierChain<EmptyModifiers> & {
 	cmd: ModifierChain<{ cmd: true }>
 	mod: ModifierChain<{ cmd: true }>
 	key: <K extends ActionKey>(key: K) => KeyChain<EmptyModifiers, K>
+	bind: (combo: string | string[]) => KeyChain<EmptyModifiers, any>
 }
 
 export type UseShortcutOptions = {
