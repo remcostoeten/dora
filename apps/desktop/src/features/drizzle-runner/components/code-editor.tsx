@@ -251,42 +251,67 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 
 	useEffect(
 		function detectTypos() {
-			if (!monacoRef.current || !editorRef.current || tables.length === 0) return
+			if (!monacoRef.current || !editorRef.current) return
 
 			const editor = editorRef.current
 			const monaco = monacoRef.current
 			const model = editor.getModel()
 			if (!model) return
 
-			const typos = detectTyposInQuery(value, tables)
+			if (tables.length === 0) {
+				monaco.editor.setModelMarkers(model, 'drizzle-typos', [])
+				return
+			}
 
-			const markers: Monaco.editor.IMarkerData[] = typos.map(function (typo) {
-				const startPos = model.getPositionAt(typo.startIndex)
-				const endPos = model.getPositionAt(typo.endIndex)
+			const timeoutId = window.setTimeout(() => {
+				const editorInTimeout = editorRef.current
+				const monacoInTimeout = monacoRef.current
+				if (!editorInTimeout || !monacoInTimeout) return
 
-				return {
-					severity: monaco.MarkerSeverity.Warning,
-					message: typo.suggestion
-						? `Did you mean "${typo.suggestion}"?`
-						: `Unknown identifier: ${typo.word}`,
-					startLineNumber: startPos.lineNumber,
-					startColumn: startPos.column,
-					endLineNumber: endPos.lineNumber,
-					endColumn: endPos.column,
-					source: 'Drizzle LSP'
-				}
-			})
+				const modelInTimeout = editorInTimeout.getModel()
+				if (!modelInTimeout) return
 
-			monaco.editor.setModelMarkers(model, 'drizzle-typos', markers)
+				const typos = detectTyposInQuery(value, tables)
+
+				const markers: Monaco.editor.IMarkerData[] = typos.map(function (typo) {
+					const startPos = modelInTimeout.getPositionAt(typo.startIndex)
+					const endPos = modelInTimeout.getPositionAt(typo.endIndex)
+
+					return {
+						severity: monacoInTimeout.MarkerSeverity.Warning,
+						message: typo.suggestion
+							? `Did you mean "${typo.suggestion}"?`
+							: `Unknown identifier: ${typo.word}`,
+						startLineNumber: startPos.lineNumber,
+						startColumn: startPos.column,
+						endLineNumber: endPos.lineNumber,
+						endColumn: endPos.column,
+						source: 'Drizzle LSP'
+					}
+				})
+
+				monacoInTimeout.editor.setModelMarkers(modelInTimeout, 'drizzle-typos', markers)
+			}, 300)
 
 			return function () {
-				if (monacoRef.current && model) {
-					monacoRef.current.editor.setModelMarkers(model, 'drizzle-typos', [])
-				}
+				window.clearTimeout(timeoutId)
 			}
 		},
 		[value, tables]
 	)
+
+	useEffect(() => {
+		return () => {
+			const editor = editorRef.current
+			const monaco = monacoRef.current
+			if (!editor || !monaco) return
+
+			const model = editor.getModel()
+			if (!model) return
+
+			monaco.editor.setModelMarkers(model, 'drizzle-typos', [])
+		}
+	}, [])
 
 	const handleEditorDidMount: OnMount = function (editor, monaco) {
 		editorRef.current = editor
@@ -1696,7 +1721,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 						if (!isExactMatch) {
 							const fuzzyMatches = getSuggestions(word.word, tableNames, 3)
 							fuzzyMatches.forEach(function (match, index) {
-								defaultSuggestions.unshift({
+								defaultSuggestions.push({
 									label: `${match.value} (did you mean?)`,
 									kind: monaco.languages.CompletionItemKind.Variable,
 									insertText: match.value,

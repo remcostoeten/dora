@@ -33,11 +33,11 @@ export function levenshtein(a: string, b: string): number {
     return matrix[bLower.length][aLower.length]
 }
 
-export function similarity(a: string, b: string): number {
+export function similarity(a: string, b: string, distance?: number): number {
     const maxLen = Math.max(a.length, b.length)
     if (maxLen === 0) return 1
-    const distance = levenshtein(a, b)
-    return 1 - distance / maxLen
+    const computedDistance = distance ?? levenshtein(a, b)
+    return 1 - computedDistance / maxLen
 }
 
 type FuzzyMatch = {
@@ -59,7 +59,7 @@ export function findClosestMatch(
         const distance = levenshtein(input, candidate)
 
         if (distance <= maxDistance) {
-            const sim = similarity(input, candidate)
+            const sim = similarity(input, candidate, distance)
             if (!bestMatch || distance < bestMatch.distance) {
                 bestMatch = {
                     value: candidate,
@@ -90,7 +90,7 @@ export function getSuggestions(
             matches.push({
                 value: candidate,
                 distance: distance,
-                similarity: similarity(input, candidate)
+                similarity: similarity(input, candidate, distance)
             })
         }
     }
@@ -117,6 +117,12 @@ type LspConfig = {
 }
 
 export function createTypoDetector(config: LspConfig) {
+    const reservedLower = new Set(
+        Array.from(config.reservedWords, function (word) {
+            return word.toLowerCase()
+        })
+    )
+
     return function detectTypos(query: string): TypoInfo[] {
         const typos: TypoInfo[] = []
         const identifierPattern = /\b([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?)\b/g
@@ -127,7 +133,7 @@ export function createTypoDetector(config: LspConfig) {
             const startIndex = match.index
             const endIndex = startIndex + word.length
 
-            if (config.reservedWords.has(word)) continue
+            if (reservedLower.has(word.toLowerCase())) continue
             if (/^\d/.test(word)) continue
 
             const isDotNotation = word.includes('.')
@@ -236,15 +242,8 @@ export function createPrismaTypoDetector(models: SchemaLike[]) {
 }
 
 export function createSqlTypoDetector(tables: SchemaLike[]) {
-    const caseInsensitiveReserved = new Set<string>()
-    SQL_RESERVED.forEach(function (word) {
-        caseInsensitiveReserved.add(word.toLowerCase())
-        caseInsensitiveReserved.add(word.toUpperCase())
-        caseInsensitiveReserved.add(word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    })
-
     return createTypoDetector({
-        reservedWords: caseInsensitiveReserved,
+        reservedWords: SQL_RESERVED,
         identifiers: extractIdentifiers(tables),
         tableNames: extractTableNames(tables)
     })
@@ -265,6 +264,26 @@ export function getColumnNames(tables: SchemaLike[], tableName: string): string[
 }
 
 export function detectTyposInQuery(query: string, tables: SchemaLike[]): TypoInfo[] {
-    const detector = createDrizzleTypoDetector(tables)
+    const detector = getOrCreateDrizzleDetector(tables)
     return detector(query)
+}
+
+const drizzleDetectorCache = new Map<string, ReturnType<typeof createDrizzleTypoDetector>>()
+
+function getOrCreateDrizzleDetector(tables: SchemaLike[]) {
+    const signature = tables
+        .map(function (table) {
+            const columnNames = table.columns.map(function (col) {
+                return col.name
+            })
+            return `${table.name}:${columnNames.join(',')}`
+        })
+        .join('|')
+
+    const cached = drizzleDetectorCache.get(signature)
+    if (cached) return cached
+
+    const detector = createDrizzleTypoDetector(tables)
+    drizzleDetectorCache.set(signature, detector)
+    return detector
 }
