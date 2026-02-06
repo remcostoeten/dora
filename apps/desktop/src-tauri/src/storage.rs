@@ -115,7 +115,10 @@ pub struct SavedQuery {
     pub is_snippet: bool,
     pub is_system: bool,
     pub language: Option<String>,
+    pub folder_id: Option<i64>,
 }
+
+
 
 #[derive(Debug, Serialize, Deserialize, specta::Type)]
 pub struct ConnectionHistoryEntry {
@@ -523,8 +526,8 @@ impl Storage {
         if query.id == 0 {
             conn.execute(
                 "INSERT INTO saved_queries 
-                 (name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language) 
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                 (name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language, folder_id) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 (
                     &query.name,
                     &query.description,
@@ -538,15 +541,17 @@ impl Storage {
                     query.is_snippet,
                     query.is_system,
                     &query.language,
+                    query.folder_id,
                 ),
+
             ).context("Failed to insert saved query")?;
             Ok(conn.last_insert_rowid())
         } else {
             conn.execute(
                 "UPDATE saved_queries 
                  SET name = ?1, description = ?2, query_text = ?3, connection_id = ?4, 
-                     tags = ?5, category = ?6, updated_at = ?7, favorite = ?8, is_snippet = ?9, is_system = ?10, language = ?11
-                 WHERE id = ?12",
+                     tags = ?5, category = ?6, updated_at = ?7, favorite = ?8, is_snippet = ?9, is_system = ?10, language = ?11, folder_id = ?12
+                 WHERE id = ?13",
                 (
                     &query.name,
                     &query.description,
@@ -559,8 +564,10 @@ impl Storage {
                     query.is_snippet,
                     query.is_system,
                     &query.language,
+                    query.folder_id,
                     query.id,
                 ),
+
             )
             .context("Failed to update saved query")?;
             Ok(query.id)
@@ -574,11 +581,12 @@ impl Storage {
 
         if let Some(conn_id) = connection_id {
             let mut stmt = conn.prepare(
-                "SELECT id, name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language
+                "SELECT id, name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language, folder_id
                  FROM saved_queries 
                  WHERE connection_id = ?1 OR connection_id IS NULL
                  ORDER BY favorite DESC, created_at DESC"
             ).context("Failed to prepare saved queries statement")?;
+
 
             let rows = stmt
                 .query_map([conn_id.to_string()], |row| {
@@ -608,7 +616,9 @@ impl Storage {
                         is_snippet: row.get(10)?,
                         is_system: row.get(11)?,
                         language: row.get(12)?,
+                        folder_id: row.get(13)?,
                     })
+
                 })
                 .context("Failed to query saved queries")?;
 
@@ -617,10 +627,11 @@ impl Storage {
             }
         } else {
             let mut stmt = conn.prepare(
-                "SELECT id, name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language
+                "SELECT id, name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language, folder_id
                  FROM saved_queries 
                  ORDER BY favorite DESC, created_at DESC"
             ).context("Failed to prepare saved queries statement")?;
+
 
             let rows = stmt
                 .query_map([], |row| {
@@ -650,7 +661,9 @@ impl Storage {
                         is_snippet: row.get(10)?,
                         is_system: row.get(11)?,
                         language: row.get(12)?,
+                        folder_id: row.get(13)?,
                     })
+
                 })
                 .context("Failed to query saved queries")?;
 

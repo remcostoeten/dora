@@ -7,8 +7,10 @@ import {
 	Download,
 	Braces,
 	Filter,
-	Clock
+	Clock,
+	Bookmark
 } from 'lucide-react'
+
 import { Button } from '@/shared/ui/button'
 import {
 	DropdownMenu,
@@ -36,8 +38,11 @@ type Props = {
 	showFilter?: boolean
 	onToggleFilter?: () => void
 	showHistory?: boolean
+	showHistory?: boolean
 	onToggleHistory?: () => void
+	onSave?: () => void
 }
+
 
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
 	return (
@@ -70,8 +75,13 @@ export function ConsoleToolbar({
 	showFilter,
 	onToggleFilter,
 	showHistory,
-	onToggleHistory
+	showFilter,
+	onToggleFilter,
+	showHistory,
+	onToggleHistory,
+	onSave
 }: Props) {
+
 	return (
 		<div className='flex items-center justify-between h-10 px-3 border-b border-sidebar-border bg-sidebar shrink-0'>
 			{/* Left side - sidebar toggles */}
@@ -135,7 +145,23 @@ export function ConsoleToolbar({
 
 			{/* Center - Editor Actions */}
 			<div className='flex items-center gap-1 mx-4'>
+				{onSave && (
+					<Button
+						size='sm'
+						variant='ghost'
+						className='h-7 px-2 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground'
+						onClick={onSave}
+						title='Save to Snippet Library'
+					>
+						<Bookmark className='h-3.5 w-3.5' />
+						<span className='hidden sm:inline'>Save</span>
+					</Button>
+				)}
+
+				<div className='w-px h-4 bg-border/50 mx-1' />
+
 				{onRun && (
+
 					<Button
 						size='sm'
 						variant='default'

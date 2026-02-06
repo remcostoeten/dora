@@ -272,9 +272,9 @@ async getSnippets(languageFilter: string | null, isSystemFilter: boolean | null,
     else return { status: "error", error: e  as any };
 }
 },
-async saveSnippet(name: string, content: string, language: string | null, tags: string | null, category: string | null, connectionId: string | null, description: string | null) : Promise<Result<number, any>> {
+async saveSnippet(name: string, content: string, language: string | null, tags: string | null, category: string | null, connectionId: string | null, description: string | null, folderId: number | null) : Promise<Result<number, any>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("save_snippet", { name, content, language, tags, category, connectionId, description }) };
+    return { status: "ok", data: await TAURI_INVOKE("save_snippet", { name, content, language, tags, category, connectionId, description, folderId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -690,6 +690,7 @@ referenced_column: string;
  * The schema of the referenced table (empty for SQLite)
  */
 referenced_schema: string }
+export type IndexInfo = { name: string; column_names: string[]; is_unique: boolean; is_primary: boolean }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 /**
  * Result of a mutation operation
@@ -697,7 +698,7 @@ export type JsonValue = null | boolean | number | string | JsonValue[] | Partial
 export type MutationResult = { success: boolean; affected_rows: number; message: string | null }
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
-export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; category: string | null; created_at: number; updated_at: number; favorite: boolean; is_snippet: boolean; is_system: boolean; language: string | null }
+export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; category: string | null; created_at: number; updated_at: number; favorite: boolean; is_snippet: boolean; is_system: boolean; language: string | null; folder_id: number | null }
 export type SeedResult = { rows_inserted: number; table: string }
 export type SnippetFolder = { id: number; name: string; parent_id: number | null; color: string | null; created_at: number; updated_at: number }
 /**
@@ -719,6 +720,10 @@ export type TableInfo = { name: string; schema: string; columns: ColumnInfo[];
  * Names of columns that form the primary key (supports composite keys)
  */
 primary_key_columns?: string[]; 
+/**
+ * List of indexes on this table
+ */
+indexes?: IndexInfo[]; 
 /**
  * Estimated row count (may be approximate for performance)
  */

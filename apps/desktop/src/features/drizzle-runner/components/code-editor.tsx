@@ -89,7 +89,7 @@ function getRange(
 }
 
 function tableSnippet(table: SchemaTable): string {
-	return `${table.name}).`
+	return `${table.name}).$0`
 }
 
 function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {

@@ -1,17 +1,33 @@
 import { formatDistanceToNow } from 'date-fns'
-import { Clock, ExternalLink } from 'lucide-react'
+import { Clock, ExternalLink, Play, Square, RotateCcw, Copy, Check } from 'lucide-react'
+import { useState } from 'react'
 import type { DockerContainer } from '../types'
 import { StatusBadge } from './status-badge'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	container: DockerContainer
 	isSelected: boolean
 	onSelect: (id: string) => void
+	onStart?: (id: string) => void
+	onStop?: (id: string) => void
+	onRestart?: (id: string) => void
+	isActionPending?: boolean
 }
 
-export function ContainerCard({ container, isSelected, onSelect }: Props) {
+export function ContainerCard({
+	container,
+	isSelected,
+	onSelect,
+	onStart,
+	onStop,
+	onRestart,
+	isActionPending = false
+}: Props) {
 	const primaryPort = container.ports[0]
 	const createdTimeAgo = formatDistanceToNow(new Date(container.createdAt), { addSuffix: true })
+	const isRunning = container.state === 'running'
+	const [copied, setCopied] = useState(false)
 
 	function handleClick() {
 		onSelect(container.id)
@@ -24,6 +40,25 @@ export function ContainerCard({ container, isSelected, onSelect }: Props) {
 		}
 	}
 
+	function handleQuickAction(e: React.MouseEvent, action: () => void) {
+		e.stopPropagation()
+		action()
+	}
+
+	async function handleCopyPort(e: React.MouseEvent) {
+		e.stopPropagation()
+		const port = primaryPort?.hostPort ?? 5432
+		try {
+			await navigator.clipboard.writeText(`localhost:${port}`)
+			setCopied(true)
+			setTimeout(function () {
+				setCopied(false)
+			}, 1500)
+		} catch {
+			// ignore
+		}
+	}
+
 	return (
 		<div
 			role='button'
@@ -31,14 +66,12 @@ export function ContainerCard({ container, isSelected, onSelect }: Props) {
 			tabIndex={0}
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
-			className={`
-        group relative p-3 rounded-lg border transition-all cursor-pointer
-        ${
-			isSelected
-				? 'border-emerald-500/50 bg-emerald-500/5'
-				: 'border-border/50 hover:border-border hover:bg-accent/50'
-		}
-      `}
+			className={cn(
+				'group relative p-3 rounded-lg border transition-all cursor-pointer',
+				isSelected
+					? 'border-emerald-500/50 bg-emerald-500/5'
+					: 'border-border/50 hover:border-border hover:bg-accent/50'
+			)}
 		>
 			<div className='flex items-start justify-between gap-2'>
 				<div className='flex-1 min-w-0'>
@@ -68,10 +101,90 @@ export function ContainerCard({ container, isSelected, onSelect }: Props) {
 				<StatusBadge state={container.state} health={container.health} size='sm' />
 			</div>
 
-			<div className='mt-2 flex items-center gap-1 text-[11px] text-muted-foreground/70'>
-				<Clock className='h-3 w-3' />
-				<span>{createdTimeAgo}</span>
+			<div className='mt-2 flex items-center justify-between'>
+				<div className='flex items-center gap-1 text-[11px] text-muted-foreground/70'>
+					<Clock className='h-3 w-3' />
+					<span>{createdTimeAgo}</span>
+				</div>
+
+				{/* Quick actions - animate in on hover */}
+				<div className='flex items-center gap-0.5 translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200 ease-out'>
+					{isRunning ? (
+						<QuickActionButton
+							title='Stop'
+							disabled={isActionPending}
+							onClick={function (e) {
+								if (onStop) handleQuickAction(e, function () { onStop(container.id) })
+							}}
+						>
+							<Square className='h-3 w-3' />
+						</QuickActionButton>
+					) : (
+						<QuickActionButton
+							title='Start'
+							disabled={isActionPending}
+							className='text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10'
+							onClick={function (e) {
+								if (onStart) handleQuickAction(e, function () { onStart(container.id) })
+							}}
+						>
+							<Play className='h-3 w-3' />
+						</QuickActionButton>
+					)}
+
+					<QuickActionButton
+						title='Restart'
+						disabled={isActionPending || !isRunning}
+						onClick={function (e) {
+							if (onRestart) handleQuickAction(e, function () { onRestart(container.id) })
+						}}
+					>
+						<RotateCcw className='h-3 w-3' />
+					</QuickActionButton>
+
+					<QuickActionButton
+						title='Copy host:port'
+						onClick={handleCopyPort}
+					>
+						{copied ? (
+							<Check className='h-3 w-3 text-emerald-500' />
+						) : (
+							<Copy className='h-3 w-3' />
+						)}
+					</QuickActionButton>
+				</div>
 			</div>
 		</div>
+	)
+}
+
+function QuickActionButton({
+	children,
+	title,
+	disabled,
+	className,
+	onClick
+}: {
+	children: React.ReactNode
+	title: string
+	disabled?: boolean
+	className?: string
+	onClick: (e: React.MouseEvent) => void
+}) {
+	return (
+		<button
+			type='button'
+			title={title}
+			disabled={disabled}
+			onClick={onClick}
+			className={cn(
+				'inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground transition-colors',
+				'hover:text-foreground hover:bg-muted',
+				'disabled:opacity-30 disabled:pointer-events-none',
+				className
+			)}
+		>
+			{children}
+		</button>
 	)
 }

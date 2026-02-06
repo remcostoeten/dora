@@ -1558,7 +1558,7 @@ export function DatabaseStudio({
 				open={showDropTableDialog}
 				onOpenChange={setShowDropTableDialog}
 				tableName={tableName || tableId || ''}
-				onConfirm={handleConfirmDropTable}
+				onConfirm={handleDropTable}
 				isLoading={isDdlLoading}
 			/>
 

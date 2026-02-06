@@ -426,7 +426,8 @@ pub async fn get_snippets(
     state: State<'_, AppState>,
 ) -> Result<Vec<SavedQuery>, Error> {
     let conn = state.storage.get_sqlite_connection()?;
-    let mut sql = "SELECT id, name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language FROM saved_queries WHERE is_snippet = 1".to_string();
+    let mut sql = "SELECT id, name, description, query_text, connection_id, tags, category, created_at, updated_at, favorite, is_snippet, is_system, language, folder_id FROM saved_queries WHERE is_snippet = 1".to_string();
+
     
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![];
     
@@ -468,7 +469,9 @@ pub async fn get_snippets(
             is_snippet: row.get(10)?,
             is_system: row.get(11)?,
             language: row.get(12)?,
+            folder_id: row.get(13)?,
         })
+
     })?;
     
     let mut snippets = Vec::new();
@@ -489,8 +492,10 @@ pub async fn save_snippet(
     category: Option<String>,
     connection_id: Option<Uuid>,
     description: Option<String>,
+    folder_id: Option<i64>,
     state: State<'_, AppState>,
 ) -> Result<i64, Error> {
+
     let now = chrono::Utc::now().timestamp();
     let snippet = SavedQuery {
         id: 0,
@@ -506,7 +511,9 @@ pub async fn save_snippet(
         is_snippet: true,
         is_system: false,
         language,
+        folder_id,
     };
+
     
     state.storage.save_query(&snippet)
 }
@@ -621,6 +628,7 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             is_snippet: true,
             is_system: true,
             language: Some("sql".to_string()),
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -636,6 +644,7 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             is_snippet: true,
             is_system: true,
             language: Some("sql".to_string()),
+            folder_id: None,
         },
         // Common Query Templates
         SavedQuery {
@@ -652,6 +661,7 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             is_snippet: true,
             is_system: true,
             language: Some("sql".to_string()),
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -667,6 +677,7 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             is_snippet: true,
             is_system: true,
             language: Some("sql".to_string()),
+            folder_id: None,
         },
         // Drizzle Templates
         SavedQuery {
@@ -683,6 +694,7 @@ pub async fn seed_system_snippets(state: State<'_, AppState>) -> Result<usize, E
             is_snippet: true,
             is_system: true,
             language: Some("drizzle".to_string()),
+            folder_id: None,
         },
     ];
     

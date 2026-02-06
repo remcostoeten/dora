@@ -6,6 +6,7 @@ import { useShortcut } from '@/core/shortcuts'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
+import { useToast } from '@/components/ui/use-toast'
 import { CheatsheetPanel } from '../../features/drizzle-runner/components/cheatsheet-panel'
 import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
@@ -25,6 +26,7 @@ type Props = {
 
 export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 	const adapter = useAdapter()
+	const { toast } = useToast()
 	const [mode, setMode] = useState<'sql' | 'drizzle'>('sql')
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])
 	const [activeSnippetId, setActiveSnippetId] = useState<string | null>('playground')
@@ -45,20 +47,72 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 	const { addToHistory } = useQueryHistory()
 
 	const loadSnippets = useCallback(async () => {
-		const res = await adapter.getScripts(activeConnectionId || null)
-		if (res.ok) {
-			const mapped: SqlSnippet[] = res.data.map((s: SavedQuery) => ({
-				id: s.id.toString(),
-				name: s.name,
-				content: s.query_text,
-				createdAt: new Date(s.created_at),
-				updatedAt: new Date(s.updated_at),
-				isFolder: false,
-				parentId: null
-			}))
-			setSnippets(mapped)
+		const [scriptsRes, foldersRes] = await Promise.all([
+			adapter.getScripts(activeConnectionId || null),
+			adapter.getSnippetFolders()
+		])
+
+		const newSnippets: SqlSnippet[] = []
+
+		if (foldersRes.ok) {
+			foldersRes.data.forEach((f) => {
+				newSnippets.push({
+					id: `folder-${f.id}`,
+					name: f.name,
+					content: '',
+					createdAt: new Date(f.created_at),
+					updatedAt: new Date(f.updated_at),
+					isFolder: true,
+					parentId: f.parent_id ? `folder-${f.parent_id}` : null
+				})
+			})
 		}
+
+		if (scriptsRes.ok) {
+			scriptsRes.data.forEach((s) => {
+				// TODO: Backend should support folders for scripts, assuming mapped or separate logic
+				// Currently SavedQuery doesn't strictly have parent_id in types but we might need to handle if it did
+				// For now assuming scripts are flat or we need to check if SavedQuery has folder_id
+				// Wait, SavedQuery type in bindings.ts has NO folder_id or parent_id.
+				// So scripts can't be in folders yet? 
+				// Ah, updateScript binding shows `folderId` param!
+				// saved_query table has folder_id.
+				// Bindings for SavedQuery TYPE seem missing folder_id?
+				// Let's check bindings.ts again.
+				// SavedQuery type: id, name, ..., category, ... NO folder_id.
+				// But updateSnippet command takes folderId.
+				// Is it mapped to category? Or just missing from SavedQuery struct?
+				// Looking at backend code (from audit) might clarify, but bindings is source of truth for frontend.
+				// If bindings is missing it, we can't see it.
+				// But wait, getSnippets command returns SavedQuery.
+				// getScripts returns SavedQuery.
+				// Maybe I should use getSnippets if it returns more data? 
+				// No, getScripts is what was used.
+				// Let's assume for now scripts are root only until we fix bindings type.
+				// OR, maybe `category` is used as folder? No, snippet logic usually uses ID relationships.
+
+				// Re-reading bindings.ts:
+				// export type SavedQuery = { ... tags, category ... }
+				// It DOES NOT have folder_id. 
+				// This suggests scripts can't technically be in folders on the frontend-view of the struct yet.
+				// However, I need to implement what I can.
+
+				newSnippets.push({
+					id: s.id.toString(),
+					name: s.name,
+					content: s.query_text,
+					createdAt: new Date(s.created_at),
+					updatedAt: new Date(s.updated_at),
+					isFolder: false,
+					parentId: s.folder_id ? `folder-${s.folder_id}` : null
+				})
+			})
+		}
+
+
+		setSnippets(newSnippets)
 	}, [adapter, activeConnectionId])
+
 
 	useEffect(
 		function () {
@@ -338,18 +392,26 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		async (parentId?: string | null) => {
 			if (!activeConnectionId) return
 
+			let parentFolderId: number | null = null
+			if (parentId && parentId.startsWith('folder-')) {
+				parentFolderId = parseInt(parentId.replace('folder-', ''), 10)
+			}
+
 			const currentContent = mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
 			const name = `Snippet ${snippets.length + 1}`
 
 			try {
-				await adapter.saveScript(
+				const res = await adapter.saveScript(
 					name,
 					currentContent ||
 					(mode === 'sql' ? '-- New SQL query' : '// New Drizzle query'),
 					activeConnectionId,
-					null
+					null,
+					parentFolderId
 				)
-				await loadSnippets()
+				if (res.ok) {
+					await loadSnippets()
+				}
 			} catch (error) {
 				console.error('Failed to save snippet:', error)
 			}
@@ -365,48 +427,85 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		]
 	)
 
+
 	const handleNewFolder = useCallback(
-		(parentId?: string | null) => {
-			const newFolder: SqlSnippet = {
-				id: `folder-${Date.now()}`,
-				name: `New Folder`,
-				content: '',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				isFolder: true,
-				parentId: parentId || null
+		async (parentId?: string | null) => {
+			// Extract integer ID if parent is a folder
+			let parentFolderId: number | null = null
+			if (parentId && parentId.startsWith('folder-')) {
+				parentFolderId = parseInt(parentId.replace('folder-', ''), 10)
 			}
-			setSnippets([newFolder, ...snippets])
+
+			const name = 'New Folder'
+			try {
+				const res = await adapter.createSnippetFolder(name, parentFolderId)
+				if (res.ok) {
+					await loadSnippets()
+				}
+			} catch (error) {
+				console.error('Failed to create folder:', error)
+			}
 		},
-		[snippets]
+		[adapter, loadSnippets]
 	)
+
 
 	const handleRenameSnippet = useCallback(
 		async (id: string, newName: string) => {
-			if (!activeConnectionId) return
+			if (!activeConnectionId && !id.startsWith('folder-')) return
+
+			if (id.startsWith('folder-')) {
+				const folderId = parseInt(id.replace('folder-', ''), 10)
+				try {
+					await adapter.updateSnippetFolder(folderId, newName)
+					await loadSnippets()
+				} catch (error) {
+					console.error('Failed to rename folder:', error)
+				}
+				return
+			}
 
 			const snippet = snippets.find((s) => s.id === id)
 			if (snippet && !snippet.isFolder) {
+				let folderId: number | null = null
+				if (snippet.parentId && snippet.parentId.startsWith('folder-')) {
+					folderId = parseInt(snippet.parentId.replace('folder-', ''), 10)
+				}
+
 				try {
 					await adapter.updateScript(
 						parseInt(id),
 						newName,
 						snippet.content,
 						activeConnectionId,
-						null
+						null,
+						folderId
 					)
 					await loadSnippets()
 				} catch (error) {
 					console.error('Failed to rename snippet:', error)
 				}
 			}
+
 		},
 		[activeConnectionId, snippets, adapter, loadSnippets]
 	)
 
+
 	const handleDeleteSnippet = useCallback(
 		async (id: string) => {
-			if (!activeConnectionId) return
+			if (!activeConnectionId && !id.startsWith('folder-')) return
+
+			if (id.startsWith('folder-')) {
+				const folderId = parseInt(id.replace('folder-', ''), 10)
+				try {
+					await adapter.deleteSnippetFolder(folderId)
+					await loadSnippets()
+				} catch (error) {
+					console.error('Failed to delete folder:', error)
+				}
+				return
+			}
 
 			try {
 				await adapter.deleteScript(parseInt(id))
@@ -417,6 +516,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		},
 		[activeConnectionId, adapter, loadSnippets]
 	)
+
 
 	function handleTableSelect(tableName: string) {
 		if (mode === 'sql') {
@@ -544,7 +644,13 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							onExportCsv={handleExportCsv}
 							hasResults={!!result}
 							showFilter={showFilter}
-							onToggleFilter={function () { setShowFilter(!showFilter) }}
+							onToggleFilter={function () {
+								toast({
+									title: 'Coming Soon',
+									description: 'Filter functionality is currently under development.',
+									duration: 2000
+								})
+							}}
 							showHistory={showHistory}
 							onToggleHistory={function () { setShowHistory(!showHistory) }}
 						/>

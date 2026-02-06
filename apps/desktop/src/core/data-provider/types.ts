@@ -6,18 +6,20 @@ import {
 	QueryHistoryEntry,
 	JsonValue,
 	DatabaseInfo,
-	SavedQuery
+	SavedQuery,
+	SnippetFolder
+
 } from '@/lib/bindings'
 
 export type AdapterResult<T> =
 	| {
-			ok: true
-			data: T
-	  }
+		ok: true
+		data: T
+	}
 	| {
-			ok: false
-			error: string
-	  }
+		ok: false
+		error: string
+	}
 
 export type QueryResult = {
 	rows: Record<string, unknown>[]
@@ -95,17 +97,31 @@ export type DataAdapter = {
 		name: string,
 		content: string,
 		connectionId: string | null,
-		description?: string | null
+		description?: string | null,
+		folderId?: number | null
 	): Promise<AdapterResult<number>>
+
 	updateScript(
 		id: number,
 		name: string,
 		content: string,
 		connectionId: string | null,
-		description?: string | null
+		description?: string | null,
+		folderId?: number | null
 	): Promise<AdapterResult<void>>
+
 	deleteScript(id: number): Promise<AdapterResult<void>>
+
+	// Snippet Folder Management
+	getSnippetFolders(): Promise<AdapterResult<SnippetFolder[]>>
+	createSnippetFolder(
+		name: string,
+		parentId?: number | null
+	): Promise<AdapterResult<number>>
+	updateSnippetFolder(id: number, name: string): Promise<AdapterResult<void>>
+	deleteSnippetFolder(id: number): Promise<AdapterResult<void>>
 }
+
 
 export type DataProviderContextValue = {
 	adapter: DataAdapter

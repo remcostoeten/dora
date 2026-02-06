@@ -25,6 +25,7 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             is_system: false,
             language: None,
             category: None,
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -41,6 +42,7 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             is_system: false,
             language: None,
             category: None,
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -57,6 +59,7 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             is_system: false,
             language: None,
             category: None,
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -73,6 +76,7 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             is_system: false,
             language: None,
             category: None,
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -89,6 +93,7 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             is_system: false,
             language: None,
             category: None,
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -105,6 +110,7 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             is_system: false,
             language: None,
             category: None,
+            folder_id: None,
         },
         SavedQuery {
             id: 0,
@@ -121,6 +127,7 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
             is_system: false,
             language: None,
             category: None,
+            folder_id: None,
         },
     ];
 

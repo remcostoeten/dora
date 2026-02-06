@@ -52,7 +52,7 @@ function saveToStorage() {
 			return
 		}
 		localStorage.setItem(STORAGE_KEY, JSON.stringify(store))
-	} catch {}
+	} catch { }
 }
 
 function initializeStore() {
@@ -286,16 +286,16 @@ CREATE TABLE posts (
 
 			const columns: ColumnDefinition[] = tableInfo
 				? tableInfo.columns.map(function (c) {
-						return {
-							name: c.name,
-							type: c.data_type,
-							nullable: c.is_nullable,
-							primaryKey: c.is_primary_key || false
-						}
-					})
+					return {
+						name: c.name,
+						type: c.data_type,
+						nullable: c.is_nullable,
+						primaryKey: c.is_primary_key || false
+					}
+				})
 				: Object.keys(paged[0] || {}).map(function (k) {
-						return { name: k, type: 'unknown', nullable: true, primaryKey: k === 'id' }
-					})
+					return { name: k, type: 'unknown', nullable: true, primaryKey: k === 'id' }
+				})
 
 			return ok({
 				columns,
@@ -516,8 +516,8 @@ CREATE TABLE posts (
 			await randomDelay()
 			const filtered = connectionId
 				? store.scripts.filter(function (s) {
-						return s.connection_id === connectionId
-					})
+					return s.connection_id === connectionId
+				})
 				: store.scripts
 			return ok(filtered)
 		},
@@ -526,14 +526,15 @@ CREATE TABLE posts (
 			name: string,
 			content: string,
 			connectionId: string | null,
-			description?: string | null
+			description?: string | null,
+			folderId?: number | null
 		): Promise<AdapterResult<number>> {
 			await randomDelay()
 			const id = Math.max(...store.scripts.map((s) => s.id), 0) + 1
 			const newScript: SavedQuery = {
 				id,
 				name,
-				content: content, // wait, SavedQuery uses query_text
+				content: content,
 				query_text: content,
 				description: description || null,
 				connection_id: connectionId,
@@ -544,8 +545,10 @@ CREATE TABLE posts (
 				favorite: false,
 				is_snippet: true,
 				is_system: false,
-				language: 'sql'
+				language: 'sql',
+				folder_id: folderId ?? null
 			}
+
 			store.scripts.push(newScript)
 			saveToStorage()
 			return ok(id)
@@ -556,7 +559,8 @@ CREATE TABLE posts (
 			name: string,
 			content: string,
 			connectionId: string | null,
-			description?: string | null
+			description?: string | null,
+			folderId?: number | null
 		): Promise<AdapterResult<void>> {
 			await randomDelay()
 			const idx = store.scripts.findIndex(function (s) {
@@ -570,11 +574,13 @@ CREATE TABLE posts (
 				query_text: content,
 				description: description || store.scripts[idx].description,
 				connection_id: connectionId,
-				updated_at: Date.now()
+				updated_at: Date.now(),
+				folder_id: folderId ?? store.scripts[idx].folder_id
 			}
 			saveToStorage()
 			return ok(undefined)
 		},
+
 
 		async deleteScript(id: number): Promise<AdapterResult<void>> {
 			await randomDelay()
@@ -583,15 +589,37 @@ CREATE TABLE posts (
 			})
 			saveToStorage()
 			return ok(undefined)
+		},
+
+		// Snippet Folder Management
+		async getSnippetFolders() {
+			await randomDelay()
+			return ok([])
+		},
+
+		async createSnippetFolder(name: string, parentId?: number | null) {
+			await randomDelay()
+			return ok(Math.floor(Math.random() * 1000))
+		},
+
+		async updateSnippetFolder(id: number, name: string) {
+			await randomDelay()
+			return ok(undefined)
+		},
+
+		async deleteSnippetFolder(id: number) {
+			await randomDelay()
+			return ok(undefined)
 		}
 	}
 }
+
 
 export function resetMockStore() {
 	try {
 		if (typeof localStorage !== 'undefined') {
 			localStorage.removeItem(STORAGE_KEY)
 		}
-	} catch {}
+	} catch { }
 	initializeStore()
 }

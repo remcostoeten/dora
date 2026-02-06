@@ -416,13 +416,18 @@ export function createTauriAdapter(): DataAdapter {
 			name: string,
 			content: string,
 			connectionId: string | null,
-			description?: string | null
+			description?: string | null,
+			folderId?: number | null
 		): Promise<AdapterResult<number>> {
-			const result = await commands.saveScript(
+			const result = await commands.saveSnippet(
 				name,
 				content,
+				null,
+				null,
+				null,
 				connectionId,
-				description ?? null
+				description ?? null,
+				folderId ?? null
 			)
 			if (result.status === 'ok') {
 				return ok(result.data)
@@ -430,19 +435,24 @@ export function createTauriAdapter(): DataAdapter {
 			return err(formatError(result.error))
 		},
 
+
 		async updateScript(
 			id: number,
 			name: string,
 			content: string,
 			connectionId: string | null,
-			description?: string | null
+			description?: string | null,
+			folderId?: number | null
 		): Promise<AdapterResult<void>> {
-			const result = await commands.updateScript(
+			const result = await commands.updateSnippet(
 				id,
 				name,
 				content,
-				connectionId,
-				description ?? null
+				null,
+				null,
+				null,
+				description ?? null,
+				folderId ?? null
 			)
 			if (result.status === 'ok') {
 				return ok(undefined)
@@ -450,8 +460,42 @@ export function createTauriAdapter(): DataAdapter {
 			return err(formatError(result.error))
 		},
 
+
 		async deleteScript(id: number): Promise<AdapterResult<void>> {
 			const result = await commands.deleteScript(id)
+			if (result.status === 'ok') {
+				return ok(undefined)
+			}
+			return err(formatError(result.error))
+		},
+
+		// Snippet Folder Management
+		async getSnippetFolders() {
+			const result = await commands.getSnippetFolders()
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async createSnippetFolder(name: string, parentId?: number | null) {
+			const result = await commands.createSnippetFolder(name, parentId ?? null, null)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async updateSnippetFolder(id: number, name: string) {
+			const result = await commands.updateSnippetFolder(id, name, null)
+			if (result.status === 'ok') {
+				return ok(undefined)
+			}
+			return err(formatError(result.error))
+		},
+
+		async deleteSnippetFolder(id: number) {
+			const result = await commands.deleteSnippetFolder(id)
 			if (result.status === 'ok') {
 				return ok(undefined)
 			}
@@ -459,6 +503,7 @@ export function createTauriAdapter(): DataAdapter {
 		}
 	}
 }
+
 
 function operatorToSql(op: string): string {
 	const map: Record<string, string> = {

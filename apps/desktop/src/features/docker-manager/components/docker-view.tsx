@@ -1,11 +1,12 @@
 import { Plus, Search, Container, AlertTriangle } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Switch } from '@/shared/ui/switch'
 import { useCreateContainer } from '../api/mutations/use-create-container'
+import { useContainerActions } from '../api/mutations/use-container-actions'
 import {
 	useContainers,
 	useContainerSearch,
@@ -38,13 +39,46 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 	const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped' | 'created'>('all')
 	const [sortBy, setSortBy] = useState<'name' | 'created' | 'status'>('name')
 
+	const searchInputRef = useRef<HTMLInputElement>(null)
 	const { toast } = useToast()
+
+	const handleSearchFocus = useCallback(function (e: KeyboardEvent) {
+		if (
+			(e.key === '/' && !e.ctrlKey && !e.metaKey) ||
+			((e.ctrlKey || e.metaKey) && e.key === 'k')
+		) {
+			const target = e.target as HTMLElement
+			if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+				return
+			}
+			e.preventDefault()
+			searchInputRef.current?.focus()
+		}
+	}, [])
+
+	useEffect(function () {
+		document.addEventListener('keydown', handleSearchFocus)
+		return function () {
+			document.removeEventListener('keydown', handleSearchFocus)
+		}
+	}, [handleSearchFocus])
 
 	const { data: dockerStatus, isLoading: isCheckingDocker } = useDockerAvailability()
 	const { data: containers, isLoading: isLoadingContainers } = useContainers({
 		showExternal,
 		enabled: dockerStatus?.available ?? false
 	})
+
+	// Fetch all containers (including external) to get the external count for the toggle indicator
+	const { data: allContainers } = useContainers({
+		showExternal: true,
+		enabled: (dockerStatus?.available ?? false) && !showExternal
+	})
+
+	const externalCount = useMemo(function () {
+		if (showExternal || !allContainers || !containers) return 0
+		return allContainers.length - containers.length
+	}, [showExternal, allContainers, containers])
 
 	const searchedContainers = useContainerSearch(containers, searchQuery)
 
@@ -121,8 +155,22 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		}
 	})
 
+	const containerActions = useContainerActions()
+
 	function handleCreateContainer(config: PostgresContainerConfig) {
 		createContainer.mutate(config)
+	}
+
+	function handleQuickStart(id: string) {
+		containerActions.mutate({ containerId: id, action: 'start' })
+	}
+
+	function handleQuickStop(id: string) {
+		containerActions.mutate({ containerId: id, action: 'stop' })
+	}
+
+	function handleQuickRestart(id: string) {
+		containerActions.mutate({ containerId: id, action: 'restart' })
 	}
 
 	function handleSelectContainer(id: string) {
@@ -191,13 +239,17 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 				<div className='relative flex-1 max-w-sm'>
 					<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
 					<Input
+						ref={searchInputRef}
 						placeholder='Search containers...'
 						value={searchQuery}
 						onChange={function (e) {
 							setSearchQuery(e.target.value)
 						}}
-						className='pl-9'
+						className='pl-9 pr-12'
 					/>
+					<kbd className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-5 select-none items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground'>
+						/
+					</kbd>
 				</div>
 
 				<div className='flex items-center gap-2'>
@@ -206,8 +258,13 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 						checked={showExternal}
 						onCheckedChange={setShowExternal}
 					/>
-					<Label htmlFor='show-external' className='text-sm'>
+					<Label htmlFor='show-external' className='text-sm whitespace-nowrap'>
 						Show all
+						{!showExternal && externalCount > 0 && (
+							<span className='ml-1.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-muted text-[10px] font-medium text-muted-foreground tabular-nums'>
+								+{externalCount}
+							</span>
+						)}
 					</Label>
 				</div>
 
@@ -259,6 +316,10 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 					containers={filteredContainers}
 					selectedContainerId={selectedContainerId}
 					onSelectContainer={handleSelectContainer}
+					onStartContainer={handleQuickStart}
+					onStopContainer={handleQuickStop}
+					onRestartContainer={handleQuickRestart}
+					isActionPending={containerActions.isPending}
 					isLoading={isLoadingContainers}
 				/>
 
@@ -276,6 +337,6 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 				existingContainers={containers || []}
 				isSubmitting={createContainer.isPending}
 			/>
-		</div >
+		</div>
 	)
 }

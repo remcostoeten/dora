@@ -6,6 +6,10 @@ type Props = {
 	containers: DockerContainer[]
 	selectedContainerId: string | null
 	onSelectContainer: (id: string) => void
+	onStartContainer?: (id: string) => void
+	onStopContainer?: (id: string) => void
+	onRestartContainer?: (id: string) => void
+	isActionPending?: boolean
 	isLoading?: boolean
 }
 
@@ -13,6 +17,10 @@ export function ContainerList({
 	containers,
 	selectedContainerId,
 	onSelectContainer,
+	onStartContainer,
+	onStopContainer,
+	onRestartContainer,
+	isActionPending = false,
 	isLoading = false
 }: Props) {
 	if (isLoading) {
@@ -51,6 +59,10 @@ export function ContainerList({
 							container={container}
 							isSelected={container.id === selectedContainerId}
 							onSelect={onSelectContainer}
+							onStart={onStartContainer}
+							onStop={onStopContainer}
+							onRestart={onRestartContainer}
+							isActionPending={isActionPending}
 						/>
 					)
 				})}
