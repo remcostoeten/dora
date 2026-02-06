@@ -31,10 +31,6 @@
 	"dependencies": {
 		"@google/generative-ai": "^0.24.1",
 		"@tauri-apps/plugin-dialog": "^2.6.0",
-	"dependencies": {
-		"@google/generative-ai": "^0.24.1",
-		"@tauri-apps/plugin-dialog": "^2.6.0",
-		"glob": "^13.0.0",
 		"glob": "^13.0.0",
 		"monaco-editor": "^0.55.1",
 		"sqlite3": "^5.1.7",
