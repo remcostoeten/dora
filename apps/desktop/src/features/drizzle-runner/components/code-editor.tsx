@@ -21,6 +21,7 @@ import {
 	isInsideJoinParens
 } from '../utils/lsp-patterns'
 import { generateDrizzleTypes } from '../utils/lsp-utils'
+import { detectTyposInQuery, getSuggestions, getTableNames as getFuzzyTableNames } from '../utils/fuzzy-match'
 import { LspDemoWidget } from './lsp-demo-widget'
 
 type Props = {
@@ -247,6 +248,45 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 			}
 		}
 	}, [])
+
+	useEffect(
+		function detectTypos() {
+			if (!monacoRef.current || !editorRef.current || tables.length === 0) return
+
+			const editor = editorRef.current
+			const monaco = monacoRef.current
+			const model = editor.getModel()
+			if (!model) return
+
+			const typos = detectTyposInQuery(value, tables)
+
+			const markers: Monaco.editor.IMarkerData[] = typos.map(function (typo) {
+				const startPos = model.getPositionAt(typo.startIndex)
+				const endPos = model.getPositionAt(typo.endIndex)
+
+				return {
+					severity: monaco.MarkerSeverity.Warning,
+					message: typo.suggestion
+						? `Did you mean "${typo.suggestion}"?`
+						: `Unknown identifier: ${typo.word}`,
+					startLineNumber: startPos.lineNumber,
+					startColumn: startPos.column,
+					endLineNumber: endPos.lineNumber,
+					endColumn: endPos.column,
+					source: 'Drizzle LSP'
+				}
+			})
+
+			monaco.editor.setModelMarkers(model, 'drizzle-typos', markers)
+
+			return function () {
+				if (monacoRef.current && model) {
+					monacoRef.current.editor.setModelMarkers(model, 'drizzle-typos', [])
+				}
+			}
+		},
+		[value, tables]
+	)
 
 	const handleEditorDidMount: OnMount = function (editor, monaco) {
 		editorRef.current = editor
@@ -1645,6 +1685,33 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							sortText: `5${String(index).padStart(3, '0')}`
 						})
 					})
+
+					const word = model.getWordUntilPosition(position)
+					if (word.word && word.word.length >= 2) {
+						const tableNames = getFuzzyTableNames(tables)
+						const isExactMatch = tableNames.some(function (name) {
+							return name.toLowerCase() === word.word.toLowerCase()
+						})
+
+						if (!isExactMatch) {
+							const fuzzyMatches = getSuggestions(word.word, tableNames, 3)
+							fuzzyMatches.forEach(function (match, index) {
+								defaultSuggestions.unshift({
+									label: `${match.value} (did you mean?)`,
+									kind: monaco.languages.CompletionItemKind.Variable,
+									insertText: match.value,
+									detail: `Suggestion for "${word.word}"`,
+									range: range,
+									sortText: `0${String(index).padStart(3, '0')}`,
+									filterText: word.word,
+									command: {
+										id: 'editor.action.triggerSuggest',
+										title: 'Trigger Suggest'
+									}
+								})
+							})
+						}
+					}
 
 					return buildSuggestions(range, defaultSuggestions)
 				}
