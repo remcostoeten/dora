@@ -27,10 +27,49 @@
 
 ## Download
 
-Dora is natively available for Linux, MacOS and Windows(?) and offers building from source as well as the compiled release through the [releases](https://github.com/remcostoeten/dora/releases) page or via common package managers.
-<small><i>Currently only linux builds are compiled, but macos and windows are supported.</i></small>
+Dora is natively available for **Linux**, **macOS**, and **Windows**. Pre-compiled binaries are available through the [releases](https://github.com/remcostoeten/dora/releases) page.
 
-### Linux
+### Latest Release: v0.0.93
+
+**Features:** Drizzle-aware typo detection, light/dark theme toggle, SQL snippet saving, custom keyboard shortcuts, performance optimizations, and more.
+
+#### Download by Platform
+
+- **Linux**
+  - `.deb` - Debian/Ubuntu (recommended for apt-based systems)
+  - `.AppImage` - Universal Linux executable (works on most distributions)
+  - `.rpm` - Red Hat/Fedora/CentOS (for rpm-based systems)
+
+- **macOS**
+  - `.dmg` - macOS installer (Intel & Apple Silicon support)
+
+- **Windows**
+  - `.exe` - Windows installer (recommended)
+  - `.msi` - Alternative Windows installer option
+
+👉 **[Download Latest Release](https://github.com/remcostoeten/dora/releases/tag/v0.0.93)**
+
+### Installation by Platform
+
+#### Linux (Debian/Ubuntu)
+```bash
+# Using .deb package
+sudo dpkg -i dora_0.0.93_amd64.deb
+dora
+
+# Or using AppImage
+chmod +x dora_0.0.93_x64.AppImage
+./dora_0.0.93_x64.AppImage
+```
+
+#### macOS
+```bash
+# Download and mount the .dmg file, then drag Dora to Applications
+# Or use Homebrew (if available)
+```
+
+#### Windows
+Download the `.exe` installer and run it, or extract the portable version.
 
 ## Development & Building
 
