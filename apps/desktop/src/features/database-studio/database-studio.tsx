@@ -1151,15 +1151,17 @@ export function DatabaseStudio({
 
 		setIsDdlLoading(true)
 		try {
-			const sql = `DROP TABLE IF EXISTS "${tableName}"`
-			const result = await commands.executeBatch(activeConnectionId, [sql])
-			if (result.status === 'ok') {
+			const result = await adapter.dropTable(activeConnectionId, tableName)
+			if (result.ok) {
 				setShowDropTableDialog(false)
+				toast({ title: 'Table dropped', description: `"${tableName}" has been removed.` })
 			} else {
 				console.error('Failed to drop table:', result.error)
+				toast({ title: 'Failed to drop table', description: result.error, variant: 'destructive' })
 			}
 		} catch (error) {
 			console.error('Failed to drop table:', error)
+			toast({ title: 'Failed to drop table', description: String(error), variant: 'destructive' })
 		} finally {
 			setIsDdlLoading(false)
 		}

@@ -16,6 +16,8 @@ import {
 import { Slider } from '@/shared/ui/slider'
 import { Switch } from '@/shared/ui/switch'
 import { ShortcutRecorder } from './shortcut-recorder'
+import { PopoverClose } from '@/shared/ui/popover'
+import { X } from 'lucide-react'
 import { SidebarPanel, SidebarPanelContent, SidebarSection } from './sidebar-panel'
 
 export function SettingsPanel() {
@@ -25,9 +27,17 @@ export function SettingsPanel() {
 
 	return (
 		<SidebarPanel>
+			<div className='flex items-center justify-between px-4 pt-3 pb-1'>
+				<h3 className='text-sm font-medium text-sidebar-foreground'>Settings</h3>
+				<PopoverClose
+					className='flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring'
+					aria-label='Close settings'
+				>
+					<X className='h-4 w-4' />
+				</PopoverClose>
+			</div>
 			<SidebarPanelContent>
 				<div className='flex flex-col p-4'>
-					{/* Existing sections... */}
 					<SidebarSection title='Editor'>
 						<div className='space-y-2'>
 							<div className='flex items-center justify-between'>

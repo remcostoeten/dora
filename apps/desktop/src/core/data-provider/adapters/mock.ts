@@ -192,6 +192,26 @@ export function createMockAdapter(): DataAdapter {
 			return ok(schema)
 		},
 
+		async dropTable(connectionId: string, tableName: string): Promise<AdapterResult<void>> {
+			await randomDelay()
+
+			// Remove table data from store
+			const key = connectionId + ':' + tableName
+			delete store.tables[key]
+			delete store.nextId[key]
+
+			// Remove from schema
+			const schema = MOCK_SCHEMAS[connectionId]
+			if (schema) {
+				schema.tables = schema.tables.filter(function (t) {
+					return t.name !== tableName
+				})
+			}
+
+			saveToStorage()
+			return ok(undefined)
+		},
+
 		async getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>> {
 			await randomDelay()
 			return ok(`-- Mock DDL for connection ${connectionId}

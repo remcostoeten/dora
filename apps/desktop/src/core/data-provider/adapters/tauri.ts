@@ -121,6 +121,15 @@ export function createTauriAdapter(): DataAdapter {
 			return err(formatError(result.error))
 		},
 
+		async dropTable(connectionId: string, tableName: string): Promise<AdapterResult<void>> {
+			const sql = `DROP TABLE IF EXISTS "${tableName}"`
+			const result = await commands.executeBatch(connectionId, [sql])
+			if (result.status === 'ok') {
+				return ok(undefined)
+			}
+			return err(formatError(result.error))
+		},
+
 		async getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>> {
 			// Check connection first to get dialect
 			const connResult = await commands.getConnections()
