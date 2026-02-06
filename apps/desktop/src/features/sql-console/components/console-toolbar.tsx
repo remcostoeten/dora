@@ -38,7 +38,6 @@ type Props = {
 	showFilter?: boolean
 	onToggleFilter?: () => void
 	showHistory?: boolean
-	showHistory?: boolean
 	onToggleHistory?: () => void
 	onSave?: () => void
 }
@@ -72,9 +71,6 @@ export function ConsoleToolbar({
 	hasResults,
 	showJson,
 	onShowJsonToggle,
-	showFilter,
-	onToggleFilter,
-	showHistory,
 	showFilter,
 	onToggleFilter,
 	showHistory,
