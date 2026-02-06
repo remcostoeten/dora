@@ -8,9 +8,32 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.92'
+export const CURRENT_VERSION = '0.0.93'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.93',
+		date: '2026-02-06',
+		commit: '86f4695',
+		title: 'Typo Detection, Theme Toggle & Performance Enhancements',
+		description:
+			'Drizzle-aware typo diagnostics with fuzzy matching, light/dark theme toggle, SQL snippet saving, custom keyboard shortcuts, LSP utilities for Monaco Editor, improved error handling, and comprehensive performance optimizations',
+		type: 'feature',
+		details: [
+			'Added Drizzle-aware typo detection with fuzzy matching suggestions',
+			'Implemented LSP (Language Server Protocol) integration for enhanced editing',
+			'Added light/dark theme toggle with persistence',
+			'Introduced SQL snippet saving functionality',
+			'Created custom keyboard shortcuts UI with persistent bindings',
+			'Integrated Monaco Editor workers for offloaded processing',
+			'Optimized IPC layer and bundle splitting',
+			'Improved error handling with shadcn components instead of native dialogs',
+			'Added query history tracking and display',
+			'Implemented delete confirmation dialogs',
+			'Performed comprehensive code cleanup and dependency audit',
+			'Enhanced UI polish across all components'
+		]
+	},
 	{
 		version: '0.0.92',
 		date: '2026-01-23',

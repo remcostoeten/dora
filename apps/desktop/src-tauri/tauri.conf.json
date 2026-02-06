@@ -1,7 +1,7 @@
 {
 	"$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
 	"productName": "Dora",
-	"version": "0.0.925",
+	"version": "0.0.93",
 	"identifier": "com.Dora.dev",
 	"build": {
 		"frontendDist": "../dist",

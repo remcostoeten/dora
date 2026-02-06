@@ -1,6 +1,6 @@
 {
 	"name": "@dora/desktop",
-	"version": "0.0.925",
+	"version": "0.0.93",
 	"private": true,
 	"type": "module",
 	"scripts": {
