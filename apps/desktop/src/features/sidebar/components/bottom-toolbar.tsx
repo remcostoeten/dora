@@ -62,6 +62,22 @@ function useCurrentTheme() {
 export function BottomToolbar({ onAction, themeProps }: Props) {
 	const currentTheme = useCurrentTheme()
 	const isLight = LIGHT_THEMES.includes(currentTheme)
+	const [changelogOpen, setChangelogOpen] = useState(false)
+	const [hasUnseenChangelog, setHasUnseenChangelog] = useState(false)
+
+	useEffect(function checkUnseenChangelog() {
+		const lastSeenVersion = localStorage.getItem('dora.changelog.lastSeenVersion')
+		setHasUnseenChangelog(lastSeenVersion !== CURRENT_VERSION)
+	}, [])
+
+	useEffect(
+		function markChangelogAsSeenWhenOpened() {
+			if (!changelogOpen) return
+			localStorage.setItem('dora.changelog.lastSeenVersion', CURRENT_VERSION)
+			setHasUnseenChangelog(false)
+		},
+		[changelogOpen]
+	)
 
 	function toggleLightDark() {
 		const next: Theme = isLight ? 'dark' : 'light'
@@ -107,7 +123,7 @@ export function BottomToolbar({ onAction, themeProps }: Props) {
 
 				if (item.id === 'changelog') {
 					return (
-						<Popover key={item.id}>
+						<Popover key={item.id} open={changelogOpen} onOpenChange={setChangelogOpen}>
 							<PopoverTrigger asChild>
 								<div>
 									<Tooltip>
@@ -115,7 +131,7 @@ export function BottomToolbar({ onAction, themeProps }: Props) {
 											<Button
 												variant='ghost'
 												size='icon'
-												className='h-6 w-auto px-1.5 gap-1 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent'
+												className='relative h-6 w-auto px-1.5 gap-1 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent'
 											>
 												<item.icon className='h-4 w-4' />
 												<Badge
@@ -124,6 +140,9 @@ export function BottomToolbar({ onAction, themeProps }: Props) {
 												>
 													v{CURRENT_VERSION}
 												</Badge>
+												{hasUnseenChangelog && (
+													<span className='absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary' />
+												)}
 											</Button>
 										</TooltipTrigger>
 										<TooltipContent side='top' className='text-xs'>

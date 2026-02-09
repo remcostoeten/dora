@@ -12,12 +12,27 @@ export const CURRENT_VERSION = '0.0.94'
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
+		version: '0.0.95-next',
+		date: '2026-02-09',
+		commit: '6928f90',
+		title: 'Packaging Targets Expansion',
+		description:
+			'Prepared the next release pipeline to generate additional installers and broader platform coverage',
+		type: 'feature',
+		details: [
+			'Added Linux RPM target to the Tauri bundle list',
+			'Added Windows MSI target alongside NSIS EXE',
+			'Added a dedicated Intel macOS release job (macos-13)',
+			'Kept existing Linux AppImage/DEB and macOS DMG artifacts intact'
+		]
+	},
+	{
 		version: '0.0.94',
 		date: '2026-02-09',
-		commit: 'df1d696',
+		commit: '04f7d5e',
 		title: 'CI, Test Stability & Cross-Platform Release Recovery',
 		description:
-			'Stabilized CI pipelines, fixed Rust test failures in GitHub Actions, and repaired cross-platform release workflow for Linux/macOS/Windows artifacts',
+			'Stabilized CI pipelines, repaired release workflows, and restored cross-platform artifacts for Linux/macOS/Windows',
 		type: 'fix',
 		details: [
 			'Fixed CI Rust test failures caused by libsql threading behavior in tests',
@@ -25,7 +40,8 @@ export const CHANGELOG: ChangelogEntry[] = [
 			'Resolved rust/TypeScript compile and lint blockers in pipelines',
 			'Updated release Linux dependencies for Tauri v2 (webkit 4.1/libsoup 3.0)',
 			'Removed failing macOS signing env wiring for unsigned CI builds',
-			'Enabled bundled SQLite linking for Windows release builds'
+			'Fixed Windows release linking by provisioning sqlite via vcpkg and linker env paths',
+			'Published release assets: .deb, .AppImage, .dmg, and .exe'
 		]
 	},
 	{

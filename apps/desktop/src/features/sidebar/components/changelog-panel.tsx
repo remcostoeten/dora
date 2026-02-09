@@ -62,11 +62,11 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 		<SidebarPanel>
 			<SidebarPanelHeader title='Changelog' version={CURRENT_VERSION} />
 
-			<SidebarPanelContent maxHeight={maxHeight}>
+			<SidebarPanelContent className='h-[500px]' maxHeight={maxHeight}>
 				<div className='p-2 space-y-1'>
-					{CHANGELOG.map(function (entry, index) {
+					{CHANGELOG.map(function (entry) {
 						const Icon = getTypeIcon(entry.type)
-						const isLatest = index === 0
+						const isLatest = entry.version === CURRENT_VERSION
 						const isExpanded = expandedVersions.has(entry.version)
 
 						return (
@@ -136,12 +136,6 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 												<span className='opacity-50'>•</span>
 												<span>{formatDate(entry.date)}</span>
 												<span className='opacity-50'>•</span>
-												import {siteConfig} from '@/config/site'
-
-												// ... imports
-
-												// ... inside component
-
 												<a
 													href={`${siteConfig.links.github}/commit/${entry.commit}`}
 													target='_blank'
