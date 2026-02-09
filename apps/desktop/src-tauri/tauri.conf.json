@@ -33,8 +33,10 @@
 		"active": true,
 		"targets": [
 			"deb",
+			"rpm",
 			"appimage",
 			"nsis",
+			"msi",
 			"dmg"
 		],
 		"shortDescription": "A modern database client",
