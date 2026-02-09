@@ -77,6 +77,14 @@ jobs:
       - name: install rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: install sqlite3 via vcpkg
+        shell: pwsh
+        run: |
+          $VcpkgRoot = "C:\vcpkg"
+          & "$VcpkgRoot\vcpkg.exe" install sqlite3:x64-windows
+          echo "VCPKG_ROOT=$VcpkgRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "VCPKGRS_TRIPLET=x64-windows" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: install frontend dependencies
         run: bun install
         working-directory: ./apps/desktop
@@ -88,6 +96,8 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VCPKG_ROOT: ${{ env.VCPKG_ROOT }}
+          VCPKGRS_TRIPLET: ${{ env.VCPKGRS_TRIPLET }}
         with:
           projectPath: ./apps/desktop
           tagName: ${{ github.ref_name }}
