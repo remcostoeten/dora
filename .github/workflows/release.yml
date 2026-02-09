@@ -156,7 +156,7 @@ jobs:
   release-macos-intel:
     permissions:
       contents: write
-    runs-on: macos-13
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
 
