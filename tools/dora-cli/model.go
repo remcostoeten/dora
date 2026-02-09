@@ -16,6 +16,49 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// ---------------------------------------------------------------------------
+// Data-driven main menu
+// ---------------------------------------------------------------------------
+
+// menuAction identifies what a menu item does when selected.
+type menuAction int
+
+const (
+	actionNone menuAction = iota
+	actionWebDev
+	actionDesktopDev
+	actionRunAll
+	actionBuildAll
+	actionBuildLinux
+	actionBuildWindows
+	actionBuildMac
+	actionRunBuild
+	actionInstallDeb
+	actionUninstall
+	actionReinstallDeb
+	actionCheckSizes
+	actionDatabase
+	actionRelease
+	actionAISetup
+	actionRebuildCLI
+	actionGitHubRepo
+	actionReleases
+)
+
+// menuItem represents a single entry in the main menu.
+type menuItem struct {
+	label    string
+	action   menuAction
+	isHeader bool
+}
+
+func hdr(label string) menuItem  { return menuItem{label: label, isHeader: true} }
+func act(label string, a menuAction) menuItem { return menuItem{label: label, action: a} }
+
+// ---------------------------------------------------------------------------
+// Shared types
+// ---------------------------------------------------------------------------
+
 type subdir struct {
 	label   string
 	command string
@@ -48,13 +91,12 @@ const (
 	sectionPickModel
 )
 
-// isSectionHeader checks if a menu item is a non-selectable section header.
-func isSectionHeader(item string) bool {
-	return strings.HasPrefix(item, "──")
-}
+// ---------------------------------------------------------------------------
+// Model
+// ---------------------------------------------------------------------------
 
 type model struct {
-	mainMenu []string
+	mainMenu []menuItem
 	cursor   int
 
 	currentSection  menuSection
@@ -90,33 +132,32 @@ func initialModel() model {
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	return model{
-		mainMenu: []string{
-			//                                     Index
-			"── Development ──────────────────", // 0  header
-			"Run Web Dev (Vite only)",           // 1
-			"Run Desktop Dev (Tauri)",           // 2
-			"Run All (Turbo)",                   // 3
-			"── Build ────────────────────────", // 4  header
-			"Build All Platforms",               // 5
-			"Build Linux...",                    // 6
-			"Build Windows...",                  // 7
-			"Build macOS...",                    // 8
-			"── Manage ───────────────────────", // 9  header
-			"Run Compiled Build...",             // 10
-			"Install Build (.deb)...",           // 11
-			"Uninstall Dora",                    // 12
-			"Reinstall Build (.deb)...",         // 13
-			"Check Build Sizes",                 // 14
-			"── Tools ────────────────────────", // 15 header
-			"Database Management...",            // 16
-			"Release Notes...",                  // 17
-			"AI Setup...",                       // 18
-			"Update/Rebuild CLI",                // 19
-			"── Links ────────────────────────", // 20 header
-			"Visit GitHub Repo",                 // 21
-			"Go to Releases",                    // 22
+		mainMenu: []menuItem{
+			hdr("── Development ──────────────────"),
+			act("Run Web Dev (Vite only)", actionWebDev),
+			act("Run Desktop Dev (Tauri)", actionDesktopDev),
+			act("Run All (Turbo)", actionRunAll),
+			hdr("── Build ────────────────────────"),
+			act("Build All Platforms", actionBuildAll),
+			act("Build Linux...", actionBuildLinux),
+			act("Build Windows...", actionBuildWindows),
+			act("Build macOS...", actionBuildMac),
+			hdr("── Manage ───────────────────────"),
+			act("Run Compiled Build...", actionRunBuild),
+			act("Install Build (.deb)...", actionInstallDeb),
+			act("Uninstall Dora", actionUninstall),
+			act("Reinstall Build (.deb)...", actionReinstallDeb),
+			act("Check Build Sizes", actionCheckSizes),
+			hdr("── Tools ────────────────────────"),
+			act("Database Management...", actionDatabase),
+			act("Release Notes...", actionRelease),
+			act("AI Setup...", actionAISetup),
+			act("Update/Rebuild CLI", actionRebuildCLI),
+			hdr("── Links ────────────────────────"),
+			act("Visit GitHub Repo", actionGitHubRepo),
+			act("Go to Releases", actionReleases),
 		},
-		cursor:         1, // Start at first actionable item
+		cursor:         1, // First actionable item
 		spinner:        s,
 		currentSection: sectionMain,
 	}
@@ -125,6 +166,10 @@ func initialModel() model {
 func (m model) Init() tea.Cmd {
 	return m.spinner.Tick
 }
+
+// ---------------------------------------------------------------------------
+// Update
+// ---------------------------------------------------------------------------
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -167,16 +212,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// ---------------------------------------------------------------------------
+// Cursor movement
+// ---------------------------------------------------------------------------
+
 func (m model) moveCursorUp() model {
 	switch m.currentSection {
 	case sectionMain:
 		prev := m.cursor
 		if m.cursor > 0 {
 			m.cursor--
-			for m.cursor > 0 && isSectionHeader(m.mainMenu[m.cursor]) {
+			for m.cursor > 0 && m.mainMenu[m.cursor].isHeader {
 				m.cursor--
 			}
-			if isSectionHeader(m.mainMenu[m.cursor]) {
+			if m.mainMenu[m.cursor].isHeader {
 				m.cursor = prev
 			}
 		}
@@ -206,10 +255,10 @@ func (m model) moveCursorDown() model {
 		prev := m.cursor
 		if m.cursor < len(m.mainMenu)-1 {
 			m.cursor++
-			for m.cursor < len(m.mainMenu)-1 && isSectionHeader(m.mainMenu[m.cursor]) {
+			for m.cursor < len(m.mainMenu)-1 && m.mainMenu[m.cursor].isHeader {
 				m.cursor++
 			}
-			if isSectionHeader(m.mainMenu[m.cursor]) {
+			if m.mainMenu[m.cursor].isHeader {
 				m.cursor = prev
 			}
 		}
@@ -248,24 +297,29 @@ func (m model) handleBack() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// ---------------------------------------------------------------------------
+// Selection handling (dispatches on menuAction, not index)
+// ---------------------------------------------------------------------------
+
 func (m model) handleSelect() (tea.Model, tea.Cmd) {
 	switch m.currentSection {
 	case sectionMain:
-		if isSectionHeader(m.mainMenu[m.cursor]) {
+		selected := m.mainMenu[m.cursor]
+		if selected.isHeader {
 			return m, nil
 		}
 
-		switch m.cursor {
-		case 1: // Run Web Dev (Vite only)
+		switch selected.action {
+		case actionWebDev:
 			return m, executeCommand("bun", "run", "web:dev")
-		case 2: // Run Desktop Dev (Tauri)
+		case actionDesktopDev:
 			return m, executeCommand("bun", "run", "desktop:dev")
-		case 3: // Run All (Turbo)
+		case actionRunAll:
 			return m, executeCommand("bun", "run", "dev")
 
-		case 5: // Build All Platforms
+		case actionBuildAll:
 			return m, executeCommand("bun", "run", "desktop:build")
-		case 6: // Build Linux...
+		case actionBuildLinux:
 			m.currentSection = sectionBuildLinux
 			m.inSubmenu = true
 			m.subMenuTitle = "Build Linux Target"
@@ -276,7 +330,7 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 				{label: "RPM (.rpm)", command: "bun", args: []string{"run", "desktop:build:rpm"}},
 				{label: "All Linux targets", command: "bun", args: []string{"run", "desktop:build:linux"}},
 			}
-		case 7: // Build Windows...
+		case actionBuildWindows:
 			m.currentSection = sectionBuildWindows
 			m.inSubmenu = true
 			m.subMenuTitle = "Build Windows Target"
@@ -286,7 +340,7 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 				{label: "MSI Installer (.msi)", command: "bun", args: []string{"run", "desktop:build:msi"}},
 				{label: "All Windows targets", command: "bun", args: []string{"run", "desktop:build:win"}},
 			}
-		case 8: // Build macOS...
+		case actionBuildMac:
 			m.currentSection = sectionBuildMac
 			m.inSubmenu = true
 			m.subMenuTitle = "Build macOS Target"
@@ -295,54 +349,55 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 				{label: "DMG (.dmg)", command: "bun", args: []string{"run", "desktop:build:dmg"}},
 			}
 
-		case 10: // Run Compiled Build...
+		case actionRunBuild:
 			m.currentSection = sectionBuilds
 			m.viewingBuilds = true
 			m.buildFiles = findBuilds("exec")
 			m.buildCursor = 0
-		case 11: // Install Build (.deb)...
+		case actionInstallDeb:
 			m.currentSection = sectionInstallBuild
 			m.viewingBuilds = true
 			m.buildFiles = findBuilds("deb")
 			m.buildCursor = 0
-		case 12: // Uninstall Dora
+		case actionUninstall:
 			switch runtime.GOOS {
 			case "linux":
-				cmd := `if dpkg -l | grep -q dora; then echo 'Uninstalling...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora; else echo 'Dora is not installed.'; fi`
-				return m, executeCommand("bash", "-c", cmd)
+				return m, runShellScript(`if dpkg -l | grep -q dora; then echo 'Uninstalling...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora; else echo 'Dora is not installed.'; fi`)
 			case "darwin":
-				cmd := `if [ -d "/Applications/Dora.app" ]; then echo 'Removing Dora.app...'; rm -rf "/Applications/Dora.app"; echo 'Done.'; else echo 'Dora is not installed in /Applications.'; fi`
-				return m, executeCommand("bash", "-c", cmd)
-			default:
-				return m, executeCommand("bash", "-c", "echo 'Uninstall not supported on this platform. Remove Dora manually.'")
+				return m, runShellScript(`if [ -d "/Applications/Dora.app" ]; then echo 'Removing Dora.app...'; rm -rf "/Applications/Dora.app"; echo 'Done.'; else echo 'Dora is not installed in /Applications.'; fi`)
+			case "windows":
+				return m, runShellScript(`echo To uninstall Dora, open Windows Settings, go to Apps, search for "Dora" and click Uninstall.`)
 			}
-		case 13: // Reinstall Build (.deb)...
+		case actionReinstallDeb:
 			m.currentSection = sectionReinstall
 			m.viewingBuilds = true
 			m.buildFiles = findBuilds("deb")
 			m.buildCursor = 0
-		case 14: // Check Build Sizes
+		case actionCheckSizes:
 			m.currentSection = sectionCheckSizes
 			m.buildFiles = findBuilds("all")
 			m.buildCursor = 0
 
-		case 16: // Database Management
+		case actionDatabase:
 			m.currentSection = sectionDatabase
 			m.scriptTitle = "Database Management"
 			m.scriptMenu = dbScripts
 			m.scriptCursor = 0
-		case 17: // Release Notes...
+		case actionRelease:
 			m.currentSection = sectionRelease
 			m.scriptTitle = "Release Notes"
 			m.scriptMenu = releaseScripts
 			m.scriptCursor = 0
-		case 18: // AI Setup...
+		case actionAISetup:
 			m.currentSection = sectionAISetup
 			m.scriptTitle = "AI Setup (Ollama)"
 			m.scriptMenu = aiSetupScripts
 			m.scriptCursor = 0
-		case 19: // Update/Rebuild CLI
-			rebuildScript := `
+		case actionRebuildCLI:
+			if runtime.GOOS == "windows" {
+				return m, runShellScript(`where go >nul 2>nul && (echo Building dora-runner... & cd tools\dora-cli & go build -o ..\..\dora-runner.exe . && echo Success! Runner updated. || echo Build failed.) || (echo Error: Go is not installed. Visit https://go.dev/dl/ to install.)`)
+			}
+			return m, runShellScript(`
 if ! command -v go &> /dev/null; then
     echo "Error: Go is not installed or not in PATH."
     echo ""
@@ -360,12 +415,11 @@ fi
 
 echo "Building dora-runner..."
 go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Build failed."
-`
-			return m, executeCommand("bash", "-c", rebuildScript)
+`)
 
-		case 21: // Visit GitHub Repo
+		case actionGitHubRepo:
 			return m, openURL("https://github.com/remcostoeten/dora")
-		case 22: // Go to Releases
+		case actionReleases:
 			return m, openURL("https://github.com/remcostoeten/dora/releases")
 		}
 
@@ -383,14 +437,14 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 		if len(m.buildFiles) > 0 {
 			file := m.buildFiles[m.buildCursor]
 			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Name, file.Path)
-			return m, executeCommand("bash", "-c", cmd)
+			return m, runShellScript(cmd)
 		}
 
 	case sectionReinstall:
 		if len(m.buildFiles) > 0 {
 			file := m.buildFiles[m.buildCursor]
 			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Uninstalling old version...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora || true; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Name, file.Path)
-			return m, executeCommand("bash", "-c", cmd)
+			return m, runShellScript(cmd)
 		}
 
 	case sectionRelease, sectionAISetup, sectionDatabase:
@@ -433,6 +487,10 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 	return m, nil
 }
 
+// ---------------------------------------------------------------------------
+// Command execution — platform-aware
+// ---------------------------------------------------------------------------
+
 type execFinishedMsg struct{ err error }
 
 // findProjectRoot walks up the directory tree to find the project root (contains package.json).
@@ -453,37 +511,72 @@ func findProjectRoot() string {
 	}
 }
 
+// executeCommand runs an executable with args, wrapping in the platform-appropriate shell.
 func executeCommand(name string, args ...string) tea.Cmd {
 	rootDir := findProjectRoot()
 
+	if runtime.GOOS == "windows" {
+		var commandStr string
+		if filepath.IsAbs(name) {
+			commandStr = fmt.Sprintf(`"%s" %s`, name, strings.Join(args, " "))
+		} else {
+			commandStr = fmt.Sprintf(`cd /d "%s" && %s %s`, rootDir, name, strings.Join(args, " "))
+		}
+		wrapped := fmt.Sprintf(`echo Working Directory: %s & %s & echo. & pause`, rootDir, commandStr)
+		return tea.ExecProcess(exec.Command("cmd", "/c", wrapped), func(err error) tea.Msg {
+			return execFinishedMsg{err}
+		})
+	}
+
+	// Unix (Linux, macOS)
 	var commandStr string
 	if filepath.IsAbs(name) {
-		// Absolute path (e.g. running a build artifact) — don't change dir
 		commandStr = fmt.Sprintf("%s %s", name, strings.Join(args, " "))
 	} else {
 		commandStr = fmt.Sprintf("cd %s && %s %s", rootDir, name, strings.Join(args, " "))
 	}
+	wrapped := fmt.Sprintf(`echo "Working Directory: %s"; %s; echo; read -rs -p "Press Enter to return to menu..."`, rootDir, commandStr)
+	return tea.ExecProcess(exec.Command("bash", "-c", wrapped), func(err error) tea.Msg {
+		return execFinishedMsg{err}
+	})
+}
 
-	wrapperArgs := []string{"-c", fmt.Sprintf(`echo "Working Directory: %s"; %s; echo; read -rs -p "Press Enter to return to menu..."`, rootDir, commandStr)}
+// runShellScript runs an inline shell script using the platform's native shell.
+// Use this instead of executeCommand("bash", "-c", ...) for cross-platform support.
+func runShellScript(script string) tea.Cmd {
+	rootDir := findProjectRoot()
 
-	return tea.ExecProcess(exec.Command("bash", wrapperArgs...), func(err error) tea.Msg {
+	if runtime.GOOS == "windows" {
+		wrapped := fmt.Sprintf(`cd /d "%s" & %s & echo. & pause`, rootDir, script)
+		return tea.ExecProcess(exec.Command("cmd", "/c", wrapped), func(err error) tea.Msg {
+			return execFinishedMsg{err}
+		})
+	}
+
+	wrapped := fmt.Sprintf(`cd "%s"; %s; echo; read -rs -p "Press Enter to return to menu..."`, rootDir, script)
+	return tea.ExecProcess(exec.Command("bash", "-c", wrapped), func(err error) tea.Msg {
 		return execFinishedMsg{err}
 	})
 }
 
 // openURL opens a URL in the default browser, cross-platform.
 func openURL(url string) tea.Cmd {
-	var opener string
 	switch runtime.GOOS {
-	case "darwin":
-		opener = "open"
 	case "windows":
-		opener = "start"
+		// "start" is a cmd.exe builtin — must invoke via cmd /c directly.
+		return tea.ExecProcess(exec.Command("cmd", "/c", fmt.Sprintf(`start "" "%s"`, url)), func(err error) tea.Msg {
+			return execFinishedMsg{err}
+		})
+	case "darwin":
+		return executeCommand("open", url)
 	default:
-		opener = "xdg-open"
+		return executeCommand("xdg-open", url)
 	}
-	return executeCommand(opener, url)
 }
+
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
 
 func formatBytes(bytes int64) string {
 	const unit = 1024
@@ -516,7 +609,16 @@ func findBuilds(mode string) []buildFile {
 
 		switch mode {
 		case "exec":
-			isValid = ext == ".appimage"
+			switch runtime.GOOS {
+			case "linux":
+				isValid = ext == ".appimage"
+			case "darwin":
+				isValid = ext == ".dmg"
+			case "windows":
+				isValid = ext == ".exe" || ext == ".msi"
+			default:
+				isValid = ext == ".appimage"
+			}
 		case "deb":
 			isValid = ext == ".deb"
 		case "rpm":
@@ -529,7 +631,7 @@ func findBuilds(mode string) []buildFile {
 		if isValid {
 			info, err := d.Info()
 			if err != nil {
-				return nil // skip this file
+				return nil
 			}
 			files = append(files, buildFile{
 				Name:    d.Name(),

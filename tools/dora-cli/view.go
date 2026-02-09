@@ -99,13 +99,13 @@ func (m model) View() string {
 
 func (m model) mainMenuList() string {
 	var s strings.Builder
-	for i, choice := range m.mainMenu {
-		if isSectionHeader(choice) {
-			s.WriteString(sectionHeaderStyle.Render(choice))
+	for i, item := range m.mainMenu {
+		if item.isHeader {
+			s.WriteString(sectionHeaderStyle.Render(item.label))
 		} else if m.cursor == i {
-			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", choice)))
+			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", item.label)))
 		} else {
-			s.WriteString(itemStyle.Render(choice))
+			s.WriteString(itemStyle.Render(item.label))
 		}
 		s.WriteString("\n")
 	}
