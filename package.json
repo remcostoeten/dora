@@ -21,7 +21,7 @@
 		"test:coverage": "vitest run --coverage",
 		"test:desktop": "bun run --cwd apps/desktop test",
 		"desktop:run": "bun --cwd apps/desktop run dev",
-		"desktop:dev": "bun run --cwd apps/desktop tauri dev",
+		"desktop:dev": "bun run --cwd apps/desktop tauri:dev",
 		"desktop:build": "bun run --cwd apps/desktop tauri build",
 		"release:gen": "bun tools/scripts/generate-release.ts",
 		"ai:setup": "bun tools/scripts/setup-local-ai.ts",

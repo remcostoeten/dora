@@ -10,6 +10,8 @@
 		"lint": "bun run --cwd ../.. lint",
 		"preview": "vite preview",
 		"tauri": "tauri",
+		"tauri:dev": "bun run tauri:win",
+		"tauri:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\tauri-dev-win.ps1",
 		"test": "vitest run -c ../../vitest.config.ts",
 		"test:watch": "vitest -c ../../vitest.config.ts",
 		"test:ui": "vitest --ui -c ../../vitest.config.ts",
