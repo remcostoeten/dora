@@ -60,6 +60,7 @@ jobs:
                     libssl-dev \
                     libsoup-3.0-dev \
                     libjavascriptcoregtk-4.1-dev \
+                    postgresql \
                     postgresql-client
 
             - name: Setup Rust
