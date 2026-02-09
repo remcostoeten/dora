@@ -29,7 +29,7 @@
 
 Dora is natively available for **Linux**, **macOS**, and **Windows**. Pre-compiled binaries are available through the [releases](https://github.com/remcostoeten/dora/releases) page.
 
-### Latest Release: v0.0.93
+### Latest Release: v0.0.94
 
 **Features:** Drizzle-aware typo detection, light/dark theme toggle, SQL snippet saving, custom keyboard shortcuts, performance optimizations, and more.
 
@@ -38,28 +38,26 @@ Dora is natively available for **Linux**, **macOS**, and **Windows**. Pre-compil
 - **Linux**
   - `.deb` - Debian/Ubuntu (recommended for apt-based systems)
   - `.AppImage` - Universal Linux executable (works on most distributions)
-  - `.rpm` - Red Hat/Fedora/CentOS (for rpm-based systems)
 
 - **macOS**
   - `.dmg` - macOS installer (Intel & Apple Silicon support)
 
 - **Windows**
   - `.exe` - Windows installer (recommended)
-  - `.msi` - Alternative Windows installer option
 
-👉 **[Download Latest Release](https://github.com/remcostoeten/dora/releases/tag/v0.0.93)**
+👉 **[Download Latest Release](https://github.com/remcostoeten/dora/releases/tag/v0.0.94)**
 
 ### Installation by Platform
 
 #### Linux (Debian/Ubuntu)
 ```bash
 # Using .deb package
-sudo dpkg -i dora_0.0.93_amd64.deb
+sudo dpkg -i dora_0.0.94_amd64.deb
 dora
 
 # Or using AppImage
-chmod +x dora_0.0.93_x64.AppImage
-./dora_0.0.93_x64.AppImage
+chmod +x dora_0.0.94_x64.AppImage
+./dora_0.0.94_x64.AppImage
 ```
 
 #### macOS
