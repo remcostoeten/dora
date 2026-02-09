@@ -1,3 +1,28 @@
+# Release Notes - v0.0.95
+
+**Date:** 2026-02-09
+**Tag:** `v0.0.95`
+**Range:** `v0.0.94..master`
+
+## Summary
+
+This release expands installer coverage and fixes changelog UX regressions in the sidebar popover.
+
+## Changes since `v0.0.94`
+
+- Added Linux RPM bundle target.
+- Added Windows MSI bundle target.
+- Added Intel macOS release build job.
+- Fixed changelog popover React crash in web view.
+- Restored changelog popover scroll behavior for older entries.
+- Added unseen changelog indicator on the bottom toolbar trigger.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`, `.rpm`
+- macOS: `.dmg` (Apple Silicon + Intel)
+- Windows: `.exe`, `.msi`
+
 # Release Notes - v0.0.94
 
 **Date:** 2026-02-09

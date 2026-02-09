@@ -8,22 +8,24 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.94'
+export const CURRENT_VERSION = '0.0.95'
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
-		version: '0.0.95-next',
+		version: '0.0.95',
 		date: '2026-02-09',
-		commit: '6928f90',
-		title: 'Packaging Targets Expansion',
+		commit: 'bb8c83a',
+		title: 'Packaging Expansion & Changelog Stability',
 		description:
-			'Prepared the next release pipeline to generate additional installers and broader platform coverage',
+			'Expanded installer formats, added Intel macOS packaging, and fixed the changelog popover crash/scroll behavior',
 		type: 'feature',
 		details: [
 			'Added Linux RPM target to the Tauri bundle list',
 			'Added Windows MSI target alongside NSIS EXE',
 			'Added a dedicated Intel macOS release job (macos-13)',
-			'Kept existing Linux AppImage/DEB and macOS DMG artifacts intact'
+			'Fixed changelog popover crash caused by invalid React child rendering',
+			'Restored stable scrolling and navigation across older changelog entries',
+			'Added unseen-changes indicator to the changelog trigger button'
 		]
 	},
 	{

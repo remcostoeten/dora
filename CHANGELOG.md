@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.95 - Packaging Expansion & Changelog Stability
+
+**Date:** 2026-02-09
+
+**Highlights**
+
+- Added Linux `.rpm` and Windows `.msi` bundle targets.
+- Added Intel macOS release job (`macos-13`) in addition to Apple Silicon flow.
+- Fixed changelog popover crash in web view caused by invalid JSX/object rendering.
+- Restored reliable scrolling/navigation through older changelog entries.
+- Added unseen-changes indicator badge on the changelog trigger in the sidebar.
+
 ## 0.0.94 - CI/Release Infrastructure Recovery
 
 **Date:** 2026-02-09

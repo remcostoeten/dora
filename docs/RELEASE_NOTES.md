@@ -1,3 +1,28 @@
+# Version 0.0.95
+
+**Date:** 2026-02-09
+**Tag:** `v0.0.95`
+**Range:** `v0.0.94..master`
+
+## Why this release exists
+
+After restoring cross-platform release reliability in `v0.0.94`, this release expands distributable formats and fixes the in-app changelog panel regressions.
+
+## Changes
+
+- Added Linux `rpm` target.
+- Added Windows `msi` target.
+- Added separate Intel macOS release job.
+- Fixed changelog popover crash in web mode.
+- Restored scroll/navigation through older changelog entries.
+- Added unseen-changes indicator on changelog trigger.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`, `.rpm`
+- macOS: `.dmg` (arm64 + x64)
+- Windows: `.exe`, `.msi`
+
 # Version 0.0.94
 
 **Date:** 2026-02-09
