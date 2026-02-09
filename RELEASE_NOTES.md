@@ -1,3 +1,27 @@
+# Release Notes - v0.0.94
+
+**Date:** 2026-02-09
+**Tag:** `v0.0.94`
+**Range:** `v0.0.93..master` (`d596a4c..df1d696`)
+
+## Summary
+
+This release focuses on CI and release pipeline reliability so all platform artifacts are generated again.
+
+## Changes since `v0.0.93`
+
+- Stabilized Rust test execution in CI.
+- Added `pgtemp` PostgreSQL `initdb` PATH wiring for GitHub runners.
+- Updated Linux release dependencies for Tauri v2.
+- Fixed Windows release linking by enabling bundled SQLite in `rusqlite`.
+- Adjusted macOS release configuration to avoid signing-env failure for unsigned CI builds.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`
+- macOS: `.dmg`
+- Windows: `.exe`
+
 # Release Notes - v0.0.9
 
 **Date:** 2026-01-15

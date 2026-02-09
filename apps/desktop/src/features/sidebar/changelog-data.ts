@@ -8,9 +8,26 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.93'
+export const CURRENT_VERSION = '0.0.94'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.94',
+		date: '2026-02-09',
+		commit: 'df1d696',
+		title: 'CI, Test Stability & Cross-Platform Release Recovery',
+		description:
+			'Stabilized CI pipelines, fixed Rust test failures in GitHub Actions, and repaired cross-platform release workflow for Linux/macOS/Windows artifacts',
+		type: 'fix',
+		details: [
+			'Fixed CI Rust test failures caused by libsql threading behavior in tests',
+			'Added PostgreSQL initdb PATH setup for pgtemp in CI',
+			'Resolved rust/TypeScript compile and lint blockers in pipelines',
+			'Updated release Linux dependencies for Tauri v2 (webkit 4.1/libsoup 3.0)',
+			'Removed failing macOS signing env wiring for unsigned CI builds',
+			'Enabled bundled SQLite linking for Windows release builds'
+		]
+	},
 	{
 		version: '0.0.93',
 		date: '2026-02-06',
