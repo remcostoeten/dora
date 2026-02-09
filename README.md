@@ -38,12 +38,14 @@ Dora is natively available for **Linux**, **macOS**, and **Windows**. Pre-compil
 - **Linux**
   - `.deb` - Debian/Ubuntu (recommended for apt-based systems)
   - `.AppImage` - Universal Linux executable (works on most distributions)
+  - `.rpm` - Red Hat/Fedora/CentOS (for rpm-based systems)
 
 - **macOS**
   - `.dmg` - macOS installer (Intel & Apple Silicon support)
 
 - **Windows**
   - `.exe` - Windows installer (recommended)
+  - `.msi` - Alternative Windows installer option
 
 👉 **[Download Latest Release](https://github.com/remcostoeten/dora/releases/tag/v0.0.94)**
 
