@@ -135,7 +135,7 @@ bun install
 bun run dev
 
 # Run Desktop App (Dev Mode)
-bun run tauri dev
+# Use the workspace helper so the Windows tooling runs: `bun run desktop:dev`
 
 # Build React (Vite / Rolldown)
 bun run build
