@@ -30,6 +30,13 @@ vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/component
 	SandboxIndicator: () => <div data-testid='sandbox-indicator' />
 }))
 
+vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/api/mutations/use-container-actions', () => ({
+	useContainerActions: () => ({
+		mutate: vi.fn(),
+		isPending: false
+	})
+}))
+
 describe('DockerView', () => {
 	const mockCreateContainer = {
 		mutate: vi.fn(),

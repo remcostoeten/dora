@@ -575,6 +575,7 @@ impl DrizzleGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::database::types::ForeignKeyInfo;
 
     fn sample_schema() -> DatabaseSchema {
         DatabaseSchema {
@@ -612,6 +613,7 @@ mod tests {
                         },
                     ],
                     primary_key_columns: vec!["id".to_string()],
+                    indexes: vec![],
                     row_count_estimate: Some(100),
                 },
                 TableInfo {
@@ -642,6 +644,7 @@ mod tests {
                         },
                     ],
                     primary_key_columns: vec!["id".to_string()],
+                    indexes: vec![],
                     row_count_estimate: None,
                 },
             ],
