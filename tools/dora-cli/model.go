@@ -436,14 +436,14 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 	case sectionInstallBuild:
 		if len(m.buildFiles) > 0 {
 			file := m.buildFiles[m.buildCursor]
-			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Name, file.Path)
+			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %q", file.Name, file.Path)
 			return m, runShellScript(cmd)
 		}
 
 	case sectionReinstall:
 		if len(m.buildFiles) > 0 {
 			file := m.buildFiles[m.buildCursor]
-			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Uninstalling old version...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora || true; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Name, file.Path)
+			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Uninstalling old version...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora || true; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %q", file.Name, file.Path)
 			return m, runShellScript(cmd)
 		}
 
@@ -468,7 +468,7 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 		}
 
 	case sectionPickVersion:
-		if m.pendingScript != nil {
+		if m.pendingScript != nil && len(m.pendingScript.args) > 0 {
 			option := m.optionMenu[m.optionCursor]
 			args := append([]string{}, m.pendingScript.args...)
 			args[len(args)-1] = args[len(args)-1] + option

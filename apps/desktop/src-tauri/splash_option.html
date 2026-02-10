@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Dora</title>
+		<style>
+			:root {
+				--bg: #090909;
+				--bg-2: #121212;
+				--panel: #161616;
+				--panel-2: #1e1e1e;
+				--border: #2e2e2e;
+				--text: #f1f1f1;
+				--muted: #959595;
+				--accent: #e5e5e5;
+				--accent-soft: rgba(229, 229, 229, 0.2);
+				--glow: rgba(229, 229, 229, 0.24);
+				--logo-primary: #b35c5f;
+				--logo-secondary: #fcc5c3;
+				--logo-tertiary: #e79898;
+				--logo-accent: #e69797;
+				--logo-highlight: #fcdddc;
+			}
+
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+
+			body {
+				position: relative;
+				display: grid;
+				place-items: center;
+				font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+				background:
+					radial-gradient(1200px 520px at 14% -10%, var(--accent-soft), transparent 55%),
+					radial-gradient(900px 520px at 100% 100%, rgba(255, 255, 255, 0.03), transparent 64%),
+					linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 100%);
+				color: var(--text);
+				user-select: none;
+				-webkit-font-smoothing: antialiased;
+				text-rendering: optimizeLegibility;
+			}
+
+			.grid-overlay {
+				position: fixed;
+				inset: 0;
+				pointer-events: none;
+				opacity: 0.24;
+				background-image:
+					linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+					linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+				background-size: 36px 36px;
+				mask-image: radial-gradient(circle at center, black 35%, transparent 82%);
+			}
+
+			.splash {
+				position: relative;
+				width: min(92vw, 560px);
+				border: 1px solid var(--border);
+				border-radius: 24px;
+				background: linear-gradient(165deg, var(--panel) 0%, var(--panel-2) 100%);
+				box-shadow:
+					0 26px 65px rgba(0, 0, 0, 0.42),
+					0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+				overflow: hidden;
+				animation: enter 540ms cubic-bezier(0.16, 1, 0.3, 1);
+			}
+
+			.head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				height: 42px;
+				padding: 0 14px;
+				border-bottom: 1px solid var(--border);
+				background: rgba(0, 0, 0, 0.14);
+			}
+
+			.head-dots {
+				display: flex;
+				gap: 6px;
+			}
+
+			.head-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 99px;
+				background: rgba(255, 255, 255, 0.18);
+			}
+
+			.head-label {
+				font-size: 12px;
+				font-weight: 600;
+				letter-spacing: 0.02em;
+				color: var(--muted);
+			}
+
+			.body {
+				display: grid;
+				grid-template-columns: 1.05fr 1fr;
+				gap: 18px;
+				padding: 20px;
+			}
+
+			@media (max-width: 560px) {
+				.body {
+					grid-template-columns: 1fr;
+				}
+			}
+
+			.brand {
+				display: grid;
+				align-content: start;
+				gap: 12px;
+			}
+
+			.logo-wrap {
+				width: 84px;
+				height: 84px;
+				padding: 7px;
+				border-radius: 22px;
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01));
+				box-shadow:
+					0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+					0 16px 40px -24px var(--glow);
+				animation: drift 3.2s ease-in-out infinite;
+			}
+
+			.logo {
+				width: 100%;
+				height: 100%;
+			}
+
+			.logo .p1 {
+				fill: var(--logo-primary);
+			}
+
+			.logo .p2 {
+				fill: var(--logo-secondary);
+			}
+
+			.logo .p3 {
+				fill: var(--logo-tertiary);
+			}
+
+			.logo .p4 {
+				fill: var(--logo-accent);
+			}
+
+			.logo .p5 {
+				fill: var(--logo-highlight);
+			}
+
+			.name {
+				font-size: 34px;
+				line-height: 1;
+				font-weight: 650;
+				letter-spacing: -0.04em;
+			}
+
+			.subtitle {
+				font-size: 12px;
+				line-height: 1.45;
+				color: var(--muted);
+				max-width: 220px;
+			}
+
+			.telemetry {
+				border: 1px solid var(--border);
+				border-radius: 14px;
+				padding: 10px;
+				background: rgba(0, 0, 0, 0.16);
+				display: grid;
+				gap: 8px;
+				align-content: start;
+				min-height: 162px;
+			}
+
+			.telemetry-head {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				font-size: 10px;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+			}
+
+			.telemetry-chip {
+				padding: 3px 7px;
+				border-radius: 999px;
+				font-size: 10px;
+				font-weight: 650;
+				color: #0d0d0d;
+				background: var(--accent);
+			}
+
+			.row {
+				display: grid;
+				grid-template-columns: auto 1fr;
+				align-items: center;
+				gap: 7px;
+			}
+
+			.dot {
+				width: 7px;
+				height: 7px;
+				border-radius: 99px;
+				background: var(--accent);
+				box-shadow: 0 0 8px -1px var(--glow);
+			}
+
+			.bar {
+				height: 8px;
+				border-radius: 999px;
+				position: relative;
+				overflow: hidden;
+				background: rgba(255, 255, 255, 0.09);
+			}
+
+			.bar::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				width: 40%;
+				background: linear-gradient(90deg, transparent, var(--accent), transparent);
+				opacity: 0.7;
+				animation: scan 1.7s ease-in-out infinite;
+			}
+
+			.row:nth-child(3) .bar::after {
+				animation-delay: 140ms;
+			}
+
+			.row:nth-child(4) .bar::after {
+				animation-delay: 260ms;
+			}
+
+			.row:nth-child(5) .bar::after {
+				animation-delay: 400ms;
+			}
+
+			.foot {
+				border-top: 1px solid var(--border);
+				padding: 14px 20px 18px;
+				display: grid;
+				gap: 10px;
+			}
+
+			.status {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				font-size: 12px;
+				color: var(--muted);
+			}
+
+			.status strong {
+				color: var(--text);
+				font-weight: 560;
+			}
+
+			.progress {
+				position: relative;
+				height: 8px;
+				border-radius: 999px;
+				overflow: hidden;
+				border: 1px solid var(--border);
+				background: rgba(0, 0, 0, 0.25);
+			}
+
+			.progress::before {
+				content: '';
+				position: absolute;
+				top: 0;
+				left: 0;
+				height: 100%;
+				width: 38%;
+				background: linear-gradient(90deg, var(--accent), rgba(255, 255, 255, 0.6));
+				box-shadow: 0 0 14px -3px var(--glow);
+				animation: load 1.85s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+			}
+
+			@keyframes enter {
+				from {
+					opacity: 0;
+					transform: translateY(10px) scale(0.985);
+				}
+
+				to {
+					opacity: 1;
+					transform: translateY(0) scale(1);
+				}
+			}
+
+			@keyframes load {
+				0% {
+					transform: translateX(-40%);
+				}
+
+				50% {
+					transform: translateX(90%);
+				}
+
+				100% {
+					transform: translateX(230%);
+				}
+			}
+
+			@keyframes scan {
+				0% {
+					transform: translateX(-120%);
+				}
+
+				100% {
+					transform: translateX(280%);
+				}
+			}
+
+			@keyframes drift {
+				0%,
+				100% {
+					transform: translateY(0);
+				}
+
+				50% {
+					transform: translateY(-3px);
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				* {
+					animation: none !important;
+				}
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="grid-overlay"></div>
+
+		<div class="splash">
+			<div class="head">
+				<div class="head-dots">
+					<div class="head-dot"></div>
+					<div class="head-dot"></div>
+					<div class="head-dot"></div>
+				</div>
+				<div class="head-label">Dora Bootstrap</div>
+				<div style="width: 30px"></div>
+			</div>
+
+			<div class="body">
+				<div class="brand">
+					<div class="logo-wrap">
+						<svg
+							class="logo"
+							viewBox="0 0 1024 1024"
+							xmlns="http://www.w3.org/2000/svg"
+							aria-hidden="true"
+						>
+							<path
+								d="m515 153h13l18 2 22 6 16 8 15 9v2l5 2 13 13 4 5 4 7 6 10 5 11 4 13 2 13v8l8 1 16 4 24 9 16 7 16 8 14 8 8 5v2l4 1v2l4 1v2l4 2 9 8 11 14 9 18 3 12v87l-3 15-7 16-3 6 5 5 6 13 2 11v79l-5 18-7 14 1 5 7 11 3 9 1 7v75l-3 16-6 15-10 15-6 7-5 5-10 9-19 13-22 12-23 10-33 11-32 8-37 6-27 3-16 1h-54l-35-3-35-5-32-7-16-5-27-9-21-9-19-10-18-12-11-9-15-15-7-10-8-16-4-15-1-6v-73l4-17 8-13 1-3-8-16-4-15-1-9v-71l4-16 5-10 3-4-1-4-7-16-3-11-1-10v-77l3-17 6-14 10-14 17-17 14-10 21-12 21-10 19-7 19-6 28-7 23-4 10-2 24-3 20-5 16-7 8-6 6-7 3-6v-11l-4-6-7-6-7-3-16-2-5-4-2-4v-8l6-7 16-8 10-3z"
+								class="p1"
+							/>
+							<path
+								d="m505 175h29l16 3 17 6 12 7 10 8 10 10 10 15 6 14 4 18v24l8 1 26 6 35 12 23 11 16 10 10 8 6 5 9 11 6 10 4 13-1 85-3 12-6 11-7 9-9 9-13 10-22 13-23 10-25 9-36 9-28 5-36 4-14 1h-50l-36-3-28-4-29-6-26-7-23-8-18-8-21-11-14-10-13-12-7-8-7-12-3-10-1-91 5-13 7-10 9-10 14-11 15-9 16-8 25-10 27-8 32-7 40-6 23-6 17-7 14-9 10-10 6-10 3-8v-17l-5-12-7-8-8-5-7-2v-2z"
+								class="p2"
+							/>
+							<path
+								d="m267 653 4 2 12 10 19 12 22 11 23 9 29 9 24 6 33 6 35 4 14 1h63l24-2 42-6 27-6 28-8 20-7 23-10 19-10 17-12 11-9 3 3 2 5v73l-3 14-7 14-11 13-13 11-19 12-22 11-27 10-27 8-34 7-28 4-21 2-20 1h-33l-41-3-28-4-29-6-26-7-20-7-23-10-20-11-13-9-15-13-9-12-5-10-3-10-1-77z"
+								class="p3"
+							/>
+							<path
+								d="m267 510h2l5 5 10 8 13 8 16 9 23 10 36 12 28 7 28 5 31 4 27 2h54l28-2 42-6 36-8 35-11 24-10 25-13 17-12 9-8h2l3 7v74l-2 11-5 12-8 11-13 13-17 12-18 10-23 10-30 10-28 7-28 5-34 4-16 1h-50l-36-3-33-5-36-8-23-7-25-10-16-8-14-8-11-8-11-9-9-11-6-9-4-10-1-5-1-78z"
+								class="p3"
+							/>
+							<path
+								d="m760 383h1v69l-3 12-6 11-7 9-9 9-13 10-22 13-23 10-25 9-36 9-28 5-36 4-14 1h-50l-36-3-28-4-29-6-26-7-23-8-18-8-21-11-14-10-13-12-7-8-7-12-3-10v-70l2 3 2 7h2l7 10 11 11 18 12 16 9 26 11 28 9 33 8 23 4 35 4 33 2h26l36-2 34-4 31-6 24-6 30-10 25-11 19-11 14-11 10-10 7-11z"
+								class="p4"
+							/>
+							<path
+								d="m514 175h20l16 3 17 6 12 7 10 8 10 10 10 15 6 14 4 18v24l8 1 26 6 35 12 23 11 16 10 10 8 6 5 9 11 6 10 4 13v12l-4 12-6 10-9 10-11 10-14 9-16 9-26 11-32 10-31 7-32 5-34 3-21 1h-26l-33-2-35-4-28-5-35-9-29-10-24-11-18-11-12-9-12-12-4-6v-2h-2l-5-13v-18l5-13 7-10 9-10 14-11 15-9 16-8 25-10 27-8 32-7 33-5h9v2l-14 5-41 8-28 8-23 8-18 8-17 10-13 10-8 8-7 11-3 8-1 11 2 11 5 10 9 11 13 10 15 9 17 8 28 10 27 7 31 6 34 4 30 2h38l34-2 37-5 34-7 20-6 21-7 20-9 14-8 13-10 9-9 6-10 3-10v-12l-3-10-6-10-9-10-11-9-11-7-17-9-20-8-26-8-26-6-9-1-2-7-3-22-4-13h-3l-12-16-4-5-1-6v-3l-9-9-3-7-8-6-14-7-17-5-12-2z"
+								class="p5"
+							/>
+						</svg>
+					</div>
+					<h1 class="name">Dora</h1>
+					<p class="subtitle">Loading your database workspace, tabs, and connection context.</p>
+				</div>
+
+				<div class="telemetry" aria-hidden="true">
+					<div class="telemetry-head">
+						<span>Startup Tasks</span>
+						<span class="telemetry-chip">Live</span>
+					</div>
+					<div class="row">
+						<div class="dot"></div>
+						<div class="bar"></div>
+					</div>
+					<div class="row">
+						<div class="dot"></div>
+						<div class="bar"></div>
+					</div>
+					<div class="row">
+						<div class="dot"></div>
+						<div class="bar"></div>
+					</div>
+					<div class="row">
+						<div class="dot"></div>
+						<div class="bar"></div>
+					</div>
+				</div>
+			</div>
+
+			<div class="foot">
+				<div class="status">
+					<span id="status-text">Initializing runtime</span>
+					<strong id="status-step">01/04</strong>
+				</div>
+				<div class="progress"></div>
+			</div>
+		</div>
+
+		<script>
+			(function () {
+				const themeMap = {
+					dark: {
+						bg: '#090909',
+						bg2: '#121212',
+						panel: '#161616',
+						panel2: '#1e1e1e',
+						border: '#2e2e2e',
+						text: '#f1f1f1',
+						muted: '#959595',
+						accent: '#e5e5e5',
+						accentSoft: 'rgba(229, 229, 229, 0.2)',
+						glow: 'rgba(229, 229, 229, 0.24)',
+						logoPrimary: '#b35c5f',
+						logoSecondary: '#fcc5c3',
+						logoTertiary: '#e79898',
+						logoAccent: '#e69797',
+						logoHighlight: '#fcdddc'
+					},
+					light: {
+						bg: '#f6f6f6',
+						bg2: '#ececec',
+						panel: '#ffffff',
+						panel2: '#f8f8f8',
+						border: '#e2e2e2',
+						text: '#141414',
+						muted: '#686868',
+						accent: '#171717',
+						accentSoft: 'rgba(23, 23, 23, 0.11)',
+						glow: 'rgba(23, 23, 23, 0.18)',
+						logoPrimary: '#737373',
+						logoSecondary: '#404040',
+						logoTertiary: '#525252',
+						logoAccent: '#5c5c5c',
+						logoHighlight: '#4a4a4a'
+					},
+					midnight: {
+						bg: '#0b1020',
+						bg2: '#141b31',
+						panel: '#121a2d',
+						panel2: '#1a233d',
+						border: '#2e3860',
+						text: '#e8edff',
+						muted: '#97a2c9',
+						accent: '#818cf8',
+						accentSoft: 'rgba(129, 140, 248, 0.2)',
+						glow: 'rgba(129, 140, 248, 0.28)',
+						logoPrimary: '#6366f1',
+						logoSecondary: '#a5b4fc',
+						logoTertiary: '#818cf8',
+						logoAccent: '#7c83ff',
+						logoHighlight: '#c7d2fe'
+					},
+					forest: {
+						bg: '#0d1712',
+						bg2: '#13231b',
+						panel: '#122018',
+						panel2: '#1a2d22',
+						border: '#2d4a3b',
+						text: '#e6f7ef',
+						muted: '#8ea99a',
+						accent: '#34d399',
+						accentSoft: 'rgba(52, 211, 153, 0.18)',
+						glow: 'rgba(52, 211, 153, 0.27)',
+						logoPrimary: '#059669',
+						logoSecondary: '#a7f3d0',
+						logoTertiary: '#34d399',
+						logoAccent: '#10b981',
+						logoHighlight: '#d1fae5'
+					},
+					claude: {
+						bg: '#f7f0e8',
+						bg2: '#f3e8dc',
+						panel: '#fffaf5',
+						panel2: '#f8eee4',
+						border: '#e6d7c6',
+						text: '#34261d',
+						muted: '#7f6756',
+						accent: '#d97706',
+						accentSoft: 'rgba(217, 119, 6, 0.17)',
+						glow: 'rgba(217, 119, 6, 0.24)',
+						logoPrimary: '#c66d1a',
+						logoSecondary: '#fde6c8',
+						logoTertiary: '#f3b478',
+						logoAccent: '#e89a47',
+						logoHighlight: '#fff1de'
+					},
+					'claude-dark': {
+						bg: '#1d1713',
+						bg2: '#2a211b',
+						panel: '#271e19',
+						panel2: '#342822',
+						border: '#4f3d31',
+						text: '#f3e8dd',
+						muted: '#b19a86',
+						accent: '#b45309',
+						accentSoft: 'rgba(180, 83, 9, 0.2)',
+						glow: 'rgba(180, 83, 9, 0.26)',
+						logoPrimary: '#c66d1a',
+						logoSecondary: '#f3cfab',
+						logoTertiary: '#d88b43',
+						logoAccent: '#cb7724',
+						logoHighlight: '#ffe2c6'
+					},
+					night: {
+						bg: '#000000',
+						bg2: '#080808',
+						panel: '#060606',
+						panel2: '#101010',
+						border: '#242424',
+						text: '#f5f5f5',
+						muted: '#8f8f8f',
+						accent: '#f5f5f5',
+						accentSoft: 'rgba(245, 245, 245, 0.17)',
+						glow: 'rgba(245, 245, 245, 0.22)',
+						logoPrimary: '#b8b8b8',
+						logoSecondary: '#5f5f5f',
+						logoTertiary: '#8b8b8b',
+						logoAccent: '#a3a3a3',
+						logoHighlight: '#dadada'
+					}
+				};
+
+				function getTheme() {
+					try {
+						const raw = window.localStorage.getItem('dora-appearance');
+						if (raw) {
+							const parsed = JSON.parse(raw);
+							if (parsed && typeof parsed.theme === 'string' && themeMap[parsed.theme]) {
+								return parsed.theme;
+							}
+						}
+					} catch (_error) {}
+
+					return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+				}
+
+				const palette = themeMap[getTheme()] || themeMap.dark;
+				const root = document.documentElement;
+
+				root.style.setProperty('--bg', palette.bg);
+				root.style.setProperty('--bg-2', palette.bg2);
+				root.style.setProperty('--panel', palette.panel);
+				root.style.setProperty('--panel-2', palette.panel2);
+				root.style.setProperty('--border', palette.border);
+				root.style.setProperty('--text', palette.text);
+				root.style.setProperty('--muted', palette.muted);
+				root.style.setProperty('--accent', palette.accent);
+				root.style.setProperty('--accent-soft', palette.accentSoft);
+				root.style.setProperty('--glow', palette.glow);
+				root.style.setProperty('--logo-primary', palette.logoPrimary);
+				root.style.setProperty('--logo-secondary', palette.logoSecondary);
+				root.style.setProperty('--logo-tertiary', palette.logoTertiary);
+				root.style.setProperty('--logo-accent', palette.logoAccent);
+				root.style.setProperty('--logo-highlight', palette.logoHighlight);
+
+				const steps = [
+					'Initializing runtime',
+					'Restoring workspace tabs',
+					'Syncing schema metadata',
+					'Preparing query engine'
+				];
+
+				const statusText = document.getElementById('status-text');
+				const statusStep = document.getElementById('status-step');
+				let index = 0;
+
+				window.setInterval(function () {
+					index = (index + 1) % steps.length;
+					if (statusText) statusText.textContent = steps[index];
+					if (statusStep) {
+						const display = String(index + 1).padStart(2, '0');
+						statusStep.textContent = display + '/04';
+					}
+				}, 560);
+			})();
+		</script>
+	</body>
+</html>

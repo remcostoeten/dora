@@ -53,7 +53,6 @@ var (
 			Foreground(lipgloss.Color("#888")).
 			MarginTop(2)
 
-	statusText = lipgloss.NewStyle().Foreground(subtleColor)
 )
 
 // suppress "declared and not used" for statusText and secondaryColor

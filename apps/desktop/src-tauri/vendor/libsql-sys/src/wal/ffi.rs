@@ -186,7 +186,10 @@ pub unsafe extern "C" fn find_frame<T: Wal>(
     frame: *mut u32,
 ) -> c_int {
     let this = &mut (*(wal as *mut T));
-    match this.find_frame(NonZeroU32::new(pgno).expect("invalid page number")) {
+    let Some(pgno) = NonZeroU32::new(pgno) else {
+        return libsql_ffi::SQLITE_ERROR;
+    };
+    match this.find_frame(pgno) {
         Ok(fno) => {
             *frame = fno.map(|x| x.get()).unwrap_or(0);
             SQLITE_OK
@@ -202,11 +205,11 @@ pub unsafe extern "C" fn read_frame<T: Wal>(
     p_out: *mut u8,
 ) -> i32 {
     let this = &mut (*(wal as *mut T));
+    let Some(frame) = NonZeroU32::new(frame) else {
+        return libsql_ffi::SQLITE_ERROR;
+    };
     let buffer = std::slice::from_raw_parts_mut(p_out, n_out as usize);
-    match this.read_frame(
-        NonZeroU32::new(frame).expect("invalid frame number"),
-        buffer,
-    ) {
+    match this.read_frame(frame, buffer) {
         Ok(_) => SQLITE_OK,
         Err(code) => code.extended_code,
     }
@@ -219,11 +222,11 @@ pub unsafe extern "C" fn read_frame_raw<T: Wal>(
     p_out: *mut u8,
 ) -> i32 {
     let this = &mut (*(wal as *mut T));
+    let Some(frame) = NonZeroU32::new(frame) else {
+        return libsql_ffi::SQLITE_ERROR;
+    };
     let buffer = std::slice::from_raw_parts_mut(p_out, n_out as usize);
-    match this.read_frame_raw(
-        NonZeroU32::new(frame).expect("invalid frame number"),
-        buffer,
-    ) {
+    match this.read_frame_raw(frame, buffer) {
         Ok(_) => SQLITE_OK,
         Err(code) => code.extended_code,
     }
@@ -436,14 +439,18 @@ pub unsafe extern "C" fn checkpoint<T: Wal>(
         f,
         data: checkpoint_cb_data,
     });
-    let buf = std::slice::from_raw_parts_mut(z_buf, n_buf as usize);
+    let buf = if z_buf.is_null() {
+        &mut []
+    } else {
+        std::slice::from_raw_parts_mut(z_buf, n_buf as usize)
+    };
 
     let mode = match emode {
         e if e == SQLITE_CHECKPOINT_TRUNCATE => CheckpointMode::Truncate,
         e if e == SQLITE_CHECKPOINT_FULL => CheckpointMode::Full,
         e if e == SQLITE_CHECKPOINT_PASSIVE => CheckpointMode::Passive,
         e if e == SQLITE_CHECKPOINT_RESTART => CheckpointMode::Restart,
-        _ => panic!("invalid checkpoint mode"),
+        _ => return libsql_ffi::SQLITE_ERROR,
     };
 
     let in_wal = (!frames_in_wal_out.is_null()).then(|| &mut *frames_in_wal_out);
