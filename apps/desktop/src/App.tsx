@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { SpeedInsights } from '@vercel/speed-insights/react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { DemoBanner } from '@/components/demo-banner'
 import { Toaster as Sonner } from '@/components/ui/sonner'
@@ -33,6 +34,7 @@ function App() {
 					<PendingEditsProvider>
 						<DataProvider>
 							<QueryHistoryProvider>
+								<SpeedInsights />
 								<RecordingOverlay />
 								<div className='flex flex-col h-screen'>
 									<DemoBanner />
