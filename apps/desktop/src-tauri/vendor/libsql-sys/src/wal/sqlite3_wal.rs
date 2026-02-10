@@ -356,12 +356,15 @@ impl Wal for Sqlite3Wal {
             let ret = if page.is_null() {
                 this.finish()
             } else {
-                this.frame(
-                    max_safe_frame_no as _,
-                    std::slice::from_raw_parts(page, page_len as _),
-                    NonZeroU32::new(page_no as _).unwrap(),
-                    NonZeroU32::new(frame_no as _).unwrap(),
-                )
+                match (NonZeroU32::new(page_no as _), NonZeroU32::new(frame_no as _)) {
+                    (Some(pn), Some(fn_)) => this.frame(
+                        max_safe_frame_no as _,
+                        std::slice::from_raw_parts(page, page_len as _),
+                        pn,
+                        fn_,
+                    ),
+                    _ => return libsql_ffi::SQLITE_ERROR,
+                }
             };
 
             match ret {

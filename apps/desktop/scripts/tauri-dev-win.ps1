@@ -1,11 +1,26 @@
 param()
 
+# Resolve cargo home dynamically
+$cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $env:USERPROFILE '.cargo' }
+
 $requiredDirs = @(
-    'C:\Users\Remco\.cargo\bin',
-    'C:\Program Files\CMake\bin',
-    'C:\Users\Remco\tools\nasm\nasm-3.01',
-    'C:\Users\Remco\AppData\Local\Microsoft\WinGet\Packages\Ninja-build.Ninja_Microsoft.Winget.Source_8wekyb3d8bbwe'
+    (Join-Path $cargoHome 'bin')
 )
+
+# Discover tool paths dynamically instead of hardcoding user-specific locations
+foreach ($tool in @('cmake', 'nasm', 'ninja')) {
+    $cmd = Get-Command $tool -ErrorAction SilentlyContinue
+    if ($cmd) {
+        $toolDir = Split-Path $cmd.Source -Parent
+        $requiredDirs += $toolDir
+    }
+}
+
+# Also add common install locations as fallback
+$cmakeFallback = 'C:\Program Files\CMake\bin'
+if ((Test-Path $cmakeFallback) -and ($requiredDirs -notcontains $cmakeFallback)) {
+    $requiredDirs += $cmakeFallback
+}
 
 $env:PATH = ($requiredDirs + ($env:PATH -split ';')) | Where-Object { $_ -and $_ -ne '' } | Select-Object -Unique
 $env:PATH = $env:PATH -join ';'

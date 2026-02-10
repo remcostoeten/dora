@@ -10,7 +10,7 @@
 		"lint": "bun run --cwd ../.. lint",
 		"preview": "vite preview",
 		"tauri": "tauri",
-		"tauri:dev": "bun run tauri:win",
+		"tauri:dev": "node -e \"require('child_process').execSync(process.platform==='win32'?'bun run tauri:win':'bun x tauri dev',{stdio:'inherit'})\"",
 		"tauri:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\tauri-dev-win.ps1",
 		"test": "vitest run -c ../../vitest.config.ts",
 		"test:watch": "vitest -c ../../vitest.config.ts",

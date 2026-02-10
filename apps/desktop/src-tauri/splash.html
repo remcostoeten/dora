@@ -6,24 +6,21 @@
 		<title>Dora</title>
 		<style>
 			:root {
-				/* Light Theme (matching globals.css) */
-				--bg: #f5f5f7;
-				/* neutral-50/100ish */
-				--text: #1a1a1a;
-				--text-muted: #737373;
-				--primary: #6366f1;
-				/* approximate primary */
-			}
-
-			@media (prefers-color-scheme: dark) {
-				:root {
-					/* Dark Theme */
-					--bg: #1c1c1e;
-					/* deeper dark */
-					--text: #f5f5f7;
-					--text-muted: #a1a1aa;
-					--primary: #818cf8;
-				}
+				--bg: #090909;
+				--bg-2: #121212;
+				--panel: #161616;
+				--panel-2: #1e1e1e;
+				--border: #2e2e2e;
+				--text: #f1f1f1;
+				--muted: #959595;
+				--accent: #e5e5e5;
+				--accent-soft: rgba(229, 229, 229, 0.2);
+				--glow: rgba(229, 229, 229, 0.24);
+				--logo-primary: #b35c5f;
+				--logo-secondary: #fcc5c3;
+				--logo-tertiary: #e79898;
+				--logo-accent: #e69797;
+				--logo-highlight: #fcdddc;
 			}
 
 			* {
@@ -32,124 +29,485 @@
 				box-sizing: border-box;
 			}
 
+			html,
 			body {
-				width: 100vw;
-				height: 100vh;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				justify-content: center;
-				background-color: var(--bg);
-				font-family:
-					-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-					sans-serif;
+				width: 100%;
+				height: 100%;
+				overflow: hidden;
+			}
+
+			body {
+				font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+				background:
+					radial-gradient(1100px 520px at 20% -12%, var(--accent-soft), transparent 60%),
+					radial-gradient(900px 520px at 100% 100%, rgba(255, 255, 255, 0.03), transparent 68%),
+					linear-gradient(155deg, var(--bg), var(--bg-2));
+				color: var(--text);
+				display: grid;
+				place-items: center;
 				user-select: none;
-				cursor: default;
+				-webkit-font-smoothing: antialiased;
+				text-rendering: optimizeLegibility;
 			}
 
-			.container {
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				gap: 24px;
-				animation: fade-in 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+			.atmosphere {
+				position: fixed;
+				inset: -18%;
+				pointer-events: none;
+				background:
+					repeating-linear-gradient(
+						90deg,
+						rgba(255, 255, 255, 0.03) 0,
+						rgba(255, 255, 255, 0.03) 1px,
+						transparent 1px,
+						transparent 44px
+					),
+					repeating-linear-gradient(
+						180deg,
+						rgba(255, 255, 255, 0.03) 0,
+						rgba(255, 255, 255, 0.03) 1px,
+						transparent 1px,
+						transparent 44px
+					);
+				opacity: 0.24;
+				mask-image: radial-gradient(circle at center, black 34%, transparent 82%);
 			}
 
-			.logo-frame {
-				width: 96px;
-				height: 96px;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-				/* Subtle shadow, no massive glows */
-				filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.1));
+			.stage {
+				position: relative;
+				width: min(92vw, 640px);
+				text-align: center;
+				display: grid;
+				justify-items: center;
+				gap: 14px;
+				animation: fade-in 640ms cubic-bezier(0.16, 1, 0.3, 1);
 			}
 
-			.logo-frame svg {
+			.orbit {
+				position: relative;
+				width: 230px;
+				height: 230px;
+				display: grid;
+				place-items: center;
+			}
+
+			.orbit::before,
+			.orbit::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				border-radius: 999px;
+				border: 1px solid color-mix(in srgb, var(--accent), transparent 72%);
+			}
+
+			.orbit::before {
+				animation: spin 12s linear infinite;
+			}
+
+			.orbit::after {
+				inset: 18px;
+				opacity: 0.55;
+				animation: spin-reverse 9s linear infinite;
+			}
+
+			.spark {
+				position: absolute;
+				width: 8px;
+				height: 8px;
+				border-radius: 999px;
+				background: var(--accent);
+				box-shadow: 0 0 10px -2px var(--glow);
+			}
+
+			.spark.one {
+				top: 6px;
+				left: 50%;
+				transform: translateX(-50%);
+				animation: spark-fade 2.6s ease-in-out infinite;
+			}
+
+			.spark.two {
+				bottom: 28px;
+				right: 18px;
+				width: 6px;
+				height: 6px;
+				animation: spark-fade 2.2s ease-in-out infinite 220ms;
+			}
+
+			.core {
+				width: 146px;
+				height: 146px;
+				padding: 14px;
+				border-radius: 36px;
+				display: grid;
+				place-items: center;
+				background:
+					radial-gradient(120% 120% at 20% 10%, rgba(255, 255, 255, 0.15), transparent 48%),
+					linear-gradient(165deg, var(--panel), var(--panel-2));
+				border: 1px solid var(--border);
+				box-shadow:
+					0 20px 54px rgba(0, 0, 0, 0.42),
+					0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+					0 0 34px -18px var(--glow);
+				animation: bob 3.1s ease-in-out infinite;
+			}
+
+			.logo {
 				width: 100%;
 				height: 100%;
 			}
 
-			.content {
-				text-align: center;
-				display: flex;
-				flex-direction: column;
-				gap: 8px;
+			.logo .p1 {
+				fill: var(--logo-primary);
+			}
+
+			.logo .p2 {
+				fill: var(--logo-secondary);
+			}
+
+			.logo .p3 {
+				fill: var(--logo-tertiary);
+			}
+
+			.logo .p4 {
+				fill: var(--logo-accent);
+			}
+
+			.logo .p5 {
+				fill: var(--logo-highlight);
 			}
 
 			.title {
-				font-size: 24px;
-				font-weight: 600;
-				color: var(--text);
-				letter-spacing: -0.5px;
+				font-size: clamp(36px, 7vw, 52px);
+				line-height: 1;
+				letter-spacing: -0.045em;
+				font-weight: 660;
 			}
 
-			.status {
+			.tagline {
 				font-size: 13px;
-				color: var(--text-muted);
-				font-weight: 400;
-				display: flex;
-				align-items: center;
-				gap: 8px;
+				line-height: 1.4;
+				color: var(--muted);
 			}
 
-			/* Minimal loading indicator */
-			.spinner {
-				width: 12px;
-				height: 12px;
-				border: 2px solid var(--text-muted);
-				border-top-color: transparent;
-				border-radius: 50%;
-				animation: spin 0.8s linear infinite;
-				opacity: 0.5;
+			.launch-info {
+				width: min(92vw, 470px);
+				margin-top: 6px;
+				display: grid;
+				gap: 10px;
+			}
+
+			.launch-line {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				gap: 8px;
+				font-size: 12px;
+				color: var(--muted);
+			}
+
+			.pulse-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 999px;
+				background: var(--accent);
+				box-shadow: 0 0 10px -2px var(--glow);
+				animation: breathe 1.6s ease-in-out infinite;
+			}
+
+			.launch-note {
+				font-size: 11px;
+				letter-spacing: 0.015em;
+				color: var(--muted);
+				padding-top: 10px;
+				border: 1px solid var(--border);
+				border-left: 0;
+				border-right: 0;
+				text-align: center;
 			}
 
 			@keyframes fade-in {
 				from {
 					opacity: 0;
-					transform: scale(0.98);
+					transform: translateY(10px) scale(0.99);
 				}
 
 				to {
 					opacity: 1;
-					transform: scale(1);
+					transform: translateY(0) scale(1);
 				}
 			}
 
 			@keyframes spin {
+				from {
+					transform: rotate(0deg);
+				}
+
 				to {
 					transform: rotate(360deg);
+				}
+			}
+
+			@keyframes spin-reverse {
+				from {
+					transform: rotate(0deg);
+				}
+
+				to {
+					transform: rotate(-360deg);
+				}
+			}
+
+			@keyframes bob {
+				0%,
+				100% {
+					transform: translateY(0);
+				}
+
+				50% {
+					transform: translateY(-4px);
+				}
+			}
+
+			@keyframes spark-fade {
+				0%,
+				100% {
+					opacity: 1;
+				}
+
+				50% {
+					opacity: 0.65;
+				}
+			}
+
+			@keyframes breathe {
+				0%,
+				100% {
+					transform: scale(0.9);
+					opacity: 0.6;
+				}
+
+				50% {
+					transform: scale(1.15);
+					opacity: 1;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				* {
+					animation: none !important;
 				}
 			}
 		</style>
 	</head>
 
 	<body>
-		<div class="container">
-			<div class="logo-frame">
-				<!-- Clean Logo SVG -->
-				<svg
-					width="128"
-					height="128"
-					viewBox="0 0 128 128"
-					fill="none"
-					xmlns="http://www.w3.org/2000/svg"
-				>
-					<rect width="128" height="128" rx="28" fill="var(--primary)" />
-					<path
-						d="M44 38V90H74C88.3594 90 100 78.3594 100 64C100 49.6406 88.3594 38 74 38H44ZM56 50H74C81.732 50 88 56.268 88 64C88 71.732 81.732 78 74 78H56V50Z"
-						fill="white"
-					/>
-				</svg>
-			</div>
+		<div class="atmosphere"></div>
 
-			<div class="content">
-				<div class="title">Dora</div>
-				<div class="status">
-					<div class="spinner"></div>
-					<span>Initializing...</span>
+		<main class="stage">
+			<div class="orbit" aria-hidden="true">
+				<div class="spark one"></div>
+				<div class="spark two"></div>
+				<div class="core">
+					<svg class="logo" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+						<path
+							d="m515 153h13l18 2 22 6 16 8 15 9v2l5 2 13 13 4 5 4 7 6 10 5 11 4 13 2 13v8l8 1 16 4 24 9 16 7 16 8 14 8 8 5v2l4 1v2l4 1v2l4 2 9 8 11 14 9 18 3 12v87l-3 15-7 16-3 6 5 5 6 13 2 11v79l-5 18-7 14 1 5 7 11 3 9 1 7v75l-3 16-6 15-10 15-6 7-5 5-10 9-19 13-22 12-23 10-33 11-32 8-37 6-27 3-16 1h-54l-35-3-35-5-32-7-16-5-27-9-21-9-19-10-18-12-11-9-15-15-7-10-8-16-4-15-1-6v-73l4-17 8-13 1-3-8-16-4-15-1-9v-71l4-16 5-10 3-4-1-4-7-16-3-11-1-10v-77l3-17 6-14 10-14 17-17 14-10 21-12 21-10 19-7 19-6 28-7 23-4 10-2 24-3 20-5 16-7 8-6 6-7 3-6v-11l-4-6-7-6-7-3-16-2-5-4-2-4v-8l6-7 16-8 10-3z"
+							class="p1"
+						/>
+						<path
+							d="m505 175h29l16 3 17 6 12 7 10 8 10 10 10 15 6 14 4 18v24l8 1 26 6 35 12 23 11 16 10 10 8 6 5 9 11 6 10 4 13-1 85-3 12-6 11-7 9-9 9-13 10-22 13-23 10-25 9-36 9-28 5-36 4-14 1h-50l-36-3-28-4-29-6-26-7-23-8-18-8-21-11-14-10-13-12-7-8-7-12-3-10-1-91 5-13 7-10 9-10 14-11 15-9 16-8 25-10 27-8 32-7 40-6 23-6 17-7 14-9 10-10 6-10 3-8v-17l-5-12-7-8-8-5-7-2v-2z"
+							class="p2"
+						/>
+						<path
+							d="m267 653 4 2 12 10 19 12 22 11 23 9 29 9 24 6 33 6 35 4 14 1h63l24-2 42-6 27-6 28-8 20-7 23-10 19-10 17-12 11-9 3 3 2 5v73l-3 14-7 14-11 13-13 11-19 12-22 11-27 10-27 8-34 7-28 4-21 2-20 1h-33l-41-3-28-4-29-6-26-7-20-7-23-10-20-11-13-9-15-13-9-12-5-10-3-10-1-77z"
+							class="p3"
+						/>
+						<path
+							d="m267 510h2l5 5 10 8 13 8 16 9 23 10 36 12 28 7 28 5 31 4 27 2h54l28-2 42-6 36-8 35-11 24-10 25-13 17-12 9-8h2l3 7v74l-2 11-5 12-8 11-13 13-17 12-18 10-23 10-30 10-28 7-28 5-34 4-16 1h-50l-36-3-33-5-36-8-23-7-25-10-16-8-14-8-11-8-11-9-9-11-6-9-4-10-1-5-1-78z"
+							class="p3"
+						/>
+						<path
+							d="m760 383h1v69l-3 12-6 11-7 9-9 9-13 10-22 13-23 10-25 9-36 9-28 5-36 4-14 1h-50l-36-3-28-4-29-6-26-7-23-8-18-8-21-11-14-10-13-12-7-8-7-12-3-10v-70l2 3 2 7h2l7 10 11 11 18 12 16 9 26 11 28 9 33 8 23 4 35 4 33 2h26l36-2 34-4 31-6 24-6 30-10 25-11 19-11 14-11 10-10 7-11z"
+							class="p4"
+						/>
+						<path
+							d="m514 175h20l16 3 17 6 12 7 10 8 10 10 10 15 6 14 4 18v24l8 1 26 6 35 12 23 11 16 10 10 8 6 5 9 11 6 10 4 13v12l-4 12-6 10-9 10-11 10-14 9-16 9-26 11-32 10-31 7-32 5-34 3-21 1h-26l-33-2-35-4-28-5-35-9-29-10-24-11-18-11-12-9-12-12-4-6v-2h-2l-5-13v-18l5-13 7-10 9-10 14-11 15-9 16-8 25-10 27-8 32-7 33-5h9v2l-14 5-41 8-28 8-23 8-18 8-17 10-13 10-8 8-7 11-3 8-1 11 2 11 5 10 9 11 13 10 15 9 17 8 28 10 27 7 31 6 34 4 30 2h38l34-2 37-5 34-7 20-6 21-7 20-9 14-8 13-10 9-9 6-10 3-10v-12l-3-10-6-10-9-10-11-9-11-7-17-9-20-8-26-8-26-6-9-1-2-7-3-22-4-13h-3l-12-16-4-5-1-6v-3l-9-9-3-7-8-6-14-7-17-5-12-2z"
+							class="p5"
+						/>
+					</svg>
 				</div>
 			</div>
-		</div>
+
+			<h1 class="title">Dora</h1>
+			<p class="tagline">Bringing your database workspace online</p>
+
+			<section class="launch-info">
+				<div class="launch-line">
+					<div class="pulse-dot" aria-hidden="true"></div>
+					<span>Starting Dora</span>
+				</div>
+				<p class="launch-note">This splash closes as soon as your workspace is ready.</p>
+			</section>
+		</main>
+
+		<script>
+			(function () {
+				const themeMap = {
+					dark: {
+						bg: '#090909',
+						bg2: '#121212',
+						panel: '#161616',
+						panel2: '#1e1e1e',
+						border: '#2e2e2e',
+						text: '#f1f1f1',
+						muted: '#959595',
+						accent: '#e5e5e5',
+						accentSoft: 'rgba(229, 229, 229, 0.2)',
+						glow: 'rgba(229, 229, 229, 0.24)',
+						logoPrimary: '#b35c5f',
+						logoSecondary: '#fcc5c3',
+						logoTertiary: '#e79898',
+						logoAccent: '#e69797',
+						logoHighlight: '#fcdddc'
+					},
+					light: {
+						bg: '#f6f6f6',
+						bg2: '#ececec',
+						panel: '#ffffff',
+						panel2: '#f8f8f8',
+						border: '#e2e2e2',
+						text: '#141414',
+						muted: '#686868',
+						accent: '#171717',
+						accentSoft: 'rgba(23, 23, 23, 0.11)',
+						glow: 'rgba(23, 23, 23, 0.18)',
+						logoPrimary: '#737373',
+						logoSecondary: '#404040',
+						logoTertiary: '#525252',
+						logoAccent: '#5c5c5c',
+						logoHighlight: '#4a4a4a'
+					},
+					midnight: {
+						bg: '#0b1020',
+						bg2: '#141b31',
+						panel: '#121a2d',
+						panel2: '#1a233d',
+						border: '#2e3860',
+						text: '#e8edff',
+						muted: '#97a2c9',
+						accent: '#818cf8',
+						accentSoft: 'rgba(129, 140, 248, 0.2)',
+						glow: 'rgba(129, 140, 248, 0.28)',
+						logoPrimary: '#6366f1',
+						logoSecondary: '#a5b4fc',
+						logoTertiary: '#818cf8',
+						logoAccent: '#7c83ff',
+						logoHighlight: '#c7d2fe'
+					},
+					forest: {
+						bg: '#0d1712',
+						bg2: '#13231b',
+						panel: '#122018',
+						panel2: '#1a2d22',
+						border: '#2d4a3b',
+						text: '#e6f7ef',
+						muted: '#8ea99a',
+						accent: '#34d399',
+						accentSoft: 'rgba(52, 211, 153, 0.18)',
+						glow: 'rgba(52, 211, 153, 0.27)',
+						logoPrimary: '#059669',
+						logoSecondary: '#a7f3d0',
+						logoTertiary: '#34d399',
+						logoAccent: '#10b981',
+						logoHighlight: '#d1fae5'
+					},
+					claude: {
+						bg: '#f7f0e8',
+						bg2: '#f3e8dc',
+						panel: '#fffaf5',
+						panel2: '#f8eee4',
+						border: '#e6d7c6',
+						text: '#34261d',
+						muted: '#7f6756',
+						accent: '#d97706',
+						accentSoft: 'rgba(217, 119, 6, 0.17)',
+						glow: 'rgba(217, 119, 6, 0.24)',
+						logoPrimary: '#c66d1a',
+						logoSecondary: '#fde6c8',
+						logoTertiary: '#f3b478',
+						logoAccent: '#e89a47',
+						logoHighlight: '#fff1de'
+					},
+					'claude-dark': {
+						bg: '#1d1713',
+						bg2: '#2a211b',
+						panel: '#271e19',
+						panel2: '#342822',
+						border: '#4f3d31',
+						text: '#f3e8dd',
+						muted: '#b19a86',
+						accent: '#b45309',
+						accentSoft: 'rgba(180, 83, 9, 0.2)',
+						glow: 'rgba(180, 83, 9, 0.26)',
+						logoPrimary: '#c66d1a',
+						logoSecondary: '#f3cfab',
+						logoTertiary: '#d88b43',
+						logoAccent: '#cb7724',
+						logoHighlight: '#ffe2c6'
+					},
+					night: {
+						bg: '#000000',
+						bg2: '#080808',
+						panel: '#060606',
+						panel2: '#101010',
+						border: '#242424',
+						text: '#f5f5f5',
+						muted: '#8f8f8f',
+						accent: '#f5f5f5',
+						accentSoft: 'rgba(245, 245, 245, 0.17)',
+						glow: 'rgba(245, 245, 245, 0.22)',
+						logoPrimary: '#b8b8b8',
+						logoSecondary: '#5f5f5f',
+						logoTertiary: '#8b8b8b',
+						logoAccent: '#a3a3a3',
+						logoHighlight: '#dadada'
+					}
+				};
+
+				function getTheme() {
+					try {
+						const raw = window.localStorage.getItem('dora-appearance');
+						if (raw) {
+							const parsed = JSON.parse(raw);
+							if (parsed && typeof parsed.theme === 'string' && themeMap[parsed.theme]) {
+								return parsed.theme;
+							}
+						}
+					} catch (_error) {}
+
+					return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+				}
+
+				const palette = themeMap[getTheme()] || themeMap.dark;
+				const root = document.documentElement;
+
+				root.style.setProperty('--bg', palette.bg);
+				root.style.setProperty('--bg-2', palette.bg2);
+				root.style.setProperty('--panel', palette.panel);
+				root.style.setProperty('--panel-2', palette.panel2);
+				root.style.setProperty('--border', palette.border);
+				root.style.setProperty('--text', palette.text);
+				root.style.setProperty('--muted', palette.muted);
+				root.style.setProperty('--accent', palette.accent);
+				root.style.setProperty('--accent-soft', palette.accentSoft);
+				root.style.setProperty('--glow', palette.glow);
+				root.style.setProperty('--logo-primary', palette.logoPrimary);
+				root.style.setProperty('--logo-secondary', palette.logoSecondary);
+				root.style.setProperty('--logo-tertiary', palette.logoTertiary);
+				root.style.setProperty('--logo-accent', palette.logoAccent);
+				root.style.setProperty('--logo-highlight', palette.logoHighlight);
+
+			})();
+		</script>
 	</body>
 </html>
