@@ -335,7 +335,7 @@ export default function Index() {
 		// Reset table selection when switching connections
 		setSelectedTableId('')
 		setSelectedTableName('')
-		autoSelectFirstTableRef.current = true
+		autoSelectFirstTableRef.current = false
 		// No need to reload all connections when selecting one
 		// The connection state will be updated by the backend when connecting
 	}
@@ -390,10 +390,10 @@ export default function Index() {
 					})
 				})
 				if (activeConnectionId === connection.id) {
-					const remaining = connections.filter(function (c) {
-						return c.id !== connection.id
-					})
-					setActiveConnectionId(remaining.length > 0 ? remaining[0].id : '')
+					setActiveConnectionId('')
+					setSelectedTableId('')
+					setSelectedTableName('')
+					autoSelectFirstTableRef.current = false
 				}
 				toast({
 					title: 'Connection Deleted',

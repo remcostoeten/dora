@@ -28,6 +28,7 @@ export type Connection = {
 	error?: string
 	sshConfig?: SshTunnelConfig
 	createdAt: number
+	lastConnectedAt?: number | null
 }
 
 export const DEFAULT_PORTS: Record<DatabaseType, number> = {

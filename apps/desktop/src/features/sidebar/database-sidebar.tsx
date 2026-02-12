@@ -110,6 +110,7 @@ export function DatabaseSidebar({
 		open: boolean
 		action: BulkAction | null
 	}>({ open: false, action: null })
+	const schemaFetchIdRef = useRef(0)
 
 	useEffect(function initAppearance() {
 		const settings = getAppearanceSettings()
@@ -124,9 +125,13 @@ export function DatabaseSidebar({
 			async function fetchSchema() {
 				if (!activeConnectionId) {
 					setSchema(null)
+					setSchemaError(null)
+					setSelectedSchema(undefined)
+					setIsLoadingSchema(false)
 					return
 				}
 
+				const requestId = ++schemaFetchIdRef.current
 				setIsLoadingSchema(true)
 				setSchemaError(null)
 
@@ -137,6 +142,9 @@ export function DatabaseSidebar({
 					}
 
 					const result = await adapter.getSchema(activeConnectionId)
+					if (requestId !== schemaFetchIdRef.current) {
+						return
+					}
 					if (result.ok) {
 						setSchema(result.data)
 						if (result.data.schemas.length > 0) {
@@ -162,11 +170,16 @@ export function DatabaseSidebar({
 						throw new Error(result.error)
 					}
 				} catch (error) {
+					if (requestId !== schemaFetchIdRef.current) {
+						return
+					}
 					console.error('Failed to fetch schema:', error)
 					setSchemaError(error instanceof Error ? error.message : 'Failed to load schema')
 					setSchema(null)
 				} finally {
-					setIsLoadingSchema(false)
+					if (requestId === schemaFetchIdRef.current) {
+						setIsLoadingSchema(false)
+					}
 				}
 			}
 
@@ -647,7 +660,7 @@ export function DatabaseSidebar({
 				className={cn('min-h-0', !activeTable && 'flex-1')}
 				style={activeTable ? { height: `${topPanelRatio * 100}%` } : undefined}
 			>
-				{isLoadingSchema ? (
+				{isLoadingSchema && !schema ? (
 					<SidebarTableSkeleton rows={8} />
 				) : schemaError ? (
 					<div className='flex flex-col items-center justify-center h-40 px-4 py-6 gap-3'>
@@ -705,19 +718,26 @@ export function DatabaseSidebar({
 						<span className='text-xs'>No tables found</span>
 					</div>
 				) : (
-					<TableList
-						tables={filteredTables}
-						activeTableId={activeTableId}
-						selectedTableIds={selectedTableIds}
-						isMultiSelectMode={isMultiSelectMode}
-						activeSortingTableIds={[]}
-						editingTableId={editingTableId}
-						onTableSelect={handleTableSelect}
-						onTableMultiSelect={handleTableMultiSelect}
-						onContextAction={handleContextAction}
-						onRightClickAction={handleRightClickAction}
-						onTableRename={handleTableRename}
-					/>
+					<div className='relative'>
+						<TableList
+							tables={filteredTables}
+							activeTableId={activeTableId}
+							selectedTableIds={selectedTableIds}
+							isMultiSelectMode={isMultiSelectMode}
+							activeSortingTableIds={[]}
+							editingTableId={editingTableId}
+							onTableSelect={handleTableSelect}
+							onTableMultiSelect={handleTableMultiSelect}
+							onContextAction={handleContextAction}
+							onRightClickAction={handleRightClickAction}
+							onTableRename={handleTableRename}
+						/>
+						{isLoadingSchema && (
+							<div className='absolute right-2 top-2 rounded bg-sidebar-accent/90 px-2 py-0.5 text-[10px] text-muted-foreground'>
+								Refreshing...
+							</div>
+						)}
+					</div>
 				)}
 			</ScrollArea>
 

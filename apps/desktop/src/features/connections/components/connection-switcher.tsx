@@ -4,6 +4,7 @@ import {
 	Settings,
 	Database,
 	Check,
+	MoreHorizontal,
 	Eye,
 	Pencil,
 	Trash2,
@@ -45,6 +46,23 @@ function formatDatabaseType(type: DatabaseType | undefined): string {
 		default:
 			return type.charAt(0).toUpperCase() + type.slice(1)
 	}
+}
+
+function normalizeTimestamp(value: number | null | undefined): number | null {
+	if (!value) return null
+	return value < 1_000_000_000_000 ? value * 1000 : value
+}
+
+function formatQuickDate(value: number | null | undefined): string {
+	const normalized = normalizeTimestamp(value)
+	if (!normalized) return 'Never'
+	const date = new Date(normalized)
+	if (Number.isNaN(date.getTime())) return 'Unknown'
+	return date.toLocaleString(undefined, {
+		month: 'short',
+		day: 'numeric',
+		year: 'numeric'
+	})
 }
 
 type Props = {
@@ -126,19 +144,20 @@ export function ConnectionSwitcher({
 				side='bottom'
 				sideOffset={4}
 			>
-				<DropdownMenuLabel className='text-xs text-muted-foreground uppercase tracking-wider font-medium'>
+				<DropdownMenuLabel className='sticky top-0 z-10 bg-popover text-xs text-muted-foreground uppercase tracking-wider font-medium'>
 					Databases
 				</DropdownMenuLabel>
 
-				{connections.length > 0 ? (
-					connections.map((connection) => (
+				<div className='max-h-[360px] overflow-y-auto pr-1'>
+					{connections.length > 0 ? (
+						connections.map((connection) => (
 						<ContextMenu key={connection.id}>
 							<ContextMenuTrigger asChild>
 								<DropdownMenuItem
 									onClick={function () {
 										onConnectionSelect(connection.id)
 									}}
-									className='gap-2 p-2 cursor-pointer'
+									className='gap-2 p-2 cursor-pointer group'
 								>
 									<div className='flex items-center gap-2 w-full'>
 										<div
@@ -157,16 +176,65 @@ export function ConnectionSwitcher({
 												/>
 											)}
 										</div>
-										<div className='flex-1 truncate text-sm'>
-											{connection.name}
+										<div className='flex-1 min-w-0'>
+											<div className='truncate text-sm'>{connection.name}</div>
+											<div className='truncate text-[10px] text-muted-foreground'>
+												Created {formatQuickDate(connection.createdAt)}
+											</div>
+											<div className='truncate text-[10px] text-muted-foreground'>
+												Last used {formatQuickDate(connection.lastConnectedAt)}
+											</div>
 										</div>
-										{connection.id === activeConnectionId && (
-											<Check className='h-4 w-4 text-primary ml-auto' />
-										)}
+										<div className='ml-auto flex items-center gap-1'>
+											{connection.id === activeConnectionId && (
+												<Check className='h-4 w-4 text-primary' />
+											)}
+											{onEditConnection && (
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground'
+													onPointerDown={function (e) {
+														e.preventDefault()
+														e.stopPropagation()
+													}}
+													onClick={function (e) {
+														e.preventDefault()
+														e.stopPropagation()
+														onEditConnection(connection.id)
+													}}
+													title={`Edit ${connection.name}`}
+													aria-label={`Edit ${connection.name}`}
+												>
+													<Pencil className='h-3.5 w-3.5' />
+												</Button>
+											)}
+											{onDeleteConnection && (
+												<Button
+													variant='ghost'
+													size='icon'
+													className='h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive'
+													onPointerDown={function (e) {
+														e.preventDefault()
+														e.stopPropagation()
+													}}
+													onClick={function (e) {
+														e.preventDefault()
+														e.stopPropagation()
+														onDeleteConnection(connection.id)
+													}}
+													title={`Delete ${connection.name}`}
+													aria-label={`Delete ${connection.name}`}
+												>
+													<Trash2 className='h-3.5 w-3.5' />
+												</Button>
+											)}
+											<MoreHorizontal className='h-3.5 w-3.5 text-muted-foreground/60 opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none' />
+										</div>
 									</div>
 								</DropdownMenuItem>
 							</ContextMenuTrigger>
-							<ContextMenuContent className='w-48'>
+								<ContextMenuContent className='w-48'>
 								<ContextMenuItem
 									onSelect={() => onViewConnection?.(connection.id)}
 									className='gap-2 cursor-pointer'
@@ -182,21 +250,25 @@ export function ConnectionSwitcher({
 									Edit Connection
 								</ContextMenuItem>
 								<ContextMenuSeparator />
-								<ContextMenuItem
-									onSelect={() => onDeleteConnection?.(connection.id)}
-									className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
-								>
-									<Trash2 className='h-4 w-4' />
-									Delete Connection
-								</ContextMenuItem>
-							</ContextMenuContent>
-						</ContextMenu>
-					))
-				) : (
-					<div className='px-2 py-3 text-xs text-center text-muted-foreground border border-dashed rounded-md m-1'>
-						No connections found
-					</div>
-				)}
+									<ContextMenuItem
+										onSelect={(event) => {
+											event.preventDefault()
+											onDeleteConnection?.(connection.id)
+										}}
+										className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
+									>
+										<Trash2 className='h-4 w-4' />
+										Delete Connection
+									</ContextMenuItem>
+								</ContextMenuContent>
+							</ContextMenu>
+						))
+					) : (
+						<div className='px-2 py-3 text-xs text-center text-muted-foreground border border-dashed rounded-md m-1'>
+							No connections found
+						</div>
+					)}
+				</div>
 
 				<DropdownMenuSeparator />
 

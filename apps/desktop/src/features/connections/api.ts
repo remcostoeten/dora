@@ -39,7 +39,8 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 		url,
 		authToken,
 		status: conn.connected ? 'connected' : 'idle',
-		createdAt: conn.created_at ?? Date.now()
+		createdAt: conn.created_at ?? Date.now(),
+		lastConnectedAt: conn.last_connected_at
 	}
 }
 
