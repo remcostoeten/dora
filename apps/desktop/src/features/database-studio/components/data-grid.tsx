@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Database, Check, X } from 'lucide-react'
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useShortcut, useEffectiveShortcuts } from '@/core/shortcuts'
 import { Checkbox } from '@/shared/ui/checkbox'
 import { cn } from '@/shared/utils/cn'
@@ -123,6 +123,27 @@ export function DataGrid({
 
 	const [internalSelectedCells, setInternalSelectedCells] = useState<Set<string>>(new Set())
 	const selectedCellsSet = externalSelectedCells ?? internalSelectedCells
+	const selectedCellsByRow = useMemo(() => {
+		const byRow = new Map<number, Set<number>>()
+		for (const key of selectedCellsSet) {
+			const [rowPart, colPart] = key.split(':')
+			const rowIndex = Number(rowPart)
+			const colIndex = Number(colPart)
+			if (Number.isNaN(rowIndex) || Number.isNaN(colIndex)) continue
+			const current = byRow.get(rowIndex)
+			if (current) {
+				current.add(colIndex)
+			} else {
+				byRow.set(rowIndex, new Set([colIndex]))
+			}
+		}
+		return byRow
+	}, [selectedCellsSet])
+	const primaryKeyColumnName = useMemo(() => {
+		return columns.find(function (c) {
+			return c.primaryKey
+		})?.name
+	}, [columns])
 	const [anchorCell, setAnchorCell] = useState<CellPosition | null>(null)
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragStart, setDragStart] = useState<CellPosition | null>(null)
@@ -131,6 +152,7 @@ export function DataGrid({
 	const [isRightDragging, setIsRightDragging] = useState(false)
 	const rightDragStartRef = useRef<{ x: number; scrollLeft: number } | null>(null)
 	const hasRightDraggedRef = useRef(false)
+	const pendingNavFrameRef = useRef<number | null>(null)
 
 	function setFocusedCell(cell: { row: number; col: number } | null) {
 		setFocusedCellInternal(cell)
@@ -211,6 +233,33 @@ export function DataGrid({
 		setFocusedCell(cellPos)
 		setAnchorCell(cellPos)
 	}
+
+	useEffect(
+		function cleanupPendingFrame() {
+			return function () {
+				if (pendingNavFrameRef.current !== null) {
+					cancelAnimationFrame(pendingNavFrameRef.current)
+				}
+			}
+		},
+		[]
+	)
+
+	useEffect(
+		function keepFocusedCellInView() {
+			if (!focusedCell || !gridRef.current) return
+			const targetCell = gridRef.current.querySelector(
+				`[data-cell-key="${focusedCell.row}:${focusedCell.col}"]`
+			) as HTMLElement | null
+			if (targetCell) {
+				targetCell.scrollIntoView({
+					block: 'nearest',
+					inline: 'nearest'
+				})
+			}
+		},
+		[focusedCell]
+	)
 
 	function handleCellMouseEnter(rowIndex: number, colIndex: number) {
 		if (!isDragging || !dragStart) return
@@ -468,15 +517,20 @@ export function DataGrid({
 
 			function moveAndMaybeSelect(newRow: number, newCol: number) {
 				const newPos: CellPosition = { row: newRow, col: newCol }
-				setFocusedCell(newPos)
-
-				if (e.shiftKey && anchorCell) {
-					const rangeCells = getCellsInRectangle(anchorCell, newPos)
-					updateCellSelection(rangeCells)
-				} else if (!e.shiftKey) {
-					setAnchorCell(newPos)
-					updateCellSelection(new Set([getCellKey(newRow, newCol)]))
+				if (pendingNavFrameRef.current !== null) {
+					cancelAnimationFrame(pendingNavFrameRef.current)
 				}
+				pendingNavFrameRef.current = requestAnimationFrame(function () {
+					setFocusedCell(newPos)
+					if (e.shiftKey && anchorCell) {
+						const rangeCells = getCellsInRectangle(anchorCell, newPos)
+						updateCellSelection(rangeCells)
+					} else if (!e.shiftKey) {
+						setAnchorCell(newPos)
+						updateCellSelection(new Set([getCellKey(newRow, newCol)]))
+					}
+					pendingNavFrameRef.current = null
+				})
 			}
 
 			switch (e.key) {
@@ -498,29 +552,33 @@ export function DataGrid({
 					break
 				case 'Tab':
 					e.preventDefault()
-					if (e.shiftKey) {
-						if (col > 0) {
-							setFocusedCell({ row, col: col - 1 })
-						} else if (row > 0) {
-							setFocusedCell({ row: row - 1, col: maxCol })
+						if (e.shiftKey) {
+							if (col > 0) {
+								moveAndMaybeSelect(row, col - 1)
+							} else if (row > 0) {
+								moveAndMaybeSelect(row - 1, maxCol)
+							}
+						} else {
+							if (col < maxCol) {
+								moveAndMaybeSelect(row, col + 1)
+							} else if (row < maxRow) {
+								moveAndMaybeSelect(row + 1, 0)
+							}
 						}
-					} else {
-						if (col < maxCol) {
-							setFocusedCell({ row, col: col + 1 })
-						} else if (row < maxRow) {
-							setFocusedCell({ row: row + 1, col: 0 })
-						}
-					}
-					break
+						break
 				case 'Enter':
 					e.preventDefault()
 					handleCellDoubleClick(row, columns[col].name, rows[row][columns[col].name])
 					break
-				case 'Escape':
-					e.preventDefault()
-					setFocusedCell(null)
-					updateCellSelection(new Set())
-					break
+						case 'Escape':
+							e.preventDefault()
+							if (pendingNavFrameRef.current !== null) {
+								cancelAnimationFrame(pendingNavFrameRef.current)
+								pendingNavFrameRef.current = null
+							}
+							setFocusedCell(null)
+							updateCellSelection(new Set())
+							break
 				case ' ':
 					e.preventDefault()
 					onRowSelect(row, !selectedRows.has(row))
@@ -949,18 +1007,14 @@ export function DataGrid({
 												const isFocused =
 													focusedCell?.row === rowIndex &&
 													focusedCell?.col === colIndex
-												const isSelected = selectedCellsSet.has(
-													getCellKey(rowIndex, colIndex)
-												)
+												const rowSelectedCols = selectedCellsByRow.get(rowIndex)
+												const isSelected = rowSelectedCols?.has(colIndex) || false
 												const width = getColumnWidth(col.name)
 
 												// Check if cell has pending edits
-												const primaryKeyCol = columns.find(function (c) {
-													return c.primaryKey
-												})
-												const isDirty = primaryKeyCol
+												const isDirty = primaryKeyColumnName
 													? pendingEdits?.has(
-														`${row[primaryKeyCol.name]}:${col.name}`
+														`${row[primaryKeyColumnName]}:${col.name}`
 													)
 													: false
 
@@ -1045,6 +1099,7 @@ export function DataGrid({
 																	? { maxWidth: width }
 																	: undefined
 															}
+															data-cell-key={`${rowIndex}:${colIndex}`}
 															onMouseDown={function (e) {
 																handleCellMouseDown(
 																	e,

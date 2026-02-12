@@ -52,6 +52,31 @@ type Props = {
 	onRowSelectionChange?: (pk: string | number | null) => void
 }
 
+type TableCacheEntry = {
+	data: TableData
+	visibleColumns: string[]
+}
+
+const tableDataCache = new Map<string, TableCacheEntry>()
+
+function buildTableCacheKey(
+	connectionId: string | undefined,
+	tableId: string | null,
+	limit: number,
+	offset: number,
+	sort: SortDescriptor | undefined,
+	filters: FilterDescriptor[]
+) {
+	return JSON.stringify({
+		connectionId: connectionId || '',
+		tableId: tableId || '',
+		limit,
+		offset,
+		sort: sort || null,
+		filters
+	})
+}
+
 export function DatabaseStudio({
 	tableId,
 	tableName,
@@ -62,6 +87,9 @@ export function DatabaseStudio({
 	initialRowPK,
 	onRowSelectionChange
 }: Props) {
+	const initialCacheEntry = tableDataCache.get(
+		buildTableCacheKey(activeConnectionId, tableId, 50, 0, undefined, [])
+	)
 	const adapter = useAdapter()
 	const { toast } = useToast()
 	const { updateCell, deleteRows, insertRow } = useDataMutation()
@@ -78,7 +106,9 @@ export function DatabaseStudio({
 		hasEdits
 	} = usePendingEdits()
 	const [isApplyingEdits, setIsApplyingEdits] = useState(false)
-	const [tableData, setTableData] = useState<TableData | null>(null)
+	const [tableData, setTableData] = useState<TableData | null>(
+		initialCacheEntry ? initialCacheEntry.data : null
+	)
 	const [showAddDialog, setShowAddDialog] = useState(false)
 	const [addDialogMode, setAddDialogMode] = useState<'add' | 'duplicate'>('add')
 	const [duplicateInitialData, setDuplicateInitialData] = useState<
@@ -90,7 +120,7 @@ export function DatabaseStudio({
 		unknown
 	> | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-	const [isTableTransitioning, setIsTableTransitioning] = useState(false)
+	const [isTableTransitioning, setIsTableTransitioning] = useState(!initialCacheEntry)
 	const [viewMode, setViewMode] = useState<ViewMode>('content')
 	const previousTableRef = useRef<{ columns: number; rows: number } | null>(null)
 	const [pagination, setPagination] = useState<PaginationState>({ limit: 50, offset: 0 })
@@ -114,7 +144,9 @@ export function DatabaseStudio({
 	const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null)
 	const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null)
 
-	const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set())
+	const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+		new Set(initialCacheEntry?.visibleColumns || [])
+	)
 
 	const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set())
 	const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null)
@@ -130,6 +162,19 @@ export function DatabaseStudio({
 	} = useUrlState()
 	const initializedFromUrlRef = useRef(false)
 	const isUpdatingUrlRef = useRef(false)
+	const currentCacheKey = useMemo(
+		function () {
+			return buildTableCacheKey(
+				activeConnectionId,
+				tableId,
+				pagination.limit,
+				pagination.offset,
+				sort,
+				filters
+			)
+		},
+		[activeConnectionId, tableId, pagination.limit, pagination.offset, sort, filters]
+	)
 
 	const stableUrlState = useMemo(
 		function () {
@@ -142,6 +187,26 @@ export function DatabaseStudio({
 			urlState.addRecordMode,
 			urlState.addRecordIndex
 		]
+	)
+	const filteredColumns = useMemo(
+		function () {
+			if (!tableData) return []
+			return tableData.columns.filter(function (col) {
+				return visibleColumns.has(col.name)
+			})
+		},
+		[tableData, visibleColumns]
+	)
+	const pendingEditsSet = useMemo(
+		function () {
+			if (!tableId) return undefined
+			return new Set(
+				getEditsForTable(tableId).map(function (e) {
+					return `${e.primaryKeyValue}:${e.columnName}`
+				})
+			)
+		},
+		[tableId, pendingEdits, getEditsForTable]
 	)
 
 	useEffect(function cachePreviousTableDimensions() {
@@ -156,6 +221,15 @@ export function DatabaseStudio({
 	const loadTableData = useCallback(async () => {
 		if (!tableId || !activeConnectionId) {
 			return
+		}
+
+		const cached = tableDataCache.get(currentCacheKey)
+		if (cached) {
+			setTableData(cached.data)
+			if (cached.visibleColumns.length > 0) {
+				setVisibleColumns(new Set(cached.visibleColumns))
+			}
+			setIsTableTransitioning(false)
 		}
 
 		setIsLoading(true)
@@ -176,21 +250,34 @@ export function DatabaseStudio({
 				setTableData(data)
 
 				// If it's a new table or first load, reset visible columns to show all
+				let nextVisibleColumns: string[] = []
 				if (data.columns.length > 0) {
 					setVisibleColumns((prev) => {
 						if (prev.size === 0) {
-							return new Set(data.columns.map((c) => c.name))
+							nextVisibleColumns = data.columns.map((c) => c.name)
+							return new Set(nextVisibleColumns)
 						}
+
+						nextVisibleColumns = Array.from(prev)
 						return prev
 					})
 				}
+
+				tableDataCache.set(currentCacheKey, {
+					data,
+					visibleColumns: nextVisibleColumns
+				})
 			} else {
 				console.error('[DatabaseStudio] Failed to load table data:', result.error)
-				setTableData(null)
+				if (!cached) {
+					setTableData(null)
+				}
 			}
 		} catch (error) {
 			console.error('[DatabaseStudio] Unexpected error loading table data:', error)
-			setTableData(null)
+			if (!cached) {
+				setTableData(null)
+			}
 		} finally {
 			setIsLoading(false)
 		}
@@ -199,6 +286,7 @@ export function DatabaseStudio({
 		tableId,
 		tableName,
 		activeConnectionId,
+		currentCacheKey,
 		pagination.limit,
 		pagination.offset,
 		sort,
@@ -216,14 +304,32 @@ export function DatabaseStudio({
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
 
 	useEffect(function handleTableChange() {
-		if (!tableId) return
+		if (!tableId || !activeConnectionId) return
 		setPagination({ limit: 50, offset: 0 })
 		setSort(undefined)
 		setFilters([])
-		setVisibleColumns(new Set())
 		initializedFromUrlRef.current = false
+
+		const defaultCacheKey = buildTableCacheKey(
+			activeConnectionId,
+			tableId,
+			50,
+			0,
+			undefined,
+			[]
+		)
+		const cached = tableDataCache.get(defaultCacheKey)
+
+		if (cached) {
+			setTableData(cached.data)
+			setVisibleColumns(new Set(cached.visibleColumns))
+			setIsTableTransitioning(false)
+			return
+		}
+
+		setVisibleColumns(new Set())
 		setIsTableTransitioning(true)
-	}, [tableId])
+	}, [tableId, activeConnectionId])
 
 	useEffect(function clearTransitionOnLoad() {
 		if (!isLoading && tableData) {
@@ -596,6 +702,11 @@ export function DatabaseStudio({
 	const handleOpenSetNull = useCallback(() => setShowSetNullDialog(true), [])
 	const handleOpenBulkEdit = useCallback(() => setShowBulkEditDialog(true), [])
 	const handleOpenDataSeeder = useCallback(() => setShowDataSeederDialog(true), [])
+	const handleFilterAdd = useCallback(function (filter: FilterDescriptor) {
+		setFilters(function (prev) {
+			return [...prev, filter]
+		})
+	}, [])
 
 	async function handleSeederGenerate(data: any[]) {
 		if (!activeConnectionId || !tableId) return
@@ -1419,16 +1530,19 @@ export function DatabaseStudio({
 				onCopyDrizzleSchema={handleCopyDrizzleSchema}
 			/>
 
-			<div className='flex-1 overflow-hidden relative'>
+			<div
+				className='flex-1 overflow-hidden relative'
+				role='region'
+				aria-label={`Table data for ${tableName || tableId}`}
+				aria-busy={isLoading && !tableData}
+			>
 				{tableData && (
 					<div
 						className='transition-opacity duration-150'
 						style={{ opacity: isTableTransitioning ? 0 : 1 }}
 					>
 						<DataGrid
-							columns={tableData.columns.filter(function (col) {
-								return visibleColumns.has(col.name)
-							})}
+							columns={filteredColumns}
 							rows={tableData.rows}
 							selectedRows={selectedRows}
 							onRowSelect={handleRowSelect}
@@ -1436,11 +1550,7 @@ export function DatabaseStudio({
 							onSelectAll={handleSelectAll}
 							sort={sort}
 							onSortChange={setSort}
-							onFilterAdd={function (filter) {
-								setFilters(function (prev) {
-									return [...prev, filter]
-								})
-							}}
+							onFilterAdd={handleFilterAdd}
 							onCellEdit={handleCellEdit}
 							onBatchCellEdit={handleBatchCellEdit}
 							onRowAction={handleRowAction}
@@ -1454,21 +1564,18 @@ export function DatabaseStudio({
 							onDraftChange={handleDraftChange}
 							onDraftSave={handleDraftSave}
 							onDraftCancel={handleDraftCancel}
-							pendingEdits={
-								tableId
-									? new Set(
-										getEditsForTable(tableId).map(function (e) {
-											return `${e.primaryKeyValue}:${e.columnName}`
-										})
-									)
-									: undefined
-							}
+							pendingEdits={pendingEditsSet}
 							draftInsertIndex={draftInsertIndex}
 						/>
 					</div>
 				)}
 				{isTableTransitioning && (
-					<div className='absolute inset-0 bg-background z-10 animate-in fade-in duration-100'>
+					<div
+						className='absolute inset-0 bg-background z-10 animate-in fade-in duration-100'
+						role='status'
+						aria-live='polite'
+						aria-label='Loading table data'
+					>
 						<TableSkeleton
 							rows={previousTableRef.current?.rows || 12}
 							columns={Math.min(previousTableRef.current?.columns || visibleColumns.size || 6, 8)}
@@ -1476,7 +1583,7 @@ export function DatabaseStudio({
 					</div>
 				)}
 				{!tableData && !isTableTransitioning && (
-					<div className='flex items-center justify-center h-full'>
+					<div className='flex items-center justify-center h-full' role='status' aria-live='polite'>
 						<div className='text-muted-foreground text-sm'>No data available</div>
 					</div>
 				)}
