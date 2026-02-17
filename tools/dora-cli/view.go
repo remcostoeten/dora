@@ -63,7 +63,7 @@ func (m model) View() string {
 	switch m.currentSection {
 	case sectionMain:
 		content = m.mainMenuList()
-	case sectionRunApp, sectionBuildPlatform:
+	case sectionRunApp, sectionBuildPlatform, sectionVM:
 		content = m.subMenuList()
 	case sectionBuilds:
 		content = m.buildsList()

@@ -1,0 +1,23 @@
+# Copy to .dora-vm.yaml in the repo root and adjust values for your host.
+name: dora-windows-test
+uri: qemu:///system
+storage_dir: .cache/dora-vm
+
+# Base image should be a prepared Windows qcow2 image with qemu-guest-agent installed.
+base_image: .cache/dora-vm/base.qcow2
+base_image_url: ""
+
+overlay_image: .cache/dora-vm/overlay.qcow2
+seed_iso: .cache/dora-vm/seed.iso
+domain_xml: .cache/dora-vm/domain.xml
+serial_log: .cache/dora-vm/serial.log
+
+memory_mb: 8192
+vcpus: 4
+disk_size_gb: 80
+network: default
+
+# Used by `dora vm run` when --command is not provided.
+guest_shell: cmd.exe /c
+guest_run_command: powershell -ExecutionPolicy Bypass -File C:\\ci\\run-tests.ps1
+agent_timeout_sec: 180

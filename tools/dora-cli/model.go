@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -43,6 +44,7 @@ const (
 	sectionDatabase
 	sectionRelease
 	sectionAISetup
+	sectionVM
 	sectionPickVersion
 	sectionPickModel
 	sectionGitHub
@@ -105,6 +107,8 @@ func initialModel() model {
 			"Release Notes...",
 			"AI Setup...",
 			"Update/Rebuild Runner",
+			"VM Testing...",
+			"Dispatch macOS CI",
 			"─────────────────────────",
 			"Visit GitHub Repo",
 			"Go to Releases",
@@ -169,7 +173,7 @@ func (m model) moveCursorUp() model {
 				m.cursor--
 			}
 		}
-	case sectionRunApp, sectionBuildPlatform:
+	case sectionRunApp, sectionBuildPlatform, sectionVM:
 		if m.subCursor > 0 {
 			m.subCursor--
 		}
@@ -199,7 +203,7 @@ func (m model) moveCursorDown() model {
 				m.cursor++
 			}
 		}
-	case sectionRunApp, sectionBuildPlatform:
+	case sectionRunApp, sectionBuildPlatform, sectionVM:
 		if m.subCursor < len(m.subMenu)-1 {
 			m.subCursor++
 		}
@@ -277,9 +281,12 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			m.buildFiles = findBuilds("deb")
 			m.buildCursor = 0
 		case 6: // Uninstall
-			// Direct action, but maybe confirm? For TUI simplicity, just run command.
+			if runtime.GOOS == "windows" {
+				cmd := "echo Dora uninstall on Windows is handled via Settings > Apps > Installed apps. && echo Find Dora and click Uninstall."
+				return m, runShellScript(cmd)
+			}
 			cmd := "if dpkg -l | grep -q dora; then echo 'Uninstalling...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora; else echo 'Dora is not installed.'; fi"
-			return m, executeCommand("bash", "-c", cmd)
+			return m, runShellScript(cmd)
 		case 7: // Reinstall (Uninstall + Install)
 			m.currentSection = sectionReinstall
 			m.viewingBuilds = true
@@ -307,8 +314,17 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			m.scriptMenu = aiSetupScripts
 			m.scriptCursor = 0
 		case 13: // Rebuild Runner
+			if runtime.GOOS == "windows" {
+				rebuildScript := `
+where go >NUL 2>NUL || (echo Error: Go is not installed or not in PATH. & exit /b 1)
+if exist tools\dora-cli cd tools\dora-cli
+echo Building dora-runner...
+go build -o ../../dora-runner . && echo Success! Runner updated. || echo Build failed.
+`
+				return m, runShellScript(rebuildScript)
+			}
 			rebuildScript := `
-if ! command -v go &> /dev/null; then
+if ! command -v go >/dev/null 2>&1; then
     echo "Error: Go is not installed or not in PATH."
     echo ""
     echo "To install Go:"
@@ -326,19 +342,33 @@ fi
 echo "Building dora-runner..."
 go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Build failed."
 `
-			return m, executeCommand("bash", "-c", rebuildScript)
-		case 14: // Separator - skip
+			return m, runShellScript(rebuildScript)
+		case 14: // VM Testing...
+			m.currentSection = sectionVM
+			m.inSubmenu = true
+			m.subMenuTitle = "VM Testing (KVM/libvirt)"
+			m.subCursor = 0
+			self := os.Args[0]
+			m.subMenu = []subdir{
+				{label: "VM Init", command: self, args: []string{"vm", "init"}},
+				{label: "VM Ensure", command: self, args: []string{"vm", "ensure"}},
+				{label: "VM Run", command: self, args: []string{"vm", "run"}},
+				{label: "VM Logs", command: self, args: []string{"vm", "logs"}},
+				{label: "VM Clean", command: self, args: []string{"vm", "clean"}},
+				{label: "VM Nuke", command: self, args: []string{"vm", "nuke"}},
+			}
+		case 15: // Dispatch macOS CI
+			self := os.Args[0]
+			return m, executeCommand(self, "ci", "mac", "--ref", "main")
+		case 16: // Separator - skip
 			return m, nil
-		case 15: // GitHub Repo
-			// Use xdg-open for Linux, open for Mac.
-			// Since we know user is on Linux (deb files), xdg-open is safe bet.
-			// Or just "bun open <url>" if we have open package? No, keep it simple.
-			return m, executeCommand("xdg-open", "https://github.com/remcostoeten/dora")
-		case 16: // Releases
-			return m, executeCommand("xdg-open", "https://github.com/remcostoeten/dora/releases")
+		case 17: // GitHub Repo
+			return m, openURL("https://github.com/remcostoeten/dora")
+		case 18: // Releases
+			return m, openURL("https://github.com/remcostoeten/dora/releases")
 		}
 
-	case sectionRunApp, sectionBuildPlatform:
+	case sectionRunApp, sectionBuildPlatform, sectionVM:
 		choice := m.subMenu[m.subCursor]
 		return m, executeCommand(choice.command, choice.args...)
 
@@ -357,7 +387,7 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 			// But user might want to know.
 			// I'll assume standard dpkg -i behavior for "Install".
 			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Installing %s...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Name, file.Path)
-			return m, executeCommand("bash", "-c", cmd)
+			return m, runShellScript(cmd)
 		}
 
 	case sectionReinstall:
@@ -365,14 +395,14 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 			file := m.buildFiles[m.buildCursor]
 			// Full nuke and pave
 			cmd := fmt.Sprintf("echo 'Refreshing sudo...'; sudo -v; echo 'Uninstalling...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora || true; echo 'Installing new version...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Path)
-			return m, executeCommand("bash", "-c", cmd)
+			return m, runShellScript(cmd)
 		}
 		if len(m.buildFiles) > 0 {
 			file := m.buildFiles[m.buildCursor]
 			// Uninstall old 'dora' and install new .deb
 			// Requires sudo
 			cmd := fmt.Sprintf("echo 'Refreshing sudo credentials...'; sudo -v; echo 'Uninstalling old Dora...'; sudo DEBIAN_FRONTEND=noninteractive apt-get remove -y dora || true; echo 'Installing new version...'; sudo DEBIAN_FRONTEND=noninteractive dpkg -i %s", file.Path)
-			return m, executeCommand("bash", "-c", cmd)
+			return m, runShellScript(cmd)
 		}
 
 	case sectionRelease, sectionAISetup, sectionDatabase:
@@ -419,40 +449,42 @@ go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Buil
 type execFinishedMsg struct{ err error }
 
 func executeCommand(name string, args ...string) tea.Cmd {
-	// Find project root by looking for package.json
-	// This ensures we always run commands from the root, regardless of where the binary is
-	rootDir, err := os.Getwd()
-	if err == nil {
-		for {
-			if _, err := os.Stat(filepath.Join(rootDir, "package.json")); err == nil {
-				break
-			}
-			parent := filepath.Dir(rootDir)
-			if parent == rootDir {
-				// Hit root of filesystem, fallback to original CWD or hardcoded assumption
-				// But let's check one specific typical case: tools/dora-cli -> ../../
-				if strings.HasSuffix(rootDir, "tools/dora-cli") {
-					rootDir = filepath.Join(rootDir, "../..")
-				}
-				break
-			}
-			rootDir = parent
-		}
-	}
-
-	// Wrap command in bash to ensure we pause in the foreground terminal
-	// And explicitely CD to rootDir before running
-	var commandStr string
+	cmd := exec.Command(name, args...)
 	if name == "bun" || name == "go" || name == "git" {
-		commandStr = fmt.Sprintf("cd %s && %s %s", rootDir, name, strings.Join(args, " "))
-	} else {
-		// For absolute paths (like running a build artifact), don't change dir or let it handle it
-		commandStr = fmt.Sprintf("%s %s", name, strings.Join(args, " "))
+		cmd.Dir = findProjectRoot()
 	}
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return execFinishedMsg{err}
+	})
+}
 
-	wrapperArgs := []string{"-c", fmt.Sprintf(`echo "Working Directory: %s"; %s; echo; read -rs -p "Press Enter to return to menu..."`, rootDir, commandStr)}
+func runShellScript(script string) tea.Cmd {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		wrapped := fmt.Sprintf("echo Working Directory: %s && %s & echo. & pause", findProjectRoot(), script)
+		cmd = exec.Command("cmd", "/c", wrapped)
+		cmd.Dir = findProjectRoot()
+	} else {
+		wrapped := fmt.Sprintf(`echo "Working Directory: %s"; %s; echo; read -rs -p "Press Enter to return to menu..."`, findProjectRoot(), script)
+		cmd = exec.Command("bash", "-c", wrapped)
+		cmd.Dir = findProjectRoot()
+	}
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return execFinishedMsg{err}
+	})
+}
 
-	return tea.ExecProcess(exec.Command("bash", wrapperArgs...), func(err error) tea.Msg {
+func openURL(url string) tea.Cmd {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "", url)
+	case "darwin":
+		cmd = exec.Command("open", url)
+	default:
+		cmd = exec.Command("xdg-open", url)
+	}
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		return execFinishedMsg{err}
 	})
 }
@@ -496,8 +528,13 @@ func findBuilds(mode string) []buildFile {
 			isValid := false
 
 			if mode == "exec" {
-				if ext == ".appimage" {
-					isValid = true
+				switch runtime.GOOS {
+				case "windows":
+					isValid = ext == ".exe" || ext == ".msi"
+				case "darwin":
+					isValid = ext == ".dmg"
+				default:
+					isValid = ext == ".appimage"
 				}
 			} else if mode == "deb" {
 				if ext == ".deb" {
