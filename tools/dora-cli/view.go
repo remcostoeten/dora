@@ -8,12 +8,12 @@ import (
 )
 
 var (
-	// Theme Colors
+	// Theme Colors - Professional / Clean
 	primaryColor   = lipgloss.Color("#5B60DD") // Muted Indigo
 	secondaryColor = lipgloss.Color("#E1E1E1") // Off-white/Silver
-	accentColor    = lipgloss.Color("#5bbcd6")  // Muted Cyan
-	subtleColor    = lipgloss.Color("#444444")  // Dark Gray
-	textColor      = lipgloss.Color("#DDDDDD")  // Light Gray
+	accentColor    = lipgloss.Color("#5bbcd6") // Muted Cyan
+	subtleColor    = lipgloss.Color("#444444") // Dark Gray
+	textColor      = lipgloss.Color("#DDDDDD") // Light Gray
 
 	// Layout Styles
 	appStyle = lipgloss.NewStyle().Margin(1, 1)
@@ -27,10 +27,10 @@ var (
 			MarginBottom(1)
 
 	windowStyle = lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder(), false, false, false, true).
+			Border(lipgloss.NormalBorder(), false, false, false, true). // Left border only
 			BorderForeground(primaryColor).
 			Padding(0, 2).
-			Width(64)
+			Width(60)
 
 	// List Item Styles
 	selectedItemStyle = lipgloss.NewStyle().
@@ -43,27 +43,19 @@ var (
 			Foreground(textColor).
 			PaddingLeft(1)
 
-	sectionHeaderStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("#666")).
-				Bold(true).
-				MarginTop(1)
-
 	// Status Bar Styles
 	statusBarStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888")).
 			MarginTop(2)
 
+	statusText = lipgloss.NewStyle().Foreground(subtleColor)
 )
-
-// suppress "declared and not used" for statusText and secondaryColor
-var _ = statusText
-var _ = secondaryColor
 
 func (m model) View() string {
 	var s strings.Builder
 
 	// Header
-	s.WriteString(titleStyle.Render("DORA CLI v3.0"))
+	s.WriteString(titleStyle.Render("⚡ DORA RUNNER v2.0"))
 	s.WriteString("\n")
 
 	// Content Window
@@ -71,9 +63,9 @@ func (m model) View() string {
 	switch m.currentSection {
 	case sectionMain:
 		content = m.mainMenuList()
-	case sectionBuildLinux, sectionBuildWindows, sectionBuildMac:
+	case sectionRunApp, sectionBuildPlatform, sectionVM:
 		content = m.subMenuList()
-	case sectionBuilds, sectionInstallBuild, sectionReinstall:
+	case sectionBuilds:
 		content = m.buildsList()
 	case sectionCheckSizes:
 		content = m.sizesList()
@@ -98,13 +90,11 @@ func (m model) View() string {
 
 func (m model) mainMenuList() string {
 	var s strings.Builder
-	for i, item := range m.mainMenu {
-		if item.isHeader {
-			s.WriteString(sectionHeaderStyle.Render(item.label))
-		} else if m.cursor == i {
-			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", item.label)))
+	for i, choice := range m.mainMenu {
+		if m.cursor == i {
+			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", choice)))
 		} else {
-			s.WriteString(itemStyle.Render(item.label))
+			s.WriteString(itemStyle.Render(fmt.Sprintf("%s", choice)))
 		}
 		s.WriteString("\n")
 	}
@@ -113,13 +103,14 @@ func (m model) mainMenuList() string {
 
 func (m model) subMenuList() string {
 	var s strings.Builder
+	// Title of submenu
 	s.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#DDD")).Render(m.subMenuTitle) + "\n\n")
 
 	for i, choice := range m.subMenu {
 		if m.subCursor == i {
 			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", choice.label)))
 		} else {
-			s.WriteString(itemStyle.Render(choice.label))
+			s.WriteString(itemStyle.Render(fmt.Sprintf("%s", choice.label)))
 		}
 		s.WriteString("\n")
 	}
@@ -132,15 +123,7 @@ func (m model) buildsList() string {
 	}
 
 	var s strings.Builder
-
-	title := "Select a build to run:"
-	switch m.currentSection {
-	case sectionInstallBuild:
-		title = "Select a .deb to install:"
-	case sectionReinstall:
-		title = "Select a .deb to reinstall:"
-	}
-	s.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#DDD")).Render(title) + "\n\n")
+	s.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#DDD")).Render("Select a build to run:") + "\n\n")
 
 	for i, build := range m.buildFiles {
 		if m.buildCursor == i {
@@ -170,6 +153,7 @@ func (m model) sizesList() string {
 			style = selectedItemStyle
 		}
 
+		// Simple fixed width column
 		name := build.Name
 		if len(name) > 40 {
 			name = name[:37] + "..."
@@ -194,7 +178,7 @@ func (m model) scriptMenuList() string {
 		if m.scriptCursor == i {
 			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", script.label)))
 		} else {
-			s.WriteString(itemStyle.Render(script.label))
+			s.WriteString(itemStyle.Render(fmt.Sprintf("%s", script.label)))
 		}
 		s.WriteString("\n")
 		// Show description for selected item
@@ -218,7 +202,7 @@ func (m model) optionMenuList() string {
 		if m.optionCursor == i {
 			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", option)))
 		} else {
-			s.WriteString(itemStyle.Render(option))
+			s.WriteString(itemStyle.Render(fmt.Sprintf("%s", option)))
 		}
 		s.WriteString("\n")
 	}
