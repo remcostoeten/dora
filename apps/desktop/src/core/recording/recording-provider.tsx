@@ -131,7 +131,7 @@ export function useRecording(): RecordingContextType {
 		return {
 			isRecordingMode: false,
 			config: DEFAULT_CONFIG,
-			updateConfig: function noop() {},
+			updateConfig: function noop() { },
 			shouldHide: function noop() {
 				return false
 			}

@@ -17,6 +17,7 @@ import { SqlResults } from './components/sql-results'
 import { UnifiedSidebar } from './components/unified-sidebar'
 import { DEFAULT_SQL } from './data'
 import { useQueryHistory } from './stores/query-history-store'
+import { clearTableDataCache } from '@/features/database-studio/database-studio'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 
 type Props = {
@@ -226,15 +227,22 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							})
 							: []
 
+						const queryType = getQueryType(queryToRun)
+
 						setResult({
 							columns,
 							rows,
 							rowCount: res.data.rowCount,
 							executionTime: res.data.executionTime || 0,
-							queryType: getQueryType(queryToRun),
+							queryType,
 							columnDefinitions,
 							sourceTable: getTableName(queryToRun)
 						})
+
+						// Clear table viewer cache so it refetches when user switches to it
+						if (queryType !== 'SELECT') {
+							clearTableDataCache()
+						}
 
 						addToHistory({
 							query: queryToRun,
@@ -264,6 +272,12 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							queryType: 'SELECT',
 							sourceTable: getTableName(queryToRun)
 						})
+
+						// Drizzle queries may also mutate data (insert, update, delete)
+						const lowerQuery = queryToRun.toLowerCase()
+						if (lowerQuery.includes('.insert') || lowerQuery.includes('.update') || lowerQuery.includes('.delete')) {
+							clearTableDataCache()
+						}
 					} else {
 						throw new Error(res.error)
 					}

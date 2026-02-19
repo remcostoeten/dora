@@ -485,7 +485,7 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 								onChange={function onChange(e) {
 									setAutoAdvance(e.target.checked)
 								}}
-								className='h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary'
+								className='h-4 w-4 rounded border-gray-300 text-primary focus:ring-secondary AAAA '
 							/>
 							<label htmlFor='autoAdvance' className='text-xs'>
 								Auto-advance to next demo

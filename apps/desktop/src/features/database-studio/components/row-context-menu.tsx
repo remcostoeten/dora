@@ -18,8 +18,9 @@ type Props = {
 	rowIndex: number
 	columns: ColumnDefinition[]
 	tableName?: string
-	onAction?: (action: RowAction, row: Record<string, unknown>, rowIndex: number) => void
+	onAction?: (action: RowAction, row: Record<string, unknown>, rowIndex: number, batchIndexes?: number[]) => void
 	onOpenChange?: (open: boolean, rowIndex: number) => void
+	selectedRows?: Set<number>
 	children: React.ReactNode
 }
 
@@ -30,10 +31,16 @@ export function RowContextMenu({
 	tableName,
 	onAction,
 	onOpenChange,
+	selectedRows,
 	children
 }: Props) {
+	const isSelected = selectedRows?.has(rowIndex)
+	const batchCount = isSelected && selectedRows ? selectedRows.size : 0
+	const isBatch = batchCount > 1
+
 	function handleAction(action: RowAction) {
-		onAction?.(action, row, rowIndex)
+		const batchIndexes = isBatch && selectedRows ? Array.from(selectedRows) : undefined
+		onAction?.(action, row, rowIndex, batchIndexes)
 	}
 
 	function handleExportJson() {
@@ -96,7 +103,7 @@ export function RowContextMenu({
 					}}
 				>
 					<CopyPlus className='h-4 w-4 mr-2' />
-					<span>Duplicate below</span>
+					<span>{isBatch ? `Duplicate ${batchCount} rows` : 'Duplicate below'}</span>
 				</ContextMenuItem>
 
 				<ContextMenuSeparator />
@@ -109,11 +116,11 @@ export function RowContextMenu({
 					<ContextMenuSubContent className='w-[140px]'>
 						<ContextMenuItem onClick={handleExportJson}>
 							<FileJson className='h-4 w-4 mr-2' />
-							<span>As JSON</span>
+							<span>{isBatch ? `As JSON (${batchCount} rows)` : 'As JSON'}</span>
 						</ContextMenuItem>
 						<ContextMenuItem onClick={handleExportSql}>
 							<FileCode className='h-4 w-4 mr-2' />
-							<span>Copy SQL INSERT</span>
+							<span>{isBatch ? `Copy SQL INSERT (${batchCount} rows)` : 'Copy SQL INSERT'}</span>
 						</ContextMenuItem>
 					</ContextMenuSubContent>
 				</ContextMenuSub>
@@ -127,7 +134,7 @@ export function RowContextMenu({
 					className='text-destructive focus:text-destructive focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
 				>
 					<Trash2 className='h-4 w-4 mr-2' />
-					<span>Delete row</span>
+					<span>{isBatch ? `Delete ${batchCount} rows` : 'Delete row'}</span>
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>

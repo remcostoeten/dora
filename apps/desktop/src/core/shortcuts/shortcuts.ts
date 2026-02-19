@@ -15,8 +15,18 @@ export const APP_SHORTCUTS = {
 		scope: 'data-grid'
 	},
 	deselect: {
-		combo: ['escape', 'mod+d'],
+		combo: ['escape', 'mod+d', 'd'],
 		description: 'Deselect all',
+		scope: 'data-grid'
+	},
+	deleteRows: {
+		combo: ['delete', 'shift+backspace'],
+		description: 'Delete selected rows',
+		scope: 'data-grid'
+	},
+	focusToolbar: {
+		combo: 'alt+t',
+		description: 'Focus toolbar',
 		scope: 'data-grid'
 	},
 	runQuery: {

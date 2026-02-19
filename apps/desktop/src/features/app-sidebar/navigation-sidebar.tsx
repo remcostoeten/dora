@@ -28,6 +28,7 @@ import { SidebarProvider, useSidebar } from './context'
 import { SidebarNavItem } from './nav-item'
 import type { NavItem, SidebarVariant } from './types'
 
+
 const LIGHT_THEMES: Theme[] = ['light', 'claude']
 
 type TTogle = {
@@ -111,8 +112,6 @@ function ThemeToggle({ variant }: TTogle) {
 		</Popover>
 	)
 }
-
-
 
 type ContentProps = {
 	activeNavId?: string
@@ -303,7 +302,7 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 						side='right'
 						align='end'
 						sideOffset={16}
-						className='w-[340px] p-0 mb-2 ml-2 max-h-[600px]'
+						className='w-[340px] p-0 mb-2 ml-2 h-[500px]'
 					>
 						<ChangelogPanel />
 					</PopoverContent>

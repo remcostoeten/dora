@@ -93,7 +93,7 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
 						</span>
 						<div className='relative'>
 							<select
-								className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[110px] appearance-none focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer'
+								className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[110px] appearance-none focus:ring-1 focus:ring-secondary AAAA  focus:border-primary outline-none cursor-pointer'
 								value={filter.operator}
 								onChange={(e) => {
 									const newFilters = [...filters]
@@ -139,7 +139,7 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
 
 					<div className='relative'>
 						<select
-							className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 min-w-[120px] appearance-none focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer'
+							className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 min-w-[120px] appearance-none focus:ring-1 focus:ring-secondary AAAA  focus:border-primary outline-none cursor-pointer'
 							value={newFilterColumn}
 							onChange={(e) => setNewFilterColumn(e.target.value)}
 						>
@@ -156,7 +156,7 @@ export function FilterBar({ filters, onFiltersChange, columns, isVisible }: Prop
 
 					<div className='relative'>
 						<select
-							className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[110px] appearance-none focus:ring-1 focus:ring-primary focus:border-primary outline-none cursor-pointer'
+							className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[110px] appearance-none focus:ring-1 focus:ring-secondary AAAA  focus:border-primary outline-none cursor-pointer'
 							value={newFilterOperator}
 							onChange={(e) => setNewFilterOperator(e.target.value as FilterOperator)}
 						>

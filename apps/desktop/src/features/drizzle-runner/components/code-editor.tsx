@@ -368,9 +368,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							{
 								label: 'select',
 								kind: monaco.languages.CompletionItemKind.Method,
-								insertText: 'select($1)$0',
-								insertTextRules:
-									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								insertText: 'select(',
 								detail: 'Start a SELECT query → chain .from()',
 								range: range,
 								sortText: '0',
@@ -382,9 +380,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							{
 								label: 'insert',
 								kind: monaco.languages.CompletionItemKind.Method,
-								insertText: 'insert(${1:table})$0',
-								insertTextRules:
-									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								insertText: 'insert(',
 								detail: 'Start an INSERT query',
 								range: range,
 								sortText: '1',
@@ -396,9 +392,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							{
 								label: 'update',
 								kind: monaco.languages.CompletionItemKind.Method,
-								insertText: 'update(${1:table})$0',
-								insertTextRules:
-									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								insertText: 'update(',
 								detail: 'Start an UPDATE query',
 								range: range,
 								sortText: '2',
@@ -410,9 +404,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							{
 								label: 'delete',
 								kind: monaco.languages.CompletionItemKind.Method,
-								insertText: 'delete(${1:table})$0',
-								insertTextRules:
-									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								insertText: 'delete(',
 								detail: 'Start a DELETE query',
 								range: range,
 								sortText: '3',
@@ -1031,9 +1023,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							suggestions.push({
 								label: 'from',
 								kind: monaco.languages.CompletionItemKind.Method,
-								insertText: 'from(${1:table})$0',
-								insertTextRules:
-									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								insertText: 'from(',
 								detail: 'Select from a table',
 								range: range,
 								sortText: '0',
@@ -1062,10 +1052,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 								{
 									label: 'leftJoin',
 									kind: monaco.languages.CompletionItemKind.Method,
-									insertText: 'leftJoin($0)',
-									insertTextRules:
-										monaco.languages.CompletionItemInsertTextRule
-											.InsertAsSnippet,
+									insertText: 'leftJoin(',
 									detail: 'Left join',
 									range: range,
 									sortText: '2',
@@ -1077,10 +1064,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 								{
 									label: 'rightJoin',
 									kind: monaco.languages.CompletionItemKind.Method,
-									insertText: 'rightJoin($0)',
-									insertTextRules:
-										monaco.languages.CompletionItemInsertTextRule
-											.InsertAsSnippet,
+									insertText: 'rightJoin(',
 									detail: 'Right join',
 									range: range,
 									sortText: '3',
@@ -1092,10 +1076,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 								{
 									label: 'innerJoin',
 									kind: monaco.languages.CompletionItemKind.Method,
-									insertText: 'innerJoin($0)',
-									insertTextRules:
-										monaco.languages.CompletionItemInsertTextRule
-											.InsertAsSnippet,
+									insertText: 'innerJoin(',
 									detail: 'Inner join',
 									range: range,
 									sortText: '4',
@@ -1107,10 +1088,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 								{
 									label: 'fullJoin',
 									kind: monaco.languages.CompletionItemKind.Method,
-									insertText: 'fullJoin($0)',
-									insertTextRules:
-										monaco.languages.CompletionItemInsertTextRule
-											.InsertAsSnippet,
+									insertText: 'fullJoin(',
 									detail: 'Full join',
 									range: range,
 									sortText: '5',
@@ -1243,9 +1221,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							{
 								label: 'values',
 								kind: monaco.languages.CompletionItemKind.Method,
-								insertText: 'values($0)',
-								insertTextRules:
-									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								insertText: 'values(',
 								detail: 'Insert values',
 								range: range,
 								sortText: '0',
@@ -1293,9 +1269,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 							{
 								label: 'set',
 								kind: monaco.languages.CompletionItemKind.Method,
-								insertText: 'set($0)',
-								insertTextRules:
-									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								insertText: 'set(',
 								detail: 'Set values',
 								range: range,
 								sortText: '0',

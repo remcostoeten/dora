@@ -529,16 +529,18 @@ pub async fn update_snippet(
     category: Option<String>,
     description: Option<String>,
     folder_id: Option<i64>,
+    connection_id: Option<Uuid>,
     state: State<'_, AppState>,
 ) -> Result<(), Error> {
     let now = chrono::Utc::now().timestamp();
     let conn = state.storage.get_sqlite_connection()?;
-    
+    let connection_id_str = connection_id.map(|id| id.to_string());
+
     conn.execute(
-        "UPDATE saved_queries 
-         SET name = ?1, query_text = ?2, language = ?3, tags = ?4, category = ?5, 
-             description = ?6, folder_id = ?7, updated_at = ?8
-         WHERE id = ?9 AND is_snippet = 1",
+        "UPDATE saved_queries
+         SET name = ?1, query_text = ?2, language = ?3, tags = ?4, category = ?5,
+             description = ?6, folder_id = ?7, updated_at = ?8, connection_id = ?9
+         WHERE id = ?10 AND is_snippet = 1",
         (
             &name,
             &content,
@@ -548,10 +550,11 @@ pub async fn update_snippet(
             &description,
             folder_id,
             now,
+            &connection_id_str,
             id,
         ),
     )?;
-    
+
     Ok(())
 }
 

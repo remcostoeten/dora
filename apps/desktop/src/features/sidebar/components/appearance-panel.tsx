@@ -151,7 +151,7 @@ export function AppearancePanel() {
 									className={cn(
 										'flex flex-col items-start p-3 rounded-lg border transition-all text-left',
 										isSelected
-											? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+											? 'border-primary bg-primary/10 ring-1 ring-secondary AAAA /30'
 											: 'border-border hover:border-muted-foreground/50 hover:bg-muted/50'
 									)}
 								>

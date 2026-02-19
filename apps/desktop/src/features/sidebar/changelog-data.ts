@@ -8,9 +8,28 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.95'
+export const CURRENT_VERSION = '0.0.96'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.96',
+		date: '2026-02-19',
+		commit: '92946de',
+		title: 'UX Polish, Shortcuts & Cleanup',
+		description:
+			'Cleaned up debug logging, added new keyboard shortcuts for row deletion and toolbar focus, restored the multiple theme switcher, fixed changelog scrolling, and tied saved snippets to connections',
+		type: 'feature',
+		details: [
+			'Removed verbose debug console.log statements from TauriAdapter',
+			'Added Delete/Shift+Backspace shortcuts for deleting selected rows',
+			'Added Alt+T shortcut for focusing the toolbar',
+			'Added "d" key as alternative deselect shortcut',
+			'Saved snippets now track their associated connection_id',
+			'Restored multiple theme switcher with AppearancePanel in sidebar',
+			'Fixed changelog popover scrolling inside the sidebar',
+			'Removed obsolete .cursorrules and RELEASE_TRACKER.md files'
+		]
+	},
 	{
 		version: '0.0.95',
 		date: '2026-02-09',

@@ -1,17 +1,14 @@
 import { z } from 'zod'
 
-// Base connection schema
 const baseConnectionSchema = z.object({
 	name: z.string().min(1, 'Connection name is required').max(100, 'Name is too long'),
 })
 
-// SQLite connection schema
 export const sqliteConnectionSchema = baseConnectionSchema.extend({
 	type: z.literal('sqlite'),
 	url: z.string().min(1, 'Database file path is required'),
 })
 
-// LibSQL connection schema
 export const libsqlConnectionSchema = baseConnectionSchema.extend({
 	type: z.literal('libsql'),
 	url: z
@@ -24,7 +21,6 @@ export const libsqlConnectionSchema = baseConnectionSchema.extend({
 	authToken: z.string().optional(),
 })
 
-// PostgreSQL/MySQL connection with URL
 export const connectionStringSchema = baseConnectionSchema.extend({
 	type: z.enum(['postgres', 'mysql']),
 	url: z
@@ -39,7 +35,6 @@ export const connectionStringSchema = baseConnectionSchema.extend({
 		),
 })
 
-// PostgreSQL/MySQL connection with individual fields
 export const connectionFieldsSchema = baseConnectionSchema.extend({
 	type: z.enum(['postgres', 'mysql']),
 	host: z.string().min(1, 'Host is required'),
@@ -50,7 +45,6 @@ export const connectionFieldsSchema = baseConnectionSchema.extend({
 	ssl: z.boolean().optional(),
 })
 
-// SSH tunnel config schema
 export const sshTunnelSchema = z.object({
 	enabled: z.literal(true),
 	host: z.string().min(1, 'SSH host is required'),
@@ -75,7 +69,6 @@ export const sshTunnelSchema = z.object({
 	}
 )
 
-// Helper type for validation results
 export type ValidationResult = {
 	success: boolean
 	error?: string

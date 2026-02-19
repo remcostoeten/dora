@@ -165,12 +165,6 @@ export function createTauriAdapter(): DataAdapter {
 			filters?: FilterDescriptor[]
 		): Promise<AdapterResult<TableData>> {
 			const startTime = performance.now()
-			console.log('[TauriAdapter] fetchTableData called', {
-				connectionId,
-				tableName,
-				page,
-				pageSize
-			})
 			let query = `SELECT * FROM "${tableName}"`
 
 			if (filters && filters.length > 0) {
@@ -190,10 +184,8 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			query += ` LIMIT ${pageSize} OFFSET ${page * pageSize}`
-			console.log('[TauriAdapter] Executing query:', query)
 
 			const startResult = await commands.startQuery(connectionId, query)
-			console.log('[TauriAdapter] startResult:', JSON.stringify(startResult, null, 2))
 
 			if (startResult.status !== 'ok') {
 				console.error('[TauriAdapter] Query failed to start:', startResult.error)
@@ -207,7 +199,6 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			const queryId = startResult.data[0]
-			console.log('[TauriAdapter] Query started with ID:', queryId)
 
 			let pageInfo
 			let attempts = 0
@@ -226,12 +217,6 @@ export function createTauriAdapter(): DataAdapter {
 				}
 
 				pageInfo = fetchResult.data
-				// Log status for debugging
-				if (attempts % 5 === 0) {
-					console.log(
-						`[TauriAdapter] Polling query ${queryId} (attempt ${attempts}): ${pageInfo.status}`
-					)
-				}
 
 				if (pageInfo.status === 'Completed' || pageInfo.status === 'Error') {
 					break
@@ -264,7 +249,6 @@ export function createTauriAdapter(): DataAdapter {
 			// pageInfo.first_page contains the rows for the first page
 			const rows = parseRows(pageInfo.first_page, columns)
 
-			console.log(`[TauriAdapter] Successfully fetched ${rows.length} rows`)
 			return ok({
 				columns,
 				rows,
@@ -278,13 +262,8 @@ export function createTauriAdapter(): DataAdapter {
 			query: string
 		): Promise<AdapterResult<QueryResult>> {
 			const startTime = performance.now()
-			console.log('[TauriAdapter] executeQuery called', {
-				connectionId,
-				query: query.substring(0, 100)
-			})
 
 			const startResult = await commands.startQuery(connectionId, query)
-			console.log('[TauriAdapter] startResult:', JSON.stringify(startResult, null, 2))
 
 			if (startResult.status !== 'ok') {
 				console.error('[TauriAdapter] Query failed to start:', startResult.error)
@@ -297,7 +276,6 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			const queryId = startResult.data[0]
-			console.log('[TauriAdapter] Query started with ID:', queryId)
 
 			// Poll for query completion (same as fetchTableData)
 			let pageInfo
@@ -312,11 +290,6 @@ export function createTauriAdapter(): DataAdapter {
 				}
 
 				pageInfo = fetchResult.data
-				if (attempts % 5 === 0) {
-					console.log(
-						`[TauriAdapter] Polling query ${queryId} (attempt ${attempts}): ${pageInfo.status}`
-					)
-				}
 
 				if (pageInfo.status === 'Completed' || pageInfo.status === 'Error') {
 					break
@@ -336,7 +309,6 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			const columnsResult = await commands.getColumns(queryId)
-			console.log('[TauriAdapter] Query completed successfully')
 
 			const rows = Array.isArray(pageInfo.first_page) ? pageInfo.first_page : []
 
@@ -461,7 +433,8 @@ export function createTauriAdapter(): DataAdapter {
 				null,
 				null,
 				description ?? null,
-				folderId ?? null
+				folderId ?? null,
+				connectionId
 			)
 			if (result.status === 'ok') {
 				return ok(undefined)

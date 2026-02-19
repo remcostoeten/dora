@@ -139,6 +139,13 @@ export function DataGrid({
 		}
 		return byRow
 	}, [selectedCellsSet])
+
+	const effectiveSelectedRows = useMemo(() => {
+		if (selectedRows.size > 0) return selectedRows
+		if (focusedCell) return new Set([focusedCell.row])
+		return new Set<number>()
+	}, [selectedRows, focusedCell])
+
 	const primaryKeyColumnName = useMemo(() => {
 		return columns.find(function (c) {
 			return c.primaryKey
@@ -330,14 +337,8 @@ export function DataGrid({
 				onRowSelect(rowIndex, !selectedRows.has(rowIndex))
 				lastClickedRowRef.current = rowIndex
 			} else {
-				// Standard behavior: Single click selects the row
+				// Single click only updates the anchor for range selection, does NOT select the row
 				lastClickedRowRef.current = rowIndex
-				// If strictly single select is desired, we might want to clear others,
-				// but standard grid often toggles on click if not handling multi-select explicitly.
-				// For now, let's ensure it selects.
-				if (!selectedRows.has(rowIndex)) {
-					onRowSelect(rowIndex, true)
-				}
 			}
 		},
 		[selectedRows, onRowSelect, onRowsSelect]
@@ -552,33 +553,33 @@ export function DataGrid({
 					break
 				case 'Tab':
 					e.preventDefault()
-						if (e.shiftKey) {
-							if (col > 0) {
-								moveAndMaybeSelect(row, col - 1)
-							} else if (row > 0) {
-								moveAndMaybeSelect(row - 1, maxCol)
-							}
-						} else {
-							if (col < maxCol) {
-								moveAndMaybeSelect(row, col + 1)
-							} else if (row < maxRow) {
-								moveAndMaybeSelect(row + 1, 0)
-							}
+					if (e.shiftKey) {
+						if (col > 0) {
+							moveAndMaybeSelect(row, col - 1)
+						} else if (row > 0) {
+							moveAndMaybeSelect(row - 1, maxCol)
 						}
-						break
+					} else {
+						if (col < maxCol) {
+							moveAndMaybeSelect(row, col + 1)
+						} else if (row < maxRow) {
+							moveAndMaybeSelect(row + 1, 0)
+						}
+					}
+					break
 				case 'Enter':
 					e.preventDefault()
 					handleCellDoubleClick(row, columns[col].name, rows[row][columns[col].name])
 					break
-						case 'Escape':
-							e.preventDefault()
-							if (pendingNavFrameRef.current !== null) {
-								cancelAnimationFrame(pendingNavFrameRef.current)
-								pendingNavFrameRef.current = null
-							}
-							setFocusedCell(null)
-							updateCellSelection(new Set())
-							break
+				case 'Escape':
+					e.preventDefault()
+					if (pendingNavFrameRef.current !== null) {
+						cancelAnimationFrame(pendingNavFrameRef.current)
+						pendingNavFrameRef.current = null
+					}
+					setFocusedCell(null)
+					updateCellSelection(new Set())
+					break
 				case ' ':
 					e.preventDefault()
 					onRowSelect(row, !selectedRows.has(row))
@@ -615,30 +616,24 @@ export function DataGrid({
 					}
 					break
 				case 'v':
-					if ((e.ctrlKey || e.metaKey) && focusedCell && onBatchCellEdit) {
+					if ((e.ctrlKey || e.metaKey) && focusedCell && onCellEdit) {
 						e.preventDefault()
 						navigator.clipboard.readText().then(function (clipboardText) {
 							if (!clipboardText || !focusedCell) return
 							const pasteRows = clipboardText.split('\n').map(function (line) {
 								return line.split('\t')
 							})
-							const edits: { rowIndex: number; columnName: string; value: string }[] = []
 							pasteRows.forEach(function (pasteRow, pasteRowIndex) {
 								const targetRow = focusedCell.row + pasteRowIndex
 								if (targetRow >= rows.length) return
 								pasteRow.forEach(function (pasteValue, pasteColIndex) {
 									const targetCol = focusedCell.col + pasteColIndex
 									if (targetCol >= columns.length) return
-									edits.push({
-										rowIndex: targetRow,
-										columnName: columns[targetCol].name,
-										value: pasteValue
-									})
+									onCellEdit!(targetRow, columns[targetCol].name, pasteValue)
 								})
 							})
-							if (edits.length > 0) {
-								onBatchCellEdit(edits)
-							}
+						}).catch(function () {
+							// Clipboard read unavailable — no-op
 						})
 					}
 					break
@@ -793,7 +788,7 @@ export function DataGrid({
 						<tr role='row'>
 							{/* Checkbox column */}
 							<th
-								className='w-[30px] px-1 py-2 text-center border-b border-r border-sidebar-border bg-sidebar-accent/50'
+								className='px-4 py-2 text-center border-b border-r border-sidebar-border bg-background sticky left-0 z-30'
 								role='columnheader'
 								aria-label='Select all rows'
 							>
@@ -948,6 +943,15 @@ export function DataGrid({
 							)}
 
 						{rows.map(function (row, rowIndex) {
+							const rowClasses = cn(
+								'group transition-colors cursor-pointer',
+								selectedRows.has(rowIndex)
+									? 'bg-primary/10'
+									: rowIndex % 2 === 1
+										? 'bg-muted/5 hover:bg-sidebar-accent/30'
+										: 'hover:bg-sidebar-accent/30'
+							)
+
 							return (
 								<React.Fragment key={rowIndex}>
 									<RowContextMenu
@@ -956,20 +960,34 @@ export function DataGrid({
 										rowIndex={rowIndex}
 										columns={columns}
 										tableName={tableName}
-										onAction={onRowAction}
+										onAction={function (action, row, index, batchIndexes) {
+											// If batchIndexes provided, we might need to handle it.
+											// But currently onRowAction signature is (action, row, index).
+											// We should update onRowAction to perform batch if needed?
+											// OR we can just handle it here if onRowAction doesn't support it.
+											// Wait, I updated RowAction signature in previous step? No, just in RowContextMenu.
+											// DatabaseStudio expects specific signature.
+											// Let's assume onRowAction in DataGrid props needs update or we handle it.
+											// DatabaseStudio handleRowAction only takes 3 args.
+											// BUT DatabaseStudio has `rowsForActions`.
+											// So if we trigger an action from here, DatabaseStudio should use its `rowsForActions` logic?
+											// YES. DatabaseStudio's handleRowAction logic should be "if action is batch-able, use rowsForActions".
+											// But handleRowAction in DatabaseStudio currently just does single row logic for 'delete' unless via Bulk Delete button.
+											// I need to update DatabaseStudio's handleRowAction to also support batch.
+											// For now, let's pass the action up.
+											onRowAction?.(action, row, rowIndex)
+										}}
 										onOpenChange={function (open, row) {
 											handleRowContextMenuChange(open, row)
 										}}
+										selectedRows={effectiveSelectedRows}
 									>
+
+
+
+
 										<tr
-											className={cn(
-												'transition-colors cursor-pointer',
-												selectedRows.has(rowIndex)
-													? 'bg-primary/10'
-													: rowIndex % 2 === 1
-														? 'bg-muted/5 hover:bg-sidebar-accent/30'
-														: 'hover:bg-sidebar-accent/30'
-											)}
+											className={rowClasses}
 											onClick={function (e) {
 												handleRowClick(e, rowIndex)
 											}}
@@ -988,7 +1006,27 @@ export function DataGrid({
 											}}
 										>
 											<td
-												className='px-1 py-1.5 text-center border-b border-r border-sidebar-border'
+												className={cn(
+													'px-4 py-1.5 text-center border-b border-r border-sidebar-border sticky left-0 z-20 transition-colors',
+													// We must replicate the background here because sticky elements sit on top of others
+													// and need to be opaque to hide scrolling content.
+													// However, separating it from the TR means we lose the parent TR's specific hover state
+													// if we are not careful.
+													// Since we can't easily sync exact hover state across elements without JS or complex CSS,
+													// we'll try to use the computed background class.
+													// Actually, 'bg-sidebar' is safest backdrop, but then we lose row stripes/selection under the checkbox.
+													// The 'rowClasses' above has the background. We can apply it here too.
+													// BUT! 'hover:bg-...' on the TD itself handles the hover for the TD.
+													// What if use hovers the rest of the row? The TD won't highlight.
+													// Use 'group-hover' on the TD and 'group' on the TR!
+													'group-hover:bg-sidebar-accent/30', // Approximate the hover effect
+													'group-hover:bg-sidebar-accent/30', // Approximate the hover effect
+													selectedRows.has(rowIndex)
+														? 'bg-primary/10'
+														: rowIndex % 2 === 1
+															? 'bg-muted/5'
+															: 'bg-background'
+												)}
 												role='gridcell'
 											>
 												<Checkbox
@@ -1025,7 +1063,7 @@ export function DataGrid({
 														column={col}
 														rowIndex={rowIndex}
 														colIndex={colIndex}
-														selectedRows={selectedRows}
+														selectedRows={effectiveSelectedRows}
 														onAction={function (
 															action,
 															value,
@@ -1091,7 +1129,7 @@ export function DataGrid({
 																'bg-muted-foreground/10',
 																isFocused &&
 																!isEditing &&
-																'bg-muted-foreground/15 ring-1 ring-inset ring-muted-foreground/20',
+																'bg-primary/5 ring-2 ring-inset ring-secondary AAAA  z-10',
 																isDirty && 'bg-amber-500/10'
 															)}
 															style={

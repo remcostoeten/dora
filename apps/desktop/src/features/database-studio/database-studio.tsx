@@ -1,4 +1,13 @@
-import { Database, Plus, PanelLeft, Trash2, Columns, AlertTriangle } from 'lucide-react'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/components/ui/use-toast'
+import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
+import { useAdapter, useDataMutation } from '@/core/data-provider'
+import { usePendingEdits } from '@/core/pending-edits'
+import { useSettings } from '@/core/settings'
+import { useEffectiveShortcuts, useShortcut } from '@/core/shortcuts'
+import { useUndo } from '@/core/undo'
+import { ContextMenuState, useUrlState } from '@/core/url-state'
+import { commands } from '@/lib/bindings'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -9,17 +18,9 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle
 } from '@/shared/ui/alert-dialog'
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { TableSkeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/components/ui/use-toast'
-import { useAdapter, useDataMutation } from '@/core/data-provider'
-import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
-import { usePendingEdits } from '@/core/pending-edits'
-import { useSettings } from '@/core/settings'
-import { useUndo } from '@/core/undo'
-import { useUrlState, ContextMenuState } from '@/core/url-state'
-import { commands } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
+import { AlertTriangle, Columns, Database, PanelLeft, Plus, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AddColumnDialog, ColumnFormData } from './components/add-column-dialog'
 import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
@@ -30,15 +31,15 @@ import { PendingChangesBar } from './components/pending-changes-bar'
 import { RowDetailPanel } from './components/row-detail-panel'
 import { SelectionActionBar } from './components/selection-action-bar'
 import { SetNullDialog } from './components/set-null-dialog'
-import { DataSeederDialog } from './data-seeder-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
+import { DataSeederDialog } from './data-seeder-dialog'
 import {
-	TableData,
-	PaginationState,
-	ViewMode,
 	ColumnDefinition,
+	FilterDescriptor,
+	PaginationState,
 	SortDescriptor,
-	FilterDescriptor
+	TableData,
+	ViewMode
 } from './types'
 
 type Props = {
@@ -58,6 +59,11 @@ type TableCacheEntry = {
 }
 
 const tableDataCache = new Map<string, TableCacheEntry>()
+
+/** Clear the table data cache. Call this after executing SQL that modifies data. */
+export function clearTableDataCache() {
+	tableDataCache.clear()
+}
 
 function buildTableCacheKey(
 	connectionId: string | undefined,
@@ -141,6 +147,7 @@ export function DatabaseStudio({
 	const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 	const [isDdlLoading, setIsDdlLoading] = useState(false)
 
+	const [selectionAnnouncement, setSelectionAnnouncement] = useState('')
 	const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null)
 	const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null)
 
@@ -151,6 +158,7 @@ export function DatabaseStudio({
 	const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set())
 	const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null)
 	const [contextMenuState, setContextMenuState] = useState<ContextMenuState>(null)
+	const toolbarRef = useRef<HTMLDivElement>(null)
 
 	const {
 		urlState,
@@ -207,6 +215,26 @@ export function DatabaseStudio({
 			)
 		},
 		[tableId, pendingEdits, getEditsForTable]
+	)
+
+	const rowsForActions = useMemo(() => {
+		if (selectedRows.size > 0) return selectedRows
+		if (focusedCell) return new Set([focusedCell.row])
+		return new Set<number>()
+	}, [selectedRows, focusedCell])
+
+	useEffect(
+		function announceSelection() {
+			if (rowsForActions.size > 0) {
+				const count = rowsForActions.size
+				setSelectionAnnouncement(
+					`${count} row${count !== 1 ? 's' : ''} selected. Press Alt+T to access row actions.`
+				)
+			} else {
+				setSelectionAnnouncement('')
+			}
+		},
+		[rowsForActions.size]
 	)
 
 	useEffect(function cachePreviousTableDimensions() {
@@ -292,6 +320,37 @@ export function DatabaseStudio({
 		sort,
 		filters
 	])
+
+	const shortcuts = useEffectiveShortcuts()
+	const $ = useShortcut()
+
+	$.bind(shortcuts.focusToolbar.combo)
+		.on(function () {
+			if (rowsForActions.size > 0 && toolbarRef.current) {
+				toolbarRef.current.focus()
+				// Optionally find the first button and focus it?
+				// For now, focusing the container (which has accessible children) is a good start,
+				// but usually we want to focus the first interactive element.
+				const firstButton = toolbarRef.current.querySelector('button')
+				if (firstButton) {
+					; (firstButton as HTMLElement).focus()
+				}
+			}
+		}, { description: shortcuts.focusToolbar.description })
+
+	$.bind(shortcuts.deleteRows.combo)
+		.on(function () {
+			if (rowsForActions.size > 0 && !isBulkActionLoading) {
+				handleBulkDelete()
+			}
+		}, { description: shortcuts.deleteRows.description })
+
+	$.bind(shortcuts.deselect.combo)
+		.on(function () {
+			setSelectedRows(new Set())
+			setFocusedCell(null)
+			setSelectedCells(new Set())
+		}, { description: shortcuts.deselect.description })
 
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(
@@ -572,7 +631,7 @@ export function DatabaseStudio({
 		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
 		if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
 
-		const primaryKeyValues = Array.from(selectedRows).map(function (rowIndex) {
+		const primaryKeyValues = Array.from(rowsForActions).map(function (rowIndex) {
 			return tableData.rows[rowIndex][primaryKeyColumn.name]
 		})
 
@@ -588,6 +647,13 @@ export function DatabaseStudio({
 					setSelectedRows(new Set())
 					loadTableData()
 					setShowDeleteConfirmDialog(false)
+				},
+				onError: function (error: Error) {
+					toast({
+						title: 'Failed to delete rows',
+						description: error.message,
+						variant: 'destructive'
+					})
 				}
 			}
 		)
@@ -603,17 +669,17 @@ export function DatabaseStudio({
 
 	const handleBulkCopy = useCallback(() => {
 		if (!tableData) return
-		const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+		const rowsData = Array.from(rowsForActions).map(function (rowIndex) {
 			return tableData.rows[rowIndex]
 		})
 		navigator.clipboard.writeText(JSON.stringify(rowsData, null, 2))
-	}, [tableData, selectedRows])
+	}, [tableData, rowsForActions])
 
 	const handleBulkDuplicate = useCallback(() => {
 		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
 		if (!activeConnectionId || !tableId || !tableData) return
 
-		const rowsToDuplicate = Array.from(selectedRows).map(function (rowIndex) {
+		const rowsToDuplicate = Array.from(rowsForActions).map(function (rowIndex) {
 			const row = { ...tableData.rows[rowIndex] }
 			if (primaryKeyColumn) {
 				delete row[primaryKeyColumn.name]
@@ -637,15 +703,20 @@ export function DatabaseStudio({
 			})
 			.catch(function (error) {
 				console.error('Failed to duplicate rows:', error)
+				toast({
+					title: 'Failed to duplicate rows',
+					description: error instanceof Error ? error.message : 'An error occurred',
+					variant: 'destructive'
+				})
 			})
 			.finally(function () {
 				setIsBulkActionLoading(false)
 			})
-	}, [tableData, activeConnectionId, tableId, tableName, selectedRows, insertRow, loadTableData])
+	}, [tableData, activeConnectionId, tableId, tableName, rowsForActions, insertRow, loadTableData])
 
 	const handleExportJson = useCallback(() => {
 		if (!tableData) return
-		const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+		const rowsData = Array.from(rowsForActions).map(function (rowIndex) {
 			return tableData.rows[rowIndex]
 		})
 		const jsonString = JSON.stringify(rowsData, null, 2)
@@ -656,11 +727,11 @@ export function DatabaseStudio({
 		a.download = `${tableName || 'data'}_selected.json`
 		a.click()
 		URL.revokeObjectURL(url)
-	}, [tableData, selectedRows, tableName])
+	}, [tableData, rowsForActions, tableName])
 
 	const handleExportCsv = useCallback(() => {
 		if (!tableData) return
-		const rowsData = Array.from(selectedRows).map(function (rowIndex) {
+		const rowsData = Array.from(rowsForActions).map(function (rowIndex) {
 			return tableData.rows[rowIndex]
 		})
 
@@ -696,9 +767,15 @@ export function DatabaseStudio({
 		a.download = `${tableName || 'data'}_selected.csv`
 		a.click()
 		URL.revokeObjectURL(url)
-	}, [tableData, selectedRows, tableName])
+	}, [tableData, rowsForActions, tableName])
 
-	const handleClearSelection = useCallback(() => setSelectedRows(new Set()), [])
+	const handleClearSelection = useCallback(() => {
+		setSelectedRows(new Set())
+		if (selectedRows.size === 0) {
+			setFocusedCell(null)
+			setSelectedCells(new Set())
+		}
+	}, [selectedRows.size])
 	const handleOpenSetNull = useCallback(() => setShowSetNullDialog(true), [])
 	const handleOpenBulkEdit = useCallback(() => setShowBulkEditDialog(true), [])
 	const handleOpenDataSeeder = useCallback(() => setShowDataSeederDialog(true), [])
@@ -711,16 +788,23 @@ export function DatabaseStudio({
 	async function handleSeederGenerate(data: any[]) {
 		if (!activeConnectionId || !tableId) return
 
-		// Insert rows one by one (or batch if API supports it)
-		// For now, let's just loop locally
-		for (const row of data) {
-			await insertRow.mutateAsync({
-				connectionId: activeConnectionId,
-				tableName: tableName || tableId,
-				rowData: row
+		try {
+			for (const row of data) {
+				await insertRow.mutateAsync({
+					connectionId: activeConnectionId,
+					tableName: tableName || tableId,
+					rowData: row
+				})
+			}
+			loadTableData()
+		} catch (error) {
+			console.error('Failed to seed data:', error)
+			toast({
+				title: 'Seeder failed',
+				description: error instanceof Error ? error.message : 'An error occurred',
+				variant: 'destructive'
 			})
 		}
-		loadTableData()
 	}
 
 	function handleToggleColumn(columnName: string, visible: boolean) {
@@ -826,6 +910,11 @@ export function DatabaseStudio({
 					},
 					onError: function (error) {
 						console.error('Failed to update cell:', error)
+						toast({
+							title: 'Failed to update cell',
+							description: error instanceof Error ? error.message : 'An error occurred',
+							variant: 'destructive'
+						})
 					}
 				}
 			)
@@ -901,6 +990,11 @@ export function DatabaseStudio({
 			loadTableData()
 		} catch (error) {
 			console.error('Failed to apply edits:', error)
+			toast({
+				title: 'Failed to apply changes',
+				description: error instanceof Error ? error.message : 'An error occurred',
+				variant: 'destructive'
+			})
 		} finally {
 			setIsApplyingEdits(false)
 		}
@@ -962,6 +1056,11 @@ export function DatabaseStudio({
 			loadTableData()
 		} catch (error) {
 			console.error('Failed to batch update cells:', error)
+			toast({
+				title: 'Failed to update cells',
+				description: error instanceof Error ? error.message : 'An error occurred',
+				variant: 'destructive'
+			})
 		}
 	}
 
@@ -1080,6 +1179,11 @@ export function DatabaseStudio({
 				},
 				onError: function onInsertError(error) {
 					console.error('Failed to insert row:', error)
+					toast({
+						title: 'Failed to create row',
+						description: error instanceof Error ? error.message : 'An error occurred',
+						variant: 'destructive'
+					})
 				}
 			}
 		)
@@ -1507,6 +1611,14 @@ export function DatabaseStudio({
 	// Content view (default)
 	return (
 		<div className='flex flex-col h-full bg-background relative'>
+			<div
+				role='status'
+				aria-live='polite'
+				aria-atomic='true'
+				className='sr-only'
+			>
+				{selectionAnnouncement}
+			</div>
 			<StudioToolbar
 				tableName={tableName || tableId}
 				viewMode={viewMode}
@@ -1589,9 +1701,10 @@ export function DatabaseStudio({
 				)}
 			</div>
 
-			{tableData && settings.selectionBarStyle === 'static' && selectedRows.size > 0 && (
+			{tableData && settings.selectionBarStyle === 'static' && rowsForActions.size > 0 && (
 				<SelectionActionBar
-					selectedCount={selectedRows.size}
+					ref={toolbarRef}
+					selectedCount={rowsForActions.size}
 					onDelete={handleBulkDelete}
 					onCopy={handleBulkCopy}
 					onSetNull={handleOpenSetNull}
@@ -1617,9 +1730,10 @@ export function DatabaseStudio({
 			{/* Render floating bar if mode is floating OR default (undefined) */}
 			{tableData &&
 				(settings.selectionBarStyle === 'floating' || !settings.selectionBarStyle) &&
-				selectedRows.size > 0 && (
+				rowsForActions.size > 0 && (
 					<SelectionActionBar
-						selectedCount={selectedRows.size}
+						ref={toolbarRef}
+						selectedCount={rowsForActions.size}
 						onDelete={handleBulkDelete}
 						onCopy={handleBulkCopy}
 						onDuplicate={handleBulkDuplicate}
@@ -1766,6 +1880,11 @@ export function DatabaseStudio({
 							})
 							.catch(function (error) {
 								console.error('Failed to bulk edit:', error)
+								toast({
+									title: 'Failed to update rows',
+									description: error instanceof Error ? error.message : 'An error occurred',
+									variant: 'destructive'
+								})
 							})
 							.finally(function () {
 								setIsBulkActionLoading(false)
@@ -1815,6 +1934,11 @@ export function DatabaseStudio({
 							})
 							.catch(function (error) {
 								console.error('Failed to set null:', error)
+								toast({
+									title: 'Failed to set NULL',
+									description: error instanceof Error ? error.message : 'An error occurred',
+									variant: 'destructive'
+								})
 							})
 							.finally(function () {
 								setIsBulkActionLoading(false)

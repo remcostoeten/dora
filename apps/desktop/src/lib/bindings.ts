@@ -280,9 +280,9 @@ async saveSnippet(name: string, content: string, language: string | null, tags: 
     else return { status: "error", error: e  as any };
 }
 },
-async updateSnippet(id: number, name: string, content: string, language: string | null, tags: string | null, category: string | null, description: string | null, folderId: number | null) : Promise<Result<null, any>> {
+async updateSnippet(id: number, name: string, content: string, language: string | null, tags: string | null, category: string | null, description: string | null, folderId: number | null, connectionId: string | null) : Promise<Result<null, any>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("update_snippet", { id, name, content, language, tags, category, description, folderId }) };
+    return { status: "ok", data: await TAURI_INVOKE("update_snippet", { id, name, content, language, tags, category, description, folderId, connectionId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
