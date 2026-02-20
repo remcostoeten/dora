@@ -1,4 +1,6 @@
 // Types for the SQL Console feature
+import type { ColumnDefinition } from '@/features/database-studio/types'
+
 export type SqlSnippet = {
 	id: string
 	name: string

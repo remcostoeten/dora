@@ -51,8 +51,6 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
 		if (editorThemeSetting === 'auto') {
 			return getThemeFromDocument()
 		}
-		if (editorThemeSetting === 'light') return 'vs'
-		if (editorThemeSetting === 'dark') return 'vs-dark'
 		return editorThemeSetting
 	}
 

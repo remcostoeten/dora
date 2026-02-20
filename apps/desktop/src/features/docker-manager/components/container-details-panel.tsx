@@ -1,4 +1,4 @@
-import { Play, Square, RotateCcw, Trash2, ExternalLink, FileCode } from 'lucide-react'
+import { Play, Square, RotateCcw, Trash2, ExternalLink, FileCode, TerminalSquare } from 'lucide-react'
 import { Package } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
@@ -14,6 +14,7 @@ import { StatusBadge } from './status-badge'
 import { ComposeExportDialog } from './compose-export-dialog'
 import { RemoveContainerDialog } from './remove-container-dialog'
 import { RemoveContainerOptions } from '../types'
+import { ContainerTerminal } from './container-terminal'
 
 type Props = {
 	container: DockerContainer | null
@@ -165,6 +166,19 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 					<Button
 						variant='outline'
 						size='sm'
+						className='h-8 gap-1.5'
+						onClick={function () {
+							setActiveTab('terminal')
+						}}
+						disabled={!isRunning}
+					>
+						<TerminalSquare className='h-3.5 w-3.5' />
+						Terminal
+					</Button>
+
+					<Button
+						variant='outline'
+						size='sm'
 						className='h-8 gap-1.5 text-destructive hover:text-destructive'
 						onClick={handleRemove}
 						disabled={removeContainer.isPending}
@@ -199,6 +213,9 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 						<TabsTrigger value='seed' className='flex-1'>
 							Seed
 						</TabsTrigger>
+						<TabsTrigger value='terminal' className='flex-1' disabled={!isRunning}>
+							Terminal
+						</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value='logs' className='flex-1 mt-3'>
@@ -212,6 +229,10 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 
 					<TabsContent value='seed' className='flex-1 mt-3'>
 						<SeedView container={container} />
+					</TabsContent>
+
+					<TabsContent value='terminal' className='flex-1 mt-3'>
+						<ContainerTerminal container={container} enabled={activeTab === 'terminal'} />
 					</TabsContent>
 				</Tabs>
 			</div>

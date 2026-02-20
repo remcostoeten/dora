@@ -7,7 +7,9 @@ import type {
 	ContainerSize,
 	PortMapping,
 	VolumeMount,
-	ContainerLogsOptions
+	ContainerLogsOptions,
+	ContainerTerminalHandlers,
+	ContainerTerminalSession
 } from '../types'
 import { isManaged } from '../utilities/container-naming'
 
@@ -327,6 +329,45 @@ export async function streamContainerLogs(
 	}
 
 	throw new Error('Streaming logs requires Tauri shell plugin')
+}
+
+export async function openContainerTerminal(
+	containerId: string,
+	handlers: ContainerTerminalHandlers
+): Promise<ContainerTerminalSession> {
+	if (typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)) {
+		const { Command } = await import('@tauri-apps/plugin-shell')
+		const command = Command.create('docker', ['exec', '-i', containerId, 'sh'])
+
+		command.on('close', (data) => {
+			handlers.onClose?.(data.code, data.signal)
+		})
+
+		command.on('error', (error) => {
+			handlers.onError(String(error))
+		})
+
+		command.stdout.on('data', (line) => {
+			handlers.onOutput(line)
+		})
+
+		command.stderr.on('data', (line) => {
+			handlers.onOutput(line)
+		})
+
+		const child = await command.spawn()
+
+		return {
+			write: function (data: string) {
+				return child.write(data)
+			},
+			kill: function () {
+				return child.kill()
+			}
+		}
+	}
+
+	throw new Error('Container terminal requires Tauri shell plugin')
 }
 
 export async function startContainer(containerId: string): Promise<void> {

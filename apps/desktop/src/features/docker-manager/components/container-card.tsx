@@ -61,13 +61,17 @@ export function ContainerCard({
 
 	return (
 		<div
-			role='button'
-			aria-pressed={isSelected}
+			role='option'
+			aria-selected={isSelected}
+			aria-label={`${container.name} (${container.state})`}
 			tabIndex={0}
+			data-container-card='true'
+			data-container-id={container.id}
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
 			className={cn(
 				'group relative p-3 rounded-lg border transition-all cursor-pointer',
+				'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
 				isSelected
 					? 'border-emerald-500/50 bg-emerald-500/5'
 					: 'border-border/50 hover:border-border hover:bg-accent/50'
@@ -107,8 +111,7 @@ export function ContainerCard({
 					<span>{createdTimeAgo}</span>
 				</div>
 
-				{/* Quick actions - animate in on hover */}
-				<div className='flex items-center gap-0.5 translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-200 ease-out'>
+				<div className='flex items-center gap-0.5 translate-x-2 opacity-0 transition-all duration-200 ease-out group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100'>
 					{isRunning ? (
 						<QuickActionButton
 							title='Stop'
@@ -174,12 +177,14 @@ function QuickActionButton({
 	return (
 		<button
 			type='button'
+			aria-label={title}
 			title={title}
 			disabled={disabled}
 			onClick={onClick}
 			className={cn(
 				'inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground transition-colors',
 				'hover:text-foreground hover:bg-muted',
+				'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
 				'disabled:opacity-30 disabled:pointer-events-none',
 				className
 			)}

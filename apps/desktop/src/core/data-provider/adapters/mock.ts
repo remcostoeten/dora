@@ -554,7 +554,6 @@ CREATE TABLE posts (
 			const newScript: SavedQuery = {
 				id,
 				name,
-				content: content,
 				query_text: content,
 				description: description || null,
 				connection_id: connectionId,

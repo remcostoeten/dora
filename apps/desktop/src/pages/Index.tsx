@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/use-toast'
 import { useAdapter } from '@/core/data-provider'
+import { getAdapterError } from '@/core/data-provider/types'
 import { useSettings } from '@/core/settings'
 import { NavigationSidebar, SidebarProvider } from '@/features/app-sidebar'
 import {
@@ -118,7 +119,7 @@ export default function Index() {
 			if (result.ok) {
 				setConnections(result.data.map(backendToFrontendConnection))
 			} else {
-				throw new Error(result.error)
+				throw new Error(getAdapterError(result))
 			}
 		} catch (error) {
 			toast({
@@ -274,7 +275,7 @@ export default function Index() {
 					description: `Successfully connected to ${newFrontendConn.name}`
 				})
 			} else {
-				throw new Error(result.error)
+				throw new Error(getAdapterError(result))
 			}
 		} catch (error) {
 			toast({
@@ -319,7 +320,7 @@ export default function Index() {
 					description: `Successfully updated ${updatedConnection.name}`
 				})
 			} else {
-				throw new Error(result.error)
+				throw new Error(getAdapterError(result))
 			}
 		} catch (error) {
 			toast({
@@ -400,7 +401,7 @@ export default function Index() {
 					description: `Successfully deleted ${connection.name}`
 				})
 			} else {
-				throw new Error(result.error)
+				throw new Error(getAdapterError(result))
 			}
 		} catch (error) {
 			toast({

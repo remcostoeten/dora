@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
 import type { SortDescriptor, FilterDescriptor } from '@/features/database-studio/types'
 import { useAdapter } from './context'
+import { getAdapterError } from './types'
 
 export function useConnections() {
 	const adapter = useAdapter()
@@ -9,7 +10,7 @@ export function useConnections() {
 		queryKey: ['connections'],
 		queryFn: async () => {
 			const res = await adapter.getConnections()
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		}
 	})
@@ -26,7 +27,7 @@ export function useConnectionMutations() {
 				params.databaseType,
 				params.sshConfig
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		onSuccess: () => {
@@ -47,7 +48,7 @@ export function useConnectionMutations() {
 				params.databaseType,
 				params.sshConfig
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		onSuccess: () => {
@@ -58,7 +59,7 @@ export function useConnectionMutations() {
 	const removeConnection = useMutation({
 		mutationFn: async (id: string) => {
 			const res = await adapter.removeConnection(id)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['connections'] })
@@ -68,7 +69,7 @@ export function useConnectionMutations() {
 	const connectToDatabase = useMutation({
 		mutationFn: async (connectionId: string) => {
 			const res = await adapter.connectToDatabase(connectionId)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		}
 	})
@@ -76,14 +77,14 @@ export function useConnectionMutations() {
 	const disconnectFromDatabase = useMutation({
 		mutationFn: async (connectionId: string) => {
 			const res = await adapter.disconnectFromDatabase(connectionId)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 		}
 	})
 
 	const testConnection = useMutation({
 		mutationFn: async (connectionId: string) => {
 			const res = await adapter.testConnection(connectionId)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		}
 	})
@@ -106,7 +107,7 @@ export function useSchema(connectionId: string | undefined) {
 		queryFn: async () => {
 			if (!connectionId) throw new Error('No connection ID')
 			const res = await adapter.getSchema(connectionId)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		enabled: !!connectionId
@@ -135,7 +136,7 @@ export function useTableData(
 				sort,
 				filters
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		enabled: !!connectionId && !!tableName,
@@ -151,7 +152,7 @@ export function useExecuteQuery() {
 	return useMutation({
 		mutationFn: async (params: { connectionId: string; query: string }) => {
 			const res = await adapter.executeQuery(params.connectionId, params.query)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		}
 	})
@@ -178,7 +179,7 @@ export function useDataMutation() {
 				params.columnName,
 				params.newValue
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		onMutate: async (newEdit) => {
@@ -237,7 +238,7 @@ export function useDataMutation() {
 				params.primaryKeyColumn,
 				params.primaryKeyValues
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		onSuccess: (_data, variables) => {
@@ -258,7 +259,7 @@ export function useDataMutation() {
 				params.tableName,
 				params.rowData
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		onSuccess: (_data, variables) => {
@@ -283,7 +284,7 @@ export function useQueryHistory(connectionId: string | undefined, limit?: number
 		queryFn: async () => {
 			if (!connectionId) throw new Error('No connection ID')
 			const res = await adapter.getQueryHistory(connectionId, limit)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		enabled: !!connectionId
@@ -297,7 +298,7 @@ export function useScripts(connectionId: string | null) {
 		queryKey: ['scripts', connectionId],
 		queryFn: async () => {
 			const res = await adapter.getScripts(connectionId)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		}
 	})
@@ -320,7 +321,7 @@ export function useScriptMutations() {
 				params.connectionId,
 				params.description
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
 		onSuccess: (_data, variables) => {
@@ -343,7 +344,7 @@ export function useScriptMutations() {
 				params.connectionId,
 				params.description
 			)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 		},
 		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({ queryKey: ['scripts', variables.connectionId] })
@@ -353,7 +354,7 @@ export function useScriptMutations() {
 	const deleteScript = useMutation({
 		mutationFn: async (id: number) => {
 			const res = await adapter.deleteScript(id)
-			if (!res.ok) throw new Error(res.error)
+			if (!res.ok) throw new Error(getAdapterError(res))
 		},
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ['scripts'] })

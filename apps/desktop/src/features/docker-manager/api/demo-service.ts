@@ -5,7 +5,9 @@ import type {
 	PostgresContainerConfig,
 	CreateContainerResult,
 	ContainerActionResult,
-	RemoveContainerOptions
+	RemoveContainerOptions,
+	ContainerTerminalHandlers,
+	ContainerTerminalSession
 } from '../types'
 import { generateVolumeName } from '../utilities/container-naming'
 
@@ -256,6 +258,43 @@ export async function streamContainerLogs(
 
 	return async function () {
 		clearInterval(interval)
+	}
+}
+
+export async function openContainerTerminal(
+	containerId: string,
+	handlers: ContainerTerminalHandlers
+): Promise<ContainerTerminalSession> {
+	handlers.onOutput(`Connected to ${containerId} (demo mode)\n`)
+	handlers.onOutput('Type a command and press Enter.\n')
+
+	let closed = false
+
+	return {
+		write: async function (data: string) {
+			if (closed) return
+
+			const command = data.trim()
+			if (!command) {
+				return
+			}
+
+			if (command === 'exit') {
+				handlers.onOutput('logout\n')
+				closed = true
+				handlers.onClose?.(0, null)
+				return
+			}
+
+			handlers.onOutput(`$ ${command}\n`)
+			handlers.onOutput(`demo: executed "${command}"\n`)
+		},
+		kill: async function () {
+			if (closed) return
+			closed = true
+			handlers.onOutput('terminal session closed\n')
+			handlers.onClose?.(0, null)
+		}
 	}
 }
 

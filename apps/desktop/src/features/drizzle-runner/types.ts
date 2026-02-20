@@ -1,12 +1,14 @@
 // Types for the Drizzle Runner feature
+import type { QueryResult as AdapterQueryResult } from '@/core/data-provider/types'
+
+export type QueryResult = AdapterQueryResult
+
 export type QueryTab = {
 	id: string
 	name: string
 	content: string
 	isDirty: boolean
 }
-
-export { type QueryResult } from '@/core/data-provider/types'
 
 export type RunnerTab = 'queries' | 'schema'
 

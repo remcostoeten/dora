@@ -51,7 +51,7 @@ export function createTauriAdapter(): DataAdapter {
 			databaseType: DatabaseInfo,
 			sshConfig: JsonValue | null
 		): Promise<AdapterResult<ConnectionInfo>> {
-			const result = await commands.addConnection(name, databaseType, sshConfig)
+			const result = await commands.addConnection(name, databaseType, null)
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
@@ -64,7 +64,7 @@ export function createTauriAdapter(): DataAdapter {
 			databaseType: DatabaseInfo,
 			sshConfig: JsonValue | null
 		): Promise<AdapterResult<ConnectionInfo>> {
-			const result = await commands.updateConnection(id, name, databaseType, sshConfig)
+			const result = await commands.updateConnection(id, name, databaseType, null)
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
@@ -309,12 +309,15 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			const columnsResult = await commands.getColumns(queryId)
-
-			const rows = Array.isArray(pageInfo.first_page) ? pageInfo.first_page : []
+			const columnDefs =
+				columnsResult.status === 'ok' ? parseColumns(columnsResult.data ?? []) : []
+			const rows = parseRows(pageInfo.first_page, columnDefs)
 
 			return ok({
 				rows,
-				columns: columnsResult.status === 'ok' ? (columnsResult.data ?? []) : [],
+				columns: columnDefs.map(function (col) {
+					return col.name
+				}),
 				rowCount: pageInfo.affected_rows ?? rows.length,
 				executionTime: Math.round(performance.now() - startTime)
 			})

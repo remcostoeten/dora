@@ -1,6 +1,6 @@
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Button } from './button'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@/shared/utils/cn'
 
 type Props = {
     title?: string

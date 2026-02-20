@@ -2,6 +2,7 @@ import { TableSkeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
 import { useAdapter, useDataMutation } from '@/core/data-provider'
+import { getAdapterError } from '@/core/data-provider/types'
 import { usePendingEdits } from '@/core/pending-edits'
 import { useSettings } from '@/core/settings'
 import { useEffectiveShortcuts, useShortcut } from '@/core/shortcuts'
@@ -296,7 +297,10 @@ export function DatabaseStudio({
 					visibleColumns: nextVisibleColumns
 				})
 			} else {
-				console.error('[DatabaseStudio] Failed to load table data:', result.error)
+				console.error(
+					'[DatabaseStudio] Failed to load table data:',
+					getAdapterError(result)
+				)
 				if (!cached) {
 					setTableData(null)
 				}
@@ -1297,7 +1301,7 @@ export function DatabaseStudio({
 					description: 'Database schema DDL copied to clipboard.'
 				})
 			} else {
-				throw new Error(result.error)
+				throw new Error(getAdapterError(result))
 			}
 		} catch (error) {
 			console.error('Failed to copy schema:', error)
@@ -1322,7 +1326,7 @@ export function DatabaseStudio({
 					description: 'Database schema as Drizzle ORM format copied to clipboard.'
 				})
 			} else {
-				throw new Error(schemaResult.error)
+				throw new Error(getAdapterError(schemaResult))
 			}
 		} catch (error) {
 			console.error('Failed to copy Drizzle schema:', error)
@@ -1371,8 +1375,13 @@ export function DatabaseStudio({
 				setShowDropTableDialog(false)
 				toast({ title: 'Table dropped', description: `"${tableName}" has been removed.` })
 			} else {
-				console.error('Failed to drop table:', result.error)
-				toast({ title: 'Failed to drop table', description: result.error, variant: 'destructive' })
+				const errorMessage = getAdapterError(result)
+				console.error('Failed to drop table:', errorMessage)
+				toast({
+					title: 'Failed to drop table',
+					description: errorMessage,
+					variant: 'destructive'
+				})
 			}
 		} catch (error) {
 			console.error('Failed to drop table:', error)
@@ -1487,11 +1496,6 @@ export function DatabaseStudio({
 					tableName={tableName || tableId}
 					viewMode={viewMode}
 					onViewModeChange={setViewMode}
-					pagination={pagination}
-					onPaginationChange={setPagination}
-					rowCount={tableData.rows.length}
-					totalCount={tableData.totalCount}
-					executionTime={tableData.executionTime}
 					onToggleSidebar={onToggleSidebar}
 					isSidebarOpen={isSidebarOpen}
 					onRefresh={loadTableData}

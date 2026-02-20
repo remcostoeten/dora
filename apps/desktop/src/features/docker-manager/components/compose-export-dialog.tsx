@@ -1,5 +1,5 @@
 import { Copy, Download, FileCode } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo } from 'react'
 import { Button } from '@/shared/ui/button'
 import {
 	Dialog,
@@ -22,7 +22,9 @@ type Props = {
 
 export function ComposeExportDialog({ container, open, onOpenChange }: Props) {
 	const { toast } = useToast()
-	const [yamlContent] = useState(() => generateDockerCompose(container))
+	const yamlContent = useMemo(function () {
+		return generateDockerCompose(container)
+	}, [container])
 
 	async function handleCopy() {
 		try {

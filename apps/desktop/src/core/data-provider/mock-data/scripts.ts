@@ -14,7 +14,8 @@ export const MOCK_SCRIPTS: SavedQuery[] = [
 		favorite: true,
 		is_snippet: true,
 		is_system: true,
-		language: 'sql'
+		language: 'sql',
+		folder_id: null
 	},
 	{
 		id: 2,
@@ -29,7 +30,8 @@ export const MOCK_SCRIPTS: SavedQuery[] = [
 		favorite: false,
 		is_snippet: true,
 		is_system: false,
-		language: 'sql'
+		language: 'sql',
+		folder_id: null
 	},
 	{
 		id: 3,
@@ -44,6 +46,7 @@ export const MOCK_SCRIPTS: SavedQuery[] = [
 		favorite: true,
 		is_snippet: true,
 		is_system: false,
-		language: 'sql'
+		language: 'sql',
+		folder_id: null
 	}
 ]

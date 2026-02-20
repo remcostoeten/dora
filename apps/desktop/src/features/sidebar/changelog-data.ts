@@ -8,9 +8,24 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.96'
+export const CURRENT_VERSION = '0.0.97'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.97',
+		date: '2026-02-20',
+		commit: 'unreleased',
+		title: 'Type Safety Recovery, Feature-State Cleanup & Docker Enhancements',
+		description:
+			'Restored strict TypeScript health, aligned sidebar feature states with actual availability, and shipped Docker manager improvements including terminal support and UX polish',
+		type: 'fix',
+		details: [
+			'Fixed desktop strict typecheck regressions across adapters, data provider hooks, Monaco integration, and UI utility imports',
+			'Aligned sidebar navigation so Docker Manager is active while only unavailable items remain marked as coming soon',
+			'Updated and expanded Docker manager components and supporting APIs',
+			'Refreshed docs and feature matrix to match implemented behavior'
+		]
+	},
 	{
 		version: '0.0.96',
 		date: '2026-02-19',

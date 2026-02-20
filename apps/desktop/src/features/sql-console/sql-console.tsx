@@ -2,6 +2,7 @@ import { PanelLeft } from 'lucide-react'
 import { useState, useCallback, useEffect } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter } from '@/core/data-provider/context'
+import { getAdapterError } from '@/core/data-provider/types'
 import { useShortcut } from '@/core/shortcuts'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
@@ -252,7 +253,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							rowCount: res.data.rowCount
 						})
 					} else {
-						throw new Error(res.error)
+						throw new Error(getAdapterError(res))
 					}
 				} else {
 					const queryToRun = codeOverride || currentDrizzleQuery
@@ -279,7 +280,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							clearTableDataCache()
 						}
 					} else {
-						throw new Error(res.error)
+						throw new Error(getAdapterError(res))
 					}
 				}
 			} catch (error) {

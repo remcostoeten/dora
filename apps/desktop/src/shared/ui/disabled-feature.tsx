@@ -1,5 +1,5 @@
 import { toast } from 'sonner'
-import { cn } from '@/shared/lib/utils'
+import { cn } from '@/shared/utils/cn'
 import { Button } from './button'
 import type { ComponentProps, ReactNode } from 'react'
 

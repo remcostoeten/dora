@@ -1,5 +1,6 @@
-import { Plus, Search, Container, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Container, AlertTriangle, ArrowDown, ArrowUp, Activity, HeartPulse } from 'lucide-react'
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import type { ReactNode } from 'react'
 import { useToast } from '@/components/ui/use-toast'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -17,7 +18,6 @@ import { ContainerDetailsPanel } from './container-details-panel'
 import { ContainerList } from './container-list'
 import { CreateContainerDialog } from './create-container-dialog'
 import { SandboxIndicator } from './sandbox-indicator'
-import { Badge } from '@/shared/ui/badge'
 import {
 	Select,
 	SelectContent,
@@ -31,13 +31,25 @@ type Props = {
 	onOpenInDataViewer?: (container: DockerContainer) => void
 }
 
+type StatusFilter = 'all' | 'running' | 'stopped' | 'created'
+type SortField = 'name' | 'created' | 'status'
+type SortDirection = 'asc' | 'desc'
+
+const STATUS_FILTER_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
+	{ value: 'all', label: 'All' },
+	{ value: 'running', label: 'Running' },
+	{ value: 'stopped', label: 'Stopped' },
+	{ value: 'created', label: 'Created' }
+]
+
 export function DockerView({ onOpenInDataViewer }: Props) {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [showExternal, setShowExternal] = useState(false)
 	const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-	const [statusFilter, setStatusFilter] = useState<'all' | 'running' | 'stopped' | 'created'>('all')
-	const [sortBy, setSortBy] = useState<'name' | 'created' | 'status'>('name')
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+	const [sortBy, setSortBy] = useState<SortField>('name')
+	const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const { toast } = useToast()
@@ -64,23 +76,29 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 	}, [handleSearchFocus])
 
 	const { data: dockerStatus, isLoading: isCheckingDocker } = useDockerAvailability()
-	const { data: containers, isLoading: isLoadingContainers } = useContainers({
-		showExternal,
+	const { data: allContainers = [], isLoading: isLoadingContainers } = useContainers({
+		showExternal: true,
 		enabled: dockerStatus?.available ?? false
 	})
 
-	// Fetch all containers (including external) to get the external count for the toggle indicator
-	const { data: allContainers } = useContainers({
-		showExternal: true,
-		enabled: (dockerStatus?.available ?? false) && !showExternal
-	})
+	const visibleContainers = useMemo(function () {
+		if (showExternal) {
+			return allContainers
+		}
+
+		return allContainers.filter(function (container) {
+			return container.origin === 'managed'
+		})
+	}, [showExternal, allContainers])
 
 	const externalCount = useMemo(function () {
-		if (showExternal || !allContainers || !containers) return 0
-		return allContainers.length - containers.length
-	}, [showExternal, allContainers, containers])
+		if (showExternal) return 0
 
-	const searchedContainers = useContainerSearch(containers, searchQuery)
+		return allContainers.filter(function (container) {
+			return container.origin === 'external'
+		}).length
+	}, [showExternal, allContainers])
+	const searchedContainers = useContainerSearch(visibleContainers, searchQuery)
 
 	const filteredContainers = useMemo(
 		function () {
@@ -90,7 +108,7 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 			if (statusFilter !== 'all') {
 				result = result.filter(function (c) {
 					if (statusFilter === 'running') return c.state === 'running'
-					if (statusFilter === 'stopped') return c.state === 'exited'
+					if (statusFilter === 'stopped') return c.state === 'exited' || c.state === 'dead'
 					if (statusFilter === 'created') return c.state === 'created'
 					return true
 				})
@@ -98,36 +116,57 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 
 			// Sort
 			return [...result].sort(function (a, b) {
+				let sortResult = 0
+
 				if (sortBy === 'name') {
-					const nameA = a.names?.[0] || ''
-					const nameB = b.names?.[0] || ''
-					return nameA.localeCompare(nameB)
+					const nameA = a.name || ''
+					const nameB = b.name || ''
+					sortResult = nameA.localeCompare(nameB)
 				}
 				if (sortBy === 'created') {
-					return b.created - a.created // Newest first
+					const createdA = a.createdAt || 0
+					const createdB = b.createdAt || 0
+					sortResult = createdA - createdB
 				}
 				if (sortBy === 'status') {
-					return (a.state || '').localeCompare(b.state || '')
+					sortResult = a.state.localeCompare(b.state)
 				}
-				return 0
+
+				return sortDirection === 'asc' ? sortResult : sortResult * -1
 			})
 		},
-		[searchedContainers, statusFilter, sortBy]
+		[searchedContainers, statusFilter, sortBy, sortDirection]
 	)
 
 	const selectedContainer = useMemo(
 		function () {
-			if (!selectedContainerId || !containers) {
+			if (!selectedContainerId) {
 				return null
 			}
 			return (
-				containers.find(function (c) {
+				visibleContainers.find(function (c) {
 					return c.id === selectedContainerId
 				}) ?? null
 			)
 		},
-		[selectedContainerId, containers]
+		[selectedContainerId, visibleContainers]
 	)
+
+	const containerSummary = useMemo(function () {
+		const runningCount = visibleContainers.filter(function (container) {
+			return container.state === 'running'
+		}).length
+
+		const healthyCount = visibleContainers.filter(function (container) {
+			return container.state === 'running' && container.health === 'healthy'
+		}).length
+
+		return {
+			total: visibleContainers.length,
+			running: runningCount,
+			healthy: healthyCount
+		}
+	}, [visibleContainers])
 
 	const createContainer = useCreateContainer({
 		onSuccess: function (result) {
@@ -181,6 +220,11 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		setSelectedContainerId(null)
 	}
 
+	function handleClearSearch() {
+		setSearchQuery('')
+		searchInputRef.current?.focus()
+	}
+
 	if (isCheckingDocker) {
 		return (
 			<div className='flex-1 flex items-center justify-center'>
@@ -227,20 +271,55 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 
 	return (
 		<div className='flex-1 flex flex-col h-full overflow-hidden'>
-			<header className='flex items-center justify-between px-4 py-3 border-b border-border'>
-				<div className='flex items-center gap-3'>
-					<Container className='h-5 w-5 text-muted-foreground' />
-					<h1 className='text-lg font-semibold'>Docker Containers</h1>
+			<header className='border-b border-border bg-gradient-to-r from-emerald-500/10 via-transparent to-cyan-500/10'>
+				<div className='flex items-center justify-between px-4 py-3'>
+					<div className='flex min-w-0 items-center gap-3'>
+						<div className='inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10'>
+							<Container className='h-5 w-5 text-emerald-500' />
+						</div>
+						<div className='min-w-0'>
+							<h1 className='text-lg font-semibold'>Docker Containers</h1>
+							<p className='text-xs text-muted-foreground'>
+								Local PostgreSQL containers with one-click controls.
+							</p>
+						</div>
+					</div>
+					<SandboxIndicator />
 				</div>
-				<SandboxIndicator />
+
+				<div className='px-4 pb-3'>
+					<div className='flex flex-wrap items-center gap-2'>
+						<StatPill
+							label='Visible'
+							value={containerSummary.total}
+							icon={<Container className='h-3.5 w-3.5' aria-hidden='true' />}
+						/>
+						<StatPill
+							label='Running'
+							value={containerSummary.running}
+							icon={<Activity className='h-3.5 w-3.5' aria-hidden='true' />}
+						/>
+						<StatPill
+							label='Healthy'
+							value={containerSummary.healthy}
+							icon={<HeartPulse className='h-3.5 w-3.5' aria-hidden='true' />}
+						/>
+					</div>
+				</div>
 			</header>
 
-			<div className='flex items-center gap-3 px-4 py-3 border-b border-border'>
+			<div className='flex flex-wrap items-center gap-3 border-b border-border/70 bg-background/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
 				<div className='relative flex-1 max-w-sm'>
+					<Label htmlFor='container-search' className='sr-only'>
+						Search containers
+					</Label>
 					<Search className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
 					<Input
+						id='container-search'
 						ref={searchInputRef}
 						placeholder='Search containers...'
+						name='container_search'
+						autoComplete='off'
 						value={searchQuery}
 						onChange={function (e) {
 							setSearchQuery(e.target.value)
@@ -270,25 +349,44 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 
 				<div className='h-4 w-px bg-border mx-2' />
 
-				<div className='flex items-center gap-2'>
-					<div className='flex gap-1'>
-						{(['all', 'running', 'stopped'] as const).map((status) => (
-							<Badge
-								key={status}
-								variant={statusFilter === status ? 'default' : 'outline'}
-								className={cn(
-									'cursor-pointer capitalize',
-									statusFilter !== status && 'hover:bg-muted'
-								)}
-								onClick={() => setStatusFilter(status)}
-							>
-								{status}
-							</Badge>
-						))}
+				<div className='flex min-w-0 flex-1 items-center gap-2'>
+					<div
+						className='flex items-center gap-1 overflow-x-auto pb-1'
+						role='toolbar'
+						aria-label='Filter containers by status'
+					>
+						{STATUS_FILTER_OPTIONS.map(function (option) {
+							const isActive = option.value === statusFilter
+
+							return (
+								<button
+									key={option.value}
+									type='button'
+									aria-pressed={isActive}
+									onClick={function () {
+										setStatusFilter(option.value)
+									}}
+									className={cn(
+										'inline-flex h-7 items-center rounded-full border px-2.5 text-xs font-medium transition-colors',
+										'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+										isActive
+											? 'border-transparent bg-primary text-primary-foreground shadow-sm'
+											: 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent'
+									)}
+								>
+									{option.label}
+								</button>
+							)
+						})}
 					</div>
 
-					<Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-						<SelectTrigger className='w-[120px] h-7 text-xs'>
+					<Select
+						value={sortBy}
+						onValueChange={function (value) {
+							setSortBy(value as SortField)
+						}}
+					>
+						<SelectTrigger aria-label='Sort containers' className='w-[130px] h-7 text-xs'>
 							<SelectValue placeholder='Sort by' />
 						</SelectTrigger>
 						<SelectContent>
@@ -297,6 +395,28 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 							<SelectItem value='status'>Status</SelectItem>
 						</SelectContent>
 					</Select>
+
+					<Button
+						type='button'
+						size='icon-sm'
+						variant='outline'
+						onClick={function () {
+							setSortDirection(function (current) {
+								return current === 'asc' ? 'desc' : 'asc'
+							})
+						}}
+						aria-label={
+							sortDirection === 'asc'
+								? 'Sorting ascending. Activate to sort descending'
+								: 'Sorting descending. Activate to sort ascending'
+						}
+					>
+						{sortDirection === 'asc' ? (
+							<ArrowUp className='h-3.5 w-3.5' aria-hidden='true' />
+						) : (
+							<ArrowDown className='h-3.5 w-3.5' aria-hidden='true' />
+						)}
+					</Button>
 				</div>
 
 				<Button
@@ -321,6 +441,8 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 					onRestartContainer={handleQuickRestart}
 					isActionPending={containerActions.isPending}
 					isLoading={isLoadingContainers}
+					searchQuery={searchQuery}
+					onClearSearch={handleClearSearch}
 				/>
 
 				<ContainerDetailsPanel
@@ -334,9 +456,27 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 				open={isCreateDialogOpen}
 				onOpenChange={setIsCreateDialogOpen}
 				onSubmit={handleCreateContainer}
-				existingContainers={containers || []}
+				existingContainers={allContainers}
 				isSubmitting={createContainer.isPending}
 			/>
+		</div>
+	)
+}
+
+function StatPill({
+	icon,
+	label,
+	value
+}: {
+	icon: ReactNode
+	label: string
+	value: number
+}) {
+	return (
+		<div className='inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-xs'>
+			<span className='text-muted-foreground'>{icon}</span>
+			<span className='text-muted-foreground'>{label}</span>
+			<span className='font-semibold tabular-nums text-foreground'>{value}</span>
 		</div>
 	)
 }

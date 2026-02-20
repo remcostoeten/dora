@@ -119,9 +119,15 @@ export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange }: Pr
 		<div className='flex flex-col h-full'>
 			<div className='flex items-center justify-between gap-2 pb-2 border-b border-border'>
 				<div className='flex items-center gap-2'>
-					<span className='text-xs text-muted-foreground'>Show last</span>
+					<span id='logs-tail-label' className='text-xs text-muted-foreground'>
+						Show last
+					</span>
 					<Select value={String(tailLines)} onValueChange={handleTailChange}>
-						<SelectTrigger className='h-7 w-20 text-xs'>
+						<SelectTrigger
+							className='h-7 w-20 text-xs'
+							aria-label='Number of log lines to show'
+							aria-labelledby='logs-tail-label'
+						>
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
@@ -139,6 +145,11 @@ export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange }: Pr
 
 			<div
 				ref={logsContainerRef}
+				role='log'
+				aria-label='Container logs'
+				aria-live='polite'
+				aria-busy={isLoading}
+				tabIndex={0}
 				className='flex-1 mt-2 p-3 rounded-lg bg-zinc-950 text-xs font-mono overflow-auto border border-border/50'
 			>
 				{logs ? (

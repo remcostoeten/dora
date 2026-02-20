@@ -1,192 +1,120 @@
 <div align="center">
   <img src="dora-backgroundless.png" alt="Dora Logo" width="200" />
   <h1>Dora</h1>
-  <p><i>The Database Explorer</i></p>
+  <p><i>Database studio built with Tauri + React</i></p>
 
 [![Rust](https://img.shields.io/badge/Rust-black?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-24C8DB?logo=tauri&logoColor=black)](https://tauri.app/)
-[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)](https://github.com/remcostoeten/dora)
 
 </div>
 
-**Dora** is a high-performance, keyboard-centric database manager. Built with **Rust** and **Tauri**, it provides a native database management experience in a minimal package.
+Dora is a cross-platform database studio focused on fast local UX, keyboard-first workflows, and a native desktop footprint.
 
-> **At just ~8.5MB**, Dora is tiny compared to **pgAdmin (~400MB)** or **Beekeeper Studio (~120MB)**.
+## Supported Databases
 
-> Manage connections, run queries, visualize data, and handle migrations efficiently without leaving your keyboard.
+- PostgreSQL
+- SQLite
+- LibSQL / Turso
 
-### Key Features
+`MySQL` and first-class `SSH tunnel` UI are scaffolded but still marked as coming soon in the current frontend.
 
-- **Performance**: Instant startup and negligible memory footprint (vs 100MB+ Electron apps).
-- **Keyboard-Centric**: Optimized for efficiency; navigate and query without a mouse.
-- **Local & Private**
-  100% offline SQLite storage with no telemetry or cloud dependencies.
-- **Cross-Platform**: Native support for Linux, macOS, and Windows.
+## Audit Snapshot (2026-02-20)
+
+- `bun run test:desktop`: `115/115` tests passing.
+- `bun run --cwd apps/desktop build`: production build succeeds.
+- `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml`: passes (warnings only).
+- `bun x tsc --noEmit -p apps/desktop/tsconfig.app.json`: fails with multiple TypeScript errors.
+
+Full findings: `docs/app-audit-2026-02-20.md`.
+
+## Feature Matrix
+
+| Area | Feature | Status | Notes |
+| :-- | :-- | :--: | :-- |
+| Connectivity | Saved connections (create/update/delete) | Done | Includes connection testing and persistence. |
+| Connectivity | PostgreSQL + SQLite + LibSQL | Done | Core adapters and UI are wired. |
+| Connectivity | MySQL | Soon | Selector exists but disabled in UI. |
+| Connectivity | SSH Tunnel UI | Soon | Backend supports fields; frontend currently disabled. |
+| Data Studio | Table browser + pagination + sorting + filters | Done | Includes content and structure views. |
+| Data Studio | Inline edits + add/duplicate/delete rows | Done | Supports per-row and multi-row workflows. |
+| Data Studio | Dry edit mode with staged changes | Done | Apply/discard pending edits before writing. |
+| Data Studio | Export JSON / CSV / SQL INSERT | Done | Table-wide and selected-row exports. |
+| Data Studio | Copy SQL schema / Drizzle schema | Done | Available from the toolbar. |
+| Data Studio | Add column / drop table | Done | DDL actions from structure view. |
+| Data Studio | Mock data seeding | Done | Faker-based generator + preview dialog. |
+| SQL Console | SQL + Drizzle editors | Done | Monaco-based editors with run + format support. |
+| SQL Console | Query history and snippet/folder library | Done | Backed by storage commands. |
+| SQL Console | Result export (JSON/CSV) | Done | From toolbar/result views. |
+| SQL Console | Result filter panel | WIP | UI currently shows “Coming Soon”. |
+| Docker Manager | PostgreSQL container lifecycle | Beta | Create/start/stop/restart/remove managed containers. |
+| Docker Manager | Logs, details, compose export, terminal | Beta | Available in Docker feature panel. |
+| UX | Keyboard shortcuts + URL state + theme/settings sync | Done | Includes state restoration for last connection/table. |
+| AI | AI assistant screen in app nav | Soon | Sidebar item is disabled placeholder. |
 
 ## Download
 
-Dora is natively available for **Linux**, **macOS**, and **Windows**. Pre-compiled binaries are available through the [releases](https://github.com/remcostoeten/dora/releases) page.
+Prebuilt desktop artifacts are published in GitHub Releases:
 
-### Latest Release: v0.0.95
+- Linux: `.deb`, `.rpm`, `.AppImage`
+- macOS: `.dmg`
+- Windows: `.exe`, `.msi`
 
-**Features:** Expanded packaging targets (`.rpm`, `.msi`, Intel macOS build support), plus changelog popover stability and UX fixes.
+See: https://github.com/remcostoeten/dora/releases
 
-#### Download by Platform
+## Development
 
-- **Linux**
-  - `.deb` - Debian/Ubuntu (recommended for apt-based systems)
-  - `.AppImage` - Universal Linux executable (works on most distributions)
-  - `.rpm` - Red Hat/Fedora/CentOS (for rpm-based systems)
+### Prerequisites
 
-- **macOS**
-  - `.dmg` - macOS installer (Intel & Apple Silicon support)
+- Bun
+- Rust toolchain (`cargo`, `rustup`)
+- Tauri system dependencies for your platform
 
-- **Windows**
-  - `.exe` - Windows installer (recommended)
-  - `.msi` - Alternative Windows installer option
-
-👉 **[Download Latest Release](https://github.com/remcostoeten/dora/releases/tag/v0.0.95)**
-
-### Installation by Platform
-
-#### Linux (Debian/Ubuntu)
-```bash
-# Using .deb package
-sudo dpkg -i dora_0.0.95_amd64.deb
-dora
-
-# Or using AppImage
-chmod +x dora_0.0.95_x64.AppImage
-./dora_0.0.95_x64.AppImage
-```
-
-#### macOS
-```bash
-# Download and mount the .dmg file, then drag Dora to Applications
-# Or use Homebrew (if available)
-```
-
-#### Windows
-Download the `.exe` installer and run it, or extract the portable version.
-
-## Development & Building
-
-### Option 1: The Dora CLI (Recommended)
-
-Dora comes with a custom CLI tool to manage builds, releases, and databases.
-It is a single binary that works on any OS without any prerequisites. If you want to rebuild, or modify the CLI however you will need to have Go installed.
-
-1. **Running the CLI**
-
-    ```bash
-    // in the root directory
-    ./dora
-    ```
-
-    This opens an interactive menu to Run the app, Build artifacts, Generate release notes, or Manage your DB.
-
-    **Example Output:**
-
-    ```text
-    ╭───────────────────────────────────────────────╮
-    │  DORA DEVELOPMENT CONSOLE           v0.0.9    │
-    ╰───────────────────────────────────────────────╯
-    > Run all
-      Run app...
-      Build all
-      Build specific platform...
-      Run compiled builds...
-      Install Build (.deb)...
-      Uninstall Dora...
-      Reinstall Build (.deb)...
-      Check Build Sizes
-      Database Management...
-      ─────────────────────────
-      Release Notes...
-      AI Setup...
-      Update/Rebuild Runner
-      ─────────────────────────
-      Visit GitHub Repo
-      Go to Releases
-
-    [↑/↓] Move • [Enter] Select • [Esc] Back • [q] Quit
-    ```
-
-2. **Build the CLI**
-   <small><i>Only needed if you want to modify the CLI</i></small>
-   `bash
-cd tools/dora-cli
-go build -o ../../dora .  # Outputs binary named 'dora' to root
-cd ../..
-`
-   This will output a binary named 'dora' to the root directory.
-
-### Option 2: Manual Setup
-
-If you prefer standard tools, you can run Dora directly. I recommend **Bun** (or pnpm).
+### Install
 
 ```bash
-# Install dependencies
 bun install
+```
 
-# Run web view (No database connection, purely frontned mock view stored in memory)
-bun run dev
+### Run
 
-# Run Desktop App (Dev Mode)
-# Use the workspace helper so the Windows tooling runs: `bun run desktop:dev`
+```bash
+# React web shell
+bun run web:dev
 
-# Build React (Vite / Rolldown)
+# Desktop app (Tauri)
+bun run desktop:dev
+```
+
+### Quality checks
+
+```bash
+# Frontend/unit tests
+bun run test:desktop
+
+# Frontend typecheck (currently failing in main)
+bun x tsc --noEmit -p apps/desktop/tsconfig.app.json
+
+# Rust backend compile check
+cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
+```
+
+### Build
+
+```bash
+# Workspace build
 bun run build
 
-# Build for Production
-bun run tauri build
+# Desktop release build
+bun run desktop:build
 ```
 
-## Features (Early Beta)
+## Workspace Helpers
 
-Dora is in active development. Below is a list of implemented features available in the current build.
-
-| Category         | Feature                  | Status | Description                                                 |
-| :--------------- | :----------------------- | :----: | :---------------------------------------------------------- |
-| **Connectivity** | **Connection Manager**   |  Done  | Save, pin, and organize database connections.               |
-|                  | **SSH Tunneling**        |  Done  | Securely connect via SSH tunnels with key support.          |
-|                  | **History**              |  Done  | Track recent connections for quick access.                  |
-|                  | **Docker Manager**       |  Beta  | Manage containers, view logs, and auto-compose DBs.         |
-| **Data Studio**  | **Spreadsheet View**     |  Done  | Multi-cell selection, drag-select for rows/cols.            |
-|                  | **Context Menu**         |  Done  | Right-click to duplicate, delete, or export (JSON/CSV/SQL). |
-|                  | **Mutation History**     |  Done  | Local undo/redo stack for data changes.                     |
-|                  | **Soft Delete**          |  Done  | Mark rows as deleted without removal (recoverable).         |
-| **Querying**     | **Drizzle Query Runner** |  Done  | Custom **Drizzle LSP** for flawless autocompletion.         |
-|                  | **Performance Stats**    |  Done  | Accurate query duration and execution timing.               |
-|                  | **Snippets**             |  WIP   | Save/Delete scripts (Creation logic WIP).                   |
-|                  | **Visual Builder**       |  WIP   | Drag-and-drop query building (In Progress).                 |
-| **Schema**       | **Schema Export**        |  Done  | Export schema as SQL or **Drizzle ORM** definitions.        |
-|                  | **Inspector**            |  Done  | View tables, keys, indices, and DDL.                        |
-| **Tools**        | **Command Palette**      |  Done  | Keyboard-driven command menu (`Ctrl/Cmd + K`).              |
-|                  | **Custom Shortcuts**     |  WIP   | Module ready, remapper UI under construction.               |
-| **UI/UX**        | **URL State**            |  Done  | Deep linking for selected rows, cells, and active tables.   |
-|                  | **Sidebar**              |  Done  | Collapsible, animated sidebar with unified navigation.      |
-|                  | **Theme Sync**           |  Done  | Seamless dark/light mode synchronization across windows.    |
-
-## Roadmap & Under Construction
-
-| Feature                  | Status  | details                                                        |
-| :----------------------- | :-----: | :------------------------------------------------------------- |
-| **Microsoft SQL Server** |   WIP   | Initial implementation started.                                |
-| **Prisma Support**       | Planned | Full LSP Query Runner, Snippets, and Schema Visualizer.        |
-| **Schema Converters**    | Planned | Two-way conversion between **Prisma** <=> **Drizzle** schemas. |
-| **AI Schema Gen**        | Planned | AI-assisted schema creation and migration generation.          |
-| **NoSQL Support**        | Planned | MongoDB, Firebase (Planned).                                   |
-| **Cloud Providers**      | Planned | Amazon RDS, Azure, Cloudflare D1.                              |
-| **Detailed Metrics**     |   WIP   | Database size, table stats, detailed storage analysis.         |
-| **Snippet Folders**      | Planned | Organizing scripts into folders (File system/Storage).         |
-
-> **Legend**: Done | WIP (Work in Progress) | Planned
+See `apps/desktop/README.md` for Windows Tauri helper scripts and libsql vendor refresh instructions.
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 (GPL-3). See the [LICENSE](LICENSE) file for details.
-
-ignore this <https://svg-sparkle-clean.lovable.app/>
+GNU General Public License v3.0. See `LICENSE`.

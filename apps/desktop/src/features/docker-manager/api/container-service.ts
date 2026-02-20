@@ -11,7 +11,9 @@ import type {
 	DockerContainer,
 	CreateContainerResult,
 	ContainerActionResult,
-	RemoveContainerOptions
+	RemoveContainerOptions,
+	ContainerTerminalHandlers,
+	ContainerTerminalSession
 } from '../types'
 import { validateContainerName, generateVolumeName } from '../utilities/container-naming'
 import {
@@ -267,6 +269,15 @@ export async function streamContainerLogs(
 	if (!isTauri) return demoService.streamContainerLogs(containerId, onLog, onError)
 	const { streamContainerLogs: clientStream } = await import('./docker-client')
 	return clientStream(containerId, onLog, onError)
+}
+
+export async function openContainerTerminal(
+	containerId: string,
+	handlers: ContainerTerminalHandlers
+): Promise<ContainerTerminalSession> {
+	if (!isTauri) return demoService.openContainerTerminal(containerId, handlers)
+	const { openContainerTerminal: clientOpenTerminal } = await import('./docker-client')
+	return clientOpenTerminal(containerId, handlers)
 }
 
 export async function seedDatabase(

@@ -15,7 +15,7 @@ export function useContainerLogs(
 	const [logs, setLogs] = useState<string>('')
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
-	const activeStreamRef = useRef<(() => Promise<void>) | null>(null)
+	const activeStreamRef = useRef<(() => void) | null>(null)
 
 	useEffect(() => {
 		if (!containerId || !enabled) {
@@ -31,7 +31,7 @@ export function useContainerLogs(
 			// Cleanup previous stream
 			if (activeStreamRef.current) {
 				try {
-					await activeStreamRef.current()
+					activeStreamRef.current()
 				} catch (e) {
 					console.error('Failed to cleanup stream:', e)
 				}
@@ -57,7 +57,7 @@ export function useContainerLogs(
 					setIsLoading(false)
 				} else {
 					// If unmounted during setup, clean up immediately
-					cleanup()
+					void cleanup()
 				}
 			} catch (e) {
 				if (isMounted) {
@@ -72,7 +72,7 @@ export function useContainerLogs(
 		return () => {
 			isMounted = false
 			if (activeStreamRef.current) {
-				activeStreamRef.current().catch(console.error)
+				activeStreamRef.current()
 			}
 		}
 	}, [containerId, enabled])
@@ -81,7 +81,7 @@ export function useContainerLogs(
 		data: logs,
 		isLoading,
 		error,
-		refetch: () => {
+		refetch: async () => {
 			/* No-op for stream */
 		}
 	}

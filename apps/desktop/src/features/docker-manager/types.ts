@@ -159,6 +159,17 @@ export type ContainerLogsOptions = {
 	since?: string
 }
 
+export type ContainerTerminalHandlers = {
+	onOutput: (chunk: string) => void
+	onError: (error: string) => void
+	onClose?: (code: number | null, signal: number | null) => void
+}
+
+export type ContainerTerminalSession = {
+	write: (data: string) => Promise<void>
+	kill: () => Promise<void>
+}
+
 export type CreateContainerResult = {
 	success: boolean
 	containerId?: string

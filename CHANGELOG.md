@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.97 - Type Safety Recovery, Feature-State Alignment & Docker Manager Updates
+
+**Date:** 2026-02-20
+
+**Highlights**
+
+- Restored strict TypeScript build health for the desktop app (`tsc --noEmit` now passes).
+- Fixed adapter/result typing drift and related runtime-safe error handling paths.
+- Aligned sidebar feature state: Docker Manager remains active while only unavailable items are marked "Coming soon".
+- Added/updated Docker manager feature work (terminal flow + UX/API refinements).
+- Updated README/docs to reflect actual current feature status and audit baseline.
+
 ## 0.0.95 - Packaging Expansion & Changelog Stability
 
 **Date:** 2026-02-09

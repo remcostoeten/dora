@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { SidebarTableSkeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useAdapter } from '@/core/data-provider'
+import { getAdapterError } from '@/core/data-provider/types'
 import type { DatabaseSchema, TableInfo } from '@/lib/bindings'
 import { commands } from '@/lib/bindings'
 import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appearance-store'
@@ -138,7 +139,7 @@ export function DatabaseSidebar({
 				try {
 					const connectResult = await adapter.connectToDatabase(activeConnectionId)
 					if (!connectResult.ok) {
-						throw new Error(connectResult.error)
+						throw new Error(getAdapterError(connectResult))
 					}
 
 					const result = await adapter.getSchema(activeConnectionId)
@@ -167,7 +168,7 @@ export function DatabaseSidebar({
 							}
 						}
 					} else {
-						throw new Error(result.error)
+						throw new Error(getAdapterError(result))
 					}
 				} catch (error) {
 					if (requestId !== schemaFetchIdRef.current) {
@@ -341,8 +342,13 @@ export function DatabaseSidebar({
 				}
 				toast({ title: 'Table dropped', description: `"${targetTableName}" has been removed.` })
 			} else {
-				console.error('Failed to drop table:', result.error)
-				toast({ title: 'Failed to drop table', description: result.error, variant: 'destructive' })
+				const errorMessage = getAdapterError(result)
+				console.error('Failed to drop table:', errorMessage)
+				toast({
+					title: 'Failed to drop table',
+					description: errorMessage,
+					variant: 'destructive'
+				})
 			}
 		} catch (error) {
 			console.error('Failed to drop table:', error)
@@ -485,7 +491,7 @@ export function DatabaseSidebar({
 
 		try {
 			const schemaResult = await adapter.getSchema(activeConnectionId)
-			if (!schemaResult.ok) throw new Error(schemaResult.error)
+			if (!schemaResult.ok) throw new Error(getAdapterError(schemaResult))
 
 			const table = schemaResult.data.tables.find(function (t) {
 				return t.name === tableName
@@ -554,7 +560,7 @@ export function DatabaseSidebar({
 					description: 'Database schema DDL copied to clipboard.'
 				})
 			} else {
-				throw new Error(result.error)
+				throw new Error(getAdapterError(result))
 			}
 		} catch (error) {
 			console.error('Failed to copy schema:', error)

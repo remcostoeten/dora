@@ -1,3 +1,29 @@
+# Release Notes - v0.0.97
+
+**Date:** 2026-02-20
+**Tag:** `v0.0.97`
+**Range:** `v0.0.96..master`
+
+## Summary
+
+This release focuses on release-readiness and UX consistency: TypeScript strictness is restored, sidebar feature states are aligned with actual behavior, and Docker manager improvements continue.
+
+## Changes since `v0.0.96`
+
+- Fixed strict TypeScript errors across frontend modules and shared adapters.
+- Added safer adapter error handling with proper union narrowing.
+- Updated Monaco/drizzle editor typing and completion plumbing.
+- Moved Docker Manager out of the "coming soon" bucket into active navigation.
+- Kept only truly unavailable items marked as "Coming soon".
+- Updated docs (README/feature matrix/audit notes) to match implementation.
+- Included ongoing Docker manager enhancements in UI/components/APIs.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`, `.rpm`
+- macOS: `.dmg` (Apple Silicon + Intel)
+- Windows: `.exe`, `.msi`
+
 # Release Notes - v0.0.95
 
 **Date:** 2026-02-09

@@ -139,25 +139,27 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 		}
 	]
 
+	const secondaryNavItems: NavItem[] = [
+		{
+			id: 'docker',
+			label: 'Docker Manager',
+			icon: Container,
+			onClick: () => onNavSelect?.('docker')
+		}
+	]
+
 	const comingSoonItems: NavItem[] = [
 		{
 			id: 'dora',
 			label: 'Dora AI Assistant',
 			icon: Sparkles,
-			disabled: true,
-			onClick: () => onNavSelect?.('dora')
+			disabled: true
 		},
 		{
 			id: 'schema',
 			label: 'Schema Visualizer',
 			icon: Network,
 			disabled: true
-		},
-		{
-			id: 'docker',
-			label: 'Docker Manager',
-			icon: Container,
-			onClick: () => onNavSelect?.('docker')
 		}
 	]
 
@@ -262,7 +264,28 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 					aria-orientation='horizontal'
 				/>
 
-				{/* Coming Soon Items */}
+				<div
+					role='group'
+					aria-label='Tools'
+					className='mx-auto flex flex-col gap-1'
+				>
+					{secondaryNavItems.map((item) => (
+						<SidebarNavItem
+							key={item.id}
+							item={item}
+							isActive={activeNavId === item.id}
+							variant={variant}
+						/>
+					))}
+				</div>
+
+				<div
+					className='my-2 mx-2 h-px bg-sidebar-border'
+					role='separator'
+					aria-orientation='horizontal'
+				/>
+
+				{/* Coming soon items */}
 				<div
 					role='group'
 					aria-label='Coming soon features'

@@ -9,14 +9,16 @@ export function SandboxIndicator({ className = '' }: Props) {
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
-				<div
+				<button
+					type='button'
+					aria-label='Sandbox mode is active'
 					className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 ${className}`}
 				>
 					<Lock className='h-3.5 w-3.5 text-emerald-500' />
 					<span className='text-xs font-medium text-emerald-500'>
 						Sandbox Mode Active
 					</span>
-				</div>
+				</button>
 			</TooltipTrigger>
 			<TooltipContent side='bottom' className='max-w-xs'>
 				<p className='text-sm'>

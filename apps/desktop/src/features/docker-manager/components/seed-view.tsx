@@ -11,6 +11,7 @@ type Props = {
 
 export function SeedView({ container }: Props) {
 	const [file, setFile] = useState<File | null>(null)
+	const [isDragActive, setIsDragActive] = useState(false)
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const { toast } = useToast()
 
@@ -30,6 +31,7 @@ export function SeedView({ container }: Props) {
 
 	function handleDrop(e: React.DragEvent) {
 		e.preventDefault()
+		setIsDragActive(false)
 		if (e.dataTransfer.files && e.dataTransfer.files[0]) {
 			const droppedFile = e.dataTransfer.files[0]
 			if (droppedFile.name.endsWith('.sql')) {
@@ -47,6 +49,34 @@ export function SeedView({ container }: Props) {
 
 	function handleDragOver(e: React.DragEvent) {
 		e.preventDefault()
+		if (!isDragActive) {
+			setIsDragActive(true)
+		}
+	}
+
+	function handleDragLeave(event: React.DragEvent<HTMLDivElement>) {
+		const relatedTarget = event.relatedTarget as Node | null
+		if (!relatedTarget || !event.currentTarget.contains(relatedTarget)) {
+			setIsDragActive(false)
+		}
+	}
+
+	function openFilePicker() {
+		fileInputRef.current?.click()
+	}
+
+	function handleDropZoneClick(event: React.MouseEvent<HTMLDivElement>) {
+		if ((event.target as HTMLElement).closest('button')) {
+			return
+		}
+		openFilePicker()
+	}
+
+	function handleDropZoneKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault()
+			openFilePicker()
+		}
 	}
 
 	async function handleSeed() {
@@ -91,12 +121,20 @@ export function SeedView({ container }: Props) {
 	return (
 		<div className='flex-1 flex flex-col p-4 h-full'>
 			<div
+				role={!file ? 'button' : undefined}
+				tabIndex={!file ? 0 : -1}
+				aria-label={!file ? 'Upload SQL file' : undefined}
+				aria-describedby={!file ? 'seed-upload-help' : undefined}
 				className={`
                     flex-1 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-4 transition-colors
                     ${file ? 'border-primary/50 bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-accent/50'}
+                    ${isDragActive && !file ? 'border-primary/60 bg-primary/10' : ''}
                 `}
+				onClick={!file ? handleDropZoneClick : undefined}
+				onKeyDown={!file ? handleDropZoneKeyDown : undefined}
 				onDrop={handleDrop}
 				onDragOver={handleDragOver}
+				onDragLeave={handleDragLeave}
 			>
 				{!file ? (
 					<>
@@ -105,11 +143,11 @@ export function SeedView({ container }: Props) {
 						</div>
 						<div className='text-center space-y-1'>
 							<h3 className='font-medium'>Drop SQL file here</h3>
-							<p className='text-xs text-muted-foreground'>or click to browse</p>
+							<p id='seed-upload-help' className='text-xs text-muted-foreground'>
+								Drag and drop or press Enter to browse
+							</p>
 						</div>
-						<Button variant='outline' onClick={() => fileInputRef.current?.click()}>
-							Select File
-						</Button>
+						<span className='text-xs text-muted-foreground'>Click anywhere to select a file</span>
 					</>
 				) : (
 					<>
@@ -125,7 +163,10 @@ export function SeedView({ container }: Props) {
 						<Button
 							variant='ghost'
 							size='sm'
-							onClick={() => setFile(null)}
+							onClick={function (event) {
+								event.stopPropagation()
+								setFile(null)
+							}}
 							disabled={seedMutation.isPending}
 						>
 							Change File
@@ -143,14 +184,22 @@ export function SeedView({ container }: Props) {
 			</div>
 
 			{seedMutation.error && (
-				<div className='mt-4 p-3 rounded bg-destructive/10 text-destructive text-xs flex items-center gap-2'>
+				<div
+					role='status'
+					aria-live='polite'
+					className='mt-4 p-3 rounded bg-destructive/10 text-destructive text-xs flex items-center gap-2'
+				>
 					<AlertCircle className='h-4 w-4' />
 					<span>{seedMutation.error.message}</span>
 				</div>
 			)}
 
 			{seedMutation.isSuccess && (
-				<div className='mt-4 p-3 rounded bg-emerald-500/10 text-emerald-500 text-xs flex items-center gap-2'>
+				<div
+					role='status'
+					aria-live='polite'
+					className='mt-4 p-3 rounded bg-emerald-500/10 text-emerald-500 text-xs flex items-center gap-2'
+				>
 					<CheckCircle2 className='h-4 w-4' />
 					<span>Seeding completed successfully!</span>
 				</div>

@@ -585,7 +585,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 						const fromMatch = textUntilPosition.match(
 							/\.from\(\s*([a-zA-Z_][\w]*)\s*\)/
 						)
-						const baseSuggestions = [
+						const baseSuggestions: Suggestion[] = [
 							{
 								label: 'eq',
 								kind: monaco.languages.CompletionItemKind.Function,
@@ -703,7 +703,7 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 						if (fromMatch) {
 							const table = getTable(tables, fromMatch[1])
 							if (table) {
-								const tableSuggestions = table.columns.map(
+								const tableSuggestions: Suggestion[] = table.columns.map(
 									function (column, index) {
 										return {
 											label: `${table.name}.${column.name}`,
@@ -1717,8 +1717,10 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 			}
 		)
 
-		editor.onDidType(function (text) {
-			if (shouldSuggest(text)) {
+		editor.onDidChangeModelContent(function (event) {
+			const latestChange = event.changes[event.changes.length - 1]
+			const insertedText = latestChange ? latestChange.text : ''
+			if (shouldSuggest(insertedText)) {
 				editor.trigger('drizzle', 'editor.action.triggerSuggest', {})
 			}
 		})

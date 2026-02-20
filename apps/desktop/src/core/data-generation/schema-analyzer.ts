@@ -8,7 +8,7 @@ export function guessFakerFunction(columnName: string, columnType: string): () =
 
     // 1. By exact name match (Highest priority)
     if (name === 'email') return faker.internet.email
-    if (name === 'username') return faker.internet.userName
+    if (name === 'username') return faker.internet.username
     if (name === 'first_name' || name === 'firstname') return faker.person.firstName
     if (name === 'last_name' || name === 'lastname') return faker.person.lastName
     if (name === 'full_name' || name === 'fullname' || name === 'name') return faker.person.fullName

@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAdapter } from '@/core/data-provider'
+import { getAdapterError } from '@/core/data-provider/types'
 import {
 	Dialog,
 	DialogContent,
@@ -54,13 +55,15 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
 		function fetchMetrics() {
 			if (!open || !tableName || !connectionId) return
 
-			// Check for Postgres adapter
-			// @ts-ignore - adapter types might not be fully explicit
+			const adapterMeta = adapter as unknown as {
+				type?: string
+				engine?: string
+				dialect?: string
+			}
 			const isPostgres =
-				adapter &&
-				(adapter.type === 'postgres' ||
-					adapter.engine === 'postgres' ||
-					adapter.dialect === 'postgres')
+				adapterMeta.type === 'postgres' ||
+				adapterMeta.engine === 'postgres' ||
+				adapterMeta.dialect === 'postgres'
 
 			if (!isPostgres) {
 				setError('Table metrics are only available for PostgreSQL connections.')
@@ -99,7 +102,7 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
 					])
 
 					if (!sizeResult.ok) {
-						throw new Error(sizeResult.error)
+						throw new Error(getAdapterError(sizeResult))
 					}
 
 					const sizeRow = sizeResult.data.rows[0] || {}

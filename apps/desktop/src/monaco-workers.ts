@@ -23,4 +23,4 @@ self.MonacoEnvironment = {
     }
 }
 
-monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true)
+;(monaco as any).languages.typescript.typescriptDefaults.setEagerModelSync(true)

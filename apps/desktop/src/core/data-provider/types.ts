@@ -21,6 +21,10 @@ export type AdapterResult<T> =
 		error: string
 	}
 
+export function getAdapterError<T>(result: AdapterResult<T>): string {
+	return 'error' in result ? result.error : 'Unknown adapter error'
+}
+
 export type QueryResult = {
 	rows: Record<string, unknown>[]
 	columns: string[]

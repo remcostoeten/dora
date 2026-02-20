@@ -121,6 +121,7 @@ export function ConnectionDetails({ container, password }: Props) {
 								<button
 									type='button'
 									onClick={togglePasswordVisibility}
+									aria-label={showPassword ? 'Hide password' : 'Show password'}
 									className='p-0.5 hover:text-foreground text-muted-foreground transition-colors rounded hover:bg-muted'
 								>
 									{showPassword ? (
@@ -168,7 +169,8 @@ export function ConnectionDetails({ container, password }: Props) {
 						<Button
 							variant='ghost'
 							size='icon'
-							className='absolute top-2 right-2 h-6 w-6 bg-zinc-900/50 hover:bg-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity'
+							aria-label='Copy snippet'
+							className='absolute top-2 right-2 h-6 w-6 bg-zinc-900/50 hover:bg-zinc-800 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'
 							onClick={handleCopySnippet}
 						>
 							{snippetCopied ? (

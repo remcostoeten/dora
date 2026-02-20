@@ -2,6 +2,7 @@ import { PanelLeft, Code, Play, Sparkles, Download, Loader2, Braces } from 'luci
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useIsTauri } from '@/core/data-provider'
+import { getAdapterError } from '@/core/data-provider/types'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/utils/cn'
 import { CheatsheetPanel } from './components/cheatsheet-panel'
@@ -80,7 +81,7 @@ export function DrizzleRunner({ connectionId, onToggleSidebar }: Props) {
 						rows: [],
 						rowCount: 0,
 						executionTime: 0,
-						error: queryResult.error
+						error: getAdapterError(queryResult)
 					})
 				}
 			} catch (error) {

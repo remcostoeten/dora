@@ -1,1 +1,6 @@
-export { useUrlState, parseUrlState, serializeUrlState } from './use-url-state'
+export {
+	useUrlState,
+	parseUrlState,
+	serializeUrlState,
+	type ContextMenuState
+} from './use-url-state'

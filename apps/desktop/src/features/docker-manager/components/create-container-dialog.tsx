@@ -213,6 +213,7 @@ export function CreateContainerDialog({
 								type='button'
 								variant='outline'
 								size='icon'
+								aria-label='Find free port'
 								onClick={handleFindFreePort}
 								disabled={isFindingPort}
 							>
@@ -250,6 +251,7 @@ export function CreateContainerDialog({
 								/>
 								<button
 									type='button'
+									aria-label={showPassword ? 'Hide password' : 'Show password'}
 									onClick={function () {
 										setShowPassword(function (p) {
 											return !p
