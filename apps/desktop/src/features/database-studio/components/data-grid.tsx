@@ -1008,23 +1008,12 @@ export function DataGrid({
 											<td
 												className={cn(
 													'px-4 py-1.5 text-center border-b border-r border-sidebar-border sticky left-0 z-20 transition-colors',
-													// We must replicate the background here because sticky elements sit on top of others
-													// and need to be opaque to hide scrolling content.
-													// However, separating it from the TR means we lose the parent TR's specific hover state
-													// if we are not careful.
-													// Since we can't easily sync exact hover state across elements without JS or complex CSS,
-													// we'll try to use the computed background class.
-													// Actually, 'bg-sidebar' is safest backdrop, but then we lose row stripes/selection under the checkbox.
-													// The 'rowClasses' above has the background. We can apply it here too.
-													// BUT! 'hover:bg-...' on the TD itself handles the hover for the TD.
-													// What if use hovers the rest of the row? The TD won't highlight.
-													// Use 'group-hover' on the TD and 'group' on the TR!
-													'group-hover:bg-sidebar-accent/30', // Approximate the hover effect
-													'group-hover:bg-sidebar-accent/30', // Approximate the hover effect
+													// Sticky cells must stay opaque; otherwise horizontal scroll content bleeds through.
+													'group-hover:bg-sidebar-accent',
 													selectedRows.has(rowIndex)
-														? 'bg-primary/10'
+														? 'bg-sidebar-accent'
 														: rowIndex % 2 === 1
-															? 'bg-muted/5'
+															? 'bg-muted'
 															: 'bg-background'
 												)}
 												role='gridcell'

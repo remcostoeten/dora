@@ -1691,6 +1691,7 @@ export function DatabaseStudio({
 					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
 					lastPolledAt={liveMonitor.lastPolledAt}
 					changesDetected={liveMonitor.unreadCount}
+					liveMonitorError={liveMonitor.monitorError}
 				/>
 
 				<AddColumnDialog
@@ -1839,6 +1840,7 @@ export function DatabaseStudio({
 					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
 					lastPolledAt={liveMonitor.lastPolledAt}
 					changesDetected={liveMonitor.unreadCount}
+					liveMonitorError={liveMonitor.monitorError}
 				/>
 			)}
 

@@ -214,6 +214,29 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		[activeConnectionId, adapter]
 	)
 
+	useEffect(
+		function listenForSchemaRefresh() {
+			function onSchemaRefresh(event: Event) {
+				const customEvent = event as CustomEvent<{ connectionId?: string }>
+				const targetConnectionId = customEvent.detail?.connectionId
+				if (!targetConnectionId || targetConnectionId === activeConnectionId) {
+					refreshSchema().catch(function (error) {
+						console.error('Failed to refresh schema:', error)
+					})
+				}
+			}
+
+			window.addEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
+			return function () {
+				window.removeEventListener(
+					'dora-schema-refresh',
+					onSchemaRefresh as EventListener
+				)
+			}
+		},
+		[activeConnectionId, refreshSchema]
+	)
+
 	const handleExecute = useCallback(
 		async (codeOverride?: string) => {
 			if (isExecuting) return
@@ -272,15 +295,17 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							sourceTable: getTableName(queryToRun)
 						})
 
-						// Clear table viewer cache so it refetches when user switches to it
+						// Clear table viewer cache so it refetches when user switches to it.
 						if (queryType !== 'SELECT') {
 							clearTableDataCache()
 						}
 
-						const isSchemaChangingSql =
-							/\b(create|alter|drop|truncate|rename)\b/i.test(queryToRun)
-						if (isSchemaChangingSql) {
-							await refreshSchema()
+						// Schema + row-count metadata must refresh after DDL and row-changing SQL.
+						const shouldRefreshSchema =
+							/\b(create|alter|drop|truncate|rename|attach|detach|insert|delete|merge|replace)\b/i.test(
+								queryToRun
+							)
+						if (shouldRefreshSchema) {
 							window.dispatchEvent(
 								new CustomEvent('dora-schema-refresh', {
 									detail: { connectionId: activeConnectionId }
@@ -317,10 +342,24 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							sourceTable: getTableName(queryToRun)
 						})
 
-						// Drizzle queries may also mutate data (insert, update, delete)
+						// Drizzle queries may also mutate data (insert, update, delete).
 						const lowerQuery = queryToRun.toLowerCase()
-						if (lowerQuery.includes('.insert') || lowerQuery.includes('.update') || lowerQuery.includes('.delete')) {
+						const mutatesData =
+							lowerQuery.includes('.insert') ||
+							lowerQuery.includes('.update') ||
+							lowerQuery.includes('.delete')
+						if (mutatesData) {
 							clearTableDataCache()
+						}
+
+						const changesRowCount =
+							lowerQuery.includes('.insert') || lowerQuery.includes('.delete')
+						if (changesRowCount) {
+							window.dispatchEvent(
+								new CustomEvent('dora-schema-refresh', {
+									detail: { connectionId: activeConnectionId }
+								})
+							)
 						}
 					} else {
 						throw new Error(getAdapterError(res))
@@ -354,8 +393,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 			currentDrizzleQuery,
 			isExecuting,
 			activeConnectionId,
-			adapter,
-			refreshSchema
+			adapter
 		]
 	)
 

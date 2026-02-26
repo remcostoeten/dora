@@ -126,6 +126,29 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             stability: CommandStability::Stable,
             side_effects: vec![],
         },
+        CommandDefinition {
+            name: "start_live_monitor",
+            description: "Start backend live monitoring for a specific table.",
+            arguments: vec![
+                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Active connection ID", optional: false },
+                CommandArgument { name: "table_name", arg_type: "String", description: "Target table", optional: false },
+                CommandArgument { name: "interval_ms", arg_type: "u64", description: "Polling interval in milliseconds", optional: false },
+                CommandArgument { name: "change_types", arg_type: "Vec<LiveMonitorChangeType>", description: "Change types to emit", optional: false },
+            ],
+            return_type: "Result<LiveMonitorSession, Error>",
+            stability: CommandStability::Experimental,
+            side_effects: vec!["Spawns monitor background task", "Emits live monitor events"],
+        },
+        CommandDefinition {
+            name: "stop_live_monitor",
+            description: "Stop a backend live monitor session.",
+            arguments: vec![
+                CommandArgument { name: "monitor_id", arg_type: "String", description: "Monitor session ID", optional: false },
+            ],
+            return_type: "Result<(), Error>",
+            stability: CommandStability::Experimental,
+            side_effects: vec!["Stops monitor background task"],
+        },
         // Mutation Commands
         CommandDefinition {
             name: "insert_row",

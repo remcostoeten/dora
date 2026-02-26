@@ -224,6 +224,22 @@ async getQueryHistory(connectionId: string, limit: number | null) : Promise<Resu
     else return { status: "error", error: e  as any };
 }
 },
+async startLiveMonitor(connectionId: string, tableName: string, intervalMs: number, changeTypes: LiveMonitorChangeType[]) : Promise<Result<LiveMonitorSession, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("start_live_monitor", { connectionId, tableName, intervalMs, changeTypes }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async stopLiveMonitor(monitorId: string) : Promise<Result<null, any>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("stop_live_monitor", { monitorId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async getRecentQueries(connectionId: string | null, limit: number | null, statusFilter: string | null) : Promise<Result<QueryHistoryEntry[], any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_recent_queries", { connectionId, limit, statusFilter }) };
@@ -692,6 +708,8 @@ referenced_column: string;
 referenced_schema: string }
 export type IndexInfo = { name: string; column_names: string[]; is_unique: boolean; is_primary: boolean }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
+export type LiveMonitorChangeType = "insert" | "update" | "delete"
+export type LiveMonitorSession = { monitorId: string; eventName: string }
 /**
  * Result of a mutation operation
  */

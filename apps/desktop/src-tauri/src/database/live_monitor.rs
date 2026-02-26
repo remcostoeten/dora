@@ -691,11 +691,47 @@ fn build_change_event(
 }
 
 fn split_table_reference(table_name: &str) -> Result<(Option<String>, String), Error> {
-    let mut parts = table_name
-        .split('.')
-        .map(normalize_identifier)
-        .collect::<Vec<_>>();
-    parts.retain(|part| !part.is_empty());
+    let mut parts = Vec::new();
+    let mut current = String::new();
+    let mut chars = table_name.chars().peekable();
+    let mut in_quotes = false;
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' => {
+                if in_quotes {
+                    if chars.peek() == Some(&'"') {
+                        current.push('"');
+                        let _ = chars.next();
+                    } else {
+                        in_quotes = false;
+                    }
+                } else {
+                    in_quotes = true;
+                }
+            }
+            '.' if !in_quotes => {
+                let part = current.trim();
+                if !part.is_empty() {
+                    parts.push(part.to_string());
+                }
+                current.clear();
+            }
+            _ => current.push(ch),
+        }
+    }
+
+    if in_quotes {
+        return Err(Error::Any(anyhow::anyhow!(
+            "Invalid table reference (unclosed quote): {}",
+            table_name
+        )));
+    }
+
+    let part = current.trim();
+    if !part.is_empty() {
+        parts.push(part.to_string());
+    }
 
     match parts.as_slice() {
         [table] => Ok((None, table.clone())),
@@ -704,15 +740,6 @@ fn split_table_reference(table_name: &str) -> Result<(Option<String>, String), E
             "Invalid table reference: {}",
             table_name
         ))),
-    }
-}
-
-fn normalize_identifier(part: &str) -> String {
-    let trimmed = part.trim();
-    if trimmed.starts_with('"') && trimmed.ends_with('"') && trimmed.len() >= 2 {
-        trimmed[1..trimmed.len() - 1].replace("\"\"", "\"")
-    } else {
-        trimmed.to_string()
     }
 }
 
@@ -730,5 +757,119 @@ fn quote_table_reference(table_name: &str) -> Result<String, Error> {
         ))
     } else {
         Ok(quote_identifier(&table))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn make_snapshot(
+        columns: Vec<&str>,
+        pk_columns: Vec<&str>,
+        rows: Vec<Vec<serde_json::Value>>,
+    ) -> TableSnapshot {
+        build_snapshot(
+            columns
+                .into_iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+            pk_columns
+                .into_iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
+            rows,
+        )
+    }
+
+    #[test]
+    fn diff_with_primary_key_detects_insert_update_delete() {
+        let previous = make_snapshot(
+            vec!["id", "name"],
+            vec!["id"],
+            vec![vec![json!(1), json!("Alice")], vec![json!(2), json!("Bob")]],
+        );
+        let current = make_snapshot(
+            vec!["id", "name"],
+            vec!["id"],
+            vec![vec![json!(2), json!("Bobby")], vec![json!(3), json!("Cara")]],
+        );
+
+        let events = diff_snapshots(
+            &previous,
+            &current,
+            "users",
+            &[
+                LiveMonitorChangeType::Insert,
+                LiveMonitorChangeType::Update,
+                LiveMonitorChangeType::Delete,
+            ],
+        );
+
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[0].change_type, LiveMonitorChangeType::Insert);
+        assert_eq!(events[0].row_count, 1);
+        assert_eq!(events[1].change_type, LiveMonitorChangeType::Update);
+        assert_eq!(events[1].row_count, 1);
+        assert_eq!(events[2].change_type, LiveMonitorChangeType::Delete);
+        assert_eq!(events[2].row_count, 1);
+    }
+
+    #[test]
+    fn diff_respects_change_type_subscription() {
+        let previous = make_snapshot(
+            vec!["id", "name"],
+            vec!["id"],
+            vec![vec![json!(1), json!("Alice")]],
+        );
+        let current = make_snapshot(
+            vec!["id", "name"],
+            vec!["id"],
+            vec![vec![json!(1), json!("Alice")], vec![json!(2), json!("Bob")]],
+        );
+
+        let events = diff_snapshots(&previous, &current, "users", &[LiveMonitorChangeType::Insert]);
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].change_type, LiveMonitorChangeType::Insert);
+        assert_eq!(events[0].row_count, 1);
+    }
+
+    #[test]
+    fn diff_without_primary_key_uses_multiset_fallback() {
+        let previous = make_snapshot(
+            vec!["name"],
+            vec![],
+            vec![vec![json!("Alice")], vec![json!("Bob")]],
+        );
+        let current = make_snapshot(
+            vec!["name"],
+            vec![],
+            vec![vec![json!("Alice")], vec![json!("Cara")]],
+        );
+
+        let events = diff_snapshots(
+            &previous,
+            &current,
+            "users",
+            &[
+                LiveMonitorChangeType::Insert,
+                LiveMonitorChangeType::Update,
+                LiveMonitorChangeType::Delete,
+            ],
+        );
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].change_type, LiveMonitorChangeType::Update);
+        assert_eq!(events[0].row_count, 1);
+    }
+
+    #[test]
+    fn split_table_reference_handles_quoted_schema_and_table() {
+        let (schema, table) =
+            split_table_reference("\"public\".\"user.table\"").expect("reference should parse");
+        assert_eq!(schema.as_deref(), Some("public"));
+        assert_eq!(table, "user.table");
     }
 }

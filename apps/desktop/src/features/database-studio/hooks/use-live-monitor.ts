@@ -37,6 +37,7 @@ type LiveMonitorState = {
 		config: LiveMonitorConfig | ((prev: LiveMonitorConfig) => LiveMonitorConfig)
 	) => void
 	isPolling: boolean
+	monitorError: string | null
 	changeEvents: ChangeEvent[]
 	clearEvents: () => void
 	lastPolledAt: number | null
@@ -83,6 +84,7 @@ export function useLiveMonitor({
 }: LiveMonitorParams): LiveMonitorState {
 	const [config, setConfig] = useState<LiveMonitorConfig>(DEFAULT_LIVE_MONITOR_CONFIG)
 	const [isPolling, setIsPolling] = useState(false)
+	const [monitorError, setMonitorError] = useState<string | null>(null)
 	const [changeEvents, setChangeEvents] = useState<ChangeEvent[]>([])
 	const [lastPolledAt, setLastPolledAt] = useState<number | null>(null)
 	const [unreadCount, setUnreadCount] = useState(0)
@@ -126,14 +128,16 @@ export function useLiveMonitor({
 
 					setLastPolledAt(payload.polledAt)
 
-					if (payload.error) {
-						console.error('[LiveMonitor] Backend monitor error:', payload.error)
-						return
-					}
+						if (payload.error) {
+							console.error('[LiveMonitor] Backend monitor error:', payload.error)
+							setMonitorError(payload.error)
+							return
+						}
+						setMonitorError(null)
 
-					if (!payload.events || payload.events.length === 0) {
-						return
-					}
+						if (!payload.events || payload.events.length === 0) {
+							return
+						}
 
 					setChangeEvents(function (prev) {
 						const combined = [...payload.events, ...prev]
@@ -186,10 +190,12 @@ export function useLiveMonitor({
 					Boolean(tableName)
 
 				if (!shouldMonitor) {
+					setMonitorError(null)
 					return
 				}
 
 				try {
+					setMonitorError(null)
 					const session = await invoke<LiveMonitorSession>('start_live_monitor', {
 						connectionId,
 						tableName,
@@ -206,6 +212,7 @@ export function useLiveMonitor({
 					setIsPolling(true)
 				} catch (error) {
 					console.error('[LiveMonitor] Failed to start monitor:', error)
+					setMonitorError(error instanceof Error ? error.message : String(error))
 					setIsPolling(false)
 				}
 			}
@@ -242,6 +249,7 @@ export function useLiveMonitor({
 		config,
 		setConfig,
 		isPolling,
+		monitorError,
 		changeEvents,
 		clearEvents,
 		lastPolledAt,

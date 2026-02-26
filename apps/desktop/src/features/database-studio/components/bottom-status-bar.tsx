@@ -15,6 +15,7 @@ type Props = {
 	liveMonitorIntervalMs?: number
 	lastPolledAt?: number | null
 	changesDetected?: number
+	liveMonitorError?: string | null
 }
 
 export function BottomStatusBar({
@@ -26,7 +27,8 @@ export function BottomStatusBar({
 	liveMonitorEnabled,
 	liveMonitorIntervalMs,
 	lastPolledAt,
-	changesDetected
+	changesDetected,
+	liveMonitorError
 }: Props) {
 	const [limitInput, setLimitInput] = useState(String(pagination.limit))
 	const [offsetInput, setOffsetInput] = useState(String(pagination.offset))
@@ -87,14 +89,20 @@ export function BottomStatusBar({
 									: 'bg-muted-foreground/40'
 							)} />
 							{liveMonitorEnabled ? (
-								<span>
-									Live · {(liveMonitorIntervalMs || 5000) / 1000}s
-									{lastPolledAt && (
-										<span className='ml-1 opacity-60'>
-											· {new Date(lastPolledAt).toLocaleTimeString()}
-										</span>
-									)}
-								</span>
+								liveMonitorError ? (
+									<span className='text-red-400' title={liveMonitorError}>
+										Live error
+									</span>
+								) : (
+									<span>
+										Live · {(liveMonitorIntervalMs || 5000) / 1000}s
+										{lastPolledAt && (
+											<span className='ml-1 opacity-60'>
+												· {new Date(lastPolledAt).toLocaleTimeString()}
+											</span>
+										)}
+									</span>
+								)
 							) : (
 								<span>Monitor off</span>
 							)}

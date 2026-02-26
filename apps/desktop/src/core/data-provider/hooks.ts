@@ -3,6 +3,28 @@ import type { SortDescriptor, FilterDescriptor } from '@/features/database-studi
 import { useAdapter } from './context'
 import { getAdapterError } from './types'
 
+const schemaRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+function scheduleSchemaRefresh(connectionId: string) {
+	if (typeof window === 'undefined' || !connectionId) return
+
+	const existingTimer = schemaRefreshTimers.get(connectionId)
+	if (existingTimer) {
+		clearTimeout(existingTimer)
+	}
+
+	const timer = setTimeout(function emitSchemaRefreshEvent() {
+		schemaRefreshTimers.delete(connectionId)
+		window.dispatchEvent(
+			new CustomEvent('dora-schema-refresh', {
+				detail: { connectionId }
+			})
+		)
+	}, 150)
+
+	schemaRefreshTimers.set(connectionId, timer)
+}
+
 export function useConnections() {
 	const adapter = useAdapter()
 
@@ -245,6 +267,7 @@ export function useDataMutation() {
 			queryClient.invalidateQueries({
 				queryKey: ['tableData', variables.connectionId, variables.tableName]
 			})
+			scheduleSchemaRefresh(variables.connectionId)
 		}
 	})
 
@@ -266,6 +289,7 @@ export function useDataMutation() {
 			queryClient.invalidateQueries({
 				queryKey: ['tableData', variables.connectionId, variables.tableName]
 			})
+			scheduleSchemaRefresh(variables.connectionId)
 		}
 	})
 
