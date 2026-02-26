@@ -102,7 +102,9 @@ pub fn run() {
 
             let handle = app.handle();
             let monitor = ConnectionMonitor::new(handle.clone());
+            let live_monitor = crate::database::LiveMonitorManager::new(handle.clone());
             handle.manage(monitor);
+            handle.manage(live_monitor);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -124,6 +126,8 @@ pub fn run() {
             database::commands::initialize_connections,
             database::commands::save_query_to_history,
             database::commands::get_query_history,
+            database::commands::start_live_monitor,
+            database::commands::stop_live_monitor,
             database::commands::get_database_schema,
             database::commands::save_script,
             database::commands::update_script,

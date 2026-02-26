@@ -3,6 +3,7 @@ use tauri::State;
 
 use crate::{
     database::{
+        live_monitor::{LiveMonitorChangeType, LiveMonitorSession},
         services::{
             connection::ConnectionService,
             query::QueryService,
@@ -98,7 +99,10 @@ pub async fn connect_to_database(
 pub async fn disconnect_from_database(
     connection_id: Uuid,
     state: State<'_, AppState>,
+    live_monitor: State<'_, crate::database::LiveMonitorManager>,
 ) -> Result<(), Error> {
+    live_monitor.stop_monitors_for_connection(connection_id);
+
     let svc = ConnectionService {
         connections: &state.connections,
         storage: &state.storage,
@@ -381,6 +385,33 @@ pub async fn get_recent_queries(
         stmt_manager: &state.stmt_manager,
     };
     svc.get_recent_queries(connection_id, limit, status_filter).await
+}
+
+// =============================================================================
+// Live Monitor Commands
+// =============================================================================
+
+#[tauri::command]
+#[specta::specta]
+pub async fn start_live_monitor(
+    connection_id: Uuid,
+    table_name: String,
+    interval_ms: u64,
+    change_types: Vec<LiveMonitorChangeType>,
+    live_monitor: State<'_, crate::database::LiveMonitorManager>,
+) -> Result<LiveMonitorSession, Error> {
+    live_monitor.stop_monitor_for_table(connection_id, &table_name);
+    live_monitor.start_monitor(connection_id, table_name, interval_ms, change_types)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn stop_live_monitor(
+    monitor_id: String,
+    live_monitor: State<'_, crate::database::LiveMonitorManager>,
+) -> Result<(), Error> {
+    live_monitor.stop_monitor(&monitor_id);
+    Ok(())
 }
 
 

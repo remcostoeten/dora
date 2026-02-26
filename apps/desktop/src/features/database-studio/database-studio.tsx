@@ -368,14 +368,8 @@ export function DatabaseStudio({
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
 
 	const liveMonitor = useLiveMonitor({
-		adapter,
 		connectionId: activeConnectionId,
 		tableName: tableName || tableId,
-		tableData,
-		sort,
-		filters,
-		paginationLimit: pagination.limit,
-		paginationOffset: pagination.offset,
 		isPaused: draftRow !== null || isApplyingEdits,
 		onDataChanged: loadTableData
 	})

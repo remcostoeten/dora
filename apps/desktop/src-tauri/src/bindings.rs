@@ -1,8 +1,8 @@
 use tauri_specta::{collect_commands, Builder};
 
 pub fn generate_bindings() -> Builder<tauri::Wry> {
-    use crate::window::commands as window_commands;
     use crate::database::commands as db_commands;
+    use crate::window::commands as window_commands;
 
     Builder::<tauri::Wry>::new().commands(collect_commands![
         // Window commands
@@ -12,7 +12,6 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         window_commands::open_sqlite_db,
         window_commands::save_sqlite_db,
         window_commands::open_file,
-
         // Database commands
         db_commands::add_connection,
         db_commands::update_connection,
@@ -35,6 +34,8 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::get_columns,
         db_commands::save_query_to_history,
         db_commands::get_query_history,
+        db_commands::start_live_monitor,
+        db_commands::stop_live_monitor,
         db_commands::get_recent_queries,
         db_commands::save_script,
         db_commands::update_script,
