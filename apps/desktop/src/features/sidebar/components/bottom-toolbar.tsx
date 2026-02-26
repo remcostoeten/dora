@@ -1,4 +1,4 @@
-import { Info, Sun, Moon, ChevronRight } from 'lucide-react'
+import { Info, Sun, Moon, ChevronRight, Settings, Sparkles } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import {
 	getAppearanceSettings,
@@ -10,9 +10,12 @@ import { Button } from '@/shared/ui/button'
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import { AppearancePanel } from './appearance-panel'
+import { ChangelogPanel } from './changelog-panel'
 import { ProjectInfoPanel } from './project-info-panel'
+import { SettingsPanel } from './settings-panel'
+import { CURRENT_VERSION } from '../changelog-data'
 
-type ToolbarAction = 'project-info' | 'theme'
+type ToolbarAction = 'project-info' | 'theme' | 'settings' | 'changelog'
 
 type ToolbarItem = {
 	id: ToolbarAction
@@ -23,7 +26,9 @@ type ToolbarItem = {
 const LIGHT_THEMES: Theme[] = ['light', 'claude']
 
 const TOOLBAR_ITEMS: ToolbarItem[] = [
+	{ id: 'changelog', icon: Sparkles, label: "What's new" },
 	{ id: 'project-info', icon: Info, label: 'Project Info' },
+	{ id: 'settings', icon: Settings, label: 'Settings' },
 	{ id: 'theme', icon: Sun, label: 'Appearance' }
 ]
 
@@ -62,6 +67,39 @@ export function BottomToolbar({ onAction }: Props) {
 	return (
 		<div className='flex items-center justify-end px-2 h-8 border-t border-sidebar-border mt-auto gap-1'>
 			{TOOLBAR_ITEMS.map(function (item) {
+				if (item.id === 'changelog') {
+					return (
+						<Popover key={item.id}>
+							<PopoverTrigger asChild>
+								<div>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												variant='ghost'
+												size='icon'
+												className='h-6 w-6 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent'
+											>
+												<item.icon className='h-4 w-4' />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent side='top' className='text-xs'>
+											What's new (v{CURRENT_VERSION})
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</PopoverTrigger>
+							<PopoverContent
+								side='right'
+								align='end'
+								sideOffset={16}
+								className='w-[340px] p-0 mb-2 ml-2 h-[500px]'
+							>
+								<ChangelogPanel />
+							</PopoverContent>
+						</Popover>
+					)
+				}
+
 				if (item.id === 'project-info') {
 					return (
 						<Popover key={item.id}>
@@ -134,6 +172,39 @@ export function BottomToolbar({ onAction }: Props) {
 								className='w-[520px] p-0 mb-2 ml-2'
 							>
 								<AppearancePanel />
+							</PopoverContent>
+						</Popover>
+					)
+				}
+
+				if (item.id === 'settings') {
+					return (
+						<Popover key={item.id}>
+							<PopoverTrigger asChild>
+								<div>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<Button
+												variant='ghost'
+												size='icon'
+												className='h-6 w-6 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent'
+											>
+												<item.icon className='h-4 w-4' />
+											</Button>
+										</TooltipTrigger>
+										<TooltipContent side='top' className='text-xs'>
+											{item.label}
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</PopoverTrigger>
+							<PopoverContent
+								side='right'
+								align='end'
+								sideOffset={16}
+								className='w-[360px] p-0 mb-2 ml-2 max-h-[var(--radix-popover-content-available-height)] overflow-hidden'
+							>
+								<SettingsPanel />
 							</PopoverContent>
 						</Popover>
 					)

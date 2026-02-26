@@ -1,4 +1,15 @@
-import { Plus, Search, Container, AlertTriangle, ArrowDown, ArrowUp, Activity, HeartPulse } from 'lucide-react'
+import {
+	Plus,
+	Search,
+	Container,
+	AlertTriangle,
+	ArrowDown,
+	ArrowUp,
+	Activity,
+	HeartPulse,
+	TerminalSquare,
+	X
+} from 'lucide-react'
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { useToast } from '@/components/ui/use-toast'
@@ -16,6 +27,7 @@ import {
 import type { PostgresContainerConfig, DockerContainer } from '../types'
 import { ContainerDetailsPanel } from './container-details-panel'
 import { ContainerList } from './container-list'
+import { ContainerTerminal } from './container-terminal'
 import { CreateContainerDialog } from './create-container-dialog'
 import { SandboxIndicator } from './sandbox-indicator'
 import {
@@ -50,6 +62,8 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
 	const [sortBy, setSortBy] = useState<SortField>('name')
 	const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+	const [terminalContainerId, setTerminalContainerId] = useState<string | null>(null)
+	const [isTerminalPanelOpen, setIsTerminalPanelOpen] = useState(false)
 
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const { toast } = useToast()
@@ -151,6 +165,19 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		},
 		[selectedContainerId, visibleContainers]
 	)
+	const terminalContainer = useMemo(
+		function () {
+			if (!terminalContainerId) {
+				return null
+			}
+			return (
+				allContainers.find(function (container) {
+					return container.id === terminalContainerId
+				}) ?? null
+			)
+		},
+		[allContainers, terminalContainerId]
+	)
 
 	const containerSummary = useMemo(function () {
 		const runningCount = visibleContainers.filter(function (container) {
@@ -212,8 +239,25 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		containerActions.mutate({ containerId: id, action: 'restart' })
 	}
 
+	function handleOpenContainerInDataViewer(container: DockerContainer) {
+		setSelectedContainerId(container.id)
+		if (onOpenInDataViewer) {
+			onOpenInDataViewer(container)
+		}
+	}
+
 	function handleSelectContainer(id: string) {
 		setSelectedContainerId(id)
+	}
+
+	function handleOpenTerminal(container: DockerContainer) {
+		setSelectedContainerId(container.id)
+		setTerminalContainerId(container.id)
+		setIsTerminalPanelOpen(true)
+	}
+
+	function handleCloseTerminalPanel() {
+		setIsTerminalPanelOpen(false)
 	}
 
 	function handleRemoveComplete() {
@@ -224,6 +268,23 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		setSearchQuery('')
 		searchInputRef.current?.focus()
 	}
+
+	useEffect(
+		function keepTerminalContainerInSync() {
+			if (!terminalContainerId) {
+				return
+			}
+
+			const stillExists = allContainers.some(function (container) {
+				return container.id === terminalContainerId
+			})
+			if (!stillExists) {
+				setTerminalContainerId(null)
+				setIsTerminalPanelOpen(false)
+			}
+		},
+		[allContainers, terminalContainerId]
+	)
 
 	if (isCheckingDocker) {
 		return (
@@ -431,25 +492,55 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 				</Button>
 			</div>
 
-			<div className='flex-1 flex overflow-hidden'>
-				<ContainerList
-					containers={filteredContainers}
-					selectedContainerId={selectedContainerId}
-					onSelectContainer={handleSelectContainer}
-					onStartContainer={handleQuickStart}
-					onStopContainer={handleQuickStop}
-					onRestartContainer={handleQuickRestart}
-					isActionPending={containerActions.isPending}
-					isLoading={isLoadingContainers}
-					searchQuery={searchQuery}
-					onClearSearch={handleClearSearch}
-				/>
+			<div className='flex-1 min-h-0 flex flex-col overflow-hidden'>
+				<div className='flex-1 min-h-0 flex overflow-hidden'>
+					<ContainerList
+						containers={filteredContainers}
+						selectedContainerId={selectedContainerId}
+						onSelectContainer={handleSelectContainer}
+						onStartContainer={handleQuickStart}
+						onStopContainer={handleQuickStop}
+						onRestartContainer={handleQuickRestart}
+						onOpenContainerInDataViewer={handleOpenContainerInDataViewer}
+						isActionPending={containerActions.isPending}
+						isLoading={isLoadingContainers}
+						searchQuery={searchQuery}
+						onClearSearch={handleClearSearch}
+					/>
 
-				<ContainerDetailsPanel
-					container={selectedContainer}
-					onOpenInDataViewer={onOpenInDataViewer}
-					onRemoveComplete={handleRemoveComplete}
-				/>
+					<ContainerDetailsPanel
+						container={selectedContainer}
+						onOpenInDataViewer={onOpenInDataViewer}
+						onOpenTerminal={handleOpenTerminal}
+						onRemoveComplete={handleRemoveComplete}
+					/>
+				</div>
+
+				{isTerminalPanelOpen && terminalContainer && (
+					<div className='h-72 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70'>
+						<div className='h-9 border-b border-border px-3 flex items-center justify-between'>
+							<div className='flex items-center gap-2 min-w-0'>
+								<TerminalSquare className='h-4 w-4 text-muted-foreground' />
+								<span className='text-sm font-medium'>Terminal</span>
+								<span className='text-xs text-muted-foreground truncate'>
+									{terminalContainer.name}
+								</span>
+							</div>
+							<Button
+								type='button'
+								size='icon-sm'
+								variant='ghost'
+								onClick={handleCloseTerminalPanel}
+								aria-label='Close terminal panel'
+							>
+								<X className='h-4 w-4' />
+							</Button>
+						</div>
+						<div className='h-[calc(100%-2.25rem)] p-3'>
+							<ContainerTerminal container={terminalContainer} enabled={isTerminalPanelOpen} />
+						</div>
+					</div>
+				)}
 			</div>
 
 			<CreateContainerDialog

@@ -34,6 +34,7 @@ import { SelectionActionBar } from './components/selection-action-bar'
 import { SetNullDialog } from './components/set-null-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
 import { DataSeederDialog } from './data-seeder-dialog'
+import { useLiveMonitor } from './hooks/use-live-monitor'
 import {
 	ColumnDefinition,
 	FilterDescriptor,
@@ -365,6 +366,19 @@ export function DatabaseStudio({
 	)
 
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
+
+	const liveMonitor = useLiveMonitor({
+		adapter,
+		connectionId: activeConnectionId,
+		tableName: tableName || tableId,
+		tableData,
+		sort,
+		filters,
+		paginationLimit: pagination.limit,
+		paginationOffset: pagination.offset,
+		isPaused: draftRow !== null || isApplyingEdits,
+		onDataChanged: loadTableData
+	})
 
 	useEffect(function handleTableChange() {
 		if (!tableId || !activeConnectionId) return
@@ -1152,6 +1166,85 @@ export function DatabaseStudio({
 		return defaults
 	}
 
+	function normalizeValueForInsert(column: ColumnDefinition, value: unknown): unknown {
+		const type = column.type.toLowerCase()
+		const isIntegerType = type.includes('int') || type.includes('serial')
+		const isFloatType =
+			type.includes('float') ||
+			type.includes('double') ||
+			type.includes('decimal') ||
+			type.includes('numeric')
+		const isBooleanType = type.includes('bool')
+		const isJsonType = type.includes('json')
+
+		if (value === null || value === undefined) {
+			return column.nullable ? null : value
+		}
+
+		if (typeof value === 'string') {
+			const trimmed = value.trim()
+
+			if (trimmed === '') {
+				if (column.nullable) return null
+				if (isIntegerType || isFloatType) return 0
+				if (isBooleanType) return false
+				return ''
+			}
+
+			if (isIntegerType) {
+				const parsed = Number.parseInt(trimmed, 10)
+				return Number.isNaN(parsed) ? (column.nullable ? null : 0) : parsed
+			}
+
+			if (isFloatType) {
+				const parsed = Number.parseFloat(trimmed)
+				return Number.isNaN(parsed) ? (column.nullable ? null : 0) : parsed
+			}
+
+			if (isBooleanType) {
+				const normalized = trimmed.toLowerCase()
+				return (
+					normalized === 'true' ||
+					normalized === '1' ||
+					normalized === 't' ||
+					normalized === 'yes' ||
+					normalized === 'on'
+				)
+			}
+
+			if (isJsonType) {
+				try {
+					return JSON.parse(trimmed)
+				} catch {
+					return trimmed
+				}
+			}
+
+			return value
+		}
+
+		return value
+	}
+
+	function normalizeRowForInsert(
+		rowData: Record<string, unknown>,
+		columns: ColumnDefinition[]
+	): Record<string, unknown> {
+		const byName = new Map(
+			columns.map(function (column) {
+				return [column.name, column] as const
+			})
+		)
+		const normalized: Record<string, unknown> = {}
+
+		for (const [key, value] of Object.entries(rowData)) {
+			const column = byName.get(key)
+			normalized[key] = column ? normalizeValueForInsert(column, value) : value
+		}
+
+		return normalized
+	}
+
 	function handleAddRecord() {
 		if (!tableData) return
 		const defaults = createDefaultValues(tableData.columns)
@@ -1167,13 +1260,14 @@ export function DatabaseStudio({
 	}
 
 	function handleDraftSave() {
-		if (!activeConnectionId || !tableId || !draftRow) return
+		if (!activeConnectionId || !tableId || !draftRow || !tableData) return
+		const normalizedDraftRow = normalizeRowForInsert(draftRow, tableData.columns)
 
 		insertRow.mutate(
 			{
 				connectionId: activeConnectionId,
 				tableName: tableName || tableId,
-				rowData: draftRow
+				rowData: normalizedDraftRow
 			},
 			{
 				onSuccess: function onInsertSuccess() {
@@ -1199,13 +1293,14 @@ export function DatabaseStudio({
 	}
 
 	function handleAddRecordSubmit(rowData: Record<string, unknown>) {
-		if (!activeConnectionId || !tableId) return
+		if (!activeConnectionId || !tableId || !tableData) return
+		const normalizedRowData = normalizeRowForInsert(rowData, tableData.columns)
 
 		insertRow.mutate(
 			{
 				connectionId: activeConnectionId,
 				tableName: tableName || tableId,
-				rowData
+				rowData: normalizedRowData
 			},
 			{
 				onSuccess: function onInsertSuccess() {
@@ -1505,6 +1600,13 @@ export function DatabaseStudio({
 					isLoading={isLoading}
 					onCopySchema={handleCopySchema}
 					onCopyDrizzleSchema={handleCopyDrizzleSchema}
+					liveMonitorConfig={liveMonitor.config}
+					onLiveMonitorConfigChange={liveMonitor.setConfig}
+					isLiveMonitorPolling={liveMonitor.isPolling}
+					changeEvents={liveMonitor.changeEvents}
+					unreadChangeCount={liveMonitor.unreadCount}
+					onClearChangeEvents={liveMonitor.clearEvents}
+					onMarkChangesRead={liveMonitor.markRead}
 				/>
 
 				<div className='flex-1 overflow-auto p-4'>
@@ -1591,6 +1693,10 @@ export function DatabaseStudio({
 					rowCount={tableData.rows.length}
 					totalCount={tableData.totalCount}
 					executionTime={tableData.executionTime}
+					liveMonitorEnabled={liveMonitor.config.enabled}
+					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
+					lastPolledAt={liveMonitor.lastPolledAt}
+					changesDetected={liveMonitor.unreadCount}
 				/>
 
 				<AddColumnDialog
@@ -1644,6 +1750,13 @@ export function DatabaseStudio({
 				onDryEditModeChange={setDryEditMode}
 				onCopySchema={handleCopySchema}
 				onCopyDrizzleSchema={handleCopyDrizzleSchema}
+				liveMonitorConfig={liveMonitor.config}
+				onLiveMonitorConfigChange={liveMonitor.setConfig}
+				isLiveMonitorPolling={liveMonitor.isPolling}
+				changeEvents={liveMonitor.changeEvents}
+				unreadChangeCount={liveMonitor.unreadCount}
+				onClearChangeEvents={liveMonitor.clearEvents}
+				onMarkChangesRead={liveMonitor.markRead}
 			/>
 
 			<div
@@ -1728,6 +1841,10 @@ export function DatabaseStudio({
 					rowCount={tableData.rows.length}
 					totalCount={tableData.totalCount}
 					executionTime={tableData.executionTime}
+					liveMonitorEnabled={liveMonitor.config.enabled}
+					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
+					lastPolledAt={liveMonitor.lastPolledAt}
+					changesDetected={liveMonitor.unreadCount}
 				/>
 			)}
 

@@ -1,4 +1,4 @@
-import { CONTAINER_PREFIX, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from '../constants'
+import { MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from '../constants'
 import type {
 	DockerContainer,
 	DockerAvailability,
@@ -14,7 +14,7 @@ import { generateVolumeName } from '../utilities/container-naming'
 let demoContainers: DockerContainer[] = [
 	{
 		id: 'a1b2c3d4e5f6',
-		name: `${CONTAINER_PREFIX}analytics_db`,
+		name: 'analytics_db',
 		image: 'postgres',
 		imageTag: '16',
 		state: 'running',
@@ -28,7 +28,7 @@ let demoContainers: DockerContainer[] = [
 	},
 	{
 		id: 'b2c3d4e5f6a7',
-		name: `${CONTAINER_PREFIX}dev_postgres`,
+		name: 'dev_postgres',
 		image: 'postgres',
 		imageTag: '17',
 		state: 'running',
@@ -42,7 +42,7 @@ let demoContainers: DockerContainer[] = [
 	},
 	{
 		id: 'c3d4e5f6a7b8',
-		name: `${CONTAINER_PREFIX}test_ephemeral`,
+		name: 'test_ephemeral',
 		image: 'postgres',
 		imageTag: '16',
 		state: 'exited',
@@ -142,7 +142,7 @@ export async function createPostgresContainer(
 	const containerId = `demo_${nextId++}`
 	const container: DockerContainer = {
 		id: containerId,
-		name: config.name.startsWith(CONTAINER_PREFIX) ? config.name : `${CONTAINER_PREFIX}${config.name}`,
+		name: config.name,
 		image: 'postgres',
 		imageTag: config.postgresVersion || '16',
 		state: 'running',

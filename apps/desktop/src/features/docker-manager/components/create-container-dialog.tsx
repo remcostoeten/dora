@@ -18,8 +18,7 @@ import {
 	DEFAULT_POSTGRES_VERSION,
 	DEFAULT_POSTGRES_USER,
 	DEFAULT_POSTGRES_PASSWORD,
-	DEFAULT_POSTGRES_DATABASE,
-	CONTAINER_PREFIX
+	DEFAULT_POSTGRES_DATABASE
 } from '../constants'
 import type { PostgresContainerConfig, DockerContainer } from '../types'
 import {
@@ -125,14 +124,14 @@ export function CreateContainerDialog({
 			memoryLimitMb: memoryLimit
 		}
 
+		onOpenChange(false)
+		resetForm()
 		onSubmit(config)
 	}
 
 	function handleClose() {
-		if (!isSubmitting) {
-			onOpenChange(false)
-			resetForm()
-		}
+		onOpenChange(false)
+		resetForm()
 	}
 
 	function resetForm() {
@@ -169,12 +168,10 @@ export function CreateContainerDialog({
 							onChange={function (e) {
 								handleNameChange(e.target.value)
 							}}
-							placeholder={`${CONTAINER_PREFIX}my_database`}
+							placeholder='my_database'
 						/>
 						{nameError && <p className='text-xs text-destructive'>{nameError}</p>}
-						<p className='text-xs text-muted-foreground'>
-							Prefix &quot;{CONTAINER_PREFIX}&quot; is required
-						</p>
+						<p className='text-xs text-muted-foreground'>Use lowercase letters, numbers, `_` or `-`.</p>
 					</div>
 
 					<div className='space-y-2'>
@@ -294,7 +291,7 @@ export function CreateContainerDialog({
 
 					{!ephemeral && (
 						<p className='text-xs text-muted-foreground px-2 py-1.5 bg-muted/50 rounded'>
-							Volume: {generateVolumeName(name || `${CONTAINER_PREFIX}container`)}
+							Volume: {generateVolumeName(name || 'container')}
 						</p>
 					)}
 
@@ -363,7 +360,6 @@ export function CreateContainerDialog({
 							type='button'
 							variant='outline'
 							onClick={handleClose}
-							disabled={isSubmitting}
 						>
 							Cancel
 						</Button>

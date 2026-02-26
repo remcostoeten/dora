@@ -1,4 +1,3 @@
-import { Sparkles } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { commands, DatabaseInfo } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
@@ -325,24 +324,14 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-[560px] max-h-[85vh] flex flex-col glass border-border/50 p-0 gap-0 overflow-hidden'>
-				<DialogHeader className='px-6 py-5 border-b border-border/50'>
-					<div className='flex items-center gap-3'>
-						<div className='relative'>
-							<div className='p-2.5 bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl border border-primary/20'>
-								<Sparkles className='h-5 w-5 text-primary' />
-							</div>
-							<div className='absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 bg-primary rounded-full animate-pulse' />
-						</div>
-						<div>
-							<DialogTitle className='text-lg font-semibold'>
-								{initialValues ? 'Edit Connection' : 'New Connection'}
-							</DialogTitle>
-							<DialogDescription className='text-sm text-muted-foreground'>
-								Configure your database connection
-							</DialogDescription>
-						</div>
-					</div>
+			<DialogContent className='sm:max-w-[560px] max-h-[85vh] flex flex-col border-border bg-card p-0 gap-0 overflow-hidden shadow-xl'>
+				<DialogHeader className='px-6 py-5 border-b border-border bg-card'>
+					<DialogTitle className='text-lg font-semibold'>
+						{initialValues ? 'Edit Connection' : 'New Connection'}
+					</DialogTitle>
+					<DialogDescription className='text-sm text-muted-foreground'>
+						Configure your database connection
+					</DialogDescription>
 				</DialogHeader>
 
 				<div className='flex-1 overflow-y-auto p-6 space-y-5'>
@@ -401,7 +390,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 					)}
 				</div>
 
-				<DialogFooter className='px-6 py-4 border-t border-border/50 bg-muted/50'>
+				<DialogFooter className='px-6 py-4 border-t border-border bg-muted'>
 					<div className='flex items-center justify-between w-full'>
 						<Button
 							type='button'

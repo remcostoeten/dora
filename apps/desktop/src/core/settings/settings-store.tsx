@@ -18,6 +18,7 @@ export type SettingsState = {
 	editorTheme: EditorTheme
 	enableVimMode: boolean
 	restoreLastConnection: boolean
+	startupConnectionMode: 'auto' | 'empty'
 	lastConnectionId: string | null
 	lastTableId: string | null
 	lastRowPK: string | number | null
@@ -31,6 +32,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
 	editorTheme: 'auto',
 	enableVimMode: false,
 	restoreLastConnection: true,
+	startupConnectionMode: 'auto',
 	lastConnectionId: null,
 	lastTableId: null,
 	lastRowPK: null,

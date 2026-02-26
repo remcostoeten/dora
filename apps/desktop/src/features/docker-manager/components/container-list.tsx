@@ -11,6 +11,7 @@ type Props = {
 	onStartContainer?: (id: string) => void
 	onStopContainer?: (id: string) => void
 	onRestartContainer?: (id: string) => void
+	onOpenContainerInDataViewer?: (container: DockerContainer) => void
 	isActionPending?: boolean
 	isLoading?: boolean
 	searchQuery?: string
@@ -24,6 +25,7 @@ export function ContainerList({
 	onStartContainer,
 	onStopContainer,
 	onRestartContainer,
+	onOpenContainerInDataViewer,
 	isActionPending = false,
 	isLoading = false,
 	searchQuery = '',
@@ -140,6 +142,7 @@ export function ContainerList({
 							onStart={onStartContainer}
 							onStop={onStopContainer}
 							onRestart={onRestartContainer}
+							onOpenInDataViewer={onOpenContainerInDataViewer}
 							isActionPending={isActionPending}
 						/>
 					)

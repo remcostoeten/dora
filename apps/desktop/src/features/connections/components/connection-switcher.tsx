@@ -8,8 +8,10 @@ import {
 	Eye,
 	Pencil,
 	Trash2,
-	AlertCircle
+	AlertCircle,
+	Search
 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/shared/ui/button'
 import {
 	ContextMenu,
@@ -26,6 +28,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger
 } from '@/shared/ui/dropdown-menu'
+import { Input } from '@/shared/ui/input'
 import { cn } from '@/shared/utils/cn'
 import { Connection, DatabaseType } from '../types'
 import { DatabaseTypeIcon } from './database-type-icon'
@@ -86,8 +89,23 @@ export function ConnectionSwitcher({
 	onEditConnection,
 	onDeleteConnection
 }: Props) {
+	const [searchQuery, setSearchQuery] = useState('')
 	const activeConnection = connections.find((c) => c.id === activeConnectionId)
 	const status = activeConnection?.status || 'idle'
+	const filteredConnections = useMemo(
+		function getFilteredConnections() {
+			const query = searchQuery.trim().toLowerCase()
+			if (!query) return connections
+			return connections.filter(function (connection) {
+				return (
+					connection.name.toLowerCase().includes(query) ||
+					formatDatabaseType(connection.type).toLowerCase().includes(query) ||
+					(connection.host || 'local').toLowerCase().includes(query)
+				)
+			})
+		},
+		[connections, searchQuery]
+	)
 
 	return (
 		<DropdownMenu>
@@ -148,9 +166,28 @@ export function ConnectionSwitcher({
 					Databases
 				</DropdownMenuLabel>
 
+				<div className='px-2 pb-2 space-y-2 border-b border-border/60'>
+					<div className='text-[11px] text-muted-foreground'>
+						{connections.length} saved connection{connections.length === 1 ? '' : 's'}
+						{searchQuery.trim() &&
+							` • ${filteredConnections.length} match${filteredConnections.length === 1 ? '' : 'es'}`}
+					</div>
+					<div className='relative'>
+						<Search className='pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground' />
+						<Input
+							value={searchQuery}
+							onChange={function (e) {
+								setSearchQuery(e.target.value)
+							}}
+							placeholder='Search connections...'
+							className='h-8 pl-8 text-xs'
+						/>
+					</div>
+				</div>
+
 				<div className='max-h-[360px] overflow-y-auto pr-1'>
-					{connections.length > 0 ? (
-						connections.map((connection) => (
+					{filteredConnections.length > 0 ? (
+						filteredConnections.map((connection) => (
 						<ContextMenu key={connection.id}>
 							<ContextMenuTrigger asChild>
 								<DropdownMenuItem
@@ -265,10 +302,15 @@ export function ConnectionSwitcher({
 						))
 					) : (
 						<div className='px-2 py-3 text-xs text-center text-muted-foreground border border-dashed rounded-md m-1'>
-							No connections found
+							{connections.length > 0 ? 'No matching connections' : 'No connections found'}
 						</div>
 					)}
 				</div>
+				{filteredConnections.length > 6 && (
+					<div className='px-2 pb-2 text-[10px] text-muted-foreground'>
+						Scroll to view more connections
+					</div>
+				)}
 
 				<DropdownMenuSeparator />
 

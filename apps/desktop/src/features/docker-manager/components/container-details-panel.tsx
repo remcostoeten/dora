@@ -14,15 +14,20 @@ import { StatusBadge } from './status-badge'
 import { ComposeExportDialog } from './compose-export-dialog'
 import { RemoveContainerDialog } from './remove-container-dialog'
 import { RemoveContainerOptions } from '../types'
-import { ContainerTerminal } from './container-terminal'
 
 type Props = {
 	container: DockerContainer | null
 	onOpenInDataViewer?: (container: DockerContainer) => void
+	onOpenTerminal?: (container: DockerContainer) => void
 	onRemoveComplete?: () => void
 }
 
-export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveComplete }: Props) {
+export function ContainerDetailsPanel({
+	container,
+	onOpenInDataViewer,
+	onOpenTerminal,
+	onRemoveComplete
+}: Props) {
 	const [tailLines, setTailLines] = useState(DEFAULT_LOG_TAIL)
 	const [activeTab, setActiveTab] = useState('logs')
 	const [showExportDialog, setShowExportDialog] = useState(false)
@@ -62,7 +67,7 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 	const passwordEnv = container.env.find((e) => e.startsWith('POSTGRES_PASSWORD='))
 	const password = passwordEnv
 		? passwordEnv.split('=')[1]
-		: container.labels['POSTGRES_PASSWORD'] || 'postgres'
+		: 'postgres'
 
 	function handleStart() {
 		containerActions.mutate({ containerId: container.id, action: 'start' })
@@ -95,7 +100,7 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 	}
 
 	return (
-		<div className='w-80 flex flex-col border-l border-border bg-card'>
+		<div className='w-80 min-h-0 flex flex-col border-l border-border bg-card overflow-y-auto'>
 			<div className='p-4 border-b border-border'>
 				<div className='flex items-start justify-between gap-2'>
 					<div className='min-w-0'>
@@ -168,7 +173,9 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 						size='sm'
 						className='h-8 gap-1.5'
 						onClick={function () {
-							setActiveTab('terminal')
+							if (onOpenTerminal) {
+								onOpenTerminal(container)
+							}
 						}}
 						disabled={!isRunning}
 					>
@@ -213,9 +220,6 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 						<TabsTrigger value='seed' className='flex-1'>
 							Seed
 						</TabsTrigger>
-						<TabsTrigger value='terminal' className='flex-1' disabled={!isRunning}>
-							Terminal
-						</TabsTrigger>
 					</TabsList>
 
 					<TabsContent value='logs' className='flex-1 mt-3'>
@@ -229,10 +233,6 @@ export function ContainerDetailsPanel({ container, onOpenInDataViewer, onRemoveC
 
 					<TabsContent value='seed' className='flex-1 mt-3'>
 						<SeedView container={container} />
-					</TabsContent>
-
-					<TabsContent value='terminal' className='flex-1 mt-3'>
-						<ContainerTerminal container={container} enabled={activeTab === 'terminal'} />
 					</TabsContent>
 				</Tabs>
 			</div>

@@ -122,6 +122,26 @@ export function DatabaseSidebar({
 	}, [])
 
 	useEffect(
+		function listenForSchemaRefresh() {
+			function onSchemaRefresh(event: Event) {
+				const customEvent = event as CustomEvent<{ connectionId?: string }>
+				const targetConnectionId = customEvent.detail?.connectionId
+				if (!targetConnectionId || targetConnectionId === activeConnectionId) {
+					setRefreshTrigger(function (prev) {
+						return prev + 1
+					})
+				}
+			}
+
+			window.addEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
+			return function () {
+				window.removeEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
+			}
+		},
+		[activeConnectionId]
+	)
+
+	useEffect(
 		function handleAutoSelectFirstTable() {
 			async function fetchSchema() {
 				if (!activeConnectionId) {

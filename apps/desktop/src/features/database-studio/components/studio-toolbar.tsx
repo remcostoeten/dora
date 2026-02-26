@@ -25,6 +25,9 @@ import {
 import { Input } from '@/shared/ui/input'
 import { cn } from '@/shared/utils/cn'
 import { ViewMode, PaginationState, FilterDescriptor, ColumnDefinition } from '../types'
+import type { LiveMonitorConfig, ChangeEvent } from '../hooks/use-live-monitor'
+import { LiveMonitorPopover } from './live-monitor-popover'
+import { ChangeFeed } from './change-feed'
 import { FilterBar } from './filter-bar'
 
 type Props = {
@@ -49,6 +52,13 @@ type Props = {
 	onSeed?: () => void
 	onCopySchema?: () => void
 	onCopyDrizzleSchema?: () => void
+	liveMonitorConfig?: LiveMonitorConfig
+	onLiveMonitorConfigChange?: (config: LiveMonitorConfig) => void
+	isLiveMonitorPolling?: boolean
+	changeEvents?: ChangeEvent[]
+	unreadChangeCount?: number
+	onClearChangeEvents?: () => void
+	onMarkChangesRead?: () => void
 }
 
 export function StudioToolbar({
@@ -72,7 +82,14 @@ export function StudioToolbar({
 	isSidebarOpen,
 	onSeed,
 	onCopySchema,
-	onCopyDrizzleSchema
+	onCopyDrizzleSchema,
+	liveMonitorConfig,
+	onLiveMonitorConfigChange,
+	isLiveMonitorPolling,
+	changeEvents,
+	unreadChangeCount,
+	onClearChangeEvents,
+	onMarkChangesRead
 }: Props) {
 	const [showFilters, setShowFilters] = useState(filters.length > 0)
 
@@ -272,6 +289,23 @@ export function StudioToolbar({
 					</Button>
 
 					<div className='h-4 w-px bg-sidebar-border mx-1' />
+
+					{liveMonitorConfig && onLiveMonitorConfigChange && (
+						<LiveMonitorPopover
+							config={liveMonitorConfig}
+							onConfigChange={onLiveMonitorConfigChange}
+							isPolling={isLiveMonitorPolling || false}
+						/>
+					)}
+
+					{changeEvents && onClearChangeEvents && onMarkChangesRead && (
+						<ChangeFeed
+							events={changeEvents}
+							unreadCount={unreadChangeCount || 0}
+							onClear={onClearChangeEvents}
+							onMarkRead={onMarkChangesRead}
+						/>
+					)}
 
 					<Button
 						variant='ghost'

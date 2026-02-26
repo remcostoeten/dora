@@ -1,117 +1,17 @@
 import {
-	Sparkles,
 	SquareTerminal,
 	Table2,
 	Network,
 	Container,
-	SunMedium,
-	MoonStar,
-	ChevronRight,
-	Settings
+	Sparkles
 } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState, KeyboardEvent } from 'react'
+import { useCallback, useRef, KeyboardEvent } from 'react'
 import { DoraLogo } from '@/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Popover, PopoverTrigger, PopoverContent } from '@/shared/ui/popover'
-import {
-	type Theme,
-	applyAppearanceToDOM,
-	getAppearanceSettings,
-	saveAppearanceSettings
-} from '@/shared/lib/appearance-store'
 import { cn } from '@/shared/utils/cn'
-import { AppearancePanel } from '@/features/sidebar/components/appearance-panel'
-import { ChangelogPanel } from '@/features/sidebar/components/changelog-panel'
-import { SettingsPanel } from '@/features/sidebar/components/settings-panel'
-import { CURRENT_VERSION } from '@/features/sidebar/changelog-data'
 import { SidebarProvider, useSidebar } from './context'
 import { SidebarNavItem } from './nav-item'
 import type { NavItem, SidebarVariant } from './types'
-
-
-const LIGHT_THEMES: Theme[] = ['light', 'claude']
-
-type TTogle = {
-	variant: SidebarVariant
-}
-
-function ThemeToggle({ variant }: TTogle) {
-	const [mounted, setMounted] = useState(false)
-	const [currentTheme, setCurrentTheme] = useState<Theme>('dark')
-
-	useEffect(function init() {
-		setMounted(true)
-		setCurrentTheme(getAppearanceSettings().theme)
-	}, [])
-
-	useEffect(function listenForThemeChanges() {
-		function handler(e: Event) {
-			const detail = (e as CustomEvent).detail
-			if (detail?.theme) setCurrentTheme(detail.theme)
-		}
-		window.addEventListener('dora-appearance-change', handler)
-		return function () {
-			window.removeEventListener('dora-appearance-change', handler)
-		}
-	}, [])
-
-	const isLight = LIGHT_THEMES.includes(currentTheme)
-
-	const toggleTheme = useCallback(function () {
-		const next: Theme = isLight ? 'dark' : 'light'
-		const updated = saveAppearanceSettings({ theme: next })
-		applyAppearanceToDOM(updated)
-	}, [isLight])
-
-	if (!mounted) return null
-
-	return (
-		<Popover>
-			<div className='group/theme relative flex items-center justify-center'>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<button
-							type='button'
-							onClick={toggleTheme}
-							className={cn(
-								'flex h-8 w-8 items-center justify-center transition-colors',
-								'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-								'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
-								variant === 'floating' ? 'rounded-xl' : 'rounded-md'
-							)}
-							aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
-						>
-							{isLight ? (
-								<MoonStar className='h-5 w-5' aria-hidden='true' />
-							) : (
-								<SunMedium className='h-5 w-5' aria-hidden='true' />
-							)}
-						</button>
-					</TooltipTrigger>
-					<TooltipContent side='right'>
-						{isLight ? 'Dark Mode' : 'Light Mode'}
-					</TooltipContent>
-				</Tooltip>
-				<PopoverTrigger asChild>
-					<button
-						className='absolute -right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-3.5 h-3.5 rounded-full bg-sidebar-accent border border-sidebar-border text-muted-foreground opacity-0 scale-75 group-hover/theme:opacity-100 group-hover/theme:scale-100 transition-all duration-150 hover:text-sidebar-foreground hover:bg-muted z-10'
-						aria-label='All themes'
-					>
-						<ChevronRight className='h-2 w-2' />
-					</button>
-				</PopoverTrigger>
-			</div>
-			<PopoverContent
-				side='right'
-				align='end'
-				sideOffset={16}
-				className='w-[520px] p-0 mb-2 ml-2'
-			>
-				<AppearancePanel />
-			</PopoverContent>
-		</Popover>
-	)
-}
 
 type ContentProps = {
 	activeNavId?: string
@@ -305,59 +205,7 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 				)}
 				role='group'
 				aria-label='Sidebar controls'
-			>
-				<Popover>
-					<Tooltip>
-						<PopoverTrigger asChild>
-							<TooltipTrigger asChild>
-								<button
-									type='button'
-									className='flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors'
-									aria-label="What's new"
-								>
-									<Sparkles className='h-4 w-4' />
-								</button>
-							</TooltipTrigger>
-						</PopoverTrigger>
-						<TooltipContent side='right'>What's new (v{CURRENT_VERSION})</TooltipContent>
-					</Tooltip>
-					<PopoverContent
-						side='right'
-						align='end'
-						sideOffset={16}
-						className='w-[340px] p-0 mb-2 ml-2 h-[500px]'
-					>
-						<ChangelogPanel />
-					</PopoverContent>
-				</Popover>
-
-				<Popover>
-					<Tooltip>
-						<PopoverTrigger asChild>
-							<TooltipTrigger asChild>
-								<button
-									type='button'
-									className='flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors'
-									aria-label='Settings'
-								>
-									<Settings className='h-4 w-4' />
-								</button>
-							</TooltipTrigger>
-						</PopoverTrigger>
-						<TooltipContent side='right'>Settings</TooltipContent>
-					</Tooltip>
-					<PopoverContent
-						side='right'
-						align='end'
-						sideOffset={16}
-						className='w-[360px] p-0 mb-2 ml-2'
-					>
-						<SettingsPanel />
-					</PopoverContent>
-				</Popover>
-
-				<ThemeToggle variant={variant} />
-			</div>
+			/>
 		</aside>
 	)
 }

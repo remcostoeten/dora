@@ -36,7 +36,7 @@ export function SettingsPanel() {
 					<X className='h-4 w-4' />
 				</PopoverClose>
 			</div>
-			<SidebarPanelContent>
+			<SidebarPanelContent maxHeight='calc(var(--radix-popover-content-available-height) - 2.25rem)'>
 				<div className='flex flex-col p-4'>
 					<SidebarSection title='Editor'>
 						<div className='space-y-2'>
@@ -163,22 +163,32 @@ export function SettingsPanel() {
 					</SidebarSection>
 
 					<SidebarSection title='Startup'>
-						<div className='flex items-start justify-between gap-4'>
+						<div className='space-y-2'>
 							<div className='flex-1'>
-								<div className='text-sm text-sidebar-foreground'>
-									Restore last connection
-								</div>
+								<div className='text-sm text-sidebar-foreground'>Connection behavior</div>
 								<div className='text-xs text-muted-foreground leading-tight'>
-									Automatically reconnect to the last used database on startup
+									Auto-connect to last used database (falls back to first), or
+									start on an empty view
 								</div>
 							</div>
-							<div className='flex-shrink-0 pt-0.5'>
-								<Switch
-									checked={settings.restoreLastConnection}
-									onCheckedChange={(checked) =>
-										updateSetting('restoreLastConnection', checked)
-									}
-								/>
+							<div className='flex-shrink-0 pt-0.5 min-w-[160px]'>
+								<Select
+									value={settings.startupConnectionMode || 'auto'}
+									onValueChange={(value) => {
+										const mode = value as 'auto' | 'empty'
+										updateSetting('startupConnectionMode', mode)
+										// Keep the legacy flag in sync for older code paths.
+										updateSetting('restoreLastConnection', mode === 'auto')
+									}}
+								>
+									<SelectTrigger className='w-full h-8 text-xs'>
+										<SelectValue placeholder='Select startup mode' />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value='auto'>Auto-connect</SelectItem>
+										<SelectItem value='empty'>Start empty</SelectItem>
+									</SelectContent>
+								</Select>
 							</div>
 						</div>
 					</SidebarSection>

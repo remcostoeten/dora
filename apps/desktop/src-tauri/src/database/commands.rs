@@ -217,12 +217,47 @@ pub async fn start_query(
     query: &str,
     state: State<'_, AppState>,
 ) -> Result<Vec<usize>, Error> {
+    // SQL Console uses `start_query`; invalidate cached schema when query includes
+    // non-read-only statements so schema fetches reflect DDL changes immediately.
+    let invalidates_schema = {
+        let parsed = state.connections.get(&connection_id).and_then(|connection_entry| {
+            let connection = connection_entry.value();
+            match &connection.database {
+                crate::database::types::Database::Postgres { .. } => {
+                    crate::database::postgres::parser::parse_statements(query).ok()
+                }
+                crate::database::types::Database::SQLite { .. } => {
+                    crate::database::sqlite::parser::parse_statements(query).ok()
+                }
+                crate::database::types::Database::LibSQL { .. } => {
+                    crate::database::libsql::parser::parse_statements(query).ok()
+                }
+            }
+        });
+
+        if let Some(statements) = parsed {
+            statements.iter().any(|stmt| !stmt.is_read_only)
+        } else {
+            // Fallback for parser edge-cases: prefer cache invalidation over stale schema.
+            let upper = query.to_ascii_uppercase();
+            ["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "ATTACH", "DETACH"]
+                .iter()
+                .any(|keyword| upper.contains(keyword))
+        }
+    };
+
     let svc = QueryService {
         connections: &state.connections,
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.start_query(connection_id, query).await
+    let query_ids = svc.start_query(connection_id, query).await?;
+
+    if invalidates_schema {
+        state.schemas.remove(&connection_id);
+    }
+
+    Ok(query_ids)
 }
 
 #[tauri::command]
@@ -1231,4 +1266,3 @@ pub async fn ai_list_ollama_models(
     let client = crate::database::services::ai::OllamaClient::new(endpoint, String::new());
     client.list_models().await
 }
-

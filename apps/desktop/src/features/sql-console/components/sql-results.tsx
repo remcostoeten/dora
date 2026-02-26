@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react'
-import { Table2, Braces, Download, Copy, Trash2, Pencil } from 'lucide-react'
+import { Table2, Braces, Download, Copy, Trash2, Pencil, CircleCheck } from 'lucide-react'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -67,6 +67,21 @@ export function SqlResults({
 			inputRef.current.focus()
 		}
 	}, [editingCell])
+
+	const successMessage = useMemo(() => {
+		if (!result || result.error) return null
+
+		if (result.queryType === 'SELECT') {
+			return 'Query executed successfully.'
+		}
+
+		const affected = result.affectedRows ?? result.rowCount
+		if (typeof affected === 'number' && affected >= 0) {
+			return `Statement executed successfully. ${affected} row${affected !== 1 ? 's' : ''} affected.`
+		}
+
+		return 'Statement executed successfully.'
+	}, [result])
 
 	function formatCellValue(value: unknown): string {
 		if (value === null || value === undefined) {
@@ -332,11 +347,17 @@ export function SqlResults({
 				</div>
 
 				{result && !result.error && (
-					<span className='text-xs text-muted-foreground'>
-						{filteredRows.length !== result.rowCount ? `${filteredRows.length} / ` : ''}
-						{result.rowCount} row{result.rowCount !== 1 ? 's' : ''} •{' '}
-						{result.executionTime}ms backend • {filterTime}ms filtering
-					</span>
+					<div className='flex items-center gap-2 text-xs'>
+						<span className='inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400'>
+							<CircleCheck className='h-3 w-3' />
+							Success
+						</span>
+						<span className='text-muted-foreground'>
+							{successMessage} {filteredRows.length !== result.rowCount ? `${filteredRows.length} / ` : ''}
+							{result.rowCount} row{result.rowCount !== 1 ? 's' : ''} •{' '}
+							{result.executionTime}ms backend • {filterTime}ms filtering
+						</span>
+					</div>
 				)}
 
 				<Button
@@ -364,12 +385,10 @@ export function SqlResults({
 					</div>
 				) : result.rows.length === 0 ? (
 					<div className='flex flex-col items-center justify-center h-full text-muted-foreground'>
-						<span className='text-sm'>No rows</span>
-						{result.affectedRows !== undefined && (
-							<span className='text-xs mt-1'>
-								{result.affectedRows} rows affected
-							</span>
-						)}
+						<div className='inline-flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-600 dark:text-emerald-400'>
+							<CircleCheck className='h-4 w-4' />
+							<span className='text-sm'>{successMessage || 'Statement executed successfully.'}</span>
+						</div>
 					</div>
 				) : viewMode === 'json' ? (
 					<div className='relative h-full w-full'>

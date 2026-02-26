@@ -1,4 +1,4 @@
-import { CONTAINER_PREFIX, MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from '../constants'
+import { MANAGED_LABEL_KEY, MANAGED_LABEL_VALUE } from '../constants'
 import type {
 	DockerContainer,
 	DockerAvailability,
@@ -11,7 +11,6 @@ import type {
 	ContainerTerminalHandlers,
 	ContainerTerminalSession
 } from '../types'
-import { isManaged } from '../utilities/container-naming'
 
 type DockerInspectResult = {
 	Id: string
@@ -111,7 +110,7 @@ export async function listContainers(
 	}
 
 	if (filterPrefix) {
-		args.push('--filter', `name=^${CONTAINER_PREFIX}`)
+		args.push('--filter', `label=${MANAGED_LABEL_KEY}=${MANAGED_LABEL_VALUE}`)
 	}
 
 	const result = await executeDockerCommand(args)
@@ -178,9 +177,7 @@ function parseInspectResult(data: DockerInspectResult): DockerContainer {
 		state: mapContainerState(data.State.Status),
 		health: mapContainerHealth(data.State.Health?.Status),
 		origin:
-			isManaged(name) && data.Config.Labels[MANAGED_LABEL_KEY] === MANAGED_LABEL_VALUE
-				? 'managed'
-				: 'external',
+			data.Config.Labels[MANAGED_LABEL_KEY] === MANAGED_LABEL_VALUE ? 'managed' : 'external',
 		createdAt: new Date(data.Created).getTime(),
 		ports: parsePortBindings(data.HostConfig.PortBindings),
 		labels: data.Config.Labels || {},

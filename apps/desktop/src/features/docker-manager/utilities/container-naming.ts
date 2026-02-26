@@ -6,10 +6,10 @@ export function generateContainerName(baseName?: string): string {
 
 	if (baseName) {
 		const sanitized = sanitizeContainerName(baseName)
-		return `${CONTAINER_PREFIX}${sanitized}`
+		return sanitized
 	}
 
-	return `${CONTAINER_PREFIX}dev_${timestamp}_${randomSuffix}`
+	return `dev_${timestamp}_${randomSuffix}`
 }
 
 export function sanitizeContainerName(name: string): string {
@@ -23,20 +23,6 @@ export function sanitizeContainerName(name: string): string {
 export function validateContainerName(name: string): { valid: boolean; error?: string } {
 	if (!name) {
 		return { valid: false, error: 'Container name is required' }
-	}
-
-	if (!name.startsWith(CONTAINER_PREFIX)) {
-		return {
-			valid: false,
-			error: `Container name must start with "${CONTAINER_PREFIX}"`
-		}
-	}
-
-	if (name.length < CONTAINER_PREFIX.length + 1) {
-		return {
-			valid: false,
-			error: 'Container name must have at least one character after the prefix'
-		}
 	}
 
 	if (name.length > 63) {
@@ -58,7 +44,7 @@ export function ensurePrefix(name: string): string {
 	if (name.startsWith(CONTAINER_PREFIX)) {
 		return name
 	}
-	return `${CONTAINER_PREFIX}${name}`
+	return name
 }
 
 export function stripPrefix(name: string): string {
@@ -78,11 +64,11 @@ export function generateVolumeName(containerName: string): string {
 
 export function suggestContainerName(existingNames: string[]): string {
 	let counter = 1
-	let suggestion = `${CONTAINER_PREFIX}dev_${counter.toString().padStart(3, '0')}`
+	let suggestion = `dev_${counter.toString().padStart(3, '0')}`
 
 	while (existingNames.includes(suggestion)) {
 		counter++
-		suggestion = `${CONTAINER_PREFIX}dev_${counter.toString().padStart(3, '0')}`
+		suggestion = `dev_${counter.toString().padStart(3, '0')}`
 	}
 
 	return suggestion

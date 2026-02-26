@@ -27,11 +27,7 @@ export function DemoBanner({
             !isTauriProtocol &&
             (import.meta.env.MODE === "demo" ||
                 window.location.hostname.includes("demo") ||
-                import.meta.env.VITE_IS_WEB === "true" ||
-                (window.location.hostname === "localhost" &&
-                    window.location.protocol.startsWith("http")) ||
-                (window.location.hostname === "127.0.0.1" &&
-                    window.location.protocol.startsWith("http")))
+                import.meta.env.VITE_IS_WEB === "true")
 
         setIsDemo(isWebDemo)
 

@@ -48,6 +48,38 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 
 	const { addToHistory } = useQueryHistory()
 
+	const refreshSchema = useCallback(async () => {
+		if (!activeConnectionId) {
+			setTables([])
+			return
+		}
+
+		try {
+			await adapter.connectToDatabase(activeConnectionId)
+			const res = await adapter.getSchema(activeConnectionId)
+			if (res.ok && res.data.tables) {
+				const mapped: TableInfo[] = res.data.tables.map(function (t) {
+					return {
+						name: t.name,
+						type: 'table' as const,
+						rowCount: t.row_count_estimate ?? 0,
+						columns: t.columns.map(function (c) {
+							return {
+								name: c.name,
+								type: c.data_type,
+								nullable: c.is_nullable,
+								primaryKey: c.is_primary_key
+							}
+						})
+					}
+				})
+				setTables(mapped)
+			}
+		} catch (error) {
+			console.error('Failed to fetch schema:', error)
+		}
+	}, [activeConnectionId, adapter])
+
 	const loadSnippets = useCallback(async () => {
 		const [scriptsRes, foldersRes] = await Promise.all([
 			adapter.getScripts(activeConnectionId || null),
@@ -245,6 +277,17 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							clearTableDataCache()
 						}
 
+						const isSchemaChangingSql =
+							/\b(create|alter|drop|truncate|rename)\b/i.test(queryToRun)
+						if (isSchemaChangingSql) {
+							await refreshSchema()
+							window.dispatchEvent(
+								new CustomEvent('dora-schema-refresh', {
+									detail: { connectionId: activeConnectionId }
+								})
+							)
+						}
+
 						addToHistory({
 							query: queryToRun,
 							connectionId: activeConnectionId,
@@ -305,7 +348,15 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				setIsExecuting(false)
 			}
 		},
-		[mode, currentSqlQuery, currentDrizzleQuery, isExecuting, activeConnectionId, adapter]
+		[
+			mode,
+			currentSqlQuery,
+			currentDrizzleQuery,
+			isExecuting,
+			activeConnectionId,
+			adapter,
+			refreshSchema
+		]
 	)
 
 	function getQueryType(query: string): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'OTHER' {
@@ -683,6 +734,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 												onChange={setCurrentSqlQuery}
 												onExecute={(code) => handleExecute(code)}
 												isExecuting={isExecuting}
+												tables={tables}
 											/>
 										) : (
 											<CodeEditor

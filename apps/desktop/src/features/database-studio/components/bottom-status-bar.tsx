@@ -1,7 +1,8 @@
-import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, Activity } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/shared/ui/button'
 import { NumberInput } from '@/shared/ui/number-input'
+import { cn } from '@/shared/utils/cn'
 import { PaginationState } from '../types'
 
 type Props = {
@@ -10,6 +11,10 @@ type Props = {
 	rowCount: number
 	totalCount: number
 	executionTime: number
+	liveMonitorEnabled?: boolean
+	liveMonitorIntervalMs?: number
+	lastPolledAt?: number | null
+	changesDetected?: number
 }
 
 export function BottomStatusBar({
@@ -17,7 +22,11 @@ export function BottomStatusBar({
 	onPaginationChange,
 	rowCount,
 	totalCount,
-	executionTime
+	executionTime,
+	liveMonitorEnabled,
+	liveMonitorIntervalMs,
+	lastPolledAt,
+	changesDetected
 }: Props) {
 	const [limitInput, setLimitInput] = useState(String(pagination.limit))
 	const [offsetInput, setOffsetInput] = useState(String(pagination.offset))
@@ -67,6 +76,31 @@ export function BottomStatusBar({
 					<Clock className='h-3.5 w-3.5' />
 					<span>{executionTime}ms</span>
 				</div>
+				{liveMonitorEnabled !== undefined && (
+					<>
+						<div className='h-3 w-px bg-sidebar-border' />
+						<div className='flex items-center gap-1.5'>
+							<span className={cn(
+								'h-1.5 w-1.5 rounded-full',
+								liveMonitorEnabled
+									? (changesDetected && changesDetected > 0 ? 'bg-amber-400' : 'bg-emerald-400')
+									: 'bg-muted-foreground/40'
+							)} />
+							{liveMonitorEnabled ? (
+								<span>
+									Live · {(liveMonitorIntervalMs || 5000) / 1000}s
+									{lastPolledAt && (
+										<span className='ml-1 opacity-60'>
+											· {new Date(lastPolledAt).toLocaleTimeString()}
+										</span>
+									)}
+								</span>
+							) : (
+								<span>Monitor off</span>
+							)}
+						</div>
+					</>
+				)}
 				<div className='h-3 w-px bg-sidebar-border' />
 				<span>
 					{totalCount === 0 ? (

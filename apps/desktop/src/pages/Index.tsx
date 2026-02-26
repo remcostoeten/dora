@@ -70,6 +70,8 @@ export default function Index() {
 	// Delete confirmation dialog state
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 	const [connectionToDelete, setConnectionToDelete] = useState<Connection | null>(null)
+	const startupConnectionMode =
+		settings.startupConnectionMode ?? (settings.restoreLastConnection ? 'auto' : 'empty')
 
 	const { toast } = useToast()
 
@@ -150,7 +152,12 @@ export default function Index() {
 				return
 			}
 
-			if (settings.restoreLastConnection && settings.lastConnectionId) {
+			if (startupConnectionMode === 'empty') {
+				connectionInitializedRef.current = true
+				return
+			}
+
+			if (settings.lastConnectionId) {
 				const lastConnection = connections.find(function (c) {
 					return c.id === settings.lastConnectionId
 				})
@@ -165,10 +172,15 @@ export default function Index() {
 				}
 			}
 
+			const isTauriRuntime =
+				window.location.protocol === 'tauri:' ||
+				'__TAURI__' in window ||
+				'__TAURI_INTERNALS__' in window
 			const isWebDemo =
-				import.meta.env.MODE === 'demo' ||
-				window.location.hostname.includes('demo') ||
-				import.meta.env.VITE_IS_WEB === 'true'
+				!isTauriRuntime &&
+				(import.meta.env.MODE === 'demo' ||
+					window.location.hostname.includes('demo') ||
+					import.meta.env.VITE_IS_WEB === 'true')
 
 			if (isWebDemo) {
 				const demoConn =
@@ -196,6 +208,7 @@ export default function Index() {
 			connections,
 			urlConnection,
 			activeConnectionId,
+			startupConnectionMode,
 			settings.restoreLastConnection,
 			settings.lastConnectionId,
 			settings.lastTableId

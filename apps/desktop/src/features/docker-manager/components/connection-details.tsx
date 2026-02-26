@@ -5,7 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import type { DockerContainer } from '../types'
 import {
 	buildConnectionEnvVars,
-	formatEnvVarsForClipboard,
 	maskPassword
 } from '../utilities/connection-string-builder'
 import { generateSnippet, SnippetLanguage } from '../utilities/connection-snippet-generator'
@@ -34,16 +33,15 @@ export function ConnectionDetails({ container, password }: Props) {
 
 	const host = 'localhost'
 	const port = primaryPort?.hostPort ?? 5432
-	const user = container.labels['POSTGRES_USER'] || 'postgres'
-	const database = container.labels['POSTGRES_DB'] || 'postgres'
+	const user = container.env.find((e) => e.startsWith('POSTGRES_USER='))?.split('=')[1] || 'postgres'
+	const database = container.env.find((e) => e.startsWith('POSTGRES_DB='))?.split('=')[1] || 'postgres'
 
 	const envVars = buildConnectionEnvVars(host, port, user, password, database)
 	const displayUrl = showPassword ? envVars.DATABASE_URL : maskPassword(envVars.DATABASE_URL)
 
 	async function handleCopyEnv() {
-		const envString = formatEnvVarsForClipboard(envVars)
 		try {
-			await navigator.clipboard.writeText(envString)
+			await navigator.clipboard.writeText(envVars.DATABASE_URL)
 			setCopied(true)
 			setTimeout(function () {
 				setCopied(false)

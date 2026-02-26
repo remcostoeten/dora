@@ -1,8 +1,10 @@
 import Editor, { OnMount } from '@monaco-editor/react'
+import type * as Monaco from 'monaco-editor'
 import { initVimMode } from 'monaco-vim'
 import { useRef, useEffect, useState } from 'react'
 import { useSetting } from '@/core/settings'
 import { loadTheme, isBuiltinTheme, MonacoTheme } from '@/core/settings/editor-themes'
+import type { TableInfo } from '../types'
 import { usePromotionalDemo } from '../hooks/use-promotional-demo'
 
 type Props = {
@@ -10,18 +12,77 @@ type Props = {
 	onChange: (value: string) => void
 	onExecute: (sql?: string) => void
 	isExecuting: boolean
+	tables: TableInfo[]
 }
 
-export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
+const SQL_KEYWORDS = [
+	'SELECT',
+	'FROM',
+	'WHERE',
+	'JOIN',
+	'LEFT JOIN',
+	'RIGHT JOIN',
+	'INNER JOIN',
+	'OUTER JOIN',
+	'ON',
+	'INSERT INTO',
+	'VALUES',
+	'UPDATE',
+	'SET',
+	'DELETE',
+	'CREATE TABLE',
+	'ALTER TABLE',
+	'DROP TABLE',
+	'ORDER BY',
+	'GROUP BY',
+	'HAVING',
+	'LIMIT',
+	'OFFSET',
+	'DISTINCT',
+	'AS',
+	'AND',
+	'OR',
+	'NOT',
+	'IN',
+	'LIKE',
+	'IS NULL',
+	'IS NOT NULL',
+	'COUNT',
+	'SUM',
+	'AVG',
+	'MIN',
+	'MAX'
+]
+
+type EditorRef = Parameters<OnMount>[0]
+type MonacoApi = Parameters<OnMount>[1]
+
+function getAliases(text: string): Map<string, string> {
+	const aliases = new Map<string, string>()
+	const regex = /\b(?:from|join|update|into)\s+([a-zA-Z_][\w$]*)(?:\s+(?:as\s+)?([a-zA-Z_][\w$]*))?/gi
+
+	for (const match of text.matchAll(regex)) {
+		const table = match[1]
+		const alias = match[2]
+		aliases.set(table, table)
+		if (alias) aliases.set(alias, table)
+	}
+
+	return aliases
+}
+
+export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
 	const [editorFontSize] = useSetting('editorFontSize')
 	const [editorThemeSetting] = useSetting('editorTheme')
 	const [enableVimMode] = useSetting('enableVimMode')
-	const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
-	const monacoRef = useRef<any>(null)
+	const [isEditorReady, setIsEditorReady] = useState(false)
+	const editorRef = useRef<EditorRef | null>(null)
+	const monacoRef = useRef<MonacoApi | null>(null)
 	const vimModeRef = useRef<any>(null)
 	const statusBarRef = useRef<HTMLDivElement | null>(null)
 	const loadedThemesRef = useRef<Set<string>>(new Set())
 	const onExecuteRef = useRef(onExecute)
+	const completionProviderRef = useRef<Monaco.IDisposable | null>(null)
 
 	useEffect(() => {
 		onExecuteRef.current = onExecute
@@ -130,6 +191,7 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
 	const handleEditorDidMount: OnMount = function (editor, monaco) {
 		editorRef.current = editor
 		monacoRef.current = monaco
+		setIsEditorReady(true)
 
 		monaco.editor.setTheme(editorTheme)
 
@@ -171,6 +233,110 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting }: Props) {
 			}
 		},
 		[editorTheme]
+	)
+
+	useEffect(
+		function registerCompletionProvider() {
+			if (!isEditorReady || !monacoRef.current || !editorRef.current) return
+
+			const monaco = monacoRef.current
+			completionProviderRef.current?.dispose()
+
+			completionProviderRef.current = monaco.languages.registerCompletionItemProvider('sql', {
+				triggerCharacters: ['.', ' ', '('],
+				provideCompletionItems(model, position) {
+					const word = model.getWordUntilPosition(position)
+					const range = new monaco.Range(
+						position.lineNumber,
+						word.startColumn,
+						position.lineNumber,
+						word.endColumn
+					)
+
+					const beforeCursor = model
+						.getValueInRange({
+							startLineNumber: 1,
+							startColumn: 1,
+							endLineNumber: position.lineNumber,
+							endColumn: position.column
+						})
+						.toLowerCase()
+
+					const suggestions: Monaco.languages.CompletionItem[] = []
+					const aliases = getAliases(beforeCursor)
+
+					// tableOrAlias.<column>
+					const dotMatch = beforeCursor.match(/([a-zA-Z_][\w$]*)\.$/)
+					if (dotMatch) {
+						const receiver = dotMatch[1]
+						const tableName = aliases.get(receiver) || receiver
+						const table = tables.find((t) => t.name === tableName)
+						if (table?.columns?.length) {
+							for (const col of table.columns) {
+								suggestions.push({
+									label: col.name,
+									kind: monaco.languages.CompletionItemKind.Field,
+									insertText: col.name,
+									detail: `${table.name}.${col.name}`,
+									range
+								})
+							}
+						}
+						return { suggestions }
+					}
+
+					const wantsTables =
+						/\b(from|join|update|into|table)\s+[a-zA-Z_0-9]*$/i.test(beforeCursor)
+					if (wantsTables) {
+						for (const table of tables) {
+							suggestions.push({
+								label: table.name,
+								kind: monaco.languages.CompletionItemKind.Struct,
+								insertText: table.name,
+								detail: table.type,
+								range
+							})
+						}
+					}
+
+					const wantsColumns =
+						/\b(select|where|and|or|on|group by|order by|having|set)\s+[a-zA-Z_0-9]*$/i.test(
+							beforeCursor
+						)
+
+					if (wantsColumns) {
+						for (const table of tables) {
+							for (const col of table.columns || []) {
+								suggestions.push({
+									label: `${table.name}.${col.name}`,
+									kind: monaco.languages.CompletionItemKind.Field,
+									insertText: `${table.name}.${col.name}`,
+									detail: col.type,
+									range
+								})
+							}
+						}
+					}
+
+					for (const keyword of SQL_KEYWORDS) {
+						suggestions.push({
+							label: keyword,
+							kind: monaco.languages.CompletionItemKind.Keyword,
+							insertText: keyword,
+							range
+						})
+					}
+
+					return { suggestions }
+				}
+			})
+
+			return function cleanupCompletionProvider() {
+				completionProviderRef.current?.dispose()
+				completionProviderRef.current = null
+			}
+		},
+		[tables, isEditorReady]
 	)
 
 	function updateDecorations(editor: any, monaco: any) {

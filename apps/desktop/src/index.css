@@ -623,13 +623,6 @@
 		box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.15);
 	}
 
-	.db-card.active::before {
-		content: '';
-		@apply absolute inset-0 rounded-lg;
-		background: linear-gradient(135deg, hsl(var(--primary) / 0.1) 0%, transparent 60%);
-		pointer-events: none;
-	}
-
 	.db-card-icon {
 		@apply flex h-10 w-10 items-center justify-center rounded-md transition-transform duration-200;
 	}
