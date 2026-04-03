@@ -11,7 +11,7 @@ type Props = {
 	onSubmit: (rowData: Record<string, unknown>) => void
 	isLoading?: boolean
 	initialData?: Record<string, unknown>
-	mode?: 'add' | 'duplicate'
+	mode?: 'add' | 'duplicate' | 'edit'
 }
 
 export function AddRecordDialog({
@@ -90,8 +90,18 @@ export function AddRecordDialog({
 		<StudioDialog
 			open={open}
 			onOpenChange={onOpenChange}
-			title={mode === 'duplicate' ? 'Duplicate Record' : 'Add New Record'}
-			description='Fill in the values for the new record. Primary key fields with auto-increment are excluded.'
+			title={
+				mode === 'edit'
+					? 'Edit Record'
+					: mode === 'duplicate'
+						? 'Duplicate Record'
+						: 'Add New Record'
+			}
+			description={
+				mode === 'edit'
+					? 'Update the editable values for this record. Auto-increment primary keys are read-only.'
+					: 'Fill in the values for the new record. Primary key fields with auto-increment are excluded.'
+			}
 			className='max-w-2xl max-h-[80vh] flex flex-col overflow-hidden'
 			contentClassName='flex flex-col overflow-hidden p-0'
 			footer={
@@ -111,6 +121,8 @@ export function AddRecordDialog({
 								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
 								Saving...
 							</>
+						) : mode === 'edit' ? (
+							'Save Changes'
 						) : mode === 'duplicate' ? (
 							'Duplicate'
 						) : (

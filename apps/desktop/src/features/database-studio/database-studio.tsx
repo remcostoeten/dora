@@ -118,10 +118,15 @@ export function DatabaseStudio({
 		initialCacheEntry ? initialCacheEntry.data : null
 	)
 	const [showAddDialog, setShowAddDialog] = useState(false)
-	const [addDialogMode, setAddDialogMode] = useState<'add' | 'duplicate'>('add')
+	const [addDialogMode, setAddDialogMode] = useState<'add' | 'duplicate' | 'edit'>('add')
 	const [duplicateInitialData, setDuplicateInitialData] = useState<
 		Record<string, unknown> | undefined
 	>(undefined)
+	const [editingRowState, setEditingRowState] = useState<{
+		primaryKeyColumn: string
+		primaryKeyValue: unknown
+		originalRow: Record<string, unknown>
+	} | null>(null)
 	const [showRowDetail, setShowRowDetail] = useState(false)
 	const [selectedRowForDetail, setSelectedRowForDetail] = useState<Record<
 		string,
@@ -726,6 +731,85 @@ export function DatabaseStudio({
 			})
 	}, [tableData, activeConnectionId, tableId, tableName, rowsForActions, insertRow, loadTableData])
 
+	const deleteRowIndexes = useCallback(
+		function deleteRowIndexes(rowIndexes: number[]) {
+			const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
+			if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
+
+			const primaryKeyValues = rowIndexes.map(function (targetRowIndex) {
+				return tableData.rows[targetRowIndex][primaryKeyColumn.name]
+			})
+
+			deleteRows.mutate(
+				{
+					connectionId: activeConnectionId,
+					tableName: tableName || tableId,
+					primaryKeyColumn: primaryKeyColumn.name,
+					primaryKeyValues
+				},
+				{
+					onSuccess: function onDeleteSuccess() {
+						setSelectedRows(new Set())
+						loadTableData()
+						setShowDeleteConfirmDialog(false)
+						setPendingSingleDeleteRow(null)
+					},
+					onError: function onDeleteError(error) {
+						console.error('Failed to delete row(s):', error)
+						toast({
+							title: 'Failed to delete rows',
+							description: error instanceof Error ? error.message : 'An error occurred',
+							variant: 'destructive'
+						})
+					}
+				}
+			)
+		},
+		[tableData, activeConnectionId, tableId, tableName, deleteRows, loadTableData, toast]
+	)
+
+	const duplicateRowIndexes = useCallback(
+		function duplicateRowIndexes(rowIndexes: number[]) {
+			const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
+			if (!activeConnectionId || !tableId || !tableData) return
+
+			const rowsToDuplicate = rowIndexes.map(function (targetRowIndex) {
+				const row = { ...tableData.rows[targetRowIndex] }
+				if (primaryKeyColumn) {
+					delete row[primaryKeyColumn.name]
+				}
+				return row
+			})
+
+			setIsBulkActionLoading(true)
+			Promise.all(
+				rowsToDuplicate.map(function (rowData) {
+					return insertRow.mutateAsync({
+						connectionId: activeConnectionId,
+						tableName: tableName || tableId,
+						rowData
+					})
+				})
+			)
+				.then(function () {
+					setSelectedRows(new Set())
+					loadTableData()
+				})
+				.catch(function (error) {
+					console.error('Failed to duplicate rows:', error)
+					toast({
+						title: 'Failed to duplicate rows',
+						description: error instanceof Error ? error.message : 'An error occurred',
+						variant: 'destructive'
+					})
+				})
+				.finally(function () {
+					setIsBulkActionLoading(false)
+				})
+		},
+		[tableData, activeConnectionId, tableId, tableName, insertRow, loadTableData, toast]
+	)
+
 	const handleExportJson = useCallback(() => {
 		if (!tableData) return
 		const rowsData = Array.from(rowsForActions).map(function (rowIndex) {
@@ -1076,7 +1160,12 @@ export function DatabaseStudio({
 		}
 	}
 
-	async function handleRowAction(action: string, row: Record<string, unknown>, rowIndex: number) {
+	async function handleRowAction(
+		action: string,
+		row: Record<string, unknown>,
+		rowIndex: number,
+		batchIndexes?: number[]
+	) {
 		if (!tableId || !activeConnectionId || !tableData) return
 
 		const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
@@ -1084,10 +1173,13 @@ export function DatabaseStudio({
 			console.error('No primary key found')
 			return
 		}
+		const effectiveRowIndexes =
+			batchIndexes && batchIndexes.length > 1 ? batchIndexes : [rowIndex]
+		const isBatchAction = effectiveRowIndexes.length > 1
 
 		switch (action) {
 			case 'delete':
-				if (settings.confirmBeforeDelete) {
+				if (settings.confirmBeforeDelete && !isBatchAction) {
 					setPendingSingleDeleteRow({
 						row,
 						primaryKeyColumn: primaryKeyColumn.name,
@@ -1097,22 +1189,14 @@ export function DatabaseStudio({
 					return
 				}
 
-				deleteRows.mutate(
-					{
-						connectionId: activeConnectionId,
-						tableName: tableName || tableId,
-						primaryKeyColumn: primaryKeyColumn.name,
-						primaryKeyValues: [row[primaryKeyColumn.name]]
-					},
-					{
-						onSuccess: function onDeleteSuccess() {
-							loadTableData()
-						},
-						onError: function onDeleteError(error) {
-							console.error('Failed to delete row:', error)
-						}
-					}
-				)
+				if (settings.confirmBeforeDelete && isBatchAction) {
+					setPendingSingleDeleteRow(null)
+					setSelectedRows(new Set(effectiveRowIndexes))
+					setShowDeleteConfirmDialog(true)
+					return
+				}
+
+				deleteRowIndexes(effectiveRowIndexes)
 				break
 			case 'view':
 				setSelectedRowForDetail(row)
@@ -1120,10 +1204,20 @@ export function DatabaseStudio({
 				break
 			case 'edit':
 				setDuplicateInitialData(row)
-				setAddDialogMode('add')
+				setEditingRowState({
+					primaryKeyColumn: primaryKeyColumn.name,
+					primaryKeyValue: row[primaryKeyColumn.name],
+					originalRow: row
+				})
+				setAddDialogMode('edit')
 				setShowAddDialog(true)
 				break
 			case 'duplicate':
+				if (isBatchAction) {
+					duplicateRowIndexes(effectiveRowIndexes)
+					break
+				}
+
 				const duplicateData = { ...row }
 				if (primaryKeyColumn) {
 					delete duplicateData[primaryKeyColumn.name]
@@ -1241,6 +1335,9 @@ export function DatabaseStudio({
 
 	function handleAddRecord() {
 		if (!tableData) return
+		setEditingRowState(null)
+		setDuplicateInitialData(undefined)
+		setAddDialogMode('add')
 		const defaults = createDefaultValues(tableData.columns)
 		setDraftRow(defaults)
 		setDraftInsertIndex(-1) // -1 indicates top of the table
@@ -1288,6 +1385,53 @@ export function DatabaseStudio({
 
 	function handleAddRecordSubmit(rowData: Record<string, unknown>) {
 		if (!activeConnectionId || !tableId || !tableData) return
+		if (addDialogMode === 'edit' && editingRowState) {
+			const changedColumns = tableData.columns
+				.filter(function isEditableColumn(column) {
+					return !column.primaryKey
+				})
+				.filter(function hasChangedValue(column) {
+					return rowData[column.name] !== editingRowState.originalRow[column.name]
+				})
+
+			if (changedColumns.length === 0) {
+				setShowAddDialog(false)
+				setEditingRowState(null)
+				setDuplicateInitialData(undefined)
+				setAddDialogMode('add')
+				return
+			}
+
+			Promise.all(
+				changedColumns.map(function updateChangedColumn(column) {
+					return updateCell.mutateAsync({
+						connectionId: activeConnectionId,
+						tableName: tableName || tableId,
+						primaryKeyColumn: editingRowState.primaryKeyColumn,
+						primaryKeyValue: editingRowState.primaryKeyValue,
+						columnName: column.name,
+						newValue: normalizeValueForInsert(column, rowData[column.name])
+					})
+				})
+			)
+				.then(function onEditSuccess() {
+					setShowAddDialog(false)
+					setEditingRowState(null)
+					setDuplicateInitialData(undefined)
+					setAddDialogMode('add')
+					loadTableData()
+				})
+				.catch(function onEditError(error) {
+					console.error('Failed to update row:', error)
+					toast({
+						title: 'Failed to update row',
+						description: error instanceof Error ? error.message : 'An error occurred',
+						variant: 'destructive'
+					})
+				})
+			return
+		}
+
 		const normalizedRowData = normalizeRowForInsert(rowData, tableData.columns)
 
 		insertRow.mutate(
@@ -1299,6 +1443,8 @@ export function DatabaseStudio({
 			{
 				onSuccess: function onInsertSuccess() {
 					setShowAddDialog(false)
+					setDuplicateInitialData(undefined)
+					setAddDialogMode('add')
 					loadTableData()
 				},
 				onError: function onInsertError(error) {
@@ -1874,10 +2020,17 @@ export function DatabaseStudio({
 
 			<AddRecordDialog
 				open={showAddDialog}
-				onOpenChange={setShowAddDialog}
+				onOpenChange={function handleAddDialogOpenChange(open) {
+					setShowAddDialog(open)
+					if (!open) {
+						setEditingRowState(null)
+						setDuplicateInitialData(undefined)
+						setAddDialogMode('add')
+					}
+				}}
 				columns={tableData?.columns || []}
 				onSubmit={handleAddRecordSubmit}
-				isLoading={insertRow.isPending}
+				isLoading={insertRow.isPending || updateCell.isPending}
 				initialData={duplicateInitialData}
 				mode={addDialogMode}
 			/>

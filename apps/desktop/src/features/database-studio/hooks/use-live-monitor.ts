@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { commands } from '@/lib/bindings'
 
 export type ChangeType = 'insert' | 'update' | 'delete'
 
@@ -104,7 +104,7 @@ export function useLiveMonitor({
 
 		monitorIdRef.current = null
 		try {
-			await invoke('stop_live_monitor', { monitorId })
+			await commands.stopLiveMonitor(monitorId)
 		} catch (error) {
 			console.error('[LiveMonitor] Failed to stop monitor:', error)
 		} finally {
@@ -196,15 +196,21 @@ export function useLiveMonitor({
 
 				try {
 					setMonitorError(null)
-					const session = await invoke<LiveMonitorSession>('start_live_monitor', {
-						connectionId,
-						tableName,
-						intervalMs: config.intervalMs,
-						changeTypes: config.subscription.changeTypes
-					})
+					const sessionResult = await commands.startLiveMonitor(
+						connectionId!,
+						tableName!,
+						config.intervalMs,
+						config.subscription.changeTypes
+					)
+
+					if (sessionResult.status !== 'ok') {
+						throw new Error(String(sessionResult.error))
+					}
+
+					const session = sessionResult.data as LiveMonitorSession
 
 					if (cancelled) {
-						await invoke('stop_live_monitor', { monitorId: session.monitorId })
+						await commands.stopLiveMonitor(session.monitorId)
 						return
 					}
 

@@ -264,6 +264,17 @@ export function DatabaseSidebar({
 		},
 		[schema, activeTableId]
 	)
+	const activeConnection = useMemo(
+		function () {
+			if (!activeConnectionId) return null
+			return (
+				connections.find(function (connection) {
+					return connection.id === activeConnectionId
+				}) || null
+			)
+		},
+		[connections, activeConnectionId]
+	)
 
 	function handleTableSelect(tableId: string) {
 		setInternalTableId(tableId)
@@ -322,15 +333,18 @@ export function DatabaseSidebar({
 		}
 	}
 
-	async function handleRenameTable(newName: string) {
-		if (!activeConnectionId || !targetTableName) return
+	async function handleRenameTable(currentTableName: string, newName: string) {
+		if (!activeConnectionId || !currentTableName) return
 
 		setIsDdlLoading(true)
 		try {
-			const sql = `ALTER TABLE "${targetTableName}" RENAME TO "${newName}"`
+			const sql = `ALTER TABLE "${currentTableName}" RENAME TO "${newName}"`
 			const result = await commands.executeBatch(activeConnectionId, [sql])
 			if (result.status === 'ok') {
 				setShowRenameDialog(false)
+				if (targetTableName === currentTableName) {
+					setTargetTableName('')
+				}
 				setSchema(null)
 				setRefreshTrigger(function (prev) {
 					return prev + 1
@@ -380,11 +394,19 @@ export function DatabaseSidebar({
 
 	function handleTableRename(tableId: string, newName: string) {
 		setTargetTableName(tableId)
-		handleRenameTable(newName)
+		void handleRenameTable(tableId, newName)
 	}
 
 	async function handleDuplicateTable(tableName: string) {
 		if (!activeConnectionId) return
+		if (activeConnection?.type !== 'postgres') {
+			toast({
+				title: 'Duplicate table not available',
+				description: 'Table duplication is currently supported for PostgreSQL connections only.',
+				variant: 'destructive'
+			})
+			return
+		}
 
 		setIsDdlLoading(true)
 		try {
@@ -804,7 +826,9 @@ export function DatabaseSidebar({
 				open={showRenameDialog}
 				onOpenChange={setShowRenameDialog}
 				currentName={targetTableName}
-				onConfirm={handleRenameTable}
+				onConfirm={function handleRenameConfirm(newName: string) {
+					return handleRenameTable(targetTableName, newName)
+				}}
 				isLoading={isDdlLoading}
 			/>
 
