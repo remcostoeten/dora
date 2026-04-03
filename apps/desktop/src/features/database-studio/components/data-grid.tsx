@@ -40,7 +40,12 @@ type Props = {
 	onFilterAdd?: (filter: FilterDescriptor) => void
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
 	onBatchCellEdit?: (rowIndexes: number[], columnName: string, newValue: unknown) => void
-	onRowAction?: (action: RowAction, row: Record<string, unknown>, rowIndex: number) => void
+	onRowAction?: (
+		action: RowAction,
+		row: Record<string, unknown>,
+		rowIndex: number,
+		batchIndexes?: number[]
+	) => void
 	tableName?: string
 	selectedCells?: Set<string>
 	onCellSelectionChange?: (cells: Set<string>) => void
@@ -239,6 +244,13 @@ export function DataGrid({
 		const cellPos: CellPosition = { row: rowIndex, col: colIndex }
 		setFocusedCell(cellPos)
 		setAnchorCell(cellPos)
+	}
+
+	function ensureRowSelectionForContextMenu(rowIndex: number) {
+		if (selectedRows.has(rowIndex)) return
+		onSelectAll(false)
+		onRowSelect(rowIndex, true)
+		lastClickedRowRef.current = rowIndex
 	}
 
 	useEffect(
@@ -953,31 +965,19 @@ export function DataGrid({
 							)
 
 							return (
-								<React.Fragment key={rowIndex}>
-									<RowContextMenu
-										key={rowIndex}
-										row={row}
+									<React.Fragment key={rowIndex}>
+										<RowContextMenu
+											row={row}
 										rowIndex={rowIndex}
 										columns={columns}
 										tableName={tableName}
 										onAction={function (action, row, index, batchIndexes) {
-											// If batchIndexes provided, we might need to handle it.
-											// But currently onRowAction signature is (action, row, index).
-											// We should update onRowAction to perform batch if needed?
-											// OR we can just handle it here if onRowAction doesn't support it.
-											// Wait, I updated RowAction signature in previous step? No, just in RowContextMenu.
-											// DatabaseStudio expects specific signature.
-											// Let's assume onRowAction in DataGrid props needs update or we handle it.
-											// DatabaseStudio handleRowAction only takes 3 args.
-											// BUT DatabaseStudio has `rowsForActions`.
-											// So if we trigger an action from here, DatabaseStudio should use its `rowsForActions` logic?
-											// YES. DatabaseStudio's handleRowAction logic should be "if action is batch-able, use rowsForActions".
-											// But handleRowAction in DatabaseStudio currently just does single row logic for 'delete' unless via Bulk Delete button.
-											// I need to update DatabaseStudio's handleRowAction to also support batch.
-											// For now, let's pass the action up.
-											onRowAction?.(action, row, rowIndex)
+											onRowAction?.(action, row, index, batchIndexes)
 										}}
 										onOpenChange={function (open, row) {
+											if (open) {
+												ensureRowSelectionForContextMenu(row)
+											}
 											handleRowContextMenuChange(open, row)
 										}}
 										selectedRows={effectiveSelectedRows}

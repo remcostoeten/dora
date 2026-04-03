@@ -59,14 +59,13 @@ impl<'a> MutationService<'a> {
         // Build the UPDATE query
         let (query, db_type) = match &client {
             DatabaseClient::Postgres { .. } => {
-                let schema_prefix = schema_name
-                    .as_ref()
-                    .map(|s| format!("\"{}\".", s))
-                    .unwrap_or_default();
-                let query = format!(
-                    "UPDATE \"{table_name}\" SET \"{column_name}\" = $1 WHERE \"{primary_key_column}\" = $2",
-                );
-                (format!("{}{}", schema_prefix, query), "postgres")
+                (
+                    format!(
+                        "UPDATE {} SET \"{column_name}\" = $1 WHERE \"{primary_key_column}\" = $2",
+                        qualified_table_name(&table_name, schema_name.as_deref())
+                    ),
+                    "postgres",
+                )
             }
             DatabaseClient::SQLite { .. } => {
                 let query = format!(
@@ -330,6 +329,120 @@ impl<'a> MutationService<'a> {
             affected_rows,
             message: Some(message),
         })
+    }
+
+    pub async fn duplicate_row(
+        &self,
+        connection_id: Uuid,
+        table_name: String,
+        schema_name: Option<String>,
+        primary_key_column: String,
+        primary_key_value: serde_json::Value,
+    ) -> Result<MutationResult, Error> {
+        let connection_entry = self
+            .connections
+            .get(&connection_id)
+            .with_context(|| format!("Connection not found: {}", connection_id))?;
+
+        let connection = connection_entry.value();
+        let client = connection.get_client()?;
+
+        let mut row_data = match &client {
+            DatabaseClient::Postgres { client } => {
+                let query = format!(
+                    "SELECT * FROM {} WHERE \"{primary_key_column}\" = $1 LIMIT 1",
+                    qualified_table_name(&table_name, schema_name.as_deref())
+                );
+                let pk_param = json_to_pg_param(&primary_key_value);
+                let row = client
+                    .query_opt(&query, &[pk_param.as_ref()])
+                    .await?
+                    .ok_or_else(|| {
+                        Error::Any(anyhow!(
+                            "No row found in {} where {} matches the provided primary key",
+                            qualified_table_name(&table_name, schema_name.as_deref()),
+                            primary_key_column
+                        ))
+                    })?;
+
+                let mut data = serde_json::Map::new();
+                for (idx, column) in row.columns().iter().enumerate() {
+                    data.insert(column.name().to_string(), pg_value_to_json(&row, idx));
+                }
+                data
+            }
+            DatabaseClient::SQLite { connection } => {
+                let conn = connection.lock().unwrap();
+                let query = format!(
+                    "SELECT * FROM \"{table_name}\" WHERE \"{primary_key_column}\" = ? LIMIT 1"
+                );
+                let pk_value = json_to_sqlite_value(&primary_key_value);
+                let mut stmt = conn.prepare(&query)?;
+                let column_names: Vec<String> = stmt
+                    .column_names()
+                    .into_iter()
+                    .map(|name| name.to_string())
+                    .collect();
+                let row_data = stmt.query_row([&pk_value as &dyn rusqlite::ToSql], |row| {
+                    let mut data = serde_json::Map::new();
+                    for (idx, column_name) in column_names.iter().enumerate() {
+                        data.insert(column_name.clone(), sqlite_value_to_json(row, idx));
+                    }
+                    Ok(data)
+                });
+
+                match row_data {
+                    Ok(data) => data,
+                    Err(rusqlite::Error::QueryReturnedNoRows) => {
+                        return Err(Error::Any(anyhow!(
+                            "No row found in \"{table_name}\" where {primary_key_column} matches the provided primary key"
+                        )));
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+            }
+            DatabaseClient::LibSQL { connection } => {
+                let query = format!(
+                    "SELECT * FROM \"{table_name}\" WHERE \"{primary_key_column}\" = ? LIMIT 1"
+                );
+                let params = vec![json_to_libsql_value(&primary_key_value)];
+                let mut rows = connection
+                    .query(&query, params)
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("LibSQL duplicate lookup failed: {}", e)))?;
+
+                let column_names: Vec<String> = (0..rows.column_count())
+                    .filter_map(|idx| rows.column_name(idx as i32).map(|name| name.to_string()))
+                    .collect();
+
+                let row = rows
+                    .next()
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("LibSQL duplicate fetch failed: {}", e)))?
+                    .ok_or_else(|| {
+                        Error::Any(anyhow!(
+                            "No row found in \"{table_name}\" where {primary_key_column} matches the provided primary key"
+                        ))
+                    })?;
+
+                let mut data = serde_json::Map::new();
+                for (idx, column_name) in column_names.iter().enumerate() {
+                    data.insert(column_name.clone(), libsql_value_to_json(&row, idx as i32));
+                }
+                data
+            }
+        };
+
+        row_data.remove(&primary_key_column);
+
+        if row_data.is_empty() {
+            return Err(Error::Any(anyhow!(
+                "Cannot duplicate row in {} because only the primary key column is available",
+                qualified_table_name(&table_name, schema_name.as_deref())
+            )));
+        }
+
+        self.insert_row(connection_id, table_name, schema_name, row_data).await
     }
 
     pub async fn export_table(
@@ -745,6 +858,13 @@ impl<'a> MutationService<'a> {
 }
 
 // Helpers
+fn qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
+    match schema_name {
+        Some(schema_name) => format!("\"{schema_name}\".\"{table_name}\""),
+        None => format!("\"{table_name}\""),
+    }
+}
+
 async fn execute_postgres_update(
     client: &DatabaseClient,
     query: &str,
@@ -1023,5 +1143,23 @@ fn libsql_value_to_json(row: &libsql::Row, idx: i32) -> serde_json::Value {
             serde_json::Value::String(base64::engine::general_purpose::STANDARD.encode(&b))
         }
         Err(_) => serde_json::Value::Null,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::qualified_table_name;
+
+    #[test]
+    fn qualified_table_name_without_schema_quotes_table() {
+        assert_eq!(qualified_table_name("users", None), "\"users\"");
+    }
+
+    #[test]
+    fn qualified_table_name_with_schema_quotes_schema_and_table() {
+        assert_eq!(
+            qualified_table_name("users", Some("public")),
+            "\"public\".\"users\""
+        );
     }
 }

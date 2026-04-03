@@ -142,6 +142,7 @@ pub fn run() {
             database::commands::update_cell,
             database::commands::delete_rows,
             database::commands::insert_row,
+            database::commands::duplicate_row,
             database::commands::execute_batch,
             database::commands::export_table,
             // Metadata commands

@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react'
-import { Table2, Braces, Download, Copy, Trash2, Pencil, CircleCheck } from 'lucide-react'
+import { Table2, Braces, Download, Copy, Trash2, CircleCheck } from 'lucide-react'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -12,7 +12,6 @@ import {
 } from '@/shared/ui/alert-dialog'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useDataMutation } from '@/core/data-provider'
-import { useAdapter } from '@/core/data-provider/context'
 import { useSettings } from '@/core/settings'
 import { Button } from '@/shared/ui/button'
 import {
@@ -20,8 +19,7 @@ import {
 	ContextMenuTrigger,
 	ContextMenuContent,
 	ContextMenuItem,
-	ContextMenuSeparator,
-	ContextMenuShortcut
+	ContextMenuSeparator
 } from '@/shared/ui/context-menu'
 import { Input } from '@/shared/ui/input'
 import { ScrollArea } from '@/shared/ui/scroll-area'
@@ -54,7 +52,6 @@ export function SqlResults({
 	showFilter,
 	onRefresh
 }: Props) {
-	const adapter = useAdapter()
 	const { updateCell, deleteRows } = useDataMutation()
 	const { settings } = useSettings()
 	const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
@@ -101,15 +98,45 @@ export function SqlResults({
 		return result.columnDefinitions.find((c) => c.primaryKey)
 	}
 
-	function handleCellDoubleClick(rowIndex: number, column: string, value: unknown) {
-		// Only allow editing if we have a connectionId needed for mutation
-		if (!connectionId) return
+	const mutationContext = useMemo(() => {
+		if (!result || !connectionId) return null
 
-		// Check if we can identify the row (need PK)
-		// If we don't have column definitions (raw SQL), we might not be able to safely edit
-		// But for user experience, maybe we allow it and fail if backend can't handle it?
-		// Better to check for PK if possible.
-		// For now, let's allow it and assume the user knows what they are doing or the backend handles ROWID.
+		const primaryKey = getPrimaryKey()
+		const primaryKeyName =
+			primaryKey?.name || result.columns.find((column) => column.toLowerCase() === 'id')
+
+		if (!result.sourceTable || !primaryKeyName) {
+			return null
+		}
+
+		return {
+			tableName: result.sourceTable,
+			primaryKeyName
+		}
+	}, [connectionId, result])
+
+	const mutationDisabledReason = useMemo(() => {
+		if (!result || !connectionId) {
+			return 'Connect to a database to enable row mutations.'
+		}
+
+		if (!result.sourceTable) {
+			return 'This result set is not tied to a single source table, so edit/delete is disabled.'
+		}
+
+		const primaryKey = getPrimaryKey()
+		const primaryKeyName =
+			primaryKey?.name || result.columns.find((column) => column.toLowerCase() === 'id')
+
+		if (!primaryKeyName) {
+			return 'No primary key metadata was found for this result set, so edit/delete is disabled.'
+		}
+
+		return null
+	}, [connectionId, result])
+
+	function handleCellDoubleClick(rowIndex: number, column: string, value: unknown) {
+		if (!mutationContext) return
 
 		setEditingCell({
 			rowIndex,
@@ -120,15 +147,10 @@ export function SqlResults({
 	}
 
 	async function handleSaveCell() {
-		if (!editingCell || !result || !connectionId) return
-
-		const pkCol = getPrimaryKey()
-		// If no PK explicitly defined, we might default to 'id' or fail.
-		// For now, let's try to find a column named 'id' if no PK defined.
-		const pkName = pkCol?.name || result.columns.find((c) => c.toLowerCase() === 'id') || 'id'
+		if (!editingCell || !result || !connectionId || !mutationContext) return
 
 		const row = result.rows[editingCell.rowIndex]
-		const pkValue = row[pkName]
+		const pkValue = row[mutationContext.primaryKeyName]
 
 		if (pkValue === undefined) {
 			console.error('Cannot update row: Primary key not found')
@@ -136,89 +158,12 @@ export function SqlResults({
 			return
 		}
 
-		// Optimistic update? Or wait?
-		// Let's call adapter.
-
-		// Determine table name. We don't have it in SqlQueryResult directly from a raw query.
-		// However, if we came from "Data Browser", we might know it.
-		// But here we are in generic SQL Results.
-		// The adapter need table name.
-		// Limitation: Raw generic SQL queries might be hard to update back without parsing format.
-		// BUT, if this is a "SELECT * FROM table", we might infer it.
-		// Since we don't have table name prop, we rely on the adapter being smart or limitation.
-
-		// Wait! The Plan said: "derived from result metadata or schema".
-		// If the query was `SELECT * FROM users`, result doesn't explicitly say "users".
-		// We need to pass `tableName` if this is a Table View context.
-		// Or if it's a raw query, we disable editing unless we can parse it.
-		// For now, I'll log a warning and skip if I can't guess.
-		// Actually, `updateCell` requries `tableName`.
-
-		// Hack for now: try to use the query text? No, `SqlResults` doesn't know the query.
-		// Maybe we disable editing for generic SQL results component for now,
-		// OR we just hardcode it to work if the user is in "Table Mode".
-		// The `sql-console` knows the query.
-
-		// Let's attempt to update. If we can't get table name, we fail.
-		// The `TauriAdapter.updateCell` needs generic table name.
-		// I will just use a placeholder or try to infer from context if I could...
-
-		// CRITICAL FIX: We need `tableName` passed to SqlResults if available!
-		// `SqlConsole` has `handleTableSelect` which sets a query.
-		// If we are in `unified-sidebar`, table selection just sets query.
-
-		// For the MVP of this feature, I will assume we can't easily edit arbitrary SQL results
-		// UNLESS we pass metadata.
-		// But wait, the `TauriAdapter` actually might support `UPDATE` via raw SQL if we constructed it.
-		// But `updateCell` method expects `tableName`.
-
-		// Re-evaluating: Should I add `tableName` to `SqlQueryResult`?
-		// `TauriAdapter.executeQuery` could try to parse table name.
-		// `MockAdapter.executeQuery` acts like it knows.
-
-		// Let's add `tableName?: string` to `SqlQueryResult` in `types.ts` as well?
-		// Or just `sourceTable`.
-
-		// For this step, I will implement the UI.
-		// If I lack table name, I will assume it's uneditable or try to find it.
-		// Actually, if `result.queryType` is SELECT, maybe we can find it?
-
-		// Let's pause editing logic for a second and check if I can add `tableName` to `SqlQueryResult`.
-		// `TauriAdapter.fetchTableData` KNOWS the table name.
-		// `TauriAdapter.executeQuery` does NOT necessarily know.
-
-		// If `SqlConsole` treats it as "Data Browser" via `fetchTableData`, we know.
-		// But `SqlConsole` uses `executeQuery` for everything currently.
-
-		// I will add `tableName` to `SqlQueryResult` to be safe/future proof.
-		// I will parse it in `SqlConsole` (client side) or adapter.
-		// `SqlConsole` has `getQueryType`. I can also add `getTableName(query)`.
-
-		// proceeding with the UI implementation assuming `result.tableName` might exist or I have to hack it.
-		// I'll add `tableName` to `SqlQueryResult` in `types.ts` first? No I just edited it.
-		// I'll use `SqlConsole` to regex it.
-
-		// Back to `handleSaveCell`:
-		// For now, let's assume we can get table name or fail.
-		// I'll use a helper to guess table name from... we don't have query here.
-		// I'll add `tableName` prop to `SqlResults`?
-		// The `SqlConsole` has the query. It can parse table name and pass it to `SqlResults`.
-
-		// OK, I'll modify `SqlConsole` to pass `tableName` (inferred) to `SqlResults`.
-		// And `SqlResults` takes `tableName` prop optionally.
-
-		// This tool call is to write `SqlResults`. I will add `tableName` prop.
-
-		// And call `adapter.updateCell`.
-
 		try {
-			const tableName = result.sourceTable || 'unknown_table'
-
 			updateCell.mutate(
 				{
 					connectionId,
-					tableName,
-					primaryKeyColumn: pkName,
+					tableName: mutationContext.tableName,
+					primaryKeyColumn: mutationContext.primaryKeyName,
 					primaryKeyValue: pkValue,
 					columnName: editingCell.column,
 					newValue: editingCell.value
@@ -241,20 +186,9 @@ export function SqlResults({
 		}
 	}
 
-	// I need to add `sourceTable` to `SqlQueryResult` definition in `types.ts`?
-	// Yes, simpler.
-
-	// Changing plan slightly:
-	// 1. Update `types.ts` again to add `sourceTable?: string`.
-	// 2. Update `SqlConsole` to populate `sourceTable`.
-	// 3. Write `SqlResults`.
-
-	// I'll do this in this same turn if possible? No, I defined `write_to_file`.
-	// I'll write `SqlResults` assuming `result.sourceTable` exists.
-	// And then I'll go back and fix `types.ts` and `SqlConsole`.
-	// This is safer.
-
 	function handleDeleteRow(rowIndex: number) {
+		if (!mutationContext) return
+
 		if (settings.confirmBeforeDelete) {
 			setRowToDelete(rowIndex)
 		} else {
@@ -263,16 +197,11 @@ export function SqlResults({
 	}
 
 	async function performDeleteRow(rowIndex: number) {
-		if (!result || !connectionId) return
-		const pkCol = getPrimaryKey()
-		const pkName = pkCol?.name || result.columns.find((c) => c.toLowerCase() === 'id') || 'id'
+		if (!result || !connectionId || !mutationContext) return
 		const row = result.rows[rowIndex]
-		const pkValue = row[pkName]
+		const pkValue = row[mutationContext.primaryKeyName]
 
-		// Need table name
-		const tableName = (result as any).sourceTable // Cast for now until type updated
-
-		if (!tableName || pkValue === undefined) {
+		if (pkValue === undefined) {
 			console.error('Delete failed: missing table name or PK')
 			return
 		}
@@ -280,8 +209,8 @@ export function SqlResults({
 		deleteRows.mutate(
 			{
 				connectionId,
-				tableName,
-				primaryKeyColumn: pkName,
+				tableName: mutationContext.tableName,
+				primaryKeyColumn: mutationContext.primaryKeyName,
 				primaryKeyValues: [pkValue]
 			},
 			{
@@ -353,11 +282,16 @@ export function SqlResults({
 							Success
 						</span>
 						<span className='text-muted-foreground'>
-							{successMessage} {filteredRows.length !== result.rowCount ? `${filteredRows.length} / ` : ''}
+							{successMessage}{' '}
+							{filteredRows.length !== result.rowCount ? `${filteredRows.length} / ` : ''}
 							{result.rowCount} row{result.rowCount !== 1 ? 's' : ''} •{' '}
 							{result.executionTime}ms backend • {filterTime}ms filtering
 						</span>
 					</div>
+				)}
+
+				{mutationDisabledReason && result && !result.error && result.rows.length > 0 && (
+					<div className='text-[11px] text-muted-foreground'>{mutationDisabledReason}</div>
 				)}
 
 				<Button
@@ -471,14 +405,20 @@ export function SqlResults({
 														return (
 															<td
 																key={col}
-																className='px-3 py-1.5 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono whitespace-nowrap cursor-cell relative min-h-[30px]'
-																onDoubleClick={() =>
+																className={cn(
+																	'px-3 py-1.5 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono whitespace-nowrap relative min-h-[30px]',
+																	mutationContext
+																		? 'cursor-cell'
+																		: 'cursor-default'
+																)}
+																onDoubleClick={() => {
+																	if (!mutationContext) return
 																	handleCellDoubleClick(
 																		rowIndex,
 																		col,
 																		cellValue
 																	)
-																}
+																}}
 															>
 																{isEditing ? (
 																	<Input
@@ -493,10 +433,6 @@ export function SqlResults({
 																			})
 																		}
 																		onBlur={() => {
-																			// Commit or cancel? Usually commit on blur is annoying if accidental.
-																			// Let's cancel on blur for now or just stay?
-																			// Click outside commits?
-																			// Let's just set null (cancel) on blur for safety, user should press Enter.
 																			setEditingCell(null)
 																		}}
 																		onKeyDown={async (e) => {
@@ -538,6 +474,7 @@ export function SqlResults({
 												</ContextMenuItem>
 												<ContextMenuSeparator />
 												<ContextMenuItem
+													disabled={!mutationContext}
 													className='text-destructive focus:text-destructive'
 													onClick={() => handleDeleteRow(rowIndex)}
 												>
