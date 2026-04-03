@@ -13,6 +13,10 @@
 
 Dora is a cross-platform database studio focused on fast local UX, keyboard-first workflows, and a native desktop footprint.
 
+<p align="center">
+  <img src="app_demo.webp" alt="Dora App Demonstration" width="90%" />
+</p>
+
 ## Supported Databases
 
 - PostgreSQL
@@ -21,12 +25,12 @@ Dora is a cross-platform database studio focused on fast local UX, keyboard-firs
 
 `MySQL` and first-class `SSH tunnel` UI are scaffolded but still marked as coming soon in the current frontend.
 
-## Audit Snapshot (2026-02-20)
+## Audit Snapshot (2026-04-03)
 
 - `bun run test:desktop`: `115/115` tests passing.
 - `bun run --cwd apps/desktop build`: production build succeeds.
 - `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml`: passes (warnings only).
-- `bun x tsc --noEmit -p apps/desktop/tsconfig.app.json`: fails with multiple TypeScript errors.
+- `bun x tsc --noEmit -p apps/desktop/tsconfig.app.json`: passes (TypeScript errors resolved).
 
 Full findings: `docs/app-audit-2026-02-20.md`.
 
@@ -49,10 +53,11 @@ Full findings: `docs/app-audit-2026-02-20.md`.
 | SQL Console | Query history and snippet/folder library | Done | Backed by storage commands. |
 | SQL Console | Result export (JSON/CSV) | Done | From toolbar/result views. |
 | SQL Console | Result filter panel | WIP | UI currently shows “Coming Soon”. |
-| Docker Manager | PostgreSQL container lifecycle | Beta | Create/start/stop/restart/remove managed containers. |
-| Docker Manager | Logs, details, compose export, terminal | Beta | Available in Docker feature panel. |
+| Docker Manager | PostgreSQL container lifecycle | Done | Create/start/stop/restart/remove managed containers. |
+| Docker Manager | Logs, details, compose export, terminal | Done | Available in Docker feature panel. |
 | UX | Keyboard shortcuts + URL state + theme/settings sync | Done | Includes state restoration for last connection/table. |
 | AI | AI assistant screen in app nav | Soon | Sidebar item is disabled placeholder. |
+| Schema Visualizer | Readonly visual representation of the schema | Soon | Sidebar item is disabled placeholder. |
 
 ## Download
 
