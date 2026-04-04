@@ -64,7 +64,7 @@ jobs:
                     postgresql-client
 
             - name: Setup Rust
-              uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
+              uses: dtolnay/rust-toolchain@stable
 
             - name: Cache Cargo
               uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
@@ -131,7 +131,7 @@ jobs:
                     libjavascriptcoregtk-4.1-dev
 
             - name: Setup Rust
-              uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
+              uses: dtolnay/rust-toolchain@stable
 
             - name: Install dependencies
               run: bun install
