@@ -1,3 +1,25 @@
+# Version 0.0.102
+
+**Date:** 2026-04-05
+**Tag:** `v0.0.102`
+**Range:** `v0.0.101..feature/package-distribution`
+
+## Why this release exists
+
+`v0.0.101` produced the main release assets, but the Snap workflow fixes landed immediately afterward on branch head. `v0.0.102` is the clean follow-up tag that includes those fixes.
+
+## Changes
+
+- Fixed Snap GitHub Actions builds to run Snapcraft correctly in destructive mode.
+- Replaced the invalid Tauri `--bundles none` step with a direct Rust release build for Snap packaging.
+- Keeps the packaging automation, release guidance, and VM lab tooling on the release tag itself.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`, `.rpm`
+- macOS: `.dmg`
+- Windows: `.exe`, `.msi`
+
 # Version 0.0.101
 
 **Date:** 2026-04-05

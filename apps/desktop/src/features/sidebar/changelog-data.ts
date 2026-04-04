@@ -8,9 +8,23 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.101'
+export const CURRENT_VERSION = '0.0.102'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.102',
+		date: '2026-04-05',
+		commit: 'v0.0.102',
+		title: 'Snap Workflow Follow-up & Packaging Release Cleanup',
+		description:
+			'Fixes the Snap CI path and cuts a clean follow-up release tag that includes the packaging automation work already on branch head.',
+		type: 'fix',
+		details: [
+			'Fixed Snapcraft CI execution to run correctly in destructive mode on GitHub Actions',
+			'Replaced the invalid Tauri bundle flag with a direct Rust release build for Snap packaging',
+			'Carries the packaging automation, release guide, and VM lab tooling into a clean release tag'
+		]
+	},
 	{
 		version: '0.0.101',
 		date: '2026-04-05',

@@ -137,6 +137,13 @@ These are possible, but are not published yet:
 
 At the moment, Homebrew is the only package-manager install path wired up end-to-end in this repo. The other supported install path is downloading the release artifact directly.
 
+Maintainer packaging docs:
+
+- `docs/distribution/winget.md`
+- `docs/distribution/aur.md`
+- `docs/distribution/snap.md`
+- `docs/distribution/one-machine-playbook.md`
+
 ## Database Support
 
 | Database       |   Status    | Notes                                                                          |

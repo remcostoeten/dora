@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.102 - Snap Workflow Follow-up & Packaging Release Cleanup
+
+**Date:** 2026-04-05
+
+**Highlights**
+
+- Fixed the Snap CI workflow so packaging builds run correctly on GitHub Actions.
+- Switched the Snap build path to a direct Rust release build instead of an invalid Tauri bundle flag.
+- Carries the packaging automation and VM lab work forward into a clean tag that matches branch head.
+
 ## 0.0.101 - Packaging Automation, VM Lab & Desktop Iteration
 
 **Date:** 2026-04-05

@@ -1,3 +1,18 @@
+# Release Notes - v0.0.102
+
+**Date:** 2026-04-05
+**Tag:** `v0.0.102`
+
+## Summary
+
+Follow-up release that rolls the Snap CI fixes onto a clean tag after `v0.0.101`.
+
+## Changes
+
+- Fixed Snap GitHub Actions builds to run Snapcraft with the required privileges in destructive mode.
+- Replaced the invalid `tauri build --bundles none` step with a direct Rust release build for Snap packaging.
+- Keeps the packaging automation, release guidance, and VM lab work on the tagged branch head.
+
 # Release Notes - v0.0.101
 
 **Date:** 2026-04-05
