@@ -55,6 +55,10 @@ impl ConnectionMonitor {
                 connection: libsql_conn,
                 ..
             } => *libsql_conn = None,
+            crate::database::types::Database::MySQL {
+                pool: mysql_pool,
+                ..
+            } => *mysql_pool = None,
         }
     }
 

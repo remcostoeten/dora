@@ -242,3 +242,43 @@ fn extract_host_from_connection_string(conn_str: &str) -> String {
     
     "localhost".to_string()
 }
+
+/// Get metadata for a MySQL database
+pub async fn get_mysql_metadata(_pool: &mysql_async::Pool, connection_string: &str) -> Result<DatabaseMetadata, Error> {
+    Ok(DatabaseMetadata {
+        size_bytes: 0,
+        created_at: None,
+        last_updated: None,
+        row_count_total: 0,
+        table_count: 0,
+        host: extract_mysql_host(connection_string),
+        database_name: extract_mysql_db_name(connection_string),
+    })
+}
+
+fn extract_mysql_host(conn_str: &str) -> String {
+    if let Ok(url) = url::Url::parse(conn_str) {
+        url.host_str().unwrap_or("localhost").to_string()
+    } else {
+        // Handle key=value format
+        for part in conn_str.split_whitespace() {
+            if part.starts_with("host=") {
+                return part[5..].to_string();
+            }
+        }
+        "localhost".to_string()
+    }
+}
+
+fn extract_mysql_db_name(conn_str: &str) -> Option<String> {
+    if let Ok(url) = url::Url::parse(conn_str) {
+        url.path_segments().and_then(|mut s| s.next()).map(String::from)
+    } else {
+        for part in conn_str.split_whitespace() {
+            if part.starts_with("database=") || part.starts_with("db=") {
+                return Some(part.split('=').nth(1).unwrap_or("").to_string());
+            }
+        }
+        None
+    }
+}

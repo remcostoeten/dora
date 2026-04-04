@@ -17,6 +17,8 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error(transparent)]
     Postgres(#[from] tokio_postgres::Error),
+    #[error(transparent)]
+    MySQL(#[from] mysql_async::Error),
 }
 
 impl<T: Debug> From<tokio::sync::mpsc::error::SendError<T>> for Error {

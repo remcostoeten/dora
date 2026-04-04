@@ -67,7 +67,7 @@ pub struct ConnectionInfo {
     pub sort_order: Option<i64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct SshConfig {
     pub host: String,
     pub port: u16,
@@ -79,6 +79,10 @@ pub struct SshConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub enum DatabaseInfo {
     Postgres {
+        connection_string: String,
+        ssh_config: Option<SshConfig>,
+    },
+    MySQL {
         connection_string: String,
         ssh_config: Option<SshConfig>,
     },
@@ -110,6 +114,9 @@ pub enum DatabaseClient {
     Postgres {
         client: Arc<tokio_postgres::Client>,
     },
+    MySQL {
+        pool: Arc<mysql_async::Pool>,
+    },
     SQLite {
         connection: Arc<Mutex<rusqlite::Connection>>,
     },
@@ -124,6 +131,12 @@ pub enum Database {
         connection_string: String,
         ssh_config: Option<SshConfig>,
         client: Option<Arc<tokio_postgres::Client>>,
+        tunnel: Option<Arc<SshTunnel>>,
+    },
+    MySQL {
+        connection_string: String,
+        ssh_config: Option<SshConfig>,
+        pool: Option<Arc<mysql_async::Pool>>,
         tunnel: Option<Arc<SshTunnel>>,
     },
     SQLite {
@@ -149,6 +162,14 @@ impl DatabaseConnection {
                     ssh_config,
                     ..
                 } => DatabaseInfo::Postgres {
+                    connection_string: connection_string.clone(),
+                    ssh_config: ssh_config.clone(),
+                },
+                Database::MySQL {
+                    connection_string,
+                    ssh_config,
+                    ..
+                } => DatabaseInfo::MySQL {
                     connection_string: connection_string.clone(),
                     ssh_config: ssh_config.clone(),
                 },
@@ -183,6 +204,15 @@ impl DatabaseConnection {
                 client: None,
                 tunnel: None,
             },
+            DatabaseInfo::MySQL {
+                connection_string,
+                ssh_config,
+            } => Database::MySQL {
+                connection_string,
+                ssh_config,
+                pool: None,
+                tunnel: None,
+            },
             DatabaseInfo::SQLite { db_path } => Database::SQLite {
                 db_path,
                 connection: None,
@@ -213,6 +243,12 @@ impl DatabaseConnection {
                 client: None,
                 tunnel: None,
             },
+            DatabaseInfo::MySQL { connection_string, ssh_config } => Database::MySQL {
+                connection_string,
+                ssh_config,
+                pool: None,
+                tunnel: None,
+            },
             DatabaseInfo::SQLite { db_path } => Database::SQLite {
                 db_path,
                 connection: None,
@@ -238,6 +274,7 @@ impl DatabaseConnection {
     pub fn is_client_connected(&self) -> bool {
         match &self.database {
             Database::Postgres { client, .. } => client.is_some(),
+            Database::MySQL { pool, .. } => pool.is_some(),
             Database::SQLite { connection, .. } => connection.is_some(),
             Database::LibSQL { connection, .. } => connection.is_some(),
         }
@@ -256,6 +293,10 @@ impl DatabaseConnection {
                 return Err(Error::Any(anyhow::anyhow!(
                     "Postgres connection not active"
                 )));
+            }
+            Database::MySQL { pool: Some(pool), .. } => DatabaseClient::MySQL { pool: pool.clone() },
+            Database::MySQL { pool: None, .. } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL connection not active")));
             }
             Database::SQLite {
                 connection: Some(sqlite_conn),

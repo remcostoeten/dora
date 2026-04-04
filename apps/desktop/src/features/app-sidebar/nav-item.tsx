@@ -78,10 +78,7 @@ export const SidebarNavItem = forwardRef<HTMLButtonElement, NavItemProps>(functi
 					<span className='sr-only'>{item.label}</span>
 				</button>
 			</TooltipTrigger>
-			<TooltipContent side={tooltipSide}>
-				{item.label}
-				{item.disabled && ' (Coming Soon)'}
-			</TooltipContent>
+			<TooltipContent side={tooltipSide}>{item.label}</TooltipContent>
 		</Tooltip>
 	)
 })

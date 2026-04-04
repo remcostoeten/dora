@@ -12,7 +12,7 @@ use dashmap::DashMap;
 use crate::{
     database::{
         parser::ParsedStatement,
-        postgres, sqlite,
+        mysql, postgres, sqlite,
         types::{channel, DatabaseClient, Page, QueryId, QueryStatus, StatementInfo},
         QueryExecEvent,
     },
@@ -67,6 +67,7 @@ impl StatementManager {
                     crate::database::libsql::parser::parse_statements(query)
                         .map_err(|e| anyhow::anyhow!("{}", e))
                 },
+                DatabaseClient::MySQL { .. } => mysql::parser::parse_statements,
             };
 
         let statements = parse_statements(query)?;
@@ -171,6 +172,13 @@ impl StatementManager {
                             .await
                     {
                         log::error!("Error executing LibSQL query: {}", err);
+                    }
+                });
+            }
+            DatabaseClient::MySQL { pool } => {
+                spawn(async move {
+                    if let Err(err) = mysql::execute::execute_query(&pool, stmt, &sender).await {
+                        log::error!("Error executing MySQL query: {}", err);
                     }
                 });
             }

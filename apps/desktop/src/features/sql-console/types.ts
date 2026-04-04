@@ -25,6 +25,7 @@ export type SqlQueryResult = {
 
 export type TableInfo = {
 	name: string
+	schema?: string
 	type: 'table' | 'view'
 	rowCount: number
 	columns?: {

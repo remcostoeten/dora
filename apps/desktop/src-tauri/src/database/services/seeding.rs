@@ -105,6 +105,9 @@ impl<'a> SeedingService<'a> {
                         .await
                         .map_err(|e| Error::Any(anyhow::anyhow!("LibSQL insert failed: {}", e)))?;
                 }
+                crate::database::types::DatabaseClient::MySQL { pool: _ } => {
+                    return Err(Error::Any(anyhow::anyhow!("MySQL seeding not yet implemented")));
+                }
             }
             inserted += chunk.len() as u32;
         }

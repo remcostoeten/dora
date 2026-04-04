@@ -12,7 +12,7 @@ pub fn parse_statements(query: &str) -> anyhow::Result<Vec<ParsedStatement>> {
 impl SqlDialectExt for PostgreSqlDialect {
     fn returns_values(stmt: &Statement) -> bool {
         match stmt {
-            Statement::Query { .. } => true,
+            Statement::Query(_) => true,
             Statement::Insert(insert) if insert.returning.is_some() => true,
             Statement::Update { returning, .. } if returning.is_some() => true,
             Statement::Delete(delete) if delete.returning.is_some() => true,

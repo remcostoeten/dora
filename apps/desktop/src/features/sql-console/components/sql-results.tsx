@@ -37,7 +37,7 @@ type Props = {
 }
 
 type EditingCell = {
-	rowIndex: number
+	rowData: Record<string, unknown>
 	column: string
 	originalValue: unknown
 	value: string
@@ -56,7 +56,7 @@ export function SqlResults({
 	const { settings } = useSettings()
 	const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
 	const [filterText, setFilterText] = useState('')
-	const [rowToDelete, setRowToDelete] = useState<number | null>(null)
+	const [rowToDelete, setRowToDelete] = useState<Record<string, unknown> | null>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
 
 	useEffect(() => {
@@ -95,7 +95,11 @@ export function SqlResults({
 
 	function getPrimaryKey() {
 		if (!result?.columnDefinitions) return null
-		return result.columnDefinitions.find((c) => c.primaryKey)
+		const primaryKeys = result.columnDefinitions.filter(function (column) {
+			return column.primaryKey
+		})
+		if (primaryKeys.length !== 1) return null
+		return primaryKeys[0]
 	}
 
 	const mutationContext = useMemo(() => {
@@ -124,6 +128,13 @@ export function SqlResults({
 			return 'This result set is not tied to a single source table, so edit/delete is disabled.'
 		}
 
+		const primaryKeys = (result.columnDefinitions || []).filter(function (column) {
+			return column.primaryKey
+		})
+		if (primaryKeys.length > 1) {
+			return 'Composite primary keys are not yet supported for SQL result mutations.'
+		}
+
 		const primaryKey = getPrimaryKey()
 		const primaryKeyName =
 			primaryKey?.name || result.columns.find((column) => column.toLowerCase() === 'id')
@@ -135,11 +146,15 @@ export function SqlResults({
 		return null
 	}, [connectionId, result])
 
-	function handleCellDoubleClick(rowIndex: number, column: string, value: unknown) {
+	function handleCellDoubleClick(
+		rowData: Record<string, unknown>,
+		column: string,
+		value: unknown
+	) {
 		if (!mutationContext) return
 
 		setEditingCell({
-			rowIndex,
+			rowData,
 			column,
 			originalValue: value,
 			value: value === null ? '' : String(value)
@@ -149,7 +164,7 @@ export function SqlResults({
 	async function handleSaveCell() {
 		if (!editingCell || !result || !connectionId || !mutationContext) return
 
-		const row = result.rows[editingCell.rowIndex]
+		const row = editingCell.rowData
 		const pkValue = row[mutationContext.primaryKeyName]
 
 		if (pkValue === undefined) {
@@ -186,20 +201,19 @@ export function SqlResults({
 		}
 	}
 
-	function handleDeleteRow(rowIndex: number) {
+	function handleDeleteRow(rowData: Record<string, unknown>) {
 		if (!mutationContext) return
 
 		if (settings.confirmBeforeDelete) {
-			setRowToDelete(rowIndex)
+			setRowToDelete(rowData)
 		} else {
-			performDeleteRow(rowIndex)
+			performDeleteRow(rowData)
 		}
 	}
 
-	async function performDeleteRow(rowIndex: number) {
+	async function performDeleteRow(rowData: Record<string, unknown>) {
 		if (!result || !connectionId || !mutationContext) return
-		const row = result.rows[rowIndex]
-		const pkValue = row[mutationContext.primaryKeyName]
+		const pkValue = rowData[mutationContext.primaryKeyName]
 
 		if (pkValue === undefined) {
 			console.error('Delete failed: missing table name or PK')
@@ -398,7 +412,7 @@ export function SqlResults({
 													</td>
 													{result.columns.map((col) => {
 														const isEditing =
-															editingCell?.rowIndex === rowIndex &&
+															editingCell?.rowData === row &&
 															editingCell?.column === col
 														const cellValue = row[col]
 
@@ -414,7 +428,7 @@ export function SqlResults({
 																onDoubleClick={() => {
 																	if (!mutationContext) return
 																	handleCellDoubleClick(
-																		rowIndex,
+																		row,
 																		col,
 																		cellValue
 																	)
@@ -476,7 +490,7 @@ export function SqlResults({
 												<ContextMenuItem
 													disabled={!mutationContext}
 													className='text-destructive focus:text-destructive'
-													onClick={() => handleDeleteRow(rowIndex)}
+													onClick={() => handleDeleteRow(row)}
 												>
 													<Trash2 className='mr-2 h-4 w-4' />
 													Delete Row

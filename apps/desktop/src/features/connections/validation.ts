@@ -98,6 +98,13 @@ export function validateConnection(
 			} else {
 				connectionFieldsSchema.parse(formData)
 			}
+
+			if (type === 'postgres' && formData.sshConfig && typeof formData.sshConfig === 'object') {
+				const sshConfig = formData.sshConfig as Record<string, unknown>
+				if (sshConfig.enabled === true) {
+					sshTunnelSchema.parse(sshConfig)
+				}
+			}
 		}
 
 		return { success: true }

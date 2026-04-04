@@ -11,7 +11,9 @@ pub fn extract_sensitive_data(
     mut database_info: DatabaseInfo,
 ) -> Result<(DatabaseInfo, Option<String>), Error> {
     match &mut database_info {
-        DatabaseInfo::Postgres { connection_string, .. } => {
+        DatabaseInfo::Postgres {
+            connection_string, ..
+        } => {
             let mut url =
                 Url::parse(connection_string).context("Failed to parse connection string")?;
             let password = url.password().map(ToOwned::to_owned);
@@ -28,6 +30,23 @@ pub fn extract_sensitive_data(
         }
         DatabaseInfo::SQLite { .. } => Ok((database_info, None)),
         DatabaseInfo::LibSQL { .. } => Ok((database_info, None)),
+        DatabaseInfo::MySQL {
+            connection_string, ..
+        } => {
+            let mut url =
+                Url::parse(connection_string).context("Failed to parse connection string")?;
+            let password = url.password().map(ToOwned::to_owned);
+            url.set_password(None).map_err(|_| {
+                Error::Any(anyhow::anyhow!(
+                    "Failed to remove password from connection string",
+                ))
+            })?;
+
+            connection_string.clear();
+            write!(connection_string, "{}", url)?;
+
+            Ok((database_info, password))
+        }
     }
 }
 
@@ -117,7 +136,9 @@ mod tests {
         assert_eq!(pw.as_deref(), Some("s3cr3t"));
 
         match sanitized {
-            DatabaseInfo::Postgres { connection_string, .. } => {
+            DatabaseInfo::Postgres {
+                connection_string, ..
+            } => {
                 assert_eq!(connection_string, "postgres://Dora@localhost:5432/mydb");
             }
             _ => unreachable!(),
@@ -137,7 +158,9 @@ mod tests {
         assert_eq!(pw.as_deref(), Some("p%404ss"));
 
         match sanitized {
-            DatabaseInfo::Postgres { connection_string, .. } => {
+            DatabaseInfo::Postgres {
+                connection_string, ..
+            } => {
                 assert_eq!(connection_string, "postgres://bob@db.example.com/app");
             }
             _ => panic!("expected Postgres variant"),
@@ -153,7 +176,9 @@ mod tests {
 
         assert_eq!(pw.as_deref(), Some("pa%3Ass%40word"));
         match sanitized {
-            DatabaseInfo::Postgres { connection_string, .. } => {
+            DatabaseInfo::Postgres {
+                connection_string, ..
+            } => {
                 assert_eq!(connection_string, "postgres://u@host/db");
             }
             _ => panic!("expected Postgres variant"),
@@ -174,7 +199,9 @@ mod tests {
         assert_eq!(pw.as_deref(), None);
 
         match sanitized {
-            DatabaseInfo::Postgres { connection_string, .. } => {
+            DatabaseInfo::Postgres {
+                connection_string, ..
+            } => {
                 assert_eq!(connection_string, "postgres://john@localhost/db");
             }
             _ => unreachable!(),
@@ -193,7 +220,9 @@ mod tests {
 
         assert!(pw.is_none());
         match sanitized {
-            DatabaseInfo::Postgres { connection_string, .. } => {
+            DatabaseInfo::Postgres {
+                connection_string, ..
+            } => {
                 assert_eq!(connection_string, original);
             }
             _ => unreachable!(),
@@ -212,7 +241,9 @@ mod tests {
 
         assert_eq!(pw.as_deref(), Some("pw"));
         match sanitized {
-            DatabaseInfo::Postgres { connection_string, .. } => {
+            DatabaseInfo::Postgres {
+                connection_string, ..
+            } => {
                 assert_eq!(
                     connection_string,
                     "postgresql://erin@localhost:5432/dbname?sslmode=prefer"

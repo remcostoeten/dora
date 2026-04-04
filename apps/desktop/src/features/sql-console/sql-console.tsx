@@ -7,7 +7,6 @@ import { useShortcut } from '@/core/shortcuts'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
-import { useToast } from '@/components/ui/use-toast'
 import { CheatsheetPanel } from '../../features/drizzle-runner/components/cheatsheet-panel'
 import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
@@ -17,6 +16,7 @@ import { SqlEditor } from './components/sql-editor'
 import { SqlResults } from './components/sql-results'
 import { UnifiedSidebar } from './components/unified-sidebar'
 import { DEFAULT_SQL } from './data'
+import { extractMutationSourceTable } from './query-target'
 import { useQueryHistory } from './stores/query-history-store'
 import { clearTableDataCache } from '@/features/database-studio/database-studio'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
@@ -28,7 +28,6 @@ type Props = {
 
 export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 	const adapter = useAdapter()
-	const { toast } = useToast()
 	const [mode, setMode] = useState<'sql' | 'drizzle'>('sql')
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])
 	const [activeSnippetId, setActiveSnippetId] = useState<string | null>('playground')
@@ -61,6 +60,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				const mapped: TableInfo[] = res.data.tables.map(function (t) {
 					return {
 						name: t.name,
+						schema: t.schema,
 						type: 'table' as const,
 						rowCount: t.row_count_estimate ?? 0,
 						columns: t.columns.map(function (c) {
@@ -177,6 +177,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 						const mapped: TableInfo[] = res.data.tables.map(function (t) {
 							return {
 								name: t.name,
+								schema: t.schema,
 								type: 'table' as const,
 								rowCount: t.row_count_estimate ?? 0,
 								columns: t.columns.map(function (c) {
@@ -252,16 +253,8 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 					}
 					const res = await adapter.executeQuery(activeConnectionId, queryToRun)
 					if (res.ok) {
-						const columns = Array.isArray(res.data.columns)
-							? res.data.columns.map((c: any) => (typeof c === 'string' ? c : c.name))
-							: []
-
-						// Extract column definitions if available from adapter
-						const columnDefinitions =
-							Array.isArray(res.data.columns) &&
-								typeof res.data.columns[0] !== 'string'
-								? (res.data.columns as any[])
-								: undefined
+						const columns = Array.isArray(res.data.columns) ? res.data.columns : []
+						const columnDefinitions = res.data.columnDefinitions
 
 						const rows = Array.isArray(res.data.rows)
 							? res.data.rows.map((row: any) => {
@@ -292,7 +285,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							executionTime: res.data.executionTime || 0,
 							queryType,
 							columnDefinitions,
-							sourceTable: getTableName(queryToRun)
+							sourceTable: extractMutationSourceTable(queryToRun)
 						})
 
 						// Clear table viewer cache so it refetches when user switches to it.
@@ -339,7 +332,8 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							executionTime: res.data.executionTime || 0,
 							error: res.data.error,
 							queryType: 'SELECT',
-							sourceTable: getTableName(queryToRun)
+							columnDefinitions: res.data.columnDefinitions,
+							sourceTable: extractMutationSourceTable(queryToRun)
 						})
 
 						// Drizzle queries may also mutate data (insert, update, delete).
@@ -405,19 +399,6 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		if (trimmed.startsWith('DELETE')) return 'DELETE'
 		return 'OTHER'
 	}
-
-	function getTableName(query: string): string | undefined {
-		// Try Drizzle syntax first: db.select().from(users)
-		const drizzleMatch = query.match(/\.from\(\s*(\w+)\s*\)/)
-		if (drizzleMatch) return drizzleMatch[1]
-
-		// Try SQL syntax: SELECT * FROM users (basic support)
-		const sqlMatch = query.match(/FROM\s+["']?(\w+)["']?/i)
-		if (sqlMatch) return sqlMatch[1]
-
-		return undefined
-	}
-
 	function handlePrettify() {
 		if (mode === 'sql') {
 			const lines = currentSqlQuery.split('\n')
@@ -749,11 +730,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							hasResults={!!result}
 							showFilter={showFilter}
 							onToggleFilter={function () {
-								toast({
-									title: 'Coming Soon',
-									description: 'Filter functionality is currently under development.',
-									duration: 2000
-								})
+								setShowFilter(!showFilter)
 							}}
 							showHistory={showHistory}
 							onToggleHistory={function () { setShowHistory(!showHistory) }}

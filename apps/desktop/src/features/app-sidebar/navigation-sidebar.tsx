@@ -1,9 +1,7 @@
 import {
 	SquareTerminal,
 	Table2,
-	Network,
-	Container,
-	Sparkles
+	Container
 } from 'lucide-react'
 import { useCallback, useRef, KeyboardEvent } from 'react'
 import { DoraLogo } from '@/components/dora-logo'
@@ -45,21 +43,6 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 			label: 'Docker Manager',
 			icon: Container,
 			onClick: () => onNavSelect?.('docker')
-		}
-	]
-
-	const comingSoonItems: NavItem[] = [
-		{
-			id: 'dora',
-			label: 'Dora AI Assistant',
-			icon: Sparkles,
-			disabled: true
-		},
-		{
-			id: 'schema',
-			label: 'Schema Visualizer',
-			icon: Network,
-			disabled: true
 		}
 	]
 
@@ -176,23 +159,6 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 							isActive={activeNavId === item.id}
 							variant={variant}
 						/>
-					))}
-				</div>
-
-				<div
-					className='my-2 mx-2 h-px bg-sidebar-border'
-					role='separator'
-					aria-orientation='horizontal'
-				/>
-
-				{/* Coming soon items */}
-				<div
-					role='group'
-					aria-label='Coming soon features'
-					className='mx-auto flex flex-col gap-1'
-				>
-					{comingSoonItems.map((item) => (
-						<SidebarNavItem key={item.id} item={item} variant={variant} />
 					))}
 				</div>
 			</nav>

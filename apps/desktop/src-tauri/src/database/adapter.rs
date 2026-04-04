@@ -60,6 +60,7 @@ pub trait DatabaseAdapter: Send + Sync {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DatabaseType {
     Postgres,
+    MySQL,
     SQLite,
     LibSQL,
 }
@@ -68,6 +69,7 @@ impl std::fmt::Display for DatabaseType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DatabaseType::Postgres => write!(f, "PostgreSQL"),
+            DatabaseType::MySQL => write!(f, "MySQL"),
             DatabaseType::SQLite => write!(f, "SQLite"),
             DatabaseType::LibSQL => write!(f, "libSQL"),
         }
@@ -197,6 +199,39 @@ impl DatabaseAdapter for LibSqlAdapter {
     }
 }
 
+pub struct MySqlAdapter {
+    pool: Arc<mysql_async::Pool>,
+}
+
+impl MySqlAdapter {
+    pub fn new(pool: Arc<mysql_async::Pool>) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl DatabaseAdapter for MySqlAdapter {
+    fn parse_statements(&self, query: &str) -> Result<Vec<ParsedStatement>, Error> {
+        crate::database::mysql::parser::parse_statements(query).map_err(Into::into)
+    }
+
+    async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error> {
+        crate::database::mysql::execute::execute_query(&self.pool, stmt, sender).await
+    }
+
+    async fn get_schema(&self) -> Result<DatabaseSchema, Error> {
+        crate::database::mysql::schema::get_database_schema(self.pool.clone()).await
+    }
+
+    fn is_connected(&self) -> bool {
+        true
+    }
+
+    fn database_type(&self) -> DatabaseType {
+        DatabaseType::MySQL
+    }
+}
+
 pub type BoxedAdapter = Box<dyn DatabaseAdapter>;
 
 pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> BoxedAdapter {
@@ -204,6 +239,7 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
         crate::database::types::DatabaseClient::Postgres { client } => {
             Box::new(PostgresAdapter::new(client.clone()))
         }
+        crate::database::types::DatabaseClient::MySQL { pool } => Box::new(MySqlAdapter::new(pool.clone())),
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))
         }
@@ -221,6 +257,7 @@ mod tests {
     #[test]
     fn test_database_type_display() {
         assert_eq!(DatabaseType::Postgres.to_string(), "PostgreSQL");
+        assert_eq!(DatabaseType::MySQL.to_string(), "MySQL");
         assert_eq!(DatabaseType::SQLite.to_string(), "SQLite");
         assert_eq!(DatabaseType::LibSQL.to_string(), "libSQL");
     }

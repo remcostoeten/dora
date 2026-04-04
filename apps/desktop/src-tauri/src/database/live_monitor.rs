@@ -1,16 +1,30 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{
+    collections::{hash_map::DefaultHasher, HashMap},
+    hash::{Hash, Hasher},
+    sync::Arc,
+    time::Duration,
+};
 
 use base64::Engine;
 use dashmap::DashMap;
+use futures_util::future::poll_fn;
 use rusqlite::types::ValueRef;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 use tauri::async_runtime::JoinHandle;
 use tauri::{AppHandle, Emitter, EventTarget, Manager};
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio_postgres::{AsyncMessage, NoTls};
 use uuid::Uuid;
 
 use crate::{
-    database::{postgres::row_writer::RowWriter as PostgresRowWriter, types::DatabaseClient},
+    credentials,
+    database::{
+        postgres::row_writer::RowWriter as PostgresRowWriter,
+        types::{Database, DatabaseClient},
+        Certificates,
+    },
     AppState, Error,
 };
 
@@ -175,6 +189,8 @@ async fn run_monitor_loop(
 ) {
     let mut previous_snapshot: Option<TableSnapshot> = None;
     let poll_interval = Duration::from_millis(interval_ms.max(1000));
+    let mut notification_receiver =
+        create_postgres_notification_receiver(&app, connection_id, &table_name).await;
 
     loop {
         let polled_at = chrono::Utc::now().timestamp_millis();
@@ -205,8 +221,290 @@ async fn run_monitor_loop(
             log::error!("Failed to emit live monitor event: {}", err);
         }
 
-        tokio::time::sleep(poll_interval).await;
+        if let Some(receiver) = notification_receiver.as_mut() {
+            tokio::select! {
+                maybe_signal = receiver.recv() => {
+                    if maybe_signal.is_none() {
+                        notification_receiver = None;
+                        tokio::time::sleep(poll_interval).await;
+                    }
+                }
+                _ = tokio::time::sleep(poll_interval) => {}
+            }
+        } else {
+            tokio::time::sleep(poll_interval).await;
+        }
     }
+}
+
+async fn create_postgres_notification_receiver(
+    app: &AppHandle,
+    connection_id: Uuid,
+    table_name: &str,
+) -> Option<UnboundedReceiver<()>> {
+    let Some(state) = app.try_state::<AppState>() else {
+        return None;
+    };
+
+    let connection_entry = state.connections.get(&connection_id)?;
+    let (connection_string, tunnel_local_port) = match &connection_entry.value().database {
+        Database::Postgres {
+            connection_string,
+            tunnel,
+            ..
+        } => (
+            connection_string.clone(),
+            tunnel.as_ref().map(|active_tunnel| active_tunnel.local_port),
+        ),
+        _ => return None,
+    };
+    drop(connection_entry);
+
+    let Some(certificates) = app.try_state::<Certificates>() else {
+        log::warn!("Live monitor certificates state unavailable; falling back to polling");
+        return None;
+    };
+
+    let channel_name = postgres_live_monitor_channel(connection_id, table_name);
+    let trigger_name = postgres_live_monitor_trigger(table_name);
+    let config = match build_postgres_listener_config(
+        connection_id,
+        &connection_string,
+        tunnel_local_port,
+    ) {
+        Ok(config) => config,
+        Err(error) => {
+            log::warn!(
+                "Failed to build Postgres live monitor listener config for {}: {}",
+                table_name,
+                error
+            );
+            return None;
+        }
+    };
+
+    match connect_and_subscribe_postgres_listener(
+        &config,
+        &certificates,
+        table_name,
+        &channel_name,
+        &trigger_name,
+    )
+    .await
+    {
+        Ok(receiver) => Some(receiver),
+        Err(error) => {
+            log::warn!(
+                "Failed to create Postgres live monitor listener for {}: {}",
+                table_name,
+                error
+            );
+            None
+        }
+    }
+}
+
+fn build_postgres_listener_config(
+    connection_id: Uuid,
+    connection_string: &str,
+    tunnel_local_port: Option<u16>,
+) -> Result<tokio_postgres::Config, Error> {
+    let cleaned_string = if let Ok(mut url) = url::Url::parse(connection_string) {
+        let params: Vec<_> = url
+            .query_pairs()
+            .filter(|(key, _)| key != "channel_binding")
+            .map(|(key, value)| format!("{}={}", key, value))
+            .collect();
+        let query_string = params.join("&");
+        url.set_query(if params.is_empty() {
+            None
+        } else {
+            Some(&query_string)
+        });
+        url.to_string()
+    } else {
+        connection_string.to_string()
+    };
+
+    let mut config: tokio_postgres::Config = cleaned_string.parse().map_err(|error| {
+        Error::Any(anyhow::anyhow!(
+            "Failed to parse Postgres listener connection string '{}': {}",
+            cleaned_string,
+            error
+        ))
+    })?;
+
+    if config.get_password().is_none() {
+        if let Some(password) = credentials::get_password(&connection_id)? {
+            config.password(password);
+        }
+    }
+
+    if let Some(local_port) = tunnel_local_port {
+        config.host("127.0.0.1");
+        config.port(local_port);
+    }
+
+    Ok(config)
+}
+
+async fn connect_and_subscribe_postgres_listener(
+    config: &tokio_postgres::Config,
+    certificates: &Certificates,
+    table_name: &str,
+    channel_name: &str,
+    trigger_name: &str,
+) -> Result<UnboundedReceiver<()>, Error> {
+    use tokio_postgres::config::SslMode;
+
+    match config.get_ssl_mode() {
+        SslMode::Require | SslMode::Prefer => {
+            let certificate_store = certificates.read().await?;
+            let rustls_config = rustls::ClientConfig::builder()
+                .with_root_certificates(certificate_store)
+                .with_no_client_auth();
+            let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
+            let (client, connection) = config
+                .connect(tls)
+                .await
+                .map_err(|error| anyhow::anyhow!("Failed to connect Postgres listener: {}", error))?;
+            finalize_postgres_listener(client, connection, table_name, channel_name, trigger_name).await
+        }
+        _ => {
+            let (client, connection) = config
+                .connect(NoTls)
+                .await
+                .map_err(|error| anyhow::anyhow!("Failed to connect Postgres listener: {}", error))?;
+            finalize_postgres_listener(client, connection, table_name, channel_name, trigger_name).await
+        }
+    }
+}
+
+async fn finalize_postgres_listener<S, T>(
+    client: tokio_postgres::Client,
+    connection: tokio_postgres::Connection<S, T>,
+    table_name: &str,
+    channel_name: &str,
+    trigger_name: &str,
+) -> Result<UnboundedReceiver<()>, Error>
+where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    ensure_postgres_notify_trigger(&client, table_name, channel_name, trigger_name).await?;
+
+    let listen_statement = format!("LISTEN {}", quote_identifier(channel_name));
+    client.batch_execute(&listen_statement).await?;
+
+    let (sender, receiver) = unbounded_channel();
+    spawn_postgres_listener_task(client, connection, sender);
+    Ok(receiver)
+}
+
+fn spawn_postgres_listener_task<S, T>(
+    client: tokio_postgres::Client,
+    mut connection: tokio_postgres::Connection<S, T>,
+    sender: UnboundedSender<()>,
+) where
+    S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+    T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
+{
+    tauri::async_runtime::spawn(async move {
+        let _client = client;
+        loop {
+            let message = poll_fn(|cx| connection.poll_message(cx)).await;
+            match message {
+                Some(Ok(AsyncMessage::Notification(_notification))) => {
+                    let _ = sender.send(());
+                }
+                Some(Ok(AsyncMessage::Notice(notice))) => {
+                    log::debug!("Postgres live monitor notice: {}", notice.message());
+                }
+                Some(Ok(_)) => {}
+                Some(Err(error)) => {
+                    log::warn!("Postgres live monitor listener stopped: {}", error);
+                    break;
+                }
+                None => break,
+            }
+        }
+    });
+}
+
+async fn ensure_postgres_notify_trigger(
+    client: &tokio_postgres::Client,
+    table_name: &str,
+    channel_name: &str,
+    trigger_name: &str,
+) -> Result<(), Error> {
+    const FUNCTION_SQL: &str = r#"
+        CREATE OR REPLACE FUNCTION public.dora_emit_table_change()
+        RETURNS trigger
+        LANGUAGE plpgsql
+        AS $$
+        DECLARE
+            payload text;
+        BEGIN
+            payload := json_build_object(
+                'schema', TG_TABLE_SCHEMA,
+                'table', TG_TABLE_NAME,
+                'operation', lower(TG_OP)
+            )::text;
+            PERFORM pg_notify(TG_ARGV[0], payload);
+            IF TG_OP = 'DELETE' THEN
+                RETURN OLD;
+            END IF;
+            RETURN NEW;
+        END;
+        $$;
+    "#;
+
+    client.batch_execute(FUNCTION_SQL).await?;
+
+    let quoted_table = quote_table_reference(table_name)?;
+    let escaped_channel = escape_sql_literal(channel_name);
+    let escaped_trigger = escape_sql_literal(trigger_name);
+    let create_trigger_sql = format!(
+        r#"
+        DO $dora$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_trigger
+                WHERE tgname = '{escaped_trigger}'
+            ) THEN
+                EXECUTE 'CREATE TRIGGER {trigger_name}
+                AFTER INSERT OR UPDATE OR DELETE ON {quoted_table}
+                FOR EACH ROW
+                EXECUTE FUNCTION public.dora_emit_table_change(''{escaped_channel}'')';
+            END IF;
+        END
+        $dora$;
+        "#
+    );
+
+    client.batch_execute(&create_trigger_sql).await?;
+    Ok(())
+}
+
+fn postgres_live_monitor_channel(connection_id: Uuid, table_name: &str) -> String {
+    let hash = stable_hash(&(connection_id, table_name.to_string()));
+    format!("dora_live_{hash:016x}")
+}
+
+fn postgres_live_monitor_trigger(table_name: &str) -> String {
+    let hash = stable_hash(&table_name.to_string());
+    format!("dora_live_trg_{hash:016x}")
+}
+
+fn stable_hash<T: Hash>(value: &T) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    value.hash(&mut hasher);
+    hasher.finish()
+}
+
+fn escape_sql_literal(value: &str) -> String {
+    value.replace('\'', "''")
 }
 
 async fn fetch_table_snapshot(
@@ -234,6 +532,9 @@ async fn fetch_table_snapshot(
         }
         DatabaseClient::LibSQL { connection } => {
             fetch_libsql_snapshot(connection, table_name).await
+        }
+        DatabaseClient::MySQL { pool: _ } => {
+            Err(Error::Any(anyhow::anyhow!("MySQL live monitoring not yet implemented")))
         }
     }
 }

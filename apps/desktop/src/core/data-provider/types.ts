@@ -1,4 +1,9 @@
-import type { TableData, SortDescriptor, FilterDescriptor } from '@/features/database-studio/types'
+import type {
+	TableData,
+	SortDescriptor,
+	FilterDescriptor,
+	ColumnDefinition
+} from '@/features/database-studio/types'
 import {
 	ConnectionInfo,
 	DatabaseSchema,
@@ -28,6 +33,7 @@ export function getAdapterError<T>(result: AdapterResult<T>): string {
 export type QueryResult = {
 	rows: Record<string, unknown>[]
 	columns: string[]
+	columnDefinitions?: ColumnDefinition[]
 	rowCount: number
 	executionTime?: number
 	error?: string

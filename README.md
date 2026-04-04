@@ -1,7 +1,7 @@
 <div align="center">
-  <img src="dora-backgroundless.png" alt="Dora Logo" width="200" />
+  <img src="dora-backgroundless.png" alt="Dora Logo" width="180" />
   <h1>Dora</h1>
-  <p><i>Database studio built with Tauri + React</i></p>
+  <p><i>A clean, fast desktop database studio for people who actually work in data.</i></p>
 
 [![Rust](https://img.shields.io/badge/Rust-black?logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Tauri](https://img.shields.io/badge/Tauri-24C8DB?logo=tauri&logoColor=black)](https://tauri.app/)
@@ -11,70 +11,122 @@
 
 </div>
 
-Dora is a cross-platform database studio focused on fast local UX, keyboard-first workflows, and a native desktop footprint.
-
 <p align="center">
-  <img src="app_demo.webp" alt="Dora App Demonstration" width="90%" />
+  <img src="app_demo.webp" alt="Dora App Demonstration" width="92%" />
 </p>
 
-## Supported Databases
+Dora is a cross-platform database studio built with Tauri, Rust, React, and Monaco. It is designed for a native-feeling desktop workflow: fast navigation, direct editing, real SQL execution, clean table tooling, and a UI that stays out of your way.
 
-- PostgreSQL
-- SQLite
-- LibSQL / Turso
+## Why Dora
 
-`MySQL` and first-class `SSH tunnel` UI are scaffolded but still marked as coming soon in the current frontend.
+- Fast desktop UX without the weight of an Electron app
+- Database Studio for browsing, editing, filtering, and managing tables
+- SQL Console for running queries, mutations, and saved snippets
+- Native desktop capabilities like file dialogs, exports, and secure local storage
+- Real Tauri-backed database operations on desktop, with a browser mock path for Vercel demos
 
-## Audit Snapshot (2026-04-03)
+## What Dora Can Do
 
-- `bun run test:desktop`: `115/115` tests passing.
-- `bun run --cwd apps/desktop build`: production build succeeds.
-- `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml`: passes (warnings only).
-- `bun x tsc --noEmit -p apps/desktop/tsconfig.app.json`: passes (TypeScript errors resolved).
+### Database Studio
 
-Full findings: `docs/app-audit-2026-02-20.md`.
+- Browse schemas, tables, columns, indexes, and structure
+- Edit cells inline
+- Add, duplicate, and delete rows
+- Stage and apply edits in bulk workflows
+- Sort, filter, paginate, and inspect table data
+- Export JSON, CSV, and SQL insert output
+- Copy SQL schema and Drizzle schema output
+- Add columns, drop tables, and run common table actions
+- Seed tables with generated data
+- Monitor live changes
 
-## Feature Matrix
+### SQL Console
 
-| Area | Feature | Status | Notes |
-| :-- | :-- | :--: | :-- |
-| Connectivity | Saved connections (create/update/delete) | Done | Includes connection testing and persistence. |
-| Connectivity | PostgreSQL + SQLite + LibSQL | Done | Core adapters and UI are wired. |
-| Connectivity | MySQL | Soon | Selector exists but disabled in UI. |
-| Connectivity | SSH Tunnel UI | Soon | Backend supports fields; frontend currently disabled. |
-| Data Studio | Table browser + pagination + sorting + filters | Done | Includes content and structure views. |
-| Data Studio | Inline edits + add/duplicate/delete rows | Done | Supports per-row and multi-row workflows. |
-| Data Studio | Dry edit mode with staged changes | Done | Apply/discard pending edits before writing. |
-| Data Studio | Export JSON / CSV / SQL INSERT | Done | Table-wide and selected-row exports. |
-| Data Studio | Copy SQL schema / Drizzle schema | Done | Available from the toolbar. |
-| Data Studio | Add column / drop table | Done | DDL actions from structure view. |
-| Data Studio | Mock data seeding | Done | Faker-based generator + preview dialog. |
-| SQL Console | SQL + Drizzle editors | Done | Monaco-based editors with run + format support. |
-| SQL Console | Query history and snippet/folder library | Done | Backed by storage commands. |
-| SQL Console | Result export (JSON/CSV) | Done | From toolbar/result views. |
-| SQL Console | Result filter panel | WIP | UI currently shows “Coming Soon”. |
-| Docker Manager | PostgreSQL container lifecycle | Done | Create/start/stop/restart/remove managed containers. |
-| Docker Manager | Logs, details, compose export, terminal | Done | Available in Docker feature panel. |
-| UX | Keyboard shortcuts + URL state + theme/settings sync | Done | Includes state restoration for last connection/table. |
-| AI | AI assistant screen in app nav | Soon | Sidebar item is disabled placeholder. |
-| Schema Visualizer | Readonly visual representation of the schema | Soon | Sidebar item is disabled placeholder. |
+- Run `SELECT`, `INSERT`, `UPDATE`, `DELETE`, and DDL statements
+- Work in a Monaco-based SQL editor
+- Save snippets and organize them into folders
+- View query history
+- Filter results
+- Export query results
+- Edit or delete rows from supported single-table result sets
 
-## Download
+### Connectivity
 
-Prebuilt desktop artifacts are published in GitHub Releases:
+- Save, edit, test, connect, and remove connections
+- PostgreSQL support
+- SQLite support
+- LibSQL / Turso support
+- Postgres SSH tunneling in the desktop app
 
-- Linux: `.deb`, `.rpm`, `.AppImage`
+### Docker Tools
+
+- Create and manage PostgreSQL containers
+- Start, stop, restart, inspect, and remove containers
+- View logs and export compose-friendly details
+
+## Platforms
+
+Dora is a desktop app built with Tauri and targets:
+
+- macOS
+- Windows
+- Linux
+
+Release bundles are configured for:
+
 - macOS: `.dmg`
 - Windows: `.exe`, `.msi`
+- Linux: `.AppImage`, `.deb`, `.rpm`
 
-See: https://github.com/remcostoeten/dora/releases
+GitHub Releases: https://github.com/remcostoeten/dora/releases
+
+## Database Support
+
+| Database | Status | Notes |
+| :-- | :--: | :-- |
+| PostgreSQL | Supported | Full desktop path, including SSH tunneling and live external change monitoring |
+| SQLite | Supported | Native desktop workflow |
+| LibSQL / Turso | Supported | Local and remote flows |
+| MySQL | Not shipped | Scaffolded in parts of the codebase, not exposed as a supported feature |
+
+## Live Updates
+
+Dora supports near-real-time table refresh behavior while you work:
+
+- PostgreSQL uses external change notifications plus refresh logic in the desktop app
+- SQLite and LibSQL use polling fallback
+
+Details: [docs/live-change-monitoring.md](docs/live-change-monitoring.md)
+
+## Desktop vs Browser Mode
+
+The desktop app is the real product surface. That is where Tauri commands, native database access, SSH tunneling, exports, and local system integration run.
+
+The browser/Vercel version exists as a mock/demo shell because this backend does not run in the browser. It is useful for previewing the interface, but it is not the same execution environment as the desktop app.
+
+## Current Product Shape
+
+This repo is already in strong beta territory for the desktop app:
+
+- core connection management works
+- core data editing works
+- SQL execution works
+- snippet storage works
+- Postgres SSH tunnels work in desktop/Tauri mode
+- Postgres live external updates are wired in
+
+Known limits:
+
+- MySQL is not a supported shipped path yet
+- browser/Vercel mode does not run the Tauri backend
+- some deeper destructive or database-specific edge cases still need continued hardening before calling the app fully release-clean
 
 ## Development
 
 ### Prerequisites
 
 - Bun
-- Rust toolchain (`cargo`, `rustup`)
+- Rust toolchain
 - Tauri system dependencies for your platform
 
 ### Install
@@ -86,23 +138,23 @@ bun install
 ### Run
 
 ```bash
-# React web shell
+# Web shell / mock mode
 bun run web:dev
 
-# Desktop app (Tauri)
+# Desktop app
 bun run desktop:dev
 ```
 
-### Quality checks
+### Validate
 
 ```bash
-# Frontend/unit tests
+# Desktop tests
 bun run test:desktop
 
-# Frontend typecheck (currently failing in main)
+# TypeScript
 bun x tsc --noEmit -p apps/desktop/tsconfig.app.json
 
-# Rust backend compile check
+# Rust backend
 cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml
 ```
 
@@ -116,10 +168,11 @@ bun run build
 bun run desktop:build
 ```
 
-## Workspace Helpers
+## Repository Notes
 
-See `apps/desktop/README.md` for Windows Tauri helper scripts and libsql vendor refresh instructions.
+- Desktop-specific notes live in [apps/desktop/README.md](apps/desktop/README.md)
+- Audit notes live in [docs/app-audit-2026-02-20.md](docs/app-audit-2026-02-20.md)
 
 ## License
 
-GNU General Public License v3.0. See `LICENSE`.
+GNU General Public License v3.0. See [LICENSE](LICENSE).

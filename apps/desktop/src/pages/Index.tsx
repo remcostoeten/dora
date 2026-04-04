@@ -34,7 +34,7 @@ import {
 import { ErrorBoundary } from '@/shared/ui/error-boundary'
 import { mapConnectionError } from '@/shared/utils/error-messages'
 import { EmptyState } from '@/shared/ui/empty-state'
-import { NotImplemented } from '@/shared/ui/not-implemented'
+import { getTableRefParts } from '@/shared/utils/table-ref'
 import { Plug } from 'lucide-react'
 
 export default function Index() {
@@ -111,7 +111,7 @@ export default function Index() {
 	)
 
 	useEffect(() => {
-		setSelectedTableName(selectedTableId)
+		setSelectedTableName(getTableRefParts(selectedTableId).tableName)
 	}, [selectedTableId])
 
 	async function loadConnectionsFromBackend() {
@@ -567,13 +567,6 @@ export default function Index() {
 									}}
 								/>
 								</ErrorBoundary>
-							) : activeNavId === 'dora' ? (
-								<div className='flex-1 flex items-center justify-center'>
-									<NotImplemented
-										feature='Dora AI Assistant'
-										description='Natural language queries, schema explanations, and AI-powered SQL generation. Coming in v1.1.'
-									/>
-								</div>
 							) : (
 								<ErrorBoundary feature='SQL Console'>
 									<SqlConsole

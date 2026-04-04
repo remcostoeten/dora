@@ -68,6 +68,7 @@ type LiveMonitorBackendEvent = {
 
 const LIVE_MONITOR_EVENT_NAME = 'live-monitor-update'
 const MAX_EVENTS = 50
+const REFRESH_DEBOUNCE_MS = 150
 
 function isTauriRuntime(): boolean {
 	return (
@@ -91,12 +92,29 @@ export function useLiveMonitor({
 
 	const onDataChangedRef = useRef(onDataChanged)
 	onDataChangedRef.current = onDataChanged
+	const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	const monitorIdRef = useRef<string | null>(null)
 	const runtimeAvailable = useMemo(() => isTauriRuntime(), [])
 
+	const clearRefreshTimer = useCallback(function clearPendingRefresh() {
+		if (refreshTimerRef.current) {
+			clearTimeout(refreshTimerRef.current)
+			refreshTimerRef.current = null
+		}
+	}, [])
+
+	const scheduleDataRefresh = useCallback(function scheduleRefresh() {
+		clearRefreshTimer()
+		refreshTimerRef.current = setTimeout(function runRefresh() {
+			refreshTimerRef.current = null
+			onDataChangedRef.current()
+		}, REFRESH_DEBOUNCE_MS)
+	}, [clearRefreshTimer])
+
 	const stopMonitor = useCallback(async function stopCurrentMonitor() {
 		const monitorId = monitorIdRef.current
+		clearRefreshTimer()
 		if (!monitorId) {
 			setIsPolling(false)
 			return
@@ -110,7 +128,7 @@ export function useLiveMonitor({
 		} finally {
 			setIsPolling(false)
 		}
-	}, [])
+	}, [clearRefreshTimer])
 
 	useEffect(
 		function subscribeToBackendEvents() {
@@ -128,16 +146,16 @@ export function useLiveMonitor({
 
 					setLastPolledAt(payload.polledAt)
 
-						if (payload.error) {
-							console.error('[LiveMonitor] Backend monitor error:', payload.error)
-							setMonitorError(payload.error)
-							return
-						}
-						setMonitorError(null)
+					if (payload.error) {
+						console.error('[LiveMonitor] Backend monitor error:', payload.error)
+						setMonitorError(payload.error)
+						return
+					}
+					setMonitorError(null)
 
-						if (!payload.events || payload.events.length === 0) {
-							return
-						}
+					if (!payload.events || payload.events.length === 0) {
+						return
+					}
 
 					setChangeEvents(function (prev) {
 						const combined = [...payload.events, ...prev]
@@ -148,7 +166,7 @@ export function useLiveMonitor({
 						return prev + payload.events.length
 					})
 
-					onDataChangedRef.current()
+					scheduleDataRefresh()
 				}
 			).then(function (fn) {
 				if (disposed) {
@@ -160,12 +178,13 @@ export function useLiveMonitor({
 
 			return function cleanup() {
 				disposed = true
+				clearRefreshTimer()
 				if (unlisten) {
 					unlisten()
 				}
 			}
 		},
-		[runtimeAvailable]
+		[runtimeAvailable, clearRefreshTimer, scheduleDataRefresh]
 	)
 
 	const changeTypesKey = useMemo(

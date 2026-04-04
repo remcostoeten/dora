@@ -1,13 +1,47 @@
 import type { Connection as FrontendConnection } from '@/features/connections/types'
 import { commands, ConnectionInfo as BackendConnection, DatabaseInfo } from '@/lib/bindings'
 
+function backendToFrontendSshConfig(
+	sshConfig: { host: string; port: number; username: string; private_key_path: string | null; password: string | null } | null
+) {
+	if (!sshConfig) {
+		return undefined
+	}
+
+	return {
+		enabled: true,
+		host: sshConfig.host,
+		port: sshConfig.port,
+		username: sshConfig.username,
+		authMethod: sshConfig.private_key_path ? 'keyfile' : 'password',
+		password: sshConfig.password ?? undefined,
+		privateKeyPath: sshConfig.private_key_path ?? undefined
+	} as const
+}
+
+function frontendToBackendSshConfig(conn: FrontendConnection) {
+	if (conn.type !== 'postgres' || !conn.sshConfig?.enabled) {
+		return null
+	}
+
+	return {
+		host: conn.sshConfig.host,
+		port: conn.sshConfig.port,
+		username: conn.sshConfig.username,
+		private_key_path:
+			conn.sshConfig.authMethod === 'keyfile' ? conn.sshConfig.privateKeyPath || null : null,
+		password: conn.sshConfig.authMethod === 'password' ? conn.sshConfig.password || null : null
+	}
+}
+
 export function backendToFrontendConnection(conn: BackendConnection): FrontendConnection {
 	let type: 'postgres' | 'mysql' | 'sqlite' | 'libsql' = 'sqlite'
-	let host, port, user, database, url, authToken
+	let host, port, user, database, url, authToken, sshConfig
 
 	if ('Postgres' in conn.database_type) {
 		type = 'postgres'
 		const connString = conn.database_type.Postgres.connection_string
+		sshConfig = backendToFrontendSshConfig(conn.database_type.Postgres.ssh_config)
 		try {
 			const urlObj = new URL(connString)
 			host = urlObj.hostname
@@ -38,6 +72,7 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 		database,
 		url,
 		authToken,
+		sshConfig,
 		status: conn.connected ? 'connected' : 'idle',
 		createdAt: conn.created_at ?? Date.now(),
 		lastConnectedAt: conn.last_connected_at
@@ -60,7 +95,12 @@ export function frontendToBackendDatabaseInfo(conn: FrontendConnection): Databas
 			const ssl = conn.ssl ? '?sslmode=require' : ''
 			connectionString = `postgresql://${user}:${password}@${host}:${port}/${database}${ssl}`
 		}
-		return { Postgres: { connection_string: connectionString, ssh_config: null } }
+		return {
+			Postgres: {
+				connection_string: connectionString,
+				ssh_config: frontendToBackendSshConfig(conn)
+			}
+		}
 	} else if (conn.type === 'sqlite') {
 		return { SQLite: { db_path: conn.url || ':memory:' } }
 	} else if (conn.type === 'libsql') {

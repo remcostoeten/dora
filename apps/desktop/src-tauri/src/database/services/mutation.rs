@@ -75,9 +75,15 @@ impl<'a> MutationService<'a> {
             }
             DatabaseClient::LibSQL { .. } => {
                 let query = format!(
-                    "UPDATE \"{table_name}\" SET \"{column_name}\" = ? WHERE \"{primary_key_column}\" = ?"
+                    "UPDATE `{table_name}` SET `{column_name}` = ? WHERE `{primary_key_column}` = ?"
                 );
                 (query, "libsql")
+            }
+            DatabaseClient::MySQL { .. } => {
+                let query = format!(
+                    "UPDATE `{table_name}` SET `{column_name}` = ? WHERE `{primary_key_column}` = ?"
+                );
+                (query, "mysql")
             }
         };
 
@@ -178,7 +184,7 @@ impl<'a> MutationService<'a> {
             DatabaseClient::LibSQL { connection } => {
                 let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
                 let query = format!(
-                    "DELETE FROM \"{table_name}\" WHERE \"{primary_key_column}\" IN ({})",
+                    "DELETE FROM `{table_name}` WHERE `{primary_key_column}` IN ({})",
                     placeholders.join(", ")
                 );
 
@@ -192,6 +198,9 @@ impl<'a> MutationService<'a> {
                     .await
                     .map_err(|e| Error::Any(anyhow!("LibSQL delete failed: {}", e)))?
                     as usize
+            }
+            DatabaseClient::MySQL { pool: _ } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL delete not yet implemented")))
             }
         };
 
@@ -320,6 +329,9 @@ impl<'a> MutationService<'a> {
                     .map_err(|e| Error::Any(anyhow!("LibSQL insert failed: {}", e)))?;
                 (1, "Inserted 1 row".to_string())
             }
+            DatabaseClient::MySQL { pool: _ } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL insert not yet implemented")))
+            }
         };
 
         self.schemas.remove(&connection_id);
@@ -431,6 +443,9 @@ impl<'a> MutationService<'a> {
                 }
                 data
             }
+            DatabaseClient::MySQL { pool: _ } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL duplicate row not yet implemented")))
+            }
         };
 
         row_data.remove(&primary_key_column);
@@ -486,8 +501,15 @@ impl<'a> MutationService<'a> {
             DatabaseClient::LibSQL { .. } => {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
-                    format!("SELECT * FROM \"{}\"{}",  table_name, limit_clause),
+                    format!("SELECT * FROM `{}`{}",  table_name, limit_clause),
                     "libsql",
+                )
+            }
+            DatabaseClient::MySQL { .. } => {
+                let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+                (
+                    format!("SELECT * FROM `{}`{}",  table_name, limit_clause),
+                    "mysql",
                 )
             }
         };
@@ -496,6 +518,7 @@ impl<'a> MutationService<'a> {
             "postgres" => fetch_postgres_data(&client, &query).await?,
             "sqlite" => fetch_sqlite_data(&client, &query)?,
             "libsql" => fetch_libsql_data(&client, &query).await?,
+            "mysql" => return Err(Error::Any(anyhow::anyhow!("MySQL export not yet implemented"))),
             _ => unreachable!(),
         };
 
@@ -625,6 +648,9 @@ impl<'a> MutationService<'a> {
                     &soft_del_col,
                 ).await
             }
+            DatabaseClient::MySQL { pool: _ } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL soft delete not yet implemented")))
+            }
         }
     }
 
@@ -698,6 +724,9 @@ impl<'a> MutationService<'a> {
             }
             DatabaseClient::LibSQL { connection } => {
                 maintenance::truncate_table_libsql(connection, &table_name).await?
+            }
+            DatabaseClient::MySQL { pool: _ } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL truncate not yet implemented")))
             }
         };
 
@@ -784,6 +813,9 @@ impl<'a> MutationService<'a> {
                     &output_path,
                 ).await
             }
+            DatabaseClient::MySQL { pool: _ } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL dump not yet implemented")))
+            }
         }
     }
 
@@ -844,6 +876,9 @@ impl<'a> MutationService<'a> {
                         .map_err(|e| Error::Any(anyhow!("LibSQL execution failed: {}", e)))?;
                     affected_rows += res as usize;
                 }
+            }
+            DatabaseClient::MySQL { pool: _ } => {
+                return Err(Error::Any(anyhow::anyhow!("MySQL batch execution not yet implemented")))
             }
         };
 

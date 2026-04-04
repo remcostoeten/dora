@@ -65,6 +65,7 @@ libsql = { version = "0.9", default-features = false, features = [
 	"tls"
 ] }
 ssh2 = "0.9"
+mysql_async = "0.36"
 sqlparser = { version = "0.52", features = ["serde"] }
 fake = { version = "3", features = ["derive"] }
 rand = "0.9"

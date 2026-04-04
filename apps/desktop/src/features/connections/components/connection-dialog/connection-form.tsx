@@ -1,14 +1,13 @@
 import { FolderOpen, Key } from 'lucide-react'
 import { useState } from 'react'
 import { commands } from '@/lib/bindings'
-import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
 import { Checkbox } from '@/shared/ui/checkbox'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import { Connection, DatabaseType } from '../../types'
 import { PROVIDER_CONFIGS, sanitizeConnectionUrl } from '../../utils/providers'
+import { SshTunnelConfigForm } from './ssh-tunnel-config-form'
 
 type Props = {
 	formData: Partial<Connection>
@@ -275,30 +274,40 @@ export function ConnectionForm({
 
 						{formData.type === 'postgres' && (
 							<div className='border-t border-border/50 pt-4 mt-4 space-y-4'>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<div className='flex items-center gap-2 opacity-50 cursor-not-allowed'>
-											<Checkbox
-												id='ssh-tunnel'
-												checked={false}
-												disabled
-											/>
-											<Label
-												htmlFor='ssh-tunnel'
-												className='text-sm flex items-center gap-2 cursor-not-allowed'
-											>
-												<Key className='h-4 w-4 text-muted-foreground' />
-												Connect via SSH Tunnel
-												<Badge variant='outline' className='text-[10px] px-1.5 py-0 h-4'>
-													Soon
-												</Badge>
-											</Label>
-										</div>
-									</TooltipTrigger>
-									<TooltipContent side='top'>
-										<p className='text-xs'>SSH tunnel connections are coming in a future update</p>
-									</TooltipContent>
-								</Tooltip>
+								<div className='flex items-center gap-2'>
+									<Checkbox
+										id='ssh-tunnel'
+										checked={formData.sshConfig?.enabled ?? false}
+										onCheckedChange={function (checked) {
+											setFormData(function (prev) {
+												return {
+													...prev,
+													sshConfig: {
+														enabled: !!checked,
+														host: prev.sshConfig?.host || '',
+														port: prev.sshConfig?.port || 22,
+														username: prev.sshConfig?.username || '',
+														authMethod: prev.sshConfig?.authMethod || 'password',
+														password: prev.sshConfig?.password || '',
+														privateKeyPath: prev.sshConfig?.privateKeyPath || ''
+													}
+												}
+											})
+										}}
+									/>
+									<Label htmlFor='ssh-tunnel' className='text-sm flex items-center gap-2 cursor-pointer'>
+										<Key className='h-4 w-4 text-muted-foreground' />
+										Connect via SSH Tunnel
+									</Label>
+								</div>
+								{formData.sshConfig?.enabled && (
+									<SshTunnelConfigForm
+										config={formData.sshConfig}
+										onChange={function (sshConfig) {
+											updateField('sshConfig', sshConfig)
+										}}
+									/>
+								)}
 							</div>
 						)}
 					</>

@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 use anyhow::Context;
 use dashmap::DashMap;
+use mysql_async::prelude::Queryable;
 use uuid::Uuid;
 
 use crate::{
@@ -57,6 +58,7 @@ impl<'a> ConnectionService<'a> {
         color: Option<i32>,
     ) -> Result<ConnectionInfo, Error> {
         let (database_info, password) = credentials::extract_sensitive_data(database_info)?;
+        let password_changed = password.is_some();
         if let Some(password) = password {
             credentials::store_sensitive_data(&conn_id, &password)?;
         }
@@ -64,7 +66,7 @@ impl<'a> ConnectionService<'a> {
         if let Some(mut connection_entry) = self.connections.get_mut(&conn_id) {
             let connection = connection_entry.value_mut();
 
-            let config_changed = match (&connection.database, &database_info) {
+            let config_changed = password_changed || match (&connection.database, &database_info) {
                 (
                     Database::Postgres {
                         connection_string: old,
@@ -75,16 +77,45 @@ impl<'a> ConnectionService<'a> {
                         connection_string: new,
                         ssh_config: new_ssh,
                     },
-                ) => old != new || old_ssh.is_none() != new_ssh.is_none(), // Simplified check, ideally compare content
+                ) => old != new || old_ssh != new_ssh,
+                (
+                    Database::MySQL {
+                        connection_string: old,
+                        ssh_config: old_ssh,
+                        ..
+                    },
+                    DatabaseInfo::MySQL {
+                        connection_string: new,
+                        ssh_config: new_ssh,
+                    },
+                ) => old != new || old_ssh != new_ssh,
                 (Database::SQLite { db_path: old, .. }, DatabaseInfo::SQLite { db_path: new }) => {
                     old != new
                 }
+                (
+                    Database::LibSQL {
+                        url: old_url,
+                        auth_token: old_token,
+                        ..
+                    },
+                    DatabaseInfo::LibSQL {
+                        url: new_url,
+                        auth_token: new_token,
+                    },
+                ) => old_url != new_url || old_token != new_token,
                 _ => true,
             };
 
             if config_changed {
                 match &mut connection.database {
-                    Database::Postgres { client, .. } => *client = None,
+                    Database::Postgres { client, tunnel, .. } => {
+                        *client = None;
+                        *tunnel = None;
+                    }
+                    Database::MySQL { pool, tunnel, .. } => {
+                        *pool = None;
+                        *tunnel = None;
+                    }
                     Database::SQLite {
                         connection: conn, ..
                     } => *conn = None,
@@ -93,32 +124,89 @@ impl<'a> ConnectionService<'a> {
                     } => *conn = None,
                 }
                 connection.connected = false;
+                connection.database = match database_info {
+                    DatabaseInfo::Postgres {
+                        connection_string,
+                        ssh_config,
+                    } => Database::Postgres {
+                        connection_string,
+                        ssh_config,
+                        client: None,
+                        tunnel: None,
+                    },
+                    DatabaseInfo::MySQL {
+                        connection_string,
+                        ssh_config,
+                    } => Database::MySQL {
+                        connection_string,
+                        ssh_config,
+                        pool: None,
+                        tunnel: None,
+                    },
+                    DatabaseInfo::SQLite { db_path } => Database::SQLite {
+                        db_path,
+                        connection: None,
+                    },
+                    DatabaseInfo::LibSQL { url, auth_token } => Database::LibSQL {
+                        url,
+                        auth_token,
+                        connection: None,
+                    },
+                };
+            } else {
+                match (&mut connection.database, database_info) {
+                    (
+                        Database::Postgres {
+                            connection_string,
+                            ssh_config,
+                            ..
+                        },
+                        DatabaseInfo::Postgres {
+                            connection_string: new_connection_string,
+                            ssh_config: new_ssh_config,
+                        },
+                    ) => {
+                        *connection_string = new_connection_string;
+                        *ssh_config = new_ssh_config;
+                    }
+                    (
+                        Database::MySQL {
+                            connection_string,
+                            ssh_config,
+                            ..
+                        },
+                        DatabaseInfo::MySQL {
+                            connection_string: new_connection_string,
+                            ssh_config: new_ssh_config,
+                        },
+                    ) => {
+                        *connection_string = new_connection_string;
+                        *ssh_config = new_ssh_config;
+                    }
+                    (
+                        Database::SQLite { db_path, .. },
+                        DatabaseInfo::SQLite {
+                            db_path: new_db_path,
+                        },
+                    ) => {
+                        *db_path = new_db_path;
+                    }
+                    (
+                        Database::LibSQL { url, auth_token, .. },
+                        DatabaseInfo::LibSQL {
+                            url: new_url,
+                            auth_token: new_auth_token,
+                        },
+                    ) => {
+                        *url = new_url;
+                        *auth_token = new_auth_token;
+                    }
+                    _ => {}
+                }
             }
 
-            // Update timestamp
             connection.updated_at = chrono::Utc::now().timestamp_millis();
-
             connection.name = name;
-            connection.database = match database_info {
-                DatabaseInfo::Postgres {
-                    connection_string,
-                    ssh_config,
-                } => Database::Postgres {
-                    connection_string,
-                    ssh_config,
-                    client: None,
-                    tunnel: None,
-                },
-                DatabaseInfo::SQLite { db_path } => Database::SQLite {
-                    db_path,
-                    connection: None,
-                },
-                DatabaseInfo::LibSQL { url, auth_token } => Database::LibSQL {
-                    url,
-                    auth_token,
-                    connection: None,
-                },
-            };
         }
 
         let mut updated_info = self
@@ -290,6 +378,71 @@ impl<'a> ConnectionService<'a> {
                     }
                 }
             }
+            Database::MySQL {
+                connection_string,
+                ssh_config,
+                pool,
+                tunnel,
+            } => {
+                // If we have an SSH config, start the tunnel and rewrite the MySQL target to localhost.
+                let mut mysql_url = url::Url::parse(connection_string)
+                    .with_context(|| format!("Failed to parse MySQL connection string: {}", connection_string))?;
+
+                if mysql_url.password().is_none() {
+                    if let Some(pw) = credentials::get_password(&connection_id)? {
+                        let _ = mysql_url.set_password(Some(&pw));
+                    }
+                }
+
+                if let Some(ssh_conf) = ssh_config {
+                    let target_host = mysql_url.host_str().unwrap_or("localhost").to_string();
+                    let target_port = mysql_url.port().unwrap_or(3306);
+
+                    log::info!("Starting SSH tunnel to {}:{}", target_host, target_port);
+                    let tun = crate::database::ssh_tunnel::SshTunnel::start(
+                        &ssh_conf.host,
+                        ssh_conf.port,
+                        &ssh_conf.username,
+                        ssh_conf.private_key_path.as_deref(),
+                        ssh_conf.password.as_deref(),
+                        target_host,
+                        target_port,
+                    )?;
+                    *tunnel = Some(Arc::new(tun));
+
+                    if let Some(tun) = tunnel {
+                        mysql_url.set_host(Some("127.0.0.1"))
+                            .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL host for tunnel")))?;
+                        mysql_url.set_port(Some(tun.local_port))
+                            .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL port for tunnel")))?;
+                    }
+                }
+
+                let mysql_opts = mysql_async::Opts::from_url(&mysql_url.to_string())
+                    .map_err(|e| Error::Any(anyhow::anyhow!("Invalid MySQL URL: {}", e)))?;
+                let mysql_pool = mysql_async::Pool::new(mysql_opts);
+
+                match mysql_pool.get_conn().await {
+                    Ok(mut conn) => {
+                        conn.ping().await?;
+                        *pool = Some(Arc::new(mysql_pool));
+                        connection.connected = true;
+
+                        if let Err(e) = self.storage.update_last_connected(&connection_id) {
+                            log::warn!("Failed to update last connected timestamp: {}", e);
+                        }
+
+                        Ok(true)
+                    }
+                    Err(e) => {
+                        log::error!("Failed to connect to MySQL: {}", e);
+                        *tunnel = None;
+                        *pool = None;
+                        connection.connected = false;
+                        Ok(false)
+                    }
+                }
+            },
             Database::SQLite {
                 db_path,
                 connection: sqlite_conn,
@@ -368,6 +521,10 @@ impl<'a> ConnectionService<'a> {
         match &mut connection.database {
             Database::Postgres { client, tunnel, .. } => {
                 *client = None;
+                *tunnel = None;
+            },
+            Database::MySQL { pool, tunnel, .. } => {
+                *pool = None;
                 *tunnel = None;
             },
             Database::SQLite {
@@ -625,6 +782,58 @@ impl ConnectionService<'_> {
                         log::error!("LibSQL build failed: {}", e);
                         Err(Error::Any(anyhow::anyhow!("LibSQL build failed: {}", e)))
                     }
+                }
+            }
+            DatabaseInfo::MySQL {
+                connection_string,
+                ssh_config,
+            } => {
+                let mut mysql_url = url::Url::parse(&connection_string)
+                    .with_context(|| format!("Failed to parse MySQL connection string: {}", connection_string))?;
+
+                let temp_tunnel = if let Some(conf) = ssh_config {
+                    if let Some(target_host) = mysql_url.host_str() {
+                        let target_port = mysql_url.port().unwrap_or(3306);
+                        log::info!("Testing SSH tunnel to {}:{}", target_host, target_port);
+
+                        match crate::database::ssh_tunnel::SshTunnel::start(
+                            &conf.host,
+                            conf.port,
+                            &conf.username,
+                            conf.private_key_path.as_deref(),
+                            conf.password.as_deref(),
+                            target_host.to_string(),
+                            target_port,
+                        ) {
+                            Ok(tun) => Some(Arc::new(tun)),
+                            Err(e) => {
+                                log::error!("SSH tunnel test failed: {}", e);
+                                return Err(Error::Any(anyhow::anyhow!("SSH tunnel failed: {}", e)));
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                if let Some(ref tun) = temp_tunnel {
+                    mysql_url.set_host(Some("127.0.0.1"))
+                        .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL host for tunnel")))?;
+                    mysql_url.set_port(Some(tun.local_port))
+                        .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL port for tunnel")))?;
+                }
+
+                let mysql_opts = mysql_async::Opts::from_url(&mysql_url.to_string())
+                    .map_err(|e| Error::Any(anyhow::anyhow!("Invalid MySQL URL: {}", e)))?;
+                let pool = mysql_async::Pool::new(mysql_opts);
+                match pool.get_conn().await {
+                    Ok(mut conn) => {
+                        conn.ping().await?;
+                        Ok(true)
+                    },
+                    Err(e) => Err(Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e))),
                 }
             }
         }

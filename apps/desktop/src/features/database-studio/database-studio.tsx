@@ -9,6 +9,7 @@ import { useEffectiveShortcuts, useShortcut } from '@/core/shortcuts'
 import { useUndo } from '@/core/undo'
 import { ContextMenuState, useUrlState } from '@/core/url-state'
 import { commands } from '@/lib/bindings'
+import { getTableRefParts } from '@/shared/utils/table-ref'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -95,6 +96,8 @@ export function DatabaseStudio({
 	initialRowPK,
 	onRowSelectionChange
 }: Props) {
+	const tableRefName = tableId || tableName
+	const displayTableName = tableName || getTableRefParts(tableId).tableName
 	const initialCacheEntry = tableDataCache.get(
 		buildTableCacheKey(activeConnectionId, tableId, 50, 0, undefined, [])
 	)
@@ -273,7 +276,7 @@ export function DatabaseStudio({
 		try {
 			const result = await adapter.fetchTableData(
 				activeConnectionId,
-				tableName || tableId,
+				tableRefName,
 				Math.floor(pagination.offset / pagination.limit),
 				pagination.limit,
 				sort,
@@ -374,7 +377,7 @@ export function DatabaseStudio({
 
 	const liveMonitor = useLiveMonitor({
 		connectionId: activeConnectionId,
-		tableName: tableName || tableId,
+		tableName: tableRefName,
 		isPaused: draftRow !== null || isApplyingEdits,
 		onDataChanged: loadTableData
 	})
@@ -655,7 +658,7 @@ export function DatabaseStudio({
 		deleteRows.mutate(
 			{
 				connectionId: activeConnectionId,
-				tableName: tableName || tableId,
+				tableName: tableRefName,
 				primaryKeyColumn: primaryKeyColumn.name,
 				primaryKeyValues
 			},
@@ -709,7 +712,7 @@ export function DatabaseStudio({
 			rowsToDuplicate.map(function (rowData) {
 				return insertRow.mutateAsync({
 					connectionId: activeConnectionId,
-					tableName: tableName || tableId,
+					tableName: tableRefName,
 					rowData
 				})
 			})
@@ -743,7 +746,7 @@ export function DatabaseStudio({
 			deleteRows.mutate(
 				{
 					connectionId: activeConnectionId,
-					tableName: tableName || tableId,
+					tableName: tableRefName,
 					primaryKeyColumn: primaryKeyColumn.name,
 					primaryKeyValues
 				},
@@ -786,7 +789,7 @@ export function DatabaseStudio({
 				rowsToDuplicate.map(function (rowData) {
 					return insertRow.mutateAsync({
 						connectionId: activeConnectionId,
-						tableName: tableName || tableId,
+						tableName: tableRefName,
 						rowData
 					})
 				})
@@ -888,7 +891,7 @@ export function DatabaseStudio({
 			for (const row of data) {
 				await insertRow.mutateAsync({
 					connectionId: activeConnectionId,
-					tableName: tableName || tableId,
+					tableName: tableRefName,
 					rowData: row
 				})
 			}
@@ -985,7 +988,7 @@ export function DatabaseStudio({
 			updateCell.mutate(
 				{
 					connectionId: activeConnectionId,
-					tableName: tableName || tableId,
+					tableName: tableRefName,
 					primaryKeyColumn: primaryKeyColumn.name,
 					primaryKeyValue: row[primaryKeyColumn.name],
 					columnName,
@@ -995,7 +998,7 @@ export function DatabaseStudio({
 					onSuccess: function () {
 						trackCellMutation(
 							activeConnectionId,
-							tableName || tableId,
+							tableRefName,
 							primaryKeyColumn.name,
 							row[primaryKeyColumn.name],
 							columnName,
@@ -1075,7 +1078,7 @@ export function DatabaseStudio({
 			for (const edit of edits) {
 				await updateCell.mutateAsync({
 					connectionId: activeConnectionId,
-					tableName: tableName || tableId,
+					tableName: tableRefName,
 					primaryKeyColumn: edit.primaryKeyColumn,
 					primaryKeyValue: edit.primaryKeyValue,
 					columnName: edit.columnName,
@@ -1133,7 +1136,7 @@ export function DatabaseStudio({
 					const row = tableData.rows[rowIndex]
 					return updateCell.mutateAsync({
 						connectionId: activeConnectionId,
-						tableName: tableName || tableId,
+						tableName: tableRefName,
 						primaryKeyColumn: primaryKeyColumn.name,
 						primaryKeyValue: row[primaryKeyColumn.name],
 						columnName,
@@ -1144,7 +1147,7 @@ export function DatabaseStudio({
 
 			trackBatchCellMutation(
 				activeConnectionId,
-				tableName || tableId,
+				tableRefName,
 				primaryKeyColumn.name,
 				cellsToTrack
 			)
@@ -1357,7 +1360,7 @@ export function DatabaseStudio({
 		insertRow.mutate(
 			{
 				connectionId: activeConnectionId,
-				tableName: tableName || tableId,
+				tableName: tableRefName,
 				rowData: normalizedDraftRow
 			},
 			{
@@ -1406,7 +1409,7 @@ export function DatabaseStudio({
 				changedColumns.map(function updateChangedColumn(column) {
 					return updateCell.mutateAsync({
 						connectionId: activeConnectionId,
-						tableName: tableName || tableId,
+						tableName: tableRefName,
 						primaryKeyColumn: editingRowState.primaryKeyColumn,
 						primaryKeyValue: editingRowState.primaryKeyValue,
 						columnName: column.name,
@@ -1437,7 +1440,7 @@ export function DatabaseStudio({
 		insertRow.mutate(
 			{
 				connectionId: activeConnectionId,
-				tableName: tableName || tableId,
+				tableName: tableRefName,
 				rowData: normalizedRowData
 			},
 			{
@@ -1507,8 +1510,8 @@ export function DatabaseStudio({
 
 		const result = await commands.exportTable(
 			activeConnectionId,
-			tableName || tableId,
-			null,
+			getTableRefParts(tableRefName).tableName,
+			getTableRefParts(tableRefName).schemaName,
 			'sql_insert',
 			null
 		)
@@ -1728,7 +1731,7 @@ export function DatabaseStudio({
 		return (
 			<div className='flex flex-col h-full bg-background'>
 				<StudioToolbar
-					tableName={tableName || tableId}
+					tableName={displayTableName}
 					viewMode={viewMode}
 					onViewModeChange={setViewMode}
 					onToggleSidebar={onToggleSidebar}
@@ -1843,7 +1846,7 @@ export function DatabaseStudio({
 				<AddColumnDialog
 					open={showAddColumnDialog}
 					onOpenChange={setShowAddColumnDialog}
-					tableName={tableName || tableId}
+					tableName={displayTableName}
 					onSubmit={handleAddColumn}
 					isLoading={isDdlLoading}
 				/>
@@ -1851,7 +1854,7 @@ export function DatabaseStudio({
 				<DropTableDialog
 					open={showDropTableDialog}
 					onOpenChange={setShowDropTableDialog}
-					tableName={tableName || tableId}
+					tableName={displayTableName}
 					onConfirm={handleDropTable}
 					isLoading={isDdlLoading}
 				/>
@@ -1871,7 +1874,7 @@ export function DatabaseStudio({
 				{selectionAnnouncement}
 			</div>
 			<StudioToolbar
-				tableName={tableName || tableId}
+				tableName={displayTableName}
 				viewMode={viewMode}
 				onViewModeChange={setViewMode}
 				onToggleSidebar={onToggleSidebar}
@@ -1903,7 +1906,7 @@ export function DatabaseStudio({
 			<div
 				className='flex-1 overflow-hidden relative'
 				role='region'
-				aria-label={`Table data for ${tableName || tableId}`}
+				aria-label={`Table data for ${displayTableName}`}
 				aria-busy={isLoading && !tableData}
 			>
 				{tableData && (
@@ -1924,7 +1927,7 @@ export function DatabaseStudio({
 							onCellEdit={handleCellEdit}
 							onBatchCellEdit={handleBatchCellEdit}
 							onRowAction={handleRowAction}
-							tableName={tableName || tableId}
+							tableName={displayTableName}
 							selectedCells={selectedCells}
 							onCellSelectionChange={setSelectedCells}
 							initialFocusedCell={focusedCell}
@@ -2043,14 +2046,14 @@ export function DatabaseStudio({
 					}}
 					row={selectedRowForDetail}
 					columns={tableData.columns}
-					tableName={tableName || tableId}
+					tableName={displayTableName}
 				/>
 			)}
 
 			<DropTableDialog
 				open={showDropTableDialog}
 				onOpenChange={setShowDropTableDialog}
-				tableName={tableName || tableId || ''}
+				tableName={displayTableName || ''}
 				onConfirm={handleDropTable}
 				isLoading={isDdlLoading}
 			/>
@@ -2082,7 +2085,7 @@ export function DatabaseStudio({
 									deleteRows.mutate(
 										{
 											connectionId: activeConnectionId,
-											tableName: tableName || tableId,
+											tableName: tableRefName,
 											primaryKeyColumn: pendingSingleDeleteRow.primaryKeyColumn,
 											primaryKeyValues: [pendingSingleDeleteRow.primaryKeyValue]
 										},
@@ -2135,7 +2138,7 @@ export function DatabaseStudio({
 								const row = tableData.rows[rowIndex]
 								return updateCell.mutateAsync({
 									connectionId: activeConnectionId,
-									tableName: tableName || tableId,
+									tableName: tableRefName,
 									primaryKeyColumn: primaryKeyColumn.name,
 									primaryKeyValue: row[primaryKeyColumn.name],
 									columnName,
@@ -2189,7 +2192,7 @@ export function DatabaseStudio({
 								const row = tableData.rows[rowIndex]
 								return updateCell.mutateAsync({
 									connectionId: activeConnectionId,
-									tableName: tableName || tableId,
+									tableName: tableRefName,
 									primaryKeyColumn: primaryKeyColumn.name,
 									primaryKeyValue: row[primaryKeyColumn.name],
 									columnName,
@@ -2221,7 +2224,7 @@ export function DatabaseStudio({
 				<DataSeederDialog
 					open={showDataSeederDialog}
 					onOpenChange={setShowDataSeederDialog}
-					tableName={tableName || tableId || ''}
+					tableName={displayTableName || ''}
 					columns={tableData.columns.map((c) => ({
 						name: c.name,
 						type: c.type,

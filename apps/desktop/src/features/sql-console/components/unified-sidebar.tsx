@@ -35,6 +35,7 @@ import {
 import { Input } from '@/shared/ui/input'
 import { ScrollArea } from '@/shared/ui/scroll-area'
 import { cn } from '@/shared/utils/cn'
+import { getTableRefId, getTableSqlIdentifier } from '@/shared/utils/table-ref'
 import { TableInfo, SqlSnippet } from '../types'
 
 type Props = {
@@ -87,12 +88,12 @@ export function UnifiedSidebar({
 		navigator.clipboard.writeText(text)
 	}, [])
 
-	const toggleTable = function (tableName: string) {
+	const toggleTable = function (tableRefId: string) {
 		const next = new Set(expandedTables)
-		if (next.has(tableName)) {
-			next.delete(tableName)
+		if (next.has(tableRefId)) {
+			next.delete(tableRefId)
 		} else {
-			next.add(tableName)
+			next.add(tableRefId)
 		}
 		setExpandedTables(next)
 	}
@@ -307,17 +308,18 @@ export function UnifiedSidebar({
 					<ScrollArea className='flex-1'>
 						<div className='py-1'>
 							{filteredTables.map(function (table) {
-								const isExpanded = expandedTables.has(table.name)
+								const tableRefId = getTableRefId(table)
+								const isExpanded = expandedTables.has(tableRefId)
 								const hasColumns = table.columns && table.columns.length > 0
 
 								return (
-									<div key={table.name} className='flex flex-col'>
+									<div key={tableRefId} className='flex flex-col'>
 										<ContextMenu>
 											<ContextMenuTrigger>
 												<div className='flex items-center group w-full px-2 py-1 hover:bg-sidebar-accent/50 transition-colors'>
 													<button
 														onClick={function () {
-															toggleTable(table.name)
+															toggleTable(tableRefId)
 														}}
 														className={cn(
 															'p-0.5 rounded-sm hover:bg-sidebar-accent mr-1 transition-transform',
@@ -334,7 +336,7 @@ export function UnifiedSidebar({
 													<button
 														className='flex-1 flex items-center gap-2 text-sm text-left overflow-hidden'
 														onClick={function () {
-															onTableSelect?.(table.name)
+															onTableSelect?.(tableRefId)
 														}}
 													>
 														{table.type === 'view' ? (
@@ -361,7 +363,7 @@ export function UnifiedSidebar({
 														<ContextMenuItem
 															onClick={function () {
 																onInsertQuery?.(
-																	`SELECT * FROM ${table.name} LIMIT 100;`
+																	`SELECT * FROM ${getTableSqlIdentifier(table)} LIMIT 100;`
 																)
 															}}
 														>
@@ -371,7 +373,7 @@ export function UnifiedSidebar({
 														<ContextMenuItem
 															onClick={function () {
 																onInsertQuery?.(
-																	`SELECT COUNT(*) FROM ${table.name};`
+																	`SELECT COUNT(*) FROM ${getTableSqlIdentifier(table)};`
 																)
 															}}
 														>
@@ -381,7 +383,7 @@ export function UnifiedSidebar({
 														<ContextMenuItem
 															onClick={function () {
 																onInsertQuery?.(
-																	`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${table.name}';`
+																	`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '${table.name}'${table.schema ? ` AND table_schema = '${table.schema}'` : ''};`
 																)
 															}}
 														>
@@ -393,7 +395,7 @@ export function UnifiedSidebar({
 												<ContextMenuSeparator />
 												<ContextMenuItem
 													onClick={function () {
-														copyToClipboard(table.name)
+														copyToClipboard(tableRefId)
 													}}
 												>
 													<Copy className='h-3.5 w-3.5' />
@@ -447,7 +449,7 @@ export function UnifiedSidebar({
 																<ContextMenuItem
 																	onClick={function () {
 																		onInsertQuery?.(
-																			`SELECT ${col.name} FROM ${table.name} LIMIT 100;`
+																			`SELECT ${col.name} FROM ${getTableSqlIdentifier(table)} LIMIT 100;`
 																		)
 																	}}
 																>

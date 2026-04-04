@@ -9,8 +9,137 @@ use uuid::Uuid;
 // Gotta match the IDs in the DB
 const DB_TYPE_POSTGRES: i32 = 1;
 const DB_TYPE_SQLITE: i32 = 2;
+const DB_TYPE_LIBSQL: i32 = 3;
+const DB_TYPE_MYSQL: i32 = 4;
 
 use crate::{database::types::ConnectionInfo, Result};
+
+#[derive(Debug, Serialize, Deserialize)]
+struct StoredPostgresConnection {
+    connection_string: String,
+    #[serde(default)]
+    ssh_config: Option<crate::database::types::SshConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct StoredLibsqlConnection {
+    url: String,
+    auth_token: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct StoredMysqlConnection {
+    connection_string: String,
+    #[serde(default)]
+    ssh_config: Option<crate::database::types::SshConfig>,
+}
+
+fn serialize_connection_data(database_type: &crate::database::types::DatabaseInfo) -> Result<(i32, String)> {
+    match database_type {
+        crate::database::types::DatabaseInfo::Postgres {
+            connection_string,
+            ssh_config,
+        } => Ok((
+            DB_TYPE_POSTGRES,
+            serde_json::to_string(&StoredPostgresConnection {
+                connection_string: connection_string.clone(),
+                ssh_config: ssh_config.clone(),
+            })
+            .context("Failed to serialize Postgres connection data")?,
+        )),
+        crate::database::types::DatabaseInfo::SQLite { db_path } => Ok((DB_TYPE_SQLITE, db_path.clone())),
+        crate::database::types::DatabaseInfo::LibSQL { url, auth_token } => Ok((
+            DB_TYPE_LIBSQL,
+            serde_json::to_string(&StoredLibsqlConnection {
+                url: url.clone(),
+                auth_token: auth_token.clone(),
+            })
+            .context("Failed to serialize LibSQL connection data")?,
+        )),
+        crate::database::types::DatabaseInfo::MySQL {
+            connection_string,
+            ssh_config,
+        } => Ok((
+            DB_TYPE_MYSQL,
+            serde_json::to_string(&StoredMysqlConnection {
+                connection_string: connection_string.clone(),
+                ssh_config: ssh_config.clone(),
+            })
+            .context("Failed to serialize MySQL connection data")?,
+        )),
+    }
+}
+
+fn db_type_from_id(db_type_id: i32) -> &'static str {
+    match db_type_id {
+        DB_TYPE_POSTGRES => "postgres",
+        DB_TYPE_SQLITE => "sqlite",
+        DB_TYPE_LIBSQL => "libsql",
+        DB_TYPE_MYSQL => "mysql",
+        _ => "postgres",
+    }
+}
+
+fn deserialize_database_info(
+    db_type: &str,
+    db_type_id: i32,
+    connection_data: String,
+) -> crate::database::types::DatabaseInfo {
+    let db_type = if db_type.is_empty() {
+        db_type_from_id(db_type_id)
+    } else {
+        db_type
+    };
+
+    match db_type {
+        "postgres" => {
+            if let Ok(stored) = serde_json::from_str::<StoredPostgresConnection>(&connection_data) {
+                crate::database::types::DatabaseInfo::Postgres {
+                    connection_string: stored.connection_string,
+                    ssh_config: stored.ssh_config,
+                }
+            } else {
+                crate::database::types::DatabaseInfo::Postgres {
+                    connection_string: connection_data,
+                    ssh_config: None,
+                }
+            }
+        }
+        "sqlite" => crate::database::types::DatabaseInfo::SQLite {
+            db_path: connection_data,
+        },
+        "libsql" => {
+            if let Ok(stored) = serde_json::from_str::<StoredLibsqlConnection>(&connection_data) {
+                crate::database::types::DatabaseInfo::LibSQL {
+                    url: stored.url,
+                    auth_token: stored.auth_token,
+                }
+            } else {
+                crate::database::types::DatabaseInfo::LibSQL {
+                    url: connection_data,
+                    auth_token: None,
+                }
+            }
+        }
+        "mysql" => {
+            if let Ok(stored) = serde_json::from_str::<StoredMysqlConnection>(&connection_data) {
+                crate::database::types::DatabaseInfo::MySQL {
+                    connection_string: stored.connection_string,
+                    ssh_config: stored.ssh_config,
+                }
+            } else {
+                crate::database::types::DatabaseInfo::MySQL {
+                    connection_string: connection_data,
+                    ssh_config: None,
+                }
+            }
+        }
+        _ => crate::database::types::DatabaseInfo::Postgres {
+            connection_string: connection_data,
+            ssh_config: None,
+        },
+    }
+}
 
 struct Migrator {
     migrations: &'static [&'static str],
@@ -26,6 +155,7 @@ impl Migrator {
                 include_str!("../migrations/004.sql"),
                 include_str!("../migrations/005.sql"),
                 include_str!("../migrations/006.sql"),
+                include_str!("../migrations/007.sql"),
             ],
         }
     }
@@ -188,22 +318,7 @@ impl Storage {
         let now = chrono::Utc::now().timestamp();
         let conn = self.conn.lock().unwrap();
 
-        let (db_type_id, connection_data) = match &connection.database_type {
-            crate::database::types::DatabaseInfo::Postgres { connection_string, .. } => {
-                (DB_TYPE_POSTGRES, connection_string.clone())
-            }
-            crate::database::types::DatabaseInfo::SQLite { db_path } => {
-                (DB_TYPE_SQLITE, db_path.clone())
-            }
-            crate::database::types::DatabaseInfo::LibSQL { url, auth_token } => {
-                // Serialize URL and auth_token as JSON for storage
-                let data = serde_json::json!({
-                    "url": url,
-                    "auth_token": auth_token
-                });
-                (3, data.to_string()) // db_type_id 3 for LibSQL
-            }
-        };
+        let (db_type_id, connection_data) = serialize_connection_data(&connection.database_type)?;
 
         let encrypted_data = crate::security::encrypt(&connection_data)
             .context("Failed to encrypt connection data")?;
@@ -232,22 +347,7 @@ impl Storage {
         let now = chrono::Utc::now().timestamp();
         let conn = self.conn.lock().unwrap();
 
-        let (db_type_id, connection_data) = match &connection.database_type {
-            crate::database::types::DatabaseInfo::Postgres { connection_string, .. } => {
-                (DB_TYPE_POSTGRES, connection_string.clone())
-            }
-            crate::database::types::DatabaseInfo::SQLite { db_path } => {
-                (DB_TYPE_SQLITE, db_path.clone())
-            }
-            crate::database::types::DatabaseInfo::LibSQL { url, auth_token } => {
-                // Serialize URL and auth_token as JSON for storage
-                let data = serde_json::json!({
-                    "url": url,
-                    "auth_token": auth_token
-                });
-                (3, data.to_string()) // db_type_id 3 for LibSQL
-            }
-        };
+        let (db_type_id, connection_data) = serialize_connection_data(&connection.database_type)?;
 
         let encrypted_data = crate::security::encrypt(&connection_data)
             .context("Failed to encrypt connection data")?;
@@ -283,6 +383,7 @@ impl Storage {
         let mut stmt = conn
             .prepare(
                 "SELECT c.id, c.name, c.connection_data, 
+                        c.database_type_id,
                         COALESCE(dt.name, 'postgres') as db_type,
                         c.last_connected_at, c.favorite, c.color, c.sort_order
                  FROM connections c
@@ -294,7 +395,8 @@ impl Storage {
         let mut rows = stmt
             .query_map([connection_id.to_string()], |row| {
                 let raw_data: String = row.get(2)?;
-                let db_type: String = row.get(3)?;
+                let db_type_id: i32 = row.get(3)?;
+                let db_type: String = row.get(4)?;
 
                 // Try to decrypt, otherwise assume plaintext (lazy migration)
                 let connection_data = match crate::security::decrypt(&raw_data) {
@@ -302,19 +404,7 @@ impl Storage {
                     Err(_) => raw_data, // Fallback to plaintext
                 };
 
-                let database_type = match db_type.as_str() {
-                    "postgres" => crate::database::types::DatabaseInfo::Postgres {
-                        connection_string: connection_data,
-                        ssh_config: None,
-                    },
-                    "sqlite" => crate::database::types::DatabaseInfo::SQLite {
-                        db_path: connection_data,
-                    },
-                    _ => crate::database::types::DatabaseInfo::Postgres {
-                        connection_string: connection_data,
-                        ssh_config: None,
-                    },
-                };
+                let database_type = deserialize_database_info(&db_type, db_type_id, connection_data);
 
                 Ok(ConnectionInfo {
                     id: {
@@ -326,10 +416,10 @@ impl Storage {
                     name: row.get(1)?,
                     database_type,
                     connected: false,
-                    last_connected_at: row.get(4).ok(),
-                    favorite: row.get(5).ok(),
-                    color: row.get(6).ok(),
-                    sort_order: row.get(7).ok(),
+                    last_connected_at: row.get(5).ok(),
+                    favorite: row.get(6).ok(),
+                    color: row.get(7).ok(),
+                    sort_order: row.get(8).ok(),
                     created_at: None,
                     updated_at: None,
                     pin_hash: None,
@@ -350,6 +440,7 @@ impl Storage {
         let mut stmt = conn
             .prepare(
                 "SELECT c.id, c.name, c.connection_data, 
+                        c.database_type_id,
                         COALESCE(dt.name, 'postgres') as db_type,
                         c.last_connected_at, c.favorite, c.color, c.sort_order
                  FROM connections c
@@ -361,7 +452,8 @@ impl Storage {
         let rows = stmt
             .query_map([], |row| {
                 let raw_data: String = row.get(2)?;
-                let db_type: String = row.get(3)?;
+                let db_type_id: i32 = row.get(3)?;
+                let db_type: String = row.get(4)?;
 
                 // Try to decrypt, otherwise assume plaintext (lazy migration)
                 let connection_data = match crate::security::decrypt(&raw_data) {
@@ -369,19 +461,7 @@ impl Storage {
                     Err(_) => raw_data, // Fallback to plaintext
                 };
 
-                let database_type = match db_type.as_str() {
-                    "postgres" => crate::database::types::DatabaseInfo::Postgres {
-                        connection_string: connection_data,
-                        ssh_config: None,
-                    },
-                    "sqlite" => crate::database::types::DatabaseInfo::SQLite {
-                        db_path: connection_data,
-                    },
-                    _ => crate::database::types::DatabaseInfo::Postgres {
-                        connection_string: connection_data, // Default to postgres for unknown types
-                        ssh_config: None,
-                    },
-                };
+                let database_type = deserialize_database_info(&db_type, db_type_id, connection_data);
 
                 Ok(ConnectionInfo {
                     id: {
@@ -393,10 +473,10 @@ impl Storage {
                     name: row.get(1)?,
                     database_type,
                     connected: false,
-                    last_connected_at: row.get(4).ok(),
-                    favorite: row.get(5).ok(),
-                    color: row.get(6).ok(),
-                    sort_order: row.get(7).ok(),
+                    last_connected_at: row.get(5).ok(),
+                    favorite: row.get(6).ok(),
+                    color: row.get(7).ok(),
+                    sort_order: row.get(8).ok(),
                     created_at: None,
                     updated_at: None,
                     pin_hash: None,

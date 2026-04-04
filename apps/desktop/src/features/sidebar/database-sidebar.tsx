@@ -34,6 +34,7 @@ import type { TableRightClickAction } from './components/table-list'
 import { TableSearch, FilterState } from './components/table-search'
 import { Schema, TableItem } from './types'
 import { cn } from '@/shared/utils/cn'
+import { getTableRefId, getTableRefParts, getTableSqlIdentifier } from '@/shared/utils/table-ref'
 
 const DEFAULT_FILTERS: FilterState = {
 	showTables: true,
@@ -182,7 +183,7 @@ export function DatabaseSidebar({
 							onTableSelect
 						) {
 							const firstTable = result.data.tables[0]
-							onTableSelect(firstTable.name, firstTable.name)
+							onTableSelect(getTableRefId(firstTable), firstTable.name)
 							if (onAutoSelectComplete) {
 								onAutoSelectComplete()
 							}
@@ -220,7 +221,7 @@ export function DatabaseSidebar({
 			if (!schema) return []
 			return schema.tables.map(function (table: TableInfo) {
 				return {
-					id: table.name,
+					id: getTableRefId(table),
 					name: table.name,
 					rowCount: table.row_count_estimate ?? 0,
 					type: 'table' as const
@@ -259,7 +260,7 @@ export function DatabaseSidebar({
 		function () {
 			if (!schema || !activeTableId) return null
 			return schema.tables.find(function (t) {
-				return t.name === activeTableId
+				return getTableRefId(t) === activeTableId
 			})
 		},
 		[schema, activeTableId]
@@ -279,7 +280,7 @@ export function DatabaseSidebar({
 	function handleTableSelect(tableId: string) {
 		setInternalTableId(tableId)
 		if (onTableSelect) {
-			onTableSelect(tableId, tableId)
+			onTableSelect(tableId, getTableRefParts(tableId).tableName)
 		}
 	}
 
@@ -338,7 +339,7 @@ export function DatabaseSidebar({
 
 		setIsDdlLoading(true)
 		try {
-			const sql = `ALTER TABLE "${currentTableName}" RENAME TO "${newName}"`
+			const sql = `ALTER TABLE ${getTableSqlIdentifier(currentTableName)} RENAME TO "${newName}"`
 			const result = await commands.executeBatch(activeConnectionId, [sql])
 			if (result.status === 'ok') {
 				setShowRenameDialog(false)
@@ -399,6 +400,7 @@ export function DatabaseSidebar({
 
 	async function handleDuplicateTable(tableName: string) {
 		if (!activeConnectionId) return
+		const tableRef = getTableRefParts(tableName)
 		if (activeConnection?.type !== 'postgres') {
 			toast({
 				title: 'Duplicate table not available',
@@ -411,19 +413,19 @@ export function DatabaseSidebar({
 		setIsDdlLoading(true)
 		try {
 			// Find a unique name
-			let newName = `${tableName}_copy`
+			let newName = `${tableRef.tableName}_copy`
 			let counter = 1
 			while (
 				schema?.tables.some(function (t) {
-					return t.name === newName
+					return t.schema === tableRef.schemaName && t.name === newName
 				})
 			) {
 				counter++
-				newName = `${tableName}_copy${counter}`
+				newName = `${tableRef.tableName}_copy${counter}`
 			}
 
-			const sqlCreate = `CREATE TABLE "${newName}" (LIKE "${tableName}" INCLUDING ALL)`
-			const sqlData = `INSERT INTO "${newName}" SELECT * FROM "${tableName}"`
+			const sqlCreate = `CREATE TABLE ${getTableSqlIdentifier({ name: newName, schema: tableRef.schemaName })} (LIKE ${getTableSqlIdentifier(tableName)} INCLUDING ALL)`
+			const sqlData = `INSERT INTO ${getTableSqlIdentifier({ name: newName, schema: tableRef.schemaName })} SELECT * FROM ${getTableSqlIdentifier(tableName)}`
 
 			const result = await commands.executeBatch(activeConnectionId, [sqlCreate, sqlData])
 
@@ -469,7 +471,7 @@ export function DatabaseSidebar({
 			setIsDdlLoading(true)
 			try {
 				const drops = selectedTableIds.map(function (id) {
-					return `DROP TABLE IF EXISTS "${id}"`
+					return `DROP TABLE IF EXISTS ${getTableSqlIdentifier(id)}`
 				})
 				const result = await commands.executeBatch(activeConnectionId, drops)
 				if (result.status === 'ok') {
@@ -500,7 +502,7 @@ export function DatabaseSidebar({
 			setIsDdlLoading(true)
 			try {
 				const deletes = selectedTableIds.map(function (id) {
-					return `DELETE FROM "${id}"`
+					return `DELETE FROM ${getTableSqlIdentifier(id)}`
 				})
 				const result = await commands.executeBatch(activeConnectionId, deletes)
 				if (result.status === 'ok') {
@@ -536,11 +538,11 @@ export function DatabaseSidebar({
 			if (!schemaResult.ok) throw new Error(getAdapterError(schemaResult))
 
 			const table = schemaResult.data.tables.find(function (t) {
-				return t.name === tableName
+				return getTableRefId(t) === tableName
 			})
 			if (!table) throw new Error(`Table ${tableName} not found`)
 
-			const ddl = `CREATE TABLE "${tableName}" (\n${table.columns
+			const ddl = `CREATE TABLE ${getTableSqlIdentifier(table)} (\n${table.columns
 				.map(function (col) {
 					let line = `  "${col.name}" ${col.data_type}`
 					if (!col.is_nullable) line += ' NOT NULL'
@@ -569,8 +571,8 @@ export function DatabaseSidebar({
 		try {
 			const result = await commands.exportTable(
 				activeConnectionId,
-				tableName,
-				null,
+				getTableRefParts(tableName).tableName,
+				getTableRefParts(tableName).schemaName,
 				format,
 				null
 			)

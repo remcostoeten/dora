@@ -15,24 +15,26 @@ This document outlines the critical features and improvements required to make D
 ### 1. SSH Tunneling (Security)
 
 **Priority:** Critical
-**Backend Support:** `DatabaseInfo.Postgres.ssh_config` (Stubbed in `connection-dialog.tsx` line 193).
+**Status:** Done for Postgres in desktop/Tauri mode.
+**Backend Support:** `DatabaseInfo.Postgres.ssh_config` round-trips through save/update, connection tests, and tunnel startup.
 **Files:** `src/features/connections/components/connection-dialog.tsx`
+**Limitations:** Browser/Vercel mock mode still does not use Tauri tunnels, and the feature is Postgres-only.
 
 **Specification:**
 
 1.  **UI Update:**
-    - Add an "SSH Tunnel" toggle or tab in the `Postgres` / `MySQL` form sections.
-    - Fields needed:
-        - `SSH Host` (string, required if enabled)
-        - `SSH Port` (number, default 22)
+     - Add an "SSH Tunnel" toggle or tab in the `Postgres` form section.
+     - Fields needed:
+         - `SSH Host` (string, required if enabled)
+         - `SSH Port` (number, default 22)
         - `SSH Username` (string, required)
         - `Authentication Method`: "Password" or "Key File".
         - `SSH Password / Passphrase` (password input).
         - `Private Key Path` (file picker).
 2.  **Implementation:**
-    - Update `formData` state to include `sshConfig`.
-    - Map fields to the `SshConfig` type defined in `bindings.ts`.
-    - Pass this populated object in `handleTestConnection` and `onSave`.
+     - Update `formData` state to include `sshConfig`.
+     - Map fields to the `SshConfig` type defined in `bindings.ts`.
+     - Pass this populated object in `handleTestConnection` and persist it through `onSave`.
 
 ### 2. Schema Management (DDL)
 

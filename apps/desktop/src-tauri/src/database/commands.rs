@@ -236,6 +236,9 @@ pub async fn start_query(
                 crate::database::types::Database::LibSQL { .. } => {
                     crate::database::libsql::parser::parse_statements(query).ok()
                 }
+                crate::database::types::Database::MySQL { .. } => {
+                    crate::database::mysql::parser::parse_statements(query).ok()
+                }
             }
         });
 

@@ -14,6 +14,7 @@ import type {
 	SavedQuery
 } from '@/lib/bindings'
 import { commands } from '@/lib/bindings'
+import { getTableRefParts, getTableSqlIdentifier } from '@/shared/utils/table-ref'
 import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 
 function ok<T>(data: T): AdapterResult<T> {
@@ -122,7 +123,7 @@ export function createTauriAdapter(): DataAdapter {
 		},
 
 		async dropTable(connectionId: string, tableName: string): Promise<AdapterResult<void>> {
-			const sql = `DROP TABLE IF EXISTS "${tableName}"`
+			const sql = `DROP TABLE IF EXISTS ${getTableSqlIdentifier(tableName)}`
 			const result = await commands.executeBatch(connectionId, [sql])
 			if (result.status === 'ok') {
 				return ok(undefined)
@@ -165,7 +166,7 @@ export function createTauriAdapter(): DataAdapter {
 			filters?: FilterDescriptor[]
 		): Promise<AdapterResult<TableData>> {
 			const startTime = performance.now()
-			let query = `SELECT * FROM "${tableName}"`
+			let query = `SELECT * FROM ${getTableSqlIdentifier(tableName)}`
 
 			if (filters && filters.length > 0) {
 				const conditions = filters.map(function (f) {
@@ -318,6 +319,7 @@ export function createTauriAdapter(): DataAdapter {
 				columns: columnDefs.map(function (col) {
 					return col.name
 				}),
+				columnDefinitions: columnDefs,
 				rowCount: pageInfo.affected_rows ?? rows.length,
 				executionTime: Math.round(performance.now() - startTime)
 			})
@@ -331,10 +333,11 @@ export function createTauriAdapter(): DataAdapter {
 			columnName: string,
 			newValue: JsonValue
 		): Promise<AdapterResult<MutationResult>> {
+			const tableRef = getTableRefParts(tableName)
 			const result = await commands.updateCell(
 				connectionId,
-				tableName,
-				null,
+				tableRef.tableName,
+				tableRef.schemaName,
 				primaryKeyColumn,
 				primaryKeyValue,
 				columnName,
@@ -352,10 +355,11 @@ export function createTauriAdapter(): DataAdapter {
 			primaryKeyColumn: string,
 			primaryKeyValues: JsonValue[]
 		): Promise<AdapterResult<MutationResult>> {
+			const tableRef = getTableRefParts(tableName)
 			const result = await commands.deleteRows(
 				connectionId,
-				tableName,
-				null,
+				tableRef.tableName,
+				tableRef.schemaName,
 				primaryKeyColumn,
 				primaryKeyValues
 			)
@@ -370,7 +374,13 @@ export function createTauriAdapter(): DataAdapter {
 			tableName: string,
 			rowData: Record<string, JsonValue>
 		): Promise<AdapterResult<MutationResult>> {
-			const result = await commands.insertRow(connectionId, tableName, null, rowData)
+			const tableRef = getTableRefParts(tableName)
+			const result = await commands.insertRow(
+				connectionId,
+				tableRef.tableName,
+				tableRef.schemaName,
+				rowData
+			)
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}
