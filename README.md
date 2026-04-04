@@ -80,6 +80,15 @@ Release bundles are configured for:
 
 GitHub Releases: https://github.com/remcostoeten/dora/releases
 
+## Installation (macOS / Linux)
+
+You can install Dora via Homebrew using our custom tap:
+
+```bash
+brew tap remcostoeten/dora
+brew install dora
+```
+
 ## Database Support
 
 | Database | Status | Notes |
