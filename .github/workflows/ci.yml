@@ -15,10 +15,10 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
+              uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
             - name: Setup Bun
-              uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
               with:
                   bun-version: latest
 
@@ -48,7 +48,7 @@ jobs:
 
         steps:
             - name: Checkout
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
+              uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
             - name: Install system dependencies
               run: |
@@ -64,10 +64,10 @@ jobs:
                     postgresql-client
 
             - name: Setup Rust
-              uses: dtolnay/rust-toolchain@1fda3d8b0a55de20bf5124a8d4a7e3d5ca092d70
+              uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
 
             - name: Cache Cargo
-              uses: actions/cache@d4f2b089154f0998d9a79ea3cc7b28a716b3956f
+              uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
               with:
                   path: |
                       ~/.cargo/bin/
@@ -95,10 +95,10 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
+              uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
             - name: Setup Bun
-              uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
               with:
                   bun-version: latest
 
@@ -114,10 +114,10 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
+              uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
             - name: Setup Bun
-              uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
 
             - name: Install system dependencies
               run: |
@@ -131,7 +131,7 @@ jobs:
                     libjavascriptcoregtk-4.1-dev
 
             - name: Setup Rust
-              uses: dtolnay/rust-toolchain@1fda3d8b0a55de20bf5124a8d4a7e3d5ca092d70
+              uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
 
             - name: Install dependencies
               run: bun install
