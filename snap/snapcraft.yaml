@@ -73,7 +73,7 @@ parts:
 
       bun install
       bun run --cwd apps/desktop build
-      bun x --cwd apps/desktop tauri build --bundles none
+      bun run --cwd apps/desktop tauri build --bundles none
 
       install -Dm755 apps/desktop/src-tauri/target/release/app "$CRAFT_PART_INSTALL/bin/dora"
       install -Dm755 snap/local/launch "$CRAFT_PART_INSTALL/bin/launch"
