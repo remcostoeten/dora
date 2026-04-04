@@ -1,6 +1,6 @@
 {
 	"name": "dora",
-	"version": "0.0.1",
+	"version": "0.0.101",
 	"private": true,
 	"workspaces": [
 		"apps/*",
@@ -32,6 +32,12 @@
 		"desktop:build:nsis": "bun run --cwd apps/desktop tauri build --bundles nsis",
 		"desktop:build:msi": "bun run --cwd apps/desktop tauri build --bundles msi",
 		"desktop:build:dmg": "bun run --cwd apps/desktop tauri build --bundles dmg",
+		"release:checksums": "bun tools/scripts/generate-checksums.ts",
+		"release:winget": "bun tools/scripts/generate-winget-manifest.ts",
+		"release:aur": "bun tools/scripts/generate-aur-package.ts",
+		"release:snap:build": "snapcraft --destructive-mode",
+		"release:guide": "bash tools/scripts/release-guide.sh",
+		"vm:lab": "bash tools/scripts/vm-lab.sh",
 		"desktop:install:deb": "bash -c 'DEB=$(ls -t apps/desktop/src-tauri/target/release/bundle/deb/*.deb 2>/dev/null | head -1) && [ -n \"$DEB\" ] && sudo dpkg -i \"$DEB\" || echo \"No .deb found. Run desktop:build:deb first.\"'",
 		"desktop:uninstall": "bash -c 'if dpkg -l | grep -q dora; then sudo apt-get remove -y dora; else echo \"Dora is not installed.\"; fi'",
 		"release:gen": "bun tools/scripts/generate-release.ts",

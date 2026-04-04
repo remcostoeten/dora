@@ -3,10 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import type { DockerContainer } from '../types'
-import {
-	buildConnectionEnvVars,
-	maskPassword
-} from '../utilities/connection-string-builder'
+import { buildConnectionEnvVars, maskPassword } from '../utilities/connection-string-builder'
 import { generateSnippet, SnippetLanguage } from '../utilities/connection-snippet-generator'
 import { SnippetHighlight } from './snippet-highlight'
 import { cn } from '@/shared/utils/cn'
@@ -20,7 +17,7 @@ const LANGUAGE_CONFIG: Record<SnippetLanguage, { label: string; icon: string; co
 	terminal: { label: 'Shell', icon: '$_', color: 'text-emerald-400' },
 	nodejs: { label: 'Node', icon: 'JS', color: 'text-yellow-400' },
 	python: { label: 'Python', icon: 'Py', color: 'text-blue-400' },
-	prisma: { label: 'Prisma', icon: '◮', color: 'text-indigo-400' },
+	prisma: { label: 'Prisma', icon: '◮', color: 'text-indigo-400' }
 }
 
 export function ConnectionDetails({ container, password }: Props) {
@@ -33,8 +30,10 @@ export function ConnectionDetails({ container, password }: Props) {
 
 	const host = 'localhost'
 	const port = primaryPort?.hostPort ?? 5432
-	const user = container.env.find((e) => e.startsWith('POSTGRES_USER='))?.split('=')[1] || 'postgres'
-	const database = container.env.find((e) => e.startsWith('POSTGRES_DB='))?.split('=')[1] || 'postgres'
+	const user =
+		container.env.find((e) => e.startsWith('POSTGRES_USER='))?.split('=')[1] || 'postgres'
+	const database =
+		container.env.find((e) => e.startsWith('POSTGRES_DB='))?.split('=')[1] || 'postgres'
 
 	const envVars = buildConnectionEnvVars(host, port, user, password, database)
 	const displayUrl = showPassword ? envVars.DATABASE_URL : maskPassword(envVars.DATABASE_URL)
@@ -136,33 +135,39 @@ export function ConnectionDetails({ container, password }: Props) {
 
 				<TabsContent value='snippets' className='mt-2 text-sm space-y-2'>
 					<div className='flex gap-1'>
-						{(Object.keys(LANGUAGE_CONFIG) as SnippetLanguage[]).map(
-							(lang) => {
-								const config = LANGUAGE_CONFIG[lang]
-								return (
-									<Button
-										key={lang}
-										variant={activeLanguage === lang ? 'secondary' : 'ghost'}
-										size='sm'
+						{(Object.keys(LANGUAGE_CONFIG) as SnippetLanguage[]).map((lang) => {
+							const config = LANGUAGE_CONFIG[lang]
+							return (
+								<Button
+									key={lang}
+									variant={activeLanguage === lang ? 'secondary' : 'ghost'}
+									size='sm'
+									className={cn(
+										'h-7 px-2.5 text-xs gap-1.5 font-medium',
+										activeLanguage === lang && 'ring-1 ring-border'
+									)}
+									onClick={() => setActiveLanguage(lang)}
+								>
+									<span
 										className={cn(
-											'h-7 px-2.5 text-xs gap-1.5 font-medium',
-											activeLanguage === lang && 'ring-1 ring-border'
+											'font-mono text-[10px] font-bold leading-none',
+											config.color
 										)}
-										onClick={() => setActiveLanguage(lang)}
 									>
-										<span className={cn('font-mono text-[10px] font-bold leading-none', config.color)}>
-											{config.icon}
-										</span>
-										{config.label}
-									</Button>
-								)
-							}
-						)}
+										{config.icon}
+									</span>
+									{config.label}
+								</Button>
+							)
+						})}
 					</div>
 
 					<div className='relative group'>
 						<div className='p-3 rounded-lg bg-zinc-950 text-xs font-mono overflow-x-auto border border-border min-h-[100px]'>
-							<SnippetHighlight code={generateSnippet(container, activeLanguage)} language={activeLanguage} />
+							<SnippetHighlight
+								code={generateSnippet(container, activeLanguage)}
+								language={activeLanguage}
+							/>
 						</div>
 						<Button
 							variant='ghost'
@@ -184,19 +189,31 @@ export function ConnectionDetails({ container, password }: Props) {
 			<div className='pt-2'>
 				<label className='text-xs text-muted-foreground'>Connection URL</label>
 				<div className='mt-1 p-2.5 rounded-lg bg-muted/50 border border-border/50 overflow-x-auto'>
-					<code className='text-xs font-mono break-all text-foreground/80'>{displayUrl}</code>
+					<code className='text-xs font-mono break-all text-foreground/80'>
+						{displayUrl}
+					</code>
 				</div>
 			</div>
 		</div>
 	)
 }
 
-function ConnectionRow({ label, value, isLast }: { label: string; value: string; isLast?: boolean }) {
+function ConnectionRow({
+	label,
+	value,
+	isLast
+}: {
+	label: string
+	value: string
+	isLast?: boolean
+}) {
 	return (
-		<div className={cn(
-			'flex items-center justify-between py-2 px-3 bg-muted/30 even:bg-transparent',
-			!isLast && 'border-b border-border/50'
-		)}>
+		<div
+			className={cn(
+				'flex items-center justify-between py-2 px-3 bg-muted/30 even:bg-transparent',
+				!isLast && 'border-b border-border/50'
+			)}
+		>
 			<span className='text-xs text-muted-foreground'>{label}</span>
 			<code className='text-xs font-mono text-foreground'>{value}</code>
 		</div>

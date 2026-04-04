@@ -154,7 +154,10 @@ export function ContainerCard({
 									title='Stop'
 									disabled={isActionPending}
 									onClick={function (e) {
-										if (onStop) handleQuickAction(e, function () { onStop(container.id) })
+										if (onStop)
+											handleQuickAction(e, function () {
+												onStop(container.id)
+											})
 									}}
 								>
 									<Square className='h-3 w-3' />
@@ -165,7 +168,10 @@ export function ContainerCard({
 									disabled={isActionPending}
 									className='text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10'
 									onClick={function (e) {
-										if (onStart) handleQuickAction(e, function () { onStart(container.id) })
+										if (onStart)
+											handleQuickAction(e, function () {
+												onStart(container.id)
+											})
 									}}
 								>
 									<Play className='h-3 w-3' />
@@ -176,16 +182,16 @@ export function ContainerCard({
 								title='Restart'
 								disabled={isActionPending || !isRunning}
 								onClick={function (e) {
-									if (onRestart) handleQuickAction(e, function () { onRestart(container.id) })
+									if (onRestart)
+										handleQuickAction(e, function () {
+											onRestart(container.id)
+										})
 								}}
 							>
 								<RotateCcw className='h-3 w-3' />
 							</QuickActionButton>
 
-							<QuickActionButton
-								title='Copy host:port'
-								onClick={handleCopyPort}
-							>
+							<QuickActionButton title='Copy host:port' onClick={handleCopyPort}>
 								{copied ? (
 									<Check className='h-3 w-3 text-emerald-500' />
 								) : (

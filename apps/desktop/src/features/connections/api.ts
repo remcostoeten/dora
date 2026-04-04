@@ -2,7 +2,13 @@ import type { Connection as FrontendConnection } from '@/features/connections/ty
 import { commands, ConnectionInfo as BackendConnection, DatabaseInfo } from '@/lib/bindings'
 
 function backendToFrontendSshConfig(
-	sshConfig: { host: string; port: number; username: string; private_key_path: string | null; password: string | null } | null
+	sshConfig: {
+		host: string
+		port: number
+		username: string
+		private_key_path: string | null
+		password: string | null
+	} | null
 ) {
 	if (!sshConfig) {
 		return undefined

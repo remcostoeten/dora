@@ -72,8 +72,7 @@ const REFRESH_DEBOUNCE_MS = 150
 
 function isTauriRuntime(): boolean {
 	return (
-		typeof window !== 'undefined' &&
-		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+		typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 	)
 }
 
@@ -104,31 +103,37 @@ export function useLiveMonitor({
 		}
 	}, [])
 
-	const scheduleDataRefresh = useCallback(function scheduleRefresh() {
-		clearRefreshTimer()
-		refreshTimerRef.current = setTimeout(function runRefresh() {
-			refreshTimerRef.current = null
-			onDataChangedRef.current()
-		}, REFRESH_DEBOUNCE_MS)
-	}, [clearRefreshTimer])
+	const scheduleDataRefresh = useCallback(
+		function scheduleRefresh() {
+			clearRefreshTimer()
+			refreshTimerRef.current = setTimeout(function runRefresh() {
+				refreshTimerRef.current = null
+				onDataChangedRef.current()
+			}, REFRESH_DEBOUNCE_MS)
+		},
+		[clearRefreshTimer]
+	)
 
-	const stopMonitor = useCallback(async function stopCurrentMonitor() {
-		const monitorId = monitorIdRef.current
-		clearRefreshTimer()
-		if (!monitorId) {
-			setIsPolling(false)
-			return
-		}
+	const stopMonitor = useCallback(
+		async function stopCurrentMonitor() {
+			const monitorId = monitorIdRef.current
+			clearRefreshTimer()
+			if (!monitorId) {
+				setIsPolling(false)
+				return
+			}
 
-		monitorIdRef.current = null
-		try {
-			await commands.stopLiveMonitor(monitorId)
-		} catch (error) {
-			console.error('[LiveMonitor] Failed to stop monitor:', error)
-		} finally {
-			setIsPolling(false)
-		}
-	}, [clearRefreshTimer])
+			monitorIdRef.current = null
+			try {
+				await commands.stopLiveMonitor(monitorId)
+			} catch (error) {
+				console.error('[LiveMonitor] Failed to stop monitor:', error)
+			} finally {
+				setIsPolling(false)
+			}
+		},
+		[clearRefreshTimer]
+	)
 
 	useEffect(
 		function subscribeToBackendEvents() {

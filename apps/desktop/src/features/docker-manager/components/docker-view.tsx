@@ -30,13 +30,7 @@ import { ContainerList } from './container-list'
 import { ContainerTerminal } from './container-terminal'
 import { CreateContainerDialog } from './create-container-dialog'
 import { SandboxIndicator } from './sandbox-indicator'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue
-} from '@/shared/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { cn } from '@/shared/utils/cn'
 
 type Props = {
@@ -74,7 +68,11 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 			((e.ctrlKey || e.metaKey) && e.key === 'k')
 		) {
 			const target = e.target as HTMLElement
-			if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+			if (
+				target.tagName === 'INPUT' ||
+				target.tagName === 'TEXTAREA' ||
+				target.isContentEditable
+			) {
 				return
 			}
 			e.preventDefault()
@@ -82,12 +80,15 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		}
 	}, [])
 
-	useEffect(function () {
-		document.addEventListener('keydown', handleSearchFocus)
-		return function () {
-			document.removeEventListener('keydown', handleSearchFocus)
-		}
-	}, [handleSearchFocus])
+	useEffect(
+		function () {
+			document.addEventListener('keydown', handleSearchFocus)
+			return function () {
+				document.removeEventListener('keydown', handleSearchFocus)
+			}
+		},
+		[handleSearchFocus]
+	)
 
 	const { data: dockerStatus, isLoading: isCheckingDocker } = useDockerAvailability()
 	const { data: allContainers = [], isLoading: isLoadingContainers } = useContainers({
@@ -95,23 +96,29 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		enabled: dockerStatus?.available ?? false
 	})
 
-	const visibleContainers = useMemo(function () {
-		if (showExternal) {
-			return allContainers
-		}
+	const visibleContainers = useMemo(
+		function () {
+			if (showExternal) {
+				return allContainers
+			}
 
-		return allContainers.filter(function (container) {
-			return container.origin === 'managed'
-		})
-	}, [showExternal, allContainers])
+			return allContainers.filter(function (container) {
+				return container.origin === 'managed'
+			})
+		},
+		[showExternal, allContainers]
+	)
 
-	const externalCount = useMemo(function () {
-		if (showExternal) return 0
+	const externalCount = useMemo(
+		function () {
+			if (showExternal) return 0
 
-		return allContainers.filter(function (container) {
-			return container.origin === 'external'
-		}).length
-	}, [showExternal, allContainers])
+			return allContainers.filter(function (container) {
+				return container.origin === 'external'
+			}).length
+		},
+		[showExternal, allContainers]
+	)
 	const searchedContainers = useContainerSearch(visibleContainers, searchQuery)
 
 	const filteredContainers = useMemo(
@@ -122,7 +129,8 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 			if (statusFilter !== 'all') {
 				result = result.filter(function (c) {
 					if (statusFilter === 'running') return c.state === 'running'
-					if (statusFilter === 'stopped') return c.state === 'exited' || c.state === 'dead'
+					if (statusFilter === 'stopped')
+						return c.state === 'exited' || c.state === 'dead'
 					if (statusFilter === 'created') return c.state === 'created'
 					return true
 				})
@@ -179,21 +187,24 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		[allContainers, terminalContainerId]
 	)
 
-	const containerSummary = useMemo(function () {
-		const runningCount = visibleContainers.filter(function (container) {
-			return container.state === 'running'
-		}).length
+	const containerSummary = useMemo(
+		function () {
+			const runningCount = visibleContainers.filter(function (container) {
+				return container.state === 'running'
+			}).length
 
-		const healthyCount = visibleContainers.filter(function (container) {
-			return container.state === 'running' && container.health === 'healthy'
-		}).length
+			const healthyCount = visibleContainers.filter(function (container) {
+				return container.state === 'running' && container.health === 'healthy'
+			}).length
 
-		return {
-			total: visibleContainers.length,
-			running: runningCount,
-			healthy: healthyCount
-		}
-	}, [visibleContainers])
+			return {
+				total: visibleContainers.length,
+				running: runningCount,
+				healthy: healthyCount
+			}
+		},
+		[visibleContainers]
+	)
 
 	const createContainer = useCreateContainer({
 		onSuccess: function (result) {
@@ -311,11 +322,11 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 						dockerStatus?.error?.toLowerCase().includes('connect') ||
 						dockerStatus?.error?.toLowerCase().includes('socket') ||
 						!dockerStatus?.error) && (
-							<div className='text-left p-3 rounded bg-muted font-mono text-xs space-y-1'>
-								<p>$ sudo systemctl start docker</p>
-								<p>$ sudo usermod -aG docker $USER</p>
-							</div>
-						)}
+						<div className='text-left p-3 rounded bg-muted font-mono text-xs space-y-1'>
+							<p>$ sudo systemctl start docker</p>
+							<p>$ sudo usermod -aG docker $USER</p>
+						</div>
+					)}
 					<Button
 						variant='outline'
 						className='mt-4'
@@ -447,7 +458,10 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 							setSortBy(value as SortField)
 						}}
 					>
-						<SelectTrigger aria-label='Sort containers' className='w-[130px] h-7 text-xs'>
+						<SelectTrigger
+							aria-label='Sort containers'
+							className='w-[130px] h-7 text-xs'
+						>
 							<SelectValue placeholder='Sort by' />
 						</SelectTrigger>
 						<SelectContent>
@@ -537,7 +551,10 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 							</Button>
 						</div>
 						<div className='h-[calc(100%-2.25rem)] p-3'>
-							<ContainerTerminal container={terminalContainer} enabled={isTerminalPanelOpen} />
+							<ContainerTerminal
+								container={terminalContainer}
+								enabled={isTerminalPanelOpen}
+							/>
 						</div>
 					</div>
 				)}
@@ -554,15 +571,7 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 	)
 }
 
-function StatPill({
-	icon,
-	label,
-	value
-}: {
-	icon: ReactNode
-	label: string
-	value: number
-}) {
+function StatPill({ icon, label, value }: { icon: ReactNode; label: string; value: number }) {
 	return (
 		<div className='inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-xs'>
 			<span className='text-muted-foreground'>{icon}</span>

@@ -287,15 +287,21 @@ export function ConnectionForm({
 														host: prev.sshConfig?.host || '',
 														port: prev.sshConfig?.port || 22,
 														username: prev.sshConfig?.username || '',
-														authMethod: prev.sshConfig?.authMethod || 'password',
+														authMethod:
+															prev.sshConfig?.authMethod ||
+															'password',
 														password: prev.sshConfig?.password || '',
-														privateKeyPath: prev.sshConfig?.privateKeyPath || ''
+														privateKeyPath:
+															prev.sshConfig?.privateKeyPath || ''
 													}
 												}
 											})
 										}}
 									/>
-									<Label htmlFor='ssh-tunnel' className='text-sm flex items-center gap-2 cursor-pointer'>
+									<Label
+										htmlFor='ssh-tunnel'
+										className='text-sm flex items-center gap-2 cursor-pointer'
+									>
 										<Key className='h-4 w-4 text-muted-foreground' />
 										Connect via SSH Tunnel
 									</Label>

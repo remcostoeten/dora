@@ -1,0 +1,25 @@
+name: Snap
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-snap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: install snapcraft
+        run: sudo snap install snapcraft --classic
+
+      - name: build snap
+        run: snapcraft --destructive-mode
+
+      - name: upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dora-snap
+          path: "*.snap"

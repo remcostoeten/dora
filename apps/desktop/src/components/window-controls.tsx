@@ -28,7 +28,7 @@ export function WindowControls({ className }: Props) {
 					const appWindow = getCurrentWindow()
 					const maximized = await appWindow.isMaximized()
 					setIsMaximized(maximized)
-				} catch { }
+				} catch {}
 			}
 
 			checkMaximized()

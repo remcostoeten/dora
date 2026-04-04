@@ -18,28 +18,28 @@ Safe write scope:
 
 1. Add frontend tests for MySQL connection mapping and validation.
 2. Add Rust tests for:
-   - test connection
-   - connect/reconnect
-   - query execution
-   - schema introspection
-   - mutation helpers
+    - test connection
+    - connect/reconnect
+    - query execution
+    - schema introspection
+    - mutation helpers
 3. Maintain this runtime matrix:
 
-| Flow | PostgreSQL | SQLite | LibSQL | MySQL |
-| :-- | :--: | :--: | :--: | :--: |
-| Add connection | [ ] | [ ] | [ ] | [ ] |
-| Test connection | [ ] | [ ] | [ ] | [ ] |
-| Connect / reconnect | [ ] | [ ] | [ ] | [ ] |
-| Browse schema | [ ] | [ ] | [ ] | [ ] |
-| Open table | [ ] | [ ] | [ ] | [ ] |
-| Edit cell | [ ] | [ ] | [ ] | [ ] |
-| Add row | [ ] | [ ] | [ ] | [ ] |
-| Delete row | [ ] | [ ] | [ ] | [ ] |
-| Bulk edit | [ ] | [ ] | [ ] | [ ] |
-| SQL SELECT | [ ] | [ ] | [ ] | [ ] |
-| SQL INSERT/UPDATE/DELETE | [ ] | [ ] | [ ] | [ ] |
-| Result-set edit/delete | [ ] | [ ] | [ ] | [ ] |
-| Export | [ ] | [ ] | [ ] | [ ] |
+| Flow                     | PostgreSQL | SQLite | LibSQL | MySQL |
+| :----------------------- | :--------: | :----: | :----: | :---: |
+| Add connection           |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Test connection          |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Connect / reconnect      |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Browse schema            |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Open table               |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Edit cell                |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Add row                  |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Delete row               |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Bulk edit                |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| SQL SELECT               |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| SQL INSERT/UPDATE/DELETE |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Result-set edit/delete   |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Export                   |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
 
 ## Validation
 

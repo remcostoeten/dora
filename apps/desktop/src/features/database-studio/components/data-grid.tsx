@@ -253,16 +253,13 @@ export function DataGrid({
 		lastClickedRowRef.current = rowIndex
 	}
 
-	useEffect(
-		function cleanupPendingFrame() {
-			return function () {
-				if (pendingNavFrameRef.current !== null) {
-					cancelAnimationFrame(pendingNavFrameRef.current)
-				}
+	useEffect(function cleanupPendingFrame() {
+		return function () {
+			if (pendingNavFrameRef.current !== null) {
+				cancelAnimationFrame(pendingNavFrameRef.current)
 			}
-		},
-		[]
-	)
+		}
+	}, [])
 
 	useEffect(
 		function keepFocusedCellInView() {
@@ -607,18 +604,34 @@ export function DataGrid({
 							cellsArray.sort(function (a, b) {
 								return a.row === b.row ? a.col - b.col : a.row - b.row
 							})
-							const minRow = Math.min(...cellsArray.map(function (c) { return c.row }))
-							const maxRow = Math.max(...cellsArray.map(function (c) { return c.row }))
+							const minRow = Math.min(
+								...cellsArray.map(function (c) {
+									return c.row
+								})
+							)
+							const maxRow = Math.max(
+								...cellsArray.map(function (c) {
+									return c.row
+								})
+							)
 							const rowData: string[][] = []
 							for (let r = minRow; r <= maxRow; r++) {
-								const rowCells = cellsArray.filter(function (c) { return c.row === r })
+								const rowCells = cellsArray.filter(function (c) {
+									return c.row === r
+								})
 								const values = rowCells.map(function (cell) {
 									const value = rows[cell.row][columns[cell.col].name]
-									return value === null || value === undefined ? '' : String(value)
+									return value === null || value === undefined
+										? ''
+										: String(value)
 								})
 								rowData.push(values)
 							}
-							const clipboardText = rowData.map(function (r) { return r.join('\t') }).join('\n')
+							const clipboardText = rowData
+								.map(function (r) {
+									return r.join('\t')
+								})
+								.join('\n')
 							navigator.clipboard.writeText(clipboardText)
 						} else if (focusedCell) {
 							const value = rows[focusedCell.row][columns[focusedCell.col].name]
@@ -630,23 +643,26 @@ export function DataGrid({
 				case 'v':
 					if ((e.ctrlKey || e.metaKey) && focusedCell && onCellEdit) {
 						e.preventDefault()
-						navigator.clipboard.readText().then(function (clipboardText) {
-							if (!clipboardText || !focusedCell) return
-							const pasteRows = clipboardText.split('\n').map(function (line) {
-								return line.split('\t')
-							})
-							pasteRows.forEach(function (pasteRow, pasteRowIndex) {
-								const targetRow = focusedCell.row + pasteRowIndex
-								if (targetRow >= rows.length) return
-								pasteRow.forEach(function (pasteValue, pasteColIndex) {
-									const targetCol = focusedCell.col + pasteColIndex
-									if (targetCol >= columns.length) return
-									onCellEdit!(targetRow, columns[targetCol].name, pasteValue)
+						navigator.clipboard
+							.readText()
+							.then(function (clipboardText) {
+								if (!clipboardText || !focusedCell) return
+								const pasteRows = clipboardText.split('\n').map(function (line) {
+									return line.split('\t')
+								})
+								pasteRows.forEach(function (pasteRow, pasteRowIndex) {
+									const targetRow = focusedCell.row + pasteRowIndex
+									if (targetRow >= rows.length) return
+									pasteRow.forEach(function (pasteValue, pasteColIndex) {
+										const targetCol = focusedCell.col + pasteColIndex
+										if (targetCol >= columns.length) return
+										onCellEdit!(targetRow, columns[targetCol].name, pasteValue)
+									})
 								})
 							})
-						}).catch(function () {
-							// Clipboard read unavailable — no-op
-						})
+							.catch(function () {
+								// Clipboard read unavailable — no-op
+							})
 					}
 					break
 			}
@@ -726,7 +742,8 @@ export function DataGrid({
 				<div className='text-center space-y-1.5'>
 					<h3 className='text-sm font-medium text-foreground'>No columns found</h3>
 					<p className='text-xs text-muted-foreground max-w-[280px]'>
-						This table doesn't have any columns defined yet, or the schema couldn't be loaded.
+						This table doesn't have any columns defined yet, or the schema couldn't be
+						loaded.
 					</p>
 				</div>
 			</div>
@@ -965,9 +982,9 @@ export function DataGrid({
 							)
 
 							return (
-									<React.Fragment key={rowIndex}>
-										<RowContextMenu
-											row={row}
+								<React.Fragment key={rowIndex}>
+									<RowContextMenu
+										row={row}
 										rowIndex={rowIndex}
 										columns={columns}
 										tableName={tableName}
@@ -982,10 +999,6 @@ export function DataGrid({
 										}}
 										selectedRows={effectiveSelectedRows}
 									>
-
-
-
-
 										<tr
 											className={rowClasses}
 											onClick={function (e) {
@@ -1034,15 +1047,17 @@ export function DataGrid({
 												const isFocused =
 													focusedCell?.row === rowIndex &&
 													focusedCell?.col === colIndex
-												const rowSelectedCols = selectedCellsByRow.get(rowIndex)
-												const isSelected = rowSelectedCols?.has(colIndex) || false
+												const rowSelectedCols =
+													selectedCellsByRow.get(rowIndex)
+												const isSelected =
+													rowSelectedCols?.has(colIndex) || false
 												const width = getColumnWidth(col.name)
 
 												// Check if cell has pending edits
 												const isDirty = primaryKeyColumnName
 													? pendingEdits?.has(
-														`${row[primaryKeyColumnName]}:${col.name}`
-													)
+															`${row[primaryKeyColumnName]}:${col.name}`
+														)
 													: false
 
 												return (
@@ -1114,11 +1129,11 @@ export function DataGrid({
 															className={cn(
 																'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px]',
 																isSelected &&
-																!isEditing &&
-																'bg-muted-foreground/10',
+																	!isEditing &&
+																	'bg-muted-foreground/10',
 																isFocused &&
-																!isEditing &&
-																'bg-primary/5 ring-2 ring-inset ring-secondary AAAA  z-10',
+																	!isEditing &&
+																	'bg-primary/5 ring-2 ring-inset ring-secondary AAAA  z-10',
 																isDirty && 'bg-amber-500/10'
 															)}
 															style={
@@ -1213,10 +1228,10 @@ export function DataGrid({
 																	draftRow[col.name] === null
 																		? ''
 																		: String(
-																			draftRow[
-																			col.name
-																			] ?? ''
-																		)
+																				draftRow[
+																					col.name
+																				] ?? ''
+																			)
 																}
 																onChange={function (e) {
 																	onDraftChange?.(

@@ -1,3 +1,26 @@
+# Version 0.0.101
+
+**Date:** 2026-04-05
+**Tag:** `v0.0.101`
+**Range:** `v0.1.0..feature/package-distribution`
+
+## Why this release exists
+
+This release bundles packaging automation work, VM-based packaging workflows, release tooling, and the current round of desktop/docs/test iteration into `v0.0.101`.
+
+## Changes
+
+- Added release checksum generation for Windows and Linux assets.
+- Added repo-native helpers for Winget, AUR, Snap, release guidance, and VM management.
+- Updated the in-app changelog and release-facing documentation for the new release milestone.
+- Carried forward the current desktop and documentation iteration work already present on this branch.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`, `.rpm`
+- macOS: `.dmg`
+- Windows: `.exe`, `.msi`
+
 # Version 0.0.95
 
 **Date:** 2026-02-09

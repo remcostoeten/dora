@@ -247,14 +247,17 @@ export function DatabaseStudio({
 		[rowsForActions.size]
 	)
 
-	useEffect(function cachePreviousTableDimensions() {
-		if (tableData && !isLoading) {
-			previousTableRef.current = {
-				columns: tableData.columns.length,
-				rows: Math.min(tableData.rows.length, 12)
+	useEffect(
+		function cachePreviousTableDimensions() {
+			if (tableData && !isLoading) {
+				previousTableRef.current = {
+					columns: tableData.columns.length,
+					rows: Math.min(tableData.rows.length, 12)
+				}
 			}
-		}
-	}, [tableData, isLoading])
+		},
+		[tableData, isLoading]
+	)
 
 	const loadTableData = useCallback(async () => {
 		if (!tableId || !activeConnectionId) {
@@ -337,8 +340,8 @@ export function DatabaseStudio({
 	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
 
-	$.bind(shortcuts.focusToolbar.combo)
-		.on(function () {
+	$.bind(shortcuts.focusToolbar.combo).on(
+		function () {
 			if (rowsForActions.size > 0 && toolbarRef.current) {
 				toolbarRef.current.focus()
 				// Optionally find the first button and focus it?
@@ -346,24 +349,30 @@ export function DatabaseStudio({
 				// but usually we want to focus the first interactive element.
 				const firstButton = toolbarRef.current.querySelector('button')
 				if (firstButton) {
-					; (firstButton as HTMLElement).focus()
+					;(firstButton as HTMLElement).focus()
 				}
 			}
-		}, { description: shortcuts.focusToolbar.description })
+		},
+		{ description: shortcuts.focusToolbar.description }
+	)
 
-	$.bind(shortcuts.deleteRows.combo)
-		.on(function () {
+	$.bind(shortcuts.deleteRows.combo).on(
+		function () {
 			if (rowsForActions.size > 0 && !isBulkActionLoading) {
 				handleBulkDelete()
 			}
-		}, { description: shortcuts.deleteRows.description })
+		},
+		{ description: shortcuts.deleteRows.description }
+	)
 
-	$.bind(shortcuts.deselect.combo)
-		.on(function () {
+	$.bind(shortcuts.deselect.combo).on(
+		function () {
 			setSelectedRows(new Set())
 			setFocusedCell(null)
 			setSelectedCells(new Set())
-		}, { description: shortcuts.deselect.description })
+		},
+		{ description: shortcuts.deselect.description }
+	)
 
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	useEffect(
@@ -382,44 +391,50 @@ export function DatabaseStudio({
 		onDataChanged: loadTableData
 	})
 
-	useEffect(function handleTableChange() {
-		if (!tableId || !activeConnectionId) return
-		setPagination({ limit: 50, offset: 0 })
-		setSort(undefined)
-		setFilters([])
-		initializedFromUrlRef.current = false
+	useEffect(
+		function handleTableChange() {
+			if (!tableId || !activeConnectionId) return
+			setPagination({ limit: 50, offset: 0 })
+			setSort(undefined)
+			setFilters([])
+			initializedFromUrlRef.current = false
 
-		const defaultCacheKey = buildTableCacheKey(
-			activeConnectionId,
-			tableId,
-			50,
-			0,
-			undefined,
-			[]
-		)
-		const cached = tableDataCache.get(defaultCacheKey)
+			const defaultCacheKey = buildTableCacheKey(
+				activeConnectionId,
+				tableId,
+				50,
+				0,
+				undefined,
+				[]
+			)
+			const cached = tableDataCache.get(defaultCacheKey)
 
-		if (cached) {
-			setTableData(cached.data)
-			setVisibleColumns(new Set(cached.visibleColumns))
-			setIsTableTransitioning(false)
-			return
-		}
-
-		setVisibleColumns(new Set())
-		setIsTableTransitioning(true)
-	}, [tableId, activeConnectionId])
-
-	useEffect(function clearTransitionOnLoad() {
-		if (!isLoading && tableData) {
-			const timer = setTimeout(function () {
+			if (cached) {
+				setTableData(cached.data)
+				setVisibleColumns(new Set(cached.visibleColumns))
 				setIsTableTransitioning(false)
-			}, 50)
-			return function () {
-				clearTimeout(timer)
+				return
 			}
-		}
-	}, [isLoading, tableData])
+
+			setVisibleColumns(new Set())
+			setIsTableTransitioning(true)
+		},
+		[tableId, activeConnectionId]
+	)
+
+	useEffect(
+		function clearTransitionOnLoad() {
+			if (!isLoading && tableData) {
+				const timer = setTimeout(function () {
+					setIsTableTransitioning(false)
+				}, 50)
+				return function () {
+					clearTimeout(timer)
+				}
+			}
+		},
+		[isLoading, tableData]
+	)
 
 	useEffect(
 		function initializeFromUrl() {
@@ -677,15 +692,7 @@ export function DatabaseStudio({
 				}
 			}
 		)
-	}, [
-		tableData,
-		activeConnectionId,
-		tableId,
-		tableName,
-		selectedRows,
-		deleteRows,
-		loadTableData
-	])
+	}, [tableData, activeConnectionId, tableId, tableName, selectedRows, deleteRows, loadTableData])
 
 	const handleBulkCopy = useCallback(() => {
 		if (!tableData) return
@@ -732,7 +739,15 @@ export function DatabaseStudio({
 			.finally(function () {
 				setIsBulkActionLoading(false)
 			})
-	}, [tableData, activeConnectionId, tableId, tableName, rowsForActions, insertRow, loadTableData])
+	}, [
+		tableData,
+		activeConnectionId,
+		tableId,
+		tableName,
+		rowsForActions,
+		insertRow,
+		loadTableData
+	])
 
 	const deleteRowIndexes = useCallback(
 		function deleteRowIndexes(rowIndexes: number[]) {
@@ -761,7 +776,8 @@ export function DatabaseStudio({
 						console.error('Failed to delete row(s):', error)
 						toast({
 							title: 'Failed to delete rows',
-							description: error instanceof Error ? error.message : 'An error occurred',
+							description:
+								error instanceof Error ? error.message : 'An error occurred',
 							variant: 'destructive'
 						})
 					}
@@ -877,7 +893,6 @@ export function DatabaseStudio({
 	}, [selectedRows.size])
 	const handleOpenSetNull = useCallback(() => setShowSetNullDialog(true), [])
 	const handleOpenBulkEdit = useCallback(() => setShowBulkEditDialog(true), [])
-	const handleOpenDataSeeder = useCallback(() => setShowDataSeederDialog(true), [])
 	const handleFilterAdd = useCallback(function (filter: FilterDescriptor) {
 		setFilters(function (prev) {
 			return [...prev, filter]
@@ -1011,7 +1026,8 @@ export function DatabaseStudio({
 						console.error('Failed to update cell:', error)
 						toast({
 							title: 'Failed to update cell',
-							description: error instanceof Error ? error.message : 'An error occurred',
+							description:
+								error instanceof Error ? error.message : 'An error occurred',
 							variant: 'destructive'
 						})
 					}
@@ -1473,7 +1489,9 @@ export function DatabaseStudio({
 	function handleExportCsvAll() {
 		if (!tableData || tableData.rows.length === 0) return
 
-		const headers = tableData.columns.map(function (col) { return col.name })
+		const headers = tableData.columns.map(function (col) {
+			return col.name
+		})
 		const csvRows = [
 			headers.join(','),
 			...tableData.rows.map(function (row) {
@@ -1623,7 +1641,11 @@ export function DatabaseStudio({
 			}
 		} catch (error) {
 			console.error('Failed to drop table:', error)
-			toast({ title: 'Failed to drop table', description: String(error), variant: 'destructive' })
+			toast({
+				title: 'Failed to drop table',
+				description: String(error),
+				variant: 'destructive'
+			})
 		} finally {
 			setIsDdlLoading(false)
 		}
@@ -1865,12 +1887,7 @@ export function DatabaseStudio({
 	// Content view (default)
 	return (
 		<div className='flex flex-col h-full bg-background relative'>
-			<div
-				role='status'
-				aria-live='polite'
-				aria-atomic='true'
-				className='sr-only'
-			>
+			<div role='status' aria-live='polite' aria-atomic='true' className='sr-only'>
 				{selectionAnnouncement}
 			</div>
 			<StudioToolbar
@@ -1951,12 +1968,19 @@ export function DatabaseStudio({
 					>
 						<TableSkeleton
 							rows={previousTableRef.current?.rows || 12}
-							columns={Math.min(previousTableRef.current?.columns || visibleColumns.size || 6, 8)}
+							columns={Math.min(
+								previousTableRef.current?.columns || visibleColumns.size || 6,
+								8
+							)}
 						/>
 					</div>
 				)}
 				{!tableData && !isTableTransitioning && (
-					<div className='flex items-center justify-center h-full' role='status' aria-live='polite'>
+					<div
+						className='flex items-center justify-center h-full'
+						role='status'
+						aria-live='polite'
+					>
 						<div className='text-muted-foreground text-sm'>No data available</div>
 					</div>
 				)}
@@ -2072,7 +2096,9 @@ export function DatabaseStudio({
 						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
 						<AlertDialogDescription>
 							This action cannot be undone. This will permanently delete{' '}
-							{pendingSingleDeleteRow ? '1 row' : `${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}`}{' '}
+							{pendingSingleDeleteRow
+								? '1 row'
+								: `${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}`}{' '}
 							from the database.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
@@ -2086,8 +2112,11 @@ export function DatabaseStudio({
 										{
 											connectionId: activeConnectionId,
 											tableName: tableRefName,
-											primaryKeyColumn: pendingSingleDeleteRow.primaryKeyColumn,
-											primaryKeyValues: [pendingSingleDeleteRow.primaryKeyValue]
+											primaryKeyColumn:
+												pendingSingleDeleteRow.primaryKeyColumn,
+											primaryKeyValues: [
+												pendingSingleDeleteRow.primaryKeyValue
+											]
 										},
 										{
 											onSuccess: function onSingleDeleteSuccess() {
@@ -2155,7 +2184,10 @@ export function DatabaseStudio({
 								console.error('Failed to bulk edit:', error)
 								toast({
 									title: 'Failed to update rows',
-									description: error instanceof Error ? error.message : 'An error occurred',
+									description:
+										error instanceof Error
+											? error.message
+											: 'An error occurred',
 									variant: 'destructive'
 								})
 							})
@@ -2209,7 +2241,10 @@ export function DatabaseStudio({
 								console.error('Failed to set null:', error)
 								toast({
 									title: 'Failed to set NULL',
-									description: error instanceof Error ? error.message : 'An error occurred',
+									description:
+										error instanceof Error
+											? error.message
+											: 'An error occurred',
 									variant: 'destructive'
 								})
 							})

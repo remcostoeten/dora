@@ -27,7 +27,9 @@ const ACTION_TO_EVENT: Record<ContainerActionType, ContainerEventType> = {
 export function useContainerActions(options: UseContainerActionsOptions = {}) {
 	const { onSuccess, onError } = options
 	const queryClient = useQueryClient()
-	const addEvent = useDockerManagerStore(function (s) { return s.addEvent })
+	const addEvent = useDockerManagerStore(function (s) {
+		return s.addEvent
+	})
 
 	return useMutation<ContainerActionResult, Error, ContainerActionParams>({
 		mutationFn: function (params) {
@@ -71,7 +73,9 @@ type UseRemoveContainerOptions = {
 export function useRemoveContainer(options: UseRemoveContainerOptions = {}) {
 	const { onSuccess, onError } = options
 	const queryClient = useQueryClient()
-	const addEvent = useDockerManagerStore(function (s) { return s.addEvent })
+	const addEvent = useDockerManagerStore(function (s) {
+		return s.addEvent
+	})
 
 	return useMutation<ContainerActionResult, Error, RemoveContainerParams>({
 		mutationFn: function (params) {

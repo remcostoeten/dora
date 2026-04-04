@@ -227,7 +227,10 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 							)}
 							{onExportCsv && (
 								<DropdownMenuItem onClick={onExportCsv}>
-									<FileSpreadsheet className='h-3.5 w-3.5 mr-2' aria-hidden='true' />
+									<FileSpreadsheet
+										className='h-3.5 w-3.5 mr-2'
+										aria-hidden='true'
+									/>
 									CSV
 								</DropdownMenuItem>
 							)}

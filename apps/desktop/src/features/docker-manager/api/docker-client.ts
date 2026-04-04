@@ -62,7 +62,10 @@ export const deps = {
 export async function executeDockerCommand(
 	args: string[]
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-	if (typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)) {
+	if (
+		typeof window !== 'undefined' &&
+		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+	) {
 		const Command = await deps.getCommand()
 		const command = Command.create('docker', args)
 		const output = await command.execute()
@@ -297,7 +300,10 @@ export async function streamContainerLogs(
 	onLog: (line: string) => void,
 	onError: (error: string) => void
 ): Promise<() => void> {
-	if (typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)) {
+	if (
+		typeof window !== 'undefined' &&
+		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+	) {
 		const { Command } = await import('@tauri-apps/plugin-shell')
 		const command = Command.create('docker', ['logs', '-f', '--tail', '100', containerId])
 
@@ -332,7 +338,10 @@ export async function openContainerTerminal(
 	containerId: string,
 	handlers: ContainerTerminalHandlers
 ): Promise<ContainerTerminalSession> {
-	if (typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)) {
+	if (
+		typeof window !== 'undefined' &&
+		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+	) {
 		const { Command } = await import('@tauri-apps/plugin-shell')
 		const command = Command.create('docker', ['exec', '-i', containerId, 'sh'])
 
@@ -450,9 +459,7 @@ export async function execCommand(
 }
 
 export async function getContainerSizes(): Promise<ContainerSize[]> {
-	const result = await executeDockerCommand([
-		'system', 'df', '-v', '--format', '{{json .}}'
-	])
+	const result = await executeDockerCommand(['system', 'df', '-v', '--format', '{{json .}}'])
 
 	if (result.exitCode !== 0) {
 		throw new Error(result.stderr || 'Failed to get container sizes')
@@ -489,11 +496,11 @@ function parseSize(sizeStr: string): number {
 	const unit = match[2].toUpperCase().replace('I', '')
 
 	const multipliers: Record<string, number> = {
-		'B': 1,
-		'KB': 1024,
-		'MB': 1024 * 1024,
-		'GB': 1024 * 1024 * 1024,
-		'TB': 1024 * 1024 * 1024 * 1024
+		B: 1,
+		KB: 1024,
+		MB: 1024 * 1024,
+		GB: 1024 * 1024 * 1024,
+		TB: 1024 * 1024 * 1024 * 1024
 	}
 
 	return value * (multipliers[unit] || 1)

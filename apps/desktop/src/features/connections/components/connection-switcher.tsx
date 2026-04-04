@@ -188,105 +188,108 @@ export function ConnectionSwitcher({
 				<div className='max-h-[360px] overflow-y-auto pr-1'>
 					{filteredConnections.length > 0 ? (
 						filteredConnections.map((connection) => (
-						<ContextMenu key={connection.id}>
-							<ContextMenuTrigger asChild>
-								<DropdownMenuItem
-									onClick={function () {
-										onConnectionSelect(connection.id)
-									}}
-									className='gap-2 p-2 cursor-pointer group'
-								>
-									<div className='flex items-center gap-2 w-full'>
-										<div
-											className={cn(
-												'flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background',
-												connection.status === 'error' &&
-													'border-destructive/50 bg-destructive/5'
-											)}
-										>
-											{connection.status === 'error' ? (
-												<AlertCircle className='h-3 w-3 text-destructive' />
-											) : (
-												<DatabaseTypeIcon
-													type={connection.type}
-													className='h-3 w-3 text-muted-foreground'
-												/>
-											)}
-										</div>
-										<div className='flex-1 min-w-0'>
-											<div className='truncate text-sm'>{connection.name}</div>
-											<div className='truncate text-[10px] text-muted-foreground'>
-												Created {formatQuickDate(connection.createdAt)}
+							<ContextMenu key={connection.id}>
+								<ContextMenuTrigger asChild>
+									<DropdownMenuItem
+										onClick={function () {
+											onConnectionSelect(connection.id)
+										}}
+										className='gap-2 p-2 cursor-pointer group'
+									>
+										<div className='flex items-center gap-2 w-full'>
+											<div
+												className={cn(
+													'flex h-6 w-6 items-center justify-center rounded-md border border-border bg-background',
+													connection.status === 'error' &&
+														'border-destructive/50 bg-destructive/5'
+												)}
+											>
+												{connection.status === 'error' ? (
+													<AlertCircle className='h-3 w-3 text-destructive' />
+												) : (
+													<DatabaseTypeIcon
+														type={connection.type}
+														className='h-3 w-3 text-muted-foreground'
+													/>
+												)}
 											</div>
-											<div className='truncate text-[10px] text-muted-foreground'>
-												Last used {formatQuickDate(connection.lastConnectedAt)}
+											<div className='flex-1 min-w-0'>
+												<div className='truncate text-sm'>
+													{connection.name}
+												</div>
+												<div className='truncate text-[10px] text-muted-foreground'>
+													Created {formatQuickDate(connection.createdAt)}
+												</div>
+												<div className='truncate text-[10px] text-muted-foreground'>
+													Last used{' '}
+													{formatQuickDate(connection.lastConnectedAt)}
+												</div>
+											</div>
+											<div className='ml-auto flex items-center gap-1'>
+												{connection.id === activeConnectionId && (
+													<Check className='h-4 w-4 text-primary' />
+												)}
+												{onEditConnection && (
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground'
+														onPointerDown={function (e) {
+															e.preventDefault()
+															e.stopPropagation()
+														}}
+														onClick={function (e) {
+															e.preventDefault()
+															e.stopPropagation()
+															onEditConnection(connection.id)
+														}}
+														title={`Edit ${connection.name}`}
+														aria-label={`Edit ${connection.name}`}
+													>
+														<Pencil className='h-3.5 w-3.5' />
+													</Button>
+												)}
+												{onDeleteConnection && (
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive'
+														onPointerDown={function (e) {
+															e.preventDefault()
+															e.stopPropagation()
+														}}
+														onClick={function (e) {
+															e.preventDefault()
+															e.stopPropagation()
+															onDeleteConnection(connection.id)
+														}}
+														title={`Delete ${connection.name}`}
+														aria-label={`Delete ${connection.name}`}
+													>
+														<Trash2 className='h-3.5 w-3.5' />
+													</Button>
+												)}
+												<MoreHorizontal className='h-3.5 w-3.5 text-muted-foreground/60 opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none' />
 											</div>
 										</div>
-										<div className='ml-auto flex items-center gap-1'>
-											{connection.id === activeConnectionId && (
-												<Check className='h-4 w-4 text-primary' />
-											)}
-											{onEditConnection && (
-												<Button
-													variant='ghost'
-													size='icon'
-													className='h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-foreground'
-													onPointerDown={function (e) {
-														e.preventDefault()
-														e.stopPropagation()
-													}}
-													onClick={function (e) {
-														e.preventDefault()
-														e.stopPropagation()
-														onEditConnection(connection.id)
-													}}
-													title={`Edit ${connection.name}`}
-													aria-label={`Edit ${connection.name}`}
-												>
-													<Pencil className='h-3.5 w-3.5' />
-												</Button>
-											)}
-											{onDeleteConnection && (
-												<Button
-													variant='ghost'
-													size='icon'
-													className='h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive'
-													onPointerDown={function (e) {
-														e.preventDefault()
-														e.stopPropagation()
-													}}
-													onClick={function (e) {
-														e.preventDefault()
-														e.stopPropagation()
-														onDeleteConnection(connection.id)
-													}}
-													title={`Delete ${connection.name}`}
-													aria-label={`Delete ${connection.name}`}
-												>
-													<Trash2 className='h-3.5 w-3.5' />
-												</Button>
-											)}
-											<MoreHorizontal className='h-3.5 w-3.5 text-muted-foreground/60 opacity-100 group-hover:opacity-0 transition-opacity pointer-events-none' />
-										</div>
-									</div>
-								</DropdownMenuItem>
-							</ContextMenuTrigger>
+									</DropdownMenuItem>
+								</ContextMenuTrigger>
 								<ContextMenuContent className='w-48'>
-								<ContextMenuItem
-									onSelect={() => onViewConnection?.(connection.id)}
-									className='gap-2 cursor-pointer'
-								>
-									<Eye className='h-4 w-4' />
-									View Details
-								</ContextMenuItem>
-								<ContextMenuItem
-									onSelect={() => onEditConnection?.(connection.id)}
-									className='gap-2 cursor-pointer'
-								>
-									<Pencil className='h-4 w-4' />
-									Edit Connection
-								</ContextMenuItem>
-								<ContextMenuSeparator />
+									<ContextMenuItem
+										onSelect={() => onViewConnection?.(connection.id)}
+										className='gap-2 cursor-pointer'
+									>
+										<Eye className='h-4 w-4' />
+										View Details
+									</ContextMenuItem>
+									<ContextMenuItem
+										onSelect={() => onEditConnection?.(connection.id)}
+										className='gap-2 cursor-pointer'
+									>
+										<Pencil className='h-4 w-4' />
+										Edit Connection
+									</ContextMenuItem>
+									<ContextMenuSeparator />
 									<ContextMenuItem
 										onSelect={(event) => {
 											event.preventDefault()
@@ -302,7 +305,9 @@ export function ConnectionSwitcher({
 						))
 					) : (
 						<div className='px-2 py-3 text-xs text-center text-muted-foreground border border-dashed rounded-md m-1'>
-							{connections.length > 0 ? 'No matching connections' : 'No connections found'}
+							{connections.length > 0
+								? 'No matching connections'
+								: 'No connections found'}
 						</div>
 					)}
 				</div>

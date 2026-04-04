@@ -55,7 +55,10 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 	const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle')
 	const [testMessage, setTestMessage] = useState('')
 	const [useConnectionString, setUseConnectionString] = useState(false)
-	const [validationError, setValidationError] = useState<{ field?: string; message?: string } | null>(null)
+	const [validationError, setValidationError] = useState<{
+		field?: string
+		message?: string
+	} | null>(null)
 
 	useEffect(
 		function resetFormOnOpen() {
@@ -295,7 +298,10 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 	}
 
 	function handleSave() {
-		const validation = validateConnection(formData as Record<string, unknown>, useConnectionString)
+		const validation = validateConnection(
+			formData as Record<string, unknown>,
+			useConnectionString
+		)
 
 		if (!validation.success) {
 			setValidationError({ field: validation.field, message: validation.error })

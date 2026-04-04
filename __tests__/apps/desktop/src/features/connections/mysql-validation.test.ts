@@ -45,4 +45,3 @@ describe('connections validation (mysql)', function () {
 		expect(result.success).toBe(false)
 	})
 })
-

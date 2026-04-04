@@ -21,9 +21,9 @@ Safe write scope:
 1. Do not claim MySQL support in the main README until backend and runtime verification are real.
 2. When MySQL beta is usable, update product copy and feature tables.
 3. Document omissions explicitly:
-   - SSH tunneling if unsupported
-   - live updates if unsupported
-   - destructive operations if unsupported
+    - SSH tunneling if unsupported
+    - live updates if unsupported
+    - destructive operations if unsupported
 4. Keep workstream statuses updated as agents finish slices.
 
 ## Done When

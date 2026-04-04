@@ -206,27 +206,34 @@ export function useDataMutation() {
 		},
 		onMutate: async (newEdit) => {
 			// Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-			await queryClient.cancelQueries({ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] })
+			await queryClient.cancelQueries({
+				queryKey: ['tableData', newEdit.connectionId, newEdit.tableName]
+			})
 
 			// Snapshot the previous value
-			const previousTableData = queryClient.getQueriesData({ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] })
+			const previousTableData = queryClient.getQueriesData({
+				queryKey: ['tableData', newEdit.connectionId, newEdit.tableName]
+			})
 
 			// Optimistically update to the new value
-			queryClient.setQueriesData({ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] }, (old: any) => {
-				if (!old) return old
-				return {
-					...old,
-					rows: old.rows.map((row: any) => {
-						if (row[newEdit.primaryKeyColumn] === newEdit.primaryKeyValue) {
-							return {
-								...row,
-								[newEdit.columnName]: newEdit.newValue
+			queryClient.setQueriesData(
+				{ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] },
+				(old: any) => {
+					if (!old) return old
+					return {
+						...old,
+						rows: old.rows.map((row: any) => {
+							if (row[newEdit.primaryKeyColumn] === newEdit.primaryKeyValue) {
+								return {
+									...row,
+									[newEdit.columnName]: newEdit.newValue
+								}
 							}
-						}
-						return row
-					})
+							return row
+						})
+					}
 				}
-			})
+			)
 
 			// Return a context object with the snapshotted value
 			return { previousTableData }

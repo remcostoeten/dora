@@ -171,7 +171,9 @@ export function CreateContainerDialog({
 							placeholder='my_database'
 						/>
 						{nameError && <p className='text-xs text-destructive'>{nameError}</p>}
-						<p className='text-xs text-muted-foreground'>Use lowercase letters, numbers, `_` or `-`.</p>
+						<p className='text-xs text-muted-foreground'>
+							Use lowercase letters, numbers, `_` or `-`.
+						</p>
 					</div>
 
 					<div className='space-y-2'>
@@ -356,11 +358,7 @@ export function CreateContainerDialog({
 					</Collapsible>
 
 					<DialogFooter>
-						<Button
-							type='button'
-							variant='outline'
-							onClick={handleClose}
-						>
+						<Button type='button' variant='outline' onClick={handleClose}>
 							Cancel
 						</Button>
 						<Button type='submit' disabled={isSubmitting || Boolean(nameError)}>

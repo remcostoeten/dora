@@ -24,4 +24,3 @@ describe('connections/api mapping (mysql)', function () {
 		expect(true).toBe(false)
 	})
 })
-

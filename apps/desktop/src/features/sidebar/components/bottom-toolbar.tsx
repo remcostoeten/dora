@@ -49,7 +49,6 @@ function useCurrentTheme() {
 	return theme
 }
 
-
 type Props = {
 	onAction?: (action: ToolbarAction) => void
 }

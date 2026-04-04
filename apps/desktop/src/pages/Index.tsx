@@ -126,7 +126,9 @@ export default function Index() {
 		} catch (error) {
 			toast({
 				title: 'Failed to Load Connections',
-				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
+				description: mapConnectionError(
+					error instanceof Error ? error : new Error('Unknown error')
+				),
 				variant: 'destructive'
 			})
 		} finally {
@@ -293,7 +295,9 @@ export default function Index() {
 		} catch (error) {
 			toast({
 				title: 'Failed to Add Connection',
-				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
+				description: mapConnectionError(
+					error instanceof Error ? error : new Error('Unknown error')
+				),
 				variant: 'destructive'
 			})
 		}
@@ -338,7 +342,9 @@ export default function Index() {
 		} catch (error) {
 			toast({
 				title: 'Failed to Update Connection',
-				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
+				description: mapConnectionError(
+					error instanceof Error ? error : new Error('Unknown error')
+				),
 				variant: 'destructive'
 			})
 		}
@@ -419,7 +425,9 @@ export default function Index() {
 		} catch (error) {
 			toast({
 				title: 'Failed to Delete Connection',
-				description: mapConnectionError(error instanceof Error ? error : new Error('Unknown error')),
+				description: mapConnectionError(
+					error instanceof Error ? error : new Error('Unknown error')
+				),
 				variant: 'destructive'
 			})
 		} finally {
@@ -494,7 +502,9 @@ export default function Index() {
 						)}
 
 						<main className='flex-1 flex flex-col h-full overflow-hidden relative px-0 pb-2'>
-							{connections.length === 0 && !isLoading && (activeNavId === 'database-studio' || activeNavId === 'sql-console') ? (
+							{connections.length === 0 &&
+							!isLoading &&
+							(activeNavId === 'database-studio' || activeNavId === 'sql-console') ? (
 								<EmptyState
 									icon={<Plug className='h-16 w-16' />}
 									title='No Connections'
@@ -531,41 +541,45 @@ export default function Index() {
 							) : activeNavId === 'docker' ? (
 								<ErrorBoundary feature='Docker Manager'>
 									<DockerView
-									onOpenInDataViewer={async function (container) {
-										const userEnv = container.env.find(function (e) {
-											return e.startsWith('POSTGRES_USER=')
-										})
-										const passEnv = container.env.find(function (e) {
-											return e.startsWith('POSTGRES_PASSWORD=')
-										})
-										const dbEnv = container.env.find(function (e) {
-											return e.startsWith('POSTGRES_DB=')
-										})
-										const primaryPort = container.ports.find(function (p) {
-											return p.containerPort === 5432
-										})
+										onOpenInDataViewer={async function (container) {
+											const userEnv = container.env.find(function (e) {
+												return e.startsWith('POSTGRES_USER=')
+											})
+											const passEnv = container.env.find(function (e) {
+												return e.startsWith('POSTGRES_PASSWORD=')
+											})
+											const dbEnv = container.env.find(function (e) {
+												return e.startsWith('POSTGRES_DB=')
+											})
+											const primaryPort = container.ports.find(function (p) {
+												return p.containerPort === 5432
+											})
 
-										const user = userEnv ? userEnv.split('=')[1] : 'postgres'
-										const password = passEnv
-											? passEnv.split('=')[1]
-											: 'postgres'
-										const database = dbEnv ? dbEnv.split('=')[1] : 'postgres'
-										const port = primaryPort ? primaryPort.hostPort : 5432
+											const user = userEnv
+												? userEnv.split('=')[1]
+												: 'postgres'
+											const password = passEnv
+												? passEnv.split('=')[1]
+												: 'postgres'
+											const database = dbEnv
+												? dbEnv.split('=')[1]
+												: 'postgres'
+											const port = primaryPort ? primaryPort.hostPort : 5432
 
-										const connectionData = {
-											name: container.name,
-											type: 'postgres' as const,
-											host: 'localhost',
-											port,
-											user,
-											password,
-											database
-										}
+											const connectionData = {
+												name: container.name,
+												type: 'postgres' as const,
+												host: 'localhost',
+												port,
+												user,
+												password,
+												database
+											}
 
-										await handleAddConnection(connectionData)
-										setActiveNavId('database-studio')
-									}}
-								/>
+											await handleAddConnection(connectionData)
+											setActiveNavId('database-studio')
+										}}
+									/>
 								</ErrorBoundary>
 							) : (
 								<ErrorBoundary feature='SQL Console'>

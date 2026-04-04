@@ -429,7 +429,6 @@ export function createTauriAdapter(): DataAdapter {
 			return err(formatError(result.error))
 		},
 
-
 		async updateScript(
 			id: number,
 			name: string,
@@ -454,7 +453,6 @@ export function createTauriAdapter(): DataAdapter {
 			}
 			return err(formatError(result.error))
 		},
-
 
 		async deleteScript(id: number): Promise<AdapterResult<void>> {
 			const result = await commands.deleteScript(id)
@@ -498,7 +496,6 @@ export function createTauriAdapter(): DataAdapter {
 		}
 	}
 }
-
 
 function operatorToSql(op: string): string {
 	const map: Record<string, string> = {

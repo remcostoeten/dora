@@ -56,7 +56,8 @@ export const useDockerManagerStore = create<DockerManagerState & DockerManagerAc
 
 				toggleSortDirection: function () {
 					set(function (state) {
-						const direction: SortDirection = state.sort.direction === 'asc' ? 'desc' : 'asc'
+						const direction: SortDirection =
+							state.sort.direction === 'asc' ? 'desc' : 'asc'
 						return { sort: { ...state.sort, direction } }
 					})
 				},

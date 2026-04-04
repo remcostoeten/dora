@@ -1,3 +1,67 @@
+# Release Notes - v0.0.101
+
+**Date:** 2026-04-05
+**Tag:** `v0.0.101`
+
+## Summary
+
+Release that rolls packaging automation, VM-based packaging workflows, and the current desktop/docs/test iteration into `v0.0.101`.
+
+## Changes
+
+- Added release checksum generation for Windows and Linux assets.
+- Added repo-native manifest/package generation for Winget and AUR.
+- Added Snap packaging scaffolding and GitHub Actions workflow support.
+- Added an interactive release guide and Ubuntu VM lab helper for one-machine packaging workflows.
+- Refreshed changelog/release surfaces and carried forward the current desktop and documentation iteration work.
+
+# Release Notes - v0.1.0
+
+**Date:** 2026-04-04
+**Tag:** `v0.1.0`
+
+## Summary
+
+Milestone release establishing the 0.1.x codebase baseline, including comprehensive installation paths (Homebrew) and documentation overhaul.
+
+## Changes
+
+- Established 0.1.0 version baseline across the monorepo.
+- Completed full Homebrew installation documentation in the README.
+- Verified 115/115 tests passing for the new milestone.
+
+# Release Notes - v0.0.99
+
+**Date:** 2026-04-04
+**Tag:** `v0.0.99`
+
+## Summary
+
+Launched official Homebrew support and hardened CI/CD security and stability.
+
+## Changes
+
+- Added the official Homebrew Tap at `remcostoeten/homebrew-dora` (`brew install dora`).
+- Pinned all GitHub Actions to specific commit SHAs.
+- Optimized the esbuild target to `esnext` to resolve CI transform errors.
+- Stabilized the Rust toolchain reference in automated workflows.
+
+# Release Notes - v0.0.98
+
+**Date:** 2026-04-04
+**Tag:** `v0.0.98`
+
+## Summary
+
+Performance-focused release introducing a backend-driven live database monitor manager.
+
+## Changes
+
+- Implemented a backend-driven live database monitor manager.
+- Eliminated inefficient frontend polling logic for faster performance.
+- Added support for real-time data grid updates on external database changes.
+- Enhanced documentation with an animated showcase.
+
 # Release Notes - v0.0.97
 
 **Date:** 2026-02-20

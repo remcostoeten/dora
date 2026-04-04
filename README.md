@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="dora-backgroundless.png" alt="Dora Logo" width="180" />
+  <img src="assets/dora-backgroundless.png" alt="Dora Logo" width="180" />
   <h1>Dora</h1>
   <p><i>A clean, fast desktop database studio for people who actually work in data.</i></p>
 
@@ -12,7 +12,7 @@
 </div>
 
 <p align="center">
-  <img src="app_demo.webp" alt="Dora App Demonstration" width="92%" />
+  <img src="assets/app_demo.webp" alt="Dora App Demonstration" width="92%" />
 </p>
 
 Dora is a cross-platform database studio built with Tauri, Rust, React, and Monaco. It is designed for a native-feeling desktop workflow: fast navigation, direct editing, real SQL execution, clean table tooling, and a UI that stays out of your way.
@@ -80,7 +80,9 @@ Release bundles are configured for:
 
 GitHub Releases: https://github.com/remcostoeten/dora/releases
 
-## Installation (macOS / Linux)
+## Installation
+
+### Homebrew (macOS / Linux)
 
 You can install Dora via Homebrew using our custom tap:
 
@@ -89,14 +91,60 @@ brew tap remcostoeten/dora
 brew install dora
 ```
 
+Or in a single command:
+
+```bash
+brew install remcostoeten/dora/dora
+```
+
+### Linux Packages
+
+Dora releases also ship native Linux packages:
+
+- `.deb` for Debian / Ubuntu
+- `.rpm` for Fedora / RHEL / openSUSE
+- `.AppImage` for portable Linux installs
+
+Download the latest package from GitHub Releases:
+https://github.com/remcostoeten/dora/releases/latest
+
+Examples:
+
+```bash
+# Debian / Ubuntu
+sudo apt install ./dora_*.deb
+```
+
+```bash
+# Fedora / RHEL
+sudo dnf install ./dora-*.rpm
+```
+
+```bash
+# openSUSE
+sudo zypper install ./dora-*.rpm
+```
+
+### Other Package Managers
+
+These are possible, but are not published yet:
+
+- Snap via Snapcraft
+- APT repository metadata for Debian / Ubuntu
+- YUM / DNF repository metadata for RPM-based distros
+- Winget, Scoop, or Chocolatey for Windows
+- AUR for Arch Linux
+
+At the moment, Homebrew is the only package-manager install path wired up end-to-end in this repo. The other supported install path is downloading the release artifact directly.
+
 ## Database Support
 
-| Database | Status | Notes |
-| :-- | :--: | :-- |
-| PostgreSQL | Supported | Full desktop path, including SSH tunneling and live external change monitoring |
-| SQLite | Supported | Native desktop workflow |
-| LibSQL / Turso | Supported | Local and remote flows |
-| MySQL | Not shipped | Scaffolded in parts of the codebase, not exposed as a supported feature |
+| Database       |   Status    | Notes                                                                          |
+| :------------- | :---------: | :----------------------------------------------------------------------------- |
+| PostgreSQL     |  Supported  | Full desktop path, including SSH tunneling and live external change monitoring |
+| SQLite         |  Supported  | Native desktop workflow                                                        |
+| LibSQL / Turso |  Supported  | Local and remote flows                                                         |
+| MySQL          | Not shipped | Scaffolded in parts of the codebase, not exposed as a supported feature        |
 
 ## Live Updates
 

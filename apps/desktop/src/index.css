@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap') layer(base);
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap')
+layer(base);
 
 @import 'tailwindcss';
 
@@ -116,7 +117,6 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
-
 	*,
 	::after,
 	::before,
@@ -672,7 +672,6 @@
 	}
 
 	@keyframes statusShake {
-
 		0%,
 		100% {
 			transform: translateX(0);
