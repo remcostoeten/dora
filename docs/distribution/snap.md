@@ -15,7 +15,7 @@ On Ubuntu with Snapcraft installed:
 
 ```bash
 sudo snap install snapcraft --classic
-snapcraft --destructive-mode
+sudo /snap/bin/snapcraft pack --destructive-mode
 ```
 
 That should produce a `.snap` artifact in the repository root.

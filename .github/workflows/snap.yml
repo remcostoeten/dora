@@ -16,7 +16,10 @@ jobs:
         run: sudo snap install snapcraft --classic
 
       - name: build snap
-        run: snapcraft --destructive-mode
+        run: sudo /snap/bin/snapcraft pack --destructive-mode
+
+      - name: fix snap artifact ownership
+        run: sudo chown $USER:$USER ./*.snap
 
       - name: upload snap artifact
         uses: actions/upload-artifact@v4

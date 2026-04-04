@@ -125,7 +125,7 @@ If your machine is Ubuntu or another Linux system with Snap available:
 
 ```bash
 sudo snap install snapcraft --classic
-snapcraft --destructive-mode
+sudo /snap/bin/snapcraft pack --destructive-mode
 ```
 
 ### CI build path
