@@ -10,20 +10,16 @@ jobs:
       contents: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
 
       - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        uses: actions/setup-node@1e87b1d309b61c53dcf84b5d7a8fcc5e9a1abf2e
 
       - name: setup bun
-        uses: oven-sh/setup-bun@v2
-        with:
-            bun-version: latest
+        uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
 
       - name: install rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1fda3d8b0a55de20bf5124a8d4a7e3d5ca092d70
 
       - name: install dependencies (ubuntu)
         run: |
@@ -62,20 +58,16 @@ jobs:
       contents: write
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
 
       - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        uses: actions/setup-node@1e87b1d309b61c53dcf84b5d7a8fcc5e9a1abf2e
 
       - name: setup bun
-        uses: oven-sh/setup-bun@v2
-        with:
-            bun-version: latest
+        uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
 
       - name: install rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1fda3d8b0a55de20bf5124a8d4a7e3d5ca092d70
 
       - name: install sqlite3 via vcpkg
         shell: pwsh
@@ -119,20 +111,16 @@ jobs:
       contents: write
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
 
       - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        uses: actions/setup-node@1e87b1d309b61c53dcf84b5d7a8fcc5e9a1abf2e
 
       - name: setup bun
-        uses: oven-sh/setup-bun@v2
-        with:
-            bun-version: latest
+        uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
 
       - name: install rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1fda3d8b0a55de20bf5124a8d4a7e3d5ca092d70
 
       - name: install frontend dependencies
         run: bun install
@@ -158,20 +146,16 @@ jobs:
       contents: write
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
 
       - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+        uses: actions/setup-node@1e87b1d309b61c53dcf84b5d7a8fcc5e9a1abf2e
 
       - name: setup bun
-        uses: oven-sh/setup-bun@v2
-        with:
-            bun-version: latest
+        uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
 
       - name: install rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1fda3d8b0a55de20bf5124a8d4a7e3d5ca092d70
 
       - name: install frontend dependencies
         run: bun install

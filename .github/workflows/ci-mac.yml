@@ -13,15 +13,15 @@ jobs:
         runner: [macos-latest, macos-15-intel]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af6834
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@e44c7dcdda6f4d00d3d3d2ce6e20df9c90dd3b50
         with:
           bun-version: latest
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1fda3d8b0a55de20bf5124a8d4a7e3d5ca092d70
 
       - name: Install dependencies
         run: bun install
