@@ -21,18 +21,26 @@ export const libsqlConnectionSchema = baseConnectionSchema.extend({
 	authToken: z.string().optional(),
 })
 
-export const connectionStringSchema = baseConnectionSchema.extend({
-	type: z.enum(['postgres', 'mysql']),
+export const postgresConnectionStringSchema = baseConnectionSchema.extend({
+	type: z.literal('postgres'),
 	url: z
 		.string()
 		.min(1, 'Connection string is required')
 		.refine(
-			(val) =>
-				val.startsWith('postgres://') ||
-				val.startsWith('postgresql://') ||
-				val.startsWith('mysql://'),
+			(val) => val.startsWith('postgres://') || val.startsWith('postgresql://'),
 			'Invalid connection string format'
 		),
+})
+
+export const mysqlConnectionStringSchema = baseConnectionSchema.extend({
+	type: z.literal('mysql'),
+	url: z
+		.string()
+		.min(1, 'Connection string is required')
+		.refine(
+			(val) => val.startsWith('mysql://'),
+			'Invalid connection string format'
+		)
 })
 
 export const connectionFieldsSchema = baseConnectionSchema.extend({
@@ -94,7 +102,11 @@ export function validateConnection(
 			libsqlConnectionSchema.parse(formData)
 		} else if (type === 'postgres' || type === 'mysql') {
 			if (useConnectionString) {
-				connectionStringSchema.parse(formData)
+				if (type === 'postgres') {
+					postgresConnectionStringSchema.parse(formData)
+				} else {
+					mysqlConnectionStringSchema.parse(formData)
+				}
 			} else {
 				connectionFieldsSchema.parse(formData)
 			}
