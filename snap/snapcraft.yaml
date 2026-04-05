@@ -1,0 +1,87 @@
+name: dora
+base: core22
+version: '0.0.102'
+summary: Clean, fast desktop database studio
+description: |
+  Dora is a cross-platform desktop database studio built with Tauri, Rust, and React.
+  It supports PostgreSQL, SQLite, and LibSQL/Turso in a native desktop workflow.
+grade: stable
+confinement: strict
+
+apps:
+  dora:
+    command: bin/launch
+    desktop: meta/gui/dora.desktop
+    plugs:
+      - desktop
+      - desktop-legacy
+      - home
+      - network
+      - opengl
+      - password-manager-service
+      - removable-media
+      - ssh-keys
+      - wayland
+      - x11
+    environment:
+      WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+
+parts:
+  dora:
+    plugin: nil
+    source: .
+    build-snaps:
+      - node/22/stable
+    build-packages:
+      - build-essential
+      - curl
+      - file
+      - libayatana-appindicator3-dev
+      - libgtk-3-dev
+      - libjavascriptcoregtk-4.1-dev
+      - librsvg2-dev
+      - libsoup-3.0-dev
+      - libssl-dev
+      - libwebkit2gtk-4.1-dev
+      - patchelf
+      - pkg-config
+    stage-packages:
+      - libasound2
+      - libayatana-appindicator3-1
+      - libgtk-3-0
+      - libjavascriptcoregtk-4.1-0
+      - libnotify4
+      - libnss3
+      - librsvg2-2
+      - libsecret-1-0
+      - libsoup-3.0-0
+      - libssl3
+      - libwebkit2gtk-4.1-0
+      - libxss1
+      - zlib1g
+    override-build: |
+      set -eux
+
+      export HOME="$CRAFT_PART_BUILD/home"
+      export BUN_INSTALL="$HOME/.bun"
+      export CARGO_HOME="$HOME/.cargo"
+      export RUSTUP_HOME="$HOME/.rustup"
+      export PATH="$BUN_INSTALL/bin:$CARGO_HOME/bin:$PATH"
+      export PATH="/snap/node/current/bin:$PATH"
+
+      mkdir -p "$BUN_INSTALL" "$CARGO_HOME" "$RUSTUP_HOME"
+
+      curl -fsSL https://bun.sh/install | bash
+      curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+
+      export DORA_RELEASE_VERSION="${DORA_RELEASE_VERSION:-$(node -p "require('./package.json').version")}"
+      craftctl set version="$DORA_RELEASE_VERSION"
+
+      bun install
+      (cd apps/desktop && node node_modules/vite/bin/vite.js build)
+      cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
+
+      install -Dm755 apps/desktop/src-tauri/target/release/app "$CRAFT_PART_INSTALL/bin/dora"
+      install -Dm755 snap/local/launch "$CRAFT_PART_INSTALL/bin/launch"
+      install -Dm644 snap/gui/dora.desktop "$CRAFT_PART_INSTALL/meta/gui/dora.desktop"
+      install -Dm644 apps/desktop/src-tauri/icons/icon.png "$CRAFT_PART_INSTALL/meta/gui/icon.png"
