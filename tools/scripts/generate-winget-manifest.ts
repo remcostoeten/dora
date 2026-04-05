@@ -163,7 +163,7 @@ function main() {
 	logKeyValue('Installer URL', config.installerUrl)
 	logKeyValue('Output', config.outDir)
 
-	const baseName = config.packageIdentifier.split('.').pop() || config.packageName
+	const baseName = config.packageIdentifier
 	writeFile(path.join(config.outDir, `${baseName}.yaml`), createVersionManifest(config))
 	writeFile(
 		path.join(config.outDir, `${baseName}.locale.en-US.yaml`),

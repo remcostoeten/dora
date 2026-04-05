@@ -1,6 +1,8 @@
 # Snap Distribution Guide
 
-Snap support is now scaffolded in-repo.
+Snap support is fully wired in-repo. The GitHub Actions workflow now builds
+the snap, uploads it as a workflow artifact, uploads it to the GitHub release,
+and publishes it to the Snap Store when store credentials are configured.
 
 ## What is in the repo
 
@@ -20,15 +22,36 @@ sudo /snap/bin/snapcraft pack --destructive-mode
 
 That should produce a `.snap` artifact in the repository root.
 
-## CI build
+The snap version is set during the build from the release tag when CI runs on a
+published release. Local builds fall back to the version in `package.json`.
 
-The GitHub Actions workflow at `.github/workflows/snap.yml` builds the snap on tag pushes and on manual dispatch, then uploads the `.snap` as a workflow artifact.
+## CI build and publish
 
-## Publish later
+The GitHub Actions workflow at `.github/workflows/snap.yml` runs in two modes:
 
-Publishing to the Snap Store still needs two external steps:
+- On `release.published`, it builds the snap, uploads the `.snap` file to the
+  GitHub release, and publishes it to the Snap Store if
+  `SNAPCRAFT_STORE_CREDENTIALS` exists.
+- On manual dispatch, it builds the snap as an artifact. You can optionally
+  provide an existing release tag and turn on store publishing.
 
-1. Register the `dora` snap name in Snapcraft.
-2. Add exported Snapcraft credentials to GitHub Actions before automating `snapcraft upload`.
+## Required one-time setup
 
-Until those credentials exist, the repo is set up for build validation but not automatic store publishing.
+You must complete the Snapcraft account setup once before GitHub Actions can
+publish automatically.
+
+1. Create or log into your Snapcraft account.
+2. Register the `dora` snap name.
+3. Export store credentials with the required ACLs:
+
+```bash
+snapcraft export-login --snaps=dora \
+  --acls package_access,package_push,package_update,package_release \
+  exported.txt
+```
+
+4. Save the contents of `exported.txt` as the GitHub Actions secret
+   `SNAPCRAFT_STORE_CREDENTIALS`.
+
+After that, every published GitHub release can publish the snap to the chosen
+channel without additional manual steps.

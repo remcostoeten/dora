@@ -1,6 +1,9 @@
 # Winget Distribution Guide
 
-Winget is the simplest new channel because Dora already publishes Windows installers via Tauri. This document walks through the manual workflow so we can later automate it and keep the README in sync.
+Winget is now partly automated in-repo. Dora can generate versioned manifests on
+every published GitHub release, attach those manifests to the release, and
+submit update PRs with `wingetcreate` after the package has been bootstrapped in
+`microsoft/winget-pkgs`.
 
 ## Before releasing
 
@@ -11,9 +14,11 @@ Winget is the simplest new channel because Dora already publishes Windows instal
     - `checksums.txt` that lists SHA256 hashes for every Windows artifact
 3. **Publish release** – confirm that `docs/distribution/winget.md` remains aligned with the release tag (`vX.Y.Z`), because Winget manifests need the exact version string.
 
-## Preferred submission flow
+## First submission
 
-For the first public submission, prefer `wingetcreate new` on Windows. That is the path Microsoft documents most directly for creating and submitting a new package to `microsoft/winget-pkgs`.
+The first public submission is still a one-time manual step. Microsoft documents
+`wingetcreate new` as the starting point for creating the package entry in
+`microsoft/winget-pkgs`.
 
 ```powershell
 winget install wingetcreate
@@ -26,11 +31,24 @@ During the prompts:
 2. Keep the package identifier stable.
 3. Let `wingetcreate` submit the PR to `microsoft/winget-pkgs`.
 
-For later releases, `wingetcreate update` is usually the better fit than re-authoring manifests from scratch.
+After that PR is merged, Dora's `winget.yml` workflow can handle later updates.
 
 ## Repo-native manifest generation
 
-The repo also contains a manifest generator. Keep this for deterministic local generation and future CI automation.
+The repo contains a manifest generator and a dedicated workflow:
+
+- `tools/scripts/generate-winget-manifest.ts`
+- `.github/workflows/winget.yml`
+
+On every published GitHub release, the workflow:
+
+1. Downloads `checksums-windows.txt` from the release.
+2. Generates the three Winget manifest files.
+3. Uploads a `winget-manifests-<version>.tar.gz` artifact.
+4. Uploads that manifest archive to the GitHub release.
+5. Optionally runs `wingetcreate update --submit` when automation is enabled.
+
+You can still generate the manifests locally:
 
 1. Build and publish the tagged Windows release.
 2. Generate the Windows checksums file from the release bundle:
@@ -53,11 +71,24 @@ bun run release:winget -- \
 ```
 
 4. The repo writes:
-    - `packaging/winget/manifests/<version>/Dora.yaml`
-    - `packaging/winget/manifests/<version>/Dora.installer.yaml`
-    - `packaging/winget/manifests/<version>/Dora.locale.en-US.yaml`
+    - `packaging/winget/manifests/<version>/RemcoStoeten.Dora.yaml`
+    - `packaging/winget/manifests/<version>/RemcoStoeten.Dora.installer.yaml`
+    - `packaging/winget/manifests/<version>/RemcoStoeten.Dora.locale.en-US.yaml`
 5. Validate locally with `winget validate --manifest <folder>` or `winget install --manifest <folder>`.
-6. Either copy the generated files into a `winget-pkgs` fork manually, or use them as the source of truth when scripting `wingetcreate update`.
+6. Either copy the generated files into a `winget-pkgs` fork manually, or use
+   them as the source of truth when scripting `wingetcreate update`.
+
+## Automated update setup
+
+After the first package PR has merged, add the following repository settings:
+
+1. Add the GitHub Actions secret `WINGET_CREATE_GITHUB_TOKEN`.
+2. Use a classic GitHub personal access token with the `public_repo` scope.
+3. Add the repository variable `WINGET_PACKAGE_READY=true`.
+
+With that in place, each published GitHub release can submit a Winget update PR
+automatically. Manual dispatch also supports a forced update submission for an
+existing release tag.
 
 ## Testing locally
 
@@ -75,9 +106,9 @@ After the manifest is merged:
 
 ## Automating in CI
 
-- The release workflow now has the first needed building block: it uploads `checksums-windows.txt` for tagged Windows releases.
-- The remaining automation step is either:
-  - generating the manifest files from the published MSI URL and opening a PR against `microsoft/winget-pkgs`, or
-  - calling `wingetcreate update` from a Windows automation context with a GitHub token.
+- `release.yml` publishes `checksums-windows.txt` on every tagged Windows release.
+- `winget.yml` consumes that checksum file and creates deterministic manifests.
+- `winget.yml` can also submit update PRs through `wingetcreate` once the
+  package already exists in `microsoft/winget-pkgs`.
 
-Any automation should keep the manifest structure stable so updates are just data substitutions and PR metadata.
+The only remaining manual boundary is the very first public package submission.

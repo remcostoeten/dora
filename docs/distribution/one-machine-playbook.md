@@ -22,7 +22,8 @@ Details live in `docs/distribution/vm-lab.md`.
 
 ## First milestone: create a real tagged release
 
-Right now the expected asset URLs still return `404`, so package-manager publishing should start only after a real tagged release exists.
+Package-manager publishing should start only after a real tagged release exists
+and its assets are visible on the GitHub release page.
 
 From the main repo:
 
@@ -41,7 +42,8 @@ Verify the release page first. If the release assets are missing, stop there and
 
 ## Winget from a Windows VM
 
-Use a Windows 11 VM because `wingetcreate` is Windows-native.
+Use a Windows 11 VM because `wingetcreate` is Windows-native. You need this VM
+for the first public package submission only.
 
 ### In the VM
 
@@ -68,6 +70,11 @@ Use:
 ```powershell
 wingetcreate update RemcoStoeten.Dora --urls "https://github.com/remcostoeten/dora/releases/download/v0.1.1/Dora_0.1.1_x64_en-US.msi"
 ```
+
+After the package exists in `microsoft/winget-pkgs`, you can stop doing that by
+hand. Set `WINGET_CREATE_GITHUB_TOKEN` in GitHub Actions, add the repository
+variable `WINGET_PACKAGE_READY=true`, and let `.github/workflows/winget.yml`
+submit update PRs automatically from published releases.
 
 ## AUR from Docker on your main machine
 
@@ -135,7 +142,9 @@ The repo now has:
 - `.github/workflows/snap.yml`
 - `snap/snapcraft.yaml`
 
-Push a tag or run the workflow manually to build the `.snap` artifact in GitHub Actions.
+When a GitHub release is published, the workflow builds the `.snap`, uploads it
+to the release, and publishes it to the Snap Store if the store credential
+secret exists. Manual dispatch still works for artifact-only or test runs.
 
 ### Store publish path
 
@@ -144,15 +153,19 @@ Push a tag or run the workflow manually to build the `.snap` artifact in GitHub 
 3. Export store credentials:
 
 ```bash
-snapcraft export-login --snaps dora --channels stable -
+snapcraft export-login --snaps=dora \
+  --acls package_access,package_push,package_update,package_release \
+  exported.txt
 ```
 
-4. Add that exported blob as a GitHub Actions secret, for example `SNAPCRAFT_STORE_CREDENTIALS`.
-5. Extend the workflow to run `snapcraft upload --release=stable *.snap`.
+4. Add the contents of `exported.txt` as the GitHub Actions secret
+   `SNAPCRAFT_STORE_CREDENTIALS`.
+5. Publish a GitHub release and let `.github/workflows/snap.yml` handle the
+   build and store upload.
 
 ## Recommended order
 
 1. Make the tagged GitHub release actually publish assets.
 2. Submit Winget from a Windows VM.
 3. Validate and publish AUR from Docker plus your normal host shell.
-4. Register Snap name and then wire store publishing.
+4. Register the Snap name and add `SNAPCRAFT_STORE_CREDENTIALS`.

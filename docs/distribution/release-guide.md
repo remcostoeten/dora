@@ -13,6 +13,7 @@ The script gives you an interactive menu that:
 - creates the local tag when the tree is clean
 - pushes the tag
 - creates the GitHub release with the generated notes
-- prints the next Winget, AUR, and Snap commands
+- prints the next AUR command and the one-time bootstrap steps for Winget and
+  Snap if those channels are not configured yet
 
 It intentionally refuses to create a tag while the worktree is dirty.
