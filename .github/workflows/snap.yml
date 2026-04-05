@@ -1,0 +1,86 @@
+name: Snap
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.0.102. Leave empty for artifact-only builds.
+        required: false
+        type: string
+      publish:
+        description: Publish the built snap to the Snap Store.
+        required: false
+        type: boolean
+        default: false
+      release_channel:
+        description: Snap Store channel to release to.
+        required: false
+        type: choice
+        default: stable
+        options:
+          - stable
+          - candidate
+          - beta
+          - edge
+
+permissions:
+  contents: write
+
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    env:
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+
+          VERSION="$(python -c "import json; print(json.load(open('package.json'))['version'])")"
+          if [[ -n "$TAG" ]]; then
+            VERSION="${TAG#v}"
+          fi
+
+          CHANNEL="stable"
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            CHANNEL="${{ inputs.release_channel }}"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "DORA_RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build snap
+        uses: snapcore/action-build@v1
+        id: build
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dora-snap-${{ steps.meta.outputs.version }}
+          path: ${{ steps.build.outputs.snap }}
+
+      - name: Upload snap to GitHub release
+        if: ${{ steps.meta.outputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ steps.meta.outputs.tag }} ${{ steps.build.outputs.snap }} --clobber
+
+      - name: Publish snap to Snap Store
+        if: ${{ env.SNAPCRAFT_STORE_CREDENTIALS != '' && (github.event_name == 'release' || inputs.publish) }}
+        uses: snapcore/action-publish@v1
+        with:
+          snap: ${{ steps.build.outputs.snap }}
+          release: ${{ steps.meta.outputs.channel }}
