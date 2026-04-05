@@ -61,7 +61,14 @@ describe('SqlResults', function () {
 
 		fireEvent.doubleClick(screen.getByText('Bob'))
 
-		const input = screen.getByDisplayValue('Bob')
+		const input = screen
+			.getAllByDisplayValue('Bob')
+			.find((element) => element.getAttribute('placeholder') !== 'Filter results...')
+
+		expect(input).toBeTruthy()
+		if (!input) {
+			throw new Error('Expected inline editor input to be rendered')
+		}
 		fireEvent.change(input, { target: { value: 'Bobby' } })
 		fireEvent.keyDown(input, { key: 'Enter' })
 

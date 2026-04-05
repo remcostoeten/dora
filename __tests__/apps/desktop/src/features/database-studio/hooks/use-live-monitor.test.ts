@@ -1,18 +1,10 @@
-import { renderHook, act, waitFor } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useLiveMonitor } from '@/features/database-studio/hooks/use-live-monitor'
 
 const mocks = vi.hoisted(function () {
 	return {
-		listen: vi.fn(),
 		startLiveMonitor: vi.fn(),
 		stopLiveMonitor: vi.fn()
-	}
-})
-
-vi.mock('@tauri-apps/api/event', function () {
-	return {
-		listen: mocks.listen
 	}
 })
 
@@ -30,12 +22,7 @@ describe('useLiveMonitor', function () {
 
 	beforeEach(function () {
 		backendListener = null
-		mocks.listen.mockImplementation(function (_eventName, handler) {
-			backendListener = handler
-			return Promise.resolve(function () {
-				backendListener = null
-			})
-		})
+		vi.resetModules()
 		mocks.startLiveMonitor.mockResolvedValue({
 			status: 'ok',
 			data: {
@@ -45,23 +32,43 @@ describe('useLiveMonitor', function () {
 		})
 		mocks.stopLiveMonitor.mockResolvedValue({ status: 'ok', data: null })
 
-		Object.defineProperty(window, '__TAURI__', {
-			value: {},
+		Object.defineProperty(window, '__TAURI_INTERNALS__', {
+			value: {
+				transformCallback(handler: (event: { payload: any }) => void) {
+					backendListener = handler
+					return 1
+				},
+				unregisterCallback: vi.fn(),
+				invoke: vi.fn(async function (command: string) {
+					if (command === 'plugin:event|listen') {
+						return 1
+					}
+					if (command === 'plugin:event|unlisten') {
+						backendListener = null
+						return null
+					}
+					return null
+				})
+			},
 			configurable: true
 		})
-		delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__
+		Object.defineProperty(window, '__TAURI_EVENT_PLUGIN_INTERNALS__', {
+			value: {
+				unregisterListener: vi.fn()
+			},
+			configurable: true
+		})
 		vi.useFakeTimers()
 	})
 
 	afterEach(function () {
 		vi.runOnlyPendingTimers()
 		vi.useRealTimers()
-		delete (window as unknown as Record<string, unknown>).__TAURI__
-		delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__
 		vi.clearAllMocks()
 	})
 
 	it('batches backend change events into a single refresh callback', async function () {
+		const { useLiveMonitor } = await import('@/features/database-studio/hooks/use-live-monitor')
 		const onDataChanged = vi.fn()
 
 		const { result } = renderHook(function () {
@@ -82,9 +89,11 @@ describe('useLiveMonitor', function () {
 			})
 		})
 
-		await waitFor(function () {
-			expect(mocks.startLiveMonitor).toHaveBeenCalledTimes(1)
+		await act(async function () {
+			await Promise.resolve()
 		})
+
+		expect(mocks.startLiveMonitor).toHaveBeenCalledTimes(1)
 
 		await act(async function () {
 			backendListener?.({
