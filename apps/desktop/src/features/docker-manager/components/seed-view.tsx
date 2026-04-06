@@ -147,7 +147,9 @@ export function SeedView({ container }: Props) {
 								Drag and drop or press Enter to browse
 							</p>
 						</div>
-						<span className='text-xs text-muted-foreground'>Click anywhere to select a file</span>
+						<span className='text-xs text-muted-foreground'>
+							Click anywhere to select a file
+						</span>
 					</>
 				) : (
 					<>

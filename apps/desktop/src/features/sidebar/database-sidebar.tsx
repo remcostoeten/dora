@@ -68,9 +68,9 @@ export function DatabaseSidebar({
 	onAutoSelectComplete,
 	connections = [],
 	activeConnectionId,
-	onConnectionSelect = function () { },
-	onAddConnection = function () { },
-	onManageConnections = function () { },
+	onConnectionSelect = function () {},
+	onAddConnection = function () {},
+	onManageConnections = function () {},
 	onViewConnection,
 	onEditConnection,
 	onDeleteConnection
@@ -375,7 +375,10 @@ export function DatabaseSidebar({
 				if (activeTableId === targetTableName) {
 					setInternalTableId(undefined)
 				}
-				toast({ title: 'Table dropped', description: `"${targetTableName}" has been removed.` })
+				toast({
+					title: 'Table dropped',
+					description: `"${targetTableName}" has been removed.`
+				})
 			} else {
 				const errorMessage = getAdapterError(result)
 				console.error('Failed to drop table:', errorMessage)
@@ -387,7 +390,11 @@ export function DatabaseSidebar({
 			}
 		} catch (error) {
 			console.error('Failed to drop table:', error)
-			toast({ title: 'Failed to drop table', description: String(error), variant: 'destructive' })
+			toast({
+				title: 'Failed to drop table',
+				description: String(error),
+				variant: 'destructive'
+			})
 		} finally {
 			setIsDdlLoading(false)
 		}
@@ -404,7 +411,8 @@ export function DatabaseSidebar({
 		if (activeConnection?.type !== 'postgres') {
 			toast({
 				title: 'Duplicate table not available',
-				description: 'Table duplication is currently supported for PostgreSQL connections only.',
+				description:
+					'Table duplication is currently supported for PostgreSQL connections only.',
 				variant: 'destructive'
 			})
 			return
@@ -623,19 +631,19 @@ export function DatabaseSidebar({
 	useEffect(() => {
 		if (!isResizing) return
 
-		const handleMouseMove = (e: MouseEvent) => {
+		function handleMouseMove(e: MouseEvent) {
 			if (sidebarRef.current) {
 				const rect = sidebarRef.current.getBoundingClientRect()
 				const relativeY = e.clientY - rect.top
 				// Calculate used space by header (approx 40px + padding)
-				// We want ratio of the REMAINING space or total space? 
+				// We want ratio of the REMAINING space or total space?
 				// Total space is simpler.
 				const newRatio = Math.max(0.2, Math.min(0.85, relativeY / rect.height))
 				setTopPanelRatio(newRatio)
 			}
 		}
 
-		const handleMouseUp = () => {
+		function handleMouseUp() {
 			setIsResizing(false)
 			document.body.style.cursor = ''
 		}
@@ -731,7 +739,9 @@ export function DatabaseSidebar({
 							</svg>
 						</div>
 						<div className='text-center space-y-1'>
-							<h4 className='text-xs font-medium text-foreground'>Connection failed</h4>
+							<h4 className='text-xs font-medium text-foreground'>
+								Connection failed
+							</h4>
 							<p className='text-xs text-muted-foreground max-w-[180px] leading-relaxed'>
 								{schemaError}
 							</p>
@@ -860,7 +870,9 @@ export function DatabaseSidebar({
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							{bulkActionConfirm.action === 'drop' ? 'Drop Tables' : 'Truncate Tables'}
+							{bulkActionConfirm.action === 'drop'
+								? 'Drop Tables'
+								: 'Truncate Tables'}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{bulkActionConfirm.action === 'drop'

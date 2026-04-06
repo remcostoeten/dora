@@ -297,7 +297,9 @@ export function SqlResults({
 						</span>
 						<span className='text-muted-foreground'>
 							{successMessage}{' '}
-							{filteredRows.length !== result.rowCount ? `${filteredRows.length} / ` : ''}
+							{filteredRows.length !== result.rowCount
+								? `${filteredRows.length} / `
+								: ''}
 							{result.rowCount} row{result.rowCount !== 1 ? 's' : ''} •{' '}
 							{result.executionTime}ms backend • {filterTime}ms filtering
 						</span>
@@ -305,7 +307,9 @@ export function SqlResults({
 				)}
 
 				{mutationDisabledReason && result && !result.error && result.rows.length > 0 && (
-					<div className='text-[11px] text-muted-foreground'>{mutationDisabledReason}</div>
+					<div className='text-[11px] text-muted-foreground'>
+						{mutationDisabledReason}
+					</div>
 				)}
 
 				<Button
@@ -335,7 +339,9 @@ export function SqlResults({
 					<div className='flex flex-col items-center justify-center h-full text-muted-foreground'>
 						<div className='inline-flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-600 dark:text-emerald-400'>
 							<CircleCheck className='h-4 w-4' />
-							<span className='text-sm'>{successMessage || 'Statement executed successfully.'}</span>
+							<span className='text-sm'>
+								{successMessage || 'Statement executed successfully.'}
+							</span>
 						</div>
 					</div>
 				) : viewMode === 'json' ? (
@@ -465,7 +471,9 @@ export function SqlResults({
 																) : (
 																	<div
 																		className='truncate max-w-[300px]'
-																		title={formatCellValue(cellValue)}
+																		title={formatCellValue(
+																			cellValue
+																		)}
 																	>
 																		{formatCellValue(cellValue)}
 																	</div>
@@ -513,7 +521,8 @@ export function SqlResults({
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Row?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete the selected row.
+							This action cannot be undone. This will permanently delete the selected
+							row.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

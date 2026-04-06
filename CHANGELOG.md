@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.0.102 - Snap Workflow Follow-up & Packaging Release Cleanup
+
+**Date:** 2026-04-05
+
+**Highlights**
+
+- Fixed the Snap CI workflow so packaging builds run correctly on GitHub Actions.
+- Switched the Snap build path to a direct Rust release build instead of an invalid Tauri bundle flag.
+- Carries the packaging automation and VM lab work forward into a clean tag that matches branch head.
+
+## 0.0.101 - Packaging Automation, VM Lab & Desktop Iteration
+
+**Date:** 2026-04-05
+
+**Highlights**
+
+- Added repo-native packaging helpers for Winget, AUR, Snap, release checksums, and release guidance.
+- Added an Ubuntu host VM lab flow for provisioning Ubuntu, Arch, and Windows packaging test environments.
+- Updated the in-app changelog and release surfaces for the new release milestone.
+- Bundled the current desktop, docs, test, and workflow iteration work into the `0.0.101` line.
+
+## 0.1.0 - Project Foundation & Documentation Audit
+
+**Date:** 2026-04-04
+
+**Highlights**
+
+- Established 0.1.0 version baseline across the monorepo.
+- Completed full Homebrew installation documentation and README overhaul.
+- Verified 115/115 tests passing for the new milestone.
+
+## 0.0.99 - Homebrew Support & CI Security Hardening
+
+**Date:** 2026-04-04
+
+**Highlights**
+
+- Added the official Homebrew Tap at `remcostoeten/homebrew-dora` (`brew install dora`).
+- Pinned all GitHub Actions to specific commit SHAs for improved supply chain security.
+- Optimized the esbuild target to `esnext` to resolve CI transform errors.
+- Stabilized the Rust toolchain reference in automated workflows.
+
+## 0.0.98 - Live Database Updates & Performance Refactor
+
+**Date:** 2026-04-04
+
+**Highlights**
+
+- Implemented a backend-driven live database monitor manager.
+- Eliminated inefficient frontend polling logic for faster performance.
+- Added support for real-time data grid updates on external database changes.
+- Enhanced documentation with an animated showcase of live performance.
+
 ## 0.0.97 - Type Safety Recovery, Feature-State Alignment & Docker Manager Updates
 
 **Date:** 2026-02-20

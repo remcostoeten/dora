@@ -3,7 +3,17 @@ import type { SnippetLanguage } from '../utilities/connection-snippet-generator'
 
 type Token = {
 	text: string
-	type: 'keyword' | 'string' | 'comment' | 'function' | 'number' | 'operator' | 'property' | 'variable' | 'flag' | 'plain'
+	type:
+		| 'keyword'
+		| 'string'
+		| 'comment'
+		| 'function'
+		| 'number'
+		| 'operator'
+		| 'property'
+		| 'variable'
+		| 'flag'
+		| 'plain'
 }
 
 const TOKEN_COLORS: Record<Token['type'], string> = {
@@ -16,7 +26,7 @@ const TOKEN_COLORS: Record<Token['type'], string> = {
 	property: 'text-cyan-300',
 	variable: 'text-red-300',
 	flag: 'text-zinc-400',
-	plain: 'text-zinc-300',
+	plain: 'text-zinc-300'
 }
 
 function tokenizeLine(line: string, language: SnippetLanguage): Token[] {
@@ -37,7 +47,8 @@ function tokenizeLine(line: string, language: SnippetLanguage): Token[] {
 function tokenizeShell(line: string): Token[] {
 	const tokens: Token[] = []
 	// Pattern: ENVVAR='value' command -flags args
-	const regex = /([A-Z_]+=)('[^']*'|"[^"]*")|('[^']*'|"[^"]*")|(-[a-zA-Z]\b)|(\b(?:psql|docker|pg_dump|pg_restore)\b)|([A-Z_]{2,}\b)|(\S+)/g
+	const regex =
+		/([A-Z_]+=)('[^']*'|"[^"]*")|('[^']*'|"[^"]*")|(-[a-zA-Z]\b)|(\b(?:psql|docker|pg_dump|pg_restore)\b)|([A-Z_]{2,}\b)|(\S+)/g
 	let match: RegExpExecArray | null
 
 	let lastIndex = 0
@@ -78,7 +89,8 @@ function tokenizeShell(line: string): Token[] {
 
 function tokenizeJS(line: string): Token[] {
 	const tokens: Token[] = []
-	const regex = /(\/\/.*$)|('[^']*'|"[^"]*"|`[^`]*`)|\b(import|from|const|let|var|await|async|function|new|return)\b|\b(console)\b\.(log|error|warn)\b|(\.\w+)\s*(?=\()|(\b\d+\b)|([{}();,=])|(\w+)/g
+	const regex =
+		/(\/\/.*$)|('[^']*'|"[^"]*"|`[^`]*`)|\b(import|from|const|let|var|await|async|function|new|return)\b|\b(console)\b\.(log|error|warn)\b|(\.\w+)\s*(?=\()|(\b\d+\b)|([{}();,=])|(\w+)/g
 	let match: RegExpExecArray | null
 
 	let lastIndex = 0
@@ -120,7 +132,8 @@ function tokenizeJS(line: string): Token[] {
 
 function tokenizePython(line: string): Token[] {
 	const tokens: Token[] = []
-	const regex = /(#.*$)|("[^"]*"|'[^']*')|\b(import|from|as|def|class|return|if|else|elif|with|for|in|not|and|or|True|False|None)\b|\b(print|connect|cursor|execute|fetchall|fetchone)\b(?=\s*\()|(\b\d+\b)|([().,=:])|(\w+)/g
+	const regex =
+		/(#.*$)|("[^"]*"|'[^']*')|\b(import|from|as|def|class|return|if|else|elif|with|for|in|not|and|or|True|False|None)\b|\b(print|connect|cursor|execute|fetchall|fetchone)\b(?=\s*\()|(\b\d+\b)|([().,=:])|(\w+)/g
 	let match: RegExpExecArray | null
 
 	let lastIndex = 0
@@ -157,7 +170,8 @@ function tokenizePython(line: string): Token[] {
 
 function tokenizePrisma(line: string): Token[] {
 	const tokens: Token[] = []
-	const regex = /(\/\/.*$)|("[^"]*")|\b(datasource|generator|model|enum)\b|\b(provider|url|output|db)\b|([={}])|(\w+)/g
+	const regex =
+		/(\/\/.*$)|("[^"]*")|\b(datasource|generator|model|enum)\b|\b(provider|url|output|db)\b|([={}])|(\w+)/g
 	let match: RegExpExecArray | null
 
 	let lastIndex = 0
@@ -196,14 +210,17 @@ type Props = {
 }
 
 export function SnippetHighlight({ code, language }: Props) {
-	const highlighted = useMemo(function () {
-		return code.split('\n').map(function (line, i) {
-			return {
-				key: i,
-				tokens: tokenizeLine(line, language)
-			}
-		})
-	}, [code, language])
+	const highlighted = useMemo(
+		function () {
+			return code.split('\n').map(function (line, i) {
+				return {
+					key: i,
+					tokens: tokenizeLine(line, language)
+				}
+			})
+		},
+		[code, language]
+	)
 
 	return (
 		<>

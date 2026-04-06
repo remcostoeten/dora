@@ -8,7 +8,11 @@ export function mapConnectionError(error: Error | string): string {
 		return 'Connection refused. Make sure the database server is running and accessible.'
 	}
 
-	if (msg.includes('authentication') || msg.includes('password') || msg.includes('access denied')) {
+	if (
+		msg.includes('authentication') ||
+		msg.includes('password') ||
+		msg.includes('access denied')
+	) {
 		return 'Authentication failed. Please check your username and password.'
 	}
 
@@ -75,7 +79,7 @@ export function mapQueryError(error: Error | string): string {
 		return 'Column not found. The specified column does not exist in this table.'
 	}
 
-	if (msg.includes('no such table') || msg.includes('table') && msg.includes('not exist')) {
+	if (msg.includes('no such table') || (msg.includes('table') && msg.includes('not exist'))) {
 		return 'Table not found. The specified table does not exist.'
 	}
 

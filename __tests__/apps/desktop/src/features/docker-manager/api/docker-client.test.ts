@@ -35,18 +35,19 @@ describe('docker-client', () => {
 		mockCreate = vi.fn()
 
 		// Inject mock
-		deps.getCommand = async () => ({
-			create: (cmd: string, args: string[]) => {
-				mockCreate(cmd, args)
-				return {
-					execute: mockExecute,
-					on: vi.fn(),
-					spawn: vi.fn().mockResolvedValue({ kill: vi.fn() }),
-					stdout: { on: vi.fn() },
-					stderr: { on: vi.fn() }
+		deps.getCommand = async () =>
+			({
+				create: (cmd: string, args: string[]) => {
+					mockCreate(cmd, args)
+					return {
+						execute: mockExecute,
+						on: vi.fn(),
+						spawn: vi.fn().mockResolvedValue({ kill: vi.fn() }),
+						stdout: { on: vi.fn() },
+						stderr: { on: vi.fn() }
+					}
 				}
-			}
-		} as any)
+			}) as any
 	})
 
 	describe('checkDockerAvailability', () => {
@@ -83,8 +84,7 @@ describe('docker-client', () => {
 	describe('listContainers', () => {
 		it('should list and parse containers correctly including Env', async () => {
 			mockExecute.mockResolvedValueOnce({
-				stdout:
-					'{"ID":"123","Names":"test-container","Image":"postgres:14","State":"running","Status":"Up 2 hours","Ports":"0.0.0.0:5432->5432/tcp","Labels":"","CreatedAt":"2023-01-01"}\n',
+				stdout: '{"ID":"123","Names":"test-container","Image":"postgres:14","State":"running","Status":"Up 2 hours","Ports":"0.0.0.0:5432->5432/tcp","Labels":"","CreatedAt":"2023-01-01"}\n',
 				stderr: '',
 				code: 0
 			})

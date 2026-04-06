@@ -24,13 +24,7 @@ function clamp(value: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, value))
 }
 
-function cubicBezier(
-	t: number,
-	p0: number,
-	p1: number,
-	p2: number,
-	p3: number
-): number {
+function cubicBezier(t: number, p0: number, p1: number, p2: number, p3: number): number {
 	const oneMinusT = 1 - t
 	return (
 		oneMinusT * oneMinusT * oneMinusT * p0 +
@@ -80,43 +74,40 @@ export function RecordingOverlay() {
 		return true
 	}, [])
 
-	const animateSegment = useCallback(
-		async function animateSegment(
-			start: { x: number; y: number },
-			end: { x: number; y: number },
-			token: number
-		) {
-			const dx = end.x - start.x
-			const dy = end.y - start.y
-			const distance = Math.hypot(dx, dy)
-			const durationMs = clamp(distance * 2.4, 300, 1100)
-			const angle = Math.atan2(dy, dx)
-			const arc = clamp(distance * 0.18, 18, 120) * (Math.random() > 0.5 ? 1 : -1)
-			const c1x = start.x + dx * 0.34 + Math.cos(angle + Math.PI / 2) * arc
-			const c1y = start.y + dy * 0.34 + Math.sin(angle + Math.PI / 2) * arc
-			const c2x = start.x + dx * 0.68 + Math.cos(angle - Math.PI / 2) * arc * 0.65
-			const c2y = start.y + dy * 0.68 + Math.sin(angle - Math.PI / 2) * arc * 0.65
-			const startTs = performance.now()
+	const animateSegment = useCallback(async function animateSegment(
+		start: { x: number; y: number },
+		end: { x: number; y: number },
+		token: number
+	) {
+		const dx = end.x - start.x
+		const dy = end.y - start.y
+		const distance = Math.hypot(dx, dy)
+		const durationMs = clamp(distance * 2.4, 300, 1100)
+		const angle = Math.atan2(dy, dx)
+		const arc = clamp(distance * 0.18, 18, 120) * (Math.random() > 0.5 ? 1 : -1)
+		const c1x = start.x + dx * 0.34 + Math.cos(angle + Math.PI / 2) * arc
+		const c1y = start.y + dy * 0.34 + Math.sin(angle + Math.PI / 2) * arc
+		const c2x = start.x + dx * 0.68 + Math.cos(angle - Math.PI / 2) * arc * 0.65
+		const c2y = start.y + dy * 0.68 + Math.sin(angle - Math.PI / 2) * arc * 0.65
+		const startTs = performance.now()
 
-			while (true) {
-				await new Promise<void>(function nextFrame(resolve) {
-					requestAnimationFrame(function () {
-						resolve()
-					})
+		while (true) {
+			await new Promise<void>(function nextFrame(resolve) {
+				requestAnimationFrame(function () {
+					resolve()
 				})
-				if (token !== runTokenRef.current) return false
-				if (pausedRef.current) continue
-				const t = clamp((performance.now() - startTs) / durationMs, 0, 1)
-				const easedT = easeInOutCubic(t)
-				setCursor({
-					x: cubicBezier(easedT, start.x, c1x, c2x, end.x),
-					y: cubicBezier(easedT, start.y, c1y, c2y, end.y)
-				})
-				if (t >= 1) return true
-			}
-		},
-		[]
-	)
+			})
+			if (token !== runTokenRef.current) return false
+			if (pausedRef.current) continue
+			const t = clamp((performance.now() - startTs) / durationMs, 0, 1)
+			const easedT = easeInOutCubic(t)
+			setCursor({
+				x: cubicBezier(easedT, start.x, c1x, c2x, end.x),
+				y: cubicBezier(easedT, start.y, c1y, c2y, end.y)
+			})
+			if (t >= 1) return true
+		}
+	}, [])
 
 	const dispatchClickAtPoint = useCallback(function dispatchClickAtPoint(x: number, y: number) {
 		const target = document.elementFromPoint(x, y)
@@ -136,35 +127,38 @@ export function RecordingOverlay() {
 		target.dispatchEvent(new MouseEvent('click', eventInit))
 	}, [])
 
-	const runPlayback = useCallback(async function runPlayback() {
-		if (waypoints.length === 0) return
+	const runPlayback = useCallback(
+		async function runPlayback() {
+			if (waypoints.length === 0) return
 
-		const token = runTokenRef.current + 1
-		runTokenRef.current = token
-		pausedRef.current = false
-		setPlaybackState('playing')
-
-		let current = cursor ?? {
-			x: window.innerWidth / 2,
-			y: window.innerHeight / 2
-		}
-		setCursor(current)
-
-		for (const waypoint of waypoints) {
-			const waitingCompleted = await waitWithPause(waypoint.delayMs, token)
-			if (!waitingCompleted) return
-			const movementCompleted = await animateSegment(current, waypoint, token)
-			if (!movementCompleted) return
-			current = waypoint
-			setCursor({ x: waypoint.x, y: waypoint.y })
-			dispatchClickAtPoint(waypoint.x, waypoint.y)
-		}
-
-		if (token === runTokenRef.current) {
+			const token = runTokenRef.current + 1
+			runTokenRef.current = token
 			pausedRef.current = false
-			setPlaybackState('idle')
-		}
-	}, [animateSegment, cursor, dispatchClickAtPoint, waitWithPause, waypoints])
+			setPlaybackState('playing')
+
+			let current = cursor ?? {
+				x: window.innerWidth / 2,
+				y: window.innerHeight / 2
+			}
+			setCursor(current)
+
+			for (const waypoint of waypoints) {
+				const waitingCompleted = await waitWithPause(waypoint.delayMs, token)
+				if (!waitingCompleted) return
+				const movementCompleted = await animateSegment(current, waypoint, token)
+				if (!movementCompleted) return
+				current = waypoint
+				setCursor({ x: waypoint.x, y: waypoint.y })
+				dispatchClickAtPoint(waypoint.x, waypoint.y)
+			}
+
+			if (token === runTokenRef.current) {
+				pausedRef.current = false
+				setPlaybackState('idle')
+			}
+		},
+		[animateSegment, cursor, dispatchClickAtPoint, waitWithPause, waypoints]
+	)
 
 	useEffect(
 		function captureWaypointsOnClick() {
@@ -212,9 +206,12 @@ export function RecordingOverlay() {
 		}
 	}, [])
 
-	const waypointPath = useMemo(function path() {
-		return waypoints.map((point) => `${point.x},${point.y}`).join(' ')
-	}, [waypoints])
+	const waypointPath = useMemo(
+		function path() {
+			return waypoints.map((point) => `${point.x},${point.y}`).join(' ')
+		},
+		[waypoints]
+	)
 
 	function handleRecordToggle() {
 		if (playbackState === 'recording') {
@@ -324,13 +321,17 @@ export function RecordingOverlay() {
 							<p className='text-xs font-semibold tracking-wide uppercase text-muted-foreground'>
 								Demo Autopilot
 							</p>
-							<p className='text-[11px] font-mono text-muted-foreground'>{playbackState}</p>
+							<p className='text-[11px] font-mono text-muted-foreground'>
+								{playbackState}
+							</p>
 						</div>
 
 						<div className='mb-3 flex flex-wrap gap-2'>
 							<Button
 								size='sm'
-								variant={playbackState === 'recording' ? 'destructive' : 'secondary'}
+								variant={
+									playbackState === 'recording' ? 'destructive' : 'secondary'
+								}
 								onClick={handleRecordToggle}
 								disabled={isPlaying}
 							>
@@ -376,7 +377,9 @@ export function RecordingOverlay() {
 
 						<div className='mb-2 text-[11px] text-muted-foreground font-mono'>
 							points={waypoints.length}
-							{cursor ? `  cursor=(${Math.round(cursor.x)},${Math.round(cursor.y)})` : ''}
+							{cursor
+								? `  cursor=(${Math.round(cursor.x)},${Math.round(cursor.y)})`
+								: ''}
 						</div>
 
 						<div className='max-h-[180px] overflow-auto rounded border border-border/60 bg-muted/20 p-2 font-mono text-[11px]'>
@@ -387,11 +390,17 @@ export function RecordingOverlay() {
 							)}
 							{waypoints.map(function (point, index) {
 								return (
-									<div key={point.id} className='flex items-center justify-between py-0.5'>
+									<div
+										key={point.id}
+										className='flex items-center justify-between py-0.5'
+									>
 										<span>
-											{index + 1}. ({Math.round(point.x)}, {Math.round(point.y)})
+											{index + 1}. ({Math.round(point.x)},{' '}
+											{Math.round(point.y)})
 										</span>
-										<span className='text-muted-foreground'>{point.delayMs}ms</span>
+										<span className='text-muted-foreground'>
+											{point.delayMs}ms
+										</span>
 									</div>
 								)
 							})}

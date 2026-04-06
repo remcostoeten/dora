@@ -4,6 +4,10 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
 import { useShortcut } from '@/core/shortcuts'
+import {
+	SQL_CONSOLE_PALETTE_EVENT,
+	type SqlConsolePaletteCommand
+} from '@/features/command-palette/events'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
@@ -108,7 +112,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				// Currently SavedQuery doesn't strictly have parent_id in types but we might need to handle if it did
 				// For now assuming scripts are flat or we need to check if SavedQuery has folder_id
 				// Wait, SavedQuery type in bindings.ts has NO folder_id or parent_id.
-				// So scripts can't be in folders yet? 
+				// So scripts can't be in folders yet?
 				// Ah, updateScript binding shows `folderId` param!
 				// saved_query table has folder_id.
 				// Bindings for SavedQuery TYPE seem missing folder_id?
@@ -120,14 +124,14 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				// If bindings is missing it, we can't see it.
 				// But wait, getSnippets command returns SavedQuery.
 				// getScripts returns SavedQuery.
-				// Maybe I should use getSnippets if it returns more data? 
+				// Maybe I should use getSnippets if it returns more data?
 				// No, getScripts is what was used.
 				// Let's assume for now scripts are root only until we fix bindings type.
 				// OR, maybe `category` is used as folder? No, snippet logic usually uses ID relationships.
 
 				// Re-reading bindings.ts:
 				// export type SavedQuery = { ... tags, category ... }
-				// It DOES NOT have folder_id. 
+				// It DOES NOT have folder_id.
 				// This suggests scripts can't technically be in folders on the frontend-view of the struct yet.
 				// However, I need to implement what I can.
 
@@ -143,10 +147,8 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 			})
 		}
 
-
 		setSnippets(newSnippets)
 	}, [adapter, activeConnectionId])
-
 
 	useEffect(
 		function () {
@@ -229,24 +231,24 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 
 			window.addEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
 			return function () {
-				window.removeEventListener(
-					'dora-schema-refresh',
-					onSchemaRefresh as EventListener
-				)
+				window.removeEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
 			}
 		},
 		[activeConnectionId, refreshSchema]
 	)
 
 	const handleExecute = useCallback(
-		async (codeOverride?: string) => {
+		async (codeOverride?: string, modeOverride?: 'sql' | 'drizzle') => {
 			if (isExecuting) return
 
 			setIsExecuting(true)
 			setResult(null)
+			const nextMode = modeOverride || mode
+			const historyQuery =
+				codeOverride || (nextMode === 'sql' ? currentSqlQuery : currentDrizzleQuery)
 
 			try {
-				if (mode === 'sql') {
+				if (nextMode === 'sql') {
 					const queryToRun = codeOverride || currentSqlQuery
 					if (!activeConnectionId) {
 						throw new Error('No connection selected')
@@ -258,22 +260,22 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 
 						const rows = Array.isArray(res.data.rows)
 							? res.data.rows.map((row: any) => {
-								if (
-									typeof row === 'object' &&
-									row !== null &&
-									!Array.isArray(row)
-								) {
-									return row
-								}
-								if (Array.isArray(row)) {
-									const obj: Record<string, any> = {}
-									columns.forEach((col: string, i: number) => {
-										obj[col] = row[i]
-									})
-									return obj
-								}
-								return {}
-							})
+									if (
+										typeof row === 'object' &&
+										row !== null &&
+										!Array.isArray(row)
+									) {
+										return row
+									}
+									if (Array.isArray(row)) {
+										const obj: Record<string, any> = {}
+										columns.forEach((col: string, i: number) => {
+											obj[col] = row[i]
+										})
+										return obj
+									}
+									return {}
+								})
 							: []
 
 						const queryType = getQueryType(queryToRun)
@@ -371,7 +373,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				})
 
 				addToHistory({
-					query: mode === 'sql' ? currentSqlQuery : currentDrizzleQuery,
+					query: historyQuery,
 					connectionId: activeConnectionId || null,
 					executionTimeMs: 0,
 					success: false,
@@ -381,14 +383,58 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				setIsExecuting(false)
 			}
 		},
-		[
-			mode,
-			currentSqlQuery,
-			currentDrizzleQuery,
-			isExecuting,
-			activeConnectionId,
-			adapter
-		]
+		[mode, currentSqlQuery, currentDrizzleQuery, isExecuting, activeConnectionId, adapter]
+	)
+
+	useEffect(
+		function listenForPaletteCommands() {
+			function onPaletteCommand(event: Event) {
+				const customEvent = event as CustomEvent<SqlConsolePaletteCommand>
+				const detail = customEvent.detail
+
+				if (!detail) return
+
+				if (detail.type === 'set-mode') {
+					setMode(detail.mode)
+					return
+				}
+
+				if (detail.type === 'toggle-history') {
+					setShowHistory(function (current) {
+						return detail.open ?? !current
+					})
+					return
+				}
+
+				if (detail.type === 'load-query') {
+					const targetMode = detail.mode || inferPaletteMode(detail.query)
+
+					setMode(targetMode)
+					if (targetMode === 'sql') {
+						setCurrentSqlQuery(detail.query)
+					} else {
+						setCurrentDrizzleQuery(detail.query)
+					}
+
+					if (detail.execute) {
+						requestAnimationFrame(function () {
+							handleExecute(detail.query, targetMode).catch(function (error) {
+								console.error('Failed to execute palette SQL command:', error)
+							})
+						})
+					}
+				}
+			}
+
+			window.addEventListener(SQL_CONSOLE_PALETTE_EVENT, onPaletteCommand as EventListener)
+			return function () {
+				window.removeEventListener(
+					SQL_CONSOLE_PALETTE_EVENT,
+					onPaletteCommand as EventListener
+				)
+			}
+		},
+		[handleExecute]
 	)
 
 	function getQueryType(query: string): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'OTHER' {
@@ -417,44 +463,58 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		}
 	}
 
-	const handleExport = useCallback(function () {
-		if (!result || result.rows.length === 0) return
+	const handleExport = useCallback(
+		function () {
+			if (!result || result.rows.length === 0) return
 
-		const jsonString = JSON.stringify(result.rows, null, 2)
-		const blob = new Blob([jsonString], { type: 'application/json' })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement('a')
-		a.href = url
-		a.download = 'query-results.json'
-		a.click()
-		URL.revokeObjectURL(url)
-	}, [result])
+			const jsonString = JSON.stringify(result.rows, null, 2)
+			const blob = new Blob([jsonString], { type: 'application/json' })
+			const url = URL.createObjectURL(blob)
+			const a = document.createElement('a')
+			a.href = url
+			a.download = 'query-results.json'
+			a.click()
+			URL.revokeObjectURL(url)
+		},
+		[result]
+	)
 
-	const handleExportCsv = useCallback(function () {
-		if (!result || result.rows.length === 0) return
+	const handleExportCsv = useCallback(
+		function () {
+			if (!result || result.rows.length === 0) return
 
-		const headers = result.columns.join(',')
-		const rows = result.rows.map(function (row) {
-			return result.columns.map(function (col) {
-				const value = row[col]
-				if (value === null || value === undefined) return ''
-				const stringValue = String(value)
-				if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-					return '"' + stringValue.replace(/"/g, '""') + '"'
-				}
-				return stringValue
-			}).join(',')
-		}).join('\n')
+			const headers = result.columns.join(',')
+			const rows = result.rows
+				.map(function (row) {
+					return result.columns
+						.map(function (col) {
+							const value = row[col]
+							if (value === null || value === undefined) return ''
+							const stringValue = String(value)
+							if (
+								stringValue.includes(',') ||
+								stringValue.includes('"') ||
+								stringValue.includes('\n')
+							) {
+								return '"' + stringValue.replace(/"/g, '""') + '"'
+							}
+							return stringValue
+						})
+						.join(',')
+				})
+				.join('\n')
 
-		const csvContent = headers + '\n' + rows
-		const blob = new Blob([csvContent], { type: 'text/csv' })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement('a')
-		a.href = url
-		a.download = 'query-results.csv'
-		a.click()
-		URL.revokeObjectURL(url)
-	}, [result])
+			const csvContent = headers + '\n' + rows
+			const blob = new Blob([csvContent], { type: 'text/csv' })
+			const url = URL.createObjectURL(blob)
+			const a = document.createElement('a')
+			a.href = url
+			a.download = 'query-results.csv'
+			a.click()
+			URL.revokeObjectURL(url)
+		},
+		[result]
+	)
 
 	// Unified snippet handling - works for both SQL and Drizzle
 	const handleSnippetSelect = useCallback(
@@ -489,7 +549,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				const res = await adapter.saveScript(
 					name,
 					currentContent ||
-					(mode === 'sql' ? '-- New SQL query' : '// New Drizzle query'),
+						(mode === 'sql' ? '-- New SQL query' : '// New Drizzle query'),
 					activeConnectionId,
 					null,
 					parentFolderId
@@ -512,7 +572,6 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		]
 	)
 
-
 	const handleNewFolder = useCallback(
 		async (parentId?: string | null) => {
 			// Extract integer ID if parent is a folder
@@ -533,7 +592,6 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		},
 		[adapter, loadSnippets]
 	)
-
 
 	const handleRenameSnippet = useCallback(
 		async (id: string, newName: string) => {
@@ -571,11 +629,9 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 					console.error('Failed to rename snippet:', error)
 				}
 			}
-
 		},
 		[activeConnectionId, snippets, adapter, loadSnippets]
 	)
-
 
 	const handleDeleteSnippet = useCallback(
 		async (id: string) => {
@@ -601,7 +657,6 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 		},
 		[activeConnectionId, adapter, loadSnippets]
 	)
-
 
 	function handleTableSelect(tableName: string) {
 		if (mode === 'sql') {
@@ -694,7 +749,9 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 							minSize={10}
 							maxSize={25}
 							collapsible
-							onCollapse={function () { setShowHistory(false) }}
+							onCollapse={function () {
+								setShowHistory(false)
+							}}
 						>
 							<QueryHistoryPanel
 								currentConnectionId={activeConnectionId}
@@ -718,12 +775,18 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 						<ConsoleToolbar
 							mode={mode}
 							onModeChange={setMode}
-							onToggleLeftSidebar={function () { setShowLeftSidebar(!showLeftSidebar) }}
-							onToggleCheatsheet={function () { setShowCheatsheet(!showCheatsheet) }}
+							onToggleLeftSidebar={function () {
+								setShowLeftSidebar(!showLeftSidebar)
+							}}
+							onToggleCheatsheet={function () {
+								setShowCheatsheet(!showCheatsheet)
+							}}
 							showLeftSidebar={showLeftSidebar}
 							showCheatsheet={showCheatsheet}
 							isExecuting={isExecuting}
-							onRun={function () { handleExecute() }}
+							onRun={function () {
+								handleExecute()
+							}}
 							onPrettify={handlePrettify}
 							onExport={handleExport}
 							onExportCsv={handleExportCsv}
@@ -733,7 +796,9 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 								setShowFilter(!showFilter)
 							}}
 							showHistory={showHistory}
-							onToggleHistory={function () { setShowHistory(!showHistory) }}
+							onToggleHistory={function () {
+								setShowHistory(!showHistory)
+							}}
 						/>
 
 						{/* Editor and Results */}
@@ -817,4 +882,20 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 			</PanelGroup>
 		</div>
 	)
+}
+
+function inferPaletteMode(query: string): 'sql' | 'drizzle' {
+	const normalized = query.toLowerCase()
+
+	if (
+		normalized.includes('db.select') ||
+		normalized.includes('db.insert') ||
+		normalized.includes('db.update') ||
+		normalized.includes('db.delete') ||
+		normalized.includes('.from(')
+	) {
+		return 'drizzle'
+	}
+
+	return 'sql'
 }

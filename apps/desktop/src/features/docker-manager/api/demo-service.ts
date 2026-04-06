@@ -23,7 +23,13 @@ let demoContainers: DockerContainer[] = [
 		createdAt: Date.now() - 86400000 * 3,
 		ports: [{ hostPort: 5433, containerPort: 5432, protocol: 'tcp' }],
 		labels: { [MANAGED_LABEL_KEY]: MANAGED_LABEL_VALUE },
-		volumes: [{ name: 'dora_analytics_db_data', mountPath: '/var/lib/postgresql/data', isEphemeral: false }],
+		volumes: [
+			{
+				name: 'dora_analytics_db_data',
+				mountPath: '/var/lib/postgresql/data',
+				isEphemeral: false
+			}
+		],
 		env: ['POSTGRES_USER=analytics', 'POSTGRES_DB=analytics', 'POSTGRES_PASSWORD=***']
 	},
 	{
@@ -37,7 +43,13 @@ let demoContainers: DockerContainer[] = [
 		createdAt: Date.now() - 86400000,
 		ports: [{ hostPort: 5434, containerPort: 5432, protocol: 'tcp' }],
 		labels: { [MANAGED_LABEL_KEY]: MANAGED_LABEL_VALUE },
-		volumes: [{ name: 'dora_dev_postgres_data', mountPath: '/var/lib/postgresql/data', isEphemeral: false }],
+		volumes: [
+			{
+				name: 'dora_dev_postgres_data',
+				mountPath: '/var/lib/postgresql/data',
+				isEphemeral: false
+			}
+		],
 		env: ['POSTGRES_USER=dev', 'POSTGRES_DB=devdb', 'POSTGRES_PASSWORD=***']
 	},
 	{
@@ -129,9 +141,11 @@ export async function getContainers(
 
 export async function getContainer(containerId: string): Promise<DockerContainer | null> {
 	await delay(100)
-	return demoContainers.find(function (c) {
-		return c.id === containerId
-	}) ?? null
+	return (
+		demoContainers.find(function (c) {
+			return c.id === containerId
+		}) ?? null
+	)
 }
 
 export async function createPostgresContainer(
@@ -153,11 +167,13 @@ export async function createPostgresContainer(
 		labels: { [MANAGED_LABEL_KEY]: MANAGED_LABEL_VALUE },
 		volumes: config.ephemeral
 			? []
-			: [{
-				name: config.volumeName || generateVolumeName(config.name),
-				mountPath: '/var/lib/postgresql/data',
-				isEphemeral: false
-			}],
+			: [
+					{
+						name: config.volumeName || generateVolumeName(config.name),
+						mountPath: '/var/lib/postgresql/data',
+						isEphemeral: false
+					}
+				],
 		env: [
 			`POSTGRES_USER=${config.user}`,
 			`POSTGRES_DB=${config.database}`,

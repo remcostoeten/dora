@@ -24,14 +24,14 @@ function useSettingsRestorationTest(initialSettings = mockSettings) {
 	)
 
 	function updateSetting(key: string, value: any) {
-    setSettings((prev) => ({ ...prev, [key]: value }))
-    mockUpdateSetting(key, value)
-    }
+		setSettings((prev) => ({ ...prev, [key]: value }))
+		mockUpdateSetting(key, value)
+	}
 
 	function updateSettingsFn(updates: any) {
-    setSettings((prev) => ({ ...prev, ...updates }))
-    mockUpdateSettings(updates)
-    }
+		setSettings((prev) => ({ ...prev, ...updates }))
+		mockUpdateSettings(updates)
+	}
 
 	// Simulate saving last connection logic
 	useEffect(() => {

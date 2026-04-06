@@ -1,4 +1,12 @@
-import { Play, Square, RotateCcw, Trash2, ExternalLink, FileCode, TerminalSquare } from 'lucide-react'
+import {
+	Play,
+	Square,
+	RotateCcw,
+	Trash2,
+	ExternalLink,
+	FileCode,
+	TerminalSquare
+} from 'lucide-react'
 import { Package } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
@@ -65,9 +73,7 @@ export function ContainerDetailsPanel({
 	const isRunning = container.state === 'running'
 
 	const passwordEnv = container.env.find((e) => e.startsWith('POSTGRES_PASSWORD='))
-	const password = passwordEnv
-		? passwordEnv.split('=')[1]
-		: 'postgres'
+	const password = passwordEnv ? passwordEnv.split('=')[1] : 'postgres'
 
 	function handleStart() {
 		containerActions.mutate({ containerId: container.id, action: 'start' })

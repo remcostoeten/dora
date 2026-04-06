@@ -12,8 +12,10 @@ export function generateSnippet(container: DockerContainer, language: SnippetLan
 	const primaryPort = container.ports.find((p) => p.containerPort === 5432)
 	const host = 'localhost'
 	const port = primaryPort?.hostPort ?? 5432
-	const user = container.env.find((e) => e.startsWith('POSTGRES_USER='))?.split('=')[1] || 'postgres'
-	const database = container.env.find((e) => e.startsWith('POSTGRES_DB='))?.split('=')[1] || 'postgres'
+	const user =
+		container.env.find((e) => e.startsWith('POSTGRES_USER='))?.split('=')[1] || 'postgres'
+	const database =
+		container.env.find((e) => e.startsWith('POSTGRES_DB='))?.split('=')[1] || 'postgres'
 
 	const envVars = buildConnectionEnvVars(host, port, user, password, database)
 	const url = envVars.DATABASE_URL

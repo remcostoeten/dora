@@ -1,4 +1,9 @@
-import type { GeneratorProfile, GeneratorScale, ContainerSortConfig, ContainerFilterConfig } from './types'
+import type {
+	GeneratorProfile,
+	GeneratorScale,
+	ContainerSortConfig,
+	ContainerFilterConfig
+} from './types'
 
 export const CONTAINER_PREFIX = 'dora_'
 

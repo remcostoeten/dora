@@ -1,11 +1,4 @@
-import {
-	AlertCircle,
-	CheckCircle2,
-	CircleDot,
-	Loader2,
-	PauseCircle,
-	Square
-} from 'lucide-react'
+import { AlertCircle, CheckCircle2, CircleDot, Loader2, PauseCircle, Square } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { ContainerHealth, ContainerState } from '../types'
 import { cn } from '@/shared/utils/cn'

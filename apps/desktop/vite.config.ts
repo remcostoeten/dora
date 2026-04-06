@@ -24,17 +24,32 @@ export default defineConfig({
 			output: {
 				manualChunks(id) {
 					if (id.includes('node_modules')) {
-						if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-							return 'vendor-react';
+						if (
+							id.includes('react') ||
+							id.includes('react-dom') ||
+							id.includes('react-router-dom')
+						) {
+							return 'vendor-react'
 						}
-						if (id.includes('@radix-ui') || id.includes('lucide-react') || id.includes('clsx') || id.includes('tailwind-merge') || id.includes('class-variance-authority') || id.includes('framer-motion')) {
-							return 'vendor-ui';
+						if (
+							id.includes('@radix-ui') ||
+							id.includes('lucide-react') ||
+							id.includes('clsx') ||
+							id.includes('tailwind-merge') ||
+							id.includes('class-variance-authority') ||
+							id.includes('framer-motion')
+						) {
+							return 'vendor-ui'
 						}
 						if (id.includes('@monaco-editor') || id.includes('monaco-vim')) {
-							return 'vendor-editor';
+							return 'vendor-editor'
 						}
-						if (id.includes('date-fns') || id.includes('zustand') || id.includes('@tanstack/react-query')) {
-							return 'vendor-utils';
+						if (
+							id.includes('date-fns') ||
+							id.includes('zustand') ||
+							id.includes('@tanstack/react-query')
+						) {
+							return 'vendor-utils'
 						}
 					}
 				}

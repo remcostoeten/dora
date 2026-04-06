@@ -30,7 +30,9 @@ function tokenizeLine(line: string): LogToken[] {
 	}
 
 	// Match log level keywords
-	const levelMatch = remaining.match(/^(LOG|ERROR|FATAL|PANIC|WARNING|HINT|NOTICE|DEBUG|INFO|DETAIL|STATEMENT)(\s*:\s*)/)
+	const levelMatch = remaining.match(
+		/^(LOG|ERROR|FATAL|PANIC|WARNING|HINT|NOTICE|DEBUG|INFO|DETAIL|STATEMENT)(\s*:\s*)/
+	)
 	if (levelMatch) {
 		const level = levelMatch[1]
 		let levelColor = 'text-blue-400'
@@ -58,7 +60,10 @@ function tokenizeLine(line: string): LogToken[] {
 		for (let i = 0; i < parts.length; i++) {
 			const part = parts[i]
 			if (!part) continue
-			if ((part.startsWith('"') && part.endsWith('"')) || (part.startsWith("'") && part.endsWith("'"))) {
+			if (
+				(part.startsWith('"') && part.endsWith('"')) ||
+				(part.startsWith("'") && part.endsWith("'"))
+			) {
 				tokens.push({ text: part, className: 'text-amber-300/80' })
 			} else if (/^\d+\.\d+%?$/.test(part) || /^\d{3,}$/.test(part)) {
 				tokens.push({ text: part, className: 'text-purple-400/80' })
@@ -74,11 +79,14 @@ function tokenizeLine(line: string): LogToken[] {
 }
 
 function HighlightedLogs({ logs }: { logs: string }) {
-	const lines = useMemo(function () {
-		return logs.split('\n').map(function (line, i) {
-			return { key: i, tokens: tokenizeLine(line) }
-		})
-	}, [logs])
+	const lines = useMemo(
+		function () {
+			return logs.split('\n').map(function (line, i) {
+				return { key: i, tokens: tokenizeLine(line) }
+			})
+		},
+		[logs]
+	)
 
 	return (
 		<>

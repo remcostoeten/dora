@@ -69,6 +69,7 @@ describe('SqlResults', function () {
 		if (!input) {
 			throw new Error('Expected inline editor input to be rendered')
 		}
+
 		fireEvent.change(input, { target: { value: 'Bobby' } })
 		fireEvent.keyDown(input, { key: 'Enter' })
 
