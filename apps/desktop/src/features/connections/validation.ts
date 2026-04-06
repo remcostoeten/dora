@@ -46,6 +46,17 @@ export const mysqlConnectionStringSchema = baseConnectionSchema.extend({
 		)
 })
 
+export const mysqlConnectionStringSchema = baseConnectionSchema.extend({
+	type: z.literal('mysql'),
+	url: z
+		.string()
+		.min(1, 'Connection string is required')
+		.refine(
+			(val) => val.startsWith('mysql://'),
+			'Invalid connection string format'
+		)
+})
+
 export const connectionFieldsSchema = baseConnectionSchema.extend({
 	type: z.enum(['postgres', 'mysql']),
 	host: z.string().min(1, 'Host is required'),
