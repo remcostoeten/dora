@@ -1,5 +1,4 @@
 import { FolderOpen, Key } from 'lucide-react'
-import { useState } from 'react'
 import { commands } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
 import { Checkbox } from '@/shared/ui/checkbox'
@@ -272,7 +271,7 @@ export function ConnectionForm({
 							</Label>
 						</div>
 
-						{formData.type === 'postgres' && (
+						{(formData.type === 'postgres' || formData.type === 'mysql') && (
 							<div className='border-t border-border/50 pt-4 mt-4 space-y-4'>
 								<div className='flex items-center gap-2'>
 									<Checkbox

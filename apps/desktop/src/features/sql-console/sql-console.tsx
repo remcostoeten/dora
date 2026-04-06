@@ -4,6 +4,10 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
 import { useShortcut } from '@/core/shortcuts'
+import {
+	SQL_CONSOLE_PALETTE_EVENT,
+	type SqlConsolePaletteCommand
+} from '@/features/command-palette/events'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
@@ -234,14 +238,17 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 	)
 
 	const handleExecute = useCallback(
-		async (codeOverride?: string) => {
+		async (codeOverride?: string, modeOverride?: 'sql' | 'drizzle') => {
 			if (isExecuting) return
 
 			setIsExecuting(true)
 			setResult(null)
+			const nextMode = modeOverride || mode
+			const historyQuery =
+				codeOverride || (nextMode === 'sql' ? currentSqlQuery : currentDrizzleQuery)
 
 			try {
-				if (mode === 'sql') {
+				if (nextMode === 'sql') {
 					const queryToRun = codeOverride || currentSqlQuery
 					if (!activeConnectionId) {
 						throw new Error('No connection selected')
@@ -366,7 +373,7 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 				})
 
 				addToHistory({
-					query: mode === 'sql' ? currentSqlQuery : currentDrizzleQuery,
+					query: historyQuery,
 					connectionId: activeConnectionId || null,
 					executionTimeMs: 0,
 					success: false,
@@ -377,6 +384,57 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 			}
 		},
 		[mode, currentSqlQuery, currentDrizzleQuery, isExecuting, activeConnectionId, adapter]
+	)
+
+	useEffect(
+		function listenForPaletteCommands() {
+			function onPaletteCommand(event: Event) {
+				const customEvent = event as CustomEvent<SqlConsolePaletteCommand>
+				const detail = customEvent.detail
+
+				if (!detail) return
+
+				if (detail.type === 'set-mode') {
+					setMode(detail.mode)
+					return
+				}
+
+				if (detail.type === 'toggle-history') {
+					setShowHistory(function (current) {
+						return detail.open ?? !current
+					})
+					return
+				}
+
+				if (detail.type === 'load-query') {
+					const targetMode = detail.mode || inferPaletteMode(detail.query)
+
+					setMode(targetMode)
+					if (targetMode === 'sql') {
+						setCurrentSqlQuery(detail.query)
+					} else {
+						setCurrentDrizzleQuery(detail.query)
+					}
+
+					if (detail.execute) {
+						requestAnimationFrame(function () {
+							handleExecute(detail.query, targetMode).catch(function (error) {
+								console.error('Failed to execute palette SQL command:', error)
+							})
+						})
+					}
+				}
+			}
+
+			window.addEventListener(SQL_CONSOLE_PALETTE_EVENT, onPaletteCommand as EventListener)
+			return function () {
+				window.removeEventListener(
+					SQL_CONSOLE_PALETTE_EVENT,
+					onPaletteCommand as EventListener
+				)
+			}
+		},
+		[handleExecute]
 	)
 
 	function getQueryType(query: string): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'OTHER' {
@@ -824,4 +882,20 @@ export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
 			</PanelGroup>
 		</div>
 	)
+}
+
+function inferPaletteMode(query: string): 'sql' | 'drizzle' {
+	const normalized = query.toLowerCase()
+
+	if (
+		normalized.includes('db.select') ||
+		normalized.includes('db.insert') ||
+		normalized.includes('db.update') ||
+		normalized.includes('db.delete') ||
+		normalized.includes('.from(')
+	) {
+		return 'drizzle'
+	}
+
+	return 'sql'
 }

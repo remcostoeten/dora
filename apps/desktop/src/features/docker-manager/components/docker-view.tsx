@@ -13,6 +13,10 @@ import {
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { useToast } from '@/components/ui/use-toast'
+import {
+	DOCKER_PALETTE_EVENT,
+	type DockerPaletteCommand
+} from '@/features/command-palette/events'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -295,6 +299,61 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 			}
 		},
 		[allContainers, terminalContainerId]
+	)
+
+	useEffect(
+		function listenForPaletteCommands() {
+			function onPaletteCommand(event: Event) {
+				const customEvent = event as CustomEvent<DockerPaletteCommand>
+				const detail = customEvent.detail
+
+				if (!detail) return
+
+				if (detail.type === 'open-create') {
+					setIsCreateDialogOpen(true)
+					return
+				}
+
+				setSelectedContainerId(detail.containerId)
+
+				if (detail.type === 'select-container') {
+					return
+				}
+
+				if (detail.type === 'container-action') {
+					containerActions.mutate({
+						containerId: detail.containerId,
+						action: detail.action
+					})
+					return
+				}
+
+				const container =
+					allContainers.find(function (item) {
+						return item.id === detail.containerId
+					}) ?? null
+
+				if (!container) {
+					return
+				}
+
+				if (detail.type === 'open-in-data-viewer') {
+					onOpenInDataViewer?.(container)
+					return
+				}
+
+				if (detail.type === 'open-terminal') {
+					setTerminalContainerId(container.id)
+					setIsTerminalPanelOpen(true)
+				}
+			}
+
+			window.addEventListener(DOCKER_PALETTE_EVENT, onPaletteCommand as EventListener)
+			return function () {
+				window.removeEventListener(DOCKER_PALETTE_EVENT, onPaletteCommand as EventListener)
+			}
+		},
+		[allContainers, containerActions, onOpenInDataViewer]
 	)
 
 	if (isCheckingDocker) {

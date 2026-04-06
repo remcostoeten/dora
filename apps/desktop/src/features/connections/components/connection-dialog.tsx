@@ -252,10 +252,19 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 					}
 				}
 
-				databaseInfo = {
-					Postgres: {
-						connection_string: connectionString,
-						ssh_config: sshConfig
+				if (formData.type === 'mysql') {
+					databaseInfo = {
+						MySQL: {
+							connection_string: connectionString,
+							ssh_config: sshConfig
+						}
+					}
+				} else {
+					databaseInfo = {
+						Postgres: {
+							connection_string: connectionString,
+							ssh_config: sshConfig
+						}
 					}
 				}
 			}
@@ -330,13 +339,13 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-[560px] max-h-[85vh] flex flex-col border-border bg-card p-0 gap-0 overflow-hidden shadow-xl'>
-				<DialogHeader className='px-6 py-5 border-b border-border bg-card'>
-					<DialogTitle className='text-lg font-semibold'>
+			<DialogContent className='sm:max-w-[560px] max-h-[85vh] flex flex-col border-border/60 bg-card p-0 gap-0 overflow-hidden shadow-lg'>
+				<DialogHeader className='px-6 py-5 border-b border-border/50'>
+					<DialogTitle className='text-base font-semibold tracking-tight'>
 						{initialValues ? 'Edit Connection' : 'New Connection'}
 					</DialogTitle>
-					<DialogDescription className='text-sm text-muted-foreground'>
-						Configure your database connection
+					<DialogDescription className='text-xs text-muted-foreground mt-0.5'>
+						Configure your database connection details
 					</DialogDescription>
 				</DialogHeader>
 
@@ -380,23 +389,25 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 
 					{testMessage && (
 						<div
-							className={`text-sm p-3 rounded-md flex items-center gap-2 ${
+							className={
 								testStatus === 'success'
-									? 'bg-green-500/10 text-green-500 border border-green-500/20'
-									: 'bg-red-500/10 text-red-500 border border-red-500/20'
-							}`}
+									? 'text-sm p-3 rounded-md flex items-center gap-2.5 bg-emerald-500/8 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15'
+									: 'text-sm p-3 rounded-md flex items-center gap-2.5 bg-red-500/8 text-red-600 dark:text-red-400 border border-red-500/15'
+							}
 						>
 							<div
-								className={`h-2 w-2 rounded-full ${
-									testStatus === 'success' ? 'bg-green-500' : 'bg-red-500'
-								}`}
+								className={
+									testStatus === 'success'
+										? 'h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0'
+										: 'h-1.5 w-1.5 rounded-full bg-red-500 shrink-0'
+								}
 							/>
 							{testMessage}
 						</div>
 					)}
 				</div>
 
-				<DialogFooter className='px-6 py-4 border-t border-border bg-muted'>
+				<DialogFooter className='px-6 py-4 border-t border-border/50'>
 					<div className='flex items-center justify-between w-full'>
 						<Button
 							type='button'

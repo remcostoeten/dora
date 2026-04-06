@@ -472,6 +472,12 @@ export function DataGrid({
 		)
 	}, [])
 
+	const refocusGrid = useCallback(function () {
+		requestAnimationFrame(function () {
+			gridRef.current?.focus()
+		})
+	}, [])
+
 	const handleSaveEdit = useCallback(
 		function () {
 			if (editingCell && onCellEdit) {
@@ -479,14 +485,64 @@ export function DataGrid({
 			}
 			setEditingCell(null)
 			setEditValue('')
+			refocusGrid()
 		},
-		[editingCell, editValue, onCellEdit]
+		[editingCell, editValue, onCellEdit, refocusGrid]
 	)
 
-	const handleCancelEdit = useCallback(function () {
-		setEditingCell(null)
-		setEditValue('')
-	}, [])
+	const handleCancelEdit = useCallback(
+		function () {
+			setEditingCell(null)
+			setEditValue('')
+			refocusGrid()
+		},
+		[refocusGrid]
+	)
+
+	const handleSaveEditAndMove = useCallback(
+		function (direction: 'next' | 'prev') {
+			if (!editingCell) return
+			if (onCellEdit) {
+				onCellEdit(editingCell.rowIndex, editingCell.columnName, editValue)
+			}
+			const colIndex = columns.findIndex(function (c) {
+				return c.name === editingCell.columnName
+			})
+			const maxCol = columns.length - 1
+			const maxRow = rows.length - 1
+			let nextRow = editingCell.rowIndex
+			let nextCol = colIndex
+
+			if (direction === 'next') {
+				if (colIndex < maxCol) {
+					nextCol = colIndex + 1
+				} else if (editingCell.rowIndex < maxRow) {
+					nextRow = editingCell.rowIndex + 1
+					nextCol = 0
+				}
+			} else {
+				if (colIndex > 0) {
+					nextCol = colIndex - 1
+				} else if (editingCell.rowIndex > 0) {
+					nextRow = editingCell.rowIndex - 1
+					nextCol = maxCol
+				}
+			}
+
+			const newPos = { row: nextRow, col: nextCol }
+			setFocusedCell(newPos)
+			setAnchorCell(newPos)
+			updateCellSelection(new Set([getCellKey(nextRow, nextCol)]))
+			setEditingCell({ rowIndex: nextRow, columnName: columns[nextCol].name })
+			setEditValue(
+				rows[nextRow][columns[nextCol].name] === null ||
+					rows[nextRow][columns[nextCol].name] === undefined
+					? ''
+					: String(rows[nextRow][columns[nextCol].name])
+			)
+		},
+		[editingCell, editValue, onCellEdit, columns, rows]
+	)
 
 	const handleEditKeyDown = useCallback(
 		function (e: React.KeyboardEvent) {
@@ -496,9 +552,12 @@ export function DataGrid({
 			} else if (e.key === 'Escape') {
 				e.preventDefault()
 				handleCancelEdit()
+			} else if (e.key === 'Tab') {
+				e.preventDefault()
+				handleSaveEditAndMove(e.shiftKey ? 'prev' : 'next')
 			}
 		},
-		[handleSaveEdit, handleCancelEdit]
+		[handleSaveEdit, handleCancelEdit, handleSaveEditAndMove]
 	)
 
 	// Focus input when editing cell changes
@@ -518,7 +577,26 @@ export function DataGrid({
 
 	const handleGridKeyDown = useCallback(
 		function (e: React.KeyboardEvent) {
-			if (!focusedCell) return
+			// If no cell is focused yet, focus cell 0,0 on any arrow/tab/enter
+			if (!focusedCell) {
+				if (
+					rows.length > 0 &&
+					columns.length > 0 &&
+					(e.key === 'ArrowDown' ||
+						e.key === 'ArrowUp' ||
+						e.key === 'ArrowLeft' ||
+						e.key === 'ArrowRight' ||
+						e.key === 'Tab' ||
+						e.key === 'Enter')
+				) {
+					e.preventDefault()
+					const firstPos = { row: 0, col: 0 }
+					setFocusedCell(firstPos)
+					setAnchorCell(firstPos)
+					updateCellSelection(new Set([getCellKey(0, 0)]))
+				}
+				return
+			}
 			if (editingCell) return
 
 			const { row, col } = focusedCell
@@ -546,19 +624,35 @@ export function DataGrid({
 			switch (e.key) {
 				case 'ArrowUp':
 					e.preventDefault()
-					if (row > 0) moveAndMaybeSelect(row - 1, col)
+					if (e.ctrlKey || e.metaKey) {
+						moveAndMaybeSelect(0, col)
+					} else if (row > 0) {
+						moveAndMaybeSelect(row - 1, col)
+					}
 					break
 				case 'ArrowDown':
 					e.preventDefault()
-					if (row < maxRow) moveAndMaybeSelect(row + 1, col)
+					if (e.ctrlKey || e.metaKey) {
+						moveAndMaybeSelect(maxRow, col)
+					} else if (row < maxRow) {
+						moveAndMaybeSelect(row + 1, col)
+					}
 					break
 				case 'ArrowLeft':
 					e.preventDefault()
-					if (col > 0) moveAndMaybeSelect(row, col - 1)
+					if (e.ctrlKey || e.metaKey) {
+						moveAndMaybeSelect(row, 0)
+					} else if (col > 0) {
+						moveAndMaybeSelect(row, col - 1)
+					}
 					break
 				case 'ArrowRight':
 					e.preventDefault()
-					if (col < maxCol) moveAndMaybeSelect(row, col + 1)
+					if (e.ctrlKey || e.metaKey) {
+						moveAndMaybeSelect(row, maxCol)
+					} else if (col < maxCol) {
+						moveAndMaybeSelect(row, col + 1)
+					}
 					break
 				case 'Tab':
 					e.preventDefault()
@@ -577,8 +671,16 @@ export function DataGrid({
 					}
 					break
 				case 'Enter':
+				case 'F2':
 					e.preventDefault()
 					handleCellDoubleClick(row, columns[col].name, rows[row][columns[col].name])
+					break
+				case 'Delete':
+				case 'Backspace':
+					if (!e.ctrlKey && !e.metaKey && onCellEdit) {
+						e.preventDefault()
+						onCellEdit(row, columns[col].name, null)
+					}
 					break
 				case 'Escape':
 					e.preventDefault()
@@ -586,12 +688,33 @@ export function DataGrid({
 						cancelAnimationFrame(pendingNavFrameRef.current)
 						pendingNavFrameRef.current = null
 					}
-					setFocusedCell(null)
-					updateCellSelection(new Set())
+					if (selectedCellsSet.size > 1) {
+						updateCellSelection(new Set([getCellKey(row, col)]))
+					} else {
+						setFocusedCell(null)
+						updateCellSelection(new Set())
+					}
 					break
 				case ' ':
 					e.preventDefault()
-					onRowSelect(row, !selectedRows.has(row))
+					if (e.shiftKey && lastClickedRowRef.current !== null && onRowsSelect) {
+						const start = Math.min(lastClickedRowRef.current, row)
+						const end = Math.max(lastClickedRowRef.current, row)
+						const range = []
+						for (let i = start; i <= end; i++) {
+							range.push(i)
+						}
+						onRowsSelect(range, true)
+					} else {
+						onRowSelect(row, !selectedRows.has(row))
+						lastClickedRowRef.current = row
+					}
+					break
+				case 'a':
+					if (e.ctrlKey || e.metaKey) {
+						e.preventDefault()
+						onSelectAll(!allSelected)
+					}
 					break
 				case 'c':
 					if (e.ctrlKey || e.metaKey) {
@@ -665,6 +788,19 @@ export function DataGrid({
 							})
 					}
 					break
+				default:
+					// Start typing to edit: single printable character starts editing
+					if (
+						e.key.length === 1 &&
+						!e.ctrlKey &&
+						!e.metaKey &&
+						!e.altKey
+					) {
+						e.preventDefault()
+						setEditingCell({ rowIndex: row, columnName: columns[col].name })
+						setEditValue(e.key)
+					}
+					break
 			}
 		},
 		[
@@ -674,9 +810,13 @@ export function DataGrid({
 			columns,
 			handleCellDoubleClick,
 			onRowSelect,
+			onRowsSelect,
+			onSelectAll,
+			allSelected,
 			selectedRows,
 			anchorCell,
-			selectedCellsSet
+			selectedCellsSet,
+			onCellEdit
 		]
 	)
 
@@ -977,7 +1117,7 @@ export function DataGrid({
 								selectedRows.has(rowIndex)
 									? 'bg-primary/10'
 									: rowIndex % 2 === 1
-										? 'bg-muted/5 hover:bg-sidebar-accent/30'
+										? 'bg-muted/35 hover:bg-sidebar-accent/30'
 										: 'hover:bg-sidebar-accent/30'
 							)
 
@@ -1007,27 +1147,11 @@ export function DataGrid({
 											role='row'
 											aria-rowindex={rowIndex + 2}
 											aria-selected={selectedRows.has(rowIndex)}
-											tabIndex={0}
-											onKeyDown={function (e) {
-												if (e.key === ' ' || e.key === 'Enter') {
-													e.preventDefault()
-													onRowSelect(
-														rowIndex,
-														!selectedRows.has(rowIndex)
-													)
-												}
-											}}
 										>
 											<td
 												className={cn(
 													'px-4 py-1.5 text-center border-b border-r border-sidebar-border sticky left-0 z-20 transition-colors',
-													// Sticky cells must stay opaque; otherwise horizontal scroll content bleeds through.
-													'group-hover:bg-sidebar-accent',
-													selectedRows.has(rowIndex)
-														? 'bg-sidebar-accent'
-														: rowIndex % 2 === 1
-															? 'bg-muted'
-															: 'bg-background'
+													selectedRows.has(rowIndex) && 'bg-sidebar-accent'
 												)}
 												role='gridcell'
 											>
@@ -1133,7 +1257,7 @@ export function DataGrid({
 																	'bg-muted-foreground/10',
 																isFocused &&
 																	!isEditing &&
-																	'bg-primary/5 ring-2 ring-inset ring-secondary AAAA  z-10',
+																	'bg-primary/5 ring-2 ring-inset ring-primary/60 z-10',
 																isDirty && 'bg-amber-500/10'
 															)}
 															style={

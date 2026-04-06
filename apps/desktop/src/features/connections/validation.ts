@@ -99,6 +99,7 @@ export function validateConnection(
 ): ValidationResult {
 	try {
 		const type = formData.type as string
+		const supportsSshTunnel = type === 'postgres' || type === 'mysql'
 
 		// Validate name first
 		if (!formData.name || (formData.name as string).trim() === '') {
@@ -120,11 +121,7 @@ export function validateConnection(
 				connectionFieldsSchema.parse(formData)
 			}
 
-			if (
-				type === 'postgres' &&
-				formData.sshConfig &&
-				typeof formData.sshConfig === 'object'
-			) {
+			if (supportsSshTunnel && formData.sshConfig && typeof formData.sshConfig === 'object') {
 				const sshConfig = formData.sshConfig as Record<string, unknown>
 				if (sshConfig.enabled === true) {
 					sshTunnelSchema.parse(sshConfig)

@@ -1035,6 +1035,7 @@ export type ConnectionInfo = {
 }
 export type DatabaseInfo =
 	| { Postgres: { connection_string: string; ssh_config: SshConfig | null } }
+	| { MySQL: { connection_string: string; ssh_config: SshConfig | null } }
 	| { SQLite: { db_path: string } }
 	/**
 	 * LibSQL/Turso database - can be local path or remote URL with auth token

@@ -4,6 +4,8 @@ use dashmap::DashMap;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use base64::Engine;
+use mysql_async::prelude::Queryable;
+use mysql_async::{Params, Row as MySqlRow, Value as MySqlValue};
 
 use crate::{
     database::{
@@ -94,6 +96,7 @@ impl<'a> MutationService<'a> {
             }
             "sqlite" => execute_sqlite_update(&client, &query, &new_value, &primary_key_value)?,
             "libsql" => execute_libsql_update(&client, &query, &new_value, &primary_key_value).await?,
+            "mysql" => execute_mysql_update(&client, &query, &new_value, &primary_key_value).await?,
             _ => unreachable!(),
         };
 
@@ -199,8 +202,29 @@ impl<'a> MutationService<'a> {
                     .map_err(|e| Error::Any(anyhow!("LibSQL delete failed: {}", e)))?
                     as usize
             }
-            DatabaseClient::MySQL { pool: _ } => {
-                return Err(Error::Any(anyhow::anyhow!("MySQL delete not yet implemented")))
+            DatabaseClient::MySQL { pool } => {
+                let qualified_table = mysql_qualified_table_name(&table_name, schema_name.as_deref());
+                let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
+                let query = format!(
+                    "DELETE FROM {} WHERE {} IN ({})",
+                    qualified_table,
+                    mysql_quote_identifier(&primary_key_column),
+                    placeholders.join(", ")
+                );
+
+                let params: Vec<MySqlValue> = primary_key_values
+                    .iter()
+                    .map(json_to_mysql_value)
+                    .collect();
+
+                let mut conn = pool
+                    .get_conn()
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
+                conn.exec_drop(query, Params::Positional(params))
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL delete failed: {}", e)))?;
+                conn.affected_rows() as usize
             }
         };
 
@@ -329,8 +353,43 @@ impl<'a> MutationService<'a> {
                     .map_err(|e| Error::Any(anyhow!("LibSQL insert failed: {}", e)))?;
                 (1, "Inserted 1 row".to_string())
             }
-            DatabaseClient::MySQL { pool: _ } => {
-                return Err(Error::Any(anyhow::anyhow!("MySQL insert not yet implemented")))
+            DatabaseClient::MySQL { pool } => {
+                let qualified_table = mysql_qualified_table_name(&table_name, schema_name.as_deref());
+                let col_names: String = columns
+                    .iter()
+                    .map(|c| mysql_quote_identifier(c))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let placeholders: String = std::iter::repeat_n("?", values_len)
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let query = format!(
+                    "INSERT INTO {} ({}) VALUES ({})",
+                    qualified_table, col_names, placeholders
+                );
+
+                let params: Vec<MySqlValue> = columns
+                    .iter()
+                    .filter_map(|column| row_data.get(*column))
+                    .map(json_to_mysql_value)
+                    .collect();
+
+                let mut conn = pool
+                    .get_conn()
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
+                conn.exec_drop(query, Params::Positional(params))
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL insert failed: {}", e)))?;
+                let rows = conn.affected_rows() as usize;
+                (
+                    rows,
+                    if rows == 1 {
+                        "Inserted 1 row".to_string()
+                    } else {
+                        format!("Inserted {} row(s)", rows)
+                    },
+                )
             }
         };
 
@@ -443,8 +502,40 @@ impl<'a> MutationService<'a> {
                 }
                 data
             }
-            DatabaseClient::MySQL { pool: _ } => {
-                return Err(Error::Any(anyhow::anyhow!("MySQL duplicate row not yet implemented")))
+            DatabaseClient::MySQL { pool } => {
+                let qualified_table = mysql_qualified_table_name(&table_name, schema_name.as_deref());
+                let query = format!(
+                    "SELECT * FROM {} WHERE {} = ? LIMIT 1",
+                    qualified_table,
+                    mysql_quote_identifier(&primary_key_column)
+                );
+                let params = Params::Positional(vec![json_to_mysql_value(&primary_key_value)]);
+                let mut conn = pool
+                    .get_conn()
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
+                let row: MySqlRow = conn
+                    .exec_first(query, params)
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL duplicate lookup failed: {}", e)))?
+                    .ok_or_else(|| {
+                        Error::Any(anyhow!(
+                            "No row found in {} where {} matches the provided primary key",
+                            qualified_table,
+                            primary_key_column
+                        ))
+                    })?;
+
+                let mut data = serde_json::Map::new();
+                for (idx, column) in row.columns_ref().iter().enumerate() {
+                    let value = row
+                        .as_ref(idx)
+                        .cloned()
+                        .map(mysql_value_to_json)
+                        .unwrap_or(serde_json::Value::Null);
+                    data.insert(column.name_str().to_string(), value);
+                }
+                data
             }
         };
 
@@ -518,7 +609,7 @@ impl<'a> MutationService<'a> {
             "postgres" => fetch_postgres_data(&client, &query).await?,
             "sqlite" => fetch_sqlite_data(&client, &query)?,
             "libsql" => fetch_libsql_data(&client, &query).await?,
-            "mysql" => return Err(Error::Any(anyhow::anyhow!("MySQL export not yet implemented"))),
+            "mysql" => fetch_mysql_data(&client, &query).await?,
             _ => unreachable!(),
         };
 
@@ -537,23 +628,44 @@ impl<'a> MutationService<'a> {
                 serde_json::to_string_pretty(&data)?
             }
             ExportFormat::SqlInsert => {
-                let schema_prefix = schema_name
-                    .as_ref()
-                    .map(|s| format!("\"{}\".", s))
-                    .unwrap_or_default();
-                let column_list = columns
-                    .iter()
-                    .map(|c| format!("\"{}\"", c))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let is_mysql = db_type == "mysql";
+                let schema_prefix = if is_mysql {
+                    schema_name
+                        .as_ref()
+                        .map(|s| format!("{}.", mysql_quote_identifier(s)))
+                        .unwrap_or_default()
+                } else {
+                    schema_name
+                        .as_ref()
+                        .map(|s| format!("\"{}\".", s))
+                        .unwrap_or_default()
+                };
+                let table_name_sql = if is_mysql {
+                    mysql_quote_identifier(&table_name)
+                } else {
+                    format!("\"{}\"", table_name)
+                };
+                let column_list = if is_mysql {
+                    columns
+                        .iter()
+                        .map(|c| mysql_quote_identifier(c))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                } else {
+                    columns
+                        .iter()
+                        .map(|c| format!("\"{}\"", c))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                };
 
                 rows.iter()
                     .map(|row| {
                         let values: Vec<String> = row.iter().map(json_to_sql_literal).collect();
                         format!(
-                            "INSERT INTO {}\"{}\" ({}) VALUES ({});",
+                            "INSERT INTO {}{} ({}) VALUES ({});",
                             schema_prefix,
-                            table_name,
+                            table_name_sql,
                             column_list,
                             values.join(", ")
                         )
@@ -648,8 +760,15 @@ impl<'a> MutationService<'a> {
                     &soft_del_col,
                 ).await
             }
-            DatabaseClient::MySQL { pool: _ } => {
-                return Err(Error::Any(anyhow::anyhow!("MySQL soft delete not yet implemented")))
+            DatabaseClient::MySQL { pool } => {
+                maintenance::soft_delete_mysql(
+                    pool,
+                    &table_name,
+                    schema_name.as_deref(),
+                    &primary_key_column,
+                    &primary_key_values,
+                    &soft_del_col,
+                ).await
             }
         }
     }
@@ -725,8 +844,12 @@ impl<'a> MutationService<'a> {
             DatabaseClient::LibSQL { connection } => {
                 maintenance::truncate_table_libsql(connection, &table_name).await?
             }
-            DatabaseClient::MySQL { pool: _ } => {
-                return Err(Error::Any(anyhow::anyhow!("MySQL truncate not yet implemented")))
+            DatabaseClient::MySQL { pool } => {
+                maintenance::truncate_table_mysql(
+                    pool,
+                    &table_name,
+                    schema_name.as_deref(),
+                ).await?
             }
         };
 
@@ -813,8 +936,12 @@ impl<'a> MutationService<'a> {
                     &output_path,
                 ).await
             }
-            DatabaseClient::MySQL { pool: _ } => {
-                return Err(Error::Any(anyhow::anyhow!("MySQL dump not yet implemented")))
+            DatabaseClient::MySQL { pool } => {
+                maintenance::dump_database_mysql(
+                    pool,
+                    &schema,
+                    &output_path,
+                ).await
             }
         }
     }
@@ -877,8 +1004,33 @@ impl<'a> MutationService<'a> {
                     affected_rows += res as usize;
                 }
             }
-            DatabaseClient::MySQL { pool: _ } => {
-                return Err(Error::Any(anyhow::anyhow!("MySQL batch execution not yet implemented")))
+            DatabaseClient::MySQL { pool } => {
+                let mut conn = pool
+                    .get_conn()
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
+                conn.query_drop("START TRANSACTION")
+                    .await
+                    .map_err(|e| Error::Any(anyhow!("MySQL transaction start failed: {}", e)))?;
+
+                let result: Result<(), Error> = async {
+                    for stmt in &statements {
+                        conn.query_drop(stmt.as_str())
+                            .await
+                            .map_err(|e| Error::Any(anyhow!("MySQL execution failed: {}", e)))?;
+                        affected_rows += conn.affected_rows() as usize;
+                    }
+                    Ok(())
+                }.await;
+
+                if result.is_ok() {
+                    conn.query_drop("COMMIT")
+                        .await
+                        .map_err(|e| Error::Any(anyhow!("MySQL commit failed: {}", e)))?;
+                } else {
+                    let _ = conn.query_drop("ROLLBACK").await;
+                    result?;
+                }
             }
         };
 
@@ -963,6 +1115,29 @@ async fn execute_libsql_update(
     }
 }
 
+async fn execute_mysql_update(
+    client: &DatabaseClient,
+    query: &str,
+    new_value: &serde_json::Value,
+    pk_value: &serde_json::Value,
+) -> Result<usize, Error> {
+    if let DatabaseClient::MySQL { pool } = client {
+        let mut conn = pool
+            .get_conn()
+            .await
+            .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
+        conn.exec_drop(
+            query,
+            Params::Positional(vec![json_to_mysql_value(new_value), json_to_mysql_value(pk_value)]),
+        )
+        .await
+        .map_err(|e| Error::Any(anyhow!("MySQL update failed: {}", e)))?;
+        Ok(conn.affected_rows() as usize)
+    } else {
+        Err(Error::Any(anyhow!("Expected MySQL client")))
+    }
+}
+
 pub fn json_to_pg_param(value: &serde_json::Value) -> Box<dyn tokio_postgres::types::ToSql + Sync + Send> {
     match value {
         serde_json::Value::Null => Box::new(Option::<String>::None),
@@ -1014,6 +1189,26 @@ fn json_to_libsql_value(value: &serde_json::Value) -> libsql::Value {
         }
         serde_json::Value::String(s) => libsql::Value::Text(s.clone()),
         _ => libsql::Value::Text(value.to_string()),
+    }
+}
+
+fn json_to_mysql_value(value: &serde_json::Value) -> MySqlValue {
+    match value {
+        serde_json::Value::Null => MySqlValue::NULL,
+        serde_json::Value::Bool(value) => MySqlValue::Int(if *value { 1 } else { 0 }),
+        serde_json::Value::Number(value) => {
+            if let Some(int) = value.as_i64() {
+                MySqlValue::Int(int)
+            } else if let Some(uint) = value.as_u64() {
+                MySqlValue::UInt(uint)
+            } else if let Some(float) = value.as_f64() {
+                MySqlValue::Double(float)
+            } else {
+                MySqlValue::Bytes(value.to_string().into_bytes())
+            }
+        }
+        serde_json::Value::String(value) => MySqlValue::Bytes(value.as_bytes().to_vec()),
+        _ => MySqlValue::Bytes(value.to_string().into_bytes()),
     }
 }
 
@@ -1116,6 +1311,47 @@ async fn fetch_libsql_data(
     }
 }
 
+async fn fetch_mysql_data(
+    client: &DatabaseClient,
+    query: &str,
+) -> Result<(Vec<String>, Vec<Vec<serde_json::Value>>), Error> {
+    if let DatabaseClient::MySQL { pool } = client {
+        let mut conn = pool
+            .get_conn()
+            .await
+            .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
+        let mut result = conn
+            .query_iter(query)
+            .await
+            .map_err(|e| Error::Any(anyhow!("MySQL query failed: {}", e)))?;
+
+        let columns: Vec<String> = result
+            .columns_ref()
+            .iter()
+            .map(|column| column.name_str().to_string())
+            .collect();
+
+        let rows = result
+            .collect::<MySqlRow>()
+            .await
+            .map_err(|e| Error::Any(anyhow!("MySQL row collection failed: {}", e)))?;
+
+        let data = rows
+            .into_iter()
+            .map(|row| {
+                row.unwrap()
+                    .into_iter()
+                    .map(mysql_value_to_json)
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        Ok((columns, data))
+    } else {
+        Err(Error::Any(anyhow!("Expected MySQL client")))
+    }
+}
+
 fn pg_value_to_json(row: &tokio_postgres::Row, idx: usize) -> serde_json::Value {
     use tokio_postgres::types::Type;
 
@@ -1178,6 +1414,50 @@ fn libsql_value_to_json(row: &libsql::Row, idx: i32) -> serde_json::Value {
             serde_json::Value::String(base64::engine::general_purpose::STANDARD.encode(&b))
         }
         Err(_) => serde_json::Value::Null,
+    }
+}
+
+fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
+    match value {
+        MySqlValue::NULL => serde_json::Value::Null,
+        MySqlValue::Bytes(bytes) => match String::from_utf8(bytes) {
+            Ok(text) => serde_json::Value::String(text),
+            Err(err) => {
+                serde_json::Value::String(base64::engine::general_purpose::STANDARD.encode(err.into_bytes()))
+            }
+        },
+        MySqlValue::Int(value) => serde_json::Value::from(value),
+        MySqlValue::UInt(value) => serde_json::Value::from(value),
+        MySqlValue::Float(value) => serde_json::Value::from(value),
+        MySqlValue::Double(value) => serde_json::Value::from(value),
+        MySqlValue::Date(year, month, day, hour, minute, second, micros) => serde_json::Value::from(format!(
+            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:06}",
+            year, month, day, hour, minute, second, micros
+        )),
+        MySqlValue::Time(neg, days, hours, minutes, seconds, micros) => serde_json::Value::from(format!(
+            "{}{} {:02}:{:02}:{:02}.{:06}",
+            if neg { "-" } else { "" },
+            days,
+            hours,
+            minutes,
+            seconds,
+            micros
+        )),
+    }
+}
+
+fn mysql_quote_identifier(identifier: &str) -> String {
+    format!("`{}`", identifier.replace('`', "``"))
+}
+
+fn mysql_qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
+    match schema_name {
+        Some(schema_name) => format!(
+            "{}.{}",
+            mysql_quote_identifier(schema_name),
+            mysql_quote_identifier(table_name)
+        ),
+        None => mysql_quote_identifier(table_name),
     }
 }
 

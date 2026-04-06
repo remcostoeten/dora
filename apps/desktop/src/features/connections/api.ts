@@ -26,7 +26,7 @@ function backendToFrontendSshConfig(
 }
 
 function frontendToBackendSshConfig(conn: FrontendConnection) {
-	if (conn.type !== 'postgres' || !conn.sshConfig?.enabled) {
+	if ((conn.type !== 'postgres' && conn.type !== 'mysql') || !conn.sshConfig?.enabled) {
 		return null
 	}
 
@@ -59,6 +59,21 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 			port = 5432
 		}
 		url = connString
+	} else if ('MySQL' in conn.database_type) {
+		type = 'mysql'
+		const connString = conn.database_type.MySQL.connection_string
+		sshConfig = backendToFrontendSshConfig(conn.database_type.MySQL.ssh_config)
+		try {
+			const urlObj = new URL(connString)
+			host = urlObj.hostname
+			port = urlObj.port ? parseInt(urlObj.port) : 3306
+			user = urlObj.username
+			database = urlObj.pathname.slice(1)
+		} catch {
+			host = 'localhost'
+			port = 3306
+		}
+		url = connString
 	} else if ('SQLite' in conn.database_type) {
 		type = 'sqlite'
 		url = conn.database_type.SQLite.db_path
@@ -86,21 +101,31 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 }
 
 export function frontendToBackendDatabaseInfo(conn: FrontendConnection): DatabaseInfo {
-	if (conn.type === 'postgres') {
+	if (conn.type === 'postgres' || conn.type === 'mysql') {
 		// Use the URL directly if provided (connection string mode)
 		// Otherwise build from individual fields
 		let connectionString: string
 		if (conn.url) {
 			connectionString = conn.url
 		} else {
-			const user = conn.user || 'postgres'
+			const user = conn.user || (conn.type === 'mysql' ? 'root' : 'postgres')
 			const password = conn.password || ''
 			const host = conn.host || 'localhost'
-			const port = conn.port || 5432
-			const database = conn.database || 'postgres'
+			const port = conn.port || (conn.type === 'mysql' ? 3306 : 5432)
+			const database = conn.database || (conn.type === 'mysql' ? 'mysql' : 'postgres')
 			const ssl = conn.ssl ? '?sslmode=require' : ''
-			connectionString = `postgresql://${user}:${password}@${host}:${port}/${database}${ssl}`
+			const protocol = conn.type === 'mysql' ? 'mysql' : 'postgresql'
+			connectionString = `${protocol}://${user}:${password}@${host}:${port}/${database}${ssl}`
 		}
+		if (conn.type === 'mysql') {
+			return {
+				MySQL: {
+					connection_string: connectionString,
+					ssh_config: frontendToBackendSshConfig(conn)
+				}
+			}
+		}
+
 		return {
 			Postgres: {
 				connection_string: connectionString,

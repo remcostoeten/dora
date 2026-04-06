@@ -17,6 +17,7 @@ import type {
 } from '@/lib/bindings'
 import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA, MOCK_SCRIPTS } from '../mock-data'
 import type { DataAdapter, AdapterResult, QueryResult } from '../types'
+import { getTableRefParts } from '@/shared/utils/table-ref'
 
 type InMemoryStore = {
 	tables: Record<string, Record<string, unknown>[]>
@@ -34,13 +35,66 @@ let store: InMemoryStore = {
 
 const STORAGE_KEY = 'dora_demo_store'
 
+function normalizeStoredStore(saved: unknown): InMemoryStore | null {
+	if (!saved || typeof saved !== 'object') return null
+
+	const maybe = saved as Partial<InMemoryStore> & { tables?: unknown; nextId?: unknown }
+	if (!maybe.tables || typeof maybe.tables !== 'object') return null
+
+	const tableEntries = Object.entries(maybe.tables as Record<string, unknown>)
+	if (tableEntries.length === 0) return null
+
+	let totalRows = 0
+	const tables: Record<string, Record<string, unknown>[]> = {}
+
+	for (const [key, value] of tableEntries) {
+		if (!Array.isArray(value)) continue
+		tables[key] = value as Record<string, unknown>[]
+		totalRows += value.length
+	}
+
+	// If everything is empty, treat it as corrupted/uninitialized and reseed.
+	if (totalRows === 0) return null
+
+	const nextIdRaw =
+		maybe.nextId && typeof maybe.nextId === 'object' ? (maybe.nextId as Record<string, unknown>) : {}
+	const nextId: Record<string, number> = {}
+
+	for (const key of Object.keys(tables)) {
+		const n = nextIdRaw[key]
+		nextId[key] = typeof n === 'number' && Number.isFinite(n) ? n : tables[key].length + 1
+	}
+
+	return {
+		tables,
+		nextId,
+		connections: Array.isArray(maybe.connections) ? maybe.connections : [],
+		scripts: Array.isArray(maybe.scripts) ? maybe.scripts : []
+	}
+}
+
 function loadFromStorage(): InMemoryStore | null {
 	try {
 		if (typeof window === 'undefined' || typeof localStorage === 'undefined') {
 			return null
 		}
 		const data = localStorage.getItem(STORAGE_KEY)
-		return data ? JSON.parse(data) : null
+		if (!data) return null
+
+		const parsed = JSON.parse(data)
+		const normalized = normalizeStoredStore(parsed)
+
+		// If the stored payload exists but is unusable (e.g. all tables empty),
+		// keep a backup for debugging and start fresh.
+		if (!normalized) {
+			try {
+				localStorage.setItem(`${STORAGE_KEY}_backup_${Date.now()}`, data)
+				localStorage.removeItem(STORAGE_KEY)
+			} catch {}
+			return null
+		}
+
+		return normalized
 	} catch {
 		return null
 	}
@@ -57,8 +111,26 @@ function saveToStorage() {
 
 function initializeStore() {
 	const saved = loadFromStorage()
-	if (saved && saved.tables && Object.keys(saved.tables).length > 0) {
+	if (saved) {
 		store = saved
+
+		// Merge in any newly added mock tables (e.g., after an update).
+		Object.keys(MOCK_TABLE_DATA).forEach(function (key) {
+			if (!store.tables[key]) {
+				const data = MOCK_TABLE_DATA[key as keyof typeof MOCK_TABLE_DATA]
+				store.tables[key] = JSON.parse(JSON.stringify(data))
+			}
+			if (typeof store.nextId[key] !== 'number') {
+				store.nextId[key] = store.tables[key].length + 1
+			}
+		})
+
+		// If scripts were never saved, seed them.
+		if (store.scripts.length === 0) {
+			store.scripts = JSON.parse(JSON.stringify(MOCK_SCRIPTS))
+		}
+
+		saveToStorage()
 		return
 	}
 
@@ -92,6 +164,40 @@ function delay(ms: number): Promise<void> {
 
 function randomDelay(): Promise<void> {
 	return delay(50 + Math.random() * 100)
+}
+
+function getTableLookupCandidates(tableName: string): string[] {
+	const normalizedTableName = getTableRefParts(tableName).tableName
+	return Array.from(new Set([tableName, normalizedTableName]))
+}
+
+function resolveStoreKey(connectionId: string, tableName: string): string {
+	const candidates = getTableLookupCandidates(tableName).map(function (candidate) {
+		return `${connectionId}:${candidate}`
+	})
+
+	const existingKey = candidates.find(function (candidate) {
+		return candidate in store.tables || candidate in MOCK_TABLE_DATA
+	})
+
+	return existingKey || `${connectionId}:${getTableRefParts(tableName).tableName}`
+}
+
+function findTableInfo(connectionId: string, tableName: string): TableInfo | undefined {
+	const { schemaName, tableName: normalizedTableName } = getTableRefParts(tableName)
+	const schema = MOCK_SCHEMAS[connectionId]
+
+	return schema?.tables.find(function (table) {
+		if (table.name !== normalizedTableName) {
+			return false
+		}
+
+		if (!schemaName) {
+			return true
+		}
+
+		return table.schema === schemaName
+	})
 }
 
 export function createMockAdapter(): DataAdapter {
@@ -196,15 +302,24 @@ export function createMockAdapter(): DataAdapter {
 			await randomDelay()
 
 			// Remove table data from store
-			const key = connectionId + ':' + tableName
+			const key = resolveStoreKey(connectionId, tableName)
 			delete store.tables[key]
 			delete store.nextId[key]
 
 			// Remove from schema
+			const { schemaName, tableName: normalizedTableName } = getTableRefParts(tableName)
 			const schema = MOCK_SCHEMAS[connectionId]
 			if (schema) {
 				schema.tables = schema.tables.filter(function (t) {
-					return t.name !== tableName
+					if (t.name !== normalizedTableName) {
+						return true
+					}
+
+					if (!schemaName) {
+						return false
+					}
+
+					return t.schema !== schemaName
 				})
 			}
 
@@ -239,7 +354,7 @@ CREATE TABLE posts (
 		): Promise<AdapterResult<TableData>> {
 			await randomDelay()
 
-			const key = connectionId + ':' + tableName
+			const key = resolveStoreKey(connectionId, tableName)
 			let rows = store.tables[key]
 
 			if (!rows) {
@@ -299,10 +414,7 @@ CREATE TABLE posts (
 			const start = page * pageSize
 			const paged = filtered.slice(start, start + pageSize)
 
-			const schema = MOCK_SCHEMAS[connectionId]
-			const tableInfo = schema?.tables.find(function (t) {
-				return t.name === tableName
-			})
+			const tableInfo = findTableInfo(connectionId, tableName)
 
 			const columns: ColumnDefinition[] = tableInfo
 				? tableInfo.columns.map(function (c) {
@@ -417,7 +529,7 @@ CREATE TABLE posts (
 		): Promise<AdapterResult<MutationResult>> {
 			await randomDelay()
 
-			const key = connectionId + ':' + tableName
+			const key = resolveStoreKey(connectionId, tableName)
 			const rows = store.tables[key]
 
 			if (!rows) {
@@ -451,7 +563,7 @@ CREATE TABLE posts (
 		): Promise<AdapterResult<MutationResult>> {
 			await randomDelay()
 
-			const key = connectionId + ':' + tableName
+			const key = resolveStoreKey(connectionId, tableName)
 			const rows = store.tables[key]
 
 			if (!rows) {
@@ -482,7 +594,7 @@ CREATE TABLE posts (
 		): Promise<AdapterResult<MutationResult>> {
 			await randomDelay()
 
-			const key = connectionId + ':' + tableName
+			const key = resolveStoreKey(connectionId, tableName)
 
 			if (!store.tables[key]) {
 				store.tables[key] = []

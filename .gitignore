@@ -51,3 +51,10 @@ apps/desktop/build_log.txt
 test1.db
 test2.db
 target/
+
+# Snapcraft
+parts/
+stage/
+prime/
+*.snap
+*.snap-build

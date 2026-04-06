@@ -1,4 +1,3 @@
-import { CheckCircle2 } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import { DatabaseType } from '../../types'
 import { DatabaseIcon, DATABASE_META } from '../database-icons'
@@ -9,7 +8,7 @@ type Props = {
 	disabled?: boolean
 }
 
-const DATABASE_TYPES: DatabaseType[] = ['postgres', 'sqlite', 'libsql']
+const DATABASE_TYPES: DatabaseType[] = ['postgres', 'mysql', 'sqlite', 'libsql']
 
 export function DatabaseTypeSelector({ selectedType, onSelect, disabled }: Props) {
 	return (
@@ -30,26 +29,26 @@ export function DatabaseTypeSelector({ selectedType, onSelect, disabled }: Props
 							'db-card text-left',
 							isActive && 'active',
 							disabled &&
-								'opacity-50 cursor-not-allowed hover:bg-card/50 hover:border-border'
+								'opacity-50 cursor-not-allowed hover:bg-background/40 hover:border-border/60'
 						)}
 					>
 						<div className='flex items-center gap-3'>
 							<div
-								className={cn('db-card-icon bg-muted/50', disabled && 'grayscale')}
+								className={cn('db-card-icon bg-muted/40', disabled && 'grayscale')}
 							>
 								<DatabaseIcon type={type} className='h-5 w-5' />
 							</div>
 							<div className='flex-1 min-w-0'>
-								<div className='flex items-center gap-2'>
-									<span className='font-medium text-sm truncate'>
-										{meta.name}
-									</span>
-								</div>
-								<div className='text-xs text-muted-foreground truncate'>
+								<span className='font-medium text-sm block truncate'>
+									{meta.name}
+								</span>
+								<span className='text-xs text-muted-foreground block truncate'>
 									{meta.description}
-								</div>
+								</span>
 							</div>
-							{isActive && <CheckCircle2 className='h-4 w-4 text-primary shrink-0' />}
+							{isActive && (
+								<span className='h-1.5 w-1.5 rounded-full bg-primary shrink-0' />
+							)}
 						</div>
 					</button>
 				)

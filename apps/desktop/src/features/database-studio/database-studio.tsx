@@ -169,6 +169,14 @@ export function DatabaseStudio({
 	const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null)
 	const [contextMenuState, setContextMenuState] = useState<ContextMenuState>(null)
 	const toolbarRef = useRef<HTMLDivElement>(null)
+	const gridContainerRef = useRef<HTMLDivElement>(null)
+
+	const handleEscapeToGrid = useCallback(function () {
+		const grid = gridContainerRef.current?.querySelector<HTMLElement>('table[role="grid"]')
+		if (grid) {
+			grid.focus()
+		}
+	}, [])
 
 	const {
 		urlState,
@@ -1921,6 +1929,7 @@ export function DatabaseStudio({
 			/>
 
 			<div
+				ref={gridContainerRef}
 				className='flex-1 overflow-hidden relative'
 				role='region'
 				aria-label={`Table data for ${displayTableName}`}
@@ -1998,6 +2007,7 @@ export function DatabaseStudio({
 					onExportCsv={handleExportCsv}
 					onBulkEdit={handleOpenBulkEdit}
 					onClearSelection={handleClearSelection}
+					onEscapeToGrid={handleEscapeToGrid}
 					mode='static'
 				/>
 			)}
@@ -2032,6 +2042,7 @@ export function DatabaseStudio({
 						onSetNull={handleOpenSetNull}
 						onBulkEdit={handleOpenBulkEdit}
 						onClearSelection={handleClearSelection}
+						onEscapeToGrid={handleEscapeToGrid}
 						mode='floating'
 					/>
 				)}
