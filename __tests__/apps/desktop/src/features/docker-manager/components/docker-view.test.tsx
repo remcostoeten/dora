@@ -10,32 +10,48 @@ vi.mock('@/components/ui/use-toast', () => ({
 	useToast: () => ({ toast: vi.fn() })
 }))
 
-vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/container-list', () => ({
-	ContainerList: ({ containers, isLoading }: any) => (
-		<div data-testid='container-list'>
-			{isLoading ? 'Loading containers...' : `Containers: ${containers?.length || 0}`}
-		</div>
-	)
-}))
-
-vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/container-details-panel', () => ({
-	ContainerDetailsPanel: () => <div data-testid='container-details' />
-}))
-
-vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/create-container-dialog', () => ({
-	CreateContainerDialog: ({ open }: any) => (open ? <div data-testid='create-dialog' /> : null)
-}))
-
-vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/components/sandbox-indicator', () => ({
-	SandboxIndicator: () => <div data-testid='sandbox-indicator' />
-}))
-
-vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/api/mutations/use-container-actions', () => ({
-	useContainerActions: () => ({
-		mutate: vi.fn(),
-		isPending: false
+vi.mock(
+	'../../../../../../../apps/desktop/src/features/docker-manager/components/container-list',
+	() => ({
+		ContainerList: ({ containers, isLoading }: any) => (
+			<div data-testid='container-list'>
+				{isLoading ? 'Loading containers...' : `Containers: ${containers?.length || 0}`}
+			</div>
+		)
 	})
-}))
+)
+
+vi.mock(
+	'../../../../../../../apps/desktop/src/features/docker-manager/components/container-details-panel',
+	() => ({
+		ContainerDetailsPanel: () => <div data-testid='container-details' />
+	})
+)
+
+vi.mock(
+	'../../../../../../../apps/desktop/src/features/docker-manager/components/create-container-dialog',
+	() => ({
+		CreateContainerDialog: ({ open }: any) =>
+			open ? <div data-testid='create-dialog' /> : null
+	})
+)
+
+vi.mock(
+	'../../../../../../../apps/desktop/src/features/docker-manager/components/sandbox-indicator',
+	() => ({
+		SandboxIndicator: () => <div data-testid='sandbox-indicator' />
+	})
+)
+
+vi.mock(
+	'../../../../../../../apps/desktop/src/features/docker-manager/api/mutations/use-container-actions',
+	() => ({
+		useContainerActions: () => ({
+			mutate: vi.fn(),
+			isPending: false
+		})
+	})
+)
 
 describe('DockerView', () => {
 	const mockCreateContainer = {
@@ -52,12 +68,8 @@ describe('DockerView', () => {
 		)
 	})
 
-	const renderWithProviders = (component: any) => {
-		return render(
-			<TooltipProvider>
-				{component}
-			</TooltipProvider>
-		)
+	function renderWithProviders(component: any) {
+		return render(<TooltipProvider>{component}</TooltipProvider>)
 	}
 
 	it('shows loading state when checking docker availability', () => {

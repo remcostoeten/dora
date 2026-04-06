@@ -21,7 +21,11 @@ import {
 	isInsideJoinParens
 } from '../utils/lsp-patterns'
 import { generateDrizzleTypes } from '../utils/lsp-utils'
-import { detectTyposInQuery, getSuggestions, getTableNames as getFuzzyTableNames } from '../utils/fuzzy-match'
+import {
+	detectTyposInQuery,
+	getSuggestions,
+	getTableNames as getFuzzyTableNames
+} from '../utils/fuzzy-match'
 import { LspDemoWidget } from './lsp-demo-widget'
 
 type Props = {

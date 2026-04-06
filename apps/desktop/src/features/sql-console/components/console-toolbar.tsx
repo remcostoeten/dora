@@ -42,7 +42,6 @@ type Props = {
 	onSave?: () => void
 }
 
-
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
 	return (
 		<kbd
@@ -77,7 +76,6 @@ export function ConsoleToolbar({
 	onToggleHistory,
 	onSave
 }: Props) {
-
 	return (
 		<div className='flex items-center justify-between h-10 px-3 border-b border-sidebar-border bg-sidebar shrink-0'>
 			{/* Left side - sidebar toggles */}
@@ -157,7 +155,6 @@ export function ConsoleToolbar({
 				<div className='w-px h-4 bg-border/50 mx-1' />
 
 				{onRun && (
-
 					<Button
 						size='sm'
 						variant='default'
@@ -243,12 +240,8 @@ export function ConsoleToolbar({
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
-							<DropdownMenuItem onClick={onExport}>
-								Export as JSON
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={onExportCsv}>
-								Export as CSV
-							</DropdownMenuItem>
+							<DropdownMenuItem onClick={onExport}>Export as JSON</DropdownMenuItem>
+							<DropdownMenuItem onClick={onExportCsv}>Export as CSV</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				)}

@@ -286,7 +286,7 @@ function createSingleBinding(
 				entry.attemptCallbacks.add(callback)
 				return () => entry.attemptCallbacks.delete(callback)
 			}
-			return () => { }
+			return () => {}
 		}
 	}
 }
@@ -333,7 +333,7 @@ function createBinding(
 			enable: () => validResults.forEach((r) => r.enable()),
 			disable: () => validResults.forEach((r) => r.disable()),
 			onAttempt: (callback) => {
-				const unbinds = validResults.map((r) => r.onAttempt?.(callback) || (() => { }))
+				const unbinds = validResults.map((r) => r.onAttempt?.(callback) || (() => {}))
 				return () => unbinds.forEach((u) => u())
 			}
 		}
@@ -396,7 +396,10 @@ export function createShortcutBuilder(options: UseShortcutOptions = {}): {
 							...currentState,
 							combos
 						}
-						debugLog(currentState.options.debug, `Chain: .bind("${combos.join('", "')}")`)
+						debugLog(
+							currentState.options.debug,
+							`Chain: .bind("${combos.join('", "')}")`
+						)
 						return createProxy(newState)
 					}
 				}

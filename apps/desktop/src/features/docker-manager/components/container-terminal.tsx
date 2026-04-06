@@ -43,115 +43,127 @@ export function ContainerTerminal({ container, enabled }: Props) {
 		})
 	}, [])
 
-	const disconnectSession = useCallback(async function (announce: boolean) {
-		const session = sessionRef.current
-		if (!session) {
-			return
-		}
-
-		closingRef.current = true
-		connectingRef.current = false
-		sessionRef.current = null
-
-		try {
-			await session.kill()
-		} catch {
-			// Session may already be closed.
-		}
-
-		setTerminalState('disconnected')
-		if (announce) {
-			appendOutput('\n[terminal disconnected]\n')
-		}
-	}, [appendOutput])
-
-	const connectSession = useCallback(async function () {
-		if (!enabled || !isRunning || sessionRef.current || connectingRef.current) {
-			return
-		}
-
-		const connectId = connectCounterRef.current + 1
-		connectCounterRef.current = connectId
-
-		connectingRef.current = true
-		setTerminalState('connecting')
-		appendOutput(`[connecting to ${container.name}]\n`)
-
-		try {
-			const session = await openContainerTerminal(container.id, {
-				onOutput: function (chunk) {
-					if (connectCounterRef.current !== connectId) {
-						return
-					}
-					appendOutput(chunk)
-				},
-				onError: function (error) {
-					if (connectCounterRef.current !== connectId) {
-						return
-					}
-					appendOutput(`\n[terminal error] ${error}\n`)
-					setTerminalState('error')
-				},
-				onClose: function (code, signal) {
-					if (connectCounterRef.current !== connectId) {
-						return
-					}
-
-					sessionRef.current = null
-					setTerminalState('disconnected')
-					connectingRef.current = false
-
-					const closedByUser = closingRef.current
-					closingRef.current = false
-
-					if (!closedByUser) {
-						appendOutput(
-							`\n[terminal exited${code !== null ? ` code=${code}` : ''}${signal !== null ? ` signal=${signal}` : ''}]\n`
-						)
-					}
-				}
-			})
-
-			if (connectCounterRef.current !== connectId) {
-				await session.kill().catch(function () {
-					return
-				})
-				connectingRef.current = false
+	const disconnectSession = useCallback(
+		async function (announce: boolean) {
+			const session = sessionRef.current
+			if (!session) {
 				return
 			}
 
-			sessionRef.current = session
+			closingRef.current = true
 			connectingRef.current = false
-			setTerminalState('connected')
-			appendOutput(`[connected to ${container.name}]\n`)
-			inputRef.current?.focus()
-		} catch (error) {
-			connectingRef.current = false
-			const message = error instanceof Error ? error.message : 'Failed to open terminal'
-			appendOutput(`\n[connection failed] ${message}\n`)
-			setTerminalState('error')
-		}
-	}, [appendOutput, container.id, container.name, enabled, isRunning])
+			sessionRef.current = null
 
-	useEffect(function () {
-		if (!enabled || !isRunning) {
-			void disconnectSession(false)
-			return
-		}
+			try {
+				await session.kill()
+			} catch {
+				// Session may already be closed.
+			}
 
-		void connectSession()
+			setTerminalState('disconnected')
+			if (announce) {
+				appendOutput('\n[terminal disconnected]\n')
+			}
+		},
+		[appendOutput]
+	)
 
-		return function () {
-			void disconnectSession(false)
-		}
-	}, [connectSession, disconnectSession, enabled, isRunning])
+	const connectSession = useCallback(
+		async function () {
+			if (!enabled || !isRunning || sessionRef.current || connectingRef.current) {
+				return
+			}
 
-	useEffect(function () {
-		if (!outputRef.current) {
-			return
-		}
-		outputRef.current.scrollTop = outputRef.current.scrollHeight
-	}, [output])
+			const connectId = connectCounterRef.current + 1
+			connectCounterRef.current = connectId
+
+			connectingRef.current = true
+			setTerminalState('connecting')
+			appendOutput(`[connecting to ${container.name}]\n`)
+
+			try {
+				const session = await openContainerTerminal(container.id, {
+					onOutput: function (chunk) {
+						if (connectCounterRef.current !== connectId) {
+							return
+						}
+						appendOutput(chunk)
+					},
+					onError: function (error) {
+						if (connectCounterRef.current !== connectId) {
+							return
+						}
+						appendOutput(`\n[terminal error] ${error}\n`)
+						setTerminalState('error')
+					},
+					onClose: function (code, signal) {
+						if (connectCounterRef.current !== connectId) {
+							return
+						}
+
+						sessionRef.current = null
+						setTerminalState('disconnected')
+						connectingRef.current = false
+
+						const closedByUser = closingRef.current
+						closingRef.current = false
+
+						if (!closedByUser) {
+							appendOutput(
+								`\n[terminal exited${code !== null ? ` code=${code}` : ''}${signal !== null ? ` signal=${signal}` : ''}]\n`
+							)
+						}
+					}
+				})
+
+				if (connectCounterRef.current !== connectId) {
+					await session.kill().catch(function () {
+						return
+					})
+					connectingRef.current = false
+					return
+				}
+
+				sessionRef.current = session
+				connectingRef.current = false
+				setTerminalState('connected')
+				appendOutput(`[connected to ${container.name}]\n`)
+				inputRef.current?.focus()
+			} catch (error) {
+				connectingRef.current = false
+				const message = error instanceof Error ? error.message : 'Failed to open terminal'
+				appendOutput(`\n[connection failed] ${message}\n`)
+				setTerminalState('error')
+			}
+		},
+		[appendOutput, container.id, container.name, enabled, isRunning]
+	)
+
+	useEffect(
+		function () {
+			if (!enabled || !isRunning) {
+				void disconnectSession(false)
+				return
+			}
+
+			void connectSession()
+
+			return function () {
+				void disconnectSession(false)
+			}
+		},
+		[connectSession, disconnectSession, enabled, isRunning]
+	)
+
+	useEffect(
+		function () {
+			if (!outputRef.current) {
+				return
+			}
+			outputRef.current.scrollTop = outputRef.current.scrollHeight
+		},
+		[output]
+	)
 
 	useEffect(
 		function resetStateWhenContainerChanges() {
@@ -268,14 +280,20 @@ export function ContainerTerminal({ container, enabled }: Props) {
 		<div className='flex h-full flex-col'>
 			<div className='mb-2 flex items-center justify-between gap-2'>
 				<div className='flex items-center gap-2'>
-					<TerminalSquare className='h-3.5 w-3.5 text-muted-foreground' aria-hidden='true' />
+					<TerminalSquare
+						className='h-3.5 w-3.5 text-muted-foreground'
+						aria-hidden='true'
+					/>
 					<span className='text-xs font-medium'>Container Terminal</span>
 					<span
 						className={cn(
 							'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
-							terminalState === 'connected' && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
-							terminalState === 'connecting' && 'border-amber-500/30 bg-amber-500/10 text-amber-500',
-							terminalState === 'error' && 'border-destructive/30 bg-destructive/10 text-destructive',
+							terminalState === 'connected' &&
+								'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
+							terminalState === 'connecting' &&
+								'border-amber-500/30 bg-amber-500/10 text-amber-500',
+							terminalState === 'error' &&
+								'border-destructive/30 bg-destructive/10 text-destructive',
 							(terminalState === 'disconnected' || terminalState === 'idle') &&
 								'border-zinc-500/30 bg-zinc-500/10 text-zinc-400'
 						)}

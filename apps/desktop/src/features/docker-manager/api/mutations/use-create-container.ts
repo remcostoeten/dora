@@ -12,7 +12,9 @@ type UseCreateContainerOptions = {
 export function useCreateContainer(options: UseCreateContainerOptions = {}) {
 	const { onSuccess, onError, waitForHealth = true } = options
 	const queryClient = useQueryClient()
-	const addEvent = useDockerManagerStore(function (s) { return s.addEvent })
+	const addEvent = useDockerManagerStore(function (s) {
+		return s.addEvent
+	})
 
 	return useMutation<CreateContainerResult, Error, PostgresContainerConfig>({
 		mutationFn: async function (config) {

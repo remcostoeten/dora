@@ -185,7 +185,7 @@ export function StudioToolbar({
 						className={cn(
 							'h-7 px-2 text-xs gap-1.5 ml-1',
 							(showFilters || filters.length > 0) &&
-							'text-sidebar-foreground bg-sidebar-accent'
+								'text-sidebar-foreground bg-sidebar-accent'
 						)}
 						onClick={() => setShowFilters(!showFilters)}
 					>
@@ -245,7 +245,7 @@ export function StudioToolbar({
 							className={cn(
 								'h-7 px-2 text-xs gap-1.5',
 								isDryEditMode &&
-								'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+									'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
 							)}
 							onClick={function () {
 								onDryEditModeChange(!isDryEditMode)
@@ -330,9 +330,7 @@ export function StudioToolbar({
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
-							<DropdownMenuItem onClick={onExport}>
-								Export JSON
-							</DropdownMenuItem>
+							<DropdownMenuItem onClick={onExport}>Export JSON</DropdownMenuItem>
 							{onExportCsv && (
 								<DropdownMenuItem onClick={onExportCsv}>
 									Export CSV
@@ -379,9 +377,9 @@ export function StudioToolbar({
 			<FilterBar
 				isVisible={showFilters}
 				filters={filters}
-				onFiltersChange={onFiltersChange || (() => { })}
+				onFiltersChange={onFiltersChange || (() => {})}
 				columns={columns}
 			/>
-		</div >
+		</div>
 	)
 }

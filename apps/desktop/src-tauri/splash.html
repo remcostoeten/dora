@@ -40,7 +40,11 @@
 				font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 				background:
 					radial-gradient(1100px 520px at 20% -12%, var(--accent-soft), transparent 60%),
-					radial-gradient(900px 520px at 100% 100%, rgba(255, 255, 255, 0.03), transparent 68%),
+					radial-gradient(
+						900px 520px at 100% 100%,
+						rgba(255, 255, 255, 0.03),
+						transparent 68%
+					),
 					linear-gradient(155deg, var(--bg), var(--bg-2));
 				color: var(--text);
 				display: grid;
@@ -142,7 +146,11 @@
 				display: grid;
 				place-items: center;
 				background:
-					radial-gradient(120% 120% at 20% 10%, rgba(255, 255, 255, 0.15), transparent 48%),
+					radial-gradient(
+						120% 120% at 20% 10%,
+						rgba(255, 255, 255, 0.15),
+						transparent 48%
+					),
 					linear-gradient(165deg, var(--panel), var(--panel-2));
 				border: 1px solid var(--border);
 				box-shadow:
@@ -351,7 +359,7 @@
 		</main>
 
 		<script>
-			(function () {
+			;(function () {
 				const themeMap = {
 					dark: {
 						bg: '#090909',
@@ -472,42 +480,47 @@
 						logoAccent: '#a3a3a3',
 						logoHighlight: '#dadada'
 					}
-				};
+				}
 
 				function getTheme() {
 					try {
-						const raw = window.localStorage.getItem('dora-appearance');
+						const raw = window.localStorage.getItem('dora-appearance')
 						if (raw) {
-							const parsed = JSON.parse(raw);
-							if (parsed && typeof parsed.theme === 'string' && themeMap[parsed.theme]) {
-								return parsed.theme;
+							const parsed = JSON.parse(raw)
+							if (
+								parsed &&
+								typeof parsed.theme === 'string' &&
+								themeMap[parsed.theme]
+							) {
+								return parsed.theme
 							}
 						}
 					} catch (_error) {}
 
-					return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+					return window.matchMedia('(prefers-color-scheme: light)').matches
+						? 'light'
+						: 'dark'
 				}
 
-				const palette = themeMap[getTheme()] || themeMap.dark;
-				const root = document.documentElement;
+				const palette = themeMap[getTheme()] || themeMap.dark
+				const root = document.documentElement
 
-				root.style.setProperty('--bg', palette.bg);
-				root.style.setProperty('--bg-2', palette.bg2);
-				root.style.setProperty('--panel', palette.panel);
-				root.style.setProperty('--panel-2', palette.panel2);
-				root.style.setProperty('--border', palette.border);
-				root.style.setProperty('--text', palette.text);
-				root.style.setProperty('--muted', palette.muted);
-				root.style.setProperty('--accent', palette.accent);
-				root.style.setProperty('--accent-soft', palette.accentSoft);
-				root.style.setProperty('--glow', palette.glow);
-				root.style.setProperty('--logo-primary', palette.logoPrimary);
-				root.style.setProperty('--logo-secondary', palette.logoSecondary);
-				root.style.setProperty('--logo-tertiary', palette.logoTertiary);
-				root.style.setProperty('--logo-accent', palette.logoAccent);
-				root.style.setProperty('--logo-highlight', palette.logoHighlight);
-
-			})();
+				root.style.setProperty('--bg', palette.bg)
+				root.style.setProperty('--bg-2', palette.bg2)
+				root.style.setProperty('--panel', palette.panel)
+				root.style.setProperty('--panel-2', palette.panel2)
+				root.style.setProperty('--border', palette.border)
+				root.style.setProperty('--text', palette.text)
+				root.style.setProperty('--muted', palette.muted)
+				root.style.setProperty('--accent', palette.accent)
+				root.style.setProperty('--accent-soft', palette.accentSoft)
+				root.style.setProperty('--glow', palette.glow)
+				root.style.setProperty('--logo-primary', palette.logoPrimary)
+				root.style.setProperty('--logo-secondary', palette.logoSecondary)
+				root.style.setProperty('--logo-tertiary', palette.logoTertiary)
+				root.style.setProperty('--logo-accent', palette.logoAccent)
+				root.style.setProperty('--logo-highlight', palette.logoHighlight)
+			})()
 		</script>
 	</body>
 </html>

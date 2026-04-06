@@ -22,11 +22,16 @@ function mapError(error: Error | null): ErrorMapping {
 		return {
 			icon: Server,
 			title: 'Connection Refused',
-			message: 'Unable to connect to the database server. Make sure the server is running and accessible.'
+			message:
+				'Unable to connect to the database server. Make sure the server is running and accessible.'
 		}
 	}
 
-	if (msg.includes('authentication') || msg.includes('password') || msg.includes('access denied')) {
+	if (
+		msg.includes('authentication') ||
+		msg.includes('password') ||
+		msg.includes('access denied')
+	) {
 		return {
 			icon: Lock,
 			title: 'Authentication Failed',
@@ -50,11 +55,16 @@ function mapError(error: Error | null): ErrorMapping {
 		}
 	}
 
-	if (msg.includes('does not exist') || msg.includes('unknown database') || msg.includes('no such table')) {
+	if (
+		msg.includes('does not exist') ||
+		msg.includes('unknown database') ||
+		msg.includes('no such table')
+	) {
 		return {
 			icon: Database,
 			title: 'Not Found',
-			message: 'The requested database or table does not exist. Verify the name and try again.'
+			message:
+				'The requested database or table does not exist. Verify the name and try again.'
 		}
 	}
 
@@ -70,7 +80,8 @@ function mapError(error: Error | null): ErrorMapping {
 		return {
 			icon: Lock,
 			title: 'Permission Denied',
-			message: 'You do not have permission to perform this action. Contact your database administrator.'
+			message:
+				'You do not have permission to perform this action. Contact your database administrator.'
 		}
 	}
 
@@ -100,9 +111,7 @@ export function ErrorFallback({ error, feature, onRetry, className }: Props) {
 				{feature ? `${feature}: ${mapping.title}` : mapping.title}
 			</h3>
 
-			<p className='text-muted-foreground mb-4 max-w-md'>
-				{mapping.message}
-			</p>
+			<p className='text-muted-foreground mb-4 max-w-md'>{mapping.message}</p>
 
 			{error && (
 				<details className='mb-4 text-sm text-muted-foreground w-full max-w-md'>

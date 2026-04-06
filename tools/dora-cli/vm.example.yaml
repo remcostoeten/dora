@@ -5,7 +5,7 @@ storage_dir: .cache/dora-vm
 
 # Base image should be a prepared Windows qcow2 image with qemu-guest-agent installed.
 base_image: .cache/dora-vm/base.qcow2
-base_image_url: ""
+base_image_url: ''
 
 overlay_image: .cache/dora-vm/overlay.qcow2
 seed_iso: .cache/dora-vm/seed.iso

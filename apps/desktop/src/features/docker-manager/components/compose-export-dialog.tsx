@@ -22,9 +22,12 @@ type Props = {
 
 export function ComposeExportDialog({ container, open, onOpenChange }: Props) {
 	const { toast } = useToast()
-	const yamlContent = useMemo(function () {
-		return generateDockerCompose(container)
-	}, [container])
+	const yamlContent = useMemo(
+		function () {
+			return generateDockerCompose(container)
+		},
+		[container]
+	)
 
 	async function handleCopy() {
 		try {

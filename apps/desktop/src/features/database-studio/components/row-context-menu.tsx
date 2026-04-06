@@ -18,7 +18,12 @@ type Props = {
 	rowIndex: number
 	columns: ColumnDefinition[]
 	tableName?: string
-	onAction?: (action: RowAction, row: Record<string, unknown>, rowIndex: number, batchIndexes?: number[]) => void
+	onAction?: (
+		action: RowAction,
+		row: Record<string, unknown>,
+		rowIndex: number,
+		batchIndexes?: number[]
+	) => void
 	onOpenChange?: (open: boolean, rowIndex: number) => void
 	selectedRows?: Set<number>
 	children: React.ReactNode
@@ -120,7 +125,11 @@ export function RowContextMenu({
 						</ContextMenuItem>
 						<ContextMenuItem onClick={handleExportSql}>
 							<FileCode className='h-4 w-4 mr-2' />
-							<span>{isBatch ? `Copy SQL INSERT (${batchCount} rows)` : 'Copy SQL INSERT'}</span>
+							<span>
+								{isBatch
+									? `Copy SQL INSERT (${batchCount} rows)`
+									: 'Copy SQL INSERT'}
+							</span>
 						</ContextMenuItem>
 					</ContextMenuSubContent>
 				</ContextMenuSub>

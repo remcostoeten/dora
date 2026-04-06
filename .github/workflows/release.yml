@@ -1,4 +1,5 @@
 name: Release
+
 on:
   push:
     tags:
@@ -53,6 +54,15 @@ jobs:
           releaseDraft: true
           prerelease: false
 
+      - name: generate linux checksums
+        run: bun ../../tools/scripts/generate-checksums.ts --input-dir=src-tauri/target/release/bundle --output=src-tauri/target/release/bundle/checksums-linux.txt --extensions=.AppImage,.deb,.rpm
+        working-directory: ./apps/desktop
+
+      - name: upload linux checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} ./apps/desktop/src-tauri/target/release/bundle/checksums-linux.txt --clobber
+
   release-windows:
     permissions:
       contents: write
@@ -105,6 +115,15 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
+
+      - name: generate windows checksums
+        run: bun ../../tools/scripts/generate-checksums.ts --input-dir=src-tauri/target/release/bundle --output=src-tauri/target/release/bundle/checksums-windows.txt --extensions=.msi,.exe
+        working-directory: ./apps/desktop
+
+      - name: upload windows checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} ./apps/desktop/src-tauri/target/release/bundle/checksums-windows.txt --clobber
 
   release-macos:
     permissions:

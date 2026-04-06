@@ -82,12 +82,16 @@ export function BottomStatusBar({
 					<>
 						<div className='h-3 w-px bg-sidebar-border' />
 						<div className='flex items-center gap-1.5'>
-							<span className={cn(
-								'h-1.5 w-1.5 rounded-full',
-								liveMonitorEnabled
-									? (changesDetected && changesDetected > 0 ? 'bg-amber-400' : 'bg-emerald-400')
-									: 'bg-muted-foreground/40'
-							)} />
+							<span
+								className={cn(
+									'h-1.5 w-1.5 rounded-full',
+									liveMonitorEnabled
+										? changesDetected && changesDetected > 0
+											? 'bg-amber-400'
+											: 'bg-emerald-400'
+										: 'bg-muted-foreground/40'
+								)}
+							/>
 							{liveMonitorEnabled ? (
 								liveMonitorError ? (
 									<span className='text-red-400' title={liveMonitorError}>

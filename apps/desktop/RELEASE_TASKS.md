@@ -23,18 +23,18 @@ This document outlines the critical features and improvements required to make D
 **Specification:**
 
 1.  **UI Update:**
-     - Add an "SSH Tunnel" toggle or tab in the `Postgres` form section.
-     - Fields needed:
-         - `SSH Host` (string, required if enabled)
-         - `SSH Port` (number, default 22)
+    - Add an "SSH Tunnel" toggle or tab in the `Postgres` form section.
+    - Fields needed:
+        - `SSH Host` (string, required if enabled)
+        - `SSH Port` (number, default 22)
         - `SSH Username` (string, required)
         - `Authentication Method`: "Password" or "Key File".
         - `SSH Password / Passphrase` (password input).
         - `Private Key Path` (file picker).
 2.  **Implementation:**
-     - Update `formData` state to include `sshConfig`.
-     - Map fields to the `SshConfig` type defined in `bindings.ts`.
-     - Pass this populated object in `handleTestConnection` and persist it through `onSave`.
+    - Update `formData` state to include `sshConfig`.
+    - Map fields to the `SshConfig` type defined in `bindings.ts`.
+    - Pass this populated object in `handleTestConnection` and persist it through `onSave`.
 
 ### 2. Schema Management (DDL)
 

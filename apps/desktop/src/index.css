@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap') layer(base);
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap')
+layer(base);
 
 @import 'tailwindcss';
 
@@ -116,7 +117,6 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
-
 	*,
 	::after,
 	::before,
@@ -611,24 +611,24 @@
 
 @layer utilities {
 	.db-card {
-		@apply relative rounded-lg border border-border bg-card/50 p-3 cursor-pointer transition-all duration-200;
+		@apply relative rounded-md border border-border/60 bg-background/40 p-3 cursor-pointer transition-all duration-150;
 	}
 
 	.db-card:hover {
-		@apply bg-card border-muted-foreground/30;
+		@apply bg-muted/40 border-border;
 	}
 
 	.db-card.active {
-		@apply border-primary/50 bg-primary/5;
-		box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.15);
+		@apply border-border bg-muted/60;
+		box-shadow: inset 2px 0 0 hsl(var(--primary));
 	}
 
 	.db-card-icon {
-		@apply flex h-10 w-10 items-center justify-center rounded-md transition-transform duration-200;
+		@apply flex h-9 w-9 items-center justify-center rounded-md transition-transform duration-150;
 	}
 
 	.db-card:hover .db-card-icon {
-		@apply scale-110;
+		@apply scale-105;
 	}
 
 	.form-section {
@@ -672,7 +672,6 @@
 	}
 
 	@keyframes statusShake {
-
 		0%,
 		100% {
 			transform: translateX(0);
@@ -690,8 +689,7 @@
 	}
 
 	.input-glow:focus {
-		box-shadow:
-			0 0 0 2px hsl(var(--primary) / 0.1),
-			0 0 20px -5px hsl(var(--primary) / 0.2);
+		outline: none;
+		box-shadow: none;
 	}
 }

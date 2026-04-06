@@ -43,7 +43,11 @@
 				font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 				background:
 					radial-gradient(1200px 520px at 14% -10%, var(--accent-soft), transparent 55%),
-					radial-gradient(900px 520px at 100% 100%, rgba(255, 255, 255, 0.03), transparent 64%),
+					radial-gradient(
+						900px 520px at 100% 100%,
+						rgba(255, 255, 255, 0.03),
+						transparent 64%
+					),
 					linear-gradient(160deg, var(--bg) 0%, var(--bg-2) 100%);
 				color: var(--text);
 				user-select: none;
@@ -130,7 +134,11 @@
 				padding: 7px;
 				border-radius: 22px;
 				border: 1px solid rgba(255, 255, 255, 0.12);
-				background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.01));
+				background: linear-gradient(
+					160deg,
+					rgba(255, 255, 255, 0.08),
+					rgba(255, 255, 255, 0.01)
+				);
 				box-shadow:
 					0 0 0 1px rgba(255, 255, 255, 0.05) inset,
 					0 16px 40px -24px var(--glow);
@@ -397,7 +405,9 @@
 						</svg>
 					</div>
 					<h1 class="name">Dora</h1>
-					<p class="subtitle">Loading your database workspace, tabs, and connection context.</p>
+					<p class="subtitle">
+						Loading your database workspace, tabs, and connection context.
+					</p>
 				</div>
 
 				<div class="telemetry" aria-hidden="true">
@@ -434,7 +444,7 @@
 		</div>
 
 		<script>
-			(function () {
+			;(function () {
 				const themeMap = {
 					dark: {
 						bg: '#090909',
@@ -555,61 +565,67 @@
 						logoAccent: '#a3a3a3',
 						logoHighlight: '#dadada'
 					}
-				};
+				}
 
 				function getTheme() {
 					try {
-						const raw = window.localStorage.getItem('dora-appearance');
+						const raw = window.localStorage.getItem('dora-appearance')
 						if (raw) {
-							const parsed = JSON.parse(raw);
-							if (parsed && typeof parsed.theme === 'string' && themeMap[parsed.theme]) {
-								return parsed.theme;
+							const parsed = JSON.parse(raw)
+							if (
+								parsed &&
+								typeof parsed.theme === 'string' &&
+								themeMap[parsed.theme]
+							) {
+								return parsed.theme
 							}
 						}
 					} catch (_error) {}
 
-					return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+					return window.matchMedia('(prefers-color-scheme: light)').matches
+						? 'light'
+						: 'dark'
 				}
 
-				const palette = themeMap[getTheme()] || themeMap.dark;
-				const root = document.documentElement;
+				const palette = themeMap[getTheme()] || themeMap.dark
+				const root = document.documentElement
 
-				root.style.setProperty('--bg', palette.bg);
-				root.style.setProperty('--bg-2', palette.bg2);
-				root.style.setProperty('--panel', palette.panel);
-				root.style.setProperty('--panel-2', palette.panel2);
-				root.style.setProperty('--border', palette.border);
-				root.style.setProperty('--text', palette.text);
-				root.style.setProperty('--muted', palette.muted);
-				root.style.setProperty('--accent', palette.accent);
-				root.style.setProperty('--accent-soft', palette.accentSoft);
-				root.style.setProperty('--glow', palette.glow);
-				root.style.setProperty('--logo-primary', palette.logoPrimary);
-				root.style.setProperty('--logo-secondary', palette.logoSecondary);
-				root.style.setProperty('--logo-tertiary', palette.logoTertiary);
-				root.style.setProperty('--logo-accent', palette.logoAccent);
-				root.style.setProperty('--logo-highlight', palette.logoHighlight);
+				root.style.setProperty('--bg', palette.bg)
+				root.style.setProperty('--bg-2', palette.bg2)
+				root.style.setProperty('--panel', palette.panel)
+				root.style.setProperty('--panel-2', palette.panel2)
+				root.style.setProperty('--border', palette.border)
+				root.style.setProperty('--text', palette.text)
+				root.style.setProperty('--muted', palette.muted)
+				root.style.setProperty('--accent', palette.accent)
+				root.style.setProperty('--accent-soft', palette.accentSoft)
+				root.style.setProperty('--glow', palette.glow)
+				root.style.setProperty('--logo-primary', palette.logoPrimary)
+				root.style.setProperty('--logo-secondary', palette.logoSecondary)
+				root.style.setProperty('--logo-tertiary', palette.logoTertiary)
+				root.style.setProperty('--logo-accent', palette.logoAccent)
+				root.style.setProperty('--logo-highlight', palette.logoHighlight)
 
 				const steps = [
 					'Initializing runtime',
 					'Restoring workspace tabs',
 					'Syncing schema metadata',
 					'Preparing query engine'
-				];
+				]
 
-				const statusText = document.getElementById('status-text');
-				const statusStep = document.getElementById('status-step');
-				let index = 0;
+				const statusText = document.getElementById('status-text')
+				const statusStep = document.getElementById('status-step')
+				let index = 0
 
 				window.setInterval(function () {
-					index = (index + 1) % steps.length;
-					if (statusText) statusText.textContent = steps[index];
+					index = (index + 1) % steps.length
+					if (statusText) statusText.textContent = steps[index]
 					if (statusStep) {
-						const display = String(index + 1).padStart(2, '0');
-						statusStep.textContent = display + '/04';
+						const display = String(index + 1).padStart(2, '0')
+						statusStep.textContent = display + '/04'
 					}
-				}, 560);
-			})();
+				}, 560)
+			})()
 		</script>
 	</body>
 </html>

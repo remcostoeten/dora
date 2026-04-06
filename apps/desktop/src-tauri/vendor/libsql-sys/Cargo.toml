@@ -22,13 +22,7 @@ autotests = false
 autobenches = false
 description = "Native bindings to libSQL"
 readme = false
-keywords = [
-    "libsql",
-    "sqlite",
-    "ffi",
-    "bindings",
-    "database",
-]
+keywords = ["libsql", "sqlite", "ffi", "bindings", "database"]
 categories = ["external-ffi-bindings"]
 license = "MIT"
 repository = "https://github.com/tursodatabase/libsql"
@@ -66,15 +60,15 @@ version = "1.18.0"
 [dependencies.rusqlite]
 version = "0.9.29"
 features = [
-    "bundled",
-    "libsql-experimental",
-    "column_decltype",
-    "load_extension",
-    "modern_sqlite",
-    "functions",
-    "limits",
-    "hooks",
-    "trace",
+	"bundled",
+	"libsql-experimental",
+	"column_decltype",
+	"load_extension",
+	"modern_sqlite",
+	"functions",
+	"limits",
+	"hooks",
+	"trace"
 ]
 optional = true
 default-features = false

@@ -59,7 +59,8 @@ type MonacoApi = Parameters<OnMount>[1]
 
 function getAliases(text: string): Map<string, string> {
 	const aliases = new Map<string, string>()
-	const regex = /\b(?:from|join|update|into)\s+([a-zA-Z_][\w$]*)(?:\s+(?:as\s+)?([a-zA-Z_][\w$]*))?/gi
+	const regex =
+		/\b(?:from|join|update|into)\s+([a-zA-Z_][\w$]*)(?:\s+(?:as\s+)?([a-zA-Z_][\w$]*))?/gi
 
 	for (const match of text.matchAll(regex)) {
 		const table = match[1]
@@ -285,8 +286,9 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: P
 						return { suggestions }
 					}
 
-					const wantsTables =
-						/\b(from|join|update|into|table)\s+[a-zA-Z_0-9]*$/i.test(beforeCursor)
+					const wantsTables = /\b(from|join|update|into|table)\s+[a-zA-Z_0-9]*$/i.test(
+						beforeCursor
+					)
 					if (wantsTables) {
 						for (const table of tables) {
 							suggestions.push({

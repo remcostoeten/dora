@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dora
+Comment=Desktop database studio
+Exec=dora
+Icon=${SNAP}/meta/gui/icon.png
+Categories=Development;Database;
+Terminal=false
+StartupNotify=true

@@ -139,15 +139,23 @@ export function SidebarBottomPanel({ table }: Props) {
 										className='flex flex-col gap-1 px-3 py-2 border-b border-border/50 last:border-0 hover:bg-muted/30'
 									>
 										<div className='flex items-center justify-between'>
-											<span className='font-medium text-xs break-all'>{idx.name}</span>
+											<span className='font-medium text-xs break-all'>
+												{idx.name}
+											</span>
 											<div className='flex gap-1'>
 												{idx.is_primary && (
-													<Badge variant='outline' className='h-4 px-1 text-[9px] border-amber-500/50 text-amber-500'>
+													<Badge
+														variant='outline'
+														className='h-4 px-1 text-[9px] border-amber-500/50 text-amber-500'
+													>
 														PK
 													</Badge>
 												)}
 												{idx.is_unique && !idx.is_primary && (
-													<Badge variant='outline' className='h-4 px-1 text-[9px] border-blue-500/50 text-blue-500'>
+													<Badge
+														variant='outline'
+														className='h-4 px-1 text-[9px] border-blue-500/50 text-blue-500'
+													>
 														UQ
 													</Badge>
 												)}

@@ -1,8 +1,4 @@
-import {
-	SquareTerminal,
-	Table2,
-	Container
-} from 'lucide-react'
+import { SquareTerminal, Table2, Container } from 'lucide-react'
 import { useCallback, useRef, KeyboardEvent } from 'react'
 import { DoraLogo } from '@/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -147,11 +143,7 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 					aria-orientation='horizontal'
 				/>
 
-				<div
-					role='group'
-					aria-label='Tools'
-					className='mx-auto flex flex-col gap-1'
-				>
+				<div role='group' aria-label='Tools' className='mx-auto flex flex-col gap-1'>
 					{secondaryNavItems.map((item) => (
 						<SidebarNavItem
 							key={item.id}

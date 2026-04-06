@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-
 // Mock the docker-client module
 vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client', () => ({
 	checkDockerAvailability: vi.fn(),
@@ -11,8 +10,8 @@ vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/api/docke
 
 describe('seedDatabase', () => {
 	// We need to keep a reference to the dynamically imported module
-	let containerService: any;
-	let dockerClient: any;
+	let containerService: any
+	let dockerClient: any
 
 	beforeEach(async () => {
 		vi.resetModules() // Important: clear cache so isTauri is re-evaluated
@@ -26,8 +25,10 @@ describe('seedDatabase', () => {
 		})
 
 		// Re-import modules after setting up environment
-		dockerClient = await import('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client')
-		containerService = await import('../../../../../../../apps/desktop/src/features/docker-manager/api/container-service')
+		dockerClient =
+			await import('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client')
+		containerService =
+			await import('../../../../../../../apps/desktop/src/features/docker-manager/api/container-service')
 	})
 
 	afterEach(() => {
@@ -77,7 +78,10 @@ describe('seedDatabase', () => {
 			exitCode: 1
 		})
 
-		const result = await containerService.seedDatabase('container-123', 'file.sql', { user: 'u', database: 'd' })
+		const result = await containerService.seedDatabase('container-123', 'file.sql', {
+			user: 'u',
+			database: 'd'
+		})
 
 		expect(result.success).toBe(false)
 		expect(result.error).toContain('psql error')

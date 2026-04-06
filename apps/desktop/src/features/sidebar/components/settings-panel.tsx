@@ -1,10 +1,5 @@
 import { useSettings } from '@/core/settings'
-import {
-	useShortcutStore,
-	useEffectiveShortcuts,
-	APP_SHORTCUTS,
-	ShortcutName
-} from '@/core/shortcuts'
+import { useShortcutStore, useEffectiveShortcuts, ShortcutName } from '@/core/shortcuts'
 import {
 	Select,
 	SelectContent,
@@ -165,7 +160,9 @@ export function SettingsPanel() {
 					<SidebarSection title='Startup'>
 						<div className='space-y-2'>
 							<div className='flex-1'>
-								<div className='text-sm text-sidebar-foreground'>Connection behavior</div>
+								<div className='text-sm text-sidebar-foreground'>
+									Connection behavior
+								</div>
 								<div className='text-xs text-muted-foreground leading-tight'>
 									Auto-connect to last used database (falls back to first), or
 									start on an empty view

@@ -89,15 +89,15 @@ Definition:
 
 These workstreams are intentionally separated so different agents can own them.
 
-| ID | Workstream | Priority | Safe Ownership |
-| :-- | :-- | :-- | :-- |
-| WS1 | Backend types + connection plumbing | Critical | Rust types / connection files only |
-| WS2 | MySQL query execution + parser | Critical | new `database/mysql/*` files + adapter wiring |
-| WS3 | Schema introspection + metadata | Critical | new `database/mysql/*` files + metadata service |
-| WS4 | Mutations + export parity | High | `services/mutation.rs`, maintenance/export files |
-| WS5 | Frontend enablement | High | frontend connections/UI files only |
-| WS6 | Tests + verification | High | tests only |
-| WS7 | Docs + release state | Medium | docs only |
+| ID  | Workstream                          | Priority | Safe Ownership                                   |
+| :-- | :---------------------------------- | :------- | :----------------------------------------------- |
+| WS1 | Backend types + connection plumbing | Critical | Rust types / connection files only               |
+| WS2 | MySQL query execution + parser      | Critical | new `database/mysql/*` files + adapter wiring    |
+| WS3 | Schema introspection + metadata     | Critical | new `database/mysql/*` files + metadata service  |
+| WS4 | Mutations + export parity           | High     | `services/mutation.rs`, maintenance/export files |
+| WS5 | Frontend enablement                 | High     | frontend connections/UI files only               |
+| WS6 | Tests + verification                | High     | tests only                                       |
+| WS7 | Docs + release state                | Medium   | docs only                                        |
 
 ## WS1: Backend Types + Connection Plumbing
 
@@ -119,18 +119,18 @@ Make MySQL a real backend connection type instead of a frontend scaffold.
 ### Tasks
 
 1. Extend `DatabaseInfo` with a MySQL variant in:
-   - `apps/desktop/src-tauri/src/database/types.rs`
+    - `apps/desktop/src-tauri/src/database/types.rs`
 2. Extend `Database` and `DatabaseClient` with a MySQL runtime variant in:
-   - `apps/desktop/src-tauri/src/database/types.rs`
+    - `apps/desktop/src-tauri/src/database/types.rs`
 3. Teach connection persistence to save/load MySQL connection config in:
-   - `apps/desktop/src-tauri/src/storage.rs`
+    - `apps/desktop/src-tauri/src/storage.rs`
 4. Add connect/test/disconnect handling in:
-   - `apps/desktop/src-tauri/src/database/services/connection.rs`
+    - `apps/desktop/src-tauri/src/database/services/connection.rs`
 5. Add a `DatabaseType::MySQL` adapter enum case and adapter construction in:
-   - `apps/desktop/src-tauri/src/database/adapter.rs`
+    - `apps/desktop/src-tauri/src/database/adapter.rs`
 6. Decide whether SSH tunneling is:
-   - not supported in MySQL beta, or
-   - supported by reusing `ssh_tunnel.rs`
+    - not supported in MySQL beta, or
+    - supported by reusing `ssh_tunnel.rs`
 
 ### Notes
 
@@ -171,19 +171,19 @@ Make SQL Console and async statement execution work for MySQL.
 ### Tasks
 
 1. Create a new `mysql` module mirroring the existing shape used by:
-   - `apps/desktop/src-tauri/src/database/postgres/*`
-   - `apps/desktop/src-tauri/src/database/sqlite/*`
-   - `apps/desktop/src-tauri/src/database/libsql/*`
+    - `apps/desktop/src-tauri/src/database/postgres/*`
+    - `apps/desktop/src-tauri/src/database/sqlite/*`
+    - `apps/desktop/src-tauri/src/database/libsql/*`
 2. Implement SQL parsing suitable for:
-   - statement splitting
-   - read-only detection
-   - DDL detection
+    - statement splitting
+    - read-only detection
+    - DDL detection
 3. Implement statement execution that can feed the existing statement manager format.
 4. Add MySQL adapter wiring in:
-   - `apps/desktop/src-tauri/src/database/adapter.rs`
+    - `apps/desktop/src-tauri/src/database/adapter.rs`
 5. Update schema invalidation logic in:
-   - `apps/desktop/src-tauri/src/database/commands.rs`
-   so MySQL non-read-only statements also invalidate cached schema.
+    - `apps/desktop/src-tauri/src/database/commands.rs`
+      so MySQL non-read-only statements also invalidate cached schema.
 
 ### Done When
 
@@ -215,17 +215,17 @@ Make Database Studio work against MySQL.
 ### Tasks
 
 1. Implement MySQL schema discovery for:
-   - schemas / databases
-   - tables
-   - columns
-   - primary keys
-   - indexes
-   - foreign keys
+    - schemas / databases
+    - tables
+    - columns
+    - primary keys
+    - indexes
+    - foreign keys
 2. Match the app’s existing `DatabaseSchema` and `ColumnInfo` shape in:
-   - `apps/desktop/src-tauri/src/database/types.rs`
+    - `apps/desktop/src-tauri/src/database/types.rs`
 3. Add MySQL metadata collection in:
-   - `apps/desktop/src-tauri/src/database/metadata.rs`
-   - `apps/desktop/src-tauri/src/database/services/metadata.rs`
+    - `apps/desktop/src-tauri/src/database/metadata.rs`
+    - `apps/desktop/src-tauri/src/database/services/metadata.rs`
 4. Verify schema names vs database names semantics for MySQL.
 
 ### Notes
@@ -258,20 +258,20 @@ Make editing and export work in Database Studio and SQL result grids.
 ### Tasks
 
 1. Add MySQL branches to mutation paths in:
-   - `update_cell`
-   - `delete_rows`
-   - `insert_row`
-   - `duplicate_row`
-   - `execute_batch`
-   - export helpers
+    - `update_cell`
+    - `delete_rows`
+    - `insert_row`
+    - `duplicate_row`
+    - `execute_batch`
+    - export helpers
 2. Review placeholder syntax and parameter binding conventions for MySQL.
 3. Verify type conversion from JSON into driver parameter values.
 4. Decide whether these are in MySQL beta or deferred:
-   - soft delete support
-   - undo soft delete
-   - truncate table
-   - truncate database
-   - dump database
+    - soft delete support
+    - undo soft delete
+    - truncate table
+    - truncate database
+    - dump database
 5. If a feature is deferred, make the UI honest instead of exposing a broken path.
 
 ### Done When
@@ -302,14 +302,14 @@ Expose MySQL as a supported provider in the desktop UI only when the backend pat
 ### Tasks
 
 1. Ensure frontend-to-backend mapping includes MySQL in:
-   - `apps/desktop/src/features/connections/api.ts`
+    - `apps/desktop/src/features/connections/api.ts`
 2. Re-enable MySQL selection in:
-   - `apps/desktop/src/features/connections/components/connection-dialog/database-type-selector.tsx`
-   only after WS1 is ready
+    - `apps/desktop/src/features/connections/components/connection-dialog/database-type-selector.tsx`
+      only after WS1 is ready
 3. Verify provider defaults and connection-string behavior in:
-   - `apps/desktop/src/features/connections/utils/providers.ts`
+    - `apps/desktop/src/features/connections/utils/providers.ts`
 4. Verify validation rules in:
-   - `apps/desktop/src/features/connections/validation.ts`
+    - `apps/desktop/src/features/connections/validation.ts`
 5. Check UI strings so MySQL is described as supported only when it really is.
 
 ### Done When
@@ -335,31 +335,31 @@ Prevent MySQL support from being “connects once” only.
 ### Tasks
 
 1. Add frontend tests for:
-   - MySQL connection mapping
-   - validation
-   - provider selection UI
+    - MySQL connection mapping
+    - validation
+    - provider selection UI
 2. Add Rust tests for:
-   - connect/test connection
-   - schema introspection
-   - mutation helpers
-   - query execution
+    - connect/test connection
+    - schema introspection
+    - mutation helpers
+    - query execution
 3. Build a manual runtime verification matrix:
 
-| Flow | PostgreSQL | SQLite | LibSQL | MySQL |
-| :-- | :--: | :--: | :--: | :--: |
-| Add connection | [ ] | [ ] | [ ] | [ ] |
-| Test connection | [ ] | [ ] | [ ] | [ ] |
-| Connect / reconnect | [ ] | [ ] | [ ] | [ ] |
-| Browse schema | [ ] | [ ] | [ ] | [ ] |
-| Open table | [ ] | [ ] | [ ] | [ ] |
-| Edit cell | [ ] | [ ] | [ ] | [ ] |
-| Add row | [ ] | [ ] | [ ] | [ ] |
-| Delete row | [ ] | [ ] | [ ] | [ ] |
-| Bulk edit | [ ] | [ ] | [ ] | [ ] |
-| SQL SELECT | [ ] | [ ] | [ ] | [ ] |
-| SQL INSERT/UPDATE/DELETE | [ ] | [ ] | [ ] | [ ] |
-| Result-set edit/delete | [ ] | [ ] | [ ] | [ ] |
-| Export | [ ] | [ ] | [ ] | [ ] |
+| Flow                     | PostgreSQL | SQLite | LibSQL | MySQL |
+| :----------------------- | :--------: | :----: | :----: | :---: |
+| Add connection           |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Test connection          |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Connect / reconnect      |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Browse schema            |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Open table               |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Edit cell                |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Add row                  |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Delete row               |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Bulk edit                |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| SQL SELECT               |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| SQL INSERT/UPDATE/DELETE |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Result-set edit/delete   |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
+| Export                   |    [ ]     |  [ ]   |  [ ]   |  [ ]  |
 
 ### Validation
 
@@ -388,16 +388,16 @@ Keep product docs honest while support is partial.
 ### Tasks
 
 1. Do not mark MySQL as supported until:
-   - WS1
-   - WS2
-   - WS3
-   - WS4
-   are done at minimum
+    - WS1
+    - WS2
+    - WS3
+    - WS4
+      are done at minimum
 2. Update the product README only after runtime verification exists.
 3. Record known limitations explicitly:
-   - no SSH tunnel support if omitted
-   - no live monitoring if omitted
-   - no dump/restore parity if omitted
+    - no SSH tunnel support if omitted
+    - no live monitoring if omitted
+    - no dump/restore parity if omitted
 
 ## Recommended MySQL Implementation Sequence
 
@@ -426,16 +426,16 @@ Likely file touch points:
 
 - same files as MySQL
 - mostly around:
-  - connection options
-  - introspection query differences
-  - type mapping differences
-  - SQL edge cases
+    - connection options
+    - introspection query differences
+    - type mapping differences
+    - SQL edge cases
 
 Definition of done:
 
 - the MySQL adapter works against MariaDB with either:
-  - zero code changes, or
-  - small compatibility branches documented here
+    - zero code changes, or
+    - small compatibility branches documented here
 
 ## CockroachDB
 
@@ -484,6 +484,7 @@ If multiple agents are working from this document:
 
 ```md
 Update note:
+
 - 2026-04-04: Implemented connection persistence and basic connect/test support.
 - Remaining: schema introspection and mutations.
 ```

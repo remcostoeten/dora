@@ -77,38 +77,38 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
 				<Label className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
 					Authentication Method
 				</Label>
-				<div className='grid grid-cols-2 gap-2'>
-					<button
-						type='button'
-						onClick={function () {
-							updateConfig({ authMethod: 'password' })
-						}}
-						className={cn(
-							'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all',
-							config.authMethod === 'password'
-								? 'bg-primary/10 border-primary/50 text-primary'
-								: 'bg-card/50 border-border hover:bg-muted/50'
-						)}
-					>
-						<Lock className='h-4 w-4' />
-						Password
-					</button>
-					<button
-						type='button'
-						onClick={function () {
-							updateConfig({ authMethod: 'keyfile' })
-						}}
-						className={cn(
-							'flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all',
-							config.authMethod === 'keyfile'
-								? 'bg-primary/10 border-primary/50 text-primary'
-								: 'bg-card/50 border-border hover:bg-muted/50'
-						)}
-					>
-						<Key className='h-4 w-4' />
-						Key File
-					</button>
-				</div>
+			<div className='grid grid-cols-2 gap-2'>
+				<button
+					type='button'
+					onClick={function () {
+						updateConfig({ authMethod: 'password' })
+					}}
+					className={cn(
+						'flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-all duration-150',
+						config.authMethod === 'password'
+							? 'bg-muted border-border text-foreground'
+							: 'bg-transparent border-border/50 text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+					)}
+				>
+					<Lock className='h-3.5 w-3.5' />
+					Password
+				</button>
+				<button
+					type='button'
+					onClick={function () {
+						updateConfig({ authMethod: 'keyfile' })
+					}}
+					className={cn(
+						'flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-all duration-150',
+						config.authMethod === 'keyfile'
+							? 'bg-muted border-border text-foreground'
+							: 'bg-transparent border-border/50 text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+					)}
+				>
+					<Key className='h-3.5 w-3.5' />
+					Key File
+				</button>
+			</div>
 			</div>
 
 			{config.authMethod === 'password' && (

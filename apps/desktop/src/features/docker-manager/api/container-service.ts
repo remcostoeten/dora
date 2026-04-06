@@ -31,8 +31,7 @@ import {
 import * as demoService from './demo-service'
 
 const isTauri =
-	typeof window !== 'undefined' &&
-	('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+	typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 
 export async function createPostgresContainer(
 	config: PostgresContainerConfig

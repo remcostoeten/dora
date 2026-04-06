@@ -8,13 +8,87 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.97'
+export const CURRENT_VERSION = '0.0.102'
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
+		version: '0.0.102',
+		date: '2026-04-05',
+		commit: 'v0.0.102',
+		title: 'Snap Workflow Follow-up & Packaging Release Cleanup',
+		description:
+			'Fixes the Snap CI path and cuts a clean follow-up release tag that includes the packaging automation work already on branch head.',
+		type: 'fix',
+		details: [
+			'Fixed Snapcraft CI execution to run correctly in destructive mode on GitHub Actions',
+			'Replaced the invalid Tauri bundle flag with a direct Rust release build for Snap packaging',
+			'Carries the packaging automation, release guide, and VM lab tooling into a clean release tag'
+		]
+	},
+	{
+		version: '0.0.101',
+		date: '2026-04-05',
+		commit: 'v0.0.101',
+		title: 'Packaging Automation, VM Lab & Desktop Iteration',
+		description:
+			'Adds package-manager release helpers, Ubuntu-host VM workflows, refreshed release surfaces, and folds the current desktop/docs/test iteration into the 0.0.101 release.',
+		type: 'feature',
+		details: [
+			'Added release checksum generation plus Winget, AUR, and Snap packaging helpers',
+			'Added interactive release guide and Ubuntu-host VM lab tooling',
+			'Updated changelog/release surfaces for the 0.0.101 release',
+			'Carried forward the current desktop, docs, test, and workflow iteration work on this branch'
+		]
+	},
+	{
+		version: '0.1.0',
+		date: '2026-04-04',
+		commit: 'eff2c05',
+		title: 'Project Foundation & Documentation Audit',
+		description:
+			'Milestone release establishing the 0.1.x baseline with comprehensive installation paths, updated audit snapshots, and visual showcase enhancements.',
+		type: 'feature',
+		details: [
+			'Established 0.1.0 version baseline across monorepo',
+			'Completed Homebrew installation documentation and README overhaul',
+			'Verified all 115/115 tests passing for the new milestone'
+		]
+	},
+	{
+		version: '0.0.99',
+		date: '2026-04-04',
+		commit: '852360f',
+		title: 'Homebrew Support & CI Security Hardening',
+		description:
+			'Launched the official Homebrew Tap for easy installation, and fortified the CI/CD pipeline with pinned action SHAs and build target optimizations.',
+		type: 'feature',
+		details: [
+			'Added official Homebrew Tap at remcostoeten/homebrew-dora (brew install dora)',
+			'Pinned GitHub Actions to specific commit SHAs for improved supply chain security',
+			'Optimized esbuild target to esnext to resolve CI transform issues',
+			'Stabilized Rust toolchain branch reference in CI workflows'
+		]
+	},
+	{
+		version: '0.0.98',
+		date: '2026-04-04',
+		commit: '7b490a0',
+		title: 'Live Database Updates & Performance Refactor',
+		description:
+			'Introduced real-time database synchronization through a new backend live monitor manager, replacing legacy frontend polling for significant performance gains.',
+		type: 'feature',
+		details: [
+			'Implemented backend-driven live database monitor manager',
+			'Removed inefficient frontend polling logic to reduce CPU usage',
+			'Added real-time data grid updates on external database changes',
+			'Updated documentation with animated WEBP showcase demonstrating live performance',
+			'Removed legacy bloat and optimized workspace checkpointing'
+		]
+	},
+	{
 		version: '0.0.97',
 		date: '2026-02-20',
-		commit: 'unreleased',
+		commit: '48e798e',
 		title: 'Type Safety Recovery, Feature-State Cleanup & Docker Enhancements',
 		description:
 			'Restored strict TypeScript health, aligned sidebar feature states with actual availability, and shipped Docker manager improvements including terminal support and UX polish',

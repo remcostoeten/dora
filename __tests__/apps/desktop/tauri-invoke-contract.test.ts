@@ -15,7 +15,12 @@ function listSourceFiles(dirPath: string): string[] {
 	const files: string[] = []
 
 	for (const entry of entries) {
-		if (entry === 'node_modules' || entry === 'dist' || entry === 'target' || entry === 'vendor') {
+		if (
+			entry === 'node_modules' ||
+			entry === 'dist' ||
+			entry === 'target' ||
+			entry === 'vendor'
+		) {
 			continue
 		}
 

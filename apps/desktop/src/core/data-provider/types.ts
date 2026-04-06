@@ -13,18 +13,17 @@ import {
 	DatabaseInfo,
 	SavedQuery,
 	SnippetFolder
-
 } from '@/lib/bindings'
 
 export type AdapterResult<T> =
 	| {
-		ok: true
-		data: T
-	}
+			ok: true
+			data: T
+	  }
 	| {
-		ok: false
-		error: string
-	}
+			ok: false
+			error: string
+	  }
 
 export function getAdapterError<T>(result: AdapterResult<T>): string {
 	return 'error' in result ? result.error : 'Unknown adapter error'
@@ -125,14 +124,10 @@ export type DataAdapter = {
 
 	// Snippet Folder Management
 	getSnippetFolders(): Promise<AdapterResult<SnippetFolder[]>>
-	createSnippetFolder(
-		name: string,
-		parentId?: number | null
-	): Promise<AdapterResult<number>>
+	createSnippetFolder(name: string, parentId?: number | null): Promise<AdapterResult<number>>
 	updateSnippetFolder(id: number, name: string): Promise<AdapterResult<void>>
 	deleteSnippetFolder(id: number): Promise<AdapterResult<void>>
 }
-
 
 export type DataProviderContextValue = {
 	adapter: DataAdapter

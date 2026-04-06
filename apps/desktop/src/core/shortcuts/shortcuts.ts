@@ -1,6 +1,30 @@
 'use client'
 
-import { useShortcut as useShortcutBase, UseShortcutOptions } from '@/shared/lib/use-shortcut'
+import {
+	registerShortcutMap,
+	useShortcut as useShortcutBase,
+	type ActionKey,
+	type ExceptPredicate,
+	type ExceptPreset,
+	type HandlerOptions,
+	type ShortcutBuilder as PackageShortcutBuilder,
+	type ShortcutConflict,
+	type ShortcutDebugEvent,
+	type ShortcutDebugOptions,
+	type ShortcutGroup,
+	type ShortcutHandler,
+	type ShortcutMap,
+	type ShortcutMapEntry,
+	type ShortcutMapResult,
+	type ShortcutRecordingOptions,
+	type ShortcutResult,
+	type ShortcutScope,
+	type UseShortcutOptions
+} from '@remcostoeten/use-shortcut/react'
+import {
+	formatShortcut,
+	getModifierSymbols
+} from '@remcostoeten/use-shortcut/formatter'
 
 export type ShortcutDefinition = {
 	combo: string | string[]
@@ -9,6 +33,11 @@ export type ShortcutDefinition = {
 }
 
 export const APP_SHORTCUTS = {
+	openCommandPalette: {
+		combo: 'mod+k',
+		description: 'Open command palette',
+		scope: 'global'
+	},
 	selectAll: {
 		combo: 'mod+a',
 		description: 'Select all rows',
@@ -96,8 +125,187 @@ export function getAllShortcuts(): Array<{ name: ShortcutName; definition: Short
 	})
 }
 
-export function useShortcut(options?: UseShortcutOptions) {
-	return useShortcutBase(options)
+type BoundShortcutState = {
+	except?: ExceptPreset | ExceptPreset[] | ExceptPredicate
+	scopes?: ShortcutScope
 }
 
-export { formatShortcut, getModifierSymbols } from '@/shared/lib/use-shortcut'
+type BoundShortcutChain = {
+	on: (handler: ShortcutHandler, options?: HandlerOptions) => ShortcutResult
+	handle: (options: HandlerOptions & { handler: ShortcutHandler }) => ShortcutResult
+	except: (condition: ExceptPreset | ExceptPreset[] | ExceptPredicate) => BoundShortcutChain
+	in: (scopes: ShortcutScope) => BoundShortcutChain
+}
+
+export type ShortcutBuilder = PackageShortcutBuilder & {
+	bind: (combo: string | string[]) => BoundShortcutChain
+}
+
+export type {
+	ActionKey,
+	ExceptPredicate,
+	ExceptPreset,
+	HandlerOptions,
+	ShortcutConflict,
+	ShortcutDebugEvent,
+	ShortcutDebugOptions,
+	ShortcutGroup,
+	ShortcutHandler,
+	ShortcutMap,
+	ShortcutMapEntry,
+	ShortcutMapResult,
+	ShortcutRecordingOptions,
+	ShortcutResult,
+	ShortcutScope,
+	UseShortcutOptions
+}
+
+const IGNORED_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
+
+function toScopeList(scopes?: ShortcutScope): string[] {
+	if (!scopes) return []
+	return Array.isArray(scopes) ? scopes : [scopes]
+}
+
+function mergeScopes(a?: ShortcutScope, b?: ShortcutScope): ShortcutScope | undefined {
+	const mergedScopes = [...toScopeList(a), ...toScopeList(b)].filter(Boolean)
+	if (mergedScopes.length === 0) return undefined
+	if (mergedScopes.length === 1) return mergedScopes[0]
+	return Array.from(new Set(mergedScopes))
+}
+
+function evaluateExceptCondition(
+	event: KeyboardEvent,
+	condition: ExceptPreset | ExceptPreset[] | ExceptPredicate
+): boolean {
+	if (typeof condition === 'function') {
+		return condition(event)
+	}
+
+	if (Array.isArray(condition)) {
+		return condition.some(function (entry) {
+			return evaluateExceptCondition(event, entry)
+		})
+	}
+
+	const target = event.target as HTMLElement | null
+
+	switch (condition) {
+		case 'input':
+			return target ? IGNORED_TAGS.has(target.tagName) : false
+		case 'editable':
+			return target?.isContentEditable ?? false
+		case 'typing':
+			if (!target || !target.tagName) return false
+
+			return (
+				IGNORED_TAGS.has(target.tagName) ||
+				target.isContentEditable ||
+				target.classList?.contains('inputarea') ||
+				target.getAttribute?.('role') === 'textbox'
+			)
+		case 'modal':
+			return document.querySelector('[data-modal="true"], [role="dialog"]') !== null
+		case 'disabled':
+			return target
+				? target.hasAttribute('disabled') || target.getAttribute('aria-disabled') === 'true'
+				: false
+		default:
+			return false
+	}
+}
+
+function mergeExceptConditions(
+	a?: ExceptPreset | ExceptPreset[] | ExceptPredicate,
+	b?: ExceptPreset | ExceptPreset[] | ExceptPredicate
+): ExceptPreset | ExceptPreset[] | ExceptPredicate | undefined {
+	if (!a) return b
+	if (!b) return a
+
+	const aIsFunction = typeof a === 'function'
+	const bIsFunction = typeof b === 'function'
+
+	if (!aIsFunction && !bIsFunction) {
+		const merged = [...(Array.isArray(a) ? a : [a]), ...(Array.isArray(b) ? b : [b])]
+		return Array.from(new Set(merged))
+	}
+
+	return function mergedExcept(event: KeyboardEvent) {
+		return evaluateExceptCondition(event, a) || evaluateExceptCondition(event, b)
+	}
+}
+
+function registerBoundShortcut(
+	builder: PackageShortcutBuilder,
+	combo: string | string[],
+	state: BoundShortcutState,
+	handler: ShortcutHandler,
+	options?: HandlerOptions
+): ShortcutResult {
+	const mergedOptions: HandlerOptions = {
+		...options,
+		except: mergeExceptConditions(state.except, options?.except),
+		scopes: mergeScopes(state.scopes, options?.scopes)
+	}
+
+	return registerShortcutMap(builder, {
+		boundShortcut: {
+			keys: combo,
+			handler,
+			options: mergedOptions
+		}
+	}).boundShortcut
+}
+
+function createBoundShortcutChain(
+	builder: PackageShortcutBuilder,
+	combo: string | string[],
+	state: BoundShortcutState = {}
+): BoundShortcutChain {
+	return {
+		on: function (handler, options) {
+			return registerBoundShortcut(builder, combo, state, handler, options)
+		},
+		handle: function (options) {
+			const { handler, ...handlerOptions } = options
+			return registerBoundShortcut(builder, combo, state, handler, handlerOptions)
+		},
+		except: function (condition) {
+			return createBoundShortcutChain(builder, combo, {
+				...state,
+				except: mergeExceptConditions(state.except, condition)
+			})
+		},
+		in: function (scopes) {
+			return createBoundShortcutChain(builder, combo, {
+				...state,
+				scopes: mergeScopes(state.scopes, scopes)
+			})
+		}
+	}
+}
+
+export function useShortcut(options?: UseShortcutOptions): ShortcutBuilder {
+	const builder = useShortcutBase(options)
+
+	return Object.assign(builder, {
+		bind: function (combo: string | string[]) {
+			return createBoundShortcutChain(builder, combo)
+		}
+	})
+}
+
+export { formatShortcut, getModifierSymbols }
+export {
+	createShortcutGroup,
+	registerShortcutMap,
+	useShortcutGroup,
+	useShortcutMap
+} from '@remcostoeten/use-shortcut/react'
+export {
+	matchesAnyShortcut,
+	matchesShortcut,
+	parseShortcut,
+	parseShortcuts
+} from '@remcostoeten/use-shortcut/parser'
+export { detectPlatform } from '@remcostoeten/use-shortcut/constants'

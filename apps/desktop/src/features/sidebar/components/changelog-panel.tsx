@@ -1,4 +1,11 @@
-import { Sparkles, Wrench, RefreshCw, AlertTriangle, ChevronRight, ExternalLink } from 'lucide-react'
+import {
+	Sparkles,
+	Wrench,
+	RefreshCw,
+	AlertTriangle,
+	ChevronRight,
+	ExternalLink
+} from 'lucide-react'
 import { Badge } from '@/shared/ui/badge'
 import { cn } from '@/shared/utils/cn'
 import { CHANGELOG, CURRENT_VERSION, ChangelogEntry } from '../changelog-data'
@@ -45,10 +52,17 @@ function formatDate(dateString: string): string {
 	})
 }
 
+function getEntryUrl(entry: ChangelogEntry): string {
+	if (entry.commit.startsWith('v')) {
+		return `${siteConfig.links.github}/releases/tag/${entry.commit}`
+	}
+	return `${siteConfig.links.github}/commit/${entry.commit}`
+}
+
 export function ChangelogPanel({ maxHeight = 500 }: Props) {
 	const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set())
 
-	const toggleVersion = (version: string) => {
+	function toggleVersion(version: string) {
 		const newExpanded = new Set(expandedVersions)
 		if (newExpanded.has(version)) {
 			newExpanded.delete(version)
@@ -82,8 +96,18 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 							>
 								{/* Main Card Content - Clickable */}
 								<div
+									role='button'
+									tabIndex={0}
 									onClick={() => toggleVersion(entry.version)}
-									className='p-3 cursor-pointer'
+									onKeyDown={(e) => {
+										if (e.key === 'Enter' || e.key === ' ') {
+											e.preventDefault()
+											toggleVersion(entry.version)
+										}
+									}}
+									className='p-3 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-md transition-all'
+									aria-expanded={isExpanded}
+									aria-controls={`changelog-details-${entry.version}`}
 								>
 									<div className='flex items-start gap-3'>
 										<div
@@ -94,7 +118,7 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 													: 'bg-primary/10 text-primary'
 											)}
 										>
-											<Icon className='h-3.5 w-3.5' />
+											<Icon className='h-3.5 w-3.5' aria-hidden='true' />
 										</div>
 
 										<div className='flex-1 min-w-0'>
@@ -118,6 +142,7 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 															'h-3.5 w-3.5 text-muted-foreground transition-transform duration-200',
 															isExpanded && 'rotate-90'
 														)}
+														aria-hidden='true'
 													/>
 												)}
 											</div>
@@ -137,14 +162,18 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 												<span>{formatDate(entry.date)}</span>
 												<span className='opacity-50'>•</span>
 												<a
-													href={`${siteConfig.links.github}/commit/${entry.commit}`}
+													href={getEntryUrl(entry)}
 													target='_blank'
 													rel='noopener noreferrer'
 													onClick={(e) => e.stopPropagation()}
-													className='font-mono bg-muted/50 px-1.5 py-0.5 rounded hover:bg-muted hover:text-primary transition-colors inline-flex items-center gap-1 group/link'
+													onKeyDown={(e) => e.stopPropagation()}
+													className='font-mono bg-muted/50 px-1.5 py-0.5 rounded focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted hover:text-primary transition-colors inline-flex items-center gap-1 group/link'
 												>
 													{entry.commit}
-													<ExternalLink className='h-2.5 w-2.5 opacity-0 group-hover/link:opacity-100 transition-opacity' />
+													<ExternalLink
+														className='h-2.5 w-2.5 opacity-0 group-hover/link:opacity-100 transition-opacity'
+														aria-hidden='true'
+													/>
 												</a>
 											</div>
 										</div>
@@ -153,7 +182,10 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 
 								{/* Expanded Details */}
 								{isExpanded && entry.details && (
-									<div className='px-3 pb-3 pt-0 animate-in slide-in-from-top-1 duration-200'>
+									<div
+										id={`changelog-details-${entry.version}`}
+										className='px-3 pb-3 pt-0 animate-in slide-in-from-top-1 duration-200'
+									>
 										<div className='ml-[2.875rem] pt-2 border-t border-sidebar-border/50'>
 											<ul className='space-y-1.5'>
 												{entry.details.map((detail, i) => (
