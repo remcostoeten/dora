@@ -53,7 +53,7 @@ Dora is a Tauri app built for macOS, Windows, and Linux.
 **macOS** (Homebrew):
 
 ```bash
-brew install remcostoeten/dora/dora
+brew install --cask remcostoeten/dora/dora
 ```
 
 **Windows** (Winget):
