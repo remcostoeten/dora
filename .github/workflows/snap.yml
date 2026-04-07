@@ -35,7 +35,7 @@ jobs:
     env:
       SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+      - uses: actions/checkout@v4
 
       - name: Resolve release metadata
         id: meta
@@ -63,7 +63,7 @@ jobs:
           echo "DORA_RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Build snap
-        uses: snapcore/action-build@v1
+        uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1 latest
         id: build
 
       - name: Upload snap artifact
@@ -80,7 +80,7 @@ jobs:
 
       - name: Publish snap to Snap Store
         if: ${{ env.SNAPCRAFT_STORE_CREDENTIALS != '' && (github.event_name == 'release' || inputs.publish) }}
-        uses: snapcore/action-publish@v1
+        uses: snapcore/action-publish@v1 # no Node 22 version available yet
         with:
           snap: ${{ steps.build.outputs.snap }}
           release: ${{ steps.meta.outputs.channel }}

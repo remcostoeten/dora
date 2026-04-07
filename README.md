@@ -5,14 +5,20 @@
   <small><i>A native-feeling desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL.</i></small>
 
 [![Release](https://img.shields.io/github/v/release/remcostoeten/dora?display_name=tag&sort=semver)](https://github.com/remcostoeten/dora/releases)
+[![Downloads](https://img.shields.io/github/downloads/remcostoeten/dora/total)](https://github.com/remcostoeten/dora/releases)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-macos%20%7C%20windows%20%7C%20linux-111827)](https://github.com/remcostoeten/dora/releases)
+[![Snap](https://img.shields.io/badge/snap-install-82BEA0?logo=snapcraft&logoColor=ffffff)](https://snapcraft.io/dora)
+[![Built with Tauri](https://img.shields.io/badge/built%20with-tauri-FFC131?logo=tauri&logoColor=ffffff)](https://tauri.app/)
+[![Rust](https://img.shields.io/badge/rust-000000?logo=rust&logoColor=ffffff)](https://www.rust-lang.org/)
+[![TypeScript](https://img.shields.io/badge/typescript-3178C6?logo=typescript&logoColor=ffffff)](https://www.typescriptlang.org/)
 
 </div>
 
 <p align="center">
   <img src="assets/demo-tour.webp" alt="Dora App Demonstration" width="92%" />
 </p>
+
+<p align="center"><sub>UI heavily inspired by <a href="https://drizzle.studio">Drizzle Studio</a></sub></p>
 
 Dora is a cross-platform database studio for PostgreSQL, MySQL, SQLite, and LibSQL.
 Built with Tauri, it weighs ~10 MB versus the 100+ MB of TablePlus — no
@@ -86,15 +92,14 @@ https://github.com/remcostoeten/dora/releases/latest
 
 ### Install
 
-**macOS** (Homebrew):
-
 ```bash
-brew install --cask remcostoeten/dora/dora
-```
+# Linux (Snap)
+sudo snap install dora
 
-**Windows** (Winget):
+# macOS (Homebrew)
+brew install remcostoeten/dora/dora
 
-```bash
+# Windows (Winget)
 winget install remcostoeten.dora
 ```
 
@@ -102,15 +107,12 @@ winget install remcostoeten.dora
 
 ## Database Support
 
-These are the database paths the app currently treats as shipped product
-surface.
-
-| Database       |   Status    | Notes                                                                          |
-| :------------- | :---------: | :----------------------------------------------------------------------------- |
-| PostgreSQL     |  Supported  | Full desktop path, including SSH tunneling and live external change monitoring |
-| SQLite         |  Supported  | Native desktop workflow                                                        |
-| LibSQL / Turso |  Supported  | Local and remote flows                                                         |
-| MySQL          |  Supported  | Desktop connection workflow is available, with polling-based live refresh      |
+| Database | Status | Notes |
+|----------|--------|-------|
+| PostgreSQL | ✅ Supported | Full desktop path, SSH tunneling, live change monitoring via LISTEN/NOTIFY |
+| MySQL | ✅ Supported | Connection pooling, schema introspection, live change monitoring via polling |
+| SQLite | ✅ Supported | Native desktop workflow with file picker |
+| LibSQL / Turso | ✅ Supported | Local and remote flows |
 
 ## Development
 
@@ -119,20 +121,7 @@ bun install
 bun run desktop:dev
 ```
 
-To validate:
-
-```bash
-bun run test:desktop          # Desktop tests
-bun x tsc --noEmit -p apps/desktop/tsconfig.app.json  # TypeScript
-cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml  # Rust
-```
-
 To build: `bun run desktop:build`
-
-## Repository Notes
-
-- Desktop-specific notes live in [apps/desktop/README.md](apps/desktop/README.md)
-- Audit notes live in [docs/app-audit-2026-02-20.md](docs/app-audit-2026-02-20.md)
 
 ## License
 
