@@ -1,10 +1,16 @@
 name: dora
 base: core22
 version: '0.0.102'
+title: Dora
 summary: Clean, fast desktop database studio
 description: |
   Dora is a cross-platform desktop database studio built with Tauri, Rust, and React.
-  It supports PostgreSQL, SQLite, and LibSQL/Turso in a native desktop workflow.
+  It supports PostgreSQL, MySQL, SQLite, and LibSQL/Turso in a native desktop workflow.
+license: GPL-3.0-only
+contact: https://github.com/remcostoeten/dora
+issues: https://github.com/remcostoeten/dora/issues
+source-code: https://github.com/remcostoeten/dora
+website: https://github.com/remcostoeten/dora
 grade: stable
 confinement: strict
 
@@ -45,6 +51,7 @@ parts:
       - libwebkit2gtk-4.1-dev
       - patchelf
       - pkg-config
+      - unzip
     stage-packages:
       - libasound2
       - libayatana-appindicator3-1
