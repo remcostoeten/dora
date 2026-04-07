@@ -89,7 +89,7 @@ export default function Index() {
   const shortcuts = useEffectiveShortcuts();
   const paletteShortcut = useShortcut({ ignoreInputs: false });
 
-  paletteShortcut.bind(shortcuts.openCommandPalette.combo).on(
+  paletteShortcut.bindShortcut(shortcuts.openCommandPalette.combo).on(
     function () {
       setIsCommandPaletteOpen(function (open) {
         return !open;

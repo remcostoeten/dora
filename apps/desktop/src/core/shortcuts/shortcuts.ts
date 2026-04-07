@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import {
 	registerShortcutMap,
 	useShortcut as useShortcutBase,
@@ -138,7 +139,7 @@ type BoundShortcutChain = {
 }
 
 export type ShortcutBuilder = PackageShortcutBuilder & {
-	bind: (combo: string | string[]) => BoundShortcutChain
+	bindShortcut: (combo: string | string[]) => BoundShortcutChain
 }
 
 export type {
@@ -288,11 +289,19 @@ function createBoundShortcutChain(
 export function useShortcut(options?: UseShortcutOptions): ShortcutBuilder {
 	const builder = useShortcutBase(options)
 
-	return Object.assign(builder, {
-		bind: function (combo: string | string[]) {
-			return createBoundShortcutChain(builder, combo)
-		}
-	})
+	return useMemo(function () {
+		return new Proxy(builder as object, {
+			get(target, prop, receiver) {
+				if (prop === 'bindShortcut') {
+					return function bindShortcut(combo: string | string[]) {
+						return createBoundShortcutChain(builder, combo)
+					}
+				}
+
+				return Reflect.get(target, prop, receiver)
+			}
+		}) as ShortcutBuilder
+	}, [builder])
 }
 
 export { formatShortcut, getModifierSymbols }
