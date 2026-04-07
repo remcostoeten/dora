@@ -2,7 +2,7 @@
   <img src="assets/dora-backgroundless.png" alt="Dora Logo" width="180" />
   <h1>Dora</h1>
   <p><i>The database explorer</i></p>
-  <small><i>A native-feeling desktop database studio for PostgreSQL, SQLite, and LibSQL.</i></small>
+  <small><i>A native-feeling desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL.</i></small>
 
 [![Release](https://img.shields.io/github/v/release/remcostoeten/dora?display_name=tag&sort=semver)](https://github.com/remcostoeten/dora/releases)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
@@ -14,7 +14,7 @@
   <img src="assets/demo-tour.webp" alt="Dora App Demonstration" width="92%" />
 </p>
 
-Dora is a cross-platform database studio for PostgreSQL, SQLite, and LibSQL.
+Dora is a cross-platform database studio for PostgreSQL, MySQL, SQLite, and LibSQL.
 Built with Tauri, it weighs ~10 MB versus the 100+ MB of TablePlus — no
 Electron bloat, just a fast native app with a Data Viewer, Monaco SQL/Drizzle
 editor, and local Docker PostgreSQL tooling.
@@ -24,7 +24,7 @@ editor, and local Docker PostgreSQL tooling.
 ### Connect
 
 - Save, edit, test, search, and switch between connections
-- PostgreSQL, SQLite, LibSQL / Turso
+- PostgreSQL, MySQL, SQLite, LibSQL / Turso
 - Structured fields or full connection strings
 - Open SQLite files via native file picker
 - SSL/TLS and SSH tunneling (PostgreSQL)
@@ -51,7 +51,7 @@ editor, and local Docker PostgreSQL tooling.
 - Copy schema as SQL or Drizzle
 - Add columns, rename/drop/truncate tables
 - Seed tables with generated data
-- Live table updates (PostgreSQL: LISTEN/NOTIFY, others: polling)
+- Live table updates (PostgreSQL: LISTEN/NOTIFY, MySQL: polling, others: polling)
 
 ### Write and run queries
 
@@ -89,7 +89,7 @@ https://github.com/remcostoeten/dora/releases/latest
 **macOS** (Homebrew):
 
 ```bash
-brew install remcostoeten/dora/dora
+brew install --cask remcostoeten/dora/dora
 ```
 
 **Windows** (Winget):
@@ -110,7 +110,7 @@ surface.
 | PostgreSQL     |  Supported  | Full desktop path, including SSH tunneling and live external change monitoring |
 | SQLite         |  Supported  | Native desktop workflow                                                        |
 | LibSQL / Turso |  Supported  | Local and remote flows                                                         |
-| MySQL          | Not shipped | Scaffolded in parts of the codebase, not exposed as a supported feature        |
+| MySQL          |  Supported  | Desktop connection workflow is available, with polling-based live refresh      |
 
 ## Development
 
