@@ -2,7 +2,7 @@
 Type=Application
 Name=Dora
 Comment=Desktop database studio
-Exec=dora
+Exec=launch
 Icon=${SNAP}/meta/gui/icon.png
 Categories=Development;Database;
 Terminal=false

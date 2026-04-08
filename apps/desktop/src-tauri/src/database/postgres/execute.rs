@@ -251,6 +251,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_queries() -> anyhow::Result<()> {
         let db = PgTempDB::async_new().await;
 

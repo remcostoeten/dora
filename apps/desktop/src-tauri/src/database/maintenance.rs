@@ -860,10 +860,10 @@ fn json_to_mysql_value(value: &serde_json::Value) -> MysqlValue {
         serde_json::Value::Null => MysqlValue::NULL,
         serde_json::Value::Bool(value) => MysqlValue::Int(if *value { 1 } else { 0 }),
         serde_json::Value::Number(value) => {
-            if let Some(value) = value.as_i64() {
-                MysqlValue::Int(value)
-            } else if let Some(value) = value.as_u64() {
+            if let Some(value) = value.as_u64() {
                 MysqlValue::UInt(value)
+            } else if let Some(value) = value.as_i64() {
+                MysqlValue::Int(value)
             } else if let Some(value) = value.as_f64() {
                 MysqlValue::Double(value)
             } else {

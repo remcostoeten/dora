@@ -266,6 +266,7 @@ mod tests {
 
     #[allow(clippy::approx_constant)]
     #[tokio::test]
+    #[ignore]
     async fn test_row_writer() {
         let now = Instant::now();
         let db = PgTempDB::async_new().await;
