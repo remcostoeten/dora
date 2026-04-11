@@ -93,7 +93,7 @@ jobs:
           path: ${{ steps.build.outputs.snap }}
 
       - name: Upload snap to GitHub release
-        if: ${{ steps.meta.outputs.tag != '' }}
+        if: ${{ github.event_name == 'release' && steps.meta.outputs.tag != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ steps.meta.outputs.tag }} ${{ steps.build.outputs.snap }} --clobber
