@@ -5,7 +5,7 @@ const root = process.cwd()
 const appsDir = join(root, 'apps')
 const requiredFiles = [
 	join(root, 'vitest.config.ts'),
-	join(root, 'tests', 'setup', 'vitest.setup.ts')
+	join(root, '__tests__', 'vitest.setup.ts')
 ]
 const ignoredDirs = new Set(['.git', '.turbo', 'dist', 'node_modules', 'target'])
 const colocatedTests: string[] = []

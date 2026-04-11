@@ -34,7 +34,10 @@ env:
 
 jobs:
   snap:
-    runs-on: ubuntu-latest
+    # This snap targets `base: core22`, so destructive-mode builds must stay on
+    # an Ubuntu 22.04 host. Building on newer runners leaks newer glibc symbols
+    # into the Rust binary, which then fails at runtime inside the core22 snap.
+    runs-on: ubuntu-22.04
     env:
       SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
     steps:
