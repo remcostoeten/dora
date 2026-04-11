@@ -1,6 +1,7 @@
 name: dora
 base: core22
 version: '0.0.102'
+adopt-info: dora
 title: Dora
 summary: Clean, fast desktop database studio
 description: |
