@@ -1,8 +1,9 @@
 # Snap Distribution Guide
 
-Snap support is fully wired in-repo. The GitHub Actions workflow now builds
-the snap, uploads it as a workflow artifact, uploads it to the GitHub release,
-and publishes it to the Snap Store when store credentials are configured.
+Snap support is wired in-repo. The GitHub Actions workflow builds the snap with
+`snapcraft pack --destructive-mode`, uploads it as a workflow artifact, uploads
+it to the GitHub release, and publishes it to the Snap Store when store
+credentials are configured.
 
 ## What is in the repo
 
@@ -34,6 +35,11 @@ The GitHub Actions workflow at `.github/workflows/snap.yml` runs in two modes:
   `SNAPCRAFT_STORE_CREDENTIALS` exists.
 - On manual dispatch, it builds the snap as an artifact. You can optionally
   provide an existing release tag and turn on store publishing.
+
+On GitHub Actions, the workflow installs Snapcraft and runs the same
+`snapcraft pack --destructive-mode` command used for local Ubuntu builds. This
+avoids the LXD-based action path and keeps CI aligned with the documented local
+flow.
 
 ## Required one-time setup
 

@@ -142,9 +142,10 @@ The repo now has:
 - `.github/workflows/snap.yml`
 - `snap/snapcraft.yaml`
 
-When a GitHub release is published, the workflow builds the `.snap`, uploads it
-to the release, and publishes it to the Snap Store if the store credential
-secret exists. Manual dispatch still works for artifact-only or test runs.
+When a GitHub release is published, the workflow installs Snapcraft, runs
+`snapcraft pack --destructive-mode`, uploads the `.snap` to the release, and
+publishes it to the Snap Store if the store credential secret exists. Manual
+dispatch still works for artifact-only or test runs.
 
 ### Store publish path
 

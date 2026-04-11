@@ -62,9 +62,29 @@ jobs:
           echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
           echo "DORA_RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
+      - name: Install Snapcraft
+        shell: bash
+        run: |
+          if snap list snapcraft >/dev/null 2>&1; then
+            sudo snap refresh snapcraft --channel=stable --classic
+          else
+            sudo snap install snapcraft --channel=stable --classic
+          fi
+
       - name: Build snap
-        uses: snapcore/action-build@3bdaa03e1ba6bf59a65f84a751d943d549a54e79 # v1 latest
         id: build
+        shell: bash
+        run: |
+          rm -f ./*.snap
+          sudo /snap/bin/snapcraft pack --destructive-mode
+
+          SNAP_PATH="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -name '*.snap' | head -n 1)"
+          if [[ -z "$SNAP_PATH" ]]; then
+            echo "No .snap artifact was produced." >&2
+            exit 1
+          fi
+
+          echo "snap=$SNAP_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Upload snap artifact
         uses: actions/upload-artifact@v4
