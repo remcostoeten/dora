@@ -1,4 +1,7 @@
 name: dora
+# Keep the build environment aligned with this base. A destructive-mode build on
+# a newer host can embed newer glibc symbols into the Rust binary than core22
+# provides at runtime.
 base: core22
 version: '0.0.102'
 adopt-info: dora
