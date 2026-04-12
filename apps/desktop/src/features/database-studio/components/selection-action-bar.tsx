@@ -9,7 +9,8 @@ import {
 	FileSpreadsheet,
 	CopyPlus,
 	Pencil,
-	ChevronRight
+	ChevronRight,
+	Save
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Button } from '@/shared/ui/button'
@@ -30,6 +31,8 @@ type Props = {
 	onExportJson?: () => void
 	onExportCsv?: () => void
 	onBulkEdit?: () => void
+	onSave?: () => void
+	pendingEditCount?: number
 	onClearSelection: () => void
 	onEscapeToGrid?: () => void
 	mode?: 'floating' | 'static'
@@ -110,6 +113,8 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 		onExportJson,
 		onExportCsv,
 		onBulkEdit,
+		onSave,
+		pendingEditCount = 0,
 		onClearSelection,
 		onEscapeToGrid,
 		mode = 'floating'
@@ -539,12 +544,36 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 				aria-hidden='true'
 			/>
 
-			{/* ── Delete + Close — always visible, never overflow ─── */}
+			{/* ── Save + Delete + Close — always visible, never overflow ─── */}
 			<motion.div
 				layout='position'
 				transition={LAYOUT_SPRING}
 				className='flex items-center gap-1 shrink-0 ml-1'
 			>
+				{onSave && pendingEditCount > 0 && (
+					<Button
+						variant='ghost'
+						size='sm'
+						className={cn(
+							'text-xs gap-1.5 shrink-0',
+							isFloating
+								? 'h-8.5 rounded-full pl-3 pr-2 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-300'
+								: 'h-7 px-2 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20'
+						)}
+						onClick={onSave}
+						title={`Save ${pendingEditCount} pending edit${pendingEditCount !== 1 ? 's' : ''}`}
+						aria-label={`Save ${pendingEditCount} pending edit${pendingEditCount !== 1 ? 's' : ''}`}
+					>
+						<Save className='h-3.5 w-3.5' aria-hidden='true' />
+						Save
+						{pendingEditCount > 0 && (
+							<span className='ml-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white px-1'>
+								{pendingEditCount}
+							</span>
+						)}
+					</Button>
+				)}
+
 				{onDelete && (
 					<Button
 						variant='ghost'

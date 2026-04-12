@@ -199,15 +199,17 @@ export function useLiveMonitor({
 		[config.subscription.changeTypes]
 	)
 
+	// ── Tauri-backed monitor session ──────────────────────────────────
 	useEffect(
 		function manageMonitorSession() {
+			if (!runtimeAvailable) return // handled by the fallback effect below
+
 			let cancelled = false
 
 			async function startOrStopMonitor() {
 				await stopMonitor()
 
 				const shouldMonitor =
-					runtimeAvailable &&
 					config.enabled &&
 					!isPaused &&
 					Boolean(connectionId) &&
@@ -263,6 +265,61 @@ export function useLiveMonitor({
 			tableName,
 			isPaused,
 			stopMonitor
+		]
+	)
+
+	// ── Frontend polling fallback (web / mock mode) ──────────────────
+	const fallbackIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+	useEffect(
+		function manageFallbackPolling() {
+			if (runtimeAvailable) return // Tauri handles it
+
+			// Clear any existing fallback interval
+			if (fallbackIntervalRef.current) {
+				clearInterval(fallbackIntervalRef.current)
+				fallbackIntervalRef.current = null
+			}
+
+			const shouldPoll =
+				config.enabled &&
+				!isPaused &&
+				Boolean(connectionId) &&
+				Boolean(tableName)
+
+			if (!shouldPoll) {
+				setIsPolling(false)
+				setMonitorError(null)
+				return
+			}
+
+			setIsPolling(true)
+			setMonitorError(null)
+
+			fallbackIntervalRef.current = setInterval(function fallbackPoll() {
+				setLastPolledAt(Date.now())
+				onDataChangedRef.current()
+			}, config.intervalMs)
+
+			// Run an initial poll immediately
+			setLastPolledAt(Date.now())
+			onDataChangedRef.current()
+
+			return function cleanup() {
+				if (fallbackIntervalRef.current) {
+					clearInterval(fallbackIntervalRef.current)
+					fallbackIntervalRef.current = null
+				}
+				setIsPolling(false)
+			}
+		},
+		[
+			runtimeAvailable,
+			config.enabled,
+			config.intervalMs,
+			isPaused,
+			connectionId,
+			tableName
 		]
 	)
 

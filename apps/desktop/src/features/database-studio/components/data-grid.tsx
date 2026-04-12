@@ -93,6 +93,15 @@ export function DataGrid({
 	const [editValue, setEditValue] = useState<string>('')
 	const editInputRef = useRef<HTMLInputElement>(null)
 
+	// Refs to always hold the latest values – eliminates stale-closure bugs in
+	// blur / Tab handlers that fire after React has batched but not yet committed.
+	const editValueRef = useRef(editValue)
+	editValueRef.current = editValue
+	const editingCellRef = useRef(editingCell)
+	editingCellRef.current = editingCell
+	// When true the next onBlur should skip saving (Tab already saved & moved).
+	const skipNextBlurSaveRef = useRef(false)
+
 	const lastClickedRowRef = useRef<number | null>(null)
 
 	const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
@@ -238,7 +247,11 @@ export function DataGrid({
 
 	function handleCellMouseDown(e: React.MouseEvent, rowIndex: number, colIndex: number) {
 		if (e.button !== 0) return
-		if (editingCell) return
+		if (editingCell) {
+			// Clicking another cell while editing – commit the in-flight edit
+			// then fall through so the new cell gets focused.
+			handleSaveEdit()
+		}
 
 		// Simplified logic: Just set focus and let event bubble to row for selection
 		const cellPos: CellPosition = { row: rowIndex, col: colIndex }
@@ -480,14 +493,25 @@ export function DataGrid({
 
 	const handleSaveEdit = useCallback(
 		function () {
-			if (editingCell && onCellEdit) {
-				onCellEdit(editingCell.rowIndex, editingCell.columnName, editValue)
+			// If Tab already saved & moved to the next cell, skip the redundant
+			// blur-triggered save so we don't clobber the next-cell editing state.
+			if (skipNextBlurSaveRef.current) {
+				skipNextBlurSaveRef.current = false
+				return
 			}
+			const cell = editingCellRef.current
+			const value = editValueRef.current
+			if (cell && onCellEdit) {
+				onCellEdit(cell.rowIndex, cell.columnName, value)
+			}
+			// Clear ref immediately so a second call (e.g. blur after mousedown
+			// already saved) won't double-fire before React re-renders.
+			editingCellRef.current = null
 			setEditingCell(null)
 			setEditValue('')
 			refocusGrid()
 		},
-		[editingCell, editValue, onCellEdit, refocusGrid]
+		[onCellEdit, refocusGrid]
 	)
 
 	const handleCancelEdit = useCallback(
@@ -501,30 +525,37 @@ export function DataGrid({
 
 	const handleSaveEditAndMove = useCallback(
 		function (direction: 'next' | 'prev') {
-			if (!editingCell) return
+			const cell = editingCellRef.current
+			if (!cell) return
+
+			// Save current cell using ref values (always fresh).
 			if (onCellEdit) {
-				onCellEdit(editingCell.rowIndex, editingCell.columnName, editValue)
+				onCellEdit(cell.rowIndex, cell.columnName, editValueRef.current)
 			}
+
+			// Mark so the upcoming blur on the old <input> doesn't double-save.
+			skipNextBlurSaveRef.current = true
+
 			const colIndex = columns.findIndex(function (c) {
-				return c.name === editingCell.columnName
+				return c.name === cell.columnName
 			})
 			const maxCol = columns.length - 1
 			const maxRow = rows.length - 1
-			let nextRow = editingCell.rowIndex
+			let nextRow = cell.rowIndex
 			let nextCol = colIndex
 
 			if (direction === 'next') {
 				if (colIndex < maxCol) {
 					nextCol = colIndex + 1
-				} else if (editingCell.rowIndex < maxRow) {
-					nextRow = editingCell.rowIndex + 1
+				} else if (cell.rowIndex < maxRow) {
+					nextRow = cell.rowIndex + 1
 					nextCol = 0
 				}
 			} else {
 				if (colIndex > 0) {
 					nextCol = colIndex - 1
-				} else if (editingCell.rowIndex > 0) {
-					nextRow = editingCell.rowIndex - 1
+				} else if (cell.rowIndex > 0) {
+					nextRow = cell.rowIndex - 1
 					nextCol = maxCol
 				}
 			}
@@ -541,7 +572,7 @@ export function DataGrid({
 					: String(rows[nextRow][columns[nextCol].name])
 			)
 		},
-		[editingCell, editValue, onCellEdit, columns, rows]
+		[onCellEdit, columns, rows]
 	)
 
 	const handleEditKeyDown = useCallback(
@@ -1098,8 +1129,32 @@ export function DataGrid({
 															} else if (e.key === 'Escape') {
 																e.preventDefault()
 																onDraftCancel?.()
+															} else if (e.key === 'Tab') {
+																const editableCols = columns.filter(function (c) { return !c.primaryKey })
+																const curIdx = editableCols.findIndex(function (c) { return c.name === col.name })
+																if (e.shiftKey) {
+																	if (curIdx > 0) {
+																		e.preventDefault()
+																		const prev = e.currentTarget.closest('tr')?.querySelector<HTMLInputElement>(
+																			`input[data-draft-col="${editableCols[curIdx - 1].name}"]`
+																		)
+																		prev?.focus()
+																	}
+																} else {
+																	if (curIdx < editableCols.length - 1) {
+																		e.preventDefault()
+																		const next = e.currentTarget.closest('tr')?.querySelector<HTMLInputElement>(
+																			`input[data-draft-col="${editableCols[curIdx + 1].name}"]`
+																		)
+																		next?.focus()
+																	} else {
+																		e.preventDefault()
+																		onDraftSave?.()
+																	}
+																}
 															}
 														}}
+														data-draft-col={col.name}
 														data-no-shortcuts='true'
 														className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
 														placeholder={col.nullable ? 'NULL' : ''}
@@ -1370,8 +1425,32 @@ export function DataGrid({
 																	} else if (e.key === 'Escape') {
 																		e.preventDefault()
 																		onDraftCancel?.()
+																	} else if (e.key === 'Tab') {
+																		const editableCols = columns.filter(function (c) { return !c.primaryKey })
+																		const curIdx = editableCols.findIndex(function (c) { return c.name === col.name })
+																		if (e.shiftKey) {
+																			if (curIdx > 0) {
+																				e.preventDefault()
+																				const prev = e.currentTarget.closest('tr')?.querySelector<HTMLInputElement>(
+																					`input[data-draft-col="${editableCols[curIdx - 1].name}"]`
+																				)
+																				prev?.focus()
+																			}
+																		} else {
+																			if (curIdx < editableCols.length - 1) {
+																				e.preventDefault()
+																				const next = e.currentTarget.closest('tr')?.querySelector<HTMLInputElement>(
+																					`input[data-draft-col="${editableCols[curIdx + 1].name}"]`
+																				)
+																				next?.focus()
+																			} else {
+																				e.preventDefault()
+																				onDraftSave?.()
+																			}
+																		}
 																	}
 																}}
+																data-draft-col={col.name}
 																data-no-shortcuts='true'
 																className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
 																placeholder={

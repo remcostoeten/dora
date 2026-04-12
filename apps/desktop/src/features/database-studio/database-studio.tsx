@@ -159,6 +159,8 @@ export function DatabaseStudio({
 
 	const [selectionAnnouncement, setSelectionAnnouncement] = useState('')
 	const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null)
+	const draftRowRef = useRef(draftRow)
+	draftRowRef.current = draftRow
 	const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null)
 
 	const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
@@ -1008,6 +1010,15 @@ export function DatabaseStudio({
 			})
 		} else {
 			const previousValue = row[columnName]
+
+			// Optimistically update local state so the user sees the edit immediately.
+			setTableData(function (prev) {
+				if (!prev) return prev
+				const newRows = [...prev.rows]
+				newRows[rowIndex] = { ...newRows[rowIndex], [columnName]: newValue }
+				return { ...prev, rows: newRows }
+			})
+
 			updateCell.mutate(
 				{
 					connectionId: activeConnectionId,
@@ -1032,6 +1043,13 @@ export function DatabaseStudio({
 					},
 					onError: function (error) {
 						console.error('Failed to update cell:', error)
+						// Revert the optimistic update on failure.
+						setTableData(function (prev) {
+							if (!prev) return prev
+							const revertedRows = [...prev.rows]
+							revertedRows[rowIndex] = { ...revertedRows[rowIndex], [columnName]: previousValue }
+							return { ...prev, rows: revertedRows }
+						})
 						toast({
 							title: 'Failed to update cell',
 							description:
@@ -1378,8 +1396,9 @@ export function DatabaseStudio({
 	}
 
 	function handleDraftSave() {
-		if (!activeConnectionId || !tableId || !draftRow || !tableData) return
-		const normalizedDraftRow = normalizeRowForInsert(draftRow, tableData.columns)
+		const currentDraft = draftRowRef.current
+		if (!activeConnectionId || !tableId || !currentDraft || !tableData) return
+		const normalizedDraftRow = normalizeRowForInsert(currentDraft, tableData.columns)
 
 		insertRow.mutate(
 			{
@@ -2006,6 +2025,8 @@ export function DatabaseStudio({
 					onExportJson={handleExportJson}
 					onExportCsv={handleExportCsv}
 					onBulkEdit={handleOpenBulkEdit}
+					onSave={handleApplyPendingEdits}
+					pendingEditCount={tableId ? getEditCount(tableId) : 0}
 					onClearSelection={handleClearSelection}
 					onEscapeToGrid={handleEscapeToGrid}
 					mode='static'
@@ -2041,6 +2062,8 @@ export function DatabaseStudio({
 						onExportCsv={handleExportCsv}
 						onSetNull={handleOpenSetNull}
 						onBulkEdit={handleOpenBulkEdit}
+						onSave={handleApplyPendingEdits}
+						pendingEditCount={tableId ? getEditCount(tableId) : 0}
 						onClearSelection={handleClearSelection}
 						onEscapeToGrid={handleEscapeToGrid}
 						mode='floating'
