@@ -12,6 +12,11 @@ credentials are configured.
 - `snap/local/launch`
 - `.github/workflows/snap.yml`
 
+The snap definition includes a `layout` entry for
+`/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1`. WebKitGTK uses that
+absolute path for helper processes such as `WebKitNetworkProcess`, so the snap
+must bind it to the staged copy inside `$SNAP/usr/lib/...` at runtime.
+
 ## Build locally
 
 On Ubuntu with Snapcraft installed:

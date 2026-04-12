@@ -18,6 +18,10 @@ website: https://github.com/remcostoeten/dora
 grade: stable
 confinement: strict
 
+layout:
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1:
+    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1
+
 apps:
   dora:
     command: bin/launch
@@ -59,6 +63,7 @@ parts:
     stage-packages:
       - libasound2
       - libayatana-appindicator3-1
+      - libcanberra-gtk3-module
       - libgtk-3-0
       - libjavascriptcoregtk-4.1-0
       - libnotify4
@@ -68,7 +73,9 @@ parts:
       - libsoup-3.0-0
       - libssl3
       - libwebkit2gtk-4.1-0
+      - libxapp-gtk3-module
       - libxss1
+      - xapps-common
       - zlib1g
     override-build: |
       set -eux
