@@ -14,7 +14,7 @@ import { SidebarPanel, SidebarPanelHeader, SidebarPanelContent } from './sidebar
 import { useState } from 'react'
 
 type Props = {
-	maxHeight?: number
+	maxHeight?: number | string
 }
 
 function getTypeIcon(type: ChangelogEntry['type']) {
@@ -59,7 +59,9 @@ function getEntryUrl(entry: ChangelogEntry): string {
 	return `${siteConfig.links.github}/commit/${entry.commit}`
 }
 
-export function ChangelogPanel({ maxHeight = 500 }: Props) {
+export function ChangelogPanel({
+	maxHeight = 'min(calc(100vh - 1rem), var(--radix-popover-content-available-height), 640px)'
+}: Props) {
 	const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set())
 
 	function toggleVersion(version: string) {
@@ -73,10 +75,10 @@ export function ChangelogPanel({ maxHeight = 500 }: Props) {
 	}
 
 	return (
-		<SidebarPanel>
+		<SidebarPanel className='min-h-0'>
 			<SidebarPanelHeader title='Changelog' version={CURRENT_VERSION} />
 
-			<SidebarPanelContent className='h-[500px]' maxHeight={maxHeight}>
+			<SidebarPanelContent className='min-h-0' maxHeight={maxHeight}>
 				<div className='p-2 space-y-1'>
 					{CHANGELOG.map(function (entry) {
 						const Icon = getTypeIcon(entry.type)

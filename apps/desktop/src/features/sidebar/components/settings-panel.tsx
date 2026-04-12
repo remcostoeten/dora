@@ -21,7 +21,7 @@ export function SettingsPanel() {
 	const effectiveShortcuts = useEffectiveShortcuts()
 
 	return (
-		<SidebarPanel>
+		<SidebarPanel className='min-h-0'>
 			<div className='flex items-center justify-between px-4 pt-3 pb-1'>
 				<h3 className='text-sm font-medium text-sidebar-foreground'>Settings</h3>
 				<PopoverClose
@@ -31,7 +31,10 @@ export function SettingsPanel() {
 					<X className='h-4 w-4' />
 				</PopoverClose>
 			</div>
-			<SidebarPanelContent maxHeight='calc(var(--radix-popover-content-available-height) - 2.25rem)'>
+			<SidebarPanelContent
+				className='min-h-0'
+				maxHeight='calc(min(100vh - 1rem, var(--radix-popover-content-available-height)) - 2.25rem)'
+			>
 				<div className='flex flex-col p-4'>
 					<SidebarSection title='Editor'>
 						<div className='space-y-2'>

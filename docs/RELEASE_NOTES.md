@@ -1,3 +1,32 @@
+# Version 0.0.103
+
+**Date:** 2026-04-12
+**Tag:** `v0.0.103`
+**Range:** `v0.0.102..master`
+
+## Why this release exists
+
+`v0.0.103` packages the MySQL-focused desktop work that landed after
+`v0.0.102`, plus the current round of sidebar polish, web-demo fallbacks, and
+release surface updates so every distribution channel points at the same build.
+
+## Changes
+
+- Ships the current MySQL connectivity and schema support work on the main
+  release line.
+- Improves non-Tauri behavior by persisting settings in local storage and
+  exporting table data directly from the web demo.
+- Expands the sidebar table info dialog and fixes rename, changelog, and
+  settings panel sizing behavior.
+- Refreshes release metadata, install commands, and package manager references
+  for `0.0.103`.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`, `.rpm`
+- macOS: `.dmg`
+- Windows: `.exe`, `.msi`
+
 # Version 0.0.102
 
 **Date:** 2026-04-05

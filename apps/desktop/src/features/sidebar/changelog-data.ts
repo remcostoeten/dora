@@ -8,9 +8,23 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.102'
+export const CURRENT_VERSION = '0.0.103'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.103',
+		date: '2026-04-12',
+		commit: 'v0.0.103',
+		title: 'MySQL rollout, web fallbacks, and sidebar polish',
+		description:
+			'Adds MySQL-focused release updates, improves web-runtime behavior for settings and exports, and refines the sidebar table and metadata flows.',
+		type: 'feature',
+		details: [
+			'Improved settings persistence and table export behavior when Dora runs outside Tauri',
+			'Expanded table info, rename, changelog, and settings panel behavior for tighter sidebar UX',
+			'Refreshed release-facing metadata and install surfaces for the 0.0.103 package set'
+		]
+	},
 	{
 		version: '0.0.102',
 		date: '2026-04-05',

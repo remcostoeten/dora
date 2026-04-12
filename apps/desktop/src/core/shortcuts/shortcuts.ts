@@ -288,11 +288,17 @@ function createBoundShortcutChain(
 export function useShortcut(options?: UseShortcutOptions): ShortcutBuilder {
 	const builder = useShortcutBase(options)
 
-	return Object.assign(builder, {
-		bind: function (combo: string | string[]) {
-			return createBoundShortcutChain(builder, combo)
+	return new Proxy(builder, {
+		get(target, prop, receiver) {
+			if (prop === 'bind') {
+				return function bind(combo: string | string[]) {
+					return createBoundShortcutChain(builder, combo)
+				}
+			}
+
+			return Reflect.get(target as object, prop, receiver)
 		}
-	})
+	}) as ShortcutBuilder
 }
 
 export { formatShortcut, getModifierSymbols }

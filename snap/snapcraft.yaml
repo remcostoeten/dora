@@ -3,7 +3,7 @@ name: dora
 # a newer host can embed newer glibc symbols into the Rust binary than core22
 # provides at runtime.
 base: core22
-version: '0.0.102'
+version: '0.0.103'
 adopt-info: dora
 title: Dora
 summary: Clean, fast desktop database studio

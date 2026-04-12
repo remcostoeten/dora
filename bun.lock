@@ -51,7 +51,7 @@
         "@radix-ui/react-tabs": "^1.1.12",
         "@radix-ui/react-toast": "^1.2.14",
         "@radix-ui/react-tooltip": "^1.2.7",
-        "@remcostoeten/use-shortcut": "^2.2.0",
+        "@remcostoeten/use-shortcut": "^2.3.0",
         "@tanstack/react-query": "^5.83.0",
         "@tauri-apps/api": "^2.9.1",
         "@tauri-apps/plugin-dialog": "^2.6.0",
@@ -356,7 +356,7 @@
 
     "@radix-ui/rect": ["@radix-ui/rect@1.1.1", "", {}, "sha512-HPwpGIzkl28mWyZqG52jiqDJ12waP11Pa1lGoiyUkIEuMLBP0oeK/C89esbXrxsky5we7dfd8U58nm0SgAWpVw=="],
 
-    "@remcostoeten/use-shortcut": ["@remcostoeten/use-shortcut@2.2.0", "", { "peerDependencies": { "react": ">=18.0.0" } }, "sha512-x2099GlItcJV9nH3gh+JG0PXUsxD2N9MAcFQynj5BkLMPf1e66+o+dw9E4bzeyMIq2na2/W2JD2JoPm0EbdmGA=="],
+    "@remcostoeten/use-shortcut": ["@remcostoeten/use-shortcut@2.3.0", "", { "peerDependencies": { "react": ">=18.0.0" } }, "sha512-PFUDYVgmsoIeoK1zYwa2crUdCZ0Tj+qx2K9DiTIo24xEJvwmz42IEt6A33N6Egfw8AsmM0/eSiVkHkXkqie7pQ=="],
 
     "@remix-run/router": ["@remix-run/router@1.23.2", "", {}, "sha512-Ic6m2U/rMjTkhERIa/0ZtXJP17QUi2CbWE7cqx4J58M8aA3QTfW+2UlQ4psvTX9IO1RfNVhK3pcpdjej7L+t2w=="],
 

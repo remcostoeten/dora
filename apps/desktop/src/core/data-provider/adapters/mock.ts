@@ -18,6 +18,7 @@ import type {
 import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA, MOCK_SCRIPTS } from '../mock-data'
 import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 import { getTableRefParts } from '@/shared/utils/table-ref'
+import { extractMutationSourceTable } from '@/features/sql-console/query-target'
 
 type InMemoryStore = {
 	tables: Record<string, Record<string, unknown>[]>
@@ -444,9 +445,7 @@ CREATE TABLE posts (
 			const startTime = Date.now()
 			await delay(100 + Math.random() * 200)
 
-			const drizzleFromMatch = query.match(/\.from\(\s*(\w+)\s*\)/)
-			const sqlFromMatch = query.match(/FROM\s+["']?(\w+)["']?/i)
-			const tableName = drizzleFromMatch?.[1] || sqlFromMatch?.[1]
+			const tableName = extractMutationSourceTable(query)
 
 			if (!tableName) {
 				if (!query.includes('db.') && !query.toUpperCase().includes('SELECT')) {
@@ -466,18 +465,8 @@ CREATE TABLE posts (
 				})
 			}
 
-			const key = connectionId + ':' + tableName
+			const key = resolveStoreKey(connectionId, tableName)
 			let rows = store.tables[key] || []
-
-			if (rows.length === 0) {
-				const allKeys = Object.keys(store.tables)
-				const matchingKey = allKeys.find(function (k) {
-					return k.endsWith(':' + tableName)
-				})
-				if (matchingKey) {
-					rows = store.tables[matchingKey]
-				}
-			}
 
 			// Handle aggregate queries (COUNT, SUM, AVG, etc.)
 			const countMatch = query.match(/SELECT\s+COUNT\s*\(\s*\*?\s*\)/i)

@@ -42,6 +42,13 @@ export const DEFAULT_SETTINGS: SettingsState = {
 
 const STORAGE_KEY = 'ui_settings'
 
+function isTauriRuntime(): boolean {
+	return (
+		typeof window !== 'undefined' &&
+		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+	)
+}
+
 // ============================================================================
 // Settings Context
 // ============================================================================
@@ -57,6 +64,19 @@ type SettingsContextValue = {
 const SettingsContext = createContext<SettingsContextValue | null>(null)
 
 async function loadSettingsFromBackend(): Promise<SettingsState> {
+	if (!isTauriRuntime()) {
+		try {
+			const stored = window.localStorage.getItem(STORAGE_KEY)
+			if (!stored) return DEFAULT_SETTINGS
+
+			const parsed = JSON.parse(stored)
+			return { ...DEFAULT_SETTINGS, ...parsed }
+		} catch (error) {
+			console.warn('Failed to load settings from local storage:', error)
+			return DEFAULT_SETTINGS
+		}
+	}
+
 	try {
 		const result = await commands.getSetting(STORAGE_KEY)
 		if (result.status === 'ok' && result.data) {
@@ -70,6 +90,16 @@ async function loadSettingsFromBackend(): Promise<SettingsState> {
 }
 
 async function saveSettingsToBackend(settings: SettingsState): Promise<void> {
+	if (!isTauriRuntime()) {
+		try {
+			window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+			return
+		} catch (error) {
+			console.warn('Failed to save settings to local storage:', error)
+			return
+		}
+	}
+
 	try {
 		const serialized = JSON.stringify(settings)
 		await commands.setSetting(STORAGE_KEY, serialized)

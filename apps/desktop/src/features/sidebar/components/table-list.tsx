@@ -99,9 +99,21 @@ function TableItemRow({
 	const hasSortedColumns = hasSorting && item.sortedColumns && item.sortedColumns.length > 0
 
 	useEffect(() => {
-		if (isEditing && inputRef.current) {
-			inputRef.current.focus()
-			inputRef.current.select()
+		if (!isEditing) return
+
+		function focusInput() {
+			const input = inputRef.current
+			if (!input) return
+			input.focus()
+			input.setSelectionRange(0, 0)
+		}
+
+		const frameId = requestAnimationFrame(focusInput)
+		const timeoutId = window.setTimeout(focusInput, 0)
+
+		return function () {
+			cancelAnimationFrame(frameId)
+			window.clearTimeout(timeoutId)
 		}
 	}, [isEditing])
 
@@ -131,9 +143,15 @@ function TableItemRow({
 		}
 	}
 
+	function startEditing() {
+		requestAnimationFrame(function () {
+			onEditStart?.(item.id)
+		})
+	}
+
 	function handleRightClickAction(action: TableRightClickAction) {
 		if (action === 'edit-name') {
-			onEditStart?.(item.id)
+			startEditing()
 			setShowContextMenu(false)
 		} else {
 			onRightClickAction?.(action, item.id)
@@ -175,13 +193,12 @@ function TableItemRow({
 									type='text'
 									value={editValue}
 									onChange={(e) => setEditValue(e.target.value)}
-									onKeyDown={handleEditKeyDown}
-									onBlur={handleEditBlur}
-									data-no-shortcuts='true'
-									className='flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden'
-									onClick={(e) => e.stopPropagation()}
-									autoFocus
-								/>
+								onKeyDown={handleEditKeyDown}
+								onBlur={handleEditBlur}
+								data-no-shortcuts='true'
+								className='flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden'
+								onClick={(e) => e.stopPropagation()}
+							/>
 								<Button
 									variant='ghost'
 									size='icon'
@@ -255,7 +272,7 @@ function TableItemRow({
 					<Eye className='h-4 w-4 mr-2' />
 					<span>View table</span>
 				</ContextMenuItem>
-				<ContextMenuItem onClick={() => onEditStart?.(item.id)}>
+				<ContextMenuItem onClick={startEditing}>
 					<Pencil className='h-4 w-4 mr-2' />
 					<span>Edit name</span>
 				</ContextMenuItem>

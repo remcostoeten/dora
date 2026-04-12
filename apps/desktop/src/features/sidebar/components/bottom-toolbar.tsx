@@ -98,7 +98,11 @@ export function BottomToolbar({ onAction }: Props) {
                 side="right"
                 align="end"
                 sideOffset={16}
-                className="w-[340px] p-0 mb-2 ml-2 h-[500px]"
+                className="w-[min(420px,calc(100vw-1rem))] p-0 mb-2 ml-2 overflow-hidden"
+                style={{
+                  maxHeight:
+                    "min(calc(100vh - 1rem), var(--radix-popover-content-available-height), 640px)",
+                }}
               >
                 <ChangelogPanel />
               </PopoverContent>
@@ -208,7 +212,11 @@ export function BottomToolbar({ onAction }: Props) {
                 side="right"
                 align="end"
                 sideOffset={16}
-                className="w-[360px] p-0 mb-2 ml-2 max-h-[var(--radix-popover-content-available-height)] overflow-hidden"
+                className="w-[360px] p-0 mb-2 ml-2 overflow-hidden"
+                style={{
+                  maxHeight:
+                    "min(calc(100vh - 1rem), var(--radix-popover-content-available-height))",
+                }}
               >
                 <SettingsPanel />
               </PopoverContent>
