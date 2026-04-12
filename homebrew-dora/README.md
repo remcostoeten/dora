@@ -12,26 +12,26 @@
 
 ```bash
 brew tap remcostoeten/dora
-brew install dora
+brew install --cask dora
 ```
 
 Or in a single command:
 
 ```bash
-brew install remcostoeten/dora/dora
+brew install --cask remcostoeten/dora/dora
 ```
 
 ## Upgrade
 
 ```bash
 brew update
-brew upgrade dora
+brew upgrade --cask dora
 ```
 
 ## Uninstall
 
 ```bash
-brew uninstall dora
+brew uninstall --cask dora
 brew untap remcostoeten/dora
 ```
 
@@ -51,15 +51,16 @@ Dora is a cross-platform desktop database studio built with Tauri, Rust, and Rea
 
 → [Main repository](https://github.com/remcostoeten/dora)
 
-## Formula Details
+## Cask details
 
-The formula downloads the appropriate release artifact for your platform and architecture:
+The cask installs the macOS desktop app from the GitHub release that matches
+your CPU architecture:
 
-- **macOS** — Intel (`x64`) or Apple Silicon (`aarch64`) `.dmg`
-- **Linux** — `amd64` or `aarch64` `.AppImage`
+- **Intel Macs** — `Dora_<version>_x64.dmg`
+- **Apple Silicon Macs** — `Dora_<version>_aarch64.dmg`
 
-> [!NOTE]
-> SHA256 checksums will be populated once release artifacts are published. Until then you may see verification warnings.
+Linux release artifacts remain available from the main Dora release page, but
+they are not installed through this Homebrew tap.
 
 ## License
 
