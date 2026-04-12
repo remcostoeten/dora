@@ -75,6 +75,7 @@ jobs:
 
       - name: Upload Winget manifests to GitHub release
         if: ${{ github.event_name == 'release' }}
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ steps.meta.outputs.tag }} winget-manifests-${{ steps.meta.outputs.version }}.tar.gz --clobber
@@ -97,10 +98,28 @@ jobs:
         if: ${{ env.WINGET_CREATE_GITHUB_TOKEN != '' }}
         shell: pwsh
         run: |
+          function Install-AppxIfNeeded {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Path
+            )
+
+            try {
+              Add-AppxPackage $Path
+            } catch {
+              $message = $_.Exception.Message
+              if ($message -like '*higher version of this package is already installed*') {
+                Write-Host "Package already installed with a newer version: $Path"
+              } else {
+                throw
+              }
+            }
+          }
+
           Invoke-WebRequest https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx -OutFile Microsoft.VCLibs.x64.14.00.Desktop.appx
-          Add-AppxPackage .\Microsoft.VCLibs.x64.14.00.Desktop.appx
+          Install-AppxIfNeeded .\Microsoft.VCLibs.x64.14.00.Desktop.appx
           Invoke-WebRequest https://aka.ms/wingetcreate/latest/msixbundle -OutFile wingetcreate.msixbundle
-          Add-AppxPackage .\wingetcreate.msixbundle
+          Install-AppxIfNeeded .\wingetcreate.msixbundle
 
       - name: Submit Winget update
         if: ${{ env.WINGET_CREATE_GITHUB_TOKEN != '' }}
