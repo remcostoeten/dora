@@ -100,6 +100,7 @@ jobs:
 
       - name: Upload snap to GitHub release
         if: ${{ github.event_name == 'release' && steps.meta.outputs.tag != '' }}
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ steps.meta.outputs.tag }} ${{ steps.build.outputs.snap }} --clobber

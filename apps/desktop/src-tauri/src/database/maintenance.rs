@@ -946,7 +946,11 @@ mod tests {
         ));
         assert!(matches!(
             json_to_mysql_value(&serde_json::json!(123_u64)),
-            MysqlValue::UInt(123)
+            MysqlValue::Int(123)
+        ));
+        assert!(matches!(
+            json_to_mysql_value(&serde_json::json!(9223372036854775808_u64)),
+            MysqlValue::UInt(9223372036854775808)
         ));
         assert!(matches!(
             json_to_mysql_value(&serde_json::json!("hello")),
