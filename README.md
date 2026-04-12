@@ -88,22 +88,47 @@ Dora is a Tauri app built for macOS, Windows, and Linux.
 ## Get Dora
 
 Download the latest release for your platform:
-https://github.com/remcostoeten/dora/releases/latest
+
+- macOS (Apple Silicon): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.103_aarch64.dmg)
+- macOS (Intel): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.103_x64.dmg)
+- Windows: [`.msi`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.103_x64_en-US.msi)
+- Linux: [`.deb`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.103_amd64.deb), [`.rpm`](https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.103-1.x86_64.rpm), [`.AppImage`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.103_amd64.AppImage)
 
 ### Install
 
 ```bash
 # Linux (Snap)
 sudo snap install dora
+```
 
+```bash
 # macOS (Homebrew)
-brew install remcostoeten/dora/dora
+brew install --cask remcostoeten/dora/dora
+```
 
+```powershell
 # Windows (Winget)
 winget install remcostoeten.dora
 ```
 
-**Linux** (.deb, .rpm, .AppImage): Download from the releases page above.
+```bash
+# Linux (.deb)
+wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.103_amd64.deb
+sudo apt install ./Dora_0.0.103_amd64.deb
+```
+
+```bash
+# Linux (.rpm)
+wget https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.103-1.x86_64.rpm
+sudo dnf install ./Dora-0.0.103-1.x86_64.rpm
+```
+
+```bash
+# Linux (AppImage)
+wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.103_amd64.AppImage
+chmod +x Dora_0.0.103_amd64.AppImage
+./Dora_0.0.103_amd64.AppImage
+```
 
 ## Database Support
 

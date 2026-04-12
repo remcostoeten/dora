@@ -1,7 +1,10 @@
 import { Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useAdapter } from '@/core/data-provider'
+import { useIsTauri } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
+import type { TableInfo } from '@/lib/bindings'
+import { ScrollArea } from '@/shared/ui/scroll-area'
 import {
 	Dialog,
 	DialogContent,
@@ -27,6 +30,8 @@ type Props = {
 	onOpenChange: (open: boolean) => void
 	tableName: string
 	connectionId: string
+	tableInfo?: TableInfo | null
+	connectionType?: string | null
 }
 
 function formatBytes(bytes: number): string {
@@ -45,8 +50,16 @@ function MetricRow({ label, value }: { label: string; value: string | number | n
 	)
 }
 
-export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }: Props) {
+export function TableInfoDialog({
+	open,
+	onOpenChange,
+	tableName,
+	connectionId,
+	tableInfo,
+	connectionType
+}: Props) {
 	const adapter = useAdapter()
+	const isTauri = useIsTauri()
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [metrics, setMetrics] = useState<TableMetrics | null>(null)
@@ -55,18 +68,12 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
 		function fetchMetrics() {
 			if (!open || !tableName || !connectionId) return
 
-			const adapterMeta = adapter as unknown as {
-				type?: string
-				engine?: string
-				dialect?: string
-			}
-			const isPostgres =
-				adapterMeta.type === 'postgres' ||
-				adapterMeta.engine === 'postgres' ||
-				adapterMeta.dialect === 'postgres'
+			const isPostgres = connectionType === 'postgres'
 
-			if (!isPostgres) {
-				setError('Table metrics are only available for PostgreSQL connections.')
+			if (!isTauri || !isPostgres) {
+				setIsLoading(false)
+				setMetrics(null)
+				setError(null)
 				return
 			}
 
@@ -113,11 +120,11 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
 
 					const schemaResult = await adapter.getSchema(connectionId)
 					if (schemaResult.ok) {
-						const tableInfo = schemaResult.data.tables.find(function (t) {
-							return t.name === tableName
+						const schemaTable = schemaResult.data.tables.find(function (t) {
+							return t.name === tableInfo?.name || t.name === tableName
 						})
-						if (tableInfo) {
-							const timestampCol = tableInfo.columns.find(function (c) {
+						if (schemaTable) {
+							const timestampCol = schemaTable.columns.find(function (c) {
 								const type = c.data_type.toLowerCase()
 								return (
 									type.includes('timestamp') ||
@@ -171,13 +178,14 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='max-w-md'>
+			<DialogContent className='max-w-md max-h-[min(calc(100vh-2rem),720px)] overflow-hidden'>
 				<DialogHeader>
 					<DialogTitle>Table Info</DialogTitle>
 					<DialogDescription className='font-mono text-xs'>{tableName}</DialogDescription>
 				</DialogHeader>
 
-				<div className='py-2'>
+				<ScrollArea className='min-h-0' style={{ maxHeight: 'calc(min(100vh - 2rem, 720px) - 5rem)' }}>
+					<div className='py-2 pr-4'>
 					{isLoading && (
 						<div className='flex items-center justify-center py-8'>
 							<Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
@@ -188,10 +196,62 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
 						<div className='text-sm text-destructive py-4 text-center'>{error}</div>
 					)}
 
-					{metrics && !isLoading && (
+					{tableInfo && (
 						<div className='space-y-1'>
 							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2'>
-								Size
+								Overview
+							</div>
+							<MetricRow label='Schema' value={tableInfo.schema} />
+							<MetricRow label='Columns' value={tableInfo.columns.length} />
+							<MetricRow
+								label='Estimated Rows'
+								value={tableInfo.row_count_estimate?.toLocaleString() ?? 'N/A'}
+							/>
+							<MetricRow
+								label='Primary Key'
+								value={
+									tableInfo.primary_key_columns?.length
+										? tableInfo.primary_key_columns.join(', ')
+										: 'None'
+								}
+							/>
+							<MetricRow
+								label='Indexes'
+								value={tableInfo.indexes?.length ?? 0}
+							/>
+
+							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
+								Columns
+							</div>
+							<div className='space-y-2'>
+								{tableInfo.columns.map(function (column) {
+									return (
+										<div
+											key={column.name}
+											className='flex items-start justify-between gap-4 py-2 border-b border-sidebar-border/50 last:border-b-0'
+										>
+											<div className='min-w-0'>
+												<div className='text-sm text-sidebar-foreground break-words'>
+													{column.name}
+												</div>
+												<div className='text-xs text-muted-foreground'>
+													{column.is_primary_key ? 'Primary key' : column.is_nullable ? 'Nullable' : 'Required'}
+												</div>
+											</div>
+											<div className='text-xs font-mono text-muted-foreground text-right break-all'>
+												{column.data_type}
+											</div>
+										</div>
+									)
+								})}
+							</div>
+						</div>
+					)}
+
+					{metrics && !isLoading && (
+						<div className='space-y-1 mt-4'>
+							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2'>
+								PostgreSQL Metrics
 							</div>
 							<MetricRow label='Table Size' value={metrics.tableSizeMb} />
 							<MetricRow label='Index Size' value={metrics.indexSizeMb} />
@@ -226,7 +286,8 @@ export function TableInfoDialog({ open, onOpenChange, tableName, connectionId }:
 							<MetricRow label='Last Analyze' value={metrics.lastAnalyze} />
 						</div>
 					)}
-				</div>
+					</div>
+				</ScrollArea>
 			</DialogContent>
 		</Dialog>
 	)

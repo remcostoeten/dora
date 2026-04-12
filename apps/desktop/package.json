@@ -1,6 +1,6 @@
 {
 	"name": "@dora/desktop",
-	"version": "0.0.102",
+	"version": "0.0.103",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -38,7 +38,7 @@
 		"@radix-ui/react-tabs": "^1.1.12",
 		"@radix-ui/react-toast": "^1.2.14",
 		"@radix-ui/react-tooltip": "^1.2.7",
-		"@remcostoeten/use-shortcut": "^2.2.0",
+		"@remcostoeten/use-shortcut": "^2.3.0",
 		"@tanstack/react-query": "^5.83.0",
 		"@tauri-apps/api": "^2.9.1",
 		"@tauri-apps/plugin-dialog": "^2.6.0",

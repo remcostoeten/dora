@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { SidebarTableSkeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useAdapter } from '@/core/data-provider'
+import { useIsTauri } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
 import type { DatabaseSchema, TableInfo } from '@/lib/bindings'
 import { commands } from '@/lib/bindings'
@@ -77,6 +78,7 @@ export function DatabaseSidebar({
 }: Props = {}) {
 	const { toast } = useToast()
 	const adapter = useAdapter()
+	const isTauri = useIsTauri()
 	const [internalNavId, setInternalNavId] = useState('database-studio')
 	const activeNavId = controlledNavId ?? internalNavId
 
@@ -400,14 +402,77 @@ export function DatabaseSidebar({
 		}
 	}
 
-	function handleTableRename(tableId: string, newName: string) {
-		setTargetTableName(tableId)
-		void handleRenameTable(tableId, newName)
+function handleTableRename(tableId: string, newName: string) {
+	setTargetTableName(tableId)
+	void handleRenameTable(tableId, newName)
+}
+
+function escapeSqlString(value: string): string {
+	return value.replace(/'/g, "''")
+}
+
+function toSqlLiteral(value: unknown): string {
+	if (value === null || value === undefined) return 'NULL'
+	if (typeof value === 'number') {
+		return Number.isFinite(value) ? String(value) : 'NULL'
 	}
+	if (typeof value === 'boolean') {
+		return value ? 'TRUE' : 'FALSE'
+	}
+	if (typeof value === 'bigint') {
+		return value.toString()
+	}
+	if (value instanceof Date) {
+		return `'${escapeSqlString(value.toISOString())}'`
+	}
+	if (typeof value === 'object') {
+		return `'${escapeSqlString(JSON.stringify(value))}'`
+	}
+
+	return `'${escapeSqlString(String(value))}'`
+}
+
+function buildInsertExport(
+	tableName: string,
+	rows: Record<string, unknown>[]
+): string {
+	if (rows.length === 0) {
+		return `-- No rows to export for ${getTableSqlIdentifier(tableName)}`
+	}
+
+	const columns = Object.keys(rows[0])
+	const columnList = columns
+		.map(function (column) {
+			return `"${column}"`
+		})
+		.join(', ')
+
+	const valueGroups = rows
+		.map(function (row) {
+			const values = columns
+				.map(function (column) {
+					return toSqlLiteral(row[column])
+				})
+				.join(', ')
+
+			return `(${values})`
+		})
+		.join(',\n')
+
+	return `INSERT INTO ${getTableSqlIdentifier(tableName)} (${columnList}) VALUES\n${valueGroups};`
+}
 
 	async function handleDuplicateTable(tableName: string) {
 		if (!activeConnectionId) return
 		const tableRef = getTableRefParts(tableName)
+		if (!isTauri) {
+			toast({
+				title: 'Duplicate table not available',
+				description: 'Table duplication is not available in the web demo.',
+				variant: 'destructive'
+			})
+			return
+		}
 		if (activeConnection?.type !== 'postgres') {
 			toast({
 				title: 'Duplicate table not available',
@@ -577,6 +642,28 @@ export function DatabaseSidebar({
 		if (!activeConnectionId) return
 
 		try {
+			if (!isTauri) {
+				const exportResult = await adapter.fetchTableData(
+					activeConnectionId,
+					tableName,
+					0,
+					10000
+				)
+				if (!exportResult.ok) throw new Error(getAdapterError(exportResult))
+
+				const payload =
+					format === 'json'
+						? JSON.stringify(exportResult.data.rows, null, 2)
+						: buildInsertExport(tableName, exportResult.data.rows)
+
+				navigator.clipboard.writeText(payload)
+				toast({
+					title: 'Data exported',
+					description: `Table "${tableName}" exported as ${format.toUpperCase()} to clipboard.`
+				})
+				return
+			}
+
 			const result = await commands.exportTable(
 				activeConnectionId,
 				getTableRefParts(tableName).tableName,
@@ -858,6 +945,12 @@ export function DatabaseSidebar({
 					onOpenChange={setShowTableInfoDialog}
 					tableName={tableInfoTarget}
 					connectionId={activeConnectionId}
+					tableInfo={
+						schema?.tables.find(function (table) {
+							return getTableRefId(table) === tableInfoTarget
+						}) ?? null
+					}
+					connectionType={activeConnection?.type ?? null}
 				/>
 			)}
 
