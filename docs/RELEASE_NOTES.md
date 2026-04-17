@@ -1,3 +1,26 @@
+# Version 0.0.105
+
+**Date:** 2026-04-17
+**Tag:** `v0.0.105`
+**Range:** `v0.0.104..master`
+
+## Why this release exists
+
+`v0.0.105` adds the source-built Arch AUR packaging flow and hardens release automation so missing downstream artifacts do not block the rest of the release pipeline.
+
+## Changes
+
+- Ships a native `dora` AUR package built from source instead of the old AppImage-backed path.
+- Adds automatic AUR publishing from GitHub Actions when the release is published.
+- Makes the Winget workflow skip cleanly when Windows checksums are unavailable.
+- Updates release-facing metadata and install references for `0.0.105`.
+
+## Expected assets
+
+- Linux: `.deb`, `.AppImage`, `.rpm`
+- macOS: `.dmg`
+- Windows: `.exe`, `.msi`
+
 # Version 0.0.103
 
 **Date:** 2026-04-12

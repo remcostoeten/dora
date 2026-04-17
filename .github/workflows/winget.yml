@@ -52,8 +52,12 @@ jobs:
           echo "checksums_url=$CHECKSUMS_URL" >> "$GITHUB_OUTPUT"
 
       - name: Download Windows checksums
-        continue-on-error: true
-        run: curl --fail --location --output checksums-windows.txt "${{ steps.meta.outputs.checksums_url }}"
+        shell: bash
+        run: |
+          if ! curl --fail --location --output checksums-windows.txt "${{ steps.meta.outputs.checksums_url }}"; then
+            echo "Windows checksums are not available yet; skipping Winget packaging."
+            exit 0
+          fi
 
       - name: Generate Winget manifests
         if: ${{ hashFiles('checksums-windows.txt') != '' }}
