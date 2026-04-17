@@ -52,9 +52,11 @@ jobs:
           echo "checksums_url=$CHECKSUMS_URL" >> "$GITHUB_OUTPUT"
 
       - name: Download Windows checksums
+        continue-on-error: true
         run: curl --fail --location --output checksums-windows.txt "${{ steps.meta.outputs.checksums_url }}"
 
       - name: Generate Winget manifests
+        if: ${{ hashFiles('checksums-windows.txt') != '' }}
         run: |
           bun run release:winget -- \
             --version=${{ steps.meta.outputs.version }} \
@@ -63,18 +65,20 @@ jobs:
             --installer-file=Dora_${{ steps.meta.outputs.version }}_x64_en-US.msi
 
       - name: Archive Winget manifests
+        if: ${{ hashFiles('checksums-windows.txt') != '' }}
         run: |
           tar -czf winget-manifests-${{ steps.meta.outputs.version }}.tar.gz \
             -C packaging/winget/manifests/${{ steps.meta.outputs.version }} .
 
       - name: Upload Winget manifest artifact
+        if: ${{ hashFiles('checksums-windows.txt') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: winget-manifests-${{ steps.meta.outputs.version }}
           path: winget-manifests-${{ steps.meta.outputs.version }}.tar.gz
 
       - name: Upload Winget manifests to GitHub release
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' && hashFiles('checksums-windows.txt') != '' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
