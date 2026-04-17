@@ -230,7 +230,7 @@ Winget from a Windows VM:
   wingetcreate new "https://github.com/remcostoeten/dora/releases/download/v$version/Dora_${version}_x64_en-US.msi"
 
 AUR on this machine:
-  bun run release:aur -- --version=$version --checksums-file=apps/desktop/src-tauri/target/release/bundle/checksums-linux.txt --appimage-file=Dora_${version}_amd64.AppImage
+  bun run release:aur -- --version=$version
   bash tools/scripts/test-aur-docker.sh
 
 Snap on Ubuntu:

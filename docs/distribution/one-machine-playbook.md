@@ -83,10 +83,7 @@ You do not need a full Arch VM just to validate the package.
 ### Generate the package files
 
 ```bash
-bun run release:aur -- \
-  --version=0.1.0 \
-  --checksums-file=apps/desktop/src-tauri/target/release/bundle/checksums-linux.txt \
-  --appimage-file=Dora_0.1.0_amd64.AppImage
+bun run release:aur
 ```
 
 ### Validate in Docker
@@ -104,21 +101,21 @@ That spins up `archlinux:latest`, installs `base-devel`, and runs `makepkg` agai
 3. Clone the AUR repo:
 
 ```bash
-git clone ssh://aur@aur.archlinux.org/dora-bin.git ~/code/dora-bin-aur
+git clone ssh://aur@aur.archlinux.org/dora.git ~/code/dora-aur
 ```
 
 4. Sync the generated files:
 
 ```bash
-bash tools/scripts/sync-aur-repo.sh ~/code/dora-bin-aur
+bash tools/scripts/sync-aur-repo.sh ~/code/dora-aur
 ```
 
 5. Commit and push:
 
 ```bash
-cd ~/code/dora-bin-aur
+cd ~/code/dora-aur
 git add PKGBUILD .SRCINFO
-git commit -m "Update dora-bin to 0.1.0"
+git commit -m "Update dora to 0.1.0"
 git push
 ```
 

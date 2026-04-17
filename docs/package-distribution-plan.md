@@ -279,19 +279,17 @@ sudo snap refresh dora
 
 ### Delivery model
 
-Publish an AUR package that installs from a released artifact or builds from source.
+Publish an AUR package that builds Dora from the tagged source archive.
 
 ### Recommended choice
 
-Start with a binary package:
+Use a source-built package as the primary Arch path:
 
-- `dora-bin`
+- `dora`
 
-This is easier because you already ship release artifacts.
+Optional later for convenience:
 
-Optional later:
-
-- `dora` for source builds
+- `dora-bin` for prebuilt binaries
 
 ### Files to add
 
@@ -301,24 +299,25 @@ Optional later:
 
 ### Exact instructions
 
-1. Create a `PKGBUILD` for `dora-bin`.
-2. Point `source=()` to the GitHub release artifact URL.
-3. Add the release checksum to `sha256sums=()`.
-4. Install the binary, desktop file, icon, and license into the correct paths.
-5. Generate `.SRCINFO`.
-6. Test locally with `makepkg -si`.
-7. Publish to the AUR package repo.
-8. On each release:
+1. Create a `PKGBUILD` for `dora`.
+2. Point `source=()` to the GitHub tag archive URL.
+3. Add the source archive checksum to `sha256sums=()`.
+4. Build the frontend and Tauri binary during `build()`.
+5. Install the binary, desktop file, icon, and license into the correct paths.
+6. Generate `.SRCINFO`.
+7. Test locally with `makepkg -si`.
+8. Publish to the AUR package repo.
+9. On each release:
     - update version
-    - update checksum
+    - update source checksum
     - regenerate `.SRCINFO`
     - push AUR changes
 
 ### Install UX target
 
 ```bash
-yay -S dora-bin
-paru -S dora-bin
+yay -S dora
+paru -S dora
 ```
 
 ### CI automation later

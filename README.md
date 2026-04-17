@@ -102,6 +102,11 @@ sudo snap install dora
 ```
 
 ```bash
+# Arch Linux (AUR)
+yay -S dora
+```
+
+```bash
 # macOS (Homebrew)
 brew install --cask remcostoeten/dora/dora
 ```

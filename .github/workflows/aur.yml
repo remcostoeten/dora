@@ -1,0 +1,111 @@
+name: AUR
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.0.103. Leave empty to use the current package version.
+        required: false
+        type: string
+      publish:
+        description: Publish the generated package files to the AUR repository.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  aur:
+    runs-on: ubuntu-latest
+    env:
+      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+
+          VERSION="$(python3 - <<'PY'
+import json
+print(json.load(open('package.json'))['version'])
+PY
+)"
+
+          if [[ -n "$TAG" ]]; then
+            VERSION="${TAG#v}"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate AUR package files
+        run: bun run release:aur -- --version=${{ steps.meta.outputs.version }}
+
+      - name: Archive AUR package files
+        run: |
+          tar -czf dora-aur-${{ steps.meta.outputs.version }}.tar.gz \
+            -C packaging/aur PKGBUILD .SRCINFO
+
+      - name: Upload AUR package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dora-aur-${{ steps.meta.outputs.version }}
+          path: dora-aur-${{ steps.meta.outputs.version }}.tar.gz
+
+      - name: Upload AUR package files to GitHub release
+        if: ${{ github.event_name == 'release' && steps.meta.outputs.tag != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ steps.meta.outputs.tag }} dora-aur-${{ steps.meta.outputs.version }}.tar.gz --clobber
+
+      - name: Skip AUR publish when SSH key is not configured
+        if: ${{ env.AUR_SSH_PRIVATE_KEY == '' }}
+        shell: bash
+        run: |
+          echo "AUR_SSH_PRIVATE_KEY is not configured. Generated package files only."
+
+      - name: Publish package files to AUR
+        if: ${{ env.AUR_SSH_PRIVATE_KEY != '' && ((github.event_name == 'release' && vars.AUR_PACKAGE_READY == 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish)) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
+
+          git clone ssh://aur@aur.archlinux.org/dora.git aur-repo
+          bash tools/scripts/sync-aur-repo.sh "$PWD/aur-repo"
+
+          cd aur-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "AUR package is already up to date."
+            exit 0
+          fi
+
+          git add PKGBUILD .SRCINFO
+          git commit -m "Update dora to ${{ steps.meta.outputs.version }}"
+          git push

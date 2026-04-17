@@ -1,15 +1,14 @@
 # AUR Packaging
 
-This directory stores the generated `dora-bin` package files for AUR.
+This directory stores the generated `dora` package files for AUR.
 
 ## Generate
 
 ```bash
-bun run release:aur -- \
-  --version=0.1.0 \
-  --checksums-file=apps/desktop/src-tauri/target/release/bundle/checksums-linux.txt \
-  --appimage-file=Dora_0.1.0_amd64.AppImage
+bun run release:aur
 ```
+
+Pass `-- --version=0.1.0` only when you need to override the latest local Git tag.
 
 ## Test
 
@@ -20,4 +19,4 @@ makepkg -si
 
 ## Publish
 
-Copy `PKGBUILD` and `.SRCINFO` into the `dora-bin` AUR repository and push them there.
+Copy `PKGBUILD` and `.SRCINFO` into the `dora` AUR repository and push them there.

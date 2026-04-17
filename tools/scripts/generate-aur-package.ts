@@ -1,3 +1,5 @@
+import crypto from 'crypto'
+import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { logHeader, logKeyValue, logLevel } from './_shared'
@@ -5,10 +7,11 @@ import { logHeader, logKeyValue, logLevel } from './_shared'
 type Config = {
 	version: string
 	pkgrel: string
-	appImageFile: string
-	appImageSha256: string
 	outDir: string
 	repoUrl: string
+	sourceUrl: string
+	sourceFile: string
+	sourceSha256: string
 }
 
 function getFlagValue(flag: string): string | undefined {
@@ -17,33 +20,37 @@ function getFlagValue(flag: string): string | undefined {
 	return arg ? arg.slice(prefix.length) : undefined
 }
 
-function requireFlag(flag: string): string {
-	const value = getFlagValue(flag)
-	if (!value) {
-		throw new Error(`Missing required flag --${flag}=...`)
+function inferVersion(): string {
+	const explicitVersion = getFlagValue('version')
+	if (explicitVersion) {
+		return explicitVersion
 	}
-	return value
+
+	try {
+		const latestTag = execSync('git describe --tags --abbrev=0', {
+			encoding: 'utf8'
+		}).trim()
+
+		if (!latestTag) {
+			throw new Error('No tags found')
+		}
+
+		return latestTag.startsWith('v') ? latestTag.slice(1) : latestTag
+	} catch (error) {
+		throw new Error(
+			'Could not infer version from git tags. Provide --version=... or create a release tag first.'
+		)
+	}
 }
 
-function readChecksumFromFile(checksumsPath: string, targetFile: string): string {
-	const contents = fs.readFileSync(checksumsPath, 'utf8')
-	const lines = contents
-		.split(/\r?\n/)
-		.map((line) => line.trim())
-		.filter(Boolean)
-
-	for (const line of lines) {
-		const [hash, relativePath] = line.split(/\s{2,}/)
-		if (!hash || !relativePath) {
-			continue
-		}
-
-		if (relativePath === targetFile || relativePath.endsWith(`/${targetFile}`)) {
-			return hash.toUpperCase()
-		}
+async function sha256FromUrl(url: string): Promise<string> {
+	const response = await fetch(url)
+	if (!response.ok) {
+		throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`)
 	}
 
-	throw new Error(`Could not find ${targetFile} in ${checksumsPath}`)
+	const buffer = Buffer.from(await response.arrayBuffer())
+	return crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase()
 }
 
 function writeFile(filePath: string, contents: string) {
@@ -53,30 +60,36 @@ function writeFile(filePath: string, contents: string) {
 }
 
 function createPkgbuild(config: Config): string {
-	return `pkgname=dora-bin
+	return `pkgname=dora
 pkgver=${config.version}
 pkgrel=${config.pkgrel}
-pkgdesc="A clean, fast desktop database studio for PostgreSQL, SQLite, and LibSQL"
+pkgdesc="A native-feeling desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL"
 arch=('x86_64')
 url="${config.repoUrl}"
-license=('GPL3')
-depends=('glibc' 'zlib' 'hicolor-icon-theme')
-provides=('dora')
-conflicts=('dora')
-options=(!strip)
-_appimage="${config.appImageFile}"
-source=("\${_appimage}::${config.repoUrl}/releases/download/v\${pkgver}/\${_appimage}")
-sha256sums=('${config.appImageSha256}')
+license=('GPL-3.0-only')
+depends=('glibc' 'gtk3' 'libayatana-appindicator' 'libsecret' 'webkit2gtk-4.1')
+makedepends=('bun' 'cargo' 'pkgconf')
+source=("${config.sourceFile}::${config.sourceUrl}")
+sha256sums=('${config.sourceSha256}')
+
+build() {
+  cd "\${srcdir}/dora-\${pkgver}"
+
+  export HOME="\${srcdir}/.home"
+  export CARGO_HOME="\${srcdir}/.cargo"
+  export BUN_INSTALL_CACHE_DIR="\${srcdir}/.bun-cache"
+
+  bun install --frozen-lockfile
+  bun run --cwd apps/desktop build
+  cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --locked
+}
 
 package() {
-  install -dm755 "\${pkgdir}/opt/dora"
-  install -Dm755 "\${srcdir}/\${_appimage}" "\${pkgdir}/opt/dora/dora.AppImage"
+  cd "\${srcdir}/dora-\${pkgver}"
 
-  install -Dm755 /dev/stdin "\${pkgdir}/usr/bin/dora" <<'EOF'
-#!/bin/sh
-exec /opt/dora/dora.AppImage --appimage-extract-and-run "$@"
-EOF
-
+  install -Dm755 "apps/desktop/src-tauri/target/release/app" "\${pkgdir}/usr/bin/dora"
+  install -Dm644 "apps/desktop/src-tauri/icons/icon.png" "\${pkgdir}/usr/share/pixmaps/dora.png"
+  install -Dm644 "LICENSE" "\${pkgdir}/usr/share/licenses/\${pkgname}/LICENSE"
   install -Dm644 /dev/stdin "\${pkgdir}/usr/share/applications/dora.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
@@ -93,61 +106,58 @@ EOF
 }
 
 function createSrcInfo(config: Config): string {
-	return `pkgbase = dora-bin
-	pkgdesc = A clean, fast desktop database studio for PostgreSQL, SQLite, and LibSQL
+	return `pkgbase = dora
+	pkgdesc = A native-feeling desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL
 	pkgver = ${config.version}
 	pkgrel = ${config.pkgrel}
 	url = ${config.repoUrl}
 	arch = x86_64
-	license = GPL3
+	license = GPL-3.0-only
+	makedepends = bun
+	makedepends = cargo
+	makedepends = pkgconf
 	depends = glibc
-	depends = zlib
-	depends = hicolor-icon-theme
-	provides = dora
-	conflicts = dora
-	options = !strip
-	source = ${config.appImageFile}::${config.repoUrl}/releases/download/v${config.version}/${config.appImageFile}
-	sha256sums = ${config.appImageSha256}
+	depends = gtk3
+	depends = libayatana-appindicator
+	depends = libsecret
+	depends = webkit2gtk-4.1
+	source = ${config.sourceFile}::${config.sourceUrl}
+	sha256sums = ${config.sourceSha256}
 
-pkgname = dora-bin
+pkgname = dora
 `
 }
 
-function main() {
-	const version = requireFlag('version')
-	const appImageFile =
-		getFlagValue('appimage-file') || `Dora_${version}_amd64.AppImage`
-	const checksumsFile = getFlagValue('checksums-file')
-	const explicitSha = getFlagValue('appimage-sha256')
-
-	if (!explicitSha && !checksumsFile) {
-		throw new Error('Provide --appimage-sha256=... or --checksums-file=...')
-	}
+async function main() {
+	const version = inferVersion()
+	const repoUrl = getFlagValue('repo-url') || 'https://github.com/remcostoeten/dora'
+	const sourceFile = getFlagValue('source-file') || `dora-${version}.tar.gz`
+	const sourceUrl =
+		getFlagValue('source-url') || `${repoUrl}/archive/refs/tags/v${version}.tar.gz`
+	const explicitSha = getFlagValue('source-sha256')
 
 	const config: Config = {
 		version,
 		pkgrel: getFlagValue('pkgrel') || '1',
-		appImageFile,
-		appImageSha256: explicitSha
-			? explicitSha.toUpperCase()
-			: readChecksumFromFile(path.resolve(checksumsFile as string), appImageFile),
 		outDir: path.resolve(getFlagValue('out-dir') || path.join('packaging', 'aur')),
-		repoUrl: getFlagValue('repo-url') || 'https://github.com/remcostoeten/dora'
+		repoUrl,
+		sourceUrl,
+		sourceFile,
+		sourceSha256: explicitSha ? explicitSha.toUpperCase() : await sha256FromUrl(sourceUrl)
 	}
 
 	logHeader('Generating AUR Package Files')
+	logKeyValue('Package', 'dora')
 	logKeyValue('Version', config.version)
 	logKeyValue('pkgrel', config.pkgrel)
-	logKeyValue('AppImage', config.appImageFile)
+	logKeyValue('Source', config.sourceUrl)
 	logKeyValue('Output', config.outDir)
 
 	writeFile(path.join(config.outDir, 'PKGBUILD'), createPkgbuild(config))
 	writeFile(path.join(config.outDir, '.SRCINFO'), createSrcInfo(config))
 }
 
-try {
-	main()
-} catch (error) {
+main().catch((error) => {
 	logLevel('error', error instanceof Error ? error.message : String(error))
 	process.exit(1)
-}
+})

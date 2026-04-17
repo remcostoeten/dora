@@ -6,7 +6,7 @@ SOURCE_DIR="$ROOT_DIR/packaging/aur"
 TARGET_DIR="${1:-}"
 
 if [[ -z "$TARGET_DIR" ]]; then
-  echo "Usage: $0 /path/to/dora-bin-aur-checkout" >&2
+  echo "Usage: $0 /path/to/dora-aur-checkout" >&2
   exit 1
 fi
 
