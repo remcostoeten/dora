@@ -8,21 +8,21 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.103'
+export const CURRENT_VERSION = '0.0.105'
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
-		version: '0.0.103',
-		date: '2026-04-12',
-		commit: 'v0.0.103',
-		title: 'MySQL rollout, web fallbacks, and sidebar polish',
+		version: '0.0.105',
+		date: '2026-04-17',
+		commit: 'v0.0.105',
+		title: 'Release Automation and AUR Publishing',
 		description:
-			'Adds MySQL-focused release updates, improves web-runtime behavior for settings and exports, and refines the sidebar table and metadata flows.',
+			'Adds source-built AUR publishing, improves release automation, and keeps the desktop packaging flow aligned across channels.',
 		type: 'feature',
 		details: [
-			'Improved settings persistence and table export behavior when Dora runs outside Tauri',
-			'Expanded table info, rename, changelog, and settings panel behavior for tighter sidebar UX',
-			'Refreshed release-facing metadata and install surfaces for the 0.0.103 package set'
+			'Added source-built AUR publishing for Arch Linux',
+			'Made the Winget release workflow tolerant of missing Windows checksums',
+			'Aligned release metadata and install surfaces for the 0.0.105 package set'
 		]
 	},
 	{
