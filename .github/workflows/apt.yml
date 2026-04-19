@@ -51,12 +51,33 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve .deb asset URL
+        id: deb
+        shell: bash
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          if [[ -z "$TAG" ]]; then
+            TAG="$(gh api repos/remcostoeten/dora/releases/latest --jq '.tag_name')"
+          fi
+          DEB_URL="$(gh api repos/remcostoeten/dora/releases/tags/${TAG} \
+            --jq '.assets[] | select(.name | endswith("_amd64.deb")) | .browser_download_url' \
+            | head -1)"
+          if [[ -z "$DEB_URL" ]]; then
+            echo "No _amd64.deb asset found on release ${TAG}" >&2
+            exit 1
+          fi
+          echo "url=$DEB_URL" >> "$GITHUB_OUTPUT"
+          echo "Resolved .deb: $DEB_URL"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Generate APT repository
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
         run: |
           bun tools/scripts/generate-apt-repo.ts \
             --version=${{ steps.meta.outputs.version }} \
+            --deb-url=${{ steps.deb.outputs.url }} \
             --out-dir=packaging/apt
 
       - name: Checkout existing gh-pages content (if any)
