@@ -8,9 +8,24 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.106'
+export const CURRENT_VERSION = '0.0.107'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.107',
+		date: '2026-04-19',
+		commit: 'v0.0.107',
+		title: 'Self-hosted APT Repository',
+		description:
+			'Debian and Ubuntu users can now install Dora with sudo apt install dora via a self-hosted apt repo on GitHub Pages.',
+		type: 'feature',
+		details: [
+			'Added self-hosted apt repository published to GitHub Pages on every release',
+			'CI generates Packages index, Packages.gz, and signed Release file automatically',
+			'GPG signing via GPG_PRIVATE_KEY secret; unsigned fallback if not configured',
+			'Updated README to feature apt repo as the recommended Linux install path'
+		]
+	},
 	{
 		version: '0.0.106',
 		date: '2026-04-19',
