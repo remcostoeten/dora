@@ -1,0 +1,84 @@
+name: APT Repository
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag (e.g. v0.0.106). Leave empty to use latest.
+        required: false
+        type: string
+      publish:
+        description: Publish to GitHub Pages (requires pages to be enabled).
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  apt:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Resolve version
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+
+          VERSION="$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')"
+          if [[ -n "$TAG" ]]; then
+            VERSION="${TAG#v}"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Generate APT repository
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          bun tools/scripts/generate-apt-repo.ts \
+            --version=${{ steps.meta.outputs.version }} \
+            --out-dir=packaging/apt
+
+      - name: Checkout existing gh-pages content (if any)
+        continue-on-error: true
+        run: |
+          git fetch origin gh-pages 2>/dev/null || true
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            mkdir -p _site
+            git archive origin/gh-pages | tar -x -C _site
+          fi
+
+      - name: Merge apt repo into site output
+        run: |
+          mkdir -p _site
+          cp -r packaging/apt/. _site/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
+        id: deploy
+        uses: actions/deploy-pages@v4
