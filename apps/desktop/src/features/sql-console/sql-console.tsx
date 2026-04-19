@@ -10,7 +10,6 @@ import {
 } from '@/features/command-palette/events'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
-import { Button } from '@/shared/ui/button'
 import { CheatsheetPanel } from '../../features/drizzle-runner/components/cheatsheet-panel'
 import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
@@ -30,7 +29,7 @@ type Props = {
 	activeConnectionId?: string
 }
 
-export function SqlConsole({ onToggleSidebar, activeConnectionId }: Props) {
+export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnectionId }: Props) {
 	const adapter = useAdapter()
 	const [mode, setMode] = useState<'sql' | 'drizzle'>('sql')
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])

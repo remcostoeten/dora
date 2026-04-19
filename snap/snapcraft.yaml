@@ -73,9 +73,7 @@ parts:
       - libsoup-3.0-0
       - libssl3
       - libwebkit2gtk-4.1-0
-      - libxapp-gtk3-module
       - libxss1
-      - xapps-common
       - zlib1g
     override-build: |
       set -eux
