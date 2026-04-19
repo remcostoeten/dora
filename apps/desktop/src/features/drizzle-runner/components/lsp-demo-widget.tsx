@@ -3,8 +3,6 @@
 import { Play, Pause, SkipForward, RotateCcw, Settings2, X } from 'lucide-react'
 import * as monaco from 'monaco-editor'
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useRecording } from '@/core/recording'
-
 // Support for advanced steps that simulate partial typing + autocomplete (Enter press)
 type DemoStep = string | { text: string; typeChars?: number }
 
@@ -104,7 +102,6 @@ type Props = {
 }
 
 export function LspDemoWidget({ editorRef, onClose }: Props) {
-	const { shouldHide } = useRecording()
 	const [isPlaying, setIsPlaying] = useState(false)
 	const [speed, setSpeed] = useState(80) // ms per character
 	const [pauseBetweenSteps, setPauseBetweenSteps] = useState(1500) // ms pause to show suggestions
@@ -365,8 +362,6 @@ export function LspDemoWidget({ editorRef, onClose }: Props) {
 			</button>
 		)
 	}
-
-	if (shouldHide('hideWidget')) return null
 
 	return (
 		<div className='fixed bottom-4 right-4 w-80 z-50 rounded-xl border border-input bg-background/95 backdrop-blur shadow-xl text-card-foreground'>

@@ -2,12 +2,13 @@ import { TableSkeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
 import { useAdapter, useDataMutation } from '@/core/data-provider'
+import { tableDataCache, clearTableDataCache } from '@/core/table-cache'
 import { getAdapterError } from '@/core/data-provider/types'
 import { usePendingEdits } from '@/core/pending-edits'
 import { useSettings } from '@/core/settings'
+import { useNuqsState } from '@/core/url-state/use-nuqs-state'
 import { useEffectiveShortcuts, useShortcut } from '@/core/shortcuts'
 import { useUndo } from '@/core/undo'
-import { ContextMenuState, useUrlState } from '@/core/url-state'
 import { commands } from '@/lib/bindings'
 import { getTableRefParts } from '@/shared/utils/table-ref'
 import {
@@ -35,7 +36,7 @@ import { SelectionActionBar } from './components/selection-action-bar'
 import { SetNullDialog } from './components/set-null-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
 import { DataSeederDialog } from './data-seeder-dialog'
-import { useLiveMonitor } from './hooks/use-live-monitor'
+import { useLiveMonitor } from '@/core/live-monitor'
 import {
 	ColumnDefinition,
 	FilterDescriptor,
@@ -56,17 +57,6 @@ type Props = {
 	onRowSelectionChange?: (pk: string | number | null) => void
 }
 
-type TableCacheEntry = {
-	data: TableData
-	visibleColumns: string[]
-}
-
-const tableDataCache = new Map<string, TableCacheEntry>()
-
-/** Clear the table data cache. Call this after executing SQL that modifies data. */
-export function clearTableDataCache() {
-	tableDataCache.clear()
-}
 
 function buildTableCacheKey(
 	connectionId: string | undefined,
@@ -187,7 +177,7 @@ export function DatabaseStudio({
 		setFocusedCell: setUrlFocusedCell,
 		setContextMenu,
 		setAddRecordMode
-	} = useUrlState()
+	} = useNuqsState()
 	const initializedFromUrlRef = useRef(false)
 	const isUpdatingUrlRef = useRef(false)
 	const currentCacheKey = useMemo(
@@ -394,12 +384,31 @@ export function DatabaseStudio({
 
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
 
-	const liveMonitor = useLiveMonitor({
-		connectionId: activeConnectionId,
-		tableName: tableRefName,
-		isPaused: draftRow !== null || isApplyingEdits,
-		onDataChanged: loadTableData
-	})
+	const liveMonitor = useLiveMonitor()
+
+	// Tell the global monitor which table is currently active
+	useEffect(
+		function syncActiveTable() {
+			liveMonitor.setActiveTable(tableRefName ?? null)
+			return function () { liveMonitor.setActiveTable(null) }
+		},
+		[tableRefName]
+	)
+
+	// Re-load when the global monitor detects an external change to this table
+	useEffect(
+		function reloadOnExternalChange() {
+			if (!liveMonitor.recentEvents.length) return
+			const hasChangeForThisTable = liveMonitor.recentEvents.some(function (e) {
+				return e.tableName === tableRefName || e.tableName === tableName
+			})
+			if (hasChangeForThisTable && !draftRow && !isApplyingEdits) {
+				loadTableData()
+			}
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[liveMonitor.recentEvents]
+	)
 
 	useEffect(
 		function handleTableChange() {
@@ -1637,6 +1646,10 @@ export function DatabaseStudio({
 			const result = await commands.executeBatch(activeConnectionId, [sql])
 			if (result.status === 'ok') {
 				setShowAddColumnDialog(false)
+				tableDataCache.clear()
+				window.dispatchEvent(
+					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
+				)
 				loadTableData()
 			} else {
 				console.error('Failed to add column:', result.error)
@@ -1656,6 +1669,10 @@ export function DatabaseStudio({
 			const result = await adapter.dropTable(activeConnectionId, tableName)
 			if (result.ok) {
 				setShowDropTableDialog(false)
+				tableDataCache.clear()
+				window.dispatchEvent(
+					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
+				)
 				toast({ title: 'Table dropped', description: `"${tableName}" has been removed.` })
 			} else {
 				const errorMessage = getAdapterError(result)
@@ -1795,7 +1812,7 @@ export function DatabaseStudio({
 					liveMonitorConfig={liveMonitor.config}
 					onLiveMonitorConfigChange={liveMonitor.setConfig}
 					isLiveMonitorPolling={liveMonitor.isPolling}
-					changeEvents={liveMonitor.changeEvents}
+					changeEvents={liveMonitor.recentEvents}
 					unreadChangeCount={liveMonitor.unreadCount}
 					onClearChangeEvents={liveMonitor.clearEvents}
 					onMarkChangesRead={liveMonitor.markRead}
@@ -1887,7 +1904,7 @@ export function DatabaseStudio({
 					executionTime={tableData.executionTime}
 					liveMonitorEnabled={liveMonitor.config.enabled}
 					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
-					lastPolledAt={liveMonitor.lastPolledAt}
+					lastPolledAt={liveMonitor.recentEvents[0]?.timestamp ?? null}
 					changesDetected={liveMonitor.unreadCount}
 					liveMonitorError={liveMonitor.monitorError}
 				/>
@@ -1941,7 +1958,7 @@ export function DatabaseStudio({
 				liveMonitorConfig={liveMonitor.config}
 				onLiveMonitorConfigChange={liveMonitor.setConfig}
 				isLiveMonitorPolling={liveMonitor.isPolling}
-				changeEvents={liveMonitor.changeEvents}
+				changeEvents={liveMonitor.recentEvents}
 				unreadChangeCount={liveMonitor.unreadCount}
 				onClearChangeEvents={liveMonitor.clearEvents}
 				onMarkChangesRead={liveMonitor.markRead}
@@ -2042,7 +2059,7 @@ export function DatabaseStudio({
 					executionTime={tableData.executionTime}
 					liveMonitorEnabled={liveMonitor.config.enabled}
 					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
-					lastPolledAt={liveMonitor.lastPolledAt}
+					lastPolledAt={liveMonitor.recentEvents[0]?.timestamp ?? null}
 					changesDetected={liveMonitor.unreadCount}
 					liveMonitorError={liveMonitor.monitorError}
 				/>

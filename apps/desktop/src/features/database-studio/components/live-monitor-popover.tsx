@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { Slider } from '@/shared/ui/slider'
 import { Switch } from '@/shared/ui/switch'
 import { cn } from '@/shared/utils/cn'
-import type { LiveMonitorConfig, ChangeType } from '../hooks/use-live-monitor'
+import type { LiveMonitorConfig, ChangeType } from '@/core/live-monitor'
 
 type TProps = {
 	config: LiveMonitorConfig
@@ -40,7 +40,7 @@ export function LiveMonitorPopover({ config, onConfigChange, isPolling }: TProps
 	}
 
 	function handleToggleChangeType(changeType: ChangeType, checked: boolean) {
-		const currentTypes = config.subscription.changeTypes
+		const currentTypes = config.changeTypes
 		const nextTypes = checked
 			? [...currentTypes, changeType]
 			: currentTypes.filter(function (t) {
@@ -49,10 +49,7 @@ export function LiveMonitorPopover({ config, onConfigChange, isPolling }: TProps
 
 		if (nextTypes.length === 0) return
 
-		onConfigChange({
-			...config,
-			subscription: { ...config.subscription, changeTypes: nextTypes }
-		})
+		onConfigChange({ ...config, changeTypes: nextTypes })
 	}
 
 	return (
@@ -124,9 +121,7 @@ export function LiveMonitorPopover({ config, onConfigChange, isPolling }: TProps
 											className='flex items-center gap-2 cursor-pointer'
 										>
 											<Checkbox
-												checked={config.subscription.changeTypes.includes(
-													changeType
-												)}
+												checked={config.changeTypes.includes(changeType)}
 												onCheckedChange={function (checked) {
 													handleToggleChangeType(
 														changeType,

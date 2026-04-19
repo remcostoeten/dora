@@ -1,6 +1,5 @@
 import { X, Download } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
-import { useRecording } from '@/core/recording'
 import { siteConfig } from '@/config/site'
 
 type Props = {
@@ -14,7 +13,6 @@ export function DemoBanner({
 	onClose,
 	defaultVisible = true
 }: Props) {
-	const { shouldHide } = useRecording()
 	const [os, setOs] = useState<string>('')
 	const [isVisible, setIsVisible] = useState<boolean>(defaultVisible)
 	const [isDemo, setIsDemo] = useState(false)
@@ -53,7 +51,7 @@ export function DemoBanner({
 		[onClose]
 	)
 
-	if (!isVisible || !isDemo || shouldHide('hideDemoBanner')) return null
+	if (!isVisible || !isDemo) return null
 
 	return (
 		<div

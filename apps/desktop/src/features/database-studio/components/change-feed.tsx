@@ -4,7 +4,7 @@ import { Button } from '@/shared/ui/button'
 import { Badge } from '@/shared/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
 import { cn } from '@/shared/utils/cn'
-import type { ChangeEvent, ChangeType } from '../hooks/use-live-monitor'
+import type { ChangeEvent, ChangeType } from '@/core/live-monitor'
 
 type TProps = {
 	events: ChangeEvent[]

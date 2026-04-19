@@ -9,9 +9,9 @@ type Config = {
 	pkgrel: string
 	outDir: string
 	repoUrl: string
-	sourceUrl: string
-	sourceFile: string
-	sourceSha256: string
+	appImageUrl: string
+	appImageFile: string
+	appImageSha256: string
 }
 
 function getFlagValue(flag: string): string | undefined {
@@ -22,21 +22,13 @@ function getFlagValue(flag: string): string | undefined {
 
 function inferVersion(): string {
 	const explicitVersion = getFlagValue('version')
-	if (explicitVersion) {
-		return explicitVersion
-	}
+	if (explicitVersion) return explicitVersion
 
 	try {
-		const latestTag = execSync('git describe --tags --abbrev=0', {
-			encoding: 'utf8'
-		}).trim()
-
-		if (!latestTag) {
-			throw new Error('No tags found')
-		}
-
+		const latestTag = execSync('git describe --tags --abbrev=0', { encoding: 'utf8' }).trim()
+		if (!latestTag) throw new Error('No tags found')
 		return latestTag.startsWith('v') ? latestTag.slice(1) : latestTag
-	} catch (error) {
+	} catch {
 		throw new Error(
 			'Could not infer version from git tags. Provide --version=... or create a release tag first.'
 		)
@@ -48,9 +40,8 @@ async function sha256FromUrl(url: string): Promise<string> {
 	if (!response.ok) {
 		throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`)
 	}
-
 	const buffer = Buffer.from(await response.arrayBuffer())
-	return crypto.createHash('sha256').update(buffer).digest('hex').toUpperCase()
+	return crypto.createHash('sha256').update(buffer).digest('hex')
 }
 
 function writeFile(filePath: string, contents: string) {
@@ -59,47 +50,59 @@ function writeFile(filePath: string, contents: string) {
 	logLevel('success', `Wrote ${filePath}`)
 }
 
+// Binary package: downloads the pre-built AppImage from the GitHub release.
+// Users install with:  sudo pacman -S dora  (via AUR helper like yay/paru)
+// or:                  yay -S dora
 function createPkgbuild(config: Config): string {
-	return `pkgname=dora
+	return `# Maintainer: Remco Stoeten <aukjestoetencrypto@gmail.com>
+pkgname=dora
 pkgver=${config.version}
 pkgrel=${config.pkgrel}
 pkgdesc="A native-feeling desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL"
 arch=('x86_64')
 url="${config.repoUrl}"
 license=('GPL-3.0-only')
-depends=('glibc' 'gtk3' 'libayatana-appindicator' 'libsecret' 'webkit2gtk-4.1')
-makedepends=('bun' 'cargo' 'pkgconf')
-source=("${config.sourceFile}::${config.sourceUrl}")
-sha256sums=('${config.sourceSha256}')
+depends=('fuse2' 'gtk3' 'libayatana-appindicator' 'libsecret' 'webkit2gtk-4.1')
+options=('!strip')
+source=("${config.appImageFile}::${config.appImageUrl}")
+sha256sums=('${config.appImageSha256}')
 
-build() {
-  cd "\${srcdir}/dora-\${pkgver}"
-
-  export HOME="\${srcdir}/.home"
-  export CARGO_HOME="\${srcdir}/.cargo"
-  export BUN_INSTALL_CACHE_DIR="\${srcdir}/.bun-cache"
-
-  bun install --frozen-lockfile
-  bun run --cwd apps/desktop build
-  cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --locked
+prepare() {
+  chmod +x "${config.appImageFile}"
 }
 
 package() {
-  cd "\${srcdir}/dora-\${pkgver}"
+  # Install the AppImage as the dora binary
+  install -Dm755 "${srcdir}/${config.appImageFile}" "${pkgdir}/usr/lib/dora/dora.AppImage"
 
-  install -Dm755 "apps/desktop/src-tauri/target/release/app" "\${pkgdir}/usr/bin/dora"
-  install -Dm644 "apps/desktop/src-tauri/icons/icon.png" "\${pkgdir}/usr/share/pixmaps/dora.png"
-  install -Dm644 "LICENSE" "\${pkgdir}/usr/share/licenses/\${pkgname}/LICENSE"
-  install -Dm644 /dev/stdin "\${pkgdir}/usr/share/applications/dora.desktop" <<'EOF'
+  # Wrapper script so users run 'dora' from the terminal
+  install -dm755 "${pkgdir}/usr/bin"
+  cat > "${pkgdir}/usr/bin/dora" <<'WRAPPER'
+#!/usr/bin/env bash
+exec /usr/lib/dora/dora.AppImage "$@"
+WRAPPER
+  chmod 755 "${pkgdir}/usr/bin/dora"
+
+  # Extract icon from the AppImage for the desktop entry
+  # Fall back to a no-op if extraction fails (AppImage still works)
+  if "${srcdir}/${config.appImageFile}" --appimage-extract usr/share/pixmaps/dora.png &>/dev/null; then
+    install -Dm644 squashfs-root/usr/share/pixmaps/dora.png \\
+      "${pkgdir}/usr/share/pixmaps/dora.png"
+  elif "${srcdir}/${config.appImageFile}" --appimage-extract dora.png &>/dev/null; then
+    install -Dm644 squashfs-root/dora.png "${pkgdir}/usr/share/pixmaps/dora.png"
+  fi
+
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/dora.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Dora
-Comment=Desktop database studio
+Comment=Desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL
 Exec=dora
 Icon=dora
 Categories=Development;Database;
 Terminal=false
 StartupNotify=true
+Keywords=database;sql;postgres;mysql;sqlite;
 EOF
 }
 `
@@ -113,16 +116,14 @@ function createSrcInfo(config: Config): string {
 	url = ${config.repoUrl}
 	arch = x86_64
 	license = GPL-3.0-only
-	makedepends = bun
-	makedepends = cargo
-	makedepends = pkgconf
-	depends = glibc
+	depends = fuse2
 	depends = gtk3
 	depends = libayatana-appindicator
 	depends = libsecret
 	depends = webkit2gtk-4.1
-	source = ${config.sourceFile}::${config.sourceUrl}
-	sha256sums = ${config.sourceSha256}
+	options = !strip
+	source = ${config.appImageFile}::${config.appImageUrl}
+	sha256sums = ${config.appImageSha256}
 
 pkgname = dora
 `
@@ -131,9 +132,11 @@ pkgname = dora
 async function main() {
 	const version = inferVersion()
 	const repoUrl = getFlagValue('repo-url') || 'https://github.com/remcostoeten/dora'
-	const sourceFile = getFlagValue('source-file') || `dora-${version}.tar.gz`
-	const sourceUrl =
-		getFlagValue('source-url') || `${repoUrl}/archive/refs/tags/v${version}.tar.gz`
+	const appImageFile =
+		getFlagValue('appimage-file') || `Dora_${version}_amd64.AppImage`
+	const appImageUrl =
+		getFlagValue('appimage-url') ||
+		`${repoUrl}/releases/download/v${version}/${appImageFile}`
 	const explicitSha = getFlagValue('source-sha256')
 
 	const config: Config = {
@@ -141,16 +144,16 @@ async function main() {
 		pkgrel: getFlagValue('pkgrel') || '1',
 		outDir: path.resolve(getFlagValue('out-dir') || path.join('packaging', 'aur')),
 		repoUrl,
-		sourceUrl,
-		sourceFile,
-		sourceSha256: explicitSha ? explicitSha.toUpperCase() : await sha256FromUrl(sourceUrl)
+		appImageUrl,
+		appImageFile,
+		appImageSha256: explicitSha || (await sha256FromUrl(appImageUrl))
 	}
 
 	logHeader('Generating AUR Package Files')
-	logKeyValue('Package', 'dora')
+	logKeyValue('Package', 'dora (binary)')
 	logKeyValue('Version', config.version)
 	logKeyValue('pkgrel', config.pkgrel)
-	logKeyValue('Source', config.sourceUrl)
+	logKeyValue('AppImage', config.appImageUrl)
 	logKeyValue('Output', config.outDir)
 
 	writeFile(path.join(config.outDir, 'PKGBUILD'), createPkgbuild(config))

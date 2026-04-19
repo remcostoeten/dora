@@ -49,30 +49,42 @@ export function RowContextMenu({
 	}
 
 	function handleExportJson() {
-		const json = JSON.stringify(row, null, 2)
-		navigator.clipboard.writeText(json)
+		const rows = isBatch && selectedRows
+			? Array.from(selectedRows).map(function (i) { return row })
+			: [row]
+		const json = JSON.stringify(isBatch && selectedRows ? rows : row, null, 2)
+		const blob = new Blob([json], { type: 'application/json' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = `${tableName || 'data'}_export.json`
+		a.click()
+		URL.revokeObjectURL(url)
 		handleAction('export-json')
 	}
 
 	function handleExportSql() {
-		const columnNames = columns
-			.map(function (c) {
-				return c.name
-			})
-			.join(', ')
-		const values = columns
-			.map(function (c) {
-				const val = row[c.name]
+		const columnNames = columns.map(function (c) { return c.name }).join(', ')
+
+		function rowToValues(r: Record<string, unknown>) {
+			return columns.map(function (c) {
+				const val = r[c.name]
 				if (val === null || val === undefined) return 'NULL'
 				if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`
 				if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE'
 				if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'`
 				return String(val)
-			})
-			.join(', ')
+			}).join(', ')
+		}
 
-		const sql = `INSERT INTO ${tableName || 'table_name'} (${columnNames}) VALUES (${values});`
-		navigator.clipboard.writeText(sql)
+		const sql = `INSERT INTO ${tableName || 'table_name'} (${columnNames}) VALUES (${rowToValues(row)});`
+		const blob = new Blob([sql], { type: 'text/plain' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = `${tableName || 'data'}_export.sql`
+		a.click()
+		URL.revokeObjectURL(url)
 		handleAction('export-sql')
 	}
 

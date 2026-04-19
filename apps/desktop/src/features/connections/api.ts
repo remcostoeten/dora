@@ -25,7 +25,7 @@ function backendToFrontendSshConfig(
 	} as const
 }
 
-function frontendToBackendSshConfig(conn: FrontendConnection) {
+export function frontendToBackendSshConfig(conn: FrontendConnection) {
 	if ((conn.type !== 'postgres' && conn.type !== 'mysql') || !conn.sshConfig?.enabled) {
 		return null
 	}
@@ -150,7 +150,7 @@ export async function loadConnections(): Promise<FrontendConnection[]> {
 
 export async function addConnection(conn: FrontendConnection): Promise<FrontendConnection> {
 	const dbInfo = frontendToBackendDatabaseInfo(conn)
-	const result = await commands.addConnection(conn.name, dbInfo, null)
+	const result = await commands.addConnection(conn.name, dbInfo, frontendToBackendSshConfig(conn))
 	if (result.status === 'ok') {
 		return backendToFrontendConnection(result.data)
 	}
@@ -159,7 +159,7 @@ export async function addConnection(conn: FrontendConnection): Promise<FrontendC
 
 export async function updateConnection(conn: FrontendConnection): Promise<FrontendConnection> {
 	const dbInfo = frontendToBackendDatabaseInfo(conn)
-	const result = await commands.updateConnection(conn.id, conn.name, dbInfo, null)
+	const result = await commands.updateConnection(conn.id, conn.name, dbInfo, frontendToBackendSshConfig(conn))
 	if (result.status === 'ok') {
 		return backendToFrontendConnection(result.data)
 	}
