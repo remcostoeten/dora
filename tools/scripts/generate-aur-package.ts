@@ -72,27 +72,23 @@ prepare() {
 }
 
 package() {
-  # Install the AppImage as the dora binary
-  install -Dm755 "${srcdir}/${config.appImageFile}" "${pkgdir}/usr/lib/dora/dora.AppImage"
+  install -Dm755 "\${srcdir}/${config.appImageFile}" "\${pkgdir}/usr/lib/dora/dora.AppImage"
 
-  # Wrapper script so users run 'dora' from the terminal
-  install -dm755 "${pkgdir}/usr/bin"
-  cat > "${pkgdir}/usr/bin/dora" <<'WRAPPER'
+  install -dm755 "\${pkgdir}/usr/bin"
+  cat > "\${pkgdir}/usr/bin/dora" <<'WRAPPER'
 #!/usr/bin/env bash
 exec /usr/lib/dora/dora.AppImage "$@"
 WRAPPER
-  chmod 755 "${pkgdir}/usr/bin/dora"
+  chmod 755 "\${pkgdir}/usr/bin/dora"
 
-  # Extract icon from the AppImage for the desktop entry
-  # Fall back to a no-op if extraction fails (AppImage still works)
-  if "${srcdir}/${config.appImageFile}" --appimage-extract usr/share/pixmaps/dora.png &>/dev/null; then
+  if "\${srcdir}/${config.appImageFile}" --appimage-extract usr/share/pixmaps/dora.png &>/dev/null; then
     install -Dm644 squashfs-root/usr/share/pixmaps/dora.png \\
-      "${pkgdir}/usr/share/pixmaps/dora.png"
-  elif "${srcdir}/${config.appImageFile}" --appimage-extract dora.png &>/dev/null; then
-    install -Dm644 squashfs-root/dora.png "${pkgdir}/usr/share/pixmaps/dora.png"
+      "\${pkgdir}/usr/share/pixmaps/dora.png"
+  elif "\${srcdir}/${config.appImageFile}" --appimage-extract dora.png &>/dev/null; then
+    install -Dm644 squashfs-root/dora.png "\${pkgdir}/usr/share/pixmaps/dora.png"
   fi
 
-  install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/dora.desktop" <<'EOF'
+  install -Dm644 /dev/stdin "\${pkgdir}/usr/share/applications/dora.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Dora
