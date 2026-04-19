@@ -35,6 +35,8 @@ jobs:
       - name: Resolve release metadata
         id: meta
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
             TAG="${{ github.event.release.tag_name }}"
@@ -42,13 +44,19 @@ jobs:
             TAG="${{ inputs.tag }}"
           fi
 
-          VERSION="${TAG#v}"
-          INSTALLER_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/Dora_${VERSION}_x64_en-US.msi"
+          # Resolve actual .msi URL from release assets (filename version may differ from tag)
+          INSTALLER_URL="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} \
+            --jq '.assets[] | select(.name | endswith("_x64_en-US.msi")) | .browser_download_url' \
+            | head -1)"
+          INSTALLER_FILE="$(basename "$INSTALLER_URL")"
+          # Extract embedded version from filename
+          VERSION="$(echo "$INSTALLER_FILE" | sed 's/Dora_\(.*\)_x64_en-US\.msi/\1/')"
           CHECKSUMS_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/checksums-windows.txt"
 
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
+          echo "installer_file=$INSTALLER_FILE" >> "$GITHUB_OUTPUT"
           echo "checksums_url=$CHECKSUMS_URL" >> "$GITHUB_OUTPUT"
 
       - name: Download Windows checksums
@@ -66,7 +74,7 @@ jobs:
             --version=${{ steps.meta.outputs.version }} \
             --installer-url=${{ steps.meta.outputs.installer_url }} \
             --checksums-file=checksums-windows.txt \
-            --installer-file=Dora_${{ steps.meta.outputs.version }}_x64_en-US.msi
+            --installer-file=${{ steps.meta.outputs.installer_file }}
 
       - name: Archive Winget manifests
         if: ${{ hashFiles('checksums-windows.txt') != '' }}

@@ -49,8 +49,37 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve AppImage asset URL
+        id: appimage
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+          if [[ -z "$TAG" ]]; then
+            TAG="$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')"
+          fi
+          URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
+            --jq '.assets[] | select(.name | endswith("_amd64.AppImage")) | .browser_download_url' \
+            | head -1)"
+          if [[ -z "$URL" ]]; then
+            echo "No _amd64.AppImage asset found on release ${TAG}" >&2
+            exit 1
+          fi
+          FILE="$(basename "$URL")"
+          # Extract embedded version from filename (Dora_X.Y.Z_amd64.AppImage)
+          VER="$(echo "$FILE" | sed 's/Dora_\(.*\)_amd64\.AppImage/\1/')"
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "file=$FILE" >> "$GITHUB_OUTPUT"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Resolved AppImage: $URL"
+
       - name: Generate AUR package files
-        run: bun run release:aur -- --version=${{ steps.meta.outputs.version }}
+        run: |
+          bun run release:aur -- \
+            --version=${{ steps.appimage.outputs.version }} \
+            --appimage-url=${{ steps.appimage.outputs.url }} \
+            --appimage-file=${{ steps.appimage.outputs.file }}
 
       - name: Archive AUR package files
         run: |
