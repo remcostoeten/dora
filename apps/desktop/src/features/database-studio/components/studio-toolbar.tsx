@@ -25,7 +25,7 @@ import {
 import { Input } from '@/shared/ui/input'
 import { cn } from '@/shared/utils/cn'
 import { ViewMode, PaginationState, FilterDescriptor, ColumnDefinition } from '../types'
-import type { LiveMonitorConfig, ChangeEvent } from '../hooks/use-live-monitor'
+import type { LiveMonitorConfig, ChangeEvent } from '@/core/live-monitor'
 import { LiveMonitorPopover } from './live-monitor-popover'
 import { ChangeFeed } from './change-feed'
 import { FilterBar } from './filter-bar'

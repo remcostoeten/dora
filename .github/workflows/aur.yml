@@ -40,11 +40,7 @@ jobs:
             TAG="${{ inputs.tag }}"
           fi
 
-          VERSION="$(python3 - <<'PY'
-import json
-print(json.load(open('package.json'))['version'])
-PY
-)"
+          VERSION="$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')"
 
           if [[ -n "$TAG" ]]; then
             VERSION="${TAG#v}"

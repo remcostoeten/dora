@@ -8,9 +8,26 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.105'
+export const CURRENT_VERSION = '0.0.106'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.106',
+		date: '2026-04-19',
+		commit: 'v0.0.106',
+		title: 'Live Monitor Global, SSH Tunnels, File Exports & AUR Binary Package',
+		description:
+			'Global live database change notifications, working SSH tunnels, real file exports, and a fast AUR binary package.',
+		type: 'feature',
+		details: [
+			'Live monitor is now a global context — external DB changes trigger app-wide notifications and data refresh',
+			'Fixed SSH tunnel configuration not being passed to the backend when adding or updating connections',
+			'Fixed row exports (JSON/SQL) to download as files instead of copying to clipboard',
+			'Fixed schema sidebar and SQL console revalidation after DROP TABLE, ADD COLUMN, and SQL mutations',
+			'Removed recording overlay feature',
+			'AUR package switched to pre-built AppImage — yay -S dora now installs in seconds instead of compiling from source'
+		]
+	},
 	{
 		version: '0.0.105',
 		date: '2026-04-17',

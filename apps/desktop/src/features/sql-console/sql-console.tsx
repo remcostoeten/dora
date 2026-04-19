@@ -22,7 +22,7 @@ import { UnifiedSidebar } from './components/unified-sidebar'
 import { DEFAULT_SQL } from './data'
 import { extractMutationSourceTable } from './query-target'
 import { useQueryHistory } from './stores/query-history-store'
-import { clearTableDataCache } from '@/features/database-studio/database-studio'
+import { clearTableDataCache } from '@/core/table-cache'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 
 type Props = {

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.0.106 - Live Monitor Global, SSH Tunnels, File Exports & AUR Binary Package
+
+**Date:** 2026-04-19
+
+**Highlights**
+
+- Made the live database monitor a global React context (`LiveMonitorProvider`) so external DB changes trigger notifications and data refresh app-wide, not just per active table.
+- Fixed SSH tunnel configuration not being passed to the backend — SSH tunnels now work correctly when adding or updating connections.
+- Fixed row exports (JSON/SQL) to generate real file downloads instead of copying to clipboard.
+- Fixed schema sidebar and SQL console revalidation after mutations like DROP TABLE, ADD COLUMN, and SQL execution.
+- Removed the recording overlay feature.
+- Switched AUR package from source-build (10+ min compile) to a pre-built AppImage binary package — `yay -S dora` or `sudo pacman -S dora` now installs in seconds.
+
 ## 0.0.102 - Snap Workflow Follow-up & Packaging Release Cleanup
 
 **Date:** 2026-04-05

@@ -7,6 +7,7 @@ import { useAdapter } from "@/core/data-provider";
 import { getAdapterError } from "@/core/data-provider/types";
 import { useSettings } from "@/core/settings";
 import { useEffectiveShortcuts, useShortcut } from "@/core/shortcuts";
+import { LiveMonitorProvider } from "@/core/live-monitor";
 import { NavigationSidebar, SidebarProvider } from "@/features/app-sidebar";
 import { CommandPalette } from "@/features/command-palette";
 import {
@@ -294,16 +295,15 @@ export default function Index() {
       // BUT `api.ts` is deprecated ideally. We should move that helper to a shared location or `types.ts`.
 
       // For now, let's keep importing helper from `api.ts` since it's just a pure function
-      const { frontendToBackendDatabaseInfo } =
+      const { frontendToBackendDatabaseInfo, frontendToBackendSshConfig } =
         await import("@/features/connections/api");
 
-      const dbInfo = frontendToBackendDatabaseInfo(
-        newConnectionData as Connection,
-      );
+      const tempConn = newConnectionData as Connection;
+      const dbInfo = frontendToBackendDatabaseInfo(tempConn);
       const result = await adapter.addConnection(
         newConnectionData.name,
         dbInfo,
-        null,
+        frontendToBackendSshConfig(tempConn),
       );
 
       if (result.ok) {
@@ -354,11 +354,12 @@ export default function Index() {
       } as Connection;
       const dbInfo = frontendToBackendDatabaseInfo(tempConn);
 
+      const { frontendToBackendSshConfig } = await import("@/features/connections/api");
       const result = await adapter.updateConnection(
         editingConnection.id,
         connectionData.name,
         dbInfo,
-        null,
+        frontendToBackendSshConfig(tempConn),
       );
 
       if (result.ok) {
@@ -505,6 +506,7 @@ export default function Index() {
       : "database-studio";
 
   return (
+    <LiveMonitorProvider activeConnectionId={activeConnectionId || undefined}>
     <TooltipProvider>
       <SidebarProvider>
         <div className="flex flex-col h-full w-full bg-background overflow-hidden">
@@ -687,5 +689,6 @@ export default function Index() {
         </div>
       </SidebarProvider>
     </TooltipProvider>
+    </LiveMonitorProvider>
   );
 }
