@@ -127,7 +127,7 @@ function createRemcoStoeten(): Provider {
 	}
 }
 
-interface RemcoStoetenClient {
+type RemcoStoetenClient = {
 	url: string
 	send: (evt: EvtData) => void
 }
