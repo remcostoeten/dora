@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.0.107 - Self-hosted APT Repository (sudo apt install dora)
+
+**Date:** 2026-04-19
+
+**Highlights**
+
+- Added a self-hosted apt repository published via GitHub Pages — Debian/Ubuntu users can now `sudo apt install dora` after a one-time source setup.
+- CI workflow auto-generates `Packages`, `Packages.gz`, and a signed `Release` file on every GitHub release and deploys to GitHub Pages.
+- GPG signing supported via `GPG_PRIVATE_KEY` repository secret; falls back to unsigned (trusted) if not configured.
+- Added `release:apt` script for local generation.
+- Updated README install instructions to feature the apt repo as the recommended Linux install path.
+
 ## 0.0.106 - Live Monitor Global, SSH Tunnels, File Exports & AUR Binary Package
 
 **Date:** 2026-04-19
