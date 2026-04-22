@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 use anyhow::Context;
 use dashmap::DashMap;
 use mysql_async::prelude::Queryable;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -23,6 +24,7 @@ pub struct ConnectionService<'a> {
 }
 
 impl<'a> ConnectionService<'a> {
+    #[instrument(skip(self, database_info))]
     pub async fn add_connection(
         &self,
         name: String,
@@ -50,6 +52,7 @@ impl<'a> ConnectionService<'a> {
         Ok(info)
     }
 
+    #[instrument(skip(self, database_info), fields(conn_id = %conn_id))]
     pub async fn update_connection(
         &self,
         conn_id: Uuid,
@@ -246,6 +249,7 @@ impl<'a> ConnectionService<'a> {
         Ok(())
     }
 
+    #[instrument(skip(self, monitor, certificates), fields(connection_id = %connection_id))]
     pub async fn connect_to_database(
         &self,
         monitor: &ConnectionMonitor,
@@ -508,6 +512,7 @@ impl<'a> ConnectionService<'a> {
         }
     }
 
+    #[instrument(skip(self), fields(connection_id = %connection_id))]
     pub async fn disconnect_from_database(
         &self,
         connection_id: Uuid,
@@ -668,6 +673,7 @@ impl<'a> ConnectionService<'a> {
 
 // Static method that doesn't need state
 impl ConnectionService<'_> {
+    #[instrument(skip(database_info, certificates))]
     pub async fn test_connection(
         database_info: DatabaseInfo,
         certificates: &Certificates,
