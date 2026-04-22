@@ -29,7 +29,7 @@ pub fn build_window(app: &tauri::App) -> tauri::Result<()> {
     let splash_window = WebviewWindowBuilder::new(
         app,
         "splash",
-        tauri::WebviewUrl::App("about:blank".parse().unwrap())
+        tauri::WebviewUrl::App("about:blank".parse().expect("static URL is valid"))
     )
     .title("Dora")
     .inner_size(500.0, 500.0)

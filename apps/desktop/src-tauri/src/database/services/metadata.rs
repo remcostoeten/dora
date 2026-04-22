@@ -97,7 +97,7 @@ impl<'a> MetadataService<'a> {
                 connection: Some(conn),
             } => {
                 let mut meta = metadata::get_sqlite_metadata(db_path)?;
-                let conn_guard = conn.lock().unwrap();
+                let conn_guard = conn.lock().map_err(|_| Error::Internal("Mutex poisoned".into()))?;
                 let (table_count, row_count) = metadata::get_sqlite_counts(&conn_guard)?;
                 meta.table_count = table_count;
                 meta.row_count_total = row_count;
