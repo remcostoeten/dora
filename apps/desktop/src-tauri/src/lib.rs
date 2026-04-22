@@ -4,6 +4,7 @@ pub mod credentials;
 pub mod database;
 mod error;
 mod init;
+mod observability;
 mod storage;
 mod test_queries;
 pub mod utils;
@@ -63,6 +64,9 @@ impl AppState {
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Set up `tracing` before anything else so startup events are captured.
+    observability::init();
+
     // Install ring as the default crypto provider for rustls
     rustls::crypto::ring::default_provider()
         .install_default()

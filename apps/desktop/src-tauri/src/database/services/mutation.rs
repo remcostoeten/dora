@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use anyhow::{Context, anyhow};
 use dashmap::DashMap;
+use tracing::instrument;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use base64::Engine;
@@ -40,6 +41,7 @@ pub struct MutationService<'a> {
 }
 
 impl<'a> MutationService<'a> {
+    #[instrument(skip(self, primary_key_value, new_value), fields(connection_id = %connection_id, table = %table_name))]
     pub async fn update_cell(
         &self,
         connection_id: Uuid,
@@ -114,6 +116,7 @@ impl<'a> MutationService<'a> {
         })
     }
 
+    #[instrument(skip(self, primary_key_values), fields(connection_id = %connection_id, table = %table_name))]
     pub async fn delete_rows(
         &self,
         connection_id: Uuid,
@@ -237,6 +240,7 @@ impl<'a> MutationService<'a> {
         })
     }
 
+    #[instrument(skip(self, row_data), fields(connection_id = %connection_id, table = %table_name))]
     pub async fn insert_row(
         &self,
         connection_id: Uuid,
@@ -946,6 +950,7 @@ impl<'a> MutationService<'a> {
         }
     }
 
+    #[instrument(skip(self, statements), fields(connection_id = %connection_id, count = statements.len()))]
     pub async fn execute_batch(
         &self,
         connection_id: Uuid,

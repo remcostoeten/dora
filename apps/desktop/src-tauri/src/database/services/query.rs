@@ -1,6 +1,7 @@
 use std::time::Instant;
 use anyhow::Context;
 use dashmap::DashMap;
+use tracing::instrument;
 use uuid::Uuid;
 use serde_json::value::RawValue;
 
@@ -142,6 +143,7 @@ impl<'a> QueryService<'a> {
         Ok(filtered)
     }
 
+    #[instrument(skip(self, query), fields(connection_id = %connection_id))]
     pub async fn start_query(
         &self,
         connection_id: Uuid,

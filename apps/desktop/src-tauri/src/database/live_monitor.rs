@@ -8,6 +8,7 @@ use std::{
 use base64::Engine;
 use dashmap::DashMap;
 use futures_util::future::poll_fn;
+use tracing::instrument;
 use rusqlite::types::ValueRef;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -93,6 +94,7 @@ impl LiveMonitorManager {
         }
     }
 
+    #[instrument(skip(self, change_types), fields(connection_id = %connection_id, table = %table_name, interval_ms))]
     pub fn start_monitor(
         &self,
         connection_id: Uuid,
