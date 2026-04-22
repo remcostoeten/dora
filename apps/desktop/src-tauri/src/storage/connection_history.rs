@@ -5,7 +5,7 @@ use crate::Result;
 
 impl Storage {
     pub fn save_connection_history(&self, entry: &ConnectionHistoryEntry) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         conn.execute(
             "INSERT INTO connection_history
              (connection_id, connection_name, database_type, attempted_at, success, error_message, duration_ms)
@@ -31,7 +31,7 @@ impl Storage {
         limit: Option<i64>,
     ) -> Result<Vec<ConnectionHistoryEntry>> {
         let limit = limit.unwrap_or(50);
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
 
         match (db_type_filter, success_filter) {
             (Some(db_type), Some(success)) => {

@@ -1,3 +1,6 @@
+#![warn(clippy::unwrap_used)]
+#![cfg_attr(test, allow(clippy::unwrap_used))]
+
 mod bindings;
 pub mod commands_system;
 pub mod credentials;

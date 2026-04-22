@@ -159,7 +159,7 @@ impl StatementManager {
             }
             DatabaseClient::SQLite { connection } => {
                 spawn_blocking(move || {
-                    let conn = connection.lock().unwrap();
+                    let conn = connection.lock().expect("Mutex poisoned");
                     if let Err(err) = sqlite::execute::execute_query(&conn, stmt, &sender) {
                         log::error!("Error executing SQLite query: {}", err);
                     }
@@ -194,13 +194,13 @@ impl StatementManager {
             while let Some(event) = recv.recv().await {
                 match event {
                     QueryExecEvent::TypesResolved { columns } => {
-                        *exec_storage.columns.write().unwrap() = Some(columns);
+                        *exec_storage.columns.write().expect("RwLock poisoned") = Some(columns);
                     }
                     QueryExecEvent::Page {
                         page_amount: _,
                         page,
                     } => {
-                        exec_storage.pages.write().unwrap().push(page);
+                        exec_storage.pages.write().expect("RwLock poisoned").push(page);
 
                         // TODO(vini): emit progress event to frontend?
                     }
@@ -210,7 +210,7 @@ impl StatementManager {
                         error,
                     } => {
                         if let Some(err) = error {
-                            *exec_storage.error.write().unwrap() = Some(err);
+                            *exec_storage.error.write().expect("RwLock poisoned") = Some(err);
                             exec_storage
                                 .status
                                 .store(QueryStatus::Error as u8, Ordering::Relaxed);
@@ -219,7 +219,7 @@ impl StatementManager {
                                 .status
                                 .store(QueryStatus::Completed as u8, Ordering::Relaxed);
 
-                            *exec_storage.rows_affected.write().unwrap() = Some(affected_rows);
+                            *exec_storage.rows_affected.write().expect("RwLock poisoned") = Some(affected_rows);
                         }
 
                         // TODO(vini): emit completion event to frontend?

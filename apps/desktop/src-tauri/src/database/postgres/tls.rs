@@ -49,7 +49,7 @@ impl Certificates {
         }
 
         // Safety: `initialized` just returned true
-        Ok(self.certs.get().unwrap().clone())
+        Ok(self.certs.get().expect("initialized is true").clone())
     }
 }
 
