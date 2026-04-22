@@ -75,7 +75,7 @@ impl RowWriter {
         let json = std::mem::take(&mut self.buf);
         self.row_count = 0;
 
-        RawValue::from_string(json).unwrap()
+        RawValue::from_string(json).expect("hand-built JSON is valid")
     }
 
     fn write_pg_value_as_json(
@@ -246,7 +246,7 @@ impl RowWriter {
                 '\r' => self.buf.push_str("\\r"),
                 '\t' => self.buf.push_str("\\t"),
                 c if c.is_control() => {
-                    write!(&mut self.buf, "\\u{:04x}", c as u32).unwrap();
+                    write!(&mut self.buf, "\\u{:04x}", c as u32).expect("write to String buf");
                 }
                 c => self.buf.push(c),
             }

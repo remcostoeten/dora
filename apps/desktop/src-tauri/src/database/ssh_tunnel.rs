@@ -138,7 +138,7 @@ impl SshTunnel {
     fn forward_stream(mut stream: TcpStream, sess: Arc<std::sync::Mutex<Session>>, remote_host: &str, remote_port: u16) -> Result<()> {
         // Lock session to create channel
         let mut channel = {
-            let sess_guard = sess.lock().unwrap();
+            let sess_guard = sess.lock().map_err(|_| anyhow::anyhow!("SSH session Mutex poisoned"))?;
             sess_guard.channel_direct_tcpip(remote_host, remote_port, None)
                 .context("Failed to create SSH channel")?
         };

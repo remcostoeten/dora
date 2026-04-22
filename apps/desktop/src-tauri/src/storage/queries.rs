@@ -10,7 +10,7 @@ use crate::Result;
 
 impl Storage {
     pub fn save_query_history(&self, entry: &QueryHistoryEntry) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         conn.execute(
             "INSERT INTO query_history
              (connection_id, query_text, executed_at, duration_ms, status, row_count, error_message)
@@ -35,7 +35,7 @@ impl Storage {
         limit: Option<i64>,
     ) -> Result<Vec<QueryHistoryEntry>> {
         let limit = limit.unwrap_or(100);
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         let mut stmt = conn.prepare(
             "SELECT id, connection_id, query_text, executed_at, duration_ms, status, row_count, error_message
              FROM query_history
@@ -69,7 +69,7 @@ impl Storage {
 
     pub fn save_query(&self, query: &SavedQuery) -> Result<i64> {
         let now = chrono::Utc::now().timestamp();
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
 
         if query.id == 0 {
             conn.execute(
@@ -121,7 +121,7 @@ impl Storage {
     }
 
     pub fn get_saved_queries(&self, connection_id: Option<&Uuid>) -> Result<Vec<SavedQuery>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
 
         let mut queries = Vec::new();
 
@@ -218,7 +218,7 @@ impl Storage {
     }
 
     pub fn delete_saved_query(&self, id: i64) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         conn.execute("DELETE FROM saved_queries WHERE id = ?1", [id])
             .context("Failed to delete saved query")?;
         Ok(())

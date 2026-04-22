@@ -141,7 +141,7 @@ impl DatabaseAdapter for SqliteAdapter {
         let sender = sender.clone();
 
         tauri::async_runtime::spawn_blocking(move || {
-            let conn = conn.lock().unwrap();
+            let conn = conn.lock().expect("Mutex poisoned");
             crate::database::sqlite::execute::execute_query(&conn, stmt, &sender)
         })
         .await

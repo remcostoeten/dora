@@ -5,7 +5,7 @@ use crate::Result;
 
 impl Storage {
     pub fn get_snippet_folders(&self) -> Result<Vec<SnippetFolder>> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         let mut stmt = conn
             .prepare(
                 "SELECT id, name, parent_id, color, created_at, updated_at
@@ -41,7 +41,7 @@ impl Storage {
         color: Option<&str>,
     ) -> Result<i64> {
         let now = chrono::Utc::now().timestamp();
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
 
         conn.execute(
             "INSERT INTO snippet_folders (name, parent_id, color, created_at, updated_at)
@@ -60,7 +60,7 @@ impl Storage {
         color: Option<&str>,
     ) -> Result<()> {
         let now = chrono::Utc::now().timestamp();
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
 
         conn.execute(
             "UPDATE snippet_folders SET name = ?1, color = ?2, updated_at = ?3 WHERE id = ?4",
@@ -72,7 +72,7 @@ impl Storage {
     }
 
     pub fn delete_snippet_folder(&self, id: i64) -> Result<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         // First set folder_id to NULL for all snippets in this folder.
         conn.execute(
             "UPDATE saved_queries SET folder_id = NULL WHERE folder_id = ?1",

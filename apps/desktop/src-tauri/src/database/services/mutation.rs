@@ -170,7 +170,7 @@ impl<'a> MutationService<'a> {
                 client.execute(&query, &params_ref[..]).await? as usize
             }
             DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().unwrap();
+                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
 
                 let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
                 let query = format!(
@@ -306,7 +306,7 @@ impl<'a> MutationService<'a> {
                 (rows as usize, format!("Inserted {} row(s)", rows))
             }
             DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().unwrap();
+                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
                 let col_names: String = columns.iter()
                     .map(|c| format!("\"{}\"", c))
                     .collect::<Vec<_>>()
@@ -447,7 +447,7 @@ impl<'a> MutationService<'a> {
                 data
             }
             DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().unwrap();
+                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
                 let query = format!(
                     "SELECT * FROM \"{table_name}\" WHERE \"{primary_key_column}\" = ? LIMIT 1"
                 );
@@ -746,7 +746,7 @@ impl<'a> MutationService<'a> {
                 ).await
             }
             DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().unwrap();
+                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
                 maintenance::soft_delete_sqlite(
                     &conn,
                     &table_name,
@@ -842,7 +842,7 @@ impl<'a> MutationService<'a> {
                 ).await?
             }
             DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().unwrap();
+                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
                 maintenance::truncate_table_sqlite(&conn, &table_name)?
             }
             DatabaseClient::LibSQL { connection } => {
@@ -930,7 +930,7 @@ impl<'a> MutationService<'a> {
                 ).await
             }
             DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().unwrap();
+                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
                 maintenance::dump_database_sqlite(&conn, &output_path)
             }
             DatabaseClient::LibSQL { connection } => {
@@ -994,7 +994,7 @@ impl<'a> MutationService<'a> {
                  }
             }
             DatabaseClient::SQLite { connection } => {
-                let mut conn = connection.lock().unwrap();
+                let mut conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
                 let tx = conn.transaction()?;
                 for stmt in &statements {
                     let rows = tx.execute(stmt.as_str(), [])?;
@@ -1083,7 +1083,7 @@ fn execute_sqlite_update(
     pk_value: &serde_json::Value,
 ) -> Result<usize, Error> {
     if let DatabaseClient::SQLite { connection } = client {
-        let conn = connection.lock().unwrap();
+        let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
         let new_val = json_to_sqlite_value(new_value);
         let pk_val = json_to_sqlite_value(pk_value);
 
@@ -1265,7 +1265,7 @@ fn fetch_sqlite_data(
     query: &str,
 ) -> Result<(Vec<String>, Vec<Vec<serde_json::Value>>), Error> {
     if let DatabaseClient::SQLite { connection } = client {
-        let conn = connection.lock().unwrap();
+        let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
         let mut stmt = conn.prepare(query)?;
         let columns: Vec<String> = stmt
             .column_names()

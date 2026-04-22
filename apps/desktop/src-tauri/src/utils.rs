@@ -19,7 +19,7 @@ pub fn serialize_as_json_array<'a, I: ExactSizeIterator<Item = &'a str>>(
     }
     json.push(']');
 
-    Ok(RawValue::from_string(json).unwrap())
+    Ok(RawValue::from_string(json).expect("hand-built JSON array is valid"))
 }
 
 pub fn is_json(input: &[u8]) -> bool {
