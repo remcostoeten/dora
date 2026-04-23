@@ -1,21 +1,16 @@
+use serde_json::value::RawValue;
 use std::time::Instant;
-use anyhow::Context;
-use dashmap::DashMap;
 use tracing::instrument;
 use uuid::Uuid;
-use serde_json::value::RawValue;
 
 use crate::{
-    database::{
-        stmt_manager::StatementManager,
-        types::DatabaseConnection,
-    },
+    database::{connection_repository::ConnectionRepository, stmt_manager::StatementManager},
     error::Error,
-    storage::{Storage, QueryHistoryEntry, SavedQuery, ConnectionHistoryEntry},
+    storage::{ConnectionHistoryEntry, QueryHistoryEntry, SavedQuery, Storage},
 };
 
 pub struct QueryService<'a> {
-    pub connections: &'a DashMap<Uuid, DatabaseConnection>,
+    pub connection_repo: &'a dyn ConnectionRepository,
     pub storage: &'a Storage,
     pub stmt_manager: &'a StatementManager,
 }
@@ -78,10 +73,7 @@ impl<'a> QueryService<'a> {
         Ok(())
     }
 
-    pub async fn get_scripts(
-        &self,
-        connection_id: Option<Uuid>,
-    ) -> Result<Vec<SavedQuery>, Error> {
+    pub async fn get_scripts(&self, connection_id: Option<Uuid>) -> Result<Vec<SavedQuery>, Error> {
         let scripts = self.storage.get_saved_queries(connection_id.as_ref())?;
         Ok(scripts)
     }
@@ -127,15 +119,15 @@ impl<'a> QueryService<'a> {
         status_filter: Option<String>,
     ) -> Result<Vec<QueryHistoryEntry>, Error> {
         let entries = if let Some(conn_id) = connection_id {
-            self.storage.get_query_history(&conn_id, limit.map(|l| l as i64))?
+            self.storage
+                .get_query_history(&conn_id, limit.map(|l| l as i64))?
         } else {
-            self.storage.get_query_history("", limit.map(|l| l as i64))?
+            self.storage
+                .get_query_history("", limit.map(|l| l as i64))?
         };
 
         let filtered = if let Some(status) = status_filter {
-            entries.into_iter()
-                .filter(|e| e.status == status)
-                .collect()
+            entries.into_iter().filter(|e| e.status == status).collect()
         } else {
             entries
         };
@@ -144,25 +136,17 @@ impl<'a> QueryService<'a> {
     }
 
     #[instrument(skip(self, query), fields(connection_id = %connection_id))]
-    pub async fn start_query(
-        &self,
-        connection_id: Uuid,
-        query: &str,
-    ) -> Result<Vec<usize>, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-
-        let client = connection.get_client()?;
+    pub async fn start_query(&self, connection_id: Uuid, query: &str) -> Result<Vec<usize>, Error> {
+        let client = self.connection_repo.get_client(connection_id)?;
         let query_ids = self.stmt_manager.submit_query(client, query)?;
 
         Ok(query_ids)
     }
 
-    pub async fn fetch_query(&self, query_id: usize) -> Result<crate::database::types::StatementInfo, Error> {
+    pub async fn fetch_query(
+        &self,
+        query_id: usize,
+    ) -> Result<crate::database::types::StatementInfo, Error> {
         self.stmt_manager.fetch_query(query_id)
     }
 
@@ -179,7 +163,10 @@ impl<'a> QueryService<'a> {
         Ok(page)
     }
 
-    pub async fn get_query_status(&self, query_id: usize) -> Result<crate::database::types::QueryStatus, Error> {
+    pub async fn get_query_status(
+        &self,
+        query_id: usize,
+    ) -> Result<crate::database::types::QueryStatus, Error> {
         self.stmt_manager.get_query_status(query_id)
     }
 

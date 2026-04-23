@@ -54,7 +54,7 @@ After each phase: commit → push → `gh pr create` → `gh pr merge --squash -
 
 **Steps:**
 
-- [ ] **5b-1: PostgresAdapter WriteAdapter**
+- [x] **5b-1: PostgresAdapter WriteAdapter**
   - Port `MutationService::update_cell` Postgres branch → `PostgresAdapter::update_cell`
   - Port `MutationService::delete_rows` Postgres branch → `PostgresAdapter::delete_rows`
   - Port `MutationService::insert_row` Postgres branch → `PostgresAdapter::insert_row`
@@ -62,23 +62,23 @@ After each phase: commit → push → `gh pr create` → `gh pr merge --squash -
   - Port `MutationService::execute_batch` Postgres branch → `PostgresAdapter::execute_batch`
   - Port truncate/soft-delete/dump from `maintenance.rs` Postgres branch → adapter methods
 
-- [ ] **5b-2: SqliteAdapter WriteAdapter**
+- [x] **5b-2: SqliteAdapter WriteAdapter**
   - Same port for SQLite branches
   - `connection.lock().map_err(...)? ` pattern already established in Phase 7
 
-- [ ] **5b-3: MySqlAdapter WriteAdapter**
+- [x] **5b-3: MySqlAdapter WriteAdapter**
   - Same port for MySQL branches
   - Note: `row.unwrap()` in MySQL paths is `mysql_async::Row::unwrap()` (API call, not panic) — leave as-is
 
-- [ ] **5b-4: LibSqlAdapter WriteAdapter**
+- [x] **5b-4: LibSqlAdapter WriteAdapter**
   - Same port for LibSQL branches
 
-- [ ] **5b-5: Collapse MutationService**
+- [x] **5b-5: Collapse MutationService**
   - Replace each match-on-engine in `MutationService` with adapter dispatch
   - `MutationService` should shrink to thin wrappers calling `adapter.method().await`
   - Delete dead match arms
 
-- [ ] **5b-6: Collapse maintenance.rs**
+- [x] **5b-6: Collapse maintenance.rs**
   - Same collapse for `truncate_table`, `truncate_database`, `soft_delete_rows`, `undo_soft_delete`, `dump_database`
 
 **Key invariant:** `WriteAdapter` methods take owned params (no connection_id) — the adapter already owns the driver handle. Match this in every impl.
@@ -99,16 +99,16 @@ After each phase: commit → push → `gh pr create` → `gh pr merge --squash -
 
 **Steps:**
 
-- [ ] Create `database/adapter/watch.rs` with `WatchAdapter` trait
+- [x] Create `database/adapter/watch.rs` with `WatchAdapter` trait
   ```rust
   #[async_trait]
   pub trait WatchAdapter: Send + Sync {
       async fn poll_table_hash(&self, table: &str, schema: Option<&str>) -> Result<u64, Error>;
   }
   ```
-- [ ] Implement `WatchAdapter` for each driver (SQLite, Postgres, MySQL, LibSQL)
-- [ ] Refactor `LiveMonitorManager::start_monitor` to use adapter dispatch
-- [ ] Update `database/adapter/mod.rs` exports
+- [x] Implement `WatchAdapter` for each driver (SQLite, Postgres, MySQL, LibSQL)
+- [x] Refactor `LiveMonitorManager::start_monitor` to use adapter dispatch
+- [x] Update `database/adapter/mod.rs` exports
 
 ---
 
@@ -126,10 +126,10 @@ After each phase: commit → push → `gh pr create` → `gh pr merge --squash -
 
 **Steps:**
 
-- [ ] Arc-wrap `DatabaseClient` variants inside `DatabaseConnection` (or make connection return `Arc<dyn ReadAdapter + WriteAdapter>`)
-- [ ] Define `ConnectionRepository` trait with `get_adapter(id: Uuid) -> Result<Arc<dyn ...>, Error>`
-- [ ] Implement on `AppState`
-- [ ] Refactor commands to use `state.connection_repo().get_adapter(id)?` instead of `state.connections.get(&id)`
+- [x] Arc-wrap `DatabaseClient` variants inside `DatabaseConnection` (or make connection return `Arc<dyn ReadAdapter + WriteAdapter>`)
+- [x] Define `ConnectionRepository` trait with `get_adapter(id: Uuid) -> Result<Arc<dyn ...>, Error>`
+- [x] Implement on `AppState`
+- [x] Refactor commands to use `state.connection_repo().get_adapter(id)?` instead of `state.connections.get(&id)`
 
 ---
 
@@ -137,8 +137,8 @@ After each phase: commit → push → `gh pr create` → `gh pr merge --squash -
 **Branch:** `refactor/frontend-phase-8-type-safety`
 
 - [ ] Regenerate TypeScript bindings after all backend changes (`bun tauri:dev` triggers `export_ts_bindings()`)
-- [ ] Audit `apps/desktop/src/` for any `as any` casts on API responses
-- [ ] Wire up new `Error` shape `{ kind, detail }` in frontend error handling (was `{ name, message }`)
+- [x] Audit `apps/desktop/src/` for any `as any` casts on API responses
+- [x] Wire up new `Error` shape `{ kind, detail }` in frontend error handling (was `{ name, message }`)
 
 ---
 
@@ -157,7 +157,7 @@ src/
     adapter/
       read.rs               # DatabaseAdapter trait + 4 impls
       write.rs              # WriteAdapter trait + stubs (Phase 5b: real bodies)
-      watch.rs              # WatchAdapter trait (Phase 5c: planned)
+      watch.rs              # WatchAdapter trait
     postgres/               # PG driver (connect, execute, parser, row_writer, tls)
     sqlite/                 # SQLite driver
     mysql/                  # MySQL driver

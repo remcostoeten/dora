@@ -1,16 +1,19 @@
-use std::sync::Arc;
 use dashmap::DashMap;
-use mysql_async::prelude::Queryable;
-use uuid::Uuid;
-use serde::Serialize;
-use fake::Fake;
+use fake::faker::boolean::en::Boolean;
+use fake::faker::internet::en::{FreeEmail, Username};
 use fake::faker::lorem::en::Sentence;
 use fake::faker::name::en::{FirstName, LastName, Name};
-use fake::faker::internet::en::{FreeEmail, Username};
-use fake::faker::boolean::en::Boolean;
+use fake::Fake;
+use mysql_async::prelude::Queryable;
 use rand::Rng;
+use serde::Serialize;
+use std::sync::Arc;
+use uuid::Uuid;
 
-use crate::database::types::{DatabaseConnection, DatabaseSchema, ColumnInfo};
+use crate::database::{
+    connection_repository::ConnectionRepository,
+    types::{ColumnInfo, DatabaseSchema},
+};
 use crate::error::Error;
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -20,7 +23,7 @@ pub struct SeedResult {
 }
 
 pub struct SeedingService<'a> {
-    pub connections: &'a DashMap<Uuid, DatabaseConnection>,
+    pub connection_repo: &'a dyn ConnectionRepository,
     pub schemas: &'a DashMap<Uuid, Arc<DatabaseSchema>>,
 }
 
@@ -32,21 +35,25 @@ impl<'a> SeedingService<'a> {
         schema_name: Option<String>,
         count: u32,
     ) -> Result<SeedResult, Error> {
-        // 1. Get connection
-        let conn = self.connections.get(&connection_id)
-            .ok_or_else(|| Error::Any(anyhow::anyhow!("Connection not found")))?;
-
-        // 2. Get schema for this connection
-        let schema = self.schemas.get(&connection_id)
+        // 1. Get schema for this connection
+        let schema = self
+            .schemas
+            .get(&connection_id)
             .ok_or_else(|| Error::Any(anyhow::anyhow!("Schema not loaded for this connection")))?;
 
-        // 3. Find the target table
-        let table = schema.tables.iter()
-            .find(|t| table_matches_schema(&t.schema, schema_name.as_deref()) && t.name == table_name)
+        // 2. Find the target table
+        let table = schema
+            .tables
+            .iter()
+            .find(|t| {
+                table_matches_schema(&t.schema, schema_name.as_deref()) && t.name == table_name
+            })
             .ok_or_else(|| Error::Any(anyhow::anyhow!("Table '{}' not found", table_name)))?;
 
-        // 4. Filter columns we can seed (skip auto-increment PKs)
-        let seedable_columns: Vec<&ColumnInfo> = table.columns.iter()
+        // 3. Filter columns we can seed (skip auto-increment PKs)
+        let seedable_columns: Vec<&ColumnInfo> = table
+            .columns
+            .iter()
             .filter(|c| !c.is_auto_increment)
             .collect();
 
@@ -54,13 +61,14 @@ impl<'a> SeedingService<'a> {
             return Err(Error::Any(anyhow::anyhow!("No seedable columns found")));
         }
 
-        // 5. Generate fake data
+        // 4. Generate fake data
         let all_values = {
             let mut rng = rand::rng();
             let mut values = Vec::with_capacity(count as usize);
 
             for _ in 0..count {
-                let row_values: Vec<String> = seedable_columns.iter()
+                let row_values: Vec<String> = seedable_columns
+                    .iter()
                     .map(|col| generate_fake_value(col, &mut rng))
                     .collect();
                 values.push(format!("({})", row_values.join(", ")));
@@ -68,7 +76,7 @@ impl<'a> SeedingService<'a> {
             values
         };
 
-        let client = conn.get_client()?;
+        let client = self.connection_repo.get_client(connection_id)?;
         let (identifier_quote, qualified_table) =
             seed_target_for_client(&client, &table.name, &table.schema, schema_name.as_deref());
         let column_names: Vec<String> = seedable_columns
@@ -91,16 +99,20 @@ impl<'a> SeedingService<'a> {
 
             match &client {
                 crate::database::types::DatabaseClient::Postgres { client } => {
-                    client.execute(&sql, &[]).await
-                        .map_err(|e| Error::Any(anyhow::anyhow!("Postgres insert failed: {}", e)))?;
+                    client.execute(&sql, &[]).await.map_err(|e| {
+                        Error::Any(anyhow::anyhow!("Postgres insert failed: {}", e))
+                    })?;
                 }
                 crate::database::types::DatabaseClient::SQLite { connection } => {
-                    let conn = connection.lock().map_err(|e| Error::Any(anyhow::anyhow!("SQLite lock failed: {}", e)))?;
+                    let conn = connection
+                        .lock()
+                        .map_err(|e| Error::Any(anyhow::anyhow!("SQLite lock failed: {}", e)))?;
                     conn.execute(&sql, [])
                         .map_err(|e| Error::Any(anyhow::anyhow!("SQLite insert failed: {}", e)))?;
                 }
                 crate::database::types::DatabaseClient::LibSQL { connection } => {
-                    connection.execute(&sql, ())
+                    connection
+                        .execute(&sql, ())
                         .await
                         .map_err(|e| Error::Any(anyhow::anyhow!("LibSQL insert failed: {}", e)))?;
                 }
@@ -147,7 +159,10 @@ fn generate_fake_value<R: Rng>(col: &ColumnInfo, rng: &mut R) -> String {
     }
 
     // Type-based fallback
-    if data_type_lower.contains("text") || data_type_lower.contains("varchar") || data_type_lower.contains("char") {
+    if data_type_lower.contains("text")
+        || data_type_lower.contains("varchar")
+        || data_type_lower.contains("char")
+    {
         let sentence: String = Sentence(3..8).fake();
         return sql_string_literal(&sentence);
     }
@@ -167,7 +182,11 @@ fn generate_fake_value<R: Rng>(col: &ColumnInfo, rng: &mut R) -> String {
         let dt = chrono::Utc::now() - chrono::Duration::days(days_ago);
         return sql_string_literal(&dt.format("%Y-%m-%d %H:%M:%S").to_string());
     }
-    if data_type_lower.contains("float") || data_type_lower.contains("double") || data_type_lower.contains("numeric") || data_type_lower.contains("decimal") {
+    if data_type_lower.contains("float")
+        || data_type_lower.contains("double")
+        || data_type_lower.contains("numeric")
+        || data_type_lower.contains("decimal")
+    {
         let val: f64 = rng.random_range(0.0..1000.0);
         return format!("{:.2}", val);
     }
@@ -181,7 +200,9 @@ fn generate_fake_value<R: Rng>(col: &ColumnInfo, rng: &mut R) -> String {
 }
 
 fn table_matches_schema(table_schema: &str, requested_schema: Option<&str>) -> bool {
-    requested_schema.is_none() || table_schema == requested_schema.unwrap_or_default() || table_schema.is_empty()
+    requested_schema.is_none()
+        || table_schema == requested_schema.unwrap_or_default()
+        || table_schema.is_empty()
 }
 
 fn seed_target_for_client(
