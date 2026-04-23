@@ -17,8 +17,9 @@ pub async fn seed_table(
     state: State<'_, AppState>,
 ) -> Result<SeedResult, Error> {
     let svc = SeedingService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         schemas: &state.schemas,
     };
-    svc.seed_table(connection_id, table_name, schema_name, count).await
+    svc.seed_table(connection_id, table_name, schema_name, count)
+        .await
 }

@@ -1,4 +1,5 @@
 pub mod adapter;
+pub mod connection_repository;
 pub mod libsql;
 pub mod mysql;
 pub mod postgres;
