@@ -37,30 +37,66 @@ function SchemaVisualizerInner({ activeConnectionId }: Props) {
 	const [search, setSearch] = useState('')
 	const [showMinimap, setShowMinimap] = useState(true)
 
-	const fetchSchema = useCallback(async () => {
-		if (!activeConnectionId) {
-			setSchema(null)
-			return
-		}
-		setIsLoading(true)
-		setError(null)
-		try {
-			await adapter.connectToDatabase(activeConnectionId)
-			const res = await adapter.getSchema(activeConnectionId)
-			if (res.ok) {
-				setSchema(res.data)
-			} else {
-				setError(getAdapterError(res))
+	const fetchSchema = useCallback(
+		async (signal: AbortSignal) => {
+			if (signal.aborted) {
+				return
 			}
-		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e))
-		} finally {
-			setIsLoading(false)
-		}
-	}, [activeConnectionId, adapter])
+
+			if (!activeConnectionId) {
+				// Clear schema when there is no active connection, but avoid updates on unmounted/aborted
+				if (!signal.aborted) {
+					setSchema(null)
+					setError(null)
+					setIsLoading(false)
+				}
+				return
+			}
+
+			if (signal.aborted) {
+				return
+			}
+
+			setIsLoading(true)
+			setError(null)
+
+			try {
+				await adapter.connectToDatabase(activeConnectionId)
+				if (signal.aborted) {
+					return
+				}
+
+				const res = await adapter.getSchema(activeConnectionId)
+				if (signal.aborted) {
+					return
+				}
+
+				if (res.ok) {
+					setSchema(res.data)
+				} else {
+					setError(getAdapterError(res))
+				}
+			} catch (e) {
+				if (!signal.aborted) {
+					setError(e instanceof Error ? e.message : String(e))
+				}
+			} finally {
+				if (!signal.aborted) {
+					setIsLoading(false)
+				}
+			}
+		},
+		[activeConnectionId, adapter],
+	)
 
 	useEffect(() => {
-		fetchSchema()
+		const controller = new AbortController()
+
+		void fetchSchema(controller.signal)
+
+		return () => {
+			controller.abort()
+		}
 	}, [fetchSchema])
 
 	const { nodes: graphNodes, edges: graphEdges } = useSchemaGraph(schema, search)
