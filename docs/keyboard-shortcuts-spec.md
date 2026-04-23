@@ -1,540 +1,735 @@
 # Keyboard Shortcuts — Implementation Spec
 
-## Current State (do NOT re-implement these — already working)
-
-| What | File | Status |
-|------|------|--------|
-| `@remcostoeten/use-shortcut` installed | `package.json` | ✅ |
-| `useShortcut` wrapper with `.bind()` | `src/core/shortcuts/shortcuts.ts` | ✅ |
-| `APP_SHORTCUTS` definition | `src/core/shortcuts/shortcuts.ts` | ✅ partial |
-| Zustand store with `persist` | `src/core/shortcuts/store.ts` | ✅ |
-| `useEffectiveShortcuts()` | `src/core/shortcuts/store.ts` | ✅ |
-| `ShortcutRecorder` component | `src/features/sidebar/components/shortcut-recorder.tsx` | ✅ |
-| Settings panel shortcut list | `src/features/sidebar/components/settings-panel.tsx` | ✅ basic |
-| Shortcuts bound in data-grid | `src/features/database-studio/components/data-grid.tsx` | ✅ partial |
-| Shortcuts bound in sql-console | `src/features/sql-console/sql-console.tsx` | ✅ partial |
-
-**Import path for everything:** `import { ... } from '@/core/shortcuts'`
+Built on [`@remcostoeten/use-shortcut`](https://www.npmjs.com/package/@remcostoeten/use-shortcut).
 
 ---
 
-## What Needs Building
+## Architecture Overview
 
-1. **Add missing shortcuts** to `APP_SHORTCUTS` in `src/core/shortcuts/shortcuts.ts`
-2. **Add scope activation** — features must call `$.enableScope()`/`$.disableScope()` on mount/unmount
-3. **Wire navigation shortcuts** in the right place (currently nothing handles `nav.*`)
-4. **Add vim-style chord sequences** (`g d`, `g s`, `g c`)
-5. **Add competitor shortcuts** (`Mod+T`, `Mod+1-9`, `F5`, `Mod+G`)
-6. **Expand settings panel** with category grouping and scope labels
+```
+src/
+  core/
+    shortcuts/
+      shortcut-registry.tsx     ← ShortcutProvider: creates builder, scope mgmt
+      shortcut-map.ts           ← Central DORA_SHORTCUTS definition (ShortcutMap)
+      use-dora-shortcuts.ts     ← Per-feature hook, returns typed results
+      shortcut-scope.ts         ← Scope constants + useScope hook
+      shortcut-store.ts         ← Persistence: read/write overrides to SQLite
+      types.ts                  ← DoraShortcut, ShortcutCategory, etc.
+  features/
+    settings/
+      components/
+        keyboard-shortcuts-panel.tsx   ← Full settings UI
+        shortcut-row.tsx               ← Single row: label | binding | record btn
+        shortcut-conflict-badge.tsx    ← Shows conflict type
+        shortcut-scope-filter.tsx      ← Filter by scope/category
+```
 
 ---
 
-## Step 1 — Add All Shortcuts to APP_SHORTCUTS
+## 1. Central Shortcut Map
 
-**File:** `src/core/shortcuts/shortcuts.ts`
+**File:** `src/core/shortcuts/shortcut-map.ts`
 
-Replace/extend the `APP_SHORTCUTS` object. Keep existing keys unchanged (they are already bound in features). Add the new ones below.
+Every shortcut defined once. No scattered `useShortcut()` calls per-feature.
 
 ```ts
-export const APP_SHORTCUTS = {
-  // ── EXISTING (do not change) ────────────────────────────────────────────
-  openCommandPalette: {
-    combo: 'mod+k',
-    description: 'Open command palette',
-    scope: 'global',
+import type { ShortcutMap } from '@remcostoeten/use-shortcut'
+
+export const DORA_SHORTCUTS = {
+  // ── Query ──────────────────────────────────────────
+  'query.run': {
+    keys: 'mod+enter',
+    handler: null!,   // injected at registration time
+    options: {
+      description: 'Run query',
+      scopes: ['sql-console'],
+      except: 'input',  // except Monaco — it handles mod+enter internally
+    },
   },
-  selectAll: {
-    combo: 'mod+a',
-    description: 'Select all rows',
-    scope: 'data-grid',
+  'query.run-selection': {
+    keys: 'mod+shift+enter',
+    handler: null!,
+    options: { description: 'Run selected SQL', scopes: ['sql-console'] },
   },
-  deselect: {
-    combo: ['escape', 'mod+d', 'd'],
-    description: 'Deselect all',
-    scope: 'data-grid',
+  'query.format': {
+    keys: 'mod+shift+f',
+    handler: null!,
+    options: { description: 'Format SQL', scopes: ['sql-console'] },
   },
-  deleteRows: {
-    combo: ['delete', 'shift+backspace'],
-    description: 'Delete selected rows',
-    scope: 'data-grid',
-  },
-  focusToolbar: {
-    combo: 'alt+t',
-    description: 'Focus toolbar',
-    scope: 'data-grid',
-  },
-  runQuery: {
-    combo: 'mod+enter',
-    description: 'Run query',
-    scope: 'sql-console',
-  },
-  save: {
-    combo: 'mod+s',
-    description: 'Save',
-    scope: 'global',
-  },
-  find: {
-    combo: 'mod+f',
-    description: 'Find',
-    scope: 'editor',
-  },
-  replace: {
-    combo: 'mod+h',
-    description: 'Replace',
-    scope: 'editor',
-  },
-  toggleComment: {
-    combo: 'mod+slash',
-    description: 'Toggle comment',
-    scope: 'editor',
-  },
-  selectNextOccurrence: {
-    combo: 'mod+d',
-    description: 'Select next occurrence',
-    scope: 'editor',
-  },
-  moveLineUp: {
-    combo: 'alt+up',
-    description: 'Move line up',
-    scope: 'editor',
-  },
-  moveLineDown: {
-    combo: 'alt+down',
-    description: 'Move line down',
-    scope: 'editor',
-  },
-  deleteLine: {
-    combo: 'mod+shift+k',
-    description: 'Delete line',
-    scope: 'editor',
+  'query.history': {
+    keys: 'mod+h',
+    handler: null!,
+    options: { description: 'Open query history', scopes: ['sql-console'] },
   },
 
-  // ── NEW: Query / SQL Console ────────────────────────────────────────────
-  runSelection: {
-    combo: 'mod+shift+enter',
-    description: 'Run selected SQL',
-    scope: 'sql-console',
+  // ── Navigation ─────────────────────────────────────
+  'nav.command-palette': {
+    keys: 'mod+k',
+    handler: null!,
+    options: { description: 'Open command palette' },
   },
-  formatQuery: {
-    combo: 'mod+shift+f',
-    description: 'Format SQL',
-    scope: 'sql-console',
+  'nav.new-connection': {
+    keys: 'mod+shift+n',
+    handler: null!,
+    options: { description: 'Add connection' },
   },
-  openQueryHistory: {
-    combo: 'mod+shift+h',
-    description: 'Open query history',
-    scope: 'sql-console',
+  'nav.focus-sidebar': {
+    keys: 'mod+b',
+    handler: null!,
+    options: { description: 'Toggle sidebar' },
   },
-  saveScript: {
-    combo: 'mod+s',
-    description: 'Save script',
-    scope: 'sql-console',
+  'nav.settings': {
+    keys: 'mod+comma',
+    handler: null!,
+    options: { description: 'Open settings' },
   },
-  goToLine: {
-    combo: 'mod+g',
-    description: 'Go to line',
-    scope: 'editor',
-  },
-  newTab: {
-    combo: 'mod+t',
-    description: 'New query tab',
-    scope: 'sql-console',
+  'nav.close-tab': {
+    keys: 'mod+w',
+    handler: null!,
+    options: { description: 'Close current tab' },
   },
 
-  // ── NEW: Database Studio ────────────────────────────────────────────────
-  refreshTable: {
-    combo: ['mod+r', 'f5'],
-    description: 'Refresh table',
-    scope: 'data-grid',
+  // ── Database Studio ────────────────────────────────
+  'studio.refresh': {
+    keys: 'mod+r',
+    handler: null!,
+    options: { description: 'Refresh table', scopes: ['database-studio'] },
   },
-  filterRows: {
-    combo: 'mod+shift+f',
-    description: 'Filter rows',
-    scope: 'data-grid',
+  'studio.filter': {
+    keys: 'mod+f',
+    handler: null!,
+    options: { description: 'Filter rows', scopes: ['database-studio'] },
   },
-  insertRow: {
-    combo: 'mod+shift+i',
-    description: 'Insert row',
-    scope: 'data-grid',
+  'studio.insert-row': {
+    keys: 'mod+shift+i',
+    handler: null!,
+    options: { description: 'Insert row', scopes: ['database-studio'] },
   },
-  exportTable: {
-    combo: 'mod+e',
-    description: 'Export table',
-    scope: 'data-grid',
+  'studio.delete-row': {
+    keys: ['backspace', 'delete'],
+    handler: null!,
+    options: { description: 'Delete selected row(s)', scopes: ['database-studio'] },
   },
-  startLiveMonitor: {
-    combo: 'mod+shift+m',
-    description: 'Start live monitor',
-    scope: 'data-grid',
+  'studio.export': {
+    keys: 'mod+e',
+    handler: null!,
+    options: { description: 'Export table', scopes: ['database-studio'] },
   },
 
-  // ── NEW: Global Navigation ──────────────────────────────────────────────
-  newConnection: {
-    combo: 'mod+shift+n',
-    description: 'Add connection',
-    scope: 'global',
+  // ── Vim-style navigation (sequences) ───────────────
+  'goto.dashboard': {
+    keys: 'g d',       // G then D  — use-shortcut chord syntax
+    handler: null!,
+    options: { description: 'Go to dashboard', except: 'typing' },
   },
-  toggleSidebar: {
-    combo: 'mod+b',
-    description: 'Toggle sidebar',
-    scope: 'global',
+  'goto.settings': {
+    keys: 'g s',
+    handler: null!,
+    options: { description: 'Go to settings', except: 'typing' },
   },
-  openSettings: {
-    combo: 'mod+comma',
-    description: 'Open settings',
-    scope: 'global',
+  'goto.connections': {
+    keys: 'g c',
+    handler: null!,
+    options: { description: 'Go to connections', except: 'typing' },
   },
-  closeTab: {
-    combo: 'mod+w',
-    description: 'Close current tab',
-    scope: 'global',
-  },
-  reconnect: {
-    combo: 'mod+shift+r',
-    description: 'Reconnect to database',
-    scope: 'global',
-  },
-  // Switch connections by index (1-9)
-  switchConnection1: { combo: 'mod+1', description: 'Switch to connection 1', scope: 'global' },
-  switchConnection2: { combo: 'mod+2', description: 'Switch to connection 2', scope: 'global' },
-  switchConnection3: { combo: 'mod+3', description: 'Switch to connection 3', scope: 'global' },
-  switchConnection4: { combo: 'mod+4', description: 'Switch to connection 4', scope: 'global' },
-  switchConnection5: { combo: 'mod+5', description: 'Switch to connection 5', scope: 'global' },
-  switchConnection6: { combo: 'mod+6', description: 'Switch to connection 6', scope: 'global' },
-  switchConnection7: { combo: 'mod+7', description: 'Switch to connection 7', scope: 'global' },
-  switchConnection8: { combo: 'mod+8', description: 'Switch to connection 8', scope: 'global' },
-  switchConnection9: { combo: 'mod+9', description: 'Switch to connection 9', scope: 'global' },
 
-  // ── NEW: Vim-style Go-To chord sequences ───────────────────────────────
-  // Note: chord syntax — 'g d' means press G, then D within sequenceTimeout (800ms)
-  // Must use except: 'typing' so they don't fire in text inputs
-  gotoDashboard:   { combo: 'g d', description: 'Go to dashboard',   scope: 'global' },
-  gotoSettings:    { combo: 'g s', description: 'Go to settings',    scope: 'global' },
-  gotoConnections: { combo: 'g c', description: 'Go to connections', scope: 'global' },
-  gotoEditor:      { combo: 'g e', description: 'Go to SQL editor',  scope: 'global' },
-  gotoDocker:      { combo: 'g k', description: 'Go to Docker',      scope: 'global' },
-} as const satisfies Record<string, ShortcutDefinition>
-```
+  // ── Editor (SQL Console) ───────────────────────────
+  'editor.save-script': {
+    keys: 'mod+s',
+    handler: null!,
+    options: { description: 'Save script', scopes: ['sql-console'] },
+  },
+  'editor.find': {
+    keys: 'mod+f',
+    handler: null!,
+    options: { description: 'Find in editor', scopes: ['sql-console'] },
+  },
+  'editor.comment-line': {
+    keys: 'mod+slash',
+    handler: null!,
+    options: { description: 'Toggle line comment', scopes: ['sql-console'] },
+  },
 
-**Also update the scope type** in `ShortcutDefinition`:
-```ts
-export type ShortcutDefinition = {
-  combo: string | string[]
-  description: string
-  scope?: 'global' | 'data-grid' | 'sql-console' | 'editor'
-}
-```
+  // ── Live Monitor ───────────────────────────────────
+  'monitor.start': {
+    keys: 'mod+shift+m',
+    handler: null!,
+    options: { description: 'Start live monitor', scopes: ['database-studio'] },
+  },
 
-**Also update `SHORTCUT_CATEGORIES`** for settings panel grouping (add after `APP_SHORTCUTS`):
-```ts
-export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
-  'Navigation': [
-    'openCommandPalette', 'newConnection', 'toggleSidebar', 'openSettings',
-    'closeTab', 'reconnect',
-    'switchConnection1', 'switchConnection2', 'switchConnection3',
-    'switchConnection4', 'switchConnection5', 'switchConnection6',
-    'switchConnection7', 'switchConnection8', 'switchConnection9',
-  ],
-  'Go To (chord: G → key)': [
-    'gotoDashboard', 'gotoSettings', 'gotoConnections', 'gotoEditor', 'gotoDocker',
-  ],
-  'SQL Console': [
-    'runQuery', 'runSelection', 'formatQuery', 'saveScript',
-    'openQueryHistory', 'newTab',
-  ],
-  'Editor': [
-    'find', 'replace', 'toggleComment', 'selectNextOccurrence',
-    'moveLineUp', 'moveLineDown', 'deleteLine', 'goToLine',
-  ],
-  'Database Studio': [
-    'selectAll', 'deselect', 'deleteRows', 'focusToolbar',
-    'refreshTable', 'filterRows', 'insertRow', 'exportTable', 'startLiveMonitor',
-  ],
-  'Global': ['save'],
+  // ── Global escape ──────────────────────────────────
+  'global.escape': {
+    keys: 'escape',
+    handler: null!,
+    options: { description: 'Close dialog / cancel', priority: -1 },
+  },
+} satisfies Record<string, Omit<import('@remcostoeten/use-shortcut').ShortcutMapEntry, 'handler'> & { handler: any }>
+
+export type DoraShortcutId = keyof typeof DORA_SHORTCUTS
+
+export const SHORTCUT_CATEGORIES: Record<string, DoraShortcutId[]> = {
+  'Query':            ['query.run', 'query.run-selection', 'query.format', 'query.history', 'editor.save-script', 'editor.find', 'editor.comment-line'],
+  'Navigation':       ['nav.command-palette', 'nav.new-connection', 'nav.focus-sidebar', 'nav.settings', 'nav.close-tab', 'global.escape'],
+  'Database Studio':  ['studio.refresh', 'studio.filter', 'studio.insert-row', 'studio.delete-row', 'studio.export', 'monitor.start'],
+  'Go To':            ['goto.dashboard', 'goto.settings', 'goto.connections'],
 }
 ```
 
 ---
 
-## Step 2 — Scope Activation in Features
+## 2. Scope Constants
 
-Features must tell the shortcut system which scope is active. Without this, scoped shortcuts either fire everywhere or never fire.
+**File:** `src/core/shortcuts/shortcut-scope.ts`
 
-**Pattern:** call `$.enableScope(scope)` on mount, `$.disableScope(scope)` on unmount.
+```ts
+export const SCOPES = {
+  SQL_CONSOLE:      'sql-console',
+  DATABASE_STUDIO:  'database-studio',
+  COMMAND_PALETTE:  'command-palette',
+  SETTINGS:         'settings',
+  DRIZZLE:          'drizzle',
+} as const
 
-**Add `useActiveScope` hook** to `src/core/shortcuts/shortcuts.ts`:
+export type ShortcutScope = typeof SCOPES[keyof typeof SCOPES]
+
+// Hook for features to activate their scope on mount
+import { useEffect } from 'react'
+import { useShortcutContext } from './shortcut-registry'
+
+export function useActiveScope(scope: ShortcutScope) {
+  const { builder } = useShortcutContext()
+  useEffect(() => {
+    builder.enableScope(scope)
+    return () => builder.disableScope(scope)
+  }, [scope, builder])
+}
+```
+
+**Usage in features:**
+```tsx
+// sql-console.tsx
+export function SqlConsole() {
+  useActiveScope(SCOPES.SQL_CONSOLE)
+  // ...
+}
+```
+
+---
+
+## 3. Provider + Central Builder
+
+**File:** `src/core/shortcuts/shortcut-registry.tsx`
+
+Single `useShortcut()` call at app root. All features share one builder via context.
+
+```tsx
+import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
+import { useShortcut, type ShortcutBuilder, type ShortcutResult } from '@remcostoeten/use-shortcut'
+import { DORA_SHORTCUTS, type DoraShortcutId } from './shortcut-map'
+import { loadShortcutOverrides } from './shortcut-store'
+
+type ShortcutContextValue = {
+  builder: ShortcutBuilder
+  results: Partial<Record<DoraShortcutId, ShortcutResult>>
+  register: (id: DoraShortcutId, handler: () => void) => ShortcutResult
+  getDisplay: (id: DoraShortcutId) => string
+  getCombo: (id: DoraShortcutId) => string
+  rebind: (id: DoraShortcutId, newCombo: string) => void
+  overrides: Record<DoraShortcutId, string>  // user-customized combos
+}
+
+const ShortcutContext = createContext<ShortcutContextValue | null>(null)
+
+export function ShortcutProvider({ children }: { children: ReactNode }) {
+  const overrides = useRef<Partial<Record<DoraShortcutId, string>>>(
+    loadShortcutOverrides()
+  )
+  const results = useRef<Partial<Record<DoraShortcutId, ShortcutResult>>>({})
+
+  const $ = useShortcut({
+    conflictWarnings: true,
+    onConflict: ({ combo, existingCombo, reason }) => {
+      console.warn(`Shortcut conflict [${reason}]: "${combo}" vs "${existingCombo}"`)
+    },
+    sequenceTimeout: 800,
+  })
+
+  function register(id: DoraShortcutId, handler: () => void): ShortcutResult {
+    // Unbind existing if re-registering
+    results.current[id]?.unbind()
+
+    const entry = DORA_SHORTCUTS[id]
+    const combo = overrides.current[id] ?? entry.keys
+
+    const result = $.bind(combo).on(handler, entry.options ?? {})
+    results.current[id] = result
+    return result
+  }
+
+  function rebind(id: DoraShortcutId, newCombo: string) {
+    overrides.current[id] = newCombo
+    saveShortcutOverride(id, newCombo)
+    // Re-register with existing handler if bound
+    const existing = results.current[id]
+    if (existing) {
+      // Capture handler via triggerFn — use a forwarder pattern
+      existing.unbind()
+    }
+  }
+
+  function getDisplay(id: DoraShortcutId): string {
+    return results.current[id]?.display
+      ?? formatShortcut(overrides.current[id] ?? DORA_SHORTCUTS[id].keys as string)
+  }
+
+  function getCombo(id: DoraShortcutId): string {
+    return overrides.current[id] ?? (DORA_SHORTCUTS[id].keys as string)
+  }
+
+  return (
+    <ShortcutContext.Provider value={{ builder: $, results: results.current, register, getDisplay, getCombo, rebind, overrides: overrides.current as any }}>
+      {children}
+    </ShortcutContext.Provider>
+  )
+}
+
+export function useShortcutContext() {
+  const ctx = useContext(ShortcutContext)
+  if (!ctx) throw new Error('useShortcutContext must be inside ShortcutProvider')
+  return ctx
+}
+```
+
+---
+
+## 4. Per-Feature Registration Hook
+
+**File:** `src/core/shortcuts/use-dora-shortcuts.ts`
 
 ```ts
 import { useEffect } from 'react'
+import { useShortcutContext } from './shortcut-registry'
+import type { DoraShortcutId } from './shortcut-map'
 
-export function useActiveScope(
-  $: ShortcutBuilder,
-  scope: ShortcutDefinition['scope']
-) {
+type HandlerMap = Partial<Record<DoraShortcutId, () => void>>
+
+export function useDoraShortcuts(handlers: HandlerMap) {
+  const { register } = useShortcutContext()
+
   useEffect(() => {
-    if (!scope || scope === 'global') return
-    $.enableScope(scope)
-    return () => $.disableScope(scope)
-  }, [scope])
+    const bindings = Object.entries(handlers).map(([id, handler]) =>
+      register(id as DoraShortcutId, handler!)
+    )
+    return () => bindings.forEach(b => b.unbind())
+  }, [])  // handlers intentionally stable (pass refs or useCallback)
 }
 ```
 
-**Wire it in each feature:**
-
+**Usage in SQL Console:**
 ```tsx
-// src/features/sql-console/sql-console.tsx
-const $ = useShortcut()
-useActiveScope($, 'sql-console')
-// existing $.bind('mod+enter').on(runQuery) stays unchanged
-
-// src/features/database-studio/components/data-grid.tsx
-const $ = useShortcut()
-useActiveScope($, 'data-grid')
-
-// src/features/drizzle-runner/drizzle-runner.tsx
-const $ = useShortcut()
-useActiveScope($, 'editor')  // drizzle runner uses editor scope
+function SqlConsole() {
+  useActiveScope(SCOPES.SQL_CONSOLE)
+  useDoraShortcuts({
+    'query.run': () => runQuery(),
+    'query.format': () => formatQuery(),
+    'editor.save-script': () => saveScript(),
+  })
+}
 ```
 
 ---
 
-## Step 3 — Wire Navigation Shortcuts
+## 5. Persistence Layer
 
-Navigation shortcuts (`newConnection`, `toggleSidebar`, `openSettings`, `closeTab`, `reconnect`, `switchConnection1-9`) need to be bound somewhere that knows the navigation handlers.
+**File:** `src/core/shortcuts/shortcut-store.ts`
 
-**Best location:** `src/pages/Index.tsx` — already has `useShortcut` and `useEffectiveShortcuts`.
-
-```tsx
-// src/pages/Index.tsx — add these bindings alongside existing openCommandPalette binding
-const $ = useShortcut()
-const effectiveShortcuts = useEffectiveShortcuts()
-
-// Already exists:
-$.bind(effectiveShortcuts.openCommandPalette.combo).on(() => setCommandPaletteOpen(true), { ignoreInputs: false })
-
-// Add:
-$.bind(effectiveShortcuts.newConnection.combo).on(() => setConnectionDialogOpen(true))
-$.bind(effectiveShortcuts.toggleSidebar.combo).on(() => setSidebarCollapsed(c => !c))
-$.bind(effectiveShortcuts.openSettings.combo).on(() => setSettingsOpen(true))
-$.bind(effectiveShortcuts.reconnect.combo).on(() => reconnectCurrentConnection())
-
-// Connection switching — bind all 9, handler uses index
-connections.slice(0, 9).forEach((conn, i) => {
-  const key = `switchConnection${i + 1}` as ShortcutName
-  $.bind(effectiveShortcuts[key].combo).on(() => activateConnection(conn.id))
-})
-```
-
----
-
-## Step 4 — Vim Chord Sequences
-
-The chord shortcuts (`gotoDashboard: 'g d'`) need `.except('typing')` so they don't fire in Monaco or inputs. The library supports space-separated chord syntax natively.
-
-**Also in `src/pages/Index.tsx`** (navigation is available there):
-
-```tsx
-import { useNavigate } from 'react-router-dom'
-
-const navigate = useNavigate()
-
-// Chord sequences — except typing so Monaco doesn't intercept
-$.bind(effectiveShortcuts.gotoDashboard.combo)
-  .except('typing')
-  .on(() => navigate('/'))
-
-$.bind(effectiveShortcuts.gotoSettings.combo)
-  .except('typing')
-  .on(() => setSettingsOpen(true))
-
-$.bind(effectiveShortcuts.gotoConnections.combo)
-  .except('typing')
-  .on(() => navigate('/connections'))
-
-$.bind(effectiveShortcuts.gotoEditor.combo)
-  .except('typing')
-  .on(() => navigate('/editor'))
-
-$.bind(effectiveShortcuts.gotoDocker.combo)
-  .except('typing')
-  .on(() => navigate('/docker'))
-```
-
-> **Note:** Check if Dora uses React Router or another routing mechanism. If navigation is sidebar-driven (not URL-based), replace `navigate('/x')` with the appropriate sidebar state setter.
-
----
-
-## Step 5 — Settings Panel: Category Grouping
-
-**File:** `src/features/sidebar/components/settings-panel.tsx`
-
-Currently renders a flat list. Change to grouped by `SHORTCUT_CATEGORIES`.
-
-```tsx
-import { SHORTCUT_CATEGORIES } from '@/core/shortcuts'
-
-// Replace the existing Object.entries(effectiveShortcuts).map(...) with:
-{Object.entries(SHORTCUT_CATEGORIES).map(([category, names]) => (
-  <div key={category} className="mb-4">
-    <div className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wider px-1">
-      {category}
-    </div>
-    <div className="space-y-1">
-      {names.map(name => {
-        const def = effectiveShortcuts[name]
-        const isOverridden = name in overrides
-        return (
-          <div key={name} className="flex items-center justify-between py-1.5 px-1 rounded hover:bg-sidebar-accent/30">
-            <div className="flex flex-col">
-              <span className="text-xs text-sidebar-foreground">{def.description}</span>
-              {isOverridden && (
-                <span className="text-[10px] text-muted-foreground">customized</span>
-              )}
-            </div>
-            <ShortcutRecorder
-              value={def.combo}
-              onChange={combo => setShortcut(name, combo)}
-              onReset={() => resetShortcut(name)}
-              isDefault={!isOverridden}
-            />
-          </div>
-        )
-      })}
-    </div>
-  </div>
-))}
-```
-
----
-
-## Complete Shortcut Table
-
-`Mod` = `⌘` on Mac, `Ctrl` on Windows/Linux (handled by library automatically).
-
-### Global
-| Key | ID | Action |
-|-----|----|--------|
-| `Mod+K` | `openCommandPalette` | Open command palette |
-| `Mod+S` | `save` | Save |
-| `Mod+Shift+N` | `newConnection` | Add connection |
-| `Mod+B` | `toggleSidebar` | Toggle sidebar |
-| `Mod+,` | `openSettings` | Open settings |
-| `Mod+W` | `closeTab` | Close tab |
-| `Mod+Shift+R` | `reconnect` | Reconnect |
-| `Mod+1` … `Mod+9` | `switchConnection1-9` | Switch to connection N |
-
-### Go To (chord — press G then key)
-| Chord | ID | Action |
-|-------|----|--------|
-| `G` → `D` | `gotoDashboard` | Dashboard |
-| `G` → `S` | `gotoSettings` | Settings |
-| `G` → `C` | `gotoConnections` | Connections |
-| `G` → `E` | `gotoEditor` | SQL editor |
-| `G` → `K` | `gotoDocker` | Docker manager |
-
-### SQL Console (scope: `sql-console`)
-| Key | ID | Action |
-|-----|----|--------|
-| `Mod+Enter` | `runQuery` | Run query |
-| `Mod+Shift+Enter` | `runSelection` | Run selected SQL |
-| `Mod+Shift+F` | `formatQuery` | Format SQL |
-| `Mod+S` | `saveScript` | Save script |
-| `Mod+Shift+H` | `openQueryHistory` | Query history |
-| `Mod+T` | `newTab` | New query tab |
-
-### Editor (scope: `editor`)
-| Key | ID | Action |
-|-----|----|--------|
-| `Mod+F` | `find` | Find |
-| `Mod+H` | `replace` | Replace |
-| `Mod+/` | `toggleComment` | Toggle comment |
-| `Mod+D` | `selectNextOccurrence` | Select next occurrence |
-| `Alt+↑` | `moveLineUp` | Move line up |
-| `Alt+↓` | `moveLineDown` | Move line down |
-| `Mod+Shift+K` | `deleteLine` | Delete line |
-| `Mod+G` | `goToLine` | Go to line |
-
-### Database Studio (scope: `data-grid`)
-| Key | ID | Action |
-|-----|----|--------|
-| `Mod+A` | `selectAll` | Select all rows |
-| `Escape` / `Mod+D` / `D` | `deselect` | Deselect |
-| `Delete` / `Shift+Backspace` | `deleteRows` | Delete selected rows |
-| `Mod+Shift+I` | `insertRow` | Insert row |
-| `Mod+R` / `F5` | `refreshTable` | Refresh |
-| `Mod+Shift+F` | `filterRows` | Filter rows |
-| `Mod+E` | `exportTable` | Export |
-| `Mod+Shift+M` | `startLiveMonitor` | Live monitor |
-| `Alt+T` | `focusToolbar` | Focus toolbar |
-
----
-
-## Architecture Summary (for next agent)
-
-```
-Library:    @remcostoeten/use-shortcut  (already installed)
-Import:     import { ... } from '@/core/shortcuts'  (barrel re-exports everything)
-
-Core files:
-  src/core/shortcuts/shortcuts.ts   ← APP_SHORTCUTS + useActiveScope + SHORTCUT_CATEGORIES
-  src/core/shortcuts/store.ts       ← Zustand persist store (overrides survive reload)
-  src/core/shortcuts/index.ts       ← re-exports all of the above
-
-Feature binding:
-  src/pages/Index.tsx               ← global + navigation + chord sequences
-  src/features/sql-console/         ← runQuery, runSelection, formatQuery, saveScript, newTab
-  src/features/database-studio/     ← selectAll, deleteRows, insertRow, refreshTable, etc.
-  src/features/drizzle-runner/      ← editor scope shortcuts
-
-Settings UI:
-  src/features/sidebar/components/settings-panel.tsx   ← grouped list + ShortcutRecorder
-  src/features/sidebar/components/shortcut-recorder.tsx ← key capture (already works)
-
-Persistence:
-  Zustand persist (localStorage key: 'dora-shortcuts')
-  overrides: Partial<Record<ShortcutName, string | string[]>>
-  useEffectiveShortcuts() merges defaults + overrides → use this when binding
-```
-
-## Key API calls (exact)
+Overrides stored in Tauri SQLite (`get_setting`/`set_setting` — already exist).  
+Falls back to `localStorage` on web.
 
 ```ts
-// Binding with override support:
-const effectiveShortcuts = useEffectiveShortcuts()
-$.bind(effectiveShortcuts.runQuery.combo).on(handler)
+import { commands } from '@/lib/bindings'
 
-// Scoped + except:
-$.bind(combo).except('typing').on(handler)
-$.bind(combo).in('sql-console').on(handler)
+const STORAGE_KEY = 'shortcut_overrides'
 
-// Chord sequence — space separator:
-$.bind('g d').except('typing').on(() => navigate('/'))
+type OverrideMap = Record<string, string>  // id → combo string
 
-// Scope activation on mount:
-$.enableScope('data-grid')  // in useEffect, return () => $.disableScope('data-grid')
+export function loadShortcutOverrides(): OverrideMap {
+  try {
+    // Tauri: loaded async, but we need sync at init — use cached value
+    const cached = localStorage.getItem(STORAGE_KEY)
+    return cached ? JSON.parse(cached) : {}
+  } catch {
+    return {}
+  }
+}
 
-// Recording (ShortcutRecorder already implements this manually via keydown events)
-// Do NOT replace ShortcutRecorder with $.record() — the existing implementation works fine
+export async function saveShortcutOverride(id: string, combo: string): Promise<void> {
+  const current = loadShortcutOverrides()
+  const updated = { ...current, [id]: combo }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
 
-// Display format (platform-aware):
-formatShortcut('mod+k')   // → "⌘K" on Mac, "Ctrl+K" on Windows
+  // Persist to Tauri SQLite if available
+  if (window.__TAURI__) {
+    await commands.setSetting(STORAGE_KEY, JSON.stringify(updated))
+  }
+}
+
+export async function resetShortcutOverride(id: string): Promise<void> {
+  const current = loadShortcutOverrides()
+  const { [id]: _, ...rest } = current
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rest))
+  if (window.__TAURI__) {
+    await commands.setSetting(STORAGE_KEY, JSON.stringify(rest))
+  }
+}
+
+export async function resetAllShortcuts(): Promise<void> {
+  localStorage.removeItem(STORAGE_KEY)
+  if (window.__TAURI__) {
+    await commands.setSetting(STORAGE_KEY, '{}')
+  }
+}
 ```
+
+---
+
+## 6. Settings UI — Keyboard Shortcuts Panel
+
+**File:** `src/features/settings/components/keyboard-shortcuts-panel.tsx`
+
+```tsx
+import { useState, useCallback } from 'react'
+import { useShortcutContext } from '@/core/shortcuts/shortcut-registry'
+import { DORA_SHORTCUTS, SHORTCUT_CATEGORIES, type DoraShortcutId } from '@/core/shortcuts/shortcut-map'
+import { resetAllShortcuts } from '@/core/shortcuts/shortcut-store'
+import { ShortcutRow } from './shortcut-row'
+import { Input } from '@/shared/ui/input'
+import { Button } from '@/shared/ui/button'
+
+export function KeyboardShortcutsPanel() {
+  const { getDisplay, getCombo, overrides } = useShortcutContext()
+  const [search, setSearch] = useState('')
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+
+  const filtered = Object.entries(SHORTCUT_CATEGORIES).flatMap(([category, ids]) =>
+    ids
+      .filter(id => {
+        if (activeCategory && category !== activeCategory) return false
+        const entry = DORA_SHORTCUTS[id]
+        const q = search.toLowerCase()
+        return !q
+          || (entry.options?.description ?? '').toLowerCase().includes(q)
+          || getCombo(id).toLowerCase().includes(q)
+          || id.toLowerCase().includes(q)
+      })
+      .map(id => ({ id, category }))
+  )
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Keyboard Shortcuts
+        </h2>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => resetAllShortcuts().then(() => window.location.reload())}
+        >
+          Reset all
+        </Button>
+      </div>
+
+      {/* Category tabs */}
+      <div className="flex gap-1 flex-wrap">
+        {[null, ...Object.keys(SHORTCUT_CATEGORIES)].map(cat => (
+          <button
+            key={cat ?? 'all'}
+            onClick={() => setActiveCategory(cat)}
+            className={cn(
+              'px-2.5 py-1 rounded text-xs font-medium transition-colors',
+              activeCategory === cat
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {cat ?? 'All'}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <Input
+        placeholder="Search shortcuts..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        className="h-8 text-sm"
+      />
+
+      {/* Rows grouped by category */}
+      <div className="flex flex-col">
+        {Object.keys(SHORTCUT_CATEGORIES)
+          .filter(cat => !activeCategory || cat === activeCategory)
+          .map(cat => {
+            const rows = filtered.filter(r => r.category === cat)
+            if (!rows.length) return null
+            return (
+              <div key={cat} className="mb-4">
+                <div className="text-xs font-medium text-muted-foreground mb-1 px-1">{cat}</div>
+                <div className="rounded-md border border-border divide-y divide-border">
+                  {rows.map(({ id }) => (
+                    <ShortcutRow
+                      key={id}
+                      id={id as DoraShortcutId}
+                      description={DORA_SHORTCUTS[id as DoraShortcutId].options?.description ?? id}
+                      combo={getCombo(id as DoraShortcutId)}
+                      display={getDisplay(id as DoraShortcutId)}
+                      isOverridden={id in overrides}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## 7. Shortcut Row — Record & Rebind
+
+**File:** `src/features/settings/components/shortcut-row.tsx`
+
+Uses `$.record()` from the library for live key capture.
+
+```tsx
+import { useState } from 'react'
+import { useShortcutContext } from '@/core/shortcuts/shortcut-registry'
+import { resetShortcutOverride } from '@/core/shortcuts/shortcut-store'
+import { formatShortcut } from '@remcostoeten/use-shortcut'
+import type { DoraShortcutId } from '@/core/shortcuts/shortcut-map'
+import { KbdBadge } from './kbd-badge'
+import { Button } from '@/shared/ui/button'
+import { RotateCcw, Keyboard } from 'lucide-react'
+
+type Props = {
+  id: DoraShortcutId
+  description: string
+  combo: string
+  display: string
+  isOverridden: boolean
+}
+
+type RecordState = 'idle' | 'recording' | 'conflict'
+
+export function ShortcutRow({ id, description, combo, display, isOverridden }: Props) {
+  const { builder, rebind } = useShortcutContext()
+  const [recordState, setRecordState] = useState<RecordState>('idle')
+  const [pendingCombo, setPendingCombo] = useState<string | null>(null)
+
+  async function startRecording() {
+    setRecordState('recording')
+    try {
+      const recorded = await builder.record({ timeoutMs: 5000 })
+      setPendingCombo(recorded)
+      setRecordState('idle')
+      rebind(id, recorded)
+    } catch {
+      setRecordState('idle')  // Timeout or cancelled
+    }
+  }
+
+  function handleReset() {
+    resetShortcutOverride(id)
+    rebind(id, null!)  // Pass null → reverts to default
+  }
+
+  return (
+    <div className="flex items-center justify-between px-3 py-2.5 group">
+      {/* Label */}
+      <span className="text-sm text-foreground">{description}</span>
+
+      {/* Right side */}
+      <div className="flex items-center gap-2">
+        {/* Reset override */}
+        {isOverridden && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={handleReset}
+            title="Reset to default"
+          >
+            <RotateCcw className="h-3 w-3" />
+          </Button>
+        )}
+
+        {/* Binding display / recording state */}
+        {recordState === 'recording' ? (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground animate-pulse">
+            <Keyboard className="h-3.5 w-3.5" />
+            Press keys…
+          </div>
+        ) : (
+          <KbdBadge
+            display={display}
+            isOverridden={isOverridden}
+            onClick={startRecording}
+            title="Click to rebind"
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+```
+
+---
+
+## 8. KbdBadge — Display Component
+
+**File:** `src/features/settings/components/kbd-badge.tsx`
+
+Renders platform-aware modifier symbols (⌘, ⌃, ⇧, etc.).
+
+```tsx
+type Props = {
+  display: string       // e.g. "⌘S" or "Ctrl+S" or "G then D"
+  isOverridden?: boolean
+  onClick?: () => void
+  title?: string
+}
+
+export function KbdBadge({ display, isOverridden, onClick, title }: Props) {
+  // Split on "then" for chord sequences
+  const steps = display.split(' then ')
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-1 cursor-pointer rounded px-1 py-0.5',
+        'hover:bg-accent/50 transition-colors',
+        isOverridden && 'ring-1 ring-primary/30'
+      )}
+      onClick={onClick}
+      title={title}
+    >
+      {steps.map((step, i) => (
+        <>
+          {i > 0 && <span className="text-muted-foreground text-[10px] mx-0.5">then</span>}
+          <kbd key={i} className={cn(
+            'inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono',
+            'bg-muted border border-border text-foreground',
+            isOverridden && 'text-primary'
+          )}>
+            {step}
+          </kbd>
+        </>
+      ))}
+    </div>
+  )
+}
+```
+
+---
+
+## 9. Command Palette Integration
+
+Shortcut results expose `.display` — use it in the command palette so bindings stay in sync.
+
+```tsx
+// command-palette: show shortcut next to each command
+import { useShortcutContext } from '@/core/shortcuts/shortcut-registry'
+
+function CommandPaletteItem({ action }: { action: DoraShortcutId }) {
+  const { getDisplay } = useShortcutContext()
+  return (
+    <div className="flex items-center justify-between">
+      <span>{DORA_SHORTCUTS[action].options?.description}</span>
+      <KbdBadge display={getDisplay(action)} />
+    </div>
+  )
+}
+```
+
+---
+
+## 10. Conflict Badge
+
+**File:** `src/features/settings/components/shortcut-conflict-badge.tsx`
+
+Library calls `onConflict` with `{ combo, existingCombo, reason: "exact" | "sequence-prefix" }`.
+
+```tsx
+type Props = { reason: 'exact' | 'sequence-prefix'; conflictsWith: string }
+
+export function ShortcutConflictBadge({ reason, conflictsWith }: Props) {
+  return (
+    <span
+      className="text-[10px] text-destructive border border-destructive/30 rounded px-1 py-0.5"
+      title={`Conflicts with "${conflictsWith}" (${reason})`}
+    >
+      {reason === 'exact' ? '⚠ Duplicate' : '⚠ Prefix conflict'}
+    </span>
+  )
+}
+```
+
+Wire into `ShortcutProvider` — store conflicts in state, expose via context, render in `ShortcutRow`.
+
+---
+
+## 11. Wire Into App
+
+**File:** `src/App.tsx`
+
+```tsx
+import { ShortcutProvider } from '@/core/shortcuts/shortcut-registry'
+
+export function App() {
+  return (
+    <ShortcutProvider>
+      {/* rest of app */}
+    </ShortcutProvider>
+  )
+}
+```
+
+Settings panel mounts `<KeyboardShortcutsPanel />` inside existing settings modal.
+
+---
+
+## 12. Backend Integration
+
+No new backend commands needed. Uses existing:
+- `get_setting(key)` / `set_setting(key, value)` — persisting overrides to SQLite
+- Key: `"shortcut_overrides"` → JSON string of `Record<DoraShortcutId, combo>`
+
+Tauri command already registered in `lib.rs`:
+```
+database::commands::get_setting
+database::commands::set_setting
+```
+
+---
 
 ## Checklist
 
-- [ ] Extend `APP_SHORTCUTS` with all new keys above
-- [ ] Add `SHORTCUT_CATEGORIES` export to `shortcuts.ts`
-- [ ] Add `useActiveScope` hook to `shortcuts.ts`
-- [ ] Call `useActiveScope($, 'sql-console')` in `sql-console.tsx`
-- [ ] Call `useActiveScope($, 'data-grid')` in `data-grid.tsx`
-- [ ] Call `useActiveScope($, 'editor')` in `drizzle-runner.tsx`
-- [ ] Bind nav shortcuts in `Index.tsx` (newConnection, toggleSidebar, openSettings, reconnect)
-- [ ] Bind `switchConnection1-9` in `Index.tsx`
-- [ ] Bind chord sequences in `Index.tsx` with `.except('typing')`
-- [ ] Bind studio shortcuts (insertRow, refreshTable, filterRows, exportTable, startLiveMonitor) in `database-studio.tsx`
-- [ ] Bind new SQL Console shortcuts (runSelection, formatQuery, newTab, openQueryHistory) in `sql-console.tsx`
-- [ ] Update settings panel to use `SHORTCUT_CATEGORIES` for grouped display
-- [ ] Test: chord `g d` does NOT fire when typing in Monaco
-- [ ] Test: scope isolation — studio shortcuts don't fire in SQL console
-- [ ] Test: `Mod+1` switches to first connection
-- [ ] Test: overriding a shortcut persists after reload
+- [ ] Install: `bun add @remcostoeten/use-shortcut`
+- [ ] Create `src/core/shortcuts/` directory + 5 files above
+- [ ] Wrap `<App>` with `<ShortcutProvider>`
+- [ ] Migrate scattered `useShortcut()` calls (if any) to `useDoraShortcuts()`
+- [ ] Add `useActiveScope()` to SqlConsole, DatabaseStudio, DrizzleRunner, CommandPalette
+- [ ] Build `KeyboardShortcutsPanel` + `ShortcutRow` + `KbdBadge`
+- [ ] Mount panel in settings modal (Settings → Keyboard Shortcuts tab)
+- [ ] Show `display` strings in command palette items
+- [ ] Conflict detection: bubble `onConflict` events to UI
+- [ ] Recording: `builder.record()` called from `ShortcutRow` click
+- [ ] Persist overrides via `shortcut-store.ts` (localStorage + Tauri SQLite)
+- [ ] Test chord sequences: `g d`, `g s`, `g c`
+- [ ] Test scope activation: SQL Console shortcuts inactive in Studio and vice versa
+- [ ] Platform check: `⌘` on Mac, `Ctrl` on Windows/Linux
