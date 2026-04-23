@@ -89,18 +89,11 @@ pub fn run() {
         .manage(certificates)
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-                #[cfg(debug_assertions)]
-                {
-                    match std::panic::catch_unwind(|| crate::bindings::export_ts_bindings()) {
-                        Ok(_) => log::info!("TypeScript bindings exported successfully"),
-                        Err(_) => log::error!("Failed to export TypeScript bindings"),
-                    }
+            #[cfg(debug_assertions)]
+            {
+                match std::panic::catch_unwind(|| crate::bindings::export_ts_bindings()) {
+                    Ok(_) => log::info!("TypeScript bindings exported successfully"),
+                    Err(_) => log::error!("Failed to export TypeScript bindings"),
                 }
             }
 

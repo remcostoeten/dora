@@ -513,11 +513,7 @@ async buildSql(ast: JsonValue) : Promise<Result<string, any>> {
 }
 },
 /**
- * Export database schema to SQL DDL format
- * 
- * # Arguments
- * * `connection_id` - UUID of the connected database
- * * `dialect` - Target SQL dialect: "postgresql" or "sqlite"
+ * Export database schema to SQL DDL format.
  */
 async exportSchemaSql(connectionId: string, dialect: string) : Promise<Result<string, any>> {
     try {
@@ -528,11 +524,7 @@ async exportSchemaSql(connectionId: string, dialect: string) : Promise<Result<st
 }
 },
 /**
- * Export database schema to Drizzle ORM TypeScript format
- * 
- * # Arguments
- * * `connection_id` - UUID of the connected database
- * * `dialect` - Target Drizzle dialect: "postgresql" or "sqlite"
+ * Export database schema to Drizzle ORM TypeScript format.
  */
 async exportSchemaDrizzle(connectionId: string, dialect: string) : Promise<Result<string, any>> {
     try {
@@ -542,9 +534,6 @@ async exportSchemaDrizzle(connectionId: string, dialect: string) : Promise<Resul
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Complete a prompt using the configured AI provider
- */
 async aiComplete(prompt: string, connectionId: string | null, maxTokens: number | null) : Promise<Result<AIResponse, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_complete", { prompt, connectionId, maxTokens }) };
@@ -553,9 +542,6 @@ async aiComplete(prompt: string, connectionId: string | null, maxTokens: number 
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Set the AI provider (gemini or ollama)
- */
 async aiSetProvider(provider: string) : Promise<Result<null, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_set_provider", { provider }) };
@@ -564,9 +550,6 @@ async aiSetProvider(provider: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Get the current AI provider
- */
 async aiGetProvider() : Promise<Result<string, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_get_provider") };
@@ -575,9 +558,6 @@ async aiGetProvider() : Promise<Result<string, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Set the Gemini API key (BYOK)
- */
 async aiSetGeminiKey(apiKey: string) : Promise<Result<null, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_set_gemini_key", { apiKey }) };
@@ -586,9 +566,6 @@ async aiSetGeminiKey(apiKey: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * Configure Ollama endpoint and model
- */
 async aiConfigureOllama(endpoint: string | null, model: string | null) : Promise<Result<null, any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_configure_ollama", { endpoint, model }) };
@@ -597,9 +574,6 @@ async aiConfigureOllama(endpoint: string | null, model: string | null) : Promise
     else return { status: "error", error: e  as any };
 }
 },
-/**
- * List available Ollama models
- */
 async aiListOllamaModels() : Promise<Result<string[], any>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_list_ollama_models") };
