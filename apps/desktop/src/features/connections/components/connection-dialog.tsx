@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { commands, DatabaseInfo } from '@/lib/bindings'
+import { formatBackendError } from '@/shared/utils/backend-error'
 import { Button } from '@/shared/ui/button'
 import {
 	Dialog,
@@ -278,18 +279,8 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 				setTestStatus('error')
 				let errorMsg = 'Connection failed'
 
-				if (result.status === 'error' && result.error) {
-					if (typeof result.error === 'string') {
-						errorMsg = result.error
-					} else if (typeof result.error === 'object') {
-						if ('message' in result.error && typeof result.error.message === 'string') {
-							errorMsg = result.error.message
-						} else {
-							errorMsg = JSON.stringify(result.error, null, 2)
-						}
-					} else {
-						errorMsg = String(result.error)
-					}
+				if (result.status === 'error') {
+					errorMsg = formatBackendError(result.error)
 				}
 
 				setTestMessage(errorMsg)

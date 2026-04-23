@@ -14,6 +14,7 @@ import type {
 	SavedQuery
 } from '@/lib/bindings'
 import { commands } from '@/lib/bindings'
+import { formatBackendError } from '@/shared/utils/backend-error'
 import { getTableRefParts, getTableSqlIdentifier } from '@/shared/utils/table-ref'
 import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 
@@ -25,16 +26,10 @@ function err<T>(error: string): AdapterResult<T> {
 	return { ok: false, error }
 }
 
-function formatError(error: unknown): string {
-	if (typeof error === 'string') return error
-	if (error instanceof Error) return error.message
-	if (error && typeof error === 'object') {
-		if ('message' in error && typeof (error as any).message === 'string') {
-			return (error as any).message
-		}
-		return JSON.stringify(error)
-	}
-	return String(error)
+const formatError = formatBackendError
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null
 }
 
 export function createTauriAdapter(): DataAdapter {
@@ -520,15 +515,33 @@ function delay(ms: number): Promise<void> {
 function parseColumns(data: JsonValue): ColumnDefinition[] {
 	if (!Array.isArray(data)) return []
 
-	return data.map(function (col: any) {
+	return data.map(function (col: JsonValue) {
 		if (typeof col === 'string') {
 			return { name: col, type: 'unknown', nullable: false, primaryKey: false }
 		}
+		if (!isRecord(col)) {
+			return { name: String(col), type: 'unknown', nullable: false, primaryKey: false }
+		}
 		return {
-			name: col.name,
-			type: col.data_type || col.type || 'unknown',
-			nullable: col.is_nullable ?? col.nullable ?? false,
-			primaryKey: col.is_primary_key ?? col.primary_key ?? false
+			name: typeof col.name === 'string' ? col.name : 'unknown',
+			type:
+				typeof col.data_type === 'string'
+					? col.data_type
+					: typeof col.type === 'string'
+						? col.type
+						: 'unknown',
+			nullable:
+				typeof col.is_nullable === 'boolean'
+					? col.is_nullable
+					: typeof col.nullable === 'boolean'
+						? col.nullable
+						: false,
+			primaryKey:
+				typeof col.is_primary_key === 'boolean'
+					? col.is_primary_key
+					: typeof col.primary_key === 'boolean'
+						? col.primary_key
+						: false
 		}
 	})
 }
@@ -536,9 +549,9 @@ function parseColumns(data: JsonValue): ColumnDefinition[] {
 function parseRows(data: JsonValue, columns: ColumnDefinition[]): Record<string, unknown>[] {
 	if (!Array.isArray(data)) return []
 
-	return data.map(function (row: any) {
-		if (typeof row === 'object' && row !== null && !Array.isArray(row)) {
-			return row as Record<string, unknown>
+	return data.map(function (row: JsonValue) {
+		if (isRecord(row) && !Array.isArray(row)) {
+			return row
 		}
 		if (Array.isArray(row)) {
 			const obj: Record<string, unknown> = {}
