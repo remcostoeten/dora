@@ -89,6 +89,7 @@ export default function Index() {
   const { toast } = useToast();
   const shortcuts = useEffectiveShortcuts();
   const paletteShortcut = useShortcut({ ignoreInputs: false });
+  const $ = useShortcut();
 
   paletteShortcut.bind(shortcuts.openCommandPalette.combo).on(
     function () {
@@ -98,6 +99,50 @@ export default function Index() {
     },
     { description: shortcuts.openCommandPalette.description },
   );
+
+  $.bind(shortcuts.newConnection.combo).on(function () {
+    setIsConnectionDialogOpen(true);
+  }, { description: shortcuts.newConnection.description });
+
+  $.bind(shortcuts.toggleSidebar.combo).on(function () {
+    setIsSidebarOpen(function (open) { return !open; });
+  }, { description: shortcuts.toggleSidebar.description });
+
+  $.bind(shortcuts.reconnect.combo).on(function () {
+    if (activeConnectionId) handleConnectionSelect(activeConnectionId);
+  }, { description: shortcuts.reconnect.description });
+
+  // Go-to chord sequences — except 'typing' so Monaco doesn't intercept
+  $.bind(shortcuts.gotoDashboard.combo).except('typing').on(function () {
+    setActiveNavId('database-studio');
+  }, { description: shortcuts.gotoDashboard.description });
+
+  $.bind(shortcuts.gotoSettings.combo).except('typing').on(function () {
+    setActiveNavId('settings');
+  }, { description: shortcuts.gotoSettings.description });
+
+  $.bind(shortcuts.gotoConnections.combo).except('typing').on(function () {
+    setActiveNavId('connections');
+  }, { description: shortcuts.gotoConnections.description });
+
+  $.bind(shortcuts.gotoEditor.combo).except('typing').on(function () {
+    setActiveNavId('sql-console');
+  }, { description: shortcuts.gotoEditor.description });
+
+  $.bind(shortcuts.gotoDocker.combo).except('typing').on(function () {
+    setActiveNavId('docker');
+  }, { description: shortcuts.gotoDocker.description });
+
+  // Connection switching by index (1-9)
+  connections.slice(0, 9).forEach(function (conn, i) {
+    const key = `switchConnection${i + 1}` as keyof typeof shortcuts;
+    const def = shortcuts[key];
+    if (def) {
+      $.bind(def.combo).on(function () {
+        handleConnectionSelect(conn.id);
+      }, { description: def.description });
+    }
+  });
 
   useEffect(() => {
     loadConnectionsFromBackend();

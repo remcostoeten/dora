@@ -1,5 +1,5 @@
 import { useSettings } from '@/core/settings'
-import { useShortcutStore, useEffectiveShortcuts, ShortcutName } from '@/core/shortcuts'
+import { useShortcutStore, useEffectiveShortcuts, ShortcutName, SHORTCUT_CATEGORIES } from '@/core/shortcuts'
 import {
 	Select,
 	SelectContent,
@@ -105,34 +105,47 @@ export function SettingsPanel() {
 					</SidebarSection>
 
 					<SidebarSection title='Shortcuts'>
-						<div className='space-y-3'>
-							{Object.entries(effectiveShortcuts).map(function ([key, def]) {
-								const name = key as ShortcutName
-								const isDefault = !overrides[name]
-
+						<div className='space-y-4'>
+							{Object.entries(SHORTCUT_CATEGORIES).map(function ([category, names]) {
 								return (
-									<div
-										key={name}
-										className='flex items-center justify-between gap-4'
-									>
-										<div className='flex-1 min-w-0'>
-											<div className='text-sm text-sidebar-foreground truncate'>
-												{def.description}
-											</div>
-											<div className='text-xs text-muted-foreground truncate opacity-50 capitalize'>
-												{def.scope || 'Global'}
-											</div>
+									<div key={category}>
+										<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider px-1 mb-1.5'>
+											{category}
 										</div>
-										<ShortcutRecorder
-											value={def.combo}
-											onChange={function (newCombo) {
-												setShortcut(name, newCombo)
-											}}
-											onReset={function () {
-												resetShortcut(name)
-											}}
-											isDefault={isDefault}
-										/>
+										<div className='space-y-1'>
+											{names.map(function (name) {
+												const def = effectiveShortcuts[name]
+												if (!def) return null
+												const isDefault = !overrides[name]
+												return (
+													<div
+														key={name}
+														className='flex items-center justify-between gap-4 py-1 px-1 rounded hover:bg-sidebar-accent/30'
+													>
+														<div className='flex-1 min-w-0'>
+															<div className='text-sm text-sidebar-foreground truncate'>
+																{def.description}
+															</div>
+															{!isDefault && (
+																<div className='text-[10px] text-muted-foreground'>
+																	customized
+																</div>
+															)}
+														</div>
+														<ShortcutRecorder
+															value={def.combo}
+															onChange={function (newCombo) {
+																setShortcut(name, newCombo)
+															}}
+															onReset={function () {
+																resetShortcut(name)
+															}}
+															isDefault={isDefault}
+														/>
+													</div>
+												)
+											})}
+										</div>
 									</div>
 								)
 							})}

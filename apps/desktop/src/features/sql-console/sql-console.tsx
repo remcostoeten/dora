@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
-import { useShortcut } from '@/core/shortcuts'
+import { useShortcut, useActiveScope, useEffectiveShortcuts } from '@/core/shortcuts'
 import {
 	SQL_CONSOLE_PALETTE_EVENT,
 	type SqlConsolePaletteCommand
@@ -677,6 +677,23 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 	)
 
 	const $ = useShortcut()
+	const sqlShortcuts = useEffectiveShortcuts()
+	useActiveScope($, 'sql-console')
+
+	$.bind(sqlShortcuts.runQuery.combo).on(
+		function () { handleExecute() },
+		{ description: sqlShortcuts.runQuery.description }
+	)
+
+	$.bind(sqlShortcuts.runSelection.combo).on(
+		function () { handleExecute(undefined, mode) },
+		{ description: sqlShortcuts.runSelection.description }
+	)
+
+	$.bind(sqlShortcuts.openQueryHistory.combo).on(
+		function () { setShowHistory(function (v) { return !v }) },
+		{ description: sqlShortcuts.openQueryHistory.description }
+	)
 
 	$.key('s')
 		.except('typing')
