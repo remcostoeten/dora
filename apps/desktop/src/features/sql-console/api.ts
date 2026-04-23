@@ -1,4 +1,5 @@
-import { commands, JsonValue } from '@/lib/bindings'
+import { commands, type JsonValue, type SavedQuery } from '@/lib/bindings'
+import { formatBackendError } from '@/shared/utils/backend-error'
 import type { SqlQueryResult } from './types'
 
 export async function executeSqlQuery(
@@ -10,7 +11,7 @@ export async function executeSqlQuery(
 		const startResult = await commands.startQuery(connectionId, query)
 
 		if (startResult.status !== 'ok') {
-			throw new Error('Failed to start query: ' + JSON.stringify(startResult.error))
+			throw new Error(`Failed to start query: ${formatBackendError(startResult.error)}`)
 		}
 
 		if (!startResult.data || startResult.data.length === 0) {
@@ -28,7 +29,7 @@ export async function executeSqlQuery(
 			const fetchResult = await commands.fetchQuery(queryId)
 
 			if (fetchResult.status !== 'ok') {
-				throw new Error('Failed to fetch query results')
+				throw new Error(`Failed to fetch query results: ${formatBackendError(fetchResult.error)}`)
 			}
 
 			pageInfo = fetchResult.data
@@ -63,11 +64,14 @@ export async function executeSqlQuery(
 
 		const columns =
 			columnsResult.status === 'ok' && Array.isArray(columnsResult.data)
-				? columnsResult.data.map((col: any) => {
+				? columnsResult.data.map((col: JsonValue) => {
 						if (typeof col === 'string') {
 							return col
 						}
-						return col.name
+						if (col && typeof col === 'object' && !Array.isArray(col) && typeof col.name === 'string') {
+							return col.name
+						}
+						return String(col)
 					})
 				: []
 
@@ -88,7 +92,7 @@ export async function executeSqlQuery(
 			: []
 
 		return {
-			columns: columns.map((c) => c.name),
+			columns,
 			rows,
 			rowCount: pageInfo.affected_rows ?? rows.length,
 			executionTime: Math.round(performance.now() - startTime),
@@ -117,10 +121,10 @@ function getQueryType(query: string): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' 
 	return 'OTHER'
 }
 
-export async function getSnippets(connectionId: string | null): Promise<any[]> {
+export async function getSnippets(connectionId: string | null) {
 	const result = await commands.getScripts(connectionId)
 	if (result.status === 'ok') {
-		return result.data.map((script: any) => ({
+		return result.data.map((script: SavedQuery) => ({
 			id: script.id.toString(),
 			name: script.name,
 			content: script.query_text,
@@ -141,7 +145,7 @@ export async function saveSnippet(
 ): Promise<void> {
 	const result = await commands.saveScript(name, content, connectionId, description)
 	if (result.status === 'error') {
-		throw new Error(result.error as string)
+		throw new Error(formatBackendError(result.error))
 	}
 }
 
@@ -154,13 +158,13 @@ export async function updateSnippet(
 ): Promise<void> {
 	const result = await commands.updateScript(id, name, content, connectionId, description)
 	if (result.status === 'error') {
-		throw new Error(result.error as string)
+		throw new Error(formatBackendError(result.error))
 	}
 }
 
 export async function deleteSnippet(id: number): Promise<void> {
 	const result = await commands.deleteScript(id)
 	if (result.status === 'error') {
-		throw new Error(result.error as string)
+		throw new Error(formatBackendError(result.error))
 	}
 }

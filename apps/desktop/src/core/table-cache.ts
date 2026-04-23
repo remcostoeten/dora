@@ -1,5 +1,7 @@
+import type { TableData } from '@/features/database-studio/types'
+
 type TableCacheEntry = {
-	data: unknown
+	data: TableData
 	visibleColumns: string[]
 }
 

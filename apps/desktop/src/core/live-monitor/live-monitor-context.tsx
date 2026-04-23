@@ -11,6 +11,7 @@ import {
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { commands } from '@/lib/bindings'
 import { clearTableDataCache } from '@/core/table-cache'
+import { formatBackendError } from '@/shared/utils/backend-error'
 import { type ChangeEvent, type ChangeType, type LiveMonitorConfig, DEFAULT_CONFIG } from './types'
 
 // ── Tauri event payload shape ────────────────────────────────────────────────
@@ -192,16 +193,16 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 						activeConnectionId!,
 						activeTable,
 						config.intervalMs,
-						config.changeTypes as any
+						config.changeTypes
 					)
 
-					if (result.status !== 'ok') throw new Error(String(result.error))
+					if (result.status !== 'ok') throw new Error(formatBackendError(result.error))
 					if (cancelled) {
-						await commands.stopLiveMonitor((result.data as any).monitorId)
+						await commands.stopLiveMonitor(result.data.monitorId)
 						return
 					}
 
-					monitorIdRef.current = (result.data as any).monitorId
+					monitorIdRef.current = result.data.monitorId
 					setIsPolling(true)
 				} catch (err) {
 					console.error('[LiveMonitor] start failed:', err)

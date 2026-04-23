@@ -21,7 +21,7 @@ type CellPosition = {
 	col: number
 }
 
-type ContextMenuState = {
+export type ContextMenuState = {
 	kind: 'cell' | 'row'
 	cell: { row: number; col: number }
 	x: number

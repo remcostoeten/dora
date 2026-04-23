@@ -9,6 +9,7 @@ import type { DatabaseSchema, TableInfo } from '@/lib/bindings'
 import { commands } from '@/lib/bindings'
 import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appearance-store'
 import { loadFontPair } from '@/shared/lib/font-loader'
+import { formatBackendError } from '@/shared/utils/backend-error'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -512,7 +513,7 @@ function buildInsertExport(
 					return prev + 1
 				})
 			} else {
-				throw new Error(String(result.error))
+				throw new Error(formatBackendError(result.error))
 			}
 		} catch (error) {
 			console.error('Failed to duplicate table:', error)
@@ -559,7 +560,7 @@ function buildInsertExport(
 						return prev + 1
 					})
 				} else {
-					throw new Error(String(result.error))
+					throw new Error(formatBackendError(result.error))
 				}
 			} catch (e) {
 				console.error(e)
@@ -589,7 +590,7 @@ function buildInsertExport(
 						return prev + 1
 					})
 				} else {
-					throw new Error(String(result.error))
+					throw new Error(formatBackendError(result.error))
 				}
 			} catch (e) {
 				toast({
@@ -671,7 +672,7 @@ function buildInsertExport(
 				format,
 				null
 			)
-			if (result.status !== 'ok') throw new Error(String(result.error))
+			if (result.status !== 'ok') throw new Error(formatBackendError(result.error))
 
 			navigator.clipboard.writeText(result.data)
 			toast({

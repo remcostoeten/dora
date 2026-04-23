@@ -1,5 +1,6 @@
 import type { Connection as FrontendConnection } from '@/features/connections/types'
 import { commands, ConnectionInfo as BackendConnection, DatabaseInfo } from '@/lib/bindings'
+import { formatBackendError } from '@/shared/utils/backend-error'
 
 function backendToFrontendSshConfig(
 	sshConfig: {
@@ -150,26 +151,26 @@ export async function loadConnections(): Promise<FrontendConnection[]> {
 
 export async function addConnection(conn: FrontendConnection): Promise<FrontendConnection> {
 	const dbInfo = frontendToBackendDatabaseInfo(conn)
-	const result = await commands.addConnection(conn.name, dbInfo, frontendToBackendSshConfig(conn))
+	const result = await commands.addConnection(conn.name, dbInfo, null)
 	if (result.status === 'ok') {
 		return backendToFrontendConnection(result.data)
 	}
-	throw new Error(result.error as string)
+	throw new Error(formatBackendError(result.error))
 }
 
 export async function updateConnection(conn: FrontendConnection): Promise<FrontendConnection> {
 	const dbInfo = frontendToBackendDatabaseInfo(conn)
-	const result = await commands.updateConnection(conn.id, conn.name, dbInfo, frontendToBackendSshConfig(conn))
+	const result = await commands.updateConnection(conn.id, conn.name, dbInfo, null)
 	if (result.status === 'ok') {
 		return backendToFrontendConnection(result.data)
 	}
-	throw new Error(result.error as string)
+	throw new Error(formatBackendError(result.error))
 }
 
 export async function removeConnection(connectionId: string): Promise<void> {
 	const result = await commands.removeConnection(connectionId)
 	if (result.status === 'error') {
-		throw new Error(result.error as string)
+		throw new Error(formatBackendError(result.error))
 	}
 }
 
@@ -178,13 +179,13 @@ export async function connectToDatabase(connectionId: string): Promise<boolean> 
 	if (result.status === 'ok') {
 		return result.data
 	}
-	throw new Error(result.error as string)
+	throw new Error(formatBackendError(result.error))
 }
 
 export async function disconnectFromDatabase(connectionId: string): Promise<void> {
 	const result = await commands.disconnectFromDatabase(connectionId)
 	if (result.status === 'error') {
-		throw new Error(result.error as string)
+		throw new Error(formatBackendError(result.error))
 	}
 }
 
@@ -194,5 +195,5 @@ export async function testConnection(conn: FrontendConnection): Promise<boolean>
 	if (result.status === 'ok') {
 		return result.data
 	}
-	throw new Error(result.error as string)
+	throw new Error(formatBackendError(result.error))
 }
