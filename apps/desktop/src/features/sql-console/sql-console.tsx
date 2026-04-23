@@ -27,9 +27,10 @@ import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 type Props = {
 	onToggleSidebar?: () => void
 	activeConnectionId?: string
+	getConnectionName?: (id: string) => string
 }
 
-export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnectionId }: Props) {
+export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnectionId, getConnectionName }: Props) {
 	const adapter = useAdapter()
 	const [mode, setMode] = useState<'sql' | 'drizzle'>('sql')
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])
@@ -771,6 +772,7 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 						>
 							<QueryHistoryPanel
 								currentConnectionId={activeConnectionId}
+								getConnectionName={getConnectionName}
 								onSelectQuery={function (query) {
 									if (mode === 'sql') {
 										setCurrentSqlQuery(query)

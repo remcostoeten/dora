@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,10 +19,20 @@ import {
 } from "@/features/connections/api";
 import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
 import { Connection } from "@/features/connections/types";
-import { DatabaseStudio } from "@/features/database-studio/database-studio";
-import { DockerView } from "@/features/docker-manager";
+const DatabaseStudio = lazy(() =>
+  import("@/features/database-studio/database-studio").then((m) => ({
+    default: m.DatabaseStudio,
+  }))
+);
+const DockerView = lazy(() =>
+  import("@/features/docker-manager").then((m) => ({ default: m.DockerView }))
+);
+const SqlConsole = lazy(() =>
+  import("@/features/sql-console/sql-console").then((m) => ({
+    default: m.SqlConsole,
+  }))
+);
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
-import { SqlConsole } from "@/features/sql-console/sql-console";
 import { WindowControls } from "@/components/window-controls";
 import {
   AlertDialog,
@@ -595,6 +605,13 @@ export default function Index() {
             )}
 
             <main className="flex-1 flex flex-col h-full overflow-hidden relative px-0">
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                    Loading...
+                  </div>
+                }
+              >
               {connections.length === 0 &&
               !isLoading &&
               (activeNavId === "database-studio" ||
@@ -630,6 +647,9 @@ export default function Index() {
                   <SqlConsole
                     onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                     activeConnectionId={activeConnectionId}
+                    getConnectionName={(id) =>
+                      connections.find((c) => c.id === id)?.name ?? id.slice(0, 8)
+                    }
                   />
                 </ErrorBoundary>
               ) : activeNavId === "docker" ? (
@@ -676,9 +696,13 @@ export default function Index() {
                   <SqlConsole
                     onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
                     activeConnectionId={activeConnectionId}
+                    getConnectionName={(id) =>
+                      connections.find((c) => c.id === id)?.name ?? id.slice(0, 8)
+                    }
                   />
                 </ErrorBoundary>
               )}
+              </Suspense>
             </main>
 
             <ConnectionDialog
