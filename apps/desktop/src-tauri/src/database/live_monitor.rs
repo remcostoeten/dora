@@ -8,7 +8,7 @@ use std::{
 use base64::Engine;
 use dashmap::DashMap;
 use futures_util::future::poll_fn;
-use tracing::instrument;
+use mysql_async::{prelude::Queryable, Pool, Row as MySqlRow, Value as MySqlValue};
 use rusqlite::types::ValueRef;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -17,11 +17,13 @@ use tauri::{AppHandle, Emitter, EventTarget, Manager};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio_postgres::{AsyncMessage, NoTls};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
     credentials,
     database::{
+        adapter::watch_adapter_from_client,
         postgres::row_writer::RowWriter as PostgresRowWriter,
         types::{Database, DatabaseClient},
         Certificates,
@@ -189,6 +191,7 @@ async fn run_monitor_loop(
     interval_ms: u64,
     change_types: Vec<LiveMonitorChangeType>,
 ) {
+    let mut previous_hash: Option<u64> = None;
     let mut previous_snapshot: Option<TableSnapshot> = None;
     let poll_interval = Duration::from_millis(interval_ms.max(1000));
     let mut notification_receiver =
@@ -196,16 +199,31 @@ async fn run_monitor_loop(
 
     loop {
         let polled_at = chrono::Utc::now().timestamp_millis();
-        let (events, error) = match fetch_table_snapshot(&app, connection_id, &table_name).await {
-            Ok(current_snapshot) => {
-                let events = if let Some(previous) = previous_snapshot.as_ref() {
-                    diff_snapshots(previous, &current_snapshot, &table_name, &change_types)
+        let (events, error) = match poll_table_hash(&app, connection_id, &table_name).await {
+            Ok(current_hash) => {
+                if previous_hash.is_some_and(|previous| previous == current_hash) {
+                    (Vec::new(), None)
                 } else {
-                    Vec::new()
-                };
+                    match fetch_table_snapshot(&app, connection_id, &table_name).await {
+                        Ok(current_snapshot) => {
+                            let events = if let Some(previous) = previous_snapshot.as_ref() {
+                                diff_snapshots(
+                                    previous,
+                                    &current_snapshot,
+                                    &table_name,
+                                    &change_types,
+                                )
+                            } else {
+                                Vec::new()
+                            };
 
-                previous_snapshot = Some(current_snapshot);
-                (events, None)
+                            previous_hash = Some(current_hash);
+                            previous_snapshot = Some(current_snapshot);
+                            (events, None)
+                        }
+                        Err(err) => (Vec::new(), Some(err.to_string())),
+                    }
+                }
             }
             Err(err) => (Vec::new(), Some(err.to_string())),
         };
@@ -239,6 +257,27 @@ async fn run_monitor_loop(
     }
 }
 
+async fn poll_table_hash(
+    app: &AppHandle,
+    connection_id: Uuid,
+    table_name: &str,
+) -> Result<u64, Error> {
+    let client = {
+        let Some(state) = app.try_state::<AppState>() else {
+            return Err(Error::Internal("App state unavailable".to_string()));
+        };
+        let Some(connection_entry) = state.connections.get(&connection_id) else {
+            return Err(Error::ConnectionNotFound(connection_id));
+        };
+        connection_entry.value().get_client()?
+    };
+
+    let (schema, table) = split_table_reference(table_name)?;
+    watch_adapter_from_client(&client)
+        .poll_table_hash(&table, schema.as_deref())
+        .await
+}
+
 async fn create_postgres_notification_receiver(
     app: &AppHandle,
     connection_id: Uuid,
@@ -256,7 +295,9 @@ async fn create_postgres_notification_receiver(
             ..
         } => (
             connection_string.clone(),
-            tunnel.as_ref().map(|active_tunnel| active_tunnel.local_port),
+            tunnel
+                .as_ref()
+                .map(|active_tunnel| active_tunnel.local_port),
         ),
         _ => return None,
     };
@@ -366,18 +407,18 @@ async fn connect_and_subscribe_postgres_listener(
                 .with_root_certificates(certificate_store)
                 .with_no_client_auth();
             let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
-            let (client, connection) = config
-                .connect(tls)
+            let (client, connection) = config.connect(tls).await.map_err(|error| {
+                anyhow::anyhow!("Failed to connect Postgres listener: {}", error)
+            })?;
+            finalize_postgres_listener(client, connection, table_name, channel_name, trigger_name)
                 .await
-                .map_err(|error| anyhow::anyhow!("Failed to connect Postgres listener: {}", error))?;
-            finalize_postgres_listener(client, connection, table_name, channel_name, trigger_name).await
         }
         _ => {
-            let (client, connection) = config
-                .connect(NoTls)
+            let (client, connection) = config.connect(NoTls).await.map_err(|error| {
+                anyhow::anyhow!("Failed to connect Postgres listener: {}", error)
+            })?;
+            finalize_postgres_listener(client, connection, table_name, channel_name, trigger_name)
                 .await
-                .map_err(|error| anyhow::anyhow!("Failed to connect Postgres listener: {}", error))?;
-            finalize_postgres_listener(client, connection, table_name, channel_name, trigger_name).await
         }
     }
 }
@@ -535,9 +576,7 @@ async fn fetch_table_snapshot(
         DatabaseClient::LibSQL { connection } => {
             fetch_libsql_snapshot(connection, table_name).await
         }
-        DatabaseClient::MySQL { pool: _ } => {
-            Err(Error::Any(anyhow::anyhow!("MySQL live monitoring not yet implemented")))
-        }
+        DatabaseClient::MySQL { pool } => fetch_mysql_snapshot(pool, table_name).await,
     }
 }
 
@@ -727,6 +766,112 @@ async fn fetch_libsql_snapshot(
     Ok(build_snapshot(column_names, pk_columns, row_values))
 }
 
+async fn fetch_mysql_snapshot(
+    pool: Arc<Pool>,
+    table_name: &str,
+) -> Result<TableSnapshot, Error> {
+    let (schema, table) = split_table_reference(table_name)?;
+    let qualified_table = mysql_qualified_table_name(schema.as_deref(), &table);
+    let pk_columns = mysql_primary_key_columns(&pool, schema.as_deref(), &table).await?;
+    let query = format!("SELECT * FROM {qualified_table}");
+
+    let mut conn = pool
+        .get_conn()
+        .await
+        .map_err(|err| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", err)))?;
+    let mut result = conn
+        .query_iter(query)
+        .await
+        .map_err(|err| Error::Any(anyhow::anyhow!("MySQL snapshot query failed: {}", err)))?;
+
+    let column_names: Vec<String> = result
+        .columns_ref()
+        .iter()
+        .map(|column| column.name_str().to_string())
+        .collect();
+    let rows = result
+        .collect::<MySqlRow>()
+        .await
+        .map_err(|err| Error::Any(anyhow::anyhow!("MySQL snapshot row failed: {}", err)))?;
+    let row_values = rows
+        .into_iter()
+        .map(|row| row.unwrap().into_iter().map(mysql_value_to_json).collect())
+        .collect();
+
+    Ok(build_snapshot(column_names, pk_columns, row_values))
+}
+
+async fn mysql_primary_key_columns(
+    pool: &Pool,
+    schema: Option<&str>,
+    table: &str,
+) -> Result<Vec<String>, Error> {
+    let schema_filter = schema.map(escape_sql_literal);
+    let schema_clause = schema_filter
+        .as_ref()
+        .map(|schema| format!("kcu.TABLE_SCHEMA = '{schema}'"))
+        .unwrap_or_else(|| "kcu.TABLE_SCHEMA = DATABASE()".to_string());
+    let escaped_table = escape_sql_literal(table);
+    let query = format!(
+        r#"
+        SELECT kcu.COLUMN_NAME
+        FROM information_schema.KEY_COLUMN_USAGE kcu
+        WHERE {schema_clause}
+          AND kcu.TABLE_NAME = '{escaped_table}'
+          AND kcu.CONSTRAINT_NAME = 'PRIMARY'
+        ORDER BY kcu.ORDINAL_POSITION
+        "#
+    );
+
+    let mut conn = pool
+        .get_conn()
+        .await
+        .map_err(|err| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", err)))?;
+    conn.query(query)
+        .await
+        .map_err(|err| Error::Any(anyhow::anyhow!("MySQL primary key query failed: {}", err)))
+}
+
+fn mysql_qualified_table_name(schema: Option<&str>, table: &str) -> String {
+    if let Some(schema) = schema {
+        format!(
+            "{}.{}",
+            quote_mysql_identifier(schema),
+            quote_mysql_identifier(table)
+        )
+    } else {
+        quote_mysql_identifier(table)
+    }
+}
+
+fn quote_mysql_identifier(identifier: &str) -> String {
+    format!("`{}`", identifier.replace('`', "``"))
+}
+
+fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
+    match value {
+        MySqlValue::NULL => serde_json::Value::Null,
+        MySqlValue::Bytes(bytes) => {
+            serde_json::Value::String(String::from_utf8_lossy(&bytes).to_string())
+        }
+        MySqlValue::Int(value) => serde_json::Value::from(value),
+        MySqlValue::UInt(value) => serde_json::Value::from(value),
+        MySqlValue::Float(value) => serde_json::Value::from(value),
+        MySqlValue::Double(value) => serde_json::Value::from(value),
+        MySqlValue::Date(year, month, day, hour, minute, second, micros) => {
+            serde_json::Value::String(format!(
+                "{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}.{micros:06}"
+            ))
+        }
+        MySqlValue::Time(is_negative, days, hours, minutes, seconds, micros) => {
+            let sign = if is_negative { "-" } else { "" };
+            serde_json::Value::String(format!(
+                "{sign}{days} {hours:02}:{minutes:02}:{seconds:02}.{micros:06}"
+            ))
+        }
+    }
+}
+
 async fn libsql_primary_key_columns(
     connection: &libsql::Connection,
     table: &str,
@@ -750,9 +895,7 @@ async fn libsql_primary_key_columns(
             libsql::Value::Text(value) => value,
             libsql::Value::Integer(value) => value.to_string(),
             libsql::Value::Real(value) => value.to_string(),
-            libsql::Value::Blob(value) => {
-                base64::engine::general_purpose::STANDARD.encode(value)
-            }
+            libsql::Value::Blob(value) => base64::engine::general_purpose::STANDARD.encode(value),
             libsql::Value::Null => String::new(),
         };
 
@@ -1096,7 +1239,10 @@ mod tests {
         let current = make_snapshot(
             vec!["id", "name"],
             vec!["id"],
-            vec![vec![json!(2), json!("Bobby")], vec![json!(3), json!("Cara")]],
+            vec![
+                vec![json!(2), json!("Bobby")],
+                vec![json!(3), json!("Cara")],
+            ],
         );
 
         let events = diff_snapshots(
@@ -1132,7 +1278,12 @@ mod tests {
             vec![vec![json!(1), json!("Alice")], vec![json!(2), json!("Bob")]],
         );
 
-        let events = diff_snapshots(&previous, &current, "users", &[LiveMonitorChangeType::Insert]);
+        let events = diff_snapshots(
+            &previous,
+            &current,
+            "users",
+            &[LiveMonitorChangeType::Insert],
+        );
 
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].change_type, LiveMonitorChangeType::Insert);
