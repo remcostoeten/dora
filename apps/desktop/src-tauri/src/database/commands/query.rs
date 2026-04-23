@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     database::{
+        connection_repository::ConnectionRepository,
         services::query::QueryService,
         types::{QueryStatus, StatementInfo},
     },
@@ -21,37 +22,23 @@ pub async fn start_query(
     // SQL Console uses `start_query`; invalidate cached schema when query includes
     // non-read-only statements so schema fetches reflect DDL changes immediately.
     let invalidates_schema = {
-        let parsed = state.connections.get(&connection_id).and_then(|connection_entry| {
-            let connection = connection_entry.value();
-            match &connection.database {
-                crate::database::types::Database::Postgres { .. } => {
-                    crate::database::postgres::parser::parse_statements(query).ok()
-                }
-                crate::database::types::Database::SQLite { .. } => {
-                    crate::database::sqlite::parser::parse_statements(query).ok()
-                }
-                crate::database::types::Database::LibSQL { .. } => {
-                    crate::database::libsql::parser::parse_statements(query).ok()
-                }
-                crate::database::types::Database::MySQL { .. } => {
-                    crate::database::mysql::parser::parse_statements(query).ok()
-                }
-            }
-        });
+        let parsed = state.parse_statements(connection_id, query).ok();
 
         if let Some(statements) = parsed {
             statements.iter().any(|stmt| !stmt.is_read_only)
         } else {
             // Fallback for parser edge-cases: prefer cache invalidation over stale schema.
             let upper = query.to_ascii_uppercase();
-            ["CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "ATTACH", "DETACH"]
-                .iter()
-                .any(|keyword| upper.contains(keyword))
+            [
+                "CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "ATTACH", "DETACH",
+            ]
+            .iter()
+            .any(|keyword| upper.contains(keyword))
         }
     };
 
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -71,7 +58,7 @@ pub async fn fetch_query(
     state: State<'_, AppState>,
 ) -> Result<StatementInfo, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -86,7 +73,7 @@ pub async fn fetch_page(
     state: State<'_, AppState>,
 ) -> Result<Option<serde_json::Value>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -101,7 +88,7 @@ pub async fn get_query_status(
     state: State<'_, AppState>,
 ) -> Result<QueryStatus, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -110,12 +97,9 @@ pub async fn get_query_status(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn get_page_count(
-    query_id: usize,
-    state: State<'_, AppState>,
-) -> Result<usize, Error> {
+pub async fn get_page_count(query_id: usize, state: State<'_, AppState>) -> Result<usize, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -129,7 +113,7 @@ pub async fn get_columns(
     state: State<'_, AppState>,
 ) -> Result<Option<serde_json::Value>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -149,11 +133,19 @@ pub async fn save_query_to_history(
     state: State<'_, AppState>,
 ) -> Result<(), Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.save_query_to_history(connection_id, query, duration_ms, status, row_count, error_message).await
+    svc.save_query_to_history(
+        connection_id,
+        query,
+        duration_ms,
+        status,
+        row_count,
+        error_message,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -164,7 +156,7 @@ pub async fn get_query_history(
     state: State<'_, AppState>,
 ) -> Result<Vec<QueryHistoryEntry>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -180,9 +172,10 @@ pub async fn get_recent_queries(
     state: State<'_, AppState>,
 ) -> Result<Vec<QueryHistoryEntry>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.get_recent_queries(connection_id, limit, status_filter).await
+    svc.get_recent_queries(connection_id, limit, status_filter)
+        .await
 }

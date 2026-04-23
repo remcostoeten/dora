@@ -39,7 +39,8 @@ pub async fn update_connection(
         connections: &state.connections,
         storage: &state.storage,
     };
-    svc.update_connection(conn_id, name, database_info, color).await
+    svc.update_connection(conn_id, name, database_info, color)
+        .await
 }
 
 #[tauri::command]
@@ -68,7 +69,8 @@ pub async fn connect_to_database(
         connections: &state.connections,
         storage: &state.storage,
     };
-    svc.connect_to_database(&monitor, &certificates, connection_id).await
+    svc.connect_to_database(&monitor, &certificates, connection_id)
+        .await
 }
 
 #[tauri::command]
@@ -151,11 +153,12 @@ pub async fn get_connection_history(
     state: State<'_, AppState>,
 ) -> Result<Vec<ConnectionHistoryEntry>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.get_connection_history(db_type_filter, success_filter, limit).await
+    svc.get_connection_history(db_type_filter, success_filter, limit)
+        .await
 }
 
 #[tauri::command]

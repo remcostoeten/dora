@@ -1,22 +1,21 @@
-use std::sync::Arc;
-use anyhow::{Context, anyhow};
-use dashmap::DashMap;
-use tracing::instrument;
-use uuid::Uuid;
-use serde::{Deserialize, Serialize};
+use anyhow::anyhow;
 use base64::Engine;
+use dashmap::DashMap;
 use mysql_async::prelude::Queryable;
 use mysql_async::{Row as MySqlRow, Value as MySqlValue};
+use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tracing::instrument;
+use uuid::Uuid;
 
 use crate::{
     database::{
-        maintenance::{self, SoftDeleteResult, TruncateResult, DumpResult},
-        types::{DatabaseClient, DatabaseConnection, DatabaseSchema},
+        connection_repository::ConnectionRepository,
+        maintenance::{self, DumpResult, SoftDeleteResult, TruncateResult},
+        types::{DatabaseClient, DatabaseSchema},
     },
     error::Error,
 };
-
-use super::metadata::MetadataService;
 
 /// Export format options
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -36,19 +35,20 @@ pub struct MutationResult {
 }
 
 pub struct MutationService<'a> {
-    pub connections: &'a DashMap<Uuid, DatabaseConnection>,
+    pub connection_repo: &'a dyn ConnectionRepository,
     pub schemas: &'a DashMap<Uuid, Arc<DatabaseSchema>>,
 }
 
 impl<'a> MutationService<'a> {
     /// Build a [`WriteAdapter`] for the given connection.
-    fn write_adapter(&self, connection_id: Uuid) -> Result<(crate::database::adapter::BoxedWriteAdapter, Uuid), Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-        let client = connection_entry.value().get_client()?;
-        Ok((crate::database::adapter::write_adapter_from_client(&client), connection_id))
+    fn write_adapter(
+        &self,
+        connection_id: Uuid,
+    ) -> Result<(crate::database::adapter::BoxedWriteAdapter, Uuid), Error> {
+        Ok((
+            self.connection_repo.get_write_adapter(connection_id)?,
+            connection_id,
+        ))
     }
 
     #[instrument(skip(self, primary_key_value, new_value), fields(connection_id = %connection_id, table = %table_name))]
@@ -64,7 +64,14 @@ impl<'a> MutationService<'a> {
     ) -> Result<MutationResult, Error> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter
-            .update_cell(table_name, schema_name, primary_key_column, primary_key_value, column_name, new_value)
+            .update_cell(
+                table_name,
+                schema_name,
+                primary_key_column,
+                primary_key_value,
+                column_name,
+                new_value,
+            )
             .await?;
         self.schemas.remove(&cid);
         Ok(result)
@@ -81,7 +88,12 @@ impl<'a> MutationService<'a> {
     ) -> Result<MutationResult, Error> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter
-            .delete_rows(table_name, schema_name, primary_key_column, primary_key_values)
+            .delete_rows(
+                table_name,
+                schema_name,
+                primary_key_column,
+                primary_key_values,
+            )
             .await?;
         self.schemas.remove(&cid);
         Ok(result)
@@ -96,7 +108,9 @@ impl<'a> MutationService<'a> {
         row_data: serde_json::Map<String, serde_json::Value>,
     ) -> Result<MutationResult, Error> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
-        let result = adapter.insert_row(table_name, schema_name, row_data).await?;
+        let result = adapter
+            .insert_row(table_name, schema_name, row_data)
+            .await?;
         self.schemas.remove(&cid);
         Ok(result)
     }
@@ -111,7 +125,12 @@ impl<'a> MutationService<'a> {
     ) -> Result<MutationResult, Error> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter
-            .duplicate_row(table_name, schema_name, primary_key_column, primary_key_value)
+            .duplicate_row(
+                table_name,
+                schema_name,
+                primary_key_column,
+                primary_key_value,
+            )
             .await?;
         self.schemas.remove(&cid);
         Ok(result)
@@ -125,13 +144,7 @@ impl<'a> MutationService<'a> {
         format: ExportFormat,
         limit: Option<u32>,
     ) -> Result<String, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
+        let client = self.connection_repo.get_client(connection_id)?;
 
         let (query, db_type) = match &client {
             DatabaseClient::Postgres { .. } => {
@@ -151,21 +164,21 @@ impl<'a> MutationService<'a> {
             DatabaseClient::SQLite { .. } => {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
-                    format!("SELECT * FROM \"{}\"{}",  table_name, limit_clause),
+                    format!("SELECT * FROM \"{}\"{}", table_name, limit_clause),
                     "sqlite",
                 )
             }
             DatabaseClient::LibSQL { .. } => {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
-                    format!("SELECT * FROM `{}`{}",  table_name, limit_clause),
+                    format!("SELECT * FROM `{}`{}", table_name, limit_clause),
                     "libsql",
                 )
             }
             DatabaseClient::MySQL { .. } => {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
-                    format!("SELECT * FROM `{}`{}",  table_name, limit_clause),
+                    format!("SELECT * FROM `{}`{}", table_name, limit_clause),
                     "mysql",
                 )
             }
@@ -245,7 +258,9 @@ impl<'a> MutationService<'a> {
                     let values: Vec<String> = row
                         .iter()
                         .map(|v| match v {
-                            serde_json::Value::String(s) => format!("\"{}\"", s.replace("\"", "\"\"")),
+                            serde_json::Value::String(s) => {
+                                format!("\"{}\"", s.replace("\"", "\"\""))
+                            }
                             serde_json::Value::Null => String::new(),
                             other => other.to_string(),
                         })
@@ -273,25 +288,43 @@ impl<'a> MutationService<'a> {
         let resolved_col = if let Some(col) = soft_delete_column {
             Some(col)
         } else {
-            let metadata_svc = MetadataService {
-                connections: self.connections,
-                schemas: self.schemas,
+            let schema = if let Some(schema) = self.schemas.get(&connection_id) {
+                schema.clone()
+            } else {
+                let schema = Arc::new(
+                    self.connection_repo
+                        .get_read_adapter(connection_id)?
+                        .get_schema()
+                        .await?,
+                );
+                self.schemas.insert(connection_id, schema.clone());
+                schema
             };
-            let schema = metadata_svc.get_database_schema(connection_id).await?;
-            let table = schema.tables.iter()
+            let table = schema
+                .tables
+                .iter()
                 .find(|t| t.name == table_name)
                 .ok_or_else(|| Error::Any(anyhow!("Table not found: {}", table_name)))?;
 
             let columns: Vec<String> = table.columns.iter().map(|c| c.name.clone()).collect();
-            Some(maintenance::find_soft_delete_column(&columns)
-                .ok_or_else(|| Error::Any(anyhow!(
-                    "No soft delete column found. Expected: deleted_at, is_deleted, or similar"
-                )))?)
+            Some(
+                maintenance::find_soft_delete_column(&columns).ok_or_else(|| {
+                    Error::Any(anyhow!(
+                        "No soft delete column found. Expected: deleted_at, is_deleted, or similar"
+                    ))
+                })?,
+            )
         };
 
         let (adapter, _) = self.write_adapter(connection_id)?;
         adapter
-            .soft_delete_rows(table_name, schema_name, primary_key_column, primary_key_values, resolved_col)
+            .soft_delete_rows(
+                table_name,
+                schema_name,
+                primary_key_column,
+                primary_key_values,
+                resolved_col,
+            )
             .await
     }
 
@@ -306,7 +339,13 @@ impl<'a> MutationService<'a> {
     ) -> Result<MutationResult, Error> {
         let (adapter, _) = self.write_adapter(connection_id)?;
         adapter
-            .undo_soft_delete(table_name, schema_name, primary_key_column, primary_key_values, soft_delete_column)
+            .undo_soft_delete(
+                table_name,
+                schema_name,
+                primary_key_column,
+                primary_key_values,
+                soft_delete_column,
+            )
             .await
     }
 
@@ -318,7 +357,9 @@ impl<'a> MutationService<'a> {
         cascade: Option<bool>,
     ) -> Result<TruncateResult, Error> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
-        let result = adapter.truncate_table(table_name, schema_name, cascade).await?;
+        let result = adapter
+            .truncate_table(table_name, schema_name, cascade)
+            .await?;
         self.schemas.remove(&cid);
         Ok(result)
     }
@@ -370,8 +411,9 @@ pub(crate) fn qualified_table_name(table_name: &str, schema_name: Option<&str>) 
     }
 }
 
-
-pub fn json_to_pg_param(value: &serde_json::Value) -> Box<dyn tokio_postgres::types::ToSql + Sync + Send> {
+pub fn json_to_pg_param(
+    value: &serde_json::Value,
+) -> Box<dyn tokio_postgres::types::ToSql + Sync + Send> {
     match value {
         serde_json::Value::Null => Box::new(Option::<String>::None),
         serde_json::Value::Bool(b) => Box::new(*b),
@@ -493,7 +535,9 @@ fn fetch_sqlite_data(
     query: &str,
 ) -> Result<(Vec<String>, Vec<Vec<serde_json::Value>>), Error> {
     if let DatabaseClient::SQLite { connection } = client {
-        let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
+        let conn = connection
+            .lock()
+            .map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
         let mut stmt = conn.prepare(query)?;
         let columns: Vec<String> = stmt
             .column_names()
@@ -531,7 +575,11 @@ async fn fetch_libsql_data(
             .collect();
 
         let mut data = Vec::new();
-        while let Some(row) = rows.next().await.map_err(|e| Error::Any(anyhow!("LibSQL fetch failed: {}", e)))? {
+        while let Some(row) = rows
+            .next()
+            .await
+            .map_err(|e| Error::Any(anyhow!("LibSQL fetch failed: {}", e)))?
+        {
             let values: Vec<serde_json::Value> = (0..columns.len())
                 .map(|i| libsql_value_to_json(&row, i as i32))
                 .collect();
@@ -592,23 +640,35 @@ pub(crate) fn pg_value_to_json(row: &tokio_postgres::Row, idx: usize) -> serde_j
     let col_type = col.type_();
 
     match *col_type {
-        Type::BOOL => row.get::<_, Option<bool>>(idx).map_or(serde_json::Value::Null, |v| serde_json::Value::Bool(v)),
-        Type::INT2 => row.get::<_, Option<i16>>(idx).map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
-        Type::INT4 => row.get::<_, Option<i32>>(idx).map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
-        Type::INT8 => row.get::<_, Option<i64>>(idx).map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
-        Type::FLOAT4 => row.get::<_, Option<f32>>(idx).map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
-        Type::FLOAT8 => row.get::<_, Option<f64>>(idx).map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
-        Type::TEXT | Type::VARCHAR | Type::CHAR | Type::NAME => {
-            row.get::<_, Option<String>>(idx).map_or(serde_json::Value::Null, serde_json::Value::String)
-        }
-        Type::BYTEA => {
-            row.get::<_, Option<Vec<u8>>>(idx).map_or(serde_json::Value::Null, |v| {
+        Type::BOOL => row
+            .get::<_, Option<bool>>(idx)
+            .map_or(serde_json::Value::Null, |v| serde_json::Value::Bool(v)),
+        Type::INT2 => row
+            .get::<_, Option<i16>>(idx)
+            .map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
+        Type::INT4 => row
+            .get::<_, Option<i32>>(idx)
+            .map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
+        Type::INT8 => row
+            .get::<_, Option<i64>>(idx)
+            .map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
+        Type::FLOAT4 => row
+            .get::<_, Option<f32>>(idx)
+            .map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
+        Type::FLOAT8 => row
+            .get::<_, Option<f64>>(idx)
+            .map_or(serde_json::Value::Null, |v| serde_json::json!(v)),
+        Type::TEXT | Type::VARCHAR | Type::CHAR | Type::NAME => row
+            .get::<_, Option<String>>(idx)
+            .map_or(serde_json::Value::Null, serde_json::Value::String),
+        Type::BYTEA => row
+            .get::<_, Option<Vec<u8>>>(idx)
+            .map_or(serde_json::Value::Null, |v| {
                 serde_json::Value::String(base64::engine::general_purpose::STANDARD.encode(&v))
-            })
-        }
-        Type::JSON | Type::JSONB => {
-            row.get::<_, Option<serde_json::Value>>(idx).unwrap_or(serde_json::Value::Null)
-        }
+            }),
+        Type::JSON | Type::JSONB => row
+            .get::<_, Option<serde_json::Value>>(idx)
+            .unwrap_or(serde_json::Value::Null),
         _ => {
             // Try as string
             row.try_get::<_, Option<String>>(idx)
@@ -627,9 +687,7 @@ pub(crate) fn sqlite_value_to_json(row: &rusqlite::Row, idx: usize) -> serde_jso
         Ok(ValueRef::Null) => serde_json::Value::Null,
         Ok(ValueRef::Integer(i)) => serde_json::json!(i),
         Ok(ValueRef::Real(f)) => serde_json::json!(f),
-        Ok(ValueRef::Text(t)) => {
-            serde_json::Value::String(String::from_utf8_lossy(t).to_string())
-        }
+        Ok(ValueRef::Text(t)) => serde_json::Value::String(String::from_utf8_lossy(t).to_string()),
         Ok(ValueRef::Blob(b)) => {
             serde_json::Value::String(base64::engine::general_purpose::STANDARD.encode(b))
         }
@@ -655,27 +713,31 @@ pub(crate) fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
         MySqlValue::NULL => serde_json::Value::Null,
         MySqlValue::Bytes(bytes) => match String::from_utf8(bytes) {
             Ok(text) => serde_json::Value::String(text),
-            Err(err) => {
-                serde_json::Value::String(base64::engine::general_purpose::STANDARD.encode(err.into_bytes()))
-            }
+            Err(err) => serde_json::Value::String(
+                base64::engine::general_purpose::STANDARD.encode(err.into_bytes()),
+            ),
         },
         MySqlValue::Int(value) => serde_json::Value::from(value),
         MySqlValue::UInt(value) => serde_json::Value::from(value),
         MySqlValue::Float(value) => serde_json::Value::from(value),
         MySqlValue::Double(value) => serde_json::Value::from(value),
-        MySqlValue::Date(year, month, day, hour, minute, second, micros) => serde_json::Value::from(format!(
-            "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:06}",
-            year, month, day, hour, minute, second, micros
-        )),
-        MySqlValue::Time(neg, days, hours, minutes, seconds, micros) => serde_json::Value::from(format!(
-            "{}{} {:02}:{:02}:{:02}.{:06}",
-            if neg { "-" } else { "" },
-            days,
-            hours,
-            minutes,
-            seconds,
-            micros
-        )),
+        MySqlValue::Date(year, month, day, hour, minute, second, micros) => {
+            serde_json::Value::from(format!(
+                "{:04}-{:02}-{:02} {:02}:{:02}:{:02}.{:06}",
+                year, month, day, hour, minute, second, micros
+            ))
+        }
+        MySqlValue::Time(neg, days, hours, minutes, seconds, micros) => {
+            serde_json::Value::from(format!(
+                "{}{} {:02}:{:02}:{:02}.{:06}",
+                if neg { "-" } else { "" },
+                days,
+                hours,
+                minutes,
+                seconds,
+                micros
+            ))
+        }
     }
 }
 

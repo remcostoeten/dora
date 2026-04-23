@@ -1,12 +1,7 @@
 use tauri::State;
 use uuid::Uuid;
 
-use crate::{
-    database::services::query::QueryService,
-    error::Error,
-    storage::SavedQuery,
-    AppState,
-};
+use crate::{database::services::query::QueryService, error::Error, storage::SavedQuery, AppState};
 
 #[tauri::command]
 #[specta::specta]
@@ -18,11 +13,12 @@ pub async fn save_script(
     state: State<'_, AppState>,
 ) -> Result<i64, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.save_script(name, content, connection_id, description).await
+    svc.save_script(name, content, connection_id, description)
+        .await
 }
 
 #[tauri::command]
@@ -36,11 +32,12 @@ pub async fn update_script(
     state: State<'_, AppState>,
 ) -> Result<(), Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.update_script(id, name, content, connection_id, description).await
+    svc.update_script(id, name, content, connection_id, description)
+        .await
 }
 
 #[tauri::command]
@@ -50,7 +47,7 @@ pub async fn get_scripts(
     state: State<'_, AppState>,
 ) -> Result<Vec<SavedQuery>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -61,7 +58,7 @@ pub async fn get_scripts(
 #[specta::specta]
 pub async fn delete_script(id: i64, state: State<'_, AppState>) -> Result<(), Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
