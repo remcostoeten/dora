@@ -6,7 +6,7 @@ use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use base64::Engine;
 use mysql_async::prelude::Queryable;
-use mysql_async::{Params, Row as MySqlRow, Value as MySqlValue};
+use mysql_async::{Row as MySqlRow, Value as MySqlValue};
 
 use crate::{
     database::{
@@ -41,6 +41,16 @@ pub struct MutationService<'a> {
 }
 
 impl<'a> MutationService<'a> {
+    /// Build a [`WriteAdapter`] for the given connection.
+    fn write_adapter(&self, connection_id: Uuid) -> Result<(crate::database::adapter::BoxedWriteAdapter, Uuid), Error> {
+        let connection_entry = self
+            .connections
+            .get(&connection_id)
+            .with_context(|| format!("Connection not found: {}", connection_id))?;
+        let client = connection_entry.value().get_client()?;
+        Ok((crate::database::adapter::write_adapter_from_client(&client), connection_id))
+    }
+
     #[instrument(skip(self, primary_key_value, new_value), fields(connection_id = %connection_id, table = %table_name))]
     pub async fn update_cell(
         &self,
@@ -52,68 +62,12 @@ impl<'a> MutationService<'a> {
         column_name: String,
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        // Build the UPDATE query
-        let (query, db_type) = match &client {
-            DatabaseClient::Postgres { .. } => {
-                (
-                    format!(
-                        "UPDATE {} SET \"{column_name}\" = $1 WHERE \"{primary_key_column}\" = $2",
-                        qualified_table_name(&table_name, schema_name.as_deref())
-                    ),
-                    "postgres",
-                )
-            }
-            DatabaseClient::SQLite { .. } => {
-                let query = format!(
-                    "UPDATE \"{table_name}\" SET \"{column_name}\" = ? WHERE \"{primary_key_column}\" = ?"
-                );
-                (query, "sqlite")
-            }
-            DatabaseClient::LibSQL { .. } => {
-                let query = format!(
-                    "UPDATE `{table_name}` SET `{column_name}` = ? WHERE `{primary_key_column}` = ?"
-                );
-                (query, "libsql")
-            }
-            DatabaseClient::MySQL { .. } => {
-                let query = format!(
-                    "UPDATE `{table_name}` SET `{column_name}` = ? WHERE `{primary_key_column}` = ?"
-                );
-                (query, "mysql")
-            }
-        };
-
-        // Execute the query
-        let result = match db_type {
-            "postgres" => {
-                execute_postgres_update(&client, &query, &new_value, &primary_key_value).await?
-            }
-            "sqlite" => execute_sqlite_update(&client, &query, &new_value, &primary_key_value)?,
-            "libsql" => execute_libsql_update(&client, &query, &new_value, &primary_key_value).await?,
-            "mysql" => execute_mysql_update(&client, &query, &new_value, &primary_key_value).await?,
-            _ => unreachable!(),
-        };
-
-        // Invalidate cached schema as data changed
-        self.schemas.remove(&connection_id);
-
-        Ok(MutationResult {
-            success: result > 0,
-            affected_rows: result,
-            message: if result > 0 {
-                Some(format!("Updated {} row(s)", result))
-            } else {
-                Some("No rows were updated".to_string())
-            },
-        })
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter
+            .update_cell(table_name, schema_name, primary_key_column, primary_key_value, column_name, new_value)
+            .await?;
+        self.schemas.remove(&cid);
+        Ok(result)
     }
 
     #[instrument(skip(self, primary_key_values), fields(connection_id = %connection_id, table = %table_name))]
@@ -125,119 +79,12 @@ impl<'a> MutationService<'a> {
         primary_key_column: String,
         primary_key_values: Vec<serde_json::Value>,
     ) -> Result<MutationResult, Error> {
-        if primary_key_values.is_empty() {
-            return Ok(MutationResult {
-                success: true,
-                affected_rows: 0,
-                message: Some("No rows to delete".to_string()),
-            });
-        }
-
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        let total_deleted = match &client {
-            DatabaseClient::Postgres { client } => {
-                let schema_prefix = schema_name
-                    .as_ref()
-                    .map(|s| format!("\"{}\".", s))
-                    .unwrap_or_default();
-
-                let placeholders: Vec<String> = (1..=primary_key_values.len())
-                    .map(|i| format!("${}", i))
-                    .collect();
-                let query = format!(
-                    "DELETE FROM {}\"{table_name}\" WHERE \"{primary_key_column}\" IN ({})",
-                    schema_prefix,
-                    placeholders.join(", ")
-                );
-
-                let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
-                    primary_key_values
-                        .iter()
-                        .map(|v| json_to_pg_param(v))
-                        .collect();
-                let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
-                    .iter()
-                    .map(|p| p.as_ref() as &(dyn tokio_postgres::types::ToSql + Sync))
-                    .collect();
-
-                client.execute(&query, &params_ref[..]).await? as usize
-            }
-            DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-
-                let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
-                let query = format!(
-                    "DELETE FROM \"{table_name}\" WHERE \"{primary_key_column}\" IN ({})",
-                    placeholders.join(", ")
-                );
-
-                let params: Vec<rusqlite::types::Value> = primary_key_values
-                    .iter()
-                    .map(json_to_sqlite_value)
-                    .collect();
-                let params_ref: Vec<&dyn rusqlite::ToSql> =
-                    params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
-
-                conn.execute(&query, params_ref.as_slice())? as usize
-            }
-            DatabaseClient::LibSQL { connection } => {
-                let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
-                let query = format!(
-                    "DELETE FROM `{table_name}` WHERE `{primary_key_column}` IN ({})",
-                    placeholders.join(", ")
-                );
-
-                let params: Vec<libsql::Value> = primary_key_values
-                    .iter()
-                    .map(json_to_libsql_value)
-                    .collect();
-
-                connection
-                    .execute(&query, params)
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("LibSQL delete failed: {}", e)))?
-                    as usize
-            }
-            DatabaseClient::MySQL { pool } => {
-                let qualified_table = mysql_qualified_table_name(&table_name, schema_name.as_deref());
-                let placeholders: Vec<&str> = primary_key_values.iter().map(|_| "?").collect();
-                let query = format!(
-                    "DELETE FROM {} WHERE {} IN ({})",
-                    qualified_table,
-                    mysql_quote_identifier(&primary_key_column),
-                    placeholders.join(", ")
-                );
-
-                let params: Vec<MySqlValue> = primary_key_values
-                    .iter()
-                    .map(json_to_mysql_value)
-                    .collect();
-
-                let mut conn = pool
-                    .get_conn()
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
-                conn.exec_drop(query, Params::Positional(params))
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL delete failed: {}", e)))?;
-                conn.affected_rows() as usize
-            }
-        };
-
-        self.schemas.remove(&connection_id);
-
-        Ok(MutationResult {
-            success: total_deleted > 0,
-            affected_rows: total_deleted,
-            message: Some(format!("Deleted {} row(s)", total_deleted)),
-        })
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter
+            .delete_rows(table_name, schema_name, primary_key_column, primary_key_values)
+            .await?;
+        self.schemas.remove(&cid);
+        Ok(result)
     }
 
     #[instrument(skip(self, row_data), fields(connection_id = %connection_id, table = %table_name))]
@@ -248,162 +95,10 @@ impl<'a> MutationService<'a> {
         schema_name: Option<String>,
         row_data: serde_json::Map<String, serde_json::Value>,
     ) -> Result<MutationResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        if row_data.is_empty() {
-             return Ok(MutationResult {
-                success: false,
-                affected_rows: 0,
-                message: Some("No data to insert".to_string()),
-            });
-        }
-
-        // Optimization: Use references to avoid cloning keys/values into new Vecs
-        // We still need to collect keys for the query string since we iterate twice (cols then values)
-        // But for values we can map directly to params.
-        
-        let columns: Vec<&String> = row_data.keys().collect();
-        let values_len = row_data.len();
-
-        let (affected_rows, message) = match &client {
-             DatabaseClient::Postgres { client } => {
-                let schema_prefix = schema_name
-                    .as_ref()
-                    .map(|s| format!("\"{}\".", s))
-                    .unwrap_or_default();
-                
-                let col_names: String = columns.iter()
-                    .map(|c| format!("\"{}\"", c))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                
-                let placeholders: String = (1..=values_len)
-                    .map(|i| format!("${}", i))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                
-                let query = format!(
-                    "INSERT INTO {}\"{}\" ({}) VALUES ({})",
-                    schema_prefix, table_name, col_names, placeholders
-                );
-
-                let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = row_data
-                    .values()
-                    .map(|v| json_to_pg_param(v))
-                    .collect();
-                 let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
-                    .iter()
-                    .map(|p| p.as_ref() as &(dyn tokio_postgres::types::ToSql + Sync))
-                    .collect();
-
-                let rows = client.execute(&query, &params_ref[..]).await?;
-                (rows as usize, format!("Inserted {} row(s)", rows))
-            }
-            DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-                let col_names: String = columns.iter()
-                    .map(|c| format!("\"{}\"", c))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                
-                let placeholders: String = std::iter::repeat("?")
-                    .take(values_len)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-
-                let query = format!(
-                     "INSERT INTO \"{}\" ({}) VALUES ({})",
-                     table_name, col_names, placeholders
-                );
-
-                let params: Vec<rusqlite::types::Value> = row_data
-                    .values()
-                    .map(json_to_sqlite_value)
-                    .collect();
-                let params_ref: Vec<&dyn rusqlite::ToSql> =
-                    params.iter().map(|p| p as &dyn rusqlite::ToSql).collect();
-                
-                conn.execute(&query, params_ref.as_slice())?;
-                (1, "Inserted 1 row".to_string())
-            }
-            DatabaseClient::LibSQL { connection } => {
-                 let col_names: String = columns.iter()
-                    .map(|c| format!("\"{}\"", c))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                
-                let placeholders: String = std::iter::repeat("?")
-                     .take(values_len)
-                     .collect::<Vec<_>>()
-                     .join(", ");
-
-                let query = format!(
-                     "INSERT INTO \"{}\" ({}) VALUES ({})",
-                     table_name, col_names, placeholders
-                );
-
-                let params: Vec<libsql::Value> = row_data
-                     .values()
-                     .map(json_to_libsql_value)
-                     .collect();
-                
-                connection.execute(&query, params).await
-                    .map_err(|e| Error::Any(anyhow!("LibSQL insert failed: {}", e)))?;
-                (1, "Inserted 1 row".to_string())
-            }
-            DatabaseClient::MySQL { pool } => {
-                let qualified_table = mysql_qualified_table_name(&table_name, schema_name.as_deref());
-                let col_names: String = columns
-                    .iter()
-                    .map(|c| mysql_quote_identifier(c))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let placeholders: String = std::iter::repeat_n("?", values_len)
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                let query = format!(
-                    "INSERT INTO {} ({}) VALUES ({})",
-                    qualified_table, col_names, placeholders
-                );
-
-                let params: Vec<MySqlValue> = columns
-                    .iter()
-                    .filter_map(|column| row_data.get(*column))
-                    .map(json_to_mysql_value)
-                    .collect();
-
-                let mut conn = pool
-                    .get_conn()
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
-                conn.exec_drop(query, Params::Positional(params))
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL insert failed: {}", e)))?;
-                let rows = conn.affected_rows() as usize;
-                (
-                    rows,
-                    if rows == 1 {
-                        "Inserted 1 row".to_string()
-                    } else {
-                        format!("Inserted {} row(s)", rows)
-                    },
-                )
-            }
-        };
-
-        self.schemas.remove(&connection_id);
-
-        Ok(MutationResult {
-            success: true,
-            affected_rows,
-            message: Some(message),
-        })
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter.insert_row(table_name, schema_name, row_data).await?;
+        self.schemas.remove(&cid);
+        Ok(result)
     }
 
     pub async fn duplicate_row(
@@ -414,145 +109,12 @@ impl<'a> MutationService<'a> {
         primary_key_column: String,
         primary_key_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        let mut row_data = match &client {
-            DatabaseClient::Postgres { client } => {
-                let query = format!(
-                    "SELECT * FROM {} WHERE \"{primary_key_column}\" = $1 LIMIT 1",
-                    qualified_table_name(&table_name, schema_name.as_deref())
-                );
-                let pk_param = json_to_pg_param(&primary_key_value);
-                let row = client
-                    .query_opt(&query, &[pk_param.as_ref()])
-                    .await?
-                    .ok_or_else(|| {
-                        Error::Any(anyhow!(
-                            "No row found in {} where {} matches the provided primary key",
-                            qualified_table_name(&table_name, schema_name.as_deref()),
-                            primary_key_column
-                        ))
-                    })?;
-
-                let mut data = serde_json::Map::new();
-                for (idx, column) in row.columns().iter().enumerate() {
-                    data.insert(column.name().to_string(), pg_value_to_json(&row, idx));
-                }
-                data
-            }
-            DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-                let query = format!(
-                    "SELECT * FROM \"{table_name}\" WHERE \"{primary_key_column}\" = ? LIMIT 1"
-                );
-                let pk_value = json_to_sqlite_value(&primary_key_value);
-                let mut stmt = conn.prepare(&query)?;
-                let column_names: Vec<String> = stmt
-                    .column_names()
-                    .into_iter()
-                    .map(|name| name.to_string())
-                    .collect();
-                let row_data = stmt.query_row([&pk_value as &dyn rusqlite::ToSql], |row| {
-                    let mut data = serde_json::Map::new();
-                    for (idx, column_name) in column_names.iter().enumerate() {
-                        data.insert(column_name.clone(), sqlite_value_to_json(row, idx));
-                    }
-                    Ok(data)
-                });
-
-                match row_data {
-                    Ok(data) => data,
-                    Err(rusqlite::Error::QueryReturnedNoRows) => {
-                        return Err(Error::Any(anyhow!(
-                            "No row found in \"{table_name}\" where {primary_key_column} matches the provided primary key"
-                        )));
-                    }
-                    Err(error) => return Err(error.into()),
-                }
-            }
-            DatabaseClient::LibSQL { connection } => {
-                let query = format!(
-                    "SELECT * FROM \"{table_name}\" WHERE \"{primary_key_column}\" = ? LIMIT 1"
-                );
-                let params = vec![json_to_libsql_value(&primary_key_value)];
-                let mut rows = connection
-                    .query(&query, params)
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("LibSQL duplicate lookup failed: {}", e)))?;
-
-                let column_names: Vec<String> = (0..rows.column_count())
-                    .filter_map(|idx| rows.column_name(idx as i32).map(|name| name.to_string()))
-                    .collect();
-
-                let row = rows
-                    .next()
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("LibSQL duplicate fetch failed: {}", e)))?
-                    .ok_or_else(|| {
-                        Error::Any(anyhow!(
-                            "No row found in \"{table_name}\" where {primary_key_column} matches the provided primary key"
-                        ))
-                    })?;
-
-                let mut data = serde_json::Map::new();
-                for (idx, column_name) in column_names.iter().enumerate() {
-                    data.insert(column_name.clone(), libsql_value_to_json(&row, idx as i32));
-                }
-                data
-            }
-            DatabaseClient::MySQL { pool } => {
-                let qualified_table = mysql_qualified_table_name(&table_name, schema_name.as_deref());
-                let query = format!(
-                    "SELECT * FROM {} WHERE {} = ? LIMIT 1",
-                    qualified_table,
-                    mysql_quote_identifier(&primary_key_column)
-                );
-                let params = Params::Positional(vec![json_to_mysql_value(&primary_key_value)]);
-                let mut conn = pool
-                    .get_conn()
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
-                let row: MySqlRow = conn
-                    .exec_first(query, params)
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL duplicate lookup failed: {}", e)))?
-                    .ok_or_else(|| {
-                        Error::Any(anyhow!(
-                            "No row found in {} where {} matches the provided primary key",
-                            qualified_table,
-                            primary_key_column
-                        ))
-                    })?;
-
-                let mut data = serde_json::Map::new();
-                for (idx, column) in row.columns_ref().iter().enumerate() {
-                    let value = row
-                        .as_ref(idx)
-                        .cloned()
-                        .map(mysql_value_to_json)
-                        .unwrap_or(serde_json::Value::Null);
-                    data.insert(column.name_str().to_string(), value);
-                }
-                data
-            }
-        };
-
-        row_data.remove(&primary_key_column);
-
-        if row_data.is_empty() {
-            return Err(Error::Any(anyhow!(
-                "Cannot duplicate row in {} because only the primary key column is available",
-                qualified_table_name(&table_name, schema_name.as_deref())
-            )));
-        }
-
-        self.insert_row(connection_id, table_name, schema_name, row_data).await
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter
+            .duplicate_row(table_name, schema_name, primary_key_column, primary_key_value)
+            .await?;
+        self.schemas.remove(&cid);
+        Ok(result)
     }
 
     pub async fn export_table(
@@ -707,16 +269,9 @@ impl<'a> MutationService<'a> {
         primary_key_values: Vec<serde_json::Value>,
         soft_delete_column: Option<String>,
     ) -> Result<SoftDeleteResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        let soft_del_col = if let Some(col) = soft_delete_column {
-            col
+        // Resolve the soft-delete column before adapter dispatch
+        let resolved_col = if let Some(col) = soft_delete_column {
+            Some(col)
         } else {
             let metadata_svc = MetadataService {
                 connections: self.connections,
@@ -726,55 +281,18 @@ impl<'a> MutationService<'a> {
             let table = schema.tables.iter()
                 .find(|t| t.name == table_name)
                 .ok_or_else(|| Error::Any(anyhow!("Table not found: {}", table_name)))?;
-            
+
             let columns: Vec<String> = table.columns.iter().map(|c| c.name.clone()).collect();
-            maintenance::find_soft_delete_column(&columns)
+            Some(maintenance::find_soft_delete_column(&columns)
                 .ok_or_else(|| Error::Any(anyhow!(
                     "No soft delete column found. Expected: deleted_at, is_deleted, or similar"
-                )))?
+                )))?)
         };
 
-        match &client {
-            DatabaseClient::Postgres { client } => {
-                maintenance::soft_delete_postgres(
-                    client,
-                    &table_name,
-                    schema_name.as_deref(),
-                    &primary_key_column,
-                    &primary_key_values,
-                    &soft_del_col,
-                ).await
-            }
-            DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-                maintenance::soft_delete_sqlite(
-                    &conn,
-                    &table_name,
-                    &primary_key_column,
-                    &primary_key_values,
-                    &soft_del_col,
-                )
-            }
-            DatabaseClient::LibSQL { connection } => {
-                maintenance::soft_delete_libsql(
-                    connection,
-                    &table_name,
-                    &primary_key_column,
-                    &primary_key_values,
-                    &soft_del_col,
-                ).await
-            }
-            DatabaseClient::MySQL { pool } => {
-                maintenance::soft_delete_mysql(
-                    pool,
-                    &table_name,
-                    schema_name.as_deref(),
-                    &primary_key_column,
-                    &primary_key_values,
-                    &soft_del_col,
-                ).await
-            }
-        }
+        let (adapter, _) = self.write_adapter(connection_id)?;
+        adapter
+            .soft_delete_rows(table_name, schema_name, primary_key_column, primary_key_values, resolved_col)
+            .await
     }
 
     pub async fn undo_soft_delete(
@@ -786,35 +304,10 @@ impl<'a> MutationService<'a> {
         primary_key_values: Vec<serde_json::Value>,
         soft_delete_column: String,
     ) -> Result<MutationResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        let affected = match &client {
-            DatabaseClient::Postgres { client } => {
-                maintenance::undo_soft_delete_postgres(
-                    client,
-                    &table_name,
-                    schema_name.as_deref(),
-                    &primary_key_column,
-                    &primary_key_values,
-                    &soft_delete_column,
-                ).await?
-            }
-            _ => {
-                return Err(Error::Any(anyhow!("Undo soft delete not implemented for this database type")));
-            }
-        };
-
-        Ok(MutationResult {
-            success: affected > 0,
-            affected_rows: affected,
-            message: Some(format!("Restored {} row(s)", affected)),
-        })
+        let (adapter, _) = self.write_adapter(connection_id)?;
+        adapter
+            .undo_soft_delete(table_name, schema_name, primary_key_column, primary_key_values, soft_delete_column)
+            .await
     }
 
     pub async fn truncate_table(
@@ -824,41 +317,9 @@ impl<'a> MutationService<'a> {
         schema_name: Option<String>,
         cascade: Option<bool>,
     ) -> Result<TruncateResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        let result = match &client {
-            DatabaseClient::Postgres { client } => {
-                maintenance::truncate_table_postgres(
-                    client,
-                    &table_name,
-                    schema_name.as_deref(),
-                    cascade.unwrap_or(false),
-                ).await?
-            }
-            DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-                maintenance::truncate_table_sqlite(&conn, &table_name)?
-            }
-            DatabaseClient::LibSQL { connection } => {
-                maintenance::truncate_table_libsql(connection, &table_name).await?
-            }
-            DatabaseClient::MySQL { pool } => {
-                maintenance::truncate_table_mysql(
-                    pool,
-                    &table_name,
-                    schema_name.as_deref(),
-                ).await?
-            }
-        };
-
-        self.schemas.remove(&connection_id);
-
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter.truncate_table(table_name, schema_name, cascade).await?;
+        self.schemas.remove(&cid);
         Ok(result)
     }
 
@@ -873,32 +334,9 @@ impl<'a> MutationService<'a> {
                 "Truncate database requires explicit confirmation (confirm: true)"
             )));
         }
-
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        let result = match &client {
-            DatabaseClient::Postgres { client } => {
-                maintenance::truncate_database_postgres(
-                    client,
-                    schema_name.as_deref(),
-                    confirm,
-                ).await?
-            }
-            _ => {
-                return Err(Error::Any(anyhow!(
-                    "Truncate database not implemented for this database type"
-                )));
-            }
-        };
-
-        self.schemas.remove(&connection_id);
-
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter.truncate_database(schema_name, confirm).await?;
+        self.schemas.remove(&cid);
         Ok(result)
     }
 
@@ -907,47 +345,8 @@ impl<'a> MutationService<'a> {
         connection_id: Uuid,
         output_path: String,
     ) -> Result<DumpResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        let metadata_svc = MetadataService {
-            connections: self.connections,
-            schemas: self.schemas,
-        };
-        let schema = metadata_svc.get_database_schema(connection_id).await?;
-
-        match &client {
-            DatabaseClient::Postgres { client } => {
-                maintenance::dump_database_postgres(
-                    client,
-                    &schema,
-                    &output_path,
-                ).await
-            }
-            DatabaseClient::SQLite { connection } => {
-                let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-                maintenance::dump_database_sqlite(&conn, &output_path)
-            }
-            DatabaseClient::LibSQL { connection } => {
-                maintenance::dump_database_libsql(
-                    connection,
-                    &schema,
-                    &output_path,
-                ).await
-            }
-            DatabaseClient::MySQL { pool } => {
-                maintenance::dump_database_mysql(
-                    pool,
-                    &schema,
-                    &output_path,
-                ).await
-            }
-        }
+        let (adapter, _) = self.write_adapter(connection_id)?;
+        adapter.dump_database(output_path).await
     }
 
     #[instrument(skip(self, statements), fields(connection_id = %connection_id, count = statements.len()))]
@@ -956,192 +355,21 @@ impl<'a> MutationService<'a> {
         connection_id: Uuid,
         statements: Vec<String>,
     ) -> Result<MutationResult, Error> {
-        let connection_entry = self
-            .connections
-            .get(&connection_id)
-            .with_context(|| format!("Connection not found: {}", connection_id))?;
-
-        let connection = connection_entry.value();
-        let client = connection.get_client()?;
-
-        if statements.is_empty() {
-            return Ok(MutationResult {
-                success: true,
-                affected_rows: 0,
-                message: Some("No statements to execute".to_string()),
-            });
-        }
-
-        let mut affected_rows = 0;
-
-        match &client {
-            DatabaseClient::Postgres { client } => {
-                 // Use explicit BEGIN/COMMIT since Arc<Client> doesn't support transaction()
-                 client.execute("BEGIN", &[]).await?;
-                 let result: Result<(), Error> = async {
-                     for stmt in &statements {
-                         let rows = client.execute(stmt.as_str(), &[]).await?;
-                         affected_rows += rows as usize;
-                     }
-                     Ok(())
-                 }.await;
-                 
-                 if result.is_ok() {
-                     client.execute("COMMIT", &[]).await?;
-                 } else {
-                     let _ = client.execute("ROLLBACK", &[]).await;
-                     result?;
-                 }
-            }
-            DatabaseClient::SQLite { connection } => {
-                let mut conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-                let tx = conn.transaction()?;
-                for stmt in &statements {
-                    let rows = tx.execute(stmt.as_str(), [])?;
-                    affected_rows += rows;
-                }
-                tx.commit()?;
-            }
-            DatabaseClient::LibSQL { connection } => {
-                for stmt in &statements {
-                    let res = connection.execute(stmt, ()).await
-                        .map_err(|e| Error::Any(anyhow!("LibSQL execution failed: {}", e)))?;
-                    affected_rows += res as usize;
-                }
-            }
-            DatabaseClient::MySQL { pool } => {
-                let mut conn = pool
-                    .get_conn()
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
-                conn.query_drop("START TRANSACTION")
-                    .await
-                    .map_err(|e| Error::Any(anyhow!("MySQL transaction start failed: {}", e)))?;
-
-                let result: Result<(), Error> = async {
-                    for stmt in &statements {
-                        conn.query_drop(stmt.as_str())
-                            .await
-                            .map_err(|e| Error::Any(anyhow!("MySQL execution failed: {}", e)))?;
-                        affected_rows += conn.affected_rows() as usize;
-                    }
-                    Ok(())
-                }.await;
-
-                if result.is_ok() {
-                    conn.query_drop("COMMIT")
-                        .await
-                        .map_err(|e| Error::Any(anyhow!("MySQL commit failed: {}", e)))?;
-                } else {
-                    let _ = conn.query_drop("ROLLBACK").await;
-                    result?;
-                }
-            }
-        };
-
-        self.schemas.remove(&connection_id);
-
-        Ok(MutationResult {
-            success: true,
-            affected_rows,
-            message: Some(format!("Executed {} statements", statements.len())),
-        })
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter.execute_batch(statements).await?;
+        self.schemas.remove(&cid);
+        Ok(result)
     }
 }
 
 // Helpers
-fn qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
+pub(crate) fn qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
     match schema_name {
         Some(schema_name) => format!("\"{schema_name}\".\"{table_name}\""),
         None => format!("\"{table_name}\""),
     }
 }
 
-async fn execute_postgres_update(
-    client: &DatabaseClient,
-    query: &str,
-    new_value: &serde_json::Value,
-    pk_value: &serde_json::Value,
-) -> Result<usize, Error> {
-    if let DatabaseClient::Postgres { client } = client {
-        let new_val_param = json_to_pg_param(new_value);
-        let pk_param = json_to_pg_param(pk_value);
-
-        let result = client
-            .execute(query, &[new_val_param.as_ref(), pk_param.as_ref()])
-            .await?;
-        Ok(result as usize)
-    } else {
-        Err(Error::Any(anyhow!("Expected Postgres client")))
-    }
-}
-
-fn execute_sqlite_update(
-    client: &DatabaseClient,
-    query: &str,
-    new_value: &serde_json::Value,
-    pk_value: &serde_json::Value,
-) -> Result<usize, Error> {
-    if let DatabaseClient::SQLite { connection } = client {
-        let conn = connection.lock().map_err(|_| crate::Error::Internal("Mutex poisoned".into()))?;
-        let new_val = json_to_sqlite_value(new_value);
-        let pk_val = json_to_sqlite_value(pk_value);
-
-        let result = conn.execute(
-            query,
-            [
-                &new_val as &dyn rusqlite::ToSql,
-                &pk_val as &dyn rusqlite::ToSql,
-            ],
-        )?;
-        Ok(result)
-    } else {
-        Err(Error::Any(anyhow!("Expected SQLite client")))
-    }
-}
-
-async fn execute_libsql_update(
-    client: &DatabaseClient,
-    query: &str,
-    new_value: &serde_json::Value,
-    pk_value: &serde_json::Value,
-) -> Result<usize, Error> {
-    if let DatabaseClient::LibSQL { connection } = client {
-        let new_val = json_to_libsql_value(new_value);
-        let pk_val = json_to_libsql_value(pk_value);
-
-        let result = connection
-            .execute(query, vec![new_val, pk_val])
-            .await
-            .map_err(|e| Error::Any(anyhow!("LibSQL update failed: {}", e)))?;
-        Ok(result as usize)
-    } else {
-        Err(Error::Any(anyhow!("Expected LibSQL client")))
-    }
-}
-
-async fn execute_mysql_update(
-    client: &DatabaseClient,
-    query: &str,
-    new_value: &serde_json::Value,
-    pk_value: &serde_json::Value,
-) -> Result<usize, Error> {
-    if let DatabaseClient::MySQL { pool } = client {
-        let mut conn = pool
-            .get_conn()
-            .await
-            .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
-        conn.exec_drop(
-            query,
-            Params::Positional(vec![json_to_mysql_value(new_value), json_to_mysql_value(pk_value)]),
-        )
-        .await
-        .map_err(|e| Error::Any(anyhow!("MySQL update failed: {}", e)))?;
-        Ok(conn.affected_rows() as usize)
-    } else {
-        Err(Error::Any(anyhow!("Expected MySQL client")))
-    }
-}
 
 pub fn json_to_pg_param(value: &serde_json::Value) -> Box<dyn tokio_postgres::types::ToSql + Sync + Send> {
     match value {
@@ -1179,7 +407,7 @@ pub fn json_to_sqlite_value(value: &serde_json::Value) -> rusqlite::types::Value
     }
 }
 
-fn json_to_libsql_value(value: &serde_json::Value) -> libsql::Value {
+pub(crate) fn json_to_libsql_value(value: &serde_json::Value) -> libsql::Value {
     match value {
         serde_json::Value::Null => libsql::Value::Null,
         serde_json::Value::Bool(b) => libsql::Value::Integer(if *b { 1 } else { 0 }),
@@ -1197,7 +425,7 @@ fn json_to_libsql_value(value: &serde_json::Value) -> libsql::Value {
     }
 }
 
-fn json_to_mysql_value(value: &serde_json::Value) -> MySqlValue {
+pub(crate) fn json_to_mysql_value(value: &serde_json::Value) -> MySqlValue {
     match value {
         serde_json::Value::Null => MySqlValue::NULL,
         serde_json::Value::Bool(value) => MySqlValue::Int(if *value { 1 } else { 0 }),
@@ -1217,7 +445,7 @@ fn json_to_mysql_value(value: &serde_json::Value) -> MySqlValue {
     }
 }
 
-fn json_to_sql_literal(value: &serde_json::Value) -> String {
+pub(crate) fn json_to_sql_literal(value: &serde_json::Value) -> String {
     match value {
         serde_json::Value::Null => "NULL".to_string(),
         serde_json::Value::Bool(b) => if *b { "TRUE" } else { "FALSE" }.to_string(),
@@ -1357,7 +585,7 @@ async fn fetch_mysql_data(
     }
 }
 
-fn pg_value_to_json(row: &tokio_postgres::Row, idx: usize) -> serde_json::Value {
+pub(crate) fn pg_value_to_json(row: &tokio_postgres::Row, idx: usize) -> serde_json::Value {
     use tokio_postgres::types::Type;
 
     let col = &row.columns()[idx];
@@ -1392,7 +620,7 @@ fn pg_value_to_json(row: &tokio_postgres::Row, idx: usize) -> serde_json::Value 
     }
 }
 
-fn sqlite_value_to_json(row: &rusqlite::Row, idx: usize) -> serde_json::Value {
+pub(crate) fn sqlite_value_to_json(row: &rusqlite::Row, idx: usize) -> serde_json::Value {
     use rusqlite::types::ValueRef;
 
     match row.get_ref(idx) {
@@ -1409,7 +637,7 @@ fn sqlite_value_to_json(row: &rusqlite::Row, idx: usize) -> serde_json::Value {
     }
 }
 
-fn libsql_value_to_json(row: &libsql::Row, idx: i32) -> serde_json::Value {
+pub(crate) fn libsql_value_to_json(row: &libsql::Row, idx: i32) -> serde_json::Value {
     match row.get_value(idx) {
         Ok(libsql::Value::Null) => serde_json::Value::Null,
         Ok(libsql::Value::Integer(i)) => serde_json::json!(i),
@@ -1422,7 +650,7 @@ fn libsql_value_to_json(row: &libsql::Row, idx: i32) -> serde_json::Value {
     }
 }
 
-fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
+pub(crate) fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
     match value {
         MySqlValue::NULL => serde_json::Value::Null,
         MySqlValue::Bytes(bytes) => match String::from_utf8(bytes) {
@@ -1451,11 +679,11 @@ fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
     }
 }
 
-fn mysql_quote_identifier(identifier: &str) -> String {
+pub(crate) fn mysql_quote_identifier(identifier: &str) -> String {
     format!("`{}`", identifier.replace('`', "``"))
 }
 
-fn mysql_qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
+pub(crate) fn mysql_qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
     match schema_name {
         Some(schema_name) => format!(
             "{}.{}",

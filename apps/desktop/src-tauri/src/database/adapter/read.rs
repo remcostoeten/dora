@@ -207,6 +207,10 @@ impl MySqlAdapter {
     pub fn new(pool: Arc<mysql_async::Pool>) -> Self {
         Self { pool }
     }
+
+    pub fn pool(&self) -> &mysql_async::Pool {
+        &self.pool
+    }
 }
 
 #[async_trait]
