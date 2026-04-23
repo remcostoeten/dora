@@ -9,7 +9,7 @@ pub async fn save_session_state(
     state: State<'_, AppState>,
 ) -> Result<(), Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -20,7 +20,7 @@ pub async fn save_session_state(
 #[specta::specta]
 pub async fn get_session_state(state: State<'_, AppState>) -> Result<Option<String>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -31,7 +31,7 @@ pub async fn get_session_state(state: State<'_, AppState>) -> Result<Option<Stri
 #[specta::specta]
 pub async fn get_setting(key: String, state: State<'_, AppState>) -> Result<Option<String>, Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
@@ -46,7 +46,7 @@ pub async fn set_setting(
     state: State<'_, AppState>,
 ) -> Result<(), Error> {
     let svc = QueryService {
-        connections: &state.connections,
+        connection_repo: state.inner(),
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
