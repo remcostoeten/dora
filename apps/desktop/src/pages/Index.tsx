@@ -32,6 +32,11 @@ const SqlConsole = lazy(() =>
     default: m.SqlConsole,
   }))
 );
+const SchemaVisualizer = lazy(() =>
+  import("@/features/schema-visualizer").then((m) => ({
+    default: m.SchemaVisualizer,
+  }))
+);
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
 import { WindowControls } from "@/components/window-controls";
 import {
@@ -554,7 +559,9 @@ export default function Index() {
 
   // Show database panel for sql-console and database-studio views
   const showDatabasePanel =
-    activeNavId === "sql-console" || activeNavId === "database-studio";
+    activeNavId === "sql-console" ||
+    activeNavId === "database-studio" ||
+    activeNavId === "schema-visualizer";
   const paletteActiveNavId =
     activeNavId === "docker" || activeNavId === "sql-console"
       ? activeNavId
@@ -651,6 +658,10 @@ export default function Index() {
                       connections.find((c) => c.id === id)?.name ?? id.slice(0, 8)
                     }
                   />
+                </ErrorBoundary>
+              ) : activeNavId === "schema-visualizer" ? (
+                <ErrorBoundary feature="Schema Visualizer">
+                  <SchemaVisualizer activeConnectionId={activeConnectionId} />
                 </ErrorBoundary>
               ) : activeNavId === "docker" ? (
                 <ErrorBoundary feature="Docker Manager">

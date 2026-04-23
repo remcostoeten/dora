@@ -1,4 +1,4 @@
-import { SquareTerminal, Table2, Container } from 'lucide-react'
+import { SquareTerminal, Table2, Container, Network } from 'lucide-react'
 import { useCallback, useRef, KeyboardEvent } from 'react'
 import { DoraLogo } from '@/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -30,6 +30,12 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 			label: 'Data Viewer',
 			icon: Table2,
 			onClick: () => onNavSelect?.('database-studio')
+		},
+		{
+			id: 'schema-visualizer',
+			label: 'Schema',
+			icon: Network,
+			onClick: () => onNavSelect?.('schema-visualizer')
 		}
 	]
 

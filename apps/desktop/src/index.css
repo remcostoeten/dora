@@ -693,3 +693,33 @@ layer(base);
 		box-shadow: none;
 	}
 }
+
+/* Schema Visualizer — theme overrides for @xyflow/react */
+.schema-visualizer .react-flow__background {
+	background-color: var(--background);
+}
+.schema-visualizer .react-flow__minimap {
+	background-color: var(--sidebar);
+	border: 1px solid var(--sidebar-border);
+	border-radius: 4px;
+}
+.schema-visualizer .react-flow__controls {
+	background-color: var(--sidebar);
+	border: 1px solid var(--sidebar-border);
+	border-radius: 4px;
+	box-shadow: none;
+}
+.schema-visualizer .react-flow__controls-button {
+	background-color: var(--sidebar);
+	border-bottom: 1px solid var(--sidebar-border);
+	color: var(--sidebar-foreground);
+}
+.schema-visualizer .react-flow__controls-button:hover {
+	background-color: var(--sidebar-accent);
+}
+.schema-visualizer .react-flow__edge-path {
+	stroke: var(--primary);
+}
+.schema-visualizer .react-flow__attribution {
+	display: none;
+}
