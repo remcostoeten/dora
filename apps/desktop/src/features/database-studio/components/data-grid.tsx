@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Database, Check, X } from 'lucide-react'
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react'
-import { useShortcut, useEffectiveShortcuts } from '@/core/shortcuts'
+import { useShortcut, useEffectiveShortcuts, useActiveScope } from '@/core/shortcuts'
 import { Checkbox } from '@/shared/ui/checkbox'
 import { cn } from '@/shared/utils/cn'
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
@@ -318,6 +318,7 @@ export function DataGrid({
 	/* ... existing code ... */
 	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
+	useActiveScope($, 'data-grid')
 
 	$.bind(shortcuts.selectAll.combo)
 		.except('typing')

@@ -7,7 +7,7 @@ import { getAdapterError } from '@/core/data-provider/types'
 import { usePendingEdits } from '@/core/pending-edits'
 import { useSettings } from '@/core/settings'
 import { useNuqsState } from '@/core/url-state/use-nuqs-state'
-import { useEffectiveShortcuts, useShortcut } from '@/core/shortcuts'
+import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@/core/shortcuts'
 import { useUndo } from '@/core/undo'
 import { commands } from '@/lib/bindings'
 import { getTableRefParts } from '@/shared/utils/table-ref'
@@ -339,6 +339,17 @@ export function DatabaseStudio({
 
 	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
+	useActiveScope($, 'data-grid')
+
+	$.bind(shortcuts.refreshTable.combo).on(
+		function () { loadTableData() },
+		{ description: shortcuts.refreshTable.description }
+	)
+
+	$.bind(shortcuts.exportTable.combo).on(
+		function () { handleExport() },
+		{ description: shortcuts.exportTable.description }
+	)
 
 	$.bind(shortcuts.focusToolbar.combo).on(
 		function () {
