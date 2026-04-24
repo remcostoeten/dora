@@ -1,3 +1,6 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+
 use tauri::State;
 use uuid::Uuid;
 
@@ -10,6 +13,7 @@ use crate::{
         types::DatabaseSchema,
     },
     error::Error,
+    storage::AiApiKeyRecord,
     AppState,
 };
 
@@ -102,6 +106,7 @@ pub async fn ai_complete(
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_complete_stream(
+    request_id: String,
     prompt: String,
     connection_id: Option<Uuid>,
     max_tokens: Option<u32>,
@@ -124,6 +129,9 @@ pub async fn ai_complete_stream(
         max_tokens,
     };
 
+    let cancel = Arc::new(AtomicBool::new(false));
+    state.ai_cancel_flags.insert(request_id.clone(), cancel.clone());
+
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AiStreamEvent>();
 
     // Forward internal channel to Tauri IPC channel
@@ -136,10 +144,12 @@ pub async fn ai_complete_stream(
     let svc = AIService {
         storage: &state.storage,
     };
-    let result = svc.complete_stream(request, tx).await;
+    let result = svc.complete_stream(request, tx, cancel).await;
 
     // Wait for forwarder to drain
     let _ = forward_handle.await;
+
+    state.ai_cancel_flags.remove(&request_id);
 
     if let Err(ref e) = result {
         // Best-effort: errors are surfaced through the command return value,
@@ -148,6 +158,17 @@ pub async fn ai_complete_stream(
     }
 
     result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_abort_stream(request_id: String, state: State<'_, AppState>) -> Result<bool, Error> {
+    if let Some(flag) = state.ai_cancel_flags.get(&request_id) {
+        flag.store(true, Ordering::Relaxed);
+        Ok(true)
+    } else {
+        Ok(false)
+    }
 }
 
 #[tauri::command]
@@ -215,12 +236,12 @@ pub async fn ai_list_ollama_models(state: State<'_, AppState>) -> Result<Vec<Str
     client.list_models().await
 }
 
-/// Check whether Groq provider is usable (env keys present).
+/// Check whether Groq provider is usable (env or DB keys present).
 /// Returns key count detected. Never exposes the key values.
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_groq_status() -> Result<GroqStatus, Error> {
-    match GroqClient::from_env() {
+pub async fn ai_groq_status(state: State<'_, AppState>) -> Result<GroqStatus, Error> {
+    match GroqClient::from_env_and_storage(&state.storage) {
         Ok(client) => Ok(GroqStatus {
             available: true,
             key_count: client.key_count(),
@@ -230,4 +251,80 @@ pub async fn ai_groq_status() -> Result<GroqStatus, Error> {
             key_count: 0,
         }),
     }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_keys_list(
+    provider: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<AiApiKeyRecord>, Error> {
+    state.storage.ai_keys_list(&provider)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_keys_add(
+    provider: String,
+    label: String,
+    api_key: String,
+    state: State<'_, AppState>,
+) -> Result<i64, Error> {
+    if api_key.trim().is_empty() {
+        return Err(Error::InvalidInput("API key cannot be empty".into()));
+    }
+    state.storage.ai_keys_add(&provider, &label, api_key.trim())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_keys_delete(id: i64, state: State<'_, AppState>) -> Result<(), Error> {
+    state.storage.ai_keys_delete(id)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_keys_set_active(
+    id: i64,
+    active: bool,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    state.storage.ai_keys_set_active(id, active)
+}
+
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
+pub struct AiKeyTestResult {
+    pub ok: bool,
+    pub message: String,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_keys_test(
+    id: i64,
+    state: State<'_, AppState>,
+) -> Result<AiKeyTestResult, Error> {
+    let plaintext = state
+        .storage
+        .ai_keys_get_decrypted(id)?
+        .ok_or_else(|| Error::InvalidInput(format!("No AI key with id {}", id)))?;
+
+    let result = GroqClient::test_key(&plaintext, None).await;
+    let (ok, message) = match &result {
+        Ok(msg) => (true, msg.clone()),
+        Err(e) => (false, e.to_string()),
+    };
+    let _ = state.storage.ai_keys_record_test(id, ok, &message);
+    Ok(AiKeyTestResult { ok, message })
+}
+
+/// Test an unsaved key (used by the "Test before save" button).
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_keys_test_raw(api_key: String) -> Result<AiKeyTestResult, Error> {
+    let result = GroqClient::test_key(api_key.trim(), None).await;
+    Ok(match result {
+        Ok(msg) => AiKeyTestResult { ok: true, message: msg },
+        Err(e) => AiKeyTestResult { ok: false, message: e.to_string() },
+    })
 }

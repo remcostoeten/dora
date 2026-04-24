@@ -542,9 +542,9 @@ async aiComplete(prompt: string, connectionId: string | null, maxTokens: number 
     else return { status: "error", error: e  as any };
 }
 },
-async aiCompleteStream(prompt: string, connectionId: string | null, maxTokens: number | null, onEvent: TAURI_CHANNEL<AiStreamEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
+async aiCompleteStream(requestId: string, prompt: string, connectionId: string | null, maxTokens: number | null, onEvent: TAURI_CHANNEL<AiStreamEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("ai_complete_stream", { prompt, connectionId, maxTokens, onEvent }) };
+    return { status: "ok", data: await TAURI_INVOKE("ai_complete_stream", { requestId, prompt, connectionId, maxTokens, onEvent }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -591,12 +591,71 @@ async aiListOllamaModels() : Promise<Result<string[], { kind: string; detail: st
 }
 },
 /**
- * Check whether Groq provider is usable (env keys present).
+ * Check whether Groq provider is usable (env or DB keys present).
  * Returns key count detected. Never exposes the key values.
  */
 async aiGroqStatus() : Promise<Result<GroqStatus, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_groq_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiAbortStream(requestId: string) : Promise<Result<boolean, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_abort_stream", { requestId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiKeysList(provider: string) : Promise<Result<AiApiKeyRecord[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_list", { provider }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiKeysAdd(provider: string, label: string, apiKey: string) : Promise<Result<number, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_add", { provider, label, apiKey }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiKeysDelete(id: number) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_delete", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiKeysSetActive(id: number, active: boolean) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_set_active", { id, active }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiKeysTest(id: number) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test", { id }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Test an unsaved key (used by the "Test before save" button).
+ */
+async aiKeysTestRaw(apiKey: string) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test_raw", { apiKey }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -615,6 +674,8 @@ async aiGroqStatus() : Promise<Result<GroqStatus, { kind: string; detail: string
 /** user-defined types **/
 
 export type AIResponse = { content: string; suggested_queries: string[] | null; tokens_used: number | null; provider: string }
+export type AiApiKeyRecord = { id: number; provider: string; label: string; is_active: boolean; last_tested: number | null; last_status: string | null; created_at: number; updated_at: number }
+export type AiKeyTestResult = { ok: boolean; message: string }
 export type AiStreamEvent = { type: "token"; text: string } | { type: "final"; content: string } | { type: "error"; message: string }
 export type ColumnInfo = { name: string; data_type: string; is_nullable: boolean; default_value: string | null; 
 /**

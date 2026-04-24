@@ -10,6 +10,7 @@ import {
 } from '@/shared/ui/select'
 import { Slider } from '@/shared/ui/slider'
 import { Switch } from '@/shared/ui/switch'
+import { AiKeysSection } from './ai-keys-section'
 import { ShortcutRecorder } from './shortcut-recorder'
 import { PopoverClose } from '@/shared/ui/popover'
 import { X } from 'lucide-react'
@@ -151,6 +152,8 @@ export function SettingsPanel() {
 							})}
 						</div>
 					</SidebarSection>
+
+					<AiKeysSection />
 
 					<SidebarSection title='Safety'>
 						<div className='flex items-start justify-between gap-4'>

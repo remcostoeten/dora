@@ -119,7 +119,7 @@ impl<'a> AIService<'a> {
 
         match provider {
             AIProvider::Groq => {
-                let client = GroqClient::from_env()?;
+                let client = GroqClient::from_env_and_storage(self.storage)?;
                 client.complete(request).await
             }
             AIProvider::Gemini => {
@@ -156,13 +156,14 @@ impl<'a> AIService<'a> {
         &self,
         request: AIRequest,
         sender: tokio::sync::mpsc::UnboundedSender<AiStreamEvent>,
+        cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), Error> {
         let provider = self.get_provider()?;
 
         match provider {
             AIProvider::Groq => {
-                let client = GroqClient::from_env()?;
-                client.complete_stream(request, sender).await
+                let client = GroqClient::from_env_and_storage(self.storage)?;
+                client.complete_stream(request, sender, cancel).await
             }
             _ => {
                 let response = self.complete(request).await?;

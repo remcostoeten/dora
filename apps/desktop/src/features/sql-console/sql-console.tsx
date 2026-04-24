@@ -912,11 +912,18 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 				onClose={() => setShowAiCmdK(false)}
 				activeConnectionId={activeConnectionId}
 				isTauri={isTauri}
-				onApplySql={function (sql) {
+				onApplySql={function (sql, _explanation, _warnings, execute) {
 					if (mode === 'sql') {
 						setCurrentSqlQuery(sql)
 					} else {
 						setCurrentDrizzleQuery(sql)
+					}
+					if (execute) {
+						requestAnimationFrame(function () {
+							handleExecute(sql, mode).catch(function (e) {
+								console.error('AI insert+run failed:', e)
+							})
+						})
 					}
 				}}
 			/>
