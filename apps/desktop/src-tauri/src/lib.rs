@@ -67,6 +67,11 @@ impl AppState {
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Load .env file if present. Walks up from CWD — finds workspace-root .env
+    // when launched via `bun tauri:dev`. Failure is silent (prod builds).
+    // Any std::env::var lookup afterwards sees these values.
+    let _ = dotenvy::dotenv();
+
     // Set up `tracing` before anything else so startup events are captured.
     observability::init();
 
