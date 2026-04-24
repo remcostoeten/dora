@@ -8,7 +8,7 @@
 
 
 export const commands = {
-async minimizeWindow() : Promise<Result<null, any>> {
+async minimizeWindow() : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("minimize_window") };
 } catch (e) {
@@ -16,7 +16,7 @@ async minimizeWindow() : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async maximizeWindow() : Promise<Result<null, any>> {
+async maximizeWindow() : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("maximize_window") };
 } catch (e) {
@@ -24,7 +24,7 @@ async maximizeWindow() : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async closeWindow() : Promise<Result<null, any>> {
+async closeWindow() : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("close_window") };
 } catch (e) {
@@ -32,7 +32,7 @@ async closeWindow() : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async openSqliteDb() : Promise<Result<string | null, any>> {
+async openSqliteDb() : Promise<Result<string | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("open_sqlite_db") };
 } catch (e) {
@@ -40,7 +40,7 @@ async openSqliteDb() : Promise<Result<string | null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async saveSqliteDb() : Promise<Result<string | null, any>> {
+async saveSqliteDb() : Promise<Result<string | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_sqlite_db") };
 } catch (e) {
@@ -48,7 +48,7 @@ async saveSqliteDb() : Promise<Result<string | null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async openFile(title: string | null) : Promise<Result<string | null, any>> {
+async openFile(title: string | null) : Promise<Result<string | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("open_file", { title }) };
 } catch (e) {
@@ -56,7 +56,7 @@ async openFile(title: string | null) : Promise<Result<string | null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, any>> {
+async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("add_connection", { name, databaseInfo, color }) };
 } catch (e) {
@@ -64,7 +64,7 @@ async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | nu
     else return { status: "error", error: e  as any };
 }
 },
-async updateConnection(connId: string, name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, any>> {
+async updateConnection(connId: string, name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_connection", { connId, name, databaseInfo, color }) };
 } catch (e) {
@@ -72,7 +72,7 @@ async updateConnection(connId: string, name: string, databaseInfo: DatabaseInfo,
     else return { status: "error", error: e  as any };
 }
 },
-async updateConnectionColor(connectionId: string, color: number | null) : Promise<Result<null, any>> {
+async updateConnectionColor(connectionId: string, color: number | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_connection_color", { connectionId, color }) };
 } catch (e) {
@@ -80,7 +80,7 @@ async updateConnectionColor(connectionId: string, color: number | null) : Promis
     else return { status: "error", error: e  as any };
 }
 },
-async connectToDatabase(connectionId: string) : Promise<Result<boolean, any>> {
+async connectToDatabase(connectionId: string) : Promise<Result<boolean, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("connect_to_database", { connectionId }) };
 } catch (e) {
@@ -88,7 +88,7 @@ async connectToDatabase(connectionId: string) : Promise<Result<boolean, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async disconnectFromDatabase(connectionId: string) : Promise<Result<null, any>> {
+async disconnectFromDatabase(connectionId: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("disconnect_from_database", { connectionId }) };
 } catch (e) {
@@ -96,7 +96,7 @@ async disconnectFromDatabase(connectionId: string) : Promise<Result<null, any>> 
     else return { status: "error", error: e  as any };
 }
 },
-async getConnections() : Promise<Result<ConnectionInfo[], any>> {
+async getConnections() : Promise<Result<ConnectionInfo[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_connections") };
 } catch (e) {
@@ -104,7 +104,7 @@ async getConnections() : Promise<Result<ConnectionInfo[], any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async removeConnection(connectionId: string) : Promise<Result<null, any>> {
+async removeConnection(connectionId: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("remove_connection", { connectionId }) };
 } catch (e) {
@@ -112,7 +112,7 @@ async removeConnection(connectionId: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async testConnection(databaseInfo: DatabaseInfo) : Promise<Result<boolean, any>> {
+async testConnection(databaseInfo: DatabaseInfo) : Promise<Result<boolean, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("test_connection", { databaseInfo }) };
 } catch (e) {
@@ -120,7 +120,7 @@ async testConnection(databaseInfo: DatabaseInfo) : Promise<Result<boolean, any>>
     else return { status: "error", error: e  as any };
 }
 },
-async initializeConnections() : Promise<Result<null, any>> {
+async initializeConnections() : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("initialize_connections") };
 } catch (e) {
@@ -128,7 +128,7 @@ async initializeConnections() : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getRecentConnections(limit: number | null) : Promise<Result<ConnectionInfo[], any>> {
+async getRecentConnections(limit: number | null) : Promise<Result<ConnectionInfo[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_recent_connections", { limit }) };
 } catch (e) {
@@ -136,7 +136,7 @@ async getRecentConnections(limit: number | null) : Promise<Result<ConnectionInfo
     else return { status: "error", error: e  as any };
 }
 },
-async getConnectionHistory(dbTypeFilter: string | null, successFilter: boolean | null, limit: number | null) : Promise<Result<ConnectionHistoryEntry[], any>> {
+async getConnectionHistory(dbTypeFilter: string | null, successFilter: boolean | null, limit: number | null) : Promise<Result<ConnectionHistoryEntry[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_connection_history", { dbTypeFilter, successFilter, limit }) };
 } catch (e) {
@@ -144,7 +144,7 @@ async getConnectionHistory(dbTypeFilter: string | null, successFilter: boolean |
     else return { status: "error", error: e  as any };
 }
 },
-async setConnectionPin(connectionId: string, pin: string | null) : Promise<Result<null, any>> {
+async setConnectionPin(connectionId: string, pin: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_connection_pin", { connectionId, pin }) };
 } catch (e) {
@@ -152,7 +152,7 @@ async setConnectionPin(connectionId: string, pin: string | null) : Promise<Resul
     else return { status: "error", error: e  as any };
 }
 },
-async verifyPinAndGetCredentials(connectionId: string, pin: string) : Promise<Result<string | null, any>> {
+async verifyPinAndGetCredentials(connectionId: string, pin: string) : Promise<Result<string | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("verify_pin_and_get_credentials", { connectionId, pin }) };
 } catch (e) {
@@ -160,7 +160,7 @@ async verifyPinAndGetCredentials(connectionId: string, pin: string) : Promise<Re
     else return { status: "error", error: e  as any };
 }
 },
-async startQuery(connectionId: string, query: string) : Promise<Result<number[], any>> {
+async startQuery(connectionId: string, query: string) : Promise<Result<number[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("start_query", { connectionId, query }) };
 } catch (e) {
@@ -168,7 +168,7 @@ async startQuery(connectionId: string, query: string) : Promise<Result<number[],
     else return { status: "error", error: e  as any };
 }
 },
-async fetchQuery(queryId: number) : Promise<Result<StatementInfo, any>> {
+async fetchQuery(queryId: number) : Promise<Result<StatementInfo, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("fetch_query", { queryId }) };
 } catch (e) {
@@ -176,7 +176,7 @@ async fetchQuery(queryId: number) : Promise<Result<StatementInfo, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async fetchPage(queryId: number, pageIndex: number) : Promise<Result<JsonValue | null, any>> {
+async fetchPage(queryId: number, pageIndex: number) : Promise<Result<JsonValue | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("fetch_page", { queryId, pageIndex }) };
 } catch (e) {
@@ -184,7 +184,7 @@ async fetchPage(queryId: number, pageIndex: number) : Promise<Result<JsonValue |
     else return { status: "error", error: e  as any };
 }
 },
-async getQueryStatus(queryId: number) : Promise<Result<QueryStatus, any>> {
+async getQueryStatus(queryId: number) : Promise<Result<QueryStatus, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_query_status", { queryId }) };
 } catch (e) {
@@ -192,7 +192,7 @@ async getQueryStatus(queryId: number) : Promise<Result<QueryStatus, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getPageCount(queryId: number) : Promise<Result<number, any>> {
+async getPageCount(queryId: number) : Promise<Result<number, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_page_count", { queryId }) };
 } catch (e) {
@@ -200,7 +200,7 @@ async getPageCount(queryId: number) : Promise<Result<number, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getColumns(queryId: number) : Promise<Result<JsonValue | null, any>> {
+async getColumns(queryId: number) : Promise<Result<JsonValue | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_columns", { queryId }) };
 } catch (e) {
@@ -208,7 +208,7 @@ async getColumns(queryId: number) : Promise<Result<JsonValue | null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async saveQueryToHistory(connectionId: string, query: string, durationMs: number | null, status: string, rowCount: number, errorMessage: string | null) : Promise<Result<null, any>> {
+async saveQueryToHistory(connectionId: string, query: string, durationMs: number | null, status: string, rowCount: number, errorMessage: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_query_to_history", { connectionId, query, durationMs, status, rowCount, errorMessage }) };
 } catch (e) {
@@ -216,7 +216,7 @@ async saveQueryToHistory(connectionId: string, query: string, durationMs: number
     else return { status: "error", error: e  as any };
 }
 },
-async getQueryHistory(connectionId: string, limit: number | null) : Promise<Result<QueryHistoryEntry[], any>> {
+async getQueryHistory(connectionId: string, limit: number | null) : Promise<Result<QueryHistoryEntry[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_query_history", { connectionId, limit }) };
 } catch (e) {
@@ -224,7 +224,7 @@ async getQueryHistory(connectionId: string, limit: number | null) : Promise<Resu
     else return { status: "error", error: e  as any };
 }
 },
-async startLiveMonitor(connectionId: string, tableName: string, intervalMs: number, changeTypes: LiveMonitorChangeType[]) : Promise<Result<LiveMonitorSession, any>> {
+async startLiveMonitor(connectionId: string, tableName: string, intervalMs: number, changeTypes: LiveMonitorChangeType[]) : Promise<Result<LiveMonitorSession, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("start_live_monitor", { connectionId, tableName, intervalMs, changeTypes }) };
 } catch (e) {
@@ -232,7 +232,7 @@ async startLiveMonitor(connectionId: string, tableName: string, intervalMs: numb
     else return { status: "error", error: e  as any };
 }
 },
-async stopLiveMonitor(monitorId: string) : Promise<Result<null, any>> {
+async stopLiveMonitor(monitorId: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("stop_live_monitor", { monitorId }) };
 } catch (e) {
@@ -240,7 +240,7 @@ async stopLiveMonitor(monitorId: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getRecentQueries(connectionId: string | null, limit: number | null, statusFilter: string | null) : Promise<Result<QueryHistoryEntry[], any>> {
+async getRecentQueries(connectionId: string | null, limit: number | null, statusFilter: string | null) : Promise<Result<QueryHistoryEntry[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_recent_queries", { connectionId, limit, statusFilter }) };
 } catch (e) {
@@ -248,7 +248,7 @@ async getRecentQueries(connectionId: string | null, limit: number | null, status
     else return { status: "error", error: e  as any };
 }
 },
-async saveScript(name: string, content: string, connectionId: string | null, description: string | null) : Promise<Result<number, any>> {
+async saveScript(name: string, content: string, connectionId: string | null, description: string | null) : Promise<Result<number, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_script", { name, content, connectionId, description }) };
 } catch (e) {
@@ -256,7 +256,7 @@ async saveScript(name: string, content: string, connectionId: string | null, des
     else return { status: "error", error: e  as any };
 }
 },
-async updateScript(id: number, name: string, content: string, connectionId: string | null, description: string | null) : Promise<Result<null, any>> {
+async updateScript(id: number, name: string, content: string, connectionId: string | null, description: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_script", { id, name, content, connectionId, description }) };
 } catch (e) {
@@ -264,7 +264,7 @@ async updateScript(id: number, name: string, content: string, connectionId: stri
     else return { status: "error", error: e  as any };
 }
 },
-async getScripts(connectionId: string | null) : Promise<Result<SavedQuery[], any>> {
+async getScripts(connectionId: string | null) : Promise<Result<SavedQuery[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_scripts", { connectionId }) };
 } catch (e) {
@@ -272,7 +272,7 @@ async getScripts(connectionId: string | null) : Promise<Result<SavedQuery[], any
     else return { status: "error", error: e  as any };
 }
 },
-async deleteScript(id: number) : Promise<Result<null, any>> {
+async deleteScript(id: number) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_script", { id }) };
 } catch (e) {
@@ -280,7 +280,7 @@ async deleteScript(id: number) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getSnippets(languageFilter: string | null, isSystemFilter: boolean | null, categoryFilter: string | null) : Promise<Result<SavedQuery[], any>> {
+async getSnippets(languageFilter: string | null, isSystemFilter: boolean | null, categoryFilter: string | null) : Promise<Result<SavedQuery[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_snippets", { languageFilter, isSystemFilter, categoryFilter }) };
 } catch (e) {
@@ -288,7 +288,7 @@ async getSnippets(languageFilter: string | null, isSystemFilter: boolean | null,
     else return { status: "error", error: e  as any };
 }
 },
-async saveSnippet(name: string, content: string, language: string | null, tags: string | null, category: string | null, connectionId: string | null, description: string | null, folderId: number | null) : Promise<Result<number, any>> {
+async saveSnippet(name: string, content: string, language: string | null, tags: string | null, category: string | null, connectionId: string | null, description: string | null, folderId: number | null) : Promise<Result<number, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_snippet", { name, content, language, tags, category, connectionId, description, folderId }) };
 } catch (e) {
@@ -296,7 +296,7 @@ async saveSnippet(name: string, content: string, language: string | null, tags: 
     else return { status: "error", error: e  as any };
 }
 },
-async updateSnippet(id: number, name: string, content: string, language: string | null, tags: string | null, category: string | null, description: string | null, folderId: number | null, connectionId: string | null) : Promise<Result<null, any>> {
+async updateSnippet(id: number, name: string, content: string, language: string | null, tags: string | null, category: string | null, description: string | null, folderId: number | null, connectionId: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_snippet", { id, name, content, language, tags, category, description, folderId, connectionId }) };
 } catch (e) {
@@ -304,7 +304,7 @@ async updateSnippet(id: number, name: string, content: string, language: string 
     else return { status: "error", error: e  as any };
 }
 },
-async deleteSnippet(id: number) : Promise<Result<null, any>> {
+async deleteSnippet(id: number) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_snippet", { id }) };
 } catch (e) {
@@ -312,7 +312,7 @@ async deleteSnippet(id: number) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async seedSystemSnippets() : Promise<Result<number, any>> {
+async seedSystemSnippets() : Promise<Result<number, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("seed_system_snippets") };
 } catch (e) {
@@ -320,7 +320,7 @@ async seedSystemSnippets() : Promise<Result<number, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getSnippetFolders() : Promise<Result<SnippetFolder[], any>> {
+async getSnippetFolders() : Promise<Result<SnippetFolder[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_snippet_folders") };
 } catch (e) {
@@ -328,7 +328,7 @@ async getSnippetFolders() : Promise<Result<SnippetFolder[], any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async createSnippetFolder(name: string, parentId: number | null, color: string | null) : Promise<Result<number, any>> {
+async createSnippetFolder(name: string, parentId: number | null, color: string | null) : Promise<Result<number, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("create_snippet_folder", { name, parentId, color }) };
 } catch (e) {
@@ -336,7 +336,7 @@ async createSnippetFolder(name: string, parentId: number | null, color: string |
     else return { status: "error", error: e  as any };
 }
 },
-async updateSnippetFolder(id: number, name: string, color: string | null) : Promise<Result<null, any>> {
+async updateSnippetFolder(id: number, name: string, color: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_snippet_folder", { id, name, color }) };
 } catch (e) {
@@ -344,7 +344,7 @@ async updateSnippetFolder(id: number, name: string, color: string | null) : Prom
     else return { status: "error", error: e  as any };
 }
 },
-async deleteSnippetFolder(id: number) : Promise<Result<null, any>> {
+async deleteSnippetFolder(id: number) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_snippet_folder", { id }) };
 } catch (e) {
@@ -352,7 +352,7 @@ async deleteSnippetFolder(id: number) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async saveSessionState(sessionData: string) : Promise<Result<null, any>> {
+async saveSessionState(sessionData: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("save_session_state", { sessionData }) };
 } catch (e) {
@@ -360,7 +360,7 @@ async saveSessionState(sessionData: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getSessionState() : Promise<Result<string | null, any>> {
+async getSessionState() : Promise<Result<string | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_session_state") };
 } catch (e) {
@@ -368,7 +368,7 @@ async getSessionState() : Promise<Result<string | null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async getSetting(key: string) : Promise<Result<string | null, any>> {
+async getSetting(key: string) : Promise<Result<string | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_setting", { key }) };
 } catch (e) {
@@ -376,7 +376,7 @@ async getSetting(key: string) : Promise<Result<string | null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async setSetting(key: string, value: string) : Promise<Result<null, any>> {
+async setSetting(key: string, value: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_setting", { key, value }) };
 } catch (e) {
@@ -384,7 +384,7 @@ async setSetting(key: string, value: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async insertRow(connectionId: string, tableName: string, schemaName: string | null, rowData: Partial<{ [key in string]: JsonValue }>) : Promise<Result<MutationResult, any>> {
+async insertRow(connectionId: string, tableName: string, schemaName: string | null, rowData: Partial<{ [key in string]: JsonValue }>) : Promise<Result<MutationResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("insert_row", { connectionId, tableName, schemaName, rowData }) };
 } catch (e) {
@@ -392,7 +392,7 @@ async insertRow(connectionId: string, tableName: string, schemaName: string | nu
     else return { status: "error", error: e  as any };
 }
 },
-async updateCell(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValue: JsonValue, columnName: string, newValue: JsonValue) : Promise<Result<MutationResult, any>> {
+async updateCell(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValue: JsonValue, columnName: string, newValue: JsonValue) : Promise<Result<MutationResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("update_cell", { connectionId, tableName, schemaName, primaryKeyColumn, primaryKeyValue, columnName, newValue }) };
 } catch (e) {
@@ -400,7 +400,7 @@ async updateCell(connectionId: string, tableName: string, schemaName: string | n
     else return { status: "error", error: e  as any };
 }
 },
-async deleteRows(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValues: JsonValue[]) : Promise<Result<MutationResult, any>> {
+async deleteRows(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValues: JsonValue[]) : Promise<Result<MutationResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("delete_rows", { connectionId, tableName, schemaName, primaryKeyColumn, primaryKeyValues }) };
 } catch (e) {
@@ -408,7 +408,7 @@ async deleteRows(connectionId: string, tableName: string, schemaName: string | n
     else return { status: "error", error: e  as any };
 }
 },
-async duplicateRow(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValue: JsonValue) : Promise<Result<MutationResult, any>> {
+async duplicateRow(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValue: JsonValue) : Promise<Result<MutationResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("duplicate_row", { connectionId, tableName, schemaName, primaryKeyColumn, primaryKeyValue }) };
 } catch (e) {
@@ -416,7 +416,7 @@ async duplicateRow(connectionId: string, tableName: string, schemaName: string |
     else return { status: "error", error: e  as any };
 }
 },
-async exportTable(connectionId: string, tableName: string, schemaName: string | null, format: ExportFormat, limit: number | null) : Promise<Result<string, any>> {
+async exportTable(connectionId: string, tableName: string, schemaName: string | null, format: ExportFormat, limit: number | null) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_table", { connectionId, tableName, schemaName, format, limit }) };
 } catch (e) {
@@ -424,7 +424,7 @@ async exportTable(connectionId: string, tableName: string, schemaName: string | 
     else return { status: "error", error: e  as any };
 }
 },
-async softDeleteRows(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValues: JsonValue[], softDeleteColumn: string | null) : Promise<Result<SoftDeleteResult, any>> {
+async softDeleteRows(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValues: JsonValue[], softDeleteColumn: string | null) : Promise<Result<SoftDeleteResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("soft_delete_rows", { connectionId, tableName, schemaName, primaryKeyColumn, primaryKeyValues, softDeleteColumn }) };
 } catch (e) {
@@ -432,7 +432,7 @@ async softDeleteRows(connectionId: string, tableName: string, schemaName: string
     else return { status: "error", error: e  as any };
 }
 },
-async undoSoftDelete(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValues: JsonValue[], softDeleteColumn: string) : Promise<Result<MutationResult, any>> {
+async undoSoftDelete(connectionId: string, tableName: string, schemaName: string | null, primaryKeyColumn: string, primaryKeyValues: JsonValue[], softDeleteColumn: string) : Promise<Result<MutationResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("undo_soft_delete", { connectionId, tableName, schemaName, primaryKeyColumn, primaryKeyValues, softDeleteColumn }) };
 } catch (e) {
@@ -440,7 +440,7 @@ async undoSoftDelete(connectionId: string, tableName: string, schemaName: string
     else return { status: "error", error: e  as any };
 }
 },
-async truncateTable(connectionId: string, tableName: string, schemaName: string | null, cascade: boolean | null) : Promise<Result<TruncateResult, any>> {
+async truncateTable(connectionId: string, tableName: string, schemaName: string | null, cascade: boolean | null) : Promise<Result<TruncateResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("truncate_table", { connectionId, tableName, schemaName, cascade }) };
 } catch (e) {
@@ -448,7 +448,7 @@ async truncateTable(connectionId: string, tableName: string, schemaName: string 
     else return { status: "error", error: e  as any };
 }
 },
-async truncateDatabase(connectionId: string, schemaName: string | null, confirm: boolean) : Promise<Result<TruncateResult, any>> {
+async truncateDatabase(connectionId: string, schemaName: string | null, confirm: boolean) : Promise<Result<TruncateResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("truncate_database", { connectionId, schemaName, confirm }) };
 } catch (e) {
@@ -456,7 +456,7 @@ async truncateDatabase(connectionId: string, schemaName: string | null, confirm:
     else return { status: "error", error: e  as any };
 }
 },
-async dumpDatabase(connectionId: string, outputPath: string) : Promise<Result<DumpResult, any>> {
+async dumpDatabase(connectionId: string, outputPath: string) : Promise<Result<DumpResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("dump_database", { connectionId, outputPath }) };
 } catch (e) {
@@ -464,7 +464,7 @@ async dumpDatabase(connectionId: string, outputPath: string) : Promise<Result<Du
     else return { status: "error", error: e  as any };
 }
 },
-async executeBatch(connectionId: string, statements: string[]) : Promise<Result<MutationResult, any>> {
+async executeBatch(connectionId: string, statements: string[]) : Promise<Result<MutationResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("execute_batch", { connectionId, statements }) };
 } catch (e) {
@@ -472,7 +472,7 @@ async executeBatch(connectionId: string, statements: string[]) : Promise<Result<
     else return { status: "error", error: e  as any };
 }
 },
-async getDatabaseSchema(connectionId: string) : Promise<Result<DatabaseSchema, any>> {
+async getDatabaseSchema(connectionId: string) : Promise<Result<DatabaseSchema, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_database_schema", { connectionId }) };
 } catch (e) {
@@ -480,7 +480,7 @@ async getDatabaseSchema(connectionId: string) : Promise<Result<DatabaseSchema, a
     else return { status: "error", error: e  as any };
 }
 },
-async getDatabaseMetadata(connectionId: string) : Promise<Result<DatabaseMetadata, any>> {
+async getDatabaseMetadata(connectionId: string) : Promise<Result<DatabaseMetadata, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("get_database_metadata", { connectionId }) };
 } catch (e) {
@@ -488,7 +488,7 @@ async getDatabaseMetadata(connectionId: string) : Promise<Result<DatabaseMetadat
     else return { status: "error", error: e  as any };
 }
 },
-async seedTable(connectionId: string, tableName: string, schemaName: string | null, count: number) : Promise<Result<SeedResult, any>> {
+async seedTable(connectionId: string, tableName: string, schemaName: string | null, count: number) : Promise<Result<SeedResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("seed_table", { connectionId, tableName, schemaName, count }) };
 } catch (e) {
@@ -496,7 +496,7 @@ async seedTable(connectionId: string, tableName: string, schemaName: string | nu
     else return { status: "error", error: e  as any };
 }
 },
-async parseSql(sql: string) : Promise<Result<JsonValue, any>> {
+async parseSql(sql: string) : Promise<Result<JsonValue, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("parse_sql", { sql }) };
 } catch (e) {
@@ -504,7 +504,7 @@ async parseSql(sql: string) : Promise<Result<JsonValue, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async buildSql(ast: JsonValue) : Promise<Result<string, any>> {
+async buildSql(ast: JsonValue) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("build_sql", { ast }) };
 } catch (e) {
@@ -515,7 +515,7 @@ async buildSql(ast: JsonValue) : Promise<Result<string, any>> {
 /**
  * Export database schema to SQL DDL format.
  */
-async exportSchemaSql(connectionId: string, dialect: string) : Promise<Result<string, any>> {
+async exportSchemaSql(connectionId: string, dialect: string) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_schema_sql", { connectionId, dialect }) };
 } catch (e) {
@@ -526,7 +526,7 @@ async exportSchemaSql(connectionId: string, dialect: string) : Promise<Result<st
 /**
  * Export database schema to Drizzle ORM TypeScript format.
  */
-async exportSchemaDrizzle(connectionId: string, dialect: string) : Promise<Result<string, any>> {
+async exportSchemaDrizzle(connectionId: string, dialect: string) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("export_schema_drizzle", { connectionId, dialect }) };
 } catch (e) {
@@ -534,7 +534,7 @@ async exportSchemaDrizzle(connectionId: string, dialect: string) : Promise<Resul
     else return { status: "error", error: e  as any };
 }
 },
-async aiComplete(prompt: string, connectionId: string | null, maxTokens: number | null) : Promise<Result<AIResponse, any>> {
+async aiComplete(prompt: string, connectionId: string | null, maxTokens: number | null) : Promise<Result<AIResponse, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_complete", { prompt, connectionId, maxTokens }) };
 } catch (e) {
@@ -542,7 +542,15 @@ async aiComplete(prompt: string, connectionId: string | null, maxTokens: number 
     else return { status: "error", error: e  as any };
 }
 },
-async aiSetProvider(provider: string) : Promise<Result<null, any>> {
+async aiCompleteStream(prompt: string, connectionId: string | null, maxTokens: number | null, onEvent: TAURI_CHANNEL<AiStreamEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_complete_stream", { prompt, connectionId, maxTokens, onEvent }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiSetProvider(provider: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_set_provider", { provider }) };
 } catch (e) {
@@ -550,7 +558,7 @@ async aiSetProvider(provider: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async aiGetProvider() : Promise<Result<string, any>> {
+async aiGetProvider() : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_get_provider") };
 } catch (e) {
@@ -558,7 +566,7 @@ async aiGetProvider() : Promise<Result<string, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async aiSetGeminiKey(apiKey: string) : Promise<Result<null, any>> {
+async aiSetGeminiKey(apiKey: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_set_gemini_key", { apiKey }) };
 } catch (e) {
@@ -566,7 +574,7 @@ async aiSetGeminiKey(apiKey: string) : Promise<Result<null, any>> {
     else return { status: "error", error: e  as any };
 }
 },
-async aiConfigureOllama(endpoint: string | null, model: string | null) : Promise<Result<null, any>> {
+async aiConfigureOllama(endpoint: string | null, model: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_configure_ollama", { endpoint, model }) };
 } catch (e) {
@@ -574,9 +582,21 @@ async aiConfigureOllama(endpoint: string | null, model: string | null) : Promise
     else return { status: "error", error: e  as any };
 }
 },
-async aiListOllamaModels() : Promise<Result<string[], any>> {
+async aiListOllamaModels() : Promise<Result<string[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_list_ollama_models") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Check whether Groq provider is usable (env keys present).
+ * Returns key count detected. Never exposes the key values.
+ */
+async aiGroqStatus() : Promise<Result<GroqStatus, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_groq_status") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -595,6 +615,7 @@ async aiListOllamaModels() : Promise<Result<string[], any>> {
 /** user-defined types **/
 
 export type AIResponse = { content: string; suggested_queries: string[] | null; tokens_used: number | null; provider: string }
+export type AiStreamEvent = { type: "token"; text: string } | { type: "final"; content: string } | { type: "error"; message: string }
 export type ColumnInfo = { name: string; data_type: string; is_nullable: boolean; default_value: string | null; 
 /**
  * Whether this column is part of the primary key
@@ -680,6 +701,7 @@ referenced_column: string;
  * The schema of the referenced table (empty for SQLite)
  */
 referenced_schema: string }
+export type GroqStatus = { available: boolean; key_count: number }
 export type IndexInfo = { name: string; column_names: string[]; is_unique: boolean; is_primary: boolean }
 export type JsonValue = null | boolean | number | string | JsonValue[] | Partial<{ [key in string]: JsonValue }>
 export type LiveMonitorChangeType = "insert" | "update" | "delete"
@@ -707,6 +729,7 @@ deleted_at: number;
 undo_window_seconds: number }
 export type SshConfig = { host: string; port: number; username: string; private_key_path: string | null; password: string | null }
 export type StatementInfo = { returns_values: boolean; status: QueryStatus; first_page: JsonValue; affected_rows: number | null; error: string | null }
+export type TAURI_CHANNEL<TSend> = null
 export type TableInfo = { name: string; schema: string; columns: ColumnInfo[]; 
 /**
  * Names of columns that form the primary key (supports composite keys)

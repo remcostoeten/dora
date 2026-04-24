@@ -374,7 +374,10 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 				onToggleMinimap={() => setShowMinimap((v) => !v)}
 				editMode={editMode}
 				onToggleEditMode={() => setEditMode((value) => !value)}
-				onRefresh={fetchSchema}
+				onRefresh={() => {
+					const controller = new AbortController()
+					void fetchSchema(controller.signal)
+				}}
 				onExportJson={handleExportJson}
 				onExportSvg={handleExportSvg}
 				onExportPng={handleExportPng}

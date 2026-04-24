@@ -1,7 +1,7 @@
 import { PanelLeft } from 'lucide-react'
 import { useState, useCallback, useEffect } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { useAdapter } from '@/core/data-provider/context'
+import { useAdapter, useIsTauri } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
 import { useShortcut, useActiveScope, useEffectiveShortcuts } from '@/core/shortcuts'
 import {
@@ -13,6 +13,7 @@ import type { SavedQuery } from '@/lib/bindings'
 import { CheatsheetPanel } from '../../features/drizzle-runner/components/cheatsheet-panel'
 import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
+import { AiCmdK } from './components/ai-cmd-k'
 import { ConsoleToolbar } from './components/console-toolbar'
 import { QueryHistoryPanel } from './components/query-history-panel'
 import { SqlEditor } from './components/sql-editor'
@@ -32,6 +33,7 @@ type Props = {
 
 export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnectionId, getConnectionName }: Props) {
 	const adapter = useAdapter()
+	const isTauri = useIsTauri()
 	const [mode, setMode] = useState<'sql' | 'drizzle'>('sql')
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])
 	const [activeSnippetId, setActiveSnippetId] = useState<string | null>('playground')
@@ -47,6 +49,7 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 	const [showCheatsheet, setShowCheatsheet] = useState(false)
 	const [showFilter, setShowFilter] = useState(false)
 	const [showHistory, setShowHistory] = useState(false)
+	const [showAiCmdK, setShowAiCmdK] = useState(false)
 	const [tables, setTables] = useState<TableInfo[]>([])
 
 	const { addToHistory } = useQueryHistory()
@@ -696,6 +699,11 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 		{ description: sqlShortcuts.openQueryHistory.description }
 	)
 
+	$.bind(sqlShortcuts.aiCmdK.combo).on(
+		function () { setShowAiCmdK(function (v) { return !v }) },
+		{ description: sqlShortcuts.aiCmdK.description }
+	)
+
 	$.key('s')
 		.except('typing')
 		.on(
@@ -898,6 +906,20 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 					</>
 				)}
 			</PanelGroup>
+
+			<AiCmdK
+				open={showAiCmdK}
+				onClose={() => setShowAiCmdK(false)}
+				activeConnectionId={activeConnectionId}
+				isTauri={isTauri}
+				onApplySql={function (sql) {
+					if (mode === 'sql') {
+						setCurrentSqlQuery(sql)
+					} else {
+						setCurrentDrizzleQuery(sql)
+					}
+				}}
+			/>
 		</div>
 	)
 }

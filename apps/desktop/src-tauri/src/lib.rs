@@ -181,11 +181,13 @@ pub fn run() {
             database::commands::export_schema_drizzle,
             // AI commands
             database::commands::ai_complete,
+            database::commands::ai_complete_stream,
             database::commands::ai_set_provider,
             database::commands::ai_get_provider,
             database::commands::ai_set_gemini_key,
             database::commands::ai_configure_ollama,
             database::commands::ai_list_ollama_models,
+            database::commands::ai_groq_status,
             // Window commands
             window::commands::minimize_window,
             window::commands::maximize_window,
