@@ -73,11 +73,13 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::export_schema_sql,
         db_commands::export_schema_drizzle,
         db_commands::ai_complete,
+        db_commands::ai_complete_stream,
         db_commands::ai_set_provider,
         db_commands::ai_get_provider,
         db_commands::ai_set_gemini_key,
         db_commands::ai_configure_ollama,
-        db_commands::ai_list_ollama_models
+        db_commands::ai_list_ollama_models,
+        db_commands::ai_groq_status
     ])
 }
 

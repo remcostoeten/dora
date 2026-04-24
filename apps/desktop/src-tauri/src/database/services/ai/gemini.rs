@@ -70,25 +70,8 @@ impl GeminiClient {
     }
 
     fn build_prompt(&self, request: &AIRequest) -> String {
-        let mut prompt = String::new();
-        
-        // System context
-        prompt.push_str("You are an expert SQL assistant. Help the user write, debug, and understand SQL queries.\n\n");
-        
-        // Schema context if provided
-        if let Some(ctx) = &request.context {
-            prompt.push_str("## Available Tables:\n");
-            for table in &ctx.tables {
-                prompt.push_str(&format!("- **{}**: {}\n", table.name, table.columns.join(", ")));
-            }
-            prompt.push('\n');
-        }
-        
-        // User prompt
-        prompt.push_str("## User Request:\n");
-        prompt.push_str(&request.prompt);
-        
-        prompt
+        let (system, user) = super::prompts::build(request);
+        format!("{}\n\n## User request\n{}", system, user)
     }
 
     pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {

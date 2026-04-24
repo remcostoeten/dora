@@ -108,6 +108,11 @@ export const APP_SHORTCUTS = {
 		description: 'Open query history',
 		scope: 'sql-console'
 	},
+	aiCmdK: {
+		combo: 'mod+i',
+		description: 'AI: generate SQL from prompt',
+		scope: 'sql-console'
+	},
 	saveScript: {
 		combo: 'mod+s',
 		description: 'Save script',
@@ -223,7 +228,7 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gotoDashboard', 'gotoSettings', 'gotoConnections', 'gotoEditor', 'gotoDocker',
 	],
 	'SQL Console': [
-		'runQuery', 'runSelection', 'formatQuery', 'saveScript', 'openQueryHistory', 'newTab',
+		'runQuery', 'runSelection', 'formatQuery', 'saveScript', 'openQueryHistory', 'newTab', 'aiCmdK',
 	],
 	'Editor': [
 		'find', 'replace', 'toggleComment', 'selectNextOccurrence',

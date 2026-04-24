@@ -81,8 +81,9 @@ sqlparser = { version = "0.52", features = ["serde"] }
 fake = { version = "3", features = ["derive"] }
 rand = "0.9"
 bcrypt = "0.15"
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 tauri-plugin-shell = "2.3.4"
+dotenvy = "0.15"
 
 [profile.release]
 panic = "abort"
