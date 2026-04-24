@@ -2,14 +2,14 @@ import { Channel } from '@tauri-apps/api/core'
 import { Loader2, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { commands } from '@/lib/bindings'
-import type { AiStreamEvent } from '@/lib/bindings'
+import type { AiStreamEvent, GroqStatus } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/utils/cn'
 
 type Props = {
 	open: boolean
 	onClose: () => void
-	onApplySql: (sql: string, explanation: string, warnings: string[]) => void
+	onApplySql: (sql: string, explanation: string, warnings: string[], execute: boolean) => void
 	activeConnectionId: string | undefined
 	isTauri: boolean
 }
@@ -21,22 +21,10 @@ type ParsedResult = {
 }
 
 function parseLlmJson(raw: string): ParsedResult {
-	// Attempt strict JSON parse first
 	const trimmed = raw.trim()
-	try {
-		const parsed = JSON.parse(trimmed)
-		return {
-			sql: String(parsed.sql ?? '').trim(),
-			explanation: String(parsed.explanation ?? '').trim(),
-			warnings: Array.isArray(parsed.warnings)
-				? parsed.warnings.map((w: unknown) => String(w))
-				: [],
-		}
-	} catch {
-		// Fallback: strip leading ``` fences if model disobeyed and returned a fence
-		const fenced = trimmed.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '')
+	const tryParse = (s: string): ParsedResult | null => {
 		try {
-			const parsed = JSON.parse(fenced)
+			const parsed = JSON.parse(s)
 			return {
 				sql: String(parsed.sql ?? '').trim(),
 				explanation: String(parsed.explanation ?? '').trim(),
@@ -45,10 +33,19 @@ function parseLlmJson(raw: string): ParsedResult {
 					: [],
 			}
 		} catch {
-			// Last-resort: return raw as SQL, no explanation
-			return { sql: trimmed, explanation: '', warnings: ['Response was not valid JSON.'] }
+			return null
 		}
 	}
+	const direct = tryParse(trimmed)
+	if (direct) return direct
+	const fenced = trimmed.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '')
+	const fencedParsed = tryParse(fenced)
+	if (fencedParsed) return fencedParsed
+	return { sql: trimmed, explanation: '', warnings: ['Response was not valid JSON.'] }
+}
+
+function makeRequestId() {
+	return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri }: Props) {
@@ -57,8 +54,12 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 	const [streamedContent, setStreamedContent] = useState('')
 	const [error, setError] = useState<string | null>(null)
 	const [lastResult, setLastResult] = useState<ParsedResult | null>(null)
+	const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null)
 	const promptRef = useRef<HTMLTextAreaElement | null>(null)
-	const abortRef = useRef<{ cancelled: boolean }>({ cancelled: false })
+	const abortRef = useRef<{ cancelled: boolean; requestId: string | null }>({
+		cancelled: false,
+		requestId: null,
+	})
 
 	useEffect(
 		function resetOnOpen() {
@@ -68,19 +69,36 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				setLastResult(null)
 				setIsGenerating(false)
 				abortRef.current.cancelled = false
+				abortRef.current.requestId = null
 				setTimeout(() => promptRef.current?.focus(), 30)
+				if (isTauri) {
+					commands
+						.aiGroqStatus()
+						.then((res) => {
+							if (res.status === 'ok') setGroqStatus(res.data)
+						})
+						.catch(() => {})
+				}
 			}
 		},
-		[open]
+		[open, isTauri]
 	)
+
+	const abortInFlight = useCallback(function abortInFlight() {
+		const id = abortRef.current.requestId
+		abortRef.current.cancelled = true
+		if (id) {
+			commands.aiAbortStream(id).catch(() => {})
+		}
+	}, [])
 
 	const handleClose = useCallback(
 		function handleClose() {
-			abortRef.current.cancelled = true
+			abortInFlight()
 			setIsGenerating(false)
 			onClose()
 		},
-		[onClose]
+		[onClose, abortInFlight]
 	)
 
 	const generate = useCallback(
@@ -90,12 +108,20 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				setError('AI generation is only available in the desktop app.')
 				return
 			}
+			if (groqStatus && !groqStatus.available) {
+				setError(
+					'No Groq API keys configured. Open Settings → AI Keys to add one, or set GROQ_API_KEY in your environment.'
+				)
+				return
+			}
 
 			setError(null)
 			setStreamedContent('')
 			setLastResult(null)
 			setIsGenerating(true)
 			abortRef.current.cancelled = false
+			const requestId = makeRequestId()
+			abortRef.current.requestId = requestId
 
 			const channel = new Channel<AiStreamEvent>()
 			let accumulated = ''
@@ -121,6 +147,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 
 			try {
 				const result = await commands.aiCompleteStream(
+					requestId,
 					prompt,
 					activeConnectionId ?? null,
 					null,
@@ -141,15 +168,16 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				if (!abortRef.current.cancelled) {
 					setIsGenerating(false)
 				}
+				abortRef.current.requestId = null
 			}
 		},
-		[prompt, isGenerating, activeConnectionId, isTauri]
+		[prompt, isGenerating, activeConnectionId, isTauri, groqStatus]
 	)
 
 	const accept = useCallback(
-		function accept() {
+		function accept(execute: boolean) {
 			if (!lastResult || !lastResult.sql) return
-			onApplySql(lastResult.sql, lastResult.explanation, lastResult.warnings)
+			onApplySql(lastResult.sql, lastResult.explanation, lastResult.warnings, execute)
 			onClose()
 		},
 		[lastResult, onApplySql, onClose]
@@ -163,9 +191,8 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				return
 			}
 			if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-				// Not wired to execute yet; treat same as Enter for now
 				e.preventDefault()
-				if (lastResult) accept()
+				if (lastResult) accept(true)
 				else generate()
 				return
 			}
@@ -176,7 +203,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 			}
 			if (e.key === 'Enter' && !e.shiftKey) {
 				e.preventDefault()
-				if (lastResult) accept()
+				if (lastResult) accept(false)
 				else generate()
 			}
 		},
@@ -184,6 +211,12 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 	)
 
 	if (!open) return null
+
+	const statusLabel = groqStatus
+		? groqStatus.available
+			? `${groqStatus.key_count} key${groqStatus.key_count === 1 ? '' : 's'}`
+			: 'no keys'
+		: '…'
 
 	return (
 		<div
@@ -196,22 +229,24 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 			>
 				<div className='flex items-center gap-2 border-b border-sidebar-border px-3 py-2'>
 					<Sparkles className='h-4 w-4 text-primary' />
-					<span className='text-xs font-semibold text-sidebar-foreground'>
-						AI SQL
-					</span>
-					<span className='text-[10px] text-muted-foreground'>
-						schema-grounded · via Groq
+					<span className='text-xs font-semibold text-sidebar-foreground'>AI SQL</span>
+					<span className='text-[10px] text-muted-foreground'>schema-grounded · via Groq</span>
+					<span
+						className={cn(
+							'text-[10px] rounded px-1.5 py-0.5',
+							groqStatus?.available
+								? 'bg-emerald-500/10 text-emerald-500'
+								: 'bg-amber-500/10 text-amber-500'
+						)}
+						title='Configured Groq API keys (env + Settings)'
+					>
+						{statusLabel}
 					</span>
 					<div className='ml-auto flex items-center gap-1'>
 						{isGenerating && (
 							<Loader2 className='h-3.5 w-3.5 animate-spin text-muted-foreground' />
 						)}
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-6 w-6'
-							onClick={handleClose}
-						>
+						<Button variant='ghost' size='icon' className='h-6 w-6' onClick={handleClose}>
 							<X className='h-3.5 w-3.5' />
 						</Button>
 					</div>
@@ -230,8 +265,9 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 					/>
 					<div className='mt-1 flex items-center justify-between text-[10px] text-muted-foreground'>
 						<span>
-							Enter to {lastResult ? 'accept' : 'generate'}
-							{' · '}⌘R to regenerate{' · '}Esc to close
+							{lastResult
+								? 'Enter to insert · ⌘⏎ to insert + run · ⌘R to regenerate · Esc to close'
+								: 'Enter to generate · ⌘R to regenerate · Esc to close'}
 						</span>
 						{!activeConnectionId && (
 							<span className='text-amber-500'>
@@ -264,12 +300,20 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 										Regenerate
 									</Button>
 									<Button
+										variant='ghost'
+										size='sm'
+										className='h-6 px-2 text-[10px]'
+										onClick={() => accept(false)}
+									>
+										Insert
+									</Button>
+									<Button
 										variant='default'
 										size='sm'
 										className='h-6 px-2 text-[10px]'
-										onClick={accept}
+										onClick={() => accept(true)}
 									>
-										Accept
+										Insert + Run
 									</Button>
 								</div>
 							)}

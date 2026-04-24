@@ -1,4 +1,6 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -6,6 +8,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::{AIRequest, AIResponse, AiStreamEvent};
 use crate::error::Error;
+use crate::storage::Storage;
 
 const GROQ_API_URL: &str = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL: &str = "llama-3.3-70b-versatile";
@@ -81,14 +84,24 @@ pub struct GroqClient {
 
 impl GroqClient {
     pub fn from_env() -> Result<Self, Error> {
-        let mut keys = Vec::new();
+        Self::from_sources(Self::collect_env_keys())
+    }
 
+    /// Build a client merging env keys + DB-stored keys for the given storage.
+    pub fn from_env_and_storage(storage: &Storage) -> Result<Self, Error> {
+        let mut keys = Self::collect_env_keys();
+        let db_keys = storage.ai_keys_active_decrypted("groq").unwrap_or_default();
+        keys.extend(db_keys);
+        Self::from_sources(keys)
+    }
+
+    fn collect_env_keys() -> Vec<String> {
+        let mut keys = Vec::new();
         if let Ok(k) = std::env::var("GROQ_API_KEY") {
             if !k.is_empty() {
                 keys.push(k);
             }
         }
-
         for i in 1..=10 {
             if let Ok(k) = std::env::var(format!("GROQ_API_KEY_{}", i)) {
                 if !k.is_empty() {
@@ -96,10 +109,20 @@ impl GroqClient {
                 }
             }
         }
+        keys
+    }
+
+    fn from_sources(keys: Vec<String>) -> Result<Self, Error> {
+        // Dedupe while preserving order
+        let mut seen = std::collections::HashSet::new();
+        let keys: Vec<String> = keys
+            .into_iter()
+            .filter(|k| !k.is_empty() && seen.insert(k.clone()))
+            .collect();
 
         if keys.is_empty() {
             return Err(Error::InvalidInput(
-                "No GROQ_API_KEY or GROQ_API_KEY_1..10 env vars found".into(),
+                "No Groq API keys configured. Add one in Settings → AI Keys, or set GROQ_API_KEY[ _1..10 ] in your environment.".into(),
             ));
         }
 
@@ -107,8 +130,45 @@ impl GroqClient {
             keys,
             counter: AtomicUsize::new(0),
             model: std::env::var("GROQ_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string()),
-            client: reqwest::Client::new(),
+            client: reqwest::Client::builder()
+                .timeout(Duration::from_secs(60))
+                .build()
+                .unwrap_or_else(|_| reqwest::Client::new()),
         })
+    }
+
+    /// Validate a single key without persisting anything. Returns Ok on 2xx, Err otherwise.
+    pub async fn test_key(api_key: &str, model: Option<&str>) -> Result<String, Error> {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(15))
+            .build()
+            .map_err(|e| Error::Any(anyhow::anyhow!("client build failed: {}", e)))?;
+
+        let body = serde_json::json!({
+            "model": model.unwrap_or(DEFAULT_MODEL),
+            "messages": [
+                {"role": "system", "content": "Reply with the word OK only."},
+                {"role": "user", "content": "ping"}
+            ],
+            "max_tokens": 4,
+            "temperature": 0.0,
+        });
+
+        let response = client
+            .post(GROQ_API_URL)
+            .bearer_auth(api_key)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| Error::Any(anyhow::anyhow!("request failed: {}", e)))?;
+
+        let status = response.status();
+        if status.is_success() {
+            Ok(format!("ok ({})", status.as_u16()))
+        } else {
+            let text = response.text().await.unwrap_or_default();
+            Err(Error::Any(anyhow::anyhow!("{}: {}", status, text)))
+        }
     }
 
     pub fn key_count(&self) -> usize {
@@ -121,6 +181,9 @@ impl GroqClient {
     }
 
     fn build_request(&self, system: String, user: String, max_tokens: Option<u32>, stream: bool) -> GroqRequest {
+        // Groq's OpenAI-compatible endpoint accepts json_object response_format alongside stream.
+        // Forcing it on both paths keeps streamed deltas inside a JSON envelope and avoids the
+        // model wandering into prose / markdown fences mid-stream.
         GroqRequest {
             model: self.model.clone(),
             messages: vec![
@@ -136,42 +199,49 @@ impl GroqClient {
             max_tokens,
             stream,
             temperature: Some(0.2),
-            response_format: if stream {
-                None
-            } else {
-                Some(ResponseFormat {
-                    kind: "json_object".into(),
-                })
-            },
+            response_format: Some(ResponseFormat {
+                kind: "json_object".into(),
+            }),
         }
     }
 
-    /// Non-streaming completion with key rotation on 429.
+    fn should_rotate(status: reqwest::StatusCode) -> bool {
+        status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            || status == reqwest::StatusCode::UNAUTHORIZED
+            || status == reqwest::StatusCode::FORBIDDEN
+            || status.is_server_error()
+    }
+
+    /// Non-streaming completion with key rotation on 429/5xx/auth errors.
     pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
         let (system, user) = super::prompts::build(&request);
         let body = self.build_request(system, user, request.max_tokens, false);
 
-        let max_retries = self.keys.len();
+        let max_retries = self.keys.len().max(1);
         let mut last_err: Option<Error> = None;
 
         for _ in 0..max_retries {
             let key = self.next_key().to_string();
-            let response = self
+            let response = match self
                 .client
                 .post(GROQ_API_URL)
                 .bearer_auth(&key)
                 .json(&body)
                 .send()
                 .await
-                .map_err(|e| Error::Any(anyhow::anyhow!("Groq request failed: {}", e)))?;
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    last_err = Some(Error::Any(anyhow::anyhow!("Groq request failed: {}", e)));
+                    continue;
+                }
+            };
 
             let status = response.status();
-            if status == reqwest::StatusCode::TOO_MANY_REQUESTS
-                || status == reqwest::StatusCode::UNAUTHORIZED
-            {
+            if Self::should_rotate(status) {
                 let body_text = response.text().await.unwrap_or_default();
                 last_err = Some(Error::Any(anyhow::anyhow!(
-                    "Groq key exhausted (status {}): {}",
+                    "Groq key/provider error (status {}): {}",
                     status,
                     body_text
                 )));
@@ -213,36 +283,45 @@ impl GroqClient {
         }))
     }
 
-    /// Streaming completion. Emits AiStreamEvent via sender.
+    /// Streaming completion. Emits AiStreamEvent via sender. Honors `cancel` flag and
+    /// rotates keys on 429/5xx/auth errors before any tokens are streamed.
     pub async fn complete_stream(
         &self,
         request: AIRequest,
         sender: UnboundedSender<AiStreamEvent>,
+        cancel: Arc<AtomicBool>,
     ) -> Result<(), Error> {
         let (system, user) = super::prompts::build(&request);
         let body = self.build_request(system, user, request.max_tokens, true);
 
-        let max_retries = self.keys.len();
+        let max_retries = self.keys.len().max(1);
         let mut last_err: Option<Error> = None;
 
         for _ in 0..max_retries {
+            if cancel.load(Ordering::Relaxed) {
+                return Ok(());
+            }
             let key = self.next_key().to_string();
-            let response = self
+            let response = match self
                 .client
                 .post(GROQ_API_URL)
                 .bearer_auth(&key)
                 .json(&body)
                 .send()
                 .await
-                .map_err(|e| Error::Any(anyhow::anyhow!("Groq request failed: {}", e)))?;
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    last_err = Some(Error::Any(anyhow::anyhow!("Groq request failed: {}", e)));
+                    continue;
+                }
+            };
 
             let status = response.status();
-            if status == reqwest::StatusCode::TOO_MANY_REQUESTS
-                || status == reqwest::StatusCode::UNAUTHORIZED
-            {
+            if Self::should_rotate(status) {
                 let body_text = response.text().await.unwrap_or_default();
                 last_err = Some(Error::Any(anyhow::anyhow!(
-                    "Groq key exhausted (status {}): {}",
+                    "Groq key/provider error (status {}): {}",
                     status,
                     body_text
                 )));
@@ -263,6 +342,9 @@ impl GroqClient {
             let mut full_content = String::new();
 
             while let Some(chunk_result) = stream.next().await {
+                if cancel.load(Ordering::Relaxed) {
+                    return Ok(());
+                }
                 let chunk = chunk_result.map_err(|e| {
                     Error::Any(anyhow::anyhow!("Groq stream error: {}", e))
                 })?;

@@ -8,9 +8,30 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.107'
+export const CURRENT_VERSION = '0.0.108'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.108',
+		date: '2026-04-24',
+		commit: 'feat/ai-key-store',
+		title: 'AI SQL: Encrypted Key Store, Test, Abort & Insert+Run',
+		description:
+			'In-app encrypted Groq API key management, request abort, JSON-mode streaming, and one-shot Insert + Run for the ⌘I overlay.',
+		type: 'feature',
+		details: [
+			'New Settings → AI Keys (Groq) panel: add, label, enable/disable, test, and delete keys',
+			'AES-256-GCM encryption with the master key stored in the OS keychain (Keychain / libsecret / Credential Manager)',
+			'Env keys (GROQ_API_KEY, GROQ_API_KEY_1..10, GROQ_MODEL) are merged with UI-stored keys and deduplicated',
+			'Per-key test button validates against the Groq API and records the last test status in the row',
+			'⌘I overlay shows a live status badge (N keys / no keys) so misconfiguration is visible before generating',
+			'New Insert + Run action (⌘⏎) pastes generated SQL into the editor and immediately executes it',
+			'Real abort path: closing the overlay or pressing Esc mid-stream cancels the in-flight Groq stream backend-side via ai_abort_stream',
+			'Streaming completions now use response_format: json_object to keep tokens inside a JSON envelope',
+			'Key rotation now also fires on 5xx and 403 errors, not just 429/401',
+			'AI streaming reqwest client bumped to a 60s timeout, 15s for key tests'
+		]
+	},
 	{
 		version: '0.0.107',
 		date: '2026-04-19',

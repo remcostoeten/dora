@@ -79,7 +79,14 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::ai_set_gemini_key,
         db_commands::ai_configure_ollama,
         db_commands::ai_list_ollama_models,
-        db_commands::ai_groq_status
+        db_commands::ai_groq_status,
+        db_commands::ai_abort_stream,
+        db_commands::ai_keys_list,
+        db_commands::ai_keys_add,
+        db_commands::ai_keys_delete,
+        db_commands::ai_keys_set_active,
+        db_commands::ai_keys_test,
+        db_commands::ai_keys_test_raw
     ])
 }
 

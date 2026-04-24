@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.0.108 - AI SQL Generator: Encrypted Key Store, Test, Abort & Insert+Run
+
+**Date:** 2026-04-24
+
+**Highlights**
+
+- Added an encrypted Groq API key store inside the app — Settings → AI Keys (Groq) lets you add, label, enable/disable, test, and delete keys. Ciphertext is AES-256-GCM and the master key lives in the OS keychain (Keychain / libsecret / Credential Manager).
+- Env-based keys (`GROQ_API_KEY`, `GROQ_API_KEY_1..10`, `GROQ_MODEL`) are still honored and merged with UI-stored keys at runtime, with duplicate keys deduplicated.
+- New "Test" button validates a key against Groq before saving, and a per-key live test button records the result in the row.
+- The ⌘I overlay now shows a status badge (`N keys` / `no keys`) so missing configuration is obvious before you type a prompt.
+- New "Insert + Run" action — accepting an AI suggestion with ⌘⏎ pastes the SQL into the editor and immediately executes it.
+- Added a real abort path — closing the overlay or hitting Esc mid-stream calls `ai_abort_stream` and the backend short-circuits the SSE loop.
+- Streaming completions now request `response_format: json_object`, which keeps tokens inside a JSON envelope and stops the model wandering into prose / markdown fences mid-stream.
+- Key rotation now also fires on `5xx` and `403` errors (was 429/401 only) so transient provider issues fail over instead of bubbling up.
+- Bumped reqwest client to a 60s timeout for streaming and a separate 15s client for key tests.
+
 ## 0.0.107 - Self-hosted APT Repository (sudo apt install dora)
 
 **Date:** 2026-04-19

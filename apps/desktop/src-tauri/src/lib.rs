@@ -39,6 +39,8 @@ pub struct AppState {
     pub stmt_manager: StatementManager,
     /// Command registry with keyboard shortcuts
     pub command_registry: RwLock<CommandRegistry>,
+    /// Cancellation flags keyed by AI request id, set by the abort command and observed by the streaming loop.
+    pub ai_cancel_flags: DashMap<String, Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl AppState {
@@ -60,6 +62,7 @@ impl AppState {
             storage,
             stmt_manager: StatementManager::new(),
             command_registry: RwLock::new(command_registry),
+            ai_cancel_flags: DashMap::new(),
         })
     }
 }
@@ -193,6 +196,13 @@ pub fn run() {
             database::commands::ai_configure_ollama,
             database::commands::ai_list_ollama_models,
             database::commands::ai_groq_status,
+            database::commands::ai_abort_stream,
+            database::commands::ai_keys_list,
+            database::commands::ai_keys_add,
+            database::commands::ai_keys_delete,
+            database::commands::ai_keys_set_active,
+            database::commands::ai_keys_test,
+            database::commands::ai_keys_test_raw,
             // Window commands
             window::commands::minimize_window,
             window::commands::maximize_window,
