@@ -4,6 +4,12 @@ use uuid::Uuid;
 
 pub type Result<T = ()> = std::result::Result<T, Error>;
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, specta::Type)]
+pub struct BackendErrorShape {
+    pub kind: String,
+    pub detail: String,
+}
+
 /// Database engine discriminator for driver-scoped errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
@@ -23,8 +29,7 @@ pub enum DatabaseKind {
 ///   existing call sites and to preserve `?`-propagation via `From` impls).
 ///
 /// Wire shape on serialize: `{ "kind": "<Variant>", "detail": "<string>" }`.
-/// Specta binding still emits `any`; a follow-up upgrade will surface the
-/// discriminated union to TypeScript.
+/// Specta exposes the same typed shape to generated TypeScript bindings.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     // ---- Typed application errors -----------------------------------------
@@ -133,10 +138,7 @@ impl serde::Serialize for Error {
 }
 
 impl specta::Type for Error {
-    fn inline(_: &mut specta::TypeCollection, _: specta::Generics) -> specta::DataType {
-        // TODO: upgrade to a typed discriminated union so the frontend sees
-        // `{ kind: "ConnectionNotFound" | ... ; detail: string }`. Kept as Any
-        // for now to avoid coupling Phase 3 to a specta plumbing change.
-        specta::DataType::Any
+    fn inline(type_map: &mut specta::TypeCollection, generics: specta::Generics) -> specta::DataType {
+        BackendErrorShape::inline(type_map, generics)
     }
 }

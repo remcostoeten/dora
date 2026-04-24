@@ -661,7 +661,13 @@ export default function Index() {
                 </ErrorBoundary>
               ) : activeNavId === "schema-visualizer" ? (
                 <ErrorBoundary feature="Schema Visualizer">
-                  <SchemaVisualizer activeConnectionId={activeConnectionId} />
+                  <SchemaVisualizer
+                    activeConnectionId={activeConnectionId}
+                    onOpenTable={(tableId, tableName) => {
+                      handleTableSelect(tableId, tableName);
+                      setActiveNavId("database-studio");
+                    }}
+                  />
                 </ErrorBoundary>
               ) : activeNavId === "docker" ? (
                 <ErrorBoundary feature="Docker Manager">
