@@ -1,4 +1,10 @@
-import type { DatabaseSchema, TableInfo, ColumnInfo } from '@/lib/bindings'
+import type {
+	ColumnInfo,
+	DatabaseSchema,
+	ForeignKeyInfo,
+	IndexInfo,
+	TableInfo,
+} from '@/lib/bindings'
 
 function col(
 	name: string,
@@ -17,6 +23,32 @@ function col(
 	}
 }
 
+function fk(
+	referenced_table: string,
+	referenced_column: string,
+	referenced_schema: string,
+): ForeignKeyInfo {
+	return {
+		referenced_table,
+		referenced_column,
+		referenced_schema,
+	}
+}
+
+function index(
+	name: string,
+	column_names: string[],
+	options?: Partial<IndexInfo>,
+): IndexInfo {
+	return {
+		name,
+		column_names,
+		is_unique: false,
+		is_primary: false,
+		...options,
+	}
+}
+
 const ECOMMERCE_TABLES: TableInfo[] = [
 	{
 		name: 'customers',
@@ -31,6 +63,13 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 			col('created_at', 'timestamp', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('customers_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('customers_email_key', ['email'], { is_unique: true }),
+		],
 		row_count_estimate: 50
 	},
 	{
@@ -46,6 +85,12 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 			col('created_at', 'timestamp', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('products_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+		],
 		row_count_estimate: 25
 	},
 	{
@@ -53,13 +98,23 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 		schema: 'public',
 		columns: [
 			col('id', 'serial', false, true),
-			col('customer_id', 'integer', false),
+			{
+				...col('customer_id', 'integer', false),
+				foreign_key: fk('customers', 'id', 'public'),
+			},
 			col('total', 'decimal(10,2)', false),
 			col('status', 'varchar(20)', false),
 			col('shipping_address', 'text', true),
 			col('created_at', 'timestamp', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('orders_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('orders_customer_id_idx', ['customer_id']),
+		],
 		row_count_estimate: 100
 	},
 	{
@@ -67,12 +122,27 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 		schema: 'public',
 		columns: [
 			col('id', 'serial', false, true),
-			col('order_id', 'integer', false),
-			col('product_id', 'integer', false),
+			{
+				...col('order_id', 'integer', false),
+				foreign_key: fk('orders', 'id', 'public'),
+			},
+			{
+				...col('product_id', 'integer', false),
+				foreign_key: fk('products', 'id', 'public'),
+			},
 			col('quantity', 'integer', false),
 			col('unit_price', 'decimal(10,2)', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('order_items_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('order_items_order_product_key', ['order_id', 'product_id'], {
+				is_unique: true,
+			}),
+		],
 		row_count_estimate: 150
 	},
 	{
@@ -108,7 +178,10 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 			col('currency', 'varchar(3)', false),
 			col('status', 'varchar(20)', false),
 			col('payment_method', 'varchar(30)', true),
-			col('customer_id', 'integer', true),
+			{
+				...col('customer_id', 'integer', true),
+				foreign_key: fk('customers', 'id', 'public'),
+			},
 			col('merchant_id', 'integer', true),
 			col('description', 'text', true),
 			col('fee_amount', 'decimal(10,2)', true),
@@ -118,6 +191,13 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 			col('processed_at', 'timestamp', true)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('transactions_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('transactions_customer_id_idx', ['customer_id']),
+		],
 		row_count_estimate: 250
 	},
 	{
@@ -126,7 +206,10 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 		columns: [
 			col('id', 'serial', false, true),
 			col('subscription_id', 'varchar(50)', false),
-			col('customer_id', 'integer', false),
+			{
+				...col('customer_id', 'integer', false),
+				foreign_key: fk('customers', 'id', 'public'),
+			},
 			col('plan_name', 'varchar(50)', false),
 			col('price', 'decimal(10,2)', false),
 			col('billing_cycle', 'varchar(20)', true),
@@ -140,6 +223,13 @@ const ECOMMERCE_TABLES: TableInfo[] = [
 			col('updated_at', 'timestamp', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('subscriptions_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('subscriptions_customer_id_idx', ['customer_id']),
+		],
 		row_count_estimate: 60
 	}
 ]
@@ -158,7 +248,39 @@ const BLOG_TABLES: TableInfo[] = [
 			col('created_at', 'text', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('users_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('users_username_key', ['username'], { is_unique: true }),
+			index('users_email_key', ['email'], { is_unique: true }),
+		],
 		row_count_estimate: 20
+	},
+	{
+		name: 'profiles',
+		schema: 'main',
+		columns: [
+			col('id', 'integer', false, true),
+			{
+				...col('user_id', 'integer', false),
+				foreign_key: fk('users', 'id', 'main'),
+			},
+			col('display_name', 'text', true),
+			col('timezone', 'text', true),
+			col('marketing_opt_in', 'integer', false),
+			col('created_at', 'text', false),
+		],
+		primary_key_columns: ['id'],
+		indexes: [
+			index('profiles_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('profiles_user_id_key', ['user_id'], { is_unique: true }),
+		],
+		row_count_estimate: 20,
 	},
 	{
 		name: 'posts',
@@ -169,12 +291,23 @@ const BLOG_TABLES: TableInfo[] = [
 			col('slug', 'text', false),
 			col('content', 'text', true),
 			col('excerpt', 'text', true),
-			col('author_id', 'integer', false),
+			{
+				...col('author_id', 'integer', false),
+				foreign_key: fk('users', 'id', 'main'),
+			},
 			col('status', 'text', false),
 			col('published_at', 'text', true),
 			col('created_at', 'text', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('posts_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('posts_slug_key', ['slug'], { is_unique: true }),
+			index('posts_author_id_idx', ['author_id']),
+		],
 		row_count_estimate: 40
 	},
 	{
@@ -182,14 +315,28 @@ const BLOG_TABLES: TableInfo[] = [
 		schema: 'main',
 		columns: [
 			col('id', 'integer', false, true),
-			col('post_id', 'integer', false),
-			col('user_id', 'integer', true),
+			{
+				...col('post_id', 'integer', false),
+				foreign_key: fk('posts', 'id', 'main'),
+			},
+			{
+				...col('user_id', 'integer', true),
+				foreign_key: fk('users', 'id', 'main'),
+			},
 			col('author_name', 'text', true),
 			col('body', 'text', false),
 			col('approved', 'integer', false),
 			col('created_at', 'text', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('comments_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('comments_post_id_idx', ['post_id']),
+			index('comments_user_id_idx', ['user_id']),
+		],
 		row_count_estimate: 80
 	},
 	{
@@ -201,7 +348,37 @@ const BLOG_TABLES: TableInfo[] = [
 			col('slug', 'text', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('tags_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('tags_slug_key', ['slug'], { is_unique: true }),
+		],
 		row_count_estimate: 15
+	},
+	{
+		name: 'post_tags',
+		schema: 'main',
+		columns: [
+			{
+				...col('post_id', 'integer', false, true),
+				foreign_key: fk('posts', 'id', 'main'),
+			},
+			{
+				...col('tag_id', 'integer', false, true),
+				foreign_key: fk('tags', 'id', 'main'),
+			},
+			col('created_at', 'text', false),
+		],
+		primary_key_columns: ['post_id', 'tag_id'],
+		indexes: [
+			index('post_tags_pkey', ['post_id', 'tag_id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+		],
+		row_count_estimate: 90,
 	},
 	{
 		name: 'page_views',
@@ -209,7 +386,10 @@ const BLOG_TABLES: TableInfo[] = [
 		columns: [
 			col('id', 'integer', false, true),
 			col('session_id', 'text', false),
-			col('user_id', 'integer', true),
+			{
+				...col('user_id', 'integer', true),
+				foreign_key: fk('users', 'id', 'main'),
+			},
 			col('page_path', 'text', false),
 			col('referrer', 'text', true),
 			col('browser', 'text', true),
@@ -221,6 +401,13 @@ const BLOG_TABLES: TableInfo[] = [
 			col('timestamp', 'text', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('page_views_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('page_views_user_id_idx', ['user_id']),
+		],
 		row_count_estimate: 500
 	}
 ]
@@ -307,7 +494,10 @@ const HR_TABLES: TableInfo[] = [
 			col('position', 'varchar(100)', false),
 			col('salary', 'integer', true),
 			col('hire_date', 'timestamp', false),
-			col('manager_id', 'integer', true),
+			{
+				...col('manager_id', 'integer', true),
+				foreign_key: fk('employees', 'id', 'public'),
+			},
 			col('status', 'varchar(20)', false),
 			col('phone', 'varchar(20)', true),
 			col('office_location', 'varchar(50)', true),
@@ -315,6 +505,13 @@ const HR_TABLES: TableInfo[] = [
 			col('updated_at', 'timestamp', false)
 		],
 		primary_key_columns: ['id'],
+		indexes: [
+			index('employees_pkey', ['id'], {
+				is_unique: true,
+				is_primary: true,
+			}),
+			index('employees_manager_id_idx', ['manager_id']),
+		],
 		row_count_estimate: 30
 	},
 	{

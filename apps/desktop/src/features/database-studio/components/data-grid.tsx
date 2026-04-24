@@ -923,7 +923,7 @@ export function DataGrid({
 	}
 
 	return (
-		<div className='relative h-full w-full'>
+		<div className='relative h-full w-full overflow-hidden'>
 			<div
 				ref={scrollContainerRef}
 				className={cn(
@@ -1168,13 +1168,15 @@ export function DataGrid({
 							)}
 
 						{rows.map(function (row, rowIndex) {
+							const rowBackgroundClasses = selectedRows.has(rowIndex)
+								? 'bg-primary/10'
+								: rowIndex % 2 === 1
+									? 'bg-muted/35 hover:bg-sidebar-accent/30'
+									: 'hover:bg-sidebar-accent/30'
+
 							const rowClasses = cn(
 								'group transition-colors cursor-pointer',
-								selectedRows.has(rowIndex)
-									? 'bg-primary/10'
-									: rowIndex % 2 === 1
-										? 'bg-muted/35 hover:bg-sidebar-accent/30'
-										: 'hover:bg-sidebar-accent/30'
+								rowBackgroundClasses
 							)
 
 							return (
@@ -1207,6 +1209,7 @@ export function DataGrid({
 											<td
 												className={cn(
 													'px-4 py-1.5 text-center border-b border-r border-sidebar-border sticky left-0 z-20 transition-colors',
+													rowBackgroundClasses,
 													selectedRows.has(rowIndex) && 'bg-sidebar-accent'
 												)}
 												role='gridcell'
