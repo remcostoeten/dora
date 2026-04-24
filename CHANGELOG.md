@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.109 - Data Grid Refactor & Schema Visualizer Fix
+
+**Date:** 2026-04-25
+
+**Highlights**
+
+- Split the 1455-line `data-grid.tsx` into a 245-line shell plus 15 focused modules under `data-grid/` — extracted hooks (`use-cell-editing`, `use-cell-selection`, `use-row-selection`, `use-grid-keyboard`, `use-column-resize`, `use-context-menu-reporting`, `use-focused-cell`, `use-right-drag-scroll`), child components (`cell-value`, `draft-row`, `empty-states`, `grid-body`, `grid-header`), and pure modules (`selection.ts`, `types.ts`). Same behavior, far cleaner ownership.
+- Restored the broken imports in `schema-visualizer/components/table-node.tsx` (Handle, Position, NodeProps, Key, LinkIcon) — `tsc -b` is now clean.
+- Bundles every change shipped on this branch: AI encrypted key store (Settings → AI Keys), abort path for the ⌘I overlay, JSON-mode streaming, key rotation on 5xx/403, and Insert + Run.
+
 ## 0.0.108 - AI SQL Generator: Encrypted Key Store, Test, Abort & Insert+Run
 
 **Date:** 2026-04-24

@@ -8,9 +8,25 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.108'
+export const CURRENT_VERSION = '0.0.109'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.109',
+		date: '2026-04-25',
+		commit: 'feat/ai-key-store',
+		title: 'Data Grid Refactor & Schema Visualizer Fix',
+		description:
+			'Split the 1455-line data-grid into 15 focused hook/component modules, fixed broken schema-visualizer imports, and bundled the AI key-store work into a single release.',
+		type: 'refactor',
+		details: [
+			'data-grid.tsx 1455 → 245 lines, with state/keyboard/selection/column-resize hooks each in their own file under data-grid/',
+			'Extracted child components: cell-value, draft-row, empty-states, grid-body, grid-header',
+			'Pure modules: selection.ts (rectangle helpers) and types.ts (CellPosition, ContextMenuState, etc.)',
+			'Restored broken imports in schema-visualizer/components/table-node.tsx — tsc -b is now clean',
+			'Bundles AI encrypted key store, abort, JSON-mode streaming, and Insert + Run from the same branch into 0.0.109'
+		]
+	},
 	{
 		version: '0.0.108',
 		date: '2026-04-24',
