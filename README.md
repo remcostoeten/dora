@@ -70,6 +70,23 @@ editor, and local Docker PostgreSQL tooling.
 - Export results as JSON or CSV
 - Edit or delete rows from single-table result sets
 
+### AI SQL generation (⌘I / Ctrl+I)
+
+- Describe what you want in plain English; get schema-grounded SQL back
+- Powered by Groq (Llama 3) — streams results token by token
+- Insert into editor or insert and run in one step
+- Rotating key pool with automatic failover on rate-limit or error
+- Add multiple Groq API keys in Settings → AI Keys (AES-256-GCM encrypted, master key in OS keychain)
+- Works without a key too: set `GROQ_API_KEY` in your environment
+
+### Schema visualizer
+
+- Interactive ER diagram of your entire database
+- Pan, zoom, and click tables to inspect columns and relationships
+- Foreign-key edges drawn automatically
+- Search tables and columns — matches highlight, unrelated tables dim
+- Layout auto-fits to viewport
+
 ### Make Dora fit your workflow
 
 - Keyboard-first navigation with customizable shortcuts
@@ -89,10 +106,10 @@ Dora is a Tauri app built for macOS, Windows, and Linux.
 
 Download the latest release for your platform:
 
-- macOS (Apple Silicon): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.106_aarch64.dmg)
-- macOS (Intel): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.106_x64.dmg)
-- Windows: [`.msi`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.106_x64_en-US.msi)
-- Linux: [`.deb`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.106_amd64.deb), [`.rpm`](https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.106-1.x86_64.rpm), [`.AppImage`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.106_amd64.AppImage)
+- macOS (Apple Silicon): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.109_aarch64.dmg)
+- macOS (Intel): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.109_x64.dmg)
+- Windows: [`.msi`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.109_x64_en-US.msi)
+- Linux: [`.deb`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.109_amd64.deb), [`.rpm`](https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.109-1.x86_64.rpm), [`.AppImage`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.109_amd64.AppImage)
 
 ### Install
 
@@ -126,21 +143,21 @@ winget install remcostoeten.dora
 
 ```bash
 # Linux — one-off .deb install
-wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.106_amd64.deb
-sudo apt install ./Dora_0.0.106_amd64.deb
+wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.109_amd64.deb
+sudo apt install ./Dora_0.0.109_amd64.deb
 ```
 
 ```bash
 # Linux (.rpm)
-wget https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.106-1.x86_64.rpm
-sudo dnf install ./Dora-0.0.106-1.x86_64.rpm
+wget https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.109-1.x86_64.rpm
+sudo dnf install ./Dora-0.0.109-1.x86_64.rpm
 ```
 
 ```bash
 # Linux (AppImage)
-wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.106_amd64.AppImage
-chmod +x Dora_0.0.106_amd64.AppImage
-./Dora_0.0.106_amd64.AppImage
+wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.109_amd64.AppImage
+chmod +x Dora_0.0.109_amd64.AppImage
+./Dora_0.0.109_amd64.AppImage
 ```
 
 ## Database Support
