@@ -24,7 +24,7 @@ import { getTableRefId } from '@/shared/utils/table-ref'
 import { RelationshipEdge } from './components/relationship-edge'
 import { SchemaDetailsPanel } from './components/schema-details-panel'
 import { TableNode } from './components/table-node'
-import { SchemaToolbar } from './components/schema-toolbar'
+import { SchemaToolbar, type SearchSuggestion } from './components/schema-toolbar'
 import {
 	useSchemaGraph,
 	type RelationshipEdgeData,
@@ -204,6 +204,15 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 		edges: graphEdges,
 		searchSummary,
 	} = useSchemaGraph(schema, deferredSearch)
+
+	const suggestions = useMemo((): SearchSuggestion[] => {
+		if (!schema) return []
+		const tableNames = schema.tables.map((t) => ({ label: t.name, type: 'table' as const }))
+		const columnNames = Array.from(
+			new Set(schema.tables.flatMap((t) => t.columns.map((c) => c.name))),
+		).map((name) => ({ label: name, type: 'column' as const }))
+		return [...tableNames, ...columnNames]
+	}, [schema])
 	const positionStorageKey = activeConnectionId
 		? `dora:schema-visualizer:positions:${activeConnectionId}`
 		: null
@@ -370,6 +379,7 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 			<SchemaToolbar
 				search={search}
 				onSearchChange={setSearch}
+				suggestions={suggestions}
 				showMinimap={showMinimap}
 				onToggleMinimap={() => setShowMinimap((v) => !v)}
 				editMode={editMode}

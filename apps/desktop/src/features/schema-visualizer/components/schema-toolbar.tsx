@@ -6,6 +6,7 @@ import {
 	Maximize2,
 	Map as MapIcon,
 	RefreshCw,
+	Search,
 	X,
 } from 'lucide-react'
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
@@ -17,7 +18,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/shared/ui/dropdown-menu'
-import { Input } from '@/shared/ui/input'
 import {
 	Tooltip,
 	TooltipContent,
@@ -25,9 +25,15 @@ import {
 } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/utils/cn'
 
+export type SearchSuggestion = {
+	label: string
+	type: 'table' | 'column'
+}
+
 type Props = {
 	search: string
 	onSearchChange: (v: string) => void
+	suggestions: SearchSuggestion[]
 	showMinimap: boolean
 	onToggleMinimap: () => void
 	editMode: boolean
@@ -164,9 +170,127 @@ function ToolbarIconButton({
 	)
 }
 
+function SearchBox({
+	search,
+	onSearchChange,
+	suggestions,
+}: {
+	search: string
+	onSearchChange: (v: string) => void
+	suggestions: SearchSuggestion[]
+}) {
+	const [focused, setFocused] = useState(false)
+	const [activeIndex, setActiveIndex] = useState(-1)
+	const wrapperRef = useRef<HTMLDivElement>(null)
+	const inputRef = useRef<HTMLInputElement>(null)
+
+	const filtered = search.trim().length > 0
+		? suggestions
+			.filter((s) => s.label.toLowerCase().includes(search.toLowerCase()))
+			.slice(0, 10)
+		: []
+
+	const showDropdown = focused && filtered.length > 0
+
+	function select(label: string) {
+		onSearchChange(label)
+		setFocused(false)
+		setActiveIndex(-1)
+		inputRef.current?.blur()
+	}
+
+	function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+		if (!showDropdown) return
+		if (e.key === 'ArrowDown') {
+			e.preventDefault()
+			setActiveIndex((i) => Math.min(i + 1, filtered.length - 1))
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault()
+			setActiveIndex((i) => Math.max(i - 1, -1))
+		} else if (e.key === 'Enter' && activeIndex >= 0) {
+			e.preventDefault()
+			select(filtered[activeIndex].label)
+		} else if (e.key === 'Escape') {
+			setFocused(false)
+			setActiveIndex(-1)
+		}
+	}
+
+	useEffect(function resetActiveOnChange() {
+		setActiveIndex(-1)
+	}, [search])
+
+	useEffect(function handleClickOutside() {
+		function onMouseDown(e: MouseEvent) {
+			if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+				setFocused(false)
+				setActiveIndex(-1)
+			}
+		}
+		document.addEventListener('mousedown', onMouseDown)
+		return () => document.removeEventListener('mousedown', onMouseDown)
+	}, [])
+
+	return (
+		<div ref={wrapperRef} className='relative w-64'>
+			<div className='relative flex items-center'>
+				<Search className='pointer-events-none absolute left-2 h-3 w-3 text-muted-foreground' />
+				<input
+					ref={inputRef}
+					value={search}
+					onChange={(e) => onSearchChange(e.target.value)}
+					onFocus={() => setFocused(true)}
+					onKeyDown={handleKeyDown}
+					placeholder='Search tables or columns…'
+					className='h-7 w-full rounded-md border border-input bg-transparent pl-7 pr-6 text-xs outline-none ring-offset-background placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors'
+				/>
+				{search && (
+					<button
+						className='absolute right-1.5 text-muted-foreground transition-colors hover:text-foreground'
+						onClick={() => { onSearchChange(''); inputRef.current?.focus() }}
+						tabIndex={-1}
+					>
+						<X className='h-3 w-3' />
+					</button>
+				)}
+			</div>
+
+			{showDropdown && (
+				<div className='absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-md border border-sidebar-border bg-sidebar shadow-lg'>
+					{filtered.map((s, i) => (
+						<button
+							key={`${s.type}:${s.label}`}
+							className={cn(
+								'flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors',
+								i === activeIndex
+									? 'bg-sidebar-accent text-sidebar-foreground'
+									: 'text-sidebar-foreground hover:bg-sidebar-accent/60',
+							)}
+							onMouseDown={(e) => { e.preventDefault(); select(s.label) }}
+						>
+							<span
+								className={cn(
+									'shrink-0 rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider',
+									s.type === 'table'
+										? 'bg-[hsl(214_72%_58%/0.15)] text-[hsl(214_72%_68%)]'
+										: 'bg-[hsl(168_52%_48%/0.15)] text-[hsl(168_52%_60%)]',
+								)}
+							>
+								{s.type === 'table' ? 'tbl' : 'col'}
+							</span>
+							<span className='truncate font-mono'>{s.label}</span>
+						</button>
+					))}
+				</div>
+			)}
+		</div>
+	)
+}
+
 export function SchemaToolbar({
 	search,
 	onSearchChange,
+	suggestions,
 	showMinimap,
 	onToggleMinimap,
 	editMode,
@@ -188,22 +312,11 @@ export function SchemaToolbar({
 	return (
 		<div className='flex h-10 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3'>
 			<div className='flex min-w-0 flex-1 items-center gap-2'>
-				<div className='relative w-64'>
-					<Input
-						placeholder='Search tables, schemas, columns...'
-						value={search}
-						onChange={(e) => onSearchChange(e.target.value)}
-						className='h-7 pr-6 text-xs'
-					/>
-					{search && (
-						<button
-							className='absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground'
-							onClick={() => onSearchChange('')}
-						>
-							<X className='h-3 w-3' />
-						</button>
-					)}
-				</div>
+				<SearchBox
+					search={search}
+					onSearchChange={onSearchChange}
+					suggestions={suggestions}
+				/>
 				<span className='whitespace-nowrap text-[11px] text-muted-foreground'>
 					{isSearchResult
 						? `${tableCount} matches${
