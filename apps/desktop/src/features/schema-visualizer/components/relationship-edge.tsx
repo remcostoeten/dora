@@ -10,12 +10,21 @@ import type { RelationshipEdgeData } from '../hooks/use-schema-graph'
 
 type Props = EdgeProps<Edge<RelationshipEdgeData, 'relationshipEdge'>>
 
-function getEdgeVisuals(data: RelationshipEdgeData | undefined) {
+type EdgeVisuals = {
+	strokeColor: string
+	strokeWidth: number
+	strokeDasharray: string | undefined
+	strokeOpacity: number
+	badgeClass: string
+	iconChar: string
+}
+
+function getEdgeVisuals(data: RelationshipEdgeData | undefined): EdgeVisuals {
 	if (!data) {
 		return {
-			strokeColor: 'hsl(246 68% 64%)',
+			strokeColor: 'var(--sv-line-fk)',
 			strokeWidth: 1.8,
-			strokeDasharray: undefined as string | undefined,
+			strokeDasharray: undefined,
 			strokeOpacity: 0.7,
 			badgeClass: 'sv-edge-badge--primary',
 			iconChar: '→',
@@ -24,17 +33,17 @@ function getEdgeVisuals(data: RelationshipEdgeData | undefined) {
 
 	const searchFade =
 		data.searchState === 'dim'
-			? 0.18
+			? 0.15
 			: data.searchState === 'context'
-				? 0.55
+				? 0.5
 				: 1
 
 	if (data.relationKind === 'many-to-many') {
 		return {
-			strokeColor: 'hsl(246 68% 64%)',
+			strokeColor: 'var(--sv-line-many)',
 			strokeWidth: 1.8,
 			strokeDasharray: '7 5',
-			strokeOpacity: 0.58 * searchFade,
+			strokeOpacity: 0.55 * searchFade,
 			badgeClass: 'sv-edge-badge--warning',
 			iconChar: '⇔',
 		}
@@ -42,20 +51,20 @@ function getEdgeVisuals(data: RelationshipEdgeData | undefined) {
 
 	if (data.relationKind === 'one-to-one') {
 		return {
-			strokeColor: 'hsl(246 68% 64%)',
+			strokeColor: 'var(--sv-line-one)',
 			strokeWidth: 1.8,
-			strokeDasharray: undefined as string | undefined,
-			strokeOpacity: 0.7 * searchFade,
+			strokeDasharray: undefined,
+			strokeOpacity: 0.72 * searchFade,
 			badgeClass: 'sv-edge-badge--success',
 			iconChar: '↔',
 		}
 	}
 
 	return {
-		strokeColor: 'hsl(246 68% 64%)',
+		strokeColor: 'var(--sv-line-fk)',
 		strokeWidth: 1.7,
-		strokeDasharray: data.isOptional ? '6 4 2 4' : (undefined as string | undefined),
-		strokeOpacity: (data.isOptional ? 0.42 : 0.66) * searchFade,
+		strokeDasharray: data.isOptional ? '6 4 2 4' : undefined,
+		strokeOpacity: (data.isOptional ? 0.4 : 0.65) * searchFade,
 		badgeClass: data.isOptional
 			? 'sv-edge-badge--primary sv-edge-badge--optional'
 			: 'sv-edge-badge--primary',
@@ -86,6 +95,8 @@ export function RelationshipEdge({
 		curvature: data?.isSelfReference ? 0.8 : 0.35,
 	})
 	const vis = getEdgeVisuals(data)
+	const isDim = data?.searchState === 'dim'
+	const isMatch = data?.searchState === 'match'
 
 	return (
 		<>
@@ -103,6 +114,18 @@ export function RelationshipEdge({
 					strokeDasharray: vis.strokeDasharray,
 				}}
 			/>
+
+			{!isDim && (
+				<path
+					d={edgePath}
+					fill='none'
+					stroke={vis.strokeColor}
+					strokeWidth={vis.strokeWidth - 0.2}
+					strokeLinecap='round'
+					strokeOpacity={isMatch ? 0.75 : 0.28}
+					className={cn('sv-edge-flow', isMatch && 'sv-edge-flow--match')}
+				/>
+			)}
 
 			{data && selected && (
 				<EdgeLabelRenderer>

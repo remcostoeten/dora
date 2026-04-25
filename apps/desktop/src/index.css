@@ -700,10 +700,27 @@ layer(base);
 
 /* --- React Flow overrides --- */
 .schema-visualizer {
-	--sv-line-primary: hsl(246 68% 64%);
+	--sv-line-fk:   hsl(214 72% 58%);
+	--sv-line-one:  hsl(168 52% 48%);
+	--sv-line-many: hsl(38 82% 54%);
 	--sv-panel-bg: hsla(0, 0%, 100%, 0.03);
 	--sv-panel-border: hsla(var(--sidebar-border), 0.72);
 	--sv-panel-border-soft: hsla(var(--sidebar-border), 0.42);
+}
+
+@keyframes sv-flow {
+	to { stroke-dashoffset: -16; }
+}
+
+.sv-edge-flow {
+	stroke-dasharray: 5 9;
+	animation: sv-flow 1.8s linear infinite;
+	pointer-events: none;
+}
+
+.sv-edge-flow--match {
+	stroke-dasharray: 7 6;
+	animation-duration: 1s;
 }
 
 .schema-visualizer .react-flow__background {
@@ -763,13 +780,13 @@ layer(base);
 }
 
 .sv-handle--fk {
-	border-color: hsla(246, 68%, 64%, 0.72) !important;
-	background: hsl(246 45% 38%) !important;
+	border-color: hsla(214, 72%, 58%, 0.72) !important;
+	background: hsl(214 50% 28%) !important;
 }
 
 .sv-handle--active {
-	border-color: hsla(246, 68%, 70%, 0.88) !important;
-	background: hsl(246 68% 64%) !important;
+	border-color: hsla(214, 72%, 68%, 0.9) !important;
+	background: hsl(214 72% 58%) !important;
 	transform: scale(1.05);
 }
 
