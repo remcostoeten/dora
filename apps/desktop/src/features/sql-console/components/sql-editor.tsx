@@ -65,11 +65,65 @@ function getAliases(text: string): Map<string, string> {
 	for (const match of text.matchAll(regex)) {
 		const table = match[1]
 		const alias = match[2]
-		aliases.set(table, table)
-		if (alias) aliases.set(alias, table)
+		aliases.set(table.toLowerCase(), table.toLowerCase())
+		if (alias) aliases.set(alias.toLowerCase(), table.toLowerCase())
 	}
 
 	return aliases
+}
+
+function getFromClauseTables(text: string): Set<string> {
+	const tables = new Set<string>()
+	const regex = /\b(?:from|join|update|into)\s+([a-zA-Z_][\w$]*)/gi
+	for (const match of text.matchAll(regex)) {
+		tables.add(match[1].toLowerCase())
+	}
+	return tables
+}
+
+function columnDetail(col: NonNullable<import('../types').TableInfo['columns']>[number]): string {
+	const parts: string[] = [col.type]
+	if (col.primaryKey) parts.push('PK')
+	if (col.nullable === false) parts.push('NOT NULL')
+	return parts.join(' · ')
+}
+
+const TRIGGER_SUGGEST = { id: 'editor.action.triggerSuggest', title: '' }
+
+function getNextStepKeywords(beforeLower: string): string[] {
+	// after FROM tablename → filter/sort/join options
+	if (/\bfrom\s+\w+\s*$/.test(beforeLower)) {
+		return ['WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'ORDER BY', 'GROUP BY', 'LIMIT', 'HAVING', 'AS']
+	}
+	// after JOIN tablename → ON
+	if (/\b(?:join|left join|right join|inner join|outer join)\s+\w+\s*$/.test(beforeLower)) {
+		return ['ON']
+	}
+	// after ON col = col → chained joins or filters
+	if (/\bon\s+[\w.]+\s*=\s*[\w.]+\s*$/.test(beforeLower)) {
+		return ['WHERE', 'JOIN', 'LEFT JOIN', 'AND', 'ORDER BY', 'GROUP BY', 'LIMIT']
+	}
+	// after WHERE / AND / OR condition
+	if (/\b(?:where|and|or)\s+[\w.]+\s*(?:=|!=|<>|>|<|>=|<=|like|in|is)\s*[\w.'%]*\s*$/.test(beforeLower)) {
+		return ['AND', 'OR', 'ORDER BY', 'GROUP BY', 'LIMIT']
+	}
+	// after ORDER BY col
+	if (/\border\s+by\s+[\w.]+\s*$/.test(beforeLower)) {
+		return ['ASC', 'DESC', 'LIMIT', ',']
+	}
+	// after ASC / DESC
+	if (/\b(?:asc|desc)\s*$/.test(beforeLower)) {
+		return ['LIMIT', ',', 'NULLS FIRST', 'NULLS LAST']
+	}
+	// after GROUP BY col
+	if (/\bgroup\s+by\s+[\w.]+\s*$/.test(beforeLower)) {
+		return ['HAVING', 'ORDER BY', 'LIMIT', ',']
+	}
+	// after HAVING condition
+	if (/\bhaving\s+.+\s*$/.test(beforeLower)) {
+		return ['ORDER BY', 'LIMIT']
+	}
+	return []
 }
 
 export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
@@ -254,31 +308,37 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: P
 						word.endColumn
 					)
 
-					const beforeCursor = model
-						.getValueInRange({
-							startLineNumber: 1,
-							startColumn: 1,
-							endLineNumber: position.lineNumber,
-							endColumn: position.column
-						})
-						.toLowerCase()
+					const fullText = model.getValue()
+					const beforeCursor = model.getValueInRange({
+						startLineNumber: 1,
+						startColumn: 1,
+						endLineNumber: position.lineNumber,
+						endColumn: position.column
+					})
+					const beforeLower = beforeCursor.toLowerCase()
 
 					const suggestions: Monaco.languages.CompletionItem[] = []
-					const aliases = getAliases(beforeCursor)
+					const aliases = getAliases(beforeLower)
+					const fromTables = getFromClauseTables(fullText.toLowerCase())
 
-					// tableOrAlias.<column>
-					const dotMatch = beforeCursor.match(/([a-zA-Z_][\w$]*)\.$/)
+					// ── dot completion: tableOrAlias.<column> ──────────────────
+					const dotMatch = beforeLower.match(/([a-zA-Z_][\w$]*)\.$/)
 					if (dotMatch) {
 						const receiver = dotMatch[1]
-						const tableName = aliases.get(receiver) || receiver
-						const table = tables.find((t) => t.name === tableName)
+						const tableName = aliases.get(receiver) ?? receiver
+						const table = tables.find((t) => t.name.toLowerCase() === tableName)
 						if (table?.columns?.length) {
 							for (const col of table.columns) {
 								suggestions.push({
 									label: col.name,
-									kind: monaco.languages.CompletionItemKind.Field,
+									kind: col.primaryKey
+										? monaco.languages.CompletionItemKind.Value
+										: monaco.languages.CompletionItemKind.Field,
 									insertText: col.name,
-									detail: `${table.name}.${col.name}`,
+									detail: columnDetail(col),
+									documentation: col.primaryKey ? 'Primary key' : undefined,
+									sortText: `0_${col.name}`,
+									command: TRIGGER_SUGGEST,
 									range
 								})
 							}
@@ -286,45 +346,152 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: P
 						return { suggestions }
 					}
 
-					const wantsTables = /\b(from|join|update|into|table)\s+[a-zA-Z_0-9]*$/i.test(
-						beforeCursor
-					)
+					// ── next-step contextual keywords ──────────────────────────
+					const nextStep = getNextStepKeywords(beforeLower)
+					for (const kw of nextStep) {
+						suggestions.push({
+							label: kw,
+							kind: monaco.languages.CompletionItemKind.Keyword,
+							insertText: kw === ',' ? ', ' : `${kw} `,
+							detail: 'next',
+							sortText: `0_${kw}`,
+							command: TRIGGER_SUGGEST,
+							range
+						})
+					}
+
+					// ── table name completion ──────────────────────────────────
+					const wantsTables = /\b(from|join|update|into|table)\s+[\w]*$/i.test(beforeLower)
 					if (wantsTables) {
 						for (const table of tables) {
+							const colCount = table.columns?.length ?? 0
 							suggestions.push({
 								label: table.name,
-								kind: monaco.languages.CompletionItemKind.Struct,
+								kind: table.type === 'view'
+									? monaco.languages.CompletionItemKind.Interface
+									: monaco.languages.CompletionItemKind.Struct,
 								insertText: table.name,
-								detail: table.type,
+								detail: `${table.type} · ${colCount} col${colCount !== 1 ? 's' : ''}`,
+								sortText: `0_${table.name}`,
+								command: TRIGGER_SUGGEST,
 								range
 							})
 						}
 					}
 
+					// ── column completion: prefer FROM-clause tables ───────────
 					const wantsColumns =
-						/\b(select|where|and|or|on|group by|order by|having|set)\s+[a-zA-Z_0-9]*$/i.test(
-							beforeCursor
+						/\b(select|where|and|or|not|on|group\s+by|order\s+by|having|set|distinct|returning|case\s+when)\s+[\w]*$/i.test(
+							beforeLower
 						)
 
 					if (wantsColumns) {
-						for (const table of tables) {
-							for (const col of table.columns || []) {
+						const inQueryTables = tables.filter((t) =>
+							fromTables.has(t.name.toLowerCase())
+						)
+						const targetTables = inQueryTables.length > 0 ? inQueryTables : tables
+
+						for (const table of targetTables) {
+							for (const col of table.columns ?? []) {
+								const qualifiedLabel = `${table.name}.${col.name}`
 								suggestions.push({
-									label: `${table.name}.${col.name}`,
-									kind: monaco.languages.CompletionItemKind.Field,
-									insertText: `${table.name}.${col.name}`,
-									detail: col.type,
+									label: qualifiedLabel,
+									kind: col.primaryKey
+										? monaco.languages.CompletionItemKind.Value
+										: monaco.languages.CompletionItemKind.Field,
+									insertText: qualifiedLabel,
+									detail: columnDetail(col),
+									sortText: `1_${table.name}_${col.name}`,
+									command: TRIGGER_SUGGEST,
 									range
 								})
+								if (inQueryTables.length > 0) {
+									suggestions.push({
+										label: col.name,
+										kind: col.primaryKey
+											? monaco.languages.CompletionItemKind.Value
+											: monaco.languages.CompletionItemKind.Field,
+										insertText: col.name,
+										detail: `${table.name} · ${columnDetail(col)}`,
+										sortText: `0_${col.name}`,
+										command: TRIGGER_SUGGEST,
+										range
+									})
+								}
 							}
 						}
 					}
+
+					// ── snippet templates (statement start only) ───────────────
+					const atStatementStart = /^\s*[\w]*$/.test(
+						beforeLower.slice(beforeLower.lastIndexOf('\n') + 1)
+					)
+					if (atStatementStart) {
+						const snippets: Array<{ label: string; text: string; doc: string }> = [
+							{
+								label: 'sel',
+								text: 'SELECT ${1:*} FROM ${2:table}',
+								doc: 'SELECT * FROM table'
+							},
+							{
+								label: 'selw',
+								text: 'SELECT ${1:*} FROM ${2:table} WHERE ${3:condition}',
+								doc: 'SELECT with WHERE'
+							},
+							{
+								label: 'selj',
+								text: 'SELECT ${1:a.*} FROM ${2:table_a} a\nJOIN ${3:table_b} b ON b.${4:id} = a.${5:id}',
+								doc: 'SELECT with JOIN'
+							},
+							{
+								label: 'ins',
+								text: 'INSERT INTO ${1:table} (${2:col}) VALUES (${3:val})',
+								doc: 'INSERT INTO'
+							},
+							{
+								label: 'upd',
+								text: 'UPDATE ${1:table} SET ${2:col} = ${3:val} WHERE ${4:condition}',
+								doc: 'UPDATE SET WHERE'
+							},
+							{
+								label: 'del',
+								text: 'DELETE FROM ${1:table} WHERE ${2:condition}',
+								doc: 'DELETE FROM WHERE'
+							},
+							{
+								label: 'exp',
+								text: 'EXPLAIN ANALYZE\n${1:SELECT * FROM table}',
+								doc: 'EXPLAIN ANALYZE query'
+							},
+						]
+						for (const s of snippets) {
+							suggestions.push({
+								label: s.label,
+								kind: monaco.languages.CompletionItemKind.Snippet,
+								insertText: s.text,
+								insertTextRules:
+									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								detail: s.doc,
+								sortText: `2_${s.label}`,
+								range
+							})
+						}
+					}
+
+					// ── navigating keywords (trigger suggest after insertion) ──
+					const NAV_KEYWORDS = new Set([
+						'SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN',
+						'INNER JOIN', 'ON', 'AND', 'OR', 'ORDER BY', 'GROUP BY',
+						'HAVING', 'SET', 'INSERT INTO', 'UPDATE', 'DELETE',
+					])
 
 					for (const keyword of SQL_KEYWORDS) {
 						suggestions.push({
 							label: keyword,
 							kind: monaco.languages.CompletionItemKind.Keyword,
 							insertText: keyword,
+							sortText: `z_${keyword}`,
+							command: NAV_KEYWORDS.has(keyword) ? TRIGGER_SUGGEST : undefined,
 							range
 						})
 					}
