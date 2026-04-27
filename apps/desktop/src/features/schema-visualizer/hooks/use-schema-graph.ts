@@ -221,11 +221,11 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 		tables.map((table) => [getTableId(table.name, table.schema), table]),
 	)
 	const cols = Math.max(1, Math.ceil(Math.sqrt(tables.length)))
-	const hGap = NODE_WIDTH + 72
+	const hGap = NODE_WIDTH + 148
 	const rowHeights = Array.from({ length: Math.ceil(tables.length / cols) }, (_, row) => {
 		const rowTables = tables.slice(row * cols, row * cols + cols)
 		const tallestTable = Math.max(...rowTables.map((table) => table.columns.length), 1)
-		return HEADER_HEIGHT + tallestTable * ROW_HEIGHT + 72
+		return HEADER_HEIGHT + tallestTable * ROW_HEIGHT + 112
 	})
 	const rowOffsets = rowHeights.reduce<number[]>((offsets, height, index) => {
 		offsets[index + 1] = offsets[index] + height
@@ -298,11 +298,11 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 				animated: false,
 				markerEnd: {
 					type: MarkerType.ArrowClosed,
-					color: 'hsl(246 68% 64%)',
+					color: 'var(--sv-line-fk)',
 					width: 16,
 					height: 16,
 				},
-				style: { stroke: 'hsl(246 68% 64%)', strokeWidth: 1.8 },
+				style: { stroke: 'var(--sv-line-fk)', strokeWidth: 1.8 },
 				data: {
 					cardinality:
 						relationKind === 'many-to-many'

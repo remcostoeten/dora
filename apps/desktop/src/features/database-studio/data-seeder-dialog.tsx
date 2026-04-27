@@ -13,7 +13,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/ui/table'
 import { Loader2, Sparkles } from 'lucide-react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/shared/ui/use-toast'
 
 type Props = {
 	open: boolean

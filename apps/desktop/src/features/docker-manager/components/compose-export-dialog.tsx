@@ -8,7 +8,7 @@ import {
 	DialogHeader,
 	DialogTitle
 } from '@/shared/ui/dialog'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/shared/ui/use-toast'
 import type { DockerContainer } from '../types'
 import { generateDockerCompose } from '../utilities/docker-compose-generator'
 import { save } from '@tauri-apps/plugin-dialog'

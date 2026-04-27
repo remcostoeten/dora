@@ -1,7 +1,7 @@
 import { SquareTerminal, Table2, Container, Network } from 'lucide-react'
 import { useCallback, useRef, KeyboardEvent } from 'react'
 import { DoraLogo } from '@/components/dora-logo'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/utils/cn'
 import { SidebarProvider, useSidebar } from './context'
 import { SidebarNavItem } from './nav-item'

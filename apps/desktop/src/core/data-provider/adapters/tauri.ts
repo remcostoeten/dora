@@ -18,6 +18,9 @@ import { formatBackendError } from '@/shared/utils/backend-error'
 import { getTableRefParts, getTableSqlIdentifier } from '@/shared/utils/table-ref'
 import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 
+import { backendToFrontendConnection } from '@/features/connections/utils/mapping'
+import type { Connection } from '@/features/connections/types'
+
 function ok<T>(data: T): AdapterResult<T> {
 	return { ok: true, data }
 }
@@ -34,10 +37,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function createTauriAdapter(): DataAdapter {
 	return {
-		async getConnections(): Promise<AdapterResult<ConnectionInfo[]>> {
+		async getConnections(): Promise<AdapterResult<Connection[]>> {
 			const result = await commands.getConnections()
 			if (result.status === 'ok') {
-				return ok(result.data)
+				return ok(result.data.map(backendToFrontendConnection))
 			}
 			return err(formatError(result.error))
 		},
@@ -46,10 +49,10 @@ export function createTauriAdapter(): DataAdapter {
 			name: string,
 			databaseType: DatabaseInfo,
 			sshConfig: JsonValue | null
-		): Promise<AdapterResult<ConnectionInfo>> {
+		): Promise<AdapterResult<Connection>> {
 			const result = await commands.addConnection(name, databaseType, null)
 			if (result.status === 'ok') {
-				return ok(result.data)
+				return ok(backendToFrontendConnection(result.data))
 			}
 			return err(formatError(result.error))
 		},
@@ -59,10 +62,10 @@ export function createTauriAdapter(): DataAdapter {
 			name: string,
 			databaseType: DatabaseInfo,
 			sshConfig: JsonValue | null
-		): Promise<AdapterResult<ConnectionInfo>> {
+		): Promise<AdapterResult<Connection>> {
 			const result = await commands.updateConnection(id, name, databaseType, null)
 			if (result.status === 'ok') {
-				return ok(result.data)
+				return ok(backendToFrontendConnection(result.data))
 			}
 			return err(formatError(result.error))
 		},

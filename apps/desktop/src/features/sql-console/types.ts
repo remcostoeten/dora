@@ -49,3 +49,18 @@ export type ConsoleState = {
 	showLeftSidebar: boolean
 	showRightSidebar: boolean
 }
+
+export type QueryTab = {
+	id: string
+	title: string
+	mode: 'sql' | 'drizzle'
+	sqlContent: string
+	drizzleContent: string
+	result: SqlQueryResult | null
+	isExecuting: boolean
+	isDirty: boolean
+	viewMode: ResultViewMode
+	connectionId: string | null
+	createdAt: number
+	lastExecutedAt: number | null
+}

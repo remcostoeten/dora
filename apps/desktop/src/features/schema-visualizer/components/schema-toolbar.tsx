@@ -308,25 +308,25 @@ export function SchemaToolbar({
 	isLoading,
 }: Props) {
 	const { fitView } = useReactFlow()
+	const summary = isSearchResult
+		? `${tableCount} matches${relatedTableCount > 0 ? ` • ${relatedTableCount} related` : ''} • ${edgeCount} relationships`
+		: `${tableCount} tables • ${edgeCount} relationships`
 
 	return (
-		<div className='flex h-10 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-3'>
-			<div className='flex min-w-0 flex-1 items-center gap-2'>
+		<div className='sv-toolbar'>
+			<div className='sv-toolbar__search-group'>
+				<div className='sv-toolbar__copy'>
+					<div className='sv-toolbar__label'>Explore the map</div>
+					<div className='sv-toolbar__summary'>{summary}</div>
+				</div>
 				<SearchBox
 					search={search}
 					onSearchChange={onSearchChange}
 					suggestions={suggestions}
 				/>
-				<span className='whitespace-nowrap text-[11px] text-muted-foreground'>
-					{isSearchResult
-						? `${tableCount} matches${
-								relatedTableCount > 0 ? ` • ${relatedTableCount} related` : ''
-							} • ${edgeCount} relationships`
-						: `${tableCount} tables • ${edgeCount} relationships`}
-				</span>
 			</div>
 
-			<div className='flex items-center gap-1'>
+			<div className='sv-toolbar__actions'>
 				<ToolbarIconButton
 					label='Fit schema to viewport'
 					onClick={() => fitView({ padding: 0.12, duration: 220 })}

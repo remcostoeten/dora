@@ -1,6 +1,6 @@
 import { Minus, Square, X } from 'lucide-react'
 import { useCallback, useState, useEffect } from 'react'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 import { cn } from '@/shared/utils/cn'
 
 type Props = {

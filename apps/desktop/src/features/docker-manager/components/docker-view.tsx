@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import type { ReactNode } from 'react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/shared/ui/use-toast'
 import {
 	DOCKER_PALETTE_EVENT,
 	type DockerPaletteCommand

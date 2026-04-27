@@ -14,7 +14,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { Network, AlertCircle } from 'lucide-react'
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/shared/ui/use-toast'
 import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
 import { useAdapter } from '@/core/data-provider'
 import { getAdapterError } from '@/core/data-provider/types'
@@ -375,7 +375,7 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 	}
 
 	return (
-		<div className='schema-visualizer flex flex-col h-full bg-background'>
+		<div className='schema-visualizer flex h-full flex-col bg-background'>
 			<SchemaToolbar
 				search={search}
 				onSearchChange={setSearch}
@@ -400,9 +400,9 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 				isLoading={isLoading}
 			/>
 
-			<div className='flex-1 relative'>
+			<div className='schema-visualizer__canvas relative min-h-0 flex-1'>
 				{error ? (
-					<div className='flex items-center justify-center h-full p-4'>
+					<div className='flex h-full items-center justify-center p-4'>
 						<div className='inline-flex items-center gap-2 text-destructive text-sm font-mono bg-destructive/10 px-4 py-3 rounded-md border border-destructive/20 max-w-lg'>
 							<AlertCircle className='h-4 w-4 shrink-0' />
 							<span>{error}</span>
@@ -410,7 +410,7 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 					</div>
 				) : !schema || schema.tables.length === 0 ? (
 					isLoading ? (
-						<div className='flex items-center justify-center h-full text-muted-foreground text-sm'>
+						<div className='flex h-full items-center justify-center text-muted-foreground text-sm'>
 							Loading schema...
 						</div>
 					) : (
@@ -458,8 +458,6 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 						table={selectedTable}
 						onClose={() => setSelectedTable(null)}
 						onOpenTable={handleOpenSelectedTable}
-						onExportSvg={handleExportSvg}
-						onExportPng={handleExportPng}
 						onExportSql={handleExportSql}
 						onExportDrizzle={handleExportDrizzle}
 						sqlSource={sqlSource}

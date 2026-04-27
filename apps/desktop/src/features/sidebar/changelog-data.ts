@@ -8,9 +8,23 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.109'
+export const CURRENT_VERSION = '0.0.110'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.0.110',
+		date: new Date().toISOString().split('T')[0],
+		commit: 'HEAD',
+		title: 'Multi-Tab Query Console & Async Row Count',
+		description:
+			'Significantly upgraded the SQL query console experience with a Multi-tab Query Console and an asynchronous row count indicator in the status bar.',
+		type: 'feature',
+		details: [
+			'Multi-tab query console with independent editor/results per tab, drag-to-reorder, tab persistence, and premium tab bar UX',
+			'Async row count in status bar with non-blocking COUNT(*) queries and animated loading states',
+			'Cached async counts with 30-second TTL and automatic invalidation on schema changes'
+		]
+	},
 	{
 		version: '0.0.109',
 		date: '2026-04-25',

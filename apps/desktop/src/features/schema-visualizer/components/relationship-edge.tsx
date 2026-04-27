@@ -1,7 +1,7 @@
 import {
 	BaseEdge,
 	EdgeLabelRenderer,
-	getBezierPath,
+	getSmoothStepPath,
 	type Edge,
 	type EdgeProps,
 } from '@xyflow/react'
@@ -85,14 +85,15 @@ export function RelationshipEdge({
 	data,
 	selected,
 }: Props) {
-	const [edgePath, labelX, labelY] = getBezierPath({
+	const [edgePath, labelX, labelY] = getSmoothStepPath({
 		sourceX,
 		sourceY,
 		targetX,
 		targetY,
 		sourcePosition,
 		targetPosition,
-		curvature: data?.isSelfReference ? 0.8 : 0.35,
+		borderRadius: data?.isSelfReference ? 24 : 18,
+		offset: data?.isSelfReference ? 42 : 28,
 	})
 	const vis = getEdgeVisuals(data)
 	const isDim = data?.searchState === 'dim'
@@ -115,14 +116,14 @@ export function RelationshipEdge({
 				}}
 			/>
 
-			{!isDim && (
+			{!isDim && isMatch && (
 				<path
 					d={edgePath}
 					fill='none'
 					stroke={vis.strokeColor}
 					strokeWidth={vis.strokeWidth - 0.2}
 					strokeLinecap='round'
-					strokeOpacity={isMatch ? 0.75 : 0.28}
+					strokeOpacity={0.7}
 					className={cn('sv-edge-flow', isMatch && 'sv-edge-flow--match')}
 				/>
 			)}

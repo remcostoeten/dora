@@ -699,6 +699,80 @@ layer(base);
 		outline: none;
 		box-shadow: none;
 	}
+
+	/* Async row count animations */
+	@keyframes asyncShimmer {
+		0% {
+			background-position: -100% 0;
+		}
+		100% {
+			background-position: 200% 0;
+		}
+	}
+
+	@keyframes asyncReveal {
+		0% {
+			opacity: 0;
+			transform: translateY(2px);
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.async-count-shimmer {
+		background: linear-gradient(
+			90deg,
+			hsl(var(--muted) / 0.3) 0%,
+			hsl(var(--muted) / 0.6) 50%,
+			hsl(var(--muted) / 0.3) 100%
+		);
+		background-size: 200% 100%;
+		animation: asyncShimmer 1.4s ease-in-out infinite;
+	}
+
+	.async-count-reveal {
+		animation: asyncReveal 0.3s ease-out forwards;
+	}
+}
+
+/* ===== Query Tab Bar ===== */
+.query-tab-bar {
+	-webkit-app-region: no-drag;
+}
+
+.query-tab {
+	position: relative;
+}
+
+.query-tab--active {
+	box-shadow: inset 0 -1px 0 hsl(var(--background));
+}
+
+@keyframes tabIndicatorSlide {
+	0% {
+		transform: scaleX(0);
+		opacity: 0;
+	}
+	100% {
+		transform: scaleX(1);
+		opacity: 1;
+	}
+}
+
+.query-tab-indicator {
+	animation: tabIndicatorSlide 0.2s var(--ease-out) forwards;
+	transform-origin: left;
+}
+
+@keyframes tabExecutePulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.5; }
+}
+
+.query-tab--executing {
+	animation: tabExecutePulse 1.5s ease-in-out infinite;
 }
 
 /* ================================================================

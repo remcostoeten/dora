@@ -1,5 +1,6 @@
 import Editor from '@monaco-editor/react'
-import { Table2, Braces, Download, Copy, Trash2, CircleCheck } from 'lucide-react'
+import { Table2, Braces, Download, Copy, Trash2, CircleCheck, Database } from 'lucide-react'
+import { useAsyncRowCount } from '../hooks/use-async-row-count'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -34,6 +35,7 @@ type Props = {
 	connectionId?: string
 	showFilter?: boolean
 	onRefresh?: () => void
+	sourceTable?: string
 }
 
 type EditingCell = {
@@ -50,8 +52,14 @@ export function SqlResults({
 	onExport,
 	connectionId,
 	showFilter,
-	onRefresh
+	onRefresh,
+	sourceTable
 }: Props) {
+	const asyncRowCount = useAsyncRowCount(
+		connectionId,
+		sourceTable || result?.sourceTable,
+		!!result && !result.error && result.queryType === 'SELECT'
+	)
 	const { updateCell, deleteRows } = useDataMutation()
 	const { settings } = useSettings()
 	const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
@@ -303,6 +311,25 @@ export function SqlResults({
 							{result.rowCount} row{result.rowCount !== 1 ? 's' : ''} •{' '}
 							{result.executionTime}ms backend • {filterTime}ms filtering
 						</span>
+						{(sourceTable || result.sourceTable) && (
+							<span className='inline-flex items-center gap-1.5 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2 py-0.5 text-muted-foreground transition-all duration-300'>
+								<Database className='h-3 w-3 shrink-0' />
+								<span className='font-mono text-[11px]'>
+									{sourceTable || result.sourceTable}
+								</span>
+								<span className='font-mono text-[11px]'>:</span>
+								{asyncRowCount.isLoading ? (
+									<span className='async-count-shimmer inline-block h-3 w-10 rounded-sm' />
+								) : asyncRowCount.count !== null ? (
+									<span className='async-count-reveal font-mono text-[11px] font-medium text-foreground'>
+										{asyncRowCount.count.toLocaleString()}
+									</span>
+								) : (
+									<span className='font-mono text-[11px] opacity-50'>~</span>
+								)}
+								<span className='text-[10px] opacity-60'>rows</span>
+							</span>
+						)}
 					</div>
 				)}
 

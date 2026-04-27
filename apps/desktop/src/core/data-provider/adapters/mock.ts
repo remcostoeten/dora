@@ -201,22 +201,25 @@ function findTableInfo(connectionId: string, tableName: string): TableInfo | und
 	})
 }
 
+import type { Connection } from '@/features/connections/types'
+import { backendToFrontendConnection } from '@/features/connections/utils/mapping'
+
 export function createMockAdapter(): DataAdapter {
 	return {
-		async getConnections(): Promise<AdapterResult<ConnectionInfo[]>> {
+		async getConnections(): Promise<AdapterResult<Connection[]>> {
 			await randomDelay()
 			// Use stored connections which might include added ones
 			if (store.connections.length === 0 && MOCK_CONNECTIONS.length > 0) {
 				store.connections = [...MOCK_CONNECTIONS]
 			}
-			return ok(store.connections)
+			return ok(store.connections.map(backendToFrontendConnection))
 		},
 
 		async addConnection(
 			name: string,
 			databaseType: DatabaseInfo,
 			sshConfig: JsonValue | null
-		): Promise<AdapterResult<ConnectionInfo>> {
+		): Promise<AdapterResult<Connection>> {
 			await randomDelay()
 			const newConn: ConnectionInfo = {
 				id: 'mock-conn-' + Date.now(),
@@ -233,7 +236,7 @@ export function createMockAdapter(): DataAdapter {
 			}
 			store.connections.push(newConn)
 			saveToStorage()
-			return ok(newConn)
+			return ok(backendToFrontendConnection(newConn))
 		},
 
 		async updateConnection(
@@ -241,7 +244,7 @@ export function createMockAdapter(): DataAdapter {
 			name: string,
 			databaseType: DatabaseInfo,
 			sshConfig: JsonValue | null
-		): Promise<AdapterResult<ConnectionInfo>> {
+		): Promise<AdapterResult<Connection>> {
 			await randomDelay()
 			const idx = store.connections.findIndex(function (c) {
 				return c.id === id
@@ -257,7 +260,7 @@ export function createMockAdapter(): DataAdapter {
 			}
 			store.connections[idx] = updated
 			saveToStorage()
-			return ok(updated)
+			return ok(backendToFrontendConnection(updated))
 		},
 
 		async removeConnection(id: string): Promise<AdapterResult<void>> {

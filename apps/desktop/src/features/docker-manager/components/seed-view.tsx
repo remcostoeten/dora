@@ -1,6 +1,6 @@
 import { Upload, FileCode, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { useState, useRef } from 'react'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/shared/ui/use-toast'
 import { Button } from '@/shared/ui/button'
 import { useSeedDatabase } from '../api/mutations/use-seed-database'
 import type { DockerContainer } from '../types'

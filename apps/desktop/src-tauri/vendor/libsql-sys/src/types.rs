@@ -1,5 +1,6 @@
 //! Typedefs for virtual function signatures.
 use std::ffi::{c_char, c_int, c_uint, c_void};
+use std::marker::PhantomData;
 
 pub type Wal = crate::ffi::libsql_wal;
 use crate::ffi::{libsql_wal_methods, sqlite3, sqlite3_file, sqlite3_vfs, PgHdr};
@@ -130,22 +131,24 @@ pub type XFileControlFn =
 pub type XSectorSizeFn = unsafe extern "C" fn(file_ptr: *mut sqlite3_file) -> c_int;
 pub type XDeviceCharacteristicsFn = unsafe extern "C" fn(file_ptr: *mut sqlite3_file) -> c_int;
 
-pub struct PageHdrIter {
+pub struct PageHdrIter<'a> {
     current_ptr: *const PgHdr,
     page_size: usize,
+    _marker: PhantomData<&'a [u8]>,
 }
 
-impl PageHdrIter {
+impl<'a> PageHdrIter<'a> {
     pub fn new(current_ptr: *const PgHdr, page_size: usize) -> Self {
         Self {
             current_ptr,
             page_size,
+            _marker: PhantomData,
         }
     }
 }
 
-impl std::iter::Iterator for PageHdrIter {
-    type Item = (u32, &'static [u8]);
+impl<'a> std::iter::Iterator for PageHdrIter<'a> {
+    type Item = (u32, &'a [u8]);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_ptr.is_null() {

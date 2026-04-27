@@ -15,6 +15,7 @@ import { CodeEditor } from '../../features/drizzle-runner/components/code-editor
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
 import { AiCmdK } from './components/ai-cmd-k'
 import { ConsoleToolbar } from './components/console-toolbar'
+import { QueryTabBar } from './components/query-tab-bar'
 import { QueryHistoryPanel } from './components/query-history-panel'
 import { SqlEditor } from './components/sql-editor'
 import { SqlResults } from './components/sql-results'
@@ -22,6 +23,7 @@ import { UnifiedSidebar } from './components/unified-sidebar'
 import { DEFAULT_SQL } from './data'
 import { extractMutationSourceTable } from './query-target'
 import { useQueryHistory } from './stores/query-history-store'
+import { QueryTabProvider, useQueryTabs } from './stores/tab-store'
 import { clearTableDataCache } from '@/core/table-cache'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 
@@ -31,20 +33,37 @@ type Props = {
 	getConnectionName?: (id: string) => string
 }
 
-export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnectionId, getConnectionName }: Props) {
+export function SqlConsole(props: Props) {
+	return (
+		<QueryTabProvider connectionId={props.activeConnectionId || null}>
+			<SqlConsoleInner {...props} />
+		</QueryTabProvider>
+	)
+}
+
+function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId, getConnectionName }: Props) {
 	const adapter = useAdapter()
 	const isTauri = useIsTauri()
-	const [mode, setMode] = useState<'sql' | 'drizzle'>('sql')
+	const tabStore = useQueryTabs()
+	const { activeTab } = tabStore
+
+	// Derive per-tab state
+	const mode = activeTab.mode
+	const currentSqlQuery = activeTab.sqlContent
+	const currentDrizzleQuery = activeTab.drizzleContent
+	const result = activeTab.result
+	const isExecuting = activeTab.isExecuting
+	const viewMode = activeTab.viewMode
+
+	function setMode(m: 'sql' | 'drizzle') { tabStore.setTabMode(activeTab.id, m) }
+	function setCurrentSqlQuery(v: string) { tabStore.updateTabContent(activeTab.id, 'sqlContent', v) }
+	function setCurrentDrizzleQuery(v: string) { tabStore.updateTabContent(activeTab.id, 'drizzleContent', v) }
+	function setResult(r: SqlQueryResult | null) { tabStore.setTabResult(activeTab.id, r) }
+	function setIsExecuting(v: boolean) { tabStore.setTabExecuting(activeTab.id, v) }
+	function setViewMode(v: ResultViewMode) { tabStore.setTabViewMode(activeTab.id, v) }
+
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])
 	const [activeSnippetId, setActiveSnippetId] = useState<string | null>('playground')
-
-	// Independent states for each mode
-	const [currentSqlQuery, setCurrentSqlQuery] = useState(DEFAULT_SQL)
-	const [currentDrizzleQuery, setCurrentDrizzleQuery] = useState(DEFAULT_QUERY)
-
-	const [result, setResult] = useState<SqlQueryResult | null>(null)
-	const [isExecuting, setIsExecuting] = useState(false)
-	const [viewMode, setViewMode] = useState<ResultViewMode>('table')
 	const [showLeftSidebar, setShowLeftSidebar] = useState(true)
 	const [showCheatsheet, setShowCheatsheet] = useState(false)
 	const [showFilter, setShowFilter] = useState(false)
@@ -292,6 +311,8 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 							columnDefinitions,
 							sourceTable: extractMutationSourceTable(queryToRun)
 						})
+						// Auto-title the tab from the query
+						tabStore.autoTitleTab(activeTab.id, queryToRun)
 
 						// Clear table viewer cache so it refetches when user switches to it.
 						if (queryType !== 'SELECT') {
@@ -731,6 +752,39 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 			{ description: 'Toggle query history' }
 		)
 
+	// Tab management shortcuts
+	$.bind('ctrl+t').on(
+		function () { tabStore.addTab() },
+		{ description: 'New query tab' }
+	)
+
+	$.bind('ctrl+w').on(
+		function () {
+			if (tabStore.tabs.length > 1) {
+				tabStore.closeTab(activeTab.id)
+			}
+		},
+		{ description: 'Close current tab' }
+	)
+
+	$.bind('ctrl+tab').on(
+		function () { tabStore.nextTab() },
+		{ description: 'Next tab' }
+	)
+
+	$.bind('ctrl+shift+tab').on(
+		function () { tabStore.prevTab() },
+		{ description: 'Previous tab' }
+	)
+
+	// Alt+1 through Alt+9 to switch tabs
+	;[1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(function (n) {
+		$.bind('alt+' + n).on(
+			function () { tabStore.goToTab(n - 1) },
+			{ description: 'Switch to tab ' + n }
+		)
+	})
+
 	return (
 		<div className='flex h-full w-full bg-background overflow-hidden'>
 			<PanelGroup direction='horizontal' className='flex-1'>
@@ -826,6 +880,9 @@ export function SqlConsole({ onToggleSidebar: _onToggleSidebar, activeConnection
 								setShowHistory(!showHistory)
 							}}
 						/>
+
+						{/* Tab Bar */}
+						<QueryTabBar />
 
 						{/* Editor and Results */}
 						<div className='flex-1 overflow-hidden'>

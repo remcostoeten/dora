@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.110 - Multi-Tab Query Console & Async Row Count
+
+**Date:** 2026-04-27
+
+**Highlights**
+
+- **Multi-Tab Query Console**: The SQL Console now supports multiple active query tabs. Each tab acts as an independent workspace with its own editor content, results, execution state, and scroll position. Includes drag-to-reorder, tab persistence, auto-titling from queries, and premium tab bar UX (keyboard shortcuts: `Ctrl+T`, `Ctrl+W`, `Alt+1-9`).
+- **Async Row Count in Status Bar**: The results panel now fires an asynchronous `SELECT COUNT(*)` query in the background to show the true total row count in the status bar. Includes a non-blocking shimmer loading animation and a 30-second cache that auto-invalidates on schema mutations.
+
 ## 0.0.109 - Data Grid Refactor & Schema Visualizer Fix
 
 **Date:** 2026-04-25

@@ -21,8 +21,8 @@ struct OllamaOptions {
 #[derive(Debug, Deserialize)]
 struct OllamaResponse {
     response: String,
-    #[serde(default)]
-    done: bool,
+    #[serde(rename = "done", default)]
+    _done: bool,
     #[serde(rename = "eval_count")]
     eval_count: Option<u32>,
 }

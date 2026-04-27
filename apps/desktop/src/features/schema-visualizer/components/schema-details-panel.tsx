@@ -1,14 +1,16 @@
 import {
 	Code2,
 	Database,
-	Download,
-	FileImage,
 	FileText,
+	KeyRound,
+	Link2,
+	ListTree,
 	PanelRightClose,
 	Table2,
 } from 'lucide-react'
 import { type ReactNode, useMemo, useState } from 'react'
 import { Button } from '@/shared/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { cn } from '@/shared/utils/cn'
 import type { TableNodeData } from '../hooks/use-schema-graph'
 
@@ -16,8 +18,6 @@ type Props = {
 	table: TableNodeData
 	onClose: () => void
 	onOpenTable: () => void
-	onExportSvg: () => void
-	onExportPng: () => void
 	onExportSql: () => void
 	onExportDrizzle: () => void
 	sqlSource: string
@@ -114,8 +114,6 @@ export function SchemaDetailsPanel({
 	table,
 	onClose,
 	onOpenTable,
-	onExportSvg,
-	onExportPng,
 	onExportSql,
 	onExportDrizzle,
 	sqlSource,
@@ -128,6 +126,11 @@ export function SchemaDetailsPanel({
 		table.primaryKeyColumns.includes(column.name) || column.is_primary_key
 	)
 	const foreignKeys = table.columns.filter((column) => column.foreign_key)
+	const indexedColumnsCount = table.columns.filter((column) =>
+		table.primaryKeyColumns.includes(column.name) ||
+		table.indexes?.some((index) => index.column_names.includes(column.name)),
+	).length
+	const nullableColumnsCount = table.columns.filter((column) => column.is_nullable).length
 	const selectedColumn = useMemo(
 		() =>
 			table.columns.find((column) => column.name === selectedColumnName) ??
@@ -159,11 +162,15 @@ export function SchemaDetailsPanel({
 		<aside className='sv-details-panel'>
 			<div className='sv-details-panel__header'>
 				<div className='min-w-0'>
-					<div className='truncate text-sm font-medium text-sidebar-foreground'>
+					<div className='sv-details-panel__eyebrow'>
+						<span>{table.schema || 'default'} schema</span>
+						<span>{table.columns.length} columns</span>
+					</div>
+					<div className='truncate text-base font-semibold text-sidebar-foreground'>
 						{table.tableName}
 					</div>
-					<div className='truncate text-[11px] text-muted-foreground'>
-						{table.schema || 'default'} schema
+					<div className='truncate text-[12px] text-muted-foreground'>
+						Inspect structure, relationships, and generated schema output.
 					</div>
 				</div>
 				<Button
@@ -177,42 +184,25 @@ export function SchemaDetailsPanel({
 				</Button>
 			</div>
 
-			<div className='sv-details-panel__stats'>
-				<div>
-					<span>{table.columns.length}</span>
-					Columns
+			<div className='sv-details-panel__hero'>
+				<div className='sv-details-panel__stats'>
+					<div>
+						<span>{primaryKeys.length}</span>
+						Primary keys
+					</div>
+					<div>
+						<span>{foreignKeys.length}</span>
+						Relationships
+					</div>
+					<div>
+						<span>{indexedColumnsCount}</span>
+						Indexed
+					</div>
 				</div>
-				<div>
-					<span>{primaryKeys.length}</span>
-					Primary
-				</div>
-				<div>
-					<span>{foreignKeys.length}</span>
-					Foreign
-				</div>
-			</div>
-
-			<div className='sv-details-panel__section'>
-				<Button className='w-full justify-start gap-2' variant='secondary' onClick={onOpenTable}>
-					<Table2 className='h-4 w-4' />
-					Go to table view
-				</Button>
-				<Button className='w-full justify-start gap-2' variant='ghost' onClick={onOpenTable}>
-					<Database className='h-4 w-4' />
-					View data
-				</Button>
-			</div>
-
-			<div className='sv-details-panel__section'>
-				<div className='sv-details-panel__label'>Export</div>
-				<div className='sv-details-panel__actions-grid'>
-					<Button className='justify-start gap-2' variant='ghost' onClick={onExportSvg}>
-						<FileImage className='h-4 w-4' />
-						SVG
-					</Button>
-					<Button className='justify-start gap-2' variant='ghost' onClick={onExportPng}>
-						<Download className='h-4 w-4' />
-						PNG
+				<div className='sv-details-panel__hero-actions'>
+					<Button className='flex-1 justify-start gap-2' variant='secondary' onClick={onOpenTable}>
+						<Table2 className='h-4 w-4' />
+						Open table
 					</Button>
 					<Button className='justify-start gap-2' variant='ghost' onClick={onExportSql}>
 						<FileText className='h-4 w-4' />
@@ -225,55 +215,193 @@ export function SchemaDetailsPanel({
 				</div>
 			</div>
 
-			<div className='sv-details-panel__section'>
-				<div className='sv-details-panel__code-header'>
-					<span>SQL</span>
-					<Button size='sm' variant='ghost' className='h-6 px-2 text-[11px]' onClick={onCopySql}>
-						Copy
-					</Button>
-				</div>
-				<pre className='sv-details-panel__code sv-details-panel__code--sql'>
-					<code>{renderHighlightedCode(sqlSource || 'Loading schema...', SQL_KEYWORDS)}</code>
-				</pre>
-				<div className='sv-details-panel__code-header'>
-					<span>Drizzle</span>
-					<Button size='sm' variant='ghost' className='h-6 px-2 text-[11px]' onClick={onCopyDrizzle}>
-						Copy
-					</Button>
-				</div>
-				<pre className='sv-details-panel__code sv-details-panel__code--ts'>
-					<code>{renderHighlightedCode(drizzleSource, TS_KEYWORDS)}</code>
-				</pre>
-			</div>
+			<Tabs defaultValue='overview' className='sv-details-panel__tabs'>
+				<TabsList className='sv-details-panel__tabs-list'>
+					<TabsTrigger value='overview' className='sv-details-panel__tabs-trigger'>
+						Overview
+					</TabsTrigger>
+					<TabsTrigger value='columns' className='sv-details-panel__tabs-trigger'>
+						Columns
+					</TabsTrigger>
+					<TabsTrigger value='code' className='sv-details-panel__tabs-trigger'>
+						Code
+					</TabsTrigger>
+				</TabsList>
 
-			<div className='sv-details-panel__section'>
-				<div className='sv-details-panel__label'>Columns</div>
-				<div className='sv-details-panel__columns'>
-					{table.columns.map((column) => (
-						<button
-							key={column.name}
-							className={cn(
-								'sv-details-panel__column',
-								selectedColumn?.name === column.name && 'sv-details-panel__column--active',
-							)}
-							onClick={() => setSelectedColumnName(column.name)}
-						>
-							<span className='truncate'>{column.name}</span>
-							<span>{column.data_type}</span>
-						</button>
-					))}
-				</div>
-				{selectedColumn && (
-					<div className='sv-details-panel__tips'>
-						<div className='font-mono text-[11px] text-sidebar-foreground'>
-							{selectedColumn.name}
+				<TabsContent value='overview' className='sv-details-panel__tab-content'>
+					<div className='sv-details-panel__section'>
+						<div className='sv-details-panel__label'>Quick read</div>
+						<div className='sv-details-panel__facts'>
+							<div>
+								<KeyRound className='h-3.5 w-3.5' />
+								<span>{primaryKeys.length} primary key columns</span>
+							</div>
+							<div>
+								<Link2 className='h-3.5 w-3.5' />
+								<span>{foreignKeys.length} foreign key links</span>
+							</div>
+							<div>
+								<ListTree className='h-3.5 w-3.5' />
+								<span>{nullableColumnsCount} nullable columns</span>
+							</div>
+							<div>
+								<Database className='h-3.5 w-3.5' />
+								<span>{table.indexes?.length ?? 0} indexes defined</span>
+							</div>
 						</div>
-						{selectedColumnTips.map((tip) => (
-							<div key={tip}>{tip}</div>
-						))}
 					</div>
-				)}
-			</div>
+					<div className='sv-details-panel__section'>
+						<div className='sv-details-panel__label'>Column focus</div>
+						<div className='sv-details-panel__columns'>
+							{table.columns.map((column) => {
+								const isPrimaryKey =
+									table.primaryKeyColumns.includes(column.name) || column.is_primary_key
+								const isForeignKey = Boolean(column.foreign_key)
+								return (
+									<button
+										key={column.name}
+										className={cn(
+											'sv-details-panel__column',
+											selectedColumn?.name === column.name &&
+												'sv-details-panel__column--active',
+										)}
+										onClick={() => setSelectedColumnName(column.name)}
+									>
+										<div className='sv-details-panel__column-main'>
+											<span
+												className={cn(
+													'sv-details-panel__column-badge',
+													isPrimaryKey && 'sv-details-panel__column-badge--pk',
+													!isPrimaryKey &&
+														isForeignKey &&
+														'sv-details-panel__column-badge--fk',
+												)}
+											>
+												{isPrimaryKey ? 'PK' : isForeignKey ? 'FK' : 'COL'}
+											</span>
+											<span className='truncate'>{column.name}</span>
+										</div>
+										<span>{column.data_type}</span>
+									</button>
+								)
+							})}
+						</div>
+						{selectedColumn && (
+							<div className='sv-details-panel__tips'>
+								<div className='font-mono text-[11px] text-sidebar-foreground'>
+									{selectedColumn.name}
+								</div>
+								{selectedColumnTips.map((tip) => (
+									<div key={tip}>{tip}</div>
+								))}
+							</div>
+						)}
+					</div>
+				</TabsContent>
+
+				<TabsContent value='columns' className='sv-details-panel__tab-content'>
+					<div className='sv-details-panel__section'>
+						<div className='sv-details-panel__label'>Column inventory</div>
+						<div className='sv-details-panel__columns'>
+							{table.columns.map((column) => {
+								const isPrimaryKey =
+									table.primaryKeyColumns.includes(column.name) || column.is_primary_key
+								const isForeignKey = Boolean(column.foreign_key)
+								return (
+									<button
+										key={column.name}
+										className={cn(
+											'sv-details-panel__column',
+											selectedColumn?.name === column.name &&
+												'sv-details-panel__column--active',
+										)}
+										onClick={() => setSelectedColumnName(column.name)}
+									>
+										<div className='sv-details-panel__column-main'>
+											<span
+												className={cn(
+													'sv-details-panel__column-badge',
+													isPrimaryKey && 'sv-details-panel__column-badge--pk',
+													!isPrimaryKey &&
+														isForeignKey &&
+														'sv-details-panel__column-badge--fk',
+												)}
+											>
+												{isPrimaryKey ? 'PK' : isForeignKey ? 'FK' : 'COL'}
+											</span>
+											<div className='min-w-0'>
+												<div className='truncate text-sidebar-foreground'>{column.name}</div>
+												<div className='truncate text-[10px] text-muted-foreground'>
+													{column.is_nullable ? 'Nullable' : 'Required'}
+													{column.foreign_key
+														? ` • references ${column.foreign_key.referenced_table}.${column.foreign_key.referenced_column}`
+														: ''}
+												</div>
+											</div>
+										</div>
+										<span>{column.data_type}</span>
+									</button>
+								)
+							})}
+						</div>
+					</div>
+				</TabsContent>
+
+				<TabsContent value='code' className='sv-details-panel__tab-content'>
+					<div className='sv-details-panel__section'>
+						<div className='sv-details-panel__code-header'>
+							<span>SQL</span>
+							<div className='flex items-center gap-1'>
+								<Button
+									size='sm'
+									variant='ghost'
+									className='h-6 px-2 text-[11px]'
+									onClick={onExportSql}
+								>
+									Export
+								</Button>
+								<Button
+									size='sm'
+									variant='ghost'
+									className='h-6 px-2 text-[11px]'
+									onClick={onCopySql}
+								>
+									Copy
+								</Button>
+							</div>
+						</div>
+						<pre className='sv-details-panel__code sv-details-panel__code--sql'>
+							<code>{renderHighlightedCode(sqlSource || 'Loading schema...', SQL_KEYWORDS)}</code>
+						</pre>
+					</div>
+					<div className='sv-details-panel__section'>
+						<div className='sv-details-panel__code-header'>
+							<span>Drizzle</span>
+							<div className='flex items-center gap-1'>
+								<Button
+									size='sm'
+									variant='ghost'
+									className='h-6 px-2 text-[11px]'
+									onClick={onExportDrizzle}
+								>
+									Export
+								</Button>
+								<Button
+									size='sm'
+									variant='ghost'
+									className='h-6 px-2 text-[11px]'
+									onClick={onCopyDrizzle}
+								>
+									Copy
+								</Button>
+							</div>
+						</div>
+						<pre className='sv-details-panel__code sv-details-panel__code--ts'>
+							<code>{renderHighlightedCode(drizzleSource, TS_KEYWORDS)}</code>
+						</pre>
+					</div>
+				</TabsContent>
+			</Tabs>
 		</aside>
 	)
 }

@@ -1,0 +1,147 @@
+
+[1m━━ Environment ━━[0m
+[2m[13:43:24.481][0m [36m→[0m Repo:       /home/remcostoeten/dev/dora
+[2m[13:43:24.482][0m [36m→[0m App dir:    /home/remcostoeten/dev/dora/apps/desktop
+[2m[13:43:24.483][0m [36m→[0m Log file:   /home/remcostoeten/dev/dora/.tauri-logs/tauri-dev-20260424-134323.log
+[2m[13:43:24.484][0m [36m→[0m Platform:   Linux 6.19.12-arch1-1 x86_64
+[2m[13:43:24.485][0m [36m→[0m Shell:      /usr/bin/fish
+[2m[13:43:24.486][0m [36m→[0m Working dir: /home/remcostoeten/dev/dora
+
+[1m━━ Tooling ━━[0m
+[2m[13:43:24.489][0m [32m✓[0m bun: 1.3.13
+[2m[13:43:25.803][0m [32m✓[0m cargo: cargo 1.95.0 (f2d3ce0bd 2026-03-21)
+[2m[13:43:27.497][0m [32m✓[0m rustc: rustc 1.95.0 (59807616e 2026-04-14)
+[2m[13:43:27.503][0m [32m✓[0m node: v25.9.0
+
+[1m━━ .env ━━[0m
+[2m[13:43:27.505][0m [32m✓[0m .env exists at /home/remcostoeten/dev/dora/.env
+[2m[13:43:27.507][0m [32m✓[0m GROQ_API_KEY entries: 2
+
+[1m━━ Ports ━━[0m
+[2m[13:43:27.517][0m [32m✓[0m Port 1420 free
+
+[1m━━ Existing processes ━━[0m
+[2m[13:43:27.535][0m [32m✓[0m No stale tauri/cargo/vite processes
+
+[1m━━ cargo check (pre-flight) ━━[0m
+[2m[13:43:27.536][0m [36m→[0m Running cargo check to catch compile errors before tauri-dev launches...
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> vendor/libsql-sys/src/wal/mod.rs:134:17
+    |
+134 |     pub fn iter(&self) -> PageHdrIter {
+    |                 ^^^^^     ^^^^^^^^^^^ the same lifetime is hidden here
+    |                 |
+    |                 the lifetime is elided here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: use `'_` for type paths
+    |
+134 |     pub fn iter(&self) -> PageHdrIter<'_> {
+    |                                      ++++
+
+warning: `libsql-sys` (lib) generated 1 warning (run `cargo fix --lib -p libsql-sys` to apply 1 suggestion)
+warning: field `done` is never read
+  --> src/database/services/ai/ollama.rs:25:5
+   |
+22 | struct OllamaResponse {
+   |        -------------- field in this struct
+...
+25 |     done: bool,
+   |     ^^^^
+   |
+   = note: `OllamaResponse` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: this lint expectation is unfulfilled
+ --> src/database/parser.rs:9:14
+  |
+9 |     #[expect(unused)]
+  |              ^^^^^^
+  |
+  = note: `#[warn(unfulfilled_lint_expectations)]` on by default
+
+warning: `app` (lib) generated 2 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.36s
+[2m[13:43:36.932][0m [32m✓[0m cargo check passed
+
+[1m━━ Launching tauri dev ━━[0m
+[2m[13:43:36.934][0m [36m→[0m Command: bun tauri:dev
+[2m[13:43:36.935][0m [36m→[0m Env:     RUST_LOG=debug,app=trace RUST_BACKTRACE=1
+[2m[13:43:36.936][0m [36m→[0m Watching for milestones: vite ready, cargo finished, window created, panic
+[2m[13:43:36.936][0m [36m→[0m Press Ctrl+C to stop. Full log: /home/remcostoeten/dev/dora/.tauri-logs/tauri-dev-20260424-134323.log
+
+[13:43:36.939] $ echo 'RECORD TOOL!!!' && node -e "require('child_process').execSync(process.platform==='win32'?'bun run tauri:win':'bun x tauri dev',{stdio:'inherit'})"
+[13:43:36.941] RECORD TOOL!!!
+[13:43:38.819]      Running BeforeDevCommand (`bun vite --port 1420 --strictPort`)
+[13:43:38.944] `optimizeDeps.rollupOptions` / `ssr.optimizeDeps.rollupOptions` is deprecated. Use `optimizeDeps.rolldownOptions` instead. Note that this option may be set by a plugin. Set VITE_DEPRECATION_TRACE=1 to see where it is called.
+[13:43:38.952] [vite:react-swc] We recommend switching to `@vitejs/plugin-react-oxc` for improved performance as no swc plugins are used. More information at https://vite.dev/rolldown
+[13:43:38.979] 
+[13:43:38.980]   ROLLDOWN-VITE v7.3.1  ready in 131 ms
+[13:43:38.983] 
+[13:43:38.985]   ➜  Local:   http://localhost:1420/
+[13:43:38.987]   ➜  Network: use --host to expose
+[13:43:40.826]      Running DevCommand (`cargo  run --no-default-features --color always --`)
+[13:43:40.841]         Info Watching /home/remcostoeten/dev/dora/apps/desktop/src-tauri for changes...
+[13:43:44.452] vendor/libsql-sys/src/wal/mod.rs:134:17: [1m[33mwarning[0m: hiding a lifetime that's elided elsewhere is confusing: the lifetime is elided here, the same lifetime is hidden here
+[13:43:44.453] [1m[33mwarning[0m: `libsql-sys` (lib) generated 1 warning (run `cargo fix --lib -p libsql-sys` to apply 1 suggestion)
+[13:43:44.455] [1m[33mwarning[0m[1m: field `done` is never read[0m
+[13:43:44.456]   [1m[94m--> [0msrc/database/services/ai/ollama.rs:25:5
+[13:43:44.457]    [1m[94m|[0m
+[13:43:44.459] [1m[94m22[0m [1m[94m|[0m struct OllamaResponse {
+[13:43:44.460]    [1m[94m|[0m        [1m[94m--------------[0m [1m[94mfield in this struct[0m
+[13:43:44.461] [1m[94m...[0m
+[13:43:44.462] [1m[94m25[0m [1m[94m|[0m     done: bool,
+[13:43:44.464]    [1m[94m|[0m     [1m[33m^^^^[0m
+[13:43:44.465]    [1m[94m|[0m
+[13:43:44.466]    [1m[94m= [0m[1mnote[0m: `OllamaResponse` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+[13:43:44.468]    [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+[13:43:44.469] 
+[13:43:44.471] [1m[33mwarning[0m[1m: this lint expectation is unfulfilled[0m
+[13:43:44.472]  [1m[94m--> [0msrc/database/parser.rs:9:14
+[13:43:44.473]   [1m[94m|[0m
+[13:43:44.475] [1m[94m9[0m [1m[94m|[0m     #[expect(unused)]
+[13:43:44.476]   [1m[94m|[0m              [1m[33m^^^^^^[0m
+[13:43:44.477]   [1m[94m|[0m
+[13:43:44.479]   [1m[94m= [0m[1mnote[0m: `#[warn(unfulfilled_lint_expectations)]` on by default
+[13:43:44.480] 
+[13:43:44.481] [1m[33mwarning[0m: `app` (lib) generated 2 warnings
+[13:43:44.483] [1m[92m    Finished[0m ]8;;https://doc.rust-lang.org/cargo/reference/profiles.html#default-profiles\`dev` profile [unoptimized + debuginfo]]8;;\ target(s) in 3.62s
+[13:43:44.858] [1m[92m     Running[0m `target/debug/app`
+[13:43:44.990] [2m2026-04-24T11:43:44.989694Z[0m [34mDEBUG[0m [2mrustls::webpki::anchors[0m[2m:[0m add_parsable_certificates processed 121 valid and 0 invalid certs
+[13:43:44.991] Certificates loaded in 37ms
+[13:43:45.026] [2m2026-04-24T11:43:45.025905Z[0m [32m INFO[0m [2mapp_lib[0m[2m:[0m TypeScript bindings exported successfully
+[13:43:45.826] Gdk-Message: 13:43:45.825: Error 71 (Protocol error) dispatching to Wayland display.
+[13:43:57.437] node:child_process:1000
+[13:43:57.438]     throw err;
+[13:43:57.439]     ^
+[13:43:57.441] 
+[13:43:57.442] Error: Command failed: bun x tauri dev
+[13:43:57.443]     at genericNodeError (node:internal/errors:998:15)
+[13:43:57.444]     at wrappedFn (node:internal/errors:543:14)
+[13:43:57.446]     at checkExecSyncError (node:child_process:925:11)
+[13:43:57.447]     at Object.execSync (node:child_process:997:15)
+[13:43:57.448]     at [eval]:1:26
+[13:43:57.450]     at runScriptInThisContext (node:internal/vm:219:10)
+[13:43:57.451]     at node:internal/process/execution:483:12
+[13:43:57.452]     at [eval]-wrapper:6:24
+[13:43:57.453]     at runScriptInContext (node:internal/process/execution:481:60)
+[13:43:57.455]     at evalFunction (node:internal/process/execution:315:30) {
+[13:43:57.456]   status: 1,
+[13:43:57.457]   signal: null,
+[13:43:57.458]   output: [ null, null, null ],
+[13:43:57.460]   pid: 496253,
+[13:43:57.461]   stdout: null,
+[13:43:57.462]   stderr: null
+[13:43:57.463] }
+[13:43:57.465] 
+[13:43:57.466] Node.js v25.9.0
+[13:43:57.467] error: script "tauri:dev" exited with code 1
+[2m[13:43:57.469][0m [31m✗[0m tauri dev exited with code 1
+[13:43:57.468] EXIT 1
+
+[1m━━ Summary ━━[0m
+[2m[13:43:57.471][0m [36m→[0m Full log: /home/remcostoeten/dev/dora/.tauri-logs/tauri-dev-20260424-134323.log
+[2m[13:43:57.472][0m [31m✗[0m Panic or fatal error detected. Grep for 'panic' or 'error' in log:
+[2m[13:43:57.473][0m [31m✗[0m   grep -nE 'panic|error\[|^error:' /home/remcostoeten/dev/dora/.tauri-logs/tauri-dev-20260424-134323.log
+[2m[13:43:57.474][0m [32m✓[0m cargo compile finished — if no window appeared, the app binary crashed on launch

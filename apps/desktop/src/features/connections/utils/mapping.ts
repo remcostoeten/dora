@@ -1,6 +1,5 @@
 import type { Connection as FrontendConnection } from '@/features/connections/types'
-import { commands, ConnectionInfo as BackendConnection, DatabaseInfo } from '@/lib/bindings'
-import { formatBackendError } from '@/shared/utils/backend-error'
+import { ConnectionInfo as BackendConnection, DatabaseInfo, JsonValue } from '@/lib/bindings'
 
 function backendToFrontendSshConfig(
 	sshConfig: {
@@ -103,8 +102,6 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 
 export function frontendToBackendDatabaseInfo(conn: FrontendConnection): DatabaseInfo {
 	if (conn.type === 'postgres' || conn.type === 'mysql') {
-		// Use the URL directly if provided (connection string mode)
-		// Otherwise build from individual fields
 		let connectionString: string
 		if (conn.url) {
 			connectionString = conn.url
@@ -139,61 +136,4 @@ export function frontendToBackendDatabaseInfo(conn: FrontendConnection): Databas
 		return { LibSQL: { url: conn.url || 'file:local.db', auth_token: conn.authToken ?? null } }
 	}
 	throw new Error(`Unsupported database type: ${conn.type}`)
-}
-
-export async function loadConnections(): Promise<FrontendConnection[]> {
-	const result = await commands.getConnections()
-	if (result.status === 'ok') {
-		return result.data.map(backendToFrontendConnection)
-	}
-	return []
-}
-
-export async function addConnection(conn: FrontendConnection): Promise<FrontendConnection> {
-	const dbInfo = frontendToBackendDatabaseInfo(conn)
-	const result = await commands.addConnection(conn.name, dbInfo, null)
-	if (result.status === 'ok') {
-		return backendToFrontendConnection(result.data)
-	}
-	throw new Error(formatBackendError(result.error))
-}
-
-export async function updateConnection(conn: FrontendConnection): Promise<FrontendConnection> {
-	const dbInfo = frontendToBackendDatabaseInfo(conn)
-	const result = await commands.updateConnection(conn.id, conn.name, dbInfo, null)
-	if (result.status === 'ok') {
-		return backendToFrontendConnection(result.data)
-	}
-	throw new Error(formatBackendError(result.error))
-}
-
-export async function removeConnection(connectionId: string): Promise<void> {
-	const result = await commands.removeConnection(connectionId)
-	if (result.status === 'error') {
-		throw new Error(formatBackendError(result.error))
-	}
-}
-
-export async function connectToDatabase(connectionId: string): Promise<boolean> {
-	const result = await commands.connectToDatabase(connectionId)
-	if (result.status === 'ok') {
-		return result.data
-	}
-	throw new Error(formatBackendError(result.error))
-}
-
-export async function disconnectFromDatabase(connectionId: string): Promise<void> {
-	const result = await commands.disconnectFromDatabase(connectionId)
-	if (result.status === 'error') {
-		throw new Error(formatBackendError(result.error))
-	}
-}
-
-export async function testConnection(conn: FrontendConnection): Promise<boolean> {
-	const dbInfo = frontendToBackendDatabaseInfo(conn)
-	const result = await commands.testConnection(dbInfo)
-	if (result.status === 'ok') {
-		return result.data
-	}
-	throw new Error(formatBackendError(result.error))
 }

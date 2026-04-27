@@ -1,5 +1,5 @@
-import { TableSkeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/components/ui/use-toast'
+import { TableSkeleton } from '@/shared/ui/skeleton'
+import { useToast } from '@/shared/ui/use-toast'
 import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
 import { useAdapter, useDataMutation } from '@/core/data-provider'
 import { tableDataCache, clearTableDataCache } from '@/core/table-cache'

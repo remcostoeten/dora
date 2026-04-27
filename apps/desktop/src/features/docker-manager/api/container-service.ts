@@ -26,7 +26,12 @@ import {
 	removeContainer as clientRemoveContainer,
 	pullImage,
 	imageExists,
-	executeDockerCommand
+	executeDockerCommand,
+	getContainerLogs as clientGetLogs,
+	streamContainerLogs as clientStream,
+	openContainerTerminal as clientOpenTerminal,
+	copyToContainer,
+	execCommand
 } from './docker-client'
 import * as demoService from './demo-service'
 
@@ -256,7 +261,6 @@ export async function getContainerLogs(
 	options?: { tail?: number; since?: string }
 ): Promise<string> {
 	if (!isTauri) return demoService.getContainerLogs(containerId, options)
-	const { getContainerLogs: clientGetLogs } = await import('./docker-client')
 	return clientGetLogs(containerId, options)
 }
 
@@ -266,7 +270,6 @@ export async function streamContainerLogs(
 	onError: (error: string) => void
 ): Promise<() => void> {
 	if (!isTauri) return demoService.streamContainerLogs(containerId, onLog, onError)
-	const { streamContainerLogs: clientStream } = await import('./docker-client')
 	return clientStream(containerId, onLog, onError)
 }
 
@@ -275,7 +278,6 @@ export async function openContainerTerminal(
 	handlers: ContainerTerminalHandlers
 ): Promise<ContainerTerminalSession> {
 	if (!isTauri) return demoService.openContainerTerminal(containerId, handlers)
-	const { openContainerTerminal: clientOpenTerminal } = await import('./docker-client')
 	return clientOpenTerminal(containerId, handlers)
 }
 
@@ -287,7 +289,6 @@ export async function seedDatabase(
 	if (!isTauri) return demoService.seedDatabase(containerId, filePath, connectionConfig)
 
 	try {
-		const { copyToContainer, execCommand } = await import('./docker-client')
 		const targetPath = '/tmp/seed.sql'
 
 		// 1. Copy file to container

@@ -30,7 +30,7 @@ export function useConnections() {
 
 	return useQuery({
 		queryKey: ['connections'],
-		queryFn: async () => {
+		queryFn: async function () {
 			const res = await adapter.getConnections()
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
@@ -52,7 +52,7 @@ export function useConnectionMutations() {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		onSuccess: () => {
+		onSuccess: function () {
 			queryClient.invalidateQueries({ queryKey: ['connections'] })
 		}
 	})
@@ -73,7 +73,7 @@ export function useConnectionMutations() {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		onSuccess: () => {
+		onSuccess: function () {
 			queryClient.invalidateQueries({ queryKey: ['connections'] })
 		}
 	})
@@ -83,7 +83,7 @@ export function useConnectionMutations() {
 			const res = await adapter.removeConnection(id)
 			if (!res.ok) throw new Error(getAdapterError(res))
 		},
-		onSuccess: () => {
+		onSuccess: function () {
 			queryClient.invalidateQueries({ queryKey: ['connections'] })
 		}
 	})
@@ -126,7 +126,7 @@ export function useSchema(connectionId: string | undefined) {
 
 	return useQuery({
 		queryKey: ['schema', connectionId],
-		queryFn: async () => {
+		queryFn: async function () {
 			if (!connectionId) throw new Error('No connection ID')
 			const res = await adapter.getSchema(connectionId)
 			if (!res.ok) throw new Error(getAdapterError(res))
@@ -148,7 +148,7 @@ export function useTableData(
 
 	return useQuery({
 		queryKey: ['tableData', connectionId, tableName, page, pageSize, sort, filters],
-		queryFn: async () => {
+		queryFn: async function () {
 			if (!connectionId || !tableName) throw new Error('Missing params')
 			const res = await adapter.fetchTableData(
 				connectionId,
@@ -204,7 +204,7 @@ export function useDataMutation() {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		onMutate: async (newEdit) => {
+		onMutate: async function (newEdit) {
 			// Cancel any outgoing refetches (so they don't overwrite our optimistic update)
 			await queryClient.cancelQueries({
 				queryKey: ['tableData', newEdit.connectionId, newEdit.tableName]
@@ -218,11 +218,11 @@ export function useDataMutation() {
 			// Optimistically update to the new value
 			queryClient.setQueriesData(
 				{ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] },
-				(old: any) => {
+				function (old: any) {
 					if (!old) return old
 					return {
 						...old,
-						rows: old.rows.map((row: any) => {
+						rows: old.rows.map(function (row: any) {
 							if (row[newEdit.primaryKeyColumn] === newEdit.primaryKeyValue) {
 								return {
 									...row,
@@ -238,15 +238,15 @@ export function useDataMutation() {
 			// Return a context object with the snapshotted value
 			return { previousTableData }
 		},
-		onError: (_err, _newEdit, context) => {
+		onError: function (_err, _newEdit, context) {
 			// If the mutation fails, use the context returned from onMutate to roll back
 			if (context?.previousTableData) {
-				context.previousTableData.forEach(([key, data]) => {
+				context.previousTableData.forEach(function ([key, data]) {
 					queryClient.setQueryData(key, data)
 				})
 			}
 		},
-		onSettled: (_data, _error, variables) => {
+		onSettled: function (_data, _error, variables) {
 			// Always refetch after error or success:
 			queryClient.invalidateQueries({
 				queryKey: ['tableData', variables.connectionId, variables.tableName]
@@ -270,7 +270,7 @@ export function useDataMutation() {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		onSuccess: (_data, variables) => {
+		onSuccess: function (_data, variables) {
 			queryClient.invalidateQueries({
 				queryKey: ['tableData', variables.connectionId, variables.tableName]
 			})
@@ -292,7 +292,7 @@ export function useDataMutation() {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		onSuccess: (_data, variables) => {
+		onSuccess: function (_data, variables) {
 			queryClient.invalidateQueries({
 				queryKey: ['tableData', variables.connectionId, variables.tableName]
 			})
@@ -312,7 +312,7 @@ export function useQueryHistory(connectionId: string | undefined, limit?: number
 
 	return useQuery({
 		queryKey: ['queryHistory', connectionId, limit],
-		queryFn: async () => {
+		queryFn: async function () {
 			if (!connectionId) throw new Error('No connection ID')
 			const res = await adapter.getQueryHistory(connectionId, limit)
 			if (!res.ok) throw new Error(getAdapterError(res))
@@ -327,7 +327,7 @@ export function useScripts(connectionId: string | null) {
 
 	return useQuery({
 		queryKey: ['scripts', connectionId],
-		queryFn: async () => {
+		queryFn: async function () {
 			const res = await adapter.getScripts(connectionId)
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
@@ -355,7 +355,7 @@ export function useScriptMutations() {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		onSuccess: (_data, variables) => {
+		onSuccess: function (_data, variables) {
 			queryClient.invalidateQueries({ queryKey: ['scripts', variables.connectionId] })
 		}
 	})
@@ -377,7 +377,7 @@ export function useScriptMutations() {
 			)
 			if (!res.ok) throw new Error(getAdapterError(res))
 		},
-		onSuccess: (_data, variables) => {
+		onSuccess: function (_data, variables) {
 			queryClient.invalidateQueries({ queryKey: ['scripts', variables.connectionId] })
 		}
 	})
@@ -387,7 +387,7 @@ export function useScriptMutations() {
 			const res = await adapter.deleteScript(id)
 			if (!res.ok) throw new Error(getAdapterError(res))
 		},
-		onSuccess: () => {
+		onSuccess: function () {
 			queryClient.invalidateQueries({ queryKey: ['scripts'] })
 		}
 	})

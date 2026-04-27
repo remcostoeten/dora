@@ -131,7 +131,7 @@ impl PageHeaders {
         Self { inner }
     }
 
-    pub fn iter(&self) -> PageHdrIter {
+    pub fn iter(&self) -> PageHdrIter<'_> {
         // TODO: move LIBSQL_PAGE_SIZE
         PageHdrIter::new(self.as_ptr(), 4096)
     }

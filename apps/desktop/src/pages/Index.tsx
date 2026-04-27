@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/shared/ui/toaster";
+import { TooltipProvider } from "@/shared/ui/tooltip";
+import { useToast } from "@/shared/ui/use-toast";
 import { useAdapter } from "@/core/data-provider";
 import { getAdapterError } from "@/core/data-provider/types";
 import { useSettings } from "@/core/settings";
@@ -10,35 +10,35 @@ import { useEffectiveShortcuts, useShortcut } from "@/core/shortcuts";
 import { LiveMonitorProvider } from "@/core/live-monitor";
 import { NavigationSidebar, SidebarProvider } from "@/features/app-sidebar";
 import { CommandPalette } from "@/features/command-palette";
+import { useConnections, useConnectionMutations } from "@/core/data-provider/hooks";
 import {
-  loadConnections,
-  addConnection as addConnectionApi,
-  updateConnection as updateConnectionApi,
-  removeConnection as removeConnectionApi,
   backendToFrontendConnection,
-} from "@/features/connections/api";
+  frontendToBackendDatabaseInfo,
+} from "@/features/connections/utils/mapping";
 import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
 import { Connection } from "@/features/connections/types";
-const DatabaseStudio = lazy(() =>
-  import("@/features/database-studio/database-studio").then((m) => ({
-    default: m.DatabaseStudio,
-  }))
-);
-const DockerView = lazy(() =>
-  import("@/features/docker-manager").then((m) => ({ default: m.DockerView }))
-);
-const SqlConsole = lazy(() =>
-  import("@/features/sql-console/sql-console").then((m) => ({
-    default: m.SqlConsole,
-  }))
-);
-const SchemaVisualizer = lazy(() =>
-  import("@/features/schema-visualizer").then((m) => ({
-    default: m.SchemaVisualizer,
-  }))
-);
+const DatabaseStudio = lazy(function () {
+  return import("@/features/database-studio/database-studio").then(function (m) {
+    return { default: m.DatabaseStudio };
+  });
+});
+const DockerView = lazy(function () {
+  return import("@/features/docker-manager").then(function (m) {
+    return { default: m.DockerView };
+  });
+});
+const SqlConsole = lazy(function () {
+  return import("@/features/sql-console/sql-console").then(function (m) {
+    return { default: m.SqlConsole };
+  });
+});
+const SchemaVisualizer = lazy(function () {
+  return import("@/features/schema-visualizer").then(function (m) {
+    return { default: m.SchemaVisualizer };
+  });
+});
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
-import { WindowControls } from "@/components/window-controls";
+import { WindowControls } from "@/shared/ui/window-controls";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,14 +58,15 @@ import { Plug } from "lucide-react";
 export default function Index() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const adapter = useAdapter();
   const {
     settings,
     updateSetting,
     updateSettings,
     isLoading: isSettingsLoading,
   } = useSettings();
+
+  const { data: connections = [], isLoading: isConnectionsLoading } = useConnections();
+  const { addConnection, updateConnection, removeConnection } = useConnectionMutations();
 
   const urlView = searchParams.get("view");
   const urlTable = searchParams.get("table");
@@ -82,8 +83,6 @@ export default function Index() {
   const [selectedTableName, setSelectedTableName] = useState("");
   const autoSelectFirstTableRef = useRef(false);
   const connectionInitializedRef = useRef(false);
-
-  const [connections, setConnections] = useState<Connection[]>([]);
 
   const [activeConnectionId, setActiveConnectionId] = useState<string>("");
 
@@ -159,9 +158,9 @@ export default function Index() {
     }
   });
 
-  useEffect(() => {
-    loadConnectionsFromBackend();
-  }, [adapter]);
+  useEffect(function () {
+    // Initial load is handled by useConnections
+  }, []);
 
   const isUpdatingUrlRef = useRef(false);
 
@@ -195,35 +194,13 @@ export default function Index() {
     [activeNavId, selectedTableId, activeConnectionId, setSearchParams],
   );
 
-  useEffect(() => {
+  useEffect(function () {
     setSelectedTableName(getTableRefParts(selectedTableId).tableName);
   }, [selectedTableId]);
 
-  async function loadConnectionsFromBackend() {
-    try {
-      setIsLoading(true);
-      const result = await adapter.getConnections();
-      if (result.ok) {
-        setConnections(result.data.map(backendToFrontendConnection));
-      } else {
-        throw new Error(getAdapterError(result));
-      }
-    } catch (error) {
-      toast({
-        title: "Failed to Load Connections",
-        description: mapConnectionError(
-          error instanceof Error ? error : new Error("Unknown error"),
-        ),
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
   useEffect(
     function initializeConnection() {
-      if (isSettingsLoading || isLoading) return;
+      if (isSettingsLoading || isConnectionsLoading) return;
       if (connections.length === 0) return;
       if (connectionInitializedRef.current) return;
 
@@ -291,7 +268,7 @@ export default function Index() {
     },
     [
       isSettingsLoading,
-      isLoading,
+      isConnectionsLoading,
       connections,
       urlConnection,
       activeConnectionId,
@@ -333,115 +310,72 @@ export default function Index() {
     ],
   );
 
-  async function handleAddConnection(
-    newConnectionData: Omit<Connection, "id" | "createdAt">,
-  ) {
+  async function handleAddConnection(connection: Omit<Connection, "id" | "status">) {
     try {
-      // Create a temporary ID for the adapter call if needed, but the adapter should handle it
-      // For now, we need to map frontend Connection format to what adapter expects
-      // The adapter addConnection expects (name, databaseType, sshConfig)
-
-      // NOTE: This part is tricky because frontend uses `Connection` object but adapter expects expanded args
-      // We need to use the `frontendToBackendDatabaseInfo` helper or similar logic
-      // But `frontendToBackendDatabaseInfo` is in `api.ts`.
-      // Ideally, the adapter should accept a strictly typed object, but `addConnection` signature is:
-      // addConnection(name: string, databaseType: DatabaseInfo, sshConfig: JsonValue | null)
-
-      // Let's import the helper to convert type
-      // Wait, `adapter.addConnection` is the lower level API.
-      // The `Connection` type in `Index.tsx` is `FrontendConnection`.
-
-      // Let's rely on the helper which we should import.
-      // BUT `api.ts` is deprecated ideally. We should move that helper to a shared location or `types.ts`.
-
-      // For now, let's keep importing helper from `api.ts` since it's just a pure function
-      const { frontendToBackendDatabaseInfo, frontendToBackendSshConfig } =
-        await import("@/features/connections/api");
-
-      const tempConn = newConnectionData as Connection;
-      const dbInfo = frontendToBackendDatabaseInfo(tempConn);
-      const result = await adapter.addConnection(
-        newConnectionData.name,
-        dbInfo,
-        frontendToBackendSshConfig(tempConn),
-      );
-
-      if (result.ok) {
-        // Adapter returns connection info, we might need to fetch all again or convert it back
-        // Adapter `addConnection` returns `ConnectionInfo` (backend type)
-        // We need `backendToFrontendConnection` to update state locally without refetch
-        const { backendToFrontendConnection } =
-          await import("@/features/connections/api");
-        const newFrontendConn = backendToFrontendConnection(result.data);
-
-        setConnections(function (prev) {
-          return [...prev, newFrontendConn];
-        });
-        setActiveConnectionId(newFrontendConn.id);
-        autoSelectFirstTableRef.current = true;
-        toast({
-          title: "Connection Added",
-          description: `Successfully connected to ${newFrontendConn.name}`,
-        });
-      } else {
-        throw new Error(getAdapterError(result));
-      }
+      const dbInfo = frontendToBackendDatabaseInfo(connection as Connection);
+      await addConnection.mutateAsync({
+        name: connection.name,
+        databaseType: dbInfo,
+        sshConfig: null, // TODO: handle SSH
+      });
+      setIsConnectionDialogOpen(false);
+      toast({ title: "Connection Added", description: `"${connection.name}" has been created.` });
     } catch (error) {
       toast({
         title: "Failed to Add Connection",
-        description: mapConnectionError(
-          error instanceof Error ? error : new Error("Unknown error"),
-        ),
+        description: mapConnectionError(error instanceof Error ? error : new Error("Unknown error")),
         variant: "destructive",
       });
     }
   }
 
-  async function handleUpdateConnection(
-    connectionData: Omit<Connection, "id" | "createdAt">,
-  ) {
+  async function handleUpdateConnection(connection: Omit<Connection, "id" | "status">) {
     if (!editingConnection) return;
-
     try {
-      const { frontendToBackendDatabaseInfo, backendToFrontendConnection } =
-        await import("@/features/connections/api");
-
-      // We need to construct a full connection object to get the DatabaseInfo
-      const tempConn = {
-        ...connectionData,
+      const dbInfo = frontendToBackendDatabaseInfo(connection as Connection);
+      await updateConnection.mutateAsync({
         id: editingConnection.id,
-        createdAt: editingConnection.createdAt,
-      } as Connection;
-      const dbInfo = frontendToBackendDatabaseInfo(tempConn);
-
-      const { frontendToBackendSshConfig } = await import("@/features/connections/api");
-      const result = await adapter.updateConnection(
-        editingConnection.id,
-        connectionData.name,
-        dbInfo,
-        frontendToBackendSshConfig(tempConn),
-      );
-
-      if (result.ok) {
-        const updatedConnection = backendToFrontendConnection(result.data);
-        setConnections(function (prev) {
-          return prev.map(function (c) {
-            return c.id === updatedConnection.id ? updatedConnection : c;
-          });
-        });
-        toast({
-          title: "Connection Updated",
-          description: `Successfully updated ${updatedConnection.name}`,
-        });
-      } else {
-        throw new Error(getAdapterError(result));
-      }
+        name: connection.name,
+        databaseType: dbInfo,
+        sshConfig: null, // TODO: handle SSH
+      });
+      setIsConnectionDialogOpen(false);
+      setEditingConnection(undefined);
+      toast({ title: "Connection Updated", description: `"${connection.name}" has been updated.` });
     } catch (error) {
       toast({
         title: "Failed to Update Connection",
-        description: mapConnectionError(
-          error instanceof Error ? error : new Error("Unknown error"),
-        ),
+        description: mapConnectionError(error instanceof Error ? error : new Error("Unknown error")),
+        variant: "destructive",
+      });
+    }
+  }
+
+  function handleDeleteConnection(connectionId: string) {
+    const connection = connections.find(function (c) {
+      return c.id === connectionId;
+    });
+    if (connection) {
+      setConnectionToDelete(connection);
+      setDeleteDialogOpen(true);
+    }
+  }
+
+  async function confirmDeleteConnection() {
+    if (!connectionToDelete) return;
+    try {
+      await removeConnection.mutateAsync(connectionToDelete.id);
+      if (activeConnectionId === connectionToDelete.id) {
+        setActiveConnectionId("");
+        setSelectedTableId("");
+      }
+      setDeleteDialogOpen(false);
+      setConnectionToDelete(null);
+      toast({ title: "Connection Deleted", description: `"${connectionToDelete.name}" has been removed.` });
+    } catch (error) {
+      toast({
+        title: "Failed to Delete Connection",
+        description: mapConnectionError(error instanceof Error ? error : new Error("Unknown error")),
         variant: "destructive",
       });
     }
@@ -449,12 +383,9 @@ export default function Index() {
 
   async function handleConnectionSelect(connectionId: string) {
     setActiveConnectionId(connectionId);
-    // Reset table selection when switching connections
     setSelectedTableId("");
     setSelectedTableName("");
     autoSelectFirstTableRef.current = false;
-    // No need to reload all connections when selecting one
-    // The connection state will be updated by the backend when connecting
   }
 
   function handleViewConnection(connectionId: string) {
@@ -477,62 +408,6 @@ export default function Index() {
     }
   }
 
-  function handleDeleteConnection(connectionId: string) {
-    const connection = connections.find(function (c) {
-      return c.id === connectionId;
-    });
-    if (connection) {
-      if (settings.confirmBeforeDelete) {
-        setConnectionToDelete(connection);
-        setDeleteDialogOpen(true);
-      } else {
-        performDelete(connection);
-      }
-    }
-  }
-
-  async function confirmDeleteConnection() {
-    if (!connectionToDelete) return;
-    await performDelete(connectionToDelete);
-  }
-
-  async function performDelete(connection: Connection) {
-    try {
-      const result = await adapter.removeConnection(connection.id);
-
-      if (result.ok) {
-        setConnections(function (prev) {
-          return prev.filter(function (c) {
-            return c.id !== connection.id;
-          });
-        });
-        if (activeConnectionId === connection.id) {
-          setActiveConnectionId("");
-          setSelectedTableId("");
-          setSelectedTableName("");
-          autoSelectFirstTableRef.current = false;
-        }
-        toast({
-          title: "Connection Deleted",
-          description: `Successfully deleted ${connection.name}`,
-        });
-      } else {
-        throw new Error(getAdapterError(result));
-      }
-    } catch (error) {
-      toast({
-        title: "Failed to Delete Connection",
-        description: mapConnectionError(
-          error instanceof Error ? error : new Error("Unknown error"),
-        ),
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteDialogOpen(false);
-      setConnectionToDelete(null);
-    }
-  }
-
   function handleOpenNewConnection() {
     setEditingConnection(undefined);
     setIsConnectionDialogOpen(true);
@@ -548,12 +423,12 @@ export default function Index() {
     }
   }
 
-  const handleTableSelect = useCallback((id: string, name: string) => {
+  const handleTableSelect = useCallback(function (id: string, name: string) {
     setSelectedTableId(id);
     setSelectedTableName(name);
   }, []);
 
-  const handleAutoSelectComplete = useCallback(() => {
+  const handleAutoSelectComplete = useCallback(function () {
     autoSelectFirstTableRef.current = false;
   }, []);
 
@@ -638,9 +513,9 @@ export default function Index() {
                     tableId={selectedTableId}
                     tableName={selectedTableName}
                     isSidebarOpen={isSidebarOpen}
-                    onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
                     initialRowPK={settings.lastRowPK}
-                    onRowSelectionChange={(pk) => {
+                    onRowSelectionChange={function (pk) {
                       if (pk !== settings.lastRowPK) {
                         updateSetting("lastRowPK", pk);
                       }
@@ -652,18 +527,18 @@ export default function Index() {
               ) : activeNavId === "sql-console" ? (
                 <ErrorBoundary feature="SQL Console">
                   <SqlConsole
-                    onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
                     activeConnectionId={activeConnectionId}
-                    getConnectionName={(id) =>
-                      connections.find((c) => c.id === id)?.name ?? id.slice(0, 8)
-                    }
+                    getConnectionName={function (id) {
+                      return connections.find(function (c) { return c.id === id; })?.name ?? id.slice(0, 8);
+                    }}
                   />
                 </ErrorBoundary>
               ) : activeNavId === "schema-visualizer" ? (
                 <ErrorBoundary feature="Schema Visualizer">
                   <SchemaVisualizer
                     activeConnectionId={activeConnectionId}
-                    onOpenTable={(tableId, tableName) => {
+                    onOpenTable={function (tableId, tableName) {
                       handleTableSelect(tableId, tableName);
                       setActiveNavId("database-studio");
                     }}
@@ -711,11 +586,11 @@ export default function Index() {
               ) : (
                 <ErrorBoundary feature="SQL Console">
                   <SqlConsole
-                    onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
                     activeConnectionId={activeConnectionId}
-                    getConnectionName={(id) =>
-                      connections.find((c) => c.id === id)?.name ?? id.slice(0, 8)
-                    }
+                    getConnectionName={function (id) {
+                      return connections.find(function (c) { return c.id === id; })?.name ?? id.slice(0, 8);
+                    }}
                   />
                 </ErrorBoundary>
               )}
@@ -724,7 +599,7 @@ export default function Index() {
 
             <ConnectionDialog
               open={isConnectionDialogOpen}
-              onOpenChange={(open) => {
+              onOpenChange={function (open) {
                 setIsConnectionDialogOpen(open);
                 if (!open) setEditingConnection(undefined);
               }}
@@ -761,7 +636,7 @@ export default function Index() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel
-                    onClick={() => setConnectionToDelete(null)}
+                    onClick={function () { return setConnectionToDelete(null); }}
                   >
                     Cancel
                   </AlertDialogCancel>

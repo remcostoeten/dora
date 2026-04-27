@@ -1,4 +1,4 @@
-import react from '@vitejs/plugin-react-swc'
+import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig } from 'vite'
 import { visualizer } from 'rollup-plugin-visualizer'
@@ -20,6 +20,7 @@ export default defineConfig({
 		target: 'esnext',
 		minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
 		sourcemap: !!process.env.TAURI_DEBUG,
+		chunkSizeWarningLimit: 1000,
 		rollupOptions: {
 			output: {
 				manualChunks(id) {
@@ -31,18 +32,20 @@ export default defineConfig({
 						) {
 							return 'vendor-react'
 						}
-						if (
-							id.includes('@radix-ui') ||
-							id.includes('lucide-react') ||
-							id.includes('clsx') ||
-							id.includes('tailwind-merge') ||
-							id.includes('class-variance-authority') ||
-							id.includes('framer-motion')
-						) {
-							return 'vendor-ui'
-						}
 						if (id.includes('@monaco-editor') || id.includes('monaco-vim')) {
-							return 'vendor-editor'
+							return 'vendor-monaco'
+						}
+						if (id.includes('@xyflow/react')) {
+							return 'vendor-flow'
+						}
+						if (id.includes('@faker-js/faker')) {
+							return 'vendor-faker'
+						}
+						if (id.includes('framer-motion')) {
+							return 'vendor-motion'
+						}
+						if (id.includes('@radix-ui')) {
+							return 'vendor-radix'
 						}
 						if (
 							id.includes('date-fns') ||
@@ -51,6 +54,27 @@ export default defineConfig({
 						) {
 							return 'vendor-utils'
 						}
+						if (id.includes('zod') || id.includes('@hookform/resolvers')) {
+							return 'vendor-forms'
+						}
+						if (
+							id.includes('lucide-react') ||
+							id.includes('clsx') ||
+							id.includes('tailwind-merge') ||
+							id.includes('class-variance-authority')
+						) {
+							return 'vendor-ui-misc'
+						}
+					}
+
+					// Feature-based splitting
+					if (id.includes('src/features/')) {
+						if (id.includes('database-studio')) return 'feature-studio'
+						if (id.includes('schema-visualizer')) return 'feature-visualizer'
+						if (id.includes('sql-console')) return 'feature-sql'
+						if (id.includes('docker-manager')) return 'feature-docker'
+						if (id.includes('app-sidebar') || id.includes('connections'))
+							return 'feature-core'
 					}
 				}
 			}
