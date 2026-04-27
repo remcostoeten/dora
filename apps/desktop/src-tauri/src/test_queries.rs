@@ -1,19 +1,22 @@
+use crate::storage::{SavedQuery, Storage};
+use crate::Result;
+use anyhow::Context;
 use std::fs;
 use std::path::Path;
-use anyhow::Context;
 use tauri::State;
-use crate::storage::{Storage, SavedQuery};
-use crate::Result;
 
 pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
     let test_queries_dir = Path::new("test_queries");
-    
+
     // Define test queries with metadata
     let queries = vec![
         SavedQuery {
             id: 0,
             name: "CREATE Tables".to_string(),
-            description: Some("Create sample database schema with users, posts, comments, and categories tables".to_string()),
+            description: Some(
+                "Create sample database schema with users, posts, comments, and categories tables"
+                    .to_string(),
+            ),
             query_text: fs::read_to_string(test_queries_dir.join("01_create_tables.sql"))
                 .context("Failed to read 01_create_tables.sql")?,
             connection_id: None,
@@ -134,7 +137,8 @@ pub fn populate_test_queries(storage: &Storage) -> anyhow::Result<()> {
     // Insert each query into database
     let query_count = queries.len();
     for query in queries {
-        let id = storage.save_query(&query)
+        let id = storage
+            .save_query(&query)
             .with_context(|| format!("Failed to save query: {}", query.name))?;
         println!("Saved test query '{}' with ID: {}", query.name, id);
     }

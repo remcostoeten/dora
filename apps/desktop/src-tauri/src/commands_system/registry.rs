@@ -1,9 +1,9 @@
 //! Command Registry
-//! 
+//!
 //! Central registry for all available commands with O(1) lookup.
 
-use std::collections::HashMap;
 use super::types::{CommandDefinition, ShortcutDefinition};
+use std::collections::HashMap;
 
 /// Central registry of all available commands
 #[derive(Debug, Default)]
@@ -20,7 +20,7 @@ impl CommandRegistry {
         registry.register_default_commands();
         registry
     }
-    
+
     /// Register default commands for the application
     fn register_default_commands(&mut self) {
         // Palette
@@ -29,96 +29,100 @@ impl CommandRegistry {
                 "palette.open",
                 "Open Command Palette",
                 "Search and execute commands",
-                "General"
-            ).with_shortcut(vec!["Ctrl", "P"])
+                "General",
+            )
+            .with_shortcut(vec!["Ctrl", "P"]),
         );
-        
+
         // Theme
         self.register(
             CommandDefinition::new(
                 "theme.toggle",
                 "Toggle Theme",
                 "Switch between light and dark mode",
-                "Appearance"
-            ).with_shortcut(vec!["Ctrl", "T"])
+                "Appearance",
+            )
+            .with_shortcut(vec!["Ctrl", "T"]),
         );
-        
+
         // Connections
         self.register(
             CommandDefinition::new(
                 "connections.new",
                 "New Connection",
                 "Create a new database connection",
-                "Connections"
-            ).with_shortcut(vec!["Ctrl", "N"])
+                "Connections",
+            )
+            .with_shortcut(vec!["Ctrl", "N"]),
         );
-        
+
         // Queries
         self.register(
             CommandDefinition::new(
                 "queries.run",
                 "Run Query",
                 "Execute the current SQL query",
-                "Queries"
-            ).with_shortcut(vec!["Ctrl", "Enter"])
+                "Queries",
+            )
+            .with_shortcut(vec!["Ctrl", "Enter"]),
         );
-        
+
         self.register(
             CommandDefinition::new(
                 "queries.save",
                 "Save Script",
                 "Save the current script",
-                "Queries"
-            ).with_shortcut(vec!["Ctrl", "S"])
+                "Queries",
+            )
+            .with_shortcut(vec!["Ctrl", "S"]),
         );
-        
+
         self.register(
             CommandDefinition::new(
                 "scripts.new",
                 "New Script",
                 "Create a new SQL script",
-                "Queries"
-            ).with_shortcut(vec!["Ctrl", "Shift", "N"])
+                "Queries",
+            )
+            .with_shortcut(vec!["Ctrl", "Shift", "N"]),
         );
-        
+
         // Editor
         self.register(
             CommandDefinition::new(
                 "editor.format",
                 "Format SQL",
                 "Format the current SQL query",
-                "Editor"
-            ).with_shortcut(vec!["Ctrl", "Shift", "F"])
+                "Editor",
+            )
+            .with_shortcut(vec!["Ctrl", "Shift", "F"]),
         );
-        
+
         // View
         self.register(
             CommandDefinition::new(
                 "view.sidebar",
                 "Toggle Sidebar",
                 "Show or hide the sidebar",
-                "View"
-            ).with_shortcut(vec!["Ctrl", "B"])
+                "View",
+            )
+            .with_shortcut(vec!["Ctrl", "B"]),
         );
 
         // Navigation
-        self.register(
-            CommandDefinition::new(
-                "nav.home",
-                "Go to Home",
-                "Navigate to the home dashboard",
-                "Navigation"
-            )
-        );
+        self.register(CommandDefinition::new(
+            "nav.home",
+            "Go to Home",
+            "Navigate to the home dashboard",
+            "Navigation",
+        ));
 
-        self.register(
-            CommandDefinition::new(
-                "nav.settings",
-                "Open Settings",
-                "Navigate to application settings",
-                "Navigation"
-            )
-        );
+        self.register(CommandDefinition::new(
+            "nav.settings",
+            "Open Settings",
+            "Navigate to application settings",
+            "Navigation",
+        ));
 
         // Application
         self.register(
@@ -126,8 +130,9 @@ impl CommandRegistry {
                 "app.reload",
                 "Reload Window",
                 "Reload the application window",
-                "Application"
-            ).with_shortcut(vec!["Ctrl", "R"])
+                "Application",
+            )
+            .with_shortcut(vec!["Ctrl", "R"]),
         );
 
         // Data
@@ -136,30 +141,23 @@ impl CommandRegistry {
                 "data.refresh",
                 "Refresh Data",
                 "Refresh current view data",
-                "Data"
-            ).with_shortcut(vec!["Ctrl", "Shift", "R"])
+                "Data",
+            )
+            .with_shortcut(vec!["Ctrl", "Shift", "R"]),
         );
 
         // Tabs
         self.register(
-            CommandDefinition::new(
-                "tabs.close",
-                "Close Tab",
-                "Close the current tab",
-                "Tabs"
-            ).with_shortcut(vec!["Ctrl", "W"])
+            CommandDefinition::new("tabs.close", "Close Tab", "Close the current tab", "Tabs")
+                .with_shortcut(vec!["Ctrl", "W"]),
         );
 
         self.register(
-            CommandDefinition::new(
-                "tabs.next",
-                "Next Tab",
-                "Switch to the next tab",
-                "Tabs"
-            ).with_shortcut(vec!["Ctrl", "Tab"])
+            CommandDefinition::new("tabs.next", "Next Tab", "Switch to the next tab", "Tabs")
+                .with_shortcut(vec!["Ctrl", "Tab"]),
         );
     }
-    
+
     /// Register a command
     pub fn register(&mut self, command: CommandDefinition) {
         // If overwriting an existing command, remove its old shortcut mapping first
@@ -171,7 +169,7 @@ impl CommandRegistry {
                 }
             }
         }
-        
+
         // Index the shortcut if present
         if let Some(ref shortcut) = command.shortcut {
             if shortcut.enabled {
@@ -179,32 +177,33 @@ impl CommandRegistry {
                 self.shortcut_index.insert(key, command.id.clone());
             }
         }
-        
+
         self.commands.insert(command.id.clone(), command);
     }
-    
+
     /// Get a command by ID
     pub fn get(&self, id: &str) -> Option<&CommandDefinition> {
         self.commands.get(id)
     }
-    
+
     /// Get all commands
     pub fn all(&self) -> Vec<&CommandDefinition> {
         self.commands.values().collect()
     }
-    
+
     /// Get all commands as owned values (for serialization)
     pub fn all_owned(&self) -> Vec<CommandDefinition> {
         self.commands.values().cloned().collect()
     }
-    
+
     /// Find command by shortcut keys
     pub fn find_by_shortcut(&self, keys: &[String]) -> Option<&CommandDefinition> {
         let key = Self::shortcut_key(keys);
-        self.shortcut_index.get(&key)
+        self.shortcut_index
+            .get(&key)
             .and_then(|id| self.commands.get(id))
     }
-    
+
     /// Update a command's shortcut
     pub fn update_shortcut(&mut self, command_id: &str, shortcut: Option<ShortcutDefinition>) {
         // Remove old shortcut from index
@@ -214,7 +213,7 @@ impl CommandRegistry {
                 self.shortcut_index.remove(&old_key);
             }
         }
-        
+
         // Update command
         if let Some(cmd) = self.commands.get_mut(command_id) {
             if let Some(ref new_shortcut) = shortcut {
@@ -226,13 +225,11 @@ impl CommandRegistry {
             cmd.shortcut = shortcut;
         }
     }
-    
+
     /// Generate a normalized key for shortcut lookup
     fn shortcut_key(keys: &[String]) -> String {
         // Sort modifiers first (Ctrl, Shift, Alt), then the main key
-        let mut parts: Vec<String> = keys.iter()
-            .map(|k| k.to_lowercase())
-            .collect();
+        let mut parts: Vec<String> = keys.iter().map(|k| k.to_lowercase()).collect();
         parts.sort_by(|a, b| {
             let order = |s: &str| match s {
                 "ctrl" | "control" => 0,
@@ -250,7 +247,7 @@ impl CommandRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_registry_creation() {
         let registry = CommandRegistry::new();
@@ -258,7 +255,7 @@ mod tests {
         assert!(registry.get("theme.toggle").is_some());
         assert!(registry.get("connections.new").is_some());
     }
-    
+
     #[test]
     fn test_shortcut_lookup() {
         let registry = CommandRegistry::new();
@@ -267,12 +264,20 @@ mod tests {
         assert!(cmd.is_some());
         assert_eq!(cmd.unwrap().id, "palette.open");
     }
-    
+
     #[test]
     fn test_shortcut_key_normalization() {
         // Order shouldn't matter
-        let key1 = CommandRegistry::shortcut_key(&["Ctrl".to_string(), "Shift".to_string(), "N".to_string()]);
-        let key2 = CommandRegistry::shortcut_key(&["Shift".to_string(), "Ctrl".to_string(), "N".to_string()]);
+        let key1 = CommandRegistry::shortcut_key(&[
+            "Ctrl".to_string(),
+            "Shift".to_string(),
+            "N".to_string(),
+        ]);
+        let key2 = CommandRegistry::shortcut_key(&[
+            "Shift".to_string(),
+            "Ctrl".to_string(),
+            "N".to_string(),
+        ]);
         assert_eq!(key1, key2);
     }
 }

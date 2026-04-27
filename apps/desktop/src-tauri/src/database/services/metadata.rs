@@ -1,13 +1,13 @@
-use std::sync::Arc;
-use anyhow::{Context, anyhow};
+use anyhow::{anyhow, Context};
 use dashmap::DashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     database::{
+        metadata::{self, DatabaseMetadata},
         postgres, sqlite,
         types::{Database, DatabaseConnection, DatabaseSchema},
-        metadata::{self, DatabaseMetadata},
     },
     error::Error,
 };
@@ -56,12 +56,11 @@ impl<'a> MetadataService<'a> {
                 connection: None, ..
             } => return Err(Error::Any(anyhow!("LibSQL connection not active"))),
             Database::MySQL {
-                pool: Some(pool),
-                ..
+                pool: Some(pool), ..
             } => crate::database::mysql::schema::get_database_schema(pool.clone()).await?,
-            Database::MySQL {
-                pool: None, ..
-            } => return Err(Error::Any(anyhow!("MySQL connection not active"))),
+            Database::MySQL { pool: None, .. } => {
+                return Err(Error::Any(anyhow!("MySQL connection not active")))
+            }
         };
 
         let schema = Arc::new(schema);
@@ -86,9 +85,7 @@ impl<'a> MetadataService<'a> {
                 connection_string,
                 client: Some(client),
                 ..
-            } => {
-                metadata::get_postgres_metadata(client, connection_string).await
-            }
+            } => metadata::get_postgres_metadata(client, connection_string).await,
             Database::Postgres { client: None, .. } => {
                 Err(Error::Any(anyhow!("Postgres connection not active")))
             }
@@ -97,32 +94,30 @@ impl<'a> MetadataService<'a> {
                 connection: Some(conn),
             } => {
                 let mut meta = metadata::get_sqlite_metadata(db_path)?;
-                let conn_guard = conn.lock().map_err(|_| Error::Internal("Mutex poisoned".into()))?;
+                let conn_guard = conn
+                    .lock()
+                    .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
                 let (table_count, row_count) = metadata::get_sqlite_counts(&conn_guard)?;
                 meta.table_count = table_count;
                 meta.row_count_total = row_count;
                 Ok(meta)
             }
-            Database::SQLite { connection: None, .. } => {
-                Err(Error::Any(anyhow!("SQLite connection not active")))
-            }
+            Database::SQLite {
+                connection: None, ..
+            } => Err(Error::Any(anyhow!("SQLite connection not active"))),
             Database::LibSQL {
                 url,
                 connection: Some(conn),
                 ..
-            } => {
-                metadata::get_libsql_metadata(conn, url).await
-            }
-            Database::LibSQL { connection: None, .. } => {
-                Err(Error::Any(anyhow!("LibSQL connection not active")))
-            }
+            } => metadata::get_libsql_metadata(conn, url).await,
+            Database::LibSQL {
+                connection: None, ..
+            } => Err(Error::Any(anyhow!("LibSQL connection not active"))),
             Database::MySQL {
                 connection_string,
                 pool: Some(pool),
                 ..
-            } => {
-                metadata::get_mysql_metadata(pool, connection_string).await
-            }
+            } => metadata::get_mysql_metadata(pool, connection_string).await,
             Database::MySQL { pool: None, .. } => {
                 Err(Error::Any(anyhow!("MySQL connection not active")))
             }

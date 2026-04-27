@@ -4,11 +4,11 @@
 //! - SQL DDL (PostgreSQL or SQLite dialect)
 //! - Drizzle ORM TypeScript (PostgreSQL or SQLite dialect)
 
-use std::sync::Arc;
-use dashmap::DashMap;
-use uuid::Uuid;
 use anyhow::Context;
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use uuid::Uuid;
 
 use crate::{
     database::types::{ColumnInfo, DatabaseSchema, TableInfo},
@@ -183,8 +183,7 @@ impl SqlGenerator {
         parts.push(self.map_data_type(&column.data_type, column));
 
         // PRIMARY KEY (for single-column PKs only)
-        let is_single_pk =
-            table.primary_key_columns.len() == 1 && column.is_primary_key;
+        let is_single_pk = table.primary_key_columns.len() == 1 && column.is_primary_key;
         if is_single_pk {
             if self.dialect == ExportDialect::SQLite && column.is_auto_increment {
                 // SQLite: INTEGER PRIMARY KEY implies AUTOINCREMENT behavior
@@ -217,17 +216,16 @@ impl SqlGenerator {
                     table.name.to_lowercase(),
                     column.name.to_lowercase()
                 );
-                let qualified_ref = if !fk.referenced_schema.is_empty()
-                    && fk.referenced_schema != "public"
-                {
-                    format!(
-                        "{}.{}",
-                        self.quote_identifier(&fk.referenced_schema),
+                let qualified_ref =
+                    if !fk.referenced_schema.is_empty() && fk.referenced_schema != "public" {
+                        format!(
+                            "{}.{}",
+                            self.quote_identifier(&fk.referenced_schema),
+                            self.quote_identifier(&fk.referenced_table)
+                        )
+                    } else {
                         self.quote_identifier(&fk.referenced_table)
-                    )
-                } else {
-                    self.quote_identifier(&fk.referenced_table)
-                };
+                    };
 
                 foreign_keys.push(format!(
                     "ALTER TABLE {} ADD CONSTRAINT {} FOREIGN KEY ({}) REFERENCES {}({});",
@@ -421,10 +419,7 @@ impl DrizzleGenerator {
         let field_name = self.to_camel_case(&column.name);
         let drizzle_type = self.get_drizzle_type(&column.data_type, column);
 
-        let mut chain = format!(
-            "  {}: {}('{}')",
-            field_name, drizzle_type, column.name
-        );
+        let mut chain = format!("  {}: {}('{}')", field_name, drizzle_type, column.name);
 
         // Add type-specific options
         if drizzle_type == "varchar" {

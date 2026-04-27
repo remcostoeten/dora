@@ -7,8 +7,8 @@
 //! # Source Module
 //! - [`app_lib::credentials`](../src/credentials.rs)
 
-use app_lib::database::types::DatabaseInfo;
 use app_lib::credentials::extract_sensitive_data;
+use app_lib::database::types::DatabaseInfo;
 
 #[test]
 fn postgres_with_password() {
@@ -22,7 +22,9 @@ fn postgres_with_password() {
     assert_eq!(pw.as_deref(), Some("s3cr3t"));
 
     match sanitized {
-        DatabaseInfo::Postgres { connection_string, .. } => {
+        DatabaseInfo::Postgres {
+            connection_string, ..
+        } => {
             assert_eq!(connection_string, "postgres://Dora@localhost:5432/mydb");
         }
         _ => unreachable!(),
@@ -42,7 +44,9 @@ fn postgres_with_percent_encoded_password() {
     assert_eq!(pw.as_deref(), Some("p%404ss"));
 
     match sanitized {
-        DatabaseInfo::Postgres { connection_string, .. } => {
+        DatabaseInfo::Postgres {
+            connection_string, ..
+        } => {
             assert_eq!(connection_string, "postgres://bob@db.example.com/app");
         }
         _ => panic!("expected Postgres variant"),
@@ -62,7 +66,9 @@ fn postgres_with_empty_password() {
     assert_eq!(pw.as_deref(), None);
 
     match sanitized {
-        DatabaseInfo::Postgres { connection_string, .. } => {
+        DatabaseInfo::Postgres {
+            connection_string, ..
+        } => {
             assert_eq!(connection_string, "postgres://john@localhost/db");
         }
         _ => unreachable!(),
@@ -81,7 +87,9 @@ fn postgres_without_password() {
 
     assert!(pw.is_none());
     match sanitized {
-        DatabaseInfo::Postgres { connection_string, .. } => {
+        DatabaseInfo::Postgres {
+            connection_string, ..
+        } => {
             assert_eq!(connection_string, original);
         }
         _ => unreachable!(),
@@ -100,7 +108,9 @@ fn postgresql_scheme() {
 
     assert_eq!(pw.as_deref(), Some("pw"));
     match sanitized {
-        DatabaseInfo::Postgres { connection_string, .. } => {
+        DatabaseInfo::Postgres {
+            connection_string, ..
+        } => {
             assert_eq!(
                 connection_string,
                 "postgresql://erin@localhost:5432/dbname?sslmode=prefer"

@@ -13,8 +13,8 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 /// Second call is a no-op (returns `Err` from `set_global_default`).
 pub fn init() {
     let default_filter = "info,app=debug";
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(default_filter));
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter));
 
     let fmt_layer = fmt::layer()
         .with_target(true)

@@ -21,6 +21,7 @@ import {
 } from './data-grid/use-column-resize'
 import { RowAction } from './row-context-menu'
 import { ScrollHint } from './scroll-hint'
+import { useRowVirtualizer } from './data-grid/use-row-virtualizer'
 
 export type { ContextMenuState }
 
@@ -117,6 +118,14 @@ export function DataGrid({
 
 	const { hasRightDraggedRef, isRightDragging, handleRightDragStart } =
 		useRightDragScroll(scrollContainerRef)
+
+	// Virtualize when we have > 100 rows — zero overhead for small datasets
+	const VIRTUALIZE_THRESHOLD = 100
+	const { virtualRows, totalSize } = useRowVirtualizer({
+		scrollContainerRef,
+		rowCount: rows.length,
+		enabled: rows.length > VIRTUALIZE_THRESHOLD,
+	})
 
 	const {
 		editingCell,
@@ -365,8 +374,10 @@ export function DataGrid({
 						selectedCellsByRow={selectedCellsByRow}
 						selectedRows={selectedRows}
 						tableName={tableName}
-						ensureRowSelectionForContextMenu={ensureRowSelectionForContextMenu}
+							ensureRowSelectionForContextMenu={ensureRowSelectionForContextMenu}
 						setEditValue={setEditValue}
+						virtualRows={virtualRows}
+						totalVirtualSize={totalSize}
 					/>
 				</table>
 			</div>

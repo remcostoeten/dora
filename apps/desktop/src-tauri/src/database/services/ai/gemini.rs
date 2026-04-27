@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
 use super::{AIRequest, AIResponse};
+use crate::error::Error;
 
-const GEMINI_API_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_API_URL: &str =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 #[derive(Debug, Serialize)]
 struct GeminiRequest {
@@ -76,7 +77,7 @@ impl GeminiClient {
 
     pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
         let prompt = self.build_prompt(&request);
-        
+
         let gemini_request = GeminiRequest {
             contents: vec![GeminiContent {
                 parts: vec![GeminiPart { text: prompt }],
@@ -87,8 +88,9 @@ impl GeminiClient {
         };
 
         let url = format!("{}?key={}", GEMINI_API_URL, self.api_key);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .json(&gemini_request)
             .send()
@@ -98,18 +100,33 @@ impl GeminiClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(Error::Any(anyhow::anyhow!("Gemini API error ({}): {}", status, body)));
+            return Err(Error::Any(anyhow::anyhow!(
+                "Gemini API error ({}): {}",
+                status,
+                body
+            )));
         }
 
-        let gemini_response: GeminiResponse = response.json().await
+        let gemini_response: GeminiResponse = response
+            .json()
+            .await
             .map_err(|e| Error::Any(anyhow::anyhow!("Failed to parse Gemini response: {}", e)))?;
 
-        let content = gemini_response.candidates
+        let content = gemini_response
+            .candidates
             .and_then(|c| c.into_iter().next())
-            .map(|c| c.content.parts.into_iter().map(|p| p.text).collect::<Vec<_>>().join(""))
+            .map(|c| {
+                c.content
+                    .parts
+                    .into_iter()
+                    .map(|p| p.text)
+                    .collect::<Vec<_>>()
+                    .join("")
+            })
             .unwrap_or_default();
 
-        let tokens_used = gemini_response.usage_metadata
+        let tokens_used = gemini_response
+            .usage_metadata
             .and_then(|u| u.total_token_count);
 
         Ok(AIResponse {

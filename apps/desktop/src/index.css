@@ -781,21 +781,20 @@ layer(base);
 
 /* --- React Flow overrides --- */
 .schema-visualizer {
-	--sv-line-fk: hsla(var(--primary), 0.55);
-	--sv-line-one: hsla(var(--sidebar-foreground), 0.46);
-	--sv-line-many: hsla(var(--primary), 0.34);
-	--sv-panel-bg: hsla(var(--sidebar-background), 0.92);
-	--sv-panel-border: hsla(var(--sidebar-border), 0.72);
-	--sv-panel-border-soft: hsla(var(--sidebar-border), 0.42);
-	--sv-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+	--sv-line-fk: hsla(0, 0%, 100%, 0.15);
+	--sv-line-one: hsla(0, 0%, 100%, 0.15);
+	--sv-line-many: hsla(0, 0%, 100%, 0.15);
+	--sv-panel-bg: hsla(240, 5%, 8%, 0.95);
+	--sv-panel-border: hsla(0, 0%, 100%, 0.06);
+	--sv-panel-border-soft: hsla(0, 0%, 100%, 0.03);
+	--sv-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
 }
 
 .schema-visualizer__canvas {
 	position: relative;
 	height: 100%;
 	overflow: hidden;
-	border-top: 1px solid var(--sv-panel-border-soft);
-	background: hsl(var(--background));
+	background: #0d0d0f; /* Very dark background */
 }
 
 @keyframes sv-flow {
@@ -803,22 +802,26 @@ layer(base);
 }
 
 .sv-edge-flow {
-	stroke-dasharray: 6 10;
+	stroke-dasharray: 4 6;
+	stroke: hsla(0, 0%, 100%, 0.15) !important;
+	stroke-width: 1.5px !important;
 	animation: sv-flow 1.4s linear infinite;
 	pointer-events: none;
 }
 
 .sv-edge-flow--match {
-	stroke-dasharray: 7 6;
+	stroke: hsla(246, 68%, 64%, 0.5) !important;
+	stroke-dasharray: 6 6;
 	animation-duration: 1s;
 }
 
 .schema-visualizer .react-flow__background {
-	background-color: var(--background);
+	background-color: transparent;
 }
 
 .schema-visualizer .react-flow__background-pattern {
-	opacity: 0.03;
+	opacity: 0.15;
+	fill: hsla(0, 0%, 100%, 0.2);
 }
 
 .schema-visualizer .react-flow__edges {
@@ -866,42 +869,38 @@ layer(base);
 
 /* --- Handles (connection dots on table nodes) --- */
 .sv-handle {
-	width: 8px !important;
-	height: 8px !important;
-	border: 1px solid hsla(220, 12%, 78%, 0.34) !important;
-	background: hsl(220 14% 18%) !important;
+	width: 6px !important;
+	height: 6px !important;
+	border: 0 !important;
+	background: transparent !important;
 	border-radius: 50% !important;
-	transition: border-color 0.18s ease, background-color 0.18s ease,
-		transform 0.18s ease;
+	transition: background-color 0.18s ease;
+}
+
+.sv-handle:hover {
+	background: hsla(0, 0%, 100%, 0.3) !important;
 }
 
 .sv-handle--target {
-	left: -4px !important;
+	left: -3px !important;
 }
 
 .sv-handle--source {
-	right: -4px !important;
-}
-
-.sv-handle--fk {
-	border-color: hsla(var(--primary), 0.62) !important;
-	background: hsla(var(--primary), 0.22) !important;
+	right: -3px !important;
 }
 
 .sv-handle--active {
-	border-color: hsla(var(--primary), 0.9) !important;
-	background: hsla(var(--primary), 0.72) !important;
-	transform: scale(1.05);
+	background: hsla(0, 0%, 100%, 0.2) !important;
 }
 
 /* --- Table Node --- */
 .sv-table-node {
-	width: 260px;
+	width: 280px;
 	overflow: hidden;
-	border-radius: 14px;
-	border: 1px solid var(--sv-panel-border);
-	background: hsl(var(--sidebar-background));
-	box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: #161618;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 	transition: opacity 0.2s ease, border-color 0.2s ease,
 		transform 0.2s cubic-bezier(0.23, 1, 0.32, 1),
 		box-shadow 0.2s cubic-bezier(0.23, 1, 0.32, 1);
@@ -929,45 +928,54 @@ layer(base);
 
 .sv-table-node__header {
 	display: flex;
-	align-items: flex-start;
-	gap: 8px;
-	border-bottom: 1px solid var(--sv-panel-border-soft);
-	padding: 12px 14px 10px;
-	background: hsla(var(--sidebar-foreground), 0.03);
+	align-items: center;
+	gap: 12px;
+	border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+	padding: 16px 18px;
+	background: transparent;
+}
+
+.sv-table-node__icon-box {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	flex-shrink: 0;
 }
 
 .sv-table-node__header--match {
-	background: hsla(var(--primary), 0.08);
+	background: hsla(var(--primary), 0.04);
 }
 
 .sv-table-node__header--context {
-	background: hsla(var(--sidebar-foreground), 0.02);
+	background: hsla(0, 0%, 100%, 0.02);
 }
 
 .sv-table-node__row {
 	position: relative;
 	display: flex;
-	min-height: 30px;
+	min-height: 34px;
 	align-items: center;
-	gap: 10px;
-	border-bottom: 1px solid hsla(var(--sidebar-border), 0.26);
-	padding: 6px 14px;
-	font-size: 11px;
+	gap: 12px;
+	padding: 6px 18px;
+	font-size: 12px;
 	transition: background-color 0.16s ease;
 }
 
 .sv-table-node__row:last-child {
-	border-bottom: none;
+	padding-bottom: 12px;
 }
 
 @media (hover: hover) and (pointer: fine) {
 	.sv-table-node__row:hover {
-		background: hsla(0, 0%, 100%, 0.05);
+		background: hsla(0, 0%, 100%, 0.03);
 	}
 }
 
 .sv-table-node__row--match {
-	background: hsla(246, 68%, 64%, 0.1);
+	background: hsla(246, 68%, 64%, 0.06);
 }
 
 .sv-table-node__meta {
@@ -975,7 +983,7 @@ layer(base);
 	flex-wrap: wrap;
 	align-items: center;
 	gap: 6px;
-	margin-bottom: 4px;
+	margin-top: 4px;
 }
 
 .sv-table-node__schema,
@@ -983,27 +991,21 @@ layer(base);
 .sv-table-node__match-count {
 	display: inline-flex;
 	align-items: center;
-	border-radius: 999px;
-	padding: 2px 7px;
-	font-size: 9px;
-	font-weight: 700;
-	letter-spacing: 0.08em;
-	text-transform: uppercase;
+	font-size: 10px;
+	font-weight: 500;
+	letter-spacing: 0.02em;
 }
 
 .sv-table-node__schema {
-	background: hsla(0, 0%, 100%, 0.06);
-	color: hsla(var(--sidebar-foreground), 0.72);
+	color: hsla(0, 0%, 100%, 0.5);
 }
 
 .sv-table-node__count {
-	background: hsla(0, 0%, 100%, 0.04);
-	color: hsla(var(--sidebar-foreground), 0.52);
+	color: hsla(0, 0%, 100%, 0.3);
 }
 
 .sv-table-node__match-count {
 	align-self: center;
-	background: hsla(246, 68%, 64%, 0.12);
 	color: hsl(246 82% 76%);
 }
 
@@ -1012,30 +1014,11 @@ layer(base);
 	min-width: 0;
 	flex: 1;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
 }
 
 .sv-table-node__role {
-	display: inline-flex;
-	min-width: 30px;
-	justify-content: center;
-	border-radius: 999px;
-	background: hsla(0, 0%, 100%, 0.05);
-	padding: 2px 6px;
-	font-size: 9px;
-	font-weight: 700;
-	letter-spacing: 0.08em;
-	color: hsla(var(--sidebar-foreground), 0.56);
-}
-
-.sv-table-node__role--pk {
-	background: hsla(38, 82%, 54%, 0.16);
-	color: hsl(38 90% 70%);
-}
-
-.sv-table-node__role--fk {
-	background: hsla(var(--primary), 0.12);
-	color: hsla(var(--primary), 0.88);
+	display: none;
 }
 
 .sv-table-node__type {

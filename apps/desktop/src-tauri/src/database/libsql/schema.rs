@@ -19,7 +19,9 @@ pub async fn get_database_schema(conn: Arc<libsql::Connection>) -> Result<Databa
     for table_name in table_names {
         let (columns, pk_columns) = get_table_columns(&conn, &table_name).await?;
         let row_count = get_row_count(&conn, &table_name).await.unwrap_or(None);
-        let indexes = get_table_indexes(&conn, &table_name).await.unwrap_or_default();
+        let indexes = get_table_indexes(&conn, &table_name)
+            .await
+            .unwrap_or_default();
 
         let mut unique_cols = HashSet::new();
         for col in &columns {
@@ -242,4 +244,3 @@ async fn get_table_indexes(
 
     Ok(indexes)
 }
-

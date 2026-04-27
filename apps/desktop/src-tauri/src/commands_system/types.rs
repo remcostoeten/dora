@@ -23,7 +23,7 @@ impl ShortcutDefinition {
             enabled: true,
         }
     }
-    
+
     /// Format the shortcut for display, e.g., "Ctrl+N"
     pub fn display(&self) -> String {
         self.keys.join("+")
@@ -55,7 +55,7 @@ impl CommandDefinition {
             shortcut: None,
         }
     }
-    
+
     pub fn with_shortcut(mut self, keys: Vec<&str>) -> Self {
         self.shortcut = Some(ShortcutDefinition::new(keys));
         self
@@ -75,22 +75,18 @@ pub struct StoredShortcut {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_shortcut_display() {
         let shortcut = ShortcutDefinition::new(vec!["Ctrl", "Shift", "N"]);
         assert_eq!(shortcut.display(), "Ctrl+Shift+N");
     }
-    
+
     #[test]
     fn test_command_builder() {
-        let cmd = CommandDefinition::new(
-            "test.cmd",
-            "Test Command",
-            "A test command",
-            "Testing"
-        ).with_shortcut(vec!["Ctrl", "T"]);
-        
+        let cmd = CommandDefinition::new("test.cmd", "Test Command", "A test command", "Testing")
+            .with_shortcut(vec!["Ctrl", "T"]);
+
         assert_eq!(cmd.id, "test.cmd");
         assert!(cmd.shortcut.is_some());
         assert_eq!(cmd.shortcut.unwrap().display(), "Ctrl+T");

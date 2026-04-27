@@ -221,7 +221,7 @@ pub async fn get_database_schema(client: &Client) -> Result<DatabaseSchema, Erro
             let row_count = count_map
                 .get(&(schema.to_owned(), table_name.to_owned()))
                 .copied();
-            
+
             let indexes = index_map
                 .remove(&(schema.to_owned(), table_name.to_owned()))
                 .unwrap_or_default();

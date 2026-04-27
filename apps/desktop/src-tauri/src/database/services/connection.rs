@@ -1,7 +1,7 @@
-use std::sync::{Arc, Mutex};
 use anyhow::Context;
 use dashmap::DashMap;
 use mysql_async::prelude::Queryable;
+use std::sync::{Arc, Mutex};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -9,9 +9,7 @@ use crate::{
     credentials,
     database::{
         postgres::connect::connect,
-        types::{
-            ConnectionInfo, Database, DatabaseConnection, DatabaseInfo,
-        },
+        types::{ConnectionInfo, Database, DatabaseConnection, DatabaseInfo},
         Certificates, ConnectionMonitor,
     },
     error::Error,
@@ -69,45 +67,47 @@ impl<'a> ConnectionService<'a> {
         if let Some(mut connection_entry) = self.connections.get_mut(&conn_id) {
             let connection = connection_entry.value_mut();
 
-            let config_changed = password_changed || match (&connection.database, &database_info) {
-                (
-                    Database::Postgres {
-                        connection_string: old,
-                        ssh_config: old_ssh,
-                        ..
-                    },
-                    DatabaseInfo::Postgres {
-                        connection_string: new,
-                        ssh_config: new_ssh,
-                    },
-                ) => old != new || old_ssh != new_ssh,
-                (
-                    Database::MySQL {
-                        connection_string: old,
-                        ssh_config: old_ssh,
-                        ..
-                    },
-                    DatabaseInfo::MySQL {
-                        connection_string: new,
-                        ssh_config: new_ssh,
-                    },
-                ) => old != new || old_ssh != new_ssh,
-                (Database::SQLite { db_path: old, .. }, DatabaseInfo::SQLite { db_path: new }) => {
-                    old != new
-                }
-                (
-                    Database::LibSQL {
-                        url: old_url,
-                        auth_token: old_token,
-                        ..
-                    },
-                    DatabaseInfo::LibSQL {
-                        url: new_url,
-                        auth_token: new_token,
-                    },
-                ) => old_url != new_url || old_token != new_token,
-                _ => true,
-            };
+            let config_changed = password_changed
+                || match (&connection.database, &database_info) {
+                    (
+                        Database::Postgres {
+                            connection_string: old,
+                            ssh_config: old_ssh,
+                            ..
+                        },
+                        DatabaseInfo::Postgres {
+                            connection_string: new,
+                            ssh_config: new_ssh,
+                        },
+                    ) => old != new || old_ssh != new_ssh,
+                    (
+                        Database::MySQL {
+                            connection_string: old,
+                            ssh_config: old_ssh,
+                            ..
+                        },
+                        DatabaseInfo::MySQL {
+                            connection_string: new,
+                            ssh_config: new_ssh,
+                        },
+                    ) => old != new || old_ssh != new_ssh,
+                    (
+                        Database::SQLite { db_path: old, .. },
+                        DatabaseInfo::SQLite { db_path: new },
+                    ) => old != new,
+                    (
+                        Database::LibSQL {
+                            url: old_url,
+                            auth_token: old_token,
+                            ..
+                        },
+                        DatabaseInfo::LibSQL {
+                            url: new_url,
+                            auth_token: new_token,
+                        },
+                    ) => old_url != new_url || old_token != new_token,
+                    _ => true,
+                };
 
             if config_changed {
                 match &mut connection.database {
@@ -195,7 +195,9 @@ impl<'a> ConnectionService<'a> {
                         *db_path = new_db_path;
                     }
                     (
-                        Database::LibSQL { url, auth_token, .. },
+                        Database::LibSQL {
+                            url, auth_token, ..
+                        },
                         DatabaseInfo::LibSQL {
                             url: new_url,
                             auth_token: new_auth_token,
@@ -258,8 +260,11 @@ impl<'a> ConnectionService<'a> {
     ) -> Result<bool, Error> {
         if !self.connections.contains_key(&connection_id) {
             let stored_connections = self.storage.get_connections()?;
-            if let Some(stored_connection) = stored_connections.iter().find(|c| c.id == connection_id) {
-                let connection = DatabaseConnection::from_connection_info(stored_connection.clone());
+            if let Some(stored_connection) =
+                stored_connections.iter().find(|c| c.id == connection_id)
+            {
+                let connection =
+                    DatabaseConnection::from_connection_info(stored_connection.clone());
                 self.connections.insert(connection_id, connection);
             }
         }
@@ -288,37 +293,37 @@ impl<'a> ConnectionService<'a> {
             } => {
                 // If we have an SSH config, start the tunnel
                 if let Some(ssh_conf) = ssh_config {
-                     // Parse inner connection string to find the target host/port for the tunnel
-                     if let Ok(url) = url::Url::parse(connection_string) {
-                         let target_host = url.host_str().unwrap_or("localhost").to_string();
-                         let target_port = url.port().unwrap_or(5432);
-                         
-                         log::info!("Starting SSH tunnel to {}:{}", target_host, target_port);
-                         
-                         // We need the password/key to be available. 
-                         // They might be in the ssh_conf struct or in credential store?
-                         // SshConfig struct has private_key_path and password options. 
-                         // But credentials might be sensitive.
-                         
-                         // Assuming SshConfig in DatabaseInfo has them fully populated?
-                         // DatabaseInfo::Postgres { ssh_config: Option<SshConfig> }
-                         // But user sensitive data is usually stripped in add_connection.
-                         // We might need to retrieve SSH password from keychain if it was stored separately?
-                         // For now, let's assume SshConfig holds path to key or password string if persisted.
-                         // Ideally we store SSH password similarly to DB password.
-                         
-                         let tun = crate::database::ssh_tunnel::SshTunnel::start(
-                             &ssh_conf.host,
-                             ssh_conf.port,
-                             &ssh_conf.username,
-                             ssh_conf.private_key_path.as_deref(),
-                             ssh_conf.password.as_deref(),
-                             target_host,
-                             target_port
-                         )?;
-                         
-                         *tunnel = Some(Arc::new(tun));
-                     }
+                    // Parse inner connection string to find the target host/port for the tunnel
+                    if let Ok(url) = url::Url::parse(connection_string) {
+                        let target_host = url.host_str().unwrap_or("localhost").to_string();
+                        let target_port = url.port().unwrap_or(5432);
+
+                        log::info!("Starting SSH tunnel to {}:{}", target_host, target_port);
+
+                        // We need the password/key to be available.
+                        // They might be in the ssh_conf struct or in credential store?
+                        // SshConfig struct has private_key_path and password options.
+                        // But credentials might be sensitive.
+
+                        // Assuming SshConfig in DatabaseInfo has them fully populated?
+                        // DatabaseInfo::Postgres { ssh_config: Option<SshConfig> }
+                        // But user sensitive data is usually stripped in add_connection.
+                        // We might need to retrieve SSH password from keychain if it was stored separately?
+                        // For now, let's assume SshConfig holds path to key or password string if persisted.
+                        // Ideally we store SSH password similarly to DB password.
+
+                        let tun = crate::database::ssh_tunnel::SshTunnel::start(
+                            &ssh_conf.host,
+                            ssh_conf.port,
+                            &ssh_conf.username,
+                            ssh_conf.private_key_path.as_deref(),
+                            ssh_conf.password.as_deref(),
+                            target_host,
+                            target_port,
+                        )?;
+
+                        *tunnel = Some(Arc::new(tun));
+                    }
                 }
 
                 let cleaned_string = if let Ok(mut url) = url::Url::parse(&*connection_string) {
@@ -339,9 +344,10 @@ impl<'a> ConnectionService<'a> {
                     connection_string.clone()
                 };
 
-                let mut config: tokio_postgres::Config = cleaned_string.parse().with_context(|| {
-                    format!("Failed to parse connection string: {}", cleaned_string)
-                })?;
+                let mut config: tokio_postgres::Config =
+                    cleaned_string.parse().with_context(|| {
+                        format!("Failed to parse connection string: {}", cleaned_string)
+                    })?;
                 if config.get_password().is_none() {
                     credentials::get_password(&connection_id)?.map(|pw| config.password(pw));
                 }
@@ -350,7 +356,7 @@ impl<'a> ConnectionService<'a> {
                     // If tunneling, we must rewrite the config to point to localhost:local_port
                     let local_port = tun.local_port;
                     log::info!("Tunneling Postgres connection via 127.0.0.1:{}", local_port);
-                    
+
                     // We can't easily modify tokio_postgres::Config host/port after parsing?
                     // We can setting host/port.
                     config.host("127.0.0.1");
@@ -389,8 +395,12 @@ impl<'a> ConnectionService<'a> {
                 tunnel,
             } => {
                 // If we have an SSH config, start the tunnel and rewrite the MySQL target to localhost.
-                let mut mysql_url = url::Url::parse(connection_string)
-                    .with_context(|| format!("Failed to parse MySQL connection string: {}", connection_string))?;
+                let mut mysql_url = url::Url::parse(connection_string).with_context(|| {
+                    format!(
+                        "Failed to parse MySQL connection string: {}",
+                        connection_string
+                    )
+                })?;
 
                 if mysql_url.password().is_none() {
                     if let Some(pw) = credentials::get_password(&connection_id)? {
@@ -415,10 +425,12 @@ impl<'a> ConnectionService<'a> {
                     *tunnel = Some(Arc::new(tun));
 
                     if let Some(tun) = tunnel {
-                        mysql_url.set_host(Some("127.0.0.1"))
-                            .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL host for tunnel")))?;
-                        mysql_url.set_port(Some(tun.local_port))
-                            .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL port for tunnel")))?;
+                        mysql_url.set_host(Some("127.0.0.1")).map_err(|_| {
+                            Error::Any(anyhow::anyhow!("Failed to set MySQL host for tunnel"))
+                        })?;
+                        mysql_url.set_port(Some(tun.local_port)).map_err(|_| {
+                            Error::Any(anyhow::anyhow!("Failed to set MySQL port for tunnel"))
+                        })?;
                     }
                 }
 
@@ -446,7 +458,7 @@ impl<'a> ConnectionService<'a> {
                         Ok(false)
                     }
                 }
-            },
+            }
             Database::SQLite {
                 db_path,
                 connection: sqlite_conn,
@@ -513,10 +525,7 @@ impl<'a> ConnectionService<'a> {
     }
 
     #[instrument(skip(self), fields(connection_id = %connection_id))]
-    pub async fn disconnect_from_database(
-        &self,
-        connection_id: Uuid,
-    ) -> Result<(), Error> {
+    pub async fn disconnect_from_database(&self, connection_id: Uuid) -> Result<(), Error> {
         let mut connection_entry = self
             .connections
             .get_mut(&connection_id)
@@ -527,11 +536,11 @@ impl<'a> ConnectionService<'a> {
             Database::Postgres { client, tunnel, .. } => {
                 *client = None;
                 *tunnel = None;
-            },
+            }
             Database::MySQL { pool, tunnel, .. } => {
                 *pool = None;
                 *tunnel = None;
-            },
+            }
             Database::SQLite {
                 connection: sqlite_conn,
                 ..
@@ -593,14 +602,13 @@ impl<'a> ConnectionService<'a> {
         limit: Option<u32>,
     ) -> Result<Vec<ConnectionInfo>, Error> {
         let connections = self.storage.get_connections()?;
-        
-        let mut sorted: Vec<_> = connections.into_iter()
+
+        let mut sorted: Vec<_> = connections
+            .into_iter()
             .filter(|c| c.last_connected_at.is_some())
             .collect();
-        
-        sorted.sort_by(|a, b| {
-            b.last_connected_at.cmp(&a.last_connected_at)
-        });
+
+        sorted.sort_by(|a, b| b.last_connected_at.cmp(&a.last_connected_at));
 
         if let Some(limit) = limit {
             sorted.truncate(limit as usize);
@@ -621,12 +629,12 @@ impl<'a> ConnectionService<'a> {
         let connection = connection_entry.value_mut();
 
         if let Some(p) = pin {
-             // Hash the PIN
-             let hashed = bcrypt::hash(p, bcrypt::DEFAULT_COST)
+            // Hash the PIN
+            let hashed = bcrypt::hash(p, bcrypt::DEFAULT_COST)
                 .map_err(|e| Error::Any(anyhow::anyhow!("Failed to hash PIN: {}", e)))?;
-             connection.pin_hash = Some(hashed);
+            connection.pin_hash = Some(hashed);
         } else {
-             connection.pin_hash = None;
+            connection.pin_hash = None;
         }
 
         // Persist update
@@ -651,7 +659,7 @@ impl<'a> ConnectionService<'a> {
         if let Some(hash) = &connection.pin_hash {
             let valid = bcrypt::verify(&pin, hash)
                 .map_err(|e| Error::Any(anyhow::anyhow!("Failed to verify PIN: {}", e)))?;
-            
+
             if !valid {
                 return Err(Error::Any(anyhow::anyhow!("Invalid PIN")));
             }
@@ -666,7 +674,7 @@ impl<'a> ConnectionService<'a> {
             // If connection has no pin, maybe return password directly?
             // But safety-wise, "verify_pin" suggests checking "Security".
             // If no PIN set, we just return the password.
-             credentials::get_password(&connection_id).map_err(Into::into)
+            credentials::get_password(&connection_id).map_err(Into::into)
         }
     }
 }
@@ -678,7 +686,7 @@ impl ConnectionService<'_> {
         database_info: DatabaseInfo,
         certificates: &Certificates,
     ) -> Result<bool, Error> {
-                match database_info {
+        match database_info {
             DatabaseInfo::Postgres {
                 connection_string,
                 ssh_config,
@@ -687,9 +695,9 @@ impl ConnectionService<'_> {
                     if let Ok(url) = url::Url::parse(&connection_string) {
                         let target_host = url.host_str().unwrap_or("localhost").to_string();
                         let target_port = url.port().unwrap_or(5432);
-                        
+
                         log::info!("Testing SSH tunnel to {}:{}", target_host, target_port);
-                        
+
                         match crate::database::ssh_tunnel::SshTunnel::start(
                             &conf.host,
                             conf.port,
@@ -697,12 +705,15 @@ impl ConnectionService<'_> {
                             conf.private_key_path.as_deref(),
                             conf.password.as_deref(),
                             target_host,
-                            target_port
+                            target_port,
                         ) {
                             Ok(tun) => Some(Arc::new(tun)),
                             Err(e) => {
                                 log::error!("SSH tunnel test failed: {}", e);
-                                return Err(Error::Any(anyhow::anyhow!("SSH tunnel failed: {}", e)));
+                                return Err(Error::Any(anyhow::anyhow!(
+                                    "SSH tunnel failed: {}",
+                                    e
+                                )));
                             }
                         }
                     } else {
@@ -730,17 +741,18 @@ impl ConnectionService<'_> {
                     connection_string.clone()
                 };
 
-                let mut config: tokio_postgres::Config = cleaned_string.parse().with_context(|| {
-                    format!("Failed to parse connection string: {}", cleaned_string)
-                })?;
-                
+                let mut config: tokio_postgres::Config =
+                    cleaned_string.parse().with_context(|| {
+                        format!("Failed to parse connection string: {}", cleaned_string)
+                    })?;
+
                 if let Some(ref tun) = temp_tunnel {
                     let local_port = tun.local_port;
                     log::info!("Tunneling test connection via 127.0.0.1:{}", local_port);
                     config.host("127.0.0.1");
                     config.port(local_port);
                 }
-                
+
                 log::info!("Testing Postgres connection: {config:?}");
                 match connect(&config, certificates).await {
                     Ok(_) => {
@@ -794,8 +806,12 @@ impl ConnectionService<'_> {
                 connection_string,
                 ssh_config,
             } => {
-                let mut mysql_url = url::Url::parse(&connection_string)
-                    .with_context(|| format!("Failed to parse MySQL connection string: {}", connection_string))?;
+                let mut mysql_url = url::Url::parse(&connection_string).with_context(|| {
+                    format!(
+                        "Failed to parse MySQL connection string: {}",
+                        connection_string
+                    )
+                })?;
 
                 let temp_tunnel = if let Some(conf) = ssh_config {
                     if let Some(target_host) = mysql_url.host_str() {
@@ -814,7 +830,10 @@ impl ConnectionService<'_> {
                             Ok(tun) => Some(Arc::new(tun)),
                             Err(e) => {
                                 log::error!("SSH tunnel test failed: {}", e);
-                                return Err(Error::Any(anyhow::anyhow!("SSH tunnel failed: {}", e)));
+                                return Err(Error::Any(anyhow::anyhow!(
+                                    "SSH tunnel failed: {}",
+                                    e
+                                )));
                             }
                         }
                     } else {
@@ -825,10 +844,12 @@ impl ConnectionService<'_> {
                 };
 
                 if let Some(ref tun) = temp_tunnel {
-                    mysql_url.set_host(Some("127.0.0.1"))
-                        .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL host for tunnel")))?;
-                    mysql_url.set_port(Some(tun.local_port))
-                        .map_err(|_| Error::Any(anyhow::anyhow!("Failed to set MySQL port for tunnel")))?;
+                    mysql_url.set_host(Some("127.0.0.1")).map_err(|_| {
+                        Error::Any(anyhow::anyhow!("Failed to set MySQL host for tunnel"))
+                    })?;
+                    mysql_url.set_port(Some(tun.local_port)).map_err(|_| {
+                        Error::Any(anyhow::anyhow!("Failed to set MySQL port for tunnel"))
+                    })?;
                 }
 
                 let mysql_opts = mysql_async::Opts::from_url(&mysql_url.to_string())
@@ -838,7 +859,7 @@ impl ConnectionService<'_> {
                     Ok(mut conn) => {
                         conn.ping().await?;
                         Ok(true)
-                    },
+                    }
                     Err(e) => Err(Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e))),
                 }
             }

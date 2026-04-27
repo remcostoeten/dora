@@ -1,11 +1,11 @@
+pub mod ai;
 pub mod connection;
-pub mod query;
-pub mod mutation;
 pub mod metadata;
-pub mod seeding;
+pub mod mutation;
+pub mod query;
 pub mod query_builder;
 pub mod schema_export;
-pub mod ai;
+pub mod seeding;
 
 #[cfg(test)]
 mod tests;

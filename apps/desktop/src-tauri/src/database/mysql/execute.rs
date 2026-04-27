@@ -16,7 +16,11 @@ use crate::{
 
 const PAGE_SIZE: usize = 500;
 
-pub async fn execute_query(pool: &Arc<Pool>, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error> {
+pub async fn execute_query(
+    pool: &Arc<Pool>,
+    stmt: ParsedStatement,
+    sender: &ExecSender,
+) -> Result<(), Error> {
     let start = Instant::now();
 
     if stmt.returns_values {
@@ -50,7 +54,9 @@ async fn execute_query_with_results(
 
     let columns_json = serde_json::to_string(&column_names)?;
     let columns_raw = RawValue::from_string(columns_json)?;
-    sender.send(QueryExecEvent::TypesResolved { columns: columns_raw })?;
+    sender.send(QueryExecEvent::TypesResolved {
+        columns: columns_raw,
+    })?;
 
     let mut current_page: Vec<Vec<serde_json::Value>> = Vec::with_capacity(PAGE_SIZE);
     let mut page_count = 0;

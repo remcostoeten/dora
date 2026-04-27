@@ -68,12 +68,13 @@ pub async fn save_sqlite_db(app: tauri::AppHandle) -> Result<Option<String>, Err
 
 #[tauri::command]
 #[specta::specta]
-pub async fn open_file(app: tauri::AppHandle, title: Option<String>) -> Result<Option<String>, Error> {
+pub async fn open_file(
+    app: tauri::AppHandle,
+    title: Option<String>,
+) -> Result<Option<String>, Error> {
     let dialog_title = title.unwrap_or_else(|| "Select a file".to_string());
     let chosen_file = run_dialog(app, move || {
-        AsyncFileDialog::new()
-            .set_title(&dialog_title)
-            .pick_file()
+        AsyncFileDialog::new().set_title(&dialog_title).pick_file()
     })
     .await?
     .map(|file| file.path().to_string_lossy().to_string());

@@ -35,12 +35,9 @@ pub trait SqlDialectExt {
             | ShowColumns { .. }
             | ShowDatabases { .. }
             | ShowSchemas { .. }
-
             | ShowTables { .. }
             | ShowViews { .. }
             | ShowCollation { .. } => true,
-
-
 
             Fetch { into, .. } => into.is_none(),
             StartTransaction { .. } => true,

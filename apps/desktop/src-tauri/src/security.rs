@@ -1,10 +1,11 @@
+use aes_gcm::aead::rand_core::RngCore;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
-    Aes256Gcm, Nonce, // Or `Aes128Gcm`
+    Aes256Gcm,
+    Nonce, // Or `Aes128Gcm`
 };
 use anyhow::{Context, Result};
 use keyring::Entry;
-use aes_gcm::aead::rand_core::RngCore;
 
 const SERVICE_NAME: &str = "dora_db_client";
 const KEY_NAME: &str = "dora_encryption_key";
@@ -14,7 +15,8 @@ fn get_or_create_key() -> Result<[u8; 32]> {
 
     match entry.get_password() {
         Ok(hex_key) => {
-            let key_bytes = hex::decode(hex_key).context("Failed to decode stored encryption key")?;
+            let key_bytes =
+                hex::decode(hex_key).context("Failed to decode stored encryption key")?;
             if key_bytes.len() != 32 {
                 anyhow::bail!("Stored key has invalid length");
             }
@@ -30,7 +32,7 @@ fn get_or_create_key() -> Result<[u8; 32]> {
             entry
                 .set_password(&hex_key)
                 .context("Failed to save new encryption key to keyring")?;
-            
+
             let mut key_arr = [0u8; 32];
             key_arr.copy_from_slice(key_bytes);
             Ok(key_arr)
@@ -42,7 +44,7 @@ fn get_or_create_key() -> Result<[u8; 32]> {
 pub fn encrypt(plaintext: &str) -> Result<String> {
     let key = get_or_create_key()?;
     let cipher = Aes256Gcm::new(&key.into());
-    
+
     // 96-bit (12-byte) nonce is standard for GCM
     let mut nonce_bytes = [0u8; 12];
     OsRng.fill_bytes(&mut nonce_bytes);
@@ -63,9 +65,9 @@ pub fn encrypt(plaintext: &str) -> Result<String> {
 
 pub fn decrypt(hex_data: &str) -> Result<String> {
     let data = hex::decode(hex_data).context("Failed to decode hex string")?;
-    
+
     if data.len() < 12 {
-         anyhow::bail!("Data too short to contain nonce");
+        anyhow::bail!("Data too short to contain nonce");
     }
 
     let (nonce_bytes, ciphertext) = data.split_at(12);
@@ -78,8 +80,8 @@ pub fn decrypt(hex_data: &str) -> Result<String> {
         .decrypt(nonce, ciphertext)
         .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
 
-    let plaintext = String::from_utf8(plaintext_bytes)
-        .context("Decrypted data is not valid UTF-8")?;
+    let plaintext =
+        String::from_utf8(plaintext_bytes).context("Decrypted data is not valid UTF-8")?;
 
     Ok(plaintext)
 }
@@ -92,7 +94,7 @@ mod tests {
     fn test_encrypt(plaintext: &str) -> Result<String> {
         let key = [42u8; 32]; // Fixed test key
         let cipher = Aes256Gcm::new(&key.into());
-        
+
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
@@ -110,9 +112,9 @@ mod tests {
 
     fn test_decrypt(hex_data: &str) -> Result<String> {
         let data = hex::decode(hex_data).context("Failed to decode hex string")?;
-        
+
         if data.len() < 12 {
-             anyhow::bail!("Data too short to contain nonce");
+            anyhow::bail!("Data too short to contain nonce");
         }
 
         let (nonce_bytes, ciphertext) = data.split_at(12);
@@ -125,8 +127,8 @@ mod tests {
             .decrypt(nonce, ciphertext)
             .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
 
-        let plaintext = String::from_utf8(plaintext_bytes)
-            .context("Decrypted data is not valid UTF-8")?;
+        let plaintext =
+            String::from_utf8(plaintext_bytes).context("Decrypted data is not valid UTF-8")?;
 
         Ok(plaintext)
     }
@@ -134,15 +136,15 @@ mod tests {
     #[test]
     fn test_encrypt_decrypt_roundtrip() {
         let original = "postgresql://user:password@localhost:5432/mydb";
-        
+
         let encrypted = test_encrypt(original).expect("Encryption should succeed");
-        
+
         // Verify it's actually encrypted (not plaintext)
         assert_ne!(encrypted, original);
         assert!(encrypted.len() > original.len());
-        
+
         let decrypted = test_decrypt(&encrypted).expect("Decryption should succeed");
-        
+
         assert_eq!(decrypted, original);
     }
 

@@ -1,5 +1,6 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { memo } from 'react'
+import { Key, Link, Hash, LayoutGrid } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import type { TableNodeData } from '../hooks/use-schema-graph'
 
@@ -38,13 +39,23 @@ function TableNodeInner({ data, selected }: Props) {
 					isContext && 'sv-table-node__header--context',
 				)}
 			>
-				<div className='min-w-0 flex-1'>
+				{/* Colorful Icon Box */}
+				<div className={cn(
+					'sv-table-node__icon-box',
+					// Assign a consistent color class based on the first letter of the table name
+					['bg-emerald-500/20 text-emerald-400', 'bg-blue-500/20 text-blue-400', 'bg-orange-500/20 text-orange-400', 'bg-purple-500/20 text-purple-400', 'bg-red-500/20 text-red-400'][
+						tableName.charCodeAt(0) % 5
+					]
+				)}>
+					<LayoutGrid className="w-4 h-4" />
+				</div>
+				<div className='min-w-0 flex-1 flex flex-col justify-center'>
+					<div className='truncate text-[13px] font-semibold text-zinc-200 tracking-wide'>
+						{tableName}
+					</div>
 					<div className='sv-table-node__meta'>
 						{schemaLabel && <span className='sv-table-node__schema'>{schemaLabel}</span>}
 						<span className='sv-table-node__count'>{rowCountLabel}</span>
-					</div>
-					<div className='truncate text-sm font-semibold text-sidebar-foreground'>
-						{tableName}
 					</div>
 				</div>
 				{isMatch && matchedColumns.length > 0 && (
@@ -84,20 +95,20 @@ function TableNodeInner({ data, selected }: Props) {
 							/>
 
 							<div className='sv-table-node__column-main'>
-								<span
-									className={cn(
-										'sv-table-node__role',
-										isPk && 'sv-table-node__role--pk',
-										!isPk && isFk && 'sv-table-node__role--fk',
+								<div className="w-4 flex justify-center text-zinc-500">
+									{isPk ? (
+										<Key className="w-3 h-3 text-amber-500/80" />
+									) : isFk ? (
+										<Link className="w-3 h-3 text-blue-500/80" />
+									) : (
+										<Hash className="w-3 h-3 text-zinc-600" />
 									)}
-								>
-									{roleLabel}
-								</span>
+								</div>
 								<span
 									className={cn(
 										'truncate font-mono text-[11px]',
-										isPk ? 'font-semibold text-sidebar-foreground' : 'text-sidebar-foreground/92',
-										isColMatch && 'text-sidebar-foreground',
+										isPk ? 'font-medium text-zinc-300' : 'text-zinc-400',
+										isColMatch && 'text-zinc-200',
 									)}
 								>
 									{col.name}
@@ -108,8 +119,8 @@ function TableNodeInner({ data, selected }: Props) {
 								className={cn(
 									'sv-table-node__type',
 									col.is_nullable
-										? 'text-muted-foreground'
-										: 'text-sidebar-foreground/74',
+										? 'text-zinc-600'
+										: 'text-zinc-500',
 								)}
 							>
 								{col.data_type}

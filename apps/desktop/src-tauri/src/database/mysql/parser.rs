@@ -51,4 +51,3 @@ mod tests {
         assert!(results[0].returns_values);
     }
 }
-

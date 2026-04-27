@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
 use super::{AIRequest, AIResponse};
+use crate::error::Error;
 
 #[derive(Debug, Serialize)]
 struct OllamaRequest {
@@ -59,7 +59,7 @@ impl OllamaClient {
 
     pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
         let prompt = self.build_prompt(&request);
-        
+
         let ollama_request = OllamaRequest {
             model: self.model.clone(),
             prompt,
@@ -70,21 +70,33 @@ impl OllamaClient {
         };
 
         let url = format!("{}/api/generate", self.endpoint);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .post(&url)
             .json(&ollama_request)
             .send()
             .await
-            .map_err(|e| Error::Any(anyhow::anyhow!("Ollama request failed: {}. Is Ollama running?", e)))?;
+            .map_err(|e| {
+                Error::Any(anyhow::anyhow!(
+                    "Ollama request failed: {}. Is Ollama running?",
+                    e
+                ))
+            })?;
 
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(Error::Any(anyhow::anyhow!("Ollama API error ({}): {}", status, body)));
+            return Err(Error::Any(anyhow::anyhow!(
+                "Ollama API error ({}): {}",
+                status,
+                body
+            )));
         }
 
-        let ollama_response: OllamaResponse = response.json().await
+        let ollama_response: OllamaResponse = response
+            .json()
+            .await
             .map_err(|e| Error::Any(anyhow::anyhow!("Failed to parse Ollama response: {}", e)))?;
 
         Ok(AIResponse {
@@ -98,8 +110,9 @@ impl OllamaClient {
     /// List available models from Ollama
     pub async fn list_models(&self) -> Result<Vec<String>, Error> {
         let url = format!("{}/api/tags", self.endpoint);
-        
-        let response = self.client
+
+        let response = self
+            .client
             .get(&url)
             .send()
             .await
@@ -109,7 +122,9 @@ impl OllamaClient {
             return Err(Error::Any(anyhow::anyhow!("Failed to list Ollama models")));
         }
 
-        let models_response: OllamaModelsResponse = response.json().await
+        let models_response: OllamaModelsResponse = response
+            .json()
+            .await
             .map_err(|e| Error::Any(anyhow::anyhow!("Failed to parse Ollama models: {}", e)))?;
 
         Ok(models_response.models.into_iter().map(|m| m.name).collect())

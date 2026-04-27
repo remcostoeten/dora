@@ -126,9 +126,7 @@ impl<'a> AIService<'a> {
                 let api_key = self
                     .storage
                     .get_setting("gemini_api_key")?
-                    .ok_or_else(|| {
-                        Error::Any(anyhow::anyhow!("Gemini API key not configured"))
-                    })?;
+                    .ok_or_else(|| Error::Any(anyhow::anyhow!("Gemini API key not configured")))?;
 
                 let client = GeminiClient::new(api_key);
                 client.complete(request).await

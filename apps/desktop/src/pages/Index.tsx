@@ -38,7 +38,7 @@ const SchemaVisualizer = lazy(function () {
   });
 });
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
-import { WindowControls } from "@/shared/ui/window-controls";
+import { WindowControls } from "@/components/window-controls";
 import {
   AlertDialog,
   AlertDialogAction,

@@ -81,7 +81,7 @@ pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<Databas
             // Get Indexes
             let index_list_query = format!("PRAGMA index_list('{}')", table_name);
             let mut index_stmt = conn.prepare(&index_list_query)?;
-            
+
             // index_list returns: seq, name, unique, origin, partial
             let mut indexes = Vec::new();
             let index_info_rows = index_stmt.query_map([], |row| {
@@ -95,7 +95,7 @@ pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<Databas
                     // Get columns for this index
                     let index_info_query = format!("PRAGMA index_info('{}')", name);
                     let mut info_stmt = conn.prepare(&index_info_query)?;
-                    
+
                     let column_names: Vec<String> = info_stmt
                         .query_map([], |row| row.get(2))?
                         .collect::<Result<Vec<_>, _>>()?;

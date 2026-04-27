@@ -180,7 +180,13 @@ impl GroqClient {
         &self.keys[idx % self.keys.len()]
     }
 
-    fn build_request(&self, system: String, user: String, max_tokens: Option<u32>, stream: bool) -> GroqRequest {
+    fn build_request(
+        &self,
+        system: String,
+        user: String,
+        max_tokens: Option<u32>,
+        stream: bool,
+    ) -> GroqRequest {
         // Groq's OpenAI-compatible endpoint accepts json_object response_format alongside stream.
         // Forcing it on both paths keeps streamed deltas inside a JSON envelope and avoids the
         // model wandering into prose / markdown fences mid-stream.
@@ -257,9 +263,10 @@ impl GroqClient {
                 )));
             }
 
-            let parsed: GroqResponse = response.json().await.map_err(|e| {
-                Error::Any(anyhow::anyhow!("Failed to parse Groq response: {}", e))
-            })?;
+            let parsed: GroqResponse = response
+                .json()
+                .await
+                .map_err(|e| Error::Any(anyhow::anyhow!("Failed to parse Groq response: {}", e)))?;
 
             let content = parsed
                 .choices
@@ -278,9 +285,7 @@ impl GroqClient {
             });
         }
 
-        Err(last_err.unwrap_or_else(|| {
-            Error::Any(anyhow::anyhow!("All Groq keys exhausted"))
-        }))
+        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Groq keys exhausted"))))
     }
 
     /// Streaming completion. Emits AiStreamEvent via sender. Honors `cancel` flag and
@@ -345,9 +350,8 @@ impl GroqClient {
                 if cancel.load(Ordering::Relaxed) {
                     return Ok(());
                 }
-                let chunk = chunk_result.map_err(|e| {
-                    Error::Any(anyhow::anyhow!("Groq stream error: {}", e))
-                })?;
+                let chunk = chunk_result
+                    .map_err(|e| Error::Any(anyhow::anyhow!("Groq stream error: {}", e)))?;
                 buffer.push_str(&String::from_utf8_lossy(&chunk));
 
                 while let Some(newline_idx) = buffer.find('\n') {
@@ -379,9 +383,7 @@ impl GroqClient {
                                 .and_then(|c| c.delta.content)
                             {
                                 full_content.push_str(&delta_text);
-                                let _ = sender.send(AiStreamEvent::Token {
-                                    text: delta_text,
-                                });
+                                let _ = sender.send(AiStreamEvent::Token { text: delta_text });
                             }
                         }
                         Err(_) => {
@@ -397,8 +399,6 @@ impl GroqClient {
             return Ok(());
         }
 
-        Err(last_err.unwrap_or_else(|| {
-            Error::Any(anyhow::anyhow!("All Groq keys exhausted"))
-        }))
+        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Groq keys exhausted"))))
     }
 }

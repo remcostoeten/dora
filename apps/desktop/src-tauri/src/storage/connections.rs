@@ -11,7 +11,10 @@ use crate::{database::types::ConnectionInfo, Result};
 impl Storage {
     pub fn save_connection(&self, connection: &ConnectionInfo) -> Result<()> {
         let now = chrono::Utc::now().timestamp();
-        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
 
         let (db_type_id, connection_data) = serialize_connection_data(&connection.database_type)?;
 
@@ -40,7 +43,10 @@ impl Storage {
 
     pub fn update_connection(&self, connection: &ConnectionInfo) -> Result<()> {
         let now = chrono::Utc::now().timestamp();
-        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
 
         let (db_type_id, connection_data) = serialize_connection_data(&connection.database_type)?;
 
@@ -74,7 +80,10 @@ impl Storage {
     }
 
     pub fn get_connection(&self, connection_id: &Uuid) -> Result<Option<ConnectionInfo>> {
-        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         let mut stmt = conn
             .prepare(
                 "SELECT c.id, c.name, c.connection_data,
@@ -99,7 +108,8 @@ impl Storage {
                     Err(_) => raw_data,
                 };
 
-                let database_type = deserialize_database_info(&db_type, db_type_id, connection_data);
+                let database_type =
+                    deserialize_database_info(&db_type, db_type_id, connection_data);
 
                 Ok(ConnectionInfo {
                     id: {
@@ -131,7 +141,10 @@ impl Storage {
     }
 
     pub fn get_connections(&self) -> Result<Vec<ConnectionInfo>> {
-        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         let mut stmt = conn
             .prepare(
                 "SELECT c.id, c.name, c.connection_data,
@@ -155,7 +168,8 @@ impl Storage {
                     Err(_) => raw_data,
                 };
 
-                let database_type = deserialize_database_info(&db_type, db_type_id, connection_data);
+                let database_type =
+                    deserialize_database_info(&db_type, db_type_id, connection_data);
 
                 Ok(ConnectionInfo {
                     id: {
@@ -188,7 +202,10 @@ impl Storage {
     }
 
     pub fn remove_connection(&self, connection_id: &Uuid) -> Result<()> {
-        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         conn.execute(
             "DELETE FROM connections WHERE id = ?1",
             [connection_id.to_string()],
@@ -199,7 +216,10 @@ impl Storage {
 
     pub fn update_last_connected(&self, connection_id: &Uuid) -> Result<()> {
         let now = chrono::Utc::now().timestamp();
-        let conn = self.conn.lock().map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
         conn.execute(
             "UPDATE connections SET last_connected_at = ?1 WHERE id = ?2",
             (now, connection_id.to_string()),

@@ -3,9 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     database::{
-        metadata::DatabaseMetadata,
-        services::metadata::MetadataService,
-        types::DatabaseSchema,
+        metadata::DatabaseMetadata, services::metadata::MetadataService, types::DatabaseSchema,
     },
     error::Error,
     AppState,
@@ -21,7 +19,9 @@ pub async fn get_database_schema(
         connections: &state.connections,
         schemas: &state.schemas,
     };
-    svc.get_database_schema(connection_id).await.map(|s| (*s).clone())
+    svc.get_database_schema(connection_id)
+        .await
+        .map(|s| (*s).clone())
 }
 
 #[tauri::command]

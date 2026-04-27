@@ -67,6 +67,18 @@ impl AppState {
     }
 }
 
+#[cfg(target_os = "linux")]
+fn configure_linux_webview_backend() {
+    // Tauri/Wry on Linux still goes through WebKit2GTK. Under Wayland, this app
+    // has been hitting `Gdk-Message: Error 71 (Protocol error) dispatching to
+    // Wayland display`, so force GTK onto X11 before the runtime initializes.
+    let current_backend = std::env::var_os("GDK_BACKEND");
+    if current_backend.as_deref() != Some(std::ffi::OsStr::new("x11")) {
+        std::env::set_var("GDK_BACKEND", "x11");
+        log::info!("Forced GDK_BACKEND=x11 on Linux to avoid Wayland WebKit crashes");
+    }
+}
+
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -77,6 +89,9 @@ pub fn run() {
 
     // Set up `tracing` before anything else so startup events are captured.
     observability::init();
+
+    #[cfg(target_os = "linux")]
+    configure_linux_webview_backend();
 
     // Install ring as the default crypto provider for rustls
     rustls::crypto::ring::default_provider()

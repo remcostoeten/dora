@@ -28,6 +28,6 @@ pub use snippets::*;
 
 // Type re-exports preserved for external use (frontend bindings, maintenance.rs consumers).
 pub use crate::database::metadata::DatabaseMetadata;
-pub use crate::database::services::mutation::{ExportFormat, MutationResult};
 pub use crate::database::services::mutation::{json_to_pg_param, json_to_sqlite_value};
+pub use crate::database::services::mutation::{ExportFormat, MutationResult};
 pub use crate::database::services::seeding::SeedResult;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Loader2, CheckCircle2, XCircle, Plug2 } from 'lucide-react'
 import { commands, DatabaseInfo } from '@/lib/bindings'
 import { formatBackendError } from '@/shared/utils/backend-error'
 import { Button } from '@/shared/ui/button'
@@ -330,14 +331,22 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-[560px] max-h-[85vh] flex flex-col border-border/60 bg-card p-0 gap-0 overflow-hidden shadow-lg'>
-				<DialogHeader className='px-6 py-5 border-b border-border/50'>
-					<DialogTitle className='text-base font-semibold tracking-tight'>
-						{initialValues ? 'Edit Connection' : 'New Connection'}
-					</DialogTitle>
-					<DialogDescription className='text-xs text-muted-foreground mt-0.5'>
-						Configure your database connection details
-					</DialogDescription>
+			<DialogContent className='sm:max-w-[560px] max-h-[85vh] flex flex-col border-border/60 bg-card p-0 gap-0 overflow-hidden shadow-2xl'>
+				{/* Header */}
+				<DialogHeader className='px-6 py-5 border-b border-border/40 bg-muted/20'>
+					<div className='flex items-center gap-4'>
+						<div className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/20'>
+							<Plug2 className='h-5 w-5 text-primary' />
+						</div>
+						<div>
+							<DialogTitle className='text-base font-semibold tracking-tight'>
+								{initialValues ? 'Edit Connection' : 'New Connection'}
+							</DialogTitle>
+							<DialogDescription className='text-xs text-muted-foreground mt-0.5'>
+								Configure your database connection details
+							</DialogDescription>
+						</div>
+					</div>
 				</DialogHeader>
 
 				<div className='flex-1 overflow-y-auto p-6 space-y-5'>
@@ -398,15 +407,19 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 					)}
 				</div>
 
-				<DialogFooter className='px-6 py-4 border-t border-border/50'>
+				<DialogFooter className='px-6 py-4 border-t border-border/40 bg-muted/10'>
 					<div className='flex items-center justify-between w-full'>
 						<Button
 							type='button'
 							variant='ghost'
 							onClick={handleTestConnection}
 							disabled={isTesting || !formData.type}
+							className='gap-2'
 						>
-							{isTesting ? 'Testing...' : 'Test Connection'}
+							{isTesting
+								? <><Loader2 className='h-3.5 w-3.5 animate-spin' />Testing...</>
+								: 'Test Connection'
+							}
 						</Button>
 						<div className='flex items-center gap-2'>
 							<Button
@@ -422,8 +435,12 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 								type='button'
 								onClick={handleSave}
 								disabled={isSaving || !formData.name}
+								className='gap-2'
 							>
-								{isSaving ? 'Saving...' : 'Save Connection'}
+								{isSaving
+									? <><Loader2 className='h-3.5 w-3.5 animate-spin' />Saving...</>
+									: 'Save Connection'
+								}
 							</Button>
 						</div>
 					</div>

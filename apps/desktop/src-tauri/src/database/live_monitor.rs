@@ -766,10 +766,7 @@ async fn fetch_libsql_snapshot(
     Ok(build_snapshot(column_names, pk_columns, row_values))
 }
 
-async fn fetch_mysql_snapshot(
-    pool: Arc<Pool>,
-    table_name: &str,
-) -> Result<TableSnapshot, Error> {
+async fn fetch_mysql_snapshot(pool: Arc<Pool>, table_name: &str) -> Result<TableSnapshot, Error> {
     let (schema, table) = split_table_reference(table_name)?;
     let qualified_table = mysql_qualified_table_name(schema.as_deref(), &table);
     let pk_columns = mysql_primary_key_columns(&pool, schema.as_deref(), &table).await?;

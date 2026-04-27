@@ -33,11 +33,15 @@ fn build_system_prompt(request: &AIRequest) -> String {
     s.push_str("- Produce ONE statement. No semicolon-separated batches.\n");
     s.push_str("- Default to SELECT. NEVER emit DROP, TRUNCATE, DELETE without WHERE, or UPDATE without WHERE.\n");
     s.push_str("- Add LIMIT 100 to unbounded SELECTs unless the user asks for an aggregate.\n");
-    s.push_str("- Use exact column and table names from the schema below. Do not invent columns.\n");
+    s.push_str(
+        "- Use exact column and table names from the schema below. Do not invent columns.\n",
+    );
     s.push_str("- Use schema-qualified names where a non-default schema is present.\n");
     s.push_str("- Prefer explicit JOINs with ON clauses over comma joins.\n");
     s.push_str("- If the request is ambiguous, pick the most useful interpretation and note the assumption in `explanation`.\n");
-    s.push_str("- If destructive intent is detected, populate `warnings` but still emit the query.\n\n");
+    s.push_str(
+        "- If destructive intent is detected, populate `warnings` but still emit the query.\n\n",
+    );
 
     if let Some(ctx) = &request.context {
         s.push_str("## Database schema\n");
@@ -88,13 +92,12 @@ fn build_system_prompt(request: &AIRequest) -> String {
             if !table.foreign_keys.is_empty() {
                 s.push_str("  Foreign keys:\n");
                 for fk in &table.foreign_keys {
-                    let target = if fk.referenced_schema.is_empty()
-                        || fk.referenced_schema == "public"
-                    {
-                        fk.referenced_table.clone()
-                    } else {
-                        format!("{}.{}", fk.referenced_schema, fk.referenced_table)
-                    };
+                    let target =
+                        if fk.referenced_schema.is_empty() || fk.referenced_schema == "public" {
+                            fk.referenced_table.clone()
+                        } else {
+                            format!("{}.{}", fk.referenced_schema, fk.referenced_table)
+                        };
                     s.push_str(&format!(
                         "  - {} -> {}.{}\n",
                         fk.column, target, fk.referenced_column
