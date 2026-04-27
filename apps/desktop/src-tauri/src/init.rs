@@ -35,7 +35,7 @@ pub fn build_window(app: &tauri::App) -> tauri::Result<()> {
     .inner_size(500.0, 500.0)
     .resizable(false)
     .decorations(false)
-    .transparent(true)
+    .transparent(cfg!(not(target_os = "linux")))
     .center()
     .skip_taskbar(true)
     .build()?;
@@ -76,6 +76,11 @@ pub fn build_window(app: &tauri::App) -> tauri::Result<()> {
             .traffic_light_position(tauri::Position::Logical(LogicalPosition::new(16.0, 18.5)))
             .hidden_title(true)
     };
+
+    // WebKit2GTK crashes with transparent windows on Wayland (GDK error 71 / EPROTO).
+    // Disable transparency on Linux; custom decorations still work without it.
+    #[cfg(target_os = "linux")]
+    let window_builder = window_builder.transparent(false);
 
     let main_window = window_builder.build()?;
 
