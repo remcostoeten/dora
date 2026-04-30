@@ -59,18 +59,27 @@ const SQL_KEYWORDS = new Set([
 const TS_KEYWORDS = new Set([
 	'boolean',
 	'const',
+	'date',
 	'default',
+	'doublePrecision',
 	'export',
 	'from',
 	'import',
 	'integer',
+	'json',
+	'jsonb',
+	'mysqlTable',
 	'notNull',
 	'numeric',
+	'pgTable',
 	'primaryKey',
+	'real',
 	'references',
 	'serial',
+	'sqliteTable',
 	'text',
 	'timestamp',
+	'uuid',
 	'varchar',
 ])
 
@@ -87,6 +96,13 @@ function renderHighlightedCode(source: string, keywords: Set<string>) {
 					if (/^(['"`]).*\1$/.test(part)) {
 						return (
 							<span className='sv-code-token--string' key={partIndex}>
+								{part}
+							</span>
+						)
+					}
+					if (/^-?\d+(?:\.\d+)?$/.test(part)) {
+						return (
+							<span className='sv-code-token--number' key={partIndex}>
 								{part}
 							</span>
 						)
@@ -176,7 +192,7 @@ export function SchemaDetailsPanel({
 				<Button
 					variant='ghost'
 					size='icon'
-					className='h-7 w-7'
+					className='h-7 w-7 shrink-0'
 					aria-label='Close details'
 					onClick={onClose}
 				>
@@ -200,15 +216,27 @@ export function SchemaDetailsPanel({
 					</div>
 				</div>
 				<div className='sv-details-panel__hero-actions'>
-					<Button className='flex-1 justify-start gap-2' variant='secondary' onClick={onOpenTable}>
+					<Button
+						className='sv-details-panel__hero-action sv-details-panel__hero-action--primary justify-start gap-2'
+						variant='secondary'
+						onClick={onOpenTable}
+					>
 						<Table2 className='h-4 w-4' />
 						Open table
 					</Button>
-					<Button className='justify-start gap-2' variant='ghost' onClick={onExportSql}>
+					<Button
+						className='sv-details-panel__hero-action justify-start gap-2'
+						variant='ghost'
+						onClick={onExportSql}
+					>
 						<FileText className='h-4 w-4' />
 						SQL
 					</Button>
-					<Button className='justify-start gap-2' variant='ghost' onClick={onExportDrizzle}>
+					<Button
+						className='sv-details-panel__hero-action justify-start gap-2'
+						variant='ghost'
+						onClick={onExportDrizzle}
+					>
 						<Code2 className='h-4 w-4' />
 						Drizzle
 					</Button>

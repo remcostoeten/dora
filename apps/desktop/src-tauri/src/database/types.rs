@@ -237,13 +237,19 @@ impl DatabaseConnection {
 
     pub fn from_connection_info(info: ConnectionInfo) -> Self {
         let database = match info.database_type {
-            DatabaseInfo::Postgres { connection_string, ssh_config } => Database::Postgres {
+            DatabaseInfo::Postgres {
+                connection_string,
+                ssh_config,
+            } => Database::Postgres {
                 connection_string,
                 ssh_config,
                 client: None,
                 tunnel: None,
             },
-            DatabaseInfo::MySQL { connection_string, ssh_config } => Database::MySQL {
+            DatabaseInfo::MySQL {
+                connection_string,
+                ssh_config,
+            } => Database::MySQL {
                 connection_string,
                 ssh_config,
                 pool: None,
@@ -264,8 +270,12 @@ impl DatabaseConnection {
             id: info.id,
             name: info.name,
             connected: false,
-            created_at: info.created_at.unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
-            updated_at: info.updated_at.unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+            created_at: info
+                .created_at
+                .unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
+            updated_at: info
+                .updated_at
+                .unwrap_or_else(|| chrono::Utc::now().timestamp_millis()),
             pin_hash: info.pin_hash,
             database,
         }
@@ -294,7 +304,9 @@ impl DatabaseConnection {
                     "Postgres connection not active"
                 )));
             }
-            Database::MySQL { pool: Some(pool), .. } => DatabaseClient::MySQL { pool: pool.clone() },
+            Database::MySQL {
+                pool: Some(pool), ..
+            } => DatabaseClient::MySQL { pool: pool.clone() },
             Database::MySQL { pool: None, .. } => {
                 return Err(Error::Any(anyhow::anyhow!("MySQL connection not active")));
             }

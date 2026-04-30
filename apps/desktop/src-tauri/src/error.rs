@@ -138,7 +138,10 @@ impl serde::Serialize for Error {
 }
 
 impl specta::Type for Error {
-    fn inline(type_map: &mut specta::TypeCollection, generics: specta::Generics) -> specta::DataType {
+    fn inline(
+        type_map: &mut specta::TypeCollection,
+        generics: specta::Generics,
+    ) -> specta::DataType {
         BackendErrorShape::inline(type_map, generics)
     }
 }

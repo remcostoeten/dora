@@ -66,6 +66,7 @@ keyring = { version = "3.2.0", features = [
 	"sync-secret-service"
 ] }
 url = "2.5.4"
+percent-encoding = "2.3"
 aes-gcm = "0.10.3"
 async-trait = "0.1"
 base64 = "0.22"

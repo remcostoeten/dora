@@ -130,7 +130,9 @@ pub async fn ai_complete_stream(
     };
 
     let cancel = Arc::new(AtomicBool::new(false));
-    state.ai_cancel_flags.insert(request_id.clone(), cancel.clone());
+    state
+        .ai_cancel_flags
+        .insert(request_id.clone(), cancel.clone());
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AiStreamEvent>();
 
@@ -162,7 +164,10 @@ pub async fn ai_complete_stream(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_abort_stream(request_id: String, state: State<'_, AppState>) -> Result<bool, Error> {
+pub async fn ai_abort_stream(
+    request_id: String,
+    state: State<'_, AppState>,
+) -> Result<bool, Error> {
     if let Some(flag) = state.ai_cancel_flags.get(&request_id) {
         flag.store(true, Ordering::Relaxed);
         Ok(true)
@@ -178,7 +183,12 @@ pub async fn ai_set_provider(provider: String, state: State<'_, AppState>) -> Re
         "groq" => AIProvider::Groq,
         "gemini" => AIProvider::Gemini,
         "ollama" => AIProvider::Ollama,
-        _ => return Err(Error::Any(anyhow::anyhow!("Invalid provider: {}", provider))),
+        _ => {
+            return Err(Error::Any(anyhow::anyhow!(
+                "Invalid provider: {}",
+                provider
+            )))
+        }
     };
 
     let svc = AIService {
@@ -300,10 +310,7 @@ pub struct AiKeyTestResult {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_keys_test(
-    id: i64,
-    state: State<'_, AppState>,
-) -> Result<AiKeyTestResult, Error> {
+pub async fn ai_keys_test(id: i64, state: State<'_, AppState>) -> Result<AiKeyTestResult, Error> {
     let plaintext = state
         .storage
         .ai_keys_get_decrypted(id)?
@@ -324,7 +331,13 @@ pub async fn ai_keys_test(
 pub async fn ai_keys_test_raw(api_key: String) -> Result<AiKeyTestResult, Error> {
     let result = GroqClient::test_key(api_key.trim(), None).await;
     Ok(match result {
-        Ok(msg) => AiKeyTestResult { ok: true, message: msg },
-        Err(e) => AiKeyTestResult { ok: false, message: e.to_string() },
+        Ok(msg) => AiKeyTestResult {
+            ok: true,
+            message: msg,
+        },
+        Err(e) => AiKeyTestResult {
+            ok: false,
+            message: e.to_string(),
+        },
     })
 }

@@ -119,13 +119,13 @@ export function buildConnectionString(params: ConnectionParams): string {
 
 	// Build base URL
 	const protocol = config.protocols[0]
-	let url = `${protocol}://${user}`
+	let url = `${protocol}://${encodeURIComponent(user)}`
 
 	if (password) {
-		url += `:${password}`
+		url += `:${encodeURIComponent(password)}`
 	}
 
-	url += `@${host}:${port}/${database}`
+	url += `@${host}:${port}/${encodeURIComponent(database)}`
 
 	// Add SSL parameter if enabled
 	if (params.ssl && config.supportsSSL) {

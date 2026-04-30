@@ -38,7 +38,7 @@ const SchemaVisualizer = lazy(function () {
   });
 });
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
-import { WindowControls } from "@/shared/ui/window-controls";
+import { WindowControls } from "@/components/window-controls";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +52,7 @@ import {
 import { ErrorBoundary } from "@/shared/ui/error-boundary";
 import { mapConnectionError } from "@/shared/utils/error-messages";
 import { EmptyState } from "@/shared/ui/empty-state";
+import { ViewLoadingShell } from "@/shared/ui/view-loading-shell";
 import { getTableRefParts } from "@/shared/utils/table-ref";
 import { Plug } from "lucide-react";
 
@@ -66,6 +67,7 @@ export default function Index() {
   } = useSettings();
 
   const { data: connections = [], isLoading: isConnectionsLoading } = useConnections();
+  const isLoading = isSettingsLoading || isConnectionsLoading;
   const { addConnection, updateConnection, removeConnection } = useConnectionMutations();
 
   const urlView = searchParams.get("view");
@@ -489,9 +491,15 @@ export default function Index() {
             <main className="flex-1 flex flex-col h-full overflow-hidden relative px-0">
               <Suspense
                 fallback={
-                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                    Loading...
-                  </div>
+                  <ViewLoadingShell
+                    view={
+                      activeNavId === "sql-console" ||
+                      activeNavId === "schema-visualizer" ||
+                      activeNavId === "docker"
+                        ? activeNavId
+                        : "database-studio"
+                    }
+                  />
                 }
               >
               {connections.length === 0 &&

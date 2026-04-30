@@ -144,7 +144,10 @@ pub async fn update_snippet(
 #[specta::specta]
 pub async fn delete_snippet(id: i64, state: State<'_, AppState>) -> Result<(), Error> {
     let conn = state.storage.get_sqlite_connection()?;
-    conn.execute("DELETE FROM saved_queries WHERE id = ?1 AND is_snippet = 1", [id])?;
+    conn.execute(
+        "DELETE FROM saved_queries WHERE id = ?1 AND is_snippet = 1",
+        [id],
+    )?;
     Ok(())
 }
 

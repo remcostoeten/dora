@@ -1,5 +1,5 @@
-use async_trait::async_trait;
 use anyhow::anyhow;
+use async_trait::async_trait;
 use mysql_async::prelude::Queryable;
 use mysql_async::{Params, Row as MySqlRow, Value as MySqlValue};
 
@@ -7,11 +7,11 @@ use super::read::MySqlAdapter;
 use super::write::WriteAdapter;
 use crate::database::adapter::DatabaseAdapter;
 use crate::database::maintenance;
+use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
-    json_to_mysql_value, mysql_quote_identifier, mysql_qualified_table_name, mysql_value_to_json,
+    json_to_mysql_value, mysql_qualified_table_name, mysql_quote_identifier, mysql_value_to_json,
     MutationResult,
 };
-use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::Error;
 
 #[async_trait]
@@ -29,11 +29,17 @@ impl WriteAdapter for MySqlAdapter {
             "UPDATE `{}` SET `{}` = ? WHERE `{}` = ?",
             table, column, pk_column
         );
-        let mut conn = self.pool().get_conn().await
+        let mut conn = self
+            .pool()
+            .get_conn()
+            .await
             .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
         conn.exec_drop(
             query,
-            Params::Positional(vec![json_to_mysql_value(&new_value), json_to_mysql_value(&pk_value)]),
+            Params::Positional(vec![
+                json_to_mysql_value(&new_value),
+                json_to_mysql_value(&pk_value),
+            ]),
         )
         .await
         .map_err(|e| Error::Any(anyhow!("MySQL update failed: {}", e)))?;
@@ -74,7 +80,10 @@ impl WriteAdapter for MySqlAdapter {
             placeholders.join(", ")
         );
         let params: Vec<MySqlValue> = pk_values.iter().map(json_to_mysql_value).collect();
-        let mut conn = self.pool().get_conn().await
+        let mut conn = self
+            .pool()
+            .get_conn()
+            .await
             .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
         conn.exec_drop(query, Params::Positional(params))
             .await
@@ -123,7 +132,10 @@ impl WriteAdapter for MySqlAdapter {
             .map(json_to_mysql_value)
             .collect();
 
-        let mut conn = self.pool().get_conn().await
+        let mut conn = self
+            .pool()
+            .get_conn()
+            .await
             .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
         conn.exec_drop(query, Params::Positional(params))
             .await
@@ -155,7 +167,10 @@ impl WriteAdapter for MySqlAdapter {
             mysql_quote_identifier(&pk_column)
         );
         let params = Params::Positional(vec![json_to_mysql_value(&pk_value)]);
-        let mut conn = self.pool().get_conn().await
+        let mut conn = self
+            .pool()
+            .get_conn()
+            .await
             .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
         let row: MySqlRow = conn
             .exec_first(query, params)
@@ -203,7 +218,9 @@ impl WriteAdapter for MySqlAdapter {
         _schema: Option<String>,
         _confirm: bool,
     ) -> Result<TruncateResult, Error> {
-        Err(Error::NotImplemented("WriteAdapter::truncate_database for MySQL"))
+        Err(Error::NotImplemented(
+            "WriteAdapter::truncate_database for MySQL",
+        ))
     }
 
     async fn soft_delete_rows(
@@ -236,7 +253,9 @@ impl WriteAdapter for MySqlAdapter {
         _pk_values: Vec<serde_json::Value>,
         _soft_delete_column: String,
     ) -> Result<MutationResult, Error> {
-        Err(Error::NotImplemented("WriteAdapter::undo_soft_delete for MySQL"))
+        Err(Error::NotImplemented(
+            "WriteAdapter::undo_soft_delete for MySQL",
+        ))
     }
 
     async fn dump_database(&self, output_path: String) -> Result<DumpResult, Error> {
@@ -253,7 +272,10 @@ impl WriteAdapter for MySqlAdapter {
             });
         }
 
-        let mut conn = self.pool().get_conn().await
+        let mut conn = self
+            .pool()
+            .get_conn()
+            .await
             .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
         conn.query_drop("START TRANSACTION")
             .await

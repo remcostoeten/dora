@@ -98,6 +98,7 @@ export function RelationshipEdge({
 	const vis = getEdgeVisuals(data)
 	const isDim = data?.searchState === 'dim'
 	const isMatch = data?.searchState === 'match'
+	const showFlow = !isDim && Boolean(data)
 
 	return (
 		<>
@@ -116,14 +117,14 @@ export function RelationshipEdge({
 				}}
 			/>
 
-			{!isDim && isMatch && (
+			{showFlow && (
 				<path
 					d={edgePath}
 					fill='none'
 					stroke={vis.strokeColor}
 					strokeWidth={vis.strokeWidth - 0.2}
 					strokeLinecap='round'
-					strokeOpacity={0.7}
+					strokeOpacity={isMatch ? 0.7 : 0.32}
 					className={cn('sv-edge-flow', isMatch && 'sv-edge-flow--match')}
 				/>
 			)}

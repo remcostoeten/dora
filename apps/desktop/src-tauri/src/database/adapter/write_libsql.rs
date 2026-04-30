@@ -1,14 +1,14 @@
-use async_trait::async_trait;
 use anyhow::anyhow;
+use async_trait::async_trait;
 
 use super::read::LibSqlAdapter;
 use super::write::WriteAdapter;
 use crate::database::adapter::DatabaseAdapter;
 use crate::database::maintenance;
+use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
     json_to_libsql_value, libsql_value_to_json, MutationResult,
 };
-use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::Error;
 
 #[async_trait]
@@ -32,7 +32,8 @@ impl WriteAdapter for LibSqlAdapter {
             .connection()
             .execute(&query, vec![new_val, pk_val])
             .await
-            .map_err(|e| Error::Any(anyhow!("LibSQL update failed: {}", e)))? as usize;
+            .map_err(|e| Error::Any(anyhow!("LibSQL update failed: {}", e)))?
+            as usize;
 
         Ok(MutationResult {
             success: result > 0,
@@ -63,14 +64,17 @@ impl WriteAdapter for LibSqlAdapter {
         let placeholders: Vec<&str> = pk_values.iter().map(|_| "?").collect();
         let query = format!(
             "DELETE FROM `{}` WHERE `{}` IN ({})",
-            table, pk_column, placeholders.join(", ")
+            table,
+            pk_column,
+            placeholders.join(", ")
         );
         let params: Vec<libsql::Value> = pk_values.iter().map(json_to_libsql_value).collect();
         let total_deleted = self
             .connection()
             .execute(&query, params)
             .await
-            .map_err(|e| Error::Any(anyhow!("LibSQL delete failed: {}", e)))? as usize;
+            .map_err(|e| Error::Any(anyhow!("LibSQL delete failed: {}", e)))?
+            as usize;
 
         Ok(MutationResult {
             success: total_deleted > 0,
@@ -94,9 +98,19 @@ impl WriteAdapter for LibSqlAdapter {
         }
 
         let columns: Vec<&String> = row_data.keys().collect();
-        let col_names: String = columns.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", ");
-        let placeholders: String = std::iter::repeat("?").take(row_data.len()).collect::<Vec<_>>().join(", ");
-        let query = format!("INSERT INTO \"{}\" ({}) VALUES ({})", table, col_names, placeholders);
+        let col_names: String = columns
+            .iter()
+            .map(|c| format!("\"{}\"", c))
+            .collect::<Vec<_>>()
+            .join(", ");
+        let placeholders: String = std::iter::repeat("?")
+            .take(row_data.len())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let query = format!(
+            "INSERT INTO \"{}\" ({}) VALUES ({})",
+            table, col_names, placeholders
+        );
         let params: Vec<libsql::Value> = row_data.values().map(json_to_libsql_value).collect();
 
         self.connection()
@@ -140,7 +154,8 @@ impl WriteAdapter for LibSqlAdapter {
             .ok_or_else(|| {
                 Error::Any(anyhow!(
                     "No row found in \"{}\" where {} matches the provided primary key",
-                    table, pk_column
+                    table,
+                    pk_column
                 ))
             })?;
 
@@ -173,7 +188,9 @@ impl WriteAdapter for LibSqlAdapter {
         _schema: Option<String>,
         _confirm: bool,
     ) -> Result<TruncateResult, Error> {
-        Err(Error::NotImplemented("WriteAdapter::truncate_database for LibSQL"))
+        Err(Error::NotImplemented(
+            "WriteAdapter::truncate_database for LibSQL",
+        ))
     }
 
     async fn soft_delete_rows(
@@ -187,7 +204,8 @@ impl WriteAdapter for LibSqlAdapter {
         let col = soft_delete_column.ok_or_else(|| {
             Error::InvalidInput("soft_delete_column is required for adapter dispatch".into())
         })?;
-        maintenance::soft_delete_libsql(self.connection(), &table, &pk_column, &pk_values, &col).await
+        maintenance::soft_delete_libsql(self.connection(), &table, &pk_column, &pk_values, &col)
+            .await
     }
 
     async fn undo_soft_delete(
@@ -198,7 +216,9 @@ impl WriteAdapter for LibSqlAdapter {
         _pk_values: Vec<serde_json::Value>,
         _soft_delete_column: String,
     ) -> Result<MutationResult, Error> {
-        Err(Error::NotImplemented("WriteAdapter::undo_soft_delete for LibSQL"))
+        Err(Error::NotImplemented(
+            "WriteAdapter::undo_soft_delete for LibSQL",
+        ))
     }
 
     async fn dump_database(&self, output_path: String) -> Result<DumpResult, Error> {

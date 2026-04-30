@@ -123,7 +123,11 @@ impl Storage {
 
     pub fn ai_keys_record_test(&self, id: i64, ok: bool, message: &str) -> Result<()> {
         let now = chrono::Utc::now().timestamp();
-        let status = if ok { format!("ok: {}", message) } else { format!("err: {}", message) };
+        let status = if ok {
+            format!("ok: {}", message)
+        } else {
+            format!("err: {}", message)
+        };
         let conn = self
             .conn
             .lock()

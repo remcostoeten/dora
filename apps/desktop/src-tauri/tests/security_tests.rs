@@ -7,17 +7,17 @@
 //! # Source Module
 //! - [`app_lib::security`](../src/security.rs)
 
+use aes_gcm::aead::rand_core::RngCore;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
 };
-use aes_gcm::aead::rand_core::RngCore;
 use anyhow::{Context, Result};
 
 fn test_encrypt(plaintext: &str) -> Result<String> {
     let key = [42u8; 32];
     let cipher = Aes256Gcm::new(&key.into());
-    
+
     let mut nonce_bytes = [0u8; 12];
     OsRng.fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
@@ -35,9 +35,9 @@ fn test_encrypt(plaintext: &str) -> Result<String> {
 
 fn test_decrypt(hex_data: &str) -> Result<String> {
     let data = hex::decode(hex_data).context("Failed to decode hex string")?;
-    
+
     if data.len() < 12 {
-         anyhow::bail!("Data too short to contain nonce");
+        anyhow::bail!("Data too short to contain nonce");
     }
 
     let (nonce_bytes, ciphertext) = data.split_at(12);
@@ -50,8 +50,8 @@ fn test_decrypt(hex_data: &str) -> Result<String> {
         .decrypt(nonce, ciphertext)
         .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
 
-    let plaintext = String::from_utf8(plaintext_bytes)
-        .context("Decrypted data is not valid UTF-8")?;
+    let plaintext =
+        String::from_utf8(plaintext_bytes).context("Decrypted data is not valid UTF-8")?;
 
     Ok(plaintext)
 }
@@ -59,14 +59,14 @@ fn test_decrypt(hex_data: &str) -> Result<String> {
 #[test]
 fn encrypt_decrypt_roundtrip() {
     let original = "postgresql://user:password@localhost:5432/mydb";
-    
+
     let encrypted = test_encrypt(original).expect("Encryption should succeed");
-    
+
     assert_ne!(encrypted, original);
     assert!(encrypted.len() > original.len());
-    
+
     let decrypted = test_decrypt(&encrypted).expect("Decryption should succeed");
-    
+
     assert_eq!(decrypted, original);
 }
 

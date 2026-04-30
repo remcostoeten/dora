@@ -1,4 +1,5 @@
 import React from 'react'
+import type { VirtualItem } from '@tanstack/react-virtual'
 import { Checkbox } from '@/shared/ui/checkbox'
 import { cn } from '@/shared/utils/cn'
 import { ColumnDefinition, FilterDescriptor } from '../../types'
@@ -48,6 +49,10 @@ type GridBodyProps = {
 	tableName?: string
 	ensureRowSelectionForContextMenu: (rowIndex: number) => void
 	setEditValue: (value: string) => void
+	/** Pass virtual rows from useRowVirtualizer. Null = render all (non-virtual). */
+	virtualRows?: VirtualItem[] | null
+	/** Total scroll height when virtualizing. */
+	totalVirtualSize?: number | null
 }
 
 export function GridBody({
@@ -83,8 +88,19 @@ export function GridBody({
 	selectedRows,
 	tableName,
 	ensureRowSelectionForContextMenu,
-	setEditValue
+	setEditValue,
+	virtualRows,
+	totalVirtualSize,
 }: GridBodyProps) {
+	// Determine which rows to actually render
+	const rowsToRender: Array<{ rowIndex: number; start?: number }> = virtualRows
+		? virtualRows.map(function (vr) { return { rowIndex: vr.index, start: vr.start } })
+		: rows.map(function (_, i) { return { rowIndex: i } })
+
+	const topPad = virtualRows && virtualRows.length > 0 ? virtualRows[0].start : 0
+	const bottomPad = virtualRows && virtualRows.length > 0 && totalVirtualSize
+		? totalVirtualSize - (virtualRows[virtualRows.length - 1].start + virtualRows[virtualRows.length - 1].size)
+		: 0
 	return (
 		<tbody role='rowgroup'>
 			{draftRow &&
@@ -102,7 +118,15 @@ export function GridBody({
 					/>
 				)}
 
-			{rows.map(function (row, rowIndex) {
+			{/* Virtual top spacer */}
+			{topPad > 0 && (
+				<tr style={{ height: topPad }}>
+					<td colSpan={columns.length + 1} />
+				</tr>
+			)}
+
+			{rowsToRender.map(function ({ rowIndex }) {
+				const row = rows[rowIndex]
 				const rowBackgroundClasses = selectedRows.has(rowIndex)
 					? 'bg-primary/10'
 					: rowIndex % 2 === 1
@@ -292,6 +316,13 @@ export function GridBody({
 					</React.Fragment>
 				)
 			})}
+			{/* Virtual bottom spacer */}
+			{bottomPad > 0 && (
+				<tr style={{ height: bottomPad }}>
+					<td colSpan={columns.length + 1} />
+				</tr>
+			)}
+
 			{rows.length === 0 && <NoRowsState colSpan={columns.length + 1} />}
 		</tbody>
 	)

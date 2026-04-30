@@ -1,14 +1,14 @@
-use async_trait::async_trait;
 use anyhow::anyhow;
+use async_trait::async_trait;
 
 use super::read::PostgresAdapter;
 use super::write::WriteAdapter;
 use crate::database::adapter::DatabaseAdapter;
 use crate::database::maintenance;
+use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
     json_to_pg_param, pg_value_to_json, qualified_table_name, MutationResult,
 };
-use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::Error;
 
 #[async_trait]
@@ -66,9 +66,7 @@ impl WriteAdapter for PostgresAdapter {
             .map(|s| format!("\"{}\".", s))
             .unwrap_or_default();
 
-        let placeholders: Vec<String> = (1..=pk_values.len())
-            .map(|i| format!("${}", i))
-            .collect();
+        let placeholders: Vec<String> = (1..=pk_values.len()).map(|i| format!("${}", i)).collect();
         let query = format!(
             "DELETE FROM {}\"{}\" WHERE \"{}\" IN ({})",
             schema_prefix,

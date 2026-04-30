@@ -11,8 +11,9 @@ use dashmap::DashMap;
 
 use crate::{
     database::{
+        mysql,
         parser::ParsedStatement,
-        mysql, postgres, sqlite,
+        postgres, sqlite,
         types::{channel, DatabaseClient, Page, QueryId, QueryStatus, StatementInfo},
         QueryExecEvent,
     },
@@ -200,7 +201,11 @@ impl StatementManager {
                         page_amount: _,
                         page,
                     } => {
-                        exec_storage.pages.write().expect("RwLock poisoned").push(page);
+                        exec_storage
+                            .pages
+                            .write()
+                            .expect("RwLock poisoned")
+                            .push(page);
 
                         // TODO(vini): emit progress event to frontend?
                     }
@@ -219,7 +224,8 @@ impl StatementManager {
                                 .status
                                 .store(QueryStatus::Completed as u8, Ordering::Relaxed);
 
-                            *exec_storage.rows_affected.write().expect("RwLock poisoned") = Some(affected_rows);
+                            *exec_storage.rows_affected.write().expect("RwLock poisoned") =
+                                Some(affected_rows);
                         }
 
                         // TODO(vini): emit completion event to frontend?

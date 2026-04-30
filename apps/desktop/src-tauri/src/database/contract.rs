@@ -32,33 +32,77 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "add_connection",
             description: "Register a new database connection configuration.",
             arguments: vec![
-                CommandArgument { name: "name", arg_type: "String", description: "Display name for the connection", optional: false },
-                CommandArgument { name: "database_info", arg_type: "DatabaseInfo", description: "Connection details (type, host, credentials)", optional: false },
-                CommandArgument { name: "color", arg_type: "Option<i32>", description: "Color hue for UI accent", optional: true },
+                CommandArgument {
+                    name: "name",
+                    arg_type: "String",
+                    description: "Display name for the connection",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "database_info",
+                    arg_type: "DatabaseInfo",
+                    description: "Connection details (type, host, credentials)",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "color",
+                    arg_type: "Option<i32>",
+                    description: "Color hue for UI accent",
+                    optional: true,
+                },
             ],
             return_type: "Result<ConnectionInfo, Error>",
             stability: CommandStability::Stable,
-            side_effects: vec!["Persists connection config to storage", "Stores credentials securely"],
+            side_effects: vec![
+                "Persists connection config to storage",
+                "Stores credentials securely",
+            ],
         },
         CommandDefinition {
             name: "update_connection",
             description: "Update an existing connection configuration.",
             arguments: vec![
-                CommandArgument { name: "conn_id", arg_type: "Uuid", description: "ID of the connection to update", optional: false },
-                CommandArgument { name: "name", arg_type: "String", description: "New display name", optional: false },
-                CommandArgument { name: "database_info", arg_type: "DatabaseInfo", description: "New connection details", optional: false },
-                CommandArgument { name: "color", arg_type: "Option<i32>", description: "New color hue", optional: true },
+                CommandArgument {
+                    name: "conn_id",
+                    arg_type: "Uuid",
+                    description: "ID of the connection to update",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "name",
+                    arg_type: "String",
+                    description: "New display name",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "database_info",
+                    arg_type: "DatabaseInfo",
+                    description: "New connection details",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "color",
+                    arg_type: "Option<i32>",
+                    description: "New color hue",
+                    optional: true,
+                },
             ],
             return_type: "Result<ConnectionInfo, Error>",
             stability: CommandStability::Stable,
-            side_effects: vec!["Updates storage", "MAY disconnect active connection if config changes"],
+            side_effects: vec![
+                "Updates storage",
+                "MAY disconnect active connection if config changes",
+            ],
         },
         CommandDefinition {
             name: "connect_to_database",
             description: "Establish an active connection to a database.",
-            arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "ID of the connection", optional: false },
-            ],
+            arguments: vec![CommandArgument {
+                name: "connection_id",
+                arg_type: "Uuid",
+                description: "ID of the connection",
+                optional: false,
+            }],
             return_type: "Result<bool, Error>",
             stability: CommandStability::Stable,
             side_effects: vec!["Opened network connection", "Starts connection monitoring"],
@@ -66,9 +110,12 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
         CommandDefinition {
             name: "disconnect_from_database",
             description: "Close an active database connection.",
-            arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "ID of the connection", optional: false },
-            ],
+            arguments: vec![CommandArgument {
+                name: "connection_id",
+                arg_type: "Uuid",
+                description: "ID of the connection",
+                optional: false,
+            }],
             return_type: "Result<(), Error>",
             stability: CommandStability::Stable,
             side_effects: vec!["Closes network connection", "Stops monitoring"],
@@ -85,8 +132,18 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "set_connection_pin",
             description: "Set or remove the PIN for verifying connection credentials.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Target connection ID", optional: false },
-                CommandArgument { name: "pin", arg_type: "Option<String>", description: "New PIN (or null to remove)", optional: true },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Target connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "pin",
+                    arg_type: "Option<String>",
+                    description: "New PIN (or null to remove)",
+                    optional: true,
+                },
             ],
             return_type: "Result<(), Error>",
             stability: CommandStability::Stable,
@@ -96,8 +153,18 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "verify_pin_and_get_credentials",
             description: "Verify PIN and return sensitive connection credentials.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Target connection ID", optional: false },
-                CommandArgument { name: "pin", arg_type: "String", description: "PIN to verify", optional: false },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Target connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "pin",
+                    arg_type: "String",
+                    description: "PIN to verify",
+                    optional: false,
+                },
             ],
             return_type: "Result<Option<String>, Error>",
             stability: CommandStability::Stable,
@@ -108,8 +175,18 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "start_query",
             description: "Execute a SQL query asynchronously.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Active connection ID", optional: false },
-                CommandArgument { name: "query", arg_type: "String", description: "SQL query string", optional: false },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Active connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "query",
+                    arg_type: "String",
+                    description: "SQL query string",
+                    optional: false,
+                },
             ],
             return_type: "Result<Vec<usize>, Error>",
             stability: CommandStability::Stable,
@@ -119,8 +196,18 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "fetch_page",
             description: "Fetch a page of results for an executed query.",
             arguments: vec![
-                CommandArgument { name: "query_id", arg_type: "usize", description: "ID returned by start_query", optional: false },
-                CommandArgument { name: "page_index", arg_type: "usize", description: "Zero-based page index", optional: false },
+                CommandArgument {
+                    name: "query_id",
+                    arg_type: "usize",
+                    description: "ID returned by start_query",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "page_index",
+                    arg_type: "usize",
+                    description: "Zero-based page index",
+                    optional: false,
+                },
             ],
             return_type: "Result<Option<Box<RawValue>>, Error>",
             stability: CommandStability::Stable,
@@ -130,21 +217,47 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "start_live_monitor",
             description: "Start backend live monitoring for a specific table.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Active connection ID", optional: false },
-                CommandArgument { name: "table_name", arg_type: "String", description: "Target table", optional: false },
-                CommandArgument { name: "interval_ms", arg_type: "u64", description: "Polling interval in milliseconds", optional: false },
-                CommandArgument { name: "change_types", arg_type: "Vec<LiveMonitorChangeType>", description: "Change types to emit", optional: false },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Active connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "table_name",
+                    arg_type: "String",
+                    description: "Target table",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "interval_ms",
+                    arg_type: "u64",
+                    description: "Polling interval in milliseconds",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "change_types",
+                    arg_type: "Vec<LiveMonitorChangeType>",
+                    description: "Change types to emit",
+                    optional: false,
+                },
             ],
             return_type: "Result<LiveMonitorSession, Error>",
             stability: CommandStability::Experimental,
-            side_effects: vec!["Spawns monitor background task", "Emits live monitor events"],
+            side_effects: vec![
+                "Spawns monitor background task",
+                "Emits live monitor events",
+            ],
         },
         CommandDefinition {
             name: "stop_live_monitor",
             description: "Stop a backend live monitor session.",
-            arguments: vec![
-                CommandArgument { name: "monitor_id", arg_type: "String", description: "Monitor session ID", optional: false },
-            ],
+            arguments: vec![CommandArgument {
+                name: "monitor_id",
+                arg_type: "String",
+                description: "Monitor session ID",
+                optional: false,
+            }],
             return_type: "Result<(), Error>",
             stability: CommandStability::Experimental,
             side_effects: vec!["Stops monitor background task"],
@@ -154,10 +267,30 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "insert_row",
             description: "Insert a single row into a table.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Active connection ID", optional: false },
-                CommandArgument { name: "table_name", arg_type: "String", description: "Target table", optional: false },
-                CommandArgument { name: "schema_name", arg_type: "Option<String>", description: "Target schema (optional)", optional: true },
-                CommandArgument { name: "row_data", arg_type: "Map<String, Value>", description: "Column-value map", optional: false },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Active connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "table_name",
+                    arg_type: "String",
+                    description: "Target table",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "schema_name",
+                    arg_type: "Option<String>",
+                    description: "Target schema (optional)",
+                    optional: true,
+                },
+                CommandArgument {
+                    name: "row_data",
+                    arg_type: "Map<String, Value>",
+                    description: "Column-value map",
+                    optional: false,
+                },
             ],
             return_type: "Result<MutationResult, Error>",
             stability: CommandStability::Stable,
@@ -167,8 +300,18 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "execute_batch",
             description: "Execute multiple SQL statements in a single batch/transaction.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Active connection ID", optional: false },
-                CommandArgument { name: "statements", arg_type: "Vec<String>", description: "List of SQL statements", optional: false },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Active connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "statements",
+                    arg_type: "Vec<String>",
+                    description: "List of SQL statements",
+                    optional: false,
+                },
             ],
             return_type: "Result<MutationResult, Error>",
             stability: CommandStability::Experimental,
@@ -178,8 +321,18 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "truncate_database",
             description: "Truncate ALL tables in the database.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Active connection ID", optional: false },
-                CommandArgument { name: "confirm", arg_type: "bool", description: "Safety confirmation flag", optional: false },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Active connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "confirm",
+                    arg_type: "bool",
+                    description: "Safety confirmation flag",
+                    optional: false,
+                },
             ],
             return_type: "Result<TruncateResult, Error>",
             stability: CommandStability::Dangerous,
@@ -190,10 +343,30 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "seed_table",
             description: "Populate a table with mock data.",
             arguments: vec![
-                CommandArgument { name: "connection_id", arg_type: "Uuid", description: "Active connection ID", optional: false },
-                CommandArgument { name: "table_name", arg_type: "String", description: "Target table", optional: false },
-                CommandArgument { name: "schema_name", arg_type: "Option<String>", description: "Target schema (optional)", optional: true },
-                CommandArgument { name: "count", arg_type: "u32", description: "Number of rows to generate", optional: false },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Uuid",
+                    description: "Active connection ID",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "table_name",
+                    arg_type: "String",
+                    description: "Target table",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "schema_name",
+                    arg_type: "Option<String>",
+                    description: "Target schema (optional)",
+                    optional: true,
+                },
+                CommandArgument {
+                    name: "count",
+                    arg_type: "u32",
+                    description: "Number of rows to generate",
+                    optional: false,
+                },
             ],
             return_type: "Result<SeedResult, Error>",
             stability: CommandStability::Experimental,
@@ -203,9 +376,12 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
         CommandDefinition {
             name: "parse_sql",
             description: "Parse SQL string into JSON AST.",
-            arguments: vec![
-                CommandArgument { name: "sql", arg_type: "String", description: "SQL Query", optional: false },
-            ],
+            arguments: vec![CommandArgument {
+                name: "sql",
+                arg_type: "String",
+                description: "SQL Query",
+                optional: false,
+            }],
             return_type: "Result<Value, Error>",
             stability: CommandStability::Stable,
             side_effects: vec![],
@@ -213,9 +389,12 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
         CommandDefinition {
             name: "build_sql",
             description: "Build SQL string from JSON AST.",
-            arguments: vec![
-                CommandArgument { name: "ast", arg_type: "Value", description: "JSON AST", optional: false },
-            ],
+            arguments: vec![CommandArgument {
+                name: "ast",
+                arg_type: "Value",
+                description: "JSON AST",
+                optional: false,
+            }],
             return_type: "Result<String, Error>",
             stability: CommandStability::Stable,
             side_effects: vec![],
@@ -225,9 +404,24 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "ai_complete",
             description: "Send prompt to AI provider for SQL assistance.",
             arguments: vec![
-                CommandArgument { name: "prompt", arg_type: "String", description: "User query or request", optional: false },
-                CommandArgument { name: "connection_id", arg_type: "Option<Uuid>", description: "Context connection (for schema)", optional: true },
-                CommandArgument { name: "max_tokens", arg_type: "Option<u32>", description: "Response limit", optional: true },
+                CommandArgument {
+                    name: "prompt",
+                    arg_type: "String",
+                    description: "User query or request",
+                    optional: false,
+                },
+                CommandArgument {
+                    name: "connection_id",
+                    arg_type: "Option<Uuid>",
+                    description: "Context connection (for schema)",
+                    optional: true,
+                },
+                CommandArgument {
+                    name: "max_tokens",
+                    arg_type: "Option<u32>",
+                    description: "Response limit",
+                    optional: true,
+                },
             ],
             return_type: "Result<AIResponse, Error>",
             stability: CommandStability::Experimental,
@@ -236,9 +430,12 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
         CommandDefinition {
             name: "ai_set_provider",
             description: "Switch between 'gemini' and 'ollama'.",
-            arguments: vec![
-                CommandArgument { name: "provider", arg_type: "String", description: "Provider name", optional: false },
-            ],
+            arguments: vec![CommandArgument {
+                name: "provider",
+                arg_type: "String",
+                description: "Provider name",
+                optional: false,
+            }],
             return_type: "Result<(), Error>",
             stability: CommandStability::Stable,
             side_effects: vec!["Persists setting"],
@@ -246,9 +443,12 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
         CommandDefinition {
             name: "ai_set_gemini_key",
             description: "Set Gemini API key (BYOK).",
-            arguments: vec![
-                CommandArgument { name: "api_key", arg_type: "String", description: "Google AI Studio Key", optional: false },
-            ],
+            arguments: vec![CommandArgument {
+                name: "api_key",
+                arg_type: "String",
+                description: "Google AI Studio Key",
+                optional: false,
+            }],
             return_type: "Result<(), Error>",
             stability: CommandStability::Stable,
             side_effects: vec!["Persists key securely"],
@@ -257,8 +457,18 @@ pub fn get_command_contract() -> Vec<CommandDefinition> {
             name: "ai_configure_ollama",
             description: "Configure Ollama endpoint and model.",
             arguments: vec![
-                CommandArgument { name: "endpoint", arg_type: "Option<String>", description: "Ollama URL", optional: true },
-                CommandArgument { name: "model", arg_type: "Option<String>", description: "Model name", optional: true },
+                CommandArgument {
+                    name: "endpoint",
+                    arg_type: "Option<String>",
+                    description: "Ollama URL",
+                    optional: true,
+                },
+                CommandArgument {
+                    name: "model",
+                    arg_type: "Option<String>",
+                    description: "Model name",
+                    optional: true,
+                },
             ],
             return_type: "Result<(), Error>",
             stability: CommandStability::Stable,
@@ -285,7 +495,7 @@ mod tests {
     fn export_contract_json() {
         let contract = get_command_contract();
         let json = serde_json::to_string_pretty(&contract).unwrap();
-        
+
         // Target: dora/apps/docs/static/contract.json
         // We are in dora/apps/desktop/src-tauri
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -295,12 +505,12 @@ mod tests {
         path.pop(); // out of desktop
         path.push("docs");
         path.push("static");
-        
+
         // Ensure static dir exists
         fs::create_dir_all(&path).unwrap();
-        
+
         path.push("contract.json");
-        
+
         fs::write(&path, json).expect("Unable to write contract.json");
         println!("Exported contract to {:?}", path);
     }

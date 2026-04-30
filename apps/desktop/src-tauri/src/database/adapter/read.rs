@@ -243,7 +243,9 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
         crate::database::types::DatabaseClient::Postgres { client } => {
             Box::new(PostgresAdapter::new(client.clone()))
         }
-        crate::database::types::DatabaseClient::MySQL { pool } => Box::new(MySqlAdapter::new(pool.clone())),
+        crate::database::types::DatabaseClient::MySQL { pool } => {
+            Box::new(MySqlAdapter::new(pool.clone()))
+        }
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))
         }
@@ -252,7 +254,6 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

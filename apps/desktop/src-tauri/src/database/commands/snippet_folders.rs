@@ -18,7 +18,9 @@ pub async fn create_snippet_folder(
     color: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<i64, Error> {
-    state.storage.create_snippet_folder(&name, parent_id, color.as_deref())
+    state
+        .storage
+        .create_snippet_folder(&name, parent_id, color.as_deref())
 }
 
 #[tauri::command]
@@ -29,14 +31,13 @@ pub async fn update_snippet_folder(
     color: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<(), Error> {
-    state.storage.update_snippet_folder(id, &name, color.as_deref())
+    state
+        .storage
+        .update_snippet_folder(id, &name, color.as_deref())
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn delete_snippet_folder(
-    id: i64,
-    state: State<'_, AppState>,
-) -> Result<(), Error> {
+pub async fn delete_snippet_folder(id: i64, state: State<'_, AppState>) -> Result<(), Error> {
     state.storage.delete_snippet_folder(id)
 }

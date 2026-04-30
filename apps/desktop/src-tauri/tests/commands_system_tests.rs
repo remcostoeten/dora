@@ -8,7 +8,7 @@
 //! - [`app_lib::commands_system::registry`](../src/commands_system/registry.rs)
 //! - [`app_lib::commands_system::types`](../src/commands_system/types.rs)
 
-use app_lib::commands_system::{CommandRegistry, CommandDefinition, ShortcutDefinition};
+use app_lib::commands_system::{CommandDefinition, CommandRegistry, ShortcutDefinition};
 
 #[test]
 fn registry_creation_has_default_commands() {
@@ -24,9 +24,9 @@ fn command_definition_creation() {
         "test.command",
         "Test Command",
         "A test command for testing",
-        "Testing"
+        "Testing",
     );
-    
+
     assert_eq!(cmd.id, "test.command");
     assert_eq!(cmd.name, "Test Command");
     assert_eq!(cmd.category, "Testing");
@@ -35,13 +35,9 @@ fn command_definition_creation() {
 
 #[test]
 fn command_with_shortcut() {
-    let cmd = CommandDefinition::new(
-        "test.command",
-        "Test Command",
-        "A test command",
-        "Testing"
-    ).with_shortcut(vec!["Ctrl", "T"]);
-    
+    let cmd = CommandDefinition::new("test.command", "Test Command", "A test command", "Testing")
+        .with_shortcut(vec!["Ctrl", "T"]);
+
     assert!(cmd.shortcut.is_some());
     assert_eq!(cmd.shortcut.as_ref().unwrap().display(), "Ctrl+T");
 }
@@ -59,11 +55,12 @@ fn registry_register_and_get() {
         "test.custom.cmd",
         "Custom Test",
         "A custom test command",
-        "Testing"
-    ).with_shortcut(vec!["Ctrl", "Alt", "T"]);
-    
+        "Testing",
+    )
+    .with_shortcut(vec!["Ctrl", "Alt", "T"]);
+
     registry.register(cmd);
-    
+
     let found = registry.get("test.custom.cmd");
     assert!(found.is_some());
     assert_eq!(found.unwrap().id, "test.custom.cmd");
@@ -72,7 +69,7 @@ fn registry_register_and_get() {
 #[test]
 fn registry_find_by_shortcut() {
     let registry = CommandRegistry::new();
-    
+
     let keys = vec!["Ctrl".to_string(), "P".to_string()];
     let found = registry.find_by_shortcut(&keys);
     assert!(found.is_some());
