@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	backendToFrontendConnection,
 	frontendToBackendDatabaseInfo
-} from '@/features/connections/api'
+} from '@/features/connections/utils/mapping'
 
 describe('connections/api mapping (mysql)', function () {
 	it('maps frontend MySQL connection fields to backend DatabaseInfo', function () {

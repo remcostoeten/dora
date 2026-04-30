@@ -45,17 +45,19 @@ describe('SqlResults', function () {
 		} as any
 
 		render(
-			<SqlResults
-				result={result}
-				viewMode='table'
-				onViewModeChange={function () {}}
-				onExport={function () {}}
-				connectionId='conn-1'
-				showFilter
-			/>
+			<dataProviderModule.DataProvider forceMock>
+				<SqlResults
+					result={result}
+					viewMode='table'
+					onViewModeChange={function () {}}
+					onExport={function () {}}
+					connectionId='conn-1'
+					showFilter
+				/>
+			</dataProviderModule.DataProvider>
 		)
 
-		fireEvent.change(screen.getByPlaceholderText('Filter results...'), {
+		fireEvent.change(await screen.findByPlaceholderText('Filter results...'), {
 			target: { value: 'Bob' }
 		})
 
