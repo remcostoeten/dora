@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import type { ColumnInfo, DatabaseSchema, IndexInfo, TableInfo } from '@/lib/bindings'
 
 export type SearchState = 'default' | 'match' | 'context' | 'dim'
+export type PulseState = 'idle' | 'insert' | 'update' | 'delete'
 
 export type TableNodeData = {
 	tableId: string
@@ -14,6 +15,8 @@ export type TableNodeData = {
 	rowCountEstimate: number | null
 	searchState: SearchState
 	matchedColumns: string[]
+	/** Live monitor pulse — set when the LiveMonitor detects a change on this table */
+	pulseState: PulseState
 }
 
 export type RelationshipKind = 'one-to-many' | 'one-to-one' | 'many-to-many'
@@ -267,6 +270,7 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 				rowCountEstimate: table.row_count_estimate ?? null,
 				searchState: 'default',
 				matchedColumns: [],
+				pulseState: 'idle',
 			},
 		}
 	})

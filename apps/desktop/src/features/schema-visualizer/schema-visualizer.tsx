@@ -1,5 +1,6 @@
 import {
 	Background,
+	BackgroundVariant,
 	Controls,
 	type EdgeTypes,
 	MiniMap,
@@ -20,9 +21,11 @@ import { useAdapter } from '@/core/data-provider'
 import { getAdapterError } from '@/core/data-provider/types'
 import type { DatabaseSchema } from '@/lib/bindings'
 import { EmptyState } from '@/shared/ui/empty-state'
+import { SchemaVisualizerCanvasLoadingState } from '@/shared/ui/view-loading-shell'
 import { getTableRefId } from '@/shared/utils/table-ref'
 import { RelationshipEdge } from './components/relationship-edge'
 import { SchemaDetailsPanel } from './components/schema-details-panel'
+import { SchemaExportPreviewDialog } from './components/schema-export-preview-dialog'
 import { TableNode } from './components/table-node'
 import { SchemaToolbar, type SearchSuggestion } from './components/schema-toolbar'
 import {
@@ -30,10 +33,23 @@ import {
 	type RelationshipEdgeData,
 	type TableNodeData,
 } from './hooks/use-schema-graph'
+import { useTablePulse } from './hooks/use-table-pulse'
 
 type Props = {
 	activeConnectionId: string | undefined
 	onOpenTable?: (tableId: string, tableName: string) => void
+}
+
+type ExportPreviewState = {
+	open: boolean
+	title: string
+	description: string
+	filename: string
+	language: 'json' | 'sql' | 'typescript'
+	source: string
+	isLoading: boolean
+	onDownload: () => void
+	onCopy: () => void
 }
 
 const NODE_TYPES: NodeTypes = {
@@ -136,6 +152,7 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 	const [editMode, setEditMode] = useState(false)
 	const [selectedTable, setSelectedTable] = useState<TableNodeData | null>(null)
 	const [sqlSource, setSqlSource] = useState('')
+	const [exportPreview, setExportPreview] = useState<ExportPreviewState | null>(null)
 
 	const fetchSchema = useCallback(
 		async (signal: AbortSignal) => {
@@ -236,9 +253,27 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 		Edge<RelationshipEdgeData>
 	>(graphEdges)
 
+	// ── Live Monitor Pulse ──────────────────────────────────────────────────
+	const pulseMap = useTablePulse()
+
 	useEffect(() => {
 		setNodes(positionedGraphNodes)
 	}, [positionedGraphNodes, setNodes])
+
+	// Merge pulse state into nodes whenever pulseMap changes
+	useEffect(function applyPulseToNodes() {
+		if (pulseMap.size === 0) return
+		setNodes(function (currentNodes) {
+			return currentNodes.map(function (node) {
+				const pulse = pulseMap.get(node.data.tableName) || 'idle'
+				if (pulse === node.data.pulseState) return node
+				return {
+					...node,
+					data: { ...node.data, pulseState: pulse },
+				}
+			})
+		})
+	}, [pulseMap, setNodes])
 
 	useEffect(() => {
 		setEdges(graphEdges)
@@ -331,6 +366,16 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 		downloadTextFile('schema.ts', convertSchemaToDrizzle(schema), 'text/typescript')
 	}
 
+	async function getSqlExportSource() {
+		if (!activeConnectionId) return null
+		const result = await adapter.getDatabaseDDL(activeConnectionId)
+		if (!result.ok) {
+			toast({ title: 'Export failed', description: getAdapterError(result), variant: 'destructive' })
+			return null
+		}
+		return result.data
+	}
+
 	function handleCopySql() {
 		if (!sqlSource) return
 		navigator.clipboard.writeText(sqlSource)
@@ -341,6 +386,90 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 		if (!schema) return
 		navigator.clipboard.writeText(convertSchemaToDrizzle(schema))
 		toast({ title: 'Drizzle schema copied' })
+	}
+
+	function closeExportPreview() {
+		setExportPreview(null)
+	}
+
+	function openJsonPreview() {
+		if (!schema) return
+		const source = JSON.stringify(schema, null, 2)
+		setExportPreview({
+			open: true,
+			title: 'Export JSON',
+			description: 'Review the serialized schema before copying or downloading it.',
+			filename: 'schema.json',
+			language: 'json',
+			source,
+			isLoading: false,
+			onCopy: function () {
+				navigator.clipboard.writeText(source)
+				toast({ title: 'JSON copied' })
+			},
+			onDownload: function () {
+				downloadTextFile('schema.json', source, 'application/json')
+			},
+		})
+	}
+
+	async function openSqlPreview() {
+		if (!activeConnectionId) return
+		setExportPreview({
+			open: true,
+			title: 'Export SQL',
+			description: 'Review the generated SQL schema before copying or downloading it.',
+			filename: 'schema.sql',
+			language: 'sql',
+			source: '',
+			isLoading: true,
+			onCopy: function () {},
+			onDownload: function () {},
+		})
+
+		const source = await getSqlExportSource()
+		if (!source) {
+			setExportPreview(null)
+			return
+		}
+
+		setExportPreview({
+			open: true,
+			title: 'Export SQL',
+			description: 'Review the generated SQL schema before copying or downloading it.',
+			filename: 'schema.sql',
+			language: 'sql',
+			source,
+			isLoading: false,
+			onCopy: function () {
+				navigator.clipboard.writeText(source)
+				toast({ title: 'SQL copied' })
+			},
+			onDownload: function () {
+				downloadTextFile('schema.sql', source, 'text/sql')
+			},
+		})
+	}
+
+	function openDrizzlePreview() {
+		if (!schema) return
+		const source = convertSchemaToDrizzle(schema)
+		setExportPreview({
+			open: true,
+			title: 'Export Drizzle',
+			description: 'Review the generated Drizzle schema before copying or downloading it.',
+			filename: 'schema.ts',
+			language: 'typescript',
+			source,
+			isLoading: false,
+			onCopy: function () {
+				navigator.clipboard.writeText(source)
+				toast({ title: 'Drizzle schema copied' })
+			},
+			onDownload: function () {
+				downloadTextFile('schema.ts', source, 'text/typescript')
+			},
+		})
 	}
 
 	function handleOpenSelectedTable() {
@@ -388,11 +517,11 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 					const controller = new AbortController()
 					void fetchSchema(controller.signal)
 				}}
-				onExportJson={handleExportJson}
+				onPreviewJson={openJsonPreview}
 				onExportSvg={handleExportSvg}
 				onExportPng={handleExportPng}
-				onExportSql={handleExportSql}
-				onExportDrizzle={handleExportDrizzle}
+				onPreviewSql={openSqlPreview}
+				onPreviewDrizzle={openDrizzlePreview}
 				tableCount={visibleCounts.tables}
 				relatedTableCount={visibleCounts.relatedTables}
 				edgeCount={visibleCounts.edges}
@@ -410,9 +539,7 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 					</div>
 				) : !schema || schema.tables.length === 0 ? (
 					isLoading ? (
-						<div className='flex h-full items-center justify-center text-muted-foreground text-sm'>
-							Loading schema...
-						</div>
+						<SchemaVisualizerCanvasLoadingState />
 					) : (
 						<EmptyState
 							icon={<Network className='h-16 w-16' />}
@@ -441,7 +568,12 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 						maxZoom={2}
 						proOptions={{ hideAttribution: true }}
 					>
-						<Background gap={16} size={1} />
+						<Background
+							variant={BackgroundVariant.Lines}
+							gap={24}
+							size={0.8}
+							color='rgba(255,255,255,0.07)'
+						/>
 						<Controls showInteractive={false} />
 						{showMinimap && (
 							<MiniMap
@@ -467,6 +599,24 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 					/>
 				)}
 			</div>
+			{exportPreview && (
+				<SchemaExportPreviewDialog
+					open={exportPreview.open}
+					onOpenChange={(open) => {
+						if (!open) {
+							closeExportPreview()
+						}
+					}}
+					title={exportPreview.title}
+					description={exportPreview.description}
+					filename={exportPreview.filename}
+					language={exportPreview.language}
+					source={exportPreview.source}
+					isLoading={exportPreview.isLoading}
+					onCopy={exportPreview.onCopy}
+					onDownload={exportPreview.onDownload}
+				/>
+			)}
 		</div>
 	)
 }

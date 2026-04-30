@@ -1942,7 +1942,7 @@ export function DatabaseStudio({
 
 	// Content view (default)
 	return (
-		<div className='flex flex-col h-full bg-background relative'>
+		<div className='flex h-full min-h-0 flex-col bg-background relative'>
 			<div role='status' aria-live='polite' aria-atomic='true' className='sr-only'>
 				{selectionAnnouncement}
 			</div>
@@ -1978,14 +1978,14 @@ export function DatabaseStudio({
 
 			<div
 				ref={gridContainerRef}
-				className='flex-1 overflow-hidden relative'
+				className='relative min-h-0 flex-1 overflow-hidden'
 				role='region'
 				aria-label={`Table data for ${displayTableName}`}
 				aria-busy={isLoading && !tableData}
 			>
 				{tableData && (
 					<div
-						className='transition-opacity duration-150'
+						className='h-full min-h-0 transition-opacity duration-150'
 						style={{ opacity: isTableTransitioning ? 0 : 1 }}
 					>
 						<DataGrid

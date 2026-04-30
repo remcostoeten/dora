@@ -1,11 +1,20 @@
 use crate::{database::types::DatabaseInfo, error::Error};
 use anyhow::Context;
 use keyring::Entry;
+use percent_encoding::percent_decode_str;
 use std::fmt::Write;
 use url::Url;
 use uuid::Uuid;
 
 const SERVICE_NAME: &str = "Dora";
+
+fn url_password(url: &Url) -> Option<String> {
+    url.password().map(|password| {
+        percent_decode_str(password)
+            .decode_utf8_lossy()
+            .into_owned()
+    })
+}
 
 pub fn extract_sensitive_data(
     mut database_info: DatabaseInfo,
@@ -16,7 +25,7 @@ pub fn extract_sensitive_data(
         } => {
             let mut url =
                 Url::parse(connection_string).context("Failed to parse connection string")?;
-            let password = url.password().map(ToOwned::to_owned);
+            let password = url_password(&url);
             url.set_password(None).map_err(|_| {
                 Error::Any(anyhow::anyhow!(
                     "Failed to remove password from connection string",
@@ -35,7 +44,7 @@ pub fn extract_sensitive_data(
         } => {
             let mut url =
                 Url::parse(connection_string).context("Failed to parse connection string")?;
-            let password = url.password().map(ToOwned::to_owned);
+            let password = url_password(&url);
             url.set_password(None).map_err(|_| {
                 Error::Any(anyhow::anyhow!(
                     "Failed to remove password from connection string",
@@ -155,7 +164,7 @@ mod tests {
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
 
-        assert_eq!(pw.as_deref(), Some("p%404ss"));
+        assert_eq!(pw.as_deref(), Some("p@4ss"));
 
         match sanitized {
             DatabaseInfo::Postgres {
@@ -174,7 +183,7 @@ mod tests {
 
         let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
 
-        assert_eq!(pw.as_deref(), Some("pa%3Ass%40word"));
+        assert_eq!(pw.as_deref(), Some("pa:ss@word"));
         match sanitized {
             DatabaseInfo::Postgres {
                 connection_string, ..

@@ -278,11 +278,11 @@ export function DataGrid({
 	}
 
 	return (
-		<div className='relative h-full w-full overflow-hidden'>
+		<div className='relative h-full min-h-0 w-full overflow-hidden'>
 			<div
 				ref={scrollContainerRef}
 				className={cn(
-					'h-full w-full overflow-auto',
+					'h-full min-h-0 w-full overflow-auto',
 					isRightDragging && 'cursor-grabbing select-none'
 				)}
 				style={{ scrollbarGutter: 'stable' }}
