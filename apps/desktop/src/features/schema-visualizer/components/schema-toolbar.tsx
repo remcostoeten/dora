@@ -39,11 +39,11 @@ type Props = {
 	editMode: boolean
 	onToggleEditMode: () => void
 	onRefresh: () => void
-	onExportJson: () => void
+	onPreviewJson: () => void
 	onExportSvg: () => void
 	onExportPng: () => void
-	onExportSql: () => void
-	onExportDrizzle: () => void
+	onPreviewSql: () => void
+	onPreviewDrizzle: () => void
 	tableCount: number
 	relatedTableCount: number
 	edgeCount: number
@@ -242,7 +242,7 @@ function SearchBox({
 					onFocus={() => setFocused(true)}
 					onKeyDown={handleKeyDown}
 					placeholder='Search tables or columns…'
-					className='h-7 w-full rounded-md border border-input bg-transparent pl-7 pr-6 text-xs outline-none ring-offset-background placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/40 transition-colors'
+					className='sv-toolbar__search-input placeholder:text-muted-foreground'
 				/>
 				{search && (
 					<button
@@ -296,11 +296,11 @@ export function SchemaToolbar({
 	editMode,
 	onToggleEditMode,
 	onRefresh,
-	onExportJson,
+	onPreviewJson,
 	onExportSvg,
 	onExportPng,
-	onExportSql,
-	onExportDrizzle,
+	onPreviewSql,
+	onPreviewDrizzle,
 	tableCount,
 	relatedTableCount,
 	edgeCount,
@@ -335,16 +335,14 @@ export function SchemaToolbar({
 				</ToolbarIconButton>
 				<ToolbarIconButton
 					label={editMode ? 'Disable edit mode' : 'Enable edit mode'}
-					className={cn(editMode && 'bg-sidebar-accent text-primary')}
+					className={cn(editMode && 'sv-toolbar__toggle--active')}
 					onClick={onToggleEditMode}
 				>
 					<MousePointer2 className='h-3.5 w-3.5' />
 				</ToolbarIconButton>
 				<ToolbarIconButton
 					label={showMinimap ? 'Hide minimap' : 'Show minimap'}
-					className={cn(
-						showMinimap && 'bg-sidebar-accent text-primary',
-					)}
+					className={cn(showMinimap && 'sv-toolbar__toggle--active')}
 					onClick={onToggleMinimap}
 				>
 					<MapIcon className='h-3.5 w-3.5' />
@@ -365,10 +363,10 @@ export function SchemaToolbar({
 						<DropdownMenuItem onClick={onExportSvg}>Export SVG</DropdownMenuItem>
 						<DropdownMenuItem onClick={onExportPng}>Export PNG</DropdownMenuItem>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem onClick={onExportSql}>Export SQL</DropdownMenuItem>
-						<DropdownMenuItem onClick={onExportDrizzle}>Export Drizzle</DropdownMenuItem>
+						<DropdownMenuItem onClick={onPreviewSql}>Export SQL</DropdownMenuItem>
+						<DropdownMenuItem onClick={onPreviewDrizzle}>Export Drizzle</DropdownMenuItem>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem onClick={onExportJson}>Export JSON</DropdownMenuItem>
+						<DropdownMenuItem onClick={onPreviewJson}>Export JSON</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
 				<ToolbarIconButton

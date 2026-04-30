@@ -15,10 +15,12 @@ function TableNodeInner({ data, selected }: Props) {
 		primaryKeyColumns,
 		searchState,
 		matchedColumns,
+		pulseState,
 	} = data
 	const isMatch = searchState === 'match'
 	const isContext = searchState === 'context'
 	const isDim = searchState === 'dim'
+	const isPulsing = pulseState !== 'idle'
 	const schemaLabel = schema && schema !== 'public' ? schema : null
 	const rowCountLabel = columns.length === 1 ? '1 column' : `${columns.length} columns`
 
@@ -30,6 +32,10 @@ function TableNodeInner({ data, selected }: Props) {
 				isMatch && 'sv-table-node--match',
 				isContext && 'sv-table-node--context',
 				isDim && 'sv-table-node--dim',
+				isPulsing && 'sv-table-node--pulse',
+				pulseState === 'insert' && 'sv-table-node--pulse-insert',
+				pulseState === 'update' && 'sv-table-node--pulse-update',
+				pulseState === 'delete' && 'sv-table-node--pulse-delete',
 			)}
 		>
 			<div

@@ -113,7 +113,10 @@ export function frontendToBackendDatabaseInfo(conn: FrontendConnection): Databas
 			const database = conn.database || (conn.type === 'mysql' ? 'mysql' : 'postgres')
 			const ssl = conn.ssl ? '?sslmode=require' : ''
 			const protocol = conn.type === 'mysql' ? 'mysql' : 'postgresql'
-			connectionString = `${protocol}://${user}:${password}@${host}:${port}/${database}${ssl}`
+			const encodedUser = encodeURIComponent(user)
+			const encodedPassword = encodeURIComponent(password)
+			const encodedDatabase = encodeURIComponent(database)
+			connectionString = `${protocol}://${encodedUser}:${encodedPassword}@${host}:${port}/${encodedDatabase}${ssl}`
 		}
 		if (conn.type === 'mysql') {
 			return {

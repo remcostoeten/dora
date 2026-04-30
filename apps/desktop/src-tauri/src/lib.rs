@@ -77,6 +77,14 @@ fn configure_linux_webview_backend() {
         std::env::set_var("GDK_BACKEND", "x11");
         log::info!("Forced GDK_BACKEND=x11 on Linux to avoid Wayland WebKit crashes");
     }
+
+    // WebKitGTK's DMABuf renderer can fail to allocate GBM buffers on some
+    // Linux GPU/compositor combinations, leaving startup stuck on messages like
+    // `Failed to create GBM buffer of size 1280x900: Invalid argument`.
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+        log::info!("Disabled WebKit DMABuf renderer on Linux to avoid GBM buffer failures");
+    }
 }
 
 #[allow(clippy::missing_panics_doc)]

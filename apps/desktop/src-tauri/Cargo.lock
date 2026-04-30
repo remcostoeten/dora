@@ -156,6 +156,7 @@ dependencies = [
  "libsql-rusqlite",
  "log",
  "mysql_async",
+ "percent-encoding",
  "pgtemp",
  "rand 0.9.2",
  "reqwest",
