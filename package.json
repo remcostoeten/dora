@@ -1,6 +1,6 @@
 {
 	"name": "dora",
-	"version": "0.0.105",
+	"version": "0.0.111",
 	"private": true,
 	"workspaces": [
 		"apps/*",

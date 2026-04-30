@@ -106,7 +106,7 @@
     },
     "apps/desktop": {
       "name": "@dora/desktop",
-      "version": "0.0.110",
+      "version": "0.0.111",
       "dependencies": {
         "@faker-js/faker": "^10.2.0",
         "@hookform/resolvers": "^3.10.0",
