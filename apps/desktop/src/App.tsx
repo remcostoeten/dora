@@ -12,7 +12,7 @@ import { QueryHistoryProvider } from '@/features/sql-console/stores/query-histor
 import { ThemeSync } from '@/features/sidebar/components/theme-sync'
 import Index from './pages/Index'
 import NotFound from './pages/NotFound'
-
+import { Analytics } from '@remcostoeten/analytics'
 const queryClient = new QueryClient()
 
 function GlobalToaster() {
@@ -69,7 +69,8 @@ function App() {
 					</DataProvider>
 				</PendingEditsProvider>
 			</SettingsProvider>
-		</QueryClientProvider>
+      <Analytics projectId="doradb-demoo" ingestUrl="https://analytics.remcostoeten.nl" />
+      </QueryClientProvider>
 	)
 }
 

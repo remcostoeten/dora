@@ -1,0 +1,35 @@
+{
+    "name": "@dora/marketing",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "packageManager": "bun@1.3.13",
+    "scripts": {
+        "dev": "bun --bun next dev",
+        "seo": "tools/seo/run.sh",
+        "seo:setup": "tools/seo/setup-ci.sh",
+        "seo:prod": "tools/seo/index.sh",
+        "prebuild": "tools/seo/run.sh http://localhost:3000",
+        "build": "bun --bun next build",
+        "build:ci": "bun --bun next build",
+        "start": "bun --bun next start",
+        "typecheck": "bun --bun tsc --noEmit",
+        "format": "bunx oxfmt .",
+        "format:check": "bunx oxfmt --check .",
+        "lint": "bunx oxlint .",
+        "check": "bun run typecheck && bun run format:check && bun run lint && bun run build"
+    },
+    "dependencies": {
+        "next": "16.2.4",
+        "react": "19.2.5",
+        "react-dom": "19.2.5"
+    },
+    "devDependencies": {
+        "@types/node": "^22.16.5",
+        "@types/react": "^19.2.6",
+        "@types/react-dom": "^19.2.3",
+        "oxfmt": "^0.46.0",
+        "oxlint": "^1.61.0",
+        "typescript": "^5.8.3"
+    }
+}

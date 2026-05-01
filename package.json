@@ -35,6 +35,7 @@
 		"release:checksums": "bun tools/scripts/generate-checksums.ts",
 		"release:winget": "bun tools/scripts/generate-winget-manifest.ts",
 		"release:aur": "bun tools/scripts/generate-aur-package.ts",
+		"release:homebrew": "bun tools/scripts/generate-homebrew-cask.ts",
 		"release:apt": "bun tools/scripts/generate-apt-repo.ts",
 		"release:snap:build": "snapcraft pack --use-lxd",
 		"release:snap:build:destructive": "sudo /snap/bin/snapcraft pack --destructive-mode",

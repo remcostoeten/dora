@@ -1,0 +1,150 @@
+name: Homebrew
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.0.111. Leave empty to use latest.
+        required: false
+        type: string
+      publish:
+        description: Push the updated Cask to remcostoeten/homebrew-dora.
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  brew:
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_REPO: remcostoeten/homebrew-dora
+      HOMEBREW_SSH_PRIVATE_KEY: ${{ secrets.HOMEBREW_SSH_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+
+          if [[ -z "$TAG" ]]; then
+            TAG="$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')"
+          fi
+
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve DMG asset URLs and compute SHA-256
+        id: dmg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG="${{ steps.meta.outputs.tag }}"
+
+          ARM_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
+            --jq '.assets[] | select(.name | endswith("_aarch64.dmg")) | .browser_download_url' \
+            | head -1)"
+          INTEL_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
+            --jq '.assets[] | select(.name | endswith("_x64.dmg")) | .browser_download_url' \
+            | head -1)"
+
+          if [[ -z "$ARM_URL" || -z "$INTEL_URL" ]]; then
+            echo "Could not find both DMG assets on release ${TAG}" >&2
+            exit 1
+          fi
+
+          echo "arm_url=$ARM_URL" >> "$GITHUB_OUTPUT"
+          echo "intel_url=$INTEL_URL" >> "$GITHUB_OUTPUT"
+
+          # Download and compute SHA-256
+          curl -sL "$ARM_URL" -o /tmp/dora_arm.dmg
+          ARM_SHA=$(shasum -a 256 /tmp/dora_arm.dmg | awk '{print $1}')
+          curl -sL "$INTEL_URL" -o /tmp/dora_intel.dmg
+          INTEL_SHA=$(shasum -a 256 /tmp/dora_intel.dmg | awk '{print $1}')
+
+          echo "arm_sha=$ARM_SHA" >> "$GITHUB_OUTPUT"
+          echo "intel_sha=$INTEL_SHA" >> "$GITHUB_OUTPUT"
+
+          echo "ARM SHA:   $ARM_SHA"
+          echo "Intel SHA: $INTEL_SHA"
+
+      - name: Generate Homebrew Cask
+        run: |
+          bun run release:homebrew -- \
+            --version=${{ steps.meta.outputs.version }} \
+            --tag=${{ steps.meta.outputs.tag }} \
+            --dmg-url-arm=${{ steps.dmg.outputs.arm_url }} \
+            --dmg-url-intel=${{ steps.dmg.outputs.intel_url }} \
+            --dmg-sha256-arm=${{ steps.dmg.outputs.arm_sha }} \
+            --dmg-sha256-intel=${{ steps.dmg.outputs.intel_sha }}
+
+      - name: Archive Cask file
+        run: |
+          tar -czf homebrew-cask-${{ steps.meta.outputs.version }}.tar.gz \
+            -C packaging/homebrew Casks
+
+      - name: Upload Cask artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-cask-${{ steps.meta.outputs.version }}
+          path: homebrew-cask-${{ steps.meta.outputs.version }}.tar.gz
+
+      - name: Upload Cask to GitHub release
+        if: ${{ github.event_name == 'release' && steps.meta.outputs.tag != '' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ steps.meta.outputs.tag }} homebrew-cask-${{ steps.meta.outputs.version }}.tar.gz --clobber
+
+      - name: Skip Homebrew publish when SSH key is not configured
+        if: ${{ env.HOMEBREW_SSH_PRIVATE_KEY == '' }}
+        shell: bash
+        run: echo "HOMEBREW_SSH_PRIVATE_KEY is not configured. Generated Cask only."
+
+      - name: Publish Cask to Homebrew tap
+        if: ${{ env.HOMEBREW_SSH_PRIVATE_KEY != '' && ((github.event_name == 'release' && vars.HOMEBREW_PACKAGE_READY == 'true') || (github.event_name == 'workflow_dispatch' && inputs.publish)) }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$HOMEBREW_SSH_PRIVATE_KEY" > ~/.ssh/homebrew
+          chmod 600 ~/.ssh/homebrew
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/homebrew -o IdentitiesOnly=yes"
+
+          git clone git@github.com:${HOMEBREW_TAP_REPO}.git homebrew-tap
+          cp packaging/homebrew/Casks/dora.rb homebrew-tap/Casks/dora.rb
+
+          cd homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "Homebrew Cask is already up to date."
+            exit 0
+          fi
+
+          git add Casks/dora.rb
+          git commit -m "Update dora to ${{ steps.meta.outputs.version }}"
+          git push

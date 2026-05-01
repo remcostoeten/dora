@@ -1,0 +1,69 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": ["import", "typescript", "unicorn", "nextjs"],
+    "jsPlugins": [
+        {
+            "name": "dora",
+            "specifier": "./oxlint-rules.js"
+        }
+    ],
+    "ignorePatterns": [".next/**", "coverage/**", "dist/**", "node_modules/**"],
+    "rules": {
+        "eqeqeq": "error",
+        "no-implicit-coercion": "error",
+        "no-nested-ternary": "error",
+        "no-unused-vars": "error",
+        "prefer-const": "error",
+        "max-depth": ["error", { "max": 2 }],
+        "max-lines": [
+            "error",
+            { "max": 220, "skipBlankLines": true, "skipComments": true }
+        ],
+        "max-params": ["error", { "max": 3 }],
+        "complexity": ["error", { "max": 4 }],
+        "import/no-relative-parent-imports": "error",
+        "import/no-duplicates": "error",
+        "import/no-anonymous-default-export": "error",
+        "unicorn/filename-case": [
+            "error",
+            {
+                "cases": {
+                    "kebabCase": true
+                },
+                "ignore": "^(page|layout|route|loading|error|template|not-found|sitemap|robots|manifest|opengraph-image|twitter-image)$"
+            }
+        ],
+        "dora/function-only": "error",
+        "dora/type-prefix": "error",
+        "dora/identifier-words": "error",
+        "dora/import-order": "error",
+        "dora/page-module": "error"
+    },
+    "overrides": [
+        {
+            "files": [
+                "oxlint-rules.js",
+                "oxfmt.config.ts",
+                "next.config.ts",
+                "eslint.config.mjs"
+            ],
+            "rules": {
+                "dora/function-only": "off",
+                "dora/type-prefix": "off",
+                "dora/identifier-words": "off",
+                "dora/import-order": "off",
+                "dora/page-module": "off",
+                "complexity": "off",
+                "max-depth": "off",
+                "max-lines": "off",
+                "max-params": "off"
+            }
+        },
+        {
+            "files": ["src/views/index.ts"],
+            "rules": {
+                "dora/import-order": "off"
+            }
+        }
+    ]
+}

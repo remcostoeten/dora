@@ -1,0 +1,17 @@
+.next/
+.cache/
+node_modules/
+out/
+dist/
+build/
+.vercel/
+.env
+.env*
+!.env.example
+bun.lockb
+*.tsbuildinfo
+.vercel
+
+.venv/
+
+tmp/wW
