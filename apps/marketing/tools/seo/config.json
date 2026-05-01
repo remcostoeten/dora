@@ -1,0 +1,16 @@
+{
+    "thresholds": {
+        "seo": 90,
+        "performance": 85,
+        "lcp": 2500,
+        "cls": 0.1,
+        "size": 500
+    },
+    "report": "tools/seo/report.json",
+    "lighthouse": {
+        "command": "bunx",
+        "args": ["lighthouse"],
+        "chromeFlags": "--headless=new --no-sandbox",
+        "timeout": 120
+    }
+}

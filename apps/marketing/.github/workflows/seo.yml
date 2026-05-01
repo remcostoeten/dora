@@ -1,0 +1,61 @@
+name: SEO
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+jobs:
+    local:
+        name: Local audit
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: 1.x
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+            - run: bun install --frozen-lockfile
+            - run: python -m pip install requests beautifulsoup4
+            - run: bun run build:ci
+            - run: nohup bun --bun next start > /tmp/next.log 2>&1 &
+            - run: python tools/seo/wait.py http://localhost:3000
+            - run: python tools/seo/audit.py http://localhost:3000
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: local-seo-report
+                  path: tools/seo/report.json
+
+    production:
+        name: Production audit
+        runs-on: ubuntu-latest
+        needs: local
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: 1.x
+            - uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+            - run: bun install --frozen-lockfile
+            - run: python -m pip install requests beautifulsoup4
+            - run: bunx vercel pull --yes --environment=production --token="${VERCEL_TOKEN}"
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+            - run: tools/seo/index.sh
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+                  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+                  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+            - uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: production-seo-report
+                  path: tools/seo/report.json

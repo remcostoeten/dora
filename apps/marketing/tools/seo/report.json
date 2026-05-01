@@ -1,0 +1,32 @@
+{
+  "url": "http://localhost:3000",
+  "createdAt": "2026-05-01T00:10:04.847800+00:00",
+  "passed": false,
+  "checks": [
+    {
+      "check": "robots.txt",
+      "value": "missing",
+      "status": "FAIL",
+      "detail": "HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /robots.txt (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=3000): Failed to establish a new connection: [Errno 111] Connection refused\"))"
+    },
+    {
+      "check": "sitemap.xml",
+      "value": "missing",
+      "status": "FAIL",
+      "detail": "HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: /sitemap.xml (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=3000): Failed to establish a new connection: [Errno 111] Connection refused\"))"
+    },
+    {
+      "check": "html",
+      "value": "unreachable",
+      "status": "FAIL",
+      "detail": "HTTPConnectionPool(host='localhost', port=3000): Max retries exceeded with url: / (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=3000): Failed to establish a new connection: [Errno 111] Connection refused\"))"
+    },
+    {
+      "check": "lighthouse",
+      "value": "error",
+      "status": "FAIL",
+      "detail": "bunx timed out after 120s"
+    }
+  ],
+  "lighthouse": null
+}
