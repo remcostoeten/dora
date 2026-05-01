@@ -1,14 +1,7 @@
 type EnvCfg = {
 	enabled: boolean
 	debug?: boolean
-	posthog?: PosthogCfg
 	remcoStoeten?: RemcoStoetenCfg
-}
-
-type PosthogCfg = {
-	enabled: boolean
-	key?: string
-	host?: string
 }
 
 type RemcoStoetenCfg = {
@@ -34,9 +27,6 @@ type Bus = {
 let cfg: EnvCfg = {
 	enabled: false,
 	debug: false,
-	posthog: {
-		enabled: false
-	},
 	remcoStoeten: {
 		enabled: false
 	}
@@ -66,9 +56,6 @@ export function createBus(): Bus {
 	const list: Provider[] = []
 
 	if (cfg.enabled) {
-		if (cfg.posthog?.enabled) {
-			list.push(createPosthog())
-		}
 		if (cfg.remcoStoeten?.enabled) {
 			list.push(createRemcoStoeten())
 		}
@@ -132,50 +119,6 @@ type RemcoStoetenClient = {
 	send: (evt: EvtData) => void
 }
 
-function createPosthog(): Provider {
-	let ready = false
-	let client: unknown = null
-
-	function init(): void {
-		if (ready) return
-
-		const key = cfg.posthog?.key
-		const host = cfg.posthog?.host
-
-		if (!key) {
-			ready = false
-			return
-		}
-
-		try {
-			const mod = require('posthog-js')
-			client = mod.default
-			;(client as { init: (key: string, opts: object) => void }).init(key, {
-				api_host: host ?? 'https://app.posthog.com'
-			})
-			ready = true
-		} catch {
-			ready = false
-		}
-	}
-
-	function send(evt: EvtData): void {
-		if (!ready) init()
-		if (!client) return
-
-		;(client as { capture: (name: string, data: object) => void }).capture(
-			evt.name,
-			evt.data ?? {}
-		)
-	}
-
-	return {
-		name: 'posthog',
-		init,
-		send
-	}
-}
-
 function devLog(evt: EvtData): void {
 	if (!cfg.debug) return
 
@@ -202,10 +145,6 @@ function bootLog(): void {
 	lines.push('analytics configuration')
 	lines.push('mode: ' + mode)
 	lines.push('enabled: ' + bool(cfg.enabled))
-
-	if (cfg.posthog) {
-		lines.push('posthog: ' + bool(cfg.posthog.enabled))
-	}
 
 	if (cfg.remcoStoeten) {
 		lines.push('remcoStoeten: ' + bool(cfg.remcoStoeten.enabled))

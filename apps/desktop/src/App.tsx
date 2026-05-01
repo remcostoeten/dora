@@ -12,7 +12,8 @@ import { QueryHistoryProvider } from '@/features/sql-console/stores/query-histor
 import { ThemeSync } from '@/features/sidebar/components/theme-sync'
 import Index from './pages/Index'
 import NotFound from './pages/NotFound'
-import { Analytics } from '@remcostoeten/analytics'
+import { Analytics as RemcostoetenAnalytics } from '@remcostoeten/analytics'
+import { Analytics as VercelAnalytics } from '@vercel/analytics/react'
 const queryClient = new QueryClient()
 
 function GlobalToaster() {
@@ -69,8 +70,12 @@ function App() {
 					</DataProvider>
 				</PendingEditsProvider>
 			</SettingsProvider>
-      <Analytics projectId="doradb-demoo" ingestUrl="https://analytics.remcostoeten.nl" />
-      </QueryClientProvider>
+				<RemcostoetenAnalytics
+					projectId='doradb-demoo'
+					ingestUrl='https://analytics.remcostoeten.nl'
+				/>
+				<VercelAnalytics />
+			</QueryClientProvider>
 	)
 }
 

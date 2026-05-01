@@ -1,17 +1,28 @@
-# Tauri build artifacts (prevents uploading GBs)
-src-tauri/target
-src-tauri/gen
+# Vercel project metadata
+.vercel
 
 # Dependencies
 node_modules
 
-# Build outputs (if not needed)
+# Tauri/Rust app and generated artifacts
+src-tauri
+**/target
+Cargo.lock
+
+# Local build outputs and generated reports
+dist
+.output
 .turbo
+stats.html
+*.tsbuildinfo
 
 # Environment files
+.env
 .env.local
 .env*.local
 
-# Development
+# Development and local-only files
 *.log
 .DS_Store
+test_queries
+tools
