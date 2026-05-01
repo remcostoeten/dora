@@ -194,3 +194,34 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
+
+  generate-release-notes:
+    needs: [release-linux, release-windows, release-macos, release-macos-intel]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        with:
+          fetch-depth: 0
+
+      - name: setup git-cliff
+        uses: kenji-miyake/setup-git-cliff@v2
+
+      - name: generate release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 "$VERSION^" 2>/dev/null || echo "")
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            echo "No previous tag found, generating notes from all commits"
+            git-cliff --config cliff.toml --tag "$VERSION" > /tmp/release-notes.md
+          else
+            echo "Generating notes from $PREVIOUS_TAG to $VERSION"
+            git-cliff "$PREVIOUS_TAG..$VERSION" --config cliff.toml --tag "$VERSION" > /tmp/release-notes.md
+          fi
+
+          cat /tmp/release-notes.md
+          gh release edit "$VERSION" --notes-file /tmp/release-notes.md
