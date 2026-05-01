@@ -5,7 +5,7 @@ header = """
 All notable changes to this project will be documented in this file.
 """
 body = """
-## [{{ version | default(value="Unreleased") }}]({{ link | default(value="") }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+## [{{ version | default(value="Unreleased") }}]
 
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | upper_first }}
@@ -31,9 +31,10 @@ commit_parsers = [
     { message = "^ci", group = "CI/CD" },
     { message = "^style", group = "Styling" },
     { message = "^build", group = "Build" },
+    { message = ".*", group = "Other" },
 ]
-filter_commits = true
-tag_pattern = "v[0-9]*"
+filter_commits = false
+tag_pattern = "v[0-9]+.*"
 
 [remote.github]
 owner = "remcostoeten"
