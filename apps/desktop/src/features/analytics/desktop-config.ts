@@ -19,7 +19,7 @@ export const desktopAnalyticsConfig = createAnalyticsConfig({
 	remcostoeten: {
 		enabled: envFlag(import.meta.env.VITE_REMCO_ANALYTICS_ENABLED, true),
 		projectId: import.meta.env.VITE_ANALYTICS_PROJECT_ID ?? 'dora-desktop',
-		ingestUrl: import.meta.env.VITE_ANALYTICS_INGEST_URL ?? 'https://analytics.remcostoeten.nl'
+		ingestUrl: import.meta.env.VITE_ANALYTICS_INGEST_URL ?? 'https://ingestion-beryl.vercel.app'
 	},
 	vercel: {
 		enabled: envFlag(import.meta.env.VITE_VERCEL_ANALYTICS_ENABLED, import.meta.env.PROD),
