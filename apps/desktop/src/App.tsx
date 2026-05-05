@@ -7,13 +7,12 @@ import { Toaster } from '@/shared/ui/toaster'
 import { DataProvider } from '@/core/data-provider'
 import { PendingEditsProvider } from '@/core/pending-edits'
 import { SettingsProvider, useSettings } from '@/core/settings'
-import { setCfg } from '@/core/analytics-dispatcher'
+import { AnalyticsProvider } from '@/features/analytics'
+import { desktopAnalyticsConfig } from '@/features/analytics/desktop-config'
 import { QueryHistoryProvider } from '@/features/sql-console/stores/query-history-store'
 import { ThemeSync } from '@/features/sidebar/components/theme-sync'
 import Index from './pages/Index'
 import NotFound from './pages/NotFound'
-import { Analytics as RemcostoetenAnalytics } from '@remcostoeten/analytics'
-import { Analytics as VercelAnalytics } from '@vercel/analytics/react'
 const queryClient = new QueryClient()
 
 function GlobalToaster() {
@@ -27,55 +26,35 @@ function GlobalToaster() {
 	)
 }
 
-if (import.meta.env.DEV) {
-	setCfg({
-		enabled: true,
-		debug: true,
-		remcoStoeten: {
-			enabled: true
-		}
-	})
-} else {
-	setCfg({
-		enabled: true,
-		remcoStoeten: {
-			enabled: true
-		}
-	})
-}
-
 function App() {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<SettingsProvider>
-				<PendingEditsProvider>
-					<DataProvider>
-						<QueryHistoryProvider>
-							<div className='flex flex-col h-screen'>
-								<DemoBanner />
-								<div className='flex-1 overflow-hidden'>
-									<GlobalToaster />
-									<BrowserRouter>
-										<NuqsAdapter>
-											<ThemeSync />
-											<Routes>
-												<Route path='/' element={<Index />} />
-												<Route path='*' element={<NotFound />} />
-											</Routes>
-										</NuqsAdapter>
-									</BrowserRouter>
+			<AnalyticsProvider config={desktopAnalyticsConfig}>
+				<SettingsProvider>
+					<PendingEditsProvider>
+						<DataProvider>
+							<QueryHistoryProvider>
+								<div className='flex flex-col h-screen'>
+									<DemoBanner />
+									<div className='flex-1 overflow-hidden'>
+										<GlobalToaster />
+										<BrowserRouter>
+											<NuqsAdapter>
+												<ThemeSync />
+												<Routes>
+													<Route path='/' element={<Index />} />
+													<Route path='*' element={<NotFound />} />
+												</Routes>
+											</NuqsAdapter>
+										</BrowserRouter>
+									</div>
 								</div>
-							</div>
-						</QueryHistoryProvider>
-					</DataProvider>
-				</PendingEditsProvider>
-			</SettingsProvider>
-				<RemcostoetenAnalytics
-					projectId='doradb-demoo'
-					ingestUrl='https://analytics.remcostoeten.nl'
-				/>
-				<VercelAnalytics />
-			</QueryClientProvider>
+							</QueryHistoryProvider>
+						</DataProvider>
+					</PendingEditsProvider>
+				</SettingsProvider>
+			</AnalyticsProvider>
+		</QueryClientProvider>
 	)
 }
 
