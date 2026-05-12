@@ -67,7 +67,7 @@ jobs:
             echo "No packaging updates required."
             exit 0
           fi
-          git commit -m "chore(aur): update dora-bin to ${{ steps.meta.outputs.version }}"
+          git commit -m "chore(aur): update dora to ${{ steps.meta.outputs.version }}"
           git push
 
       - name: Publish to AUR
@@ -81,7 +81,7 @@ jobs:
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
 
-          git clone ssh://aur@aur.archlinux.org/dora-bin.git aur-repo
+          git clone ssh://aur@aur.archlinux.org/dora.git aur-repo
           cp packaging/aur/PKGBUILD aur-repo/PKGBUILD
           cp packaging/aur/.SRCINFO aur-repo/.SRCINFO
 
@@ -93,7 +93,7 @@ jobs:
             echo "AUR package already up to date."
             exit 0
           fi
-          git commit -m "Update dora-bin to ${{ steps.meta.outputs.version }}"
+          git commit -m "Update dora to ${{ steps.meta.outputs.version }}"
           git push
 
       - name: AUR key not configured

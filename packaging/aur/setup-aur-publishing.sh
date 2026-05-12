@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-shot helper to bootstrap AUR publishing for dora-bin from ~/dev/dora.
+# One-shot helper to bootstrap AUR publishing for dora from ~/dev/dora.
 # It can:
 # - validate repo/workflow files exist
 # - generate an SSH deploy key for AUR
@@ -10,7 +10,7 @@ set -euo pipefail
 # - optionally create and push a release tag
 
 REPO_DIR="${REPO_DIR:-$HOME/dev/dora}"
-AUR_PKG="dora-bin"
+AUR_PKG="dora"
 AUR_REPO_SSH="ssh://aur@aur.archlinux.org/${AUR_PKG}.git"
 KEY_PATH_DEFAULT="$HOME/.ssh/dora_aur_ed25519"
 
@@ -98,6 +98,6 @@ Done.
 Next checks:
 1) Verify GitHub Release includes dora-x86_64-unknown-linux-gnu.tar.gz
 2) Verify AUR workflow run succeeded (.github/workflows/aur.yml)
-3) On Arch: yay -S dora-bin
+3) On Arch: yay -S dora
 
 TXT

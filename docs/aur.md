@@ -1,6 +1,6 @@
-# AUR packaging and publishing (`dora-bin`)
+# AUR packaging and publishing (`dora`)
 
-This repository publishes a lightweight Arch Linux package named `dora-bin` from GitHub Releases.
+This repository publishes a lightweight Arch Linux package named `dora` from GitHub Releases.
 
 ## Design choices
 
@@ -14,11 +14,11 @@ This repository publishes a lightweight Arch Linux package named `dora-bin` from
 ## 1) Create the AUR repository
 
 1. Create/verify an AUR account.
-2. Create the package repository for `dora-bin` on AUR.
+2. Create the package repository for `dora` on AUR.
 3. Clone the AUR repo:
 
 ```bash
-git clone ssh://aur@aur.archlinux.org/dora-bin.git
+git clone ssh://aur@aur.archlinux.org/dora.git
 ```
 
 ## 2) Generate and add SSH deploy key
@@ -60,7 +60,7 @@ This validates PKGBUILD syntax, downloads the release tarball, verifies SHA256, 
    - `packaging/aur/PKGBUILD`
    - `packaging/aur/.SRCINFO`
 6. CI commits packaging updates back to this repository.
-7. CI pushes `PKGBUILD` and `.SRCINFO` to `dora-bin` AUR repo via SSH key.
+7. CI pushes `PKGBUILD` and `.SRCINFO` to `dora` AUR repo via SSH key.
 
 ## 6) Expected release tarball structure
 

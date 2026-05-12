@@ -1,4 +1,4 @@
-pkgbase = dora-bin
+pkgbase = dora
 	pkgdesc = Dora desktop database client (prebuilt binary release)
 	pkgver = 0.0.0
 	pkgrel = 1
@@ -11,8 +11,8 @@ pkgbase = dora-bin
 	depends = openssl
 	depends = libsoup3
 	provides = dora
-	conflicts = dora
-	source = dora-bin-0.0.0.tar.gz::https://github.com/remcostoeten/dora/releases/download/v0.0.0/dora-x86_64-unknown-linux-gnu.tar.gz
+	conflicts = dora-bin
+	source = dora-0.0.0.tar.gz::https://github.com/remcostoeten/dora/releases/download/v0.0.0/dora-x86_64-unknown-linux-gnu.tar.gz
 	sha256sums = REPLACE_WITH_RELEASE_SHA256
 
-pkgname = dora-bin
+pkgname = dora
