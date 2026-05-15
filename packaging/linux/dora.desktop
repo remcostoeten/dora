@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dora
+Comment=Desktop database client
+Exec=dora
+Icon=dora
+Terminal=false
+Categories=Development;Database;
+StartupNotify=true

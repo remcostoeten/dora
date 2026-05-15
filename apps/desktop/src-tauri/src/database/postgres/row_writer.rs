@@ -224,7 +224,36 @@ impl RowWriter {
 
             _ => {
                 let bytes = row.try_get::<_, PgBytes>(column_index)?;
-                if let Ok(value) = std::str::from_utf8(bytes.bytes) {
+                // pgvector `vector` type: 2-byte dim count + 2-byte flags + N×4-byte f32 BE
+                if pg_type.name() == "vector" {
+                    let b = bytes.bytes;
+                    if b.len() >= 4 {
+                        let dims = u16::from_be_bytes([b[0], b[1]]) as usize;
+                        if b.len() == 4 + dims * 4 {
+                            self.buf.push('[');
+                            for i in 0..dims {
+                                if i > 0 {
+                                    self.buf.push(',');
+                                }
+                                let offset = 4 + i * 4;
+                                let f = f32::from_be_bytes([
+                                    b[offset],
+                                    b[offset + 1],
+                                    b[offset + 2],
+                                    b[offset + 3],
+                                ]);
+                                if f.is_finite() {
+                                    write!(&mut self.buf, "{}", f)?;
+                                } else {
+                                    write!(&mut self.buf, "\"{}\"", f)?;
+                                }
+                            }
+                            self.buf.push(']');
+                            return Ok(());
+                        }
+                    }
+                    self.write_json_string(&format!("\\x{}", hex::encode(b)));
+                } else if let Ok(value) = std::str::from_utf8(bytes.bytes) {
                     self.write_json_string(value);
                 } else {
                     log::error!("Unknown type `{:?}`, kind: {:?}", pg_type, pg_type.kind());

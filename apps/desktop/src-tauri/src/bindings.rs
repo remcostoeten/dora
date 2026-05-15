@@ -86,7 +86,14 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::ai_keys_delete,
         db_commands::ai_keys_set_active,
         db_commands::ai_keys_test,
-        db_commands::ai_keys_test_raw
+        db_commands::ai_keys_test_raw,
+        // Storage management
+        db_commands::list_databases,
+        db_commands::get_active_storage_path,
+        db_commands::switch_storage,
+        db_commands::register_database,
+        db_commands::create_database,
+        db_commands::reset_storage
     ])
 }
 

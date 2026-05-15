@@ -105,7 +105,7 @@ export function createTauriAdapter(): DataAdapter {
 			if (!conn) {
 				return err('Connection not found')
 			}
-			const testResult = await commands.testConnection(conn.database_type)
+			const testResult = await commands.testConnection(conn.database_type, conn.id)
 			if (testResult.status === 'ok') {
 				return ok(testResult.data)
 			}

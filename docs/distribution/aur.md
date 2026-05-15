@@ -41,4 +41,4 @@ That should build and install `dora` and provide the `dora` command.
 
 - The remaining manual step is publishing the generated files to the AUR git repository.
 - `yay -S dora` or `paru -S dora` is the user-facing install path once the package is live.
-- `.github/workflows/aur.yml` can generate and publish the AUR package automatically when `AUR_SSH_PRIVATE_KEY` is configured and the repository variable `AUR_PACKAGE_READY=true` is set.
+- `.github/workflows/aur.yml` can generate and publish the AUR package automatically when `AUR_SSH_PRIVATE_KEY` and `AUR_KNOWN_HOSTS` are configured.

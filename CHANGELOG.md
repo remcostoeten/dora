@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0 - Docker Panel UX Overhaul
+
+**Date:** 2026-05-14
+
+**Highlights**
+
+- **Container metrics**: The details panel now shows a live stats grid between Connection and Actions — CPU%, memory usage/limit with mini progress bars (orange above 80%), uptime, state, PID count, primary port, image, and volume info. Stats poll every 5 seconds via `docker stats --no-stream` and gracefully degrade when a container is stopped.
+- **Removed snippets tab**: The "Snippets" tab (Shell/Node/Python/Prisma connection code) has been removed from the Connection section. It was dead weight in the 320px sidebar and has been stripped along with all related state, imports, and the `SnippetHighlight` component.
+- **Password toggle UX fix**: The Connection URL section now has its own eye icon button. Previously, revealing the password in the URL required toggling the eye icon buried inside the Env Vars section — an invisible two-step interaction. Both toggles share the same state so either one works.
+
+## 0.1.1 - Configurable & Swappable SQLite Storage
+
+**Date:** 2026-05-14
+
+**Highlights**
+
+- **Multi-database support**: Dora's internal SQLite path is no longer hardcoded. On first launch a `~/.config/dora/config.toml` is created with a `[[databases]]` list and an `[storage] active` pointer. Additional databases can be registered (point to an existing file) or created (new empty DB with migrations applied).
+- **Env var override**: Set `DORA_STORAGE_PATH=/custom/path/dora.db` to override the config entirely — useful in CI or multi-profile setups.
+- **Runtime switching** (Settings → Storage): Selecting a different database WAL-checkpoints the current connection, opens the new one, runs any pending migrations, and reloads the keyboard-shortcut registry — all without restarting the app.
+- **Reset**: A "Reset database" button in Settings deletes all rows from the active database (with a two-click confirmation guard).
+- **Settings panel — Storage section**: Shows the active file path, lists all registered databases with a Switch button per entry, and exposes New / Register / Reset actions inline.
+
 ## 0.0.110 - Multi-Tab Query Console & Async Row Count
 
 **Date:** 2026-04-27

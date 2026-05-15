@@ -339,6 +339,177 @@ function stripQuotes(s: string): string {
 	return trimmed
 }
 
+type PsqlFlagOptions = {
+	host?: string
+	port?: string
+	user?: string
+	database?: string
+	password?: string
+	sslmode?: string
+}
+
+function tokenizeShellLike(input: string): string[] | null {
+	const tokens: string[] = []
+	let token = ''
+	let quote: '"' | "'" | null = null
+
+	for (let i = 0; i < input.length; i++) {
+		const char = input[i]
+
+		if (quote) {
+			if (char === quote) {
+				quote = null
+			} else {
+				token += char
+			}
+			continue
+		}
+
+		if (char === '"' || char === "'") {
+			quote = char
+			continue
+		}
+
+		if (/\s/.test(char)) {
+			if (token) {
+				tokens.push(token)
+				token = ''
+			}
+			continue
+		}
+
+		token += char
+	}
+
+	if (quote) {
+		return null
+	}
+
+	if (token) {
+		tokens.push(token)
+	}
+
+	return tokens
+}
+
+function parseAssignment(token: string): [string, string] | null {
+	const match = token.match(/^([A-Z_][A-Z0-9_]*)=(.*)$/i)
+	if (!match) {
+		return null
+	}
+	return [match[1].toUpperCase(), stripQuotes(match[2])]
+}
+
+function consumeFlagValue(tokens: string[], index: number, flag: string): string | null {
+	const token = tokens[index]
+	const eqPrefix = `${flag}=`
+	if (token.startsWith(eqPrefix)) {
+		return token.slice(eqPrefix.length)
+	}
+	return tokens[index + 1] || null
+}
+
+function postgresUrlFromPsqlFlags(input: string): string | null {
+	const tokens = tokenizeShellLike(input)
+	if (!tokens?.length) {
+		return null
+	}
+
+	const options: PsqlFlagOptions = {}
+	let psqlIndex = -1
+
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i]
+
+		if (token.toLowerCase() === 'psql') {
+			psqlIndex = i
+			break
+		}
+
+		const assignment = parseAssignment(token)
+		if (!assignment) {
+			return null
+		}
+
+		const [key, value] = assignment
+		if (key === 'PGPASSWORD') {
+			options.password = value
+		}
+	}
+
+	if (psqlIndex === -1) {
+		return null
+	}
+
+	for (let i = psqlIndex + 1; i < tokens.length; i++) {
+		const token = tokens[i]
+
+		if (isValidConnectionUrl(token)) {
+			return token
+		}
+
+		const readValue = (flag: string) => consumeFlagValue(tokens, i, flag)
+
+		switch (token) {
+			case '-h':
+			case '--host':
+				options.host = readValue(token) || undefined
+				i += 1
+				break
+			case '-p':
+			case '--port':
+				options.port = readValue(token) || undefined
+				i += 1
+				break
+			case '-U':
+			case '--username':
+				options.user = readValue(token) || undefined
+				i += 1
+				break
+			case '-d':
+			case '--dbname':
+				options.database = readValue(token) || undefined
+				i += 1
+				break
+			default:
+				if (token.startsWith('--host=')) {
+					options.host = readValue('--host') || undefined
+				} else if (token.startsWith('--port=')) {
+					options.port = readValue('--port') || undefined
+				} else if (token.startsWith('--username=')) {
+					options.user = readValue('--username') || undefined
+				} else if (token.startsWith('--dbname=')) {
+					options.database = readValue('--dbname') || undefined
+				} else if (token.includes('=')) {
+					const [key, value] = token.split(/=(.*)/s, 2)
+					if (key === 'sslmode') {
+						options.sslmode = value
+					}
+				}
+		}
+	}
+
+	if (!options.host || !options.user) {
+		return null
+	}
+
+	const database = options.database || PROVIDER_CONFIGS.postgres.defaultDatabase
+	const port = options.port || PROVIDER_CONFIGS.postgres.defaultPort.toString()
+	let url = `postgresql://${encodeURIComponent(options.user)}`
+
+	if (options.password) {
+		url += `:${encodeURIComponent(options.password)}`
+	}
+
+	url += `@${options.host}:${port}/${encodeURIComponent(database)}`
+
+	if (options.sslmode) {
+		url += `?sslmode=${encodeURIComponent(options.sslmode)}`
+	}
+
+	return url
+}
+
 /**
  * Connection URL Sanitizer
  *
@@ -349,6 +520,7 @@ function stripQuotes(s: string): string {
  * - Plain URL: postgresql://user:pass@host/db, libsql://db.turso.io
  * - URL wrapped in quotes: "postgresql://...", 'libsql://...'
  * - psql wrapper: psql "postgresql://...", psql 'postgresql://...'
+ * - psql flags: PGPASSWORD=pw psql -h host -p 5432 -U user -d db sslmode=require
  * - Single env var assignment: DATABASE_URL=postgresql://..., DB_URL="libsql://..."
  * - Combined: DATABASE_URL="psql 'postgresql://...'"
  *
@@ -386,6 +558,10 @@ export function sanitizeConnectionUrl(input: string): string {
 			assignedValue.startsWith('$') ||
 			(assignedValue.includes(' ') && assignedValue.includes('='))
 		) {
+			const psqlUrl = postgresUrlFromPsqlFlags(value)
+			if (psqlUrl) {
+				return psqlUrl
+			}
 			return value // Return as-is, let the dialect parser handle it
 		}
 		value = assignedValue
@@ -404,6 +580,13 @@ export function sanitizeConnectionUrl(input: string): string {
 
 	// Step 4: Strip any remaining outer quotes
 	value = stripQuotes(value)
+
+	if (!isValidConnectionUrl(value)) {
+		const psqlUrl = postgresUrlFromPsqlFlags(input)
+		if (psqlUrl) {
+			return psqlUrl
+		}
+	}
 
 	return value
 }

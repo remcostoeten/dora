@@ -116,9 +116,10 @@ pub async fn remove_connection(
 #[specta::specta]
 pub async fn test_connection(
     database_info: DatabaseInfo,
+    connection_id: Option<Uuid>,
     certificates: State<'_, crate::database::Certificates>,
 ) -> Result<bool, Error> {
-    ConnectionService::test_connection(database_info, &certificates).await
+    ConnectionService::test_connection(database_info, connection_id, &certificates).await
 }
 
 #[tauri::command]

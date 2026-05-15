@@ -11,6 +11,7 @@ type Props = {
 	value: string
 	onChange: (value: string) => void
 	onExecute: (sql?: string) => void
+	onSave?: () => void
 	isExecuting: boolean
 	tables: TableInfo[]
 }
@@ -126,7 +127,7 @@ function getNextStepKeywords(beforeLower: string): string[] {
 	return []
 }
 
-export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
+export function SqlEditor({ value, onChange, onExecute, onSave, isExecuting, tables }: Props) {
 	const [editorFontSize] = useSetting('editorFontSize')
 	const [editorThemeSetting] = useSetting('editorTheme')
 	const [enableVimMode] = useSetting('enableVimMode')
@@ -137,11 +138,16 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: P
 	const statusBarRef = useRef<HTMLDivElement | null>(null)
 	const loadedThemesRef = useRef<Set<string>>(new Set())
 	const onExecuteRef = useRef(onExecute)
+	const onSaveRef = useRef(onSave)
 	const completionProviderRef = useRef<Monaco.IDisposable | null>(null)
 
 	useEffect(() => {
 		onExecuteRef.current = onExecute
 	}, [onExecute])
+
+	useEffect(() => {
+		onSaveRef.current = onSave
+	}, [onSave])
 
 	function getThemeFromDocument(): MonacoTheme {
 		if (typeof document !== 'undefined') {
@@ -253,6 +259,10 @@ export function SqlEditor({ value, onChange, onExecute, isExecuting, tables }: P
 		// Register Execute command (Ctrl/Cmd + Enter)
 		editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
 			triggerExecution(editor)
+		})
+
+		editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+			onSaveRef.current?.()
 		})
 
 		// Add "Run line" glyph margin listener

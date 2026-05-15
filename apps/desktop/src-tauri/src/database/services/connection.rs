@@ -16,6 +16,36 @@ use crate::{
     storage::Storage,
 };
 
+fn clean_postgres_connection_string(connection_string: &str) -> (String, bool, bool) {
+    let Ok(mut url) = url::Url::parse(connection_string) else {
+        return (connection_string.to_string(), false, false);
+    };
+
+    let mut disable_channel_binding = false;
+    let mut verify_tls = false;
+    let params: Vec<_> = url
+        .query_pairs()
+        .filter_map(|(key, value)| {
+            if key == "channel_binding" {
+                disable_channel_binding = value.eq_ignore_ascii_case("disable");
+                None
+            } else if key == "sslmode" && matches!(value.as_ref(), "verify-ca" | "verify-full") {
+                verify_tls = true;
+                Some((key.into_owned(), "require".to_string()))
+            } else {
+                Some((key.into_owned(), value.into_owned()))
+            }
+        })
+        .collect();
+
+    url.query_pairs_mut().clear().extend_pairs(params);
+    if url.query().is_some_and(str::is_empty) {
+        url.set_query(None);
+    }
+
+    (url.to_string(), disable_channel_binding, verify_tls)
+}
+
 pub struct ConnectionService<'a> {
     pub connections: &'a DashMap<Uuid, DatabaseConnection>,
     pub storage: &'a Storage,
@@ -326,30 +356,20 @@ impl<'a> ConnectionService<'a> {
                     }
                 }
 
-                let cleaned_string = if let Ok(mut url) = url::Url::parse(&*connection_string) {
-                    let params: Vec<_> = url
-                        .query_pairs()
-                        .filter(|(k, _)| k != "channel_binding")
-                        .map(|(k, v)| format!("{}={}", k, v))
-                        .collect();
-
-                    let query_string = params.join("&");
-                    url.set_query(if params.is_empty() {
-                        None
-                    } else {
-                        Some(&query_string)
-                    });
-                    url.to_string()
-                } else {
-                    connection_string.clone()
-                };
+                let (cleaned_string, disable_channel_binding, verify_tls) =
+                    clean_postgres_connection_string(connection_string);
 
                 let mut config: tokio_postgres::Config =
                     cleaned_string.parse().with_context(|| {
                         format!("Failed to parse connection string: {}", cleaned_string)
                     })?;
+                if disable_channel_binding {
+                    config.channel_binding(tokio_postgres::config::ChannelBinding::Disable);
+                }
                 if config.get_password().is_none() {
-                    credentials::get_password(&connection_id)?.map(|pw| config.password(pw));
+                    if let Some(pw) = credentials::get_password(&connection_id)? {
+                        config.password(pw);
+                    }
                 }
 
                 if let Some(tun) = tunnel {
@@ -367,7 +387,7 @@ impl<'a> ConnectionService<'a> {
                     // For now, let's assume standard behavior.
                 }
 
-                match connect(&config, certificates).await {
+                match connect(&config, certificates, verify_tls).await {
                     Ok((pg_client, conn_check)) => {
                         *client = Some(Arc::new(pg_client));
                         connection.connected = true;
@@ -684,6 +704,7 @@ impl ConnectionService<'_> {
     #[instrument(skip(database_info, certificates))]
     pub async fn test_connection(
         database_info: DatabaseInfo,
+        connection_id: Option<Uuid>,
         certificates: &Certificates,
     ) -> Result<bool, Error> {
         match database_info {
@@ -723,28 +744,24 @@ impl ConnectionService<'_> {
                     None
                 };
 
-                let cleaned_string = if let Ok(mut url) = url::Url::parse(&connection_string) {
-                    let params: Vec<_> = url
-                        .query_pairs()
-                        .filter(|(k, _)| k != "channel_binding")
-                        .map(|(k, v)| format!("{}={}", k, v))
-                        .collect();
-
-                    let query_string = params.join("&");
-                    url.set_query(if params.is_empty() {
-                        None
-                    } else {
-                        Some(&query_string)
-                    });
-                    url.to_string()
-                } else {
-                    connection_string.clone()
-                };
+                let (cleaned_string, disable_channel_binding, verify_tls) =
+                    clean_postgres_connection_string(&connection_string);
 
                 let mut config: tokio_postgres::Config =
                     cleaned_string.parse().with_context(|| {
                         format!("Failed to parse connection string: {}", cleaned_string)
                     })?;
+                if disable_channel_binding {
+                    config.channel_binding(tokio_postgres::config::ChannelBinding::Disable);
+                }
+
+                if config.get_password().is_none() {
+                    if let Some(ref id) = connection_id {
+                        if let Some(pw) = credentials::get_password(id)? {
+                            config.password(pw);
+                        }
+                    }
+                }
 
                 if let Some(ref tun) = temp_tunnel {
                     let local_port = tun.local_port;
@@ -754,7 +771,7 @@ impl ConnectionService<'_> {
                 }
 
                 log::info!("Testing Postgres connection: {config:?}");
-                match connect(&config, certificates).await {
+                match connect(&config, certificates, verify_tls).await {
                     Ok(_) => {
                         drop(temp_tunnel);
                         Ok(true)
