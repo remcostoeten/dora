@@ -12,7 +12,8 @@ import {
 	Download,
 	Check,
 	X,
-	Info
+	Info,
+	Terminal
 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/shared/ui/button'
@@ -31,7 +32,7 @@ import { cn } from '@/shared/utils/cn'
 import { TableItem, SortedColumn } from '../types'
 import { TableContextMenu } from './table-context-menu'
 
-type TableRightClickAction =
+export type TableRightClickAction =
 	| 'view-table'
 	| 'view-info'
 	| 'edit-name'
@@ -41,6 +42,7 @@ type TableRightClickAction =
 	| 'export-schema'
 	| 'export-json'
 	| 'export-sql'
+	| 'open-in-sql-console'
 
 function getTableIcon(type: TableItem['type']) {
 	switch (type) {
@@ -271,6 +273,10 @@ function TableItemRow({
 				<ContextMenuItem onClick={() => handleRightClickAction('view-table')}>
 					<Eye className='h-4 w-4 mr-2' />
 					<span>View table</span>
+				</ContextMenuItem>
+				<ContextMenuItem onClick={() => handleRightClickAction('open-in-sql-console')}>
+					<Terminal className='h-4 w-4 mr-2' />
+					<span>Open in SQL console</span>
 				</ContextMenuItem>
 				<ContextMenuItem onClick={startEditing}>
 					<Pencil className='h-4 w-4 mr-2' />

@@ -7,7 +7,7 @@ import type { NavItem } from './types'
 const navItemVariants = cva(
 	[
 		'relative flex items-center justify-center transition-colors',
-		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
+		'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring/30 focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar',
 		'disabled:pointer-events-none disabled:opacity-40'
 	],
 	{

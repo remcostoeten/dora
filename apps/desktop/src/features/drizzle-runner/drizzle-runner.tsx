@@ -1,11 +1,10 @@
-import { PanelLeft, Code, Play, Sparkles, Download, Loader2, Braces } from 'lucide-react'
+import { PanelLeft, Play, Sparkles, Download, Loader2, Braces } from 'lucide-react'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useIsTauri } from '@/core/data-provider'
 import { getAdapterError } from '@/core/data-provider/types'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/utils/cn'
-import { CheatsheetPanel } from './components/cheatsheet-panel'
 import { CodeEditor } from './components/code-editor'
 import { ResultsPanel } from './components/results-panel'
 import { SchemaViewer } from './components/schema-viewer'
@@ -25,7 +24,6 @@ export function DrizzleRunner({ connectionId, onToggleSidebar }: Props) {
 	const [isExecuting, setIsExecuting] = useState(false)
 	const [showJson, setShowJson] = useState(false)
 	const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-	const [showCheatsheet, setShowCheatsheet] = useState(false)
 	const [schemaTables, setSchemaTables] = useState<SchemaTable[]>([])
 
 	const activeConnectionId = useMemo(
@@ -121,10 +119,6 @@ export function DrizzleRunner({ connectionId, onToggleSidebar }: Props) {
 		URL.revokeObjectURL(url)
 	}, [result])
 
-	const handleInsertSnippet = useCallback((code: string) => {
-		setQueryCode((prev) => prev + '\n' + code)
-	}, [])
-
 	return (
 		<div className='flex h-full w-full flex-col bg-background overflow-hidden text-sm'>
 			{/* Main Toolbar / Header */}
@@ -216,16 +210,6 @@ export function DrizzleRunner({ connectionId, onToggleSidebar }: Props) {
 					>
 						{isSidebarCollapsed ? 'Show Schema' : 'Hide Schema'}
 					</Button>
-
-					<Button
-						variant='ghost'
-						size='sm'
-						className={cn('h-7 text-xs gap-1.5', showCheatsheet && 'bg-sidebar-accent')}
-						onClick={() => setShowCheatsheet(!showCheatsheet)}
-					>
-						<Code className='h-3.5 w-3.5' />
-						<span>{showCheatsheet ? 'Hide' : 'Cheatsheet'}</span>
-					</Button>
 				</div>
 			</div>
 
@@ -285,26 +269,6 @@ export function DrizzleRunner({ connectionId, onToggleSidebar }: Props) {
 					</PanelGroup>
 				</Panel>
 
-				<PanelResizeHandle
-					className={cn(
-						'w-1 bg-transparent hover:bg-primary/20 transition-colors',
-						!showCheatsheet && 'hidden'
-					)}
-				/>
-
-				<Panel
-					defaultSize={20}
-					minSize={15}
-					maxSize={40}
-					collapsible={true}
-					collapsedSize={0}
-				>
-					<CheatsheetPanel
-						isOpen={showCheatsheet}
-						onToggle={() => setShowCheatsheet(!showCheatsheet)}
-						onInsertSnippet={handleInsertSnippet}
-					/>
-				</Panel>
 			</PanelGroup>
 		</div>
 	)

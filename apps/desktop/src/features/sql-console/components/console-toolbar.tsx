@@ -1,6 +1,5 @@
 import {
-	BookOpen,
-	PanelLeftClose,
+	PanelRight,
 	Loader2,
 	Sparkles,
 	Play,
@@ -8,7 +7,8 @@ import {
 	Braces,
 	Filter,
 	Clock,
-	Bookmark
+	Bookmark,
+	Database
 } from 'lucide-react'
 
 import { Button } from '@/shared/ui/button'
@@ -21,10 +21,8 @@ import {
 import { cn } from '@/shared/utils/cn'
 
 type Props = {
-	onToggleLeftSidebar: () => void
-	onToggleCheatsheet?: () => void
-	showLeftSidebar: boolean
-	showCheatsheet?: boolean
+	onToggleRightSidebar: () => void
+	showRightSidebar: boolean
 	isExecuting: boolean
 	mode: 'sql' | 'drizzle'
 	onModeChange: (mode: 'sql' | 'drizzle') => void
@@ -40,13 +38,14 @@ type Props = {
 	showHistory?: boolean
 	onToggleHistory?: () => void
 	onSave?: () => void
+	connectionName?: string
 }
 
 function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
 	return (
 		<kbd
 			className={cn(
-				'pointer-events-none inline-flex h-4 select-none items-center gap-1 rounded border border-sidebar-border bg-sidebar-accent px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100',
+				'pointer-events-none inline-flex h-4 min-w-4 select-none items-center justify-center gap-1 rounded border border-sidebar-border bg-sidebar-accent/70 px-1 font-mono text-[10px] font-medium leading-none text-muted-foreground',
 				className
 			)}
 		>
@@ -55,11 +54,75 @@ function Kbd({ children, className }: { children: React.ReactNode; className?: s
 	)
 }
 
+type ToolbarIconButtonProps = {
+	label: string
+	active?: boolean
+	disabled?: boolean
+	onClick?: () => void
+	children: React.ReactNode
+}
+
+function ToolbarIconButton({
+	label,
+	active,
+	disabled,
+	onClick,
+	children
+}: ToolbarIconButtonProps) {
+	return (
+		<Button
+			variant='ghost'
+			size='icon'
+			className={cn(
+				'h-8 w-8 rounded-md text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97]',
+				'hover:bg-sidebar-accent hover:text-sidebar-foreground',
+				active && 'bg-sidebar-accent text-sidebar-foreground',
+				disabled && 'cursor-not-allowed opacity-45'
+			)}
+			onClick={onClick}
+			disabled={disabled}
+			title={label}
+			aria-label={label}
+		>
+			{children}
+		</Button>
+	)
+}
+
+function ModeTab({
+	active,
+	children,
+	shortcut,
+	onClick
+}: {
+	active: boolean
+	children: React.ReactNode
+	shortcut: string
+	onClick: () => void
+}) {
+	return (
+		<button
+			type='button'
+			onClick={onClick}
+			className={cn(
+				'inline-flex h-8 items-center gap-2 rounded-md px-3 text-sm font-medium',
+				'transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.97]',
+				active
+					? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
+					: 'text-muted-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'
+			)}
+		>
+			<span>{children}</span>
+			<Kbd className={cn(active && 'border-sidebar-border/80 bg-background/35 text-sidebar-foreground/70')}>
+				{shortcut}
+			</Kbd>
+		</button>
+	)
+}
+
 export function ConsoleToolbar({
-	onToggleLeftSidebar,
-	onToggleCheatsheet,
-	showLeftSidebar,
-	showCheatsheet = false,
+	onToggleRightSidebar,
+	showRightSidebar,
 	isExecuting,
 	mode,
 	onModeChange,
@@ -74,170 +137,102 @@ export function ConsoleToolbar({
 	onToggleFilter,
 	showHistory,
 	onToggleHistory,
-	onSave
+	onSave,
+	connectionName
 }: Props) {
 	return (
-		<div className='flex items-center justify-between h-10 px-3 border-b border-sidebar-border bg-sidebar shrink-0'>
-			{/* Left side - sidebar toggles */}
-			<div className='flex items-center gap-2'>
-				<Button
-					variant='ghost'
-					size='icon'
-					className='h-7 w-7 text-muted-foreground hover:text-sidebar-foreground'
-					onClick={onToggleLeftSidebar}
-					title={showLeftSidebar ? 'Hide query panel' : 'Show query panel'}
-				>
-					<PanelLeftClose
-						className={showLeftSidebar ? '' : 'rotate-180'}
-						style={{ width: 16, height: 16 }}
-					/>
-				</Button>
+		<div className='flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-3 py-2'>
+			<div className='flex min-w-0 items-center gap-3'>
+				<div className='hidden min-w-0 items-center gap-2 rounded-md border border-sidebar-border/60 bg-sidebar-accent/35 px-2.5 py-1.5 text-xs text-muted-foreground lg:flex'>
+					<Database className='h-3.5 w-3.5 shrink-0' />
+					<span className='max-w-48 truncate font-medium text-sidebar-foreground'>
+						{connectionName || 'No connection'}
+					</span>
+				</div>
 
 				{onToggleHistory && (
-					<Button
-						variant='ghost'
-						size='icon'
-						className={cn(
-							'h-7 w-7 text-muted-foreground hover:text-sidebar-foreground',
-							showHistory && 'bg-sidebar-accent'
-						)}
+					<ToolbarIconButton
+						label='Toggle history panel'
+						active={showHistory}
 						onClick={onToggleHistory}
-						title='Toggle history panel'
 					>
 						<Clock style={{ width: 16, height: 16 }} />
-					</Button>
+					</ToolbarIconButton>
 				)}
 
-				{/* Mode Switcher - Tab Style */}
-				<div className='flex items-end h-full ml-4 self-stretch'>
-					<button
+				<div className='flex items-center gap-1 rounded-lg border border-sidebar-border/70 bg-background/25 p-1'>
+					<ModeTab
+						active={mode === 'sql'}
 						onClick={() => onModeChange?.('sql')}
-						className={cn(
-							'flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all border-b-2',
-							mode === 'sql'
-								? 'border-primary text-foreground'
-								: 'border-transparent text-muted-foreground hover:text-foreground'
-						)}
+						shortcut='S'
 					>
 						SQL
-						<Kbd>S</Kbd>
-					</button>
-					<button
+					</ModeTab>
+					<ModeTab
+						active={mode === 'drizzle'}
 						onClick={() => onModeChange?.('drizzle')}
-						className={cn(
-							'flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all border-b-2',
-							mode === 'drizzle'
-								? 'border-primary text-foreground'
-								: 'border-transparent text-muted-foreground hover:text-foreground'
-						)}
+						shortcut='D'
 					>
 						Drizzle
-						<Kbd>D</Kbd>
-					</button>
+					</ModeTab>
 				</div>
 			</div>
 
-			{/* Center - Editor Actions */}
-			<div className='flex items-center gap-1 mx-4'>
+			<div className='flex shrink-0 items-center gap-1.5'>
 				{onSave && (
 					<Button
 						size='sm'
 						variant='ghost'
-						className='h-7 px-2 gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground'
+						className='h-8 gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97]'
 						onClick={onSave}
 						title='Save to Snippet Library'
 					>
 						<Bookmark className='h-3.5 w-3.5' />
-						<span className='hidden sm:inline'>Save</span>
+						<span className='hidden md:inline'>Save</span>
+						<Kbd className='ml-0.5 inline-flex'>⌘S</Kbd>
 					</Button>
 				)}
 
-				<div className='w-px h-4 bg-border/50 mx-1' />
-
-				{onRun && (
-					<Button
-						size='sm'
-						variant='default'
-						className={cn(
-							'h-7 px-3 gap-1.5 text-xs font-medium shadow-sm transition-all',
-							isExecuting
-								? 'bg-muted text-muted-foreground cursor-wait'
-								: 'bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-105 active:scale-95'
-						)}
-						onClick={onRun}
-						disabled={isExecuting}
-					>
-						{isExecuting ? (
-							<Loader2 className='h-3 w-3 animate-spin' />
-						) : (
-							<Play className='h-3 w-3 fill-current' />
-						)}
-						<span>{isExecuting ? 'Running...' : 'Run'}</span>
-						<Kbd className='ml-1 bg-emerald-700/20 text-emerald-100 border-emerald-500/30'>
-							⌘+↵
-						</Kbd>
-					</Button>
-				)}
-
-				<div className='w-px h-4 bg-border/50 mx-1' />
+				<div className='mx-1 h-5 w-px bg-sidebar-border/70' />
 
 				{onPrettify && (
-					<Button
-						variant='ghost'
-						size='icon'
-						className='h-7 w-7 text-muted-foreground hover:text-foreground'
+					<ToolbarIconButton
+						label='Format code (Shift+Alt+F)'
 						onClick={onPrettify}
-						title='Format code (Shift+Alt+F)'
 					>
 						<Sparkles className='h-3.5 w-3.5' />
-					</Button>
+					</ToolbarIconButton>
 				)}
 
 				{onShowJsonToggle && (
-					<Button
-						variant='ghost'
-						size='icon'
-						className={cn(
-							'h-7 w-7 text-muted-foreground hover:text-foreground',
-							showJson && 'text-primary bg-primary/10'
-						)}
+					<ToolbarIconButton
+						label='Toggle JSON view'
+						active={showJson}
 						onClick={onShowJsonToggle}
-						title='Toggle JSON view'
 					>
 						<Braces className='h-3.5 w-3.5' />
-					</Button>
+					</ToolbarIconButton>
 				)}
 
 				{onToggleFilter && (
-					<Button
-						variant='ghost'
-						size='icon'
-						className={cn(
-							'h-7 w-7 text-muted-foreground hover:text-foreground',
-							showFilter && 'text-primary bg-primary/10'
-						)}
+					<ToolbarIconButton
+						label='Toggle filter'
+						active={showFilter}
 						onClick={onToggleFilter}
-						title='Toggle filter'
 					>
 						<Filter className='h-3.5 w-3.5' />
-					</Button>
+					</ToolbarIconButton>
 				)}
 
 				{onExport && (
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button
-								variant='ghost'
-								size='icon'
-								className={cn(
-									'h-7 w-7 text-muted-foreground hover:text-foreground',
-									!hasResults && 'opacity-50 cursor-not-allowed'
-								)}
+							<ToolbarIconButton
+								label='Export results'
 								disabled={!hasResults}
-								title='Export results'
 							>
 								<Download className='h-3.5 w-3.5' />
-							</Button>
+							</ToolbarIconButton>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align='end'>
 							<DropdownMenuItem onClick={onExport}>Export as JSON</DropdownMenuItem>
@@ -245,22 +240,53 @@ export function ConsoleToolbar({
 						</DropdownMenuContent>
 					</DropdownMenu>
 				)}
-			</div>
 
-			{/* Right side - sidebar toggle */}
-			<div className='flex items-center gap-1'>
+				<div className='mx-1 h-5 w-px bg-sidebar-border/70' />
+
+				{onRun && (
+					<Button
+						size='sm'
+						variant='default'
+						className={cn(
+							'h-8 gap-2 rounded-md px-3 text-sm font-semibold shadow-sm',
+							'transition-[background-color,color,transform,box-shadow] duration-150 ease-out active:scale-[0.97]',
+							isExecuting
+								? 'cursor-wait bg-muted text-muted-foreground'
+								: 'bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90'
+						)}
+						onClick={onRun}
+						disabled={isExecuting}
+					>
+						{isExecuting ? (
+							<Loader2 className='h-3.5 w-3.5 animate-spin' />
+						) : (
+							<Play className='h-3.5 w-3.5 fill-current' />
+						)}
+						<span>{isExecuting ? 'Running' : 'Run'}</span>
+						<Kbd className='inline-flex border-white/40 bg-black/40 text-white'>
+							⌘↵
+						</Kbd>
+					</Button>
+				)}
+
 				<Button
 					variant='ghost'
 					size='sm'
 					className={cn(
-						'h-7 px-2 text-xs gap-1.5',
-						showCheatsheet && 'bg-sidebar-accent'
+						'h-8 gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97]',
+						showRightSidebar && 'bg-sidebar-accent'
 					)}
-					onClick={onToggleCheatsheet}
-					title='Toggle cheatsheet'
+					onClick={onToggleRightSidebar}
+					title='Toggle snippets'
 				>
-					<BookOpen className='h-3.5 w-3.5' />
-					<span className='hidden sm:inline'>Cheatsheet</span>
+					<PanelRight
+						className={cn(
+							'h-3.5 w-3.5 transition-transform duration-200',
+							showRightSidebar && 'rotate-180'
+						)}
+						style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
+					/>
+					<span className='hidden xl:inline'>Snippets</span>
 				</Button>
 			</div>
 		</div>

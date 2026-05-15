@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod connections;
+pub mod storage;
 pub mod live_monitor;
 pub mod mutation;
 pub mod query;
@@ -25,6 +26,7 @@ pub use seeding::*;
 pub use settings::*;
 pub use snippet_folders::*;
 pub use snippets::*;
+pub use storage::*;
 
 // Type re-exports preserved for external use (frontend bindings, maintenance.rs consumers).
 pub use crate::database::metadata::DatabaseMetadata;

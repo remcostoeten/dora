@@ -3,6 +3,7 @@
 
 mod bindings;
 pub mod commands_system;
+pub mod config;
 pub mod credentials;
 pub mod database;
 mod error;
@@ -45,8 +46,8 @@ pub struct AppState {
 
 impl AppState {
     pub fn new() -> Result<Self> {
-        let data_dir = dirs::data_dir().expect("Failed to get data directory");
-        let db_path = data_dir.join("Dora").join("Dora.db");
+        let config = config::AppConfig::load()?;
+        let db_path = config.resolve_active_path()?;
 
         let storage = Storage::new(db_path)?;
 
@@ -242,6 +243,13 @@ pub fn run() {
             test_queries::populate_test_queries_command,
             // Utils
             utils::check_tcp_port,
+            // Storage management
+            database::commands::list_databases,
+            database::commands::get_active_storage_path,
+            database::commands::switch_storage,
+            database::commands::register_database,
+            database::commands::create_database,
+            database::commands::reset_storage,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

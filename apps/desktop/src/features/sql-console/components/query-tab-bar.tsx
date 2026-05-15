@@ -199,6 +199,15 @@ export function QueryTabBar() {
 						</ContextMenu>
 					)
 				})}
+
+				{/* New tab button — sits right after the last tab */}
+				<button
+					className='flex items-center justify-center h-full w-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors'
+					onClick={addTab}
+					title='New tab (Ctrl+T)'
+				>
+					<Plus className='h-3.5 w-3.5' />
+				</button>
 			</div>
 
 			{/* Scroll right button */}
@@ -211,15 +220,6 @@ export function QueryTabBar() {
 					<ChevronRight className='h-3 w-3' />
 				</button>
 			)}
-
-			{/* New tab button */}
-			<button
-				className='flex items-center justify-center h-full w-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50 transition-colors border-l border-sidebar-border'
-				onClick={addTab}
-				title='New tab (Ctrl+T)'
-			>
-				<Plus className='h-3.5 w-3.5' />
-			</button>
 		</div>
 	)
 }

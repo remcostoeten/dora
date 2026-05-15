@@ -1,6 +1,6 @@
 [package]
-name = "app"
-version = "0.0.111"
+name = "dora"
+version = "0.2.0"
 description = ""
 authors = ["Remco Stoeten"]
 license = "GPLv3"
@@ -85,6 +85,7 @@ bcrypt = "0.15"
 reqwest = { version = "0.12", features = ["json", "stream"] }
 tauri-plugin-shell = "2.3.4"
 dotenvy = "0.15"
+toml = "0.8"
 
 [profile.release]
 panic = "abort"

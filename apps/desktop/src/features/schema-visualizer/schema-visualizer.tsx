@@ -8,6 +8,7 @@ import {
 	ReactFlowProvider,
 	useEdgesState,
 	useNodesState,
+	useReactFlow,
 	type Edge,
 	type Node,
 	type NodeTypes,
@@ -37,6 +38,8 @@ import { useTablePulse } from './hooks/use-table-pulse'
 
 type Props = {
 	activeConnectionId: string | undefined
+	selectedTableId?: string
+	onSelectTable?: (tableId: string, tableName: string) => void
 	onOpenTable?: (tableId: string, tableName: string) => void
 }
 
@@ -140,8 +143,57 @@ function buildDiagramSvg(
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#0f0f14"/>${edgeMarkup}${nodeMarkup}</svg>`
 }
 
-function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
+const TABLE_NODE_WIDTH = 280
+const TABLE_NODE_HEADER_HEIGHT = 66
+const TABLE_NODE_ROW_HEIGHT = 34
+
+function getTableNodeHeight(node: Node<TableNodeData>) {
+	return TABLE_NODE_HEADER_HEIGHT + node.data.columns.length * TABLE_NODE_ROW_HEIGHT
+}
+
+function decorateNodesForSelection(
+	nodes: Node<TableNodeData>[],
+	selectedTableId: string | null,
+) {
+	if (!selectedTableId) return nodes
+	return nodes.map((node) => ({
+		...node,
+		selected: node.id === selectedTableId,
+	}))
+}
+
+function decorateEdgesForSelection(
+	edges: Edge<RelationshipEdgeData>[],
+	selectedTableId: string | null,
+) {
+	if (!selectedTableId) {
+		return edges.map((edge) => ({
+			...edge,
+			selected: false,
+			animated: false,
+			data: edge.data ? { ...edge.data, isActive: false } : edge.data,
+		}))
+	}
+
+	return edges.map((edge) => {
+		const isRelated = edge.source === selectedTableId || edge.target === selectedTableId
+		return {
+			...edge,
+			selected: isRelated,
+			animated: isRelated,
+			data: edge.data ? { ...edge.data, isActive: isRelated } : edge.data,
+		}
+	})
+}
+
+function SchemaVisualizerInner({
+	activeConnectionId,
+	selectedTableId,
+	onSelectTable,
+	onOpenTable,
+}: Props) {
 	const adapter = useAdapter()
+	const reactFlow = useReactFlow<Node<TableNodeData>, Edge<RelationshipEdgeData>>()
 	const { toast } = useToast()
 	const [schema, setSchema] = useState<DatabaseSchema | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
@@ -153,6 +205,7 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 	const [selectedTable, setSelectedTable] = useState<TableNodeData | null>(null)
 	const [sqlSource, setSqlSource] = useState('')
 	const [exportPreview, setExportPreview] = useState<ExportPreviewState | null>(null)
+	const activeTableId = selectedTable?.tableId ?? selectedTableId ?? null
 
 	const fetchSchema = useCallback(
 		async (signal: AbortSignal) => {
@@ -257,8 +310,8 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 	const pulseMap = useTablePulse()
 
 	useEffect(() => {
-		setNodes(positionedGraphNodes)
-	}, [positionedGraphNodes, setNodes])
+		setNodes(decorateNodesForSelection(positionedGraphNodes, activeTableId))
+	}, [activeTableId, positionedGraphNodes, setNodes])
 
 	// Merge pulse state into nodes whenever pulseMap changes
 	useEffect(function applyPulseToNodes() {
@@ -276,14 +329,29 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 	}, [pulseMap, setNodes])
 
 	useEffect(() => {
-		setEdges(graphEdges)
-	}, [graphEdges, setEdges])
+		setEdges(decorateEdgesForSelection(graphEdges, activeTableId))
+	}, [activeTableId, graphEdges, setEdges])
 
 	useEffect(() => {
-		if (!selectedTable) return
-		const nextTable = positionedGraphNodes.find((node) => node.id === selectedTable.tableId)
-		setSelectedTable(nextTable?.data ?? null)
-	}, [positionedGraphNodes, selectedTable?.tableId])
+		if (!selectedTableId) return
+		const nextTable = positionedGraphNodes.find((node) => node.id === selectedTableId)
+		if (!nextTable) return
+		setSelectedTable(nextTable.data)
+	}, [positionedGraphNodes, selectedTableId])
+
+	useEffect(() => {
+		if (!activeTableId) return
+		const node = positionedGraphNodes.find((item) => item.id === activeTableId)
+		if (!node) return
+
+		const x = node.position.x + TABLE_NODE_WIDTH / 2
+		const y = node.position.y + getTableNodeHeight(node) / 2
+		const currentZoom = reactFlow.getZoom()
+		reactFlow.setCenter(x, y, {
+			zoom: Math.max(currentZoom, 0.72),
+			duration: 260,
+		})
+	}, [activeTableId, positionedGraphNodes, reactFlow])
 
 	useEffect(() => {
 		if (!activeConnectionId || !selectedTable) {
@@ -481,6 +549,12 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 		onOpenTable?.(tableId, selectedTable.tableName)
 	}
 
+	function handleSelectTable(node: Node<TableNodeData>) {
+		const table = node.data
+		setSelectedTable(table)
+		onSelectTable?.(table.tableId, table.tableName)
+	}
+
 	function handlePersistNodePositions(nextNodes: Node<TableNodeData>[]) {
 		if (!positionStorageKey) return
 		const positions = nextNodes.reduce<Record<string, { x: number; y: number }>>(
@@ -553,7 +627,7 @@ function SchemaVisualizerInner({ activeConnectionId, onOpenTable }: Props) {
 						edges={edges}
 						onNodesChange={onNodesChange}
 						onEdgesChange={onEdgesChange}
-						onNodeClick={(_, node) => setSelectedTable(node.data as TableNodeData)}
+						onNodeClick={(_, node) => handleSelectTable(node as Node<TableNodeData>)}
 						onNodeDragStop={(_, __, nextNodes) =>
 							handlePersistNodePositions(nextNodes ?? nodes)
 						}

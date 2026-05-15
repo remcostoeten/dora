@@ -321,6 +321,13 @@ export function DatabaseSidebar({
 		} else if (action === 'view-table') {
 			handleTableSelect(tableId)
 			handleNavSelect('database-studio')
+		} else if (action === 'open-in-sql-console') {
+			handleNavSelect('sql-console')
+			window.setTimeout(function () {
+				window.dispatchEvent(
+					new CustomEvent('dora-open-table-in-sql', { detail: { tableName: tableId } })
+				)
+			}, 0)
 		} else if (action === 'duplicate-table') {
 			handleDuplicateTable(tableId)
 		} else if (action === 'view-info') {
@@ -403,65 +410,62 @@ export function DatabaseSidebar({
 		}
 	}
 
-function handleTableRename(tableId: string, newName: string) {
-	setTargetTableName(tableId)
-	void handleRenameTable(tableId, newName)
-}
-
-function escapeSqlString(value: string): string {
-	return value.replace(/'/g, "''")
-}
-
-function toSqlLiteral(value: unknown): string {
-	if (value === null || value === undefined) return 'NULL'
-	if (typeof value === 'number') {
-		return Number.isFinite(value) ? String(value) : 'NULL'
-	}
-	if (typeof value === 'boolean') {
-		return value ? 'TRUE' : 'FALSE'
-	}
-	if (typeof value === 'bigint') {
-		return value.toString()
-	}
-	if (value instanceof Date) {
-		return `'${escapeSqlString(value.toISOString())}'`
-	}
-	if (typeof value === 'object') {
-		return `'${escapeSqlString(JSON.stringify(value))}'`
+	function handleTableRename(tableId: string, newName: string) {
+		setTargetTableName(tableId)
+		void handleRenameTable(tableId, newName)
 	}
 
-	return `'${escapeSqlString(String(value))}'`
-}
-
-function buildInsertExport(
-	tableName: string,
-	rows: Record<string, unknown>[]
-): string {
-	if (rows.length === 0) {
-		return `-- No rows to export for ${getTableSqlIdentifier(tableName)}`
+	function escapeSqlString(value: string): string {
+		return value.replace(/'/g, "''")
 	}
 
-	const columns = Object.keys(rows[0])
-	const columnList = columns
-		.map(function (column) {
-			return `"${column}"`
-		})
-		.join(', ')
+	function toSqlLiteral(value: unknown): string {
+		if (value === null || value === undefined) return 'NULL'
+		if (typeof value === 'number') {
+			return Number.isFinite(value) ? String(value) : 'NULL'
+		}
+		if (typeof value === 'boolean') {
+			return value ? 'TRUE' : 'FALSE'
+		}
+		if (typeof value === 'bigint') {
+			return value.toString()
+		}
+		if (value instanceof Date) {
+			return `'${escapeSqlString(value.toISOString())}'`
+		}
+		if (typeof value === 'object') {
+			return `'${escapeSqlString(JSON.stringify(value))}'`
+		}
 
-	const valueGroups = rows
-		.map(function (row) {
-			const values = columns
-				.map(function (column) {
-					return toSqlLiteral(row[column])
-				})
-				.join(', ')
+		return `'${escapeSqlString(String(value))}'`
+	}
 
-			return `(${values})`
-		})
-		.join(',\n')
+	function buildInsertExport(tableName: string, rows: Record<string, unknown>[]): string {
+		if (rows.length === 0) {
+			return `-- No rows to export for ${getTableSqlIdentifier(tableName)}`
+		}
 
-	return `INSERT INTO ${getTableSqlIdentifier(tableName)} (${columnList}) VALUES\n${valueGroups};`
-}
+		const columns = Object.keys(rows[0])
+		const columnList = columns
+			.map(function (column) {
+				return `"${column}"`
+			})
+			.join(', ')
+
+		const valueGroups = rows
+			.map(function (row) {
+				const values = columns
+					.map(function (column) {
+						return toSqlLiteral(row[column])
+					})
+					.join(', ')
+
+				return `(${values})`
+			})
+			.join(',\n')
+
+		return `INSERT INTO ${getTableSqlIdentifier(tableName)} (${columnList}) VALUES\n${valueGroups};`
+	}
 
 	async function handleDuplicateTable(tableName: string) {
 		if (!activeConnectionId) return

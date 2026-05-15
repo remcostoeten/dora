@@ -54,6 +54,31 @@ jobs:
           releaseDraft: true
           prerelease: false
 
+
+      - name: Build native linux binary
+        run: cargo build --release --manifest-path apps/desktop/src-tauri/Cargo.toml
+
+      - name: Build lightweight linux tarball
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          STAGE="/tmp/dora-x86_64-unknown-linux-gnu"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/icons"
+          install -Dm755 apps/desktop/src-tauri/target/release/dora "$STAGE/dora"
+          install -Dm644 packaging/linux/dora.desktop "$STAGE/dora.desktop"
+          install -Dm644 apps/desktop/src-tauri/icons/32x32.png "$STAGE/icons/32x32.png"
+          install -Dm644 apps/desktop/src-tauri/icons/128x128.png "$STAGE/icons/128x128.png"
+
+          TAR="dora-x86_64-unknown-linux-gnu.tar.gz"
+          tar -C /tmp -czf "$TAR" dora-x86_64-unknown-linux-gnu
+          echo "Created $TAR for version $VERSION"
+
+      - name: Upload lightweight linux tarball
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} dora-x86_64-unknown-linux-gnu.tar.gz --clobber
+
       - name: generate linux checksums
         run: bun ../../tools/scripts/generate-checksums.ts --input-dir=src-tauri/target/release/bundle --output=src-tauri/target/release/bundle/checksums-linux.txt --extensions=.AppImage,.deb,.rpm
         working-directory: ./apps/desktop
