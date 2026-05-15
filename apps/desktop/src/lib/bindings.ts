@@ -112,9 +112,9 @@ async removeConnection(connectionId: string) : Promise<Result<null, { kind: stri
     else return { status: "error", error: e  as any };
 }
 },
-async testConnection(databaseInfo: DatabaseInfo) : Promise<Result<boolean, { kind: string; detail: string }>> {
+async testConnection(databaseInfo: DatabaseInfo, connectionId: string | null) : Promise<Result<boolean, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("test_connection", { databaseInfo }) };
+    return { status: "ok", data: await TAURI_INVOKE("test_connection", { databaseInfo, connectionId }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -660,6 +660,54 @@ async aiKeysTestRaw(apiKey: string) : Promise<Result<AiKeyTestResult, { kind: st
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async listDatabases() : Promise<Result<RegisteredDatabase[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_databases") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getActiveStoragePath() : Promise<Result<string, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_active_storage_path") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async switchStorage(name: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("switch_storage", { name }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async registerDatabase(name: string, path: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("register_database", { name, path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async createDatabase(name: string, path: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("create_database", { name, path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async resetStorage() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reset_storage") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -773,6 +821,7 @@ export type LiveMonitorSession = { monitorId: string; eventName: string }
 export type MutationResult = { success: boolean; affected_rows: number; message: string | null }
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
+export type RegisteredDatabase = { name: string; path: string; active: boolean }
 export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; category: string | null; created_at: number; updated_at: number; favorite: boolean; is_snippet: boolean; is_system: boolean; language: string | null; folder_id: number | null }
 export type SeedResult = { rows_inserted: number; table: string }
 export type SnippetFolder = { id: number; name: string; parent_id: number | null; color: string | null; created_at: number; updated_at: number }
