@@ -17,6 +17,9 @@ import {
 } from "@/features/connections/utils/mapping";
 import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
 import { Connection } from "@/features/connections/types";
+import { AiAssistantPanel, useAiAssistantStore } from "@/features/ai-assistant";
+import { Sparkles } from "lucide-react";
+import { Button } from "@/shared/ui/button";
 const DatabaseStudio = lazy(function () {
   return import("@/features/database-studio/database-studio").then(function (m) {
     return { default: m.DatabaseStudio };
@@ -656,10 +659,29 @@ export default function Index() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <AiAssistantToggle />
+            <AiAssistantPanel activeConnectionId={activeConnectionId || null} />
           </div>
         </div>
       </SidebarProvider>
     </TooltipProvider>
     </LiveMonitorProvider>
+  );
+}
+
+function AiAssistantToggle() {
+  const open = useAiAssistantStore(function (s) { return s.open; });
+  const toggleOpen = useAiAssistantStore(function (s) { return s.toggleOpen; });
+  if (open) return null;
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={toggleOpen}
+      title="Open AI assistant"
+      className="fixed bottom-4 right-4 z-30 h-10 w-10 rounded-full shadow-lg"
+    >
+      <Sparkles className="h-4 w-4" />
+    </Button>
   );
 }
