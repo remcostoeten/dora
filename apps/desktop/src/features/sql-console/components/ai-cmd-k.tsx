@@ -151,6 +151,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 					prompt,
 					activeConnectionId ?? null,
 					null,
+					null,
 					channel
 				)
 				if (abortRef.current.cancelled) return

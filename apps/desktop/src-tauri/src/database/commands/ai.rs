@@ -95,6 +95,7 @@ pub async fn ai_complete(
         context,
         connection_id,
         max_tokens,
+        prompt_mode: None,
     };
 
     let svc = AIService {
@@ -110,6 +111,7 @@ pub async fn ai_complete_stream(
     prompt: String,
     connection_id: Option<Uuid>,
     max_tokens: Option<u32>,
+    prompt_mode: Option<String>,
     on_event: tauri::ipc::Channel<AiStreamEvent>,
     state: State<'_, AppState>,
 ) -> Result<(), Error> {
@@ -127,6 +129,7 @@ pub async fn ai_complete_stream(
         context,
         connection_id,
         max_tokens,
+        prompt_mode,
     };
 
     let cancel = Arc::new(AtomicBool::new(false));

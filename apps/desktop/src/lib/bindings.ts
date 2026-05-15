@@ -472,9 +472,9 @@ async executeBatch(connectionId: string, statements: string[]) : Promise<Result<
     else return { status: "error", error: e  as any };
 }
 },
-async getDatabaseSchema(connectionId: string) : Promise<Result<DatabaseSchema, { kind: string; detail: string }>> {
+async getDatabaseSchema(connectionId: string, forceRefresh: boolean | null) : Promise<Result<DatabaseSchema, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("get_database_schema", { connectionId }) };
+    return { status: "ok", data: await TAURI_INVOKE("get_database_schema", { connectionId, forceRefresh }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -542,9 +542,9 @@ async aiComplete(prompt: string, connectionId: string | null, maxTokens: number 
     else return { status: "error", error: e  as any };
 }
 },
-async aiCompleteStream(requestId: string, prompt: string, connectionId: string | null, maxTokens: number | null, onEvent: TAURI_CHANNEL<AiStreamEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
+async aiCompleteStream(requestId: string, prompt: string, connectionId: string | null, maxTokens: number | null, promptMode: string | null, onEvent: TAURI_CHANNEL<AiStreamEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("ai_complete_stream", { requestId, prompt, connectionId, maxTokens, onEvent }) };
+    return { status: "ok", data: await TAURI_INVOKE("ai_complete_stream", { requestId, prompt, connectionId, maxTokens, promptMode, onEvent }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

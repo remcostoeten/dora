@@ -3,11 +3,44 @@ use super::AIRequest;
 const MAX_TABLES_IN_PROMPT: usize = 60;
 const MAX_COLUMNS_PER_TABLE: usize = 40;
 
-/// Build (system_prompt, user_prompt) pair for a schema-grounded SQL generation request.
+/// Build (system_prompt, user_prompt) pair. Dispatches on `request.prompt_mode`:
+/// - `Some("chat")` → free-form markdown assistant (used by the chat sidebar).
+/// - Anything else → legacy JSON-only SQL generation (used by ⌘K SQL flow).
 pub fn build(request: &AIRequest) -> (String, String) {
-    let system = build_system_prompt(request);
+    let system = match request.prompt_mode.as_deref() {
+        Some("chat") => build_chat_system_prompt(request),
+        _ => build_system_prompt(request),
+    };
     let user = request.prompt.clone();
     (system, user)
+}
+
+fn build_chat_system_prompt(request: &AIRequest) -> String {
+    let engine = request
+        .context
+        .as_ref()
+        .map(|c| c.engine.as_str())
+        .unwrap_or("sql");
+
+    let mut s = String::new();
+
+    s.push_str(&format!(
+        "You are an expert database assistant embedded in Dora, a SQL database management tool. The user is working with a {engine} database.\n\n"
+    ));
+
+    s.push_str("## Rules\n");
+    s.push_str("- Only answer questions about databases, SQL, schema design, performance, and data manipulation.\n");
+    s.push_str("- Wrap every SQL statement in a ```sql code block so the UI can render Run/Copy buttons.\n");
+    s.push_str("- Use realistic fake values when writing INSERT statements.\n");
+    s.push_str("- Be concise. Prefer short paragraphs and bullet lists over walls of text.\n");
+    s.push_str("- Default to the dialect of the active database engine. Note dialect-specific syntax when relevant.\n");
+    s.push_str("- For destructive statements (DELETE/UPDATE without WHERE, DROP, TRUNCATE) add a one-line warning comment above the SQL.\n");
+    s.push_str("- Use exact column and table names from the schema below. Do not invent columns.\n");
+    s.push_str("- The user's message may contain prior turns formatted as `USER:` / `ASSISTANT:`. Treat them as conversation history and answer only the final user turn.\n\n");
+
+    append_schema_block(&mut s, request);
+
+    s
 }
 
 fn build_system_prompt(request: &AIRequest) -> String {
@@ -43,6 +76,20 @@ fn build_system_prompt(request: &AIRequest) -> String {
         "- If destructive intent is detected, populate `warnings` but still emit the query.\n\n",
     );
 
+    append_schema_block(&mut s, request);
+
+    s.push_str("\n## Examples\n");
+    s.push_str("User: count rows in users\n");
+    s.push_str("Response: {\"sql\":\"SELECT COUNT(*) FROM users\",\"explanation\":\"Total rows in users table.\",\"warnings\":[]}\n\n");
+    s.push_str("User: users who never logged in\n");
+    s.push_str("Response: {\"sql\":\"SELECT * FROM users WHERE last_login_at IS NULL LIMIT 100\",\"explanation\":\"Users whose last_login_at is null.\",\"warnings\":[]}\n\n");
+    s.push_str("User: delete all users\n");
+    s.push_str("Response: {\"sql\":\"DELETE FROM users WHERE 1=0\",\"explanation\":\"Refusing to delete all rows. Use WHERE id IN (...) instead.\",\"warnings\":[\"Request was destructive; returned a no-op DELETE.\"]}\n");
+
+    s
+}
+
+fn append_schema_block(s: &mut String, request: &AIRequest) {
     if let Some(ctx) = &request.context {
         s.push_str("## Database schema\n");
 
@@ -113,14 +160,4 @@ fn build_system_prompt(request: &AIRequest) -> String {
             ));
         }
     }
-
-    s.push_str("\n## Examples\n");
-    s.push_str("User: count rows in users\n");
-    s.push_str("Response: {\"sql\":\"SELECT COUNT(*) FROM users\",\"explanation\":\"Total rows in users table.\",\"warnings\":[]}\n\n");
-    s.push_str("User: users who never logged in\n");
-    s.push_str("Response: {\"sql\":\"SELECT * FROM users WHERE last_login_at IS NULL LIMIT 100\",\"explanation\":\"Users whose last_login_at is null.\",\"warnings\":[]}\n\n");
-    s.push_str("User: delete all users\n");
-    s.push_str("Response: {\"sql\":\"DELETE FROM users WHERE 1=0\",\"explanation\":\"Refusing to delete all rows. Use WHERE id IN (...) instead.\",\"warnings\":[\"Request was destructive; returned a no-op DELETE.\"]}\n");
-
-    s
 }

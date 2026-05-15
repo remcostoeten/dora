@@ -66,6 +66,10 @@ pub struct AIRequest {
     pub context: Option<SchemaContext>,
     pub connection_id: Option<Uuid>,
     pub max_tokens: Option<u32>,
+    /// Prompt style selector. `Some("chat")` → free-form markdown assistant.
+    /// `None` or any other value → legacy JSON-only SQL generation.
+    #[serde(default)]
+    pub prompt_mode: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
