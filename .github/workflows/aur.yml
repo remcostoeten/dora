@@ -3,6 +3,12 @@ name: AUR
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish to AUR (e.g. v0.2.0). Defaults to the release event tag."
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -25,7 +31,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          TAG="${{ github.event.release.tag_name }}"
+          TAG="${{ inputs.tag || github.event.release.tag_name }}"
+          if [[ -z "${TAG}" ]]; then
+            echo "No release tag provided. Supply workflow input 'tag' when manually dispatching." >&2
+            exit 1
+          fi
           VERSION="${TAG#v}"
 
           ASSET_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} --jq '.assets[] | select(.name == "dora-x86_64-unknown-linux-gnu.tar.gz") | .browser_download_url' | head -1)"
