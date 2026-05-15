@@ -546,6 +546,8 @@ export default function Index() {
                 <ErrorBoundary feature="Schema Visualizer">
                   <SchemaVisualizer
                     activeConnectionId={activeConnectionId}
+                    selectedTableId={selectedTableId}
+                    onSelectTable={handleTableSelect}
                     onOpenTable={function (tableId, tableName) {
                       handleTableSelect(tableId, tableName);
                       setActiveNavId("database-studio");

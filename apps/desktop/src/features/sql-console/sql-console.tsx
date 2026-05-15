@@ -1,5 +1,4 @@
-import { PanelLeft } from 'lucide-react'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useIsTauri } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
@@ -10,7 +9,7 @@ import {
 } from '@/features/command-palette/events'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
-import { CheatsheetPanel } from '../../features/drizzle-runner/components/cheatsheet-panel'
+
 import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
 import { AiCmdK } from './components/ai-cmd-k'
@@ -46,6 +45,7 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 	const isTauri = useIsTauri()
 	const tabStore = useQueryTabs()
 	const { activeTab } = tabStore
+	const shortcuts = useEffectiveShortcuts()
 
 	// Derive per-tab state
 	const mode = activeTab.mode
@@ -64,8 +64,10 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])
 	const [activeSnippetId, setActiveSnippetId] = useState<string | null>('playground')
-	const [showLeftSidebar, setShowLeftSidebar] = useState(true)
-	const [showCheatsheet, setShowCheatsheet] = useState(false)
+	const [showRightSidebar, setShowRightSidebar] = useState(true)
+	const [sidebarWidth, setSidebarWidth] = useState(256)
+	const sbwRef = useRef(256)
+	const [autoExpandFolder, setAutoExpandFolder] = useState<string | null>(null)
 	const [showFilter, setShowFilter] = useState(false)
 	const [showHistory, setShowHistory] = useState(false)
 	const [showAiCmdK, setShowAiCmdK] = useState(false)
@@ -258,6 +260,19 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 		},
 		[activeConnectionId, refreshSchema]
 	)
+
+	useEffect(function listenForOpenTableInSql() {
+		function onOpenTable(event: Event) {
+			const { tableName } = (event as CustomEvent<{ tableName: string }>).detail
+			setMode('sql')
+			setCurrentSqlQuery(`SELECT * FROM ${tableName} LIMIT 100;`)
+		}
+
+		window.addEventListener('dora-open-table-in-sql', onOpenTable as EventListener)
+		return function () {
+			window.removeEventListener('dora-open-table-in-sql', onOpenTable as EventListener)
+		}
+	}, [])
 
 	const handleExecute = useCallback(
 		async (codeOverride?: string, modeOverride?: 'sql' | 'drizzle') => {
@@ -540,6 +555,17 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 		[result]
 	)
 
+	const toggleRightSidebar = useCallback(function () {
+		if (showRightSidebar) {
+			setShowRightSidebar(false)
+			return
+		}
+
+		sbwRef.current = sidebarWidth || 256
+		setSidebarWidth(sbwRef.current)
+		setShowRightSidebar(true)
+	}, [showRightSidebar, sidebarWidth])
+
 	// Unified snippet handling - works for both SQL and Drizzle
 	const handleSnippetSelect = useCallback(
 		(id: string) => {
@@ -579,7 +605,10 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 					parentFolderId
 				)
 				if (res.ok) {
+					const newId = res.data.toString()
 					await loadSnippets()
+					setActiveSnippetId(newId)
+					if (parentId) setAutoExpandFolder(parentId)
 				}
 			} catch (error) {
 				console.error('Failed to save snippet:', error)
@@ -593,6 +622,89 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 			currentDrizzleQuery,
 			adapter,
 			loadSnippets
+		]
+	)
+
+	const handleSaveSnippet = useCallback(
+		async () => {
+			if (!activeConnectionId) return
+			const currentContent = mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
+
+			const active = activeSnippetId
+				? snippets.find((s) => s.id === activeSnippetId && !s.isFolder)
+				: null
+
+			if (active) {
+				let folderId: number | null = null
+				if (active.parentId?.startsWith('folder-')) {
+					folderId = parseInt(active.parentId.replace('folder-', ''), 10)
+				}
+				try {
+					await adapter.updateScript(
+						parseInt(active.id),
+						active.name,
+						currentContent,
+						activeConnectionId,
+						null,
+						folderId
+					)
+					await loadSnippets()
+				} catch (error) {
+					console.error('Failed to update snippet:', error)
+				}
+			} else {
+				await handleNewSnippet(null)
+			}
+		},
+		[
+			activeConnectionId,
+			activeSnippetId,
+			snippets,
+			mode,
+			currentSqlQuery,
+			currentDrizzleQuery,
+			adapter,
+			loadSnippets,
+			handleNewSnippet
+		]
+	)
+
+	const handleSaveActiveSnippetFromEditor = useCallback(
+		async () => {
+			if (!activeConnectionId || !activeSnippetId) return
+			const active = snippets.find((s) => s.id === activeSnippetId && !s.isFolder)
+			if (!active) return
+
+			let folderId: number | null = null
+			if (active.parentId?.startsWith('folder-')) {
+				folderId = parseInt(active.parentId.replace('folder-', ''), 10)
+			}
+
+			const currentContent = mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
+
+			try {
+				await adapter.updateScript(
+					parseInt(active.id),
+					active.name,
+					currentContent,
+					activeConnectionId,
+					null,
+					folderId
+				)
+				await loadSnippets()
+			} catch (error) {
+				console.error('Failed to update snippet:', error)
+			}
+		},
+		[
+			activeConnectionId,
+			activeSnippetId,
+			adapter,
+			currentDrizzleQuery,
+			currentSqlQuery,
+			loadSnippets,
+			mode,
+			snippets
 		]
 	)
 
@@ -682,25 +794,6 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 		[activeConnectionId, adapter, loadSnippets]
 	)
 
-	function handleTableSelect(tableName: string) {
-		if (mode === 'sql') {
-			setCurrentSqlQuery(`SELECT * FROM ${tableName} LIMIT 100;`)
-		} else {
-			setCurrentDrizzleQuery(`db.select().from(${tableName}).limit(100);`)
-		}
-	}
-
-	const handleInsertSnippet = useCallback(
-		(code: string) => {
-			if (mode === 'sql') {
-				setCurrentSqlQuery((prev) => prev + '\n' + code)
-			} else {
-				setCurrentDrizzleQuery((prev) => prev + '\n' + code)
-			}
-		},
-		[mode]
-	)
-
 	const $ = useShortcut()
 	const sqlShortcuts = useEffectiveShortcuts()
 	useActiveScope($, 'sql-console')
@@ -723,6 +816,13 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 	$.bind(sqlShortcuts.aiCmdK.combo).on(
 		function () { setShowAiCmdK(function (v) { return !v }) },
 		{ description: sqlShortcuts.aiCmdK.description }
+	)
+
+	$.bind(shortcuts.toggleSidebar.combo).on(
+		function () {
+			toggleRightSidebar()
+		},
+		{ description: shortcuts.toggleSidebar.description }
 	)
 
 	$.key('s')
@@ -786,41 +886,8 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 	})
 
 	return (
-		<div className='flex h-full w-full bg-background overflow-hidden'>
+		<div className='relative flex h-full w-full bg-background overflow-hidden'>
 			<PanelGroup direction='horizontal' className='flex-1'>
-				{/* Left sidebar - Query snippets (unified for both modes) */}
-				{showLeftSidebar && (
-					<>
-						<Panel
-							defaultSize={18}
-							minSize={12}
-							maxSize={30}
-							collapsible
-							onCollapse={() => setShowLeftSidebar(false)}
-						>
-							<UnifiedSidebar
-								tables={tables}
-								snippets={snippets}
-								activeSnippetId={activeSnippetId}
-								onTableSelect={handleTableSelect}
-								onInsertQuery={(query) => {
-									if (mode === 'sql') {
-										setCurrentSqlQuery(query)
-									} else {
-										setCurrentDrizzleQuery(query)
-									}
-								}}
-								onSnippetSelect={handleSnippetSelect}
-								onNewSnippet={handleNewSnippet}
-								onNewFolder={handleNewFolder}
-								onRenameSnippet={handleRenameSnippet}
-								onDeleteSnippet={handleDeleteSnippet}
-							/>
-						</Panel>
-						<PanelResizeHandle className='w-1 bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize' />
-					</>
-				)}
-
 				{showHistory && (
 					<>
 						<Panel
@@ -849,21 +916,20 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 				)}
 
 				{/* Main content */}
-				<Panel defaultSize={64} minSize={40}>
+				<Panel minSize={40}>
 					<div className='flex flex-col h-full overflow-hidden'>
 						{/* Toolbar */}
 						<ConsoleToolbar
 							mode={mode}
 							onModeChange={setMode}
-							onToggleLeftSidebar={function () {
-								setShowLeftSidebar(!showLeftSidebar)
-							}}
-							onToggleCheatsheet={function () {
-								setShowCheatsheet(!showCheatsheet)
-							}}
-							showLeftSidebar={showLeftSidebar}
-							showCheatsheet={showCheatsheet}
+							onToggleRightSidebar={toggleRightSidebar}
+							showRightSidebar={showRightSidebar}
 							isExecuting={isExecuting}
+							connectionName={
+								activeConnectionId && getConnectionName
+									? getConnectionName(activeConnectionId)
+									: undefined
+							}
 							onRun={function () {
 								handleExecute()
 							}}
@@ -879,6 +945,7 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 							onToggleHistory={function () {
 								setShowHistory(!showHistory)
 							}}
+							onSave={handleSaveSnippet}
 						/>
 
 						{/* Tab Bar */}
@@ -896,6 +963,7 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 												value={currentSqlQuery}
 												onChange={setCurrentSqlQuery}
 												onExecute={(code) => handleExecute(code)}
+												onSave={handleSaveActiveSnippetFromEditor}
 												isExecuting={isExecuting}
 												tables={tables}
 											/>
@@ -906,6 +974,7 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 												onExecute={function (code) {
 													handleExecute(code)
 												}}
+												onSave={handleSaveActiveSnippetFromEditor}
 												isExecuting={isExecuting}
 												tables={tables.map(function (t) {
 													return {
@@ -942,27 +1011,53 @@ function SqlConsoleInner({ onToggleSidebar: _onToggleSidebar, activeConnectionId
 						</div>
 					</div>
 				</Panel>
-
-				{/* Cheatsheet Panel */}
-				{showCheatsheet && (
-					<>
-						<PanelResizeHandle className='w-1 bg-transparent hover:bg-primary/20 transition-colors cursor-col-resize' />
-						<Panel
-							defaultSize={20}
-							minSize={15}
-							maxSize={35}
-							collapsible
-							onCollapse={() => setShowCheatsheet(false)}
-						>
-							<CheatsheetPanel
-								isOpen={showCheatsheet}
-								onToggle={() => setShowCheatsheet(!showCheatsheet)}
-								onInsertSnippet={handleInsertSnippet}
-							/>
-						</Panel>
-					</>
-				)}
 			</PanelGroup>
+
+			<div
+				className='flex h-full shrink-0 transition-all duration-200'
+				style={{
+					width: showRightSidebar ? sidebarWidth : 0,
+					overflow: 'hidden',
+					transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)'
+				}}
+			>
+				<div
+					className='w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-primary/20 transition-colors'
+					onMouseDown={(e) => {
+						const startX = e.clientX
+						const startW = sbwRef.current
+						document.body.style.cursor = 'col-resize'
+						document.body.style.userSelect = 'none'
+						function onMove(ev: MouseEvent) {
+							sbwRef.current = Math.max(0, Math.min(500, startW - (ev.clientX - startX)))
+							setSidebarWidth(sbwRef.current)
+						}
+						function onUp() {
+							document.body.style.cursor = ''
+							document.body.style.userSelect = ''
+							if (sbwRef.current < 150) setShowRightSidebar(false)
+							else setSidebarWidth(sbwRef.current)
+							window.removeEventListener('mousemove', onMove)
+							window.removeEventListener('mouseup', onUp)
+						}
+						window.addEventListener('mousemove', onMove)
+						window.addEventListener('mouseup', onUp)
+					}}
+				/>
+				<div className='flex-1 h-full bg-sidebar border-l border-sidebar-border'>
+					<UnifiedSidebar
+						snippets={snippets}
+						activeSnippetId={activeSnippetId}
+						onSnippetSelect={handleSnippetSelect}
+						onNewSnippet={handleNewSnippet}
+						onNewFolder={handleNewFolder}
+						onRenameSnippet={handleRenameSnippet}
+						onDeleteSnippet={handleDeleteSnippet}
+						autoExpandFolder={autoExpandFolder}
+						onAutoExpandDone={() => setAutoExpandFolder(null)}
+					/>
+				</div>
+			</div>
 
 			<AiCmdK
 				open={showAiCmdK}

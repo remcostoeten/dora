@@ -32,6 +32,7 @@ type Props = {
 	value: string
 	onChange: (value: string) => void
 	onExecute: (code?: string) => void
+	onSave?: () => void
 	isExecuting: boolean
 	tables: SchemaTable[]
 }
@@ -136,7 +137,7 @@ function buildSuggestions(range: TextRange, suggestions: Suggestion[]): SuggestL
 	return { suggestions: suggestions, incomplete: false }
 }
 
-export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: Props) {
+export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, tables }: Props) {
 	const [showDemo, setShowDemo] = useState(false)
 	const [editorFontSize] = useSetting('editorFontSize')
 	const [editorThemeSetting] = useSetting('editorTheme')
@@ -149,12 +150,20 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 	const decorRef = useRef<string[]>([])
 	const completionProviderRef = useRef<Monaco.IDisposable | null>(null)
 	const onExecuteRef = useRef(onExecute)
+	const onSaveRef = useRef(onSave)
 
 	useEffect(
 		function syncOnExecute() {
 			onExecuteRef.current = onExecute
 		},
 		[onExecute]
+	)
+
+	useEffect(
+		function syncOnSave() {
+			onSaveRef.current = onSave
+		},
+		[onSave]
 	)
 
 	function getThemeFromDocument(): MonacoTheme {
@@ -1731,6 +1740,10 @@ export function CodeEditor({ value, onChange, onExecute, isExecuting, tables }: 
 
 		editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function () {
 			triggerExecution(editor)
+		})
+
+		editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+			onSaveRef.current?.()
 		})
 
 		editor.onMouseDown(function (e) {

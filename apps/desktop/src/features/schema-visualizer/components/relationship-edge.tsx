@@ -98,6 +98,7 @@ export function RelationshipEdge({
 	const vis = getEdgeVisuals(data)
 	const isDim = data?.searchState === 'dim'
 	const isMatch = data?.searchState === 'match'
+	const isActive = Boolean(data?.isActive)
 	const showFlow = !isDim && Boolean(data)
 
 	return (
@@ -112,8 +113,9 @@ export function RelationshipEdge({
 					strokeOpacity: vis.strokeOpacity,
 					strokeLinecap: 'round',
 					strokeLinejoin: 'round',
-					strokeWidth: vis.strokeWidth,
+					strokeWidth: isActive ? vis.strokeWidth + 0.9 : vis.strokeWidth,
 					strokeDasharray: vis.strokeDasharray,
+					filter: isActive ? 'drop-shadow(0 0 6px var(--sv-edge-active-glow))' : undefined,
 				}}
 			/>
 
@@ -124,12 +126,16 @@ export function RelationshipEdge({
 					stroke={vis.strokeColor}
 					strokeWidth={vis.strokeWidth - 0.2}
 					strokeLinecap='round'
-					strokeOpacity={isMatch ? 0.7 : 0.32}
-					className={cn('sv-edge-flow', isMatch && 'sv-edge-flow--match')}
+					strokeOpacity={isActive ? 0.9 : isMatch ? 0.7 : 0.32}
+					className={cn(
+						'sv-edge-flow',
+						isMatch && 'sv-edge-flow--match',
+						isActive && 'sv-edge-flow--active',
+					)}
 				/>
 			)}
 
-			{data && selected && (
+			{data && (selected || isActive) && (
 				<EdgeLabelRenderer>
 					<div
 						className='pointer-events-none absolute'
@@ -143,11 +149,11 @@ export function RelationshipEdge({
 										: 1,
 						}}
 					>
-						<div className={cn('sv-edge-badge', vis.badgeClass)}>
+						<div className={cn('sv-edge-badge', vis.badgeClass, isActive && 'sv-edge-badge--active')}>
 							<span className='sv-edge-badge__cardinality'>
 								{data.cardinality}
 							</span>
-							{selected && (
+							{(selected || isActive) && (
 								<span className='sv-edge-badge__detail'>
 									<span className='sv-edge-badge__col'>{data.sourceColumn}</span>
 									<span className='sv-edge-badge__arrow'>{vis.iconChar}</span>

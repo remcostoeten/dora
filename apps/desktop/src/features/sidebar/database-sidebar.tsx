@@ -321,6 +321,11 @@ export function DatabaseSidebar({
 		} else if (action === 'view-table') {
 			handleTableSelect(tableId)
 			handleNavSelect('database-studio')
+		} else if (action === 'open-in-sql-console') {
+			window.dispatchEvent(
+				new CustomEvent('dora-open-table-in-sql', { detail: { tableName: tableId } })
+			)
+			handleNavSelect('sql-console')
 		} else if (action === 'duplicate-table') {
 			handleDuplicateTable(tableId)
 		} else if (action === 'view-info') {

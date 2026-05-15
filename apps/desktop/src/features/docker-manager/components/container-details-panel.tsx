@@ -16,6 +16,7 @@ import { useContainerLogs } from '../api/queries/use-container-logs'
 import { DEFAULT_LOG_TAIL } from '../constants'
 import type { DockerContainer } from '../types'
 import { ConnectionDetails } from './connection-details'
+import { ContainerMetrics } from './container-metrics'
 import { LogsViewer } from './logs-viewer'
 import { SeedView } from './seed-view'
 import { StatusBadge } from './status-badge'
@@ -121,6 +122,10 @@ export function ContainerDetailsPanel({
 
 			<div className='p-4 border-b border-border'>
 				<ConnectionDetails container={container} password={password} />
+			</div>
+
+			<div className='p-4 border-b border-border'>
+				<ContainerMetrics container={container} />
 			</div>
 
 			<div className='p-4 border-b border-border space-y-2'>

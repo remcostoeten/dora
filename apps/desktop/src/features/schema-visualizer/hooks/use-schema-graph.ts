@@ -32,6 +32,7 @@ export type RelationshipEdgeData = {
 	viaTable?: string
 	isOptional: boolean
 	isSelfReference: boolean
+	isActive: boolean
 	searchState: SearchState
 }
 
@@ -327,6 +328,7 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 					viaTable: joinTable ? table.name : undefined,
 					isOptional: column.is_nullable,
 					isSelfReference: tableId === targetTableId,
+					isActive: false,
 					searchState: 'default',
 				},
 			})
