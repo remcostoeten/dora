@@ -8,6 +8,7 @@ import { RowAction, RowContextMenu } from '../row-context-menu'
 import { formatCellValue } from './cell-value'
 import { DraftRow } from './draft-row'
 import { NoRowsState } from './empty-states'
+import { FKNavigateIcon } from './fk-icon'
 import { EditingCell } from './types'
 
 type GridBodyProps = {
@@ -49,6 +50,7 @@ type GridBodyProps = {
 	tableName?: string
 	ensureRowSelectionForContextMenu: (rowIndex: number) => void
 	setEditValue: (value: string) => void
+	onFKNavigate?: (referencedTable: string, referencedColumn: string, value: unknown) => void
 	/** Pass virtual rows from useRowVirtualizer. Null = render all (non-virtual). */
 	virtualRows?: VirtualItem[] | null
 	/** Total scroll height when virtualizing. */
@@ -89,6 +91,7 @@ export function GridBody({
 	tableName,
 	ensureRowSelectionForContextMenu,
 	setEditValue,
+	onFKNavigate,
 	virtualRows,
 	totalVirtualSize,
 }: GridBodyProps) {
@@ -166,7 +169,7 @@ export function GridBody({
 							>
 								<td
 									className={cn(
-										'px-4 py-1.5 text-center border-b border-r border-sidebar-border sticky left-0 z-20 transition-colors',
+										'w-[30px] min-w-[30px] p-0 text-center align-middle border-b border-l border-r border-sidebar-border sticky left-0 z-20 transition-colors',
 										rowBackgroundClasses,
 										selectedRows.has(rowIndex) && 'bg-sidebar-accent'
 									)}
@@ -250,7 +253,7 @@ export function GridBody({
 										>
 											<td
 												className={cn(
-													'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px]',
+													'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px] group/cell',
 													isSelected &&
 														!isEditing &&
 														'bg-muted-foreground/10',
@@ -289,8 +292,17 @@ export function GridBody({
 														className='w-full h-full bg-primary/10 outline outline-1 outline-offset-[-1px] outline-primary font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
 													/>
 												) : (
-													<div className='truncate relative'>
-														{formatCellValue(row[col.name], col)}
+													<div className='flex items-center min-w-0 relative'>
+														<span className='truncate flex-1'>
+															{formatCellValue(row[col.name], col)}
+														</span>
+														{col.foreignKey && onFKNavigate && (
+															<FKNavigateIcon
+																foreignKey={col.foreignKey}
+																cellValue={row[col.name]}
+																onNavigate={onFKNavigate}
+															/>
+														)}
 														{isDirty && (
 															<div className='absolute top-0 right-0 -mr-3 -mt-1.5 w-0 h-0 border-t-[6px] border-r-[6px] border-t-transparent border-r-amber-500' />
 														)}

@@ -32,6 +32,11 @@ fn clean_postgres_connection_string(connection_string: &str) -> (String, bool, b
             } else if key == "sslmode" && matches!(value.as_ref(), "verify-ca" | "verify-full") {
                 verify_tls = true;
                 Some((key.into_owned(), "require".to_string()))
+            } else if key.eq_ignore_ascii_case("pgbouncer") {
+                // Strip the Dora/Prisma-style pooler flag; tokio_postgres::Config
+                // rejects unknown query params. The flag is detected separately
+                // by `detect_pgbouncer_flag` on the raw connection string.
+                None
             } else {
                 Some((key.into_owned(), value.into_owned()))
             }
@@ -162,6 +167,9 @@ impl<'a> ConnectionService<'a> {
                         connection_string,
                         ssh_config,
                     } => Database::Postgres {
+                        use_simple_query: crate::database::types::detect_pgbouncer_flag(
+                            &connection_string,
+                        ),
                         connection_string,
                         ssh_config,
                         client: None,
@@ -320,6 +328,7 @@ impl<'a> ConnectionService<'a> {
                 ssh_config,
                 client,
                 tunnel,
+                ..
             } => {
                 // If we have an SSH config, start the tunnel
                 if let Some(ssh_conf) = ssh_config {

@@ -33,7 +33,7 @@ export function GridHeader({
 		<thead className='sticky top-0 bg-sidebar z-10' role='rowgroup'>
 			<tr role='row'>
 				<th
-					className='px-4 py-2 text-center border-b border-r border-sidebar-border bg-background sticky left-0 z-30'
+					className='w-[30px] min-w-[30px] p-0 text-center align-middle border-b border-l border-r border-sidebar-border bg-background sticky left-0 z-30'
 					role='columnheader'
 					aria-label='Select all rows'
 				>

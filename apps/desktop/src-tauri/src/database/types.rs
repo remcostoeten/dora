@@ -22,6 +22,20 @@ pub type Page = Box<RawValue>;
 
 pub type ExecSender = UnboundedSender<QueryExecEvent>;
 
+/// True when a Postgres connection string contains `?pgbouncer=true` (case
+/// insensitive). Used to decide whether to skip named prepared statements
+/// when talking to a transaction-pooling PgBouncer. Matches the convention
+/// used by Prisma/Drizzle/`pg-bouncer-mode` so existing connection strings
+/// can be reused unchanged.
+pub fn detect_pgbouncer_flag(connection_string: &str) -> bool {
+    let Ok(url) = url::Url::parse(connection_string) else {
+        return false;
+    };
+    url.query_pairs().any(|(key, value)| {
+        key.eq_ignore_ascii_case("pgbouncer") && value.eq_ignore_ascii_case("true")
+    })
+}
+
 #[derive(Debug, Clone, Serialize, Type)]
 pub struct StatementInfo {
     pub returns_values: bool,
@@ -132,6 +146,14 @@ pub enum Database {
         ssh_config: Option<SshConfig>,
         client: Option<Arc<tokio_postgres::Client>>,
         tunnel: Option<Arc<SshTunnel>>,
+        /// When true, the execution path skips named prepared statements and
+        /// uses the simple-query protocol instead. Detected from
+        /// `?pgbouncer=true` in the connection string (Prisma-compatible flag).
+        /// Required for PgBouncer in transaction-pool mode.
+        ///
+        /// NOTE (scaffold): the flag is currently plumbed but not yet honored
+        /// by `postgres/execute.rs` — see TODO markers there.
+        use_simple_query: bool,
     },
     MySQL {
         connection_string: String,
@@ -199,6 +221,7 @@ impl DatabaseConnection {
                 connection_string,
                 ssh_config,
             } => Database::Postgres {
+                use_simple_query: detect_pgbouncer_flag(&connection_string),
                 connection_string,
                 ssh_config,
                 client: None,
@@ -241,6 +264,7 @@ impl DatabaseConnection {
                 connection_string,
                 ssh_config,
             } => Database::Postgres {
+                use_simple_query: detect_pgbouncer_flag(&connection_string),
                 connection_string,
                 ssh_config,
                 client: None,

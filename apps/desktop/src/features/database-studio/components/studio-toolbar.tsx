@@ -10,7 +10,8 @@ import {
 	Plus,
 	RefreshCw,
 	Sparkles,
-	Copy
+	Copy,
+	Upload
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Button } from '@/shared/ui/button'
@@ -49,6 +50,7 @@ type Props = {
 	isDryEditMode?: boolean
 	onDryEditModeChange?: (enabled: boolean) => void
 	isSidebarOpen?: boolean
+	onImportCsv?: () => void
 	onSeed?: () => void
 	onCopySchema?: () => void
 	onCopyDrizzleSchema?: () => void
@@ -88,6 +90,7 @@ export function StudioToolbar({
 	isLiveMonitorPolling,
 	changeEvents,
 	unreadChangeCount,
+	onImportCsv,
 	onClearChangeEvents,
 	onMarkChangesRead
 }: Props) {
@@ -113,7 +116,7 @@ export function StudioToolbar({
 
 	return (
 		<div className='flex flex-col shrink-0 bg-sidebar border-b border-sidebar-border'>
-			<div className='flex items-center h-10 px-2 gap-2 text-sm'>
+			<div className='flex items-center h-10 pl-0 pr-2 gap-2 text-sm'>
 				<div className='flex items-center gap-1 mr-2'>
 					{onToggleSidebar && (
 						<Button
@@ -273,6 +276,19 @@ export function StudioToolbar({
 						>
 							<Sparkles className='h-3.5 w-3.5 text-blue-400' />
 							<span className='hidden sm:inline'>Seed Data</span>
+						</Button>
+					)}
+
+					{onImportCsv && (
+						<Button
+							variant='outline'
+							size='sm'
+							className='h-7 px-2 text-xs gap-1.5'
+							onClick={onImportCsv}
+							title='Import CSV'
+						>
+							<Upload className='h-3.5 w-3.5' />
+							<span className='hidden sm:inline'>Import CSV</span>
 						</Button>
 					)}
 

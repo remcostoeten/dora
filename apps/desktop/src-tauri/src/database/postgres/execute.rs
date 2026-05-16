@@ -23,6 +23,13 @@ pub async fn execute_query(
     Ok(())
 }
 
+// TODO(pgbouncer): Accept a `use_simple_query: bool` parameter (sourced from
+// `Database::Postgres { use_simple_query, .. }`). When true, replace the
+// `client.prepare(...)` + `client.query_raw(...)` flow below with
+// `client.simple_query(query)` and convert each `SimpleQueryRow` into the
+// same JSON-encoded `Page` shape via a new `SimpleRowWriter`. Required for
+// PgBouncer in transaction-pool mode, which kills named prepared statements
+// between queries ("prepared statement \"PGBOUNCER_1\" does not exist").
 async fn execute_query_with_results(
     client: &Client,
     query: &str,
@@ -146,6 +153,10 @@ async fn execute_query_with_results(
     }
 }
 
+// TODO(pgbouncer): same as `execute_query_with_results` — replace
+// `client.execute(query, &[])` with `client.simple_query(query)` and count
+// affected rows from the `CommandComplete` message when the pooler flag is
+// on. Required for PgBouncer transaction-pool mode.
 async fn execute_modification_query(
     client: &Client,
     query: &str,

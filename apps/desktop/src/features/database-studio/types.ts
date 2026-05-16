@@ -1,8 +1,15 @@
+export type ForeignKeyRef = {
+	referencedTable: string
+	referencedColumn: string
+	referencedSchema?: string
+}
+
 export type ColumnDefinition = {
 	name: string
 	type: string
 	nullable: boolean
 	primaryKey: boolean
+	foreignKey?: ForeignKeyRef
 }
 
 export type TableData = {

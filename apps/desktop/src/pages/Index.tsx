@@ -20,6 +20,8 @@ import { Connection } from "@/features/connections/types";
 import { AiAssistantPanel, useAiAssistantStore } from "@/features/ai-assistant";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/shared/ui/button";
+import { TabsProvider, useTabs } from "@/core/tabs";
+import { TabBar } from "@/features/tab-bar";
 const DatabaseStudio = lazy(function () {
   return import("@/features/database-studio/database-studio").then(function (m) {
     return { default: m.DatabaseStudio };
@@ -59,7 +61,7 @@ import { ViewLoadingShell } from "@/shared/ui/view-loading-shell";
 import { getTableRefParts } from "@/shared/utils/table-ref";
 import { Plug } from "lucide-react";
 
-export default function Index() {
+function IndexInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const {
@@ -81,11 +83,11 @@ export default function Index() {
     return urlView || "database-studio";
   });
 
-  const [selectedTableId, setSelectedTableId] = useState<string>(() => {
-    return urlTable || "";
-  });
+  const { tabs, activeTabId, openTab, closeTab, setActiveTab, closeTabsForConnection } = useTabs();
+  const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
+  const selectedTableId = activeTab?.tableId ?? '';
+  const selectedTableName = activeTab?.tableName ?? '';
 
-  const [selectedTableName, setSelectedTableName] = useState("");
   const autoSelectFirstTableRef = useRef(false);
   const connectionInitializedRef = useRef(false);
 
@@ -199,10 +201,6 @@ export default function Index() {
     [activeNavId, selectedTableId, activeConnectionId, setSearchParams],
   );
 
-  useEffect(function () {
-    setSelectedTableName(getTableRefParts(selectedTableId).tableName);
-  }, [selectedTableId]);
-
   useEffect(
     function initializeConnection() {
       if (isSettingsLoading || isConnectionsLoading) return;
@@ -233,7 +231,12 @@ export default function Index() {
         if (lastConnection) {
           setActiveConnectionId(lastConnection.id);
           if (settings.lastTableId) {
-            setSelectedTableId(settings.lastTableId);
+            openTab({
+              connectionId: lastConnection.id,
+              tableId: settings.lastTableId,
+              tableName: getTableRefParts(settings.lastTableId).tableName,
+              label: getTableRefParts(settings.lastTableId).tableName,
+            });
           }
           autoSelectFirstTableRef.current = true;
           connectionInitializedRef.current = true;
@@ -281,6 +284,7 @@ export default function Index() {
       settings.restoreLastConnection,
       settings.lastConnectionId,
       settings.lastTableId,
+      openTab,
     ],
   );
 
@@ -372,8 +376,8 @@ export default function Index() {
       await removeConnection.mutateAsync(connectionToDelete.id);
       if (activeConnectionId === connectionToDelete.id) {
         setActiveConnectionId("");
-        setSelectedTableId("");
       }
+      closeTabsForConnection(connectionToDelete.id);
       setDeleteDialogOpen(false);
       setConnectionToDelete(null);
       toast({ title: "Connection Deleted", description: `"${connectionToDelete.name}" has been removed.` });
@@ -388,8 +392,6 @@ export default function Index() {
 
   async function handleConnectionSelect(connectionId: string) {
     setActiveConnectionId(connectionId);
-    setSelectedTableId("");
-    setSelectedTableName("");
     autoSelectFirstTableRef.current = false;
   }
 
@@ -429,9 +431,14 @@ export default function Index() {
   }
 
   const handleTableSelect = useCallback(function (id: string, name: string) {
-    setSelectedTableId(id);
-    setSelectedTableName(name);
-  }, []);
+    if (!activeConnectionId) return;
+    openTab({
+      connectionId: activeConnectionId,
+      tableId: id,
+      tableName: name,
+      label: name,
+    });
+  }, [activeConnectionId, openTab]);
 
   const handleAutoSelectComplete = useCallback(function () {
     autoSelectFirstTableRef.current = false;
@@ -519,22 +526,31 @@ export default function Index() {
                   }}
                 />
               ) : activeNavId === "database-studio" ? (
-                <ErrorBoundary feature="Database Studio">
-                  <DatabaseStudio
-                    tableId={selectedTableId}
-                    tableName={selectedTableName}
-                    isSidebarOpen={isSidebarOpen}
-                    onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
-                    initialRowPK={settings.lastRowPK}
-                    onRowSelectionChange={function (pk) {
-                      if (pk !== settings.lastRowPK) {
-                        updateSetting("lastRowPK", pk);
-                      }
-                    }}
-                    activeConnectionId={activeConnectionId}
-                    onAddConnection={handleOpenNewConnection}
+                <div className="flex flex-col flex-1 min-h-0">
+                  <TabBar
+                    tabs={tabs}
+                    activeTabId={activeTabId}
+                    onTabClick={setActiveTab}
+                    onTabClose={closeTab}
                   />
-                </ErrorBoundary>
+                  <ErrorBoundary feature="Database Studio">
+                    <DatabaseStudio
+                      key={activeTabId ?? 'empty'}
+                      tableId={selectedTableId}
+                      tableName={selectedTableName}
+                      isSidebarOpen={isSidebarOpen}
+                      onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
+                      initialRowPK={settings.lastRowPK}
+                      onRowSelectionChange={function (pk) {
+                        if (pk !== settings.lastRowPK) {
+                          updateSetting("lastRowPK", pk);
+                        }
+                      }}
+                      activeConnectionId={activeConnectionId}
+                      onAddConnection={handleOpenNewConnection}
+                    />
+                  </ErrorBoundary>
+                </div>
               ) : activeNavId === "sql-console" ? (
                 <ErrorBoundary feature="SQL Console">
                   <SqlConsole
@@ -669,6 +685,14 @@ export default function Index() {
   );
 }
 
+export default function Index() {
+  return (
+    <TabsProvider>
+      <IndexInner />
+    </TabsProvider>
+  );
+}
+
 function AiAssistantToggle() {
   const open = useAiAssistantStore(function (s) { return s.open; });
   const toggleOpen = useAiAssistantStore(function (s) { return s.toggleOpen; });
@@ -679,7 +703,7 @@ function AiAssistantToggle() {
       size="icon"
       onClick={toggleOpen}
       title="Open AI assistant"
-      className="fixed bottom-4 right-4 z-30 h-10 w-10 rounded-full shadow-lg"
+      className="fixed bottom-4 right-4 z-[70] h-10 w-10 rounded-full shadow-lg"
     >
       <Sparkles className="h-4 w-4" />
     </Button>

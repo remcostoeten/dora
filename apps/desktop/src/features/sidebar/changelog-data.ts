@@ -8,9 +8,24 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = '0.0.110'
+export const CURRENT_VERSION = '0.25.0'
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: '0.25.0',
+		date: '2026-05-16',
+		commit: 'f126475',
+		title: 'Multi-Table Tabs, FK Drill-Down, CSV Import & PgBouncer Fix',
+		description:
+			'Open multiple tables simultaneously with tabs, drill into foreign-key references with a single click, import CSV files with preview and column mapping, and connect to PgBouncer-pooled databases via simple-query mode.',
+		type: 'feature',
+		details: [
+			'Multi-table tabs — open multiple tables simultaneously',
+			'FK drill-down — click ↗ on a foreign key cell to open the referenced table',
+			'CSV import — import CSV files with preview and column mapping',
+			'PgBouncer compatibility via simple-query mode'
+		]
+	},
 	{
 		version: '0.0.110',
 		date: new Date().toISOString().split('T')[0],

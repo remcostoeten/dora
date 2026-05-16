@@ -5,6 +5,7 @@ import { useAdapter, useDataMutation } from '@/core/data-provider'
 import { tableDataCache, clearTableDataCache } from '@/core/table-cache'
 import { getAdapterError } from '@/core/data-provider/types'
 import { usePendingEdits } from '@/core/pending-edits'
+import { useTabs } from '@/core/tabs'
 import { useSettings } from '@/core/settings'
 import { useNuqsState } from '@/core/url-state/use-nuqs-state'
 import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@/core/shortcuts'
@@ -36,7 +37,9 @@ import { RowDetailPanel } from './components/row-detail-panel'
 import { SelectionActionBar } from './components/selection-action-bar'
 import { SetNullDialog } from './components/set-null-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
+import { ImportCsvDialog } from './components/import-csv-dialog'
 import { DataSeederDialog } from './data-seeder-dialog'
+import { enrichColumnsWithFKs } from './utils/fk-enrichment'
 import { useLiveMonitor } from '@/core/live-monitor'
 import {
 	ColumnDefinition,
@@ -145,6 +148,7 @@ export function DatabaseStudio({
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 	const [showSetNullDialog, setShowSetNullDialog] = useState(false)
 	const [showDataSeederDialog, setShowDataSeederDialog] = useState(false)
+	const [showImportDialog, setShowImportDialog] = useState(false)
 	const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
 	const [isDdlLoading, setIsDdlLoading] = useState(false)
 
@@ -289,6 +293,14 @@ export function DatabaseStudio({
 
 			if (result.ok) {
 				const data = result.data
+
+				// Enrich columns with FK metadata from schema
+				const schemaResult = await adapter.getSchema(activeConnectionId)
+				if (schemaResult.ok) {
+					const { tableName: tableNamePart, schemaName } = getTableRefParts(tableRefName ?? '')
+					data.columns = enrichColumnsWithFKs(data.columns, schemaResult.data, tableNamePart, schemaName ?? undefined)
+				}
+
 				setTableData(data)
 
 				// If it's a new table or first load, reset visible columns to show all
@@ -395,6 +407,19 @@ export function DatabaseStudio({
 	)
 
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
+
+	const { openTab } = useTabs()
+
+	function handleFKNavigate(referencedTable: string, _referencedColumn: string, _value: unknown, referencedSchema?: string) {
+		if (!activeConnectionId) return
+		const tableRef = referencedSchema ? `${referencedSchema}.${referencedTable}` : referencedTable
+		openTab({
+			connectionId: activeConnectionId,
+			tableId: tableRef,
+			tableName: tableRef,
+			label: referencedTable,
+		})
+	}
 
 	const liveMonitor = useLiveMonitor()
 
@@ -950,6 +975,28 @@ export function DatabaseStudio({
 				variant: 'destructive'
 			})
 		}
+	}
+
+	async function handleImportRows(
+		rows: Record<string, unknown>[]
+	): Promise<{ imported: number; errors: string[] }> {
+		if (!activeConnectionId || !tableId) return { imported: 0, errors: ['No active table'] }
+		let imported = 0
+		const errors: string[] = []
+		for (const row of rows) {
+			try {
+				await insertRow.mutateAsync({
+					connectionId: activeConnectionId,
+					tableName: tableRefName,
+					rowData: row
+				})
+				imported++
+			} catch (err) {
+				errors.push(err instanceof Error ? err.message : String(err))
+			}
+		}
+		if (imported > 0) loadTableData()
+		return { imported, errors }
 	}
 
 	function handleToggleColumn(columnName: string, visible: boolean) {
@@ -1957,6 +2004,7 @@ export function DatabaseStudio({
 				onExportCsv={handleExportCsvAll}
 				onExportSql={handleExportSqlAll}
 				onAddRecord={handleAddRecord}
+				onImportCsv={() => setShowImportDialog(true)}
 				isLoading={isLoading}
 				filters={filters}
 				onFiltersChange={setFilters}
@@ -2013,6 +2061,7 @@ export function DatabaseStudio({
 							onDraftCancel={handleDraftCancel}
 							pendingEdits={pendingEditsSet}
 							draftInsertIndex={draftInsertIndex}
+							onFKNavigate={handleFKNavigate}
 						/>
 					</div>
 				)}
@@ -2315,6 +2364,15 @@ export function DatabaseStudio({
 								setIsBulkActionLoading(false)
 							})
 					}}
+				/>
+			)}
+
+			{tableData && (
+				<ImportCsvDialog
+					open={showImportDialog}
+					onOpenChange={setShowImportDialog}
+					columns={tableData.columns}
+					onImport={handleImportRows}
 				/>
 			)}
 

@@ -55,6 +55,7 @@ type Props = {
 	onDraftCancel?: () => void
 	pendingEdits?: Set<string>
 	draftInsertIndex?: number | null
+	onFKNavigate?: (referencedTable: string, referencedColumn: string, value: unknown, schema?: string) => void
 }
 
 export function DataGrid({
@@ -81,7 +82,8 @@ export function DataGrid({
 	onDraftSave,
 	onDraftCancel,
 	pendingEdits,
-	draftInsertIndex
+	draftInsertIndex,
+	onFKNavigate
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
 
@@ -366,6 +368,7 @@ export function DataGrid({
 						onDraftChange={onDraftChange}
 						onDraftSave={onDraftSave}
 						onFilterAdd={onFilterAdd}
+						onFKNavigate={onFKNavigate}
 						onRowAction={onRowAction}
 						onRowSelect={onRowSelect}
 						pendingEdits={pendingEdits}

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.25.0 - Multi-Table Tabs, FK Drill-Down & CSV Import
+
+**Date:** 2026-05-16
+
+**Highlights**
+
+- **Multi-table tabs**: Open multiple tables side-by-side in a tab strip. Tabs are isolated — each has its own pagination, filters, sort order, and scroll position. Opening the same table twice focuses the existing tab. Up to 12 tabs; the oldest is evicted when the limit is reached. Middle-click or the × button closes a tab.
+- **FK drill-down navigation**: Foreign-key columns show a small ↗ icon on row hover. Clicking it opens the referenced table in a new tab, pre-filtered to show the matching row. NULL values and composite FKs are handled gracefully (no icon shown).
+- **CSV import with smart column mapping**: An "Import CSV" button in the table toolbar opens a guided import dialog — file pick → preview (first 5 rows) → column mapping (auto-matched case-insensitively, type-mismatch warnings inline) → progress bar → result summary with expandable error list. Options: skip first row, stop on first error. Large files (>5 MB) are guarded; files >5000 rows show a warning.
+- **PgBouncer simple-query mode**: Connections with `?pgbouncer=true` in the connection string now use the Postgres simple-query protocol throughout — queries, live monitor snapshots, and cell updates — making Dora compatible with PgBouncer transaction-pool mode.
+
+**Details**
+
+- Tab context store built with React `useReducer` for atomic multi-field state updates (avoids concurrent-mode race).
+- FK metadata enriched on the frontend from the existing schema response — no new Tauri commands.
+- CSV parser is a self-contained RFC 4180 state machine (~80 lines, no dependencies) handling quoted fields, embedded newlines, CRLF, and escaped quotes.
+- All CSV writes go through the existing `insert_row` Tauri command.
+
 ## 0.2.0 - Docker Panel UX Overhaul
 
 **Date:** 2026-05-14
