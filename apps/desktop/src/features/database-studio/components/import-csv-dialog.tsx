@@ -28,6 +28,8 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 	const [step, setStep] = useState<'pick' | 'map' | 'importing' | 'done'>('pick')
 	const [progress, setProgress] = useState(0)
 	const [result, setResult] = useState<{ imported: number; errors: string[] } | null>(null)
+	const [skipFirstRow, setSkipFirstRow] = useState(false)
+	const [stopOnError, setStopOnError] = useState(false)
 	const nonPKColumns = columns.filter((c) => !c.primaryKey)
 
 	function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -53,12 +55,13 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 
 	async function handleImport() {
 		setStep('importing')
-		const total = csvRows.length
+		const rowsToProcess = skipFirstRow ? csvRows.slice(1) : csvRows
+		const total = rowsToProcess.length
 		let done = 0
 		const errors: string[] = []
 		let importedCount = 0
 
-		for (const csvRow of csvRows) {
+		for (const csvRow of rowsToProcess) {
 			const obj: Record<string, unknown> = {}
 			csvHeaders.forEach((header, idx) => {
 				const dbCol = mapping[header]
@@ -70,10 +73,23 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 			try {
 				const res = await onImport([obj])
 				importedCount += res.imported
-				if (res.errors.length > 0)
-					errors.push(...res.errors.map((e) => `Row ${done + 1}: ${e}`))
+				if (res.errors.length > 0) {
+					const rowNum = done + (skipFirstRow ? 2 : 1)
+					errors.push(...res.errors.map((e) => `Row ${rowNum}: ${e}`))
+					if (stopOnError) {
+						done++
+						setProgress(Math.round((done / total) * 100))
+						break
+					}
+				}
 			} catch (err) {
-				errors.push(`Row ${done + 1}: ${err instanceof Error ? err.message : String(err)}`)
+				const rowNum = done + (skipFirstRow ? 2 : 1)
+				errors.push(`Row ${rowNum}: ${err instanceof Error ? err.message : String(err)}`)
+				if (stopOnError) {
+					done++
+					setProgress(Math.round((done / total) * 100))
+					break
+				}
 			}
 			done++
 			setProgress(Math.round((done / total) * 100))
@@ -91,6 +107,8 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 		setParseError(null)
 		setProgress(0)
 		setResult(null)
+		setSkipFirstRow(false)
+		setStopOnError(false)
 		onOpenChange(false)
 	}
 
@@ -146,7 +164,7 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 									</tr>
 								</thead>
 								<tbody>
-									{csvRows.slice(0, 5).map((row, i) => (
+									{csvRows.slice(skipFirstRow ? 1 : 0, skipFirstRow ? 6 : 5).map((row, i) => (
 										<tr key={i} className='border-t'>
 											{row.map((cell, j) => (
 												<td key={j} className='px-2 py-1 font-mono'>
@@ -202,13 +220,35 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 									</div>
 								)
 							})}
+
+							{/* Options */}
+							<div className='flex flex-col gap-2 pt-2 border-t text-sm'>
+								<label className='flex items-center gap-2 cursor-pointer'>
+									<input
+										type='checkbox'
+										checked={skipFirstRow}
+										onChange={(e) => setSkipFirstRow(e.target.checked)}
+										className='h-4 w-4'
+									/>
+									Skip first row (row 1 is data, not a header)
+								</label>
+								<label className='flex items-center gap-2 cursor-pointer'>
+									<input
+										type='checkbox'
+										checked={stopOnError}
+										onChange={(e) => setStopOnError(e.target.checked)}
+										className='h-4 w-4'
+									/>
+									Stop on first error
+								</label>
+							</div>
 						</div>
 
 						<DialogFooter>
 							<Button variant='outline' onClick={handleClose}>
 								Cancel
 							</Button>
-							<Button onClick={handleImport}>Import {csvRows.length} rows</Button>
+							<Button onClick={handleImport}>Import {skipFirstRow ? Math.max(0, csvRows.length - 1) : csvRows.length} rows</Button>
 						</DialogFooter>
 					</div>
 				)}
