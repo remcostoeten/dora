@@ -525,6 +525,17 @@ function parseColumns(data: JsonValue): ColumnDefinition[] {
 		if (!isRecord(col)) {
 			return { name: String(col), type: 'unknown', nullable: false, primaryKey: false }
 		}
+		let foreignKey: ColumnDefinition['foreignKey'] = undefined
+		const fk = col.foreign_key
+		if (isRecord(fk) && typeof fk.referenced_table === 'string') {
+			foreignKey = {
+				referencedTable: fk.referenced_table as string,
+				referencedColumn: typeof fk.referenced_column === 'string' ? fk.referenced_column as string : '',
+				referencedSchema: typeof fk.referenced_schema === 'string' && fk.referenced_schema
+					? fk.referenced_schema as string
+					: undefined,
+			}
+		}
 		return {
 			name: typeof col.name === 'string' ? col.name : 'unknown',
 			type:
@@ -544,7 +555,8 @@ function parseColumns(data: JsonValue): ColumnDefinition[] {
 					? col.is_primary_key
 					: typeof col.primary_key === 'boolean'
 						? col.primary_key
-						: false
+						: false,
+			foreignKey
 		}
 	})
 }

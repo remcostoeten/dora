@@ -37,6 +37,7 @@ import { SelectionActionBar } from './components/selection-action-bar'
 import { SetNullDialog } from './components/set-null-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
 import { DataSeederDialog } from './data-seeder-dialog'
+import { enrichColumnsWithFKs } from './utils/fk-enrichment'
 import { useLiveMonitor } from '@/core/live-monitor'
 import {
 	ColumnDefinition,
@@ -289,6 +290,14 @@ export function DatabaseStudio({
 
 			if (result.ok) {
 				const data = result.data
+
+				// Enrich columns with FK metadata from schema
+				const schemaResult = await adapter.getSchema(activeConnectionId)
+				if (schemaResult.ok) {
+					const { tableName: tableNamePart, schemaName } = getTableRefParts(tableRefName ?? '')
+					data.columns = enrichColumnsWithFKs(data.columns, schemaResult.data, tableNamePart, schemaName ?? undefined)
+				}
+
 				setTableData(data)
 
 				// If it's a new table or first load, reset visible columns to show all
