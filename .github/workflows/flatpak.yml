@@ -49,12 +49,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y appstream desktop-file-utils flatpak flatpak-builder
-          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
       - name: Install Flatpak runtimes
         shell: bash
         run: |
-          flatpak install --noninteractive --assumeyes \
+          flatpak install --user --noninteractive --assumeyes \
             org.gnome.Platform//${FLATPAK_RUNTIME_VERSION} \
             org.gnome.Sdk//${FLATPAK_RUNTIME_VERSION} \
             org.freedesktop.Sdk.Extension.rust-stable//24.08
@@ -74,6 +74,7 @@ jobs:
           MANIFEST="packaging/flatpak/${FLATPAK_APP_ID}.yml"
 
           flatpak-builder \
+            --user \
             --force-clean \
             --ccache \
             --repo="$REPO_DIR" \
