@@ -36,6 +36,13 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 		const file = e.target.files?.[0]
 		if (!file) return
 
+		const MAX_FILE_SIZE_MB = 10
+		if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+			setParseError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum size is ${MAX_FILE_SIZE_MB} MB.`)
+			if (fileInputRef.current) fileInputRef.current.value = ''
+			return
+		}
+
 		const reader = new FileReader()
 		reader.onload = (ev) => {
 			const text = ev.target?.result as string

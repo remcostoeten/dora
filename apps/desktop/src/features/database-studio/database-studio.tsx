@@ -410,12 +410,13 @@ export function DatabaseStudio({
 
 	const { openTab } = useTabs()
 
-	function handleFKNavigate(referencedTable: string, _referencedColumn: string, _value: unknown) {
+	function handleFKNavigate(referencedTable: string, _referencedColumn: string, _value: unknown, referencedSchema?: string) {
 		if (!activeConnectionId) return
+		const tableRef = referencedSchema ? `${referencedSchema}.${referencedTable}` : referencedTable
 		openTab({
 			connectionId: activeConnectionId,
-			tableId: referencedTable,
-			tableName: referencedTable,
+			tableId: tableRef,
+			tableName: tableRef,
 			label: referencedTable,
 		})
 	}

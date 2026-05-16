@@ -25,7 +25,7 @@ describe('FKNavigateIcon', () => {
 		const onNavigate = vi.fn()
 		render(<FKNavigateIcon foreignKey={fk} cellValue={42} onNavigate={onNavigate} />)
 		fireEvent.click(screen.getByRole('button'))
-		expect(onNavigate).toHaveBeenCalledWith('users', 'id', 42)
+		expect(onNavigate).toHaveBeenCalledWith('users', 'id', 42, 'public')
 	})
 
 	it('stops propagation on click', () => {

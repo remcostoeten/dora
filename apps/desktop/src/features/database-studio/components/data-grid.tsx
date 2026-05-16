@@ -55,7 +55,7 @@ type Props = {
 	onDraftCancel?: () => void
 	pendingEdits?: Set<string>
 	draftInsertIndex?: number | null
-	onFKNavigate?: (referencedTable: string, referencedColumn: string, value: unknown) => void
+	onFKNavigate?: (referencedTable: string, referencedColumn: string, value: unknown, schema?: string) => void
 }
 
 export function DataGrid({
