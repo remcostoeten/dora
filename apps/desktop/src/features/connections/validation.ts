@@ -57,7 +57,8 @@ export const connectionFieldsSchema = baseConnectionSchema.extend({
 	user: z.string().min(1, 'Username is required'),
 	password: z.string().optional(),
 	database: z.string().min(1, 'Database name is required'),
-	ssl: z.boolean().optional()
+	ssl: z.boolean().optional(),
+	poolerMode: z.boolean().optional()
 })
 
 export const sshTunnelSchema = z

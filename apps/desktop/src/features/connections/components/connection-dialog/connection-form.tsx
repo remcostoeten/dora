@@ -140,26 +140,46 @@ export function ConnectionForm({
 				</div>
 
 				{useConnectionString ? (
-					<div className='space-y-2'>
-						<Label
-							htmlFor='connection-string'
-							className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
-						>
-							Connection String
-						</Label>
-						<Input
-							id='connection-string'
-							placeholder={`${formData.type}://user:password@host:port/database`}
-							value={formData.url || ''}
-							onChange={function (e) {
-								updateField('url', sanitizeConnectionUrl(e.target.value))
-							}}
-							className='input-glow font-mono text-sm'
-						/>
-						<p className='text-xs text-muted-foreground'>
-							Paste your full connection URL
-						</p>
-					</div>
+					<>
+						<div className='space-y-2'>
+							<Label
+								htmlFor='connection-string'
+								className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+							>
+								Connection String
+							</Label>
+							<Input
+								id='connection-string'
+								placeholder={`${formData.type}://user:password@host:port/database`}
+								value={formData.url || ''}
+								onChange={function (e) {
+									updateField('url', sanitizeConnectionUrl(e.target.value))
+								}}
+								className='input-glow font-mono text-sm'
+							/>
+							<p className='text-xs text-muted-foreground'>
+								Paste your full connection URL
+							</p>
+						</div>
+
+						{formData.type === 'postgres' && (
+							<div className='flex items-center gap-2 pt-1'>
+								<Checkbox
+									id='pooler-mode-url'
+									checked={formData.poolerMode ?? false}
+									onCheckedChange={function (checked) {
+										updateField('poolerMode', checked)
+									}}
+								/>
+								<Label
+									htmlFor='pooler-mode-url'
+									className='text-sm text-muted-foreground cursor-pointer'
+								>
+									Pooler-compatible mode
+								</Label>
+							</div>
+						)}
+					</>
 				) : (
 					<>
 						<div className='grid grid-cols-3 gap-3'>
@@ -270,6 +290,24 @@ export function ConnectionForm({
 								Use SSL / TLS connection
 							</Label>
 						</div>
+
+						{formData.type === 'postgres' && (
+							<div className='flex items-center gap-2 pt-1'>
+								<Checkbox
+									id='pooler-mode'
+									checked={formData.poolerMode ?? false}
+									onCheckedChange={function (checked) {
+										updateField('poolerMode', checked)
+									}}
+								/>
+								<Label
+									htmlFor='pooler-mode'
+									className='text-sm text-muted-foreground cursor-pointer'
+								>
+									Pooler-compatible mode
+								</Label>
+							</div>
+						)}
 
 						{(formData.type === 'postgres' || formData.type === 'mysql') && (
 							<div className='border-t border-border/50 pt-4 mt-4 space-y-4'>

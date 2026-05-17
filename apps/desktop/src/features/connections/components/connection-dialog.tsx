@@ -19,6 +19,8 @@ import {
 	isValidConnectionUrl,
 	detectProviderName,
 	buildConnectionString,
+	hasPostgresPoolerMode,
+	setPostgresPoolerMode,
 	PROVIDER_CONFIGS
 } from '../utils/providers'
 import { validateConnection } from '../validation'
@@ -40,6 +42,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 		user: 'postgres',
 		database: 'postgres',
 		ssl: false,
+		poolerMode: false,
 		sshConfig: {
 			enabled: false,
 			host: '',
@@ -75,6 +78,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 					user: 'postgres',
 					database: 'postgres',
 					ssl: false,
+					poolerMode: false,
 					...initialValues
 				})
 				setUseConnectionString(!!hasUrl)
@@ -107,6 +111,9 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 						password: undefined,
 						database: undefined,
 						ssl: undefined
+					}
+					if (updates.url && prev.type === 'postgres') {
+						updates.poolerMode = hasPostgresPoolerMode(updates.url)
 					}
 
 					if (!prev.name || prev.name === '') {
@@ -262,6 +269,10 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 						}
 					}
 				} else {
+					connectionString = setPostgresPoolerMode(
+						connectionString,
+						formData.poolerMode ?? false
+					)
 					databaseInfo = {
 						Postgres: {
 							connection_string: connectionString,
@@ -271,7 +282,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 				}
 			}
 
-			const result = await commands.testConnection(databaseInfo)
+			const result = await commands.testConnection(databaseInfo, initialValues?.id ?? null)
 
 			if (result.status === 'ok' && result.data) {
 				setTestStatus('success')

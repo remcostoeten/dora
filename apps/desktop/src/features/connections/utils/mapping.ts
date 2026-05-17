@@ -1,5 +1,6 @@
 import type { Connection as FrontendConnection } from '@/features/connections/types'
 import { ConnectionInfo as BackendConnection, DatabaseInfo, JsonValue } from '@/lib/bindings'
+import { hasPostgresPoolerMode, setPostgresPoolerMode } from './providers'
 
 function backendToFrontendSshConfig(
 	sshConfig: {
@@ -42,7 +43,7 @@ export function frontendToBackendSshConfig(conn: FrontendConnection) {
 
 export function backendToFrontendConnection(conn: BackendConnection): FrontendConnection {
 	let type: 'postgres' | 'mysql' | 'sqlite' | 'libsql' = 'sqlite'
-	let host, port, user, database, url, authToken, sshConfig
+	let host, port, user, database, url, authToken, sshConfig, poolerMode
 
 	if ('Postgres' in conn.database_type) {
 		type = 'postgres'
@@ -59,6 +60,7 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 			port = 5432
 		}
 		url = connString
+		poolerMode = hasPostgresPoolerMode(connString)
 	} else if ('MySQL' in conn.database_type) {
 		type = 'mysql'
 		const connString = conn.database_type.MySQL.connection_string
@@ -94,6 +96,7 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 		url,
 		authToken,
 		sshConfig,
+		poolerMode,
 		status: conn.connected ? 'connected' : 'idle',
 		createdAt: conn.created_at ?? Date.now(),
 		lastConnectedAt: conn.last_connected_at
@@ -117,6 +120,9 @@ export function frontendToBackendDatabaseInfo(conn: FrontendConnection): Databas
 			const encodedPassword = encodeURIComponent(password)
 			const encodedDatabase = encodeURIComponent(database)
 			connectionString = `${protocol}://${encodedUser}:${encodedPassword}@${host}:${port}/${encodedDatabase}${ssl}`
+		}
+		if (conn.type === 'postgres') {
+			connectionString = setPostgresPoolerMode(connectionString, conn.poolerMode ?? false)
 		}
 		if (conn.type === 'mysql') {
 			return {

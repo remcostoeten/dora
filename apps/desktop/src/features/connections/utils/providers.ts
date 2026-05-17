@@ -309,6 +309,49 @@ export function isValidConnectionUrl(text: string): boolean {
 	return pattern.test(trimmed)
 }
 
+export function hasPostgresPoolerMode(url: string): boolean {
+	try {
+		const parsed = new URL(url)
+		const params = parsed.searchParams
+		const host = parsed.hostname.toLowerCase()
+		const port = parsed.port
+
+		return (
+			params.get('simple_query') === 'true' ||
+			params.get('pgbouncer') === 'true' ||
+			params.get('pooler') === 'true' ||
+			params.get('pooler') === 'transaction' ||
+			params.get('prepared_statements') === 'false' ||
+			params.get('statement_cache_size') === '0' ||
+			host.includes('pooler') ||
+			host.includes('pgbouncer') ||
+			port === '6432' ||
+			port === '6543'
+		)
+	} catch {
+		return false
+	}
+}
+
+export function setPostgresPoolerMode(url: string, enabled: boolean): string {
+	try {
+		const parsed = new URL(url)
+		if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+			return url
+		}
+
+		if (enabled) {
+			parsed.searchParams.set('simple_query', 'true')
+		} else {
+			parsed.searchParams.delete('simple_query')
+		}
+
+		return parsed.toString()
+	} catch {
+		return url
+	}
+}
+
 /**
  * Gets connection field defaults for a database type
  */

@@ -22,6 +22,7 @@ export type Connection = {
 	password?: string
 	database?: string
 	ssl?: boolean
+	poolerMode?: boolean
 	url?: string
 	authToken?: string
 	status?: 'connected' | 'error' | 'idle'
