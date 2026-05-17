@@ -23,9 +23,10 @@ impl WriteAdapter for PostgresAdapter {
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
         let query = format!(
-            "UPDATE {} SET \"{}\" = $1 WHERE \"{}\" = $2",
+            "UPDATE {} SET \"{}\" = $1::{} WHERE \"{}\" = $2",
             qualified_table_name(&table, schema.as_deref()),
             column,
+            pg_column_type(self.client(), &table, schema.as_deref(), &column).await?,
             pk_column
         );
         let new_val_param = json_to_pg_param(&new_value);
@@ -290,4 +291,35 @@ impl WriteAdapter for PostgresAdapter {
             message: Some(format!("Executed {} statements", statements.len())),
         })
     }
+}
+
+async fn pg_column_type(
+    client: &tokio_postgres::Client,
+    table: &str,
+    schema: Option<&str>,
+    column: &str,
+) -> Result<String, Error> {
+    let schema = schema.unwrap_or("public");
+    let row = client
+        .query_opt(
+            r#"
+            SELECT format_type(a.atttypid, a.atttypmod)
+            FROM pg_attribute a
+            JOIN pg_class c ON c.oid = a.attrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = $1
+              AND c.relname = $2
+              AND a.attname = $3
+              AND a.attnum > 0
+              AND NOT a.attisdropped
+            "#,
+            &[&schema, &table, &column],
+        )
+        .await?;
+
+    let Some(row) = row else {
+        return Ok("text".to_string());
+    };
+
+    Ok(row.get::<_, String>(0))
 }
