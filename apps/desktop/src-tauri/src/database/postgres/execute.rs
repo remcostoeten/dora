@@ -1,5 +1,5 @@
 use futures_util::{pin_mut, TryStreamExt};
-use tokio_postgres::{types::ToSql, Client};
+use tokio_postgres::{types::ToSql, Client, SimpleQueryMessage};
 
 use crate::{
     database::{
@@ -13,7 +13,12 @@ pub async fn execute_query(
     client: &Client,
     stmt: ParsedStatement,
     sender: &ExecSender,
+    use_simple_query: bool,
 ) -> Result<(), Error> {
+    if use_simple_query {
+        return execute_simple_query(client, &stmt.statement, stmt.returns_values, sender).await;
+    }
+
     if stmt.returns_values {
         execute_query_with_results(client, &stmt.statement, sender).await?;
     } else {
@@ -23,13 +28,88 @@ pub async fn execute_query(
     Ok(())
 }
 
-// TODO(pgbouncer): Accept a `use_simple_query: bool` parameter (sourced from
-// `Database::Postgres { use_simple_query, .. }`). When true, replace the
-// `client.prepare(...)` + `client.query_raw(...)` flow below with
-// `client.simple_query(query)` and convert each `SimpleQueryRow` into the
-// same JSON-encoded `Page` shape via a new `SimpleRowWriter`. Required for
-// PgBouncer in transaction-pool mode, which kills named prepared statements
-// between queries ("prepared statement \"PGBOUNCER_1\" does not exist").
+async fn execute_simple_query(
+    client: &Client,
+    query: &str,
+    returns_values: bool,
+    sender: &ExecSender,
+) -> Result<(), Error> {
+    let started_at = std::time::Instant::now();
+    log::info!("Starting simple Postgres query: {}", query);
+
+    let stream = match client.simple_query_raw(query).await {
+        Ok(stream) => stream,
+        Err(e) => {
+            let error_msg = postgres_error_message("Simple query failed", &e);
+            sender.send(QueryExecEvent::Finished {
+                elapsed_ms: started_at.elapsed().as_millis() as u64,
+                affected_rows: 0,
+                error: Some(error_msg.clone()),
+            })?;
+            return Err(Error::Any(anyhow::anyhow!(error_msg)));
+        }
+    };
+    pin_mut!(stream);
+
+    let batch_size = 50;
+    let mut writer = RowWriter::new();
+    let mut affected_rows = 0;
+    let mut sent_columns = !returns_values;
+
+    while let Some(message) = stream.try_next().await.map_err(|e| {
+        let error_msg = postgres_error_message("Simple query failed", &e);
+        let _ = sender.send(QueryExecEvent::Finished {
+            elapsed_ms: started_at.elapsed().as_millis() as u64,
+            affected_rows: 0,
+            error: Some(error_msg.clone()),
+        });
+        Error::Any(anyhow::anyhow!(error_msg))
+    })? {
+        match message {
+            SimpleQueryMessage::RowDescription(columns) => {
+                let columns = serialize_as_json_array(columns.iter().map(|col| col.name()))?;
+                sender.send(QueryExecEvent::TypesResolved { columns })?;
+                sent_columns = true;
+            }
+            SimpleQueryMessage::Row(row) => {
+                if !sent_columns {
+                    let columns =
+                        serialize_as_json_array(row.columns().iter().map(|col| col.name()))?;
+                    sender.send(QueryExecEvent::TypesResolved { columns })?;
+                    sent_columns = true;
+                }
+
+                writer.add_simple_query_row(&row)?;
+                if writer.len() >= batch_size {
+                    sender.send(QueryExecEvent::Page {
+                        page_amount: writer.len(),
+                        page: writer.finish(),
+                    })?;
+                }
+            }
+            SimpleQueryMessage::CommandComplete(rows) => {
+                affected_rows = rows as usize;
+            }
+            _ => {}
+        }
+    }
+
+    if !writer.is_empty() {
+        sender.send(QueryExecEvent::Page {
+            page_amount: writer.len(),
+            page: writer.finish(),
+        })?;
+    }
+
+    sender.send(QueryExecEvent::Finished {
+        elapsed_ms: started_at.elapsed().as_millis() as u64,
+        affected_rows,
+        error: None,
+    })?;
+
+    Ok(())
+}
+
 async fn execute_query_with_results(
     client: &Client,
     query: &str,
@@ -48,11 +128,14 @@ async fn execute_query_with_results(
         Ok(stmt) => stmt,
         Err(e) => {
             log::error!("Query preparation failed: {:?}", e);
-            let error_msg = if let Some(db_error) = e.as_db_error() {
-                format!("Database error: {}", db_error.message())
-            } else {
-                format!("Query preparation failed: {}", e)
-            };
+            if is_duplicate_prepared_statement(&e) {
+                log::warn!(
+                    "Falling back to simple Postgres query after duplicate prepared statement"
+                );
+                return execute_simple_query(client, query, true, sender).await;
+            }
+
+            let error_msg = postgres_error_message("Query preparation failed", &e);
 
             sender.send(QueryExecEvent::Finished {
                 elapsed_ms: started_at.elapsed().as_millis() as u64,
@@ -136,11 +219,7 @@ async fn execute_query_with_results(
         }
         Err(e) => {
             log::error!("Query execution failed: {:?}", e);
-            let error_msg = if let Some(db_error) = e.as_db_error() {
-                format!("Database error: {}", db_error.message())
-            } else {
-                format!("Query execution failed: {}", e)
-            };
+            let error_msg = postgres_error_message("Query execution failed", &e);
 
             sender.send(QueryExecEvent::Finished {
                 elapsed_ms: started_at.elapsed().as_millis() as u64,
@@ -153,10 +232,6 @@ async fn execute_query_with_results(
     }
 }
 
-// TODO(pgbouncer): same as `execute_query_with_results` — replace
-// `client.execute(query, &[])` with `client.simple_query(query)` and count
-// affected rows from the `CommandComplete` message when the pooler flag is
-// on. Required for PgBouncer transaction-pool mode.
 async fn execute_modification_query(
     client: &Client,
     query: &str,
@@ -177,11 +252,14 @@ async fn execute_modification_query(
         }
         Err(e) => {
             log::error!("Modification query failed: {:?}", e);
-            let error_msg = if let Some(db_error) = e.as_db_error() {
-                format!("Database error: {}", db_error.message())
-            } else {
-                format!("Modification query failed: {}", e)
-            };
+            if is_duplicate_prepared_statement(&e) {
+                log::warn!(
+                    "Falling back to simple Postgres query after duplicate prepared statement"
+                );
+                return execute_simple_query(client, query, false, sender).await;
+            }
+
+            let error_msg = postgres_error_message("Modification query failed", &e);
 
             sender.send(QueryExecEvent::Finished {
                 elapsed_ms: started_at.elapsed().as_millis() as u64,
@@ -192,6 +270,22 @@ async fn execute_modification_query(
             Err(Error::Any(anyhow::anyhow!(error_msg)))
         }
     }
+}
+
+fn postgres_error_message(context: &str, err: &tokio_postgres::Error) -> String {
+    if let Some(db_error) = err.as_db_error() {
+        format!("Database error: {}", db_error.message())
+    } else {
+        format!("{context}: {err}")
+    }
+}
+
+fn is_duplicate_prepared_statement(err: &tokio_postgres::Error) -> bool {
+    let Some(db_error) = err.as_db_error() else {
+        return false;
+    };
+
+    db_error.code().code() == "42P05"
 }
 
 #[cfg(test)]
@@ -215,7 +309,7 @@ mod tests {
         let (sender, mut recv) = channel();
 
         tokio::task::spawn(async move {
-            execute_query(&conn, stmt, &sender).await.unwrap();
+            execute_query(&conn, stmt, &sender, false).await.unwrap();
         });
 
         let mut events = Vec::new();
@@ -240,7 +334,7 @@ mod tests {
         let (sender, mut recv) = channel();
 
         tokio::task::spawn(async move {
-            execute_query(&conn, stmt, &sender).await.unwrap();
+            execute_query(&conn, stmt, &sender, false).await.unwrap();
         });
 
         let event = recv

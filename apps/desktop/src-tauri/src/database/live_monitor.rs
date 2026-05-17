@@ -24,8 +24,11 @@ use crate::{
     credentials,
     database::{
         adapter::watch_adapter_from_client,
-        postgres::row_writer::RowWriter as PostgresRowWriter,
-        types::{Database, DatabaseClient},
+        postgres::{
+            connect::{no_verify_tls, verified_tls},
+            row_writer::RowWriter as PostgresRowWriter,
+        },
+        types::{is_postgres_pooler_url, Database, DatabaseClient},
         Certificates,
     },
     AppState, Error,
@@ -310,7 +313,7 @@ async fn create_postgres_notification_receiver(
 
     let channel_name = postgres_live_monitor_channel(connection_id, table_name);
     let trigger_name = postgres_live_monitor_trigger(table_name);
-    let config = match build_postgres_listener_config(
+    let (config, verify_tls) = match build_postgres_listener_config(
         connection_id,
         &connection_string,
         tunnel_local_port,
@@ -329,6 +332,7 @@ async fn create_postgres_notification_receiver(
     match connect_and_subscribe_postgres_listener(
         &config,
         &certificates,
+        verify_tls,
         table_name,
         &channel_name,
         &trigger_name,
@@ -351,19 +355,41 @@ fn build_postgres_listener_config(
     connection_id: Uuid,
     connection_string: &str,
     tunnel_local_port: Option<u16>,
-) -> Result<tokio_postgres::Config, Error> {
+) -> Result<(tokio_postgres::Config, bool), Error> {
+    let mut disable_channel_binding = false;
+    let mut verify_tls = false;
     let cleaned_string = if let Ok(mut url) = url::Url::parse(connection_string) {
+        let is_pooler = is_postgres_pooler_url(&url);
+        disable_channel_binding = is_pooler;
+        let mut has_sslmode = false;
         let params: Vec<_> = url
             .query_pairs()
-            .filter(|(key, _)| key != "channel_binding")
-            .map(|(key, value)| format!("{}={}", key, value))
-            .collect();
-        let query_string = params.join("&");
-        url.set_query(if params.is_empty() {
-            None
-        } else {
-            Some(&query_string)
-        });
+            .filter_map(|(key, value)| {
+                if key == "channel_binding" {
+                    disable_channel_binding = true;
+                    None
+                } else if key == "sslmode" && matches!(value.as_ref(), "verify-ca" | "verify-full")
+                {
+                    has_sslmode = true;
+                    verify_tls = true;
+                    Some((key.into_owned(), "require".to_string()))
+                } else if key == "sslmode" {
+                    has_sslmode = true;
+                    Some((key.into_owned(), value.into_owned()))
+                } else if is_dora_postgres_option(&key) {
+                    None
+                } else {
+                    Some((key.into_owned(), value.into_owned()))
+                }
+            })
+            .collect::<Vec<_>>();
+        url.query_pairs_mut().clear().extend_pairs(params);
+        if is_pooler && !has_sslmode {
+            url.query_pairs_mut().append_pair("sslmode", "require");
+        }
+        if url.query().is_some_and(str::is_empty) {
+            url.set_query(None);
+        }
         url.to_string()
     } else {
         connection_string.to_string()
@@ -377,6 +403,10 @@ fn build_postgres_listener_config(
         ))
     })?;
 
+    if disable_channel_binding {
+        config.channel_binding(tokio_postgres::config::ChannelBinding::Disable);
+    }
+
     if config.get_password().is_none() {
         if let Some(password) = credentials::get_password(&connection_id)? {
             config.password(password);
@@ -388,12 +418,26 @@ fn build_postgres_listener_config(
         config.port(local_port);
     }
 
-    Ok(config)
+    Ok((config, verify_tls))
+}
+
+fn is_dora_postgres_option(key: &str) -> bool {
+    matches!(
+        key.to_ascii_lowercase().as_str(),
+        "pgbouncer"
+            | "pooler"
+            | "simple_query"
+            | "prepared_statements"
+            | "prepared_statement"
+            | "statement_cache_size"
+            | "statement_cache_capacity"
+    )
 }
 
 async fn connect_and_subscribe_postgres_listener(
     config: &tokio_postgres::Config,
     certificates: &Certificates,
+    verify_tls: bool,
     table_name: &str,
     channel_name: &str,
     trigger_name: &str,
@@ -401,12 +445,17 @@ async fn connect_and_subscribe_postgres_listener(
     use tokio_postgres::config::SslMode;
 
     match config.get_ssl_mode() {
-        SslMode::Require | SslMode::Prefer => {
+        SslMode::Require if verify_tls => {
             let certificate_store = certificates.read().await?;
-            let rustls_config = rustls::ClientConfig::builder()
-                .with_root_certificates(certificate_store)
-                .with_no_client_auth();
-            let tls = tokio_postgres_rustls::MakeRustlsConnect::new(rustls_config);
+            let tls = verified_tls(certificate_store);
+            let (client, connection) = config.connect(tls).await.map_err(|error| {
+                anyhow::anyhow!("Failed to connect Postgres listener: {}", error)
+            })?;
+            finalize_postgres_listener(client, connection, table_name, channel_name, trigger_name)
+                .await
+        }
+        SslMode::Require | SslMode::Prefer => {
+            let tls = no_verify_tls();
             let (client, connection) = config.connect(tls).await.map_err(|error| {
                 anyhow::anyhow!("Failed to connect Postgres listener: {}", error)
             })?;
@@ -569,7 +618,9 @@ async fn fetch_table_snapshot(
     };
 
     match client {
-        DatabaseClient::Postgres { client } => fetch_postgres_snapshot(client, table_name).await,
+        DatabaseClient::Postgres { client, .. } => {
+            fetch_postgres_snapshot(client, table_name).await
+        }
         DatabaseClient::SQLite { connection } => {
             fetch_sqlite_snapshot(connection, table_name).await
         }

@@ -501,7 +501,7 @@ async fn fetch_postgres_data(
     client: &DatabaseClient,
     query: &str,
 ) -> Result<(Vec<String>, Vec<Vec<serde_json::Value>>), Error> {
-    if let DatabaseClient::Postgres { client } = client {
+    if let DatabaseClient::Postgres { client, .. } = client {
         let rows = client.query(query, &[]).await?;
         if rows.is_empty() {
             return Ok((vec![], vec![]));

@@ -138,9 +138,10 @@ pub fn watch_adapter_from_client(
     client: &crate::database::types::DatabaseClient,
 ) -> BoxedWatchAdapter {
     match client {
-        crate::database::types::DatabaseClient::Postgres { client } => {
-            Box::new(PostgresAdapter::new(client.clone()))
-        }
+        crate::database::types::DatabaseClient::Postgres {
+            client,
+            use_simple_query,
+        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query)),
         crate::database::types::DatabaseClient::MySQL { pool } => {
             Box::new(MySqlAdapter::new(pool.clone()))
         }

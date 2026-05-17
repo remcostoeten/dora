@@ -1,6 +1,6 @@
 use serde_json::value::RawValue;
 use std::fmt::Write;
-use tokio_postgres::{types::Type, Row};
+use tokio_postgres::{types::Type, Row, SimpleQueryRow};
 
 /// Accepts any type, returning their raw bytes
 mod bytes;
@@ -51,6 +51,33 @@ impl RowWriter {
                 self.buf.push(',');
             }
             self.write_pg_value_as_json(row, i)?;
+        }
+        self.buf.push(']');
+        self.row_count += 1;
+
+        Ok(())
+    }
+
+    pub fn add_simple_query_row(&mut self, row: &SimpleQueryRow) -> Result<(), anyhow::Error> {
+        if self.row_count == 0 {
+            self.buf.reserve(2);
+            self.buf.push('[');
+        }
+
+        if self.row_count > 0 {
+            self.buf.push(',');
+        }
+
+        self.buf.push('[');
+        for i in 0..row.len() {
+            if i > 0 {
+                self.buf.push(',');
+            }
+
+            match row.try_get(i)? {
+                Some(value) => self.write_json_string(value),
+                None => self.buf.push_str("null"),
+            }
         }
         self.buf.push(']');
         self.row_count += 1;

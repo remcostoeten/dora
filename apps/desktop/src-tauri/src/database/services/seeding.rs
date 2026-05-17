@@ -98,7 +98,7 @@ impl<'a> SeedingService<'a> {
             );
 
             match &client {
-                crate::database::types::DatabaseClient::Postgres { client } => {
+                crate::database::types::DatabaseClient::Postgres { client, .. } => {
                     client.execute(&sql, &[]).await.map_err(|e| {
                         Error::Any(anyhow::anyhow!("Postgres insert failed: {}", e))
                     })?;

@@ -22,18 +22,46 @@ pub type Page = Box<RawValue>;
 
 pub type ExecSender = UnboundedSender<QueryExecEvent>;
 
-/// True when a Postgres connection string contains `?pgbouncer=true` (case
-/// insensitive). Used to decide whether to skip named prepared statements
-/// when talking to a transaction-pooling PgBouncer. Matches the convention
-/// used by Prisma/Drizzle/`pg-bouncer-mode` so existing connection strings
-/// can be reused unchanged.
+/// True when a Postgres connection should skip named prepared statements.
+///
+/// Explicit URL options are preferred because every provider/pooler has
+/// slightly different support. Heuristics are intentionally limited to hosts or
+/// ports that clearly look like a pooler.
 pub fn detect_pgbouncer_flag(connection_string: &str) -> bool {
     let Ok(url) = url::Url::parse(connection_string) else {
         return false;
     };
-    url.query_pairs().any(|(key, value)| {
-        key.eq_ignore_ascii_case("pgbouncer") && value.eq_ignore_ascii_case("true")
-    })
+
+    if url.query_pairs().any(is_simple_query_option) {
+        return true;
+    }
+
+    is_postgres_pooler_url(&url)
+}
+
+pub fn is_postgres_pooler_url(url: &url::Url) -> bool {
+    let host = url.host_str().unwrap_or("").to_ascii_lowercase();
+    host.contains("pgbouncer")
+        || host.contains("pooler")
+        || host.contains("-pooler.")
+        || matches!(url.port(), Some(6432 | 6543))
+}
+
+fn is_simple_query_option(
+    key_value: (std::borrow::Cow<'_, str>, std::borrow::Cow<'_, str>),
+) -> bool {
+    let (key, value) = key_value;
+    let key = key.to_ascii_lowercase();
+    let value = value.to_ascii_lowercase();
+
+    matches!(key.as_str(), "pgbouncer" | "pooler" | "simple_query")
+        && matches!(value.as_str(), "true" | "1" | "transaction" | "statement")
+        || matches!(key.as_str(), "prepared_statements" | "prepared_statement")
+            && matches!(value.as_str(), "false" | "0" | "disabled" | "disable")
+        || matches!(
+            key.as_str(),
+            "statement_cache_size" | "statement_cache_capacity"
+        ) && value == "0"
 }
 
 #[derive(Debug, Clone, Serialize, Type)]
@@ -127,6 +155,7 @@ pub struct DatabaseConnection {
 pub enum DatabaseClient {
     Postgres {
         client: Arc<tokio_postgres::Client>,
+        use_simple_query: bool,
     },
     MySQL {
         pool: Arc<mysql_async::Pool>,
@@ -319,9 +348,11 @@ impl DatabaseConnection {
         let client = match &self.database {
             Database::Postgres {
                 client: Some(client),
+                use_simple_query,
                 ..
             } => DatabaseClient::Postgres {
                 client: client.clone(),
+                use_simple_query: *use_simple_query,
             },
             Database::Postgres { client: None, .. } => {
                 return Err(Error::Any(anyhow::anyhow!(

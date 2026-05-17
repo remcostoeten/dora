@@ -150,9 +150,14 @@ impl StatementManager {
         let (sender, recv) = channel();
 
         match client {
-            DatabaseClient::Postgres { client } => {
+            DatabaseClient::Postgres {
+                client,
+                use_simple_query,
+            } => {
                 spawn(async move {
-                    if let Err(err) = postgres::execute::execute_query(&client, stmt, &sender).await
+                    if let Err(err) =
+                        postgres::execute::execute_query(&client, stmt, &sender, use_simple_query)
+                            .await
                     {
                         log::error!("Error executing Postgres query: {}", err);
                     }

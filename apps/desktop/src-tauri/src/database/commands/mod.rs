@@ -1,6 +1,5 @@
 pub mod ai;
 pub mod connections;
-pub mod storage;
 pub mod live_monitor;
 pub mod mutation;
 pub mod query;
@@ -12,6 +11,7 @@ pub mod seeding;
 pub mod settings;
 pub mod snippet_folders;
 pub mod snippets;
+pub mod storage;
 
 pub use ai::*;
 pub use connections::*;
