@@ -100,9 +100,10 @@ pub fn write_adapter_from_client(
     use super::read::{LibSqlAdapter, MySqlAdapter, PostgresAdapter, SqliteAdapter};
 
     match client {
-        crate::database::types::DatabaseClient::Postgres { client } => {
-            Box::new(PostgresAdapter::new(client.clone()))
-        }
+        crate::database::types::DatabaseClient::Postgres {
+            client,
+            use_simple_query,
+        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query)),
         crate::database::types::DatabaseClient::MySQL { pool } => {
             Box::new(MySqlAdapter::new(pool.clone()))
         }

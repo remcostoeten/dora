@@ -65,7 +65,7 @@ impl ServerCertVerifier for AcceptAllServerCerts {
     }
 }
 
-fn no_verify_tls() -> MakeRustlsConnect {
+pub(crate) fn no_verify_tls() -> MakeRustlsConnect {
     let provider = Arc::new(rustls::crypto::ring::default_provider());
     let config = rustls::ClientConfig::builder()
         .dangerous()
@@ -74,7 +74,7 @@ fn no_verify_tls() -> MakeRustlsConnect {
     MakeRustlsConnect::new(config)
 }
 
-fn verified_tls(certificate_store: Arc<rustls::RootCertStore>) -> MakeRustlsConnect {
+pub(crate) fn verified_tls(certificate_store: Arc<rustls::RootCertStore>) -> MakeRustlsConnect {
     let config = rustls::ClientConfig::builder()
         .with_root_certificates(certificate_store)
         .with_no_client_auth();

@@ -9,7 +9,9 @@ use crate::{
     credentials,
     database::{
         postgres::connect::connect,
-        types::{ConnectionInfo, Database, DatabaseConnection, DatabaseInfo},
+        types::{
+            is_postgres_pooler_url, ConnectionInfo, Database, DatabaseConnection, DatabaseInfo,
+        },
         Certificates, ConnectionMonitor,
     },
     error::Error,
@@ -21,21 +23,27 @@ fn clean_postgres_connection_string(connection_string: &str) -> (String, bool, b
         return (connection_string.to_string(), false, false);
     };
 
-    let mut disable_channel_binding = false;
+    let is_pooler = is_postgres_pooler_url(&url);
+    let mut disable_channel_binding = is_pooler;
     let mut verify_tls = false;
+    let mut has_sslmode = false;
     let params: Vec<_> = url
         .query_pairs()
         .filter_map(|(key, value)| {
             if key == "channel_binding" {
-                disable_channel_binding = value.eq_ignore_ascii_case("disable");
+                disable_channel_binding = true;
                 None
             } else if key == "sslmode" && matches!(value.as_ref(), "verify-ca" | "verify-full") {
+                has_sslmode = true;
                 verify_tls = true;
                 Some((key.into_owned(), "require".to_string()))
-            } else if key.eq_ignore_ascii_case("pgbouncer") {
-                // Strip the Dora/Prisma-style pooler flag; tokio_postgres::Config
-                // rejects unknown query params. The flag is detected separately
-                // by `detect_pgbouncer_flag` on the raw connection string.
+            } else if key == "sslmode" {
+                has_sslmode = true;
+                Some((key.into_owned(), value.into_owned()))
+            } else if is_dora_postgres_option(&key) {
+                // Strip Dora/ORM-style client hints; tokio_postgres::Config
+                // rejects unknown query params. These are detected separately
+                // from the raw connection string before parsing.
                 None
             } else {
                 Some((key.into_owned(), value.into_owned()))
@@ -44,11 +52,27 @@ fn clean_postgres_connection_string(connection_string: &str) -> (String, bool, b
         .collect();
 
     url.query_pairs_mut().clear().extend_pairs(params);
+    if is_pooler && !has_sslmode {
+        url.query_pairs_mut().append_pair("sslmode", "require");
+    }
     if url.query().is_some_and(str::is_empty) {
         url.set_query(None);
     }
 
     (url.to_string(), disable_channel_binding, verify_tls)
+}
+
+fn is_dora_postgres_option(key: &str) -> bool {
+    matches!(
+        key.to_ascii_lowercase().as_str(),
+        "pgbouncer"
+            | "pooler"
+            | "simple_query"
+            | "prepared_statements"
+            | "prepared_statement"
+            | "statement_cache_size"
+            | "statement_cache_capacity"
+    )
 }
 
 pub struct ConnectionService<'a> {
@@ -890,5 +914,62 @@ impl ConnectionService<'_> {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clean_postgres_connection_string;
+    use crate::database::types::detect_pgbouncer_flag;
+
+    #[test]
+    fn pooler_host_enables_simple_query_mode_without_provider_specific_flag() {
+        let url =
+            "postgresql://postgres.project:pw@aws-0-eu-central-1.pooler.supabase.com:6543/postgres";
+
+        assert!(detect_pgbouncer_flag(url));
+
+        let (cleaned, disable_channel_binding, verify_tls) = clean_postgres_connection_string(url);
+        assert!(disable_channel_binding);
+        assert!(!verify_tls);
+        assert!(cleaned.contains("sslmode=require"));
+    }
+
+    #[test]
+    fn explicit_pooler_hints_are_removed_before_tokio_postgres_parsing() {
+        let url = "postgresql://user:pw@example.com/db?sslmode=require&prepared_statements=false&statement_cache_size=0";
+
+        assert!(detect_pgbouncer_flag(url));
+
+        let (cleaned, disable_channel_binding, verify_tls) = clean_postgres_connection_string(url);
+        assert!(!disable_channel_binding);
+        assert!(!verify_tls);
+        assert_eq!(
+            cleaned,
+            "postgresql://user:pw@example.com/db?sslmode=require"
+        );
+    }
+
+    #[test]
+    fn generic_pooler_ports_enable_pooler_mode() {
+        assert!(detect_pgbouncer_flag(
+            "postgresql://user:pw@example.com:6432/db"
+        ));
+        assert!(detect_pgbouncer_flag(
+            "postgresql://user:pw@example.com:6543/db"
+        ));
+    }
+
+    #[test]
+    fn verify_full_sslmode_uses_tls_verification_without_passing_unknown_mode_through() {
+        let url = "postgresql://user:pw@example.com/db?sslmode=verify-full";
+
+        let (cleaned, disable_channel_binding, verify_tls) = clean_postgres_connection_string(url);
+        assert!(!disable_channel_binding);
+        assert!(verify_tls);
+        assert_eq!(
+            cleaned,
+            "postgresql://user:pw@example.com/db?sslmode=require"
+        );
     }
 }

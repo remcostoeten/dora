@@ -79,11 +79,15 @@ impl std::fmt::Display for DatabaseType {
 /// PostgreSQL adapter implementation.
 pub struct PostgresAdapter {
     client: Arc<PgClient>,
+    use_simple_query: bool,
 }
 
 impl PostgresAdapter {
-    pub fn new(client: Arc<PgClient>) -> Self {
-        Self { client }
+    pub fn new(client: Arc<PgClient>, use_simple_query: bool) -> Self {
+        Self {
+            client,
+            use_simple_query,
+        }
     }
 
     pub fn client(&self) -> &PgClient {
@@ -98,7 +102,13 @@ impl DatabaseAdapter for PostgresAdapter {
     }
 
     async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error> {
-        crate::database::postgres::execute::execute_query(&self.client, stmt, sender).await
+        crate::database::postgres::execute::execute_query(
+            &self.client,
+            stmt,
+            sender,
+            self.use_simple_query,
+        )
+        .await
     }
 
     async fn get_schema(&self) -> Result<DatabaseSchema, Error> {
@@ -240,9 +250,10 @@ pub type BoxedAdapter = Box<dyn DatabaseAdapter>;
 
 pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> BoxedAdapter {
     match client {
-        crate::database::types::DatabaseClient::Postgres { client } => {
-            Box::new(PostgresAdapter::new(client.clone()))
-        }
+        crate::database::types::DatabaseClient::Postgres {
+            client,
+            use_simple_query,
+        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query)),
         crate::database::types::DatabaseClient::MySQL { pool } => {
             Box::new(MySqlAdapter::new(pool.clone()))
         }
