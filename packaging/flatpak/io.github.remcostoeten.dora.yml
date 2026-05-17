@@ -17,6 +17,15 @@ finish-args:
   - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
 
 modules:
+  - name: bun-install
+    buildsystem: simple
+    sources:
+      - type: archive
+        url: https://github.com/oven-sh/bun/releases/download/bun-v1.1.38/bun-linux-x64-baseline.zip
+        sha256: 353e2e6d4086a09eeee984d2ed61736dcd905838ede51b82689fd7b3e95def90
+    build-commands:
+      - install -Dm755 bun /app/bin/bun-install
+
   - name: bun
     buildsystem: simple
     sources:
@@ -36,7 +45,7 @@ modules:
         CARGO_HOME: /run/build/dora/cargo
         RUSTUP_HOME: /run/build/dora/rustup
     build-commands:
-      - bun install --frozen-lockfile
+      - bun-install install --frozen-lockfile
       - bun run --cwd apps/desktop build
       - cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
       - install -Dm755 apps/desktop/src-tauri/target/release/dora /app/bin/dora
