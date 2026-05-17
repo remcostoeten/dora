@@ -21,8 +21,8 @@ modules:
     buildsystem: simple
     sources:
       - type: archive
-        url: https://github.com/oven-sh/bun/releases/download/bun-v1.1.38/bun-linux-x64-baseline.zip
-        sha256: 353e2e6d4086a09eeee984d2ed61736dcd905838ede51b82689fd7b3e95def90
+        url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.13/bun-linux-x64-baseline.zip
+        sha256: 9d8a24292a7068090205daac0a5a223f5f69736f5287e37bf88d3b4031edc750
     build-commands:
       - install -Dm755 bun /app/bin/bun
 
