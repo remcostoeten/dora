@@ -106,12 +106,11 @@ Dora is a Tauri app built for macOS, Windows, and Linux.
 
 ## Get Dora
 
-Download the latest release for your platform:
+Download a release asset for your platform:
 
-- macOS (Apple Silicon): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.110_aarch64.dmg)
-- macOS (Intel): [`.dmg`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.110_x64.dmg)
-- Windows: [`.msi`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.110_x64_en-US.msi)
-- Linux: [`.deb`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.110_amd64.deb), [`.rpm`](https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.110-1.x86_64.rpm), [`.AppImage`](https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.110_amd64.AppImage)
+- macOS: `.dmg`
+- Windows: `.msi`
+- Linux: `.deb`, `.rpm`, `.AppImage`, `.snap`, or `.flatpak`
 
 ### Install
 
@@ -140,26 +139,32 @@ brew install --cask remcostoeten/dora/dora
 
 ```powershell
 # Windows (Winget)
-winget install remcostoeten.dora
+winget install RemcoStoeten.Dora
+```
+
+```bash
+# Linux (Flatpak bundle from GitHub releases)
+flatpak install --user Dora-<version>-x86_64.flatpak
+flatpak run io.github.remcostoeten.dora
 ```
 
 ```bash
 # Linux — one-off .deb install
-wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.110_amd64.deb
-sudo apt install ./Dora_0.0.110_amd64.deb
+wget https://github.com/remcostoeten/dora/releases/download/v0.2.0/Dora_0.2.0_amd64.deb
+sudo apt install ./Dora_0.2.0_amd64.deb
 ```
 
 ```bash
 # Linux (.rpm)
-wget https://github.com/remcostoeten/dora/releases/latest/download/Dora-0.0.110-1.x86_64.rpm
-sudo dnf install ./Dora-0.0.110-1.x86_64.rpm
+wget https://github.com/remcostoeten/dora/releases/download/v0.2.0/Dora-0.2.0-1.x86_64.rpm
+sudo dnf install ./Dora-0.2.0-1.x86_64.rpm
 ```
 
 ```bash
 # Linux (AppImage)
-wget https://github.com/remcostoeten/dora/releases/latest/download/Dora_0.0.110_amd64.AppImage
-chmod +x Dora_0.0.110_amd64.AppImage
-./Dora_0.0.110_amd64.AppImage
+wget https://github.com/remcostoeten/dora/releases/download/v0.2.0/Dora_0.2.0_amd64.AppImage
+chmod +x Dora_0.2.0_amd64.AppImage
+./Dora_0.2.0_amd64.AppImage
 ```
 
 ## Database Support

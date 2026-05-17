@@ -168,10 +168,10 @@ async function main() {
 			writeFile(path.join(outDir, 'KEY.gpg'), pubKey)
 			logLevel('success', 'Release signed')
 		} catch (err) {
-			logLevel('warn', `GPG signing failed (skipping): ${err instanceof Error ? err.message : err}`)
+			logLevel('warning', `GPG signing failed (skipping): ${err instanceof Error ? err.message : err}`)
 		}
 	} else {
-		logLevel('warn', 'GPG_PRIVATE_KEY not set — Release will be unsigned (users need [trusted=yes])')
+		logLevel('warning', 'GPG_PRIVATE_KEY not set - Release will be unsigned (users need [trusted=yes])')
 	}
 
 	// ── User install instructions ─────────────────────────────────────────────

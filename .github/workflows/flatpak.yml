@@ -1,0 +1,106 @@
+name: Flatpak
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.2.0. Leave empty for artifact-only builds.
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+  FLATPAK_APP_ID: io.github.remcostoeten.dora
+  FLATPAK_RUNTIME_VERSION: "48"
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+
+          VERSION="$(python -c "import json; print(json.load(open('package.json'))['version'])")"
+          if [[ -n "$TAG" ]]; then
+            VERSION="${TAG#v}"
+          fi
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "DORA_RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Install Flatpak dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y appstream desktop-file-utils flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Install Flatpak runtimes
+        shell: bash
+        run: |
+          flatpak install --user --noninteractive --assumeyes \
+            org.gnome.Platform//${FLATPAK_RUNTIME_VERSION} \
+            org.gnome.Sdk//${FLATPAK_RUNTIME_VERSION} \
+            org.freedesktop.Sdk.Extension.rust-stable//24.08
+
+      - name: Validate Flatpak metadata
+        shell: bash
+        run: |
+          desktop-file-validate "packaging/flatpak/${FLATPAK_APP_ID}.desktop"
+          appstreamcli validate --no-net "packaging/flatpak/${FLATPAK_APP_ID}.metainfo.xml"
+
+      - name: Build Flatpak
+        id: build
+        shell: bash
+        run: |
+          REPO_DIR="${{ github.workspace }}/.flatpak-repo"
+          BUILD_DIR="${{ github.workspace }}/.flatpak-build"
+          MANIFEST="packaging/flatpak/${FLATPAK_APP_ID}.yml"
+
+          flatpak-builder \
+            --user \
+            --force-clean \
+            --ccache \
+            --repo="$REPO_DIR" \
+            "$BUILD_DIR" \
+            "$MANIFEST"
+
+          BUNDLE="Dora-${{ steps.meta.outputs.version }}-x86_64.flatpak"
+          flatpak build-bundle "$REPO_DIR" "$BUNDLE" "$FLATPAK_APP_ID"
+
+          echo "bundle=$BUNDLE" >> "$GITHUB_OUTPUT"
+          echo "repo=$REPO_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dora-flatpak-${{ steps.meta.outputs.version }}
+          path: ${{ steps.build.outputs.bundle }}
+
+      - name: Upload Flatpak repo artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dora-flatpak-repo-${{ steps.meta.outputs.version }}
+          path: ${{ steps.build.outputs.repo }}
+
+      - name: Upload Flatpak to GitHub release
+        if: ${{ steps.meta.outputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ steps.meta.outputs.tag }} ${{ steps.build.outputs.bundle }} --clobber

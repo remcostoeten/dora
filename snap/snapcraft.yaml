@@ -90,7 +90,7 @@ parts:
       curl -fsSL https://bun.sh/install | bash
       curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
-      export DORA_RELEASE_VERSION="${DORA_RELEASE_VERSION:-$(node -p "require('./package.json').version")}"
+      export DORA_RELEASE_VERSION="${DORA_RELEASE_VERSION:-$(node -p "require('./apps/desktop/package.json').version")}"
       craftctl set version="$DORA_RELEASE_VERSION"
 
       bun install

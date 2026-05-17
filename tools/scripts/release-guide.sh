@@ -49,7 +49,7 @@ match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
 print(match.group(1) if match else '')
 PY
 )"
-	CURRENT_VERSION="$ROOT_VERSION"
+	CURRENT_VERSION="$TAURI_VERSION"
 	CURRENT_BRANCH="$(git branch --show-current)"
 	LATEST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
 	if [[ -z "$(git status --porcelain)" ]]; then
@@ -107,16 +107,16 @@ show_readiness() {
 	printf 'GitHub release exists: %s\n' "$RELEASE_EXISTS"
 	printf '\n'
 
-	if [[ "$ROOT_VERSION" == "$DESKTOP_VERSION" && "$ROOT_VERSION" == "$TAURI_VERSION" ]]; then
-		green "Version alignment looks good for package.json and tauri.conf.json."
+	if [[ "$DESKTOP_VERSION" == "$TAURI_VERSION" && "$DESKTOP_VERSION" == "$CARGO_VERSION" ]]; then
+		green "Desktop package, Tauri config, and Cargo versions match."
 	else
-		red "Version mismatch detected between root package.json, desktop package.json, and tauri.conf.json."
+		red "Version mismatch detected between desktop package.json, tauri.conf.json, and Cargo.toml."
 	fi
 
-	if [[ "$ROOT_VERSION" == "$CARGO_VERSION" ]]; then
-		green "Cargo version matches the app version."
+	if [[ "$ROOT_VERSION" == "$CURRENT_VERSION" ]]; then
+		green "Root package version matches the app version."
 	else
-		yellow "Cargo.toml version differs from the app version. That may be intentional, but review it before release."
+		yellow "Root package.json version differs from the app version. The release workflow uses the desktop/Tauri/Cargo version."
 	fi
 
 	if [[ "$WORKTREE_CLEAN" == "yes" ]]; then
@@ -182,25 +182,20 @@ push_tag() {
 	green "Pushed v$CURRENT_VERSION"
 }
 
-create_github_release() {
+show_release_automation() {
 	refresh_state
-	local notes_file
-	notes_file="$(write_release_notes_file)"
+	cat <<EOF
+Do not create or publish the GitHub release manually.
 
-	if ! git ls-remote --tags origin "refs/tags/v$CURRENT_VERSION" | grep -q .; then
-		red "Remote tag v$CURRENT_VERSION does not exist yet. Push the tag first."
-		return 1
-	fi
+The safe release path is:
+  1. create and push tag v$CURRENT_VERSION
+  2. let .github/workflows/release.yml build every Tauri artifact into a draft release
+  3. let the final release job publish the draft only after assets and notes are attached
+  4. package-manager workflows run from the release:published event
 
-	if gh release view "v$CURRENT_VERSION" >/dev/null 2>&1; then
-		yellow "GitHub release v$CURRENT_VERSION already exists."
-		return 0
-	fi
-
-	gh release create "v$CURRENT_VERSION" \
-		--title "Dora v$CURRENT_VERSION" \
-		--notes-file "$notes_file"
-	green "Created GitHub release v$CURRENT_VERSION"
+Manual release publication before assets exist is what makes APT, AUR, Homebrew,
+and Winget fail on missing release assets.
+EOF
 }
 
 repair_github_release_metadata() {
@@ -236,6 +231,9 @@ AUR on this machine:
 Snap on Ubuntu:
   sudo snap install snapcraft --classic
   snapcraft --destructive-mode
+
+Flatpak on Linux:
+  bun run release:flatpak:build
 EOF
 }
 
@@ -249,7 +247,7 @@ main_menu() {
 		printf '2. Generate release notes draft\n'
 		printf '3. Create local tag\n'
 		printf '4. Push tag to origin\n'
-		printf '5. Create GitHub release\n'
+		printf '5. Explain release automation\n'
 		printf '6. Repair existing GitHub release metadata\n'
 		printf '7. Show package-manager next steps\n'
 		printf '8. Exit\n'
@@ -274,9 +272,7 @@ main_menu() {
 				fi
 				;;
 			5)
-				if confirm "Create GitHub release v$CURRENT_VERSION now?"; then
-					create_github_release
-				fi
+				show_release_automation
 				;;
 			6)
 				if confirm "Repair the existing GitHub release title/notes for v$CURRENT_VERSION?"; then

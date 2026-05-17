@@ -16,19 +16,21 @@ That means most of the remaining work is distribution, metadata, signing, and re
 
 ### Already in place
 
-- GitHub Actions release workflow at [release.yml](/home/remco/dev/dora/.github/workflows/release.yml)
-- Tauri bundle targets in [tauri.conf.json](/home/remco/dev/dora/apps/desktop/src-tauri/tauri.conf.json)
-- Homebrew tap in [homebrew-dora](/home/remco/dev/dora/homebrew-dora)
+- GitHub Actions release workflow at `.github/workflows/release.yml`
+- Tauri bundle targets in `apps/desktop/src-tauri/tauri.conf.json`
+- Downstream package workflows for APT, AUR, Homebrew, Snap, Winget, and Flatpak
+- Homebrew tap scaffold in `homebrew-dora`
+- AUR package metadata in `packaging/aur`
+- Flatpak manifest in `packaging/flatpak`
+- Snapcraft package in `snap/snapcraft.yaml`
 
-### Not yet in place
+### External publication still required
 
-- Snap packaging config
-- Winget manifests or submission automation
-- Scoop manifest repo
-- Chocolatey package
-- AUR package metadata
-- APT repository metadata and signing
-- YUM/DNF repository metadata and signing
+- `sudo apt install dora` only works after users add Dora's APT repository, unless the package is accepted into Debian/Ubuntu repositories.
+- `pacman -S dora` only works from an official Arch repository; the current path is AUR via `yay -S dora`.
+- `brew install --cask dora` only works if Dora is accepted into Homebrew/core or the tap is added; the current command is `brew install --cask remcostoeten/dora/dora`.
+- `winget install RemcoStoeten.Dora` requires the manifest to be accepted by `microsoft/winget-pkgs`.
+- `flatpak install flathub io.github.remcostoeten.dora` requires a Flathub submission and review. The current workflow builds a release bundle.
 
 ## Recommended Rollout Order
 
@@ -171,8 +173,8 @@ Optional automation later:
 ### Install UX target
 
 ```bash
-winget install Dora
-winget upgrade Dora
+winget install RemcoStoeten.Dora
+winget upgrade RemcoStoeten.Dora
 ```
 
 ### CI automation later

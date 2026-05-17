@@ -3,10 +3,84 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
+      - '!*-release'
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  preflight:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: Validate release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG="${GITHUB_REF_NAME}"
+          TAG_VERSION="${TAG#v}"
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Release tags must be plain semver tags like v0.25.0. Got: $TAG" >&2
+            exit 1
+          fi
+
+          ROOT_VERSION="$(node -p "require('./package.json').version")"
+          DESKTOP_VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+          TAURI_VERSION="$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")"
+          CARGO_VERSION="$(sed -n 's/^version = \"\\(.*\\)\"/\\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)"
+
+          echo "Tag version: $TAG_VERSION"
+          echo "Root package version: $ROOT_VERSION"
+          echo "Desktop package version: $DESKTOP_VERSION"
+          echo "Tauri version: $TAURI_VERSION"
+          echo "Cargo version: $CARGO_VERSION"
+
+          if [[ "$TAG_VERSION" != "$DESKTOP_VERSION" || "$TAG_VERSION" != "$TAURI_VERSION" || "$TAG_VERSION" != "$CARGO_VERSION" ]]; then
+            echo "Tag, desktop package, Tauri config, and Cargo versions must match before building release assets." >&2
+            exit 1
+          fi
+
+          if [[ "$ROOT_VERSION" != "$TAG_VERSION" ]]; then
+            echo "::warning::Root package.json is $ROOT_VERSION, release app version is $TAG_VERSION. The desktop/Tauri/Cargo versions are authoritative for Dora assets."
+          fi
+
+          node <<'NODE'
+          const fs = require('fs')
+          const config = require('./apps/desktop/src-tauri/tauri.conf.json')
+          const targets = new Set(config.bundle?.targets || [])
+          const requiredTargets = ['deb', 'rpm', 'appimage', 'nsis', 'msi', 'dmg']
+          const missingTargets = requiredTargets.filter((target) => !targets.has(target))
+          if (missingTargets.length > 0) {
+            throw new Error(`Missing Tauri bundle targets: ${missingTargets.join(', ')}`)
+          }
+
+          const requiredFiles = [
+            'packaging/aur/PKGBUILD',
+            'packaging/linux/dora.desktop',
+            'snap/snapcraft.yaml',
+            'packaging/flatpak/io.github.remcostoeten.dora.yml',
+            'tools/scripts/generate-apt-repo.ts',
+            'tools/scripts/generate-homebrew-cask.ts',
+            'tools/scripts/generate-winget-manifest.ts'
+          ]
+          const missingFiles = requiredFiles.filter((file) => !fs.existsSync(file))
+          if (missingFiles.length > 0) {
+            throw new Error(`Missing distribution files: ${missingFiles.join(', ')}`)
+          }
+          NODE
+
   release-linux:
+    needs: preflight
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -49,8 +123,8 @@ jobs:
         with:
           projectPath: ./apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: 'Dora v__VERSION__'
+          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
           releaseDraft: true
           prerelease: false
 
@@ -89,6 +163,7 @@ jobs:
         run: gh release upload ${{ github.ref_name }} ./apps/desktop/src-tauri/target/release/bundle/checksums-linux.txt --clobber
 
   release-windows:
+    needs: preflight
     permissions:
       contents: write
     runs-on: windows-latest
@@ -136,8 +211,8 @@ jobs:
         with:
           projectPath: ./apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: 'Dora v__VERSION__'
+          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
           releaseDraft: true
           prerelease: false
 
@@ -151,6 +226,7 @@ jobs:
         run: gh release upload ${{ github.ref_name }} ./apps/desktop/src-tauri/target/release/bundle/checksums-windows.txt --clobber
 
   release-macos:
+    needs: preflight
     permissions:
       contents: write
     runs-on: macos-latest
@@ -180,12 +256,13 @@ jobs:
         with:
           projectPath: ./apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: 'Dora v__VERSION__'
+          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
           releaseDraft: true
           prerelease: false
 
   release-macos-intel:
+    needs: preflight
     permissions:
       contents: write
     runs-on: macos-15-intel
@@ -215,8 +292,8 @@ jobs:
         with:
           projectPath: ./apps/desktop
           tagName: ${{ github.ref_name }}
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: 'Dora v__VERSION__'
+          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
           releaseDraft: true
           prerelease: false
 
@@ -258,4 +335,7 @@ jobs:
           echo "=== Generated Release Notes ==="
           cat /tmp/release-notes.md
 
-          gh release edit "$VERSION" --notes-file /tmp/release-notes.md
+          gh release edit "$VERSION" \
+            --title "Dora ${VERSION}" \
+            --notes-file /tmp/release-notes.md \
+            --draft=false
