@@ -98,9 +98,14 @@ jobs:
         with:
           name: dora-flatpak-repo-${{ steps.meta.outputs.version }}
           path: ${{ steps.build.outputs.repo }}
+          include-hidden-files: true
 
       - name: Upload Flatpak to GitHub release
         if: ${{ steps.meta.outputs.tag != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ steps.meta.outputs.tag }} ${{ steps.build.outputs.bundle }} --clobber
+        shell: bash
+        run: |
+          if ! gh release upload "${{ steps.meta.outputs.tag }}" "${{ steps.build.outputs.bundle }}" --clobber; then
+            echo "::warning::Flatpak bundle was built and uploaded as a workflow artifact, but GitHub rejected the release asset upload. Existing published releases can be immutable, so rerun without a tag for artifact-only builds or attach the bundle before publishing the release."
+          fi
