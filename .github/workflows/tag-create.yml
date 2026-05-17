@@ -1,0 +1,37 @@
+name: Create tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to create (e.g. v0.25.0)
+        required: true
+        type: string
+      sha:
+        description: Commit SHA to tag (defaults to master HEAD)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Create and push tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHA="${{ inputs.sha || github.sha }}"
+          TAG="${{ inputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG" "$SHA"
+          git push origin "$TAG"
+          echo "Tagged $SHA as $TAG"
