@@ -19,7 +19,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { AppearancePanel } from "./appearance-panel";
 import { ChangelogPanel } from "./changelog-panel";
 import { ProjectInfoPanel } from "./project-info-panel";
-import { SettingsPanel } from "./settings-panel";
 import { CURRENT_VERSION } from "../changelog-data";
 
 type ToolbarAction = "project-info" | "theme" | "settings" | "changelog";
@@ -189,38 +188,25 @@ export function BottomToolbar({ onAction }: Props) {
 
         if (item.id === "settings") {
           return (
-            <Popover key={item.id}>
-              <PopoverTrigger asChild>
-                <div>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                      >
-                        <item.icon className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </PopoverTrigger>
-              <PopoverContent
-                side="right"
-                align="end"
-                sideOffset={16}
-                className="w-[360px] p-0 mb-2 ml-2 overflow-hidden"
-                style={{
-                  maxHeight:
-                    "min(calc(100vh - 1rem), var(--radix-popover-content-available-height))",
-                }}
-              >
-                <SettingsPanel />
-              </PopoverContent>
-            </Popover>
+            <div key={item.id}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                    onClick={function () {
+                      onAction?.("settings");
+                    }}
+                  >
+                    <item.icon className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
+            </div>
           );
         }
 

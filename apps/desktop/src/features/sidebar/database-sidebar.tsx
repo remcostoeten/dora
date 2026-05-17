@@ -924,7 +924,13 @@ export function DatabaseSidebar({
 				/>
 			)}
 
-			<BottomToolbar />
+			<BottomToolbar
+				onAction={function (action) {
+					if (action === 'settings') {
+						handleNavSelect('settings')
+					}
+				}}
+			/>
 
 			<RenameTableDialog
 				open={showRenameDialog}

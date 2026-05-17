@@ -43,6 +43,7 @@ const SchemaVisualizer = lazy(function () {
   });
 });
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
+import { SettingsView } from "@/features/sidebar/components/settings-panel";
 import { WindowControls } from "@/components/window-controls";
 import {
   AlertDialog,
@@ -450,7 +451,7 @@ function IndexInner() {
     activeNavId === "database-studio" ||
     activeNavId === "schema-visualizer";
   const paletteActiveNavId =
-    activeNavId === "docker" || activeNavId === "sql-console"
+    activeNavId === "docker" || activeNavId === "sql-console" || activeNavId === "settings"
       ? activeNavId
       : "database-studio";
 
@@ -572,6 +573,10 @@ function IndexInner() {
                       setActiveNavId("database-studio");
                     }}
                   />
+                </ErrorBoundary>
+              ) : activeNavId === "settings" ? (
+                <ErrorBoundary feature="Settings">
+                  <SettingsView />
                 </ErrorBoundary>
               ) : activeNavId === "docker" ? (
                 <ErrorBoundary feature="Docker Manager">
