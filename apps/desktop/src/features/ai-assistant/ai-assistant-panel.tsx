@@ -1,5 +1,6 @@
 import { Loader2, Send, Sparkles, Square, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useAdapter, useIsTauri } from '@/core/data-provider'
 import { commands } from '@/lib/bindings'
 import type { DatabaseSchema, GroqStatus } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
@@ -15,6 +16,8 @@ type Props = {
 }
 
 export function AiAssistantPanel({ activeConnectionId, onEditorInsert }: Props) {
+	const adapter = useAdapter()
+	const isTauri = useIsTauri()
 	const open = useAiAssistantStore(function (s) {
 		return s.open
 	})
@@ -38,6 +41,10 @@ export function AiAssistantPanel({ activeConnectionId, onEditorInsert }: Props) 
 	useEffect(
 		function checkGroq() {
 			if (!open) return
+			if (!isTauri) {
+				setGroqStatus({ available: true, key_count: 0 })
+				return
+			}
 			commands
 				.aiGroqStatus()
 				.then(function (res) {
@@ -45,7 +52,7 @@ export function AiAssistantPanel({ activeConnectionId, onEditorInsert }: Props) 
 				})
 				.catch(function () {})
 		},
-		[open]
+		[open, isTauri]
 	)
 
 	useEffect(
@@ -54,14 +61,14 @@ export function AiAssistantPanel({ activeConnectionId, onEditorInsert }: Props) 
 				setSchema(null)
 				return
 			}
-			commands
-				.getDatabaseSchema(activeConnectionId, null)
+			adapter
+				.getSchema(activeConnectionId)
 				.then(function (res) {
-					if (res.status === 'ok') setSchema(res.data)
+					if (res.ok) setSchema(res.data)
 				})
 				.catch(function () {})
 		},
-		[open, activeConnectionId]
+		[open, activeConnectionId, adapter]
 	)
 
 	useEffect(
@@ -124,11 +131,13 @@ export function AiAssistantPanel({ activeConnectionId, onEditorInsert }: Props) 
 	if (!open) return null
 
 	const keysAvailable = groqStatus?.available ?? false
-	const keyLabel = groqStatus
-		? keysAvailable
-			? `${groqStatus.key_count} key${groqStatus.key_count === 1 ? '' : 's'}`
-			: 'no keys'
-		: '…'
+	const keyLabel = !isTauri
+		? 'mock'
+		: groqStatus
+			? keysAvailable
+				? `${groqStatus.key_count} key${groqStatus.key_count === 1 ? '' : 's'}`
+				: 'no keys'
+			: '…'
 
 	return (
 		<aside
@@ -215,7 +224,7 @@ export function AiAssistantPanel({ activeConnectionId, onEditorInsert }: Props) 
 						No active connection — schema context disabled.
 					</div>
 				)}
-				{!keysAvailable && (
+				{isTauri && !keysAvailable && (
 					<div className='mb-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-500'>
 						Add a Groq API key in Settings → AI Keys to start chatting.
 					</div>

@@ -1,8 +1,24 @@
-import { Check, Copy, Loader2, Play } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import {
+	Check,
+	Copy,
+	FileInput,
+	Loader2,
+	Maximize2,
+	Minimize2,
+	Play,
+	ShieldCheck
+} from 'lucide-react'
+import { useCallback, useMemo, useState } from 'react'
 import { commands } from '@/lib/bindings'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/utils/cn'
+import {
+	buildDryRunSql,
+	getSqlStatementKind,
+	splitSqlStatements,
+	tokenizeSql,
+	type SqlTokenKind
+} from './sql-code-utils'
 
 type Props = {
 	language: string | undefined
@@ -13,15 +29,55 @@ type Props = {
 
 type RunState =
 	| { kind: 'idle' }
-	| { kind: 'running' }
-	| { kind: 'success'; rowCount: number; durationMs: number }
-	| { kind: 'error'; message: string }
+	| { kind: 'running'; mode: 'run' | 'dry-run' }
+	| { kind: 'success'; mode: 'run' | 'dry-run'; rowCount: number; durationMs: number }
+	| { kind: 'error'; mode: 'run' | 'dry-run'; message: string }
+
+const tokenClassName: Record<SqlTokenKind, string> = {
+	keyword: 'text-sky-300',
+	function: 'text-violet-300',
+	string: 'text-emerald-300',
+	number: 'text-amber-300',
+	comment: 'text-zinc-500',
+	operator: 'text-zinc-400',
+	identifier: 'text-zinc-100',
+	plain: 'text-zinc-100'
+}
+
+function formatError(error: unknown): string {
+	if (typeof error === 'string') return error
+	if (error && typeof error === 'object' && 'detail' in error) {
+		return String((error as { detail?: unknown }).detail ?? 'Query failed')
+	}
+	return 'Query failed'
+}
 
 export function CodeBlock({ language, code, activeConnectionId, onEditorInsert }: Props) {
 	const [copied, setCopied] = useState(false)
 	const [runState, setRunState] = useState<RunState>({ kind: 'idle' })
+	const [expanded, setExpanded] = useState(false)
 
 	const isSql = !language || language.toLowerCase() === 'sql'
+	const sqlKind = useMemo(
+		function () {
+			return isSql ? getSqlStatementKind(code) : undefined
+		},
+		[code, isSql]
+	)
+	const statementCount = useMemo(
+		function () {
+			return isSql ? splitSqlStatements(code).length : 0
+		},
+		[code, isSql]
+	)
+	const highlightedTokens = useMemo(
+		function () {
+			return isSql ? tokenizeSql(code) : []
+		},
+		[code, isSql]
+	)
+	const lineCount = code.split('\n').length
+	const shouldClamp = lineCount > 12 && !expanded
 
 	const handleCopy = useCallback(
 		async function handleCopy() {
@@ -38,59 +94,83 @@ export function CodeBlock({ language, code, activeConnectionId, onEditorInsert }
 		[code]
 	)
 
-	const handleRun = useCallback(
-		async function handleRun() {
+	const runSql = useCallback(
+		async function runSql(sql: string, mode: 'run' | 'dry-run') {
 			if (!activeConnectionId || runState.kind === 'running') return
-			setRunState({ kind: 'running' })
+			setRunState({ kind: 'running', mode })
 			const started = performance.now()
 			try {
-				const start = await commands.startQuery(activeConnectionId, code)
+				const start = await commands.startQuery(activeConnectionId, sql)
 				if (start.status === 'error') {
 					setRunState({
 						kind: 'error',
-						message:
-							typeof start.error === 'string'
-								? start.error
-								: start.error?.detail ?? 'Query failed'
+						mode,
+						message: formatError(start.error)
 					})
 					return
 				}
 				const queryIds = start.data
 				const lastId = queryIds[queryIds.length - 1]
+				if (lastId === undefined) {
+					setRunState({ kind: 'error', mode, message: 'No query was started.' })
+					return
+				}
 				const fetched = await commands.fetchQuery(lastId)
 				const elapsed = Math.round(performance.now() - started)
 				if (fetched.status === 'error') {
 					setRunState({
 						kind: 'error',
-						message:
-							typeof fetched.error === 'string'
-								? fetched.error
-								: fetched.error?.detail ?? 'Query failed'
+						mode,
+						message: formatError(fetched.error)
 					})
 					return
 				}
 				const info = fetched.data
 				if (info?.error) {
-					setRunState({ kind: 'error', message: info.error })
+					setRunState({ kind: 'error', mode, message: info.error })
 					return
 				}
 				const rowCount = info?.affected_rows ?? 0
-				setRunState({ kind: 'success', rowCount, durationMs: elapsed })
+				setRunState({ kind: 'success', mode, rowCount, durationMs: elapsed })
 			} catch (e) {
 				setRunState({
 					kind: 'error',
+					mode,
 					message: e instanceof Error ? e.message : String(e)
 				})
 			}
 		},
-		[activeConnectionId, code, runState.kind]
+		[activeConnectionId, runState.kind]
+	)
+
+	const handleRun = useCallback(
+		async function handleRun() {
+			await runSql(code, 'run')
+		},
+		[code, runSql]
+	)
+
+	const handleDryRun = useCallback(
+		async function handleDryRun() {
+			const dryRunSql = buildDryRunSql(code)
+			if (!dryRunSql) return
+			await runSql(dryRunSql, 'dry-run')
+		},
+		[code, runSql]
 	)
 
 	return (
 		<div className='my-2 overflow-hidden rounded-md border border-sidebar-border bg-zinc-900/60'>
-			<div className='flex items-center justify-between border-b border-sidebar-border px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground'>
-				<span>{language ?? 'code'}</span>
-				<div className='flex items-center gap-1'>
+			<div className='flex items-center justify-between gap-2 border-b border-sidebar-border px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground'>
+				<div className='flex min-w-0 items-center gap-2'>
+					<span className='font-semibold text-zinc-300'>{language ?? 'code'}</span>
+					{isSql && (
+						<span className='truncate normal-case tracking-normal text-muted-foreground'>
+							{sqlKind} · {statementCount} stmt{statementCount === 1 ? '' : 's'} · {lineCount} line{lineCount === 1 ? '' : 's'}
+						</span>
+					)}
+				</div>
+				<div className='flex shrink-0 items-center gap-1'>
 					{isSql && (
 						<Button
 							variant='ghost'
@@ -98,13 +178,31 @@ export function CodeBlock({ language, code, activeConnectionId, onEditorInsert }
 							className='h-6 px-2 text-[10px]'
 							onClick={handleRun}
 							disabled={!activeConnectionId || runState.kind === 'running'}
+							title='Run SQL'
 						>
-							{runState.kind === 'running' ? (
+							{runState.kind === 'running' && runState.mode === 'run' ? (
 								<Loader2 className='mr-1 h-3 w-3 animate-spin' />
 							) : (
 								<Play className='mr-1 h-3 w-3' />
 							)}
 							Run
+						</Button>
+					)}
+					{isSql && (
+						<Button
+							variant='ghost'
+							size='sm'
+							className='h-6 px-2 text-[10px]'
+							onClick={handleDryRun}
+							disabled={!activeConnectionId || runState.kind === 'running'}
+							title='Dry run with EXPLAIN'
+						>
+							{runState.kind === 'running' && runState.mode === 'dry-run' ? (
+								<Loader2 className='mr-1 h-3 w-3 animate-spin' />
+							) : (
+								<ShieldCheck className='mr-1 h-3 w-3' />
+							)}
+							Dry
 						</Button>
 					)}
 					{isSql && onEditorInsert && (
@@ -115,8 +213,30 @@ export function CodeBlock({ language, code, activeConnectionId, onEditorInsert }
 							onClick={function () {
 								onEditorInsert(code)
 							}}
+							title='Insert into editor'
 						>
+							<FileInput className='mr-1 h-3 w-3' />
 							Editor
+						</Button>
+					)}
+					{lineCount > 12 && (
+						<Button
+							variant='ghost'
+							size='sm'
+							className='h-6 px-2 text-[10px]'
+							onClick={function () {
+								setExpanded(function (value) {
+									return !value
+								})
+							}}
+							title={expanded ? 'Collapse SQL' : 'Expand SQL'}
+						>
+							{expanded ? (
+								<Minimize2 className='mr-1 h-3 w-3' />
+							) : (
+								<Maximize2 className='mr-1 h-3 w-3' />
+							)}
+							{expanded ? 'Less' : 'More'}
 						</Button>
 					)}
 					<Button
@@ -124,6 +244,7 @@ export function CodeBlock({ language, code, activeConnectionId, onEditorInsert }
 						size='sm'
 						className='h-6 px-2 text-[10px]'
 						onClick={handleCopy}
+						title='Copy code'
 					>
 						{copied ? (
 							<Check className='mr-1 h-3 w-3' />
@@ -134,8 +255,23 @@ export function CodeBlock({ language, code, activeConnectionId, onEditorInsert }
 					</Button>
 				</div>
 			</div>
-			<pre className='m-0 overflow-x-auto p-3 text-xs leading-relaxed text-zinc-100'>
-				<code>{code}</code>
+			<pre
+				className={cn(
+					'm-0 overflow-auto p-3 text-xs leading-relaxed text-zinc-100',
+					shouldClamp && 'max-h-64'
+				)}
+			>
+				<code>
+					{isSql
+						? highlightedTokens.map(function (token, index) {
+								return (
+									<span key={`${index}-${token.text}`} className={tokenClassName[token.kind]}>
+										{token.text}
+									</span>
+								)
+							})
+						: code}
+				</code>
 			</pre>
 			{runState.kind !== 'idle' && (
 				<div
@@ -148,9 +284,12 @@ export function CodeBlock({ language, code, activeConnectionId, onEditorInsert }
 								: 'text-muted-foreground'
 					)}
 				>
-					{runState.kind === 'running' && 'Running…'}
+					{runState.kind === 'running' &&
+						(runState.mode === 'dry-run' ? 'Dry running with EXPLAIN…' : 'Running…')}
 					{runState.kind === 'success' &&
-						`${runState.rowCount} row${runState.rowCount === 1 ? '' : 's'} · ${runState.durationMs}ms`}
+						(runState.mode === 'dry-run'
+							? `Dry run passed · ${runState.durationMs}ms`
+							: `${runState.rowCount} row${runState.rowCount === 1 ? '' : 's'} · ${runState.durationMs}ms`)}
 					{runState.kind === 'error' && runState.message}
 				</div>
 			)}

@@ -1,5 +1,6 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { parseAssistantSqlResponse } from './assistant-response-parser'
 import { CodeBlock } from './code-block'
 
 type Props = {
@@ -9,6 +10,42 @@ type Props = {
 }
 
 export function MessageContent({ content, activeConnectionId, onEditorInsert }: Props) {
+	const parsed = parseAssistantSqlResponse(content)
+
+	if (parsed) {
+		return (
+			<div className='space-y-2'>
+				{parsed.explanation && (
+					<p className='my-1.5 text-sm leading-relaxed'>{parsed.explanation}</p>
+				)}
+				<CodeBlock
+					language='sql'
+					code={parsed.sql}
+					activeConnectionId={activeConnectionId}
+					onEditorInsert={onEditorInsert}
+				/>
+				{parsed.examples.map(function (example) {
+					return (
+						<CodeBlock
+							key={example}
+							language='sql'
+							code={example}
+							activeConnectionId={activeConnectionId}
+							onEditorInsert={onEditorInsert}
+						/>
+					)
+				})}
+				{parsed.warnings.length > 0 && (
+					<ul className='my-1.5 list-disc space-y-1 pl-5 text-sm text-amber-400'>
+						{parsed.warnings.map(function (warning) {
+							return <li key={warning}>{warning}</li>
+						})}
+					</ul>
+				)}
+			</div>
+		)
+	}
+
 	return (
 		<ReactMarkdown
 			remarkPlugins={[remarkGfm]}

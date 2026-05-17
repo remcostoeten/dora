@@ -3,6 +3,7 @@ import { Loader2, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { commands } from '@/lib/bindings'
 import type { AiStreamEvent, GroqStatus } from '@/lib/bindings'
+import { buildMockSqlJson, streamMockText } from '@/features/ai-assistant/mock-ai'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/utils/cn'
 
@@ -78,6 +79,8 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 							if (res.status === 'ok') setGroqStatus(res.data)
 						})
 						.catch(() => {})
+				} else {
+					setGroqStatus({ available: true, key_count: 0 })
 				}
 			}
 		},
@@ -104,10 +107,6 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 	const generate = useCallback(
 		async function generate() {
 			if (!prompt.trim() || isGenerating) return
-			if (!isTauri) {
-				setError('AI generation is only available in the desktop app.')
-				return
-			}
 			if (groqStatus && !groqStatus.available) {
 				setError(
 					'No Groq API keys configured. Open Settings → AI Keys to add one, or set GROQ_API_KEY in your environment.'
@@ -122,6 +121,35 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 			abortRef.current.cancelled = false
 			const requestId = makeRequestId()
 			abortRef.current.requestId = requestId
+
+			if (!isTauri) {
+				let accumulated = ''
+				try {
+					await streamMockText({
+						text: buildMockSqlJson(prompt, activeConnectionId ?? null),
+						onToken(token) {
+							accumulated += token
+							setStreamedContent(accumulated)
+						},
+						isCancelled() {
+							return abortRef.current.cancelled
+						}
+					})
+					if (!abortRef.current.cancelled) {
+						setLastResult(parseLlmJson(accumulated))
+					}
+				} catch (e) {
+					if (!abortRef.current.cancelled) {
+						setError(e instanceof Error ? e.message : String(e))
+					}
+				} finally {
+					if (!abortRef.current.cancelled) {
+						setIsGenerating(false)
+					}
+					abortRef.current.requestId = null
+				}
+				return
+			}
 
 			const channel = new Channel<AiStreamEvent>()
 			let accumulated = ''
@@ -214,9 +242,11 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 	if (!open) return null
 
 	const statusLabel = groqStatus
-		? groqStatus.available
-			? `${groqStatus.key_count} key${groqStatus.key_count === 1 ? '' : 's'}`
-			: 'no keys'
+		? isTauri
+			? groqStatus.available
+				? `${groqStatus.key_count} key${groqStatus.key_count === 1 ? '' : 's'}`
+				: 'no keys'
+			: 'mock'
 		: '…'
 
 	return (

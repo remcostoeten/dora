@@ -1,8 +1,10 @@
 import { Channel } from '@tauri-apps/api/core'
 import { useCallback, useRef, useState } from 'react'
+import { useIsTauri } from '@/core/data-provider'
 import { commands } from '@/lib/bindings'
 import type { AiStreamEvent } from '@/lib/bindings'
 import { buildChatPrompt } from './build-prompt'
+import { buildMockChatResponse, streamMockText } from './mock-ai'
 import { buildThreadKey, useAiAssistantStore } from './store'
 import type { ChatMessage } from './types'
 
@@ -27,6 +29,7 @@ function newId(): string {
 }
 
 export function useAiChat(connectionId: string | null): UseAiChatResult {
+	const isTauri = useIsTauri()
 	const threadKey = buildThreadKey(connectionId)
 	const thread = useAiAssistantStore(function (s) {
 		return s.threads[threadKey]
@@ -95,6 +98,33 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 			abortRef.current.requestId = requestId
 			setIsStreaming(true)
 
+			if (!isTauri) {
+				let accumulated = ''
+				try {
+					await streamMockText({
+						text: buildMockChatResponse(packed, activeConnectionId),
+						onToken(token) {
+							accumulated += token
+							updateMessage(key, assistantId, { content: accumulated })
+						},
+						isCancelled() {
+							return abortRef.current.cancelled
+						}
+					})
+					updateMessage(key, assistantId, { streaming: false })
+				} catch (e) {
+					if (!abortRef.current.cancelled) {
+						const message = e instanceof Error ? e.message : String(e)
+						setError(message)
+						updateMessage(key, assistantId, { error: message, streaming: false })
+					}
+				} finally {
+					abortRef.current.requestId = null
+					setIsStreaming(false)
+				}
+				return
+			}
+
 			const channel = new Channel<AiStreamEvent>()
 			let accumulated = ''
 
@@ -155,7 +185,7 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 				setIsStreaming(false)
 			}
 		},
-		[appendMessage, updateMessage, isStreaming]
+		[appendMessage, updateMessage, isStreaming, isTauri]
 	)
 
 	const clear = useCallback(

@@ -35,7 +35,9 @@ fn build_chat_system_prompt(request: &AIRequest) -> String {
     s.push_str("- Be concise. Prefer short paragraphs and bullet lists over walls of text.\n");
     s.push_str("- Default to the dialect of the active database engine. Note dialect-specific syntax when relevant.\n");
     s.push_str("- For destructive statements (DELETE/UPDATE without WHERE, DROP, TRUNCATE) add a one-line warning comment above the SQL.\n");
-    s.push_str("- Use exact column and table names from the schema below. Do not invent columns.\n");
+    s.push_str(
+        "- Use exact column and table names from the schema below. Do not invent columns.\n",
+    );
     s.push_str("- The user's message may contain prior turns formatted as `USER:` / `ASSISTANT:`. Treat them as conversation history and answer only the final user turn.\n\n");
 
     append_schema_block(&mut s, request);
