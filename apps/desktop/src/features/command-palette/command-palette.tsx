@@ -18,7 +18,8 @@ import {
 	Square,
 	RotateCw,
 	Copy,
-	Code2
+	Code2,
+	Settings
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -47,7 +48,7 @@ import { Separator } from '@/shared/ui/separator'
 import { getTableRefId, getTableSqlIdentifier } from '@/shared/utils/table-ref'
 import { cn } from '@/shared/utils/cn'
 
-type NavigationTarget = 'database-studio' | 'sql-console' | 'docker'
+type NavigationTarget = 'database-studio' | 'sql-console' | 'docker' | 'settings'
 
 type CommandPaletteProps = {
 	open: boolean
@@ -727,6 +728,20 @@ export function CommandPalette({
 							onSelect: function () {
 								closePalette()
 								onNavigate('docker')
+							}
+						},
+						{
+							id: 'nav-settings',
+							title: 'Settings',
+							subtitle: 'Editor, AI, storage, and shortcuts.',
+							group: 'Views',
+							icon: <Settings className='h-4 w-4' />,
+							keywords: ['preferences', 'configuration', 'options'],
+							accessory: activeNavId === 'settings' ? 'Active' : undefined,
+							details: ['Dedicated settings workspace with sidebar-based section navigation.'],
+							onSelect: function () {
+								closePalette()
+								onNavigate('settings')
 							}
 						}
 					]
