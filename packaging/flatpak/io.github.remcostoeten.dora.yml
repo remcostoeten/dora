@@ -24,7 +24,7 @@ modules:
         url: https://github.com/oven-sh/bun/releases/download/bun-v1.1.38/bun-linux-x64-baseline.zip
         sha256: 353e2e6d4086a09eeee984d2ed61736dcd905838ede51b82689fd7b3e95def90
     build-commands:
-      - install -Dm755 bun-linux-x64-baseline/bun /app/bin/bun
+      - install -Dm755 bun /app/bin/bun
 
   - name: dora
     buildsystem: simple
