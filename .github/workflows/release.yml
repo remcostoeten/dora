@@ -37,7 +37,7 @@ jobs:
           ROOT_VERSION="$(node -p "require('./package.json').version")"
           DESKTOP_VERSION="$(node -p "require('./apps/desktop/package.json').version")"
           TAURI_VERSION="$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")"
-          CARGO_VERSION="$(sed -n 's/^version = \"\\(.*\\)\"/\\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)"
+          CARGO_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)"
 
           echo "Tag version: $TAG_VERSION"
           echo "Root package version: $ROOT_VERSION"

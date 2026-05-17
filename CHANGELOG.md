@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.26.1 - Release workflow fix
+
+**Date:** 2026-05-17
+
+**Highlights**
+
+- Fix release preflight's `CARGO_VERSION` extraction in `.github/workflows/release.yml` — the `sed` expression was over-escaped so it matched nothing, causing the v0.26.0 release pipeline to fail at the version-equality check. No app behavior changes from 0.26.0.
+
 ## 0.26.0 - Pooler-Safe Postgres, Dedicated Settings & AI Assistant Polish
 
 **Date:** 2026-05-17
