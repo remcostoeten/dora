@@ -94,14 +94,14 @@ existing release tag.
 
 After the manifest is merged:
 
-1. `winget install Dora` – confirm the install succeeds and creates Start menu shortcuts.
-2. `winget upgrade Dora` – test against a previous version to make sure upgrades are smooth.
-3. `winget uninstall Dora` – ensure Dora is fully removed, including desktop icon and registry entries.
+1. `winget install RemcoStoeten.Dora` – confirm the install succeeds and creates Start menu shortcuts.
+2. `winget upgrade RemcoStoeten.Dora` – test against a previous version to make sure upgrades are smooth.
+3. `winget uninstall RemcoStoeten.Dora` – ensure Dora is fully removed, including desktop icon and registry entries.
 
 ## Rolling out the manifest
 
 1. Submit the PR to `microsoft/winget-pkgs`; `wingetcreate` can do this for you, or you can open the PR manually with the generated manifests.
-2. Once the PR is merged, Winget users can run `winget install Dora` immediately. Track the manifest commit so we can update it each release.
+2. Once the PR is merged, Winget users can run `winget install RemcoStoeten.Dora` immediately. Track the manifest commit so we can update it each release.
 3. Document the commands in our own README so users know how to install and keep the app updated.
 
 ## Automating in CI

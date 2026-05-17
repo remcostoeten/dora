@@ -53,7 +53,7 @@ function createCaskFile(config: Config): string {
   sha256 arm:   "${config.dmgSha256Arm}",
          intel: "${config.dmgSha256Intel}"
 
-  url "https://github.com/remcostoeten/dora/releases/download/v#{version}/Dora_\#{version}_\#{arch}.dmg"
+  url "https://github.com/remcostoeten/dora/releases/download/v\#{version}/Dora_\#{version}_\#{arch}.dmg"
   name "${config.name}"
   desc "${config.desc}"
   homepage "${config.homepage}"

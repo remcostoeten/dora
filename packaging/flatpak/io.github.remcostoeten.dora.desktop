@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Dora
+Comment=Desktop database studio
+Exec=dora
+Icon=io.github.remcostoeten.dora
+Categories=Development;Database;
+Terminal=false
+StartupNotify=true

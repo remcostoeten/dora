@@ -38,6 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
             TAG="${{ github.event.release.tag_name }}"
           else
@@ -45,9 +46,23 @@ jobs:
           fi
 
           # Resolve actual .msi URL from release assets (filename version may differ from tag)
-          INSTALLER_URL="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} \
-            --jq '.assets[] | select(.name | endswith("_x64_en-US.msi")) | .browser_download_url' \
-            | head -1)"
+          INSTALLER_URL=""
+          for attempt in {1..24}; do
+            INSTALLER_URL="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} \
+              --jq '.assets[] | select(.name | endswith("_x64_en-US.msi")) | .browser_download_url' \
+              | head -1)"
+            if [[ -n "$INSTALLER_URL" ]]; then
+              break
+            fi
+            echo "Waiting for _x64_en-US.msi asset on ${TAG} (${attempt}/24)..."
+            sleep 10
+          done
+
+          if [[ -z "$INSTALLER_URL" ]]; then
+            echo "No _x64_en-US.msi asset found on release ${TAG}. The Release workflow must publish only after Windows assets are uploaded." >&2
+            exit 1
+          fi
+
           INSTALLER_FILE="$(basename "$INSTALLER_URL")"
           # Extract embedded version from filename
           VERSION="$(echo "$INSTALLER_FILE" | sed 's/Dora_\(.*\)_x64_en-US\.msi/\1/')"
@@ -62,35 +77,39 @@ jobs:
       - name: Download Windows checksums
         shell: bash
         run: |
-          if ! curl --fail --location --output checksums-windows.txt "${{ steps.meta.outputs.checksums_url }}"; then
-            echo "Windows checksums are not available yet; skipping Winget packaging."
-            exit 0
-          fi
+          set -euo pipefail
+          for attempt in {1..24}; do
+            if curl --fail --location --output checksums-windows.txt "${{ steps.meta.outputs.checksums_url }}"; then
+              exit 0
+            fi
+            echo "Waiting for checksums-windows.txt (${attempt}/24)..."
+            sleep 10
+          done
+          echo "Windows checksums are not available on ${{ steps.meta.outputs.tag }}." >&2
+          exit 1
 
       - name: Generate Winget manifests
-        if: ${{ hashFiles('checksums-windows.txt') != '' }}
         run: |
           bun run release:winget -- \
             --version=${{ steps.meta.outputs.version }} \
+            --tag=${{ steps.meta.outputs.tag }} \
             --installer-url=${{ steps.meta.outputs.installer_url }} \
             --checksums-file=checksums-windows.txt \
             --installer-file=${{ steps.meta.outputs.installer_file }}
 
       - name: Archive Winget manifests
-        if: ${{ hashFiles('checksums-windows.txt') != '' }}
         run: |
           tar -czf winget-manifests-${{ steps.meta.outputs.version }}.tar.gz \
             -C packaging/winget/manifests/${{ steps.meta.outputs.version }} .
 
       - name: Upload Winget manifest artifact
-        if: ${{ hashFiles('checksums-windows.txt') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: winget-manifests-${{ steps.meta.outputs.version }}
           path: winget-manifests-${{ steps.meta.outputs.version }}.tar.gz
 
       - name: Upload Winget manifests to GitHub release
-        if: ${{ github.event_name == 'release' && hashFiles('checksums-windows.txt') != '' }}
+        if: ${{ github.event_name == 'release' }}
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

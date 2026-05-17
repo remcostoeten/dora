@@ -57,17 +57,27 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
+          set -euo pipefail
           TAG="${{ steps.meta.outputs.tag }}"
 
-          ARM_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
-            --jq '.assets[] | select(.name | endswith("_aarch64.dmg")) | .browser_download_url' \
-            | head -1)"
-          INTEL_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
-            --jq '.assets[] | select(.name | endswith("_x64.dmg")) | .browser_download_url' \
-            | head -1)"
+          ARM_URL=""
+          INTEL_URL=""
+          for attempt in {1..24}; do
+            ARM_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
+              --jq '.assets[] | select(.name | endswith("_aarch64.dmg")) | .browser_download_url' \
+              | head -1)"
+            INTEL_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
+              --jq '.assets[] | select(.name | endswith("_x64.dmg")) | .browser_download_url' \
+              | head -1)"
+            if [[ -n "$ARM_URL" && -n "$INTEL_URL" ]]; then
+              break
+            fi
+            echo "Waiting for both DMG assets on ${TAG} (${attempt}/24)..."
+            sleep 10
+          done
 
           if [[ -z "$ARM_URL" || -z "$INTEL_URL" ]]; then
-            echo "Could not find both DMG assets on release ${TAG}" >&2
+            echo "Could not find both DMG assets on release ${TAG}. The Release workflow must publish only after macOS assets are uploaded." >&2
             exit 1
           fi
 
