@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.26.2 - Linux tarball / AUR install fix
+
+**Date:** 2026-05-20
+
+**Highlights**
+
+- **Fix broken `yay -S dora` install (white window, "Could not connect to localhost: Connection refused")**: The `dora-x86_64-unknown-linux-gnu.tar.gz` asset that the AUR `PKGBUILD` consumes was being built by a standalone `cargo build --release` step whose `tauri-codegen` context fell back to `devUrl` (`http://localhost:1420`) instead of embedding the Vite-built frontend. The release workflow now reuses the binary inside the `.deb` that `tauri-action` produces — which is a real `tauri build` output with the frontend assets baked into the Tauri context. The `.deb`, `.rpm`, and `.AppImage` artifacts were never affected; only the lightweight tarball (and therefore the AUR install) was broken.
+
 ## 0.26.1 - Release workflow fix
 
 **Date:** 2026-05-17
