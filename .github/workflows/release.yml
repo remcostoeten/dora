@@ -129,9 +129,6 @@ jobs:
           prerelease: false
 
 
-      - name: Build native linux binary
-        run: cargo build --release --manifest-path apps/desktop/src-tauri/Cargo.toml
-
       - name: Build lightweight linux tarball
         run: |
           set -euo pipefail
@@ -139,7 +136,27 @@ jobs:
           STAGE="/tmp/dora-x86_64-unknown-linux-gnu"
           rm -rf "$STAGE"
           mkdir -p "$STAGE/icons"
-          install -Dm755 apps/desktop/src-tauri/target/release/dora "$STAGE/dora"
+
+          # Extract the dora binary from the .deb produced by tauri-action.
+          # The .deb binary is a real `tauri build` output with the Vite dist
+          # embedded into the Tauri context. A bare `cargo build --release`
+          # against this manifest produces a binary that falls back to devUrl
+          # (http://localhost:1420), which is what broke the AUR tarball.
+          DEB="$(find apps/desktop/src-tauri/target/release/bundle/deb -maxdepth 2 -name '*.deb' | head -1)"
+          if [[ -z "${DEB}" ]]; then
+            echo "Could not locate Tauri-built .deb for the linux tarball" >&2
+            exit 1
+          fi
+          echo "Extracting dora binary from ${DEB}"
+          DEB_EXTRACT="$(mktemp -d)"
+          dpkg-deb -x "${DEB}" "${DEB_EXTRACT}"
+          DEB_BIN="$(find "${DEB_EXTRACT}" -type f -name dora -path '*/bin/*' | head -1)"
+          if [[ -z "${DEB_BIN}" ]]; then
+            echo "Could not find dora binary inside ${DEB}" >&2
+            exit 1
+          fi
+
+          install -Dm755 "${DEB_BIN}" "$STAGE/dora"
           install -Dm644 packaging/linux/dora.desktop "$STAGE/dora.desktop"
           install -Dm644 apps/desktop/src-tauri/icons/32x32.png "$STAGE/icons/32x32.png"
           install -Dm644 apps/desktop/src-tauri/icons/128x128.png "$STAGE/icons/128x128.png"
