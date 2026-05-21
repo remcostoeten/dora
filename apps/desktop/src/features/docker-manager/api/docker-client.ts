@@ -298,14 +298,15 @@ export async function getContainerLogs(
 export async function streamContainerLogs(
 	containerId: string,
 	onLog: (line: string) => void,
-	onError: (error: string) => void
+	onError: (error: string) => void,
+	tail: number = 100
 ): Promise<() => void> {
 	if (
 		typeof window !== 'undefined' &&
 		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 	) {
 		const { Command } = await import('@tauri-apps/plugin-shell')
-		const command = Command.create('docker', ['logs', '-f', '--tail', '100', containerId])
+		const command = Command.create('docker', ['logs', '-f', '--tail', String(tail), containerId])
 
 		command.on('close', (data) => {
 			console.log(`command finished with code ${data.code} and signal ${data.signal}`)
