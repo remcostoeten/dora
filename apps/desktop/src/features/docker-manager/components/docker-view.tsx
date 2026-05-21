@@ -7,7 +7,6 @@ import {
 	ArrowUp,
 	Activity,
 	HeartPulse,
-	TerminalSquare,
 	X
 } from 'lucide-react'
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
@@ -32,8 +31,10 @@ import type { PostgresContainerConfig, DockerContainer } from '../types'
 import { ContainerDetailsPanel } from './container-details-panel'
 import { ContainerList } from './container-list'
 import { ContainerTerminal } from './container-terminal'
+import { LogsViewer } from './logs-viewer'
+import { useContainerLogs } from '../api/queries/use-container-logs'
+import { DEFAULT_LOG_TAIL } from '../constants'
 import { CreateContainerDialog } from './create-container-dialog'
-import { SandboxIndicator } from './sandbox-indicator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/ui/select'
 import { cn } from '@/shared/utils/cn'
 
@@ -54,7 +55,7 @@ const STATUS_FILTER_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string 
 
 export function DockerView({ onOpenInDataViewer }: Props) {
 	const [searchQuery, setSearchQuery] = useState('')
-	const [showExternal, setShowExternal] = useState(false)
+	const [showExternal, setShowExternal] = useState(true)
 	const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null)
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -62,6 +63,8 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 	const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 	const [terminalContainerId, setTerminalContainerId] = useState<string | null>(null)
 	const [isTerminalPanelOpen, setIsTerminalPanelOpen] = useState(false)
+	const [activeBottomTab, setActiveBottomTab] = useState<'logs' | 'terminal'>('logs')
+	const [tailLines, setTailLines] = useState(DEFAULT_LOG_TAIL)
 
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const { toast } = useToast()
@@ -191,6 +194,14 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 		[allContainers, terminalContainerId]
 	)
 
+	const { data: logs = '', isLoading: logsLoading } = useContainerLogs(
+		selectedContainerId,
+		{
+			tail: tailLines,
+			enabled: activeBottomTab === 'logs' && !!selectedContainerId
+		}
+	)
+
 	const containerSummary = useMemo(
 		function () {
 			const runningCount = visibleContainers.filter(function (container) {
@@ -263,16 +274,20 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 
 	function handleSelectContainer(id: string) {
 		setSelectedContainerId(id)
+		setActiveBottomTab('logs')
+		setIsTerminalPanelOpen(false)
 	}
 
 	function handleOpenTerminal(container: DockerContainer) {
 		setSelectedContainerId(container.id)
 		setTerminalContainerId(container.id)
 		setIsTerminalPanelOpen(true)
+		setActiveBottomTab('terminal')
 	}
 
 	function handleCloseTerminalPanel() {
 		setIsTerminalPanelOpen(false)
+		setActiveBottomTab('logs')
 	}
 
 	function handleRemoveComplete() {
@@ -343,8 +358,10 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 				}
 
 				if (detail.type === 'open-terminal') {
+					setSelectedContainerId(container.id)
 					setTerminalContainerId(container.id)
 					setIsTerminalPanelOpen(true)
+					setActiveBottomTab('terminal')
 				}
 			}
 
@@ -415,7 +432,6 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 							</p>
 						</div>
 					</div>
-					<SandboxIndicator />
 				</div>
 
 				<div className='px-4 pb-3'>
@@ -589,31 +605,83 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 					/>
 				</div>
 
-				{isTerminalPanelOpen && terminalContainer && (
+				{selectedContainer && (
 					<div className='h-72 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70'>
 						<div className='h-9 border-b border-border px-3 flex items-center justify-between'>
-							<div className='flex items-center gap-2 min-w-0'>
-								<TerminalSquare className='h-4 w-4 text-muted-foreground' />
-								<span className='text-sm font-medium'>Terminal</span>
-								<span className='text-xs text-muted-foreground truncate'>
-									{terminalContainer.name}
-								</span>
+							<div className='flex items-center gap-2'>
+								<div className='flex items-center gap-1 bg-muted rounded-lg p-0.5'>
+									<button
+										type='button'
+										onClick={function () { setActiveBottomTab('logs') }}
+										className={cn(
+											'px-3 py-1 text-xs font-medium rounded-md transition-colors',
+											activeBottomTab === 'logs'
+												? 'bg-background text-foreground shadow-sm'
+												: 'text-muted-foreground hover:text-foreground'
+										)}
+									>
+										Logs
+									</button>
+									<button
+										type='button'
+										onClick={function () {
+											if (terminalContainerId !== selectedContainer.id) {
+												setTerminalContainerId(selectedContainer.id)
+											}
+											setIsTerminalPanelOpen(true)
+											setActiveBottomTab('terminal')
+										}}
+										disabled={selectedContainer.state !== 'running'}
+										className={cn(
+											'px-3 py-1 text-xs font-medium rounded-md transition-colors',
+											activeBottomTab === 'terminal'
+												? 'bg-background text-foreground shadow-sm'
+												: 'text-muted-foreground hover:text-foreground',
+											selectedContainer.state !== 'running' && 'opacity-50 cursor-not-allowed'
+										)}
+									>
+										Terminal
+									</button>
+								</div>
+								{activeBottomTab === 'terminal' && terminalContainer && (
+									<span className='text-xs text-muted-foreground truncate max-w-[200px]'>
+										{terminalContainer.name}
+									</span>
+								)}
 							</div>
 							<Button
 								type='button'
 								size='icon-sm'
 								variant='ghost'
-								onClick={handleCloseTerminalPanel}
-								aria-label='Close terminal panel'
+								onClick={function () {
+									setSelectedContainerId(null)
+									setIsTerminalPanelOpen(false)
+								}}
+								aria-label='Close panel'
 							>
 								<X className='h-4 w-4' />
 							</Button>
 						</div>
 						<div className='h-[calc(100%-2.25rem)] p-3'>
-							<ContainerTerminal
-								container={terminalContainer}
-								enabled={isTerminalPanelOpen}
-							/>
+							{activeBottomTab === 'logs' && (
+								<LogsViewer
+									logs={logs}
+									isLoading={logsLoading}
+									tailLines={tailLines}
+									onTailLinesChange={setTailLines}
+								/>
+							)}
+							{activeBottomTab === 'terminal' && terminalContainer && (
+								<ContainerTerminal
+									container={terminalContainer}
+									enabled={isTerminalPanelOpen}
+								/>
+							)}
+							{activeBottomTab === 'terminal' && !terminalContainer && (
+								<div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
+									Container must be running to open a terminal.
+								</div>
+							)}
 						</div>
 					</div>
 				)}

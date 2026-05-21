@@ -267,10 +267,11 @@ export async function getContainerLogs(
 export async function streamContainerLogs(
 	containerId: string,
 	onLog: (line: string) => void,
-	onError: (error: string) => void
+	onError: (error: string) => void,
+	tail: number = 100
 ): Promise<() => void> {
-	if (!isTauri) return demoService.streamContainerLogs(containerId, onLog, onError)
-	return clientStream(containerId, onLog, onError)
+	if (!isTauri) return demoService.streamContainerLogs(containerId, onLog, onError, tail)
+	return clientStream(containerId, onLog, onError, tail)
 }
 
 export async function openContainerTerminal(
