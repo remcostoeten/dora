@@ -1,245 +1,852 @@
 # Changelog
 
-## 0.26.2 - Linux tarball / AUR install fix
+All notable changes to this project will be documented in this file.
+## [v0.26.3]
 
-**Date:** 2026-05-20
 
-**Highlights**
+### Chores
 
-- **Fix broken `yay -S dora` install (white window, "Could not connect to localhost: Connection refused")**: The `dora-x86_64-unknown-linux-gnu.tar.gz` asset that the AUR `PKGBUILD` consumes was being built by a standalone `cargo build --release` step whose `tauri-codegen` context fell back to `devUrl` (`http://localhost:1420`) instead of embedding the Vite-built frontend. The release workflow now reuses the binary inside the `.deb` that `tauri-action` produces — which is a real `tauri build` output with the frontend assets baked into the Tauri context. The `.deb`, `.rpm`, and `.AppImage` artifacts were never affected; only the lightweight tarball (and therefore the AUR install) was broken.
+- automate package publishing
 
-## 0.26.1 - Release workflow fix
+- add generate:releasetext script
 
-**Date:** 2026-05-17
+- use git-cliff for release text generation
 
-**Highlights**
+- add release script that auto-bumps, tags, and generates release text
 
-- Fix release preflight's `CARGO_VERSION` extraction in `.github/workflows/release.yml` — the `sed` expression was over-escaped so it matched nothing, causing the v0.26.0 release pipeline to fail at the version-equality check. No app behavior changes from 0.26.0.
 
-## 0.26.0 - Pooler-Safe Postgres, Dedicated Settings & AI Assistant Polish
+### Features
 
-**Date:** 2026-05-17
+- show all by default, move logs/terminal to bottom panel, pass tail param through
 
-**Highlights**
+- show all by default, move logs/terminal to bottom panel… (#71)
 
-- **First-class Postgres pooler / PgBouncer support**: Connections that look like a pooler (host contains `pooler`/`pgbouncer`, ports 6432/6543, or any of the standard Drizzle/Prisma/PgBouncer query flags — `pgbouncer=true`, `pooler=transaction`, `simple_query=true`, `prepared_statements=false`, `statement_cache_size=0`) are detected automatically and switched to simple-query mode end-to-end — queries, mutations, the live monitor, and snapshot fetches. The connection form gets a "Pooler-compatible mode" checkbox in both URL and field input modes, and Dora-specific options are stripped from the URL before tokio_postgres parses it. PgBouncer's "prepared statement already exists" errors now fall back to simple-query automatically instead of bubbling up. Pooler URLs without an explicit `sslmode` default to `sslmode=require`.
-- **Dedicated Settings view**: Settings moved out of the cramped 360px popover into a full workspace with a left-rail section nav (Editor, Shortcuts, AI Keys, Storage, Safety, Startup, Interface) and card-based sections. Reachable from the bottom-toolbar gear, the navigation sidebar's new Settings entry, and the command palette.
-- **AI assistant — structured SQL responses, dry runs, syntax highlighting, dev-mode mock**:
-  - The JSON shape from `⌘K`-style SQL generation is parsed into a clean layout — explanation paragraph, runnable code block, optional examples, warnings as a bullet list — instead of dumping raw JSON at the user.
-  - Every SQL code block gains a **Dry** button that wraps the statement in `EXPLAIN` so you can preview the plan without running anything destructive.
-  - SQL blocks render with token-level syntax highlighting (keywords, strings, numbers, identifiers, functions, comments) and surface the statement kind, statement count, and line count in the header. Long blocks (>12 lines) collapse with an expand toggle.
-  - In the web/browser build, the chat panel and ⌘K both run against a deterministic mock backend (no Tauri commands needed) so demos and screenshots are reproducible.
+- structured SQL responses, dry run, syntax highlighting (#72)
 
-**Details**
+## [v0.26.2]
 
-- **Type-aware cell editing on Postgres**: Editing a cell now sends `UPDATE … SET col = $1::<actual_column_type>` so JSON values that would otherwise fail to implicitly cast to enum / uuid / jsonb / timestamp columns now succeed. The column type is resolved once per edit via `pg_attribute`.
-- **Exact row counts as a fallback**: When the planner's row-count estimate for a Postgres table is zero (common for fresh tables that haven't been analyzed), Dora now issues an exact `COUNT(*)` per table during schema fetch so the sidebar and AI prompt schema block stop showing `~0 rows`.
-- **Live-monitor TLS aligned with the main query path**: The listener honors `sslmode=verify-ca`/`verify-full` instead of always using a verified connector; everything else uses the no-verify connector — matching the convention already used by the query connection.
-- **JSON cell editing UX**: Editing an object-valued cell opens the editor pre-filled with pretty-printed JSON (2-space indent) instead of `[object Object]`.
-- **Tauri binding signatures**: `get_database_schema` drops its unused `force_refresh` argument; `test_connection` accepts an optional connection id so saved credentials are reused when re-testing an existing connection.
 
-## 0.25.0 - Multi-Table Tabs, FK Drill-Down & CSV Import
+### Bug Fixes
 
-**Date:** 2026-05-16
+- extract linux tarball binary from tauri-built .deb
 
-**Highlights**
 
-- **Multi-table tabs**: Open multiple tables side-by-side in a tab strip. Tabs are isolated — each has its own pagination, filters, sort order, and scroll position. Opening the same table twice focuses the existing tab. Up to 12 tabs; the oldest is evicted when the limit is reached. Middle-click or the × button closes a tab.
-- **FK drill-down navigation**: Foreign-key columns show a small ↗ icon on row hover. Clicking it opens the referenced table in a new tab, pre-filtered to show the matching row. NULL values and composite FKs are handled gracefully (no icon shown).
-- **CSV import with smart column mapping**: An "Import CSV" button in the table toolbar opens a guided import dialog — file pick → preview (first 5 rows) → column mapping (auto-matched case-insensitively, type-mismatch warnings inline) → progress bar → result summary with expandable error list. Options: skip first row, stop on first error. Large files (>5 MB) are guarded; files >5000 rows show a warning.
-- **PgBouncer simple-query mode**: Connections with `?pgbouncer=true` in the connection string now use the Postgres simple-query protocol throughout — queries, live monitor snapshots, and cell updates — making Dora compatible with PgBouncer transaction-pool mode.
+### Chores
 
-**Details**
+- v0.26.2
 
-- Tab context store built with React `useReducer` for atomic multi-field state updates (avoids concurrent-mode race).
-- FK metadata enriched on the frontend from the existing schema response — no new Tauri commands.
-- CSV parser is a self-contained RFC 4180 state machine (~80 lines, no dependencies) handling quoted fields, embedded newlines, CRLF, and escaped quotes.
-- All CSV writes go through the existing `insert_row` Tauri command.
+## [v0.26.1]
 
-## 0.2.0 - Docker Panel UX Overhaul
 
-**Date:** 2026-05-14
+### Chores
 
-**Highlights**
+- v0.26.1
 
-- **Container metrics**: The details panel now shows a live stats grid between Connection and Actions — CPU%, memory usage/limit with mini progress bars (orange above 80%), uptime, state, PID count, primary port, image, and volume info. Stats poll every 5 seconds via `docker stats --no-stream` and gracefully degrade when a container is stopped.
-- **Removed snippets tab**: The "Snippets" tab (Shell/Node/Python/Prisma connection code) has been removed from the Connection section. It was dead weight in the 320px sidebar and has been stripped along with all related state, imports, and the `SnippetHighlight` component.
-- **Password toggle UX fix**: The Connection URL section now has its own eye icon button. Previously, revealing the password in the URL required toggling the eye icon buried inside the Env Vars section — an invisible two-step interaction. Both toggles share the same state so either one works.
+## [v0.26.0]
 
-## 0.1.1 - Configurable & Swappable SQLite Storage
 
-**Date:** 2026-05-14
+### Bug Fixes
 
-**Highlights**
+- cast UPDATE value to column type during cell edits
 
-- **Multi-database support**: Dora's internal SQLite path is no longer hardcoded. On first launch a `~/.config/dora/config.toml` is created with a `[[databases]]` list and an `[storage] active` pointer. Additional databases can be registered (point to an existing file) or created (new empty DB with migrations applied).
-- **Env var override**: Set `DORA_STORAGE_PATH=/custom/path/dora.db` to override the config entirely — useful in CI or multi-profile setups.
-- **Runtime switching** (Settings → Storage): Selecting a different database WAL-checkpoints the current connection, opens the new one, runs any pending migrations, and reloads the keyboard-shortcut registry — all without restarting the app.
-- **Reset**: A "Reset database" button in Settings deletes all rows from the active database (with a two-click confirmation guard).
-- **Settings panel — Storage section**: Shows the active file path, lists all registered databases with a Switch button per entry, and exposes New / Register / Reset actions inline.
+- preserve JSON shape when editing object cells
 
-## 0.0.110 - Multi-Tab Query Console & Async Row Count
 
-**Date:** 2026-04-27
+### CI/CD
 
-**Highlights**
+- add one-shot tag-create workflow
 
-- **Multi-Tab Query Console**: The SQL Console now supports multiple active query tabs. Each tab acts as an independent workspace with its own editor content, results, execution state, and scroll position. Includes drag-to-reorder, tab persistence, auto-titling from queries, and premium tab bar UX (keyboard shortcuts: `Ctrl+T`, `Ctrl+W`, `Alt+1-9`).
-- **Async Row Count in Status Bar**: The results panel now fires an asynchronous `SELECT COUNT(*)` query in the background to show the true total row count in the status bar. Includes a non-blocking shimmer loading animation and a 30-second cache that auto-invalidates on schema mutations.
 
-## 0.0.109 - Data Grid Refactor & Schema Visualizer Fix
+### Chores
 
-**Date:** 2026-04-25
+- update dora to 0.25.0
 
-**Highlights**
+- fix source URL to use v0.25.1 release tag
 
-- Split the 1455-line `data-grid.tsx` into a 245-line shell plus 15 focused modules under `data-grid/` — extracted hooks (`use-cell-editing`, `use-cell-selection`, `use-row-selection`, `use-grid-keyboard`, `use-column-resize`, `use-context-menu-reporting`, `use-focused-cell`, `use-right-drag-scroll`), child components (`cell-value`, `draft-row`, `empty-states`, `grid-body`, `grid-header`), and pure modules (`selection.ts`, `types.ts`). Same behavior, far cleaner ownership.
-- Restored the broken imports in `schema-visualizer/components/table-node.tsx` (Handle, Position, NodeProps, Key, LinkIcon) — `tsc -b` is now clean.
-- Bundles every change shipped on this branch: AI encrypted key store (Settings → AI Keys), abort path for the ⌘I overlay, JSON-mode streaming, key rotation on 5xx/403, and Insert + Run.
+- update dora to 0.25.1
 
-## 0.0.108 - AI SQL Generator: Encrypted Key Store, Test, Abort & Insert+Run
+- regenerate Tauri bindings
 
-**Date:** 2026-04-24
+- refresh bundle visualizer output
 
-**Highlights**
+- prune stale apps/db-tester entries from bun.lock
 
-- Added an encrypted Groq API key store inside the app — Settings → AI Keys (Groq) lets you add, label, enable/disable, test, and delete keys. Ciphertext is AES-256-GCM and the master key lives in the OS keychain (Keychain / libsecret / Credential Manager).
-- Env-based keys (`GROQ_API_KEY`, `GROQ_API_KEY_1..10`, `GROQ_MODEL`) are still honored and merged with UI-stored keys at runtime, with duplicate keys deduplicated.
-- New "Test" button validates a key against Groq before saving, and a per-key live test button records the result in the row.
-- The ⌘I overlay now shows a status badge (`N keys` / `no keys`) so missing configuration is obvious before you type a prompt.
-- New "Insert + Run" action — accepting an AI suggestion with ⌘⏎ pastes the SQL into the editor and immediately executes it.
-- Added a real abort path — closing the overlay or hitting Esc mid-stream calls `ai_abort_stream` and the backend short-circuits the SSE loop.
-- Streaming completions now request `response_format: json_object`, which keeps tokens inside a JSON envelope and stops the model wandering into prose / markdown fences mid-stream.
-- Key rotation now also fires on `5xx` and `403` errors (was 429/401 only) so transient provider issues fail over instead of bubbling up.
-- Bumped reqwest client to a 60s timeout for streaming and a separate 15s client for key tests.
+- v0.26.0
 
-## 0.0.107 - Self-hosted APT Repository (sudo apt install dora)
 
-**Date:** 2026-04-19
+### Features
 
-**Highlights**
+- pooler-compatible simple-query mode and pooler detection
 
-- Added a self-hosted apt repository published via GitHub Pages — Debian/Ubuntu users can now `sudo apt install dora` after a one-time source setup.
-- CI workflow auto-generates `Packages`, `Packages.gz`, and a signed `Release` file on every GitHub release and deploys to GitHub Pages.
-- GPG signing supported via `GPG_PRIVATE_KEY` repository secret; falls back to unsigned (trusted) if not configured.
-- Added `release:apt` script for local generation.
-- Updated README install instructions to feature the apt repo as the recommended Linux install path.
+- pooler-compatible mode toggle in connection form
 
-## 0.0.106 - Live Monitor Global, SSH Tunnels, File Exports & AUR Binary Package
+- structured SQL responses, dry run, syntax highlighting, mock backend
 
-**Date:** 2026-04-19
+- dedicated settings workspace replacing popover
 
-**Highlights**
 
-- Made the live database monitor a global React context (`LiveMonitorProvider`) so external DB changes trigger notifications and data refresh app-wide, not just per active table.
-- Fixed SSH tunnel configuration not being passed to the backend — SSH tunnels now work correctly when adding or updating connections.
-- Fixed row exports (JSON/SQL) to generate real file downloads instead of copying to clipboard.
-- Fixed schema sidebar and SQL console revalidation after mutations like DROP TABLE, ADD COLUMN, and SQL execution.
-- Removed the recording overlay feature.
-- Switched AUR package from source-build (10+ min compile) to a pre-built AppImage binary package — `yay -S dora` or `sudo pacman -S dora` now installs in seconds.
+### Performance
 
-## 0.0.102 - Snap Workflow Follow-up & Packaging Release Cleanup
+- backfill exact row counts when planner estimate is zero
 
-**Date:** 2026-04-05
+## [v0.25.2]
 
-**Highlights**
 
-- Fixed the Snap CI workflow so packaging builds run correctly on GitHub Actions.
-- Switched the Snap build path to a direct Rust release build instead of an invalid Tauri bundle flag.
-- Carries the packaging automation and VM lab work forward into a clean tag that matches branch head.
+### Bug Fixes
 
-## 0.0.101 - Packaging Automation, VM Lab & Desktop Iteration
+- install pinned bun archive path
 
-**Date:** 2026-04-05
+- pin compatible bun archive
 
-**Highlights**
+- use compatible bun for install
 
-- Added repo-native packaging helpers for Winget, AUR, Snap, release checksums, and release guidance.
-- Added an Ubuntu host VM lab flow for provisioning Ubuntu, Arch, and Windows packaging test environments.
-- Updated the in-app changelog and release surfaces for the new release milestone.
-- Bundled the current desktop, docs, test, and workflow iteration work into the `0.0.101` line.
+- tolerate immutable release uploads
 
-## 0.1.0 - Project Foundation & Documentation Audit
 
-**Date:** 2026-04-04
+### CI/CD
 
-**Highlights**
+- publish package manager artifacts safely
 
-- Established 0.1.0 version baseline across the monorepo.
-- Completed full Homebrew installation documentation and README overhaul.
-- Verified 115/115 tests passing for the new milestone.
+## [v0.25.1]
 
-## 0.0.99 - Homebrew Support & CI Security Hardening
 
-**Date:** 2026-04-04
+### Bug Fixes
 
-**Highlights**
+- rewrite store with useReducer to fix concurrent-mode state update bug
 
-- Added the official Homebrew Tap at `remcostoeten/homebrew-dora` (`brew install dora`).
-- Pinned all GitHub Actions to specific commit SHAs for improved supply chain security.
-- Optimized the esbuild target to `esnext` to resolve CI transform errors.
-- Stabilized the Rust toolchain reference in automated workflows.
+- remove nested button, use div+sibling-buttons for tab pills
 
-## 0.0.98 - Live Database Updates & Performance Refactor
+- add skip-first-row and stop-on-error toggles to import dialog
 
-**Date:** 2026-04-04
+- guard empty import, clear file input on close, memoize nonPKColumns
 
-**Highlights**
+- FK schema-qualified navigation, CSV file size guard
 
-- Implemented a backend-driven live database monitor manager.
-- Eliminated inefficient frontend polling logic for faster performance.
-- Added support for real-time data grid updates on external database changes.
-- Enhanced documentation with an animated showcase of live performance.
+- use --user flag for flatpak remote-add and install on GitHub Actions
 
-## 0.0.97 - Type Safety Recovery, Feature-State Alignment & Docker Manager Updates
 
-**Date:** 2026-02-20
+### CI/CD
 
-**Highlights**
+- add Flatpak publish workflow
 
-- Restored strict TypeScript build health for the desktop app (`tsc --noEmit` now passes).
-- Fixed adapter/result typing drift and related runtime-safe error handling paths.
-- Aligned sidebar feature state: Docker Manager remains active while only unavailable items are marked "Coming soon".
-- Added/updated Docker manager feature work (terminal flow + UX/API refinements).
-- Updated README/docs to reflect actual current feature status and audit baseline.
 
-## 0.0.95 - Packaging Expansion & Changelog Stability
+### Chores
 
-**Date:** 2026-02-09
+- update dora to 0.2.0
 
-**Highlights**
+- bump version to 0.25.0, add changelog entry
 
-- Added Linux `.rpm` and Windows `.msi` bundle targets.
-- Added Intel macOS release job (`macos-13`) in addition to Apple Silicon flow.
-- Fixed changelog popover crash in web view caused by invalid JSX/object rendering.
-- Restored reliable scrolling/navigation through older changelog entries.
-- Added unseen-changes indicator badge on the changelog trigger in the sidebar.
 
-## 0.0.94 - CI/Release Infrastructure Recovery
+### Documentation
 
-**Date:** 2026-02-09
+- add v0.25 PRD — tabs, FK drill-down, CSV import
 
-**What happened between `v0.0.93` (`d596a4c`) and `master` (`df1d696`)**
+- add v0.25 implementation plan (9 tasks, tabs + FK + CSV)
 
-- `4ded3ed`: Updated README for `v0.0.93` release links and install docs.
-- `73fafbc`: Fixed CI failures in tests and Rust compile flow.
-- `6654232`: Unblocked Rust tests in GitHub Actions.
-- `20e0161`: Added PostgreSQL `initdb` path setup for `pgtemp` in CI.
-- `df1d696`: Final pipeline stabilization merged via PR #32.
+- add v0.25.0 changelog entry to CHANGELOG.md and fix commit ref in sidebar data
 
-**Release pipeline fixes in `v0.0.94`**
 
-- Linux release runner moved to `ubuntu-latest` and updated Tauri v2 system dependencies (`webkit2gtk-4.1`, `javascriptcoregtk-4.1`, `libsoup-3.0`).
-- macOS release job now builds unsigned artifacts in CI by removing failing Apple signing environment wiring.
-- Windows packaging now links SQLite reliably by enabling `rusqlite` `bundled` feature to avoid missing `sqlite3.lib`.
-- Version metadata aligned to `0.0.94` for npm + Tauri config + in-app changelog.
+### Features
 
-## 0.0.92 - Docker Manager & UI Overhaul
+- chat-style AI assistant sidebar (#63)
 
-**Features**
+- add tab context store with 12-tab cap
 
-- **Docker Manager MVP**: Manage containers, view logs, and export docker-compose configurations directly from the app.
-- **New Sidebar**: A completely redesigned, collapsible sidebar with animated navigation for better space efficiency.
-- **URL State Management**: Deep linking support for selected rows, cells, and active tables.
-- **Theme Synchronization**: Improved theme consistency across the application and sub-windows.
-- **Context Sensitive URLs**: URL parameters now reflect the specific context of the data grid selection.
+- add TabBar component with close and middle-click support
+
+- wire TabsProvider, TabBar, and openTab into Index.tsx
+
+- plumb FK metadata into ColumnDefinition and enrich columns in DatabaseStudio
+
+- add FK drill-down icon, opens referenced table in new tab
+
+- add RFC 4180 CSV parser and column mapping utilities
+
+- add CSV import dialog with preview, column mapping, and progress
+
+- Dora v0.25.0 — Multi-Table Tabs, FK Drill-Down & CSV Import
+
+## [v0.2.2]
+
+
+### Bug Fixes
+
+- use analytics ingestion endpoint
+
+- use custom analytics ingestion domain
+
+- align database studio headers
+
+
+### CI/CD
+
+- allow manual dispatch for a specific release tag
+
+
+### Features
+
+- centralize analytics providers
+
+- add native dora AUR packaging and v0.2.0 updates (#62)
+
+
+### Other
+
+- detect pgbouncer=true flag and plumb use_simple_query
+
+## [v0.0.117]
+
+
+### Bug Fixes
+
+- git-cliff config and workflow to generate proper release notes
+
+## [v0.0.116]
+
+
+### Other
+
+- re-run release workflow with git-cliff
+
+## [v0.0.114]
+
+
+### Features
+
+- auto-generate release notes with git-cliff
+
+## [v0.0.113]
+
+
+### Features
+
+- update desktop app and add Homebrew Cask integration
+
+## [v0.0.112]
+
+
+### Testing
+
+- update desktop tests for schema visualizer release
+
+## [v0.0.111]
+
+
+### Chores
+
+- release v0.0.111
+
+
+### Features
+
+- addd schema visualizer
+
+- addd schema visualizer (#61)
+
+
+### Refactoring
+
+- apply consistent rustfmt styling across codebase and add row virtualizer for data grid components
+
+## [v0.0.110]
+
+
+### Bug Fixes
+
+- disable transparent windows to prevent WebKit/Wayland crash
+
+
+### Documentation
+
+- add schema visualizer + AI SQL to README, bump download links to 0.0.109
+
+
+### Features
+
+- animated edges, theme-aware colors, search autocomplete
+
+- chained schema-aware autocomplete
+
+- multi-tab console and async row count
+
+## [v0.0.109]
+
+
+### Bug Fixes
+
+- resolve .deb URL from release assets instead of constructing from tag version
+
+- resolve CI lint, snap, AUR and winget failures
+
+- escape ${srcdir}/${pkgdir} in PKGBUILD template literal
+
+- use type instead of interface in analytics-dispatcher
+
+
+### Chores
+
+- add GPG public key for apt repo signing
+
+- cleanup lib.rs debug guard and bindings.ts docstring noise
+
+
+### Documentation
+
+- add backend refactor checklist for remaining phases (5b, 5c, 4, 8)
+
+- add product roadmap with tiered features and frontend checklist
+
+- add keyboard shortcut UI spec using @remcostoeten/use-shortcut
+
+
+### Features
+
+- keyboard shortcut coverage (#52)
+
+- query history improvements (#57)
+
+- interactive ER diagram view (#58)
+
+- schema-grounded AI ⌘I with Groq rotating-key provider (#59)
+
+- AI encrypted key store + data-grid refactor (0.0.109) (#60)
+
+
+### Refactoring
+
+- split commands.rs by domain (phase 1) (#47)
+
+- split storage.rs + typed Error enum (phases 2-3) (#48)
+
+- scaffold WriteAdapter trait (phase 5a) (#49)
+
+- add tracing + spans (phase 6) (#50)
+
+- kill production unwraps, add clippy enforcement (phase 7) (#51)
+
+- port mutation logic into WriteAdapter impls (#53)
+
+- wire new error shape and type safety (phase 8)
+
+- ConnectionRepository trait on AppState (phase 4)
+
+- ConnectionRepository trait on AppState (phase 4) (#55)
+
+- wire new error shape and type safety (phase 8) (#56)
+
+- WatchAdapter trait per driver (phase 5c)
+
+- WatchAdapter trait per driver (phase 5c) (#54)
+
+## [v0.0.107]
+
+
+### Bug Fixes
+
+- add missing analytics-dispatcher, remove stale live-monitor test
+
+
+### Features
+
+- self-hosted apt repository — sudo apt install dora
+
+## [v0.0.106]
+
+
+### Features
+
+- v0.0.106 — global live monitor, SSH tunnels, file exports, AUR binary
+
+## [v0.0.104]
+
+
+### Bug Fixes
+
+- harden winget release workflow
+
+- stabilize rust tests and snap release upload
+
+
+### Documentation
+
+- sync embedded homebrew tap
+
+
+### Features
+
+- allow record editing
+
+## [v0.0.103]
+
+
+### Bug Fixes
+
+- react err
+
+- run snap workflow in destructive mode
+
+- adopt snap metadata from build part
+
+- skip release upload on manual snap publish
+
+
+### Chores
+
+- update snap workflow, README, and snapcraft for MySQL support
+
+- update snap workflow, README, and snapcraft for MySQL support (#46)
+
+- opt snap workflow into node 24 actions
+
+
+### Features
+
+- Add MySQL connectivity support and testing companion prompt
+
+- Add MySQL connectivity support (#43)
+
+- add mysql connectivity  (#44)
+
+- mysql connectivity and add homebrew install (#45)
+
+
+### Other
+
+- cut v0.0.103
+
+## [v0.0.102]
+
+
+### Bug Fixes
+
+- run snapcraft with sudo in CI
+
+- use bun run in snap build scriptlet
+
+- build snap binary with cargo release
+
+
+### Other
+
+- prepare v0.0.102
+
+## [v0.0.101]
+
+
+### Documentation
+
+- add homebrew installation section
+
+
+### Features
+
+- add homebrew tap for dora
+
+
+### Other
+
+- prepare v0.0.101
+
+## [v0.1.0]
+
+
+### Bug Fixes
+
+- change build target to esnext to resolve CI esbuild transform error
+
+## [v0.0.100]
+
+
+### Bug Fixes
+
+- use valid GitHub Actions commit SHAs
+
+- use stable branch for rust-toolchain to avoid parsing issues
+
+
+### Chores
+
+- pin GitHub Actions to specific commit SHAs
+
+## [v0.0.98]
+
+
+### Chores
+
+- checkpoint current workspace before live monitor refactor
+
+- remove bloat
+
+- add all uncommitted changes
+
+- release v0.0.98
+
+
+### Documentation
+
+- add animated WEBP showcase to README
+
+
+### Features
+
+- add live database updates
+
+
+### Refactoring
+
+- replace frontend live polling with backend live monitor manager
+
+## [v0.0.97]
+
+
+### Other
+
+- UX polish, shortcuts & cleanup
+
+- cut v0.0.97 with type-safety fixes and docker updates
+
+## [v0.0.96]
+
+
+### Features
+
+- mouse-promo recorder and accessibillity
+
+- finalize Windows Tauri dev and CLI automation
+
+- merge Windows Tauri dev, libsql-rusqlite, and CLI automation
+
+## [v0.0.95]
+
+
+### Bug Fixes
+
+- repair changelog popover render and restore scroll
+
+- use supported intel macOS runner
+
+
+### Chores
+
+- prepare v0.0.95 and refresh changelog metadata
+
+
+### Features
+
+- add rpm msi and intel macOS build target
+
+## [v0.0.94]
+
+
+### Bug Fixes
+
+- resolve failing tests and rust compile issues
+
+- unblock rust tests in github actions
+
+- add postgres initdb bin path for pgtemp tests
+
+- resolve pipeline failures (#32)
+
+- restore cross-platform release flow and prep v0.0.94 (#33)
+
+- use vcpkg sqlite on windows and avoid sqlite symbol clashes
+
+- export vcpkg sqlite library paths for windows linker
+
+
+### Documentation
+
+- update README with v0.0.93 download links and installation instructions
+
+## [v0.0.93]
+
+
+### Bug Fixes
+
+- docker view sort error and save accumulated work
+
+- resolve syntax error in database-studio.tsx
+
+- replace native dialogs with shadcn components and clean up debug logs
+
+- pass prebuild checks and fix production build
+
+- correct rust-toolchain action reference and package.json syntax
+
+
+### Chores
+
+- cleanup unused files and dependencies (audit)
+
+- optimize insert_row allocation (backend round 2)
+
+- snapshot before full system audit
+
+- prepare v0.0.93 with comprehensive changelog
+
+
+### Features
+
+- add cleanup audit tools
+
+- performance optimizations (bundle split, zero-flash pagination, efficient IPC)
+
+- Add Monaco Editor workers and LSP utilities to enhance code editing features.
+
+- replace native alerts with shadcn and align bottom bars
+
+- error handling, query history, and release-ready UI polish
+
+- add custom shortcuts UI with persistence and dynamic bindings
+
+- Add light/dark theme toggle, SQL snippet saving, and refactor connection snippet display.
+
+- add typo detection with fuzzy matching
+
+- add Drizzle-aware typo diagnostics with fuzzy suggestions
+
+- integrate Drizzle-aware typo diagnostics across UI components
+
+
+### Performance
+
+- efficient IPC layer, bundle split, monaco workers offload (#28)
+
+## [v0.0.925]
+
+
+### Bug Fixes
+
+- improve sidebar dragging physics and animations
+
+- sidebar resize now follows mouse in real-time instead of snapping
+
+- propagate connection errors in test_connection
+
+- Strip unsupported channel_binding parameter from PostgreSQL connection strings
+
+- resolve table data loading and sort crash
+
+- address CodeRabbit PR review comments
+
+- lsp build issues
+
+
+### CI/CD
+
+- upgrade runners to Blacksmith for 2x faster performance
+
+- revert to standard ubuntu-latest runners
+
+
+### Chores
+
+- cleanup dead/duplicate code files
+
+- restructure frontend core
+
+- save pending changes
+
+- finalize resize and cleanup docs
+
+- cleanup project structure (remove unused FE, rename docs, move test queries)
+
+- misc fixes and improvements across desktop and api-docs
+
+- prepare for release v0.0.9 - code style cleanup and fixes
+
+- remove redundant api-docs project and move docs to root
+
+- prepare release 0.0.92
+
+- 0.0.92
+
+- bump version to 0.0.925
+
+
+### Documentation
+
+- update readme with beta feature status
+
+- refine readme features and roadmap
+
+
+### Features
+
+- add auto-fill, typo detection & validation for connection strings
+
+- add autocomplete input with keyboard navigation
+
+- refresh splash screen design
+
+- add database-backed settings with theme persistence
+
+- add sql-builder, resize-handle, UI improvements and border fixes
+
+- add sql-builder, autocomplete and settings persistance (#1)
+
+- implement accessible Label component and replace native labels
+
+- implement AES-GCM encryption for connection storage
+
+- implement get_connection method
+
+- add context menu to saved connections
+
+- add connection history tracking with filters
+
+- enhance connections UI and data table UX with favorites, timestamps, sorting, pagination
+
+- Implement command palette with global command system and persistent keyboard shortcuts.
+
+- enhance connection string parsing, improve shortcut management, and refine UI interactions
+
+- add command palette UI and refactor URL query string construction.
+
+- Implement command usage tracking and persistence, add new application commands, and enhance command palette sorting based on usage history.
+
+- Implement command palette with global command system  (#4)
+
+- add spreadsheet-like Table Browser with filtering, sorting, inline editing, and dry-run mode
+
+- Implement dedicated table exploration view with a new `table-view` tab type and `TableBrowser` component.
+
+- Implement schema visualization with React Flow and add back navigation to table browser.
+
+- Implement core application structure, introduce shared UI components, and integrate Tauri commands for database management.
+
+- Introduce unified header and logo components, refactor theme colors to hex/rgba, and add keyboard shortcuts for main view navigation.
+
+- Introduce unified header and logo components, refactor theme co… (#6)
+
+- Add Monaco Editor and Switchable SQL Editor components
+
+- add database adapter trait, mutation API, and enhanced schema introspection
+
+- add LibSQL database support for local and remote Turso connections
+
+- add LibSQL database parsing and execution support
+
+- Reorganize project structure and migrate existing components to a new `_old` directory layout.
+
+- major backend upgrade
+
+- update docs dependencies, add new desktop icons, and remove old Tauri database files.
+
+- integrate AI service types with Specta
+
+- expose and finalize SSH tunnel module
+
+- implement Specta integration and generate TypeScript client
+
+- add duplicate_row command for context menu actions
+
+- implement snippet library with pre-made and user-created snippets
+
+- introduce snippet categories for improved organization and filtering
+
+- Backend API V2 & Specta Integration (#8)
+
+- run queries via rust
+
+- implement data provider pattern and refactor sidebar
+
+- implement better web mock view
+
+- implement data provider pattern for web mock view (#10)
+
+- improve accessibillity for data viewer
+
+- implement rust binding in FE
+
+- implement missing desktop features
+
+- add user theme and setting persistance
+
+- add user theme and setting persistence (#11)
+
+- implement SSH tunnel configuration for database connections
+
+- SSH Tunnel configuration for database connections (#12)
+
+- Schema Management (DDL) feature (#13)
+
+- centralization keyboard shortcuts (#14)
+
+- Undo/redo functionality, editor themes,  DDL retrieval & dry mode (#15)
+
+- implement changelog panel and cell improvements
+
+- release version 0.0.9 by updating tauri config, adding release notes, and updating the README.
+
+- Implement bulk edit and set null functionalities, and refactor … (#16)
+
+- Redesign and reposition the DemoBanner as a fixed, floating component in the bottom-right corner.
+
+- add Midnight, Forest, Claude Light, and Claude Dark themes with… (#19)
+
+- Add new technical and vintage font options, remove density setting, and update Vercel deployment configurations.
+
+- custom drizzle DSL LSP for monaco covering 100% of spec
+
+- implement comprehensive test infrastructure\n\n- Add test scripts to package.json files\n- Configure Turbo build to depend on tests\n- Create GitHub Actions CI workflow with Postgres service\n- Migrate Rust tests to proper integration tests structure\n- Export Rust modules for testing access
+
+- implement testing infrastructure
+
+- implement testing suite and floating selecton bar  (#20)
+
+- sync monaco theme with ui switcher (#21)
+
+- typo detection algorithm and testing infrastructure (#22)
+
+- implement branding & LSP promotion helpers (#23)
+
+- Implement theme synchronization, URL state management, and enhance data grid context menu handling. (#24)
+
+- implement promotional LSP demo mode
+
+- Introduce recording mode with configurable UI elements, environment variable support, and a visual overlay.
+
+- update app logo, favicon, and sidebar branding
+
+- Implement theme synchronization, URL state management, and enhance data grid context menu handling.
+
+- Enhance table info dialog with PostgreSQL validation and SQL escaping, synchronize data grid focused cell, and simplify cell context menu API.
+
+- Distinguish context menu kind in URL state, truncate large selected cell sets, and validate URL-derived table states against current table dimensions.
+
+- introduce new application sidebar and integrate it with the database studio, including an animated toggle icon.
+
+- implement docker container manager mvp (#25)
+
+- enhance Docker container management with advanced creation options, connection snippets, compose export, and database seeding (#26)
+
+- add Tauri dialog plugin and Zustand, and ignore local environment files in gitignore
+
+- release 0.0.925 - docker manager, data seeder, build fixes
+
+
+### Other
+
+- restore security and label features while keeping sidebar animations
+
+- implement domain architecture (#5)
+
+
+### Refactoring
+
+- reorganize components and enhance tabs with context menu, dnd, and pin support
+
+- rename component-specific type aliases to Props and remove associated refactoring scripts.
+
+- update metadata structs, fix parser compatibility, and resolve types
+
+- Simplify web demo auto-connection logic to generically auto-select the first table.
+
+
+### Testing
+
+- add comprehensive encryption tests
+
+<!-- generated by git-cliff -->
