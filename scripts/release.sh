@@ -24,15 +24,41 @@ if ! command -v gh &>/dev/null; then
 fi
 
 NEXT_TAG="$(git-cliff --bumped-version --bump "$BUMP" 2>/dev/null)"
+NEXT_VERSION="${NEXT_TAG#v}"
 
 echo "━━ Release: $NEXT_TAG ━━"
+echo
+
+# Bump version in all package files so the GitHub Actions preflight passes.
+node - "$NEXT_VERSION" <<'NODE'
+const fs = require('fs');
+const version = process.argv[2];
+const files = [
+  'package.json',
+  'apps/desktop/package.json',
+  'apps/desktop/src-tauri/tauri.conf.json',
+];
+for (const f of files) {
+  const pkg = JSON.parse(fs.readFileSync(f, 'utf8'));
+  pkg.version = version;
+  fs.writeFileSync(f, JSON.stringify(pkg, null, '\t') + '\n');
+}
+NODE
+
+# Cargo.toml: bump the first `version = "..."` (the [package] one).
+sed -i '0,/^version = ".*"/s//version = "'"$NEXT_VERSION"'"/' apps/desktop/src-tauri/Cargo.toml
+
+# Cargo.lock: bump the `version = "..."` that immediately follows `name = "dora"`.
+sed -i '/^name = "dora"$/{n;s/^version = ".*"/version = "'"$NEXT_VERSION"'"/;}' apps/desktop/src-tauri/Cargo.lock
+
+echo "Bumped version files to $NEXT_VERSION"
 echo
 
 git-cliff -o CHANGELOG.md --tag "$NEXT_TAG"
 echo "Updated CHANGELOG.md"
 echo
 
-git add CHANGELOG.md
+git add CHANGELOG.md package.json apps/desktop/package.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/Cargo.toml apps/desktop/src-tauri/Cargo.lock
 git commit -m "chore(release): $NEXT_TAG"
 git tag "$NEXT_TAG"
 
