@@ -1324,7 +1324,7 @@ dependencies = [
 
 [[package]]
 name = "dora"
-version = "0.26.2"
+version = "0.26.4"
 dependencies = [
  "aes-gcm",
  "anyhow",

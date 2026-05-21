@@ -1,7 +1,12 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
-## [v0.26.3]
+## [v0.26.4]
+
+
+### Bug Fixes
+
+- bump version files in package/tauri/cargo before tagging
 
 
 ### Chores
@@ -17,6 +22,12 @@ All notable changes to this project will be documented in this file.
 - v0.26.3
 
 - release script now auto-pushes and creates GitHub release
+
+- v0.26.3
+
+- fix release script to push tag separately
+
+- v0.26.3
 
 
 ### Features
