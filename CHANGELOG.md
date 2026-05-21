@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
 
 - add release script that auto-bumps, tags, and generates release text
 
+- v0.26.3
+
+- release script now auto-pushes and creates GitHub release
+
 
 ### Features
 
