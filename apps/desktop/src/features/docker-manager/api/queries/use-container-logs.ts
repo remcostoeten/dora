@@ -11,7 +11,7 @@ export function useContainerLogs(
 	containerId: string | null,
 	options: UseContainerLogsOptions = {}
 ) {
-	const { enabled = true } = options
+	const { tail, enabled = true } = options
 	const [logs, setLogs] = useState<string>('')
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
@@ -42,21 +42,21 @@ export function useContainerLogs(
 					containerId!,
 					(line) => {
 						if (isMounted) {
-							setLogs((prev) => prev + line) // Append logs (Note: might need buffering for perf)
+							setLogs((prev) => prev + line)
 						}
 					},
 					(err) => {
 						if (isMounted) {
 							console.error('Stream error:', err)
 						}
-					}
+					},
+					tail
 				)
 
 				if (isMounted) {
 					activeStreamRef.current = cleanup
 					setIsLoading(false)
 				} else {
-					// If unmounted during setup, clean up immediately
 					void cleanup()
 				}
 			} catch (e) {
@@ -75,7 +75,7 @@ export function useContainerLogs(
 				activeStreamRef.current()
 			}
 		}
-	}, [containerId, enabled])
+	}, [containerId, enabled, tail])
 
 	return {
 		data: logs,

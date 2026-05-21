@@ -245,7 +245,8 @@ export async function getContainerLogs(
 export async function streamContainerLogs(
 	_containerId: string,
 	onLog: (line: string) => void,
-	_onError: (error: string) => void
+	_onError: (error: string) => void,
+	_tail?: number
 ): Promise<() => void> {
 	const lines = [
 		'LOG:  database system is ready to accept connections',

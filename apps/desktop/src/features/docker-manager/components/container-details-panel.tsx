@@ -10,14 +10,10 @@ import {
 import { Package } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '@/shared/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { useContainerActions, useRemoveContainer } from '../api/mutations/use-container-actions'
-import { useContainerLogs } from '../api/queries/use-container-logs'
-import { DEFAULT_LOG_TAIL } from '../constants'
 import type { DockerContainer } from '../types'
 import { ConnectionDetails } from './connection-details'
 import { ContainerMetrics } from './container-metrics'
-import { LogsViewer } from './logs-viewer'
 import { SeedView } from './seed-view'
 import { StatusBadge } from './status-badge'
 import { ComposeExportDialog } from './compose-export-dialog'
@@ -37,15 +33,8 @@ export function ContainerDetailsPanel({
 	onOpenTerminal,
 	onRemoveComplete
 }: Props) {
-	const [tailLines, setTailLines] = useState(DEFAULT_LOG_TAIL)
-	const [activeTab, setActiveTab] = useState('logs')
 	const [showExportDialog, setShowExportDialog] = useState(false)
 	const [showRemoveDialog, setShowRemoveDialog] = useState(false)
-
-	const { data: logs, isLoading: logsLoading } = useContainerLogs(container?.id ?? null, {
-		tail: tailLines,
-		enabled: activeTab === 'logs'
-	})
 
 	const containerActions = useContainerActions()
 	const removeContainer = useRemoveContainer({
@@ -218,34 +207,11 @@ export function ContainerDetailsPanel({
 				</Button>
 			</div>
 
-			<div className='flex-1 flex flex-col min-h-0 p-4'>
-				<Tabs
-					value={activeTab}
-					onValueChange={setActiveTab}
-					className='flex-1 flex flex-col'
-				>
-					<TabsList className='w-full'>
-						<TabsTrigger value='logs' className='flex-1'>
-							Logs
-						</TabsTrigger>
-						<TabsTrigger value='seed' className='flex-1'>
-							Seed
-						</TabsTrigger>
-					</TabsList>
-
-					<TabsContent value='logs' className='flex-1 mt-3'>
-						<LogsViewer
-							logs={logs || ''}
-							isLoading={logsLoading}
-							tailLines={tailLines}
-							onTailLinesChange={setTailLines}
-						/>
-					</TabsContent>
-
-					<TabsContent value='seed' className='flex-1 mt-3'>
-						<SeedView container={container} />
-					</TabsContent>
-				</Tabs>
+			<div className='p-4 border-t border-border'>
+				<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3'>
+					Seed Data
+				</h4>
+				<SeedView container={container} />
 			</div>
 
 			<ComposeExportDialog
