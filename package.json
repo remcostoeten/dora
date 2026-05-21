@@ -8,6 +8,7 @@
 	],
 	"scripts": {
 		"dev": "turbo dev",
+		"generate:releasetext": "bash scripts/generate-release-text.sh",
 		"prebuild": "bun run tools/prebuild.ts",
 		"build": "turbo build",
 		"lint": "bun run --cwd packages/style lint",
