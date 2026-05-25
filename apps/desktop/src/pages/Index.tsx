@@ -309,13 +309,15 @@ function IndexInner() {
   async function handleAddConnection(connection: Omit<Connection, "id" | "status">) {
     try {
       const dbInfo = frontendToBackendDatabaseInfo(connection as Connection);
-      await addConnection.mutateAsync({
+      const newConnection = await addConnection.mutateAsync({
         name: connection.name,
         databaseType: dbInfo,
         sshConfig: null, // TODO: handle SSH
       });
       setIsConnectionDialogOpen(false);
-      toast({ title: "Connection Added", description: `"${connection.name}" has been created.` });
+      setActiveConnectionId(newConnection.id);
+      autoSelectFirstTableRef.current = true;
+      toast({ title: "Connection Added", description: `"${connection.name}" has been created and connected.` });
     } catch (error) {
       toast({
         title: "Failed to Add Connection",

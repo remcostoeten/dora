@@ -186,10 +186,10 @@ impl GroqClient {
         user: String,
         max_tokens: Option<u32>,
         stream: bool,
+        use_json_format: bool,
     ) -> GroqRequest {
-        // Groq's OpenAI-compatible endpoint accepts json_object response_format alongside stream.
-        // Forcing it on both paths keeps streamed deltas inside a JSON envelope and avoids the
-        // model wandering into prose / markdown fences mid-stream.
+        // Groq requires the word "json" somewhere in messages when using json_object format,
+        // and chat mode expects markdown — so only enable JSON mode for SQL generation.
         GroqRequest {
             model: self.model.clone(),
             messages: vec![
@@ -205,10 +205,14 @@ impl GroqClient {
             max_tokens,
             stream,
             temperature: Some(0.2),
-            response_format: Some(ResponseFormat {
+            response_format: use_json_format.then(|| ResponseFormat {
                 kind: "json_object".into(),
             }),
         }
+    }
+
+    fn uses_json_format(request: &AIRequest) -> bool {
+        request.prompt_mode.as_deref() != Some("chat")
     }
 
     fn should_rotate(status: reqwest::StatusCode) -> bool {
@@ -221,7 +225,13 @@ impl GroqClient {
     /// Non-streaming completion with key rotation on 429/5xx/auth errors.
     pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
         let (system, user) = super::prompts::build(&request);
-        let body = self.build_request(system, user, request.max_tokens, false);
+        let body = self.build_request(
+            system,
+            user,
+            request.max_tokens,
+            false,
+            Self::uses_json_format(&request),
+        );
 
         let max_retries = self.keys.len().max(1);
         let mut last_err: Option<Error> = None;
@@ -297,7 +307,13 @@ impl GroqClient {
         cancel: Arc<AtomicBool>,
     ) -> Result<(), Error> {
         let (system, user) = super::prompts::build(&request);
-        let body = self.build_request(system, user, request.max_tokens, true);
+        let body = self.build_request(
+            system,
+            user,
+            request.max_tokens,
+            true,
+            Self::uses_json_format(&request),
+        );
 
         let max_retries = self.keys.len().max(1);
         let mut last_err: Option<Error> = None;

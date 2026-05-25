@@ -27,7 +27,16 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger
 } from '@/shared/ui/dropdown-menu'
-import { Input } from '@/shared/ui/input'
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle
+} from '@/shared/ui/alert-dialog'
 import { cn } from '@/shared/utils/cn'
 import { Connection, DatabaseType } from '../types'
 import { DatabaseTypeIcon } from './database-type-icon'
@@ -90,6 +99,9 @@ export function ConnectionSwitcher({
 }: Props) {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+	const [deleteDialogConnectionId, setDeleteDialogConnectionId] = useState<string | null>(
+		null
+	)
 	const confirmDeleteRef = useRef<HTMLButtonElement>(null)
 	const activeConnection = connections.find((c) => c.id === activeConnectionId)
 	const status = activeConnection?.status || 'idle'
@@ -141,10 +153,22 @@ export function ConnectionSwitcher({
 
 	function confirmDelete(id: string) {
 		setPendingDeleteId(null)
+		setDeleteDialogConnectionId(null)
 		onDeleteConnection?.(id)
 	}
 
+	function requestDelete(id: string) {
+		setDeleteDialogConnectionId(id)
+	}
+
+	const deleteDialogConnection = deleteDialogConnectionId
+		? connections.find(function (connection) {
+				return connection.id === deleteDialogConnectionId
+			})
+		: undefined
+
 	return (
+		<>
 		<DropdownMenu
 			onOpenChange={function handleMenuOpenChange(open) {
 				if (!open) setPendingDeleteId(null)
@@ -246,39 +270,59 @@ export function ConnectionSwitcher({
 							const isActive = connection.id === activeConnectionId
 							const isPendingDelete = pendingDeleteId === connection.id
 							return (
-								<ContextMenu key={connection.id}>
-									<ContextMenuTrigger asChild>
-										<DropdownMenuItem
-											onClick={function handleConnectionClick(e) {
-												if (isPendingDelete) {
-													e.preventDefault()
-													cancelDelete()
-													return
-												}
-												onConnectionSelect(connection.id)
-											}}
-											onKeyDown={function handleRowKeyDown(e) {
-												if (isPendingDelete && e.key === 'Escape') {
-													e.preventDefault()
-													e.stopPropagation()
-													cancelDelete()
-												}
-											}}
-											className={cn(
-												'group/row relative gap-2.5 p-2 cursor-pointer overflow-hidden',
-												'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
-												'data-[highlighted]:bg-sidebar-accent',
-												'animate-in fade-in-0 slide-in-from-top-1',
-												isActive && 'bg-sidebar-accent/40',
-												isPendingDelete && 'bg-destructive/5'
-											)}
-											style={{
-												animationDuration: '180ms',
-												animationDelay: `${Math.min(index * 25, 200)}ms`,
-												animationTimingFunction: 'var(--ease-out)',
-												animationFillMode: 'backwards'
-											}}
-										>
+								<ContextMenu key={connection.id} modal={false}>
+									<DropdownMenuItem
+										asChild
+										onSelect={function handleMenuItemSelect(e) {
+											if (isPendingDelete) {
+												e.preventDefault()
+											}
+										}}
+									>
+										<ContextMenuTrigger asChild>
+											<div
+												role='menuitem'
+												tabIndex={-1}
+												onClick={function handleConnectionClick(e) {
+													if (isPendingDelete) {
+														e.preventDefault()
+														cancelDelete()
+														return
+													}
+													onConnectionSelect(connection.id)
+												}}
+												onKeyDown={function handleRowKeyDown(e) {
+													if (isPendingDelete && e.key === 'Escape') {
+														e.preventDefault()
+														e.stopPropagation()
+														cancelDelete()
+														return
+													}
+													if (e.key === 'Enter' || e.key === ' ') {
+														e.preventDefault()
+														if (isPendingDelete) {
+															cancelDelete()
+															return
+														}
+														onConnectionSelect(connection.id)
+													}
+												}}
+												className={cn(
+													'group/row relative gap-2.5 p-2 cursor-pointer overflow-hidden',
+													'flex items-center outline-hidden',
+													'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
+													'focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent',
+													'animate-in fade-in-0 slide-in-from-top-1',
+													isActive && 'bg-sidebar-accent/40',
+													isPendingDelete && 'bg-destructive/5'
+												)}
+												style={{
+													animationDuration: '180ms',
+													animationDelay: `${Math.min(index * 25, 200)}ms`,
+													animationTimingFunction: 'var(--ease-out)',
+													animationFillMode: 'backwards'
+												}}
+											>
 											<span
 												aria-hidden
 												className={cn(
@@ -452,8 +496,8 @@ export function ConnectionSwitcher({
 													</div>
 												)}
 											</div>
-										</DropdownMenuItem>
-									</ContextMenuTrigger>
+										</ContextMenuTrigger>
+									</DropdownMenuItem>
 									<ContextMenuContent className='w-48'>
 										<ContextMenuItem
 											onSelect={function viewConnection() {
@@ -464,26 +508,31 @@ export function ConnectionSwitcher({
 											<Eye className='h-4 w-4' />
 											View Details
 										</ContextMenuItem>
-										<ContextMenuItem
-											onSelect={function editConnection() {
-												onEditConnection?.(connection.id)
-											}}
-											className='gap-2 cursor-pointer'
-										>
-											<Pencil className='h-4 w-4' />
-											Edit Connection
-										</ContextMenuItem>
-										<ContextMenuSeparator />
-										<ContextMenuItem
-											onSelect={function deleteConnection(event) {
-												event.preventDefault()
-												armDelete(connection.id)
-											}}
-											className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
-										>
-											<Trash2 className='h-4 w-4' />
-											Delete Connection
-										</ContextMenuItem>
+										{onEditConnection && (
+											<ContextMenuItem
+												onSelect={function editConnection() {
+													onEditConnection(connection.id)
+												}}
+												className='gap-2 cursor-pointer'
+											>
+												<Pencil className='h-4 w-4' />
+												Edit Connection
+											</ContextMenuItem>
+										)}
+										{onDeleteConnection && (
+											<>
+												<ContextMenuSeparator />
+												<ContextMenuItem
+													onSelect={function deleteConnection() {
+														requestDelete(connection.id)
+													}}
+													className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
+												>
+													<Trash2 className='h-4 w-4' />
+													Delete Connection
+												</ContextMenuItem>
+											</>
+										)}
 									</ContextMenuContent>
 								</ContextMenu>
 							)
@@ -520,5 +569,36 @@ export function ConnectionSwitcher({
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
+
+		<AlertDialog
+			open={deleteDialogConnectionId !== null}
+			onOpenChange={function handleDeleteDialogOpenChange(open) {
+				if (!open) setDeleteDialogConnectionId(null)
+			}}
+		>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>Delete connection?</AlertDialogTitle>
+					<AlertDialogDescription>
+						{deleteDialogConnection
+							? `"${deleteDialogConnection.name}" will be removed from Dora. This cannot be undone.`
+							: 'This connection will be removed from Dora. This cannot be undone.'}
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel>Cancel</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={function handleConfirmDeleteDialog() {
+							if (deleteDialogConnectionId) {
+								confirmDelete(deleteDialogConnectionId)
+							}
+						}}
+					>
+						Delete
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
+		</>
 	)
 }
