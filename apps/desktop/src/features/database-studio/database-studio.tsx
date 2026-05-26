@@ -41,6 +41,7 @@ import { ImportCsvDialog } from './components/import-csv-dialog'
 import { DataSeederDialog } from './data-seeder-dialog'
 import { enrichColumnsWithFKs } from './utils/fk-enrichment'
 import { useLiveMonitor } from '@/core/live-monitor'
+import { areValuesEqual } from '@/shared/utils/value-equality'
 import {
 	ColumnDefinition,
 	FilterDescriptor,
@@ -59,30 +60,6 @@ type Props = {
 	isSidebarOpen?: boolean
 	initialRowPK?: string | number | null
 	onRowSelectionChange?: (pk: string | number | null) => void
-}
-
-function areCellValuesEqual(a: unknown, b: unknown): boolean {
-	if (Object.is(a, b)) return true
-	if (typeof a !== typeof b) return false
-	if (a === null || b === null) return false
-	if (Array.isArray(a) || Array.isArray(b)) {
-		if (!Array.isArray(a) || !Array.isArray(b)) return false
-		if (a.length !== b.length) return false
-		return a.every(function (value, index) {
-			return areCellValuesEqual(value, b[index])
-		})
-	}
-	if (typeof a === 'object' && typeof b === 'object') {
-		const aRecord = a as Record<string, unknown>
-		const bRecord = b as Record<string, unknown>
-		const aKeys = Object.keys(aRecord).sort()
-		const bKeys = Object.keys(bRecord).sort()
-		if (aKeys.length !== bKeys.length) return false
-		return aKeys.every(function (key, index) {
-			return key === bKeys[index] && areCellValuesEqual(aRecord[key], bRecord[key])
-		})
-	}
-	return false
 }
 
 function buildTableCacheKey(
@@ -1123,7 +1100,7 @@ export function DatabaseStudio({
 			? normalizeValueForInsert(editedColumn, newValue)
 			: newValue
 
-		if (areCellValuesEqual(row[columnName], normalizedNewValue)) {
+		if (areValuesEqual(row[columnName], normalizedNewValue)) {
 			return
 		}
 
@@ -1146,7 +1123,7 @@ export function DatabaseStudio({
 			const existingEdit = pendingEdits.get(key)
 			const oldValue = existingEdit ? existingEdit.oldValue : row[columnName]
 
-			if (areCellValuesEqual(oldValue, normalizedNewValue)) {
+			if (areValuesEqual(oldValue, normalizedNewValue)) {
 				removeEdit(tableId, key)
 				setTableData(function (prev) {
 					if (!prev) return prev

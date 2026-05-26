@@ -17,4 +17,14 @@ describe('getTableSqlIdentifier', function () {
 	it('uses mysql backticks with schema', function () {
 		expect(getTableSqlIdentifier('public.user', 'mysql')).toBe('`public`.`user`')
 	})
+
+	it('preserves quoted schema and table names for postgres', function () {
+		expect(getTableSqlIdentifier('"weird.schema"."Table Name"', 'postgres')).toBe(
+			'"weird.schema"."Table Name"'
+		)
+	})
+
+	it('keeps simple identifiers quoted', function () {
+		expect(getTableSqlIdentifier('users')).toBe('"users"')
+	})
 })

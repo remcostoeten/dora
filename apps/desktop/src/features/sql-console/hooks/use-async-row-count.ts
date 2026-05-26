@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAdapter } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
+import { getTableSqlIdentifier } from '@/shared/utils/table-ref'
 import type { DatabaseType } from '@/features/connections/types'
 
 type AsyncRowCountState = {
@@ -38,90 +39,6 @@ export function useAsyncRowCount(
 
 	function getCacheKey(connId: string, table: string): string {
 		return `${connId}:${table}`
-	}
-
-	function splitIdentifier(value: string): string[] {
-		const parts: string[] = []
-		let current = ''
-		let quote: '"' | '`' | '[' | null = null
-
-		for (let index = 0; index < value.length; index++) {
-			const char = value[index]
-			const next = value[index + 1]
-
-			if (quote) {
-				current += char
-
-				if (quote === '"' && char === '"' && next === '"') {
-					current += next
-					index++
-					continue
-				}
-
-				if (quote === '`' && char === '`' && next === '`') {
-					current += next
-					index++
-					continue
-				}
-
-				if (
-					(quote === '"' && char === '"') ||
-					(quote === '`' && char === '`') ||
-					(quote === '[' && char === ']')
-				) {
-					quote = null
-				}
-				continue
-			}
-
-			if (char === '"' || char === '`' || char === '[') {
-				quote = char
-				current += char
-				continue
-			}
-
-			if (char === '.') {
-				parts.push(current.trim())
-				current = ''
-				continue
-			}
-
-			current += char
-		}
-
-		parts.push(current.trim())
-		return parts.filter(Boolean)
-	}
-
-	function unquoteIdentifierPart(value: string): string {
-		const trimmed = value.trim()
-		if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
-			return trimmed.slice(1, -1).replace(/""/g, '"')
-		}
-		if (trimmed.startsWith('`') && trimmed.endsWith('`') && trimmed.length >= 2) {
-			return trimmed.slice(1, -1).replace(/``/g, '`')
-		}
-		if (trimmed.startsWith('[') && trimmed.endsWith(']') && trimmed.length >= 2) {
-			return trimmed.slice(1, -1).replace(/]]/g, ']')
-		}
-		return trimmed
-	}
-
-	function quoteIdentifierPart(value: string, dialect?: DatabaseType): string {
-		if (dialect === 'mysql') {
-			return `\`${value.replace(/`/g, '``')}\``
-		}
-
-		return `"${value.replace(/"/g, '""')}"`
-	}
-
-	function getSafeTableIdentifier(table: string, dialect?: DatabaseType): string | null {
-		const parts = splitIdentifier(table).map(unquoteIdentifierPart).filter(Boolean)
-		if (parts.length === 0 || parts.length > 2) return null
-
-		return parts.map(function (part) {
-			return quoteIdentifierPart(part, dialect)
-		}).join('.')
 	}
 
 	async function resolveConnectionDialect(connId: string): Promise<DatabaseType | undefined> {
@@ -169,17 +86,10 @@ export function useAsyncRowCount(
 				resolveConnectionDialect(connectionId).then(function (dialect) {
 					if (abortRef.current) return
 
-					const tableIdentifier = getSafeTableIdentifier(tableName, dialect)
-					if (!tableIdentifier) {
-						setState({
-							count: null,
-							isLoading: false,
-							error: 'Unsupported table identifier'
-						})
-						return
-					}
-
-					const query = `SELECT COUNT(*) AS total FROM ${tableIdentifier}`
+					const query = `SELECT COUNT(*) AS total FROM ${getTableSqlIdentifier(
+						tableName,
+						dialect
+					)}`
 
 					adapter.executeQuery(connectionId, query).then(function (res) {
 						if (abortRef.current) return
