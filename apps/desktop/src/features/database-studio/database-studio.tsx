@@ -7,7 +7,6 @@ import { getAdapterError } from '@/core/data-provider/types'
 import { usePendingEdits } from '@/core/pending-edits'
 import { useTabs } from '@/core/tabs'
 import { useSettings } from '@/core/settings'
-import { useNuqsState } from '@/core/url-state/use-nuqs-state'
 import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@/core/shortcuts'
 import { useUndo } from '@/core/undo'
 import { commands } from '@/lib/bindings'
@@ -40,13 +39,13 @@ import { StudioToolbar } from './components/studio-toolbar'
 import { ImportCsvDialog } from './components/import-csv-dialog'
 import { DataSeederDialog } from './data-seeder-dialog'
 import { enrichColumnsWithFKs } from './utils/fk-enrichment'
+import { useDatabaseStudioSync } from './hooks/use-database-studio-sync'
 import {
 	createDefaultValues,
 	normalizeRowForInsert,
 	normalizeValueForInsert,
 	rowsToCsv
 } from './utils/studio-data'
-import { useLiveMonitor } from '@/core/live-monitor'
 import { areValuesEqual } from '@/shared/utils/value-equality'
 import {
 	ColumnDefinition,
@@ -183,6 +182,17 @@ export function DatabaseStudio({
 	const [contextMenuState, setContextMenuState] = useState<ContextMenuState>(null)
 	const toolbarRef = useRef<HTMLDivElement>(null)
 	const gridContainerRef = useRef<HTMLDivElement>(null)
+	const {
+		liveMonitor,
+		stableUrlState,
+		setSelectedRow,
+		setSelectedCells: setUrlSelectedCells,
+		setFocusedCell: setUrlFocusedCell,
+		setContextMenu,
+		setAddRecordMode,
+		initializedFromUrlRef,
+		isUpdatingUrlRef
+	} = useDatabaseStudioSync(tableRefName, tableName)
 
 	const handleEscapeToGrid = useCallback(function () {
 		const grid = gridContainerRef.current?.querySelector<HTMLElement>('table[role="grid"]')
@@ -191,16 +201,6 @@ export function DatabaseStudio({
 		}
 	}, [])
 
-	const {
-		urlState,
-		setSelectedRow,
-		setSelectedCells: setUrlSelectedCells,
-		setFocusedCell: setUrlFocusedCell,
-		setContextMenu,
-		setAddRecordMode
-	} = useNuqsState()
-	const initializedFromUrlRef = useRef(false)
-	const isUpdatingUrlRef = useRef(false)
 	const currentCacheKey = useMemo(
 		function () {
 			return buildTableCacheKey(
@@ -215,18 +215,6 @@ export function DatabaseStudio({
 		[activeConnectionId, tableId, pagination.limit, pagination.offset, sort, filters]
 	)
 
-	const stableUrlState = useMemo(
-		function () {
-			return urlState
-		},
-		[
-			urlState.selectedRow,
-			urlState.focusedCell?.row,
-			urlState.focusedCell?.col,
-			urlState.addRecordMode,
-			urlState.addRecordIndex
-		]
-	)
 	const filteredColumns = useMemo(
 		function () {
 			if (!tableData) return []
@@ -471,8 +459,6 @@ export function DatabaseStudio({
 		})
 	}
 
-	const liveMonitor = useLiveMonitor()
-
 	// Tell the global monitor which table is currently active
 	useEffect(
 		function syncActiveTable() {
@@ -614,7 +600,7 @@ export function DatabaseStudio({
 		function syncSelectedRowToUrl() {
 			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 			const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null
-			if (firstSelected === urlState.selectedRow) return
+			if (firstSelected === stableUrlState.selectedRow) return
 
 			isUpdatingUrlRef.current = true
 			setSelectedRow(firstSelected)
@@ -638,7 +624,7 @@ export function DatabaseStudio({
 				}
 			}
 		},
-		[selectedRows, onRowSelectionChange, tableData, urlState.selectedRow, setSelectedRow]
+		[selectedRows, onRowSelectionChange, tableData, stableUrlState.selectedRow, setSelectedRow]
 	)
 
 	// Restore selection from initialRowPK
@@ -672,7 +658,7 @@ export function DatabaseStudio({
 		function syncCellsToUrl() {
 			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 
-			const currentCellsStr = Array.from(urlState.selectedCells).sort().join(',')
+			const currentCellsStr = Array.from(stableUrlState.selectedCells).sort().join(',')
 			const newCellsStr = Array.from(selectedCells).sort().join(',')
 			if (currentCellsStr === newCellsStr) return
 
@@ -682,14 +668,14 @@ export function DatabaseStudio({
 				isUpdatingUrlRef.current = false
 			})
 		},
-		[selectedCells, urlState.selectedCells, setUrlSelectedCells]
+		[selectedCells, stableUrlState.selectedCells, setUrlSelectedCells]
 	)
 
 	useEffect(
 		function syncFocusedCellToUrl() {
 			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 
-			const urlCell = urlState.focusedCell
+			const urlCell = stableUrlState.focusedCell
 			const isSame =
 				(urlCell === null && focusedCell === null) ||
 				(urlCell !== null &&
@@ -704,14 +690,14 @@ export function DatabaseStudio({
 				isUpdatingUrlRef.current = false
 			})
 		},
-		[focusedCell, urlState.focusedCell, setUrlFocusedCell]
+		[focusedCell, stableUrlState.focusedCell, setUrlFocusedCell]
 	)
 
 	useEffect(
 		function syncContextMenuToUrl() {
 			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 
-			const urlCtx = urlState.contextMenu
+			const urlCtx = stableUrlState.contextMenu
 			const isSame =
 				(urlCtx === null && contextMenuState === null) ||
 				(urlCtx !== null &&
@@ -727,7 +713,7 @@ export function DatabaseStudio({
 				isUpdatingUrlRef.current = false
 			})
 		},
-		[contextMenuState, urlState.contextMenu, setContextMenu]
+		[contextMenuState, stableUrlState.contextMenu, setContextMenu]
 	)
 
 	useEffect(
@@ -736,8 +722,8 @@ export function DatabaseStudio({
 
 			const isAddRecordActive = draftRow !== null
 			const isSame =
-				urlState.addRecordMode === isAddRecordActive &&
-				urlState.addRecordIndex === draftInsertIndex
+				stableUrlState.addRecordMode === isAddRecordActive &&
+				stableUrlState.addRecordIndex === draftInsertIndex
 			if (isSame) return
 
 			isUpdatingUrlRef.current = true
@@ -749,8 +735,8 @@ export function DatabaseStudio({
 		[
 			draftRow,
 			draftInsertIndex,
-			urlState.addRecordMode,
-			urlState.addRecordIndex,
+			stableUrlState.addRecordMode,
+			stableUrlState.addRecordIndex,
 			setAddRecordMode
 		]
 	)
