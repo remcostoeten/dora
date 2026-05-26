@@ -1714,12 +1714,7 @@ export function DatabaseStudio({
 				throw new Error(getAdapterError(result))
 			}
 		} catch (error) {
-			console.error('Failed to copy schema:', error)
-			toast({
-				title: 'Error copying schema',
-				description: error instanceof Error ? error.message : 'Unknown error',
-				variant: 'destructive'
-			})
+			notifyActionFailure('Error copying schema', error)
 		}
 	}
 
@@ -1739,12 +1734,7 @@ export function DatabaseStudio({
 				throw new Error(getAdapterError(schemaResult))
 			}
 		} catch (error) {
-			console.error('Failed to copy Drizzle schema:', error)
-			toast({
-				title: 'Error copying schema',
-				description: error instanceof Error ? error.message : 'Unknown error',
-				variant: 'destructive'
-			})
+			notifyActionFailure('Error copying schema', error)
 		}
 	}
 
@@ -1770,10 +1760,10 @@ export function DatabaseStudio({
 				)
 				loadTableData()
 			} else {
-				console.error('Failed to add column:', result.error)
+				notifyActionFailure('Failed to add column', result.error)
 			}
 		} catch (error) {
-			console.error('Failed to add column:', error)
+			notifyActionFailure('Failed to add column', error)
 		} finally {
 			setIsDdlLoading(false)
 		}
@@ -1798,20 +1788,10 @@ export function DatabaseStudio({
 				})
 			} else {
 				const errorMessage = getAdapterError(result)
-				console.error('Failed to drop table:', errorMessage)
-				toast({
-					title: 'Failed to drop table',
-					description: errorMessage,
-					variant: 'destructive'
-				})
+				notifyActionFailure('Failed to drop table', errorMessage)
 			}
 		} catch (error) {
-			console.error('Failed to drop table:', error)
-			toast({
-				title: 'Failed to drop table',
-				description: String(error),
-				variant: 'destructive'
-			})
+			notifyActionFailure('Failed to drop table', error)
 		} finally {
 			setIsDdlLoading(false)
 		}
@@ -2300,7 +2280,7 @@ export function DatabaseStudio({
 												setPendingSingleDeleteRow(null)
 											},
 											onError: function onSingleDeleteError(error) {
-												console.error('Failed to delete row:', error)
+												notifyActionFailure('Failed to delete row', error)
 											}
 										}
 									)
@@ -2349,22 +2329,14 @@ export function DatabaseStudio({
 									newValue
 								})
 							})
-						)
+							)
 							.then(function () {
 								setShowBulkEditDialog(false)
 								setSelectedRows(new Set())
 								loadTableData()
 							})
 							.catch(function (error) {
-								console.error('Failed to bulk edit:', error)
-								toast({
-									title: 'Failed to update rows',
-									description:
-										error instanceof Error
-											? error.message
-											: 'An error occurred',
-									variant: 'destructive'
-								})
+								notifyActionFailure('Failed to update rows', error)
 							})
 							.finally(function () {
 								setIsBulkActionLoading(false)
@@ -2406,22 +2378,14 @@ export function DatabaseStudio({
 									newValue: null
 								})
 							})
-						)
+							)
 							.then(function () {
 								setShowSetNullDialog(false)
 								setSelectedRows(new Set())
 								loadTableData()
 							})
 							.catch(function (error) {
-								console.error('Failed to set null:', error)
-								toast({
-									title: 'Failed to set NULL',
-									description:
-										error instanceof Error
-											? error.message
-											: 'An error occurred',
-									variant: 'destructive'
-								})
+								notifyActionFailure('Failed to set NULL', error)
 							})
 							.finally(function () {
 								setIsBulkActionLoading(false)
