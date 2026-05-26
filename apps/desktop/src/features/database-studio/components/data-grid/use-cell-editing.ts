@@ -3,6 +3,7 @@ import type React from 'react'
 import { ColumnDefinition } from '../../types'
 import { getCellKey } from './selection'
 import { CellPosition, EditingCell } from './types'
+import { areValuesEqual } from '@/shared/utils/value-equality'
 
 function valueToEditString(value: unknown): string {
 	if (value === null || value === undefined) return ''
@@ -34,6 +35,7 @@ export function useCellEditing({
 	const editInputRef = useRef<HTMLInputElement>(null)
 	const editValueRef = useRef(editValue)
 	editValueRef.current = editValue
+	const originalEditValueRef = useRef<string>('')
 	const editingCellRef = useRef(editingCell)
 	editingCellRef.current = editingCell
 	const skipNextBlurSaveRef = useRef(false)
@@ -55,13 +57,27 @@ export function useCellEditing({
 		const nextEditingCell = { rowIndex, columnName }
 		editingCellRef.current = nextEditingCell
 		setEditingCell(nextEditingCell)
-		setEditValue(valueToEditString(currentValue))
+		const originalValue = valueToEditString(currentValue)
+		originalEditValueRef.current = originalValue
+		setEditValue(originalValue)
 	}, [])
 
 	const commitEdit = useCallback(
 		function ({ clear, refocus }: { clear: boolean; refocus: boolean }) {
 			const cell = editingCellRef.current
 			const value = editValueRef.current
+			if (!cell || areValuesEqual(value, originalEditValueRef.current)) {
+				if (clear) {
+					editingCellRef.current = null
+					setEditingCell(null)
+					setEditValue('')
+					originalEditValueRef.current = ''
+					if (refocus) {
+						refocusGrid()
+					}
+				}
+				return
+			}
 			if (cell && onCellEdit) {
 				onCellEdit(cell.rowIndex, cell.columnName, value)
 			}
@@ -71,6 +87,7 @@ export function useCellEditing({
 			editingCellRef.current = null
 			setEditingCell(null)
 			setEditValue('')
+			originalEditValueRef.current = ''
 			if (refocus) {
 				refocusGrid()
 			}
@@ -94,6 +111,7 @@ export function useCellEditing({
 			editingCellRef.current = null
 			setEditingCell(null)
 			setEditValue('')
+			originalEditValueRef.current = ''
 			refocusGrid()
 		},
 		[refocusGrid]

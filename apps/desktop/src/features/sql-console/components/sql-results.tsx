@@ -239,52 +239,38 @@ export function SqlResults({
 		const pkValue = row[mutationContext.primaryKeyName]
 		const normalizedNewValue = normalizeCellValue(editingCell.column, editingCell.value)
 
-		if (pkValue === undefined) {
-			toast({
-				title: 'Failed to update cell',
-				description: 'Primary key value was not found for this row.',
-				variant: 'destructive'
-			})
-			setEditingCell(null)
-			return
-		}
-
-		if (areValuesEqual(editingCell.originalValue, normalizedNewValue)) {
-			setEditingCell(null)
-			return
-		}
-
 		try {
-			updateCell.mutate(
-				{
-					connectionId,
-					tableName: mutationContext.tableName,
-					primaryKeyColumn: mutationContext.primaryKeyName,
-					primaryKeyValue: pkValue,
-					columnName: editingCell.column,
-					newValue: normalizedNewValue
-				},
-				{
-					onError: (e) => {
-						toast({
-							title: 'Failed to update cell',
-							description: e instanceof Error ? e.message : 'An error occurred',
-							variant: 'destructive'
-						})
-					},
-					onSuccess: () => {
-						onRefresh?.()
-					}
-				}
-			)
+			if (pkValue === undefined) {
+				toast({
+					title: 'Failed to update cell',
+					description: 'Primary key value was not found for this row.',
+					variant: 'destructive'
+				})
+				return
+			}
 
-			setEditingCell(null)
+			if (areValuesEqual(editingCell.originalValue, normalizedNewValue)) {
+				return
+			}
+
+			await updateCell.mutateAsync({
+				connectionId,
+				tableName: mutationContext.tableName,
+				primaryKeyColumn: mutationContext.primaryKeyName,
+				primaryKeyValue: pkValue,
+				columnName: editingCell.column,
+				newValue: normalizedNewValue
+			})
+			onRefresh?.()
 		} catch (e) {
 			toast({
 				title: 'Failed to update cell',
 				description: e instanceof Error ? e.message : 'An error occurred',
 				variant: 'destructive'
 			})
+		} finally {
+			isSavingEditRef.current = false
+			setEditingCell(null)
 		}
 	}
 
