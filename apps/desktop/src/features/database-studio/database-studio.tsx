@@ -1087,6 +1087,14 @@ export function DatabaseStudio({
 		}
 	}
 
+	function notifyMissingPrimaryKey(actionLabel: string) {
+		toast({
+			title: `Cannot ${actionLabel}`,
+			description: `Table "${displayTableName ?? tableRefName}" has no primary key, so this action cannot be saved safely.`,
+			variant: 'destructive'
+		})
+	}
+
 	function handleCellEdit(rowIndex: number, columnName: string, newValue: unknown) {
 		if (!tableId || !activeConnectionId || !tableData) return
 
@@ -1108,12 +1116,7 @@ export function DatabaseStudio({
 			return c.primaryKey
 		})
 		if (!primaryKeyColumn) {
-			console.error('No primary key found')
-			toast({
-				title: 'Cannot edit cell',
-				description: `Table "${displayTableName ?? tableRefName}" has no primary key, so edits cannot be saved safely.`,
-				variant: 'destructive'
-			})
+			notifyMissingPrimaryKey('edit cell')
 			return
 		}
 
@@ -1299,7 +1302,7 @@ export function DatabaseStudio({
 			return c.primaryKey
 		})
 		if (!primaryKeyColumn) {
-			console.error('No primary key found')
+			notifyMissingPrimaryKey('apply bulk edits')
 			return
 		}
 
@@ -1356,7 +1359,7 @@ export function DatabaseStudio({
 
 		const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
 		if (!primaryKeyColumn) {
-			console.error('No primary key found')
+			notifyMissingPrimaryKey('perform this row action')
 			return
 		}
 		const effectiveRowIndexes =
@@ -2344,7 +2347,7 @@ export function DatabaseStudio({
 							return c.primaryKey
 						})
 						if (!primaryKeyColumn) {
-							console.error('No primary key found')
+							notifyMissingPrimaryKey('apply bulk edits')
 							return
 						}
 
@@ -2401,7 +2404,7 @@ export function DatabaseStudio({
 							return c.primaryKey
 						})
 						if (!primaryKeyColumn) {
-							console.error('No primary key found')
+							notifyMissingPrimaryKey('set NULL')
 							return
 						}
 

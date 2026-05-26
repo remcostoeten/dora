@@ -167,33 +167,6 @@ function SqlConsoleInner({
 
 		if (scriptsRes.ok) {
 			scriptsRes.data.forEach((s) => {
-				// TODO: Backend should support folders for scripts, assuming mapped or separate logic
-				// Currently SavedQuery doesn't strictly have parent_id in types but we might need to handle if it did
-				// For now assuming scripts are flat or we need to check if SavedQuery has folder_id
-				// Wait, SavedQuery type in bindings.ts has NO folder_id or parent_id.
-				// So scripts can't be in folders yet?
-				// Ah, updateScript binding shows `folderId` param!
-				// saved_query table has folder_id.
-				// Bindings for SavedQuery TYPE seem missing folder_id?
-				// Let's check bindings.ts again.
-				// SavedQuery type: id, name, ..., category, ... NO folder_id.
-				// But updateSnippet command takes folderId.
-				// Is it mapped to category? Or just missing from SavedQuery struct?
-				// Looking at backend code (from audit) might clarify, but bindings is source of truth for frontend.
-				// If bindings is missing it, we can't see it.
-				// But wait, getSnippets command returns SavedQuery.
-				// getScripts returns SavedQuery.
-				// Maybe I should use getSnippets if it returns more data?
-				// No, getScripts is what was used.
-				// Let's assume for now scripts are root only until we fix bindings type.
-				// OR, maybe `category` is used as folder? No, snippet logic usually uses ID relationships.
-
-				// Re-reading bindings.ts:
-				// export type SavedQuery = { ... tags, category ... }
-				// It DOES NOT have folder_id.
-				// This suggests scripts can't technically be in folders on the frontend-view of the struct yet.
-				// However, I need to implement what I can.
-
 				newSnippets.push({
 					id: s.id.toString(),
 					name: s.name,
