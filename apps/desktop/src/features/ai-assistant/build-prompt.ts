@@ -1,5 +1,7 @@
 import type { AiAssistantContext, ChatMessage } from './types'
 
+const MAX_EDITOR_CONTEXT_CHARS = 6000
+
 function formatViewName(view: string | undefined): string | null {
 	if (!view) return null
 	return view
@@ -8,6 +10,15 @@ function formatViewName(view: string | undefined): string | null {
 			return part.charAt(0).toUpperCase() + part.slice(1)
 		})
 		.join(' ')
+}
+
+function formatEditorMode(mode: 'sql' | 'drizzle'): string {
+	return mode === 'sql' ? 'SQL' : 'Drizzle'
+}
+
+function truncateEditorContent(content: string): string {
+	if (content.length <= MAX_EDITOR_CONTEXT_CHARS) return content
+	return content.slice(content.length - MAX_EDITOR_CONTEXT_CHARS)
 }
 
 function buildContextBlock(context: AiAssistantContext | undefined): string {
@@ -33,6 +44,23 @@ function buildContextBlock(context: AiAssistantContext | undefined): string {
 			)
 		}
 	}
+
+	if (context.editor?.content.trim()) {
+		const truncated = context.editor.content.length > MAX_EDITOR_CONTEXT_CHARS
+		lines.push(
+			`- Active editor mode: ${formatEditorMode(context.editor.mode)}${truncated ? ' (tail excerpt)' : ''}`
+		)
+		lines.push('- Active editor draft:')
+		lines.push('```' + context.editor.mode)
+		lines.push(truncateEditorContent(context.editor.content).trim())
+		lines.push('```')
+	}
+
+	lines.push('SQL syntax notes:')
+	lines.push('- Use the active database dialect for quoting, casts, and functions.')
+	lines.push('- Common query shape: SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT ... OFFSET ....')
+	lines.push('- Use JOIN ... ON ... for related tables, CTEs with WITH for multi-step queries, and subqueries when they improve clarity.')
+	lines.push('- Use INSERT INTO ... VALUES ..., UPDATE ... SET ... WHERE ..., and DELETE FROM ... WHERE ... for data changes.')
 
 	if (lines.length === 1) return ''
 	return lines.join('\n')

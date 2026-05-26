@@ -339,8 +339,6 @@ export function DatabaseSidebar({
 			handleExportTableData(tableId, 'json')
 		} else if (action === 'export-sql') {
 			handleExportTableData(tableId, 'sql_insert')
-		} else {
-			console.log('Right-click action:', action, tableId)
 		}
 	}
 
@@ -387,7 +385,8 @@ export function DatabaseSidebar({
 				}
 				toast({
 					title: 'Table dropped',
-					description: `"${targetTableName}" has been removed.`
+					description: `"${targetTableName}" has been removed.`,
+					variant: 'success'
 				})
 			} else {
 				const errorMessage = getAdapterError(result)
@@ -510,7 +509,8 @@ export function DatabaseSidebar({
 			if (result.status === 'ok') {
 				toast({
 					title: 'Table duplicated',
-					description: `Table "${tableName}" duplicated as "${newName}".`
+					description: `Table "${tableName}" duplicated as "${newName}".`,
+					variant: 'success'
 				})
 				setSchema(null)
 				setRefreshTrigger(function (prev) {
@@ -555,7 +555,8 @@ export function DatabaseSidebar({
 				if (result.status === 'ok') {
 					toast({
 						title: 'Tables dropped',
-						description: `Successfully dropped ${selectedTableIds.length} tables.`
+						description: `Successfully dropped ${selectedTableIds.length} tables.`,
+						variant: 'success'
 					})
 					setSelectedTableIds([])
 					setIsMultiSelectMode(false)
@@ -586,7 +587,8 @@ export function DatabaseSidebar({
 				if (result.status === 'ok') {
 					toast({
 						title: 'Tables truncated',
-						description: `Successfully truncated ${selectedTableIds.length} tables.`
+						description: `Successfully truncated ${selectedTableIds.length} tables.`,
+						variant: 'success'
 					})
 					setSelectedTableIds([])
 					setIsMultiSelectMode(false)
@@ -664,7 +666,8 @@ export function DatabaseSidebar({
 				navigator.clipboard.writeText(payload)
 				toast({
 					title: 'Data exported',
-					description: `Table "${tableName}" exported as ${format.toUpperCase()} to clipboard.`
+					description: `Table "${tableName}" exported as ${format.toUpperCase()} to clipboard.`,
+					variant: 'success'
 				})
 				return
 			}
@@ -681,7 +684,8 @@ export function DatabaseSidebar({
 			navigator.clipboard.writeText(result.data)
 			toast({
 				title: 'Data exported',
-				description: `Table "${tableName}" exported as ${format.toUpperCase()} to clipboard.`
+				description: `Table "${tableName}" exported as ${format.toUpperCase()} to clipboard.`,
+				variant: 'success'
 			})
 		} catch (error) {
 			toast({

@@ -4,9 +4,10 @@ use anyhow::Context;
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
 use rustls::{DigitallySignedStruct, SignatureScheme};
+use std::net::IpAddr;
 use std::sync::Arc;
 use tauri::async_runtime::JoinHandle;
-use tokio_postgres::{tls::MakeTlsConnect, Client, Connection, NoTls, Socket};
+use tokio_postgres::{config::Host, tls::MakeTlsConnect, Client, Connection, NoTls, Socket};
 use tokio_postgres_rustls::MakeRustlsConnect;
 
 pub type ConnectionCheck = JoinHandle<()>;
@@ -91,30 +92,32 @@ pub async fn connect(
     let client = match config.get_ssl_mode() {
         SslMode::Require if verify_tls => {
             let certificate_store = certificates.read().await?;
-            let tls = verified_tls(certificate_store);
-            let (client, conn) = config.connect(tls).await.map_err(|e| {
-                anyhow::anyhow!(
-                    "Failed to connect to Postgres with verified TLS: {e} | detail: {e:?}"
-                )
-            })?;
+            let (client, conn) =
+                connect_with_ipv4_fallback(config, || verified_tls(Arc::clone(&certificate_store)))
+                    .await
+                    .map_err(|e| {
+                        anyhow::anyhow!(
+                            "Failed to connect to Postgres with verified TLS: {e} | detail: {e:?}"
+                        )
+                    })?;
             let conn_check =
                 tauri::async_runtime::spawn(check_connection::<MakeRustlsConnect>(conn));
             (client, conn_check)
         }
         // require / prefer: encrypt but do NOT verify the cert chain (libpq semantics).
         SslMode::Require | SslMode::Prefer => {
-            let tls = no_verify_tls();
-            let (client, conn) = config.connect(tls).await.map_err(|e| {
-                anyhow::anyhow!("Failed to connect to Postgres: {e} | detail: {e:?}")
-            })?;
+            let (client, conn) = connect_with_ipv4_fallback(config, no_verify_tls)
+                .await
+                .map_err(|e| {
+                    anyhow::anyhow!("Failed to connect to Postgres: {e} | detail: {e:?}")
+                })?;
             let conn_check =
                 tauri::async_runtime::spawn(check_connection::<MakeRustlsConnect>(conn));
             (client, conn_check)
         }
         // Mostly SslMode::Disable/Allow, but the enum is non_exhaustive.
         _other => {
-            let (client, conn) = config
-                .connect(NoTls)
+            let (client, conn) = connect_with_ipv4_fallback(config, || NoTls)
                 .await
                 .with_context(|| format!("Failed to connect to Postgres '{config:?}'"))?;
             let conn_check = tauri::async_runtime::spawn(check_connection::<NoTls>(conn));
@@ -123,6 +126,65 @@ pub async fn connect(
     };
 
     Ok(client)
+}
+
+async fn connect_with_ipv4_fallback<T, F>(
+    config: &tokio_postgres::Config,
+    make_tls: F,
+) -> Result<(Client, Connection<Socket, T::Stream>), tokio_postgres::Error>
+where
+    T: MakeTlsConnect<Socket>,
+    F: Fn() -> T,
+{
+    match config.connect(make_tls()).await {
+        Ok(connection) => Ok(connection),
+        Err(initial_error) => {
+            let Some(ipv4_config) = ipv4_fallback_config(config).await else {
+                return Err(initial_error);
+            };
+
+            log::warn!(
+                "Postgres connection failed; retrying with explicit IPv4 hostaddr: {}",
+                initial_error
+            );
+
+            ipv4_config
+                .connect(make_tls())
+                .await
+                .map_err(|fallback_error| {
+                    log::warn!(
+                        "Postgres explicit IPv4 retry failed after initial error: {}; retry error: {}",
+                        initial_error,
+                        fallback_error
+                    );
+                    fallback_error
+                })
+        }
+    }
+}
+
+async fn ipv4_fallback_config(config: &tokio_postgres::Config) -> Option<tokio_postgres::Config> {
+    if !config.get_hostaddrs().is_empty() || config.get_hosts().len() != 1 {
+        return None;
+    }
+
+    let host = match config.get_hosts().first()? {
+        Host::Tcp(host) => host,
+        #[cfg(unix)]
+        Host::Unix(_) => return None,
+    };
+    let port = config.get_ports().first().copied().unwrap_or(5432);
+    let ipv4_addr = tokio::net::lookup_host((host.as_str(), port))
+        .await
+        .ok()?
+        .find_map(|addr| match addr.ip() {
+            IpAddr::V4(ipv4) => Some(IpAddr::V4(ipv4)),
+            IpAddr::V6(_) => None,
+        })?;
+
+    let mut fallback = config.clone();
+    fallback.hostaddr(ipv4_addr);
+    Some(fallback)
 }
 
 async fn check_connection<T>(conn: Connection<Socket, T::Stream>)

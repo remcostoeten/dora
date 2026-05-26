@@ -41,6 +41,15 @@ export function getChainMode(text: string): 'select' | 'insert' | 'update' | 'de
 	)
 		return 'delete'
 
+	// Detect convenience update chains such as select().from(...).where(...).update(...)
+	if (
+		/\.update\(\s*\{/.test(text) ||
+		/\.where\(.*?\)\.update\(/.test(text) ||
+		/\.from\(.*?\)\.where\(.*?\)\.update\(/.test(text)
+	) {
+		return 'update'
+	}
+
 	// For select chains
 	if (
 		/db\.select\(.*?\)\.[a-zA-Z]*$/.test(text) ||

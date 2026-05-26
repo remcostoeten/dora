@@ -6,39 +6,110 @@ use aes_gcm::{
 };
 use anyhow::{Context, Result};
 use keyring::Entry;
+use std::fs;
+use std::path::PathBuf;
 
 const SERVICE_NAME: &str = "dora_db_client";
 const KEY_NAME: &str = "dora_encryption_key";
+const FALLBACK_KEY_FILE: &str = "encryption.key";
 
 fn get_or_create_key() -> Result<[u8; 32]> {
-    let entry = Entry::new(SERVICE_NAME, KEY_NAME).context("Failed to create keyring entry")?;
+    let entry = match Entry::new(SERVICE_NAME, KEY_NAME) {
+        Ok(entry) => entry,
+        Err(error) => {
+            log::warn!(
+                "OS keyring unavailable for Dora encryption key; using local fallback key file: {error}"
+            );
+            return get_or_create_fallback_key();
+        }
+    };
 
     match entry.get_password() {
-        Ok(hex_key) => {
-            let key_bytes =
-                hex::decode(hex_key).context("Failed to decode stored encryption key")?;
-            if key_bytes.len() != 32 {
-                anyhow::bail!("Stored key has invalid length");
-            }
-            let mut key = [0u8; 32];
-            key.copy_from_slice(&key_bytes);
-            Ok(key)
-        }
+        Ok(hex_key) => decode_key_hex(&hex_key).context("Failed to decode stored encryption key"),
         Err(keyring::Error::NoEntry) => {
             // Generate new key
             let key = Aes256Gcm::generate_key(OsRng);
             let key_bytes: &[u8] = key.as_slice();
             let hex_key = hex::encode(key_bytes);
-            entry
-                .set_password(&hex_key)
-                .context("Failed to save new encryption key to keyring")?;
+            if let Err(error) = entry.set_password(&hex_key) {
+                log::warn!(
+                    "Failed to save Dora encryption key to OS keyring; using local fallback key file: {error}"
+                );
+                return get_or_create_fallback_key();
+            }
 
             let mut key_arr = [0u8; 32];
             key_arr.copy_from_slice(key_bytes);
             Ok(key_arr)
         }
-        Err(e) => Err(anyhow::anyhow!("Keyring error: {}", e)),
+        Err(error) => {
+            log::warn!(
+                "OS keyring failed while reading Dora encryption key; using local fallback key file: {error}"
+            );
+            get_or_create_fallback_key()
+        }
     }
+}
+
+fn decode_key_hex(hex_key: &str) -> Result<[u8; 32]> {
+    let key_bytes = hex::decode(hex_key.trim()).context("Failed to decode encryption key")?;
+    if key_bytes.len() != 32 {
+        anyhow::bail!("Stored key has invalid length");
+    }
+    let mut key = [0u8; 32];
+    key.copy_from_slice(&key_bytes);
+    Ok(key)
+}
+
+fn fallback_key_path() -> Result<PathBuf> {
+    let config_dir = dirs::config_dir()
+        .ok_or_else(|| anyhow::anyhow!("OS config directory is unavailable"))?
+        .join("dora");
+    Ok(config_dir.join(FALLBACK_KEY_FILE))
+}
+
+fn get_or_create_fallback_key() -> Result<[u8; 32]> {
+    let path = fallback_key_path()?;
+    if path.exists() {
+        let hex_key = fs::read_to_string(&path).with_context(|| {
+            format!("Failed to read fallback encryption key: {}", path.display())
+        })?;
+        return decode_key_hex(&hex_key)
+            .with_context(|| format!("Invalid fallback encryption key: {}", path.display()));
+    }
+
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "Failed to create fallback encryption key directory: {}",
+                parent.display()
+            )
+        })?;
+    }
+
+    let key = Aes256Gcm::generate_key(OsRng);
+    let key_bytes: &[u8] = key.as_slice();
+    fs::write(&path, hex::encode(key_bytes)).with_context(|| {
+        format!(
+            "Failed to write fallback encryption key: {}",
+            path.display()
+        )
+    })?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).with_context(|| {
+            format!(
+                "Failed to restrict fallback encryption key permissions: {}",
+                path.display()
+            )
+        })?;
+    }
+
+    let mut key_arr = [0u8; 32];
+    key_arr.copy_from_slice(key_bytes);
+    Ok(key_arr)
 }
 
 pub fn encrypt(plaintext: &str) -> Result<String> {

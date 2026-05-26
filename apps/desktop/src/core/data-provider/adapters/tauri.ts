@@ -15,11 +15,44 @@ import type {
 } from '@/lib/bindings'
 import { commands } from '@/lib/bindings'
 import { formatBackendError } from '@/shared/utils/backend-error'
-import { getTableRefParts, getTableSqlIdentifier } from '@/shared/utils/table-ref'
+import { getTableRefParts, getTableSqlIdentifier, type TableDialect } from '@/shared/utils/table-ref'
 import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 
 import { backendToFrontendConnection } from '@/features/connections/utils/mapping'
 import type { Connection } from '@/features/connections/types'
+
+function databaseInfoToDialect(databaseType: DatabaseInfo): TableDialect {
+	if ('Postgres' in databaseType) return 'postgres'
+	if ('MySQL' in databaseType) return 'mysql'
+	if ('LibSQL' in databaseType) return 'libsql'
+	return 'sqlite'
+}
+
+function createConnectionDialectResolver() {
+	const dialectByConnectionId = new Map<string, TableDialect>()
+
+	function rememberConnections(connections: ConnectionInfo[]) {
+		for (const connection of connections) {
+			dialectByConnectionId.set(connection.id, databaseInfoToDialect(connection.database_type))
+		}
+	}
+
+	async function resolveConnectionDialect(connectionId: string): Promise<TableDialect | undefined> {
+		const cached = dialectByConnectionId.get(connectionId)
+		if (cached) return cached
+
+		const result = await commands.getConnections()
+		if (result.status !== 'ok') return undefined
+
+		rememberConnections(result.data)
+		return dialectByConnectionId.get(connectionId)
+	}
+
+	return {
+		rememberConnections,
+		resolveConnectionDialect
+	}
+}
 
 function ok<T>(data: T): AdapterResult<T> {
 	return { ok: true, data }
@@ -36,10 +69,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function createTauriAdapter(): DataAdapter {
+	const { rememberConnections, resolveConnectionDialect } = createConnectionDialectResolver()
+
 	return {
 		async getConnections(): Promise<AdapterResult<Connection[]>> {
 			const result = await commands.getConnections()
 			if (result.status === 'ok') {
+				rememberConnections(result.data)
 				return ok(result.data.map(backendToFrontendConnection))
 			}
 			return err(formatError(result.error))
@@ -121,7 +157,8 @@ export function createTauriAdapter(): DataAdapter {
 		},
 
 		async dropTable(connectionId: string, tableName: string): Promise<AdapterResult<void>> {
-			const sql = `DROP TABLE IF EXISTS ${getTableSqlIdentifier(tableName)}`
+			const dialect = await resolveConnectionDialect(connectionId)
+			const sql = `DROP TABLE IF EXISTS ${getTableSqlIdentifier(tableName, dialect)}`
 			const result = await commands.executeBatch(connectionId, [sql])
 			if (result.status === 'ok') {
 				return ok(undefined)
@@ -164,7 +201,8 @@ export function createTauriAdapter(): DataAdapter {
 			filters?: FilterDescriptor[]
 		): Promise<AdapterResult<TableData>> {
 			const startTime = performance.now()
-			let query = `SELECT * FROM ${getTableSqlIdentifier(tableName)}`
+			const dialect = await resolveConnectionDialect(connectionId)
+			let query = `SELECT * FROM ${getTableSqlIdentifier(tableName, dialect)}`
 
 			if (filters && filters.length > 0) {
 				const conditions = filters.map(function (f) {

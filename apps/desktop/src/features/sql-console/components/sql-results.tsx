@@ -24,6 +24,7 @@ import {
 } from '@/shared/ui/context-menu'
 import { Input } from '@/shared/ui/input'
 import { ScrollArea } from '@/shared/ui/scroll-area'
+import { useToast } from '@/shared/ui/use-toast'
 import { cn } from '@/shared/utils/cn'
 import { SqlQueryResult, ResultViewMode } from '../types'
 
@@ -62,10 +63,12 @@ export function SqlResults({
 	)
 	const { updateCell, deleteRows } = useDataMutation()
 	const { settings } = useSettings()
+	const { toast } = useToast()
 	const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
 	const [filterText, setFilterText] = useState('')
 	const [rowToDelete, setRowToDelete] = useState<Record<string, unknown> | null>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
+	const isSavingEditRef = useRef(false)
 
 	useEffect(() => {
 		if (editingCell && inputRef.current) {
@@ -99,6 +102,86 @@ export function SqlResults({
 			return JSON.stringify(value)
 		}
 		return String(value)
+	}
+
+	function areCellValuesEqual(a: unknown, b: unknown): boolean {
+		if (Object.is(a, b)) return true
+		if (typeof a !== typeof b) return false
+		if (a === null || b === null) return false
+		if (Array.isArray(a) || Array.isArray(b)) {
+			if (!Array.isArray(a) || !Array.isArray(b)) return false
+			if (a.length !== b.length) return false
+			return a.every(function (value, index) {
+				return areCellValuesEqual(value, b[index])
+			})
+		}
+		if (typeof a === 'object' && typeof b === 'object') {
+			const aRecord = a as Record<string, unknown>
+			const bRecord = b as Record<string, unknown>
+			const aKeys = Object.keys(aRecord).sort()
+			const bKeys = Object.keys(bRecord).sort()
+			if (aKeys.length !== bKeys.length) return false
+			return aKeys.every(function (key, index) {
+				return key === bKeys[index] && areCellValuesEqual(aRecord[key], bRecord[key])
+			})
+		}
+		return false
+	}
+
+	function normalizeCellValue(columnName: string, value: string): unknown {
+		const column = result?.columnDefinitions?.find(function (definition) {
+			return definition.name === columnName
+		})
+		if (!column) return value
+
+		const type = column.type.toLowerCase()
+		const trimmed = value.trim()
+		const isIntegerType = type.includes('int') || type.includes('serial')
+		const isFloatType =
+			type.includes('float') ||
+			type.includes('double') ||
+			type.includes('decimal') ||
+			type.includes('numeric')
+		const isBooleanType = type.includes('bool')
+		const isJsonType = type.includes('json')
+
+		if (trimmed === '') {
+			if (column.nullable) return null
+			if (isIntegerType || isFloatType) return 0
+			if (isBooleanType) return false
+			return ''
+		}
+
+		if (isIntegerType) {
+			const parsed = Number.parseInt(trimmed, 10)
+			return Number.isNaN(parsed) ? (column.nullable ? null : 0) : parsed
+		}
+
+		if (isFloatType) {
+			const parsed = Number.parseFloat(trimmed)
+			return Number.isNaN(parsed) ? (column.nullable ? null : 0) : parsed
+		}
+
+		if (isBooleanType) {
+			const normalized = trimmed.toLowerCase()
+			return (
+				normalized === 'true' ||
+				normalized === '1' ||
+				normalized === 't' ||
+				normalized === 'yes' ||
+				normalized === 'on'
+			)
+		}
+
+		if (isJsonType) {
+			try {
+				return JSON.parse(trimmed)
+			} catch {
+				return value
+			}
+		}
+
+		return value
 	}
 
 	function getPrimaryKey() {
@@ -161,6 +244,7 @@ export function SqlResults({
 	) {
 		if (!mutationContext) return
 
+		isSavingEditRef.current = false
 		setEditingCell({
 			rowData,
 			column,
@@ -171,12 +255,24 @@ export function SqlResults({
 
 	async function handleSaveCell() {
 		if (!editingCell || !result || !connectionId || !mutationContext) return
+		if (isSavingEditRef.current) return
+		isSavingEditRef.current = true
 
 		const row = editingCell.rowData
 		const pkValue = row[mutationContext.primaryKeyName]
+		const normalizedNewValue = normalizeCellValue(editingCell.column, editingCell.value)
 
 		if (pkValue === undefined) {
-			console.error('Cannot update row: Primary key not found')
+			toast({
+				title: 'Failed to update cell',
+				description: 'Primary key value was not found for this row.',
+				variant: 'destructive'
+			})
+			setEditingCell(null)
+			return
+		}
+
+		if (areCellValuesEqual(editingCell.originalValue, normalizedNewValue)) {
 			setEditingCell(null)
 			return
 		}
@@ -189,15 +285,17 @@ export function SqlResults({
 					primaryKeyColumn: mutationContext.primaryKeyName,
 					primaryKeyValue: pkValue,
 					columnName: editingCell.column,
-					newValue: editingCell.value
+					newValue: normalizedNewValue
 				},
 				{
-					onError: (e) => console.error('Update failed', e),
+					onError: (e) => {
+						toast({
+							title: 'Failed to update cell',
+							description: e instanceof Error ? e.message : 'An error occurred',
+							variant: 'destructive'
+						})
+					},
 					onSuccess: () => {
-						// Ideally we should refresh the query.
-						// But SqlResults doesn't have a refresh callback.
-						// For now, simple console log.
-						console.log('Update successful')
 						onRefresh?.()
 					}
 				}
@@ -205,7 +303,11 @@ export function SqlResults({
 
 			setEditingCell(null)
 		} catch (e) {
-			console.error(e)
+			toast({
+				title: 'Failed to update cell',
+				description: e instanceof Error ? e.message : 'An error occurred',
+				variant: 'destructive'
+			})
 		}
 	}
 
@@ -224,7 +326,11 @@ export function SqlResults({
 		const pkValue = rowData[mutationContext.primaryKeyName]
 
 		if (pkValue === undefined) {
-			console.error('Delete failed: missing table name or PK')
+			toast({
+				title: 'Failed to delete row',
+				description: 'Primary key value was not found for this row.',
+				variant: 'destructive'
+			})
 			return
 		}
 
@@ -236,9 +342,14 @@ export function SqlResults({
 				primaryKeyValues: [pkValue]
 			},
 			{
-				onError: (e) => console.error('Delete failed', e),
+				onError: (e) => {
+					toast({
+						title: 'Failed to delete row',
+						description: e instanceof Error ? e.message : 'An error occurred',
+						variant: 'destructive'
+					})
+				},
 				onSuccess: () => {
-					console.log('Delete successful')
 					onRefresh?.()
 					setRowToDelete(null)
 				}
@@ -479,18 +590,18 @@ export function SqlResults({
 																					.value
 																			})
 																		}
-																		onBlur={() => {
-																			setEditingCell(null)
+																		onBlur={async () => {
+																			await handleSaveCell()
 																		}}
 																		onKeyDown={async (e) => {
 																			if (e.key === 'Enter') {
 																				e.preventDefault()
 																				e.stopPropagation()
 																				await handleSaveCell()
-																				setEditingCell(null)
 																			} else if (
 																				e.key === 'Escape'
 																			) {
+																				isSavingEditRef.current = false
 																				setEditingCell(null)
 																			}
 																		}}

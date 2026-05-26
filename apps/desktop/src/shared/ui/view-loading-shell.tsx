@@ -153,7 +153,7 @@ export function SqlConsoleLoadingShell() {
 
 export function SchemaVisualizerCanvasLoadingState() {
 	return (
-		<div className='relative min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.07),transparent_45%)]'>
+		<div className='relative min-h-0 flex-1 overflow-hidden border-t border-border/40 bg-background'>
 			<div className='absolute inset-0 opacity-60'>
 				<div className='absolute left-[8%] top-[14%] h-28 w-52 rounded-xl border border-border/80 bg-card/85 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.24)]'>
 					<Skeleton className='h-4 w-24' />

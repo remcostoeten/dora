@@ -40,6 +40,7 @@ fn build_chat_system_prompt(request: &AIRequest) -> String {
     s.push_str(
         "- Use exact column and table names from the schema below. Do not invent columns.\n",
     );
+    s.push_str("- SQL syntax notes: use the active dialect for quoting, casts, and functions; prefer standard query shapes like SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT ... OFFSET ...; use JOIN ... ON ... for related tables; use WITH for CTEs and subqueries when they improve clarity; use INSERT INTO ... VALUES ..., UPDATE ... SET ... WHERE ..., and DELETE FROM ... WHERE ... for data changes.\n");
     s.push_str("- If the user prompt includes `Current Dora UI context`, use it to resolve references like \"this table\", \"selected table\", \"current view\", and \"schema viewer\".\n");
     s.push_str("- The user's message may contain prior turns formatted as `USER:` / `ASSISTANT:`. Treat them as conversation history and answer only the final user turn.\n\n");
 

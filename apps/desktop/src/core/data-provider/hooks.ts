@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import type { SortDescriptor, FilterDescriptor } from '@/features/database-studio/types'
+import type { SortDescriptor, FilterDescriptor, TableData } from '@/features/database-studio/types'
+import type { DatabaseInfo, JsonValue } from '@/lib/bindings'
 import { useAdapter } from './context'
 import { getAdapterError } from './types'
 
@@ -43,7 +44,11 @@ export function useConnectionMutations() {
 	const queryClient = useQueryClient()
 
 	const addConnection = useMutation({
-		mutationFn: async (params: { name: string; databaseType: any; sshConfig: any }) => {
+		mutationFn: async (params: {
+			name: string
+			databaseType: DatabaseInfo
+			sshConfig: JsonValue | null
+		}) => {
 			const res = await adapter.addConnection(
 				params.name,
 				params.databaseType,
@@ -61,8 +66,8 @@ export function useConnectionMutations() {
 		mutationFn: async (params: {
 			id: string
 			name: string
-			databaseType: any
-			sshConfig: any
+			databaseType: DatabaseInfo
+			sshConfig: JsonValue | null
 		}) => {
 			const res = await adapter.updateConnection(
 				params.id,
@@ -189,17 +194,17 @@ export function useDataMutation() {
 			connectionId: string
 			tableName: string
 			primaryKeyColumn: string
-			primaryKeyValue: any
+			primaryKeyValue: unknown
 			columnName: string
-			newValue: any
+			newValue: unknown
 		}) => {
 			const res = await adapter.updateCell(
 				params.connectionId,
 				params.tableName,
 				params.primaryKeyColumn,
-				params.primaryKeyValue,
+				params.primaryKeyValue as JsonValue,
 				params.columnName,
-				params.newValue
+				params.newValue as JsonValue
 			)
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
@@ -218,11 +223,11 @@ export function useDataMutation() {
 			// Optimistically update to the new value
 			queryClient.setQueriesData(
 				{ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] },
-				function (old: any) {
+				function (old: TableData | undefined) {
 					if (!old) return old
 					return {
 						...old,
-						rows: old.rows.map(function (row: any) {
+						rows: old.rows.map(function (row) {
 							if (row[newEdit.primaryKeyColumn] === newEdit.primaryKeyValue) {
 								return {
 									...row,
@@ -259,13 +264,13 @@ export function useDataMutation() {
 			connectionId: string
 			tableName: string
 			primaryKeyColumn: string
-			primaryKeyValues: any[]
+			primaryKeyValues: unknown[]
 		}) => {
 			const res = await adapter.deleteRows(
 				params.connectionId,
 				params.tableName,
 				params.primaryKeyColumn,
-				params.primaryKeyValues
+				params.primaryKeyValues as JsonValue[]
 			)
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
@@ -282,12 +287,12 @@ export function useDataMutation() {
 		mutationFn: async (params: {
 			connectionId: string
 			tableName: string
-			rowData: Record<string, any>
+			rowData: Record<string, unknown>
 		}) => {
 			const res = await adapter.insertRow(
 				params.connectionId,
 				params.tableName,
-				params.rowData
+				params.rowData as Record<string, JsonValue>
 			)
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data

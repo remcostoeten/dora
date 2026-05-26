@@ -61,7 +61,8 @@ export function ComposeExportDialog({ container, open, onOpenChange }: Props) {
 				await writeTextFile(savePath, yamlContent)
 				toast({
 					title: 'File Saved',
-					description: `Saved to ${savePath}`
+					description: `Saved to ${savePath}`,
+					variant: 'success'
 				})
 			}
 		} catch (error) {

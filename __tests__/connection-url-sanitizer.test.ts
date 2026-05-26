@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { sanitizeConnectionUrl } from '@/features/connections/utils/providers'
+import {
+	buildConnectionString,
+	sanitizeConnectionUrl
+} from '@/features/connections/utils/providers'
 
 describe('sanitizeConnectionUrl', () => {
 	it('keeps a psql-wrapped postgres URL', () => {
@@ -27,5 +30,26 @@ describe('sanitizeConnectionUrl', () => {
 				'psql --host=db.example.com --port=5432 --username=app --dbname=main'
 			)
 		).toBe('postgresql://app@db.example.com:5432/main')
+	})
+
+	it('strips inline comments from env-style URL values', () => {
+		expect(
+			sanitizeConnectionUrl(
+				'DATABASE_URL=postgresql://auth_drawer:secret@localhost:5433/auth_drawer  # Better Auth secret note'
+			)
+		).toBe('postgresql://auth_drawer:secret@localhost:5433/auth_drawer')
+	})
+
+	it('strips inline comments from structured database fields', () => {
+		expect(
+			buildConnectionString({
+				type: 'postgres',
+				host: 'localhost',
+				port: 5433,
+				user: 'auth_drawer',
+				password: 'secret',
+				database: 'auth_drawer  # Better Auth secret note'
+			})
+		).toBe('postgresql://auth_drawer:secret@localhost:5433/auth_drawer')
 	})
 })

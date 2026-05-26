@@ -9,7 +9,7 @@ import { getTableRefId } from '@/shared/utils/table-ref'
 import { MessageBubble } from './message-bubble'
 import { useAiAssistantStore } from './store'
 import { buildDynamicSuggestions, getQuickActions } from './suggestions'
-import type { AiAssistantContext } from './types'
+import type { AiAssistantContext, AiAssistantEditorContext } from './types'
 import { useAiChat } from './use-ai-chat'
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
 	activeView?: string
 	selectedTableId?: string | null
 	selectedTableName?: string | null
+	editorContext?: AiAssistantEditorContext | null
 	onEditorInsert?: (sql: string) => void
 }
 
@@ -25,6 +26,7 @@ export function AiAssistantPanel({
 	activeView,
 	selectedTableId,
 	selectedTableName,
+	editorContext,
 	onEditorInsert
 }: Props) {
 	const adapter = useAdapter()
@@ -139,10 +141,11 @@ export function AiAssistantPanel({
 							? `${column.foreign_key.referenced_schema ? `${column.foreign_key.referenced_schema}.` : ''}${column.foreign_key.referenced_table}.${column.foreign_key.referenced_column}`
 							: undefined
 					}
-				})
+				}),
+				editor: editorContext ?? null
 			}
 		},
-		[activeView, activeConnectionId, selectedTableId, selectedTableName, schema]
+		[activeView, activeConnectionId, selectedTableId, selectedTableName, schema, editorContext]
 	)
 
 	const handleSend = useCallback(

@@ -26,9 +26,10 @@ use crate::{
         adapter::watch_adapter_from_client,
         postgres::{
             connect::{no_verify_tls, verified_tls},
+            connection_string::{clean_postgres_connection_string, is_postgres_connection_url},
             row_writer::RowWriter as PostgresRowWriter,
         },
-        types::{is_postgres_pooler_url, Database, DatabaseClient},
+        types::{Database, DatabaseClient, DatabaseInfo},
         Certificates,
     },
     AppState, Error,
@@ -291,7 +292,7 @@ async fn create_postgres_notification_receiver(
     };
 
     let connection_entry = state.connections.get(&connection_id)?;
-    let (connection_string, tunnel_local_port) = match &connection_entry.value().database {
+    let (mut connection_string, tunnel_local_port) = match &connection_entry.value().database {
         Database::Postgres {
             connection_string,
             tunnel,
@@ -305,6 +306,20 @@ async fn create_postgres_notification_receiver(
         _ => return None,
     };
     drop(connection_entry);
+
+    if !is_postgres_connection_url(&connection_string) {
+        match resolve_stored_postgres_connection_string(app, connection_id, &connection_string) {
+            Ok(resolved) => connection_string = resolved,
+            Err(error) => {
+                log::warn!(
+                    "Failed to resolve Postgres connection string for live monitor on {}: {}",
+                    table_name,
+                    error
+                );
+                return None;
+            }
+        }
+    }
 
     let Some(certificates) = app.try_state::<Certificates>() else {
         log::warn!("Live monitor certificates state unavailable; falling back to polling");
@@ -351,54 +366,53 @@ async fn create_postgres_notification_receiver(
     }
 }
 
+fn resolve_stored_postgres_connection_string(
+    app: &AppHandle,
+    connection_id: Uuid,
+    connection_string: &str,
+) -> Result<String, Error> {
+    if is_postgres_connection_url(connection_string) {
+        return Ok(connection_string.to_string());
+    }
+
+    let state = app
+        .try_state::<AppState>()
+        .ok_or_else(|| Error::Internal("App state unavailable".to_string()))?;
+
+    if let Some(stored) = state.storage.get_connection(&connection_id)? {
+        if let DatabaseInfo::Postgres {
+            connection_string: stored_connection_string,
+            ..
+        } = stored.database_type
+        {
+            if is_postgres_connection_url(&stored_connection_string) {
+                return Ok(stored_connection_string);
+            }
+        }
+    }
+
+    Err(Error::Any(anyhow::anyhow!(
+        "Postgres connection string is invalid or corrupted for {connection_id}. Re-save the connection in settings."
+    )))
+}
+
 fn build_postgres_listener_config(
     connection_id: Uuid,
     connection_string: &str,
     tunnel_local_port: Option<u16>,
 ) -> Result<(tokio_postgres::Config, bool), Error> {
-    let mut disable_channel_binding = false;
-    let mut verify_tls = false;
-    let cleaned_string = if let Ok(mut url) = url::Url::parse(connection_string) {
-        let is_pooler = is_postgres_pooler_url(&url);
-        disable_channel_binding = is_pooler;
-        let mut has_sslmode = false;
-        let params: Vec<_> = url
-            .query_pairs()
-            .filter_map(|(key, value)| {
-                if key == "channel_binding" {
-                    disable_channel_binding = true;
-                    None
-                } else if key == "sslmode" && matches!(value.as_ref(), "verify-ca" | "verify-full")
-                {
-                    has_sslmode = true;
-                    verify_tls = true;
-                    Some((key.into_owned(), "require".to_string()))
-                } else if key == "sslmode" {
-                    has_sslmode = true;
-                    Some((key.into_owned(), value.into_owned()))
-                } else if is_dora_postgres_option(&key) {
-                    None
-                } else {
-                    Some((key.into_owned(), value.into_owned()))
-                }
-            })
-            .collect::<Vec<_>>();
-        url.query_pairs_mut().clear().extend_pairs(params);
-        if is_pooler && !has_sslmode {
-            url.query_pairs_mut().append_pair("sslmode", "require");
-        }
-        if url.query().is_some_and(str::is_empty) {
-            url.set_query(None);
-        }
-        url.to_string()
-    } else {
-        connection_string.to_string()
-    };
+    if !is_postgres_connection_url(connection_string) {
+        return Err(Error::Any(anyhow::anyhow!(
+            "Postgres connection string is invalid or corrupted"
+        )));
+    }
+
+    let (cleaned_string, disable_channel_binding, verify_tls) =
+        clean_postgres_connection_string(connection_string);
 
     let mut config: tokio_postgres::Config = cleaned_string.parse().map_err(|error| {
         Error::Any(anyhow::anyhow!(
-            "Failed to parse Postgres listener connection string '{}': {}",
-            cleaned_string,
+            "Failed to parse Postgres listener connection string: {}",
             error
         ))
     })?;
@@ -419,19 +433,6 @@ fn build_postgres_listener_config(
     }
 
     Ok((config, verify_tls))
-}
-
-fn is_dora_postgres_option(key: &str) -> bool {
-    matches!(
-        key.to_ascii_lowercase().as_str(),
-        "pgbouncer"
-            | "pooler"
-            | "simple_query"
-            | "prepared_statements"
-            | "prepared_statement"
-            | "statement_cache_size"
-            | "statement_cache_capacity"
-    )
 }
 
 async fn connect_and_subscribe_postgres_listener(

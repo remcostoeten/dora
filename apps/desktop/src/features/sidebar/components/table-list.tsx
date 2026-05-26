@@ -341,7 +341,6 @@ function SortedColumnRow({ column }: SortedColumnRowProps) {
 	)
 }
 
-export type { TableRightClickAction }
 type Props = {
 	tables: TableItem[]
 	activeTableId?: string

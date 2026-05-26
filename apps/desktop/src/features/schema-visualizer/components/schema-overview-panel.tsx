@@ -1,4 +1,4 @@
-import { Database, Move, ScanSearch, SplitSquareVertical } from 'lucide-react'
+import { Database, Move, Network, ScanSearch, SplitSquareVertical } from 'lucide-react'
 import { cn } from '@/shared/utils/cn'
 import type { TableNodeData } from '../hooks/use-schema-graph'
 
@@ -25,14 +25,11 @@ export function SchemaOverviewPanel({
 }: Props) {
 	return (
 		<aside className='sv-overview-panel'>
-			<div className='sv-overview-panel__eyebrow'>Schema visualizer</div>
+			<div className='sv-overview-panel__eyebrow'>Schema</div>
 			<div className='sv-overview-panel__heading'>
 				<div>
-					<h2>Structure first</h2>
-					<p>
-						Trace tables, follow relationships, then drill into one table when you
-						need detail.
-					</p>
+					<h2>{isSearchResult ? 'Filtered map' : 'Full map'}</h2>
+					<p>{tableCount} tables, {edgeCount} relationships</p>
 				</div>
 				<span
 					className={cn(
@@ -61,38 +58,33 @@ export function SchemaOverviewPanel({
 
 			<div className='sv-overview-panel__stack'>
 				<div className='sv-overview-panel__card'>
-					<div className='sv-overview-panel__card-label'>Focus</div>
+					<div className='sv-overview-panel__card-label'>Selected table</div>
 					{selectedTable ? (
 						<>
 							<div className='sv-overview-panel__card-title'>{selectedTable.tableName}</div>
 							<div className='sv-overview-panel__card-copy'>
 								{selectedTable.columns.length} columns
 								{selectedTable.schema ? ` in ${selectedTable.schema}` : ''}
-								{selectedTable.matchedColumns.length > 0
-									? ` • ${selectedTable.matchedColumns.length} column matches`
-									: ''}
 							</div>
 						</>
 					) : (
 						<>
-							<div className='sv-overview-panel__card-title'>Select a table</div>
-							<div className='sv-overview-panel__card-copy'>
-								Use the graph for breadth, then open the inspector for depth.
-							</div>
+							<div className='sv-overview-panel__card-title'>None</div>
+							<div className='sv-overview-panel__card-copy'>No table selected</div>
 						</>
 					)}
 				</div>
 
 				<div className='sv-overview-panel__card'>
-					<div className='sv-overview-panel__card-label'>Working mode</div>
+					<div className='sv-overview-panel__card-label'>State</div>
 					<div className='sv-overview-panel__modes'>
 						<span className={cn(editMode && 'is-active')}>
 							<Move className='h-3.5 w-3.5' />
-							{editMode ? 'Drag layout on' : 'Drag layout off'}
+							{editMode ? 'Edit layout' : 'Read only'}
 						</span>
 						<span className={cn(showMinimap && 'is-active')}>
 							<SplitSquareVertical className='h-3.5 w-3.5' />
-							{showMinimap ? 'Minimap visible' : 'Minimap hidden'}
+							{showMinimap ? 'Minimap' : 'No minimap'}
 						</span>
 						<span className={cn(isSearchResult && 'is-active')}>
 							<ScanSearch className='h-3.5 w-3.5' />
@@ -104,14 +96,16 @@ export function SchemaOverviewPanel({
 				</div>
 
 				<div className='sv-overview-panel__card'>
-					<div className='sv-overview-panel__card-label'>How to read this</div>
+					<div className='sv-overview-panel__card-label'>Legend</div>
 					<div className='sv-overview-panel__legend'>
 						<span>
 							<Database className='h-3.5 w-3.5' />
-							Solid cards are tables.
+							Table
 						</span>
-						<span>Search matches stay bright, related tables stay nearby, everything else steps back.</span>
-						<span>Use edit mode only when you want to curate a layout, not when you are scanning.</span>
+						<span>
+							<Network className='h-3.5 w-3.5' />
+							Relationship
+						</span>
 					</div>
 				</div>
 			</div>

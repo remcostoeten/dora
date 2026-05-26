@@ -228,7 +228,8 @@ export function DockerView({ onOpenInDataViewer }: Props) {
 				setSelectedContainerId(result.containerId)
 				toast({
 					title: 'Container Created',
-					description: 'PostgreSQL container is starting up...'
+					description: 'PostgreSQL container is starting up...',
+					variant: 'success'
 				})
 			} else if (!result.success) {
 				toast({

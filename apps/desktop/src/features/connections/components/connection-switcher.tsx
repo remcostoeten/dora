@@ -38,6 +38,7 @@ import {
 	AlertDialogTitle
 } from '@/shared/ui/alert-dialog'
 import { cn } from '@/shared/utils/cn'
+import { Input } from '@/shared/ui/input'
 import { Connection, DatabaseType } from '../types'
 import { DatabaseTypeIcon } from './database-type-icon'
 
@@ -98,6 +99,8 @@ export function ConnectionSwitcher({
 	onDeleteConnection
 }: Props) {
 	const [searchQuery, setSearchQuery] = useState('')
+	const [dropdownOpen, setDropdownOpen] = useState(false)
+	const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null)
 	const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 	const [deleteDialogConnectionId, setDeleteDialogConnectionId] = useState<string | null>(
 		null
@@ -161,6 +164,11 @@ export function ConnectionSwitcher({
 		setDeleteDialogConnectionId(id)
 	}
 
+	function closeMenus() {
+		setContextMenuConnectionId(null)
+		setDropdownOpen(false)
+	}
+
 	const deleteDialogConnection = deleteDialogConnectionId
 		? connections.find(function (connection) {
 				return connection.id === deleteDialogConnectionId
@@ -170,7 +178,10 @@ export function ConnectionSwitcher({
 	return (
 		<>
 		<DropdownMenu
+			open={dropdownOpen}
 			onOpenChange={function handleMenuOpenChange(open) {
+				if (!open && contextMenuConnectionId) return
+				setDropdownOpen(open)
 				if (!open) setPendingDeleteId(null)
 			}}
 		>
@@ -236,6 +247,11 @@ export function ConnectionSwitcher({
 				align='start'
 				side='bottom'
 				sideOffset={6}
+				onInteractOutside={function handleDropdownInteractOutside(e) {
+					if (contextMenuConnectionId) {
+						e.preventDefault()
+					}
+				}}
 				style={{
 					transitionTimingFunction: 'var(--ease-out)'
 				}}
@@ -270,7 +286,10 @@ export function ConnectionSwitcher({
 							const isActive = connection.id === activeConnectionId
 							const isPendingDelete = pendingDeleteId === connection.id
 							return (
-								<ContextMenu key={connection.id} modal={false}>
+								<ContextMenu
+									key={connection.id}
+									modal={false}
+								>
 									<DropdownMenuItem
 										asChild
 										onSelect={function handleMenuItemSelect(e) {
@@ -283,6 +302,10 @@ export function ConnectionSwitcher({
 											<div
 												role='menuitem'
 												tabIndex={-1}
+												onContextMenuCapture={function handleConnectionContextMenu() {
+													setContextMenuConnectionId(connection.id)
+													setDropdownOpen(true)
+												}}
 												onClick={function handleConnectionClick(e) {
 													if (isPendingDelete) {
 														e.preventDefault()
@@ -496,12 +519,22 @@ export function ConnectionSwitcher({
 													</div>
 												)}
 											</div>
+											</div>
 										</ContextMenuTrigger>
 									</DropdownMenuItem>
-									<ContextMenuContent className='w-48'>
+									<ContextMenuContent
+										className='w-48'
+										onEscapeKeyDown={function handleContextEscape() {
+											setContextMenuConnectionId(null)
+										}}
+										onPointerDownOutside={function handleContextPointerOutside() {
+											setContextMenuConnectionId(null)
+										}}
+									>
 										<ContextMenuItem
 											onSelect={function viewConnection() {
 												onViewConnection?.(connection.id)
+												closeMenus()
 											}}
 											className='gap-2 cursor-pointer'
 										>
@@ -512,6 +545,7 @@ export function ConnectionSwitcher({
 											<ContextMenuItem
 												onSelect={function editConnection() {
 													onEditConnection(connection.id)
+													closeMenus()
 												}}
 												className='gap-2 cursor-pointer'
 											>
@@ -525,6 +559,7 @@ export function ConnectionSwitcher({
 												<ContextMenuItem
 													onSelect={function deleteConnection() {
 														requestDelete(connection.id)
+														closeMenus()
 													}}
 													className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
 												>

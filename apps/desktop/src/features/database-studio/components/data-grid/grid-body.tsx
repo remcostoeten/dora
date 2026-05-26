@@ -238,13 +238,6 @@ export function GridBody({
 														column.name,
 														null
 													)
-												} else {
-													console.log(
-														'Cell action:',
-														action,
-														value,
-														column.name
-													)
 												}
 											}}
 											onOpenChange={function (open, row, col) {

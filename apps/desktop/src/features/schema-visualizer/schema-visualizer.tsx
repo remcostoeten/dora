@@ -27,6 +27,7 @@ import { getTableRefId } from '@/shared/utils/table-ref'
 import { RelationshipEdge } from './components/relationship-edge'
 import { SchemaDetailsPanel } from './components/schema-details-panel'
 import { SchemaExportPreviewDialog } from './components/schema-export-preview-dialog'
+import { SchemaOverviewPanel } from './components/schema-overview-panel'
 import { TableNode } from './components/table-node'
 import { SchemaToolbar, type SearchSuggestion } from './components/schema-toolbar'
 import {
@@ -385,6 +386,13 @@ function SchemaVisualizerInner({
 			isSearchResult: false,
 		}
 	}, [nodes.length, edges.length, searchSummary])
+	const schemaCount = useMemo(() => {
+		const names = new Set<string>()
+		for (const node of nodes) {
+			names.add(node.data.schema || 'default')
+		}
+		return names.size
+	}, [nodes])
 
 	function handleExportJson() {
 		if (!schema) return
@@ -603,75 +611,88 @@ function SchemaVisualizerInner({
 				isLoading={isLoading}
 			/>
 
-			<div className='schema-visualizer__canvas relative min-h-0 flex-1'>
-				{error ? (
-					<div className='flex h-full items-center justify-center p-4'>
-						<div className='inline-flex items-center gap-2 text-destructive text-sm font-mono bg-destructive/10 px-4 py-3 rounded-md border border-destructive/20 max-w-lg'>
-							<AlertCircle className='h-4 w-4 shrink-0' />
-							<span>{error}</span>
+			<div className='schema-visualizer__workspace'>
+				<SchemaOverviewPanel
+					tableCount={visibleCounts.tables}
+					edgeCount={visibleCounts.edges}
+					schemaCount={schemaCount}
+					relatedTableCount={visibleCounts.relatedTables}
+					isSearchResult={visibleCounts.isSearchResult}
+					editMode={editMode}
+					showMinimap={showMinimap}
+					selectedTable={selectedTable}
+				/>
+
+				<div className='schema-visualizer__canvas relative min-h-0 flex-1'>
+					{error ? (
+						<div className='flex h-full items-center justify-center p-4'>
+							<div className='inline-flex items-center gap-2 text-destructive text-sm font-mono bg-destructive/10 px-4 py-3 rounded-md border border-destructive/20 max-w-lg'>
+								<AlertCircle className='h-4 w-4 shrink-0' />
+								<span>{error}</span>
+							</div>
 						</div>
-					</div>
-				) : !schema || schema.tables.length === 0 ? (
-					isLoading ? (
-						<SchemaVisualizerCanvasLoadingState />
-					) : (
-						<EmptyState
-							icon={<Network className='h-16 w-16' />}
-							title='No Tables'
-							description='This database has no tables to visualize.'
-						/>
-					)
-				) : (
-					<ReactFlow
-						nodes={nodes}
-						edges={edges}
-						onNodesChange={onNodesChange}
-						onEdgesChange={onEdgesChange}
-						onNodeClick={(_, node) => handleSelectTable(node as Node<TableNodeData>)}
-						onNodeDragStop={(_, __, nextNodes) =>
-							handlePersistNodePositions(nextNodes ?? nodes)
-						}
-						onPaneClick={() => setSelectedTable(null)}
-						nodeTypes={NODE_TYPES}
-						edgeTypes={EDGE_TYPES}
-						nodesDraggable={editMode}
-						onlyRenderVisibleElements
-						fitView
-						fitViewOptions={{ padding: 0.12 }}
-						minZoom={0.1}
-						maxZoom={2}
-						proOptions={{ hideAttribution: true }}
-					>
-						<Background
-							variant={BackgroundVariant.Lines}
-							gap={24}
-							size={0.8}
-							color='rgba(255,255,255,0.07)'
-						/>
-						<Controls showInteractive={false} />
-						{showMinimap && (
-							<MiniMap
-								pannable
-								zoomable
-								nodeColor='hsl(220 10% 28%)'
-								maskColor='rgba(0,0,0,0.42)'
+					) : !schema || schema.tables.length === 0 ? (
+						isLoading ? (
+							<SchemaVisualizerCanvasLoadingState />
+						) : (
+							<EmptyState
+								icon={<Network className='h-16 w-16' />}
+								title='No Tables'
+								description='This database has no tables to visualize.'
 							/>
-						)}
-					</ReactFlow>
-				)}
-				{selectedTable && (
-					<SchemaDetailsPanel
-						table={selectedTable}
-						onClose={() => setSelectedTable(null)}
-						onOpenTable={handleOpenSelectedTable}
-						onExportSql={handleExportSql}
-						onExportDrizzle={handleExportDrizzle}
-						sqlSource={sqlSource}
-						drizzleSource={schema ? convertSchemaToDrizzle(schema) : ''}
-						onCopySql={handleCopySql}
-						onCopyDrizzle={handleCopyDrizzle}
-					/>
-				)}
+						)
+					) : (
+						<ReactFlow
+							nodes={nodes}
+							edges={edges}
+							onNodesChange={onNodesChange}
+							onEdgesChange={onEdgesChange}
+							onNodeClick={(_, node) => handleSelectTable(node as Node<TableNodeData>)}
+							onNodeDragStop={(_, __, nextNodes) =>
+								handlePersistNodePositions(nextNodes ?? nodes)
+							}
+							onPaneClick={() => setSelectedTable(null)}
+							nodeTypes={NODE_TYPES}
+							edgeTypes={EDGE_TYPES}
+							nodesDraggable={editMode}
+							onlyRenderVisibleElements
+							fitView
+							fitViewOptions={{ padding: 0.12 }}
+							minZoom={0.1}
+							maxZoom={2}
+							proOptions={{ hideAttribution: true }}
+						>
+							<Background
+								variant={BackgroundVariant.Lines}
+								gap={24}
+								size={0.8}
+								color='rgba(255,255,255,0.07)'
+							/>
+							<Controls showInteractive={false} />
+							{showMinimap && (
+								<MiniMap
+									pannable
+									zoomable
+									nodeColor='hsl(220 10% 28%)'
+									maskColor='rgba(0,0,0,0.42)'
+								/>
+							)}
+						</ReactFlow>
+					)}
+					{selectedTable && (
+						<SchemaDetailsPanel
+							table={selectedTable}
+							onClose={() => setSelectedTable(null)}
+							onOpenTable={handleOpenSelectedTable}
+							onExportSql={handleExportSql}
+							onExportDrizzle={handleExportDrizzle}
+							sqlSource={sqlSource}
+							drizzleSource={schema ? convertSchemaToDrizzle(schema) : ''}
+							onCopySql={handleCopySql}
+							onCopyDrizzle={handleCopyDrizzle}
+						/>
+					)}
+				</div>
 			</div>
 			{exportPreview && (
 				<SchemaExportPreviewDialog

@@ -308,9 +308,7 @@ export async function streamContainerLogs(
 		const { Command } = await import('@tauri-apps/plugin-shell')
 		const command = Command.create('docker', ['logs', '-f', '--tail', String(tail), containerId])
 
-		command.on('close', (data) => {
-			console.log(`command finished with code ${data.code} and signal ${data.signal}`)
-		})
+		command.on('close', () => {})
 
 		command.on('error', (error) => {
 			console.error(`command error: "${error}"`)

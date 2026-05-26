@@ -111,11 +111,11 @@ export function buildConnectionString(params: ConnectionParams): string {
 		throw new Error('LibSQL requires a URL and auth token')
 	}
 
-	const user = params.user || config.defaultUser
+	const user = normalizeConnectionField(params.user) || config.defaultUser
 	const password = params.password || ''
-	const host = params.host || 'localhost'
+	const host = normalizeConnectionField(params.host) || 'localhost'
 	const port = params.port || config.defaultPort
-	const database = params.database || config.defaultDatabase
+	const database = normalizeConnectionField(params.database) || config.defaultDatabase
 
 	// Build base URL
 	const protocol = config.protocols[0]
@@ -382,6 +382,36 @@ function stripQuotes(s: string): string {
 	return trimmed
 }
 
+function stripTrailingShellComment(s: string): string {
+	let quote: '"' | "'" | null = null
+
+	for (let i = 0; i < s.length; i++) {
+		const char = s[i]
+
+		if (quote) {
+			if (char === quote) {
+				quote = null
+			}
+			continue
+		}
+
+		if (char === '"' || char === "'") {
+			quote = char
+			continue
+		}
+
+		if (char === '#' && (i === 0 || /\s/.test(s[i - 1]))) {
+			return s.slice(0, i).trimEnd()
+		}
+	}
+
+	return s
+}
+
+function normalizeConnectionField(value?: string): string {
+	return stripTrailingShellComment(value?.trim() || '')
+}
+
 type PsqlFlagOptions = {
 	host?: string
 	port?: string
@@ -610,6 +640,8 @@ export function sanitizeConnectionUrl(input: string): string {
 		value = assignedValue
 	}
 
+	value = stripTrailingShellComment(value).trim()
+
 	// Step 2: Strip outer quotes (single or double)
 	value = stripQuotes(value)
 
@@ -622,7 +654,7 @@ export function sanitizeConnectionUrl(input: string): string {
 	}
 
 	// Step 4: Strip any remaining outer quotes
-	value = stripQuotes(value)
+	value = stripTrailingShellComment(stripQuotes(value)).trim()
 
 	if (!isValidConnectionUrl(value)) {
 		const psqlUrl = postgresUrlFromPsqlFlags(input)

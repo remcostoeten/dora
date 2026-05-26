@@ -84,6 +84,14 @@ function getTable(tables: SchemaTable[], tableName: string): SchemaTable | undef
 	})
 }
 
+function normalizeTableReference(expression: string): string {
+	const trimmed = expression.trim().replace(/^['"`]|['"`]$/g, '')
+	const parts = trimmed.split('.').map(function (part) {
+		return part.trim()
+	})
+	return parts[parts.length - 1] || trimmed
+}
+
 function getColumn(table: SchemaTable, columnName: string): SchemaColumn | undefined {
 	return table.columns.find(function (column) {
 		return column.name === columnName
@@ -108,6 +116,10 @@ function tableSnippet(table: SchemaTable): string {
 	return `${table.name}).$0`
 }
 
+function tablePropertySnippet(table: SchemaTable): string {
+	return `${table.name}.$0`
+}
+
 function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
 	const columns = table.columns.filter(function (column) {
 		if (includePrimary) return true
@@ -123,12 +135,48 @@ function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
 	return `{ ${items.join(', ')} }`
 }
 
+function returningSnippet(table: SchemaTable): string {
+	const columns = table.columns.slice(0, 8)
+	const items = columns.map(function (column, index) {
+		const prefix = index === 0 ? '' : ' '
+		return `${prefix}${column.name}: ${table.name}.${column.name}`
+	})
+	return `{ ${items.join(',')} }`
+}
+
 function shouldSuggest(text: string): boolean {
 	return /[a-zA-Z0-9_.(),\s]/.test(text)
 }
 
 function hasChain(text: string, name: string): boolean {
 	return new RegExp(`\\.${name}\\(`).test(text)
+}
+
+function getChainTable(text: string): string | null {
+	const patterns = [
+		/\b(?:db|tx)\.(?:insert|update|delete)\(\s*([^)]+?)\s*\)/g,
+		/\.from\(\s*([^)]+?)\s*\)/g
+	]
+	let tableName: string | null = null
+	for (const pattern of patterns) {
+		let match: RegExpExecArray | null
+		while ((match = pattern.exec(text)) !== null) {
+			tableName = normalizeTableReference(match[1])
+		}
+	}
+	return tableName
+}
+
+function isInsideMethodCall(text: string, method: string): boolean {
+	return new RegExp(`\\.${method}\\(\\s*[\\w.]*$`).test(text)
+}
+
+function isInsideReturningParens(text: string): boolean {
+	return /\.returning\(\s*[\w{.]*$/.test(text)
+}
+
+function isInsideExecuteParens(text: string): boolean {
+	return /\b(?:db|tx)\.execute\(\s*$/.test(text)
 }
 
 function getJoinSnippet(leftTable: SchemaTable, rightTable: SchemaTable): string | null {
@@ -145,6 +193,32 @@ function getJoinSnippet(leftTable: SchemaTable, rightTable: SchemaTable): string
 
 function buildSuggestions(range: TextRange, suggestions: Suggestion[]): SuggestList {
 	return { suggestions: suggestions, incomplete: false }
+}
+
+function tableColumnSuggestions(
+	monaco: MonacoApi,
+	range: TextRange,
+	table: SchemaTable,
+	options?: {
+		sortPrefix?: string
+		wrap?: (column: SchemaColumn) => string
+		detail?: (column: SchemaColumn) => string
+		kind?: Monaco.languages.CompletionItemKind
+	}
+): Suggestion[] {
+	return table.columns.map(function (column, index) {
+		const insertText = options?.wrap
+			? options.wrap(column)
+			: `${table.name}.${column.name}`
+		return {
+			label: column.name,
+			kind: options?.kind ?? monaco.languages.CompletionItemKind.Field,
+			insertText,
+			detail: options?.detail ? options.detail(column) : column.type,
+			range,
+			sortText: `${options?.sortPrefix ?? ''}${String(index).padStart(3, '0')}`
+		}
+	})
 }
 
 function isDrizzleModel(model: Monaco.editor.ITextModel): boolean {
@@ -435,6 +509,163 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 					})
 					const range = getRange(monaco, model, position)
 
+					if (/\b(?:db|tx)\.query\.[\w]*$/.test(textUntilPosition)) {
+						return buildSuggestions(
+							range,
+							currentTables.map(function (table, index) {
+								return {
+									label: table.name,
+									kind: monaco.languages.CompletionItemKind.Property,
+									insertText: tablePropertySnippet(table),
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: 'Relational query table',
+									range,
+									sortText: String(index).padStart(3, '0'),
+									command: {
+										id: 'editor.action.triggerSuggest',
+										title: 'Trigger Suggest'
+									}
+								}
+							})
+						)
+					}
+
+					const relationalQueryMatch = textUntilPosition.match(
+						/\b(?:db|tx)\.query\.([a-zA-Z_][\w]*)\.[\w]*$/
+					)
+					if (relationalQueryMatch) {
+						const table = getTable(currentTables, relationalQueryMatch[1])
+						if (table) {
+							return buildSuggestions(range, [
+								{
+									label: 'findMany',
+									kind: monaco.languages.CompletionItemKind.Method,
+									insertText:
+										'findMany({\n  where: (${1:table}, { eq }) => eq(${1:table}.${2:id}, ${3:value}),\n  limit: ${4:100}\n})',
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: `Find ${table.name} rows`,
+									range,
+									sortText: '0'
+								},
+								{
+									label: 'findFirst',
+									kind: monaco.languages.CompletionItemKind.Method,
+									insertText:
+										'findFirst({\n  where: (${1:table}, { eq }) => eq(${1:table}.${2:id}, ${3:value})\n})',
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: `Find one ${table.name} row`,
+									range,
+									sortText: '1'
+								}
+							])
+						}
+					}
+
+					const relationalOptionsMatch = textUntilPosition.match(
+						/\b(?:db|tx)\.query\.([a-zA-Z_][\w]*)\.(?:findMany|findFirst)\(\{\s*[\w]*$/
+					)
+					if (relationalOptionsMatch) {
+						const table = getTable(currentTables, relationalOptionsMatch[1])
+						if (table) {
+							return buildSuggestions(range, [
+								{
+									label: 'where',
+									kind: monaco.languages.CompletionItemKind.Property,
+									insertText:
+										'where: (${1:table}, { eq }) => eq(${1:table}.${2:id}, ${3:value}),',
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: 'Relational filter',
+									range,
+									sortText: '0'
+								},
+								{
+									label: 'columns',
+									kind: monaco.languages.CompletionItemKind.Property,
+									insertText: `columns: ${valuesSnippet(table, true).replace(
+										/:\s*[^,}]+/g,
+										': true'
+									)},`,
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: 'Pick returned columns',
+									range,
+									sortText: '1'
+								},
+								{
+									label: 'orderBy',
+									kind: monaco.languages.CompletionItemKind.Property,
+									insertText:
+										'orderBy: (${1:table}, { desc }) => [desc(${1:table}.${2:id})],',
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: 'Relational ordering',
+									range,
+									sortText: '2'
+								},
+								{
+									label: 'limit',
+									kind: monaco.languages.CompletionItemKind.Property,
+									insertText: 'limit: ${1:100},',
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: 'Limit rows',
+									range,
+									sortText: '3'
+								},
+								{
+									label: 'offset',
+									kind: monaco.languages.CompletionItemKind.Property,
+									insertText: 'offset: ${1:0},',
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: 'Skip rows',
+									range,
+									sortText: '4'
+								}
+							])
+						}
+					}
+
+					if (isInsideExecuteParens(textUntilPosition)) {
+						const firstTable = currentTables[0]
+						return buildSuggestions(range, [
+							{
+								label: 'sql`SELECT ...`',
+								kind: monaco.languages.CompletionItemKind.Snippet,
+								insertText: firstTable
+									? 'sql`SELECT * FROM ${1:' + firstTable.name + '} LIMIT ${2:100}`)'
+									: 'sql`SELECT ${1:*}`)',
+								insertTextRules:
+									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								detail: 'Run raw SQL through Drizzle',
+								range,
+								sortText: '0'
+							},
+							{
+								label: 'sql``',
+								kind: monaco.languages.CompletionItemKind.Snippet,
+								insertText: 'sql`$0`)',
+								insertTextRules:
+									monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+								detail: 'Raw SQL template',
+								range,
+								sortText: '1'
+							}
+						])
+					}
+
 					const dbName = getDbName(textUntilPosition)
 					if (dbName) {
 						const suggestions: Suggestion[] = [
@@ -654,10 +885,34 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 						}
 					}
 
-					if (/\.where\(\s*$/.test(textUntilPosition)) {
+					if (/\.update\(\s*$/.test(textUntilPosition)) {
 						const fromMatch = textUntilPosition.match(
-							/\.from\(\s*([a-zA-Z_][\w]*)\s*\)/
+							/\.from\(\s*([^)]+?)\s*\)/
 						)
+						if (fromMatch) {
+							const table = getTable(
+								currentTables,
+								normalizeTableReference(fromMatch[1])
+							)
+							if (table) {
+								return buildSuggestions(range, [
+									{
+										label: 'update values',
+										kind: monaco.languages.CompletionItemKind.Struct,
+										insertText: `${valuesSnippet(table, false)})$0`,
+										insertTextRules:
+											monaco.languages.CompletionItemInsertTextRule
+												.InsertAsSnippet,
+										detail: 'Update values',
+										range: range
+									}
+								])
+							}
+						}
+					}
+
+					if (/\.where\(\s*$/.test(textUntilPosition)) {
+						const fromMatch = textUntilPosition.match(/\.from\(\s*([^)]+?)\s*\)/)
 						const baseSuggestions: Suggestion[] = [
 							{
 								label: 'eq',
@@ -773,9 +1028,34 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 							}
 						]
 
+						const directComparisonSuggestions: Suggestion[] = []
+
 						if (fromMatch) {
-							const table = getTable(currentTables, fromMatch[1])
+							const table = getTable(
+								currentTables,
+								normalizeTableReference(fromMatch[1])
+							)
 							if (table) {
+								table.columns.forEach(function (column, index) {
+									directComparisonSuggestions.push({
+										label: `${column.name} =`,
+										kind: monaco.languages.CompletionItemKind.Field,
+										insertText: `'${column.name}', '=', \${1:${getValueSnippet(
+											getTypeKind(column.type)
+										)}}`,
+										insertTextRules:
+											monaco.languages.CompletionItemInsertTextRule
+												.InsertAsSnippet,
+										detail: 'Direct comparison',
+										range: range,
+										sortText: `8${String(index).padStart(3, '0')}`,
+										command: {
+											id: 'editor.action.triggerSuggest',
+											title: 'Trigger Suggest'
+										}
+									})
+								})
+
 								const tableSuggestions: Suggestion[] = table.columns.map(
 									function (column, index) {
 										return {
@@ -793,11 +1073,84 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 								)
 								return buildSuggestions(
 									range,
-									baseSuggestions.concat(tableSuggestions)
+									baseSuggestions
+										.concat(directComparisonSuggestions)
+										.concat(tableSuggestions)
 								)
 							}
 						}
-						return buildSuggestions(range, baseSuggestions)
+						return buildSuggestions(range, baseSuggestions.concat(directComparisonSuggestions))
+					}
+
+					if (
+						isInsideMethodCall(textUntilPosition, 'orderBy') ||
+						isInsideMethodCall(textUntilPosition, 'groupBy')
+					) {
+						const tableName = getChainTable(textUntilPosition)
+						const table = tableName ? getTable(currentTables, tableName) : undefined
+						if (table) {
+							const isOrderBy = isInsideMethodCall(textUntilPosition, 'orderBy')
+							const suggestions = tableColumnSuggestions(monaco, range, table, {
+								sortPrefix: '1'
+							})
+							if (isOrderBy) {
+								return buildSuggestions(
+									range,
+									tableColumnSuggestions(monaco, range, table, {
+										sortPrefix: '1'
+									}).concat(
+										tableColumnSuggestions(monaco, range, table, {
+											sortPrefix: '2',
+											wrap: function (column) {
+												return `desc(${table.name}.${column.name})`
+											},
+											detail: function (column) {
+												return `Descending ${column.type}`
+											}
+										}),
+										tableColumnSuggestions(monaco, range, table, {
+											sortPrefix: '3',
+											wrap: function (column) {
+												return `asc(${table.name}.${column.name})`
+											},
+											detail: function (column) {
+												return `Ascending ${column.type}`
+											}
+										})
+									)
+								)
+							}
+							return buildSuggestions(range, suggestions)
+						}
+					}
+
+					if (isInsideReturningParens(textUntilPosition)) {
+						const tableName = getChainTable(textUntilPosition)
+						const table = tableName ? getTable(currentTables, tableName) : undefined
+						if (table) {
+							return buildSuggestions(range, [
+								{
+									label: 'selected columns',
+									kind: monaco.languages.CompletionItemKind.Struct,
+									insertText: returningSnippet(table),
+									insertTextRules:
+										monaco.languages.CompletionItemInsertTextRule
+											.InsertAsSnippet,
+									detail: `Return ${table.name} columns`,
+									range,
+									sortText: '0'
+								},
+								...tableColumnSuggestions(monaco, range, table, {
+									sortPrefix: '1',
+									wrap: function (column) {
+										return `{ ${column.name}: ${table.name}.${column.name} }`
+									},
+									detail: function (column) {
+										return `Return ${column.type}`
+									}
+								})
+							])
+						}
 					}
 
 					const joinMatch = getJoinMatch(textUntilPosition)

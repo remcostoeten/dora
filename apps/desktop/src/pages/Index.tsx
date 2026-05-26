@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Toaster } from "@/shared/ui/toaster";
 import { TooltipProvider } from "@/shared/ui/tooltip";
 import { useToast } from "@/shared/ui/use-toast";
 import { useAdapter } from "@/core/data-provider";
@@ -18,6 +17,7 @@ import {
 import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
 import { Connection } from "@/features/connections/types";
 import { AiAssistantPanel, useAiAssistantStore } from "@/features/ai-assistant";
+import type { AiAssistantEditorContext } from "@/features/ai-assistant/types";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { TabsProvider, useTabs } from "@/core/tabs";
@@ -83,6 +83,12 @@ function IndexInner() {
   const connectionInitializedRef = useRef(false);
 
   const [activeConnectionId, setActiveConnectionId] = useState<string>("");
+  const [sqlConsoleEditorContext, setSqlConsoleEditorContext] =
+    useState<AiAssistantEditorContext | null>(null);
+  const activeTabConnectionId = activeTab?.connectionId ?? "";
+  const studioConnectionId = activeTabConnectionId || activeConnectionId;
+  const sidebarSelectedTableId =
+    activeTabConnectionId && activeTabConnectionId !== activeConnectionId ? "" : selectedTableId;
 
   const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -306,7 +312,7 @@ function IndexInner() {
     ],
   );
 
-  async function handleAddConnection(connection: Omit<Connection, "id" | "status">) {
+  async function handleAddConnection(connection: Omit<Connection, "id" | "status" | "createdAt">) {
     try {
       const dbInfo = frontendToBackendDatabaseInfo(connection as Connection);
       const newConnection = await addConnection.mutateAsync({
@@ -317,7 +323,7 @@ function IndexInner() {
       setIsConnectionDialogOpen(false);
       setActiveConnectionId(newConnection.id);
       autoSelectFirstTableRef.current = true;
-      toast({ title: "Connection Added", description: `"${connection.name}" has been created and connected.` });
+      toast({ title: "Connection Added", description: `"${connection.name}" has been created and connected.`, variant: "success" });
     } catch (error) {
       toast({
         title: "Failed to Add Connection",
@@ -327,7 +333,7 @@ function IndexInner() {
     }
   }
 
-  async function handleUpdateConnection(connection: Omit<Connection, "id" | "status">) {
+  async function handleUpdateConnection(connection: Omit<Connection, "id" | "status" | "createdAt">) {
     if (!editingConnection) return;
     try {
       const dbInfo = frontendToBackendDatabaseInfo(connection as Connection);
@@ -339,7 +345,7 @@ function IndexInner() {
       });
       setIsConnectionDialogOpen(false);
       setEditingConnection(undefined);
-      toast({ title: "Connection Updated", description: `"${connection.name}" has been updated.` });
+      toast({ title: "Connection Updated", description: `"${connection.name}" has been updated.`, variant: "success" });
     } catch (error) {
       toast({
         title: "Failed to Update Connection",
@@ -360,7 +366,7 @@ function IndexInner() {
         setActiveConnectionId("");
       }
       closeTabsForConnection(connection.id);
-      toast({ title: "Connection Deleted", description: `"${connection.name}" has been removed.` });
+      toast({ title: "Connection Deleted", description: `"${connection.name}" has been removed.`, variant: "success" });
     } catch (error) {
       toast({
         title: "Failed to Delete Connection",
@@ -374,6 +380,16 @@ function IndexInner() {
     setActiveConnectionId(connectionId);
     autoSelectFirstTableRef.current = false;
   }
+
+  const handleTabClick = useCallback(function (tabId: string) {
+    const tab = tabs.find(function (candidate) {
+      return candidate.id === tabId;
+    });
+    if (tab && tab.connectionId !== activeConnectionId) {
+      setActiveConnectionId(tab.connectionId);
+    }
+    setActiveTab(tabId);
+  }, [activeConnectionId, setActiveTab, tabs]);
 
   function handleViewConnection(connectionId: string) {
     const connection = connections.find(function (c) {
@@ -456,7 +472,7 @@ function IndexInner() {
                 activeNavId={activeNavId}
                 onNavSelect={setActiveNavId}
                 onTableSelect={handleTableSelect}
-                selectedTableId={selectedTableId}
+                selectedTableId={sidebarSelectedTableId}
                 autoSelectFirstTable={autoSelectFirstTableRef.current}
                 onAutoSelectComplete={handleAutoSelectComplete}
                 connections={connections}
@@ -510,7 +526,7 @@ function IndexInner() {
                   <TabBar
                     tabs={tabs}
                     activeTabId={activeTabId}
-                    onTabClick={setActiveTab}
+                    onTabClick={handleTabClick}
                     onTabClose={closeTab}
                   />
                   <ErrorBoundary feature="Database Studio">
@@ -526,7 +542,7 @@ function IndexInner() {
                           updateSetting("lastRowPK", pk);
                         }
                       }}
-                      activeConnectionId={activeConnectionId}
+                      activeConnectionId={studioConnectionId}
                       onAddConnection={handleOpenNewConnection}
                     />
                   </ErrorBoundary>
@@ -536,6 +552,7 @@ function IndexInner() {
                   <SqlConsole
                     onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
                     activeConnectionId={activeConnectionId}
+                    onEditorContextChange={setSqlConsoleEditorContext}
                     getConnectionName={function (id) {
                       return connections.find(function (c) { return c.id === id; })?.name ?? id.slice(0, 8);
                     }}
@@ -601,6 +618,7 @@ function IndexInner() {
                   <SqlConsole
                     onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
                     activeConnectionId={activeConnectionId}
+                    onEditorContextChange={setSqlConsoleEditorContext}
                     getConnectionName={function (id) {
                       return connections.find(function (c) { return c.id === id; })?.name ?? id.slice(0, 8);
                     }}
@@ -641,6 +659,7 @@ function IndexInner() {
               activeView={activeNavId}
               selectedTableId={selectedTableId || null}
               selectedTableName={selectedTableName || null}
+              editorContext={activeNavId === "sql-console" ? sqlConsoleEditorContext : null}
             />
           </div>
         </div>

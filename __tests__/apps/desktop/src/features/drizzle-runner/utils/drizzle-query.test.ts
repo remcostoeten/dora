@@ -67,6 +67,24 @@ describe('drizzleQueryToSql', function () {
 		)
 	})
 
+	it('converts a simple Drizzle update with eq where', function () {
+		expect(
+			drizzleQueryToSql(
+				"db.update(user).set({ name: 'New Name' }).where(eq(user.email, 'notprisma@gmail.com'))"
+			)
+		).toBe(
+			'UPDATE "user" SET name = \'New Name\' WHERE email = \'notprisma@gmail.com\''
+		)
+	})
+
+	it('converts simple update literals', function () {
+		expect(
+			drizzleQueryToSql(
+				"tx.update(users).set({ active: true, age: 42, deletedAt: null }).where(ne(users.id, 1))"
+			)
+		).toBe('UPDATE users SET active = true, age = 42, deletedAt = NULL WHERE id != 1')
+	})
+
 	it('rejects unsupported chains instead of sending JavaScript to the SQL backend', function () {
 		expect(function () {
 			drizzleQueryToSql('db.select().from(messages).groupBy(messages.id)')

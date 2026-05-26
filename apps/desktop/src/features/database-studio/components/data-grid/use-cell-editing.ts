@@ -52,9 +52,31 @@ export function useCellEditing({
 		columnName: string,
 		currentValue: unknown
 	) {
-		setEditingCell({ rowIndex, columnName })
+		const nextEditingCell = { rowIndex, columnName }
+		editingCellRef.current = nextEditingCell
+		setEditingCell(nextEditingCell)
 		setEditValue(valueToEditString(currentValue))
 	}, [])
+
+	const commitEdit = useCallback(
+		function ({ clear, refocus }: { clear: boolean; refocus: boolean }) {
+			const cell = editingCellRef.current
+			const value = editValueRef.current
+			if (cell && onCellEdit) {
+				onCellEdit(cell.rowIndex, cell.columnName, value)
+			}
+
+			if (!clear) return
+
+			editingCellRef.current = null
+			setEditingCell(null)
+			setEditValue('')
+			if (refocus) {
+				refocusGrid()
+			}
+		},
+		[onCellEdit, refocusGrid]
+	)
 
 	const handleSaveEdit = useCallback(
 		function () {
@@ -62,21 +84,14 @@ export function useCellEditing({
 				skipNextBlurSaveRef.current = false
 				return
 			}
-			const cell = editingCellRef.current
-			const value = editValueRef.current
-			if (cell && onCellEdit) {
-				onCellEdit(cell.rowIndex, cell.columnName, value)
-			}
-			editingCellRef.current = null
-			setEditingCell(null)
-			setEditValue('')
-			refocusGrid()
+			commitEdit({ clear: true, refocus: true })
 		},
-		[onCellEdit, refocusGrid]
+		[commitEdit]
 	)
 
 	const handleCancelEdit = useCallback(
 		function () {
+			editingCellRef.current = null
 			setEditingCell(null)
 			setEditValue('')
 			refocusGrid()
@@ -89,9 +104,7 @@ export function useCellEditing({
 			const cell = editingCellRef.current
 			if (!cell) return
 
-			if (onCellEdit) {
-				onCellEdit(cell.rowIndex, cell.columnName, editValueRef.current)
-			}
+			commitEdit({ clear: false, refocus: false })
 
 			skipNextBlurSaveRef.current = true
 
@@ -118,13 +131,15 @@ export function useCellEditing({
 			}
 
 			const newPos = { row: nextRow, col: nextCol }
+			const nextEditingCell = { rowIndex: nextRow, columnName: columns[nextCol].name }
 			setFocusedCell(newPos)
 			setAnchorCell(newPos)
 			updateCellSelection(new Set([getCellKey(nextRow, nextCol)]))
-			setEditingCell({ rowIndex: nextRow, columnName: columns[nextCol].name })
+			editingCellRef.current = nextEditingCell
+			setEditingCell(nextEditingCell)
 			setEditValue(valueToEditString(rows[nextRow][columns[nextCol].name]))
 		},
-		[columns, onCellEdit, rows, setAnchorCell, setFocusedCell, updateCellSelection]
+		[columns, commitEdit, rows, setAnchorCell, setFocusedCell, updateCellSelection]
 	)
 
 	const handleEditKeyDown = useCallback(

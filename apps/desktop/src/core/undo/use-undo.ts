@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react'
-import { toast } from '@/shared/ui/sonner'
+import { toast } from '@/shared/ui/notifier'
 import { useDataMutation } from '@/core/data-provider'
 import { useUndoStore, Mutation, CellMutation, BatchCellMutation } from './undo-store'
 

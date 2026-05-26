@@ -9,6 +9,15 @@ export function mapConnectionError(error: Error | string): string {
 	}
 
 	if (
+		msg.includes('keyring') ||
+		msg.includes('credential store') ||
+		msg.includes('secret service') ||
+		msg.includes('kwallet')
+	) {
+		return 'Could not save credentials because the OS credential store is unavailable. Unlock or restart your keyring and try again.'
+	}
+
+	if (
 		msg.includes('authentication') ||
 		msg.includes('password') ||
 		msg.includes('access denied')

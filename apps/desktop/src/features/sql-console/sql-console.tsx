@@ -7,6 +7,7 @@ import {
 	SQL_CONSOLE_PALETTE_EVENT,
 	type SqlConsolePaletteCommand
 } from '@/features/command-palette/events'
+import type { AiAssistantEditorContext } from '@/features/ai-assistant/types'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
 
@@ -31,6 +32,7 @@ type Props = {
 	onToggleSidebar?: () => void
 	activeConnectionId?: string
 	getConnectionName?: (id: string) => string
+	onEditorContextChange?: (context: AiAssistantEditorContext | null) => void
 }
 
 export function SqlConsole(props: Props) {
@@ -44,7 +46,8 @@ export function SqlConsole(props: Props) {
 function SqlConsoleInner({
 	onToggleSidebar: _onToggleSidebar,
 	activeConnectionId,
-	getConnectionName
+	getConnectionName,
+	onEditorContextChange
 }: Props) {
 	const adapter = useAdapter()
 	const isTauri = useIsTauri()
@@ -91,6 +94,21 @@ function SqlConsoleInner({
 	const [tables, setTables] = useState<TableInfo[]>([])
 
 	const { addToHistory } = useQueryHistory()
+
+	useEffect(
+		function syncAiEditorContext() {
+			if (!onEditorContextChange) return
+			onEditorContextChange({
+				mode,
+				content: mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
+			})
+
+			return function clearAiEditorContext() {
+				onEditorContextChange(null)
+			}
+		},
+		[mode, currentSqlQuery, currentDrizzleQuery, onEditorContextChange]
+	)
 
 	const refreshSchema = useCallback(async () => {
 		if (!activeConnectionId) {

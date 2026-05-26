@@ -51,6 +51,7 @@ export function generateDrizzleTypes(tables: SchemaTable[]): string {
  */
 
 type DrizzleValue = string | number | boolean | Date | bigint | Uint8Array | null;
+type DirectWhereOperator = '=' | '!=' | '>' | '>=' | '<' | '<=' | 'like' | 'ilike';
 
 interface Column<TData, TName extends string = string> {
     readonly _brand: 'Column';
@@ -149,10 +150,19 @@ interface RelationalQuery<TRow, TColumns> {
 
 interface QueryBuilder<TResult> {
     where(condition: SQL<boolean> | undefined): QueryBuilder<TResult>;
+    where(column: string, operator: DirectWhereOperator, value: DrizzleValue): QueryBuilder<TResult>;
     orderBy(...columns: (AnyColumn | SQL<unknown>)[]): QueryBuilder<TResult>;
     groupBy(...columns: AnyColumn[]): QueryBuilder<TResult>;
     limit(limit: number): QueryBuilder<TResult>;
     offset(offset: number): QueryBuilder<TResult>;
+    update(values: Record<string, DrizzleValue>): {
+        where(column: string, operator: DirectWhereOperator, value: DrizzleValue): {
+            returning(): Promise<unknown[]>;
+            execute(): Promise<void>;
+        };
+        returning(): Promise<unknown[]>;
+        execute(): Promise<void>;
+    };
     leftJoin<TRight extends AnyTable>(table: TRight, condition: SQL<boolean>): QueryBuilder<TResult>;
     innerJoin<TRight extends AnyTable>(table: TRight, condition: SQL<boolean>): QueryBuilder<TResult>;
     rightJoin<TRight extends AnyTable>(table: TRight, condition: SQL<boolean>): QueryBuilder<TResult>;
@@ -165,6 +175,7 @@ interface SelectBuilder<TSelection = undefined> {
     from<TTable extends Table<string, unknown, unknown>>(
         table: TTable
     ): QueryBuilder<TSelection extends undefined ? TTable['_']['inferSelect'] : SelectedFields<TSelection>>;
+    from(table: string): QueryBuilder<any>;
 }
 
 interface InsertBuilder<TColumns> {
@@ -229,10 +240,15 @@ declare function asc(column: AnyColumn): SQL<unknown>;
 declare function desc(column: AnyColumn): SQL<unknown>;
 declare function count(): SQL<number>;
 declare function count(column: AnyColumn): SQL<number>;
+declare function countDistinct(column: AnyColumn): SQL<number>;
 declare function sum(column: Column<number>): SQL<number>;
+declare function sumDistinct(column: Column<number>): SQL<number>;
 declare function avg(column: Column<number>): SQL<number>;
 declare function min<T>(column: Column<T>): SQL<T>;
 declare function max<T>(column: Column<T>): SQL<T>;
+declare function arrayContains<T>(column: Column<T[]>, values: T[]): SQL<boolean>;
+declare function arrayContained<T>(column: Column<T[]>, values: T[]): SQL<boolean>;
+declare function arrayOverlaps<T>(column: Column<T[]>, values: T[]): SQL<boolean>;
 declare function sql<T = unknown>(strings: TemplateStringsArray, ...params: unknown[]): SQL<T>;
 declare function param<T>(value?: T): T;
 
@@ -260,10 +276,15 @@ declare module 'drizzle-orm' {
     export function desc(column: AnyColumn): SQL<unknown>;
     export function count(): SQL<number>;
     export function count(column: AnyColumn): SQL<number>;
+    export function countDistinct(column: AnyColumn): SQL<number>;
     export function sum(column: Column<number>): SQL<number>;
+    export function sumDistinct(column: Column<number>): SQL<number>;
     export function avg(column: Column<number>): SQL<number>;
     export function min<T>(column: Column<T>): SQL<T>;
     export function max<T>(column: Column<T>): SQL<T>;
+    export function arrayContains<T>(column: Column<T[]>, values: T[]): SQL<boolean>;
+    export function arrayContained<T>(column: Column<T[]>, values: T[]): SQL<boolean>;
+    export function arrayOverlaps<T>(column: Column<T[]>, values: T[]): SQL<boolean>;
     export function sql<T = unknown>(strings: TemplateStringsArray, ...params: unknown[]): SQL<T>;
     export function param<T>(value?: T): T;
 }
@@ -429,10 +450,15 @@ export function getDrizzleHelpers(): string[] {
 		'asc',
 		'desc',
 		'count',
+		'countDistinct',
 		'sum',
+		'sumDistinct',
 		'avg',
 		'min',
 		'max',
+		'arrayContains',
+		'arrayContained',
+		'arrayOverlaps',
 		'param'
 	]
 }

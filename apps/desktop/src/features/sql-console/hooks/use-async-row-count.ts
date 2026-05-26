@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAdapter } from '@/core/data-provider/context'
+import { getAdapterError } from '@/core/data-provider/types'
+import type { DatabaseType } from '@/features/connections/types'
 
 type AsyncRowCountState = {
 	count: number | null
@@ -28,6 +30,7 @@ export function useAsyncRowCount(
 	})
 
 	const cacheRef = useRef<Map<string, { count: number; fetchedAt: number }>>(new Map())
+	const dialectCacheRef = useRef<Map<string, DatabaseType>>(new Map())
 	const abortRef = useRef<boolean>(false)
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -35,6 +38,106 @@ export function useAsyncRowCount(
 
 	function getCacheKey(connId: string, table: string): string {
 		return `${connId}:${table}`
+	}
+
+	function splitIdentifier(value: string): string[] {
+		const parts: string[] = []
+		let current = ''
+		let quote: '"' | '`' | '[' | null = null
+
+		for (let index = 0; index < value.length; index++) {
+			const char = value[index]
+			const next = value[index + 1]
+
+			if (quote) {
+				current += char
+
+				if (quote === '"' && char === '"' && next === '"') {
+					current += next
+					index++
+					continue
+				}
+
+				if (quote === '`' && char === '`' && next === '`') {
+					current += next
+					index++
+					continue
+				}
+
+				if (
+					(quote === '"' && char === '"') ||
+					(quote === '`' && char === '`') ||
+					(quote === '[' && char === ']')
+				) {
+					quote = null
+				}
+				continue
+			}
+
+			if (char === '"' || char === '`' || char === '[') {
+				quote = char
+				current += char
+				continue
+			}
+
+			if (char === '.') {
+				parts.push(current.trim())
+				current = ''
+				continue
+			}
+
+			current += char
+		}
+
+		parts.push(current.trim())
+		return parts.filter(Boolean)
+	}
+
+	function unquoteIdentifierPart(value: string): string {
+		const trimmed = value.trim()
+		if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+			return trimmed.slice(1, -1).replace(/""/g, '"')
+		}
+		if (trimmed.startsWith('`') && trimmed.endsWith('`') && trimmed.length >= 2) {
+			return trimmed.slice(1, -1).replace(/``/g, '`')
+		}
+		if (trimmed.startsWith('[') && trimmed.endsWith(']') && trimmed.length >= 2) {
+			return trimmed.slice(1, -1).replace(/]]/g, ']')
+		}
+		return trimmed
+	}
+
+	function quoteIdentifierPart(value: string, dialect?: DatabaseType): string {
+		if (dialect === 'mysql') {
+			return `\`${value.replace(/`/g, '``')}\``
+		}
+
+		return `"${value.replace(/"/g, '""')}"`
+	}
+
+	function getSafeTableIdentifier(table: string, dialect?: DatabaseType): string | null {
+		const parts = splitIdentifier(table).map(unquoteIdentifierPart).filter(Boolean)
+		if (parts.length === 0 || parts.length > 2) return null
+
+		return parts.map(function (part) {
+			return quoteIdentifierPart(part, dialect)
+		}).join('.')
+	}
+
+	async function resolveConnectionDialect(connId: string): Promise<DatabaseType | undefined> {
+		const cached = dialectCacheRef.current.get(connId)
+		if (cached) return cached
+
+		const connections = await adapter.getConnections()
+		if (!connections.ok) return undefined
+
+		const connection = connections.data.find(function (item) {
+			return item.id === connId
+		})
+		if (!connection) return undefined
+
+		dialectCacheRef.current.set(connId, connection.type)
+		return connection.type
 	}
 
 	const fetchCount = useCallback(
@@ -63,26 +166,47 @@ export function useAsyncRowCount(
 			})
 
 			debounceRef.current = setTimeout(function () {
-				const query = `SELECT COUNT(*) AS total FROM ${tableName}`
-
-				adapter.executeQuery(connectionId, query).then(function (res) {
+				resolveConnectionDialect(connectionId).then(function (dialect) {
 					if (abortRef.current) return
 
-					if (res.ok && res.data.rows.length > 0) {
-						const row = res.data.rows[0]
-						const rawCount = row.total ?? row.count ?? row['COUNT(*)'] ?? row['count(*)']
-						const count = typeof rawCount === 'number' ? rawCount : parseInt(String(rawCount), 10)
-
-						if (!isNaN(count)) {
-							cacheRef.current.set(key, { count, fetchedAt: Date.now() })
-							setState({ count, isLoading: false, error: null })
-						} else {
-							setState({ count: null, isLoading: false, error: 'Unexpected count format' })
-						}
-					} else {
-						const errorMsg = !res.ok ? res.error : 'No rows returned'
-						setState({ count: null, isLoading: false, error: errorMsg })
+					const tableIdentifier = getSafeTableIdentifier(tableName, dialect)
+					if (!tableIdentifier) {
+						setState({
+							count: null,
+							isLoading: false,
+							error: 'Unsupported table identifier'
+						})
+						return
 					}
+
+					const query = `SELECT COUNT(*) AS total FROM ${tableIdentifier}`
+
+					adapter.executeQuery(connectionId, query).then(function (res) {
+						if (abortRef.current) return
+
+						if (res.ok && res.data.rows.length > 0) {
+							const row = res.data.rows[0]
+							const rawCount = row.total ?? row.count ?? row['COUNT(*)'] ?? row['count(*)']
+							const count = typeof rawCount === 'number' ? rawCount : parseInt(String(rawCount), 10)
+
+							if (!isNaN(count)) {
+								cacheRef.current.set(key, { count, fetchedAt: Date.now() })
+								setState({ count, isLoading: false, error: null })
+							} else {
+								setState({ count: null, isLoading: false, error: 'Unexpected count format' })
+							}
+						} else {
+							const errorMsg = !res.ok ? getAdapterError(res) : 'No rows returned'
+							setState({ count: null, isLoading: false, error: errorMsg })
+						}
+					}).catch(function (err) {
+						if (abortRef.current) return
+						setState({
+							count: null,
+							isLoading: false,
+							error: err instanceof Error ? err.message : 'Unknown error'
+						})
+					})
 				}).catch(function (err) {
 					if (abortRef.current) return
 					setState({

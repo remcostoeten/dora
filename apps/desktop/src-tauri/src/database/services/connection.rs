@@ -8,72 +8,13 @@ use uuid::Uuid;
 use crate::{
     credentials,
     database::{
-        postgres::connect::connect,
-        types::{
-            is_postgres_pooler_url, ConnectionInfo, Database, DatabaseConnection, DatabaseInfo,
-        },
+        postgres::{connect::connect, connection_string::clean_postgres_connection_string},
+        types::{ConnectionInfo, Database, DatabaseConnection, DatabaseInfo},
         Certificates, ConnectionMonitor,
     },
     error::Error,
     storage::Storage,
 };
-
-fn clean_postgres_connection_string(connection_string: &str) -> (String, bool, bool) {
-    let Ok(mut url) = url::Url::parse(connection_string) else {
-        return (connection_string.to_string(), false, false);
-    };
-
-    let is_pooler = is_postgres_pooler_url(&url);
-    let mut disable_channel_binding = is_pooler;
-    let mut verify_tls = false;
-    let mut has_sslmode = false;
-    let params: Vec<_> = url
-        .query_pairs()
-        .filter_map(|(key, value)| {
-            if key == "channel_binding" {
-                disable_channel_binding = true;
-                None
-            } else if key == "sslmode" && matches!(value.as_ref(), "verify-ca" | "verify-full") {
-                has_sslmode = true;
-                verify_tls = true;
-                Some((key.into_owned(), "require".to_string()))
-            } else if key == "sslmode" {
-                has_sslmode = true;
-                Some((key.into_owned(), value.into_owned()))
-            } else if is_dora_postgres_option(&key) {
-                // Strip Dora/ORM-style client hints; tokio_postgres::Config
-                // rejects unknown query params. These are detected separately
-                // from the raw connection string before parsing.
-                None
-            } else {
-                Some((key.into_owned(), value.into_owned()))
-            }
-        })
-        .collect();
-
-    url.query_pairs_mut().clear().extend_pairs(params);
-    if is_pooler && !has_sslmode {
-        url.query_pairs_mut().append_pair("sslmode", "require");
-    }
-    if url.query().is_some_and(str::is_empty) {
-        url.set_query(None);
-    }
-
-    (url.to_string(), disable_channel_binding, verify_tls)
-}
-
-fn is_dora_postgres_option(key: &str) -> bool {
-    matches!(
-        key.to_ascii_lowercase().as_str(),
-        "pgbouncer"
-            | "pooler"
-            | "simple_query"
-            | "prepared_statements"
-            | "prepared_statement"
-            | "statement_cache_size"
-            | "statement_cache_capacity"
-    )
-}
 
 pub struct ConnectionService<'a> {
     pub connections: &'a DashMap<Uuid, DatabaseConnection>,
@@ -90,10 +31,16 @@ impl<'a> ConnectionService<'a> {
     ) -> Result<ConnectionInfo, Error> {
         let id = Uuid::new_v4();
 
-        let (database_info, password) = credentials::extract_sensitive_data(database_info)?;
+        let original_database_info = database_info.clone();
+        let (mut database_info, password) = credentials::extract_sensitive_data(database_info)?;
 
         if let Some(password) = password {
-            credentials::store_sensitive_data(&id, &password)?;
+            if let Err(error) = credentials::store_sensitive_data(&id, &password) {
+                log::warn!(
+                    "Could not store password in OS credential store for connection {id}; falling back to encrypted connection storage: {error}"
+                );
+                database_info = original_database_info;
+            }
         }
 
         let connection = DatabaseConnection::new(id, name, database_info);
@@ -117,10 +64,16 @@ impl<'a> ConnectionService<'a> {
         database_info: DatabaseInfo,
         color: Option<i32>,
     ) -> Result<ConnectionInfo, Error> {
-        let (database_info, password) = credentials::extract_sensitive_data(database_info)?;
+        let original_database_info = database_info.clone();
+        let (mut database_info, password) = credentials::extract_sensitive_data(database_info)?;
         let password_changed = password.is_some();
         if let Some(password) = password {
-            credentials::store_sensitive_data(&conn_id, &password)?;
+            if let Err(error) = credentials::store_sensitive_data(&conn_id, &password) {
+                log::warn!(
+                    "Could not store password in OS credential store for connection {conn_id}; falling back to encrypted connection storage: {error}"
+                );
+                database_info = original_database_info;
+            }
         }
 
         if let Some(mut connection_entry) = self.connections.get_mut(&conn_id) {
@@ -919,8 +872,9 @@ impl ConnectionService<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::clean_postgres_connection_string;
-    use crate::database::types::detect_pgbouncer_flag;
+    use crate::database::{
+        postgres::connection_string::clean_postgres_connection_string, types::detect_pgbouncer_flag,
+    };
 
     #[test]
     fn pooler_host_enables_simple_query_mode_without_provider_specific_flag() {

@@ -61,6 +61,29 @@ type Props = {
 	onRowSelectionChange?: (pk: string | number | null) => void
 }
 
+function areCellValuesEqual(a: unknown, b: unknown): boolean {
+	if (Object.is(a, b)) return true
+	if (typeof a !== typeof b) return false
+	if (a === null || b === null) return false
+	if (Array.isArray(a) || Array.isArray(b)) {
+		if (!Array.isArray(a) || !Array.isArray(b)) return false
+		if (a.length !== b.length) return false
+		return a.every(function (value, index) {
+			return areCellValuesEqual(value, b[index])
+		})
+	}
+	if (typeof a === 'object' && typeof b === 'object') {
+		const aRecord = a as Record<string, unknown>
+		const bRecord = b as Record<string, unknown>
+		const aKeys = Object.keys(aRecord).sort()
+		const bKeys = Object.keys(bRecord).sort()
+		if (aKeys.length !== bKeys.length) return false
+		return aKeys.every(function (key, index) {
+			return key === bKeys[index] && areCellValuesEqual(aRecord[key], bRecord[key])
+		})
+	}
+	return false
+}
 
 function buildTableCacheKey(
 	connectionId: string | undefined,
@@ -77,6 +100,15 @@ function buildTableCacheKey(
 		offset,
 		sort: sort || null,
 		filters
+	})
+}
+
+function schemaHasTable(schema: { tables: Array<{ name: string; schema?: string | null }> }, tableRef: string) {
+	const { tableName, schemaName } = getTableRefParts(tableRef)
+	return schema.tables.some(function (table) {
+		if (table.name !== tableName) return false
+		if (!schemaName) return true
+		return table.schema === schemaName
 	})
 }
 
@@ -133,6 +165,7 @@ export function DatabaseStudio({
 	const [isTableTransitioning, setIsTableTransitioning] = useState(!initialCacheEntry)
 	const [viewMode, setViewMode] = useState<ViewMode>('content')
 	const previousTableRef = useRef<{ columns: number; rows: number } | null>(null)
+	const loadRequestIdRef = useRef(0)
 	const [pagination, setPagination] = useState<PaginationState>({ limit: 50, offset: 0 })
 	const [sort, setSort] = useState<SortDescriptor | undefined>()
 	const [filters, setFilters] = useState<FilterDescriptor[]>([])
@@ -265,11 +298,23 @@ export function DatabaseStudio({
 	)
 
 	const loadTableData = useCallback(async () => {
+		const requestId = loadRequestIdRef.current + 1
+		loadRequestIdRef.current = requestId
+		const isCurrentRequest = function () {
+			return loadRequestIdRef.current === requestId
+		}
+
 		if (!tableId || !activeConnectionId) {
+			setIsLoading(false)
 			return
 		}
 
+		setIsLoading(true)
+		setSelectedRows(new Set())
+
+		let schemaForTable: Awaited<ReturnType<typeof adapter.getSchema>> | null = null
 		const cached = tableDataCache.get(currentCacheKey)
+
 		if (cached) {
 			setTableData(cached.data)
 			if (cached.visibleColumns.length > 0) {
@@ -278,8 +323,23 @@ export function DatabaseStudio({
 			setIsTableTransitioning(false)
 		}
 
-		setIsLoading(true)
-		setSelectedRows(new Set())
+		try {
+			schemaForTable = await adapter.getSchema(activeConnectionId)
+			if (!isCurrentRequest()) return
+			if (schemaForTable.ok && !schemaHasTable(schemaForTable.data, tableRefName)) {
+				console.warn('[DatabaseStudio] Skipping stale table selection:', {
+					connectionId: activeConnectionId,
+					tableRefName
+				})
+				setTableData(null)
+				setIsTableTransitioning(false)
+				setIsLoading(false)
+				return
+			}
+		} catch (error) {
+			if (!isCurrentRequest()) return
+			console.error('[DatabaseStudio] Failed to validate selected table:', error)
+		}
 
 		try {
 			const result = await adapter.fetchTableData(
@@ -290,12 +350,14 @@ export function DatabaseStudio({
 				sort,
 				filters
 			)
+			if (!isCurrentRequest()) return
 
 			if (result.ok) {
 				const data = result.data
 
 				// Enrich columns with FK metadata from schema
-				const schemaResult = await adapter.getSchema(activeConnectionId)
+				const schemaResult = schemaForTable ?? await adapter.getSchema(activeConnectionId)
+				if (!isCurrentRequest()) return
 				if (schemaResult.ok) {
 					const { tableName: tableNamePart, schemaName } = getTableRefParts(tableRefName ?? '')
 					data.columns = enrichColumnsWithFKs(data.columns, schemaResult.data, tableNamePart, schemaName ?? undefined)
@@ -322,6 +384,7 @@ export function DatabaseStudio({
 					visibleColumns: nextVisibleColumns
 				})
 			} else {
+				if (!isCurrentRequest()) return
 				console.error(
 					'[DatabaseStudio] Failed to load table data:',
 					getAdapterError(result)
@@ -331,17 +394,21 @@ export function DatabaseStudio({
 				}
 			}
 		} catch (error) {
+			if (!isCurrentRequest()) return
 			console.error('[DatabaseStudio] Unexpected error loading table data:', error)
 			if (!cached) {
 				setTableData(null)
 			}
 		} finally {
-			setIsLoading(false)
+			if (isCurrentRequest()) {
+				setIsLoading(false)
+			}
 		}
 	}, [
 		adapter,
 		tableId,
 		tableName,
+		tableRefName,
 		activeConnectionId,
 		currentCacheKey,
 		pagination.limit,
@@ -1047,9 +1114,19 @@ export function DatabaseStudio({
 		if (!tableId || !activeConnectionId || !tableData) return
 
 		const row = tableData.rows[rowIndex]
+		if (!row) return
+
 		const editedColumn = tableData.columns.find(function (c) {
 			return c.name === columnName
 		})
+		const normalizedNewValue = editedColumn
+			? normalizeValueForInsert(editedColumn, newValue)
+			: newValue
+
+		if (areCellValuesEqual(row[columnName], normalizedNewValue)) {
+			return
+		}
+
 		const primaryKeyColumn = tableData.columns.find(function (c) {
 			return c.primaryKey
 		})
@@ -1063,15 +1140,22 @@ export function DatabaseStudio({
 			return
 		}
 
-		const normalizedNewValue = editedColumn
-			? normalizeValueForInsert(editedColumn, newValue)
-			: newValue
-
 		if (isDryEditMode) {
 			// Check if there's already a pending edit to preserve the ORIGINAL value
 			const key = `${tableId}:${String(row[primaryKeyColumn.name])}:${columnName}`
 			const existingEdit = pendingEdits.get(key)
 			const oldValue = existingEdit ? existingEdit.oldValue : row[columnName]
+
+			if (areCellValuesEqual(oldValue, normalizedNewValue)) {
+				removeEdit(tableId, key)
+				setTableData(function (prev) {
+					if (!prev) return prev
+					const newRows = [...prev.rows]
+					newRows[rowIndex] = { ...newRows[rowIndex], [columnName]: oldValue }
+					return { ...prev, rows: newRows }
+				})
+				return
+			}
 
 			addEdit(tableId, {
 				rowIndex,
@@ -1744,7 +1828,11 @@ export function DatabaseStudio({
 				window.dispatchEvent(
 					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
 				)
-				toast({ title: 'Table dropped', description: `"${tableName}" has been removed.` })
+				toast({
+					title: 'Table dropped',
+					description: `"${tableName}" has been removed.`,
+					variant: 'success'
+				})
 			} else {
 				const errorMessage = getAdapterError(result)
 				console.error('Failed to drop table:', errorMessage)

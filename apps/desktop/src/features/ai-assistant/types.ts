@@ -24,10 +24,16 @@ export type AiAssistantColumnContext = {
 	foreignKey?: string
 }
 
+export type AiAssistantEditorContext = {
+	mode: 'sql' | 'drizzle'
+	content: string
+}
+
 export type AiAssistantContext = {
 	activeView?: string
 	activeConnectionId?: string | null
 	selectedTableId?: string | null
 	selectedTableName?: string | null
 	selectedTableColumns?: AiAssistantColumnContext[]
+	editor?: AiAssistantEditorContext | null
 }

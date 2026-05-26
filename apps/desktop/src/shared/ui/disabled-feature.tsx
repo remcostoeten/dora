@@ -1,4 +1,4 @@
-import { toast } from 'sonner'
+import { toast } from '@/shared/ui/notifier'
 import { cn } from '@/shared/utils/cn'
 import { Button } from './button'
 import type { ComponentProps, ReactNode } from 'react'

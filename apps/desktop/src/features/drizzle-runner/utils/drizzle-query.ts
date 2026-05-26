@@ -51,6 +51,107 @@ function normalizeTableExpression(expression: string): string | undefined {
 	return parts.join('.')
 }
 
+function sqlIdentifier(identifier: string): string {
+	const reserved = new Set(['user', 'order', 'group', 'select', 'table'])
+	return identifier
+		.split('.')
+		.map(function (part) {
+			if (reserved.has(part.toLowerCase())) return `"${part.replace(/"/g, '""')}"`
+			return part
+		})
+		.join('.')
+}
+
+function splitTopLevelList(source: string): string[] {
+	const parts: string[] = []
+	let current = ''
+	let quote: string | null = null
+	let escape = false
+
+	for (const char of source) {
+		if (escape) {
+			current += char
+			escape = false
+			continue
+		}
+		if (char === '\\') {
+			current += char
+			escape = true
+			continue
+		}
+		if (quote) {
+			current += char
+			if (char === quote) quote = null
+			continue
+		}
+		if (char === "'" || char === '"' || char === '`') {
+			current += char
+			quote = char
+			continue
+		}
+		if (char === ',') {
+			parts.push(current.trim())
+			current = ''
+			continue
+		}
+		current += char
+	}
+
+	if (current.trim()) parts.push(current.trim())
+	return parts
+}
+
+function parseSqlLiteral(source: string): string | undefined {
+	const value = source.trim()
+	const quoted = value.match(/^(['"`])([\s\S]*)\1$/)
+	if (quoted) {
+		return `'${quoted[2].replace(/'/g, "''")}'`
+	}
+	if (/^-?\d+(?:\.\d+)?$/.test(value)) return value
+	if (/^(true|false)$/i.test(value)) return value.toLowerCase()
+	if (/^null$/i.test(value)) return 'NULL'
+	return undefined
+}
+
+function parseObjectAssignments(source: string): string[] | undefined {
+	const body = source.trim().replace(/^\{/, '').replace(/\}$/, '').trim()
+	if (!body) return undefined
+
+	const assignments: string[] = []
+	for (const entry of splitTopLevelList(body)) {
+		const match = entry.match(/^([A-Za-z_][\w$]*|['"`][^'"`]+['"`])\s*:\s*([\s\S]+)$/)
+		if (!match) return undefined
+		const key = match[1].replace(/^['"`]|['"`]$/g, '')
+		const value = parseSqlLiteral(match[2])
+		if (value === undefined) return undefined
+		assignments.push(`${sqlIdentifier(key)} = ${value}`)
+	}
+
+	return assignments
+}
+
+function parseWhereExpression(source: string): string | undefined {
+	const match = source
+		.trim()
+		.match(/^(eq|ne|gt|gte|lt|lte|like|ilike)\(\s*([A-Za-z_][\w$]*)\.([A-Za-z_][\w$]*)\s*,\s*([\s\S]+)\)$/)
+	if (!match) return undefined
+
+	const operatorMap: Record<string, string> = {
+		eq: '=',
+		ne: '!=',
+		gt: '>',
+		gte: '>=',
+		lt: '<',
+		lte: '<=',
+		like: 'LIKE',
+		ilike: 'ILIKE'
+	}
+	const value = parseSqlLiteral(match[4])
+	if (value === undefined) return undefined
+
+	return `${sqlIdentifier(match[3])} ${operatorMap[match[1]]} ${value}`
+}
+
 /**
  * Converts a Drizzle ORM query expression to a plain SQL string.
  *
@@ -60,6 +161,7 @@ function normalizeTableExpression(expression: string): string | undefined {
  *   - tx.execute(sql`SELECT ...`)
  *   - db.execute('SELECT ...')
  *   - (db|tx).select().from(table) [optional .limit(n), .offset(n)]
+ *   - (db|tx).update(table).set({ column: value }).where(eq(table.column, value))
  *
  * Unsupported patterns (e.g. .where(), .orderBy(), .join()) throw explicit
  * messages directing users to use db.execute(sql`...`).
@@ -132,6 +234,33 @@ export function drizzleQueryToSql(source: string): string {
 		if (limitMatch) sql += ` LIMIT ${limitMatch[1]}`
 		if (offsetMatch) sql += ` OFFSET ${offsetMatch[1]}`
 		return sql
+	}
+
+	const simpleUpdateMatch = query.match(
+		/^(?:await\s+)?(?:db|tx)\.update\s*\(\s*([^)]+?)\s*\)\s*\.set\s*\(\s*(\{[\s\S]*?\})\s*\)\s*\.where\s*\(\s*([\s\S]+?)\s*\)(?:\s*\.returning\s*\(\s*\))?$/
+	)
+	if (simpleUpdateMatch) {
+		const tableName = normalizeTableExpression(simpleUpdateMatch[1])
+		if (!tableName) {
+			throw new Error(
+				'Unsupported Drizzle table expression. Use a simple table name ' +
+				'(e.g. users, schema.users). For quoted or multi-part names, ' +
+				'use db.execute(sql`...`).'
+			)
+		}
+
+		const assignments = parseObjectAssignments(simpleUpdateMatch[2])
+		const where = parseWhereExpression(simpleUpdateMatch[3])
+
+		if (!assignments || !where) {
+			throw new Error(
+				'Unsupported Drizzle update expression. Supported shape: ' +
+				'db.update(table).set({ column: value }).where(eq(table.column, value)). ' +
+				'For complex updates, use db.execute(sql`...`).'
+			)
+		}
+
+		return `UPDATE ${sqlIdentifier(tableName)} SET ${assignments.join(', ')} WHERE ${where}`
 	}
 
 	throw new Error(

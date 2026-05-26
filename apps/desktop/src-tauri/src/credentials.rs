@@ -64,11 +64,15 @@ pub fn store_sensitive_data(connection_id: &Uuid, password: &str) -> Result<(), 
 }
 
 fn store_password(connection_id: &Uuid, password: &str) -> Result<(), Error> {
-    let entry = Entry::new(SERVICE_NAME, &connection_id.to_string())
-        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to create keyring entry: {}", e)))?;
+    let entry = Entry::new(SERVICE_NAME, &connection_id.to_string()).map_err(|e| {
+        Error::Any(anyhow::anyhow!(
+            "OS credential store is unavailable: failed to create keyring entry: {}",
+            e
+        ))
+    })?;
     entry.set_password(password).map_err(|e| {
         Error::Any(anyhow::anyhow!(
-            "Failed to store password in keyring: {}",
+            "OS credential store is unavailable: failed to store database credentials in keyring: {}",
             e
         ))
     })?;
@@ -81,8 +85,12 @@ fn store_password(connection_id: &Uuid, password: &str) -> Result<(), Error> {
 
 /// Retrieve password for a connection using connection ID as key
 pub fn get_password(connection_id: &Uuid) -> Result<Option<String>, Error> {
-    let entry = Entry::new(SERVICE_NAME, &connection_id.to_string())
-        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to create keyring entry: {}", e)))?;
+    let entry = Entry::new(SERVICE_NAME, &connection_id.to_string()).map_err(|e| {
+        Error::Any(anyhow::anyhow!(
+            "OS credential store is unavailable: failed to create keyring entry: {}",
+            e
+        ))
+    })?;
 
     match entry.get_password() {
         Ok(password) => {
