@@ -228,13 +228,13 @@ jobs:
         run: bun ../../tools/scripts/generate-checksums.ts --input-dir=src-tauri/target/release/bundle --output=src-tauri/target/release/bundle/checksums-windows.txt --extensions=.msi,.exe
         working-directory: ./apps/desktop
 
-      - name: upload windows checksums
+      - name: upload windows assets
         uses: actions/upload-artifact@v4
         with:
           name: release-windows-assets
           path: |
-            ./apps/desktop/src-tauri/target/release/bundle/*.msi
-            ./apps/desktop/src-tauri/target/release/bundle/*.exe
+            ./apps/desktop/src-tauri/target/release/bundle/msi/*.msi
+            ./apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
             ./apps/desktop/src-tauri/target/release/bundle/checksums-windows.txt
 
   release-macos:
@@ -362,9 +362,19 @@ jobs:
           gh run download "${{ github.run_id }}" -D /tmp/release-assets
 
           mapfile -t ASSETS < <(find /tmp/release-assets -type f | sort)
-          if [ "${#ASSETS[@]}" -lt 8 ]; then
-            echo "Expected at least 8 release assets, found ${#ASSETS[@]}" >&2
+          if [ "${#ASSETS[@]}" -lt 10 ]; then
+            echo "Expected at least 10 release assets, found ${#ASSETS[@]}" >&2
             find /tmp/release-assets -type f || true
+            exit 1
+          fi
+
+          if ! printf '%s\n' "${ASSETS[@]}" | grep -q '\.msi$'; then
+            echo "Missing Windows .msi installer in release assets." >&2
+            exit 1
+          fi
+
+          if ! printf '%s\n' "${ASSETS[@]}" | grep -q '\.exe$'; then
+            echo "Missing Windows .exe installer in release assets." >&2
             exit 1
           fi
 
@@ -394,6 +404,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
       - name: Dispatch AUR publish workflow
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
