@@ -317,7 +317,7 @@ jobs:
     needs: [release-linux, release-windows, release-macos, release-macos-intel]
     permissions:
       contents: write
-      packages: read
+      actions: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
@@ -328,17 +328,17 @@ jobs:
       - name: setup git-cliff
         uses: kenji-miyake/setup-git-cliff@v2
 
-      - name: generate release notes
+      - name: Publish release with all assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
+
           VERSION="${{ github.ref_name }}"
 
-          # Ensure we have all tags
           git fetch --tags origin
 
-          # Get previous tag
-          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -A1 "^${VERSION}$" | tail -1)
+          PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -A1 "^${VERSION}$" | tail -1 || true)"
 
           if [ -z "$PREVIOUS_TAG" ]; then
             echo "No previous tag found, generating notes from all commits"
@@ -348,19 +348,44 @@ jobs:
             git-cliff "$PREVIOUS_TAG..$VERSION" --config cliff.toml --tag "$VERSION" --workdir . > /tmp/release-notes.md
           fi
 
+          if [ -n "$PREVIOUS_TAG" ]; then
+            {
+              echo ""
+              echo "**Full Changelog**: https://github.com/remcostoeten/dora/compare/${PREVIOUS_TAG}...${VERSION}"
+            } >> /tmp/release-notes.md
+          fi
+
           echo "=== Generated Release Notes ==="
           cat /tmp/release-notes.md
 
           mkdir -p /tmp/release-assets
           gh run download "${{ github.run_id }}" -D /tmp/release-assets
 
+          mapfile -t ASSETS < <(find /tmp/release-assets -type f | sort)
+          if [ "${#ASSETS[@]}" -lt 8 ]; then
+            echo "Expected at least 8 release assets, found ${#ASSETS[@]}" >&2
+            find /tmp/release-assets -type f || true
+            exit 1
+          fi
+
+          echo "=== Release assets (${#ASSETS[@]}) ==="
+          printf '%s\n' "${ASSETS[@]}"
+
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            ASSET_COUNT="$(gh release view "$VERSION" --json assets --jq '.assets | length')"
+            if [ "$ASSET_COUNT" -eq 0 ]; then
+              echo "Deleting empty pre-created release $VERSION"
+              gh release delete "$VERSION" --yes
+            else
+              echo "Release $VERSION already exists with $ASSET_COUNT assets; refusing to overwrite." >&2
+              exit 1
+            fi
+          fi
+
           gh release create "$VERSION" \
             --title "Dora ${VERSION}" \
             --notes-file /tmp/release-notes.md \
-            /tmp/release-assets/release-linux-assets/* \
-            /tmp/release-assets/release-windows-assets/* \
-            /tmp/release-assets/release-macos-assets/* \
-            /tmp/release-assets/release-macos-intel-assets/*
+            "${ASSETS[@]}"
 
   publish-aur:
     needs: generate-release-notes

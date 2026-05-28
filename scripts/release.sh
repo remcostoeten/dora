@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # release.sh
-# Bumps version, updates CHANGELOG.md, creates a git tag, pushes,
-# and creates a GitHub release — all in one command.
+# Bumps version, updates CHANGELOG.md, creates a git tag, and pushes.
+# GitHub Actions builds every platform artifact and publishes the release
+# with notes and downloads after all jobs finish.
 #
 # Usage: ./scripts/release.sh [patch|minor|major]
 #   (default: patch)
@@ -69,12 +70,5 @@ git push origin master
 git push origin "$NEXT_TAG"
 echo "Pushed master and tag"
 echo
-
-PREV_TAG="$(git tag --list 'v*' --sort=-version:refname | sed -n 2p)"
-RELEASE_NOTES="$(git-cliff "$PREV_TAG".."$NEXT_TAG" 2>/dev/null | sed -n '/^## /,/^<!-- generated/p' | sed '$d')"
-
-gh release create "$NEXT_TAG" \
-	--title "$NEXT_TAG" \
-	--notes "$RELEASE_NOTES"
-
-echo "━━ Created GitHub release: https://github.com/remcostoeten/dora/releases/tag/$NEXT_TAG ━━"
+echo "━━ Release workflow started: https://github.com/remcostoeten/dora/actions/workflows/release.yml ━━"
+echo "GitHub Actions will publish Dora ${NEXT_TAG} with release notes and all downloads when builds finish."
