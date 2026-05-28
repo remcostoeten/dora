@@ -1,7 +1,5 @@
 import Editor, { OnMount } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
-import { initVimMode } from 'monaco-vim'
-import type { VimAdapterInstance } from 'monaco-vim'
 import { useState, useEffect, useRef, type MutableRefObject } from 'react'
 import { useSetting } from '@/core/settings'
 import { loadTheme, isBuiltinTheme, MonacoTheme } from '@/core/settings/editor-themes'
@@ -20,13 +18,6 @@ import {
 	isInsideFromParens,
 	isInsideJoinParens
 } from '../utils/lsp-patterns'
-import { generateDrizzleTypes } from '../utils/lsp-utils'
-import {
-	detectTyposInQuery,
-	getSuggestions,
-	getTableNames as getFuzzyTableNames
-} from '../utils/fuzzy-match'
-import { LspDemoWidget } from './lsp-demo-widget'
 
 type Props = {
 	value: string
@@ -235,20 +226,28 @@ function replaceDrizzleTypes(
 		drizzleTypesRef.current = null
 	}
 
-	drizzleTypesRef.current = monaco.languages.typescript.typescriptDefaults.addExtraLib(
-		generateDrizzleTypes(tables),
-		DRIZZLE_TYPES_URI
-	)
+	import('../utils/lsp-utils')
+		.then(function ({ generateDrizzleTypes }) {
+			if (!monaco) return
+			drizzleTypesRef.current =
+				monaco.languages.typescript.typescriptDefaults.addExtraLib(
+					generateDrizzleTypes(tables),
+					DRIZZLE_TYPES_URI
+				)
+		})
+		.catch(function (error) {
+			console.error('Failed to load Drizzle types:', error)
+		})
 }
 
 export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, tables }: Props) {
-	const [showDemo, setShowDemo] = useState(false)
+	const [isMonacoReady, setIsMonacoReady] = useState(false)
 	const [editorFontSize] = useSetting('editorFontSize')
 	const [editorThemeSetting] = useSetting('editorTheme')
 	const [enableVimMode] = useSetting('enableVimMode')
 	const editorRef = useRef<EditorRef | null>(null)
 	const monacoRef = useRef<MonacoApi | null>(null)
-	const vimModeRef = useRef<VimAdapterInstance | null>(null)
+	const vimModeRef = useRef<{ dispose: () => void } | null>(null)
 	const statusBarRef = useRef<HTMLDivElement | null>(null)
 	const loadedThemesRef = useRef<Set<string>>(new Set())
 	const decorRef = useRef<string[]>([])
@@ -257,6 +256,25 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 	const tablesRef = useRef<SchemaTable[]>(tables)
 	const onExecuteRef = useRef(onExecute)
 	const onSaveRef = useRef(onSave)
+
+	useEffect(
+		function loadMonacoWorkers() {
+			let cancelled = false
+
+			import('@/monaco-workers')
+				.then(function () {
+					if (!cancelled) setIsMonacoReady(true)
+				})
+				.catch(function (error) {
+					console.error('Failed to load Monaco workers:', error)
+				})
+
+			return function () {
+				cancelled = true
+			}
+		},
+		[]
+	)
 
 	useEffect(
 		function syncTables() {
@@ -347,7 +365,21 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 
 			if (enableVimMode) {
 				if (!vimModeRef.current) {
-					vimModeRef.current = initVimMode(editorRef.current, statusBarRef.current)
+					import('monaco-vim')
+						.then(function ({ initVimMode }) {
+							if (!editorRef.current || !statusBarRef.current || !enableVimMode) {
+								return
+							}
+							if (!vimModeRef.current) {
+								vimModeRef.current = initVimMode(
+									editorRef.current,
+									statusBarRef.current
+								)
+							}
+						})
+						.catch(function (error) {
+							console.error('Failed to load Vim mode:', error)
+						})
 				}
 			} else {
 				if (vimModeRef.current) {
@@ -402,7 +434,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 				return
 			}
 
-			const timeoutId = window.setTimeout(() => {
+			const timeoutId = window.setTimeout(function () {
 				const editorInTimeout = editorRef.current
 				const monacoInTimeout = monacoRef.current
 				if (!editorInTimeout || !monacoInTimeout) return
@@ -410,26 +442,36 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 				const modelInTimeout = editorInTimeout.getModel()
 				if (!modelInTimeout) return
 
-				const typos = detectTyposInQuery(value, tables)
+				import('../utils/fuzzy-match')
+					.then(function ({ detectTyposInQuery }) {
+						const typos = detectTyposInQuery(value, tables)
 
-				const markers: Monaco.editor.IMarkerData[] = typos.map(function (typo) {
-					const startPos = modelInTimeout.getPositionAt(typo.startIndex)
-					const endPos = modelInTimeout.getPositionAt(typo.endIndex)
+						const markers: Monaco.editor.IMarkerData[] = typos.map(function (typo) {
+							const startPos = modelInTimeout.getPositionAt(typo.startIndex)
+							const endPos = modelInTimeout.getPositionAt(typo.endIndex)
 
-					return {
-						severity: monacoInTimeout.MarkerSeverity.Warning,
-						message: typo.suggestion
-							? `Did you mean "${typo.suggestion}"?`
-							: `Unknown identifier: ${typo.word}`,
-						startLineNumber: startPos.lineNumber,
-						startColumn: startPos.column,
-						endLineNumber: endPos.lineNumber,
-						endColumn: endPos.column,
-						source: 'Drizzle LSP'
-					}
-				})
+							return {
+								severity: monacoInTimeout.MarkerSeverity.Warning,
+								message: typo.suggestion
+									? `Did you mean "${typo.suggestion}"?`
+									: `Unknown identifier: ${typo.word}`,
+								startLineNumber: startPos.lineNumber,
+								startColumn: startPos.column,
+								endLineNumber: endPos.lineNumber,
+								endColumn: endPos.column,
+								source: 'Drizzle LSP'
+							}
+						})
 
-				monacoInTimeout.editor.setModelMarkers(modelInTimeout, 'drizzle-typos', markers)
+						monacoInTimeout.editor.setModelMarkers(
+							modelInTimeout,
+							'drizzle-typos',
+							markers
+						)
+					})
+					.catch(function (error) {
+						console.error('Failed to load Drizzle typo detection:', error)
+					})
 			}, 300)
 
 			return function () {
@@ -497,7 +539,10 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 			{
 				triggerCharacters: ['.', '(', ',', ' '],
 				exclusive: true,
-				provideCompletionItems: function (model, position): SuggestList | undefined {
+				provideCompletionItems: async function (
+					model,
+					position
+				): Promise<SuggestList | undefined> {
 					if (!isDrizzleModel(model)) return undefined
 
 					const currentTables = tablesRef.current
@@ -2113,7 +2158,10 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 
 					const word = model.getWordUntilPosition(position)
 					if (word.word && word.word.length >= 2) {
-						const tableNames = getFuzzyTableNames(currentTables)
+						const { getSuggestions } = await import('../utils/fuzzy-match')
+						const tableNames = currentTables.map(function (table) {
+							return table.name
+						})
 						const isExactMatch = tableNames.some(function (name) {
 							return name.toLowerCase() === word.word.toLowerCase()
 						})
@@ -2243,15 +2291,6 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 
 	return (
 		<div className='h-full w-full overflow-hidden pt-2 relative group'>
-			{/* Demo Toggle Button */}
-			<button
-				onClick={() => setShowDemo(!showDemo)}
-				className='absolute top-4 right-8 z-10 px-2 py-1 text-xs bg-muted/50 hover:bg-muted text-muted-foreground rounded border border-border opacity-0 group-hover:opacity-100 transition-opacity'
-			>
-				{showDemo ? 'Hide Demo' : 'LSP Demo'}
-			</button>
-
-			{showDemo && <LspDemoWidget editorRef={editorRef} onClose={() => setShowDemo(false)} />}
 			<style
 				dangerouslySetInnerHTML={{
 					__html: `
@@ -2271,51 +2310,57 @@ export function CodeEditor({ value, onChange, onExecute, onSave, isExecuting, ta
 				}}
 			/>
 
-			<Editor
-				height={enableVimMode ? 'calc(100% - 24px)' : '100%'}
-				language='typescript'
-				path={DRIZZLE_MODEL_URI}
-				value={value}
-				onChange={function (newValue) {
-					onChange(newValue || '')
-				}}
-				onMount={handleEditorDidMount}
-				theme={editorTheme}
-				options={{
-					minimap: { enabled: false },
-					fontSize: editorFontSize,
-					lineNumbers: 'on',
-					glyphMargin: true,
-					scrollBeyondLastLine: false,
-					automaticLayout: true,
-					tabSize: 2,
-					wordBasedSuggestions: 'off',
-					suggestOnTriggerCharacters: true,
-					quickSuggestions: false,
-					suggest: {
-						showKeywords: false,
-						showSnippets: false,
-						showWords: false,
-						showClasses: false,
-						showInterfaces: false,
-						showFunctions: false,
-						showVariables: false,
-						showConstants: false,
-						showEnums: false,
-						showEnumMembers: false,
-						showModules: false,
-						showOperators: false,
-						showReferences: false,
-						showStructs: false,
-						showTypeParameters: false,
-						filterGraceful: false
-					},
-					readOnly: isExecuting,
-					padding: { top: 10, bottom: 10 },
-					renderLineHighlight: 'all',
-					fontFamily: "'JetBrains Mono', 'Fira Code', monospace"
-				}}
-			/>
+			{isMonacoReady ? (
+				<Editor
+					height={enableVimMode ? 'calc(100% - 24px)' : '100%'}
+					language='typescript'
+					path={DRIZZLE_MODEL_URI}
+					value={value}
+					onChange={function (newValue) {
+						onChange(newValue || '')
+					}}
+					onMount={handleEditorDidMount}
+					theme={editorTheme}
+					options={{
+						minimap: { enabled: false },
+						fontSize: editorFontSize,
+						lineNumbers: 'on',
+						glyphMargin: true,
+						scrollBeyondLastLine: false,
+						automaticLayout: true,
+						tabSize: 2,
+						wordBasedSuggestions: 'off',
+						suggestOnTriggerCharacters: true,
+						quickSuggestions: false,
+						suggest: {
+							showKeywords: false,
+							showSnippets: false,
+							showWords: false,
+							showClasses: false,
+							showInterfaces: false,
+							showFunctions: false,
+							showVariables: false,
+							showConstants: false,
+							showEnums: false,
+							showEnumMembers: false,
+							showModules: false,
+							showOperators: false,
+							showReferences: false,
+							showStructs: false,
+							showTypeParameters: false,
+							filterGraceful: false
+						},
+						readOnly: isExecuting,
+						padding: { top: 10, bottom: 10 },
+						renderLineHighlight: 'all',
+						fontFamily: "'JetBrains Mono', 'Fira Code', monospace"
+					}}
+				/>
+			) : (
+				<div className='h-full bg-[#0e0e12] p-4'>
+					<div className='h-full rounded-md border border-border/60 bg-black/20 p-4' />
+				</div>
+			)}
 			{enableVimMode && (
 				<div
 					ref={statusBarRef}

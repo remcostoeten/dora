@@ -1400,19 +1400,23 @@ layer(base);
 /* --- Details Panel --- */
 .sv-details-panel {
 	position: absolute;
-	top: 12px;
-	right: 12px;
+	top: 0;
+	right: 0;
+	bottom: 0;
 	z-index: 5;
 	display: flex;
 	width: min(360px, calc(100% - 24px));
-	max-height: calc(100% - 24px);
+	max-height: none;
 	flex-direction: column;
 	overflow: hidden;
-	border: 1px solid var(--sv-panel-border);
-	border-radius: 16px;
-	background: var(--sv-panel-bg);
-	backdrop-filter: blur(12px);
-	box-shadow: var(--sv-shadow);
+	border-left: 1px solid var(--sv-panel-border);
+	border-top: 0;
+	border-right: 0;
+	border-bottom: 0;
+	border-radius: 0;
+	background: hsl(var(--sidebar-background));
+	backdrop-filter: none;
+	box-shadow: inset 1px 0 0 hsl(var(--border) / 0.2);
 }
 
 .sv-details-panel__header {
@@ -1779,11 +1783,7 @@ layer(base);
 
 @media (max-width: 420px) {
 	.sv-details-panel {
-		top: 8px;
-		right: 8px;
-		width: min(100%, calc(100% - 16px));
-		max-height: calc(100% - 16px);
-		border-radius: 14px;
+		width: 100%;
 	}
 
 	.sv-details-panel__header,

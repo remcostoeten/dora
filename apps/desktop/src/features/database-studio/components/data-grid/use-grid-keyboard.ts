@@ -74,6 +74,7 @@ export function useGridKeyboard({
 					const firstPos = { row: 0, col: 0 }
 					setFocusedCell(firstPos)
 					setAnchorCell(firstPos)
+					lastClickedRowRef.current = firstPos.row
 					updateCellSelection(new Set([getCellKey(0, 0)]))
 				}
 				return
@@ -83,6 +84,29 @@ export function useGridKeyboard({
 			const { row, col } = focusedCell
 			const maxRow = rows.length - 1
 			const maxCol = columns.length - 1
+			const rowShiftSelectionKey =
+				e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')
+
+			function getShiftRowAnchor() {
+				return lastClickedRowRef.current ?? row
+			}
+
+			function applyRowSelection(newRow: number) {
+				if (!onRowsSelect) return false
+
+				const anchorRow = getShiftRowAnchor()
+				const start = Math.min(anchorRow, newRow)
+				const end = Math.max(anchorRow, newRow)
+				const range: number[] = []
+				for (let i = start; i <= end; i++) {
+					range.push(i)
+				}
+
+				onSelectAll(false)
+				onRowsSelect(range, true)
+				lastClickedRowRef.current = anchorRow
+				return true
+			}
 
 			function moveAndMaybeSelect(newRow: number, newCol: number) {
 				const newPos: CellPosition = { row: newRow, col: newCol }
@@ -91,10 +115,14 @@ export function useGridKeyboard({
 				}
 				pendingNavFrameRef.current = requestAnimationFrame(function () {
 					setFocusedCell(newPos)
-					if (e.shiftKey && anchorCell) {
+					if (rowShiftSelectionKey && applyRowSelection(newRow)) {
+						setAnchorCell({ row: newRow, col: newCol })
+						updateCellSelection(new Set())
+					} else if (e.shiftKey && anchorCell) {
 						updateCellSelection(getCellsInRectangle(anchorCell, newPos))
 					} else if (!e.shiftKey) {
 						setAnchorCell(newPos)
+						lastClickedRowRef.current = newRow
 						updateCellSelection(new Set([getCellKey(newRow, newCol)]))
 					}
 					pendingNavFrameRef.current = null

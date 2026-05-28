@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { lazy, Suspense, useState, useCallback, useEffect, useRef } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useIsTauri } from '@/core/data-provider/context'
 import { getAdapterError } from '@/core/data-provider/types'
@@ -11,14 +11,12 @@ import type { AiAssistantEditorContext } from '@/features/ai-assistant/types'
 import { ResizablePanels } from '@/features/drizzle-runner/components/resizable-panels'
 import type { SavedQuery } from '@/lib/bindings'
 
-import { CodeEditor } from '../../features/drizzle-runner/components/code-editor'
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
 import { drizzleQueryToSql } from '../../features/drizzle-runner/utils/drizzle-query'
 import { AiCmdK } from './components/ai-cmd-k'
 import { ConsoleToolbar } from './components/console-toolbar'
 import { QueryTabBar } from './components/query-tab-bar'
 import { QueryHistoryPanel } from './components/query-history-panel'
-import { SqlEditor } from './components/sql-editor'
 import { SqlResults } from './components/sql-results'
 import { UnifiedSidebar } from './components/unified-sidebar'
 import { DEFAULT_SQL } from './data'
@@ -26,7 +24,20 @@ import { extractMutationSourceTable } from './query-target'
 import { useQueryHistory } from './stores/query-history-store'
 import { QueryTabProvider, useQueryTabs } from './stores/tab-store'
 import { clearTableDataCache } from '@/core/table-cache'
+import { Skeleton } from '@/shared/ui/skeleton'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
+
+const SqlEditor = lazy(function () {
+	return import('./components/sql-editor').then(function (module) {
+		return { default: module.SqlEditor }
+	})
+})
+
+const CodeEditor = lazy(function () {
+	return import('@/features/drizzle-runner/components/code-editor').then(function (module) {
+		return { default: module.CodeEditor }
+	})
+})
 
 type Props = {
 	onToggleSidebar?: () => void
@@ -80,6 +91,27 @@ function SqlConsoleInner({
 	}
 	function setViewMode(v: ResultViewMode) {
 		tabStore.setTabViewMode(activeTab.id, v)
+	}
+
+	function renderEditorFallback() {
+		return (
+			<div className='h-full bg-[#0e0e12] p-4'>
+				<div className='h-full rounded-md border border-border/60 bg-black/20 p-4'>
+					<div className='space-y-3'>
+						{['w-5/12', 'w-8/12', 'w-6/12', 'w-7/12', 'w-4/12'].map(
+							function (width, index) {
+								return (
+									<Skeleton
+										key={index}
+										className={`h-4 bg-white/10 ${width}`}
+									/>
+								)
+							}
+						)}
+					</div>
+				</div>
+			</div>
+		)
 	}
 
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])
@@ -991,42 +1023,44 @@ function SqlConsoleInner({
 								minSize={100}
 								topPanel={
 									<div className='relative w-full h-full'>
-										{mode === 'sql' ? (
-											<SqlEditor
-												value={currentSqlQuery}
-												onChange={setCurrentSqlQuery}
-												onExecute={(code) => handleExecute(code)}
-												onSave={handleSaveActiveSnippetFromEditor}
-												isExecuting={isExecuting}
-												tables={tables}
-											/>
-										) : (
-											<CodeEditor
-												value={currentDrizzleQuery}
-												onChange={setCurrentDrizzleQuery}
-												onExecute={function (code) {
-													handleExecute(code)
-												}}
-												onSave={handleSaveActiveSnippetFromEditor}
-												isExecuting={isExecuting}
-												tables={tables.map(function (t) {
-													return {
-														name: t.name,
-														columns: (t.columns || []).map(
-															function (c) {
-																return {
-																	name: c.name,
-																	type: c.type,
-																	nullable: c.nullable ?? false,
-																	primaryKey:
-																		c.primaryKey ?? false
+										<Suspense fallback={renderEditorFallback()}>
+											{mode === 'sql' ? (
+												<SqlEditor
+													value={currentSqlQuery}
+													onChange={setCurrentSqlQuery}
+													onExecute={(code) => handleExecute(code)}
+													onSave={handleSaveActiveSnippetFromEditor}
+													isExecuting={isExecuting}
+													tables={tables}
+												/>
+											) : (
+												<CodeEditor
+													value={currentDrizzleQuery}
+													onChange={setCurrentDrizzleQuery}
+													onExecute={function (code) {
+														handleExecute(code)
+													}}
+													onSave={handleSaveActiveSnippetFromEditor}
+													isExecuting={isExecuting}
+													tables={tables.map(function (t) {
+														return {
+															name: t.name,
+															columns: (t.columns || []).map(
+																function (c) {
+																	return {
+																		name: c.name,
+																		type: c.type,
+																		nullable: c.nullable ?? false,
+																		primaryKey:
+																			c.primaryKey ?? false
+																	}
 																}
-															}
-														)
-													}
-												})}
-											/>
-										)}
+															)
+														}
+													})}
+												/>
+											)}
+										</Suspense>
 									</div>
 								}
 								bottomPanel={

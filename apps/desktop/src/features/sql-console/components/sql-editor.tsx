@@ -1,6 +1,5 @@
 import Editor, { OnMount } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
-import { initVimMode } from 'monaco-vim'
 import { useRef, useEffect, useState } from 'react'
 import { useSetting } from '@/core/settings'
 import { loadTheme, isBuiltinTheme, MonacoTheme } from '@/core/settings/editor-themes'
@@ -128,18 +127,38 @@ function getNextStepKeywords(beforeLower: string): string[] {
 }
 
 export function SqlEditor({ value, onChange, onExecute, onSave, isExecuting, tables }: Props) {
+	const [isMonacoReady, setIsMonacoReady] = useState(false)
 	const [editorFontSize] = useSetting('editorFontSize')
 	const [editorThemeSetting] = useSetting('editorTheme')
 	const [enableVimMode] = useSetting('enableVimMode')
 	const [isEditorReady, setIsEditorReady] = useState(false)
 	const editorRef = useRef<EditorRef | null>(null)
 	const monacoRef = useRef<MonacoApi | null>(null)
-	const vimModeRef = useRef<any>(null)
+	const vimModeRef = useRef<{ dispose: () => void } | null>(null)
 	const statusBarRef = useRef<HTMLDivElement | null>(null)
 	const loadedThemesRef = useRef<Set<string>>(new Set())
 	const onExecuteRef = useRef(onExecute)
 	const onSaveRef = useRef(onSave)
 	const completionProviderRef = useRef<Monaco.IDisposable | null>(null)
+
+	useEffect(
+		function loadMonacoWorkers() {
+			let cancelled = false
+
+			import('@/monaco-workers')
+				.then(function () {
+					if (!cancelled) setIsMonacoReady(true)
+				})
+				.catch(function (error) {
+					console.error('Failed to load Monaco workers:', error)
+				})
+
+			return function () {
+				cancelled = true
+			}
+		},
+		[]
+	)
 
 	useEffect(() => {
 		onExecuteRef.current = onExecute
@@ -230,7 +249,21 @@ export function SqlEditor({ value, onChange, onExecute, onSave, isExecuting, tab
 
 			if (enableVimMode) {
 				if (!vimModeRef.current) {
-					vimModeRef.current = initVimMode(editorRef.current, statusBarRef.current)
+					import('monaco-vim')
+						.then(function ({ initVimMode }) {
+							if (!editorRef.current || !statusBarRef.current || !enableVimMode) {
+								return
+							}
+							if (!vimModeRef.current) {
+								vimModeRef.current = initVimMode(
+									editorRef.current,
+									statusBarRef.current
+								)
+							}
+						})
+						.catch(function (error) {
+							console.error('Failed to load Vim mode:', error)
+						})
 				}
 			} else {
 				if (vimModeRef.current) {
@@ -601,30 +634,36 @@ export function SqlEditor({ value, onChange, onExecute, onSave, isExecuting, tab
 				</button>
 			</div>
 
-			<Editor
-				height={enableVimMode ? 'calc(100% - 24px)' : '100%'}
-				defaultLanguage='sql'
-				value={value}
-				onChange={function (newValue) {
-					onChange(newValue || '')
-				}}
-				onMount={handleEditorDidMount}
-				theme={editorTheme}
-				options={{
-					minimap: { enabled: false },
-					fontSize: editorFontSize,
-					lineNumbers: 'on',
-					glyphMargin: true,
-					scrollBeyondLastLine: false,
-					automaticLayout: true,
-					tabSize: 2,
-					wordBasedSuggestions: 'off',
-					readOnly: isExecuting, // We might want to allow typing in demo mode? actually hook handles typing
-					padding: { top: 10, bottom: 10 },
-					renderLineHighlight: 'all',
-					fontFamily: "'JetBrains Mono', 'Fira Code', monospace"
-				}}
-			/>
+			{isMonacoReady ? (
+				<Editor
+					height={enableVimMode ? 'calc(100% - 24px)' : '100%'}
+					defaultLanguage='sql'
+					value={value}
+					onChange={function (newValue) {
+						onChange(newValue || '')
+					}}
+					onMount={handleEditorDidMount}
+					theme={editorTheme}
+					options={{
+						minimap: { enabled: false },
+						fontSize: editorFontSize,
+						lineNumbers: 'on',
+						glyphMargin: true,
+						scrollBeyondLastLine: false,
+						automaticLayout: true,
+						tabSize: 2,
+						wordBasedSuggestions: 'off',
+						readOnly: isExecuting,
+						padding: { top: 10, bottom: 10 },
+						renderLineHighlight: 'all',
+						fontFamily: "'JetBrains Mono', 'Fira Code', monospace"
+					}}
+				/>
+			) : (
+				<div className='h-full bg-[#0e0e12] p-4'>
+					<div className='h-full rounded-md border border-border/60 bg-black/20 p-4' />
+				</div>
+			)}
 			{enableVimMode && (
 				<div
 					ref={statusBarRef}

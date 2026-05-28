@@ -11,7 +11,7 @@ import {
 	Check,
 	X
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -106,6 +106,7 @@ export function ConnectionSwitcher({
 		null
 	)
 	const confirmDeleteRef = useRef<HTMLButtonElement>(null)
+	const connectionRowRefs = useRef(new Map<string, HTMLDivElement>())
 	const activeConnection = connections.find((c) => c.id === activeConnectionId)
 	const status = activeConnection?.status || 'idle'
 
@@ -146,6 +147,24 @@ export function ConnectionSwitcher({
 		[connections, searchQuery]
 	)
 
+	useEffect(
+		function focusActiveConnectionOnOpen() {
+			if (!dropdownOpen) return
+
+			const frame = window.requestAnimationFrame(function () {
+				const activeIndex = filteredConnections.findIndex(function (connection) {
+					return connection.id === activeConnectionId
+				})
+				focusConnectionRow(activeIndex >= 0 ? activeIndex : 0)
+			})
+
+			return function () {
+				window.cancelAnimationFrame(frame)
+			}
+		},
+		[activeConnectionId, dropdownOpen, filteredConnections]
+	)
+
 	function armDelete(id: string) {
 		setPendingDeleteId(id)
 	}
@@ -169,6 +188,61 @@ export function ConnectionSwitcher({
 		setDropdownOpen(false)
 	}
 
+	function focusConnectionRow(index: number) {
+		const connection = filteredConnections[index]
+		if (!connection) return
+		connectionRowRefs.current.get(connection.id)?.focus()
+	}
+
+	function getFocusedConnectionIndex() {
+		const activeElement = document.activeElement
+		if (!(activeElement instanceof HTMLElement)) return -1
+		const connectionId = activeElement.dataset.connectionId
+		if (!connectionId) return -1
+		return filteredConnections.findIndex(function (connection) {
+			return connection.id === connectionId
+		})
+	}
+
+	function handleConnectionListKeyDown(e: KeyboardEvent) {
+		if (filteredConnections.length === 0) return
+
+		const activeElement = document.activeElement
+		const isSearchInput = activeElement instanceof HTMLInputElement
+		const focusedIndex = getFocusedConnectionIndex()
+
+		if (e.key === 'ArrowDown') {
+			e.preventDefault()
+			const nextIndex =
+				focusedIndex === -1
+					? 0
+					: Math.min(focusedIndex + 1, filteredConnections.length - 1)
+			focusConnectionRow(nextIndex)
+			return
+		}
+
+		if (e.key === 'ArrowUp') {
+			e.preventDefault()
+			const nextIndex =
+				focusedIndex === -1
+					? filteredConnections.length - 1
+					: Math.max(focusedIndex - 1, 0)
+			focusConnectionRow(nextIndex)
+			return
+		}
+
+		if (!isSearchInput && e.key === 'Home') {
+			e.preventDefault()
+			focusConnectionRow(0)
+			return
+		}
+
+		if (!isSearchInput && e.key === 'End') {
+			e.preventDefault()
+			focusConnectionRow(filteredConnections.length - 1)
+		}
+	}
+
 	const deleteDialogConnection = deleteDialogConnectionId
 		? connections.find(function (connection) {
 				return connection.id === deleteDialogConnectionId
@@ -188,6 +262,12 @@ export function ConnectionSwitcher({
 			<DropdownMenuTrigger asChild>
 				<button
 					type='button'
+					aria-label={
+						activeConnection
+							? `Change database connection. Current connection: ${activeConnection.name}`
+							: 'Select database connection'
+					}
+					aria-haspopup='menu'
 					className={cn(
 						'group/trigger relative w-full rounded-lg px-2 py-2 text-left',
 						'flex items-center gap-3',
@@ -252,6 +332,7 @@ export function ConnectionSwitcher({
 						e.preventDefault()
 					}
 				}}
+				onKeyDown={handleConnectionListKeyDown}
 				style={{
 					transitionTimingFunction: 'var(--ease-out)'
 				}}
@@ -300,8 +381,18 @@ export function ConnectionSwitcher({
 									>
 										<ContextMenuTrigger asChild>
 											<div
+												ref={function setConnectionRowRef(node) {
+													if (node) {
+														connectionRowRefs.current.set(connection.id, node)
+													} else {
+														connectionRowRefs.current.delete(connection.id)
+													}
+												}}
 												role='menuitem'
-												tabIndex={-1}
+												tabIndex={0}
+												data-connection-id={connection.id}
+												aria-current={isActive ? 'true' : undefined}
+												aria-label={`${connection.name}, ${formatDatabaseType(connection.type)}, last connected ${formatQuickDate(connection.lastConnectedAt)}`}
 												onContextMenuCapture={function handleConnectionContextMenu() {
 													setContextMenuConnectionId(connection.id)
 													setDropdownOpen(true)

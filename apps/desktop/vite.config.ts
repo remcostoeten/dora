@@ -24,6 +24,22 @@ export default defineConfig({
 		rollupOptions: {
 			output: {
 				manualChunks(id) {
+					if (id.includes('src/monaco-workers')) {
+						return 'monaco-workers'
+					}
+
+					if (id.includes('monaco')) {
+						return 'vendor-monaco'
+					}
+
+					if (id.includes('src/features/sql-console/components/sql-editor')) {
+						return 'editor-sql'
+					}
+
+					if (id.includes('src/features/drizzle-runner/components/code-editor')) {
+						return 'editor-drizzle'
+					}
+
 					if (id.includes('node_modules')) {
 						if (
 							id.includes('react') ||
@@ -31,9 +47,6 @@ export default defineConfig({
 							id.includes('react-router-dom')
 						) {
 							return 'vendor-react'
-						}
-						if (id.includes('@monaco-editor') || id.includes('monaco-vim')) {
-							return 'vendor-monaco'
 						}
 						if (id.includes('@xyflow/react')) {
 							return 'vendor-flow'

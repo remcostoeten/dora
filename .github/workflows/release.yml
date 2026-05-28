@@ -122,11 +122,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: ./apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Dora v__VERSION__'
-          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
-          releaseDraft: true
-          prerelease: false
 
 
       - name: Build lightweight linux tarball
@@ -165,19 +160,20 @@ jobs:
           tar -C /tmp -czf "$TAR" dora-x86_64-unknown-linux-gnu
           echo "Created $TAR for version $VERSION"
 
-      - name: Upload lightweight linux tarball
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} dora-x86_64-unknown-linux-gnu.tar.gz --clobber
-
       - name: generate linux checksums
         run: bun ../../tools/scripts/generate-checksums.ts --input-dir=src-tauri/target/release/bundle --output=src-tauri/target/release/bundle/checksums-linux.txt --extensions=.AppImage,.deb,.rpm
         working-directory: ./apps/desktop
 
       - name: upload linux checksums
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} ./apps/desktop/src-tauri/target/release/bundle/checksums-linux.txt --clobber
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-assets
+          path: |
+            dora-x86_64-unknown-linux-gnu.tar.gz
+            ./apps/desktop/src-tauri/target/release/bundle/deb/*.deb
+            ./apps/desktop/src-tauri/target/release/bundle/rpm/*.rpm
+            ./apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
+            ./apps/desktop/src-tauri/target/release/bundle/checksums-linux.txt
 
   release-windows:
     needs: preflight
@@ -227,20 +223,19 @@ jobs:
           INCLUDE: ${{ env.INCLUDE }}
         with:
           projectPath: ./apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Dora v__VERSION__'
-          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
-          releaseDraft: true
-          prerelease: false
 
       - name: generate windows checksums
         run: bun ../../tools/scripts/generate-checksums.ts --input-dir=src-tauri/target/release/bundle --output=src-tauri/target/release/bundle/checksums-windows.txt --extensions=.msi,.exe
         working-directory: ./apps/desktop
 
       - name: upload windows checksums
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} ./apps/desktop/src-tauri/target/release/bundle/checksums-windows.txt --clobber
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-windows-assets
+          path: |
+            ./apps/desktop/src-tauri/target/release/bundle/*.msi
+            ./apps/desktop/src-tauri/target/release/bundle/*.exe
+            ./apps/desktop/src-tauri/target/release/bundle/checksums-windows.txt
 
   release-macos:
     needs: preflight
@@ -272,11 +267,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: ./apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Dora v__VERSION__'
-          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
-          releaseDraft: true
-          prerelease: false
+
+      - name: upload macOS assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-assets
+          path: |
+            ./apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
 
   release-macos-intel:
     needs: preflight
@@ -308,11 +305,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: ./apps/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Dora v__VERSION__'
-          releaseBody: 'Release assets are still uploading. This draft is published after every platform build finishes.'
-          releaseDraft: true
-          prerelease: false
+
+      - name: upload macOS Intel assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-intel-assets
+          path: |
+            ./apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
 
   generate-release-notes:
     needs: [release-linux, release-windows, release-macos, release-macos-intel]
@@ -352,10 +351,16 @@ jobs:
           echo "=== Generated Release Notes ==="
           cat /tmp/release-notes.md
 
-          gh release edit "$VERSION" \
+          mkdir -p /tmp/release-assets
+          gh run download "${{ github.run_id }}" -D /tmp/release-assets
+
+          gh release create "$VERSION" \
             --title "Dora ${VERSION}" \
             --notes-file /tmp/release-notes.md \
-            --draft=false
+            /tmp/release-assets/release-linux-assets/* \
+            /tmp/release-assets/release-windows-assets/* \
+            /tmp/release-assets/release-macos-assets/* \
+            /tmp/release-assets/release-macos-intel-assets/*
 
   publish-aur:
     needs: generate-release-notes

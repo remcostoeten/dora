@@ -120,7 +120,7 @@ function DraftInput({
 			}}
 			data-draft-col={col.name}
 			data-no-shortcuts='true'
-			className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-emerald-500/10 font-mono text-sm'
+			className='w-full h-full bg-transparent px-3 py-1.5 outline-none focus:bg-sidebar-accent/35 focus:shadow-[inset_0_0_0_1px_hsl(var(--sidebar-foreground)/0.18)] font-mono text-sm'
 			placeholder={col.nullable ? 'NULL' : ''}
 		/>
 	)

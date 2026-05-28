@@ -31,6 +31,7 @@ export function useRowSelection({
 				for (let i = start; i <= end; i++) {
 					range.push(i)
 				}
+				onSelectAll(false)
 				onRowsSelect(range, true)
 			} else if (e.ctrlKey || e.metaKey) {
 				onRowSelect(rowIndex, !selectedRows.has(rowIndex))

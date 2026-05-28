@@ -16,7 +16,7 @@ import {
 } from "@/features/connections/utils/mapping";
 import { ConnectionDialog } from "@/features/connections/components/connection-dialog";
 import { Connection } from "@/features/connections/types";
-import { AiAssistantPanel, useAiAssistantStore } from "@/features/ai-assistant";
+import { useAiAssistantStore } from "@/features/ai-assistant/store";
 import type { AiAssistantEditorContext } from "@/features/ai-assistant/types";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/shared/ui/button";
@@ -40,6 +40,11 @@ const SqlConsole = lazy(function () {
 const SchemaVisualizer = lazy(function () {
   return import("@/features/schema-visualizer").then(function (m) {
     return { default: m.SchemaVisualizer };
+  });
+});
+const AiAssistantPanel = lazy(function () {
+  return import("@/features/ai-assistant/ai-assistant-panel").then(function (m) {
+    return { default: m.AiAssistantPanel };
   });
 });
 import { DatabaseSidebar } from "@/features/sidebar/database-sidebar";
@@ -652,7 +657,7 @@ function IndexInner() {
             />
 
             <AiAssistantToggle />
-            <AiAssistantPanel
+            <AiAssistantPanelHost
               activeConnectionId={activeConnectionId || null}
               activeView={activeNavId}
               selectedTableId={selectedTableId || null}
@@ -689,5 +694,22 @@ function AiAssistantToggle() {
     >
       <Sparkles className="h-4 w-4" />
     </Button>
+  );
+}
+
+function AiAssistantPanelHost(props: {
+  activeConnectionId: string | null;
+  activeView: string;
+  selectedTableId: string | null;
+  selectedTableName: string | null;
+  editorContext: AiAssistantEditorContext | null;
+}) {
+  const open = useAiAssistantStore(function (s) { return s.open; });
+  if (!open) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <AiAssistantPanel {...props} />
+    </Suspense>
   );
 }

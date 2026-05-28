@@ -252,7 +252,7 @@ export function GridBody({
 														'bg-muted-foreground/10',
 													isFocused &&
 														!isEditing &&
-														'bg-primary/5 ring-2 ring-inset ring-primary/60 z-10',
+														'bg-sidebar-accent/35 shadow-[inset_0_0_0_1px_hsl(var(--sidebar-foreground)/0.22)] z-10',
 													isDirty && 'bg-amber-500/10'
 												)}
 												style={width ? { maxWidth: width } : undefined}
@@ -282,7 +282,7 @@ export function GridBody({
 														onBlur={handleSaveEdit}
 														onKeyDown={handleEditKeyDown}
 														data-no-shortcuts='true'
-														className='w-full h-full bg-primary/10 outline outline-1 outline-offset-[-1px] outline-primary font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
+														className='w-full h-full bg-sidebar-accent/35 outline outline-1 outline-offset-[-1px] outline-sidebar-foreground/25 font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
 													/>
 												) : (
 													<div className='flex items-center min-w-0 relative'>

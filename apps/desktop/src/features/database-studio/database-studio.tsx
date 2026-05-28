@@ -1,15 +1,12 @@
 import { TableSkeleton } from '@/shared/ui/skeleton'
 import { useToast } from '@/shared/ui/use-toast'
-import { convertSchemaToDrizzle } from '@/core/data-generation/sql-to-drizzle'
 import { useAdapter, useDataMutation } from '@/core/data-provider'
-import { tableDataCache, clearTableDataCache } from '@/core/table-cache'
-import { getAdapterError } from '@/core/data-provider/types'
+import { tableDataCache } from '@/core/table-cache'
 import { usePendingEdits } from '@/core/pending-edits'
 import { useTabs } from '@/core/tabs'
 import { useSettings } from '@/core/settings'
 import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@/core/shortcuts'
 import { useUndo } from '@/core/undo'
-import { commands } from '@/lib/bindings'
 import { getTableRefParts } from '@/shared/utils/table-ref'
 import {
 	AlertDialog,
@@ -21,16 +18,18 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle
 } from '@/shared/ui/alert-dialog'
-import { Button } from '@/shared/ui/button'
-import { AlertTriangle, Columns, Database, PanelLeft, Plus, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AddColumnDialog, ColumnFormData } from './components/add-column-dialog'
 import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
 import { DataGrid } from './components/data-grid'
 import type { ContextMenuState } from './components/data-grid'
 import { DropTableDialog } from './components/drop-table-dialog'
+import {
+	DatabaseStudioNoConnection,
+	DatabaseStudioNoTable
+} from './components/database-studio-empty-states'
+import { DatabaseStudioStructureView } from './components/database-studio-structure-view'
 import { PendingChangesBar } from './components/pending-changes-bar'
 import { RowDetailPanel } from './components/row-detail-panel'
 import { SelectionActionBar } from './components/selection-action-bar'
@@ -38,23 +37,12 @@ import { SetNullDialog } from './components/set-null-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
 import { ImportCsvDialog } from './components/import-csv-dialog'
 import { DataSeederDialog } from './data-seeder-dialog'
-import { enrichColumnsWithFKs } from './utils/fk-enrichment'
 import { useDatabaseStudioSync } from './hooks/use-database-studio-sync'
-import {
-	createDefaultValues,
-	normalizeRowForInsert,
-	normalizeValueForInsert,
-	rowsToCsv
-} from './utils/studio-data'
-import { areValuesEqual } from '@/shared/utils/value-equality'
-import {
-	ColumnDefinition,
-	FilterDescriptor,
-	PaginationState,
-	SortDescriptor,
-	TableData,
-	ViewMode
-} from './types'
+import { useDatabaseStudioActions } from './hooks/use-database-studio-actions'
+import { useDatabaseStudioEdits } from './hooks/use-database-studio-edits'
+import { useDatabaseStudioCommands } from './hooks/use-database-studio-commands'
+import { buildTableCacheKey } from './utils/table-cache'
+import { FilterDescriptor, PaginationState, SortDescriptor, TableData, ViewMode } from './types'
 
 type Props = {
 	tableId: string | null
@@ -65,33 +53,6 @@ type Props = {
 	isSidebarOpen?: boolean
 	initialRowPK?: string | number | null
 	onRowSelectionChange?: (pk: string | number | null) => void
-}
-
-function buildTableCacheKey(
-	connectionId: string | undefined,
-	tableId: string | null,
-	limit: number,
-	offset: number,
-	sort: SortDescriptor | undefined,
-	filters: FilterDescriptor[]
-) {
-	return JSON.stringify({
-		connectionId: connectionId || '',
-		tableId: tableId || '',
-		limit,
-		offset,
-		sort: sort || null,
-		filters
-	})
-}
-
-function schemaHasTable(schema: { tables: Array<{ name: string; schema?: string | null }> }, tableRef: string) {
-	const { tableName, schemaName } = getTableRefParts(tableRef)
-	return schema.tables.some(function (table) {
-		if (table.name !== tableName) return false
-		if (!schemaName) return true
-		return table.schema === schemaName
-	})
 }
 
 export function DatabaseStudio({
@@ -147,7 +108,6 @@ export function DatabaseStudio({
 	const [isTableTransitioning, setIsTableTransitioning] = useState(!initialCacheEntry)
 	const [viewMode, setViewMode] = useState<ViewMode>('content')
 	const previousTableRef = useRef<{ columns: number; rows: number } | null>(null)
-	const loadRequestIdRef = useRef(0)
 	const [pagination, setPagination] = useState<PaginationState>({ limit: 50, offset: 0 })
 	const [sort, setSort] = useState<SortDescriptor | undefined>()
 	const [filters, setFilters] = useState<FilterDescriptor[]>([])
@@ -169,8 +129,6 @@ export function DatabaseStudio({
 
 	const [selectionAnnouncement, setSelectionAnnouncement] = useState('')
 	const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null)
-	const draftRowRef = useRef(draftRow)
-	draftRowRef.current = draftRow
 	const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null)
 
 	const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
@@ -182,25 +140,6 @@ export function DatabaseStudio({
 	const [contextMenuState, setContextMenuState] = useState<ContextMenuState>(null)
 	const toolbarRef = useRef<HTMLDivElement>(null)
 	const gridContainerRef = useRef<HTMLDivElement>(null)
-	const {
-		liveMonitor,
-		stableUrlState,
-		setSelectedRow,
-		setSelectedCells: setUrlSelectedCells,
-		setFocusedCell: setUrlFocusedCell,
-		setContextMenu,
-		setAddRecordMode,
-		initializedFromUrlRef,
-		isUpdatingUrlRef
-	} = useDatabaseStudioSync(tableRefName, tableName)
-
-	const handleEscapeToGrid = useCallback(function () {
-		const grid = gridContainerRef.current?.querySelector<HTMLElement>('table[role="grid"]')
-		if (grid) {
-			grid.focus()
-		}
-	}, [])
-
 	const currentCacheKey = useMemo(
 		function () {
 			return buildTableCacheKey(
@@ -214,6 +153,51 @@ export function DatabaseStudio({
 		},
 		[activeConnectionId, tableId, pagination.limit, pagination.offset, sort, filters]
 	)
+	const {
+		liveMonitor,
+		stableUrlState,
+		loadTableData
+	} = useDatabaseStudioSync({
+		adapter,
+		activeConnectionId,
+		tableId,
+		tableName,
+		tableRefName,
+		currentCacheKey,
+		pagination,
+		sort,
+		filters,
+		tableData,
+		draftRow,
+		draftInsertIndex,
+		isApplyingEdits,
+		selectedRows,
+		selectedCells,
+		focusedCell,
+		contextMenuState,
+		initialRowPK,
+		onRowSelectionChange,
+		setTableData,
+		setVisibleColumns,
+		setIsLoading,
+		setIsTableTransitioning,
+		setPagination,
+		setSort,
+		setFilters,
+		setSelectedRows,
+		setSelectedCells,
+		setFocusedCell,
+		setContextMenuState,
+		setDraftRow,
+		setDraftInsertIndex
+	})
+
+	const handleEscapeToGrid = useCallback(function () {
+		const grid = gridContainerRef.current?.querySelector<HTMLElement>('table[role="grid"]')
+		if (grid) {
+			grid.focus()
+		}
+	}, [])
 
 	const filteredColumns = useMemo(
 		function () {
@@ -242,6 +226,57 @@ export function DatabaseStudio({
 		return new Set<number>()
 	}, [selectedRows, focusedCell])
 
+	const {
+		handleBulkDelete,
+		handleBulkCopy,
+		handleBulkDuplicate,
+		handleExportJson,
+		handleExportCsv,
+		handleClearSelection,
+		handleFilterAdd,
+		deleteRowIndexes,
+		handleRowAction,
+		handleAddRecord,
+		handleDraftChange,
+		handleDraftSave,
+		handleDraftCancel,
+		handleAddRecordSubmit,
+		notifyMissingPrimaryKey,
+		notifyActionFailure
+	} = useDatabaseStudioActions({
+		activeConnectionId,
+		tableId,
+		tableName,
+		tableRefName,
+		tableData,
+		draftRow,
+		addDialogMode,
+		editingRowState,
+		selectedRows,
+		rowsForActions,
+		settingsConfirmBeforeDelete: settings.confirmBeforeDelete,
+		updateCell,
+		deleteRows,
+		insertRow,
+		onLoadTableData: loadTableData,
+		setSelectedRows,
+		setSelectedCells,
+		setFocusedCell,
+		setShowDeleteConfirmDialog,
+		setPendingSingleDeleteRow,
+		setShowAddDialog,
+		setIsBulkActionLoading,
+		setDraftRow,
+		setDraftInsertIndex,
+		setEditingRowState,
+		setDuplicateInitialData,
+		setAddDialogMode,
+		setSelectedRowForDetail,
+		setShowRowDetail,
+		setFilters,
+		displayTableName
+	})
+
 	useEffect(
 		function announceSelection() {
 			if (rowsForActions.size > 0) {
@@ -267,126 +302,6 @@ export function DatabaseStudio({
 		},
 		[tableData, isLoading]
 	)
-
-	const loadTableData = useCallback(async () => {
-		const requestId = loadRequestIdRef.current + 1
-		loadRequestIdRef.current = requestId
-		const isCurrentRequest = function () {
-			return loadRequestIdRef.current === requestId
-		}
-
-		if (!tableId || !activeConnectionId) {
-			setIsLoading(false)
-			return
-		}
-
-		setIsLoading(true)
-		setSelectedRows(new Set())
-
-		let schemaForTable: Awaited<ReturnType<typeof adapter.getSchema>> | null = null
-		const cached = tableDataCache.get(currentCacheKey)
-
-		if (cached) {
-			setTableData(cached.data)
-			if (cached.visibleColumns.length > 0) {
-				setVisibleColumns(new Set(cached.visibleColumns))
-			}
-			setIsTableTransitioning(false)
-		}
-
-		try {
-			schemaForTable = await adapter.getSchema(activeConnectionId)
-			if (!isCurrentRequest()) return
-			if (schemaForTable.ok && !schemaHasTable(schemaForTable.data, tableRefName)) {
-				console.warn('[DatabaseStudio] Skipping stale table selection:', {
-					connectionId: activeConnectionId,
-					tableRefName
-				})
-				setTableData(null)
-				setIsTableTransitioning(false)
-				setIsLoading(false)
-				return
-			}
-		} catch (error) {
-			if (!isCurrentRequest()) return
-			console.error('[DatabaseStudio] Failed to validate selected table:', error)
-		}
-
-		try {
-			const result = await adapter.fetchTableData(
-				activeConnectionId,
-				tableRefName,
-				Math.floor(pagination.offset / pagination.limit),
-				pagination.limit,
-				sort,
-				filters
-			)
-			if (!isCurrentRequest()) return
-
-			if (result.ok) {
-				const data = result.data
-
-				// Enrich columns with FK metadata from schema
-				const schemaResult = schemaForTable ?? await adapter.getSchema(activeConnectionId)
-				if (!isCurrentRequest()) return
-				if (schemaResult.ok) {
-					const { tableName: tableNamePart, schemaName } = getTableRefParts(tableRefName ?? '')
-					data.columns = enrichColumnsWithFKs(data.columns, schemaResult.data, tableNamePart, schemaName ?? undefined)
-				}
-
-				setTableData(data)
-
-				// If it's a new table or first load, reset visible columns to show all
-				let nextVisibleColumns: string[] = []
-				if (data.columns.length > 0) {
-					setVisibleColumns((prev) => {
-						if (prev.size === 0) {
-							nextVisibleColumns = data.columns.map((c) => c.name)
-							return new Set(nextVisibleColumns)
-						}
-
-						nextVisibleColumns = Array.from(prev)
-						return prev
-					})
-				}
-
-				tableDataCache.set(currentCacheKey, {
-					data,
-					visibleColumns: nextVisibleColumns
-				})
-			} else {
-				if (!isCurrentRequest()) return
-				console.error(
-					'[DatabaseStudio] Failed to load table data:',
-					getAdapterError(result)
-				)
-				if (!cached) {
-					setTableData(null)
-				}
-			}
-		} catch (error) {
-			if (!isCurrentRequest()) return
-			console.error('[DatabaseStudio] Unexpected error loading table data:', error)
-			if (!cached) {
-				setTableData(null)
-			}
-		} finally {
-			if (isCurrentRequest()) {
-				setIsLoading(false)
-			}
-		}
-	}, [
-		adapter,
-		tableId,
-		tableName,
-		tableRefName,
-		activeConnectionId,
-		currentCacheKey,
-		pagination.limit,
-		pagination.offset,
-		sort,
-		filters
-	])
 
 	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
@@ -436,14 +351,6 @@ export function DatabaseStudio({
 		{ description: shortcuts.deselect.description }
 	)
 
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	useEffect(
-		function () {
-			loadTableData()
-		},
-		[tableId, activeConnectionId, pagination.limit, pagination.offset, sort, filters]
-	)
-
 	const { trackCellMutation, trackBatchCellMutation } = useUndo({ onUndoComplete: loadTableData })
 
 	const { openTab } = useTabs()
@@ -459,517 +366,9 @@ export function DatabaseStudio({
 		})
 	}
 
-	// Tell the global monitor which table is currently active
-	useEffect(
-		function syncActiveTable() {
-			liveMonitor.setActiveTable(tableRefName ?? null)
-			return function () { liveMonitor.setActiveTable(null) }
-		},
-		[tableRefName]
-	)
-
-	// Re-load when the global monitor detects an external change to this table
-	useEffect(
-		function reloadOnExternalChange() {
-			if (!liveMonitor.recentEvents.length) return
-			const hasChangeForThisTable = liveMonitor.recentEvents.some(function (e) {
-				return e.tableName === tableRefName || e.tableName === tableName
-			})
-			if (hasChangeForThisTable && !draftRow && !isApplyingEdits) {
-				loadTableData()
-			}
-		},
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[liveMonitor.recentEvents]
-	)
-
-	useEffect(
-		function handleTableChange() {
-			if (!tableId || !activeConnectionId) return
-			setPagination({ limit: 50, offset: 0 })
-			setSort(undefined)
-			setFilters([])
-			initializedFromUrlRef.current = false
-
-			const defaultCacheKey = buildTableCacheKey(
-				activeConnectionId,
-				tableId,
-				50,
-				0,
-				undefined,
-				[]
-			)
-			const cached = tableDataCache.get(defaultCacheKey)
-
-			if (cached) {
-				setTableData(cached.data)
-				setVisibleColumns(new Set(cached.visibleColumns))
-				setIsTableTransitioning(false)
-				return
-			}
-
-			setVisibleColumns(new Set())
-			setIsTableTransitioning(true)
-		},
-		[tableId, activeConnectionId]
-	)
-
-	useEffect(
-		function clearTransitionOnLoad() {
-			if (!isLoading && tableData) {
-				const timer = setTimeout(function () {
-					setIsTableTransitioning(false)
-				}, 50)
-				return function () {
-					clearTimeout(timer)
-				}
-			}
-		},
-		[isLoading, tableData]
-	)
-
-	useEffect(
-		function initializeFromUrl() {
-			if (initializedFromUrlRef.current || !tableData) return
-			initializedFromUrlRef.current = true
-
-			if (stableUrlState.selectedRow !== null) {
-				if (
-					stableUrlState.selectedRow >= 0 &&
-					stableUrlState.selectedRow < tableData.rows.length
-				) {
-					setSelectedRows(new Set([stableUrlState.selectedRow]))
-				}
-			}
-			if (stableUrlState.selectedCells.size > 0) {
-				const validCells = new Set<string>()
-				for (const cellKey of stableUrlState.selectedCells) {
-					const parts = cellKey.split(':')
-					if (parts.length === 2) {
-						const r = parseInt(parts[0], 10)
-						const c = parseInt(parts[1], 10)
-						if (
-							!isNaN(r) &&
-							!isNaN(c) &&
-							r >= 0 &&
-							r < tableData.rows.length &&
-							c >= 0 &&
-							c < tableData.columns.length
-						) {
-							validCells.add(cellKey)
-						}
-					}
-				}
-				if (validCells.size > 0) {
-					setSelectedCells(validCells)
-				}
-			}
-			if (stableUrlState.focusedCell) {
-				const { row, col } = stableUrlState.focusedCell
-				if (
-					row >= 0 &&
-					row < tableData.rows.length &&
-					col >= 0 &&
-					col < tableData.columns.length
-				) {
-					setFocusedCell(stableUrlState.focusedCell)
-				}
-			}
-			if (stableUrlState.contextMenu) {
-				const { cell } = stableUrlState.contextMenu
-				if (cell.row >= 0 && cell.row < tableData.rows.length) {
-					setContextMenuState(stableUrlState.contextMenu)
-				}
-			}
-			if (stableUrlState.addRecordMode && tableData) {
-				if (
-					stableUrlState.addRecordIndex === null ||
-					(stableUrlState.addRecordIndex >= -1 &&
-						stableUrlState.addRecordIndex <= tableData.rows.length)
-				) {
-					const defaults = createDefaultValues(tableData.columns)
-					setDraftRow(defaults)
-					setDraftInsertIndex(stableUrlState.addRecordIndex ?? -1)
-				}
-			}
-		},
-		[tableData, stableUrlState]
-	)
-
-	useEffect(
-		function syncSelectedRowToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-			const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null
-			if (firstSelected === stableUrlState.selectedRow) return
-
-			isUpdatingUrlRef.current = true
-			setSelectedRow(firstSelected)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
-
-			if (onRowSelectionChange && tableData) {
-				if (firstSelected !== null && tableData.rows[firstSelected]) {
-					const primaryKeyColumn = tableData.columns.find(function (c) {
-						return c.primaryKey
-					})
-					if (primaryKeyColumn) {
-						const pkValue = tableData.rows[firstSelected][primaryKeyColumn.name] as
-							| string
-							| number
-						onRowSelectionChange(pkValue)
-					}
-				} else if (selectedRows.size === 0) {
-					onRowSelectionChange(null)
-				}
-			}
-		},
-		[selectedRows, onRowSelectionChange, tableData, stableUrlState.selectedRow, setSelectedRow]
-	)
-
-	// Restore selection from initialRowPK
-	useEffect(
-		function restoreSelectionFromPK() {
-			if (
-				!tableData ||
-				!initialRowPK ||
-				selectedRows.size > 0 ||
-				initializedFromUrlRef.current
-			)
-				return
-
-			const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
-			if (!primaryKeyColumn) return
-
-			const rowIndex = tableData.rows.findIndex(
-				(row) => String(row[primaryKeyColumn.name]) === String(initialRowPK)
-			)
-
-			if (rowIndex !== -1) {
-				setSelectedRows(new Set([rowIndex]))
-				// Mark as initialized so URL sync doesn't overwrite it immediately?
-				// Actually syncSelectedRowToUrl will run and update URL, which is fine.
-			}
-		},
-		[tableData, initialRowPK] // Run when data loads or initialPK changes
-	)
-
-	useEffect(
-		function syncCellsToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const currentCellsStr = Array.from(stableUrlState.selectedCells).sort().join(',')
-			const newCellsStr = Array.from(selectedCells).sort().join(',')
-			if (currentCellsStr === newCellsStr) return
-
-			isUpdatingUrlRef.current = true
-			setUrlSelectedCells(selectedCells)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
-		},
-		[selectedCells, stableUrlState.selectedCells, setUrlSelectedCells]
-	)
-
-	useEffect(
-		function syncFocusedCellToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const urlCell = stableUrlState.focusedCell
-			const isSame =
-				(urlCell === null && focusedCell === null) ||
-				(urlCell !== null &&
-					focusedCell !== null &&
-					urlCell.row === focusedCell.row &&
-					urlCell.col === focusedCell.col)
-			if (isSame) return
-
-			isUpdatingUrlRef.current = true
-			setUrlFocusedCell(focusedCell)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
-		},
-		[focusedCell, stableUrlState.focusedCell, setUrlFocusedCell]
-	)
-
-	useEffect(
-		function syncContextMenuToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const urlCtx = stableUrlState.contextMenu
-			const isSame =
-				(urlCtx === null && contextMenuState === null) ||
-				(urlCtx !== null &&
-					contextMenuState !== null &&
-					urlCtx.kind === contextMenuState.kind &&
-					urlCtx.cell.row === contextMenuState.cell.row &&
-					urlCtx.cell.col === contextMenuState.cell.col)
-			if (isSame) return
-
-			isUpdatingUrlRef.current = true
-			setContextMenu(contextMenuState)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
-		},
-		[contextMenuState, stableUrlState.contextMenu, setContextMenu]
-	)
-
-	useEffect(
-		function syncAddRecordToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const isAddRecordActive = draftRow !== null
-			const isSame =
-				stableUrlState.addRecordMode === isAddRecordActive &&
-				stableUrlState.addRecordIndex === draftInsertIndex
-			if (isSame) return
-
-			isUpdatingUrlRef.current = true
-			setAddRecordMode(isAddRecordActive, draftInsertIndex)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
-		},
-		[
-			draftRow,
-			draftInsertIndex,
-			stableUrlState.addRecordMode,
-			stableUrlState.addRecordIndex,
-			setAddRecordMode
-		]
-	)
-
 	// Define all callbacks before any conditional returns
-	const handleBulkDelete = useCallback(() => {
-		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
-		if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
-
-		if (settings.confirmBeforeDelete) {
-			setShowDeleteConfirmDialog(true)
-			return
-		}
-
-		performBulkDelete()
-	}, [tableData, activeConnectionId, tableId, settings.confirmBeforeDelete])
-
-	const performBulkDelete = useCallback(() => {
-		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
-		if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
-
-		const primaryKeyValues = Array.from(rowsForActions).map(function (rowIndex) {
-			return tableData.rows[rowIndex][primaryKeyColumn.name]
-		})
-
-		deleteRows.mutate(
-			{
-				connectionId: activeConnectionId,
-				tableName: tableRefName,
-				primaryKeyColumn: primaryKeyColumn.name,
-				primaryKeyValues
-			},
-			{
-				onSuccess: function () {
-					setSelectedRows(new Set())
-					loadTableData()
-					setShowDeleteConfirmDialog(false)
-				},
-				onError: function (error: Error) {
-					notifyActionFailure('Failed to delete rows', error)
-				}
-			}
-		)
-	}, [tableData, activeConnectionId, tableId, tableName, selectedRows, deleteRows, loadTableData])
-
-	const handleBulkCopy = useCallback(() => {
-		if (!tableData) return
-		const rowsData = Array.from(rowsForActions).map(function (rowIndex) {
-			return tableData.rows[rowIndex]
-		})
-		navigator.clipboard.writeText(JSON.stringify(rowsData, null, 2))
-	}, [tableData, rowsForActions])
-
-	const handleBulkDuplicate = useCallback(() => {
-		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
-		if (!activeConnectionId || !tableId || !tableData) return
-
-		const rowsToDuplicate = Array.from(rowsForActions).map(function (rowIndex) {
-			const row = { ...tableData.rows[rowIndex] }
-			if (primaryKeyColumn) {
-				delete row[primaryKeyColumn.name]
-			}
-			return row
-		})
-
-		setIsBulkActionLoading(true)
-		Promise.all(
-			rowsToDuplicate.map(function (rowData) {
-				return insertRow.mutateAsync({
-					connectionId: activeConnectionId,
-					tableName: tableRefName,
-					rowData
-				})
-			})
-		)
-			.then(function () {
-				setSelectedRows(new Set())
-				loadTableData()
-			})
-			.catch(function (error) {
-				notifyActionFailure('Failed to duplicate rows', error)
-			})
-			.finally(function () {
-				setIsBulkActionLoading(false)
-			})
-	}, [
-		tableData,
-		activeConnectionId,
-		tableId,
-		tableName,
-		rowsForActions,
-		insertRow,
-		loadTableData
-	])
-
-	const deleteRowIndexes = useCallback(
-		function deleteRowIndexes(rowIndexes: number[]) {
-			const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
-			if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
-
-			const primaryKeyValues = rowIndexes.map(function (targetRowIndex) {
-				return tableData.rows[targetRowIndex][primaryKeyColumn.name]
-			})
-
-			deleteRows.mutate(
-				{
-					connectionId: activeConnectionId,
-					tableName: tableRefName,
-					primaryKeyColumn: primaryKeyColumn.name,
-					primaryKeyValues
-				},
-				{
-					onSuccess: function onDeleteSuccess() {
-						setSelectedRows(new Set())
-						loadTableData()
-						setShowDeleteConfirmDialog(false)
-						setPendingSingleDeleteRow(null)
-					},
-					onError: function onDeleteError(error) {
-						notifyActionFailure('Failed to delete rows', error)
-					}
-				}
-			)
-		},
-		[tableData, activeConnectionId, tableId, tableName, deleteRows, loadTableData, toast]
-	)
-
-	const duplicateRowIndexes = useCallback(
-		function duplicateRowIndexes(rowIndexes: number[]) {
-			const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
-			if (!activeConnectionId || !tableId || !tableData) return
-
-			const rowsToDuplicate = rowIndexes.map(function (targetRowIndex) {
-				const row = { ...tableData.rows[targetRowIndex] }
-				if (primaryKeyColumn) {
-					delete row[primaryKeyColumn.name]
-				}
-				return row
-			})
-
-			setIsBulkActionLoading(true)
-			Promise.all(
-				rowsToDuplicate.map(function (rowData) {
-					return insertRow.mutateAsync({
-						connectionId: activeConnectionId,
-						tableName: tableRefName,
-						rowData
-					})
-				})
-			)
-				.then(function () {
-					setSelectedRows(new Set())
-					loadTableData()
-			})
-				.catch(function (error) {
-					notifyActionFailure('Failed to duplicate rows', error)
-				})
-				.finally(function () {
-					setIsBulkActionLoading(false)
-				})
-		},
-		[tableData, activeConnectionId, tableId, tableName, insertRow, loadTableData, toast]
-	)
-
-	const handleExportJson = useCallback(() => {
-		if (!tableData) return
-		const rowsData = Array.from(rowsForActions).map(function (rowIndex) {
-			return tableData.rows[rowIndex]
-		})
-		const jsonString = JSON.stringify(rowsData, null, 2)
-		const blob = new Blob([jsonString], { type: 'application/json' })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement('a')
-		a.href = url
-		a.download = `${tableName || 'data'}_selected.json`
-		a.click()
-		URL.revokeObjectURL(url)
-	}, [tableData, rowsForActions, tableName])
-
-	const handleExportCsv = useCallback(() => {
-		if (!tableData) return
-		const rowsData = Array.from(rowsForActions).map(function (rowIndex) {
-			return tableData.rows[rowIndex]
-		})
-
-		if (rowsData.length === 0) return
-
-		const headers = Object.keys(rowsData[0])
-		const csvRows = [
-			headers.join(','),
-			...rowsData.map(function (row) {
-				return headers
-					.map(function (header) {
-						const value = row[header]
-						if (value === null || value === undefined) return ''
-						const stringValue = String(value)
-						if (
-							stringValue.includes(',') ||
-							stringValue.includes('"') ||
-							stringValue.includes('\n')
-						) {
-							return `"${stringValue.replace(/"/g, '""')}"`
-						}
-						return stringValue
-					})
-					.join(',')
-			})
-		]
-
-		const csvString = csvRows.join('\n')
-		const blob = new Blob([csvString], { type: 'text/csv' })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement('a')
-		a.href = url
-		a.download = `${tableName || 'data'}_selected.csv`
-		a.click()
-		URL.revokeObjectURL(url)
-	}, [tableData, rowsForActions, tableName])
-
-	const handleClearSelection = useCallback(() => {
-		setSelectedRows(new Set())
-		if (selectedRows.size === 0) {
-			setFocusedCell(null)
-			setSelectedCells(new Set())
-		}
-	}, [selectedRows.size])
 	const handleOpenSetNull = useCallback(() => setShowSetNullDialog(true), [])
 	const handleOpenBulkEdit = useCallback(() => setShowBulkEditDialog(true), [])
-	const handleFilterAdd = useCallback(function (filter: FilterDescriptor) {
-		setFilters(function (prev) {
-			return [...prev, filter]
-		})
-	}, [])
 
 	async function handleSeederGenerate(data: any[]) {
 		if (!activeConnectionId || !tableId) return
@@ -1054,849 +453,113 @@ export function DatabaseStudio({
 		}
 	}
 
-	function notifyMissingPrimaryKey(actionLabel: string) {
-		toast({
-			title: `Cannot ${actionLabel}`,
-			description: `Table "${displayTableName ?? tableRefName}" has no primary key, so this action cannot be saved safely.`,
-			variant: 'destructive'
-		})
-	}
+	const {
+		handleCellEdit,
+		handleApplyPendingEdits,
+		handleDiscardPendingEdits,
+		handleBatchCellEdit
+	} = useDatabaseStudioEdits({
+		activeConnectionId,
+		tableId,
+		tableRefName,
+		tableData,
+		isDryEditMode,
+		pendingEdits,
+		getEditsForTable,
+		hasEdits,
+		addEdit,
+		removeEdit,
+		clearEdits,
+		updateCell,
+		setTableData,
+		setIsApplyingEdits,
+		loadTableData,
+		trackCellMutation,
+		trackBatchCellMutation,
+		notifyMissingPrimaryKey,
+		notifyActionFailure
+	})
 
-	function notifyActionFailure(title: string, error: unknown) {
-		toast({
-			title,
-			description: error instanceof Error ? error.message : 'An error occurred',
-			variant: 'destructive'
-		})
-	}
-
-	function handleCellEdit(rowIndex: number, columnName: string, newValue: unknown) {
-		if (!tableId || !activeConnectionId || !tableData) return
-
-		const row = tableData.rows[rowIndex]
-		if (!row) return
-
-		const editedColumn = tableData.columns.find(function (c) {
-			return c.name === columnName
-		})
-		const normalizedNewValue = editedColumn
-			? normalizeValueForInsert(editedColumn, newValue)
-			: newValue
-
-		if (areValuesEqual(row[columnName], normalizedNewValue)) {
-			return
-		}
-
-		const primaryKeyColumn = tableData.columns.find(function (c) {
-			return c.primaryKey
-		})
-		if (!primaryKeyColumn) {
-			notifyMissingPrimaryKey('edit cell')
-			return
-		}
-
-		if (isDryEditMode) {
-			// Check if there's already a pending edit to preserve the ORIGINAL value
-			const key = `${tableId}:${String(row[primaryKeyColumn.name])}:${columnName}`
-			const existingEdit = pendingEdits.get(key)
-			const oldValue = existingEdit ? existingEdit.oldValue : row[columnName]
-
-			if (areValuesEqual(oldValue, normalizedNewValue)) {
-				removeEdit(tableId, key)
-				setTableData(function (prev) {
-					if (!prev) return prev
-					const newRows = [...prev.rows]
-					newRows[rowIndex] = { ...newRows[rowIndex], [columnName]: oldValue }
-					return { ...prev, rows: newRows }
-				})
-				return
-			}
-
-			addEdit(tableId, {
-				rowIndex,
-				primaryKeyColumn: primaryKeyColumn.name,
-				primaryKeyValue: row[primaryKeyColumn.name],
-				columnName,
-				oldValue,
-				newValue: normalizedNewValue
-			})
-
-			setTableData(function (prev) {
-				if (!prev) return prev
-				const newRows = [...prev.rows]
-				newRows[rowIndex] = { ...newRows[rowIndex], [columnName]: normalizedNewValue }
-				return { ...prev, rows: newRows }
-			})
-		} else {
-			const previousValue = row[columnName]
-
-			// Optimistically update local state so the user sees the edit immediately.
-			setTableData(function (prev) {
-				if (!prev) return prev
-				const newRows = [...prev.rows]
-				newRows[rowIndex] = { ...newRows[rowIndex], [columnName]: normalizedNewValue }
-				return { ...prev, rows: newRows }
-			})
-
-			updateCell.mutate(
-				{
-					connectionId: activeConnectionId,
-					tableName: tableRefName,
-					primaryKeyColumn: primaryKeyColumn.name,
-					primaryKeyValue: row[primaryKeyColumn.name],
-					columnName,
-					newValue: normalizedNewValue
-				},
-				{
-					onSuccess: function () {
-						trackCellMutation(
-							activeConnectionId,
-							tableRefName,
-							primaryKeyColumn.name,
-							row[primaryKeyColumn.name],
-							columnName,
-							previousValue,
-							normalizedNewValue
-						)
-						loadTableData()
-					},
-					onError: function (error) {
-						console.error('Failed to update cell:', error)
-						// Revert the optimistic update on failure.
-						setTableData(function (prev) {
-							if (!prev) return prev
-							const revertedRows = [...prev.rows]
-							revertedRows[rowIndex] = { ...revertedRows[rowIndex], [columnName]: previousValue }
-							return { ...prev, rows: revertedRows }
-						})
-						toast({
-							title: 'Failed to update cell',
-							description:
-								error instanceof Error ? error.message : 'An error occurred',
-							variant: 'destructive'
-						})
-					}
-				}
-			)
-		}
-	}
-
-	// Handle Undo for Pending Edits (Ctrl+Z)
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-				if (isDryEditMode && tableId && hasEdits(tableId)) {
-					// Check if we are inside an input (default undo) vs grid navigation
-					// If target is body or grid container, we perform our undo.
-					const target = e.target as HTMLElement
-					const isInput =
-						target.tagName === 'INPUT' ||
-						target.tagName === 'TEXTAREA' ||
-						target.isContentEditable
-
-					if (!isInput) {
-						e.preventDefault()
-						e.stopPropagation()
-
-						const edits = getEditsForTable(tableId)
-						const lastEdit = edits[edits.length - 1]
-
-						if (lastEdit) {
-							const key = `${tableId}:${String(lastEdit.primaryKeyValue)}:${lastEdit.columnName}`
-							removeEdit(tableId, key)
-
-							setTableData((prev) => {
-								if (!prev) return prev
-								const newRows = [...prev.rows]
-								// We trust rowIndex from the edit, assuming table hasn't been re-sorted/filtered in a way that invalidates indices.
-								// Ideal: find row by PK. But for now using index as stored.
-								if (newRows[lastEdit.rowIndex]) {
-									newRows[lastEdit.rowIndex] = {
-										...newRows[lastEdit.rowIndex],
-										[lastEdit.columnName]: lastEdit.oldValue
-									}
-								}
-								return { ...prev, rows: newRows }
-							})
-						}
-					}
-				}
-			}
-		}
-
-		window.addEventListener('keydown', handleKeyDown, true)
-		return () => window.removeEventListener('keydown', handleKeyDown, true)
-	}, [isDryEditMode, tableId, hasEdits, getEditsForTable, removeEdit])
-
-	async function handleApplyPendingEdits() {
-		if (!activeConnectionId || !tableId) return
-
-		const edits = getEditsForTable(tableId)
-		if (edits.length === 0) return
-
-		setIsApplyingEdits(true)
-		try {
-			for (const edit of edits) {
-				await updateCell.mutateAsync({
-					connectionId: activeConnectionId,
-					tableName: tableRefName,
-					primaryKeyColumn: edit.primaryKeyColumn,
-					primaryKeyValue: edit.primaryKeyValue,
-					columnName: edit.columnName,
-					newValue: edit.newValue
-				})
-			}
-			clearEdits(tableId)
-			loadTableData()
-		} catch (error) {
-			console.error('Failed to apply edits:', error)
-			toast({
-				title: 'Failed to apply changes',
-				description: error instanceof Error ? error.message : 'An error occurred',
-				variant: 'destructive'
-			})
-		} finally {
-			setIsApplyingEdits(false)
-		}
-	}
-
-	function handleDiscardPendingEdits() {
-		if (!tableId) return
-		clearEdits(tableId)
-		loadTableData()
-	}
-
-	async function handleBatchCellEdit(
-		rowIndexes: number[],
-		columnName: string,
-		newValue: unknown
-	) {
-		if (!tableId || !activeConnectionId || !tableData) return
-
-		const primaryKeyColumn = tableData.columns.find(function (c) {
-			return c.primaryKey
-		})
-		if (!primaryKeyColumn) {
-			notifyMissingPrimaryKey('apply bulk edits')
-			return
-		}
-
-		const cellsToTrack = rowIndexes.map(function (rowIndex) {
-			const row = tableData.rows[rowIndex]
-			return {
-				primaryKeyValue: row[primaryKeyColumn.name],
-				columnName,
-				previousValue: row[columnName],
-				newValue
-			}
-		})
-
-		try {
-			await Promise.all(
-				rowIndexes.map(async function (rowIndex) {
-					const row = tableData.rows[rowIndex]
-					return updateCell.mutateAsync({
-						connectionId: activeConnectionId,
-						tableName: tableRefName,
-						primaryKeyColumn: primaryKeyColumn.name,
-						primaryKeyValue: row[primaryKeyColumn.name],
-						columnName,
-						newValue
-					})
-				})
-			)
-
-			trackBatchCellMutation(
-				activeConnectionId,
-				tableRefName,
-				primaryKeyColumn.name,
-				cellsToTrack
-			)
-
-			loadTableData()
-		} catch (error) {
-			console.error('Failed to batch update cells:', error)
-			toast({
-				title: 'Failed to update cells',
-				description: error instanceof Error ? error.message : 'An error occurred',
-				variant: 'destructive'
-			})
-		}
-	}
-
-	async function handleRowAction(
-		action: string,
-		row: Record<string, unknown>,
-		rowIndex: number,
-		batchIndexes?: number[]
-	) {
-		if (!tableId || !activeConnectionId || !tableData) return
-
-		const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
-		if (!primaryKeyColumn) {
-			notifyMissingPrimaryKey('perform this row action')
-			return
-		}
-		const effectiveRowIndexes =
-			batchIndexes && batchIndexes.length > 1 ? batchIndexes : [rowIndex]
-		const isBatchAction = effectiveRowIndexes.length > 1
-
-		switch (action) {
-			case 'delete':
-				if (settings.confirmBeforeDelete && !isBatchAction) {
-					setPendingSingleDeleteRow({
-						row,
-						primaryKeyColumn: primaryKeyColumn.name,
-						primaryKeyValue: row[primaryKeyColumn.name]
-					})
-					setShowDeleteConfirmDialog(true)
-					return
-				}
-
-				if (settings.confirmBeforeDelete && isBatchAction) {
-					setPendingSingleDeleteRow(null)
-					setSelectedRows(new Set(effectiveRowIndexes))
-					setShowDeleteConfirmDialog(true)
-					return
-				}
-
-				deleteRowIndexes(effectiveRowIndexes)
-				break
-			case 'view':
-				setSelectedRowForDetail(row)
-				setShowRowDetail(true)
-				break
-			case 'edit':
-				setDuplicateInitialData(row)
-				setEditingRowState({
-					primaryKeyColumn: primaryKeyColumn.name,
-					primaryKeyValue: row[primaryKeyColumn.name],
-					originalRow: row
-				})
-				setAddDialogMode('edit')
-				setShowAddDialog(true)
-				break
-			case 'duplicate':
-				if (isBatchAction) {
-					duplicateRowIndexes(effectiveRowIndexes)
-					break
-				}
-
-				const duplicateData = { ...row }
-				if (primaryKeyColumn) {
-					delete duplicateData[primaryKeyColumn.name]
-				}
-				// Prefill any missing required timestamp fields if not present in source
-				const defaults = createDefaultValues(tableData.columns)
-				setDraftRow({ ...defaults, ...duplicateData })
-				setDraftInsertIndex(rowIndex + 1)
-
-				// Focus will be handled by the DataGrid effect for new draft row
-				break
-			default:
-				break
-		}
-	}
-
-	function handleAddRecord() {
-		if (!tableData) return
-		setEditingRowState(null)
-		setDuplicateInitialData(undefined)
-		setAddDialogMode('add')
-		const defaults = createDefaultValues(tableData.columns)
-		setDraftRow(defaults)
-		setDraftInsertIndex(-1) // -1 indicates top of the table
-	}
-
-	function handleDraftChange(columnName: string, value: unknown) {
-		setDraftRow(function (prev) {
-			if (!prev) return prev
-			return { ...prev, [columnName]: value }
-		})
-	}
-
-	function handleDraftSave() {
-		const currentDraft = draftRowRef.current
-		if (!activeConnectionId || !tableId || !currentDraft || !tableData) return
-		const normalizedDraftRow = normalizeRowForInsert(currentDraft, tableData.columns)
-
-		insertRow.mutate(
-			{
-				connectionId: activeConnectionId,
-				tableName: tableRefName,
-				rowData: normalizedDraftRow
-			},
-			{
-				onSuccess: function onInsertSuccess() {
-					setDraftRow(null)
-					setDraftInsertIndex(null)
-					loadTableData()
-				},
-				onError: function onInsertError(error) {
-					console.error('Failed to insert row:', error)
-					toast({
-						title: 'Failed to create row',
-						description: error instanceof Error ? error.message : 'An error occurred',
-						variant: 'destructive'
-					})
-				}
-			}
-		)
-	}
-
-	function handleDraftCancel() {
-		setDraftRow(null)
-		setDraftInsertIndex(null)
-	}
-
-	function handleAddRecordSubmit(rowData: Record<string, unknown>) {
-		if (!activeConnectionId || !tableId || !tableData) return
-		if (addDialogMode === 'edit' && editingRowState) {
-			const changedColumns = tableData.columns
-				.filter(function isEditableColumn(column) {
-					return !column.primaryKey
-				})
-				.filter(function hasChangedValue(column) {
-					return rowData[column.name] !== editingRowState.originalRow[column.name]
-				})
-
-			if (changedColumns.length === 0) {
-				setShowAddDialog(false)
-				setEditingRowState(null)
-				setDuplicateInitialData(undefined)
-				setAddDialogMode('add')
-				return
-			}
-
-			Promise.all(
-				changedColumns.map(function updateChangedColumn(column) {
-					return updateCell.mutateAsync({
-						connectionId: activeConnectionId,
-						tableName: tableRefName,
-						primaryKeyColumn: editingRowState.primaryKeyColumn,
-						primaryKeyValue: editingRowState.primaryKeyValue,
-						columnName: column.name,
-						newValue: normalizeValueForInsert(column, rowData[column.name])
-					})
-				})
-			)
-				.then(function onEditSuccess() {
-					setShowAddDialog(false)
-					setEditingRowState(null)
-					setDuplicateInitialData(undefined)
-					setAddDialogMode('add')
-					loadTableData()
-				})
-				.catch(function onEditError(error) {
-					console.error('Failed to update row:', error)
-					toast({
-						title: 'Failed to update row',
-						description: error instanceof Error ? error.message : 'An error occurred',
-						variant: 'destructive'
-					})
-				})
-			return
-		}
-
-		const normalizedRowData = normalizeRowForInsert(rowData, tableData.columns)
-
-		insertRow.mutate(
-			{
-				connectionId: activeConnectionId,
-				tableName: tableRefName,
-				rowData: normalizedRowData
-			},
-			{
-				onSuccess: function onInsertSuccess() {
-					setShowAddDialog(false)
-					setDuplicateInitialData(undefined)
-					setAddDialogMode('add')
-					loadTableData()
-				},
-				onError: function onInsertError(error) {
-					console.error('Failed to insert row:', error)
-				}
-			}
-		)
-	}
-
-	function handleExport() {
-		if (!tableData || tableData.rows.length === 0) return
-
-		const jsonString = JSON.stringify(tableData.rows, null, 2)
-		const blob = new Blob([jsonString], { type: 'application/json' })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement('a')
-		a.href = url
-		a.download = `${tableName || 'data'}.json`
-		a.click()
-		URL.revokeObjectURL(url)
-	}
-
-	function handleExportCsvAll() {
-		if (!tableData || tableData.rows.length === 0) return
-		const csvString = rowsToCsv(tableData.rows, tableData.columns.map(function (col) {
-			return col.name
-		}))
-		const blob = new Blob([csvString], { type: 'text/csv' })
-		const url = URL.createObjectURL(blob)
-		const a = document.createElement('a')
-		a.href = url
-		a.download = `${tableName || 'data'}.csv`
-		a.click()
-		URL.revokeObjectURL(url)
-	}
-
-	async function handleExportSqlAll() {
-		if (!activeConnectionId || !tableId || !tableData || tableData.rows.length === 0) return
-
-		const result = await commands.exportTable(
-			activeConnectionId,
-			getTableRefParts(tableRefName).tableName,
-			getTableRefParts(tableRefName).schemaName,
-			'sql_insert',
-			null
-		)
-
-		if (result.status === 'ok') {
-			const blob = new Blob([result.data], { type: 'text/sql' })
-			const url = URL.createObjectURL(blob)
-			const a = document.createElement('a')
-			a.href = url
-			a.download = `${tableName || 'data'}.sql`
-			a.click()
-			URL.revokeObjectURL(url)
-		}
-	}
-
-	async function handleCopySchema() {
-		if (!activeConnectionId) return
-
-		try {
-			const result = await adapter.getDatabaseDDL(activeConnectionId)
-			if (result.ok) {
-				navigator.clipboard.writeText(result.data)
-				toast({
-					title: 'Schema copied',
-					description: 'Database schema DDL copied to clipboard.'
-				})
-			} else {
-				throw new Error(getAdapterError(result))
-			}
-		} catch (error) {
-			notifyActionFailure('Error copying schema', error)
-		}
-	}
-
-	async function handleCopyDrizzleSchema() {
-		if (!activeConnectionId) return
-
-		try {
-			const schemaResult = await adapter.getSchema(activeConnectionId)
-			if (schemaResult.ok) {
-				const drizzleSchema = convertSchemaToDrizzle(schemaResult.data)
-				navigator.clipboard.writeText(drizzleSchema)
-				toast({
-					title: 'Drizzle schema copied',
-					description: 'Database schema as Drizzle ORM format copied to clipboard.'
-				})
-			} else {
-				throw new Error(getAdapterError(schemaResult))
-			}
-		} catch (error) {
-			notifyActionFailure('Error copying schema', error)
-		}
-	}
-
-	async function handleAddColumn(columnDef: ColumnFormData) {
-		if (!activeConnectionId || !tableName) return
-
-		setIsDdlLoading(true)
-		try {
-			let sql = `ALTER TABLE "${tableName}" ADD COLUMN "${columnDef.name}" ${columnDef.type}`
-			if (!columnDef.nullable) {
-				sql += ' NOT NULL'
-			}
-			if (columnDef.defaultValue.trim()) {
-				sql += ` DEFAULT ${columnDef.defaultValue}`
-			}
-
-			const result = await commands.executeBatch(activeConnectionId, [sql])
-			if (result.status === 'ok') {
-				setShowAddColumnDialog(false)
-				tableDataCache.clear()
-				window.dispatchEvent(
-					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
-				)
-				loadTableData()
-			} else {
-				notifyActionFailure('Failed to add column', result.error)
-			}
-		} catch (error) {
-			notifyActionFailure('Failed to add column', error)
-		} finally {
-			setIsDdlLoading(false)
-		}
-	}
-
-	async function handleDropTable() {
-		if (!activeConnectionId || !tableName) return
-
-		setIsDdlLoading(true)
-		try {
-			const result = await adapter.dropTable(activeConnectionId, tableName)
-			if (result.ok) {
-				setShowDropTableDialog(false)
-				tableDataCache.clear()
-				window.dispatchEvent(
-					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
-				)
-				toast({
-					title: 'Table dropped',
-					description: `"${tableName}" has been removed.`,
-					variant: 'success'
-				})
-			} else {
-				const errorMessage = getAdapterError(result)
-				notifyActionFailure('Failed to drop table', errorMessage)
-			}
-		} catch (error) {
-			notifyActionFailure('Failed to drop table', error)
-		} finally {
-			setIsDdlLoading(false)
-		}
-	}
+	const {
+		handleExport,
+		handleExportCsvAll,
+		handleExportSqlAll,
+		handleCopySchema,
+		handleCopyDrizzleSchema,
+		handleAddColumn,
+		handleDropTable
+	} = useDatabaseStudioCommands({
+		adapter,
+		activeConnectionId,
+		tableId,
+		tableName,
+		tableRefName,
+		tableData,
+		loadTableData,
+		setIsDdlLoading,
+		setShowAddColumnDialog,
+		setShowDropTableDialog,
+		notifyActionFailure
+	})
 
 	// No connection selected
 	if (!activeConnectionId) {
 		return (
-			<div className='flex flex-col h-full bg-background/50'>
-				{onToggleSidebar && (
-					<div className='flex items-center h-10 border-b border-sidebar-border bg-sidebar/50 shrink-0 px-3'>
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-7 w-7 text-muted-foreground hover:text-sidebar-foreground'
-							onClick={onToggleSidebar}
-							title='Toggle sidebar'
-						>
-							<PanelLeft
-								className={`h-4 w-4 transition-transform duration-300 ${isSidebarOpen ? '' : 'rotate-180'}`}
-							/>
-						</Button>
-						<span className='ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase'>
-							Database Studio
-						</span>
-					</div>
-				)}
-
-				<div className='flex-1 flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-300'>
-					<div className='w-20 h-20 bg-sidebar-accent/30 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/50 shadow-sm backdrop-blur-sm'>
-						<Database className='w-10 h-10 text-primary/60' strokeWidth={1.5} />
-					</div>
-					<h2 className='text-xl font-semibold mb-2 text-foreground tracking-tight'>
-						No Database Connected
-					</h2>
-					<p className='text-muted-foreground text-center max-w-sm mb-8 leading-relaxed text-sm'>
-						Select a connection from the sidebar to view its tables, or create a new
-						connection to get started.
-					</p>
-
-					{onAddConnection && (
-						<Button
-							onClick={onAddConnection}
-							className='gap-2 shadow-md hover:shadow-lg transition-all'
-						>
-							<Plus className='w-4 h-4' />
-							Add Connection
-						</Button>
-					)}
-				</div>
-			</div>
+			<DatabaseStudioNoConnection
+				onToggleSidebar={onToggleSidebar}
+				isSidebarOpen={isSidebarOpen}
+				onAddConnection={onAddConnection}
+			/>
 		)
 	}
 
 	// No table selected
 	if (!tableId) {
 		return (
-			<div className='flex flex-col h-full bg-background/50'>
-				{onToggleSidebar && (
-					<div className='flex items-center h-10 border-b border-sidebar-border bg-sidebar/50 shrink-0 px-3'>
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-7 w-7 text-muted-foreground hover:text-sidebar-foreground'
-							onClick={onToggleSidebar}
-							title='Toggle sidebar'
-						>
-							<PanelLeft
-								className={`h-4 w-4 transition-transform duration-300 ${isSidebarOpen ? '' : 'rotate-180'}`}
-							/>
-						</Button>
-						<span className='ml-3 text-xs font-medium text-muted-foreground/70 tracking-wide uppercase'>
-							Database Studio
-						</span>
-					</div>
-				)}
-
-				<div className='flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in zoom-in-95 duration-300'>
-					<div className='w-20 h-20 bg-sidebar-accent/20 rounded-full flex items-center justify-center mb-6 ring-1 ring-sidebar-border/30'>
-						<svg
-							className='h-10 w-10 text-muted-foreground/50'
-							viewBox='0 0 24 24'
-							fill='none'
-							stroke='currentColor'
-							strokeWidth='1.5'
-						>
-							<rect x='3' y='3' width='18' height='18' rx='2' />
-							<line x1='9' y1='3' x2='9' y2='21' />
-						</svg>
-					</div>
-					<h1 className='text-xl font-semibold text-foreground mb-2 tracking-tight'>
-						No Table Selected
-					</h1>
-					<p className='text-muted-foreground text-sm max-w-xs'>
-						Select a table from the sidebar list to browse its records, structure, and
-						relationships.
-					</p>
-				</div>
-			</div>
+			<DatabaseStudioNoTable
+				onToggleSidebar={onToggleSidebar}
+				isSidebarOpen={isSidebarOpen}
+			/>
 		)
 	}
 
 	// Structure view
 	if (viewMode === 'structure' && tableData) {
 		return (
-			<div className='flex flex-col h-full bg-background'>
-				<StudioToolbar
-					tableName={displayTableName}
-					viewMode={viewMode}
-					onViewModeChange={setViewMode}
-					onToggleSidebar={onToggleSidebar}
-					isSidebarOpen={isSidebarOpen}
-					onRefresh={loadTableData}
-					onExport={handleExport}
-					onExportCsv={handleExportCsvAll}
-					onExportSql={handleExportSqlAll}
-					isLoading={isLoading}
-					onCopySchema={handleCopySchema}
-					onCopyDrizzleSchema={handleCopyDrizzleSchema}
-					liveMonitorConfig={liveMonitor.config}
-					onLiveMonitorConfigChange={liveMonitor.setConfig}
-					isLiveMonitorPolling={liveMonitor.isPolling}
-					changeEvents={liveMonitor.recentEvents}
-					unreadChangeCount={liveMonitor.unreadCount}
-					onClearChangeEvents={liveMonitor.clearEvents}
-					onMarkChangesRead={liveMonitor.markRead}
-				/>
-
-				<div className='flex-1 overflow-auto p-4'>
-					<div className='max-w-2xl'>
-						<h2 className='text-lg font-medium text-sidebar-foreground mb-4'>
-							Table Structure
-						</h2>
-						<table className='w-full text-sm'>
-							<thead>
-								<tr className='border-b border-sidebar-border'>
-									<th className='text-left py-2 px-3 text-muted-foreground font-medium'>
-										Column
-									</th>
-									<th className='text-left py-2 px-3 text-muted-foreground font-medium'>
-										Type
-									</th>
-									<th className='text-left py-2 px-3 text-muted-foreground font-medium'>
-										Nullable
-									</th>
-									<th className='text-left py-2 px-3 text-muted-foreground font-medium'>
-										Primary Key
-									</th>
-								</tr>
-							</thead>
-							<tbody>
-								{tableData.columns.map((col: ColumnDefinition) => (
-									<tr
-										key={col.name}
-										className='border-b border-sidebar-border/50'
-									>
-										<td className='py-2 px-3 font-mono text-sidebar-foreground'>
-											{col.name}
-										</td>
-										<td className='py-2 px-3 font-mono text-primary'>
-											{col.type}
-										</td>
-										<td className='py-2 px-3'>
-											{col.nullable ? (
-												<span className='text-muted-foreground'>Yes</span>
-											) : (
-												<span className='text-warning'>No</span>
-											)}
-										</td>
-										<td className='py-2 px-3'>
-											{col.primaryKey && (
-												<span className='text-warning font-medium'>PK</span>
-											)}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-
-						<div className='flex gap-2 mt-6'>
-							<Button
-								variant='outline'
-								size='sm'
-								onClick={function () {
-									setShowAddColumnDialog(true)
-								}}
-								className='gap-2'
-							>
-								<Columns className='h-4 w-4' />
-								Add Column
-							</Button>
-							<Button
-								variant='outline'
-								size='sm'
-								onClick={function () {
-									setShowDropTableDialog(true)
-								}}
-								className='gap-2 text-destructive hover:text-destructive'
-							>
-								<Trash2 className='h-4 w-4' />
-								Drop Table
-							</Button>
-						</div>
-					</div>
-				</div>
-
-				<BottomStatusBar
-					pagination={pagination}
-					onPaginationChange={setPagination}
-					rowCount={tableData.rows.length}
-					totalCount={tableData.totalCount}
-					executionTime={tableData.executionTime}
-					liveMonitorEnabled={liveMonitor.config.enabled}
-					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
-					lastPolledAt={liveMonitor.recentEvents[0]?.timestamp ?? null}
-					changesDetected={liveMonitor.unreadCount}
-					liveMonitorError={liveMonitor.monitorError}
-				/>
-
-				<AddColumnDialog
-					open={showAddColumnDialog}
-					onOpenChange={setShowAddColumnDialog}
-					tableName={displayTableName}
-					onSubmit={handleAddColumn}
-					isLoading={isDdlLoading}
-				/>
-
-				<DropTableDialog
-					open={showDropTableDialog}
-					onOpenChange={setShowDropTableDialog}
-					tableName={displayTableName}
-					onConfirm={handleDropTable}
-					isLoading={isDdlLoading}
-				/>
-			</div>
+			<DatabaseStudioStructureView
+				displayTableName={displayTableName}
+				tableData={tableData}
+				viewMode={viewMode}
+				onViewModeChange={setViewMode}
+				onToggleSidebar={onToggleSidebar}
+				isSidebarOpen={isSidebarOpen}
+				onRefresh={loadTableData}
+				onExport={handleExport}
+				onExportCsv={handleExportCsvAll}
+				onExportSql={handleExportSqlAll}
+				isLoading={isLoading}
+				onCopySchema={handleCopySchema}
+				onCopyDrizzleSchema={handleCopyDrizzleSchema}
+				liveMonitorConfig={liveMonitor.config}
+				onLiveMonitorConfigChange={liveMonitor.setConfig}
+				isLiveMonitorPolling={liveMonitor.isPolling}
+				changeEvents={liveMonitor.recentEvents}
+				unreadChangeCount={liveMonitor.unreadCount}
+				onClearChangeEvents={liveMonitor.clearEvents}
+				onMarkChangesRead={liveMonitor.markRead}
+				pagination={pagination}
+				onPaginationChange={setPagination}
+				liveMonitorIntervalMs={liveMonitor.config.intervalMs}
+				lastPolledAt={liveMonitor.recentEvents[0]?.timestamp ?? null}
+				liveMonitorError={liveMonitor.monitorError}
+				showAddColumnDialog={showAddColumnDialog}
+				onShowAddColumnDialogChange={setShowAddColumnDialog}
+				onAddColumn={handleAddColumn}
+				showDropTableDialog={showDropTableDialog}
+				onShowDropTableDialogChange={setShowDropTableDialog}
+				onDropTable={handleDropTable}
+				isDdlLoading={isDdlLoading}
+			/>
 		)
 	}
 
@@ -2155,7 +818,7 @@ export function DatabaseStudio({
 										}
 									)
 								} else {
-									performBulkDelete()
+									deleteRowIndexes(Array.from(rowsForActions))
 								}
 							}}
 							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
