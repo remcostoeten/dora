@@ -13,7 +13,11 @@ describe('SqlResults', function () {
 
 		vi.spyOn(dataProviderModule, 'useDataMutation').mockReturnValue({
 			updateCell: {
-				mutate: updateCellMutate
+				mutate: updateCellMutate,
+				mutateAsync: vi.fn(function (payload) {
+					updateCellMutate(payload)
+					return Promise.resolve(undefined)
+				})
 			},
 			deleteRows: {
 				mutate: deleteRowsMutate
@@ -84,8 +88,7 @@ describe('SqlResults', function () {
 				primaryKeyValue: 2,
 				columnName: 'name',
 				newValue: 'Bobby'
-			}),
-			expect.any(Object)
+			})
 		)
 	})
 })

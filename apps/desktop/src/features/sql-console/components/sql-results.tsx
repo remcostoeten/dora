@@ -111,7 +111,7 @@ export function SqlResults({
 		})
 		if (!column) return value
 
-		const type = column.type.toLowerCase()
+		const type = (column.type ?? '').toLowerCase()
 		const trimmed = value.trim()
 		const isIntegerType = type.includes('int') || type.includes('serial')
 		const isFloatType =
