@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 
+import { ACCENT_COLOR } from './constants'
+
 export interface CommitDetail {
     sha: string
     message: string
@@ -35,7 +37,7 @@ export function CommitGraph({
     hoveredIndex,
     onHoverChange,
     onClick,
-    accentColor = '#22c55e'
+    accentColor = ACCENT_COLOR
 }: CommitGraphProps) {
     const [animationProgress, setAnimationProgress] = useState(0)
     const [isInView, setIsInView] = useState(false)
@@ -436,7 +438,7 @@ export function CommitGraph({
                                 key={`${d.date}-segment`}
                                 d={generateSegmentPath(i)}
                                 fill="none"
-                                stroke={wave > 0.28 ? '#e3b2b3' : accentColor}
+                                stroke={wave > 0.28 ? '#f5c0c0' : accentColor}
                                 strokeLinecap="round"
                                 strokeWidth={0.75 + wave * 1.7}
                                 pathLength="1"
@@ -448,7 +450,7 @@ export function CommitGraph({
                                         wave > 0.08
                                             ? `drop-shadow(0 0 ${4 + wave * 10}px ${
                                                   wave > 0.28
-                                                      ? '#e3b2b3'
+                                                      ? '#f5c0c0'
                                                       : accentColor
                                               })`
                                             : undefined
@@ -474,11 +476,11 @@ export function CommitGraph({
                                         animationProgress
                                 }
                                 r={0.65 + wave * 1.35}
-                                fill={wave > 0.35 ? '#e3b2b3' : accentColor}
+                                fill={wave > 0.35 ? '#f5c0c0' : accentColor}
                                 style={{
                                     opacity,
                                     filter: `drop-shadow(0 0 ${3 + wave * 7}px ${
-                                        wave > 0.35 ? '#e3b2b3' : accentColor
+                                        wave > 0.35 ? '#f5c0c0' : accentColor
                                     })`
                                 }}
                             />

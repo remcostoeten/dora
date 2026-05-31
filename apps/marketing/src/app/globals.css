@@ -28,6 +28,8 @@
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
+    --frame-line: oklch(0.19 0 0);
+    --frame-line-strong: oklch(0.28 0 0);
     --radius: 0.625rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
@@ -97,6 +99,8 @@
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+    --color-frame: var(--frame-line);
+    --color-frame-strong: var(--frame-line-strong);
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
     --color-chart-3: var(--chart-3);
@@ -118,19 +122,27 @@
 
 @layer base {
     * {
-        @apply border-border outline-ring/15 outline-[1px];
+        @apply border-border;
     }
     body {
         @apply bg-background text-foreground;
     }
 }
 
-.hero-frame,
+.hero-frame {
+    outline: none !important;
+}
+
 .hero-cube-stage,
 .hero-cube-stage *,
 .interactive-cube,
 .interactive-cube * {
     border: 0 !important;
+    outline: none !important;
+}
+
+.marketing-footer,
+.marketing-footer * {
     outline: none !important;
 }
 

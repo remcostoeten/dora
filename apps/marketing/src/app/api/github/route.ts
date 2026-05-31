@@ -163,7 +163,7 @@ export async function GET() {
             },
             // Snap Store (Linux)
             {
-                name: 'Snap Store',
+                name: 'Snap',
                 platform: 'snap',
                 command: 'snap install dora',
                 url: 'https://snapcraft.io/dora'
@@ -191,7 +191,7 @@ export async function GET() {
             },
             // GitHub Releases (all platforms)
             {
-                name: 'Releases',
+                name: 'GitHub',
                 platform: 'github',
                 version: releases[0]?.tag_name,
                 downloads: totalGitHubDownloads,

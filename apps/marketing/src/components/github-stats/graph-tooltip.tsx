@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useState } from 'react'
 import type { CommitDataPoint } from './commit-graph'
+import { ACCENT_COLOR } from './constants'
 
 interface GraphTooltipProps {
     data: CommitDataPoint | null
@@ -15,7 +16,7 @@ export function GraphTooltip({
     data,
     position,
     containerRef,
-    accentColor = '#22c55e'
+    accentColor = ACCENT_COLOR
 }: GraphTooltipProps) {
     const [mounted, setMounted] = useState(false)
 

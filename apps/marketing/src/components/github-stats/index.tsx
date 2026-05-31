@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useLayoutEffect } from 'react'
+import { useRef, useState, useEffect, useLayoutEffect } from 'react'
 import useSWR from 'swr'
 import {
     Tag,
@@ -20,6 +20,13 @@ import {
 } from './commit-graph'
 import { GraphTooltip } from './graph-tooltip'
 import { CommitDetailsModal } from './commit-details-modal'
+import { CornerTick } from '@/components/corner-tick'
+import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
+import { ACCENT_COLOR } from './constants'
+
+// Strong ease-out — the built-in CSS easings lack punch. Used for the tab
+// indicator slide and the label/command cross-fades so motion feels intentional.
+const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
 interface PackageInfo {
     name: string
@@ -152,30 +159,116 @@ function CopyButton({ text }: { text: string }) {
     )
 }
 
-function CornerTick({ className }: { className: string }) {
+// Loops a set of words by rolling them vertically like a split-flap / slot
+// reel (e.g. AUR ⇄ yay, since yay is the AUR helper used to install the
+// package). A clipped one-line window shows a stacked column that slides up by
+// one line per step — positional motion reads clearly even on a dim, tiny
+// label, where an opacity crossfade is invisible. The in-flow sizer reserves
+// the widest word's box so the tab never jiggles. Reduced motion drops the roll
+// for a plain crossfade.
+function CyclingLabel({ words, hold = 2200 }: { words: string[]; hold?: number }) {
+    const [index, setIndex] = useState(0)
+    const reduced = usePrefersReducedMotion()
+
+    useEffect(() => {
+        const cycle = setInterval(() => {
+            setIndex((c) => (c + 1) % words.length)
+        }, hold)
+        return () => clearInterval(cycle)
+    }, [words.length, hold])
+
+    const widest = words.reduce((a, b) => (b.length > a.length ? b : a), '')
+
+    if (reduced) {
+        return (
+            <span className="relative inline-grid place-items-center">
+                <span aria-hidden className="invisible col-start-1 row-start-1">
+                    {widest}
+                </span>
+                <span
+                    key={words[index]}
+                    className="col-start-1 row-start-1 transition-opacity duration-200"
+                >
+                    {words[index]}
+                </span>
+            </span>
+        )
+    }
+
     return (
-        <span
-            aria-hidden
-            className={`pointer-events-none absolute z-30 size-2.5 ${className}`}
-        >
-            <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[#e3b2b3]/50" />
-            <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-[#e3b2b3]/50" />
+        <span className="relative inline-flex overflow-hidden align-bottom">
+            {/* sizer fixes the one-line window's width + height */}
+            <span aria-hidden className="invisible">
+                {widest}
+            </span>
+            {/* stacked reel, slid up one line per step; subtle overshoot on settle */}
+            <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 flex flex-col"
+                style={{
+                    transform: `translateY(-${(index * 100) / words.length}%)`,
+                    transition: `transform 360ms cubic-bezier(0.34, 1.3, 0.64, 1)`
+                }}
+            >
+                {words.map((word) => (
+                    <span key={word} className="block">
+                        {word}
+                    </span>
+                ))}
+            </span>
+            {/* the live value, visually hidden, for a stable accessible name */}
+            <span className="sr-only">{words[index]}</span>
         </span>
     )
 }
 
-// Gooey tab indicator component
+// Fades the command string in with a brief blur whenever the active tab
+// changes, so the text morphs in step with the sliding indicator instead of
+// snapping. Mounts fresh on each switch via the parent's `key`. Reduced motion
+// keeps the fade but drops the blur.
+function CommandSwap({ children }: { children: React.ReactNode }) {
+    const reduced = usePrefersReducedMotion()
+    const [shown, setShown] = useState(false)
+
+    useEffect(() => {
+        setShown(true)
+    }, [])
+
+    return (
+        <span
+            className="block min-w-0 truncate transition-[opacity,filter]"
+            style={{
+                opacity: shown ? 1 : 0,
+                filter: reduced || shown ? 'blur(0px)' : 'blur(3px)',
+                transitionDuration: '240ms',
+                transitionTimingFunction: EASE_OUT
+            }}
+        >
+            {children}
+        </span>
+    )
+}
+
+// Tab indicator — the rose pill that tracks the active install tab. Position is
+// driven by a GPU `transform: translate()` (only transform/opacity hit the
+// compositor; animating left/top would thrash layout). Size still transitions,
+// but the box has no children so it stays cheap. Reduced motion snaps instantly.
 function TabIndicator({ activeRect }: { activeRect: DOMRect | null }) {
+    const reduced = usePrefersReducedMotion()
     if (!activeRect) return null
+
+    const move = `transform 300ms ${EASE_OUT}`
+    const resize = `width 300ms ${EASE_OUT}, height 300ms ${EASE_OUT}`
 
     return (
         <div
-            className="absolute border border-[#e3b2b3]/45 bg-[#e3b2b3]/5 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            aria-hidden
+            className="pointer-events-none absolute left-0 top-0 border border-[#e3b2b3]/45 bg-[#e3b2b3]/5"
             style={{
-                left: activeRect.left,
-                top: activeRect.top,
                 width: activeRect.width,
                 height: activeRect.height,
+                transform: `translate(${activeRect.left}px, ${activeRect.top}px)`,
+                transition: reduced ? 'none' : `${move}, ${resize}`,
                 zIndex: 0
             }}
         />
@@ -186,7 +279,7 @@ export interface GitHubStatsProps {
     accentColor?: string
 }
 
-export function GitHubStats({ accentColor = '#22c55e' }: GitHubStatsProps) {
+export function GitHubStats({ accentColor = ACCENT_COLOR }: GitHubStatsProps) {
     const { data, error, isLoading } = useSWR<GitHubStatsData>(
         '/api/github',
         fetcher,
@@ -266,8 +359,10 @@ export function GitHubStats({ accentColor = '#22c55e' }: GitHubStatsProps) {
                     <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2" />
                     {/* Top row: Info + Commits */}
                     <div className="flex flex-col sm:flex-row">
-                        {/* Left info section: Version + Timeline */}
-                        <div className="w-full flex-shrink-0 border-b border-[#1a1a1a] sm:w-64 sm:border-b-0 sm:border-r">
+                        {/* Left info section: Version + Timeline — 1/3 width so
+                            its divider lines up with the features grid's first
+                            column border, leaving Commits ~2/3 */}
+                        <div className="w-full flex-shrink-0 border-b border-[#1a1a1a] sm:w-1/3 sm:border-b-0 sm:border-r">
                             {/* Version */}
                             <a
                                 href={versionUrl}
@@ -385,8 +480,8 @@ export function GitHubStats({ accentColor = '#22c55e' }: GitHubStatsProps) {
                     </div>
 
                     {/* Bottom row: Install section - full width */}
-                    <div className="border-t border-[#1a1a1a] px-5 py-4 sm:px-6">
-                        <div className="flex items-center gap-2 text-[#4a4a4a] text-xs uppercase tracking-wider mb-4">
+                    <div className="border-t border-[#1a1a1a] px-5 py-7 sm:px-6 sm:py-8">
+                        <div className="flex items-center gap-2 text-[#4a4a4a] text-xs uppercase tracking-wider mb-5">
                             <Download className="w-3 h-3" />
                             Install
                         </div>
@@ -411,7 +506,7 @@ export function GitHubStats({ accentColor = '#22c55e' }: GitHubStatsProps) {
                                         onClick={() =>
                                             setActiveInstall(pkg.platform)
                                         }
-                                        className={`group/tab relative z-10 flex shrink-0 items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium transition-colors duration-200 hover:border-[#e3b2b3]/25 ${
+                                        className={`group/tab relative z-10 flex shrink-0 items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium transition-[color,border-color,transform] duration-200 ease-out hover:border-[#e3b2b3]/25 motion-safe:active:scale-[0.97] ${
                                             activeInstall === pkg.platform
                                                 ? 'border-[#e3b2b3]/45 text-[#e3b2b3]'
                                                 : 'text-[#4a4a4a] hover:text-[#6a6a6a]'
@@ -450,7 +545,11 @@ export function GitHubStats({ accentColor = '#22c55e' }: GitHubStatsProps) {
                                             platform={pkg.platform}
                                             className="w-4 h-4"
                                         />
-                                        <span>{pkg.name}</span>
+                                        {pkg.platform === 'aur' ? (
+                                            <CyclingLabel words={['AUR', 'yay']} />
+                                        ) : (
+                                            <span>{pkg.name}</span>
+                                        )}
                                     </button>
                                 ))}
                             </div>
@@ -463,15 +562,17 @@ export function GitHubStats({ accentColor = '#22c55e' }: GitHubStatsProps) {
                                         href={activePackage.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="group/cmd relative flex items-center gap-3 border border-[#3a3138] bg-[#0d0d0d] px-4 py-2.5 transition-all duration-300 hover:border-[#e3b2b3]/45 hover:bg-[#e3b2b3]/5"
+                                        className="group/cmd relative flex items-center gap-3 border border-[#3a3138] bg-[#0d0d0d] px-4 py-2.5 transition-[border-color,background-color,transform] duration-200 ease-out hover:border-[#e3b2b3]/45 hover:bg-[#e3b2b3]/5 motion-safe:active:scale-[0.99]"
                                     >
                                         <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
                                         <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
                                         <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
                                         <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
-                                        <code className="text-sm text-[#6a6a6a] font-mono flex-1 truncate group-hover/cmd:text-[#8a8a8a] transition-colors">
-                                            {activePackage.command ||
-                                                `Download from ${activePackage.name}`}
+                                        <code className="text-sm text-[#6a6a6a] font-mono min-w-0 flex-1 group-hover/cmd:text-[#8a8a8a] transition-colors">
+                                            <CommandSwap>
+                                                {activePackage.command ||
+                                                    `Download from ${activePackage.name}`}
+                                            </CommandSwap>
                                         </code>
                                         {activePackage.command && (
                                             <CopyButton

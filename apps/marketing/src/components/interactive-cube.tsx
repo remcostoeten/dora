@@ -656,7 +656,7 @@ function Scene({
     const { camera } = useThree()
     useEffect(() => {
         const ortho = camera as THREE.OrthographicCamera
-        ortho.zoom = 120
+        ortho.zoom = 155
         ortho.updateProjectionMatrix()
     }, [camera])
     return (
@@ -887,7 +887,7 @@ export function InteractiveCube({ className = '' }: { className?: string }) {
                 className="absolute inset-0 pointer-events-none"
                 style={{
                     background:
-                        'radial-gradient(circle at 50% 50%, hsl(var(--neon-cyan) / 0.22), transparent 60%)',
+                        'radial-gradient(circle at 50% 50%, rgba(227,178,179,0.22), transparent 60%)',
                     filter: 'blur(20px)'
                 }}
             />
@@ -895,7 +895,7 @@ export function InteractiveCube({ className = '' }: { className?: string }) {
                 flat
                 orthographic
                 dpr={[1.5, 2]}
-                camera={{ position: [3, 2, 4], zoom: 110 }}
+                camera={{ position: [3, 2, 4], zoom: 155 }}
                 gl={{ alpha: true, antialias: true }}
                 style={{
                     background: 'transparent',

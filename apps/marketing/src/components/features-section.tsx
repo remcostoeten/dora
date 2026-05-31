@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState, type RefObject } from 'react'
 
+import { CornerTick } from '@/components/corner-tick'
+
 /* ---------------------------------------------------------------------------
  * Shared scroll-motion hook
  * Tracks the section's position in the viewport (progress 0 -> 1) and the
@@ -87,189 +89,335 @@ const CONNECTION_STRINGS = [
     {
         db: 'PostgreSQL',
         conn: 'postgresql://user:pass@db.neon.tech/mydb',
-        color: '#3b82f6'
+        color: '#f5c0c0'
     },
     {
         db: 'MySQL',
         conn: 'mysql://user:pass@localhost:3306/mydb',
-        color: '#f59e0b'
+        color: '#e3b2b3'
     },
-    { db: 'SQLite', conn: 'file:///path/to/database.db', color: '#8b5cf6' },
+    { db: 'SQLite', conn: 'file:///path/to/database.db', color: '#c9a3b5' },
     {
         db: 'libSQL',
         conn: 'libsql://database.turso.io?authToken=token',
-        color: '#ec4899'
+        color: '#ad8eb6'
     }
 ]
 
-function ConnectionStringMorph({ active }: { active: number }) {
-    const current = CONNECTION_STRINGS[active]
-    const [revealed, setRevealed] = useState(0)
-    const prevActive = useRef(active)
+// Hub at the centre; the four providers orbit it on the diagonals.
+const HUB = { x: 50, y: 46 }
+const NODE_POS = [
+    { x: 27, y: 22 },
+    { x: 73, y: 22 },
+    { x: 73, y: 70 },
+    { x: 27, y: 70 }
+]
 
-    // Parse connection string into parts for syntax highlighting
-    const parts = current.conn.split('://')
-    const scheme = parts[0]
-    const rest = parts[1] || ''
-    const fullLength = current.conn.length
-
-    // Staggered reveal on active change
+// Character-by-character reveal of a string; restarts whenever `resetKey` flips.
+function useTypewriter(text: string, resetKey: number, speed = 20) {
+    const [count, setCount] = useState(0)
     useEffect(() => {
-        if (active !== prevActive.current) {
-            setRevealed(0)
-            prevActive.current = active
-        }
-        const timer = setInterval(() => {
-            setRevealed((r) => {
-                if (r >= fullLength) {
-                    clearInterval(timer)
-                    return r
+        setCount(0)
+        const id = setInterval(() => {
+            setCount((c) => {
+                if (c >= text.length) {
+                    clearInterval(id)
+                    return c
                 }
-                return r + 1
+                return c + 1
             })
-        }, 18)
-        return () => clearInterval(timer)
-    }, [active, fullLength])
-
-    // Get revealed portions
-    const schemeRevealed = scheme.slice(0, Math.min(revealed, scheme.length))
-    const separatorRevealed =
-        revealed > scheme.length ? '://'.slice(0, revealed - scheme.length) : ''
-    const restRevealed =
-        revealed > scheme.length + 3
-            ? rest.slice(0, revealed - scheme.length - 3)
-            : ''
-    const isTyping = revealed < fullLength
-
-    return (
-        <div className="relative w-full h-full flex flex-col items-center justify-center px-4 py-4 overflow-hidden">
-            {/* Abstract background elements */}
-            <div className="absolute inset-0 pointer-events-none">
-                {CONNECTION_STRINGS.map((db, idx) => (
-                    <div
-                        key={db.db}
-                        className="absolute w-16 h-16 border transition-all duration-700"
-                        style={{
-                            borderColor:
-                                idx === active ? `${db.color}30` : '#1a1a1a',
-                            left: `${15 + idx * 20}%`,
-                            top: `${20 + (idx % 2) * 40}%`,
-                            transform: `rotate(${45 + idx * 15}deg) scale(${idx === active ? 1.1 : 0.7})`,
-                            opacity: idx === active ? 0.6 : 0.15
-                        }}
-                    />
-                ))}
-                {/* Floating particles */}
-                {[...Array(6)].map((_, i) => (
-                    <div
-                        key={i}
-                        className="absolute w-1 h-1 rounded-full animate-pulse"
-                        style={{
-                            backgroundColor: current.color,
-                            opacity: 0.3 + (i % 3) * 0.1,
-                            left: `${10 + i * 15}%`,
-                            top: `${15 + (i % 3) * 30}%`,
-                            animationDelay: `${i * 0.2}s`
-                        }}
-                    />
-                ))}
-            </div>
-
-            {/* Database indicator with staggered fade */}
-            <div className="relative z-10 mb-3">
-                <div
-                    className="inline-flex items-center gap-2 px-3 py-1.5 border border-[#1a1a1a] bg-[#0a0a0a]/80 backdrop-blur-sm transition-all duration-500"
-                    style={{ borderColor: `${current.color}40` }}
-                >
-                    <span
-                        className="w-2 h-2 rounded-full transition-colors duration-300"
-                        style={{
-                            backgroundColor: current.color,
-                            boxShadow: `0 0 8px ${current.color}60`
-                        }}
-                    />
-                    <span className="text-xs font-mono text-[#c0c0c0] tracking-wide">
-                        {current.db}
-                    </span>
-                </div>
-            </div>
-
-            {/* Connection string with character-by-character reveal */}
-            <div className="relative z-10 w-full">
-                <div className="relative border border-[#1f1f1f] bg-[#0c0c0c]/90 backdrop-blur-sm overflow-hidden">
-                    {/* Scanning line effect */}
-                    {isTyping && (
-                        <div
-                            className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-current to-transparent opacity-60 transition-all"
-                            style={{
-                                color: current.color,
-                                left: `${Math.min(95, (revealed / fullLength) * 100)}%`
-                            }}
-                        />
-                    )}
-                    <div className="flex items-center px-4 py-3 font-mono text-sm">
-                        <span
-                            className="transition-colors duration-300"
-                            style={{ color: current.color }}
-                        >
-                            {schemeRevealed}
-                        </span>
-                        <span className="text-[#5a5a5a]">
-                            {separatorRevealed}
-                        </span>
-                        <span className="text-[#9a9a9a]">{restRevealed}</span>
-                        {isTyping && (
-                            <span
-                                className="inline-block w-[2px] h-4 ml-0.5 animate-pulse"
-                                style={{ backgroundColor: current.color }}
-                            />
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
+        }, speed)
+        return () => clearInterval(id)
+    }, [text, resetKey, speed])
+    return count
 }
 
 /* ---------------------------------------------------------------------------
- * Multi-Database — animated card rotation with connection string morphing
- * Card interaction proxy for cycling through database providers
+ * Multi-Database — an interactive "connection constellation". A rose core sits
+ * at the centre with the four supported providers orbiting it; links flow with
+ * animated dashes and a data packet streams along the active link. Hovering a
+ * provider (or its dot) focuses it, pausing the auto-cycle, and types that
+ * provider's connection string in below. The cluster drifts with the pointer.
  * ------------------------------------------------------------------------- */
 function DatabaseConnectionCard({ motion }: { motion: Motion }) {
     const [active, setActive] = useState(0)
     const [paused, setPaused] = useState(false)
+    const groupRef = useRef<HTMLDivElement>(null)
+    const packetRef = useRef<SVGCircleElement>(null)
 
+    const current = CONNECTION_STRINGS[active]
+    const revealed = useTypewriter(current.conn, active)
+
+    // Split the URI so the scheme can be tinted and the rest stays muted.
+    const scheme = current.conn.split('://')[0]
+    const rest = current.conn.slice(scheme.length + 3)
+    const schemeShown = scheme.slice(0, Math.min(revealed, scheme.length))
+    const sepShown =
+        revealed > scheme.length ? '://'.slice(0, revealed - scheme.length) : ''
+    const restShown =
+        revealed > scheme.length + 3
+            ? rest.slice(0, revealed - scheme.length - 3)
+            : ''
+    const isTyping = revealed < current.conn.length
+
+    // Auto-cycle providers until the user hovers one.
     useEffect(() => {
         if (paused) return
-        const interval = setInterval(() => {
-            setActive((a) => (a + 1) % CONNECTION_STRINGS.length)
-        }, 3000)
-        return () => clearInterval(interval)
+        const id = setInterval(
+            () => setActive((a) => (a + 1) % CONNECTION_STRINGS.length),
+            3200
+        )
+        return () => clearInterval(id)
     }, [paused])
+
+    // A data packet streams hub -> active node on a loop; scrolling nudges its
+    // speed. Driven by direct attribute writes so it never re-renders React.
+    useEffect(() => {
+        const node = NODE_POS[active]
+        let raf = 0
+        let t = 0
+        const loop = () => {
+            const vel = Math.abs(motion.velocityRef.current ?? 0)
+            t = (t + 0.014 + vel * 0.04) % 1
+            // ease-in-out so the packet accelerates out of the hub and settles
+            const e =
+                t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+            const c = packetRef.current
+            if (c) {
+                c.setAttribute('cx', String(HUB.x + (node.x - HUB.x) * e))
+                c.setAttribute('cy', String(HUB.y + (node.y - HUB.y) * e))
+                c.setAttribute('opacity', String(Math.sin(t * Math.PI)))
+            }
+            raf = requestAnimationFrame(loop)
+        }
+        raf = requestAnimationFrame(loop)
+        return () => cancelAnimationFrame(raf)
+    }, [active, motion])
+
+    // Pointer parallax — the whole cluster leans a few px toward the cursor.
+    function onMove(event: React.MouseEvent) {
+        const g = groupRef.current
+        if (!g) return
+        const r = event.currentTarget.getBoundingClientRect()
+        const dx = (event.clientX - r.left) / r.width - 0.5
+        const dy = (event.clientY - r.top) / r.height - 0.5
+        g.style.transform = `translate(${dx * 12}px, ${dy * 12}px)`
+    }
+    function onLeave() {
+        if (groupRef.current) groupRef.current.style.transform = 'translate(0,0)'
+        setPaused(false)
+    }
 
     return (
         <div className="h-full flex flex-col">
             <div
-                className="flex-1 flex items-center justify-center px-5 pt-4 pb-2"
-                onMouseEnter={() => setPaused(true)}
-                onMouseLeave={() => setPaused(false)}
+                className="relative flex-1 overflow-hidden"
+                onMouseMove={onMove}
+                onMouseLeave={onLeave}
             >
-                <ConnectionStringMorph active={active} />
+                {/* soft glow centred on the hub */}
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0"
+                    style={{
+                        background:
+                            'radial-gradient(circle at 50% 46%, rgba(245,192,192,0.12), transparent 62%)'
+                    }}
+                />
+                <div
+                    ref={groupRef}
+                    className="absolute inset-0 flex items-center justify-center transition-transform duration-200 ease-out"
+                >
+                    <svg
+                        viewBox="0 0 100 100"
+                        className="h-full max-h-[150px] aspect-square"
+                        aria-hidden="true"
+                    >
+                        {/* links from hub to each provider */}
+                        {NODE_POS.map((n, i) => {
+                            const on = i === active
+                            return (
+                                <line
+                                    key={i}
+                                    x1={HUB.x}
+                                    y1={HUB.y}
+                                    x2={n.x}
+                                    y2={n.y}
+                                    stroke={on ? current.color : '#3a3138'}
+                                    strokeWidth={on ? 0.7 : 0.4}
+                                    strokeDasharray="2 2"
+                                    className="transition-[stroke,stroke-width] duration-300"
+                                >
+                                    {on ? (
+                                        <animate
+                                            attributeName="stroke-dashoffset"
+                                            from="0"
+                                            to="-8"
+                                            dur="0.7s"
+                                            repeatCount="indefinite"
+                                        />
+                                    ) : null}
+                                </line>
+                            )
+                        })}
+
+                        {/* slow rotating ring around the hub */}
+                        <circle
+                            cx={HUB.x}
+                            cy={HUB.y}
+                            r="9"
+                            fill="none"
+                            stroke="rgba(245,192,192,0.22)"
+                            strokeWidth="0.4"
+                            strokeDasharray="1.5 3"
+                        >
+                            <animateTransform
+                                attributeName="transform"
+                                type="rotate"
+                                from={`0 ${HUB.x} ${HUB.y}`}
+                                to={`360 ${HUB.x} ${HUB.y}`}
+                                dur="14s"
+                                repeatCount="indefinite"
+                            />
+                        </circle>
+
+                        {/* hub core */}
+                        <circle
+                            cx={HUB.x}
+                            cy={HUB.y}
+                            r="4"
+                            fill="#161218"
+                            stroke="rgba(245,192,192,0.5)"
+                            strokeWidth="0.6"
+                        />
+                        <circle cx={HUB.x} cy={HUB.y} r="1.6" fill="#f5c0c0">
+                            <animate
+                                attributeName="r"
+                                values="1.4;2;1.4"
+                                dur="2.4s"
+                                repeatCount="indefinite"
+                            />
+                        </circle>
+
+                        {/* streaming data packet */}
+                        <circle
+                            ref={packetRef}
+                            cx={HUB.x}
+                            cy={HUB.y}
+                            r="1.3"
+                            fill={current.color}
+                        />
+
+                        {/* provider nodes — interactive */}
+                        {NODE_POS.map((n, i) => {
+                            const on = i === active
+                            const c = CONNECTION_STRINGS[i].color
+                            return (
+                                <g
+                                    key={i}
+                                    onMouseEnter={() => {
+                                        setActive(i)
+                                        setPaused(true)
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    {/* generous invisible hit area */}
+                                    <circle
+                                        cx={n.x}
+                                        cy={n.y}
+                                        r="9"
+                                        fill="transparent"
+                                    />
+                                    {on ? (
+                                        <circle
+                                            cx={n.x}
+                                            cy={n.y}
+                                            r="5"
+                                            fill="none"
+                                            stroke={c}
+                                            strokeWidth="0.5"
+                                            opacity="0.5"
+                                        >
+                                            <animate
+                                                attributeName="r"
+                                                values="4;6;4"
+                                                dur="1.8s"
+                                                repeatCount="indefinite"
+                                            />
+                                            <animate
+                                                attributeName="opacity"
+                                                values="0.5;0;0.5"
+                                                dur="1.8s"
+                                                repeatCount="indefinite"
+                                            />
+                                        </circle>
+                                    ) : null}
+                                    <circle
+                                        cx={n.x}
+                                        cy={n.y}
+                                        r={on ? 3 : 2.2}
+                                        fill={on ? c : '#161218'}
+                                        stroke={c}
+                                        strokeWidth="0.6"
+                                        className="transition-all duration-300"
+                                        style={{ opacity: on ? 1 : 0.55 }}
+                                    />
+                                </g>
+                            )
+                        })}
+                    </svg>
+                </div>
             </div>
+
+            {/* typing connection string */}
+            <div className="px-5 pb-1">
+                <div className="relative flex items-center gap-2 overflow-hidden border border-[#2b252c] bg-[#100d12]/80 px-3 py-2 font-mono text-[11px]">
+                    <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full transition-colors duration-300"
+                        style={{
+                            backgroundColor: current.color,
+                            boxShadow: `0 0 8px ${current.color}80`
+                        }}
+                    />
+                    <span className="truncate">
+                        <span style={{ color: current.color }}>
+                            {schemeShown}
+                        </span>
+                        <span className="text-[#6a6a6a]">{sepShown}</span>
+                        <span className="text-[#9a9a9a]">{restShown}</span>
+                        {isTyping ? (
+                            <span
+                                className="ml-px inline-block h-3 w-px animate-pulse align-middle"
+                                style={{ backgroundColor: current.color }}
+                            />
+                        ) : null}
+                    </span>
+                </div>
+            </div>
+
+            {/* provider selector dots */}
             <div className="px-5 pb-4 flex items-center justify-center gap-1.5">
-                {CONNECTION_STRINGS.map((_, idx) => (
+                {CONNECTION_STRINGS.map((db, idx) => (
                     <button
-                        key={idx}
-                        aria-label={`Show ${CONNECTION_STRINGS[idx].db}`}
+                        key={db.db}
+                        aria-label={`Show ${db.db}`}
+                        onMouseEnter={() => {
+                            setActive(idx)
+                            setPaused(true)
+                        }}
+                        onMouseLeave={() => setPaused(false)}
                         onClick={() => setActive(idx)}
                         className={`h-1 transition-all duration-300 ${
-                            idx === active
-                                ? 'w-4 bg-[#22c55e]'
-                                : 'w-1 bg-[#2a2a2a]'
+                            idx === active ? 'w-4' : 'w-1'
                         }`}
+                        style={{
+                            backgroundColor:
+                                idx === active ? db.color : '#3a3138'
+                        }}
                     />
                 ))}
             </div>
+
             <div className="px-5 pb-5">
                 <h3 className="text-sm text-[#e0e0e0] font-medium mb-1">
                     Multi-Database
@@ -335,17 +483,20 @@ function RegionGlobeCard({ motion }: { motion: Motion }) {
                     0,
                     Math.PI * 2
                 )
-                ctx.strokeStyle = '#1a1a1a'
+                ctx.strokeStyle = '#2b252c'
                 ctx.lineWidth = 1
                 ctx.stroke()
             }
 
             for (let i = 0; i < 8; i++) {
                 const angle = (i / 8) * Math.PI + rotationRef.current
-                // a green glow sweeps smoothly from one meridian to the next over time
+                // a rose glow sweeps smoothly from one meridian to the next over time
                 const glow = (Math.sin(t * 1.4 - i * 0.8) + 1) / 2 // 0..1
-                const gg = Math.round(26 + glow * glow * 150)
-                const gb = Math.round(26 + glow * glow * 50)
+                const g2 = glow * glow
+                // interpolate from the warm-dark base (#2b252c) to rose (#e3b2b3)
+                const gr = Math.round(43 + g2 * (227 - 43))
+                const gg = Math.round(37 + g2 * (178 - 37))
+                const gb = Math.round(44 + g2 * (179 - 44))
                 ctx.beginPath()
                 ctx.ellipse(
                     cx,
@@ -356,14 +507,14 @@ function RegionGlobeCard({ motion }: { motion: Motion }) {
                     0,
                     Math.PI * 2
                 )
-                ctx.strokeStyle = `rgb(26, ${gg}, ${gb})`
+                ctx.strokeStyle = `rgb(${gr}, ${gg}, ${gb})`
                 ctx.lineWidth = 1 + glow * glow * 0.6
                 ctx.stroke()
             }
 
             ctx.beginPath()
             ctx.arc(cx, cy, baseRadius, 0, Math.PI * 2)
-            ctx.strokeStyle = '#2a2a2a'
+            ctx.strokeStyle = '#3a3138'
             ctx.lineWidth = 1
             ctx.stroke()
 
@@ -396,14 +547,14 @@ function RegionGlobeCard({ motion }: { motion: Motion }) {
                             <div
                                 className={`flex items-center gap-1.5 px-2 py-1 rounded border transition-all ${
                                     hoveredRegion === region.name
-                                        ? 'border-[#22c55e]/50 bg-[#0a0a0a]'
-                                        : 'border-[#1a1a1a] bg-[#0a0a0a]/80'
+                                        ? 'border-[#e3b2b3]/50 bg-[#161218]'
+                                        : 'border-[#2b252c] bg-[#161218]/80'
                                 }`}
                             >
                                 <span
                                     className={`w-1.5 h-1.5 rounded-full transition-colors ${
                                         hoveredRegion === region.name
-                                            ? 'bg-[#22c55e]'
+                                            ? 'bg-[#e3b2b3]'
                                             : 'bg-[#3a3a3a]'
                                     }`}
                                 />
@@ -473,14 +624,15 @@ function NativePerformanceCard({ motion }: { motion: Motion }) {
                 // each node pulses green on its own staggered cycle
                 const pulse = (Math.sin(t * 1.6 - idx * 1.1) + 1) / 2 // 0..1
                 const lit = active ? 1 : pulse * pulse
-                const r = Math.round(58 + lit * (34 - 58))
-                const g = Math.round(58 + lit * (197 - 58))
-                const b = Math.round(58 + lit * (94 - 58))
+                // interpolate from neutral grey (#3a3a3a) to rose (#e3b2b3)
+                const r = Math.round(58 + lit * (227 - 58))
+                const g = Math.round(58 + lit * (178 - 58))
+                const b = Math.round(58 + lit * (179 - 58))
                 const node = `rgb(${r}, ${g}, ${b})`
 
                 ctx.beginPath()
                 ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-                ctx.strokeStyle = `rgba(34,197,94,${0.05 + lit * 0.15})`
+                ctx.strokeStyle = `rgba(227,178,179,${0.05 + lit * 0.15})`
                 ctx.setLineDash([4, 4])
                 ctx.lineWidth = 1
                 ctx.stroke()
@@ -499,7 +651,7 @@ function NativePerformanceCard({ motion }: { motion: Motion }) {
             const coreLit = active ? 1 : corePulse * corePulse
             ctx.beginPath()
             ctx.arc(cx, cy, 6, 0, Math.PI * 2)
-            ctx.fillStyle = `rgb(${Math.round(42 + coreLit * (34 - 42))}, ${Math.round(42 + coreLit * (197 - 42))}, ${Math.round(42 + coreLit * (94 - 42))})`
+            ctx.fillStyle = `rgb(${Math.round(42 + coreLit * (227 - 42))}, ${Math.round(42 + coreLit * (178 - 42))}, ${Math.round(42 + coreLit * (179 - 42))})`
             ctx.fill()
 
             animationRef.current = requestAnimationFrame(animate)
@@ -532,15 +684,19 @@ function NativePerformanceCard({ motion }: { motion: Motion }) {
 }
 
 /* ---------------------------------------------------------------------------
- * Query History — a recent-queries log. Entries cascade in when the card
- * scrolls into view (local IntersectionObserver, so it never triggers early),
- * and the latest entry shows a live pulse.
+ * Query History — an abstract replay timeline. Each past query is a latency
+ * bar along a time axis (taller = slower); a rose "replay head" sweeps across
+ * on a loop and the newest query keeps pulsing. Hovering any bar scrubs it into
+ * the readout line beneath the chart.
  * ------------------------------------------------------------------------- */
 const HISTORY: { sql: string; ms: number; ago: string }[] = [
     { sql: "SELECT * FROM orders WHERE status = 'paid'", ms: 6, ago: 'now' },
     { sql: "UPDATE users SET plan = 'pro' WHERE id = 42", ms: 11, ago: '2m' },
     { sql: 'SELECT count(*) FROM events GROUP BY day', ms: 24, ago: '5m' },
-    { sql: 'DELETE FROM sessions WHERE expires < now()', ms: 9, ago: '12m' }
+    { sql: 'INSERT INTO audit_log (action) VALUES ($1)', ms: 8, ago: '8m' },
+    { sql: 'DELETE FROM sessions WHERE expires < now()', ms: 9, ago: '12m' },
+    { sql: 'SELECT id, email FROM users LIMIT 100', ms: 14, ago: '18m' },
+    { sql: 'VACUUM ANALYZE products', ms: 21, ago: '24m' }
 ]
 
 function QueryHistoryCard() {
@@ -553,7 +709,6 @@ function QueryHistoryCard() {
         if (!el) return
         const io = new IntersectionObserver(
             ([entry]) => {
-                // only reveal once the card itself is genuinely on screen
                 if (entry.isIntersecting && entry.intersectionRatio > 0.4)
                     setRevealed(true)
             },
@@ -563,57 +718,155 @@ function QueryHistoryCard() {
         return () => io.disconnect()
     }, [])
 
+    const count = HISTORY.length
+    const X0 = 14
+    const X1 = 150
+    const BASE = 66
+    const step = (X1 - X0) / (count - 1)
+    const maxMs = Math.max(...HISTORY.map((h) => h.ms))
+    const barH = (ms: number) => 7 + (ms / maxMs) * 40
+
+    // readout scrubs to the hovered bar, falling back to the latest query
+    const q = HISTORY[hover ?? 0]
+
     return (
         <div ref={ref} className="h-full flex flex-col">
-            <div className="flex-1 px-4 pt-5 pb-1 flex flex-col gap-1.5">
-                {HISTORY.map((q, idx) => {
-                    const latest = idx === 0
-                    const lit = hover === idx || (hover === null && latest)
-                    return (
-                        <div
-                            key={q.sql}
-                            onMouseEnter={() => setHover(idx)}
-                            onMouseLeave={() => setHover(null)}
-                            className={`group flex items-center gap-2 rounded-md border px-2.5 py-1.5 cursor-pointer ${
-                                lit
-                                    ? 'border-[#22c55e]/30 bg-[#22c55e]/5'
-                                    : 'border-[#1a1a1a] bg-transparent hover:border-[#2a2a2a]'
-                            }`}
-                            style={{
-                                opacity: revealed ? 1 : 0,
-                                // slides in from the right with a gentle overshoot
-                                transform: revealed
-                                    ? 'translateX(0)'
-                                    : 'translateX(14px)',
-                                transition:
-                                    'opacity 500ms cubic-bezier(0.22,1,0.36,1), transform 620ms cubic-bezier(0.34,1.56,0.64,1), border-color 300ms ease, background-color 300ms ease',
-                                transitionDelay: `${idx * 110}ms`
-                            }}
+            <div className="flex-1 px-2 pt-4">
+                <svg
+                    viewBox="0 0 160 76"
+                    className="w-full h-full"
+                    aria-hidden="true"
+                >
+                    <defs>
+                        <linearGradient
+                            id="qh-sweep"
+                            x1="0"
+                            x2="1"
+                            y1="0"
+                            y2="0"
                         >
-                            <span className="relative flex h-1.5 w-1.5 shrink-0">
-                                {latest && (
-                                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#22c55e] opacity-60" />
-                                )}
-                                <span
-                                    className={`relative inline-flex h-1.5 w-1.5 rounded-full ${lit ? 'bg-[#22c55e]' : 'bg-[#3a3a3a]'}`}
-                                />
-                            </span>
-                            <span
-                                className={`flex-1 truncate text-[10px] font-mono transition-colors ${lit ? 'text-[#cfcfcf]' : 'text-[#6a6a6a]'}`}
+                            <stop
+                                offset="0"
+                                stopColor="#e3b2b3"
+                                stopOpacity="0"
+                            />
+                            <stop
+                                offset="0.5"
+                                stopColor="#e3b2b3"
+                                stopOpacity="0.5"
+                            />
+                            <stop
+                                offset="1"
+                                stopColor="#e3b2b3"
+                                stopOpacity="0"
+                            />
+                        </linearGradient>
+                    </defs>
+
+                    {/* baseline axis */}
+                    <line
+                        x1={X0 - 4}
+                        y1={BASE}
+                        x2={X1 + 4}
+                        y2={BASE}
+                        stroke="#2b252c"
+                        strokeWidth="0.6"
+                    />
+
+                    {/* sweeping replay head */}
+                    <rect
+                        x={X0 - 8}
+                        y={12}
+                        width="16"
+                        height={BASE - 12}
+                        fill="url(#qh-sweep)"
+                    >
+                        <animateTransform
+                            attributeName="transform"
+                            type="translate"
+                            from="0 0"
+                            to={`${X1 - X0 + 8} 0`}
+                            dur="3.4s"
+                            repeatCount="indefinite"
+                        />
+                    </rect>
+
+                    {/* latency bars — newest on the right */}
+                    {HISTORY.map((h, idx) => {
+                        const p = count - 1 - idx
+                        const x = X0 + p * step
+                        const hgt = barH(h.ms)
+                        const lit =
+                            hover === idx || (hover === null && idx === 0)
+                        return (
+                            <g
+                                key={h.sql}
+                                onMouseEnter={() => setHover(idx)}
+                                onMouseLeave={() => setHover(null)}
+                                style={{
+                                    cursor: 'pointer',
+                                    opacity: revealed ? 1 : 0,
+                                    transform: revealed
+                                        ? 'none'
+                                        : 'translateY(8px)',
+                                    transition: `opacity 500ms ease ${p * 80}ms, transform 600ms cubic-bezier(0.34,1.56,0.64,1) ${p * 80}ms`
+                                }}
                             >
-                                {q.sql}
-                            </span>
-                            <span className="shrink-0 text-[8px] font-mono text-[#22c55e]/70 tabular-nums">
-                                {q.ms}ms
-                            </span>
-                            <span className="shrink-0 w-7 text-right text-[8px] font-mono text-[#3a3a3a]">
-                                {q.ago}
-                            </span>
-                        </div>
-                    )
-                })}
+                                <rect
+                                    x={x - step / 2}
+                                    y={8}
+                                    width={step}
+                                    height={BASE - 8}
+                                    fill="transparent"
+                                />
+                                <rect
+                                    x={x - 2.4}
+                                    y={BASE - hgt}
+                                    width="4.8"
+                                    height={hgt}
+                                    rx="1.4"
+                                    fill={lit ? '#e3b2b3' : '#4a3f46'}
+                                    className="transition-[fill] duration-200"
+                                />
+                                <circle
+                                    cx={x}
+                                    cy={BASE - hgt}
+                                    r={lit ? 1.8 : 1.2}
+                                    fill={lit ? '#f5c0c0' : '#5a4f56'}
+                                    className="transition-all duration-200"
+                                >
+                                    {idx === 0 ? (
+                                        <animate
+                                            attributeName="r"
+                                            values="1.8;3;1.8"
+                                            dur="1.8s"
+                                            repeatCount="indefinite"
+                                        />
+                                    ) : null}
+                                </circle>
+                            </g>
+                        )
+                    })}
+                </svg>
             </div>
-            <div className="px-5 pb-5 pt-1">
+
+            {/* readout */}
+            <div className="px-5">
+                <div className="flex items-center gap-2 font-mono text-[10px]">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#e3b2b3]" />
+                    <span className="flex-1 truncate text-[#cfcfcf]">
+                        {q.sql}
+                    </span>
+                    <span className="shrink-0 text-[#e3b2b3]/80 tabular-nums">
+                        {q.ms}ms
+                    </span>
+                    <span className="shrink-0 w-7 text-right text-[#6a6a6a]">
+                        {q.ago}
+                    </span>
+                </div>
+            </div>
+
+            <div className="px-5 pb-5 pt-3">
                 <h3 className="text-sm text-[#e0e0e0] font-medium mb-1">
                     Query History
                 </h3>
@@ -626,14 +879,68 @@ function QueryHistoryCard() {
 }
 
 /* ---------------------------------------------------------------------------
- * Docker Containers — manage local DB containers; one restarts on a loop
- * (running → starting spinner → running) and rows highlight on hover.
+ * Docker Containers — three live container blocks, each with an animated
+ * activity equalizer. One reboots on a loop: its bars freeze and a spinner
+ * takes over before it bursts back to "up". Hovering a block lifts it.
  * ------------------------------------------------------------------------- */
 const CONTAINERS = [
-    { name: 'postgres:16', port: '5432' },
-    { name: 'mysql:8.4', port: '3306' },
-    { name: 'redis:7', port: '6379' }
+    { name: 'postgres', tag: '16', port: '5432' },
+    { name: 'mysql', tag: '8.4', port: '3306' },
+    { name: 'redis', tag: '7', port: '6379' }
 ]
+
+const EQ_BARS = [
+    { x: 4, values: '5;16;8;14;5', dur: '0.9s', begin: '0s' },
+    { x: 11, values: '7;18;6;15;7', dur: '1.1s', begin: '-0.3s' },
+    { x: 18, values: '6;12;18;9;6', dur: '0.8s', begin: '-0.6s' },
+    { x: 25, values: '5;15;7;17;5', dur: '1s', begin: '-0.15s' },
+    { x: 32, values: '8;11;16;10;8', dur: '1.2s', begin: '-0.45s' }
+]
+
+function EqualizerBars({ active, color }: { active: boolean; color: string }) {
+    return (
+        <svg viewBox="0 0 39 22" className="w-full h-7" aria-hidden="true">
+            {EQ_BARS.map((b) => {
+                // keep each bar bottom-anchored at y = 21 as it grows
+                const yValues = b.values
+                    .split(';')
+                    .map((v) => 21 - Number(v))
+                    .join(';')
+                return (
+                    <rect
+                        key={b.x}
+                        x={b.x}
+                        width="3"
+                        rx="1"
+                        fill={color}
+                        opacity={active ? 0.9 : 0.3}
+                        y={active ? 11 : 17}
+                        height={active ? 10 : 4}
+                    >
+                        {active ? (
+                            <>
+                                <animate
+                                    attributeName="height"
+                                    values={b.values}
+                                    dur={b.dur}
+                                    begin={b.begin}
+                                    repeatCount="indefinite"
+                                />
+                                <animate
+                                    attributeName="y"
+                                    values={yValues}
+                                    dur={b.dur}
+                                    begin={b.begin}
+                                    repeatCount="indefinite"
+                                />
+                            </>
+                        ) : null}
+                    </rect>
+                )
+            })}
+        </svg>
+    )
+}
 
 function DockerContainersCard() {
     const ref = useRef<HTMLDivElement>(null)
@@ -663,8 +970,8 @@ function DockerContainersCard() {
             timer = setTimeout(() => {
                 setRestarting(null)
                 i += 1
-                timer = setTimeout(cycle, 2200)
-            }, 1200)
+                timer = setTimeout(cycle, 2400)
+            }, 1400)
         }
         timer = setTimeout(cycle, 1600)
         return () => clearTimeout(timer)
@@ -672,78 +979,68 @@ function DockerContainersCard() {
 
     return (
         <div ref={ref} className="h-full flex flex-col">
-            <div className="flex-1 flex flex-col justify-center gap-1.5 px-4 pt-6 pb-2">
+            <div className="flex-1 grid grid-cols-3 gap-2 px-4 pt-6 pb-3">
                 {CONTAINERS.map((c, idx) => {
                     const starting = restarting === idx
                     const lit = hover === idx
+                    const color = starting ? '#ad8eb6' : '#e3b2b3'
                     return (
                         <div
                             key={c.name}
                             onMouseEnter={() => setHover(idx)}
                             onMouseLeave={() => setHover(null)}
-                            className={`flex items-center gap-2 rounded-md border px-2.5 py-2 cursor-pointer ${
-                                lit
-                                    ? 'border-[#2a2a2a] bg-[#0d0d0d]'
-                                    : 'border-[#1a1a1a] bg-transparent'
-                            }`}
+                            className="relative flex flex-col items-center justify-between gap-2 rounded-md border px-2 py-2.5 cursor-pointer"
                             style={{
+                                borderColor: lit ? '#3a3138' : '#2b252c',
+                                backgroundColor: lit ? '#161218' : 'transparent',
                                 opacity: revealed ? 1 : 0,
-                                // staggered slide-in from the left with a gentle overshoot
                                 transform: revealed
-                                    ? 'translateX(0)'
-                                    : 'translateX(-14px)',
-                                transition:
-                                    'opacity 500ms cubic-bezier(0.22,1,0.36,1), transform 620ms cubic-bezier(0.34,1.56,0.64,1), border-color 300ms ease, background-color 300ms ease',
-                                transitionDelay: `${idx * 110}ms`
+                                    ? lit
+                                        ? 'translateY(-2px)'
+                                        : 'translateY(0)'
+                                    : 'translateY(10px)',
+                                transition: `opacity 500ms ease ${idx * 100}ms, transform 500ms cubic-bezier(0.34,1.56,0.64,1) ${idx * 100}ms, border-color 300ms ease, background-color 300ms ease`
                             }}
                         >
-                            <svg
-                                width="12"
-                                height="12"
-                                viewBox="0 0 16 16"
-                                className={`shrink-0 transition-colors duration-300 ${
-                                    starting
-                                        ? 'text-[#d4a017]'
-                                        : 'text-[#22c55e]'
-                                }`}
-                                aria-hidden="true"
-                            >
-                                <path
-                                    d="M8 1.5 L14 4.5 V11 L8 14 L2 11 V4.5 Z"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.2"
-                                    strokeLinejoin="round"
-                                />
-                                <path
-                                    d="M2 4.5 L8 7.5 L14 4.5 M8 7.5 V14"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.2"
-                                    strokeLinejoin="round"
-                                />
-                            </svg>
-                            <span className="text-[10px] font-mono text-[#9a9a9a]">
-                                {c.name}
-                            </span>
-                            <span className="ml-auto text-[8px] font-mono text-[#3a3a3a]">
-                                :{c.port}
-                            </span>
-                            {starting ? (
+                            {/* image name */}
+                            <div className="flex w-full min-w-0 items-baseline gap-px">
+                                <span className="truncate text-[9px] font-mono text-[#cfcfcf]">
+                                    {c.name}
+                                </span>
+                                <span className="shrink-0 text-[8px] font-mono text-[#6a6a6a]">
+                                    :{c.tag}
+                                </span>
+                            </div>
+
+                            {/* live activity / boot spinner */}
+                            <div className="relative flex h-7 w-full items-center justify-center">
+                                <EqualizerBars active={!starting} color={color} />
+                                {starting ? (
+                                    <span className="absolute h-3.5 w-3.5 rounded-full border border-[#ad8eb6] border-t-transparent animate-spin" />
+                                ) : null}
+                            </div>
+
+                            {/* status */}
+                            <div className="flex w-full items-center justify-between">
                                 <span className="flex items-center gap-1">
-                                    <span className="w-2.5 h-2.5 rounded-full border border-[#d4a017] border-t-transparent animate-spin" />
-                                    <span className="text-[7px] font-mono text-[#d4a017] uppercase tracking-wider">
-                                        boot
+                                    <span
+                                        className="h-1.5 w-1.5 rounded-full"
+                                        style={{
+                                            backgroundColor: color,
+                                            boxShadow: `0 0 6px ${color}80`
+                                        }}
+                                    />
+                                    <span
+                                        className="text-[7px] font-mono uppercase tracking-wider"
+                                        style={{ color }}
+                                    >
+                                        {starting ? 'boot' : 'up'}
                                     </span>
                                 </span>
-                            ) : (
-                                <span className="flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e]" />
-                                    <span className="text-[7px] font-mono text-[#22c55e]/70 uppercase tracking-wider">
-                                        up
-                                    </span>
+                                <span className="text-[7px] font-mono text-[#5a4f56]">
+                                    :{c.port}
                                 </span>
-                            )}
+                            </div>
                         </div>
                     )
                 })}
@@ -799,7 +1096,7 @@ function SchemaDiagramCard() {
                             key={i}
                             d={e.d}
                             fill="none"
-                            stroke={edgeLit(e) ? '#22c55e' : '#262626'}
+                            stroke={edgeLit(e) ? '#e3b2b3' : '#3a3138'}
                             strokeWidth="1.2"
                             strokeDasharray={edgeLit(e) ? '4 4' : undefined}
                         >
@@ -829,9 +1126,9 @@ function SchemaDiagramCard() {
                                     width={n.w}
                                     height={n.h}
                                     rx="3"
-                                    fill="#0d0d0d"
+                                    fill="#161218"
                                     stroke={
-                                        lit ? 'rgba(34,197,94,0.4)' : '#1f1f1f'
+                                        lit ? 'rgba(227,178,179,0.4)' : '#2b252c'
                                     }
                                     strokeWidth="1"
                                     className="transition-colors duration-200"
@@ -839,7 +1136,7 @@ function SchemaDiagramCard() {
                                 <path
                                     d={`M${n.x} ${n.y + 3} a3 3 0 0 1 3 -3 h${n.w - 6} a3 3 0 0 1 3 3 v7 h-${n.w} Z`}
                                     fill={
-                                        lit ? 'rgba(34,197,94,0.16)' : '#161616'
+                                        lit ? 'rgba(227,178,179,0.16)' : '#1c1820'
                                     }
                                     className="transition-colors duration-200"
                                 />
@@ -848,7 +1145,7 @@ function SchemaDiagramCard() {
                                     y={n.y + 7.6}
                                     fontSize="6.5"
                                     className="font-mono transition-colors duration-200"
-                                    fill={lit ? '#22c55e' : '#6a6a6a'}
+                                    fill={lit ? '#e3b2b3' : '#6a6a6a'}
                                 >
                                     {n.id}
                                 </text>
@@ -857,7 +1154,7 @@ function SchemaDiagramCard() {
                                     y1={n.y + 17}
                                     x2={n.x + n.w - 6}
                                     y2={n.y + 17}
-                                    stroke="#262626"
+                                    stroke="#3a3138"
                                     strokeWidth="1.4"
                                 />
                                 <line
@@ -865,7 +1162,7 @@ function SchemaDiagramCard() {
                                     y1={n.y + 23}
                                     x2={n.x + n.w - 12}
                                     y2={n.y + 23}
-                                    stroke="#1f1f1f"
+                                    stroke="#2b252c"
                                     strokeWidth="1.4"
                                 />
                             </g>
@@ -903,10 +1200,17 @@ export function FeaturesSection() {
     }, [])
 
     return (
-        <section ref={sectionRef} className="w-full">
+        <section
+            ref={sectionRef}
+            className="relative w-full border-l border-t border-[#3a3138]"
+        >
+            <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2" />
+            <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2" />
+            <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2" />
+            <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2" />
             {/* Heading */}
             <div
-                className={`px-6 sm:px-8 py-12 border-b border-[#1a1a1a] transition-all duration-700 delay-150 ${
+                className={`px-6 sm:px-8 py-12 border-b border-[#2b252c] transition-all duration-700 delay-150 ${
                     isVisible
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-8'
@@ -922,28 +1226,33 @@ export function FeaturesSection() {
 
             {/* Feature cards — collapsed bordered grid */}
             <div
-                className={`grid grid-cols-2 md:grid-cols-3 transition-all duration-700 delay-300 ${
+                className={`relative grid grid-cols-2 md:grid-cols-3 md:grid-rows-2 transition-all duration-700 delay-300 ${
                     isVisible
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-8'
                 }`}
             >
-                <div className="border-r border-b border-[#1a1a1a] overflow-hidden transition-colors hover:bg-[#0d0d0d]">
+                {/* squares along the divider between the top and bottom three */}
+                <CornerTick className="hidden md:block left-0 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+                <CornerTick className="hidden md:block left-1/3 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+                <CornerTick className="hidden md:block left-2/3 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+                <CornerTick className="hidden md:block left-full top-1/2 -translate-x-1/2 -translate-y-1/2" />
+                <div className="border-r border-b border-[#2b252c] overflow-hidden transition-colors hover:bg-[rgba(245,192,192,0.06)]">
                     <DatabaseConnectionCard motion={motion} />
                 </div>
-                <div className="border-r border-b border-[#1a1a1a] overflow-hidden transition-colors hover:bg-[#0d0d0d]">
+                <div className="border-r border-b border-[#2b252c] overflow-hidden transition-colors hover:bg-[rgba(245,192,192,0.06)]">
                     <RegionGlobeCard motion={motion} />
                 </div>
-                <div className="border-r border-b border-[#1a1a1a] overflow-hidden transition-colors hover:bg-[#0d0d0d]">
+                <div className="border-r border-b border-[#2b252c] overflow-hidden transition-colors hover:bg-[rgba(245,192,192,0.06)]">
                     <DockerContainersCard />
                 </div>
-                <div className="border-r border-b border-[#1a1a1a] overflow-hidden transition-colors hover:bg-[#0d0d0d]">
+                <div className="border-r border-b border-[#2b252c] overflow-hidden transition-colors hover:bg-[rgba(245,192,192,0.06)]">
                     <SchemaDiagramCard />
                 </div>
-                <div className="border-r border-b border-[#1a1a1a] overflow-hidden transition-colors hover:bg-[#0d0d0d]">
+                <div className="border-r border-b border-[#2b252c] overflow-hidden transition-colors hover:bg-[rgba(245,192,192,0.06)]">
                     <NativePerformanceCard motion={motion} />
                 </div>
-                <div className="border-r border-b border-[#1a1a1a] overflow-hidden transition-colors hover:bg-[#0d0d0d]">
+                <div className="border-r border-b border-[#2b252c] overflow-hidden transition-colors hover:bg-[rgba(245,192,192,0.06)]">
                     <QueryHistoryCard />
                 </div>
             </div>

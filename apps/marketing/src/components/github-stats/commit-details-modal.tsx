@@ -13,6 +13,7 @@ import {
     ExternalLink
 } from 'lucide-react'
 import type { CommitDataPoint } from './commit-graph'
+import { ACCENT_COLOR } from './constants'
 
 export interface CommitDetailsModalProps {
     isOpen: boolean
@@ -26,7 +27,7 @@ export function CommitDetailsModal({
     isOpen,
     onClose,
     data,
-    accentColor = '#22c55e',
+    accentColor = ACCENT_COLOR,
     repoUrl = 'https://github.com/remcostoeten/dora'
 }: CommitDetailsModalProps) {
     const modalRef = useRef<HTMLDivElement>(null)
