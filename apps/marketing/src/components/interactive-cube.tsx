@@ -656,7 +656,7 @@ function Scene({
     const { camera } = useThree()
     useEffect(() => {
         const ortho = camera as THREE.OrthographicCamera
-        ortho.zoom = 180
+        ortho.zoom = 120
         ortho.updateProjectionMatrix()
     }, [camera])
     return (
