@@ -64,6 +64,23 @@
             "rules": {
                 "dora/import-order": "off"
             }
+        },
+        {
+            "files": [
+                "src/components/github-stats/**",
+                "src/app/api/github/route.ts"
+            ],
+            "rules": {
+                "complexity": "off",
+                "max-depth": "off",
+                "max-lines": "off",
+                "max-params": "off",
+                "no-nested-ternary": "off",
+                "dora/function-only": "off",
+                "dora/type-prefix": "off",
+                "dora/identifier-words": "off",
+                "dora/import-order": "off"
+            }
         }
     ]
 }

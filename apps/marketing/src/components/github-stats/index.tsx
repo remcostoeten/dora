@@ -1,0 +1,515 @@
+'use client'
+
+import { useRef, useState, useLayoutEffect } from 'react'
+import useSWR from 'swr'
+import {
+    Tag,
+    Calendar,
+    GitCommit,
+    Clock,
+    Star,
+    Loader2,
+    Download,
+    Check,
+    Copy
+} from 'lucide-react'
+import {
+    CommitGraph,
+    type CommitDataPoint,
+    type CommitDetail
+} from './commit-graph'
+import { GraphTooltip } from './graph-tooltip'
+import { CommitDetailsModal } from './commit-details-modal'
+
+interface PackageInfo {
+    name: string
+    platform: 'snap' | 'github' | 'brew' | 'aur' | 'apt' | 'winget'
+    command?: string
+    version?: string
+    downloads?: number
+    url: string
+}
+
+interface GitHubStatsData {
+    version: string
+    versionUrl: string
+    startedAt: string
+    latestCommitAt: string
+    latestCommitSha: string
+    totalCommits: number
+    stars: number
+    description: string
+    language: string
+    commitData: CommitDataPoint[]
+    packages: PackageInfo[]
+    releaseNotes?: string
+}
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
+function formatDownloads(num: number): string {
+    if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
+    if (num >= 1_000) return `${(num / 1_000).toFixed(1)}k`
+    return num.toString()
+}
+
+function PlatformIcon({
+    platform,
+    className = 'w-3.5 h-3.5'
+}: {
+    platform: string
+    className?: string
+}) {
+    switch (platform) {
+        case 'brew':
+            return (
+                <svg
+                    viewBox="0 0 24 24"
+                    className={className}
+                    fill="currentColor"
+                >
+                    <path d="M5.055 6.905c-.34-.789-.254-1.756.043-2.573.182-.528.467-1.025.8-1.456.17-.252.34-.504.426-.777.042-.168-.085-.462-.17-.672-.128-.294-.255-.588-.17-.84.042-.126.255-.336.51-.336.256 0 .469.084.596.21.17.168.256.42.341.672.085.378.042.798-.128 1.177-.213.504-.596.924-.98 1.26-.382.42-.765.84-1.02 1.344-.255.504-.34 1.092-.17 1.638.042.126.128.378.042.462-.085.084-.255.042-.383 0-.467-.126-.849-.42-1.063-.714-.043-.126-.085-.252-.085-.378.043-.127.043-.295-.043-.084l-.546-.933zm5.12 7.98c.212.504.638.882 1.106 1.134.638.336 1.361.504 2.041.336.681-.168 1.234-.63 1.489-1.26.128-.336.17-.714.128-1.092-.043-.504-.255-.966-.596-1.344-.298-.294-.68-.504-1.106-.63-.298-.084-.638-.084-.936-.042-.553.084-1.064.378-1.404.798-.298.336-.51.756-.596 1.218-.085.336-.127.588-.126.882zm10.453-7.98c.34-.789.255-1.756-.042-2.573-.183-.528-.468-1.025-.8-1.456-.17-.252-.34-.504-.426-.777-.043-.168.085-.462.17-.672.127-.294.255-.588.17-.84-.043-.126-.256-.336-.511-.336s-.469.084-.596.21c-.17.168-.255.42-.34.672-.085.378-.043.798.127 1.177.213.504.596.924.98 1.26.382.42.765.84 1.02 1.344.256.504.34 1.092.17 1.638-.042.126-.127.378-.042.462.085.084.255.042.383 0 .468-.126.85-.42 1.064-.714.042-.084.085-.168.085-.252-.043-.168 0-.336-.042-.546l.63-.63zM12 24c6.628 0 12-5.373 12-12S18.628 0 12 0 0 5.373 0 12s5.372 12 12 12z" />
+                </svg>
+            )
+        case 'snap':
+            return (
+                <svg
+                    viewBox="0 0 24 24"
+                    className={className}
+                    fill="currentColor"
+                >
+                    <path d="M13.69 13.287V5.667l5.237 2.312-5.237 5.308zM10.095 18.5L4.5 20.846l3.102-7.22h5.759l-3.266 4.874zm7.094-5.94l-3.502 3.467 3.502 7.227 5.093-3.467v-7.227h-5.093zM4.5 3l5.595 2.634v7.52L4.5 10.422V3zm9.19 0l5.632 2.634v4.58l-5.633-2.312V3z" />
+                </svg>
+            )
+        case 'aur':
+            return (
+                <svg
+                    viewBox="0 0 24 24"
+                    className={className}
+                    fill="currentColor"
+                >
+                    <path d="M12 2L2 19h4l2-3.5h8L18 19h4L12 2zm0 5l3 5H9l3-5z" />
+                </svg>
+            )
+        case 'apt':
+            return (
+                <svg
+                    viewBox="0 0 24 24"
+                    className={className}
+                    fill="currentColor"
+                >
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5zm4 4h-2v-2h2v2zm0-4h-2V7h2v5z" />
+                </svg>
+            )
+        case 'winget':
+            return (
+                <svg
+                    viewBox="0 0 24 24"
+                    className={className}
+                    fill="currentColor"
+                >
+                    <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
+                </svg>
+            )
+        case 'github':
+            return (
+                <svg
+                    viewBox="0 0 24 24"
+                    className={className}
+                    fill="currentColor"
+                >
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                </svg>
+            )
+        default:
+            return <Download className={className} />
+    }
+}
+
+function CopyButton({ text }: { text: string }) {
+    const [copied, setCopied] = useState(false)
+
+    const handleCopy = async (e: React.MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+    }
+
+    return (
+        <button
+            onClick={handleCopy}
+            className="relative border border-[#3a3138] p-1.5 text-[#4a4a4a] transition-colors hover:border-[#e3b2b3]/45 hover:bg-[#e3b2b3]/5 hover:text-[#e3b2b3]"
+            title="Copy command"
+        >
+            {copied ? (
+                <Check className="w-3.5 h-3.5 text-green-500" />
+            ) : (
+                <Copy className="w-3.5 h-3.5" />
+            )}
+        </button>
+    )
+}
+
+function CornerTick({ className }: { className: string }) {
+    return (
+        <span
+            aria-hidden
+            className={`pointer-events-none absolute z-30 size-2.5 ${className}`}
+        >
+            <span className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[#e3b2b3]/50" />
+            <span className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-[#e3b2b3]/50" />
+        </span>
+    )
+}
+
+// Gooey tab indicator component
+function TabIndicator({ activeRect }: { activeRect: DOMRect | null }) {
+    if (!activeRect) return null
+
+    return (
+        <div
+            className="absolute border border-[#e3b2b3]/45 bg-[#e3b2b3]/5 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            style={{
+                left: activeRect.left,
+                top: activeRect.top,
+                width: activeRect.width,
+                height: activeRect.height,
+                zIndex: 0
+            }}
+        />
+    )
+}
+
+export interface GitHubStatsProps {
+    accentColor?: string
+}
+
+export function GitHubStats({ accentColor = '#22c55e' }: GitHubStatsProps) {
+    const { data, error, isLoading } = useSWR<GitHubStatsData>(
+        '/api/github',
+        fetcher,
+        {
+            revalidateOnFocus: false,
+            dedupingInterval: 60000
+        }
+    )
+
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+    const [tooltipPosition, setTooltipPosition] = useState<{
+        x: number
+        y: number
+    } | null>(null)
+    const [selectedDayIndex, setSelectedDayIndex] = useState<number | null>(
+        null
+    )
+    const [activeInstall, setActiveInstall] = useState<string>('brew')
+    const [indicatorRect, setIndicatorRect] = useState<DOMRect | null>(null)
+    const commitsContainerRef = useRef<HTMLDivElement>(null)
+    const tabsContainerRef = useRef<HTMLDivElement>(null)
+    const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+
+    // Update indicator position when active tab changes
+    useLayoutEffect(() => {
+        const activeTab = tabRefs.current.get(activeInstall)
+        const container = tabsContainerRef.current
+        if (activeTab && container) {
+            const containerRect = container.getBoundingClientRect()
+            const tabRect = activeTab.getBoundingClientRect()
+            setIndicatorRect({
+                left: tabRect.left - containerRect.left,
+                top: tabRect.top - containerRect.top,
+                width: tabRect.width,
+                height: tabRect.height
+            } as DOMRect)
+        }
+    }, [activeInstall, data])
+
+    const handleHoverChange = (
+        index: number | null,
+        position?: { x: number; y: number }
+    ) => {
+        setHoveredIndex(index)
+        setTooltipPosition(position ?? null)
+    }
+
+    const handleDayClick = (index: number) => {
+        setSelectedDayIndex(index)
+    }
+
+    const handleCloseModal = () => {
+        setSelectedDayIndex(null)
+    }
+
+    const version = data?.version ?? '...'
+    const versionUrl = data?.versionUrl ?? '#'
+    const startedAt = data?.startedAt ?? '...'
+    const latestCommitAt = data?.latestCommitAt ?? '...'
+    const latestCommitSha = data?.latestCommitSha ?? ''
+    const totalCommits = data?.totalCommits ?? 0
+    const stars = data?.stars ?? 0
+    const commitData = data?.commitData ?? []
+    const packages = data?.packages ?? []
+    const sourceUrl = 'https://github.com/remcostoeten/dora'
+
+    const activePackage =
+        packages.find((p) => p.platform === activeInstall) ?? packages[0]
+
+    return (
+        <>
+            <div className="w-full bg-[#0a0a0a]">
+                <div className="relative overflow-hidden border border-[#3a3138]">
+                    <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2" />
+                    <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2" />
+                    <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2" />
+                    <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2" />
+                    {/* Top row: Info + Commits */}
+                    <div className="flex flex-col sm:flex-row">
+                        {/* Left info section: Version + Timeline */}
+                        <div className="w-full flex-shrink-0 border-b border-[#1a1a1a] sm:w-64 sm:border-b-0 sm:border-r">
+                            {/* Version */}
+                            <a
+                                href={versionUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block px-5 py-4 border-b border-[#1a1a1a] hover:bg-[#0d0d0d] transition-colors"
+                            >
+                                <div className="flex items-center gap-2 text-[#4a4a4a] text-xs uppercase tracking-wider mb-1">
+                                    <Tag className="w-3 h-3" />
+                                    Version
+                                </div>
+                                <div className="text-[#9a9a9a] text-lg font-mono font-medium">
+                                    {version}
+                                </div>
+                            </a>
+
+                            {/* Timeline */}
+                            <div className="px-5 py-4">
+                                <div className="flex items-center gap-4 text-[11px]">
+                                    <div>
+                                        <div className="flex items-center gap-1.5 text-[#4a4a4a] uppercase tracking-wider mb-1">
+                                            <Calendar className="w-2.5 h-2.5" />
+                                            Started
+                                        </div>
+                                        <div className="text-[#7a7a7a]">
+                                            {startedAt}
+                                        </div>
+                                    </div>
+                                    <div className="w-px h-8 bg-[#1a1a1a]" />
+                                    <a
+                                        href={
+                                            latestCommitSha
+                                                ? `${sourceUrl}/commit/${latestCommitSha}`
+                                                : undefined
+                                        }
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:text-[#9a9a9a] transition-colors"
+                                    >
+                                        <div className="flex items-center gap-1.5 text-[#4a4a4a] uppercase tracking-wider mb-1">
+                                            <Clock className="w-2.5 h-2.5" />
+                                            Latest
+                                        </div>
+                                        <div className="text-[#7a7a7a]">
+                                            {latestCommitAt}
+                                        </div>
+                                    </a>
+                                </div>
+                                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-[#3a3a3a]">
+                                    <Star className="w-2.5 h-2.5" />
+                                    <span>
+                                        {stars} star{stars !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Commits - with interactive graph */}
+                        <div
+                            ref={commitsContainerRef}
+                            className="relative min-h-[150px] flex-1 overflow-visible px-5 py-4 group sm:min-h-[120px] sm:px-6"
+                        >
+                            {isLoading ? (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Loader2 className="w-5 h-5 text-[#3a3a3a] animate-spin" />
+                                </div>
+                            ) : error ? (
+                                <div className="absolute inset-0 flex items-center justify-center text-[10px] text-red-400/70">
+                                    Failed to load
+                                </div>
+                            ) : commitData.length > 0 ? (
+                                <>
+                                    <CommitGraph
+                                        data={commitData}
+                                        hoveredIndex={hoveredIndex}
+                                        onHoverChange={handleHoverChange}
+                                        onClick={handleDayClick}
+                                        accentColor={accentColor}
+                                    />
+
+                                    <GraphTooltip
+                                        data={
+                                            hoveredIndex !== null
+                                                ? commitData[hoveredIndex]
+                                                : null
+                                        }
+                                        position={tooltipPosition}
+                                        containerRef={commitsContainerRef}
+                                        accentColor={accentColor}
+                                    />
+                                </>
+                            ) : null}
+
+                            {/* Content - with pointer-events-none so hover/click passes through */}
+                            <div className="relative z-20 pointer-events-none">
+                                <div className="flex items-center gap-2 text-[#4a4a4a] text-xs uppercase tracking-wider mb-1">
+                                    <GitCommit className="w-3 h-3" />
+                                    Commits
+                                </div>
+                                <div className="text-[#9a9a9a] text-2xl font-medium tabular-nums">
+                                    {isLoading ? '...' : totalCommits}
+                                </div>
+                                <div className="mt-1 hidden items-center gap-2 text-[10px] text-[#3a3a3a] sm:flex">
+                                    <span>Scroll to pan</span>
+                                    <span className="text-[#2a2a2a]">|</span>
+                                    <span className="flex items-center gap-1">
+                                        <kbd className="px-1 py-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded text-[8px] font-mono">
+                                            shift
+                                        </kbd>
+                                        scroll to zoom
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom row: Install section - full width */}
+                    <div className="border-t border-[#1a1a1a] px-5 py-4 sm:px-6">
+                        <div className="flex items-center gap-2 text-[#4a4a4a] text-xs uppercase tracking-wider mb-4">
+                            <Download className="w-3 h-3" />
+                            Install
+                        </div>
+
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+                            {/* Platform tabs with gooey indicator */}
+                            <div
+                                ref={tabsContainerRef}
+                                className="relative -mx-1 flex w-[calc(100%+0.5rem)] items-center gap-1 overflow-x-auto px-1 py-1 sm:mx-0 sm:w-auto sm:overflow-visible sm:px-0 sm:py-0"
+                            >
+                                <TabIndicator activeRect={indicatorRect} />
+                                {packages.map((pkg) => (
+                                    <button
+                                        key={pkg.platform}
+                                        ref={(el) => {
+                                            if (el)
+                                                tabRefs.current.set(
+                                                    pkg.platform,
+                                                    el
+                                                )
+                                        }}
+                                        onClick={() =>
+                                            setActiveInstall(pkg.platform)
+                                        }
+                                        className={`group/tab relative z-10 flex shrink-0 items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium transition-colors duration-200 hover:border-[#e3b2b3]/25 ${
+                                            activeInstall === pkg.platform
+                                                ? 'border-[#e3b2b3]/45 text-[#e3b2b3]'
+                                                : 'text-[#4a4a4a] hover:text-[#6a6a6a]'
+                                        }`}
+                                        title={pkg.name}
+                                    >
+                                        <CornerTick
+                                            className={`-left-px -top-px -translate-x-1/2 -translate-y-1/2 transition-opacity ${
+                                                activeInstall === pkg.platform
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0 group-hover/tab:opacity-100'
+                                            }`}
+                                        />
+                                        <CornerTick
+                                            className={`-right-px -top-px translate-x-1/2 -translate-y-1/2 transition-opacity ${
+                                                activeInstall === pkg.platform
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0 group-hover/tab:opacity-100'
+                                            }`}
+                                        />
+                                        <CornerTick
+                                            className={`-bottom-px -left-px -translate-x-1/2 translate-y-1/2 transition-opacity ${
+                                                activeInstall === pkg.platform
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0 group-hover/tab:opacity-100'
+                                            }`}
+                                        />
+                                        <CornerTick
+                                            className={`-bottom-px -right-px translate-x-1/2 translate-y-1/2 transition-opacity ${
+                                                activeInstall === pkg.platform
+                                                    ? 'opacity-100'
+                                                    : 'opacity-0 group-hover/tab:opacity-100'
+                                            }`}
+                                        />
+                                        <PlatformIcon
+                                            platform={pkg.platform}
+                                            className="w-4 h-4"
+                                        />
+                                        <span>{pkg.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Command box */}
+                            <div className="w-full flex-1 sm:max-w-xl">
+                                {activePackage && (
+                                    <a
+                                        key={activePackage.platform}
+                                        href={activePackage.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group/cmd relative flex items-center gap-3 border border-[#3a3138] bg-[#0d0d0d] px-4 py-2.5 transition-all duration-300 hover:border-[#e3b2b3]/45 hover:bg-[#e3b2b3]/5"
+                                    >
+                                        <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                        <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                        <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                        <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                        <code className="text-sm text-[#6a6a6a] font-mono flex-1 truncate group-hover/cmd:text-[#8a8a8a] transition-colors">
+                                            {activePackage.command ||
+                                                `Download from ${activePackage.name}`}
+                                        </code>
+                                        {activePackage.command && (
+                                            <CopyButton
+                                                text={activePackage.command}
+                                            />
+                                        )}
+                                    </a>
+                                )}
+                            </div>
+
+                            {/* Downloads indicator */}
+                            {activePackage?.downloads !== undefined &&
+                                activePackage.downloads > 0 && (
+                                    <span className="text-[10px] text-[#3a3a3a] whitespace-nowrap">
+                                        {formatDownloads(
+                                            activePackage.downloads
+                                        )}{' '}
+                                        downloads
+                                    </span>
+                                )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <CommitDetailsModal
+                isOpen={selectedDayIndex !== null}
+                onClose={handleCloseModal}
+                data={
+                    selectedDayIndex !== null && commitData.length > 0
+                        ? commitData[selectedDayIndex]
+                        : null
+                }
+                accentColor={accentColor}
+                repoUrl={sourceUrl}
+            />
+        </>
+    )
+}
+
+export { type CommitDataPoint, type CommitDetail } from './commit-graph'
