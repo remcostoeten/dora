@@ -333,14 +333,16 @@ export function DatabaseStudio({
 		{ description: shortcuts.focusToolbar.description }
 	)
 
-	$.bind(shortcuts.deleteRows.combo).on(
-		function () {
-			if (rowsForActions.size > 0 && !isBulkActionLoading) {
-				handleBulkDelete()
-			}
-		},
-		{ description: shortcuts.deleteRows.description }
-	)
+	$.bind(shortcuts.deleteRows.combo)
+		.except('typing')
+		.on(
+			function () {
+				if (rowsForActions.size > 0 && !isBulkActionLoading) {
+					handleBulkDelete()
+				}
+			},
+			{ description: shortcuts.deleteRows.description }
+		)
 
 	$.bind(shortcuts.deselect.combo).on(
 		function () {

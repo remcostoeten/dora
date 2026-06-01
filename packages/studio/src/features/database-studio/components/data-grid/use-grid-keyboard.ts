@@ -128,6 +128,11 @@ export function useGridKeyboard({
 				})
 			}
 
+			// Start editing the focused cell by typing a printable character.
+			function beginTypeEdit(char: string) {
+				startTypeEdit(row, columns[col].name, rows[row][columns[col].name], char)
+			}
+
 			switch (e.key) {
 				case 'ArrowUp':
 					e.preventDefault()
@@ -203,8 +208,12 @@ export function useGridKeyboard({
 						cancelAnimationFrame(pendingNavFrameRef.current)
 						pendingNavFrameRef.current = null
 					}
+					// Progressive escape: collapse a multi-cell selection → drop
+					// the row selection (keep the focused cell) → clear focus.
 					if (selectedCellsSet.size > 1) {
 						updateCellSelection(new Set([getCellKey(row, col)]))
+					} else if (selectedRows.size > 0) {
+						onSelectAll(false)
 					} else {
 						setFocusedCell(null)
 						updateCellSelection(new Set())
@@ -225,28 +234,54 @@ export function useGridKeyboard({
 						lastClickedRowRef.current = row
 					}
 					break
+				// Single-key command: edit the focused cell (like F2/Enter).
+				// With a modifier it is not a command — let it bubble (e.g. mod+e
+				// = export) instead of opening the editor.
+				case 'e':
+					if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+						e.preventDefault()
+						startCellEdit(row, columns[col].name, rows[row][columns[col].name])
+					}
+					break
+				// Single-key command: delete the selected rows (or the focused
+				// row when nothing is explicitly selected). mod+d stays "deselect".
+				case 'd':
+					if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+						e.preventDefault()
+						onDeleteSelectedRows?.()
+					}
+					break
 				case 'a':
 					if (e.ctrlKey || e.metaKey) {
 						e.preventDefault()
 						onSelectAll(!allSelected)
+					} else if (!e.altKey) {
+						e.preventDefault()
+						beginTypeEdit('a')
 					}
 					break
 				case 'c':
 					if (e.ctrlKey || e.metaKey) {
 						e.preventDefault()
 						copySelectionToClipboard(selectedCellsSet, focusedCell, rows, columns)
+					} else if (!e.altKey) {
+						e.preventDefault()
+						beginTypeEdit('c')
 					}
 					break
 				case 'v':
 					if ((e.ctrlKey || e.metaKey) && focusedCell && onCellEdit) {
 						e.preventDefault()
 						pasteClipboardIntoGrid(focusedCell, rows.length, columns, onCellEdit)
+					} else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+						e.preventDefault()
+						beginTypeEdit('v')
 					}
 					break
 				default:
 					if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
 						e.preventDefault()
-						startTypeEdit(row, columns[col].name, rows[row][columns[col].name], e.key)
+						beginTypeEdit(e.key)
 					}
 					break
 			}

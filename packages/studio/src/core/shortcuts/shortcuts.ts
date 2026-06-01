@@ -173,12 +173,17 @@ export const APP_SHORTCUTS = {
 		scope: 'data-grid'
 	},
 	deselect: {
-		combo: ['escape', 'mod+d', 'd'],
+		combo: ['escape', 'mod+d'],
 		description: 'Deselect all',
 		scope: 'data-grid'
 	},
+	editCell: {
+		combo: ['e', 'f2', 'enter'],
+		description: 'Edit focused cell',
+		scope: 'data-grid'
+	},
 	deleteRows: {
-		combo: ['delete', 'shift+backspace'],
+		combo: ['delete', 'shift+backspace', 'd'],
 		description: 'Delete selected rows',
 		scope: 'data-grid'
 	},
@@ -235,7 +240,7 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'moveLineUp', 'moveLineDown', 'deleteLine', 'goToLine',
 	],
 	'Database Studio': [
-		'selectAll', 'deselect', 'deleteRows', 'focusToolbar',
+		'selectAll', 'deselect', 'editCell', 'deleteRows', 'focusToolbar',
 		'refreshTable', 'filterRows', 'insertRow', 'exportTable', 'startLiveMonitor',
 	],
 	'Global': ['save'],
