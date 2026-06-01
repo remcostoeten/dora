@@ -48,12 +48,24 @@ export function normalizeValueForInsert(column: ColumnDefinition, value: unknown
 
 		if (isIntegerType) {
 			const parsed = Number.parseInt(trimmed, 10)
-			return Number.isNaN(parsed) ? (column.nullable ? null : 0) : parsed
+			if (Number.isNaN(parsed)) return column.nullable ? null : 0
+			// BIGINT values beyond JS's safe-integer range lose precision as a
+			// number, so keep the literal string and let the database parse it
+			// exactly. Every adapter accepts string-encoded numerics (Postgres
+			// via `$1::text::<type>`, SQLite/libSQL via affinity, MySQL via
+			// implicit coercion).
+			if (!Number.isSafeInteger(parsed)) return trimmed
+			return parsed
 		}
 
 		if (isFloatType) {
 			const parsed = Number.parseFloat(trimmed)
-			return Number.isNaN(parsed) ? (column.nullable ? null : 0) : parsed
+			if (Number.isNaN(parsed)) return column.nullable ? null : 0
+			// High-precision decimals exceed f64 (~15-17 significant digits);
+			// keep the literal so the value is not silently rounded.
+			const significantDigits = trimmed.replace(/[^0-9]/g, '').replace(/^0+/, '').length
+			if (significantDigits > 15) return trimmed
+			return parsed
 		}
 
 		if (isBooleanType) {
