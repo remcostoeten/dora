@@ -36,6 +36,7 @@ type Props = {
 	onSortChange?: (sort: SortDescriptor | undefined) => void
 	onFilterAdd?: (filter: FilterDescriptor) => void
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
+	onDeleteSelectedRows?: () => void
 	onBatchCellEdit?: (rowIndexes: number[], columnName: string, newValue: unknown) => void
 	onRowAction?: (
 		action: RowAction,
@@ -69,6 +70,7 @@ export function DataGrid({
 	onSortChange,
 	onFilterAdd,
 	onCellEdit,
+	onDeleteSelectedRows,
 	onBatchCellEdit,
 	onRowAction,
 	tableName,
@@ -131,11 +133,11 @@ export function DataGrid({
 
 	const {
 		editingCell,
-		setEditingCell,
 		editValue,
 		setEditValue,
 		editInputRef,
 		handleCellDoubleClick,
+		startTypeEdit,
 		handleSaveEdit,
 		handleEditKeyDown
 	} = useCellEditing({
@@ -261,6 +263,7 @@ export function DataGrid({
 		focusedCell,
 		lastClickedRowRef,
 		onCellEdit,
+		onDeleteSelectedRows,
 		onRowsSelect,
 		onRowSelect,
 		onSelectAll,
@@ -268,10 +271,9 @@ export function DataGrid({
 		selectedCellsSet,
 		selectedRows,
 		setAnchorCell,
-		setEditingCell,
-		setEditValue,
 		setFocusedCell,
 		startCellEdit: handleCellDoubleClick,
+		startTypeEdit,
 		updateCellSelection
 	})
 

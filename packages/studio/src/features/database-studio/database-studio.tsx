@@ -623,6 +623,7 @@ export function DatabaseStudio({
 							onSortChange={setSort}
 							onFilterAdd={handleFilterAdd}
 							onCellEdit={handleCellEdit}
+							onDeleteSelectedRows={handleBulkDelete}
 							onBatchCellEdit={handleBatchCellEdit}
 							onRowAction={handleRowAction}
 							tableName={displayTableName}

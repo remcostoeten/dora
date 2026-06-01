@@ -12,6 +12,7 @@ type UseGridKeyboardArgs = {
 	focusedCell: CellPosition | null
 	lastClickedRowRef: React.MutableRefObject<number | null>
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
+	onDeleteSelectedRows?: () => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
 	onRowSelect: (rowIndex: number, checked: boolean) => void
 	onSelectAll: (checked: boolean) => void
@@ -19,10 +20,9 @@ type UseGridKeyboardArgs = {
 	selectedCellsSet: Set<string>
 	selectedRows: Set<number>
 	setAnchorCell: (cell: CellPosition | null) => void
-	setEditingCell: (cell: EditingCell | null) => void
-	setEditValue: (value: string) => void
 	setFocusedCell: (cell: CellPosition | null) => void
 	startCellEdit: (rowIndex: number, columnName: string, currentValue: unknown) => void
+	startTypeEdit: (rowIndex: number, columnName: string, currentValue: unknown, char: string) => void
 	updateCellSelection: (cells: Set<string>) => void
 }
 
@@ -34,6 +34,7 @@ export function useGridKeyboard({
 	focusedCell,
 	lastClickedRowRef,
 	onCellEdit,
+	onDeleteSelectedRows,
 	onRowsSelect,
 	onRowSelect,
 	onSelectAll,
@@ -41,10 +42,9 @@ export function useGridKeyboard({
 	selectedCellsSet,
 	selectedRows,
 	setAnchorCell,
-	setEditingCell,
-	setEditValue,
 	setFocusedCell,
 	startCellEdit,
+	startTypeEdit,
 	updateCellSelection
 }: UseGridKeyboardArgs) {
 	const pendingNavFrameRef = useRef<number | null>(null)
@@ -67,7 +67,6 @@ export function useGridKeyboard({
 						e.key === 'ArrowUp' ||
 						e.key === 'ArrowLeft' ||
 						e.key === 'ArrowRight' ||
-						e.key === 'Tab' ||
 						e.key === 'Enter')
 				) {
 					e.preventDefault()
@@ -163,16 +162,19 @@ export function useGridKeyboard({
 					}
 					break
 				case 'Tab':
-					e.preventDefault()
 					if (e.shiftKey) {
 						if (col > 0) {
+							e.preventDefault()
 							moveAndMaybeSelect(row, col - 1)
 						} else if (row > 0) {
+							e.preventDefault()
 							moveAndMaybeSelect(row - 1, maxCol)
 						}
 					} else if (col < maxCol) {
+						e.preventDefault()
 						moveAndMaybeSelect(row, col + 1)
 					} else if (row < maxRow) {
+						e.preventDefault()
 						moveAndMaybeSelect(row + 1, 0)
 					}
 					break
@@ -183,8 +185,15 @@ export function useGridKeyboard({
 					break
 				case 'Delete':
 				case 'Backspace':
-					if (!e.ctrlKey && !e.metaKey && onCellEdit) {
-						e.preventDefault()
+					if (e.ctrlKey || e.metaKey) break
+					// preventDefault in both cases so the document-level
+					// `deleteRows` shortcut (which would otherwise delete the
+					// focused row via the rowsForActions fallback) does not
+					// also fire — the grid handler is authoritative here.
+					e.preventDefault()
+					if (selectedRows.size > 0) {
+						onDeleteSelectedRows?.()
+					} else if (onCellEdit) {
 						onCellEdit(row, columns[col].name, null)
 					}
 					break
@@ -237,8 +246,7 @@ export function useGridKeyboard({
 				default:
 					if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
 						e.preventDefault()
-						setEditingCell({ rowIndex: row, columnName: columns[col].name })
-						setEditValue(e.key)
+						startTypeEdit(row, columns[col].name, rows[row][columns[col].name], e.key)
 					}
 					break
 			}
@@ -251,6 +259,7 @@ export function useGridKeyboard({
 			focusedCell,
 			lastClickedRowRef,
 			onCellEdit,
+			onDeleteSelectedRows,
 			onRowsSelect,
 			onRowSelect,
 			onSelectAll,
@@ -258,10 +267,9 @@ export function useGridKeyboard({
 			selectedCellsSet,
 			selectedRows,
 			setAnchorCell,
-			setEditingCell,
-			setEditValue,
 			setFocusedCell,
 			startCellEdit,
+			startTypeEdit,
 			updateCellSelection
 		]
 	)

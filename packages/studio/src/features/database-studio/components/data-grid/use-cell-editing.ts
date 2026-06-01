@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import type React from 'react'
 import { ColumnDefinition } from '../../types'
 import { getCellKey } from './selection'
@@ -39,6 +39,11 @@ export function useCellEditing({
 	const editingCellRef = useRef(editingCell)
 	editingCellRef.current = editingCell
 	const skipNextBlurSaveRef = useRef(false)
+	// How the editor should treat the seeded text once it focuses:
+	// 'all' selects everything (Enter/F2/double-click/Tab — overwrite-on-type),
+	// 'end' leaves the caret at the end (type-to-edit — the first keystroke is
+	// kept and subsequent keystrokes append).
+	const editSelectModeRef = useRef<'all' | 'end'>('all')
 
 	const refocusGrid = useCallback(
 		function () {
@@ -56,10 +61,28 @@ export function useCellEditing({
 	) {
 		const nextEditingCell = { rowIndex, columnName }
 		editingCellRef.current = nextEditingCell
+		editSelectModeRef.current = 'all'
 		setEditingCell(nextEditingCell)
 		const originalValue = valueToEditString(currentValue)
 		originalEditValueRef.current = originalValue
 		setEditValue(originalValue)
+	}, [])
+
+	// Start editing by typing a character into a focused cell. The typed char
+	// seeds the editor and the caret sits after it, so nothing is dropped and
+	// further typing appends (vs. select-all which would overwrite the seed).
+	const startTypeEdit = useCallback(function (
+		rowIndex: number,
+		columnName: string,
+		currentValue: unknown,
+		char: string
+	) {
+		const nextEditingCell = { rowIndex, columnName }
+		editingCellRef.current = nextEditingCell
+		editSelectModeRef.current = 'end'
+		originalEditValueRef.current = valueToEditString(currentValue)
+		setEditingCell(nextEditingCell)
+		setEditValue(char)
 	}, [])
 
 	const commitEdit = useCallback(
@@ -154,6 +177,7 @@ export function useCellEditing({
 			setAnchorCell(newPos)
 			updateCellSelection(new Set([getCellKey(nextRow, nextCol)]))
 			editingCellRef.current = nextEditingCell
+			editSelectModeRef.current = 'all'
 			setEditingCell(nextEditingCell)
 			setEditValue(valueToEditString(rows[nextRow][columns[nextCol].name]))
 		},
@@ -176,19 +200,24 @@ export function useCellEditing({
 		[handleCancelEdit, handleSaveEdit, handleSaveEditAndMove]
 	)
 
-	useEffect(() => {
-		if (editingCell && editInputRef.current) {
-			const timer = setTimeout(function () {
-				if (editInputRef.current) {
-					editInputRef.current.focus()
-					editInputRef.current.select()
-				}
-			}, 10)
-			return function () {
-				clearTimeout(timer)
+	// Focus synchronously after the editor mounts (useLayoutEffect, not a
+	// setTimeout) so the keystrokes immediately following a type-to-edit are
+	// never dropped into the void.
+	useLayoutEffect(
+		function focusEditInput() {
+			if (!editingCell) return
+			const input = editInputRef.current
+			if (!input) return
+			input.focus()
+			if (editSelectModeRef.current === 'end') {
+				const end = input.value.length
+				input.setSelectionRange(end, end)
+			} else {
+				input.select()
 			}
-		}
-	}, [editingCell])
+		},
+		[editingCell]
+	)
 
 	return {
 		editingCell,
@@ -197,6 +226,7 @@ export function useCellEditing({
 		setEditValue,
 		editInputRef,
 		handleCellDoubleClick,
+		startTypeEdit,
 		handleSaveEdit,
 		handleEditKeyDown
 	}
