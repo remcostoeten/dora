@@ -174,6 +174,7 @@ export function SqlEditor({ value, onChange, onExecute, onSave, isExecuting, tab
 
 			// Map custom app themes to included Monaco themes
 			if (classList.contains('midnight')) return 'dracula'
+			if (classList.contains('bloom')) return 'dracula'
 			if (classList.contains('forest')) return 'nord'
 			if (classList.contains('monokai')) return 'monokai'
 			if (classList.contains('github-dark')) return 'github-dark'

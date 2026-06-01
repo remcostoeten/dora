@@ -3,7 +3,15 @@
  * Manages theme, font pair, and UI density preferences with localStorage persistence.
  */
 
-export type Theme = 'dark' | 'light' | 'midnight' | 'forest' | 'claude' | 'claude-dark' | 'night'
+export type Theme =
+	| 'dark'
+	| 'light'
+	| 'midnight'
+	| 'forest'
+	| 'bloom'
+	| 'claude'
+	| 'claude-dark'
+	| 'night'
 export type FontPair = 'system' | 'serif' | 'compact' | 'playful' | 'technical' | 'vintage'
 
 export type AppearanceSettings = {
@@ -52,7 +60,16 @@ export function applyAppearanceToDOM(settings: AppearanceSettings): void {
 	const root = document.documentElement
 
 	// Theme
-	root.classList.remove('light', 'dark', 'midnight', 'forest', 'claude', 'claude-dark', 'night')
+	root.classList.remove(
+		'light',
+		'dark',
+		'midnight',
+		'forest',
+		'bloom',
+		'claude',
+		'claude-dark',
+		'night'
+	)
 	root.classList.add(settings.theme)
 
 	// Font Pair

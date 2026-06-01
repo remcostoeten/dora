@@ -34,6 +34,7 @@ const THEME_OPTIONS: ThemeConfig[] = [
 	{ value: 'light', name: 'Light', variant: 'light', accentColor: '#171717' },
 	{ value: 'midnight', name: 'Midnight', variant: 'dark', accentColor: '#818cf8' },
 	{ value: 'forest', name: 'Forest', variant: 'dark', accentColor: '#34d399' },
+	{ value: 'bloom', name: 'Bloom', variant: 'dark', accentColor: '#e3b2b3' },
 	{ value: 'claude', name: 'Claude Light', variant: 'light', accentColor: '#d97706' },
 	{ value: 'claude-dark', name: 'Claude Dark', variant: 'dark', accentColor: '#b45309' },
 	{ value: 'night', name: 'Night', variant: 'dark', accentColor: '#f5f5f5' }
@@ -151,7 +152,7 @@ export function AppearancePanel() {
 									className={cn(
 										'flex flex-col items-start p-3 rounded-lg border transition-all text-left',
 										isSelected
-											? 'border-primary bg-primary/10 ring-1 ring-secondary AAAA /30'
+											? 'border-primary bg-primary/10 ring-1 ring-secondary/30'
 											: 'border-border hover:border-muted-foreground/50 hover:bg-muted/50'
 									)}
 								>

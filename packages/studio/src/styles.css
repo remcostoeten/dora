@@ -3,6 +3,18 @@ layer(base);
 
 @import 'tailwindcss';
 
+/*
+ * Explicitly scan this package's components for class names. Tailwind v4's
+ * automatic content detection skips node_modules, so when a consumer (e.g.
+ * apps/marketing) imports `@dora/studio/styles` through the workspace symlink
+ * in node_modules, none of the utilities used only inside Studio (bg-sidebar,
+ * text-sidebar-foreground, w-9, …) would be generated — leaving the UI half-styled.
+ * This `@source` (relative to this file) forces the scan regardless of how the
+ * package is resolved. Desktop already scans the source via its alias/include,
+ * so this is redundant-but-harmless there.
+ */
+@source './**/*.{ts,tsx}';
+
 @plugin 'tailwindcss-animate';
 
 @custom-variant dark (&:is(.dark *));
@@ -149,7 +161,15 @@ layer(base);
 	}
 }
 
-@layer base {
+/*
+ * Theme tokens are intentionally UNLAYERED (not in `@layer base`).
+ * When this package is consumed by apps/marketing, the host's globals.css
+ * defines its own unlayered `:root`/`.dark` color tokens (in oklch). Layered
+ * rules always lose to unlayered ones, so keeping these in `@layer base` let
+ * the host's oklch values clobber ours — and our utilities use `hsl(var(--x))`,
+ * producing invalid `hsl(oklch(...))` colors. Unlayered + imported last, these
+ * win in the Studio subtree. Desktop has no competing tokens, so this is inert.
+ */
 	:root {
 		--font-sans: 'Inter', system-ui, sans-serif;
 		--font-mono: 'JetBrains Mono', monospace;
@@ -353,6 +373,53 @@ layer(base);
 		--table-border: calc(150 + var(--hue-shift)) 20% 16%;
 	}
 
+	/* Bloom — mirrors the marketing homepage: deep purple-black canvas,
+	   warm purple-gray borders, lilac mids, and a rose-pink accent/glow. */
+	.bloom {
+		--background: calc(280 + var(--hue-shift)) 14% 8%;
+		--foreground: calc(300 + var(--hue-shift)) 15% 96%;
+
+		--card: calc(280 + var(--hue-shift)) 12% 11%;
+		--card-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+
+		--popover: calc(280 + var(--hue-shift)) 12% 11%;
+		--popover-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+
+		--primary: calc(353 + var(--hue-shift)) 60% 78%;
+		--primary-foreground: calc(280 + var(--hue-shift)) 20% 10%;
+
+		--secondary: calc(286 + var(--hue-shift)) 14% 18%;
+		--secondary-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+
+		--muted: calc(286 + var(--hue-shift)) 12% 18%;
+		--muted-foreground: calc(290 + var(--hue-shift)) 8% 62%;
+
+		--accent: calc(286 + var(--hue-shift)) 20% 22%;
+		--accent-foreground: calc(300 + var(--hue-shift)) 30% 92%;
+
+		--destructive: 0 62% 45%;
+		--destructive-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+
+		--border: calc(312 + var(--hue-shift)) 8% 21%;
+		--input: calc(312 + var(--hue-shift)) 8% 21%;
+		--ring: calc(353 + var(--hue-shift)) 60% 78%;
+
+		--sidebar-background: calc(280 + var(--hue-shift)) 16% 7%;
+		--sidebar-foreground: calc(300 + var(--hue-shift)) 12% 90%;
+		--sidebar-foreground-muted: calc(290 + var(--hue-shift)) 8% 60%;
+		--sidebar-primary: calc(353 + var(--hue-shift)) 60% 78%;
+		--sidebar-primary-foreground: calc(280 + var(--hue-shift)) 20% 10%;
+		--sidebar-accent: calc(286 + var(--hue-shift)) 16% 18%;
+		--sidebar-accent-foreground: calc(300 + var(--hue-shift)) 20% 92%;
+		--sidebar-border: calc(312 + var(--hue-shift)) 8% 20%;
+		--sidebar-ring: calc(353 + var(--hue-shift)) 60% 78%;
+
+		--table-header: calc(280 + var(--hue-shift)) 12% 12%;
+		--table-row-hover: calc(286 + var(--hue-shift)) 14% 15%;
+		--table-row-selected: calc(286 + var(--hue-shift)) 18% 20%;
+		--table-border: calc(312 + var(--hue-shift)) 8% 20%;
+	}
+
 	.claude {
 		--background: calc(32 + var(--hue-shift)) 30% 96%;
 		/* Warm Bisque/Beige */
@@ -502,7 +569,6 @@ layer(base);
 		--table-row-selected: calc(30 + var(--hue-shift)) 20% 20%;
 		--table-border: calc(30 + var(--hue-shift)) 20% 18%;
 	}
-}
 
 @layer base {
 	* {
