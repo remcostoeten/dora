@@ -18,6 +18,7 @@ import {
 	sanitizeConnectionUrl,
 	isValidConnectionUrl,
 	detectProviderName,
+	parseConnectionUrl,
 	buildConnectionString,
 	hasPostgresPoolerMode,
 	setPostgresPoolerMode,
@@ -102,8 +103,15 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 
 				e.preventDefault()
 
+				// Switch the form to the provider the URL belongs to, so the
+				// matching section (e.g. libSQL's Auth Token field) is shown
+				// without the user having to click the provider tab first.
+				const detectedType = parseConnectionUrl(sanitized)?.type
+
 				setFormData(function (prev) {
+					const nextType = detectedType ?? prev.type
 					const updates: Partial<Connection> = {
+						type: nextType,
 						url: sanitized,
 						host: undefined,
 						port: undefined,
@@ -112,7 +120,7 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 						database: undefined,
 						ssl: undefined
 					}
-					if (updates.url && prev.type === 'postgres') {
+					if (updates.url && nextType === 'postgres') {
 						updates.poolerMode = hasPostgresPoolerMode(updates.url)
 					}
 
@@ -122,7 +130,20 @@ export function ConnectionDialog({ open, onOpenChange, onSave, initialValues }: 
 
 					return { ...prev, ...updates }
 				})
-				setUseConnectionString(true)
+				// Host/port providers use the connection-string toggle; file/token
+				// providers (sqlite/libsql) have their own dedicated fields.
+				setUseConnectionString(detectedType !== 'sqlite' && detectedType !== 'libsql')
+
+				// After libSQL switches in, move focus to the Auth Token field so
+				// the user can paste their token straight away.
+				if (detectedType === 'libsql') {
+					requestAnimationFrame(function () {
+						const tokenInput = document.getElementById('libsql-token')
+						if (tokenInput instanceof HTMLInputElement) {
+							tokenInput.focus()
+						}
+					})
+				}
 			}
 
 			document.addEventListener('paste', handlePaste)
