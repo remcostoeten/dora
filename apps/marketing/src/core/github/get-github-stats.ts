@@ -1,5 +1,3 @@
-import { NextResponse } from 'next/server'
-
 interface GitHubCommit {
     sha: string
     commit: {
@@ -77,11 +75,18 @@ export interface GitHubStatsData {
 const REPO_OWNER = 'remcostoeten'
 const REPO_NAME = 'dora'
 
-export async function GET() {
+/**
+ * Fetches and shapes the GitHub stats rendered in the marketing stats panel.
+ * Runs on the server so the data lands in the initial HTML (SEO + no client
+ * waterfall). The per-`fetch` `revalidate` windows make the consuming page ISR:
+ * served statically from cache, refreshed in the background. Returns `null` on
+ * failure so the page can omit the section gracefully rather than error.
+ */
+export async function getGitHubStats(): Promise<GitHubStatsData | null> {
     try {
         const headers: HeadersInit = {
             Accept: 'application/vnd.github.v3+json',
-            'User-Agent': 'v0-github-stats'
+            'User-Agent': 'dora-marketing'
         }
 
         if (process.env.GITHUB_TOKEN) {
@@ -293,15 +298,12 @@ export async function GET() {
 
         const latestCommitSha = allCommits[0]?.sha.slice(0, 7) || ''
 
-        const startedAt = new Date(repo.created_at).toLocaleDateString(
-            'en-US',
-            {
-                month: 'short',
-                year: 'numeric'
-            }
-        )
+        const startedAt = new Date(repo.created_at).toLocaleDateString('en-US', {
+            month: 'short',
+            year: 'numeric'
+        })
 
-        const data: GitHubStatsData = {
+        return {
             version,
             versionUrl,
             startedAt,
@@ -315,13 +317,8 @@ export async function GET() {
             packages,
             releaseNotes: latestRelease?.body?.slice(0, 500)
         }
-
-        return NextResponse.json(data)
     } catch (error) {
-        console.error('GitHub API error:', error)
-        return NextResponse.json(
-            { error: 'Failed to fetch GitHub data' },
-            { status: 500 }
-        )
+        console.error('GitHub stats error:', error)
+        return null
     }
 }

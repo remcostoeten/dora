@@ -1,58 +1,28 @@
 'use client'
 
 import { useRef, useState, useEffect, useLayoutEffect } from 'react'
-import useSWR from 'swr'
 import {
     Tag,
     Calendar,
     GitCommit,
     Clock,
     Star,
-    Loader2,
     Download,
     Check,
     Copy
 } from 'lucide-react'
-import {
-    CommitGraph,
-    type CommitDataPoint,
-    type CommitDetail
-} from './commit-graph'
+import { CommitGraph, type CommitDetail } from './commit-graph'
 import { GraphTooltip } from './graph-tooltip'
 import { CommitDetailsModal } from './commit-details-modal'
 import { CornerTick } from '@/components/corner-tick'
 import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 import { ACCENT_COLOR } from './constants'
+import type { GitHubStatsData } from '@/core/github/get-github-stats'
 
 // Strong ease-out — the built-in CSS easings lack punch. Used for the tab
 // indicator slide and the label/command cross-fades so motion feels intentional.
 const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
-interface PackageInfo {
-    name: string
-    platform: 'snap' | 'github' | 'brew' | 'aur' | 'apt' | 'winget'
-    command?: string
-    version?: string
-    downloads?: number
-    url: string
-}
-
-interface GitHubStatsData {
-    version: string
-    versionUrl: string
-    startedAt: string
-    latestCommitAt: string
-    latestCommitSha: string
-    totalCommits: number
-    stars: number
-    description: string
-    language: string
-    commitData: CommitDataPoint[]
-    packages: PackageInfo[]
-    releaseNotes?: string
-}
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 function formatDownloads(num: number): string {
     if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
@@ -276,19 +246,14 @@ function TabIndicator({ activeRect }: { activeRect: DOMRect | null }) {
 }
 
 export interface GitHubStatsProps {
+    data: GitHubStatsData
     accentColor?: string
 }
 
-export function GitHubStats({ accentColor = ACCENT_COLOR }: GitHubStatsProps) {
-    const { data, error, isLoading } = useSWR<GitHubStatsData>(
-        '/api/github',
-        fetcher,
-        {
-            revalidateOnFocus: false,
-            dedupingInterval: 60000
-        }
-    )
-
+export function GitHubStats({
+    data,
+    accentColor = ACCENT_COLOR
+}: GitHubStatsProps) {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const [tooltipPosition, setTooltipPosition] = useState<{
         x: number
@@ -335,15 +300,17 @@ export function GitHubStats({ accentColor = ACCENT_COLOR }: GitHubStatsProps) {
         setSelectedDayIndex(null)
     }
 
-    const version = data?.version ?? '...'
-    const versionUrl = data?.versionUrl ?? '#'
-    const startedAt = data?.startedAt ?? '...'
-    const latestCommitAt = data?.latestCommitAt ?? '...'
-    const latestCommitSha = data?.latestCommitSha ?? ''
-    const totalCommits = data?.totalCommits ?? 0
-    const stars = data?.stars ?? 0
-    const commitData = data?.commitData ?? []
-    const packages = data?.packages ?? []
+    const {
+        version,
+        versionUrl,
+        startedAt,
+        latestCommitAt,
+        latestCommitSha,
+        totalCommits,
+        stars,
+        commitData,
+        packages
+    } = data
     const sourceUrl = 'https://github.com/remcostoeten/dora'
 
     const activePackage =
@@ -425,15 +392,7 @@ export function GitHubStats({ accentColor = ACCENT_COLOR }: GitHubStatsProps) {
                             ref={commitsContainerRef}
                             className="relative min-h-[150px] flex-1 overflow-visible px-5 py-4 group sm:min-h-[120px] sm:px-6"
                         >
-                            {isLoading ? (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <Loader2 className="w-5 h-5 text-[#3a3a3a] animate-spin" />
-                                </div>
-                            ) : error ? (
-                                <div className="absolute inset-0 flex items-center justify-center text-[10px] text-red-400/70">
-                                    Failed to load
-                                </div>
-                            ) : commitData.length > 0 ? (
+                            {commitData.length > 0 ? (
                                 <>
                                     <CommitGraph
                                         data={commitData}
@@ -463,7 +422,7 @@ export function GitHubStats({ accentColor = ACCENT_COLOR }: GitHubStatsProps) {
                                     Commits
                                 </div>
                                 <div className="text-[#9a9a9a] text-2xl font-medium tabular-nums">
-                                    {isLoading ? '...' : totalCommits}
+                                    {totalCommits}
                                 </div>
                                 <div className="mt-1 hidden items-center gap-2 text-[10px] text-[#3a3a3a] sm:flex">
                                     <span>Scroll to pan</span>
