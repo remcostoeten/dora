@@ -4,7 +4,8 @@
 	"compilerOptions": {
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./src/*"],
+			"@studio/*": ["../../packages/studio/src/*"]
 		},
 		"noImplicitAny": false,
 		"noUnusedParameters": false,

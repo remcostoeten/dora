@@ -1,8 +1,8 @@
 import { createRoot } from 'react-dom/client'
-import { getAppearanceSettings, applyAppearanceToDOM } from '@/shared/lib/appearance-store'
-import { loadFontPair } from '@/shared/lib/font-loader'
+import { getAppearanceSettings, applyAppearanceToDOM } from '@studio/shared/lib/appearance-store'
+import { loadFontPair } from '@studio/shared/lib/font-loader'
 import App from './App.tsx'
-import './index.css'
+import '@studio/styles.css'
 import '@remcostoeten/notifier/styles'
 
 // Initialize appearance before rendering to prevent theme flash

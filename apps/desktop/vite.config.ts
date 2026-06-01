@@ -95,7 +95,8 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
-			'@': path.resolve(__dirname, './src')
+			'@': path.resolve(__dirname, './src'),
+			'@studio': path.resolve(__dirname, '../../packages/studio/src')
 		}
 	}
 })
