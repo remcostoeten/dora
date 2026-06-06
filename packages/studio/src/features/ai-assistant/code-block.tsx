@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { getEnv } from '@studio/core/env'
+import { notifySchemaChanged } from '@studio/core/schema-refresh'
 import { commands } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
@@ -193,6 +194,9 @@ export function CodeBlock({
 				const rowCount = info.returns_values
 					? Math.max(info.affected_rows ?? 0, firstPageRowCount)
 					: (info.affected_rows ?? 0)
+				if (mode === 'run' && activeConnectionId) {
+					notifySchemaChanged(activeConnectionId, sql)
+				}
 				setRunState({ kind: 'success', mode, rowCount, durationMs: elapsed })
 			} catch (e) {
 				setRunState({

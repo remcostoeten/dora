@@ -14,6 +14,13 @@ use crate::{
 
 #[tauri::command]
 #[specta::specta]
+pub async fn cancel_query(state: State<'_, AppState>) -> Result<(), Error> {
+    state.stmt_manager.cancel_active_queries();
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn start_query(
     connection_id: Uuid,
     query: &str,

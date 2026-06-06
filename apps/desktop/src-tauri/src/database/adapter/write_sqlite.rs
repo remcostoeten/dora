@@ -310,12 +310,26 @@ mod tests {
         let (adapter, shared) = setup();
         // integer column fed a string -> stored as an integer (affinity)
         adapter
-            .update_cell("t".into(), None, "id".into(), json!(1), "n".into(), json!("123"))
+            .update_cell(
+                "t".into(),
+                None,
+                "id".into(),
+                json!(1),
+                "n".into(),
+                json!("123"),
+            )
             .await
             .unwrap();
         // text column
         adapter
-            .update_cell("t".into(), None, "id".into(), json!(1), "name".into(), json!("hello"))
+            .update_cell(
+                "t".into(),
+                None,
+                "id".into(),
+                json!(1),
+                "name".into(),
+                json!("hello"),
+            )
             .await
             .unwrap();
         // timestamp column keeps the string form (SQLite has no datetime type)
@@ -355,7 +369,14 @@ mod tests {
     async fn update_cell_sets_null() {
         let (adapter, shared) = setup();
         adapter
-            .update_cell("t".into(), None, "id".into(), json!(1), "name".into(), json!(null))
+            .update_cell(
+                "t".into(),
+                None,
+                "id".into(),
+                json!(1),
+                "name".into(),
+                json!(null),
+            )
             .await
             .unwrap();
         let conn = shared.lock().unwrap();

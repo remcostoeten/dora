@@ -502,9 +502,8 @@ impl<'a> ConnectionService<'a> {
                     // internal LIBSQL_INIT would fail its sqlite3_config assertion.
                     // skip_safety_assert is safe because the system/bundled SQLite is
                     // already built with SQLITE_CONFIG_SERIALIZED (the default).
-                    let builder = unsafe {
-                        libsql::Builder::new_local(url).skip_safety_assert(true)
-                    };
+                    let builder =
+                        unsafe { libsql::Builder::new_local(url).skip_safety_assert(true) };
                     builder.build().await
                 };
 
@@ -794,9 +793,8 @@ impl ConnectionService<'_> {
                 } else {
                     // SAFETY: same reason as connect_to_database — Storage has
                     // already called sqlite3_initialize via rusqlite.
-                    let builder = unsafe {
-                        libsql::Builder::new_local(&url).skip_safety_assert(true)
-                    };
+                    let builder =
+                        unsafe { libsql::Builder::new_local(&url).skip_safety_assert(true) };
                     builder.build().await
                 };
 

@@ -242,7 +242,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_simple_query() {
+    async fn test_simple_query() -> anyhow::Result<()> {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         let query = "SELECT * FROM (VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie'))";
         let mut parsed_stmt = parse_statements(query).unwrap();
@@ -270,12 +270,13 @@ mod tests {
                     r#"[[1,"Alice"],[2,"Bob"],[3,"Charlie"]]"#
                 );
             }
-            other => panic!("Expected Page event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
         }
 
         let event = recv.recv().await.unwrap();
         dbg!(&event);
         assert!(matches!(event, QueryExecEvent::Finished { .. }));
+        Ok(())
     }
 
     #[tokio::test]
@@ -316,7 +317,12 @@ mod tests {
                     r#"["id","name","age"]"#
                 );
             }
-            other => panic!("Expected TypesResolved event, got {:?}", other),
+            other => {
+                return Err(anyhow::anyhow!(
+                    "Expected TypesResolved event, got {:?}",
+                    other
+                ))
+            }
         }
 
         let page = events.next().unwrap();
@@ -328,7 +334,7 @@ mod tests {
                     r#"[[1,"Alice",26],[3,"Charlie",35],[4,"Diana",28]]"#
                 );
             }
-            other => panic!("Expected Page event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
         }
 
         let finished = events.next().unwrap();
@@ -343,7 +349,7 @@ mod tests {
                 assert!(error.is_none());
                 assert_eq!(affected_rows, 0);
             }
-            other => panic!("Expected Finished event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Finished event, got {:?}", other)),
         }
         Ok(())
     }
@@ -361,7 +367,12 @@ mod tests {
             QueryExecEvent::TypesResolved { columns } => {
                 assert_eq!(serde_json::to_string(&columns).unwrap(), r#"["x"]"#);
             }
-            other => panic!("Expected TypesResolved event, got {:?}", other),
+            other => {
+                return Err(anyhow::anyhow!(
+                    "Expected TypesResolved event, got {:?}",
+                    other
+                ))
+            }
         }
 
         let page_1 = events.next().unwrap();
@@ -372,7 +383,7 @@ mod tests {
                 assert!(page.starts_with("[[1],[2]"));
                 assert!(page.ends_with("49],[50]]"));
             }
-            other => panic!("Expected Page event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
         }
 
         let page_2 = events.next().unwrap();
@@ -383,7 +394,7 @@ mod tests {
                 assert!(page.starts_with("[[51],[52]"));
                 assert!(page.ends_with("99],[100]]"));
             }
-            other => panic!("Expected Page event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
         }
 
         let page_3 = events.next().unwrap();
@@ -394,7 +405,7 @@ mod tests {
                 assert!(page.starts_with("[[101],[102]"));
                 assert!(page.ends_with("149],[150]]"));
             }
-            other => panic!("Expected Page event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
         }
 
         let page_4 = events.next().unwrap();
@@ -406,7 +417,7 @@ mod tests {
                     "[[151],[152],[153],[154],[155]]"
                 );
             }
-            other => panic!("Expected Page event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
         }
 
         let finished = events.next().unwrap();
@@ -419,7 +430,7 @@ mod tests {
                 assert!(error.is_none());
                 assert_eq!(affected_rows, 0);
             }
-            other => panic!("Expected Finished event, got {:?}", other),
+            other => return Err(anyhow::anyhow!("Expected Finished event, got {:?}", other)),
         }
         Ok(())
     }

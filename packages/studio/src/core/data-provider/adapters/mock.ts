@@ -509,6 +509,10 @@ CREATE TABLE posts (
 			})
 		},
 
+		async cancelActiveQuery(_connectionId: string): Promise<void> {
+			// no-op in mock adapter
+		},
+
 		async updateCell(
 			connectionId: string,
 			tableName: string,
