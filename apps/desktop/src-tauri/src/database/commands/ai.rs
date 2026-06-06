@@ -10,7 +10,7 @@ use crate::{
             AIProvider, AIRequest, AIResponse, AIService, AiModelOption, AiServiceConfig, AiStatus,
             AiStreamEvent, AiUsageCapture, AiUsageEntry, AiUsageProviderSummary, AiUsageSummary,
             AnthropicClient, ColumnContext, ForeignKeyContext, GeminiClient, GroqClient, OllamaCatalogEntry,
-            OllamaClient, OllamaPullEvent, OllamaStatus, OpenAiClient, GroqStatus, SchemaContext,
+            OllamaClient, OllamaPullEvent, OllamaStatus, OpenAiClient, GroqStatus, IndexContext, SchemaContext,
             TableContext, record_usage, usage_source,
         },
         types::DatabaseSchema,
@@ -64,6 +64,16 @@ fn build_schema_context(schema: &DatabaseSchema, engine: &str) -> SchemaContext 
                         referenced_column: fk.referenced_column.clone(),
                         referenced_schema: fk.referenced_schema.clone(),
                     })
+                })
+                .collect(),
+            indexes: t
+                .indexes
+                .iter()
+                .map(|index| IndexContext {
+                    name: index.name.clone(),
+                    column_names: index.column_names.clone(),
+                    is_unique: index.is_unique,
+                    is_primary: index.is_primary,
                 })
                 .collect(),
             row_count_estimate: t.row_count_estimate,

@@ -171,7 +171,16 @@ pub struct TableContext {
     pub columns: Vec<ColumnContext>,
     pub primary_keys: Vec<String>,
     pub foreign_keys: Vec<ForeignKeyContext>,
+    pub indexes: Vec<IndexContext>,
     pub row_count_estimate: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct IndexContext {
+    pub name: String,
+    pub column_names: Vec<String>,
+    pub is_unique: bool,
+    pub is_primary: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]

@@ -2,6 +2,7 @@ use super::AIRequest;
 
 const MAX_TABLES_IN_PROMPT: usize = 60;
 const MAX_COLUMNS_PER_TABLE: usize = 40;
+const MAX_INDEXES_PER_TABLE: usize = 20;
 
 /// Build (system_prompt, user_prompt) pair. Dispatches on `request.prompt_mode`:
 /// - `Some("chat")` → free-form markdown assistant (used by the chat sidebar).
@@ -25,23 +26,25 @@ fn build_chat_system_prompt(request: &AIRequest) -> String {
     let mut s = String::new();
 
     s.push_str(&format!(
-        "You are an expert database assistant embedded in Dora, a SQL database management tool. The user is working with a {engine} database.\n\n"
+        "You are a senior database engineer embedded in Dora, a SQL database management tool. The user is working with a {engine} database.\n\n"
     ));
 
-    s.push_str("## Rules\n");
-    s.push_str("- Only answer questions about databases, SQL, schema design, performance, and data manipulation.\n");
-    s.push_str("- Wrap every SQL statement in a ```sql code block so the UI can render Run/Copy buttons.\n");
-    s.push_str("- Use realistic fake values when writing INSERT statements.\n");
-    s.push_str("- Be concise. Prefer short paragraphs and bullet lists over walls of text.\n");
-    s.push_str("- Default to the dialect of the active database engine. Note dialect-specific syntax when relevant.\n");
-    s.push_str("- If the user asks whether SQL can do something, answer the capability and tradeoffs first; do not repeat the previous query unchanged unless it is still the best answer.\n");
-    s.push_str("- For fuzzy text matching, explain that plain SQL pattern matching (`LIKE`/`ILIKE`) does not return a match percentage. For PostgreSQL, prefer `pg_trgm` (`similarity`, `%`, `word_similarity`) when available; otherwise offer practical approximations such as stem/prefix patterns, regex alternation, or full-text search depending on the need.\n");
+    s.push_str("## How to answer\n");
+    s.push_str("- Ground every recommendation in the schema below (tables, columns, foreign keys, indexes, row counts). Do not invent objects.\n");
+    s.push_str("- For schema review or efficiency questions: start with a short verdict, then separate **already good**, **worth investigating**, and **probably skip**.\n");
+    s.push_str("- Before suggesting a new index, check whether an existing index or unique/PK constraint already covers the same column(s). If it does, say so and do not recommend a duplicate.\n");
+    s.push_str("- Before suggesting partitioning, message queues, caching layers, or major remodels, explain why simpler fixes (indexes, query shape, EXPLAIN) are insufficient. Do not treat ~1M rows as automatically large for Postgres.\n");
+    s.push_str("- Do not recommend removing useful denormalization (e.g. cached `last_message`, summary columns) unless you explain the read-path cost.\n");
+    s.push_str("- JSONB/key-value settings tables and simple text columns (e.g. colors) are usually fine; avoid over-normalization unless the user filters or reports on those values often.\n");
+    s.push_str("- Small tables (well under a few thousand rows) rarely need new indexes for FK columns unless a slow query is proven.\n");
+    s.push_str("- For performance questions, prefer diagnostic SQL (`EXPLAIN`, `EXPLAIN ANALYZE`, index usage views) before DDL. Say when you are inferring vs when the schema proves something.\n");
+    s.push_str("- If context is incomplete (missing indexes, truncated tables, no query plan), say what you cannot verify and ask one focused follow-up.\n");
+    s.push_str("- Wrap executable SQL in ```sql code blocks so the UI can render Run/Copy buttons.\n");
+    s.push_str("- Use realistic fake values when writing INSERT examples.\n");
+    s.push_str("- Default to the active database dialect. Note dialect-specific syntax when relevant.\n");
+    s.push_str("- For fuzzy text matching, explain that plain `LIKE`/`ILIKE` does not return a match percentage. For PostgreSQL, mention `pg_trgm` (`similarity`, `%`, GIN indexes) or full-text search when substring search is the bottleneck.\n");
     s.push_str("- For destructive statements (DELETE/UPDATE without WHERE, DROP, TRUNCATE) add a one-line warning comment above the SQL.\n");
-    s.push_str(
-        "- Use exact column and table names from the schema below. Do not invent columns.\n",
-    );
-    s.push_str("- SQL syntax notes: use the active dialect for quoting, casts, and functions; prefer standard query shapes like SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT ... OFFSET ...; use JOIN ... ON ... for related tables; use WITH for CTEs and subqueries when they improve clarity; use INSERT INTO ... VALUES ..., UPDATE ... SET ... WHERE ..., and DELETE FROM ... WHERE ... for data changes.\n");
-    s.push_str("- If the user prompt includes `Current Dora UI context`, use it to resolve references like \"this table\", \"selected table\", \"current view\", and \"schema viewer\".\n");
+    s.push_str("- If the user prompt includes `Current Dora UI context`, use it for references like \"this table\" or \"selected table\".\n");
     s.push_str("- The user's message may contain prior turns formatted as `USER:` / `ASSISTANT:`. Treat them as conversation history and answer only the final user turn.\n\n");
 
     append_schema_block(&mut s, request);
@@ -98,6 +101,9 @@ fn build_system_prompt(request: &AIRequest) -> String {
 fn append_schema_block(s: &mut String, request: &AIRequest) {
     if let Some(ctx) = &request.context {
         s.push_str("## Database schema\n");
+        s.push_str(
+            "Use this as the source of truth. Indexes listed here already exist — do not recreate them.\n",
+        );
 
         let tables: Vec<_> = ctx.tables.iter().take(MAX_TABLES_IN_PROMPT).collect();
         for table in &tables {
@@ -112,6 +118,13 @@ fn append_schema_block(s: &mut String, request: &AIRequest) {
                 s.push_str(&format!(" (~{} rows)", rows));
             }
             s.push('\n');
+
+            if !table.primary_keys.is_empty() {
+                s.push_str(&format!(
+                    "  Primary key: {}\n",
+                    table.primary_keys.join(", ")
+                ));
+            }
 
             for column in table.columns.iter().take(MAX_COLUMNS_PER_TABLE) {
                 let mut annots = Vec::new();
@@ -157,6 +170,36 @@ fn append_schema_block(s: &mut String, request: &AIRequest) {
                     ));
                 }
             }
+
+            if !table.indexes.is_empty() {
+                s.push_str("  Indexes:\n");
+                for index in table.indexes.iter().take(MAX_INDEXES_PER_TABLE) {
+                    let mut flags = Vec::new();
+                    if index.is_primary {
+                        flags.push("PK");
+                    }
+                    if index.is_unique {
+                        flags.push("UNIQUE");
+                    }
+                    let flag_str = if flags.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" [{}]", flags.join(","))
+                    };
+                    s.push_str(&format!(
+                        "  - {}{}: ({})\n",
+                        index.name,
+                        flag_str,
+                        index.column_names.join(", ")
+                    ));
+                }
+                if table.indexes.len() > MAX_INDEXES_PER_TABLE {
+                    s.push_str(&format!(
+                        "  ... {} more indexes truncated\n",
+                        table.indexes.len() - MAX_INDEXES_PER_TABLE
+                    ));
+                }
+            }
         }
 
         if ctx.tables.len() > MAX_TABLES_IN_PROMPT {
@@ -165,5 +208,56 @@ fn append_schema_block(s: &mut String, request: &AIRequest) {
                 ctx.tables.len() - MAX_TABLES_IN_PROMPT
             ));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::database::services::ai::{
+        AIRequest, ColumnContext, ForeignKeyContext, IndexContext, SchemaContext, TableContext,
+    };
+
+    #[test]
+    fn chat_prompt_includes_indexes_and_review_guidance() {
+        let request = AIRequest {
+            prompt: "Is my schema efficient?".into(),
+            context: Some(SchemaContext {
+                engine: "postgres".into(),
+                tables: vec![TableContext {
+                    name: "reading_progress".into(),
+                    schema: "public".into(),
+                    columns: vec![ColumnContext {
+                        name: "chat_id".into(),
+                        data_type: "uuid".into(),
+                        is_nullable: false,
+                        is_primary_key: false,
+                        is_auto_increment: false,
+                    }],
+                    primary_keys: vec!["id".into()],
+                    foreign_keys: vec![ForeignKeyContext {
+                        column: "chat_id".into(),
+                        referenced_table: "chats".into(),
+                        referenced_column: "id".into(),
+                        referenced_schema: "public".into(),
+                    }],
+                    indexes: vec![IndexContext {
+                        name: "reading_progress_chat_id_key".into(),
+                        column_names: vec!["chat_id".into()],
+                        is_unique: true,
+                        is_primary: false,
+                    }],
+                    row_count_estimate: Some(120),
+                }],
+            }),
+            connection_id: None,
+            max_tokens: None,
+            prompt_mode: Some("chat".into()),
+        };
+
+        let (system, _) = build(&request);
+        assert!(system.contains("Indexes listed here already exist"));
+        assert!(system.contains("reading_progress_chat_id_key"));
+        assert!(system.contains("do not recommend a duplicate"));
     }
 }

@@ -61,14 +61,16 @@ export function buildMockChatResponse(prompt: string, connectionId: string | nul
 
 	if (lower.includes('index') || lower.includes('optimize') || lower.includes('faster')) {
 		return [
-			'I would start by indexing the columns used for joins and filters:',
+			'Before adding indexes, check what already exists on the table (PK/unique constraints create indexes too).',
+			'',
+			'If a slow query is proven, start with diagnostics:',
 			'',
 			'```sql',
-			'CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);',
-			'CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);',
+			'EXPLAIN ANALYZE',
+			'SELECT * FROM orders WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 50;',
 			'```',
 			'',
-			'Check the query plan after adding them, because write-heavy tables pay a small cost for every extra index.'
+			'Only add a new index when the plan shows a sequential scan on a large table and no existing index covers the filter/order columns.'
 		].join('\n')
 	}
 
@@ -85,11 +87,15 @@ export function buildMockChatResponse(prompt: string, connectionId: string | nul
 		].join('\n')
 	}
 
-	if (lower.includes('schema')) {
+	if (lower.includes('schema') || lower.includes('efficient') || lower.includes('improve')) {
 		return [
-			`This demo connection exposes tables such as ${tables.join(', ')}.`,
+			`From the connected schema (${tables.join(', ')}), a quick review:`,
 			'',
-			'The strongest next step is usually to identify high-traffic relationships, then add indexes around foreign keys and timestamp filters.'
+			'**Already reasonable** — normalized FK relationships and typical PK/index patterns are fine for an app database.',
+			'**Worth investigating** — run `EXPLAIN ANALYZE` on your slowest list/search queries before changing structure.',
+			'**Probably skip** — partitioning, message queues, removing denormalized summary columns, or splitting JSONB settings into many tables unless you have measured pain.',
+			'',
+			'In the web demo this is mocked; in desktop Dora the assistant sees indexes from your live schema and avoids duplicate index advice.'
 		].join('\n')
 	}
 
