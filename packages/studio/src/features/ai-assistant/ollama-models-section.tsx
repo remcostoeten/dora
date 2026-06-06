@@ -10,6 +10,7 @@ import {
 import {
 	commands,
 	type OllamaCatalogEntry,
+	type OllamaInstallEvent,
 	type OllamaPullEvent,
 	type OllamaStatus
 } from '@studio/lib/bindings'
@@ -26,6 +27,13 @@ type PullState = {
 	total: number
 	percent: number
 	etaSeconds: number | null
+}
+
+type InstallState = {
+	message: string
+	completed: number
+	total: number | null
+	percent: number
 }
 
 function newRequestId(): string {
@@ -56,8 +64,14 @@ export function OllamaModelsSection() {
 	const [loading, setLoading] = useState(true)
 	const [savingEndpoint, setSavingEndpoint] = useState(false)
 	const [pullState, setPullState] = useState<PullState | null>(null)
+	const [installState, setInstallState] = useState<InstallState | null>(null)
+	const [starting, setStarting] = useState(false)
 	const [message, setMessage] = useState<string | null>(null)
 	const abortRef = useRef<{ cancelled: boolean; requestId: string | null }>({
+		cancelled: false,
+		requestId: null
+	})
+	const installAbortRef = useRef<{ cancelled: boolean; requestId: string | null }>({
 		cancelled: false,
 		requestId: null
 	})
@@ -258,22 +272,191 @@ export function OllamaModelsSection() {
 		setPullState(null)
 	}
 
+	const installOllama = useCallback(
+		async function installOllama() {
+			if (installState || pullState) return
+
+			setMessage(null)
+			installAbortRef.current.cancelled = false
+			const requestId = newRequestId()
+			installAbortRef.current.requestId = requestId
+			setInstallState({
+				message: 'Preparing download…',
+				completed: 0,
+				total: null,
+				percent: 0
+			})
+
+			function handleEvent(event: OllamaInstallEvent) {
+				switch (event.type) {
+					case 'status':
+						setInstallState(function (current) {
+							return current ? { ...current, message: event.message } : current
+						})
+						break
+					case 'progress':
+						setInstallState(function (current) {
+							return current
+								? {
+										...current,
+										completed: event.completed,
+										total: event.total,
+										percent: event.percent,
+										message: 'Downloading Ollama…'
+									}
+								: current
+						})
+						break
+					case 'done':
+						setInstallState(null)
+						setMessage(
+							event.version
+								? `Ollama ${event.version} installed`
+								: 'Ollama installed'
+						)
+						void refresh()
+						break
+					case 'error':
+						setInstallState(null)
+						setMessage(event.message)
+						break
+				}
+			}
+
+			try {
+				if (!isTauri) {
+					setInstallState({
+						message: 'Simulating install…',
+						completed: 0,
+						total: 1_500_000_000,
+						percent: 0
+					})
+					await streamMockOllamaPull({
+						model: 'ollama',
+						onEvent: function (event) {
+							if (event.type === 'progress') {
+								handleEvent({
+									type: 'progress',
+									completed: event.completed,
+									total: event.total,
+									percent: event.percent
+								})
+							} else if (event.type === 'done') {
+								handleEvent({
+									type: 'done',
+									version: 'demo',
+									install_path: '/demo/ollama'
+								})
+							}
+						},
+						isCancelled() {
+							return installAbortRef.current.cancelled
+						}
+					})
+					return
+				}
+
+				const channel = new Channel<OllamaInstallEvent>()
+				channel.onmessage = function onmessage(event) {
+					if (installAbortRef.current.cancelled) return
+					handleEvent(event)
+				}
+
+				const result = await commands.aiInstallOllama(requestId, channel)
+				if (result.status === 'error') {
+					setInstallState(null)
+					setMessage(result.error?.detail ?? 'Install failed')
+				}
+			} catch (error) {
+				setInstallState(null)
+				setMessage(error instanceof Error ? error.message : String(error))
+			} finally {
+				installAbortRef.current.requestId = null
+			}
+		},
+		[installState, isTauri, pullState, refresh]
+	)
+
+	function cancelInstall() {
+		const id = installAbortRef.current.requestId
+		installAbortRef.current.cancelled = true
+		if (id && isTauri) {
+			commands.aiCancelOllamaInstall(id).catch(function () {})
+		}
+		setInstallState(null)
+	}
+
+	async function startManagedOllama() {
+		if (!isTauri) {
+			setMessage('Start is simulated in the web demo.')
+			return
+		}
+
+		setStarting(true)
+		setMessage(null)
+		try {
+			const result = await commands.aiStartOllama()
+			if (result.status === 'ok') {
+				setStatus(result.data)
+				setMessage('Ollama started')
+				await refresh()
+			} else {
+				setMessage(result.error?.detail ?? 'Failed to start Ollama')
+			}
+		} finally {
+			setStarting(false)
+		}
+	}
+
+	const canInstall =
+		isTauri && !loading && !status?.running && !status?.binary_ready && !installState && !pullState
+	const canStartManaged =
+		isTauri &&
+		!loading &&
+		status?.binary_ready &&
+		!status.running &&
+		!installState &&
+		!pullState
+
 	return (
 		<div className='space-y-3'>
 			<p className='text-xs leading-tight text-muted-foreground'>
-				Run models locally with{' '}
-				<a
-					href='https://ollama.com/download'
-					target='_blank'
-					rel='noreferrer'
-					className='inline-flex items-center gap-1 text-primary hover:underline'
-				>
-					Ollama
-					<ExternalLink className='h-3 w-3' />
-				</a>
-				. Pull recommended models here, then select Ollama as your provider.
-				{!isTauri ? ' Pull progress is simulated in the browser demo.' : null}
+				Run models locally with Ollama. Install the runtime from Settings, pull models below,
+				then choose Ollama as your provider.
+				{!isTauri ? ' Install and pull progress are simulated in the browser demo.' : null}
 			</p>
+
+			{canInstall ? (
+				<div className='rounded border border-primary/30 bg-primary/5 p-2'>
+					<p className='mb-2 text-xs text-muted-foreground'>
+						Ollama is not installed yet. Dora can download and set it up locally without
+						admin rights.
+					</p>
+					<Button size='sm' className='h-8 text-xs' onClick={function () { void installOllama() }}>
+						<Download className='mr-1 h-3 w-3' />
+						Install Ollama
+					</Button>
+				</div>
+			) : null}
+
+			{canStartManaged ? (
+				<div className='rounded border border-sidebar-border bg-background p-2'>
+					<p className='mb-2 text-xs text-muted-foreground'>
+						Ollama is installed but not running.
+					</p>
+					<Button
+						size='sm'
+						className='h-8 text-xs'
+						disabled={starting}
+						onClick={function () {
+							void startManagedOllama()
+						}}
+					>
+						{starting ? <Loader2 className='mr-1 h-3 w-3 animate-spin' /> : null}
+						Start Ollama
+					</Button>
+				</div>
+			) : null}
 
 			<label className='block space-y-1'>
 				<span className='text-[10px] uppercase tracking-wide text-muted-foreground'>
@@ -282,7 +465,6 @@ export function OllamaModelsSection() {
 				<div className='flex gap-2'>
 					<Input
 						value={endpoint}
-						disabled={!isTauri && false}
 						onChange={function (event) {
 							setEndpoint(event.target.value)
 						}}
@@ -319,14 +501,52 @@ export function OllamaModelsSection() {
 				{status ? (
 					<span className='text-muted-foreground'>
 						{status.installed_count} model{status.installed_count === 1 ? '' : 's'} installed
+						{status.managed ? ' · managed by Dora' : ''}
 					</span>
 				) : null}
 			</div>
 
-			{!loading && status && !status.running && isTauri ? (
+			{!loading && status && !status.running && isTauri && !status.binary_ready && !installState ? (
 				<div className='rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-500'>
-					Ollama is not reachable at {endpoint}. Install it from ollama.com and make sure the
-					daemon is running.
+					Ollama is not reachable at {endpoint}. Use Install Ollama above, or install manually
+					from{' '}
+					<a
+						href='https://ollama.com/download'
+						target='_blank'
+						rel='noreferrer'
+						className='inline-flex items-center gap-1 underline'
+					>
+						ollama.com
+						<ExternalLink className='h-3 w-3' />
+					</a>
+					.
+				</div>
+			) : null}
+
+			{installState ? (
+				<div className='rounded border border-sidebar-border bg-background p-2'>
+					<div className='mb-1 flex items-center justify-between gap-2 text-[10px]'>
+						<span className='font-medium'>Installing Ollama</span>
+						<Button
+							variant='ghost'
+							size='sm'
+							className='h-6 px-2 text-[10px]'
+							onClick={cancelInstall}
+						>
+							Cancel
+						</Button>
+					</div>
+					<div className='mb-1 text-[10px] text-muted-foreground'>{installState.message}</div>
+					<div className='h-2 overflow-hidden rounded bg-sidebar-accent'>
+						<div
+							className='h-full bg-primary transition-all'
+							style={{ width: `${Math.min(installState.percent, 100)}%` }}
+						/>
+					</div>
+					<div className='mt-1 text-[10px] text-muted-foreground'>
+						{formatBytes(installState.completed)}
+						{installState.total ? ` / ${formatBytes(installState.total)}` : ''}
+					</div>
 				</div>
 			) : null}
 

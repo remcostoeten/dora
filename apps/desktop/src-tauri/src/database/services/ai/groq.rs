@@ -11,6 +11,7 @@ use crate::error::Error;
 use crate::storage::Storage;
 
 const GROQ_API_URL: &str = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODELS_URL: &str = "https://api.groq.com/openai/v1/models";
 const DEFAULT_MODEL: &str = "llama-3.3-70b-versatile";
 
 #[derive(Debug, Serialize)]
@@ -144,19 +145,37 @@ impl GroqClient {
     }
 
     /// Validate a single key without persisting anything. Returns Ok on 2xx, Err otherwise.
-    pub async fn test_key(api_key: &str, model: Option<&str>) -> Result<String, Error> {
+    pub async fn test_key(
+        api_key: &str,
+        model: Option<&str>,
+        prompt: Option<&str>,
+    ) -> Result<String, Error> {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(15))
+            .timeout(Duration::from_secs(if prompt.is_some() { 30 } else { 15 }))
             .build()
             .map_err(|e| Error::Any(anyhow::anyhow!("client build failed: {}", e)))?;
+
+        let user_prompt = prompt.filter(|value| !value.trim().is_empty());
+        let (system, user, max_tokens) = match user_prompt {
+            Some(text) => (
+                "Reply concisely in plain text.".to_string(),
+                text.to_string(),
+                256_u32,
+            ),
+            None => (
+                "Reply with the word OK only.".to_string(),
+                "ping".to_string(),
+                4_u32,
+            ),
+        };
 
         let body = serde_json::json!({
             "model": model.unwrap_or(DEFAULT_MODEL),
             "messages": [
-                {"role": "system", "content": "Reply with the word OK only."},
-                {"role": "user", "content": "ping"}
+                {"role": "system", "content": system},
+                {"role": "user", "content": user}
             ],
-            "max_tokens": 4,
+            "max_tokens": max_tokens,
             "temperature": 0.0,
         });
 
@@ -169,12 +188,39 @@ impl GroqClient {
             .map_err(|e| Error::Any(anyhow::anyhow!("request failed: {}", e)))?;
 
         let status = response.status();
-        if status.is_success() {
-            Ok(format!("ok ({})", status.as_u16()))
-        } else {
+        if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
-            Err(Error::Any(anyhow::anyhow!("{}: {}", status, text)))
+            return Err(Error::Any(anyhow::anyhow!("{}: {}", status, text)));
         }
+
+        if user_prompt.is_some() {
+            #[derive(Deserialize)]
+            struct TestChatResponse {
+                choices: Vec<TestChoice>,
+            }
+            #[derive(Deserialize)]
+            struct TestChoice {
+                message: TestMessage,
+            }
+            #[derive(Deserialize)]
+            struct TestMessage {
+                content: String,
+            }
+
+            let payload: TestChatResponse = response
+                .json()
+                .await
+                .map_err(|error| Error::Any(anyhow::anyhow!("invalid response: {error}")))?;
+            let content = payload
+                .choices
+                .first()
+                .map(|choice| choice.message.content.trim())
+                .filter(|text| !text.is_empty())
+                .unwrap_or("(empty response)");
+            return Ok(super::truncate_test_reply(content));
+        }
+
+        Ok(format!("ok ({})", status.as_u16()))
     }
 
     pub fn key_count(&self) -> usize {
@@ -422,5 +468,46 @@ impl GroqClient {
         }
 
         Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Groq keys exhausted"))))
+    }
+
+    pub async fn fetch_model_ids(storage: &Storage) -> Result<Vec<String>, Error> {
+        let client = Self::from_env_and_storage(storage)?;
+        let api_key = client
+            .keys
+            .first()
+            .ok_or_else(|| Error::InvalidInput("No Groq API keys configured".into()))?;
+
+        let http = reqwest::Client::builder()
+            .timeout(Duration::from_secs(15))
+            .build()
+            .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
+
+        let response = http
+            .get(GROQ_MODELS_URL)
+            .bearer_auth(api_key)
+            .send()
+            .await
+            .map_err(|error| Error::Any(anyhow::anyhow!("Groq models request failed: {error}")))?;
+
+        if !response.status().is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Error::Any(anyhow::anyhow!("Groq models request failed: {body}")));
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GroqModelsResponse {
+            data: Vec<GroqModelEntry>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GroqModelEntry {
+            id: String,
+        }
+
+        let parsed: GroqModelsResponse = response.json().await.map_err(|error| {
+            Error::Any(anyhow::anyhow!("Failed to parse Groq models: {error}"))
+        })?;
+
+        Ok(parsed.data.into_iter().map(|entry| entry.id).collect())
     }
 }

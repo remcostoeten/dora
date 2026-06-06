@@ -150,6 +150,147 @@ export function buildMockAiStatus(): import('@studio/lib/bindings').AiStatus {
 	}
 }
 
+type MockModelEntry = [id: string, label: string, tier: string]
+
+const MOCK_OPENAI: MockModelEntry[] = [
+	['gpt-5.5', 'GPT-5.5', 'flagship'],
+	['gpt-5.5-pro', 'GPT-5.5 Pro', 'flagship'],
+	['gpt-5.2', 'GPT-5.2', 'balanced'],
+	['gpt-5.4', 'GPT-5.4', 'balanced'],
+	['gpt-4.1', 'GPT-4.1', 'balanced'],
+	['gpt-5.4-mini', 'GPT-5.4 mini', 'fast'],
+	['gpt-4o-mini', 'GPT-4o mini', 'fast']
+]
+
+const MOCK_ANTHROPIC: MockModelEntry[] = [
+	['claude-opus-4-8', 'Claude Opus 4.8', 'flagship'],
+	['claude-opus-4-7', 'Claude Opus 4.7', 'flagship'],
+	['claude-opus-4-6', 'Claude Opus 4.6', 'flagship'],
+	['claude-sonnet-4-6', 'Claude Sonnet 4.6', 'balanced'],
+	['claude-sonnet-4-5', 'Claude Sonnet 4.5', 'balanced'],
+	['claude-haiku-4-5', 'Claude Haiku 4.5', 'fast']
+]
+
+const MOCK_GROQ: MockModelEntry[] = [
+	['llama-3.3-70b-versatile', 'Llama 3.3 70B', 'flagship'],
+	['llama-3.1-70b-versatile', 'Llama 3.1 70B', 'balanced'],
+	['llama-3.1-8b-instant', 'Llama 3.1 8B', 'fast']
+]
+
+const MOCK_GEMINI: MockModelEntry[] = [
+	['gemini-2.5-pro', 'Gemini 2.5 Pro', 'flagship'],
+	['gemini-2.5-flash', 'Gemini 2.5 Flash', 'balanced'],
+	['gemini-2.0-flash', 'Gemini 2.0 Flash', 'fast']
+]
+
+function entriesToOptions(entries: MockModelEntry[]): import('@studio/lib/bindings').AiModelOption[] {
+	return entries.map(function ([id, label, tier]) {
+		return { id, label, tier }
+	})
+}
+
+export function buildMockProviderModels(
+	provider: string
+): import('@studio/lib/bindings').AiModelOption[] {
+	switch (provider) {
+		case 'openai':
+			return entriesToOptions(MOCK_OPENAI)
+		case 'anthropic':
+			return entriesToOptions(MOCK_ANTHROPIC)
+		case 'groq':
+			return entriesToOptions(MOCK_GROQ)
+		case 'gemini':
+			return entriesToOptions(MOCK_GEMINI)
+		case 'ollama':
+			return buildMockOllamaCatalog().map(function (entry) {
+				return {
+					id: entry.name,
+					label: entry.label,
+					tier: entry.installed ? 'installed' : 'available'
+				}
+			})
+		case 'mock':
+			return [{ id: 'demo-assistant', label: 'Demo assistant', tier: 'flagship' }]
+		default:
+			return []
+	}
+}
+
+export function buildMockAiUsageSummary(): import('@studio/lib/bindings').AiUsageSummary {
+	const now = Math.floor(Date.now() / 1000)
+	return {
+		total_requests: 6,
+		input_tokens: 18_400,
+		output_tokens: 6_250,
+		total_tokens: 24_650,
+		estimated_cost_usd: 0.42,
+		providers: [
+			{
+				provider: 'anthropic',
+				request_count: 3,
+				input_tokens: 10_200,
+				output_tokens: 3_800,
+				total_tokens: 14_000,
+				estimated_cost_usd: 0.28
+			},
+			{
+				provider: 'openai',
+				request_count: 2,
+				input_tokens: 6_900,
+				output_tokens: 1_950,
+				total_tokens: 8_850,
+				estimated_cost_usd: 0.12
+			},
+			{
+				provider: 'groq',
+				request_count: 1,
+				input_tokens: 1_300,
+				output_tokens: 500,
+				total_tokens: 1_800,
+				estimated_cost_usd: 0.02
+			}
+		],
+		recent: [
+			{
+				id: 3,
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-6',
+				source: 'chat',
+				input_tokens: 4200,
+				output_tokens: 980,
+				total_tokens: 5180,
+				estimated_cost_usd: 0.09,
+				estimated: true,
+				created_at: now - 3600
+			},
+			{
+				id: 2,
+				provider: 'openai',
+				model: 'gpt-5.5',
+				source: 'sql_gen',
+				input_tokens: 1800,
+				output_tokens: 420,
+				total_tokens: 2220,
+				estimated_cost_usd: 0.05,
+				estimated: true,
+				created_at: now - 7200
+			},
+			{
+				id: 1,
+				provider: 'groq',
+				model: 'llama-3.3-70b-versatile',
+				source: 'key_test',
+				input_tokens: 12,
+				output_tokens: 2,
+				total_tokens: 14,
+				estimated_cost_usd: 0.0,
+				estimated: true,
+				created_at: now - 86400
+			}
+		]
+	}
+}
+
 export function buildMockOllamaCatalog(): import('@studio/lib/bindings').OllamaCatalogEntry[] {
 	return [
 		{
@@ -181,7 +322,10 @@ export function buildMockOllamaStatus(): import('@studio/lib/bindings').OllamaSt
 		running: true,
 		endpoint: 'http://127.0.0.1:11434',
 		version: 'demo',
-		installed_count: 1
+		installed_count: 1,
+		managed: false,
+		install_path: null,
+		binary_ready: false
 	}
 }
 

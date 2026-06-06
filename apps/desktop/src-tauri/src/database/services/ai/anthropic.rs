@@ -11,8 +11,9 @@ use crate::error::Error;
 use crate::storage::Storage;
 
 const ANTHROPIC_API_URL: &str = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_MODELS_URL: &str = "https://api.anthropic.com/v1/models";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-const DEFAULT_MODEL: &str = "claude-3-5-haiku-20241022";
+const DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
 
 #[derive(Debug, Serialize)]
 struct AnthropicRequest {
@@ -122,19 +123,37 @@ impl AnthropicClient {
         })
     }
 
-    pub async fn test_key(api_key: &str, model: Option<&str>) -> Result<String, Error> {
+    pub async fn test_key(
+        api_key: &str,
+        model: Option<&str>,
+        prompt: Option<&str>,
+    ) -> Result<String, Error> {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(15))
+            .timeout(Duration::from_secs(if prompt.is_some() { 30 } else { 15 }))
             .build()
             .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
 
+        let user_prompt = prompt.filter(|value| !value.trim().is_empty());
+        let (system, user, max_tokens) = match user_prompt {
+            Some(text) => (
+                "Reply concisely in plain text.".to_string(),
+                text.to_string(),
+                256_u32,
+            ),
+            None => (
+                "Reply with the word OK only.".to_string(),
+                "ping".to_string(),
+                8_u32,
+            ),
+        };
+
         let body = AnthropicRequest {
             model: model.unwrap_or(DEFAULT_MODEL).to_string(),
-            max_tokens: 8,
-            system: "Reply with the word OK only.".into(),
+            max_tokens,
+            system,
             messages: vec![AnthropicMessage {
                 role: "user".into(),
-                content: "ping".into(),
+                content: user,
             }],
             stream: None,
             temperature: Some(0.0),
@@ -150,12 +169,36 @@ impl AnthropicClient {
             .map_err(|error| Error::Any(anyhow::anyhow!("request failed: {error}")))?;
 
         let status = response.status();
-        if status.is_success() {
-            Ok(format!("ok ({})", status.as_u16()))
-        } else {
+        if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
-            Err(Error::Any(anyhow::anyhow!("{status}: {text}")))
+            return Err(Error::Any(anyhow::anyhow!("{status}: {text}")));
         }
+
+        if user_prompt.is_some() {
+            #[derive(Deserialize)]
+            struct AnthropicTestResponse {
+                content: Vec<AnthropicContentBlock>,
+            }
+            #[derive(Deserialize)]
+            struct AnthropicContentBlock {
+                text: Option<String>,
+            }
+
+            let payload: AnthropicTestResponse = response
+                .json()
+                .await
+                .map_err(|error| Error::Any(anyhow::anyhow!("invalid response: {error}")))?;
+            let content = payload
+                .content
+                .iter()
+                .filter_map(|block| block.text.as_deref())
+                .map(str::trim)
+                .find(|text| !text.is_empty())
+                .unwrap_or("(empty response)");
+            return Ok(super::truncate_test_reply(content));
+        }
+
+        Ok(format!("ok ({})", status.as_u16()))
     }
 
     pub fn key_count(&self) -> usize {
@@ -362,5 +405,46 @@ impl AnthropicClient {
         }
 
         Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Anthropic keys exhausted"))))
+    }
+
+    pub async fn fetch_model_ids(storage: &Storage) -> Result<Vec<String>, Error> {
+        let client = Self::from_env_and_storage(storage)?;
+        let api_key = client
+            .keys
+            .first()
+            .ok_or_else(|| Error::InvalidInput("No Anthropic API keys configured".into()))?;
+
+        let http = reqwest::Client::builder()
+            .timeout(Duration::from_secs(15))
+            .build()
+            .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
+
+        let response = Self::auth_headers(http.get(ANTHROPIC_MODELS_URL), api_key)
+            .send()
+            .await
+            .map_err(|error| Error::Any(anyhow::anyhow!("Anthropic models request failed: {error}")))?;
+
+        if !response.status().is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Error::Any(anyhow::anyhow!(
+                "Anthropic models request failed: {body}"
+            )));
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct AnthropicModelsResponse {
+            data: Vec<AnthropicModelEntry>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct AnthropicModelEntry {
+            id: String,
+        }
+
+        let parsed: AnthropicModelsResponse = response.json().await.map_err(|error| {
+            Error::Any(anyhow::anyhow!("Failed to parse Anthropic models: {error}"))
+        })?;
+
+        Ok(parsed.data.into_iter().map(|entry| entry.id).collect())
     }
 }

@@ -1,9 +1,11 @@
 mod anthropic;
 mod gemini;
 mod groq;
+mod models;
 mod ollama;
 mod openai;
 mod prompts;
+mod usage;
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -16,6 +18,52 @@ pub use gemini::GeminiClient;
 pub use groq::GroqClient;
 pub use ollama::{OllamaCatalogEntry, OllamaClient, OllamaPullEvent, OllamaStatus};
 pub use openai::OpenAiClient;
+pub use usage::{record_usage, usage_source, AiUsageCapture};
+
+pub(crate) fn truncate_test_reply(text: &str) -> String {
+    const LIMIT: usize = 160;
+    let trimmed = text.trim();
+    if trimmed.chars().count() <= LIMIT {
+        return trimmed.to_string();
+    }
+    let shortened: String = trimmed.chars().take(LIMIT).collect();
+    format!("{shortened}…")
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct AiUsageEntry {
+    pub id: i64,
+    pub provider: String,
+    pub model: String,
+    pub source: String,
+    pub input_tokens: Option<u32>,
+    pub output_tokens: Option<u32>,
+    pub total_tokens: Option<u32>,
+    pub estimated_cost_usd: Option<f64>,
+    pub estimated: bool,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct AiUsageProviderSummary {
+    pub provider: String,
+    pub request_count: u64,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub total_tokens: u64,
+    pub estimated_cost_usd: f64,
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct AiUsageSummary {
+    pub total_requests: u64,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub total_tokens: u64,
+    pub estimated_cost_usd: f64,
+    pub providers: Vec<AiUsageProviderSummary>,
+    pub recent: Vec<AiUsageEntry>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum AIProvider {
@@ -60,10 +108,10 @@ impl AIProvider {
     pub fn default_model(self) -> &'static str {
         match self {
             Self::Groq => "llama-3.3-70b-versatile",
-            Self::Gemini => "gemini-2.0-flash",
+            Self::Gemini => "gemini-2.5-flash",
             Self::Ollama => "llama3.2",
-            Self::Openai => "gpt-4o-mini",
-            Self::Anthropic => "claude-3-5-haiku-20241022",
+            Self::Openai => "gpt-5.5",
+            Self::Anthropic => "claude-sonnet-4-6",
             Self::Mock => "mock",
         }
     }
@@ -85,6 +133,13 @@ pub struct AiServiceConfig {
     pub provider: String,
     pub model: String,
     pub ollama_endpoint: String,
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+pub struct AiModelOption {
+    pub id: String,
+    pub label: String,
+    pub tier: String,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -236,6 +291,27 @@ impl<'a> AIService<'a> {
         }
 
         Ok(())
+    }
+
+    pub async fn list_provider_models(&self, provider: AIProvider) -> Result<Vec<AiModelOption>, Error> {
+        match provider {
+            AIProvider::Openai => models::list_openai_models(self.storage).await,
+            AIProvider::Anthropic => models::list_anthropic_models(self.storage).await,
+            AIProvider::Groq => models::list_groq_models(self.storage).await,
+            AIProvider::Gemini => models::list_gemini_models(self.storage).await,
+            AIProvider::Ollama => {
+                let endpoint = self
+                    .storage
+                    .get_setting("ollama_endpoint")?
+                    .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
+                models::list_ollama_models(&endpoint).await
+            }
+            AIProvider::Mock => Ok(models::curated_only(&[(
+                "demo-assistant",
+                "Demo assistant",
+                "flagship",
+            )])),
+        }
     }
 
     pub async fn get_status(&self) -> Result<AiStatus, Error> {

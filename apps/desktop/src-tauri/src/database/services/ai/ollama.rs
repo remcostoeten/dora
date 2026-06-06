@@ -33,6 +33,9 @@ pub struct OllamaStatus {
     pub endpoint: String,
     pub version: Option<String>,
     pub installed_count: usize,
+    pub managed: bool,
+    pub install_path: Option<String>,
+    pub binary_ready: bool,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -162,6 +165,9 @@ impl OllamaClient {
                     endpoint,
                     version: Some(version),
                     installed_count,
+                    managed: false,
+                    install_path: None,
+                    binary_ready: false,
                 }
             }
             Err(_) => OllamaStatus {
@@ -169,6 +175,9 @@ impl OllamaClient {
                 endpoint,
                 version: None,
                 installed_count: 0,
+                managed: false,
+                install_path: None,
+                binary_ready: false,
             },
         }
     }

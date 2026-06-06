@@ -17,6 +17,7 @@ import { Slider } from '@studio/shared/ui/slider'
 import { Switch } from '@studio/shared/ui/switch'
 import { cn } from '@studio/shared/utils/cn'
 import { AiProviderSection } from '@studio/features/ai-assistant/ai-provider-section'
+import { AiUsageSection } from '@studio/features/ai-assistant/ai-usage-section'
 import { OllamaModelsSection } from '@studio/features/ai-assistant/ollama-models-section'
 import { AiKeysSection } from './ai-keys-section'
 import { ShortcutRecorder } from './shortcut-recorder'
@@ -32,6 +33,7 @@ type SettingsSectionId =
 	| 'ai-provider'
 	| 'ollama-models'
 	| 'ai-keys'
+	| 'ai-usage'
 	| 'storage'
 	| 'safety'
 	| 'startup'
@@ -68,6 +70,11 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 		id: 'ai-keys',
 		title: 'AI Keys',
 		description: 'Encrypted API keys per provider'
+	},
+	{
+		id: 'ai-usage',
+		title: 'AI Usage',
+		description: 'Token totals, estimated cost, and recent requests'
 	},
 	{
 		id: 'storage',
@@ -384,6 +391,15 @@ export function SettingsView({ windowControls }: SettingsViewProps = {}) {
 								sectionRef={registerSectionRef('ai-keys')}
 							>
 								<AiKeysSection />
+							</SectionCard>
+
+							<SectionCard
+								id='ai-usage'
+								title='AI Usage'
+								description='Track requests, tokens, and estimated spend across providers.'
+								sectionRef={registerSectionRef('ai-usage')}
+							>
+								<AiUsageSection />
 							</SectionCard>
 
 							<SectionCard

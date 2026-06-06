@@ -1,4 +1,5 @@
 mod ai_keys;
+mod ai_usage;
 mod connection_history;
 mod connections;
 mod migrator;
@@ -9,6 +10,7 @@ mod snippet_folders;
 mod types;
 
 pub use ai_keys::AiApiKeyRecord;
+pub use ai_usage::{AiUsageInsert, AiUsageRow};
 pub use types::{ConnectionHistoryEntry, QueryHistoryEntry, SavedQuery, SnippetFolder};
 
 use std::path::PathBuf;

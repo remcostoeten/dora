@@ -2,9 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use super::{AIRequest, AIResponse};
 use crate::error::Error;
+use crate::storage::Storage;
 
 const GEMINI_API_URL: &str =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_MODELS_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 
 #[derive(Debug, Serialize)]
 struct GeminiRequest {
@@ -135,5 +137,56 @@ impl GeminiClient {
             tokens_used,
             provider: "gemini".to_string(),
         })
+    }
+
+    pub async fn fetch_model_ids(storage: &Storage) -> Result<Vec<String>, Error> {
+        let api_key = storage
+            .get_setting("gemini_api_key")?
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| Error::InvalidInput("Gemini API key not configured".into()))?;
+
+        let client = reqwest::Client::new();
+        let url = format!("{GEMINI_MODELS_URL}?key={api_key}");
+        let response = client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|error| Error::Any(anyhow::anyhow!("Gemini models request failed: {error}")))?;
+
+        if !response.status().is_success() {
+            let body = response.text().await.unwrap_or_default();
+            return Err(Error::Any(anyhow::anyhow!(
+                "Gemini models request failed: {body}"
+            )));
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GeminiModelsResponse {
+            models: Vec<GeminiModelEntry>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct GeminiModelEntry {
+            name: String,
+            #[serde(rename = "supportedGenerationMethods", default)]
+            supported_generation_methods: Vec<String>,
+        }
+
+        let parsed: GeminiModelsResponse = response.json().await.map_err(|error| {
+            Error::Any(anyhow::anyhow!("Failed to parse Gemini models: {error}"))
+        })?;
+
+        Ok(parsed
+            .models
+            .into_iter()
+            .filter(|entry| {
+                entry.supported_generation_methods.is_empty()
+                    || entry
+                        .supported_generation_methods
+                        .iter()
+                        .any(|method| method == "generateContent")
+            })
+            .filter_map(|entry| entry.name.strip_prefix("models/").map(str::to_string))
+            .collect())
     }
 }

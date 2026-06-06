@@ -598,6 +598,22 @@ async aiGetStatus() : Promise<Result<AiStatus, { kind: string; detail: string }>
     else return { status: "error", error: e  as any };
 }
 },
+async aiListProviderModels(provider: string) : Promise<Result<AiModelOption[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_list_provider_models", { provider }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiGetUsageSummary(limit: number | null) : Promise<Result<AiUsageSummary, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_usage_summary", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async aiSetGeminiKey(apiKey: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_set_gemini_key", { apiKey }) };
@@ -662,6 +678,30 @@ async aiListOllamaModels() : Promise<Result<string[], { kind: string; detail: st
     else return { status: "error", error: e  as any };
 }
 },
+async aiInstallOllama(requestId: string, onEvent: TAURI_CHANNEL<OllamaInstallEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_install_ollama", { requestId, onEvent }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiCancelOllamaInstall(requestId: string) : Promise<Result<boolean, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_cancel_ollama_install", { requestId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiStartOllama() : Promise<Result<OllamaStatus, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_start_ollama") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 /**
  * Check whether Groq provider is usable (env or DB keys present).
  * Returns key count detected. Never exposes the key values.
@@ -714,9 +754,9 @@ async aiKeysSetActive(id: number, active: boolean) : Promise<Result<null, { kind
     else return { status: "error", error: e  as any };
 }
 },
-async aiKeysTest(id: number) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
+async aiKeysTest(id: number, model: string | null, prompt: string | null) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test", { id }) };
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test", { id, model, prompt }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -725,9 +765,9 @@ async aiKeysTest(id: number) : Promise<Result<AiKeyTestResult, { kind: string; d
 /**
  * Test an unsaved key (used by the "Test before save" button).
  */
-async aiKeysTestRaw(provider: string, apiKey: string) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
+async aiKeysTestRaw(provider: string, apiKey: string, model: string | null, prompt: string | null) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test_raw", { provider, apiKey }) };
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test_raw", { provider, apiKey, model, prompt }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -799,10 +839,14 @@ async getCredentialStorageStatus() : Promise<CredentialStorageStatus> {
 export type AIResponse = { content: string; suggested_queries: string[] | null; tokens_used: number | null; provider: string }
 export type AiApiKeyRecord = { id: number; provider: string; label: string; is_active: boolean; last_tested: number | null; last_status: string | null; created_at: number; updated_at: number }
 export type AiKeyTestResult = { ok: boolean; message: string }
+export type AiModelOption = { id: string; label: string; tier: string }
 export type AiProviderReadiness = { provider: string; ready: boolean; detail: string | null; key_count: number | null }
 export type AiServiceConfig = { provider: string; model: string; ollama_endpoint: string }
 export type AiStatus = { active_provider: string; active_model: string; ready: boolean; providers: AiProviderReadiness[] }
 export type AiStreamEvent = { type: "token"; text: string } | { type: "final"; content: string } | { type: "error"; message: string }
+export type AiUsageEntry = { id: number; provider: string; model: string; source: string; input_tokens: number | null; output_tokens: number | null; total_tokens: number | null; estimated_cost_usd: number | null; estimated: boolean; created_at: number }
+export type AiUsageProviderSummary = { provider: string; request_count: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number }
+export type AiUsageSummary = { total_requests: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number; providers: AiUsageProviderSummary[]; recent: AiUsageEntry[] }
 export type ColumnInfo = { name: string; data_type: string; is_nullable: boolean; default_value: string | null; 
 /**
  * Whether this column is part of the primary key
@@ -900,8 +944,9 @@ export type LiveMonitorSession = { monitorId: string; eventName: string }
  */
 export type MutationResult = { success: boolean; affected_rows: number; message: string | null }
 export type OllamaCatalogEntry = { name: string; label: string; description: string; installed: boolean; size_bytes: number | null }
+export type OllamaInstallEvent = { type: "status"; message: string } | { type: "progress"; completed: number; total: number | null; percent: number } | { type: "done"; version: string | null; install_path: string } | { type: "error"; message: string }
 export type OllamaPullEvent = { type: "status"; message: string } | { type: "progress"; completed: number; total: number; percent: number; eta_seconds: number | null } | { type: "done"; model: string } | { type: "error"; message: string }
-export type OllamaStatus = { running: boolean; endpoint: string; version: string | null; installed_count: number }
+export type OllamaStatus = { running: boolean; endpoint: string; version: string | null; installed_count: number; managed: boolean; install_path: string | null; binary_ready: boolean }
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
 export type RegisteredDatabase = { name: string; path: string; active: boolean }
