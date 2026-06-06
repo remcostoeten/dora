@@ -36,4 +36,14 @@ impl Storage {
         .context("Failed to set setting")?;
         Ok(())
     }
+
+    pub fn delete_setting(&self, key: &str) -> Result<()> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
+        conn.execute("DELETE FROM app_settings WHERE key = ?1", [key])
+            .context("Failed to delete setting")?;
+        Ok(())
+    }
 }

@@ -43,6 +43,7 @@ export type TableRightClickAction =
 	| 'export-json'
 	| 'export-sql'
 	| 'open-in-sql-console'
+	| 'truncate'
 
 function getTableIcon(type: TableItem['type']) {
 	switch (type) {
@@ -161,7 +162,6 @@ function TableItemRow({
 	}
 
 	function handleCopyName() {
-		navigator.clipboard.writeText(item.name)
 		handleRightClickAction('copy-name')
 	}
 
@@ -297,46 +297,46 @@ function TableItemRow({
 			</ContextMenuTrigger>
 			<ContextMenuContent className='w-[200px]'>
 				<ContextMenuItem onClick={() => handleRightClickAction('view-table')}>
-					<Eye className='h-4 w-4 mr-2' />
+					<Eye />
 					<span>View table</span>
 				</ContextMenuItem>
 				<ContextMenuItem onClick={() => handleRightClickAction('open-in-sql-console')}>
-					<Terminal className='h-4 w-4 mr-2' />
+					<Terminal />
 					<span>Open in SQL console</span>
 				</ContextMenuItem>
 				<ContextMenuItem onClick={startEditing}>
-					<Pencil className='h-4 w-4 mr-2' />
+					<Pencil />
 					<span>Edit name</span>
 				</ContextMenuItem>
 				<ContextMenuItem onClick={() => handleRightClickAction('duplicate-table')}>
-					<CopyPlus className='h-4 w-4 mr-2' />
+					<CopyPlus />
 					<span>Duplicate table</span>
 				</ContextMenuItem>
 				<ContextMenuItem onClick={() => handleRightClickAction('view-info')}>
-					<Info className='h-4 w-4 mr-2' />
+					<Info />
 					<span>View info</span>
 				</ContextMenuItem>
 				<ContextMenuSeparator />
 				<ContextMenuItem onClick={handleCopyName}>
-					<Copy className='h-4 w-4 mr-2' />
+					<Copy />
 					<span>Copy table name</span>
 				</ContextMenuItem>
 				<ContextMenuSub>
 					<ContextMenuSubTrigger>
-						<Download className='h-4 w-4 mr-2' />
+						<Download />
 						<span>Export</span>
 					</ContextMenuSubTrigger>
 					<ContextMenuSubContent className='w-[160px]'>
 						<ContextMenuItem onClick={() => handleRightClickAction('export-schema')}>
-							<FileCode className='h-4 w-4 mr-2' />
+							<FileCode />
 							<span>Copy schema</span>
 						</ContextMenuItem>
 						<ContextMenuItem onClick={() => handleRightClickAction('export-json')}>
-							<FileJson className='h-4 w-4 mr-2' />
+							<FileJson />
 							<span>Copy as JSON</span>
 						</ContextMenuItem>
 						<ContextMenuItem onClick={() => handleRightClickAction('export-sql')}>
-							<FileCode className='h-4 w-4 mr-2' />
+							<FileCode />
 							<span>Copy as SQL</span>
 						</ContextMenuItem>
 					</ContextMenuSubContent>
@@ -344,9 +344,9 @@ function TableItemRow({
 				<ContextMenuSeparator />
 				<ContextMenuItem
 					onClick={() => handleRightClickAction('delete-table')}
-					className='text-destructive focus:text-destructive'
+					variant='destructive'
 				>
-					<Trash2 className='h-4 w-4 mr-2' />
+					<Trash2 />
 					<span>Delete table</span>
 				</ContextMenuItem>
 			</ContextMenuContent>

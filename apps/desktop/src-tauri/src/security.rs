@@ -2,37 +2,38 @@ use aes_gcm::aead::rand_core::RngCore;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm,
-    Nonce, // Or `Aes128Gcm`
+    Nonce,
 };
 use anyhow::{Context, Result};
 use keyring::Entry;
 use std::fs;
-use std::path::PathBuf;
+
+use crate::credential_storage;
 
 const SERVICE_NAME: &str = "dora_db_client";
 const KEY_NAME: &str = "dora_encryption_key";
-const FALLBACK_KEY_FILE: &str = "encryption.key";
 
 fn get_or_create_key() -> Result<[u8; 32]> {
-    let entry = match Entry::new(SERVICE_NAME, KEY_NAME) {
-        Ok(entry) => entry,
-        Err(error) => {
-            log::warn!(
-                "OS keyring unavailable for Dora encryption key; using local fallback key file: {error}"
-            );
-            return get_or_create_fallback_key();
-        }
-    };
+    if !credential_storage::uses_os_keyring() {
+        return get_or_create_fallback_key();
+    }
+
+    get_or_create_keyring_key()
+}
+
+fn get_or_create_keyring_key() -> Result<[u8; 32]> {
+    let entry = Entry::new(SERVICE_NAME, KEY_NAME)
+        .context("Failed to open OS keyring entry for Dora encryption key")?;
 
     match entry.get_password() {
         Ok(hex_key) => decode_key_hex(&hex_key).context("Failed to decode stored encryption key"),
         Err(keyring::Error::NoEntry) => {
-            // Generate new key
             let key = Aes256Gcm::generate_key(OsRng);
             let key_bytes: &[u8] = key.as_slice();
             let hex_key = hex::encode(key_bytes);
+
             if let Err(error) = entry.set_password(&hex_key) {
-                log::warn!(
+                log::debug!(
                     "Failed to save Dora encryption key to OS keyring; using local fallback key file: {error}"
                 );
                 return get_or_create_fallback_key();
@@ -43,8 +44,8 @@ fn get_or_create_key() -> Result<[u8; 32]> {
             Ok(key_arr)
         }
         Err(error) => {
-            log::warn!(
-                "OS keyring failed while reading Dora encryption key; using local fallback key file: {error}"
+            log::debug!(
+                "OS keyring read failed for Dora encryption key; using local fallback key file: {error}"
             );
             get_or_create_fallback_key()
         }
@@ -61,15 +62,8 @@ fn decode_key_hex(hex_key: &str) -> Result<[u8; 32]> {
     Ok(key)
 }
 
-fn fallback_key_path() -> Result<PathBuf> {
-    let config_dir = dirs::config_dir()
-        .ok_or_else(|| anyhow::anyhow!("OS config directory is unavailable"))?
-        .join("dora");
-    Ok(config_dir.join(FALLBACK_KEY_FILE))
-}
-
 fn get_or_create_fallback_key() -> Result<[u8; 32]> {
-    let path = fallback_key_path()?;
+    let path = credential_storage::fallback_key_path()?;
     if path.exists() {
         let hex_key = fs::read_to_string(&path).with_context(|| {
             format!("Failed to read fallback encryption key: {}", path.display())
@@ -116,7 +110,6 @@ pub fn encrypt(plaintext: &str) -> Result<String> {
     let key = get_or_create_key()?;
     let cipher = Aes256Gcm::new(&key.into());
 
-    // 96-bit (12-byte) nonce is standard for GCM
     let mut nonce_bytes = [0u8; 12];
     OsRng.fill_bytes(&mut nonce_bytes);
     let nonce = Nonce::from_slice(&nonce_bytes);
@@ -125,8 +118,6 @@ pub fn encrypt(plaintext: &str) -> Result<String> {
         .encrypt(nonce, plaintext.as_bytes())
         .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
-    // Format: hex(nonce) + hex(ciphertext)
-    // Nonce is required for decryption
     let mut result = Vec::with_capacity(nonce_bytes.len() + ciphertext.len());
     result.extend_from_slice(&nonce_bytes);
     result.extend_from_slice(&ciphertext);
@@ -161,9 +152,8 @@ pub fn decrypt(hex_data: &str) -> Result<String> {
 mod tests {
     use super::*;
 
-    // Helper to encrypt/decrypt with a fixed test key (not using keyring)
     fn test_encrypt(plaintext: &str) -> Result<String> {
-        let key = [42u8; 32]; // Fixed test key
+        let key = [42u8; 32];
         let cipher = Aes256Gcm::new(&key.into());
 
         let mut nonce_bytes = [0u8; 12];
@@ -191,7 +181,7 @@ mod tests {
         let (nonce_bytes, ciphertext) = data.split_at(12);
         let nonce = Nonce::from_slice(nonce_bytes);
 
-        let key = [42u8; 32]; // Same fixed test key
+        let key = [42u8; 32];
         let cipher = Aes256Gcm::new(&key.into());
 
         let plaintext_bytes = cipher
@@ -210,7 +200,6 @@ mod tests {
 
         let encrypted = test_encrypt(original).expect("Encryption should succeed");
 
-        // Verify it's actually encrypted (not plaintext)
         assert_ne!(encrypted, original);
         assert!(encrypted.len() > original.len());
 
@@ -227,7 +216,7 @@ mod tests {
 
     #[test]
     fn test_decrypt_too_short() {
-        let result = test_decrypt("abcd1234"); // Valid hex but too short
+        let result = test_decrypt("abcd1234");
         assert!(result.is_err());
     }
 

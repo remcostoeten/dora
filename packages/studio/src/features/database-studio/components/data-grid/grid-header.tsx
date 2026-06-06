@@ -68,11 +68,11 @@ export function GridHeader({
 						>
 							<div className='flex items-center gap-1.5 justify-between group px-3 py-2 overflow-hidden'>
 								<div className='flex items-center gap-1.5 overflow-hidden min-w-0'>
-									<span className='text-foreground text-xs shrink-0'>
+									<span className='text-foreground text-xs truncate min-w-0'>
 										{col.name}
 									</span>
 									{col.type && col.type !== 'unknown' && (
-										<span className='text-muted-foreground/50 text-[10px] font-normal font-mono lowercase truncate min-w-0'>
+										<span className='text-muted-foreground/50 text-[10px] font-normal font-mono lowercase truncate min-w-0 shrink-0'>
 											{col.type}
 										</span>
 									)}

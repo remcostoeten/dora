@@ -6,7 +6,7 @@ import {
 	stopContainer,
 	removeContainer,
 	deps
-} from '../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client'
+} from '@/features/docker-manager/api/docker-client'
 
 // Mock Tauri API core
 vi.mock('@tauri-apps/api/core', () => ({

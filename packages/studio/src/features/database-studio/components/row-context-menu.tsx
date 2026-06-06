@@ -18,6 +18,7 @@ type Props = {
 	rowIndex: number
 	columns: ColumnDefinition[]
 	tableName?: string
+	allRows?: Record<string, unknown>[]
 	onAction?: (
 		action: RowAction,
 		row: Record<string, unknown>,
@@ -34,6 +35,7 @@ export function RowContextMenu({
 	rowIndex,
 	columns,
 	tableName,
+	allRows,
 	onAction,
 	onOpenChange,
 	selectedRows,
@@ -49,8 +51,8 @@ export function RowContextMenu({
 	}
 
 	function handleExportJson() {
-		const rows = isBatch && selectedRows
-			? Array.from(selectedRows).map(function (i) { return row })
+		const rows = isBatch && selectedRows && allRows
+			? Array.from(selectedRows).map(function (i) { return allRows[i] }).filter(Boolean)
 			: [row]
 		const json = JSON.stringify(isBatch && selectedRows ? rows : row, null, 2)
 		const blob = new Blob([json], { type: 'application/json' })
@@ -98,28 +100,16 @@ export function RowContextMenu({
 		<ContextMenu onOpenChange={handleOpenChange}>
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent className='w-[180px]'>
-				<ContextMenuItem
-					onClick={function () {
-						handleAction('view')
-					}}
-				>
-					<Eye className='h-4 w-4 mr-2' />
+				<ContextMenuItem onClick={function () { handleAction('view') }}>
+					<Eye />
 					<span>View details</span>
 				</ContextMenuItem>
-				<ContextMenuItem
-					onClick={function () {
-						handleAction('edit')
-					}}
-				>
-					<Pencil className='h-4 w-4 mr-2' />
+				<ContextMenuItem onClick={function () { handleAction('edit') }}>
+					<Pencil />
 					<span>Edit row</span>
 				</ContextMenuItem>
-				<ContextMenuItem
-					onClick={function () {
-						handleAction('duplicate')
-					}}
-				>
-					<CopyPlus className='h-4 w-4 mr-2' />
+				<ContextMenuItem onClick={function () { handleAction('duplicate') }}>
+					<CopyPlus />
 					<span>{isBatch ? `Duplicate ${batchCount} rows` : 'Duplicate below'}</span>
 				</ContextMenuItem>
 
@@ -127,16 +117,16 @@ export function RowContextMenu({
 
 				<ContextMenuSub>
 					<ContextMenuSubTrigger>
-						<FileDown className='h-4 w-4 mr-2' />
+						<FileDown />
 						<span>Export</span>
 					</ContextMenuSubTrigger>
 					<ContextMenuSubContent className='w-[140px]'>
 						<ContextMenuItem onClick={handleExportJson}>
-							<FileJson className='h-4 w-4 mr-2' />
+							<FileJson />
 							<span>{isBatch ? `As JSON (${batchCount} rows)` : 'As JSON'}</span>
 						</ContextMenuItem>
 						<ContextMenuItem onClick={handleExportSql}>
-							<FileCode className='h-4 w-4 mr-2' />
+							<FileCode />
 							<span>
 								{isBatch
 									? `Copy SQL INSERT (${batchCount} rows)`
@@ -149,12 +139,10 @@ export function RowContextMenu({
 				<ContextMenuSeparator />
 
 				<ContextMenuItem
-					onClick={function () {
-						handleAction('delete')
-					}}
-					className='text-destructive focus:text-destructive focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
+					onClick={function () { handleAction('delete') }}
+					variant='destructive'
 				>
-					<Trash2 className='h-4 w-4 mr-2' />
+					<Trash2 />
 					<span>{isBatch ? `Delete ${batchCount} rows` : 'Delete row'}</span>
 				</ContextMenuItem>
 			</ContextMenuContent>

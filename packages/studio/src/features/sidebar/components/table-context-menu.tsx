@@ -1,4 +1,4 @@
-import { Eye, PenLine, Shield, Scissors, Trash2, Info } from 'lucide-react'
+import { Eye, Scissors, Trash2, Info } from 'lucide-react'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -7,7 +7,7 @@ import {
 	DropdownMenuTrigger
 } from '@studio/shared/ui/dropdown-menu'
 
-type TableAction = 'view-table' | 'view-info' | 'alter-table' | 'enable-rls' | 'truncate' | 'drop'
+type TableAction = 'view-table' | 'view-info' | 'truncate' | 'delete-table'
 
 type ContextMenuItem = {
 	id: TableAction
@@ -20,10 +20,8 @@ type ContextMenuItem = {
 const CONTEXT_MENU_ITEMS: ContextMenuItem[] = [
 	{ id: 'view-table', label: 'View table', icon: Eye, shortcut: 'V' },
 	{ id: 'view-info', label: 'View info', icon: Info, shortcut: 'I' },
-	{ id: 'alter-table', label: 'Alter table', icon: PenLine, shortcut: 'A' },
-	{ id: 'enable-rls', label: 'Enable RLS', icon: Shield, shortcut: 'R' },
 	{ id: 'truncate', label: 'Truncate', icon: Scissors, shortcut: 'T' },
-	{ id: 'drop', label: 'Drop', icon: Trash2, variant: 'destructive' }
+	{ id: 'delete-table', label: 'Drop', icon: Trash2, variant: 'destructive' }
 ]
 
 type Props = {

@@ -14,10 +14,11 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"noImplicitAny": false,
-		"baseUrl": "../apps/desktop",
+	"baseUrl": "..",
 		"paths": {
-			"@/*": ["./src/*"]
+			"@/*": ["./packages/studio/src/*"],
+			"@studio/*": ["./packages/studio/src/*"]
 		}
 	},
-	"include": ["./**/*.ts", "./**/*.tsx", "../apps/desktop/src/**/*.ts", "../apps/desktop/src/**/*.tsx"]
+	"include": ["./**/*.ts", "./**/*.tsx", "../packages/studio/src/**/*.ts", "../packages/studio/src/**/*.tsx"]
 }

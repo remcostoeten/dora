@@ -64,7 +64,7 @@ required=(
   "packaging/linux/dora.desktop"
   ".github/workflows/aur.yml"
   ".github/workflows/release.yml"
-  "docs/aur.md"
+  "docs/distribution/release-guide.md"
 )
 for f in "${required[@]}"; do
   [[ -f "$f" ]] || { echo "Missing file: $f" >&2; exit 1; }

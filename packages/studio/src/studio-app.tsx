@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v6'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { CredentialStorageNotice } from '@studio/components/credential-storage-notice'
 import { DemoBanner } from '@studio/components/demo-banner'
 import { Toaster } from '@studio/shared/ui/notifier'
 import { DataProvider } from '@studio/core/data-provider'
@@ -49,6 +50,7 @@ export function StudioApp({ forceMock = false, analyticsConfig, basename }: Prop
 								<QueryHistoryProvider>
 									<div className='flex flex-col h-screen'>
 										<DemoBanner />
+										<CredentialStorageNotice />
 										<div className='flex-1 overflow-hidden'>
 											<GlobalToaster />
 											<NuqsAdapter>

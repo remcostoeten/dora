@@ -23,6 +23,7 @@ import { CommitDetailsModal } from './commit-details-modal'
 import { CornerTick } from '@/components/corner-tick'
 import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 import { ACCENT_COLOR } from './constants'
+import { ScrollMotionNumber } from '@/shared/components/motion-number'
 import type { GitHubStatsData } from '@/core/github/get-github-stats'
 
 // Strong ease-out — the built-in CSS easings lack punch. Used for the tab
@@ -400,7 +401,7 @@ export function GitHubStats({
                                                 Started
                                             </div>
                                             <div className="text-[#7a7a7a]">
-                                                {startedAt}
+                                                <ScrollMotionNumber value={startedAt} />
                                             </div>
                                         </div>
                                         <div className="w-px h-8 bg-[#1a1a1a]" />
@@ -419,7 +420,7 @@ export function GitHubStats({
                                                 Latest
                                             </div>
                                             <div className="text-[#7a7a7a]">
-                                                {latestCommitAt}
+                                                <ScrollMotionNumber value={latestCommitAt} />
                                             </div>
                                         </a>
                                     </div>
@@ -473,7 +474,7 @@ export function GitHubStats({
                                         Commits
                                     </div>
                                     <div className="font-pixel text-2xl font-[500] tabular-nums text-[#9a9a9a]">
-                                        {totalCommits}
+                                        <ScrollMotionNumber value={totalCommits} />
                                     </div>
                                     <div className="mt-1 hidden items-center gap-2 text-[10px] text-[#8a8a8a] sm:flex">
                                         <span>Scroll to pan</span>

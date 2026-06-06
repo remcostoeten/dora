@@ -55,18 +55,14 @@ import { ErrorBoundary } from "@studio/shared/ui/error-boundary";
 import { mapConnectionError } from "@studio/shared/utils/error-messages";
 import { EmptyState } from "@studio/shared/ui/empty-state";
 import { ViewLoadingShell } from "@studio/shared/ui/view-loading-shell";
+import { Skeleton } from "@studio/shared/ui/skeleton";
 import { getTableRefParts } from "@studio/shared/utils/table-ref";
 import { Plug } from "lucide-react";
 
 function IndexInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const {
-    settings,
-    updateSetting,
-    updateSettings,
-    isLoading: isSettingsLoading,
-  } = useSettings();
+  const { settings, updateSetting, updateSettings, isLoading: isSettingsLoading } = useSettings();
 
   const { data: connections = [], isLoading: isConnectionsLoading } = useConnections();
   const isLoading = isSettingsLoading || isConnectionsLoading;
@@ -82,29 +78,28 @@ function IndexInner() {
 
   const { tabs, activeTabId, openTab, closeTab, setActiveTab, closeTabsForConnection } = useTabs();
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
-  const selectedTableId = activeTab?.tableId ?? '';
-  const selectedTableName = activeTab?.tableName ?? '';
+  const activeTabConnectionId = activeTab?.connectionId ?? "";
 
   const autoSelectFirstTableRef = useRef(false);
   const connectionInitializedRef = useRef(false);
+  const previousConnectionIdRef = useRef<string>("");
 
   const [activeConnectionId, setActiveConnectionId] = useState<string>("");
   const [sqlConsoleEditorContext, setSqlConsoleEditorContext] =
     useState<AiAssistantEditorContext | null>(null);
-  const activeTabConnectionId = activeTab?.connectionId ?? "";
-  const studioConnectionId = activeTabConnectionId || activeConnectionId;
-  const sidebarSelectedTableId =
-    activeTabConnectionId && activeTabConnectionId !== activeConnectionId ? "" : selectedTableId;
+  const selectedTableId =
+    activeTab && activeTabConnectionId === activeConnectionId ? activeTab.tableId : "";
+  const selectedTableName =
+    activeTab && activeTabConnectionId === activeConnectionId ? activeTab.tableName : "";
+  const studioConnectionId = activeConnectionId;
+  const sidebarSelectedTableId = selectedTableId;
 
   const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [editingConnection, setEditingConnection] = useState<
-    Connection | undefined
-  >(undefined);
+  const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined);
 
   const startupConnectionMode =
-    settings.startupConnectionMode ??
-    (settings.restoreLastConnection ? "auto" : "empty");
+    settings.startupConnectionMode ?? (settings.restoreLastConnection ? "auto" : "empty");
 
   const { toast } = useToast();
   const shortcuts = useEffectiveShortcuts();
@@ -120,47 +115,86 @@ function IndexInner() {
     { description: shortcuts.openCommandPalette.description },
   );
 
-  $.bind(shortcuts.newConnection.combo).on(function () {
-    setIsConnectionDialogOpen(true);
-  }, { description: shortcuts.newConnection.description });
+  $.bind(shortcuts.newConnection.combo).on(
+    function () {
+      setIsConnectionDialogOpen(true);
+    },
+    { description: shortcuts.newConnection.description },
+  );
 
-  $.bind(shortcuts.toggleSidebar.combo).on(function () {
-    setIsSidebarOpen(function (open) { return !open; });
-  }, { description: shortcuts.toggleSidebar.description });
+  $.bind(shortcuts.toggleSidebar.combo).on(
+    function () {
+      setIsSidebarOpen(function (open) {
+        return !open;
+      });
+    },
+    { description: shortcuts.toggleSidebar.description },
+  );
 
-  $.bind(shortcuts.reconnect.combo).on(function () {
-    if (activeConnectionId) handleConnectionSelect(activeConnectionId);
-  }, { description: shortcuts.reconnect.description });
+  $.bind(shortcuts.reconnect.combo).on(
+    function () {
+      if (activeConnectionId) handleConnectionSelect(activeConnectionId);
+    },
+    { description: shortcuts.reconnect.description },
+  );
 
   // Go-to chord sequences — except 'typing' so Monaco doesn't intercept
-  $.bind(shortcuts.gotoDashboard.combo).except('typing').on(function () {
-    setActiveNavId('database-studio');
-  }, { description: shortcuts.gotoDashboard.description });
+  $.bind(shortcuts.gotoDashboard.combo)
+    .except("typing")
+    .on(
+      function () {
+        setActiveNavId("database-studio");
+      },
+      { description: shortcuts.gotoDashboard.description },
+    );
 
-  $.bind(shortcuts.gotoSettings.combo).except('typing').on(function () {
-    setActiveNavId('settings');
-  }, { description: shortcuts.gotoSettings.description });
+  $.bind(shortcuts.gotoSettings.combo)
+    .except("typing")
+    .on(
+      function () {
+        setActiveNavId("settings");
+      },
+      { description: shortcuts.gotoSettings.description },
+    );
 
-  $.bind(shortcuts.gotoConnections.combo).except('typing').on(function () {
-    setActiveNavId('connections');
-  }, { description: shortcuts.gotoConnections.description });
+  $.bind(shortcuts.gotoConnections.combo)
+    .except("typing")
+    .on(
+      function () {
+        setActiveNavId("connections");
+      },
+      { description: shortcuts.gotoConnections.description },
+    );
 
-  $.bind(shortcuts.gotoEditor.combo).except('typing').on(function () {
-    setActiveNavId('sql-console');
-  }, { description: shortcuts.gotoEditor.description });
+  $.bind(shortcuts.gotoEditor.combo)
+    .except("typing")
+    .on(
+      function () {
+        setActiveNavId("sql-console");
+      },
+      { description: shortcuts.gotoEditor.description },
+    );
 
-  $.bind(shortcuts.gotoDocker.combo).except('typing').on(function () {
-    setActiveNavId('docker');
-  }, { description: shortcuts.gotoDocker.description });
+  $.bind(shortcuts.gotoDocker.combo)
+    .except("typing")
+    .on(
+      function () {
+        setActiveNavId("docker");
+      },
+      { description: shortcuts.gotoDocker.description },
+    );
 
   // Connection switching by index (1-9)
   connections.slice(0, 9).forEach(function (conn, i) {
     const key = `switchConnection${i + 1}` as keyof typeof shortcuts;
     const def = shortcuts[key];
     if (def) {
-      $.bind(def.combo).on(function () {
-        handleConnectionSelect(conn.id);
-      }, { description: def.description });
+      $.bind(def.combo).on(
+        function () {
+          handleConnectionSelect(conn.id);
+        },
+        { description: def.description },
+      );
     }
   });
 
@@ -180,8 +214,7 @@ function IndexInner() {
 
       const viewChanged = activeNavId && currentView !== activeNavId;
       const tableChanged = selectedTableId && currentTable !== selectedTableId;
-      const connectionChanged =
-        activeConnectionId && currentConnection !== activeConnectionId;
+      const connectionChanged = activeConnectionId && currentConnection !== activeConnectionId;
 
       if (!viewChanged && !tableChanged && !connectionChanged) return;
 
@@ -328,17 +361,25 @@ function IndexInner() {
       setIsConnectionDialogOpen(false);
       setActiveConnectionId(newConnection.id);
       autoSelectFirstTableRef.current = true;
-      toast({ title: "Connection Added", description: `"${connection.name}" has been created and connected.`, variant: "success" });
+      toast({
+        title: "Connection Added",
+        description: `"${connection.name}" has been created and connected.`,
+        variant: "success",
+      });
     } catch (error) {
       toast({
         title: "Failed to Add Connection",
-        description: mapConnectionError(error instanceof Error ? error : new Error("Unknown error")),
+        description: mapConnectionError(
+          error instanceof Error ? error : new Error("Unknown error"),
+        ),
         variant: "destructive",
       });
     }
   }
 
-  async function handleUpdateConnection(connection: Omit<Connection, "id" | "status" | "createdAt">) {
+  async function handleUpdateConnection(
+    connection: Omit<Connection, "id" | "status" | "createdAt">,
+  ) {
     if (!editingConnection) return;
     try {
       const dbInfo = frontendToBackendDatabaseInfo(connection as Connection);
@@ -349,11 +390,17 @@ function IndexInner() {
       });
       setIsConnectionDialogOpen(false);
       setEditingConnection(undefined);
-      toast({ title: "Connection Updated", description: `"${connection.name}" has been updated.`, variant: "success" });
+      toast({
+        title: "Connection Updated",
+        description: `"${connection.name}" has been updated.`,
+        variant: "success",
+      });
     } catch (error) {
       toast({
         title: "Failed to Update Connection",
-        description: mapConnectionError(error instanceof Error ? error : new Error("Unknown error")),
+        description: mapConnectionError(
+          error instanceof Error ? error : new Error("Unknown error"),
+        ),
         variant: "destructive",
       });
     }
@@ -370,11 +417,17 @@ function IndexInner() {
         setActiveConnectionId("");
       }
       closeTabsForConnection(connection.id);
-      toast({ title: "Connection Deleted", description: `"${connection.name}" has been removed.`, variant: "success" });
+      toast({
+        title: "Connection Deleted",
+        description: `"${connection.name}" has been removed.`,
+        variant: "success",
+      });
     } catch (error) {
       toast({
         title: "Failed to Delete Connection",
-        description: mapConnectionError(error instanceof Error ? error : new Error("Unknown error")),
+        description: mapConnectionError(
+          error instanceof Error ? error : new Error("Unknown error"),
+        ),
         variant: "destructive",
       });
     }
@@ -385,15 +438,18 @@ function IndexInner() {
     autoSelectFirstTableRef.current = false;
   }
 
-  const handleTabClick = useCallback(function (tabId: string) {
-    const tab = tabs.find(function (candidate) {
-      return candidate.id === tabId;
-    });
-    if (tab && tab.connectionId !== activeConnectionId) {
-      setActiveConnectionId(tab.connectionId);
-    }
-    setActiveTab(tabId);
-  }, [activeConnectionId, setActiveTab, tabs]);
+  const handleTabClick = useCallback(
+    function (tabId: string) {
+      const tab = tabs.find(function (candidate) {
+        return candidate.id === tabId;
+      });
+      if (tab && tab.connectionId !== activeConnectionId) {
+        setActiveConnectionId(tab.connectionId);
+      }
+      setActiveTab(tabId);
+    },
+    [activeConnectionId, setActiveTab, tabs],
+  );
 
   function handleViewConnection(connectionId: string) {
     const connection = connections.find(function (c) {
@@ -420,9 +476,7 @@ function IndexInner() {
     setIsConnectionDialogOpen(true);
   }
 
-  async function handleDialogSave(
-    connectionData: Omit<Connection, "id" | "createdAt">,
-  ) {
+  async function handleDialogSave(connectionData: Omit<Connection, "id" | "createdAt">) {
     if (editingConnection) {
       await handleUpdateConnection(connectionData);
     } else {
@@ -430,19 +484,34 @@ function IndexInner() {
     }
   }
 
-  const handleTableSelect = useCallback(function (id: string, name: string) {
-    if (!activeConnectionId) return;
-    openTab({
-      connectionId: activeConnectionId,
-      tableId: id,
-      tableName: name,
-      label: name,
-    });
-  }, [activeConnectionId, openTab]);
+  const handleTableSelect = useCallback(
+    function (id: string, name: string) {
+      if (!activeConnectionId) return;
+      openTab({
+        connectionId: activeConnectionId,
+        tableId: id,
+        tableName: name,
+        label: name,
+      });
+    },
+    [activeConnectionId, openTab],
+  );
 
   const handleAutoSelectComplete = useCallback(function () {
     autoSelectFirstTableRef.current = false;
   }, []);
+
+  useEffect(
+    function clearTabsFromPreviousConnection() {
+      const previousConnectionId = previousConnectionIdRef.current;
+      if (previousConnectionId && previousConnectionId !== activeConnectionId) {
+        closeTabsForConnection(previousConnectionId);
+      }
+
+      previousConnectionIdRef.current = activeConnectionId;
+    },
+    [activeConnectionId, closeTabsForConnection],
+  );
 
   // Show database panel for sql-console and database-studio views
   const showDatabasePanel =
@@ -456,225 +525,233 @@ function IndexInner() {
 
   return (
     <LiveMonitorProvider activeConnectionId={activeConnectionId || undefined}>
-    <TooltipProvider>
-      <SidebarProvider>
-        <div className="flex flex-col h-full w-full bg-background overflow-hidden">
-          <div className="flex flex-1 overflow-hidden">
-            <NavigationSidebar
-              activeNavId={activeNavId}
-              onNavSelect={setActiveNavId}
-            />
+      <TooltipProvider>
+        <SidebarProvider>
+          <div className="flex flex-col h-full w-full bg-background overflow-hidden">
+            <div className="flex flex-1 overflow-hidden">
+              <NavigationSidebar activeNavId={activeNavId} onNavSelect={setActiveNavId} />
 
-            {showDatabasePanel && isSidebarOpen && (
-              <DatabaseSidebar
-                activeNavId={activeNavId}
-                onNavSelect={setActiveNavId}
-                onTableSelect={handleTableSelect}
-                selectedTableId={sidebarSelectedTableId}
-                autoSelectFirstTable={autoSelectFirstTableRef.current}
-                onAutoSelectComplete={handleAutoSelectComplete}
+              {showDatabasePanel && isSidebarOpen && (
+                <DatabaseSidebar
+                  activeNavId={activeNavId}
+                  onNavSelect={setActiveNavId}
+                  onTableSelect={handleTableSelect}
+                  selectedTableId={sidebarSelectedTableId}
+                  autoSelectFirstTable={autoSelectFirstTableRef.current}
+                  onAutoSelectComplete={handleAutoSelectComplete}
+                  connections={connections}
+                  activeConnectionId={activeConnectionId}
+                  onConnectionSelect={handleConnectionSelect}
+                  onAddConnection={handleOpenNewConnection}
+                  onManageConnections={function () {
+                    const activeConn = connections.find(function (c) {
+                      return c.id === activeConnectionId;
+                    });
+                    if (activeConn) {
+                      setEditingConnection(activeConn);
+                      setIsConnectionDialogOpen(true);
+                    }
+                  }}
+                  onViewConnection={handleViewConnection}
+                  onEditConnection={handleEditConnection}
+                  onDeleteConnection={handleDeleteConnection}
+                />
+              )}
+
+              <main className="flex-1 flex flex-col h-full overflow-hidden relative px-0">
+                <Suspense
+                  fallback={
+                    <ViewLoadingShell
+                      view={
+                        activeNavId === "sql-console" ||
+                        activeNavId === "schema-visualizer" ||
+                        activeNavId === "docker"
+                          ? activeNavId
+                          : "database-studio"
+                      }
+                    />
+                  }
+                >
+                  {connections.length === 0 &&
+                  !isLoading &&
+                  (activeNavId === "database-studio" || activeNavId === "sql-console") ? (
+                    <div className="flex flex-col flex-1 min-h-0">
+                      <TabBar
+                        tabs={[]}
+                        activeTabId={null}
+                        onTabClick={function () {}}
+                        onTabClose={function () {}}
+                        rightSlot={<WindowControls />}
+                      />
+                      <EmptyState
+                        icon={<Plug className="h-16 w-16" />}
+                        title="No Connections"
+                        description="Add a database connection to start exploring your data."
+                        action={{
+                          label: "Add Connection",
+                          onClick: handleOpenNewConnection,
+                        }}
+                      />
+                    </div>
+                  ) : activeNavId === "database-studio" ? (
+                    <div className="flex flex-col flex-1 min-h-0">
+                      <TabBar
+                        tabs={tabs}
+                        activeTabId={activeTabId}
+                        onTabClick={handleTabClick}
+                        onTabClose={closeTab}
+                        rightSlot={<WindowControls />}
+                      />
+                      <ErrorBoundary feature="Database Studio">
+                        <DatabaseStudio
+                          key={studioConnectionId || "empty"}
+                          tableId={selectedTableId}
+                          tableName={selectedTableName}
+                          isSidebarOpen={isSidebarOpen}
+                          onToggleSidebar={function () {
+                            return setIsSidebarOpen(!isSidebarOpen);
+                          }}
+                          initialRowPK={settings.lastRowPK}
+                          onRowSelectionChange={function (pk) {
+                            if (pk !== settings.lastRowPK) {
+                              updateSetting("lastRowPK", pk);
+                            }
+                          }}
+                          activeConnectionId={studioConnectionId}
+                          onAddConnection={handleOpenNewConnection}
+                        />
+                      </ErrorBoundary>
+                    </div>
+                  ) : activeNavId === "sql-console" ? (
+                    <ErrorBoundary feature="SQL Console">
+                      <SqlConsole
+                        onToggleSidebar={function () {
+                          return setIsSidebarOpen(!isSidebarOpen);
+                        }}
+                        activeConnectionId={activeConnectionId}
+                        onEditorContextChange={setSqlConsoleEditorContext}
+                        getConnectionName={function (id) {
+                          return (
+                            connections.find(function (c) {
+                              return c.id === id;
+                            })?.name ?? id.slice(0, 8)
+                          );
+                        }}
+                      />
+                    </ErrorBoundary>
+                  ) : activeNavId === "schema-visualizer" ? (
+                    <ErrorBoundary feature="Schema Visualizer">
+                      <SchemaVisualizer
+                        activeConnectionId={activeConnectionId}
+                        selectedTableId={selectedTableId}
+                        onSelectTable={handleTableSelect}
+                        onOpenTable={function (tableId, tableName) {
+                          handleTableSelect(tableId, tableName);
+                          setActiveNavId("database-studio");
+                        }}
+                        windowControls={<WindowControls />}
+                      />
+                    </ErrorBoundary>
+                  ) : activeNavId === "settings" ? (
+                    <ErrorBoundary feature="Settings">
+                      <SettingsView windowControls={<WindowControls />} />
+                    </ErrorBoundary>
+                  ) : activeNavId === "docker" ? (
+                    <ErrorBoundary feature="Docker Manager">
+                      <DockerView
+                        windowControls={<WindowControls />}
+                        onOpenInDataViewer={async function (container) {
+                          const userEnv = container.env.find(function (e) {
+                            return e.startsWith("POSTGRES_USER=");
+                          });
+                          const passEnv = container.env.find(function (e) {
+                            return e.startsWith("POSTGRES_PASSWORD=");
+                          });
+                          const dbEnv = container.env.find(function (e) {
+                            return e.startsWith("POSTGRES_DB=");
+                          });
+                          const primaryPort = container.ports.find(function (p) {
+                            return p.containerPort === 5432;
+                          });
+
+                          const user = userEnv ? userEnv.split("=")[1] : "postgres";
+                          const password = passEnv ? passEnv.split("=")[1] : "postgres";
+                          const database = dbEnv ? dbEnv.split("=")[1] : "postgres";
+                          const port = primaryPort ? primaryPort.hostPort : 5432;
+
+                          const connectionData = {
+                            name: container.name,
+                            type: "postgres" as const,
+                            host: "localhost",
+                            port,
+                            user,
+                            password,
+                            database,
+                          };
+
+                          await handleAddConnection(connectionData);
+                          setActiveNavId("database-studio");
+                        }}
+                      />
+                    </ErrorBoundary>
+                  ) : (
+                    <ErrorBoundary feature="SQL Console">
+                      <SqlConsole
+                        onToggleSidebar={function () {
+                          return setIsSidebarOpen(!isSidebarOpen);
+                        }}
+                        activeConnectionId={activeConnectionId}
+                        onEditorContextChange={setSqlConsoleEditorContext}
+                        getConnectionName={function (id) {
+                          return (
+                            connections.find(function (c) {
+                              return c.id === id;
+                            })?.name ?? id.slice(0, 8)
+                          );
+                        }}
+                      />
+                    </ErrorBoundary>
+                  )}
+                </Suspense>
+              </main>
+
+              <ConnectionDialog
+                open={isConnectionDialogOpen}
+                onOpenChange={function (open) {
+                  setIsConnectionDialogOpen(open);
+                  if (!open) setEditingConnection(undefined);
+                }}
+                onSave={handleDialogSave}
+                initialValues={editingConnection}
+              />
+
+              <CommandPalette
+                open={isCommandPaletteOpen}
+                onOpenChange={setIsCommandPaletteOpen}
+                activeNavId={paletteActiveNavId}
+                onNavigate={setActiveNavId}
                 connections={connections}
                 activeConnectionId={activeConnectionId}
-                onConnectionSelect={handleConnectionSelect}
-                onAddConnection={handleOpenNewConnection}
-                onManageConnections={function () {
-                  const activeConn = connections.find(function (c) {
-                    return c.id === activeConnectionId;
-                  });
-                  if (activeConn) {
-                    setEditingConnection(activeConn);
-                    setIsConnectionDialogOpen(true);
-                  }
-                }}
-                onViewConnection={handleViewConnection}
+                selectedTableId={selectedTableId}
+                onSelectConnection={handleConnectionSelect}
+                onCreateConnection={handleOpenNewConnection}
                 onEditConnection={handleEditConnection}
                 onDeleteConnection={handleDeleteConnection}
+                onSelectTable={handleTableSelect}
               />
-            )}
 
-            <main className="flex-1 flex flex-col h-full overflow-hidden relative px-0">
-              <Suspense
-                fallback={
-                  <ViewLoadingShell
-                    view={
-                      activeNavId === "sql-console" ||
-                      activeNavId === "schema-visualizer" ||
-                      activeNavId === "docker"
-                        ? activeNavId
-                        : "database-studio"
-                    }
-                  />
-                }
-              >
-              {connections.length === 0 &&
-              !isLoading &&
-              (activeNavId === "database-studio" ||
-                activeNavId === "sql-console") ? (
-                <div className="flex flex-col flex-1 min-h-0">
-                  <TabBar
-                    tabs={[]}
-                    activeTabId={null}
-                    onTabClick={function () {}}
-                    onTabClose={function () {}}
-                    rightSlot={<WindowControls />}
-                  />
-                  <EmptyState
-                    icon={<Plug className="h-16 w-16" />}
-                    title="No Connections"
-                    description="Add a database connection to start exploring your data."
-                    action={{
-                      label: "Add Connection",
-                      onClick: handleOpenNewConnection,
-                    }}
-                  />
-                </div>
-              ) : activeNavId === "database-studio" ? (
-                <div className="flex flex-col flex-1 min-h-0">
-                  <TabBar
-                    tabs={tabs}
-                    activeTabId={activeTabId}
-                    onTabClick={handleTabClick}
-                    onTabClose={closeTab}
-                    rightSlot={<WindowControls />}
-                  />
-                  <ErrorBoundary feature="Database Studio">
-                    <DatabaseStudio
-                      key={activeTabId ?? 'empty'}
-                      tableId={selectedTableId}
-                      tableName={selectedTableName}
-                      isSidebarOpen={isSidebarOpen}
-                      onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
-                      initialRowPK={settings.lastRowPK}
-                      onRowSelectionChange={function (pk) {
-                        if (pk !== settings.lastRowPK) {
-                          updateSetting("lastRowPK", pk);
-                        }
-                      }}
-                      activeConnectionId={studioConnectionId}
-                      onAddConnection={handleOpenNewConnection}
-                    />
-                  </ErrorBoundary>
-                </div>
-              ) : activeNavId === "sql-console" ? (
-                <ErrorBoundary feature="SQL Console">
-                  <SqlConsole
-                    onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
-                    activeConnectionId={activeConnectionId}
-                    onEditorContextChange={setSqlConsoleEditorContext}
-                    getConnectionName={function (id) {
-                      return connections.find(function (c) { return c.id === id; })?.name ?? id.slice(0, 8);
-                    }}
-                  />
-                </ErrorBoundary>
-              ) : activeNavId === "schema-visualizer" ? (
-                <ErrorBoundary feature="Schema Visualizer">
-                  <SchemaVisualizer
-                    activeConnectionId={activeConnectionId}
-                    selectedTableId={selectedTableId}
-                    onSelectTable={handleTableSelect}
-                    onOpenTable={function (tableId, tableName) {
-                      handleTableSelect(tableId, tableName);
-                      setActiveNavId("database-studio");
-                    }}
-                    windowControls={<WindowControls />}
-                  />
-                </ErrorBoundary>
-              ) : activeNavId === "settings" ? (
-                <ErrorBoundary feature="Settings">
-                  <SettingsView windowControls={<WindowControls />} />
-                </ErrorBoundary>
-              ) : activeNavId === "docker" ? (
-                <ErrorBoundary feature="Docker Manager">
-                  <DockerView
-                    windowControls={<WindowControls />}
-                    onOpenInDataViewer={async function (container) {
-                      const userEnv = container.env.find(function (e) {
-                        return e.startsWith("POSTGRES_USER=");
-                      });
-                      const passEnv = container.env.find(function (e) {
-                        return e.startsWith("POSTGRES_PASSWORD=");
-                      });
-                      const dbEnv = container.env.find(function (e) {
-                        return e.startsWith("POSTGRES_DB=");
-                      });
-                      const primaryPort = container.ports.find(function (p) {
-                        return p.containerPort === 5432;
-                      });
-
-                      const user = userEnv ? userEnv.split("=")[1] : "postgres";
-                      const password = passEnv
-                        ? passEnv.split("=")[1]
-                        : "postgres";
-                      const database = dbEnv ? dbEnv.split("=")[1] : "postgres";
-                      const port = primaryPort ? primaryPort.hostPort : 5432;
-
-                      const connectionData = {
-                        name: container.name,
-                        type: "postgres" as const,
-                        host: "localhost",
-                        port,
-                        user,
-                        password,
-                        database,
-                      };
-
-                      await handleAddConnection(connectionData);
-                      setActiveNavId("database-studio");
-                    }}
-                  />
-                </ErrorBoundary>
-              ) : (
-                <ErrorBoundary feature="SQL Console">
-                  <SqlConsole
-                    onToggleSidebar={function () { return setIsSidebarOpen(!isSidebarOpen); }}
-                    activeConnectionId={activeConnectionId}
-                    onEditorContextChange={setSqlConsoleEditorContext}
-                    getConnectionName={function (id) {
-                      return connections.find(function (c) { return c.id === id; })?.name ?? id.slice(0, 8);
-                    }}
-                  />
-                </ErrorBoundary>
-              )}
-              </Suspense>
-            </main>
-
-            <ConnectionDialog
-              open={isConnectionDialogOpen}
-              onOpenChange={function (open) {
-                setIsConnectionDialogOpen(open);
-                if (!open) setEditingConnection(undefined);
-              }}
-              onSave={handleDialogSave}
-              initialValues={editingConnection}
-            />
-
-            <CommandPalette
-              open={isCommandPaletteOpen}
-              onOpenChange={setIsCommandPaletteOpen}
-              activeNavId={paletteActiveNavId}
-              onNavigate={setActiveNavId}
-              connections={connections}
-              activeConnectionId={activeConnectionId}
-              selectedTableId={selectedTableId}
-              onSelectConnection={handleConnectionSelect}
-              onCreateConnection={handleOpenNewConnection}
-              onEditConnection={handleEditConnection}
-              onDeleteConnection={handleDeleteConnection}
-              onSelectTable={handleTableSelect}
-            />
-
-            <AiAssistantToggle />
-            <AiAssistantPanelHost
-              activeConnectionId={activeConnectionId || null}
-              activeView={activeNavId}
-              selectedTableId={selectedTableId || null}
-              selectedTableName={selectedTableName || null}
-              editorContext={activeNavId === "sql-console" ? sqlConsoleEditorContext : null}
-            />
+              <AiAssistantToggle />
+              <AiAssistantPanelHost
+                activeConnectionId={activeConnectionId || null}
+                activeView={activeNavId}
+                selectedTableId={selectedTableId || null}
+                selectedTableName={selectedTableName || null}
+                editorContext={activeNavId === "sql-console" ? sqlConsoleEditorContext : null}
+              />
+            </div>
           </div>
-        </div>
-      </SidebarProvider>
-    </TooltipProvider>
+        </SidebarProvider>
+      </TooltipProvider>
     </LiveMonitorProvider>
   );
 }
@@ -688,8 +765,12 @@ export default function Index() {
 }
 
 function AiAssistantToggle() {
-  const open = useAiAssistantStore(function (s) { return s.open; });
-  const toggleOpen = useAiAssistantStore(function (s) { return s.toggleOpen; });
+  const open = useAiAssistantStore(function (s) {
+    return s.open;
+  });
+  const toggleOpen = useAiAssistantStore(function (s) {
+    return s.toggleOpen;
+  });
   if (open) return null;
   return (
     <Button
@@ -711,11 +792,20 @@ function AiAssistantPanelHost(props: {
   selectedTableName: string | null;
   editorContext: AiAssistantEditorContext | null;
 }) {
-  const open = useAiAssistantStore(function (s) { return s.open; });
+  const open = useAiAssistantStore(function (s) {
+    return s.open;
+  });
   if (!open) return null;
 
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <div className="fixed bottom-4 right-4 z-[70] w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-background/95 p-3 shadow-lg">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="mt-3 h-9 w-full" />
+        </div>
+      }
+    >
       <AiAssistantPanel {...props} />
     </Suspense>
   );

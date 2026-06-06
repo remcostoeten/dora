@@ -4,6 +4,8 @@ description: Generate release notes and changelog using AI
 
 # Release Generation Workflow
 
+Optional AI helper for drafting release notes before a tag. The normal release path is documented in `docs/distribution/release-guide.md`: push a semver tag, CI builds and publishes the GitHub release, then the `post-release` job prepends `CHANGELOG.md`, updates `README.md`, and runs `bun run generate:changelog-data`. Use this workflow only when you want a human-reviewed draft in `docs/RELEASE_NOTES.md` ahead of that automation.
+
 ## Prerequisites
 
 1. Ensure you have a `.env` file with your API key configured (see `tools/scripts/.env.example`)
@@ -54,9 +56,9 @@ bun release:gen --version-bump=major
 
 ## Output Files
 
-- `RELEASE_NOTES.md` - Full release notes
-- `CHANGELOG.md` - Appended changelog entry
-- `apps/desktop/package.json` - Updated version (if using --version-bump)
+- `docs/RELEASE_NOTES.md` — draft release notes (not written to the repo root)
+- `CHANGELOG.md` — appended entry when using `--version-bump` locally (CI overwrites the top entry from GitHub-generated notes after publish)
+- `apps/desktop/package.json` — updated version when using `--version-bump`
 
 ## Troubleshooting
 

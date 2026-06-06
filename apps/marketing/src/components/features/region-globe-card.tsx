@@ -47,7 +47,7 @@ export function RegionGlobeCard({
         const draw = (running: boolean) => {
             const vel = running ? (motion.velocityRef.current ?? 0) : 0
             // gently drifts at rest; scrolling just nudges the rotation speed
-            rotationRef.current += running ? 0.0025 + vel * 0.05 : 0
+            rotationRef.current += running ? 0.0025 + vel * 0.004 : 0
             // autonomous phase that always advances, independent of scroll, so the
             // colour highlight travels around the globe on its own
             const t = running ? performance.now() / 1000 : 0.75

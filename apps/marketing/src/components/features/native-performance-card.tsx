@@ -54,7 +54,7 @@ export function NativePerformanceCard({
             // scroll only nudges the spin speed; colour responds to hover only, so
             // it never blinks or flashes while scrolling
             time += running
-                ? (hoverRef.current ? 0.024 : 0.008) + vel * 0.05
+                ? (hoverRef.current ? 0.024 : 0.008) + vel * 0.004
                 : 0
             const active = hoverRef.current
             ctx.clearRect(0, 0, rect.width, rect.height)

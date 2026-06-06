@@ -22,6 +22,7 @@ type Props = {
 	rowIndex: number
 	colIndex?: number
 	selectedRows?: Set<number>
+	hasFilter?: boolean
 	onAction?: (
 		action: CellAction,
 		value: unknown,
@@ -38,6 +39,7 @@ export function CellContextMenu({
 	rowIndex,
 	colIndex = 0,
 	selectedRows,
+	hasFilter = false,
 	onAction,
 	onOpenChange,
 	children
@@ -91,31 +93,28 @@ export function CellContextMenu({
 			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
 			<ContextMenuContent className='w-[180px]'>
 				<ContextMenuItem onClick={handleEdit}>
-					<Pencil className='h-4 w-4 mr-2' />
+					<Pencil />
 					<span>Edit cell</span>
 				</ContextMenuItem>
 				<ContextMenuSeparator />
 				<ContextMenuItem onClick={handleCopy}>
-					<Copy className='h-4 w-4 mr-2' />
+					<Copy />
 					<span>Copy value</span>
 				</ContextMenuItem>
 				{isComplexType && (
 					<ContextMenuItem onClick={handleCopyJson}>
-						<FileJson className='h-4 w-4 mr-2' />
+						<FileJson />
 						<span>Copy as JSON</span>
 					</ContextMenuItem>
 				)}
 				<ContextMenuSeparator />
-				<ContextMenuItem onClick={handleFilterByValue}>
-					<Filter className='h-4 w-4 mr-2' />
+				<ContextMenuItem onClick={handleFilterByValue} disabled={!hasFilter}>
+					<Filter />
 					<span>Filter by this value</span>
 				</ContextMenuItem>
 				<ContextMenuSeparator />
-				<ContextMenuItem
-					onClick={handleSetNull}
-					className='text-destructive focus:text-destructive focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-900/20'
-				>
-					<Trash2 className='h-4 w-4 mr-2' />
+				<ContextMenuItem onClick={handleSetNull} variant='destructive'>
+					<Trash2 />
 					<span>
 						{hasSelectedRows
 							? `Set to NULL (${selectedRows!.size} rows)`

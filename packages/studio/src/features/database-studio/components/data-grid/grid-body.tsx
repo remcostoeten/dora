@@ -156,6 +156,7 @@ export function GridBody({
 							rowIndex={rowIndex}
 							columns={columns}
 							tableName={tableName}
+							allRows={rows}
 							onAction={function (action, row, index, batchIndexes) {
 								onRowAction?.(action, row, index, batchIndexes)
 							}}
@@ -221,6 +222,7 @@ export function GridBody({
 											rowIndex={rowIndex}
 											colIndex={colIndex}
 											selectedRows={effectiveSelectedRows}
+											hasFilter={!!onFilterAdd}
 											onAction={function (
 												action,
 												value,

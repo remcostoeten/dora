@@ -204,47 +204,41 @@ export function ContainerCard({
 			</ContextMenuTrigger>
 			<ContextMenuContent className='w-48'>
 				<ContextMenuItem onClick={handleClick}>
-					<MousePointerClick className='h-4 w-4' />
+					<MousePointerClick />
 					Select container
 				</ContextMenuItem>
 				{isRunning ? (
 					<ContextMenuItem
 						disabled={isActionPending || !onStop}
 						onClick={function () {
-							if (onStop) {
-								onStop(container.id)
-							}
+							if (onStop) onStop(container.id)
 						}}
 					>
-						<Square className='h-4 w-4' />
+						<Square />
 						Stop
 					</ContextMenuItem>
 				) : (
 					<ContextMenuItem
 						disabled={isActionPending || !onStart}
 						onClick={function () {
-							if (onStart) {
-								onStart(container.id)
-							}
+							if (onStart) onStart(container.id)
 						}}
 					>
-						<Play className='h-4 w-4' />
+						<Play />
 						Start
 					</ContextMenuItem>
 				)}
 				<ContextMenuItem
 					disabled={isActionPending || !isRunning || !onRestart}
 					onClick={function () {
-						if (onRestart) {
-							onRestart(container.id)
-						}
+						if (onRestart) onRestart(container.id)
 					}}
 				>
-					<RotateCcw className='h-4 w-4' />
+					<RotateCcw />
 					Restart
 				</ContextMenuItem>
 				<ContextMenuItem onClick={copyHostPortToClipboard}>
-					<Copy className='h-4 w-4' />
+					<Copy />
 					Copy host:port
 				</ContextMenuItem>
 				<ContextMenuSeparator />
@@ -252,7 +246,7 @@ export function ContainerCard({
 					disabled={!isRunning || !onOpenInDataViewer}
 					onClick={handleOpenInDataViewer}
 				>
-					<Database className='h-4 w-4' />
+					<Database />
 					Open in Data Viewer
 				</ContextMenuItem>
 			</ContextMenuContent>

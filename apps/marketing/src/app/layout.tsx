@@ -3,6 +3,7 @@ import localFont from 'next/font/local'
 import type { ReactNode } from 'react'
 import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
+import { Analytics } from '@remcostoeten/analytics'
 
 import { siteConfig } from '@/core/config/site'
 import '@/core/three-suppress'
@@ -66,6 +67,12 @@ export default function RootLayout({ children }: TRootProps) {
                 <main className="min-h-screen bg-background text-foreground">
                     {children}
                 </main>
+                <Analytics
+                    projectId={process.env.NEXT_PUBLIC_ANALYTICS_PROJECT_ID}
+                    ingestUrl={process.env.NEXT_PUBLIC_ANALYTICS_INGEST_URL}
+                    disabled={process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'false'}
+                    // trackOutbound and trackErrors available after publishing v1.5.0
+                />
             </body>
         </html>
     )

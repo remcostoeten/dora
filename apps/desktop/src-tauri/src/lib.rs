@@ -2,12 +2,15 @@
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 
 mod bindings;
+mod commands;
 pub mod commands_system;
 pub mod config;
+pub mod credential_storage;
 pub mod credentials;
 pub mod database;
 mod error;
 mod init;
+mod ollama_installer;
 mod observability;
 mod storage;
 mod test_queries;
@@ -42,6 +45,10 @@ pub struct AppState {
     pub command_registry: RwLock<CommandRegistry>,
     /// Cancellation flags keyed by AI request id, set by the abort command and observed by the streaming loop.
     pub ai_cancel_flags: DashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Cancellation flags keyed by Ollama pull request id.
+    pub ollama_cancel_flags: DashMap<String, Arc<std::sync::atomic::AtomicBool>>,
+    /// Cancellation flags keyed by Ollama install request id.
+    pub ollama_install_cancel_flags: DashMap<String, Arc<std::sync::atomic::AtomicBool>>,
 }
 
 impl AppState {
@@ -57,14 +64,18 @@ impl AppState {
             log::warn!("Failed to load custom shortcuts: {}", e);
         }
 
-        Ok(Self {
+        let state = Self {
             connections: DashMap::new(),
             schemas: DashMap::new(),
             storage,
             stmt_manager: StatementManager::new(),
             command_registry: RwLock::new(command_registry),
             ai_cancel_flags: DashMap::new(),
-        })
+            ollama_cancel_flags: DashMap::new(),
+            ollama_install_cancel_flags: DashMap::new(),
+        };
+        credential_storage::warm_up();
+        Ok(state)
     }
 }
 
@@ -147,6 +158,7 @@ pub fn run() {
             database::commands::update_connection_color,
             database::commands::connect_to_database,
             database::commands::disconnect_from_database,
+            database::commands::cancel_query,
             database::commands::start_query,
             database::commands::fetch_query,
             database::commands::fetch_page,
@@ -216,9 +228,22 @@ pub fn run() {
             database::commands::ai_complete_stream,
             database::commands::ai_set_provider,
             database::commands::ai_get_provider,
+            database::commands::ai_get_config,
+            database::commands::ai_set_config,
+            database::commands::ai_get_status,
+            database::commands::ai_list_provider_models,
+            database::commands::ai_get_usage_summary,
             database::commands::ai_set_gemini_key,
             database::commands::ai_configure_ollama,
+            database::commands::ai_get_ollama_status,
+            database::commands::ai_list_ollama_catalog,
+            database::commands::ai_pull_ollama_model,
+            database::commands::ai_cancel_ollama_pull,
+            database::commands::ai_delete_ollama_model,
             database::commands::ai_list_ollama_models,
+            database::commands::ai_install_ollama,
+            database::commands::ai_cancel_ollama_install,
+            database::commands::ai_start_ollama,
             database::commands::ai_groq_status,
             database::commands::ai_abort_stream,
             database::commands::ai_keys_list,
@@ -250,7 +275,13 @@ pub fn run() {
             database::commands::register_database,
             database::commands::create_database,
             database::commands::reset_storage,
+            commands::credential_storage::get_credential_storage_status,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| {
+            if matches!(event, tauri::RunEvent::Exit) {
+                crate::ollama_installer::stop_managed_server();
+            }
+        });
 }

@@ -1,6 +1,6 @@
 {
 	"name": "dora",
-	"version": "0.26.7",
+	"version": "0.27.0",
 	"private": true,
 	"workspaces": [
 		"apps/*",
@@ -11,7 +11,7 @@
 		"generate:releasetext": "bash scripts/generate-release-text.sh",
 		"generate:changelog-data": "bun scripts/sync-changelog-data.ts",
 		"release": "bash scripts/release.sh",
-		"prebuild": "bun run tools/prebuild.ts",
+		"prebuild": "bun run tools/print-flathub-reminder.ts && bun run tools/prebuild.ts",
 		"build": "turbo build",
 		"lint": "bun run --cwd packages/style lint",
 		"lint:fix": "bun run --cwd packages/style lint:fix",

@@ -1,18 +1,16 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { DockerView } from '../../../../../../../apps/desktop/src/features/docker-manager/components/docker-view'
-import * as useContainersModule from '../../../../../../../apps/desktop/src/features/docker-manager/api/queries/use-containers'
-import * as useCreateContainerModule from '../../../../../../../apps/desktop/src/features/docker-manager/api/mutations/use-create-container'
+import { DockerView } from '@/features/docker-manager/components/docker-view'
+import * as useContainersModule from '@/features/docker-manager/api/queries/use-containers'
+import * as useCreateContainerModule from '@/features/docker-manager/api/mutations/use-create-container'
 import { TooltipProvider } from '@/shared/ui/tooltip'
 
 // Mock UI components to avoid dependency issues and focus on logic
-vi.mock('@/components/ui/use-toast', () => ({
+vi.mock('@studio/shared/ui/use-toast', () => ({
 	useToast: () => ({ toast: vi.fn() })
 }))
 
-vi.mock(
-	'../../../../../../../apps/desktop/src/features/docker-manager/components/container-list',
-	() => ({
+vi.mock('@/features/docker-manager/components/container-list', () => ({
 		ContainerList: ({ containers, isLoading }: any) => (
 			<div data-testid='container-list'>
 				{isLoading ? 'Loading containers...' : `Containers: ${containers?.length || 0}`}
@@ -21,31 +19,23 @@ vi.mock(
 	})
 )
 
-vi.mock(
-	'../../../../../../../apps/desktop/src/features/docker-manager/components/container-details-panel',
-	() => ({
+vi.mock('@/features/docker-manager/components/container-details-panel', () => ({
 		ContainerDetailsPanel: () => <div data-testid='container-details' />
 	})
 )
 
-vi.mock(
-	'../../../../../../../apps/desktop/src/features/docker-manager/components/create-container-dialog',
-	() => ({
+vi.mock('@/features/docker-manager/components/create-container-dialog', () => ({
 		CreateContainerDialog: ({ open }: any) =>
 			open ? <div data-testid='create-dialog' /> : null
 	})
 )
 
-vi.mock(
-	'../../../../../../../apps/desktop/src/features/docker-manager/components/sandbox-indicator',
-	() => ({
+vi.mock('@/features/docker-manager/components/sandbox-indicator', () => ({
 		SandboxIndicator: () => <div data-testid='sandbox-indicator' />
 	})
 )
 
-vi.mock(
-	'../../../../../../../apps/desktop/src/features/docker-manager/api/mutations/use-container-actions',
-	() => ({
+vi.mock('@/features/docker-manager/api/mutations/use-container-actions', () => ({
 		useContainerActions: () => ({
 			mutate: vi.fn(),
 			isPending: false

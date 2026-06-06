@@ -26,6 +26,7 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::get_connection_history,
         db_commands::set_connection_pin,
         db_commands::verify_pin_and_get_credentials,
+        db_commands::cancel_query,
         db_commands::start_query,
         db_commands::fetch_query,
         db_commands::fetch_page,
@@ -76,9 +77,22 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::ai_complete_stream,
         db_commands::ai_set_provider,
         db_commands::ai_get_provider,
+        db_commands::ai_get_config,
+        db_commands::ai_set_config,
+        db_commands::ai_get_status,
+        db_commands::ai_list_provider_models,
+        db_commands::ai_get_usage_summary,
         db_commands::ai_set_gemini_key,
         db_commands::ai_configure_ollama,
+        db_commands::ai_get_ollama_status,
+        db_commands::ai_list_ollama_catalog,
+        db_commands::ai_pull_ollama_model,
+        db_commands::ai_cancel_ollama_pull,
+        db_commands::ai_delete_ollama_model,
         db_commands::ai_list_ollama_models,
+        db_commands::ai_install_ollama,
+        db_commands::ai_cancel_ollama_install,
+        db_commands::ai_start_ollama,
         db_commands::ai_groq_status,
         db_commands::ai_abort_stream,
         db_commands::ai_keys_list,
@@ -93,7 +107,8 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::switch_storage,
         db_commands::register_database,
         db_commands::create_database,
-        db_commands::reset_storage
+        db_commands::reset_storage,
+        crate::commands::credential_storage::get_credential_storage_status
     ])
 }
 

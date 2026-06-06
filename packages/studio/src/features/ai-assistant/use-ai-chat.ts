@@ -1,10 +1,11 @@
 import { Channel } from '@tauri-apps/api/core'
-import { useCallback, useRef, useState } from 'react'
+import { startTransition, useCallback, useRef, useState } from 'react'
 import { useIsTauri } from '@studio/core/data-provider'
 import { commands } from '@studio/lib/bindings'
 import type { AiStreamEvent } from '@studio/lib/bindings'
 import { buildChatPrompt } from './build-prompt'
 import { buildMockChatResponse, streamMockText } from './mock-ai'
+import { createStreamBatcher } from './stream-batch'
 import { buildThreadKey, useAiAssistantStore } from './store'
 import type { AiAssistantContext, ChatMessage } from './types'
 
@@ -14,8 +15,14 @@ type SendArgs = {
 	context?: AiAssistantContext
 }
 
+type StreamingSnapshot = {
+	messageId: string
+	content: string
+}
+
 type UseAiChatResult = {
 	messages: ChatMessage[]
+	streamingSnapshot: StreamingSnapshot | null
 	isStreaming: boolean
 	error: string | null
 	send: (args: SendArgs) => Promise<void>
@@ -47,6 +54,7 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 	})
 
 	const [isStreaming, setIsStreaming] = useState(false)
+	const [streamingSnapshot, setStreamingSnapshot] = useState<StreamingSnapshot | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const abortRef = useRef<{ cancelled: boolean; requestId: string | null }>({
 		cancelled: false,
@@ -102,25 +110,48 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 			abortRef.current.requestId = requestId
 			setIsStreaming(true)
 
+			const batcher = createStreamBatcher(function onFlush(content) {
+				startTransition(function () {
+					setStreamingSnapshot({ messageId: assistantId, content })
+				})
+			})
+			let accumulated = ''
+
+			function finishStream(finalContent?: string, patch: Partial<ChatMessage> = {}) {
+				batcher.flush()
+				batcher.dispose()
+				const content = finalContent ?? accumulated
+				updateMessage(key, assistantId, {
+					content,
+					streaming: false,
+					...patch
+				})
+				setStreamingSnapshot(null)
+			}
+
 			if (!isTauri) {
-				let accumulated = ''
 				try {
 					await streamMockText({
 						text: buildMockChatResponse(packed, activeConnectionId),
 						onToken(token) {
 							accumulated += token
-							updateMessage(key, assistantId, { content: accumulated })
+							batcher.push(token)
 						},
 						isCancelled() {
 							return abortRef.current.cancelled
 						}
 					})
-					updateMessage(key, assistantId, { streaming: false })
+					if (!abortRef.current.cancelled) {
+						finishStream(accumulated)
+					}
 				} catch (e) {
 					if (!abortRef.current.cancelled) {
 						const message = e instanceof Error ? e.message : String(e)
 						setError(message)
-						updateMessage(key, assistantId, { error: message, streaming: false })
+						finishStream(accumulated, { error: message })
+					} else {
+						batcher.dispose()
+						setStreamingSnapshot(null)
 					}
 				} finally {
 					abortRef.current.requestId = null
@@ -130,27 +161,25 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 			}
 
 			const channel = new Channel<AiStreamEvent>()
-			let accumulated = ''
 
 			channel.onmessage = function onmessage(event) {
 				if (abortRef.current.cancelled) return
 				switch (event.type) {
 					case 'token':
 						accumulated += event.text
-						updateMessage(key, assistantId, { content: accumulated })
+						batcher.push(event.text)
 						break
 					case 'final':
 						if (event.content && event.content.length > accumulated.length) {
 							accumulated = event.content
-							updateMessage(key, assistantId, { content: accumulated })
+							startTransition(function () {
+								setStreamingSnapshot({ messageId: assistantId, content: accumulated })
+							})
 						}
 						break
 					case 'error':
 						setError(event.message)
-						updateMessage(key, assistantId, {
-							error: event.message,
-							streaming: false
-						})
+						finishStream(accumulated, { error: event.message })
 						break
 				}
 			}
@@ -165,7 +194,7 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 					channel
 				)
 				if (abortRef.current.cancelled) {
-					updateMessage(key, assistantId, { streaming: false })
+					finishStream(accumulated)
 					return
 				}
 				if (result.status === 'error') {
@@ -174,15 +203,19 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 							? result.error
 							: result.error?.detail ?? 'AI request failed'
 					setError(message)
-					updateMessage(key, assistantId, { error: message, streaming: false })
+					finishStream(accumulated, { error: message })
 					return
 				}
-				updateMessage(key, assistantId, { streaming: false })
+				finishStream(accumulated)
 			} catch (e) {
 				if (!abortRef.current.cancelled) {
 					const message = e instanceof Error ? e.message : String(e)
 					setError(message)
-					updateMessage(key, assistantId, { error: message, streaming: false })
+					finishStream(accumulated, { error: message })
+				} else {
+					batcher.dispose()
+					setStreamingSnapshot(null)
+					updateMessage(key, assistantId, { streaming: false })
 				}
 			} finally {
 				abortRef.current.requestId = null
@@ -195,9 +228,10 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 	const clear = useCallback(
 		function clear(connId: string | null) {
 			clearThread(buildThreadKey(connId))
+			setStreamingSnapshot(null)
 		},
 		[clearThread]
 	)
 
-	return { messages, isStreaming, error, send, abort, clear }
+	return { messages, streamingSnapshot, isStreaming, error, send, abort, clear }
 }

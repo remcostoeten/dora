@@ -15,7 +15,7 @@ import { usePageVisible } from '@/shared/hooks/use-page-visible'
 import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 
 const FEATURE_CELL_CLASS =
-    'min-h-[300px] border-r border-b border-[#2b252c] overflow-hidden transition-colors hover:bg-[rgba(245,192,192,0.06)]'
+    'min-h-[300px] border-r border-b border-[#2b252c] overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-[rgba(245,192,192,0.06)]'
 const FEATURE_REVEAL_CLASS = 'flex h-full w-full'
 
 export function FeaturesSection() {
@@ -48,7 +48,7 @@ export function FeaturesSection() {
             <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2" />
             <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2" />
             {/* Heading */}
-            <div className="px-6 sm:px-8 py-12 border-b border-[#2b252c]">
+            <div className="px-6 sm:px-8 py-12 border-b border-r border-[#2b252c]">
                 <ScrollReveal delay={40}>
                     <h2 className="text-2xl text-[#7a7a7a] font-light italic mb-1 font-[family-name:var(--font-pixel)]">
                         More Than a GUI.

@@ -133,8 +133,7 @@ impl WriteAdapter for PostgresAdapter {
         let mut params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
             Vec::with_capacity(row_data.len());
         for (idx, (col, value)) in row_data.iter().enumerate() {
-            let col_type =
-                pg_column_type(self.client(), &table, schema.as_deref(), col).await?;
+            let col_type = pg_column_type(self.client(), &table, schema.as_deref(), col).await?;
             col_names_vec.push(format!("\"{}\"", col));
             placeholders_vec.push(format!("${}::text::{}", idx + 1, col_type));
             let text: Option<String> = match value {

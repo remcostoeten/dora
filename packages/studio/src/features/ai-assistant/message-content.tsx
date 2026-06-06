@@ -2,14 +2,25 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { parseAssistantSqlResponse } from './assistant-response-parser'
 import { CodeBlock } from './code-block'
+import { StreamingMessageContent } from './streaming-message-content'
 
 type Props = {
 	content: string
+	isStreaming?: boolean
 	activeConnectionId: string | null
 	onEditorInsert?: (sql: string) => void
 }
 
-export function MessageContent({ content, activeConnectionId, onEditorInsert }: Props) {
+export function MessageContent({
+	content,
+	isStreaming = false,
+	activeConnectionId,
+	onEditorInsert
+}: Props) {
+	if (isStreaming) {
+		return <StreamingMessageContent content={content} />
+	}
+
 	const parsed = parseAssistantSqlResponse(content)
 
 	if (parsed) {

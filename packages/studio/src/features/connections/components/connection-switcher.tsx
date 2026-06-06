@@ -505,43 +505,43 @@ export function ConnectionSwitcher({
 											setContextMenuConnectionId(null)
 										}}
 									>
+										{onViewConnection && (
 										<ContextMenuItem
 											onSelect={function viewConnection() {
-												onViewConnection?.(connection.id)
+												onViewConnection(connection.id)
 												closeMenus()
 											}}
-											className='gap-2 cursor-pointer'
 										>
-											<Eye className='h-4 w-4' />
+											<Eye />
 											View Details
 										</ContextMenuItem>
-										{onEditConnection && (
+									)}
+									{onEditConnection && (
+										<ContextMenuItem
+											onSelect={function editConnection() {
+												onEditConnection(connection.id)
+												closeMenus()
+											}}
+										>
+											<Pencil />
+											Edit Connection
+										</ContextMenuItem>
+									)}
+									{onDeleteConnection && (
+										<>
+											<ContextMenuSeparator />
 											<ContextMenuItem
-												onSelect={function editConnection() {
-													onEditConnection(connection.id)
-													closeMenus()
+												onSelect={function deleteConnection() {
+													confirmDelete(connection.id)
+													setContextMenuConnectionId(null)
 												}}
-												className='gap-2 cursor-pointer'
+												variant='destructive'
 											>
-												<Pencil className='h-4 w-4' />
-												Edit Connection
+												<Trash2 />
+												Delete Connection
 											</ContextMenuItem>
-										)}
-										{onDeleteConnection && (
-											<>
-												<ContextMenuSeparator />
-												<ContextMenuItem
-													onSelect={function deleteConnection() {
-														confirmDelete(connection.id)
-														setContextMenuConnectionId(null)
-													}}
-													className='gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer'
-												>
-													<Trash2 className='h-4 w-4' />
-													Delete Connection
-												</ContextMenuItem>
-											</>
-										)}
+										</>
+									)}
 									</ContextMenuContent>
 									</ContextMenu>
 									</motion.div>

@@ -41,7 +41,7 @@ const CHANGELOG_PATH = path.join(REPO_ROOT, 'CHANGELOG.md')
 const PACKAGE_JSON_PATH = path.join(REPO_ROOT, 'apps/desktop/package.json')
 const DESKTOP_OUTPUT_PATH = path.join(
 	REPO_ROOT,
-	'apps/desktop/src/features/sidebar/changelog-data.ts'
+	'packages/studio/src/features/sidebar/changelog-data.ts'
 )
 const MARKETING_OUTPUT_PATH = path.join(
 	REPO_ROOT,
@@ -78,7 +78,7 @@ function parseChangelog(markdown: string): ParsedRelease[] {
 			continue
 		}
 
-		const itemMatch = line.match(/^- (.+)$/)
+		const itemMatch = line.match(/^[-*] (.+)$/)
 		if (itemMatch && currentGroup) {
 			const item = itemMatch[1].trim()
 			if (item.length > 0) currentGroup.items.push(item)

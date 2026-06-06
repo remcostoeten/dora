@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock the docker-client module
-vi.mock('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client', () => ({
+vi.mock('@/features/docker-manager/api/docker-client', () => ({
 	checkDockerAvailability: vi.fn(),
 	getContainerLogs: vi.fn(),
 	copyToContainer: vi.fn().mockResolvedValue(undefined),
@@ -25,10 +25,8 @@ describe('seedDatabase', () => {
 		})
 
 		// Re-import modules after setting up environment
-		dockerClient =
-			await import('../../../../../../../apps/desktop/src/features/docker-manager/api/docker-client')
-		containerService =
-			await import('../../../../../../../apps/desktop/src/features/docker-manager/api/container-service')
+		dockerClient = await import('@/features/docker-manager/api/docker-client')
+		containerService = await import('@/features/docker-manager/api/container-service')
 	})
 
 	afterEach(() => {

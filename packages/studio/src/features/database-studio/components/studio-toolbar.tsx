@@ -116,7 +116,7 @@ export function StudioToolbar({
 
 	return (
 		<div className='flex flex-col shrink-0 bg-sidebar border-b border-sidebar-border'>
-			<div className='flex items-center h-10 pl-0 pr-2 gap-2 text-sm'>
+			<div className='flex items-center h-10 pl-0 pr-2 gap-2 text-sm overflow-x-auto scrollbar-none'>
 				<div className='flex items-center gap-1 mr-2'>
 					{onToggleSidebar && (
 						<Button

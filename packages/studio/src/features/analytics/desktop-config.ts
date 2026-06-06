@@ -7,12 +7,7 @@ function envFlag(value: string | boolean | undefined, fallback: boolean): boolea
 	return value === '1' || value === 'true' || value === 'yes' || value === 'on'
 }
 
-/**
- * Analytics configuration for the Dora desktop/Vite app.
- *
- * Reuse `createAnalyticsConfig` directly in Next.js and pass
- * `process.env.NEXT_PUBLIC_*` values from a client boundary instead.
- */
+/** Analytics config for the Tauri/Vite desktop app — reads VITE_ANALYTICS_* env vars. */
 export const desktopAnalyticsConfig = createAnalyticsConfig({
 	environment: ENV_MODE,
 	enabled: envFlag(getEnv('VITE_ANALYTICS_ENABLED'), ENV_PROD),
@@ -20,10 +15,10 @@ export const desktopAnalyticsConfig = createAnalyticsConfig({
 	remcostoeten: {
 		enabled: envFlag(getEnv('VITE_REMCO_ANALYTICS_ENABLED'), true),
 		projectId: getEnv('VITE_ANALYTICS_PROJECT_ID') ?? 'dora-desktop',
-		ingestUrl: getEnv('VITE_ANALYTICS_INGEST_URL') ?? 'https://ingestion.remcostoeten.nl'
+		ingestUrl: getEnv('VITE_ANALYTICS_INGEST_URL') ?? 'https://ingestion.remcostoeten.nl',
 	},
 	vercel: {
 		enabled: envFlag(getEnv('VITE_VERCEL_ANALYTICS_ENABLED'), ENV_PROD),
-		trackCustomEvents: envFlag(getEnv('VITE_VERCEL_ANALYTICS_EVENTS'), false)
-	}
+		trackCustomEvents: envFlag(getEnv('VITE_VERCEL_ANALYTICS_EVENTS'), false),
+	},
 })

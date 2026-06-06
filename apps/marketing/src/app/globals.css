@@ -169,32 +169,22 @@
     --primary: hsl(0 0% 98%);
     --primary-foreground: hsl(0 0% 9%);
     --muted: hsl(0 0% 17%);
-    --muted-foreground: hsl(0 0% 52%);
+    --muted-foreground: hsl(0 0% 58%);
     --accent: hsl(0 0% 14%);
     --accent-foreground: hsl(0 0% 98%);
     --border: hsl(0 0% 16%);
     --input: hsl(0 0% 16%);
     --ring: hsl(0 0% 83%);
     --sidebar: oklch(0.145 0 0);
-    --sidebar-foreground: hsl(0 0% 82%);
-    --sidebar-accent: hsl(0 0% 11%);
-    --sidebar-accent-foreground: hsl(0 0% 95%);
-    --sidebar-border: hsl(0 0% 16%);
+    --sidebar-foreground: hsl(0 0% 86%);
+    --sidebar-accent: hsl(0 0% 14%);
+    --sidebar-accent-foreground: hsl(0 0% 98%);
+    --sidebar-border: hsl(0 0% 28%);
     position: relative;
     z-index: 2;
-    /* Full-bleed: break out of the frame's horizontal padding so the demo
-       runs edge-to-edge against the frame borders. */
-    margin-top: clamp(4px, 1vh, 12px);
-    /* No bottom gap: the demo's bottom fade lands flush on the frame's bottom
-       border line + corner crosses and merges straight into the next section. */
-    margin-bottom: 0;
-    /* Full-bleed to the viewport edges: break out of the .marketing-container
-       (centered, max 1100px) and the frame padding so the demo runs from one
-       screen edge to the other beneath the framed hero content. */
-    margin-inline: calc(50% - 50vw);
-    width: 100vw;
-    max-width: 100vw;
-    height: clamp(520px, 58vh, 680px);
+    margin: clamp(28px, 5vw, 56px) -1.5rem clamp(32px, 5vw, 56px);
+    width: calc(100% + 3rem);
+    height: clamp(420px, 50vw, 590px);
     font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
@@ -202,24 +192,30 @@
     position: relative;
     height: 100%;
     overflow: hidden;
-    /* Framed in the marketing system: a hairline top divider in the same frame
-       color as the header/features/footer, matched by the rose corner ticks on
-       the wrapper. The left/right edges are the hero frame's own border-x; the
-       bottom merges into the page via the fade. */
-    border: 0;
-    border-top: 1px solid #3a3138;
+    border: 1px solid #3a3138;
     border-radius: 0;
-    background: var(--background);
+    background:
+        radial-gradient(
+            circle at 50% 0%,
+            rgba(245, 192, 192, 0.08),
+            transparent 38%
+        ),
+        var(--background);
+    box-shadow:
+        0 24px 90px rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-/* Bottom fade: solid page background at the very bottom, easing up into
-   transparency so the demo merges into the body below. */
+/* Bottom fade: eases the data grid into the body below, but lifted ~40px (the
+   status-bar height) off the bottom so the row-selection / delete bar stays
+   readable. The bar's background already matches the page, so it still merges
+   seamlessly — only its content sits clear of the gradient. */
 .hero-app-demo__viewport::after {
     content: '';
     position: absolute;
     inset-inline: 0;
-    bottom: 0;
-    height: clamp(160px, 30%, 280px);
+    bottom: 40px;
+    height: clamp(150px, 26%, 250px);
     pointer-events: none;
     z-index: 4;
     background: linear-gradient(
@@ -233,10 +229,13 @@
 
 .hero-app-demo__camera {
     height: 100%;
-    /* Anchor at the top-left so the rail, connection switcher and tab bar stay
-       fully visible while the drift only ever extends the grid off-screen. */
-    transform-origin: 0 0;
+    display: flex;
+    justify-content: center;
+    box-sizing: border-box;
+    transform-origin: 50% 0;
     will-change: transform;
+    text-rendering: geometricPrecision;
+    -webkit-font-smoothing: antialiased;
     animation: heroDemoDrift 32s ease-in-out infinite alternate;
 }
 
@@ -249,13 +248,38 @@
     background: var(--color-background);
 }
 
+.hero-connection-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--sidebar-border) 82%, white 18%)
+        color-mix(in srgb, var(--background) 70%, black 30%);
+}
+
+.hero-connection-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.hero-connection-scrollbar::-webkit-scrollbar-track {
+    background: color-mix(in srgb, var(--background) 70%, black 30%);
+    border-left: 1px solid var(--sidebar-border);
+}
+
+.hero-connection-scrollbar::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--sidebar-border) 82%, white 18%);
+    border: 2px solid color-mix(in srgb, var(--background) 70%, black 30%);
+    border-radius: 2px;
+}
+
+.hero-connection-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--sidebar-border) 64%, white 36%);
+}
+
 @keyframes heroDemoDrift {
     from {
-        transform: scale(1) translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
     }
 
     to {
-        transform: scale(1.03) translate3d(-0.5%, 0, 0);
+        transform: translate3d(0, -0.25%, 0);
     }
 }
 
@@ -268,13 +292,24 @@
 
 @media (max-width: 900px) {
     .hero-app-demo {
-        height: 500px;
+        height: 470px;
+    }
+}
+
+@media (min-width: 640px) {
+    .hero-app-demo {
+        margin-inline: -2rem;
+        width: calc(100% + 4rem);
     }
 }
 
 @media (max-width: 640px) {
     .hero-app-demo {
-        height: 440px;
+        height: 390px;
+    }
+
+    .hero-app-demo__camera {
+        justify-content: flex-start;
     }
 }
 
@@ -324,8 +359,67 @@
     }
 }
 
+@keyframes lspPop {
+    from {
+        opacity: 0;
+        transform: translateY(-3px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes lspFlash {
+    0% {
+        opacity: 0;
+    }
+
+    40% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes lspCaret {
+    0%,
+    50% {
+        opacity: 1;
+    }
+
+    51%,
+    100% {
+        opacity: 0;
+    }
+}
+
+@keyframes auraDrift {
+    0% {
+        transform: translate3d(-8%, -5%, 0) scale(1);
+        opacity: 0.7;
+    }
+
+    50% {
+        transform: translate3d(9%, 7%, 0) scale(1.18);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate3d(-8%, -5%, 0) scale(1);
+        opacity: 0.7;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    [style*='particleFloat'] {
+    [style*='particleFloat'],
+    [style*='lspPop'],
+    [style*='lspFlash'],
+    [style*='lspCaret'],
+    [style*='auraDrift'] {
         animation: none !important;
     }
 }

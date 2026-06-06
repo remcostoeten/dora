@@ -6,6 +6,8 @@ use std::fmt::Write;
 use url::Url;
 use uuid::Uuid;
 
+use crate::credential_storage;
+
 const SERVICE_NAME: &str = "Dora";
 
 fn url_password(url: &Url) -> Option<String> {
@@ -64,6 +66,12 @@ pub fn store_sensitive_data(connection_id: &Uuid, password: &str) -> Result<(), 
 }
 
 fn store_password(connection_id: &Uuid, password: &str) -> Result<(), Error> {
+    if !credential_storage::uses_os_keyring() {
+        return Err(Error::Any(anyhow::anyhow!(
+            "OS credential store is unavailable"
+        )));
+    }
+
     let entry = Entry::new(SERVICE_NAME, &connection_id.to_string()).map_err(|e| {
         Error::Any(anyhow::anyhow!(
             "OS credential store is unavailable: failed to create keyring entry: {}",
@@ -85,6 +93,10 @@ fn store_password(connection_id: &Uuid, password: &str) -> Result<(), Error> {
 
 /// Retrieve password for a connection using connection ID as key
 pub fn get_password(connection_id: &Uuid) -> Result<Option<String>, Error> {
+    if !credential_storage::uses_os_keyring() {
+        return Ok(None);
+    }
+
     let entry = Entry::new(SERVICE_NAME, &connection_id.to_string()).map_err(|e| {
         Error::Any(anyhow::anyhow!(
             "OS credential store is unavailable: failed to create keyring entry: {}",
@@ -108,7 +120,7 @@ pub fn get_password(connection_id: &Uuid) -> Result<Option<String>, Error> {
             Ok(None)
         }
         Err(e) => {
-            log::warn!(
+            log::debug!(
                 "Failed to retrieve password from keyring for connection {}: {}",
                 connection_id,
                 e
@@ -119,6 +131,10 @@ pub fn get_password(connection_id: &Uuid) -> Result<Option<String>, Error> {
 }
 
 pub fn delete_password(connection_id: &Uuid) -> Result<(), Error> {
+    if !credential_storage::uses_os_keyring() {
+        return Ok(());
+    }
+
     let entry = Entry::new(SERVICE_NAME, &connection_id.to_string())
         .map_err(|e| Error::Any(anyhow::anyhow!("Failed to create keyring entry: {}", e)))?;
 
@@ -127,10 +143,7 @@ pub fn delete_password(connection_id: &Uuid) -> Result<(), Error> {
             log::info!("Deleted password from keyring for connection {connection_id}");
             Ok(())
         }
-        Err(keyring::Error::NoEntry) => {
-            // Password wasn't there anyway
-            Ok(())
-        }
+        Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(Error::Any(anyhow::anyhow!(
             "Failed to delete password from keyring: {e}"
         ))),
@@ -142,14 +155,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn postgres_with_pw() {
+    fn postgres_with_pw() -> Result<(), Error> {
         let original = "postgres://Dora:s3cr3t@localhost:5432/mydb";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
             ssh_config: None,
         };
 
-        let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
+        let (sanitized, pw) = extract_sensitive_data(dbi)?;
         assert_eq!(pw.as_deref(), Some("s3cr3t"));
 
         match sanitized {
@@ -160,17 +173,18 @@ mod tests {
             }
             _ => unreachable!(),
         }
+        Ok(())
     }
 
     #[test]
-    fn postgres_with_percent_encoded_pw() {
+    fn postgres_with_percent_encoded_pw() -> Result<(), Error> {
         let original = "postgres://bob:p%404ss@db.example.com/app";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
             ssh_config: None,
         };
 
-        let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
+        let (sanitized, pw) = extract_sensitive_data(dbi)?;
 
         assert_eq!(pw.as_deref(), Some("p@4ss"));
 
@@ -180,7 +194,7 @@ mod tests {
             } => {
                 assert_eq!(connection_string, "postgres://bob@db.example.com/app");
             }
-            _ => panic!("expected Postgres variant"),
+            _ => return Err(Error::Any(anyhow::anyhow!("expected Postgres variant"))),
         }
 
         let original = "postgres://u:pa%3Ass%40word@host/db";
@@ -189,7 +203,7 @@ mod tests {
             ssh_config: None,
         };
 
-        let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
+        let (sanitized, pw) = extract_sensitive_data(dbi)?;
 
         assert_eq!(pw.as_deref(), Some("pa:ss@word"));
         match sanitized {
@@ -198,21 +212,21 @@ mod tests {
             } => {
                 assert_eq!(connection_string, "postgres://u@host/db");
             }
-            _ => panic!("expected Postgres variant"),
+            _ => return Err(Error::Any(anyhow::anyhow!("expected Postgres variant"))),
         }
+        Ok(())
     }
 
     #[test]
-    fn postgres_with_empty_password() {
+    fn postgres_with_empty_password() -> Result<(), Error> {
         let original = "postgres://john:@localhost/db";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
             ssh_config: None,
         };
 
-        let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
+        let (sanitized, pw) = extract_sensitive_data(dbi)?;
 
-        // TODO(vini): maybe it is expected that this would be Some("")?
         assert_eq!(pw.as_deref(), None);
 
         match sanitized {
@@ -223,17 +237,18 @@ mod tests {
             }
             _ => unreachable!(),
         }
+        Ok(())
     }
 
     #[test]
-    fn postgres_without_password() {
+    fn postgres_without_password() -> Result<(), Error> {
         let original = "postgres://dave@localhost/mydb";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
             ssh_config: None,
         };
 
-        let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
+        let (sanitized, pw) = extract_sensitive_data(dbi)?;
 
         assert!(pw.is_none());
         match sanitized {
@@ -244,17 +259,18 @@ mod tests {
             }
             _ => unreachable!(),
         }
+        Ok(())
     }
 
     #[test]
-    fn postgresql_scheme() {
+    fn postgresql_scheme() -> Result<(), Error> {
         let original = "postgresql://erin:pw@localhost:5432/dbname?sslmode=prefer";
         let dbi = DatabaseInfo::Postgres {
             connection_string: original.to_string(),
             ssh_config: None,
         };
 
-        let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
+        let (sanitized, pw) = extract_sensitive_data(dbi)?;
 
         assert_eq!(pw.as_deref(), Some("pw"));
         match sanitized {
@@ -266,24 +282,26 @@ mod tests {
                     "postgresql://erin@localhost:5432/dbname?sslmode=prefer"
                 );
             }
-            _ => panic!("expected Postgres variant"),
+            _ => return Err(Error::Any(anyhow::anyhow!("expected Postgres variant"))),
         }
+        Ok(())
     }
 
     #[test]
-    fn sqlite_is_passthrough() {
+    fn sqlite_is_passthrough() -> Result<(), Error> {
         let path = "/tmp/test.sqlite3".to_string();
         let dbi = DatabaseInfo::SQLite {
             db_path: path.clone(),
         };
 
-        let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
+        let (sanitized, pw) = extract_sensitive_data(dbi)?;
 
         assert!(pw.is_none());
         match sanitized {
             DatabaseInfo::SQLite { db_path } => assert_eq!(db_path, path),
-            _ => panic!("expected SQLite variant"),
+            _ => return Err(Error::Any(anyhow::anyhow!("expected SQLite variant"))),
         }
+        Ok(())
     }
 
     #[test]

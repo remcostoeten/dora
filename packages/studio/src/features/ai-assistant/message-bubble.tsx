@@ -1,4 +1,5 @@
 import { Sparkles, User } from 'lucide-react'
+import { memo } from 'react'
 import { cn } from '@studio/shared/utils/cn'
 import { MessageContent } from './message-content'
 import type { ChatMessage } from './types'
@@ -9,7 +10,11 @@ type Props = {
 	onEditorInsert?: (sql: string) => void
 }
 
-export function MessageBubble({ message, activeConnectionId, onEditorInsert }: Props) {
+export const MessageBubble = memo(function MessageBubble({
+	message,
+	activeConnectionId,
+	onEditorInsert
+}: Props) {
 	const isUser = message.role === 'user'
 
 	return (
@@ -30,7 +35,8 @@ export function MessageBubble({ message, activeConnectionId, onEditorInsert }: P
 				) : (
 					<div className='prose prose-invert max-w-none text-sm'>
 						<MessageContent
-							content={message.content || (message.streaming ? '…' : '')}
+							content={message.content || (message.streaming ? '' : '')}
+							isStreaming={message.streaming}
 							activeConnectionId={activeConnectionId}
 							onEditorInsert={onEditorInsert}
 						/>
@@ -47,4 +53,4 @@ export function MessageBubble({ message, activeConnectionId, onEditorInsert }: P
 			</div>
 		</div>
 	)
-}
+})

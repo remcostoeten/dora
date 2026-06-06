@@ -68,6 +68,7 @@ export type DataAdapter = {
 	): Promise<AdapterResult<TableData>>
 
 	executeQuery(connectionId: string, query: string): Promise<AdapterResult<QueryResult>>
+	cancelActiveQuery(connectionId: string): Promise<void>
 
 	updateCell(
 		connectionId: string,

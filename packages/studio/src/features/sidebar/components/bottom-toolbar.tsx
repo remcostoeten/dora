@@ -134,7 +134,7 @@ export function BottomToolbar({ onAction }: Props) {
                 side="right"
                 align="end"
                 sideOffset={16}
-                className="w-[340px] p-0 mb-2 ml-2"
+                className="w-[min(340px,calc(100vw-1rem))] p-0 mb-2 ml-2"
               >
                 <ProjectInfoPanel />
               </PopoverContent>
@@ -178,7 +178,7 @@ export function BottomToolbar({ onAction }: Props) {
                 side="right"
                 align="end"
                 sideOffset={20}
-                className="w-[520px] p-0 mb-2 ml-2"
+                className="w-[min(520px,calc(100vw-1rem))] p-0 mb-2 ml-2"
               >
                 <AppearancePanel />
               </PopoverContent>

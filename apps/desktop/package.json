@@ -1,6 +1,6 @@
 {
 	"name": "@dora/desktop",
-	"version": "0.26.7",
+	"version": "0.27.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -10,6 +10,7 @@
 		"lint": "bun run --cwd ../.. lint",
 		"preview": "vite preview",
 		"tauri": "tauri",
+		"pretauri": "bun run --cwd ../.. tools/print-flathub-reminder.ts",
 		"tauri:dev": "node -e \"require('child_process').execSync(process.platform==='win32'?'bun run tauri:win':'bun x tauri dev',{stdio:'inherit'})\"",
 		"tauri:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\tauri-dev-win.ps1",
 		"test": "vitest run -c ../../vitest.config.ts",

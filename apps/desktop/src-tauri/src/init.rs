@@ -1,8 +1,5 @@
 use tauri::WebviewWindowBuilder;
 
-#[cfg(not(target_os = "linux"))]
-use tauri::{Listener, Manager};
-
 #[cfg(target_os = "macos")]
 use tauri::{
     menu::{AboutMetadata, Menu, MenuItem, PredefinedMenuItem, Submenu, WINDOW_SUBMENU_ID},
@@ -28,35 +25,6 @@ fn init_script() -> String {
 }
 
 pub fn build_window(app: &tauri::App) -> tauri::Result<()> {
-    #[cfg(not(target_os = "linux"))]
-    let splash_label = {
-        // Linux webview startup already has platform-specific rendering issues.
-        // Skip the extra splash webview there to avoid repeated GBM allocation
-        // failures from the 500x500 splash window during startup and reloads.
-        let splash_window = WebviewWindowBuilder::new(
-            app,
-            "splash",
-            tauri::WebviewUrl::App("about:blank".parse().expect("static URL is valid")),
-        )
-        .title("Dora")
-        .inner_size(500.0, 500.0)
-        .resizable(false)
-        .decorations(false)
-        .transparent(true)
-        .center()
-        .skip_taskbar(true)
-        .build()?;
-
-        let splash_html = include_str!("../splash.html");
-        splash_window.eval(&format!(
-            "document.open(); document.write({:?}); document.close();",
-            splash_html
-        ))?;
-
-        splash_window.label().to_string()
-    };
-
-    // Create main window
     let main_cfg = app
         .config()
         .app
@@ -91,30 +59,7 @@ pub fn build_window(app: &tauri::App) -> tauri::Result<()> {
     #[cfg(target_os = "linux")]
     let window_builder = window_builder.transparent(false);
 
-    #[cfg(not(target_os = "linux"))]
-    let main_window = window_builder.build()?;
-
-    #[cfg(target_os = "linux")]
     let _main_window = window_builder.build()?;
-
-    #[cfg(not(target_os = "linux"))]
-    {
-        // Close splash screen when main window is ready.
-        let app_handle = app.handle().clone();
-
-        // Listen for when main window navigates (frontend loads)
-        main_window.once("tauri://webview-created", move |_| {
-            // Use a small delay to ensure main window is visible, then close splash.
-            std::thread::spawn(move || {
-                std::thread::sleep(std::time::Duration::from_millis(800));
-                if let Some(splash) = app_handle.get_webview_window(&splash_label) {
-                    if let Err(e) = splash.close() {
-                        log::error!("Failed to close splash screen: {}", e);
-                    }
-                }
-            });
-        });
-    }
 
     Ok(())
 }
@@ -217,7 +162,7 @@ pub fn build_menu(app: &tauri::App) -> anyhow::Result<()> {
     )?;
 
     app.set_menu(menu)?;
-    app.on_menu_event(move |handle: &tauri::AppHandle, event| {
+    app.on_menu_event(move |handle: &AppHandle, event| {
         let event = event.id().0.as_str();
 
         log::debug!("[on_menu_event][{event}] Event triggered");

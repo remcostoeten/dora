@@ -36,6 +36,7 @@ struct ExecState {
 /// Executes and keeps track of the execution of queries.
 pub struct StatementManager {
     queries: DashMap<QueryId, Arc<ExecState>>,
+    listener_handles: DashMap<QueryId, tokio::task::JoinHandle<()>>,
 }
 
 impl std::fmt::Debug for StatementManager {
@@ -49,7 +50,26 @@ impl StatementManager {
     pub fn new() -> Self {
         Self {
             queries: DashMap::new(),
+            listener_handles: DashMap::new(),
         }
+    }
+
+    /// Cancels all currently running queries, marking them as errors and aborting their listener tasks.
+    pub fn cancel_active_queries(&self) {
+        for entry in self.listener_handles.iter() {
+            entry.value().abort();
+        }
+        for entry in self.queries.iter() {
+            let status = entry.status.load(Ordering::Relaxed);
+            if status == QueryStatus::Running as u8 || status == QueryStatus::Pending as u8 {
+                *entry.error.write().expect("RwLock poisoned") =
+                    Some("Query cancelled".to_string());
+                entry
+                    .status
+                    .store(QueryStatus::Error as u8, Ordering::Relaxed);
+            }
+        }
+        self.listener_handles.clear();
     }
 
     /// Submits a new query (possibly containing multiple statements) for execution.
@@ -58,6 +78,7 @@ impl StatementManager {
     // TODO(vini): not sure if this will actually cancel the ongoing query.
     // Might need to store the joinhandles so we can properly cancel them
     pub fn submit_query(&self, client: DatabaseClient, query: &str) -> Result<Vec<QueryId>, Error> {
+        self.cancel_active_queries();
         self.queries.clear();
 
         let parse_statements: fn(&str) -> Result<Vec<ParsedStatement>, anyhow::Error> =
@@ -190,7 +211,7 @@ impl StatementManager {
             }
         }
 
-        tokio::task::spawn(async move {
+        let handle = tokio::task::spawn(async move {
             let mut recv = recv;
 
             exec_storage
@@ -233,13 +254,13 @@ impl StatementManager {
                                 Some(affected_rows);
                         }
 
-                        // TODO(vini): emit completion event to frontend?
-
                         break;
                     }
                 }
             }
         });
+
+        self.listener_handles.insert(id, handle);
     }
 
     fn get(

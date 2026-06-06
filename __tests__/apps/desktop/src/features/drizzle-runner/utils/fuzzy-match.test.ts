@@ -7,7 +7,7 @@ import {
 	createDrizzleTypoDetector,
 	createPrismaTypoDetector,
 	createSqlTypoDetector
-} from '../../../../../../../apps/desktop/src/features/drizzle-runner/utils/fuzzy-match'
+} from '@/features/drizzle-runner/utils/fuzzy-match'
 
 describe('Fuzzy Matching Utilities', () => {
 	describe('levenshtein', () => {

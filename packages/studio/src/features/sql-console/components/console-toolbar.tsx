@@ -3,6 +3,7 @@ import {
 	Loader2,
 	Sparkles,
 	Play,
+	Square,
 	Download,
 	Braces,
 	Filter,
@@ -27,6 +28,7 @@ type Props = {
 	mode: 'sql' | 'drizzle'
 	onModeChange: (mode: 'sql' | 'drizzle') => void
 	onRun?: () => void
+	onCancel?: () => void
 	onPrettify?: () => void
 	onExport?: () => void
 	onExportCsv?: () => void
@@ -127,6 +129,7 @@ export function ConsoleToolbar({
 	mode,
 	onModeChange,
 	onRun,
+	onCancel,
 	onPrettify,
 	onExport,
 	onExportCsv,
@@ -143,7 +146,7 @@ export function ConsoleToolbar({
 	return (
 		<div className='flex min-h-12 shrink-0 items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-3 py-2'>
 			<div className='flex min-w-0 items-center gap-3'>
-				<div className='hidden min-w-0 items-center gap-2 rounded-md border border-sidebar-border/60 bg-sidebar-accent/35 px-2.5 py-1.5 text-xs text-muted-foreground lg:flex'>
+				<div className='hidden min-w-0 items-center gap-2 rounded-md border border-sidebar-border/60 bg-sidebar-accent/35 px-2.5 py-1.5 text-xs text-muted-foreground sm:flex'>
 					<Database className='h-3.5 w-3.5 shrink-0' />
 					<span className='max-w-48 truncate font-medium text-sidebar-foreground'>
 						{connectionName || 'No connection'}
@@ -243,31 +246,30 @@ export function ConsoleToolbar({
 
 				<div className='mx-1 h-5 w-px bg-sidebar-border/70' />
 
-				{onRun && (
+				{isExecuting && onCancel ? (
 					<Button
 						size='sm'
 						variant='default'
-						className={cn(
-							'h-8 gap-2 rounded-md px-3 text-sm font-semibold shadow-sm',
-							'transition-[background-color,color,transform,box-shadow] duration-150 ease-out active:scale-[0.97]',
-							isExecuting
-								? 'cursor-wait bg-muted text-muted-foreground'
-								: 'bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90'
-						)}
-						onClick={onRun}
-						disabled={isExecuting}
+						className='h-8 gap-2 rounded-md px-3 text-sm font-semibold shadow-sm transition-[background-color,color,transform,box-shadow] duration-150 ease-out active:scale-[0.97] bg-destructive/90 text-destructive-foreground hover:bg-destructive'
+						onClick={onCancel}
 					>
-						{isExecuting ? (
-							<Loader2 className='h-3.5 w-3.5 animate-spin' />
-						) : (
-							<Play className='h-3.5 w-3.5 fill-current' />
-						)}
-						<span>{isExecuting ? 'Running' : 'Run'}</span>
+						<Square className='h-3 w-3 fill-current' />
+						<span>Stop</span>
+					</Button>
+				) : onRun ? (
+					<Button
+						size='sm'
+						variant='default'
+						className='h-8 gap-2 rounded-md px-3 text-sm font-semibold shadow-sm transition-[background-color,color,transform,box-shadow] duration-150 ease-out active:scale-[0.97] bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90'
+						onClick={onRun}
+					>
+						<Play className='h-3.5 w-3.5 fill-current' />
+						<span>Run</span>
 						<Kbd className='inline-flex border-white/40 bg-black/40 text-white'>
 							⌘↵
 						</Kbd>
 					</Button>
-				)}
+				) : null}
 
 				<Button
 					variant='ghost'
@@ -286,7 +288,7 @@ export function ConsoleToolbar({
 						)}
 						style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)' }}
 					/>
-					<span className='hidden xl:inline'>Snippets</span>
+					<span className='hidden lg:inline'>Snippets</span>
 				</Button>
 			</div>
 		</div>

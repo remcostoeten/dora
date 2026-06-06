@@ -1,11 +1,11 @@
 import { Loader2, Send, Sparkles, Square, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAdapter, useIsTauri } from '@studio/core/data-provider'
-import { commands } from '@studio/lib/bindings'
-import type { DatabaseSchema, GroqStatus } from '@studio/lib/bindings'
+import type { DatabaseSchema } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
 import { getTableRefId } from '@studio/shared/utils/table-ref'
+import { formatAiStatusBadge, useAiStatus } from './use-ai-status'
 import { MessageBubble } from './message-bubble'
 import { useAiAssistantStore } from './store'
 import { buildDynamicSuggestions, getQuickActions } from './suggestions'
@@ -44,29 +44,14 @@ export function AiAssistantPanel({
 		return s.setPendingPrompt
 	})
 
-	const { messages, isStreaming, error, send, abort, clear } = useAiChat(activeConnectionId)
+	const { messages, streamingSnapshot, isStreaming, error, send, abort, clear } =
+		useAiChat(activeConnectionId)
+	const { status: aiStatus, isMock } = useAiStatus(open)
 	const [input, setInput] = useState('')
-	const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null)
 	const [schema, setSchema] = useState<DatabaseSchema | null>(null)
 	const scrollRef = useRef<HTMLDivElement | null>(null)
 	const inputRef = useRef<HTMLTextAreaElement | null>(null)
-
-	useEffect(
-		function checkGroq() {
-			if (!open) return
-			if (!isTauri) {
-				setGroqStatus({ available: true, key_count: 0 })
-				return
-			}
-			commands
-				.aiGroqStatus()
-				.then(function (res) {
-					if (res.status === 'ok') setGroqStatus(res.data)
-				})
-				.catch(function () {})
-		},
-		[open, isTauri]
-	)
+	const stickToBottomRef = useRef(true)
 
 	useEffect(
 		function loadSchema() {
@@ -97,11 +82,37 @@ export function AiAssistantPanel({
 	)
 
 	useEffect(
-		function autoScroll() {
-			if (!scrollRef.current) return
-			scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+		function trackScrollIntent() {
+			const el = scrollRef.current
+			if (!el) return
+
+			function onScroll() {
+				const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+				stickToBottomRef.current = distanceFromBottom < 96
+			}
+
+			el.addEventListener('scroll', onScroll, { passive: true })
+			return function cleanup() {
+				el.removeEventListener('scroll', onScroll)
+			}
 		},
-		[messages]
+		[open]
+	)
+
+	useEffect(
+		function autoScroll() {
+			const el = scrollRef.current
+			if (!el) return
+			if (!stickToBottomRef.current && !isStreaming) return
+
+			const frame = requestAnimationFrame(function () {
+				el.scrollTop = el.scrollHeight
+			})
+			return function cleanup() {
+				cancelAnimationFrame(frame)
+			}
+		},
+		[messages, streamingSnapshot, isStreaming]
 	)
 
 	const suggestions = useMemo(
@@ -176,14 +187,9 @@ export function AiAssistantPanel({
 
 	if (!open) return null
 
-	const keysAvailable = groqStatus?.available ?? false
-	const keyLabel = !isTauri
-		? 'mock'
-		: groqStatus
-			? keysAvailable
-				? `${groqStatus.key_count} key${groqStatus.key_count === 1 ? '' : 's'}`
-				: 'no keys'
-			: '…'
+	const keysAvailable = aiStatus?.ready ?? false
+	const keyLabel = formatAiStatusBadge(aiStatus, isMock)
+	const activeProvider = aiStatus?.active_provider ?? 'groq'
 
 	return (
 		<aside
@@ -201,7 +207,7 @@ export function AiAssistantPanel({
 							? 'bg-emerald-500/10 text-emerald-500'
 							: 'bg-amber-500/10 text-amber-500'
 					)}
-					title='Configured Groq API keys'
+					title={`Active provider: ${activeProvider}`}
 				>
 					{keyLabel}
 				</span>
@@ -257,10 +263,19 @@ export function AiAssistantPanel({
 				) : (
 					<div className='divide-y divide-sidebar-border/40'>
 						{messages.map(function (m) {
+							const liveContent =
+								streamingSnapshot?.messageId === m.id
+									? streamingSnapshot.content
+									: m.content
+							const message =
+								liveContent === m.content
+									? m
+									: { ...m, content: liveContent }
+
 							return (
 								<MessageBubble
 									key={m.id}
-									message={m}
+									message={message}
 									activeConnectionId={activeConnectionId}
 									onEditorInsert={onEditorInsert}
 								/>
@@ -284,7 +299,8 @@ export function AiAssistantPanel({
 				)}
 				{isTauri && !keysAvailable && (
 					<div className='mb-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-500'>
-						Add a Groq API key in Settings → AI Keys to start chatting.
+						Configure the active AI provider in Settings → AI Provider
+						{activeProvider ? ` (${activeProvider})` : ''}.
 					</div>
 				)}
 				<div className='relative'>

@@ -116,7 +116,7 @@ export function QueryTabBar() {
 							<ContextMenuTrigger asChild>
 								<button
 									className={cn(
-										'query-tab group relative flex items-center gap-1.5 h-full px-3 text-xs font-medium transition-all duration-150 border-r border-sidebar-border whitespace-nowrap min-w-[90px] max-w-[180px]',
+										'query-tab group relative flex items-center gap-1.5 h-full px-3 text-xs font-medium transition-all duration-150 border-r border-sidebar-border whitespace-nowrap min-w-[70px] max-w-[160px]',
 										isActive
 											? 'bg-background text-foreground query-tab--active'
 											: 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
@@ -190,16 +190,16 @@ export function QueryTabBar() {
 									Rename Tab
 								</ContextMenuItem>
 								<ContextMenuItem onClick={function () { duplicateTab(tab.id) }}>
-									<Copy className='mr-2 h-3.5 w-3.5' />
+									<Copy className='size-3.5' />
 									Duplicate Tab
 								</ContextMenuItem>
 								<ContextMenuSeparator />
 								<ContextMenuItem
 									disabled={tabs.length <= 1}
-									className='text-destructive focus:text-destructive'
+									variant='destructive'
 									onClick={function () { closeTab(tab.id) }}
 								>
-									<X className='mr-2 h-3.5 w-3.5' />
+									<X className='size-3.5' />
 									Close Tab
 								</ContextMenuItem>
 							</ContextMenuContent>

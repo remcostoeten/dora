@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { SqlResults } from '../../../../../../../apps/desktop/src/features/sql-console/components/sql-results'
+import { SqlResults } from '@/features/sql-console/components/sql-results'
 import * as dataProviderModule from '@/core/data-provider'
 import * as settingsModule from '@/core/settings'
 

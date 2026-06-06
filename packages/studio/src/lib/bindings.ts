@@ -160,6 +160,14 @@ async verifyPinAndGetCredentials(connectionId: string, pin: string) : Promise<Re
     else return { status: "error", error: e  as any };
 }
 },
+async cancelQuery() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_query") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async startQuery(connectionId: string, query: string) : Promise<Result<number[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("start_query", { connectionId, query }) };
@@ -566,6 +574,46 @@ async aiGetProvider() : Promise<Result<string, { kind: string; detail: string }>
     else return { status: "error", error: e  as any };
 }
 },
+async aiGetConfig() : Promise<Result<AiServiceConfig, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_config") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiSetConfig(config: AiServiceConfig) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_set_config", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiGetStatus() : Promise<Result<AiStatus, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiListProviderModels(provider: string) : Promise<Result<AiModelOption[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_list_provider_models", { provider }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiGetUsageSummary(limit: number | null) : Promise<Result<AiUsageSummary, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_usage_summary", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async aiSetGeminiKey(apiKey: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_set_gemini_key", { apiKey }) };
@@ -582,9 +630,73 @@ async aiConfigureOllama(endpoint: string | null, model: string | null) : Promise
     else return { status: "error", error: e  as any };
 }
 },
+async aiGetOllamaStatus() : Promise<Result<OllamaStatus, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_ollama_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiListOllamaCatalog() : Promise<Result<OllamaCatalogEntry[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_list_ollama_catalog") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiPullOllamaModel(requestId: string, model: string, onEvent: TAURI_CHANNEL<OllamaPullEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_pull_ollama_model", { requestId, model, onEvent }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiCancelOllamaPull(requestId: string) : Promise<Result<boolean, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_cancel_ollama_pull", { requestId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiDeleteOllamaModel(model: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_delete_ollama_model", { model }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async aiListOllamaModels() : Promise<Result<string[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_list_ollama_models") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiInstallOllama(requestId: string, onEvent: TAURI_CHANNEL<OllamaInstallEvent>) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_install_ollama", { requestId, onEvent }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiCancelOllamaInstall(requestId: string) : Promise<Result<boolean, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_cancel_ollama_install", { requestId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiStartOllama() : Promise<Result<OllamaStatus, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_start_ollama") };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -642,9 +754,9 @@ async aiKeysSetActive(id: number, active: boolean) : Promise<Result<null, { kind
     else return { status: "error", error: e  as any };
 }
 },
-async aiKeysTest(id: number) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
+async aiKeysTest(id: number, model: string | null, prompt: string | null) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test", { id }) };
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test", { id, model, prompt }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -653,9 +765,9 @@ async aiKeysTest(id: number) : Promise<Result<AiKeyTestResult, { kind: string; d
 /**
  * Test an unsaved key (used by the "Test before save" button).
  */
-async aiKeysTestRaw(apiKey: string) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
+async aiKeysTestRaw(provider: string, apiKey: string, model: string | null, prompt: string | null) : Promise<Result<AiKeyTestResult, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test_raw", { apiKey }) };
+    return { status: "ok", data: await TAURI_INVOKE("ai_keys_test_raw", { provider, apiKey, model, prompt }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -708,6 +820,9 @@ async resetStorage() : Promise<Result<null, { kind: string; detail: string }>> {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
 }
+},
+async getCredentialStorageStatus() : Promise<CredentialStorageStatus> {
+    return await TAURI_INVOKE("get_credential_storage_status");
 }
 }
 
@@ -724,7 +839,14 @@ async resetStorage() : Promise<Result<null, { kind: string; detail: string }>> {
 export type AIResponse = { content: string; suggested_queries: string[] | null; tokens_used: number | null; provider: string }
 export type AiApiKeyRecord = { id: number; provider: string; label: string; is_active: boolean; last_tested: number | null; last_status: string | null; created_at: number; updated_at: number }
 export type AiKeyTestResult = { ok: boolean; message: string }
+export type AiModelOption = { id: string; label: string; tier: string }
+export type AiProviderReadiness = { provider: string; ready: boolean; detail: string | null; key_count: number | null }
+export type AiServiceConfig = { provider: string; model: string; ollama_endpoint: string }
+export type AiStatus = { active_provider: string; active_model: string; ready: boolean; providers: AiProviderReadiness[] }
 export type AiStreamEvent = { type: "token"; text: string } | { type: "final"; content: string } | { type: "error"; message: string }
+export type AiUsageEntry = { id: number; provider: string; model: string; source: string; input_tokens: number | null; output_tokens: number | null; total_tokens: number | null; estimated_cost_usd: number | null; estimated: boolean; created_at: number }
+export type AiUsageProviderSummary = { provider: string; request_count: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number }
+export type AiUsageSummary = { total_requests: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number; providers: AiUsageProviderSummary[]; recent: AiUsageEntry[] }
 export type ColumnInfo = { name: string; data_type: string; is_nullable: boolean; default_value: string | null; 
 /**
  * Whether this column is part of the primary key
@@ -740,6 +862,8 @@ is_auto_increment?: boolean;
 foreign_key?: ForeignKeyInfo | null }
 export type ConnectionHistoryEntry = { id: number; connection_id: string; connection_name: string; database_type: string; attempted_at: number; success: boolean; error_message: string | null; duration_ms: number | null }
 export type ConnectionInfo = { id: string; name: string; connected: boolean; database_type: DatabaseInfo; last_connected_at: number | null; created_at: number | null; updated_at: number | null; pin_hash: string | null; favorite: boolean | null; color: string | null; sort_order: number | null }
+export type CredentialStorageBackend = "os_keyring" | "local_encrypted_file"
+export type CredentialStorageStatus = { backend: CredentialStorageBackend; message: string; storage_path: string | null; install_hint: string | null }
 export type DatabaseInfo = { Postgres: { connection_string: string; ssh_config: SshConfig | null } } | { MySQL: { connection_string: string; ssh_config: SshConfig | null } } | { SQLite: { db_path: string } } | 
 /**
  * LibSQL/Turso database - can be local path or remote URL with auth token
@@ -819,6 +943,10 @@ export type LiveMonitorSession = { monitorId: string; eventName: string }
  * Result of a mutation operation
  */
 export type MutationResult = { success: boolean; affected_rows: number; message: string | null }
+export type OllamaCatalogEntry = { name: string; label: string; description: string; installed: boolean; size_bytes: number | null }
+export type OllamaInstallEvent = { type: "status"; message: string } | { type: "progress"; completed: number; total: number | null; percent: number } | { type: "done"; version: string | null; install_path: string } | { type: "error"; message: string }
+export type OllamaPullEvent = { type: "status"; message: string } | { type: "progress"; completed: number; total: number; percent: number; eta_seconds: number | null } | { type: "done"; model: string } | { type: "error"; message: string }
+export type OllamaStatus = { running: boolean; endpoint: string; version: string | null; installed_count: number; managed: boolean; install_path: string | null; binary_ready: boolean }
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
 export type RegisteredDatabase = { name: string; path: string; active: boolean }
@@ -861,32 +989,9 @@ export type TruncateResult = { success: boolean; affected_rows: number; tables_t
 /** tauri-specta globals **/
 
 import {
-	invoke as RAW_TAURI_INVOKE,
+	invoke as TAURI_INVOKE,
 	Channel as TAURI_CHANNEL,
 } from "@tauri-apps/api/core";
-
-// NOTE: kept across tauri-specta regeneration. The studio package also runs as a
-// web demo (apps/marketing /app) where there is no Tauri backend. Off-Tauri,
-// reject with a non-Error value so the generated command wrappers below return
-// `{ status: "error" }` instead of throwing `undefined.invoke` as an unhandled
-// rejection. On desktop this delegates to the real Tauri invoke unchanged.
-function __isTauriRuntime(): boolean {
-	return (
-		typeof window !== "undefined" &&
-		("__TAURI__" in window || "__TAURI_INTERNALS__" in window)
-	);
-}
-
-function TAURI_INVOKE<T>(
-	cmd: string,
-	args?: Record<string, unknown>,
-	options?: Parameters<typeof RAW_TAURI_INVOKE>[2],
-): Promise<T> {
-	if (!__isTauriRuntime()) {
-		return Promise.reject("tauri-unavailable");
-	}
-	return RAW_TAURI_INVOKE<T>(cmd, args, options);
-}
 import * as TAURI_API_EVENT from "@tauri-apps/api/event";
 import { type WebviewWindow as __WebviewWindow__ } from "@tauri-apps/api/webviewWindow";
 

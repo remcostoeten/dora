@@ -92,7 +92,7 @@ function SidebarContent({ activeNavId, onNavSelect }: ContentProps) {
 	return (
 		<aside
 			className={cn(
-				'flex h-full w-16 flex-col bg-sidebar',
+				'flex h-full w-16 shrink-0 flex-col bg-sidebar',
 				isFloating
 					? 'm-3 rounded-2xl border border-sidebar-border shadow-lg'
 					: 'border-r border-sidebar-border'

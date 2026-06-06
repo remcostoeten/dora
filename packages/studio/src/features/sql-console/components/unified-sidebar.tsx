@@ -222,42 +222,28 @@ export function UnifiedSidebar({
 					</div>
 				</ContextMenuTrigger>
 				<ContextMenuContent>
-					<ContextMenuItem
-						onClick={function () {
-							startRenaming(node)
-						}}
-					>
-						<Edit2 className='h-3.5 w-3.5' />
+					<ContextMenuItem onClick={function () { startRenaming(node) }}>
+						<Edit2 className='size-3.5' />
 						Rename
 					</ContextMenuItem>
 					{node.isFolder && (
 						<>
-							<ContextMenuItem
-								onClick={function () {
-									onNewSnippet(node.id)
-								}}
-							>
-								<FilePlus className='h-3.5 w-3.5' />
+							<ContextMenuItem onClick={function () { onNewSnippet(node.id) }}>
+								<FilePlus className='size-3.5' />
 								New Snippet
 							</ContextMenuItem>
-							<ContextMenuItem
-								onClick={function () {
-									onNewFolder(node.id)
-								}}
-							>
-								<FolderPlus className='h-3.5 w-3.5' />
+							<ContextMenuItem onClick={function () { onNewFolder(node.id) }}>
+								<FolderPlus className='size-3.5' />
 								New Folder
 							</ContextMenuItem>
 						</>
 					)}
 					<ContextMenuSeparator />
 					<ContextMenuItem
-						className='text-destructive focus:text-destructive'
-						onClick={function () {
-							onDeleteSnippet(node.id)
-						}}
+						variant='destructive'
+						onClick={function () { onDeleteSnippet(node.id) }}
 					>
-						<Trash2 className='h-3.5 w-3.5' />
+						<Trash2 className='size-3.5' />
 						Delete
 					</ContextMenuItem>
 				</ContextMenuContent>

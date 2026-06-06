@@ -195,6 +195,8 @@ The safe release path is:
 
 Manual release publication before assets exist is what makes APT, AUR, Homebrew,
 and Winget fail on missing release assets.
+
+Full pipeline docs: docs/distribution/release-guide.md
 EOF
 }
 

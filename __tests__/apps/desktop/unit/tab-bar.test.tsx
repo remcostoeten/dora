@@ -14,7 +14,7 @@ describe('TabBar', () => {
     const { container } = render(
       <TabBar tabs={[]} activeTabId={null} onTabClick={vi.fn()} onTabClose={vi.fn()} />
     )
-    expect(container.firstChild).toBeNull()
+    expect(container.querySelector('[data-tauri-drag-region="true"]')).toBeTruthy()
   })
 
   it('renders a pill per tab', () => {

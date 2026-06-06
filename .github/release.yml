@@ -1,0 +1,36 @@
+changelog:
+  categories:
+    - title: "New Features"
+      labels:
+        - feat
+        - feature
+        - enhancement
+    - title: "Bug Fixes"
+      labels:
+        - fix
+        - bug
+        - bugfix
+    - title: "Performance"
+      labels:
+        - perf
+        - performance
+    - title: "Improvements"
+      labels:
+        - refactor
+        - improvement
+        - dx
+    - title: "Dependencies"
+      labels:
+        - dependencies
+        - deps
+    - title: "CI/CD"
+      labels:
+        - ci
+        - cd
+    - title: "Documentation"
+      labels:
+        - docs
+        - documentation
+    - title: "Other Changes"
+      labels:
+        - "*"

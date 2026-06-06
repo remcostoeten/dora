@@ -339,8 +339,10 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			if (pageInfo.status === 'Error') {
-				console.error('[TauriAdapter] Query execution error:', pageInfo.error)
-				return err(pageInfo.error || 'Query execution failed')
+				const msg = pageInfo.error || 'Query execution failed'
+				if (msg === 'Query cancelled') return err('Query cancelled')
+				console.error('[TauriAdapter] Query execution error:', msg)
+				return err(msg)
 			}
 
 			const columnsResult = await commands.getColumns(queryId)
@@ -357,6 +359,10 @@ export function createTauriAdapter(): DataAdapter {
 				rowCount: pageInfo.affected_rows ?? rows.length,
 				executionTime: Math.round(performance.now() - startTime)
 			})
+		},
+
+		async cancelActiveQuery(_connectionId: string): Promise<void> {
+			await commands.cancelQuery()
 		},
 
 		async updateCell(
