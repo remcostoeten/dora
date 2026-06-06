@@ -20,7 +20,7 @@ import {
 import type { Route } from 'next'
 import Link from 'next/link'
 import { useShortcut } from '@remcostoeten/use-shortcut/react'
-import type { ComponentType } from 'react'
+import type { ComponentType, CSSProperties, RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
 import { CornerTick } from '@/components/corner-tick'
@@ -53,6 +53,73 @@ const MARQUEE_ITEMS: { guess: string; reality: string }[] = [
         reality: 'Free for life, and self-hostable'
     }
 ]
+
+const MARQUEE_REPEATS = 6
+
+function getLoop(repeats: number) {
+    return Array.from({ length: repeats * 2 }, function getItems() {
+        return MARQUEE_ITEMS
+    }).flat()
+}
+
+function renderItem(item: { guess: string; reality: string }, i: number) {
+    return <MarqueeItem key={i} guess={item.guess} reality={item.reality} />
+}
+
+function getClass(scrolled: boolean) {
+    const stateClass = scrolled
+        ? 'border-transparent bg-background/55'
+        : 'border-[#2b252c] bg-background'
+
+    return `dora-marquee relative flex items-center overflow-hidden border-b backdrop-blur-xl ${stateClass}`
+}
+
+function getStyle(scrolled: boolean, reduced: boolean): CSSProperties {
+    const transition = reduced
+        ? 'opacity 200ms ease, background-color 300ms ease'
+        : 'height 420ms cubic-bezier(0.32,0.72,0,1), opacity 280ms ease-out, background-color 300ms ease, border-color 300ms ease'
+
+    return {
+        height: scrolled ? 0 : 30,
+        opacity: scrolled ? 0 : 1,
+        transition
+    }
+}
+
+function useRepeats(baseRef: RefObject<HTMLDivElement | null>) {
+    const [repeats, setRepeats] = useState(MARQUEE_REPEATS)
+
+    useEffect(
+        function watchRepeats() {
+            function syncRepeats() {
+                const baseWidth = baseRef.current?.scrollWidth ?? 0
+                if (!baseWidth) return
+
+                const nextRepeats = Math.max(
+                    2,
+                    Math.ceil((window.innerWidth + 80) / baseWidth) + 1
+                )
+                setRepeats(function keepStable(current) {
+                    return current === nextRepeats ? current : nextRepeats
+                })
+            }
+
+            syncRepeats()
+
+            const observer = new ResizeObserver(syncRepeats)
+            if (baseRef.current) observer.observe(baseRef.current)
+            window.addEventListener('resize', syncRepeats)
+
+            return function cleanupRepeats() {
+                observer.disconnect()
+                window.removeEventListener('resize', syncRepeats)
+            }
+        },
+        [baseRef]
+    )
+
+    return repeats
+}
 
 type TMenuLink = {
     label: string
@@ -189,7 +256,9 @@ function Marquee({
     scrolled: boolean
     reduced: boolean
 }) {
-    const loop = [...MARQUEE_ITEMS, ...MARQUEE_ITEMS]
+    const baseRef = useRef<HTMLDivElement>(null)
+    const repeats = useRepeats(baseRef)
+    const loop = getLoop(repeats)
     const trackRef = useRef<HTMLDivElement>(null)
     const animRef = useRef<Animation | null>(null)
     const rateRef = useRef(1)
@@ -200,8 +269,9 @@ function Marquee({
         const track = trackRef.current
         if (!track) return
 
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-            return
+        animRef.current?.cancel()
+
+        if (reduced) return
 
         const anim = track.animate(
             [{ transform: 'translateX(-50%)' }, { transform: 'translateX(0)' }],
@@ -210,7 +280,7 @@ function Marquee({
         animRef.current = anim
         rateRef.current = 1
         return () => anim.cancel()
-    }, [])
+    }, [reduced, repeats])
 
     useEffect(() => {
         const anim = animRef.current
@@ -245,19 +315,8 @@ function Marquee({
 
     return (
         <div
-            className={`dora-marquee relative flex items-center overflow-hidden border-b backdrop-blur-xl ${
-                scrolled
-                    ? 'border-transparent bg-background/55'
-                    : 'border-[#2b252c] bg-background'
-            }`}
-            style={{
-                height: scrolled ? 0 : 30,
-                opacity: scrolled ? 0 : 1,
-                // iOS-drawer curve so the bar "docks" away rather than just hiding
-                transition: reduced
-                    ? 'opacity 200ms ease, background-color 300ms ease'
-                    : 'height 420ms cubic-bezier(0.32,0.72,0,1), opacity 280ms ease-out, background-color 300ms ease, border-color 300ms ease'
-            }}
+            className={getClass(scrolled)}
+            style={getStyle(scrolled, reduced)}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
@@ -266,16 +325,18 @@ function Marquee({
                 className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#252128,#201d25_50%,#252128)] opacity-20"
             />
             <div
+                ref={baseRef}
+                aria-hidden
+                className="pointer-events-none absolute left-0 top-0 flex shrink-0 items-center opacity-0"
+                style={{ visibility: 'hidden' }}
+            >
+                {MARQUEE_ITEMS.map(renderItem)}
+            </div>
+            <div
                 ref={trackRef}
                 className="relative flex w-max shrink-0 items-center"
             >
-                {loop.map((item, i) => (
-                    <MarqueeItem
-                        key={i}
-                        guess={item.guess}
-                        reality={item.reality}
-                    />
-                ))}
+                {loop.map(renderItem)}
             </div>
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[rgba(245,192,192,0.17)]" />
         </div>

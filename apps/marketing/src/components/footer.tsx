@@ -47,11 +47,11 @@ export function Footer() {
     const year = new Date().getFullYear()
 
     return (
-        <section className="marketing-container marketing-footer relative border border-[#3a3138]">
+        <section className="marketing-container marketing-footer relative border-t border-[#3a3138]">
+            <span className="pointer-events-none absolute left-0 top-0 h-full w-px bg-gradient-to-b from-[#3a3138] to-transparent" aria-hidden />
+            <span className="pointer-events-none absolute right-0 top-0 h-full w-px bg-gradient-to-b from-[#3a3138] to-transparent" aria-hidden />
             <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2" />
             <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2" />
-            <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2" />
-            <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2" />
             <footer className="flex flex-col items-start justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center sm:px-8">
                 <ScrollReveal delay={0}>
                     <div className="flex flex-col gap-1.5">

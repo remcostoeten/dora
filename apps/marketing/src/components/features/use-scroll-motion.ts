@@ -10,8 +10,7 @@ type TGate = {
 function canAnimate(prefersReducedMotion: boolean) {
     return (
         !prefersReducedMotion &&
-        document.visibilityState === 'visible' &&
-        document.hasFocus()
+        document.visibilityState === 'visible'
     )
 }
 

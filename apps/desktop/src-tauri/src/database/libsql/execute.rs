@@ -175,10 +175,10 @@ mod tests {
             return;
         }
 
-        let db = libsql::Builder::new_local(":memory:")
-            .build()
-            .await
-            .unwrap();
+        // SAFETY: same as connection.rs — tests may run after Storage has
+        // initialized SQLite via rusqlite in the same process.
+        let builder = unsafe { libsql::Builder::new_local(":memory:").skip_safety_assert(true) };
+        let db = builder.build().await.unwrap();
         let conn = Arc::new(db.connect().unwrap());
 
         // Create table

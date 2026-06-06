@@ -119,7 +119,7 @@ export function DatabaseConnectionCard({
         let t = 0
         const draw = (running: boolean) => {
             const vel = running ? Math.abs(motion.velocityRef.current ?? 0) : 0
-            t = (t + (running ? 0.014 + vel * 0.04 : 0)) % 1
+            t = (t + (running ? 0.014 + vel * 0.003 : 0)) % 1
             // ease-in-out so the packet accelerates out of the hub and settles
             const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
             const c = packetRef.current
