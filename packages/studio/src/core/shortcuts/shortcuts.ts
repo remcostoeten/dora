@@ -55,6 +55,11 @@ export const APP_SHORTCUTS = {
 		description: 'Toggle sidebar',
 		scope: 'global'
 	},
+	toggleAiAssistant: {
+		combo: 'mod+shift+b',
+		description: 'Toggle AI assistant',
+		scope: 'global'
+	},
 	openSettings: {
 		combo: 'mod+comma',
 		description: 'Open settings',
@@ -223,7 +228,7 @@ export type ShortcutName = keyof typeof APP_SHORTCUTS
 
 export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 	'Navigation': [
-		'openCommandPalette', 'newConnection', 'toggleSidebar', 'openSettings',
+		'openCommandPalette', 'newConnection', 'toggleSidebar', 'toggleAiAssistant', 'openSettings',
 		'closeTab', 'reconnect',
 		'switchConnection1', 'switchConnection2', 'switchConnection3',
 		'switchConnection4', 'switchConnection5', 'switchConnection6',

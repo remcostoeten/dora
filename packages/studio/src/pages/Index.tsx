@@ -103,6 +103,9 @@ function IndexInner() {
 
   const { toast } = useToast();
   const shortcuts = useEffectiveShortcuts();
+  const toggleAiAssistant = useAiAssistantStore(function (s) {
+    return s.toggleOpen;
+  });
   const paletteShortcut = useShortcut({ ignoreInputs: false });
   const $ = useShortcut();
 
@@ -129,6 +132,13 @@ function IndexInner() {
       });
     },
     { description: shortcuts.toggleSidebar.description },
+  );
+
+  $.bind(shortcuts.toggleAiAssistant.combo).on(
+    function () {
+      toggleAiAssistant();
+    },
+    { description: shortcuts.toggleAiAssistant.description },
   );
 
   $.bind(shortcuts.reconnect.combo).on(
