@@ -82,19 +82,20 @@ function IndexInner() {
 
   const { tabs, activeTabId, openTab, closeTab, setActiveTab, closeTabsForConnection } = useTabs();
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
-  const selectedTableId = activeTab?.tableId ?? '';
-  const selectedTableName = activeTab?.tableName ?? '';
-
   const autoSelectFirstTableRef = useRef(false);
   const connectionInitializedRef = useRef(false);
+  const previousConnectionIdRef = useRef<string>("");
 
   const [activeConnectionId, setActiveConnectionId] = useState<string>("");
   const [sqlConsoleEditorContext, setSqlConsoleEditorContext] =
     useState<AiAssistantEditorContext | null>(null);
   const activeTabConnectionId = activeTab?.connectionId ?? "";
-  const studioConnectionId = activeTabConnectionId || activeConnectionId;
-  const sidebarSelectedTableId =
-    activeTabConnectionId && activeTabConnectionId !== activeConnectionId ? "" : selectedTableId;
+  const selectedTableId =
+    activeTab && activeTabConnectionId === activeConnectionId ? activeTab.tableId : "";
+  const selectedTableName =
+    activeTab && activeTabConnectionId === activeConnectionId ? activeTab.tableName : "";
+  const studioConnectionId = activeConnectionId;
+  const sidebarSelectedTableId = selectedTableId;
 
   const [isConnectionDialogOpen, setIsConnectionDialogOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -444,6 +445,18 @@ function IndexInner() {
     autoSelectFirstTableRef.current = false;
   }, []);
 
+  useEffect(
+    function clearTabsFromPreviousConnection() {
+      const previousConnectionId = previousConnectionIdRef.current;
+      if (previousConnectionId && previousConnectionId !== activeConnectionId) {
+        closeTabsForConnection(previousConnectionId);
+      }
+
+      previousConnectionIdRef.current = activeConnectionId;
+    },
+    [activeConnectionId, closeTabsForConnection],
+  );
+
   // Show database panel for sql-console and database-studio views
   const showDatabasePanel =
     activeNavId === "sql-console" ||
@@ -539,7 +552,7 @@ function IndexInner() {
                   />
                   <ErrorBoundary feature="Database Studio">
                     <DatabaseStudio
-                      key={activeTabId ?? 'empty'}
+                      key={studioConnectionId || "empty"}
                       tableId={selectedTableId}
                       tableName={selectedTableName}
                       isSidebarOpen={isSidebarOpen}

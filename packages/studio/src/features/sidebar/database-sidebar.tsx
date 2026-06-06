@@ -720,7 +720,7 @@ export function DatabaseSidebar({
 		}
 	}
 
-	const [topPanelRatio, setTopPanelRatio] = useState(0.7)
+		const [topPanelRatio, setTopPanelRatio] = useState(0.45)
 	const [isResizing, setIsResizing] = useState(false)
 	const sidebarRef = useRef<HTMLDivElement>(null)
 
@@ -734,7 +734,7 @@ export function DatabaseSidebar({
 				// Calculate used space by header (approx 40px + padding)
 				// We want ratio of the REMAINING space or total space?
 				// Total space is simpler.
-				const newRatio = Math.max(0.2, Math.min(0.85, relativeY / rect.height))
+					const newRatio = Math.max(0.2, Math.min(0.6, relativeY / rect.height))
 				setTopPanelRatio(newRatio)
 			}
 		}
