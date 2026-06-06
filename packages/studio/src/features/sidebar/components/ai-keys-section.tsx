@@ -86,11 +86,12 @@ export function AiKeysSection() {
 	}
 
 	return (
-		<SidebarSection title='AI Keys (Groq)'>
+		<SidebarSection title='AI Keys'>
 			<div className='space-y-2'>
 				<div className='text-xs text-muted-foreground leading-tight'>
-					Encrypted with AES-256-GCM. The master key lives in your OS keychain. Keys from{' '}
-					<code className='font-mono'>GROQ_API_KEY</code> env vars are merged in automatically.
+					Groq keys for now — OpenAI and Anthropic key management expands in upcoming releases.
+					Encrypted with AES-256-GCM. Keys from <code className='font-mono'>GROQ_API_KEY</code>{' '}
+					env vars are merged in automatically.
 				</div>
 
 				{loading && (

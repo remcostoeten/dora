@@ -84,7 +84,8 @@ pub struct GroqClient {
 
 impl GroqClient {
     pub fn from_env() -> Result<Self, Error> {
-        Self::from_sources(Self::collect_env_keys())
+        let model = std::env::var("GROQ_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string());
+        Self::from_sources(Self::collect_env_keys(), model)
     }
 
     /// Build a client merging env keys + DB-stored keys for the given storage.
@@ -92,7 +93,12 @@ impl GroqClient {
         let mut keys = Self::collect_env_keys();
         let db_keys = storage.ai_keys_active_decrypted("groq").unwrap_or_default();
         keys.extend(db_keys);
-        Self::from_sources(keys)
+        let model = storage
+            .get_setting("ai_model")?
+            .filter(|value| !value.trim().is_empty())
+            .or_else(|| std::env::var("GROQ_MODEL").ok())
+            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
+        Self::from_sources(keys, model)
     }
 
     fn collect_env_keys() -> Vec<String> {
@@ -112,7 +118,7 @@ impl GroqClient {
         keys
     }
 
-    fn from_sources(keys: Vec<String>) -> Result<Self, Error> {
+    fn from_sources(keys: Vec<String>, model: String) -> Result<Self, Error> {
         // Dedupe while preserving order
         let mut seen = std::collections::HashSet::new();
         let keys: Vec<String> = keys
@@ -129,7 +135,7 @@ impl GroqClient {
         Ok(Self {
             keys,
             counter: AtomicUsize::new(0),
-            model: std::env::var("GROQ_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string()),
+            model,
             client: reqwest::Client::builder()
                 .timeout(Duration::from_secs(60))
                 .build()

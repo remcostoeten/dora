@@ -7,8 +7,9 @@ use uuid::Uuid;
 use crate::{
     database::{
         services::ai::{
-            AIProvider, AIRequest, AIResponse, AIService, AiStreamEvent, ColumnContext,
-            ForeignKeyContext, GroqClient, GroqStatus, OllamaClient, SchemaContext, TableContext,
+            AIProvider, AIRequest, AIResponse, AIService, AiServiceConfig, AiStatus,
+            AiStreamEvent, ColumnContext, ForeignKeyContext, GroqClient, GroqStatus,
+            OllamaClient, SchemaContext, TableContext,
         },
         types::DatabaseSchema,
     },
@@ -182,17 +183,7 @@ pub async fn ai_abort_stream(
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_set_provider(provider: String, state: State<'_, AppState>) -> Result<(), Error> {
-    let ai_provider = match provider.to_lowercase().as_str() {
-        "groq" => AIProvider::Groq,
-        "gemini" => AIProvider::Gemini,
-        "ollama" => AIProvider::Ollama,
-        _ => {
-            return Err(Error::Any(anyhow::anyhow!(
-                "Invalid provider: {}",
-                provider
-            )))
-        }
-    };
+    let ai_provider = AIProvider::parse(&provider)?;
 
     let svc = AIService {
         storage: &state.storage,
@@ -206,12 +197,37 @@ pub async fn ai_get_provider(state: State<'_, AppState>) -> Result<String, Error
     let svc = AIService {
         storage: &state.storage,
     };
-    let provider = svc.get_provider()?;
-    Ok(match provider {
-        AIProvider::Groq => "groq".to_string(),
-        AIProvider::Gemini => "gemini".to_string(),
-        AIProvider::Ollama => "ollama".to_string(),
-    })
+    Ok(svc.get_provider()?.as_str().to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_get_config(state: State<'_, AppState>) -> Result<AiServiceConfig, Error> {
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.get_config()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_set_config(
+    config: AiServiceConfig,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.set_config(config)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_get_status(state: State<'_, AppState>) -> Result<AiStatus, Error> {
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.get_status().await
 }
 
 #[tauri::command]

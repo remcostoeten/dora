@@ -104,6 +104,52 @@ export function buildMockChatResponse(prompt: string, connectionId: string | nul
 	].join('\n')
 }
 
+export function buildMockAiStatus(): import('@studio/lib/bindings').AiStatus {
+	return {
+		active_provider: 'mock',
+		active_model: 'demo-assistant',
+		ready: true,
+		providers: [
+			{
+				provider: 'mock',
+				ready: true,
+				detail: 'Deterministic web demo responses',
+				key_count: null
+			},
+			{
+				provider: 'groq',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
+				provider: 'openai',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
+				provider: 'anthropic',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
+				provider: 'ollama',
+				ready: true,
+				detail: 'Simulated local model catalog',
+				key_count: null
+			},
+			{
+				provider: 'gemini',
+				ready: false,
+				detail: 'Not configured in demo',
+				key_count: null
+			}
+		]
+	}
+}
+
 export function buildMockSqlJson(prompt: string, connectionId: string | null): string {
 	const lower = prompt.toLowerCase()
 	const tables = DEMO_TABLES[connectionId ?? ''] ?? DEMO_TABLES['demo-ecommerce-001']

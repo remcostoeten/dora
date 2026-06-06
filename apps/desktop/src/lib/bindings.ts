@@ -574,6 +574,30 @@ async aiGetProvider() : Promise<Result<string, { kind: string; detail: string }>
     else return { status: "error", error: e  as any };
 }
 },
+async aiGetConfig() : Promise<Result<AiServiceConfig, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_config") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiSetConfig(config: AiServiceConfig) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_set_config", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async aiGetStatus() : Promise<Result<AiStatus, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("ai_get_status") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async aiSetGeminiKey(apiKey: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("ai_set_gemini_key", { apiKey }) };
@@ -735,6 +759,9 @@ async getCredentialStorageStatus() : Promise<CredentialStorageStatus> {
 export type AIResponse = { content: string; suggested_queries: string[] | null; tokens_used: number | null; provider: string }
 export type AiApiKeyRecord = { id: number; provider: string; label: string; is_active: boolean; last_tested: number | null; last_status: string | null; created_at: number; updated_at: number }
 export type AiKeyTestResult = { ok: boolean; message: string }
+export type AiProviderReadiness = { provider: string; ready: boolean; detail: string | null; key_count: number | null }
+export type AiServiceConfig = { provider: string; model: string; ollama_endpoint: string }
+export type AiStatus = { active_provider: string; active_model: string; ready: boolean; providers: AiProviderReadiness[] }
 export type AiStreamEvent = { type: "token"; text: string } | { type: "final"; content: string } | { type: "error"; message: string }
 export type ColumnInfo = { name: string; data_type: string; is_nullable: boolean; default_value: string | null; 
 /**
