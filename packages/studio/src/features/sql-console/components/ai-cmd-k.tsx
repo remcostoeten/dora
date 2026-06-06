@@ -2,7 +2,8 @@ import { Channel } from '@tauri-apps/api/core'
 import { Loader2, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { commands } from '@studio/lib/bindings'
-import type { AiStreamEvent, GroqStatus } from '@studio/lib/bindings'
+import type { AiStreamEvent } from '@studio/lib/bindings'
+import { formatAiStatusBadge, useAiStatus } from '@studio/features/ai-assistant/use-ai-status'
 import { buildMockSqlJson, streamMockText } from '@studio/features/ai-assistant/mock-ai'
 import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
@@ -55,7 +56,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 	const [streamedContent, setStreamedContent] = useState('')
 	const [error, setError] = useState<string | null>(null)
 	const [lastResult, setLastResult] = useState<ParsedResult | null>(null)
-	const [groqStatus, setGroqStatus] = useState<GroqStatus | null>(null)
+	const { status: aiStatus, isMock } = useAiStatus(open)
 	const promptRef = useRef<HTMLTextAreaElement | null>(null)
 	const abortRef = useRef<{ cancelled: boolean; requestId: string | null }>({
 		cancelled: false,
@@ -72,19 +73,9 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				abortRef.current.cancelled = false
 				abortRef.current.requestId = null
 				setTimeout(() => promptRef.current?.focus(), 30)
-				if (isTauri) {
-					commands
-						.aiGroqStatus()
-						.then((res) => {
-							if (res.status === 'ok') setGroqStatus(res.data)
-						})
-						.catch(() => {})
-				} else {
-					setGroqStatus({ available: true, key_count: 0 })
-				}
 			}
 		},
-		[open, isTauri]
+		[open]
 	)
 
 	const abortInFlight = useCallback(function abortInFlight() {
@@ -107,9 +98,9 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 	const generate = useCallback(
 		async function generate() {
 			if (!prompt.trim() || isGenerating) return
-			if (groqStatus && !groqStatus.available) {
+			if (isTauri && aiStatus && !aiStatus.ready) {
 				setError(
-					'No Groq API keys configured. Open Settings → AI Keys to add one, or set GROQ_API_KEY in your environment.'
+					`AI provider "${aiStatus.active_provider}" is not ready. Open Settings → AI Provider to configure it.`
 				)
 				return
 			}
@@ -200,7 +191,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				abortRef.current.requestId = null
 			}
 		},
-		[prompt, isGenerating, activeConnectionId, isTauri, groqStatus]
+		[prompt, isGenerating, activeConnectionId, isTauri, aiStatus]
 	)
 
 	const accept = useCallback(
@@ -241,13 +232,9 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 
 	if (!open) return null
 
-	const statusLabel = groqStatus
-		? isTauri
-			? groqStatus.available
-				? `${groqStatus.key_count} key${groqStatus.key_count === 1 ? '' : 's'}`
-				: 'no keys'
-			: 'mock'
-		: '…'
+	const statusLabel = formatAiStatusBadge(aiStatus, isMock)
+	const providerReady = aiStatus?.ready ?? false
+	const activeProvider = aiStatus?.active_provider ?? 'groq'
 
 	return (
 		<div
@@ -261,15 +248,17 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				<div className='flex items-center gap-2 border-b border-sidebar-border px-3 py-2'>
 					<Sparkles className='h-4 w-4 text-primary' />
 					<span className='text-xs font-semibold text-sidebar-foreground'>AI SQL</span>
-					<span className='text-[10px] text-muted-foreground'>schema-grounded · via Groq</span>
+					<span className='text-[10px] text-muted-foreground'>
+						schema-grounded · via {activeProvider}
+					</span>
 					<span
 						className={cn(
 							'text-[10px] rounded px-1.5 py-0.5',
-							groqStatus?.available
+							providerReady
 								? 'bg-emerald-500/10 text-emerald-500'
 								: 'bg-amber-500/10 text-amber-500'
 						)}
-						title='Configured Groq API keys (env + Settings)'
+						title={`Active provider: ${activeProvider}`}
 					>
 						{statusLabel}
 					</span>

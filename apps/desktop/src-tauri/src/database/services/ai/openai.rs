@@ -10,20 +10,20 @@ use super::{AIRequest, AIResponse, AiStreamEvent};
 use crate::error::Error;
 use crate::storage::Storage;
 
-const GROQ_API_URL: &str = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODELS_URL: &str = "https://api.groq.com/openai/v1/models";
-const DEFAULT_MODEL: &str = "llama-3.3-70b-versatile";
+const OPENAI_API_URL: &str = "https://api.openai.com/v1/chat/completions";
+const OPENAI_MODELS_URL: &str = "https://api.openai.com/v1/models";
+const DEFAULT_MODEL: &str = "gpt-4.1";
 
 #[derive(Debug, Serialize)]
-struct GroqMessage {
+struct OpenAiMessage {
     role: String,
     content: String,
 }
 
 #[derive(Debug, Serialize)]
-struct GroqRequest {
+struct OpenAiRequest {
     model: String,
-    messages: Vec<GroqMessage>,
+    messages: Vec<OpenAiMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
     stream: bool,
@@ -40,79 +40,73 @@ struct ResponseFormat {
 }
 
 #[derive(Debug, Deserialize)]
-struct GroqResponse {
-    choices: Vec<GroqChoice>,
-    usage: Option<GroqUsage>,
+struct OpenAiResponse {
+    choices: Vec<OpenAiChoice>,
+    usage: Option<OpenAiUsage>,
 }
 
 #[derive(Debug, Deserialize)]
-struct GroqChoice {
-    message: GroqResponseMessage,
+struct OpenAiChoice {
+    message: OpenAiResponseMessage,
 }
 
 #[derive(Debug, Deserialize)]
-struct GroqResponseMessage {
+struct OpenAiResponseMessage {
     content: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-struct GroqUsage {
+struct OpenAiUsage {
     total_tokens: Option<u32>,
 }
 
 #[derive(Debug, Deserialize)]
-struct GroqStreamChunk {
-    choices: Vec<GroqStreamChoice>,
+struct OpenAiStreamChunk {
+    choices: Vec<OpenAiStreamChoice>,
 }
 
 #[derive(Debug, Deserialize)]
-struct GroqStreamChoice {
-    delta: GroqStreamDelta,
+struct OpenAiStreamChoice {
+    delta: OpenAiStreamDelta,
 }
 
 #[derive(Debug, Deserialize, Default)]
-struct GroqStreamDelta {
+struct OpenAiStreamDelta {
     #[serde(default)]
     content: Option<String>,
 }
 
-pub struct GroqClient {
+pub struct OpenAiClient {
     keys: Vec<String>,
     counter: AtomicUsize,
     model: String,
     client: reqwest::Client,
 }
 
-impl GroqClient {
-    pub fn from_env() -> Result<Self, Error> {
-        let model = std::env::var("GROQ_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string());
-        Self::from_sources(Self::collect_env_keys(), model)
-    }
-
-    /// Build a client merging env keys + DB-stored keys for the given storage.
+impl OpenAiClient {
     pub fn from_env_and_storage(storage: &Storage) -> Result<Self, Error> {
         let mut keys = Self::collect_env_keys();
-        let db_keys = storage.ai_keys_active_decrypted("groq").unwrap_or_default();
+        let db_keys = storage.ai_keys_active_decrypted("openai").unwrap_or_default();
         keys.extend(db_keys);
         let model = storage
             .get_setting("ai_model")?
             .filter(|value| !value.trim().is_empty())
-            .or_else(|| std::env::var("GROQ_MODEL").ok())
+            .or_else(|| std::env::var("OPENAI_MODEL").ok())
             .unwrap_or_else(|| DEFAULT_MODEL.to_string());
         Self::from_sources(keys, model)
     }
 
     fn collect_env_keys() -> Vec<String> {
         let mut keys = Vec::new();
-        if let Ok(k) = std::env::var("GROQ_API_KEY") {
-            if !k.is_empty() {
-                keys.push(k);
+        if let Ok(key) = std::env::var("OPENAI_API_KEY") {
+            if !key.is_empty() {
+                keys.push(key);
             }
         }
-        for i in 1..=10 {
-            if let Ok(k) = std::env::var(format!("GROQ_API_KEY_{}", i)) {
-                if !k.is_empty() {
-                    keys.push(k);
+        for index in 1..=10 {
+            if let Ok(key) = std::env::var(format!("OPENAI_API_KEY_{index}")) {
+                if !key.is_empty() {
+                    keys.push(key);
                 }
             }
         }
@@ -120,16 +114,15 @@ impl GroqClient {
     }
 
     fn from_sources(keys: Vec<String>, model: String) -> Result<Self, Error> {
-        // Dedupe while preserving order
         let mut seen = std::collections::HashSet::new();
         let keys: Vec<String> = keys
             .into_iter()
-            .filter(|k| !k.is_empty() && seen.insert(k.clone()))
+            .filter(|key| !key.is_empty() && seen.insert(key.clone()))
             .collect();
 
         if keys.is_empty() {
             return Err(Error::InvalidInput(
-                "No Groq API keys configured. Add one in Settings → AI Keys, or set GROQ_API_KEY[ _1..10 ] in your environment.".into(),
+                "No OpenAI API keys configured. Add one in Settings → AI Keys, or set OPENAI_API_KEY in your environment.".into(),
             ));
         }
 
@@ -144,7 +137,6 @@ impl GroqClient {
         })
     }
 
-    /// Validate a single key without persisting anything. Returns Ok on 2xx, Err otherwise.
     pub async fn test_key(
         api_key: &str,
         model: Option<&str>,
@@ -153,7 +145,7 @@ impl GroqClient {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(if prompt.is_some() { 30 } else { 15 }))
             .build()
-            .map_err(|e| Error::Any(anyhow::anyhow!("client build failed: {}", e)))?;
+            .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
 
         let user_prompt = prompt.filter(|value| !value.trim().is_empty());
         let (system, user, max_tokens) = match user_prompt {
@@ -180,17 +172,17 @@ impl GroqClient {
         });
 
         let response = client
-            .post(GROQ_API_URL)
+            .post(OPENAI_API_URL)
             .bearer_auth(api_key)
             .json(&body)
             .send()
             .await
-            .map_err(|e| Error::Any(anyhow::anyhow!("request failed: {}", e)))?;
+            .map_err(|error| Error::Any(anyhow::anyhow!("request failed: {error}")))?;
 
         let status = response.status();
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
-            return Err(Error::Any(anyhow::anyhow!("{}: {}", status, text)));
+            return Err(Error::Any(anyhow::anyhow!("{status}: {text}")));
         }
 
         if user_prompt.is_some() {
@@ -228,8 +220,8 @@ impl GroqClient {
     }
 
     fn next_key(&self) -> &str {
-        let idx = self.counter.fetch_add(1, Ordering::Relaxed);
-        &self.keys[idx % self.keys.len()]
+        let index = self.counter.fetch_add(1, Ordering::Relaxed);
+        &self.keys[index % self.keys.len()]
     }
 
     fn build_request(
@@ -239,17 +231,15 @@ impl GroqClient {
         max_tokens: Option<u32>,
         stream: bool,
         use_json_format: bool,
-    ) -> GroqRequest {
-        // Groq requires the word "json" somewhere in messages when using json_object format,
-        // and chat mode expects markdown — so only enable JSON mode for SQL generation.
-        GroqRequest {
+    ) -> OpenAiRequest {
+        OpenAiRequest {
             model: self.model.clone(),
             messages: vec![
-                GroqMessage {
+                OpenAiMessage {
                     role: "system".into(),
                     content: system,
                 },
-                GroqMessage {
+                OpenAiMessage {
                     role: "user".into(),
                     content: user,
                 },
@@ -274,7 +264,6 @@ impl GroqClient {
             || status.is_server_error()
     }
 
-    /// Non-streaming completion with key rotation on 429/5xx/auth errors.
     pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
         let (system, user) = super::prompts::build(&request);
         let body = self.build_request(
@@ -292,15 +281,15 @@ impl GroqClient {
             let key = self.next_key().to_string();
             let response = match self
                 .client
-                .post(GROQ_API_URL)
+                .post(OPENAI_API_URL)
                 .bearer_auth(&key)
                 .json(&body)
                 .send()
                 .await
             {
-                Ok(r) => r,
-                Err(e) => {
-                    last_err = Some(Error::Any(anyhow::anyhow!("Groq request failed: {}", e)));
+                Ok(response) => response,
+                Err(error) => {
+                    last_err = Some(Error::Any(anyhow::anyhow!("OpenAI request failed: {error}")));
                     continue;
                 }
             };
@@ -309,9 +298,7 @@ impl GroqClient {
             if Self::should_rotate(status) {
                 let body_text = response.text().await.unwrap_or_default();
                 last_err = Some(Error::Any(anyhow::anyhow!(
-                    "Groq key/provider error (status {}): {}",
-                    status,
-                    body_text
+                    "OpenAI key/provider error (status {status}): {body_text}"
                 )));
                 continue;
             }
@@ -319,39 +306,32 @@ impl GroqClient {
             if !status.is_success() {
                 let body_text = response.text().await.unwrap_or_default();
                 return Err(Error::Any(anyhow::anyhow!(
-                    "Groq API error ({}): {}",
-                    status,
-                    body_text
+                    "OpenAI API error ({status}): {body_text}"
                 )));
             }
 
-            let parsed: GroqResponse = response
-                .json()
-                .await
-                .map_err(|e| Error::Any(anyhow::anyhow!("Failed to parse Groq response: {}", e)))?;
+            let parsed: OpenAiResponse = response.json().await.map_err(|error| {
+                Error::Any(anyhow::anyhow!("Failed to parse OpenAI response: {error}"))
+            })?;
 
             let content = parsed
                 .choices
                 .into_iter()
                 .next()
-                .and_then(|c| c.message.content)
+                .and_then(|choice| choice.message.content)
                 .unwrap_or_default();
-
-            let tokens_used = parsed.usage.and_then(|u| u.total_tokens);
 
             return Ok(AIResponse {
                 content,
                 suggested_queries: None,
-                tokens_used,
-                provider: "groq".to_string(),
+                tokens_used: parsed.usage.and_then(|usage| usage.total_tokens),
+                provider: "openai".to_string(),
             });
         }
 
-        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Groq keys exhausted"))))
+        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All OpenAI keys exhausted"))))
     }
 
-    /// Streaming completion. Emits AiStreamEvent via sender. Honors `cancel` flag and
-    /// rotates keys on 429/5xx/auth errors before any tokens are streamed.
     pub async fn complete_stream(
         &self,
         request: AIRequest,
@@ -374,18 +354,19 @@ impl GroqClient {
             if cancel.load(Ordering::Relaxed) {
                 return Ok(());
             }
+
             let key = self.next_key().to_string();
             let response = match self
                 .client
-                .post(GROQ_API_URL)
+                .post(OPENAI_API_URL)
                 .bearer_auth(&key)
                 .json(&body)
                 .send()
                 .await
             {
-                Ok(r) => r,
-                Err(e) => {
-                    last_err = Some(Error::Any(anyhow::anyhow!("Groq request failed: {}", e)));
+                Ok(response) => response,
+                Err(error) => {
+                    last_err = Some(Error::Any(anyhow::anyhow!("OpenAI request failed: {error}")));
                     continue;
                 }
             };
@@ -394,9 +375,7 @@ impl GroqClient {
             if Self::should_rotate(status) {
                 let body_text = response.text().await.unwrap_or_default();
                 last_err = Some(Error::Any(anyhow::anyhow!(
-                    "Groq key/provider error (status {}): {}",
-                    status,
-                    body_text
+                    "OpenAI key/provider error (status {status}): {body_text}"
                 )));
                 continue;
             }
@@ -404,9 +383,7 @@ impl GroqClient {
             if !status.is_success() {
                 let body_text = response.text().await.unwrap_or_default();
                 return Err(Error::Any(anyhow::anyhow!(
-                    "Groq API error ({}): {}",
-                    status,
-                    body_text
+                    "OpenAI API error ({status}): {body_text}"
                 )));
             }
 
@@ -419,7 +396,7 @@ impl GroqClient {
                     return Ok(());
                 }
                 let chunk = chunk_result
-                    .map_err(|e| Error::Any(anyhow::anyhow!("Groq stream error: {}", e)))?;
+                    .map_err(|error| Error::Any(anyhow::anyhow!("OpenAI stream error: {error}")))?;
                 buffer.push_str(&String::from_utf8_lossy(&chunk));
 
                 while let Some(newline_idx) = buffer.find('\n') {
@@ -442,20 +419,15 @@ impl GroqClient {
                         return Ok(());
                     }
 
-                    match serde_json::from_str::<GroqStreamChunk>(data) {
-                        Ok(parsed) => {
-                            if let Some(delta_text) = parsed
-                                .choices
-                                .into_iter()
-                                .next()
-                                .and_then(|c| c.delta.content)
-                            {
-                                full_content.push_str(&delta_text);
-                                let _ = sender.send(AiStreamEvent::Token { text: delta_text });
-                            }
-                        }
-                        Err(_) => {
-                            // Skip malformed chunks quietly
+                    if let Ok(parsed) = serde_json::from_str::<OpenAiStreamChunk>(data) {
+                        if let Some(delta_text) = parsed
+                            .choices
+                            .into_iter()
+                            .next()
+                            .and_then(|choice| choice.delta.content)
+                        {
+                            full_content.push_str(&delta_text);
+                            let _ = sender.send(AiStreamEvent::Token { text: delta_text });
                         }
                     }
                 }
@@ -467,7 +439,7 @@ impl GroqClient {
             return Ok(());
         }
 
-        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Groq keys exhausted"))))
+        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All OpenAI keys exhausted"))))
     }
 
     pub async fn fetch_model_ids(storage: &Storage) -> Result<Vec<String>, Error> {
@@ -475,7 +447,7 @@ impl GroqClient {
         let api_key = client
             .keys
             .first()
-            .ok_or_else(|| Error::InvalidInput("No Groq API keys configured".into()))?;
+            .ok_or_else(|| Error::InvalidInput("No OpenAI API keys configured".into()))?;
 
         let http = reqwest::Client::builder()
             .timeout(Duration::from_secs(15))
@@ -483,29 +455,31 @@ impl GroqClient {
             .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
 
         let response = http
-            .get(GROQ_MODELS_URL)
+            .get(OPENAI_MODELS_URL)
             .bearer_auth(api_key)
             .send()
             .await
-            .map_err(|error| Error::Any(anyhow::anyhow!("Groq models request failed: {error}")))?;
+            .map_err(|error| Error::Any(anyhow::anyhow!("OpenAI models request failed: {error}")))?;
 
         if !response.status().is_success() {
             let body = response.text().await.unwrap_or_default();
-            return Err(Error::Any(anyhow::anyhow!("Groq models request failed: {body}")));
+            return Err(Error::Any(anyhow::anyhow!(
+                "OpenAI models request failed: {body}"
+            )));
         }
 
         #[derive(Debug, Deserialize)]
-        struct GroqModelsResponse {
-            data: Vec<GroqModelEntry>,
+        struct OpenAiModelsResponse {
+            data: Vec<OpenAiModelEntry>,
         }
 
         #[derive(Debug, Deserialize)]
-        struct GroqModelEntry {
+        struct OpenAiModelEntry {
             id: String,
         }
 
-        let parsed: GroqModelsResponse = response.json().await.map_err(|error| {
-            Error::Any(anyhow::anyhow!("Failed to parse Groq models: {error}"))
+        let parsed: OpenAiModelsResponse = response.json().await.map_err(|error| {
+            Error::Any(anyhow::anyhow!("Failed to parse OpenAI models: {error}"))
         })?;
 
         Ok(parsed.data.into_iter().map(|entry| entry.id).collect())

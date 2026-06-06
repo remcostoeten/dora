@@ -7,15 +7,33 @@ use uuid::Uuid;
 use crate::{
     database::{
         services::ai::{
-            AIProvider, AIRequest, AIResponse, AIService, AiStreamEvent, ColumnContext,
-            ForeignKeyContext, GroqClient, GroqStatus, OllamaClient, SchemaContext, TableContext,
+            AIProvider, AIRequest, AIResponse, AIService, AiModelOption, AiServiceConfig, AiStatus,
+            AiStreamEvent, AiUsageCapture, AiUsageEntry, AiUsageProviderSummary, AiUsageSummary,
+            AnthropicClient, ColumnContext, ForeignKeyContext, GeminiClient, GroqClient, OllamaCatalogEntry,
+            OllamaClient, OllamaPullEvent, OllamaStatus, OpenAiClient, GroqStatus, SchemaContext,
+            TableContext, record_usage, usage_source,
         },
         types::DatabaseSchema,
     },
     error::Error,
-    storage::AiApiKeyRecord,
+    storage::{AiApiKeyRecord, AiUsageRow},
     AppState,
 };
+
+fn map_usage_row(row: AiUsageRow) -> AiUsageEntry {
+    AiUsageEntry {
+        id: row.id,
+        provider: row.provider,
+        model: row.model,
+        source: row.source,
+        input_tokens: row.input_tokens,
+        output_tokens: row.output_tokens,
+        total_tokens: row.total_tokens,
+        estimated_cost_usd: row.estimated_cost_usd,
+        estimated: row.estimated,
+        created_at: row.created_at,
+    }
+}
 
 fn build_schema_context(schema: &DatabaseSchema, engine: &str) -> SchemaContext {
     let tables = schema
@@ -101,7 +119,21 @@ pub async fn ai_complete(
     let svc = AIService {
         storage: &state.storage,
     };
-    svc.complete(request).await
+    let config = svc.get_config()?;
+    let response = svc.complete(request).await?;
+    if let Some(total) = response.tokens_used {
+        let capture = AiUsageCapture {
+            provider: response.provider.clone(),
+            model: config.model,
+            source: "complete".to_string(),
+            input_tokens: None,
+            output_tokens: None,
+            total_tokens: Some(total),
+            estimated: false,
+        };
+        let _ = record_usage(&state.storage, capture);
+    }
+    Ok(response)
 }
 
 #[tauri::command]
@@ -125,11 +157,11 @@ pub async fn ai_complete_stream(
     };
 
     let request = AIRequest {
-        prompt,
+        prompt: prompt.clone(),
         context,
         connection_id,
         max_tokens,
-        prompt_mode,
+        prompt_mode: prompt_mode.clone(),
     };
 
     let cancel = Arc::new(AtomicBool::new(false));
@@ -137,29 +169,48 @@ pub async fn ai_complete_stream(
         .ai_cancel_flags
         .insert(request_id.clone(), cancel.clone());
 
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AiStreamEvent>();
-
-    // Forward internal channel to Tauri IPC channel
-    let forward_handle = tokio::spawn(async move {
-        while let Some(event) = rx.recv().await {
-            let _ = on_event.send(event);
-        }
-    });
-
     let svc = AIService {
         storage: &state.storage,
     };
+    let config = svc.get_config()?;
+    let provider = config.provider.clone();
+    let model = config.model.clone();
+    let source = usage_source(prompt_mode.as_deref()).to_string();
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AiStreamEvent>();
+
+    let forward_handle = tokio::spawn(async move {
+        let mut final_content: Option<String> = None;
+        while let Some(event) = rx.recv().await {
+            if let AiStreamEvent::Final { content } = &event {
+                final_content = Some(content.clone());
+            }
+            let _ = on_event.send(event);
+        }
+        final_content
+    });
+
     let result = svc.complete_stream(request, tx, cancel).await;
 
-    // Wait for forwarder to drain
-    let _ = forward_handle.await;
+    let final_content = forward_handle
+        .await
+        .map_err(|error| Error::Any(anyhow::anyhow!("usage forward task failed: {error}")))?;
 
     state.ai_cancel_flags.remove(&request_id);
 
-    if let Err(ref e) = result {
-        // Best-effort: errors are surfaced through the command return value,
-        // not through the channel (which has already been dropped).
-        tracing::warn!("ai_complete_stream error: {}", e);
+    if result.is_ok() {
+        if let Some(content) = final_content {
+            let capture = AiUsageCapture::estimated_from_text(
+                &provider,
+                &model,
+                &source,
+                &prompt,
+                &content,
+            );
+            let _ = record_usage(&state.storage, capture);
+        }
+    } else if let Err(ref error) = result {
+        tracing::warn!("ai_complete_stream error: {}", error);
     }
 
     result
@@ -182,17 +233,7 @@ pub async fn ai_abort_stream(
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_set_provider(provider: String, state: State<'_, AppState>) -> Result<(), Error> {
-    let ai_provider = match provider.to_lowercase().as_str() {
-        "groq" => AIProvider::Groq,
-        "gemini" => AIProvider::Gemini,
-        "ollama" => AIProvider::Ollama,
-        _ => {
-            return Err(Error::Any(anyhow::anyhow!(
-                "Invalid provider: {}",
-                provider
-            )))
-        }
-    };
+    let ai_provider = AIProvider::parse(&provider)?;
 
     let svc = AIService {
         storage: &state.storage,
@@ -206,18 +247,106 @@ pub async fn ai_get_provider(state: State<'_, AppState>) -> Result<String, Error
     let svc = AIService {
         storage: &state.storage,
     };
-    let provider = svc.get_provider()?;
-    Ok(match provider {
-        AIProvider::Groq => "groq".to_string(),
-        AIProvider::Gemini => "gemini".to_string(),
-        AIProvider::Ollama => "ollama".to_string(),
+    Ok(svc.get_provider()?.as_str().to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_get_config(state: State<'_, AppState>) -> Result<AiServiceConfig, Error> {
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.get_config()
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_set_config(
+    config: AiServiceConfig,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.set_config(config)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_list_provider_models(
+    provider: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<AiModelOption>, Error> {
+    let ai_provider = AIProvider::parse(&provider)?;
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.list_provider_models(ai_provider).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_get_usage_summary(
+    limit: Option<u32>,
+    state: State<'_, AppState>,
+) -> Result<AiUsageSummary, Error> {
+    let limit = limit.unwrap_or(25).clamp(1, 200);
+    let totals = state
+        .storage
+        .ai_usage_totals()
+        .map_err(|error| Error::Any(error.into()))?;
+    let providers = state
+        .storage
+        .ai_usage_totals_by_provider()
+        .map_err(|error| Error::Any(error.into()))?;
+    let recent = state
+        .storage
+        .ai_usage_list(limit)
+        .map_err(|error| Error::Any(error.into()))?
+        .into_iter()
+        .map(map_usage_row)
+        .collect();
+
+    Ok(AiUsageSummary {
+        total_requests: totals.request_count,
+        input_tokens: totals.input_tokens,
+        output_tokens: totals.output_tokens,
+        total_tokens: totals.total_tokens,
+        estimated_cost_usd: totals.estimated_cost_usd,
+        providers: providers
+            .into_iter()
+            .map(|entry| AiUsageProviderSummary {
+                provider: entry.provider,
+                request_count: entry.request_count,
+                input_tokens: entry.input_tokens,
+                output_tokens: entry.output_tokens,
+                total_tokens: entry.total_tokens,
+                estimated_cost_usd: entry.estimated_cost_usd,
+            })
+            .collect(),
+        recent,
     })
 }
 
 #[tauri::command]
 #[specta::specta]
+pub async fn ai_get_status(state: State<'_, AppState>) -> Result<AiStatus, Error> {
+    let svc = AIService {
+        storage: &state.storage,
+    };
+    svc.get_status().await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn ai_set_gemini_key(api_key: String, state: State<'_, AppState>) -> Result<(), Error> {
-    state.storage.set_setting("gemini_api_key", &api_key)?;
+    if api_key.trim().is_empty() {
+        return Err(Error::InvalidInput("API key cannot be empty".into()));
+    }
+    state
+        .storage
+        .ai_keys_add("gemini", "default", api_key.trim())?;
+    let _ = state.storage.delete_setting("gemini_api_key");
     Ok(())
 }
 
@@ -237,16 +366,156 @@ pub async fn ai_configure_ollama(
     Ok(())
 }
 
+fn ollama_endpoint(state: &AppState) -> String {
+    state
+        .storage
+        .get_setting("ollama_endpoint")
+        .ok()
+        .flatten()
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| "http://127.0.0.1:11434".to_string())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_get_ollama_status(state: State<'_, AppState>) -> Result<OllamaStatus, Error> {
+    let endpoint = ollama_endpoint(&state);
+    let client = OllamaClient::with_endpoint(endpoint.clone());
+    let mut status = client.get_status().await;
+    let install = crate::ollama_installer::get_install_status(&endpoint).await;
+    status.managed = install.managed;
+    status.install_path = install.install_path;
+    status.binary_ready = install.binary_ready;
+    if status.running && status.version.is_none() {
+        status.version = install.version;
+    }
+    Ok(status)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_list_ollama_catalog(
+    state: State<'_, AppState>,
+) -> Result<Vec<OllamaCatalogEntry>, Error> {
+    let endpoint = ollama_endpoint(&state);
+    let client = OllamaClient::with_endpoint(endpoint);
+    client.list_catalog().await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_pull_ollama_model(
+    request_id: String,
+    model: String,
+    on_event: tauri::ipc::Channel<OllamaPullEvent>,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let model = model.trim().to_string();
+    if model.is_empty() {
+        return Err(Error::InvalidInput("Model name cannot be empty".into()));
+    }
+
+    let cancel = Arc::new(AtomicBool::new(false));
+    state
+        .ollama_cancel_flags
+        .insert(request_id.clone(), cancel.clone());
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<OllamaPullEvent>();
+    let forward_handle = tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            let _ = on_event.send(event);
+        }
+    });
+
+    let endpoint = ollama_endpoint(&state);
+    let client = OllamaClient::with_endpoint(endpoint);
+    let result = client.pull_model(&model, tx, cancel).await;
+
+    let _ = forward_handle.await;
+    state.ollama_cancel_flags.remove(&request_id);
+
+    result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_cancel_ollama_pull(
+    request_id: String,
+    state: State<'_, AppState>,
+) -> Result<bool, Error> {
+    if let Some(flag) = state.ollama_cancel_flags.get(&request_id) {
+        flag.store(true, Ordering::Relaxed);
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_delete_ollama_model(model: String, state: State<'_, AppState>) -> Result<(), Error> {
+    let model = model.trim().to_string();
+    if model.is_empty() {
+        return Err(Error::InvalidInput("Model name cannot be empty".into()));
+    }
+
+    let endpoint = ollama_endpoint(&state);
+    let client = OllamaClient::with_endpoint(endpoint);
+    client.delete_model(&model).await
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_list_ollama_models(state: State<'_, AppState>) -> Result<Vec<String>, Error> {
-    let endpoint = state
-        .storage
-        .get_setting("ollama_endpoint")?
-        .unwrap_or_else(|| "http://localhost:11434".to_string());
-
-    let client = OllamaClient::new(endpoint, String::new());
+    let endpoint = ollama_endpoint(&state);
+    let client = OllamaClient::with_endpoint(endpoint);
     client.list_models().await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_install_ollama(
+    request_id: String,
+    on_event: tauri::ipc::Channel<crate::ollama_installer::OllamaInstallEvent>,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    let cancel = Arc::new(AtomicBool::new(false));
+    state
+        .ollama_install_cancel_flags
+        .insert(request_id.clone(), cancel.clone());
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    let forward = tokio::spawn(async move {
+        while let Some(event) = rx.recv().await {
+            let _ = on_event.send(event);
+        }
+    });
+
+    let result = crate::ollama_installer::install_managed(tx, cancel).await;
+    let _ = forward.await;
+    state.ollama_install_cancel_flags.remove(&request_id);
+    result
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_cancel_ollama_install(
+    request_id: String,
+    state: State<'_, AppState>,
+) -> Result<bool, Error> {
+    if let Some(flag) = state.ollama_install_cancel_flags.get(&request_id) {
+        flag.store(true, Ordering::Relaxed);
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_start_ollama(state: State<'_, AppState>) -> Result<OllamaStatus, Error> {
+    crate::ollama_installer::start_managed_server().await?;
+    ai_get_ollama_status(state).await
 }
 
 /// Check whether Groq provider is usable (env or DB keys present).
@@ -311,36 +580,138 @@ pub struct AiKeyTestResult {
     pub message: String,
 }
 
+async fn test_ai_key_for_provider(
+    provider: &str,
+    api_key: &str,
+    model: Option<String>,
+    prompt: Option<String>,
+) -> Result<String, Error> {
+    let model_ref = model.as_deref();
+    let prompt_ref = prompt.as_deref();
+    match provider {
+        "groq" => GroqClient::test_key(api_key, model_ref, prompt_ref).await,
+        "openai" => OpenAiClient::test_key(api_key, model_ref, prompt_ref).await,
+        "anthropic" => AnthropicClient::test_key(api_key, model_ref, prompt_ref).await,
+        "gemini" => GeminiClient::test_key(api_key, model_ref, prompt_ref).await,
+        other => Err(Error::InvalidInput(format!(
+            "Key testing is not supported for provider: {other}"
+        ))),
+    }
+}
+
+fn resolve_test_model(
+    provider: &str,
+    model: Option<String>,
+    storage: &crate::storage::Storage,
+) -> Result<Option<String>, Error> {
+    if let Some(value) = model.filter(|entry| !entry.trim().is_empty()) {
+        return Ok(Some(value));
+    }
+
+    if let Some(saved) = storage.get_setting("ai_model")? {
+        if !saved.trim().is_empty() {
+            return Ok(Some(saved));
+        }
+    }
+
+    Ok(AIProvider::parse(provider).ok().map(|entry| entry.default_model().to_string()))
+}
+
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_keys_test(id: i64, state: State<'_, AppState>) -> Result<AiKeyTestResult, Error> {
+pub async fn ai_keys_test(
+    id: i64,
+    model: Option<String>,
+    prompt: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<AiKeyTestResult, Error> {
+    let record = state
+        .storage
+        .ai_keys_get(id)?
+        .ok_or_else(|| Error::InvalidInput(format!("No AI key with id {id}")))?;
     let plaintext = state
         .storage
         .ai_keys_get_decrypted(id)?
-        .ok_or_else(|| Error::InvalidInput(format!("No AI key with id {}", id)))?;
+        .ok_or_else(|| Error::InvalidInput(format!("No AI key with id {id}")))?;
+    let resolved_model = resolve_test_model(&record.provider, model, &state.storage)?;
 
-    let result = GroqClient::test_key(&plaintext, None).await;
+    let result = test_ai_key_for_provider(
+        &record.provider,
+        &plaintext,
+        resolved_model.clone(),
+        prompt.clone(),
+    )
+    .await;
     let (ok, message) = match &result {
         Ok(msg) => (true, msg.clone()),
-        Err(e) => (false, e.to_string()),
+        Err(error) => (false, error.to_string()),
     };
     let _ = state.storage.ai_keys_record_test(id, ok, &message);
+    if ok {
+        if let Some(model_id) = resolved_model {
+            let input = prompt
+                .as_deref()
+                .filter(|value| !value.trim().is_empty())
+                .unwrap_or("ping");
+            let output = if input == "ping" { "OK" } else { message.as_str() };
+            let capture = AiUsageCapture::estimated_from_text(
+                &record.provider,
+                &model_id,
+                "key_test",
+                input,
+                output,
+            );
+            let _ = record_usage(&state.storage, capture);
+        }
+    }
     Ok(AiKeyTestResult { ok, message })
 }
 
 /// Test an unsaved key (used by the "Test before save" button).
 #[tauri::command]
 #[specta::specta]
-pub async fn ai_keys_test_raw(api_key: String) -> Result<AiKeyTestResult, Error> {
-    let result = GroqClient::test_key(api_key.trim(), None).await;
-    Ok(match result {
-        Ok(msg) => AiKeyTestResult {
-            ok: true,
-            message: msg,
-        },
-        Err(e) => AiKeyTestResult {
+pub async fn ai_keys_test_raw(
+    provider: String,
+    api_key: String,
+    model: Option<String>,
+    prompt: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<AiKeyTestResult, Error> {
+    AIProvider::parse(&provider)?;
+    let resolved_model = resolve_test_model(provider.trim(), model, &state.storage)?;
+    let result = test_ai_key_for_provider(
+        provider.trim(),
+        api_key.trim(),
+        resolved_model.clone(),
+        prompt.clone(),
+    )
+    .await;
+    let outcome = match result {
+        Ok(msg) => {
+            if let Some(model_id) = resolved_model {
+                let input = prompt
+                    .as_deref()
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or("ping");
+                let output = if input == "ping" { "OK" } else { msg.as_str() };
+                let capture = AiUsageCapture::estimated_from_text(
+                    provider.trim(),
+                    &model_id,
+                    "key_test",
+                    input,
+                    output,
+                );
+                let _ = record_usage(&state.storage, capture);
+            }
+            AiKeyTestResult {
+                ok: true,
+                message: msg,
+            }
+        }
+        Err(error) => AiKeyTestResult {
             ok: false,
-            message: e.to_string(),
+            message: error.to_string(),
         },
-    })
+    };
+    Ok(outcome)
 }

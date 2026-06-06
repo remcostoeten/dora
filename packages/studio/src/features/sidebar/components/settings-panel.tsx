@@ -16,6 +16,9 @@ import {
 import { Slider } from '@studio/shared/ui/slider'
 import { Switch } from '@studio/shared/ui/switch'
 import { cn } from '@studio/shared/utils/cn'
+import { AiProviderSection } from '@studio/features/ai-assistant/ai-provider-section'
+import { AiUsageSection } from '@studio/features/ai-assistant/ai-usage-section'
+import { OllamaModelsSection } from '@studio/features/ai-assistant/ollama-models-section'
 import { AiKeysSection } from './ai-keys-section'
 import { ShortcutRecorder } from './shortcut-recorder'
 import { StorageSection } from './storage-section'
@@ -27,7 +30,10 @@ type SettingsViewProps = {
 type SettingsSectionId =
 	| 'editor'
 	| 'shortcuts'
+	| 'ai-provider'
+	| 'ollama-models'
 	| 'ai-keys'
+	| 'ai-usage'
 	| 'storage'
 	| 'safety'
 	| 'startup'
@@ -51,9 +57,24 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 		description: 'Keyboard bindings and overrides'
 	},
 	{
+		id: 'ai-provider',
+		title: 'AI Provider',
+		description: 'Active model provider and defaults'
+	},
+	{
+		id: 'ollama-models',
+		title: 'Local models',
+		description: 'Ollama status, pulls, and installed models'
+	},
+	{
 		id: 'ai-keys',
 		title: 'AI Keys',
-		description: 'Groq API keys and health checks'
+		description: 'Encrypted API keys per provider'
+	},
+	{
+		id: 'ai-usage',
+		title: 'AI Usage',
+		description: 'Token totals, estimated cost, and recent requests'
 	},
 	{
 		id: 'storage',
@@ -346,12 +367,39 @@ export function SettingsView({ windowControls }: SettingsViewProps = {}) {
 							</SectionCard>
 
 							<SectionCard
+								id='ai-provider'
+								title='AI Provider'
+								description='Choose the active provider and model used by the assistant.'
+								sectionRef={registerSectionRef('ai-provider')}
+							>
+								<AiProviderSection />
+							</SectionCard>
+
+							<SectionCard
+								id='ollama-models'
+								title='Local models'
+								description='Install and manage Ollama models on this machine.'
+								sectionRef={registerSectionRef('ollama-models')}
+							>
+								<OllamaModelsSection />
+							</SectionCard>
+
+							<SectionCard
 								id='ai-keys'
 								title='AI Keys'
-								description='Store and verify Groq API keys used by the assistant.'
+								description='Store and verify encrypted API keys.'
 								sectionRef={registerSectionRef('ai-keys')}
 							>
 								<AiKeysSection />
+							</SectionCard>
+
+							<SectionCard
+								id='ai-usage'
+								title='AI Usage'
+								description='Track requests, tokens, and estimated spend across providers.'
+								sectionRef={registerSectionRef('ai-usage')}
+							>
+								<AiUsageSection />
 							</SectionCard>
 
 							<SectionCard
