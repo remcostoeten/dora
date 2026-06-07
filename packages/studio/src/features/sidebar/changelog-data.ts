@@ -11,9 +11,17 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.26.7"
+export const CURRENT_VERSION = "0.27.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: "0.27.0",
+		date: "2026-06-07",
+		commit: "v0.27.0",
+		title: "Release v0.27.0",
+		description: "Updates in v0.27.0.",
+		type: "feature"
+	},
 	{
 		version: "0.26.5",
 		date: "2026-05-28",

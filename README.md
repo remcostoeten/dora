@@ -147,27 +147,27 @@ winget install RemcoStoeten.Dora
 
 ```bash
 # Linux (Flatpak bundle from GitHub releases)
-flatpak install --user Dora-<version>-x86_64.flatpak
+flatpak install --user Dora-0.27.0-x86_64.flatpak
 flatpak run io.github.remcostoeten.dora
 ```
 
 ```bash
 # Linux — one-off .deb install
-VERSION="<version>"
+VERSION="0.27.0"
 wget "https://github.com/remcostoeten/dora/releases/download/v${VERSION}/Dora_${VERSION}_amd64.deb"
 sudo apt install "./Dora_${VERSION}_amd64.deb"
 ```
 
 ```bash
 # Linux (.rpm)
-VERSION="<version>"
+VERSION="0.27.0"
 wget "https://github.com/remcostoeten/dora/releases/download/v${VERSION}/Dora-${VERSION}-1.x86_64.rpm"
 sudo dnf install "./Dora-${VERSION}-1.x86_64.rpm"
 ```
 
 ```bash
 # Linux (AppImage)
-VERSION="<version>"
+VERSION="0.27.0"
 wget "https://github.com/remcostoeten/dora/releases/download/v${VERSION}/Dora_${VERSION}_amd64.AppImage"
 chmod +x "Dora_${VERSION}_amd64.AppImage"
 "./Dora_${VERSION}_amd64.AppImage"

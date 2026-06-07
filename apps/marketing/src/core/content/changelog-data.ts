@@ -13,9 +13,26 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.26.7"
+export const CURRENT_VERSION = "0.27.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.27.0",
+		date: "2026-06-07",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.27.0",
+		groups: [
+			{
+				name: "Other Changes",
+				items: [
+				"feat(marketing): server-render GitHub stats (ISR)",
+				"refactor(marketing): split features-section into per-card files",
+				"feat(studio): shared @dora/studio package — desktop + marketing /app web demo",
+				"feat: multi-provider AI (OpenAI, Anthropic, Ollama)",
+				"Pre-release: landing fixes, studio polish, and beta prep",
+				]
+			}
+		]
+	},
 	{
 		version: "0.26.5",
 		date: "2026-05-28",
