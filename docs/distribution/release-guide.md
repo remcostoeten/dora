@@ -2,8 +2,9 @@
 
 Dora ships through a tag-triggered GitHub Actions pipeline. You create and push a semver tag; CI builds every platform, publishes the GitHub release, updates repo docs, and fans out to package managers.
 
-**Workflow file:** [`.github/workflows/release.yml`](../../.github/workflows/release.yml)  
+**Workflow file:** [`.github/workflows/release.yml`](../../.github/workflows/release.yml)
 **Release notes config:** [`.github/release.yml`](../../.github/release.yml)
+**Curated release notes:** [`.github/release-notes/`](../../.github/release-notes)
 
 ---
 
@@ -73,7 +74,7 @@ flowchart TD
 | 2 | `release-linux` | `ubuntu-latest` | Linux installers + tarball |
 | 2 | `release-windows` | `windows-latest` | Windows `.msi` + `.exe` |
 | 2 | `release-macos` | `macos-latest` | macOS ARM `.dmg` |
-| 2 | `release-macos-intel` | `macos-13` | macOS Intel `.dmg` |
+| 2 | `release-macos-intel` | `macos-15-intel` | macOS Intel `.dmg` |
 | 3 | `publish-release` | `ubuntu-latest` | Upload assets, create GitHub release |
 | 4 | `post-release` | `ubuntu-latest` | Changelog, README, in-app data, commit to `master` |
 | 5 | package managers | `ubuntu-latest` | Dispatch AUR, Homebrew, APT, Winget, Snap, Flatpak |
@@ -169,7 +170,7 @@ Four jobs run in parallel. Each job:
 
 ### macOS Intel (`release-macos-intel`)
 
-**Runner:** `macos-13`
+**Runner:** `macos-15-intel`
 
 **Outputs:** `.dmg` for Intel Macs.
 
@@ -190,10 +191,11 @@ Waits for all four platform jobs, then:
 gh release create v0.27.0 \
   --title "Dora v0.27.0" \
   --generate-notes \
+  --notes "$(cat .github/release-notes/v0.27.0.md)" \
   <all assets...>
 ```
 
-`--generate-notes` pulls merged PRs since the previous tag and groups them using [`.github/release.yml`](../../.github/release.yml).
+If `.github/release-notes/<tag>.md` exists, CI prepends that curated summary to the GitHub release body. `--generate-notes` still pulls merged PRs since the previous tag and groups them using [`.github/release.yml`](../../.github/release.yml).
 
 If an empty pre-created release exists for the tag, CI deletes it and recreates. If a release already has assets, the job fails rather than overwrite.
 
@@ -302,6 +304,8 @@ The appendix below covers recovery for the six automated store workflows only. G
 The only ongoing manual discipline for meaningful release notes: **label every PR before merge**.
 
 GitHub groups auto-generated notes by label (configured in `.github/release.yml`). PRs without a matching label land in **Other Changes**.
+
+For releases that need a fuller human summary, add `.github/release-notes/<tag>.md` before pushing the tag. The publish job prepends that file and keeps GitHub's generated compare/PR notes below it.
 
 | Category | Labels |
 | --- | --- |

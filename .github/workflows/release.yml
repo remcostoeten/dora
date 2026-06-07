@@ -303,7 +303,7 @@ jobs:
     needs: preflight
     permissions:
       contents: write
-    runs-on: macos-13
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -395,9 +395,16 @@ jobs:
             fi
           fi
 
+          RELEASE_NOTES=".github/release-notes/${VERSION}.md"
+          NOTES_ARGS=(--generate-notes)
+          if [ -f "$RELEASE_NOTES" ]; then
+            echo "Using curated release notes from $RELEASE_NOTES"
+            NOTES_ARGS+=(--notes "$(cat "$RELEASE_NOTES")")
+          fi
+
           gh release create "$VERSION" \
             --title "Dora ${VERSION}" \
-            --generate-notes \
+            "${NOTES_ARGS[@]}" \
             "${ASSETS[@]}"
 
   post-release:
