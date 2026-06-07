@@ -1,5 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { DockerView } from '@/features/docker-manager/components/docker-view'
 import * as useContainersModule from '@/features/docker-manager/api/queries/use-containers'
 import * as useCreateContainerModule from '@/features/docker-manager/api/mutations/use-create-container'
@@ -59,7 +61,20 @@ describe('DockerView', () => {
 	})
 
 	function renderWithProviders(component: any) {
-		return render(<TooltipProvider>{component}</TooltipProvider>)
+		const queryClient = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false },
+				mutations: { retry: false }
+			}
+		})
+
+		return render(
+			<QueryClientProvider client={queryClient}>
+				<MemoryRouter>
+					<TooltipProvider>{component}</TooltipProvider>
+				</MemoryRouter>
+			</QueryClientProvider>
+		)
 	}
 
 	it('shows loading state when checking docker availability', () => {
