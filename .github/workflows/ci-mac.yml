@@ -10,7 +10,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                runner: [macos-latest, macos-15-intel]
+                runner: [macos-latest, blacksmith-6vcpu-macos-15]
         steps:
             - name: Checkout
               uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98

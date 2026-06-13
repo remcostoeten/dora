@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   brew:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     env:
       HOMEBREW_TAP_REPO: remcostoeten/homebrew-dora
       HOMEBREW_SSH_PRIVATE_KEY: ${{ secrets.HOMEBREW_SSH_PRIVATE_KEY }}

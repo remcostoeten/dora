@@ -17,7 +17,7 @@ jobs:
   preflight:
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -83,7 +83,7 @@ jobs:
     needs: preflight
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -188,7 +188,7 @@ jobs:
     needs: preflight
     permissions:
       contents: write
-    runs-on: windows-latest
+    runs-on: blacksmith-4vcpu-windows-2025
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -258,7 +258,7 @@ jobs:
     needs: preflight
     permissions:
       contents: write
-    runs-on: macos-latest
+    runs-on: blacksmith-6vcpu-macos-15
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -303,7 +303,7 @@ jobs:
     needs: preflight
     permissions:
       contents: write
-    runs-on: macos-15-intel
+    runs-on: blacksmith-6vcpu-macos-15
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -349,7 +349,7 @@ jobs:
     permissions:
       contents: write
       actions: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -411,7 +411,7 @@ jobs:
     needs: publish-release
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
@@ -481,7 +481,7 @@ jobs:
     permissions:
       actions: write
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -495,7 +495,7 @@ jobs:
     permissions:
       actions: write
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -509,7 +509,7 @@ jobs:
     permissions:
       actions: write
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -523,7 +523,7 @@ jobs:
     permissions:
       actions: write
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -537,7 +537,7 @@ jobs:
     permissions:
       actions: write
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
@@ -551,7 +551,7 @@ jobs:
     permissions:
       actions: write
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
