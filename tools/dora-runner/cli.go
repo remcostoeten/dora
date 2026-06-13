@@ -28,16 +28,25 @@ func runCLI(args []string) error {
 
 func runCICommand(args []string) error {
 	if len(args) == 0 {
-		return errors.New("missing ci subcommand (expected: mac)")
-	}
-	if args[0] != "mac" {
-		return fmt.Errorf("unknown ci subcommand %q", args[0])
+		return errors.New("missing ci subcommand (expected: mac | dispatch)")
 	}
 
-	fs := flag.NewFlagSet("ci mac", flag.ContinueOnError)
+	sub := args[0]
+
+	// Legacy shorthand: dora-runner ci mac
+	if sub == "mac" {
+		sub = "dispatch"
+		args = append([]string{"dispatch", "--workflow", "ci-mac.yml"}, args[1:]...)
+	}
+
+	if sub != "dispatch" {
+		return fmt.Errorf("unknown ci subcommand %q", sub)
+	}
+
+	fs := flag.NewFlagSet("ci dispatch", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	ref := fs.String("ref", "main", "Git ref (branch/tag) to dispatch")
-	workflow := fs.String("workflow", "ci-mac.yml", "Workflow file name or id")
+	workflow := fs.String("workflow", "ci.yml", "Workflow file name or id")
 	repo := fs.String("repo", "", "Override repo (owner/name)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -56,7 +65,8 @@ func printCLIUsage() {
 	fmt.Println("Usage:")
 	fmt.Println("  dora-runner              # interactive TUI")
 	fmt.Println("  dora-runner vm <subcommand> [flags]")
-	fmt.Println("  dora-runner ci mac [--ref main] [--workflow ci-mac.yml]")
+  fmt.Println("  dora-runner ci dispatch [--workflow ci.yml] [--ref main]")
+	fmt.Println("  dora-runner ci mac [--ref main]  (shorthand for ci dispatch --workflow ci-mac.yml)")
 	fmt.Println("")
 	fmt.Println("VM subcommands:")
 	fmt.Println("  init    initialize VM config/storage")

@@ -52,10 +52,15 @@ const (
 	sectionDatabase
 	sectionReleaseNotes
 	sectionReleasePackaging
+	sectionTests
+	sectionLinting
+	sectionSEO
 	sectionAISetup
 	sectionDevTools
 	// VM
 	sectionVM
+	// CI dispatch
+	sectionCI
 	// Pickers
 	sectionPickVersion
 	sectionPickModel
@@ -90,6 +95,10 @@ type model struct {
 	buildFiles    []buildFile
 	buildCursor   int
 
+	// CI dispatch
+	ciMenu   []ciWorkflow
+	ciCursor int
+
 	executing bool
 	spinner   spinner.Model
 	outputCmd string
@@ -117,6 +126,10 @@ func initialModel() model {
 			"─────────────────────────",
 			"Database Management...",
 			"─────────────────────────",
+			"Tests...",
+			"Lint & Format...",
+			"Marketing SEO...",
+			"─────────────────────────",
 			"Release Notes...",
 			"Release Packaging...",
 			"─────────────────────────",
@@ -125,7 +138,7 @@ func initialModel() model {
 			"─────────────────────────",
 			"Update/Rebuild Runner",
 			"VM Testing...",
-			"Dispatch macOS CI",
+			"CI Dispatch...",
 			"─────────────────────────",
 			"Visit GitHub Repo",
 			"Go to Releases",
@@ -209,9 +222,14 @@ func (m model) moveCursorUp() model {
 		if m.buildCursor > 0 {
 			m.buildCursor--
 		}
-	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging, sectionAISetup, sectionDevTools:
+	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging,
+		sectionTests, sectionLinting, sectionSEO, sectionAISetup, sectionDevTools:
 		if m.scriptCursor > 0 {
 			m.scriptCursor--
+		}
+	case sectionCI:
+		if m.ciCursor > 0 {
+			m.ciCursor--
 		}
 	case sectionPickVersion, sectionPickModel:
 		if m.optionCursor > 0 {
@@ -238,9 +256,14 @@ func (m model) moveCursorDown() model {
 		if m.buildCursor < len(m.buildFiles)-1 {
 			m.buildCursor++
 		}
-	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging, sectionAISetup, sectionDevTools:
+	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging,
+		sectionTests, sectionLinting, sectionSEO, sectionAISetup, sectionDevTools:
 		if m.scriptCursor < len(m.scriptMenu)-1 {
 			m.scriptCursor++
+		}
+	case sectionCI:
+		if m.ciCursor < len(m.ciMenu)-1 {
+			m.ciCursor++
 		}
 	case sectionPickVersion, sectionPickModel:
 		if m.optionCursor < len(m.optionMenu)-1 {
@@ -292,6 +315,7 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 				{label: "Desktop (Tauri)", command: "bun", args: []string{"run", "desktop:dev"}},
 				{label: "Web (mock mode)", command: "bun", args: []string{"run", "web:dev"}},
 				{label: "Marketing (Next.js)", command: "bun", args: []string{"--cwd", "apps/marketing", "run", "dev"}},
+				{label: "DB Tester", command: "bun", args: []string{"--cwd", "apps/db-tester", "run", "dev"}},
 				{label: "All (turbo)", command: "bun", args: []string{"run", "turbo", "dev"}},
 			}
 
@@ -353,6 +377,24 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			m.scriptMenu = dbScripts
 			m.scriptCursor = 0
 
+		case "Tests...":
+			m.currentSection = sectionTests
+			m.scriptTitle = "Tests"
+			m.scriptMenu = testScripts
+			m.scriptCursor = 0
+
+		case "Lint & Format...":
+			m.currentSection = sectionLinting
+			m.scriptTitle = "Lint & Format"
+			m.scriptMenu = lintScripts
+			m.scriptCursor = 0
+
+		case "Marketing SEO...":
+			m.currentSection = sectionSEO
+			m.scriptTitle = "Marketing SEO"
+			m.scriptMenu = seoScripts
+			m.scriptCursor = 0
+
 		case "Release Notes...":
 			m.currentSection = sectionReleaseNotes
 			m.scriptTitle = "Release Notes"
@@ -395,9 +437,10 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 				{label: "VM Nuke", command: self, args: []string{"vm", "nuke"}},
 			}
 
-		case "Dispatch macOS CI":
-			self := os.Args[0]
-			return m, executeCommand(self, "ci", "mac", "--ref", "main")
+		case "CI Dispatch...":
+			m.currentSection = sectionCI
+			m.ciMenu = ciWorkflows
+			m.ciCursor = 0
 
 		case "Visit GitHub Repo":
 			return m, openURL("https://github.com/remcostoeten/dora")
@@ -437,7 +480,8 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 		}
 
 	// ------------------------------------------------------------------
-	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging, sectionAISetup, sectionDevTools:
+	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging,
+		sectionTests, sectionLinting, sectionSEO, sectionAISetup, sectionDevTools:
 		script := m.scriptMenu[m.scriptCursor]
 		if script.needsInput {
 			m.pendingScript = &script
@@ -456,6 +500,14 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			}
 		} else {
 			return m, executeCommand(script.command, script.args...)
+		}
+
+	// ------------------------------------------------------------------
+	case sectionCI:
+		if len(m.ciMenu) > 0 {
+			wf := m.ciMenu[m.ciCursor]
+			self := os.Args[0]
+			return m, executeCommand(self, "ci", "dispatch", "--workflow", wf.workflow, "--ref", "main")
 		}
 
 	// ------------------------------------------------------------------

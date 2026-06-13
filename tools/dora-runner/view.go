@@ -72,8 +72,11 @@ func (m model) View() string {
 		content = m.buildsList("Select .deb to reinstall:")
 	case sectionCheckSizes:
 		content = m.sizesList()
-	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging, sectionAISetup, sectionDevTools:
+	case sectionDatabase, sectionReleaseNotes, sectionReleasePackaging,
+		sectionTests, sectionLinting, sectionSEO, sectionAISetup, sectionDevTools:
 		content = m.scriptMenuList()
+	case sectionCI:
+		content = m.ciMenuList()
 	case sectionPickVersion, sectionPickModel:
 		content = m.optionMenuList()
 	}
@@ -183,6 +186,23 @@ func (m model) scriptMenuList() string {
 			s.WriteString(descStyle.Render(script.description))
 		} else {
 			s.WriteString(itemStyle.Render(script.label))
+		}
+		s.WriteString("\n")
+	}
+	return s.String()
+}
+
+func (m model) ciMenuList() string {
+	var s strings.Builder
+	s.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#DDD")).Render("CI Dispatch (gh workflow run)"))
+	s.WriteString("\n\n")
+	for i, wf := range m.ciMenu {
+		if m.ciCursor == i {
+			s.WriteString(selectedItemStyle.Render(fmt.Sprintf(" %s ", wf.label)))
+			s.WriteString("\n")
+			s.WriteString(descStyle.Render(wf.description + "  [" + wf.workflow + "]"))
+		} else {
+			s.WriteString(itemStyle.Render(wf.label))
 		}
 		s.WriteString("\n")
 	}

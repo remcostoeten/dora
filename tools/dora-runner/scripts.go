@@ -244,6 +244,134 @@ var devToolScripts = []scriptDef{
 }
 
 // ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+var testScripts = []scriptDef{
+	{
+		label:       "Run All Tests (turbo)",
+		description: "vitest across all packages via turbo",
+		command:     "bun",
+		args:        []string{"run", "test"},
+	},
+	{
+		label:       "Watch Mode",
+		description: "vitest in watch mode",
+		command:     "bun",
+		args:        []string{"run", "test:watch"},
+	},
+	{
+		label:       "Test UI",
+		description: "vitest with browser UI",
+		command:     "bun",
+		args:        []string{"run", "test:ui"},
+	},
+	{
+		label:       "Coverage Report",
+		description: "vitest run --coverage",
+		command:     "bun",
+		args:        []string{"run", "test:coverage"},
+	},
+	{
+		label:       "Desktop Tests Only",
+		description: "vitest scoped to apps/desktop",
+		command:     "bun",
+		args:        []string{"run", "test:desktop"},
+	},
+}
+
+// ---------------------------------------------------------------------------
+// Lint / format
+// ---------------------------------------------------------------------------
+
+var lintScripts = []scriptDef{
+	{
+		label:       "Lint",
+		description: "oxlint across packages/style",
+		command:     "bun",
+		args:        []string{"run", "lint"},
+	},
+	{
+		label:       "Lint + Fix",
+		description: "Auto-fix lint issues",
+		command:     "bun",
+		args:        []string{"run", "lint:fix"},
+	},
+	{
+		label:       "Format Check",
+		description: "oxfmt dry-run",
+		command:     "bun",
+		args:        []string{"run", "format"},
+	},
+	{
+		label:       "Format + Fix",
+		description: "Apply oxfmt formatting",
+		command:     "bun",
+		args:        []string{"run", "format:fix"},
+	},
+	{
+		label:       "Fix All",
+		description: "lint:fix + format:fix combined",
+		command:     "bun",
+		args:        []string{"run", "fix"},
+	},
+}
+
+// ---------------------------------------------------------------------------
+// Marketing SEO
+// ---------------------------------------------------------------------------
+
+var seoScripts = []scriptDef{
+	{
+		label:       "Run SEO Audit",
+		description: "Run full SEO audit against local dev",
+		command:     "bash",
+		args:        []string{"-c", "bun --cwd apps/marketing run seo"},
+	},
+	{
+		label:       "Setup SEO CI",
+		description: "Install SEO audit dependencies",
+		command:     "bash",
+		args:        []string{"-c", "bun --cwd apps/marketing run seo:setup"},
+	},
+	{
+		label:       "SEO Audit (prod)",
+		description: "Run audit against production URL",
+		command:     "bash",
+		args:        []string{"-c", "bun --cwd apps/marketing run seo:prod"},
+	},
+	{
+		label:       "Build + Audit",
+		description: "Next.js build then post-build SEO audit",
+		command:     "bash",
+		args:        []string{"-c", "bun --cwd apps/marketing run build"},
+	},
+}
+
+// ---------------------------------------------------------------------------
+// CI dispatch
+// ---------------------------------------------------------------------------
+
+type ciWorkflow struct {
+	label       string
+	description string
+	workflow    string
+}
+
+var ciWorkflows = []ciWorkflow{
+	{label: "macOS CI", description: "Build and test on macOS runner", workflow: "ci-mac.yml"},
+	{label: "Linux CI", description: "Main CI pipeline", workflow: "ci.yml"},
+	{label: "Release", description: "Full release pipeline", workflow: "release.yml"},
+	{label: "Tag Create", description: "Create and push a version tag", workflow: "tag-create.yml"},
+	{label: "APT repo", description: "Publish to APT repository", workflow: "apt.yml"},
+	{label: "AUR", description: "Push to Arch User Repository", workflow: "aur.yml"},
+	{label: "Homebrew", description: "Update Homebrew cask", workflow: "brew.yml"},
+	{label: "Flatpak", description: "Build and publish Flatpak", workflow: "flatpak.yml"},
+	{label: "Snap", description: "Build and publish Snap", workflow: "snap.yml"},
+	{label: "WinGet", description: "Submit to Windows Package Manager", workflow: "winget.yml"},
+}
+
+// ---------------------------------------------------------------------------
 // Pickers
 // ---------------------------------------------------------------------------
 
