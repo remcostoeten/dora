@@ -25,15 +25,18 @@ All notable changes to this project will be documented in this file.
 - data-grid column headers show a tooltip with the full column name and type, but only when the label is actually truncated (#115)
 - database-studio empty states no longer re-fire their entrance animation on every tab switch, removing the zoom/flicker (#113)
 - AI provider status dot is no longer colour-only — it uses a filled vs hollow shape plus `aria-pressed`/`aria-label` for screen readers (#116)
+- SQLite `VACUUM`, `DETACH DATABASE`, and some `PRAGMA` forms no longer fail to run — they are classified via a keyword fallback when the AST parser rejects them (#94)
 
 ### Documentation
 
 - README support matrix and **Local files** section explaining database files vs data files
+- add `docs/ai-providers.md` — per-provider setup, recommended models, key storage, and troubleshooting (#91)
 
 ### Internal
 
 - remove unused `DisabledFeature`/`NotImplemented` components and the deprecated `database-studio/api.ts` (#95)
 - drop the inaccurate PgBouncer scaffold comment in `types.rs` now that `use_simple_query` is fully wired (#92)
+- model statement execution result as an enum instead of a `returns_values` bool, making page/column state unrepresentable for non-row-returning queries (#93)
 
 
 ## [v0.27.0]

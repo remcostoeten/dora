@@ -28,6 +28,7 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"**Import files** — import CSV/JSON/Parquet as physical tables in native DuckDB file connections",
 			"open SQLite and DuckDB files as editable embedded databases",
 			"README support matrix and **Local files** section explaining database files vs data files",
+			"add `docs/ai-providers.md` — per-provider setup, recommended models, key storage, and troubleshooting (#91)",
 		]
 	},
 	{
