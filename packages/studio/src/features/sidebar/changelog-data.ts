@@ -27,6 +27,9 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"**Save as DuckDB** — materialize active data-file sessions into editable `.duckdb` files",
 			"**Import files** — import CSV/JSON/Parquet as physical tables in native DuckDB file connections",
 			"open SQLite and DuckDB files as editable embedded databases",
+			"drag tabs to reorder them (pinned tabs stay grouped first) (#105)",
+			"open tabs are persisted and restored across relaunch (#98)",
+			"binary/blob cells now show inline hex for small values and a `<type — size>` summary (with magic-byte detection) for large ones, instead of a bare byte count (#90)",
 			"README support matrix and **Local files** section explaining database files vs data files",
 			"add `docs/ai-providers.md` — per-provider setup, recommended models, key storage, and troubleshooting (#91)",
 		]
