@@ -55,7 +55,7 @@ func (m model) View() string {
 	var s strings.Builder
 
 	// Header
-	s.WriteString(titleStyle.Render("⚡ DORA RUNNER v2.0"))
+	s.WriteString(titleStyle.Render("⚡ DORA MANAGER EXECUTOR v2.0"))
 	s.WriteString("\n")
 
 	// Content Window

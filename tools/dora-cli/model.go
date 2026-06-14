@@ -318,8 +318,8 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 				rebuildScript := `
 where go >NUL 2>NUL || (echo Error: Go is not installed or not in PATH. & exit /b 1)
 if exist tools\dora-cli cd tools\dora-cli
-echo Building dora-runner...
-go build -o ../../dora-runner . && echo Success! Runner updated. || echo Build failed.
+echo Building dora-manager-executor...
+go build -o ../../dora-manager-executor . && echo Success! Runner updated. || echo Build failed.
 `
 				return m, runShellScript(rebuildScript)
 			}
@@ -339,8 +339,8 @@ if [ -d tools/dora-cli ]; then
     cd tools/dora-cli
 fi
 
-echo "Building dora-runner..."
-go build -o ../../dora-runner . && echo "Success! Runner updated." || echo "Build failed."
+echo "Building dora-manager-executor..."
+go build -o ../../dora-manager-executor . && echo "Success! Runner updated." || echo "Build failed."
 `
 			return m, runShellScript(rebuildScript)
 		case 14: // VM Testing...
@@ -547,10 +547,10 @@ func findBuilds(mode string) []buildFile {
 			}
 
 			if isValid {
-				info, err := d.Info()
-				if err != nil {
-					continue // Skip this file
-				}
+					info, err := d.Info()
+					if err != nil {
+						return nil // Skip this file
+					}
 				files = append(files, buildFile{
 					Name:    d.Name(),
 					Path:    path,

@@ -51,12 +51,12 @@ func runCICommand(args []string) error {
 }
 
 func printCLIUsage() {
-	fmt.Println("dora CLI")
+	fmt.Println("dora-manager-executor")
 	fmt.Println("")
 	fmt.Println("Usage:")
-	fmt.Println("  dora                 # interactive TUI")
-	fmt.Println("  dora vm <subcommand> [flags]")
-	fmt.Println("  dora ci mac [--ref main] [--workflow ci-mac.yml]")
+	fmt.Println("  dora-manager-executor                 # interactive TUI")
+	fmt.Println("  dora-manager-executor vm <subcommand> [flags]")
+	fmt.Println("  dora-manager-executor ci mac [--ref main] [--workflow ci-mac.yml]")
 	fmt.Println("")
 	fmt.Println("VM subcommands:")
 	fmt.Println("  init    initialize VM config/storage")
