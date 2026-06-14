@@ -1,5 +1,6 @@
 import Editor from '@monaco-editor/react'
-import { Table2, Braces, Download, Copy, Trash2, CircleCheck, Database, BarChart3 } from 'lucide-react'
+import { Table2, Braces, Download, Copy, Trash2, CircleCheck, Database, BarChart3, Sparkles } from 'lucide-react'
+import { askAi, buildFixErrorPrompt } from '@studio/features/ai-assistant/ai-actions'
 import { useAsyncRowCount } from '../hooks/use-async-row-count'
 import {
 	AlertDialog,
@@ -42,6 +43,7 @@ type Props = {
 	showFilter?: boolean
 	onRefresh?: () => void
 	sourceTable?: string
+	query?: string
 }
 
 type EditingCell = {
@@ -61,7 +63,8 @@ export function SqlResults({
 	connectionId,
 	showFilter,
 	onRefresh,
-	sourceTable
+	sourceTable,
+	query
 }: Props) {
 	const asyncRowCount = useAsyncRowCount(
 		connectionId,
@@ -416,8 +419,23 @@ export function SqlResults({
 					</div>
 				) : result.error ? (
 					<div className='flex items-center justify-center h-full p-4'>
-						<div className='text-destructive text-sm font-mono bg-destructive/10 px-4 py-3 rounded-md border border-destructive/20 max-w-lg'>
-							{result.error}
+						<div className='flex flex-col gap-2 max-w-lg'>
+							<div className='text-destructive text-sm font-mono bg-destructive/10 px-4 py-3 rounded-md border border-destructive/20'>
+								{result.error}
+							</div>
+							{query?.trim() && (
+								<Button
+									variant='outline'
+									size='sm'
+									className='h-7 gap-1.5 self-start text-xs'
+									onClick={function () {
+										askAi(buildFixErrorPrompt(query, result.error ?? ''))
+									}}
+								>
+									<Sparkles className='h-3.5 w-3.5' />
+									Fix with AI
+								</Button>
+							)}
 						</div>
 					</div>
 				) : viewMode === 'chart' ? (

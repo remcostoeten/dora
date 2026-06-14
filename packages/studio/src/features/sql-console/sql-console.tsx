@@ -1179,6 +1179,7 @@ function SqlConsoleInner({
                     connectionId={activeConnectionId}
                     showFilter={showFilter}
                     onRefresh={() => handleExecute()}
+                    query={mode === "sql" ? currentSqlQuery : currentDrizzleQuery}
                   />
                 }
               />
