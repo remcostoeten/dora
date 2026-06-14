@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 - drag tabs to reorder them (pinned tabs stay grouped first) (#105)
 - open tabs are persisted and restored across relaunch (#98)
 - binary/blob cells now show inline hex for small values and a `<type — size>` summary (with magic-byte detection) for large ones, instead of a bare byte count (#90)
+- data-grid filters can be joined with OR via an AND/OR toggle, not only AND (#102)
+- JSON/CSV/SQL export now respects the active filters and sort order instead of dumping the whole table or just the loaded page (#99)
 
 ### Reliability
 
