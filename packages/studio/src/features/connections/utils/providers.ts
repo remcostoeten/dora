@@ -391,6 +391,22 @@ export function isValidConnectionUrl(text: string): boolean {
 	return pattern.test(trimmed)
 }
 
+/**
+ * Returns true when the URL's host is a Fly.io **public** endpoint
+ * (fly.dev or flympg hostnames reachable only via `fly proxy`).
+ *
+ * Returns false for Fly.io **private** hosts (.internal / .flycast)
+ * that are routable over a Fly WireGuard tunnel without proxying.
+ */
+export function isFlyPublicHost(url: string): boolean {
+	try {
+		const host = new URL(url).hostname.toLowerCase()
+		return /fly\.dev|flympg/.test(host)
+	} catch {
+		return false
+	}
+}
+
 export function hasPostgresPoolerMode(url: string): boolean {
 	try {
 		const parsed = new URL(url)
