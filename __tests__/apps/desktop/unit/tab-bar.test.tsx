@@ -47,4 +47,21 @@ describe('TabBar', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
     expect(onClick).not.toHaveBeenCalled()
   })
+
+  it('opens a right-click menu with tab actions', async () => {
+    const onPinToggle = vi.fn()
+    render(
+      <TabBar
+        tabs={tabs}
+        activeTabId="1"
+        onTabClick={vi.fn()}
+        onTabClose={vi.fn()}
+        onTabPinToggle={onPinToggle}
+      />
+    )
+    fireEvent.contextMenu(screen.getByText('users'))
+    const pinItem = await screen.findByText('Pin tab')
+    fireEvent.click(pinItem)
+    expect(onPinToggle).toHaveBeenCalledWith('1')
+  })
 })

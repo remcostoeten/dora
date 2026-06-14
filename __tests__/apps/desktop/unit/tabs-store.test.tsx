@@ -82,4 +82,48 @@ describe('useTabs', () => {
     expect(result.current.tabs).toHaveLength(12)
     expect(result.current.tabs[0].label).toBe('t1')
   })
+
+  it('pins a tab and moves it before unpinned tabs', () => {
+    const { result } = renderHook(() => useTabs(), { wrapper })
+    act(() => {
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.orders', tableName: 'orders', label: 'orders' })
+    })
+    const secondId = result.current.tabs[1].id
+    act(() => { result.current.togglePinTab(secondId) })
+    expect(result.current.tabs[0].id).toBe(secondId)
+    expect(result.current.tabs[0].pinned).toBe(true)
+  })
+
+  it('closeOtherTabs keeps pinned tabs and the selected tab', () => {
+    const { result } = renderHook(() => useTabs(), { wrapper })
+    act(() => {
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.orders', tableName: 'orders', label: 'orders' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.products', tableName: 'products', label: 'products' })
+    })
+    const usersId = result.current.tabs[0].id
+    const ordersId = result.current.tabs[1].id
+    act(() => {
+      result.current.togglePinTab(usersId)
+      result.current.closeOtherTabs(ordersId)
+    })
+    expect(result.current.tabs.map((tab) => tab.id)).toEqual([usersId, ordersId])
+    expect(result.current.activeTabId).toBe(ordersId)
+  })
+
+  it('closes unpinned tabs to the left and right of a tab', () => {
+    const { result } = renderHook(() => useTabs(), { wrapper })
+    act(() => {
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t1', tableName: 't1', label: 't1' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t2', tableName: 't2', label: 't2' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t3', tableName: 't3', label: 't3' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t4', tableName: 't4', label: 't4' })
+    })
+    const secondId = result.current.tabs[1].id
+    act(() => { result.current.closeTabsToLeft(secondId) })
+    expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2', 't3', 't4'])
+    act(() => { result.current.closeTabsToRight(secondId) })
+    expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2'])
+  })
 })

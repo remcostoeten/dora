@@ -5,6 +5,7 @@ import {
 import { getSourceCaps } from '@studio/features/connections/source-caps'
 import type { Connection } from '@studio/features/connections/types'
 import {
+	ATTACH_FILE_UI_IMPLEMENTED,
 	getVisibleUiActions,
 	isUiActionVisible,
 	type StudioUiAction,
@@ -102,5 +103,20 @@ describe('ui-actions', function () {
 		]) {
 			expect(isUiActionVisible('ssh-tunnel', getSourceCaps(conn))).toBe(false)
 		}
+	})
+
+	it('shows attach-file for native DuckDB file connections', function () {
+		const duckdbFile = connection(buildConnectionFromDatabaseFile('/tmp/analytics.duckdb', 'duckdb'))
+		const caps = getSourceCaps(duckdbFile)
+
+		expect(ATTACH_FILE_UI_IMPLEMENTED).toBe(true)
+		expect(caps.canAttachFiles).toBe(true)
+		expect(isUiActionVisible('attach-file', caps)).toBe(true)
+		expect(visibleActions(duckdbFile)).toContain('attach-file')
+	})
+
+	it('keeps attach-file hidden for data-file sessions even when UI is implemented', function () {
+		const dataFile = connection(buildConnectionFromDataFiles(['/tmp/sales.csv']))
+		expect(isUiActionVisible('attach-file', getSourceCaps(dataFile))).toBe(false)
 	})
 })
