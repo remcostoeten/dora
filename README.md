@@ -15,7 +15,7 @@
   <img src="assets/demo-tour.webp" alt="Dora in use" width="92%" />
 </p>
 
-Dora is a cross-platform database workbench built with Tauri and Rust. It connects to PostgreSQL, MySQL, SQLite, libSQL, MariaDB, and CockroachDB — and ships as a ~10 MB binary instead of the 100+ MB you get from Electron-based alternatives.
+Dora is a cross-platform database workbench built with Tauri and Rust. It connects to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, and DuckDB — plus serverless Postgres/MySQL (Neon, Supabase, PlanetScale) via one-click presets — and ships as a ~10 MB binary instead of the 100+ MB you get from Electron-based alternatives.
 
 It covers the full day-to-day loop: browse data, run queries with a Monaco editor, inspect schemas as an ER diagram, manage local Docker databases, generate SQL with AI, and write type-safe Drizzle ORM queries — all from one keyboard-first app.
 
@@ -63,8 +63,12 @@ sudo snap install dora
 | DuckDB | Beta — local `.duckdb` files (editable), import CSV/JSON/Parquet as tables |
 | Data files (CSV / TSV / Parquet / JSON / NDJSON) | Readonly DuckDB-backed sessions — query, export, cross-file JOINs; Save as DuckDB to edit |
 | libSQL / Turso | Full support — local and remote |
-| MariaDB | Compatibility layer — MySQL path, dialect pass in progress |
-| CockroachDB | Compatibility layer — PostgreSQL path, dialect pass in progress |
+| MariaDB | Full support — MariaDB-aware dialect detection; native `UUID` / `INET4` / `INET6` types render correctly |
+| CockroachDB | Full support — CockroachDB-aware schema introspection; live monitor auto-tuned (no `LISTEN/NOTIFY`) |
+| Neon · Supabase | Full support — Postgres-compatible, one-click connection presets |
+| PlanetScale | Full support — MySQL-compatible connection preset |
+
+Dora separates the **wire engine** (Postgres, MySQL, …) from the **dialect/vendor** flavor, detecting the dialect at connect time and adapting schema introspection, capabilities, and type rendering per vendor. Serverless and compatible providers ride their base engine with a dedicated preset — adding a new one is metadata, not a fork. See [docs/architecture/data-sources.md](docs/architecture/data-sources.md).
 
 ## Local files
 

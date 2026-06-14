@@ -14,13 +14,15 @@ use crate::{
 
 /// Introspect the schema for a MySQL-wire connection.
 ///
-/// `dialect` is threaded through so Phase 2 can branch per dialect (e.g.
-/// MariaDB type mapping). For now every dialect uses the vanilla MySQL path.
-// TODO(dialect-parity): override per dialect
+/// The catalog query strings come from `dialect.introspection()`: vanilla MySQL
+/// uses the canonical queries, MariaDB clones them and overrides only divergent
+/// ones. This mirrors the Postgres/Cockroach seam in `postgres/schema.rs`.
 pub async fn get_database_schema(
     pool: Arc<Pool>,
-    _dialect: MySqlDialect,
+    dialect: MySqlDialect,
 ) -> Result<DatabaseSchema, Error> {
+    let queries = dialect.introspection();
+
     let mut conn = pool
         .get_conn()
         .await
@@ -37,52 +39,14 @@ pub async fn get_database_schema(
     }
 
     // -- columns + primary-key flag -----------------------------------------
-    let column_query = r#"
-        SELECT
-            c.TABLE_SCHEMA,
-            c.TABLE_NAME,
-            c.COLUMN_NAME,
-            c.COLUMN_TYPE,
-            c.IS_NULLABLE = 'YES'        AS is_nullable,
-            c.COLUMN_DEFAULT,
-            CASE WHEN c.COLUMN_KEY = 'PRI' THEN 1 ELSE 0 END AS is_primary_key,
-            CASE WHEN c.EXTRA LIKE '%auto_increment%' THEN 1 ELSE 0 END AS is_auto_increment
-        FROM
-            information_schema.COLUMNS c
-        JOIN
-            information_schema.TABLES t
-            ON c.TABLE_NAME = t.TABLE_NAME
-            AND c.TABLE_SCHEMA = t.TABLE_SCHEMA
-        WHERE
-            t.TABLE_TYPE = 'BASE TABLE'
-            AND c.TABLE_SCHEMA = ?
-        ORDER BY
-            c.TABLE_SCHEMA, c.TABLE_NAME, c.ORDINAL_POSITION
-    "#;
-
     let column_rows: Vec<Row> = conn
-        .exec(column_query, (&current_db,))
+        .exec(queries.columns, (&current_db,))
         .await
         .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query columns: {}", e)))?;
 
     // -- foreign keys -------------------------------------------------------
-    let fk_query = r#"
-        SELECT
-            kcu.TABLE_SCHEMA,
-            kcu.TABLE_NAME,
-            kcu.COLUMN_NAME,
-            kcu.REFERENCED_TABLE_SCHEMA,
-            kcu.REFERENCED_TABLE_NAME,
-            kcu.REFERENCED_COLUMN_NAME
-        FROM
-            information_schema.KEY_COLUMN_USAGE kcu
-        WHERE
-            kcu.REFERENCED_TABLE_NAME IS NOT NULL
-            AND kcu.TABLE_SCHEMA = ?
-    "#;
-
     let fk_rows: Vec<Row> = conn
-        .exec(fk_query, (&current_db,))
+        .exec(queries.foreign_keys, (&current_db,))
         .await
         .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query foreign keys: {}", e)))?;
 
@@ -106,23 +70,8 @@ pub async fn get_database_schema(
     }
 
     // -- indexes ------------------------------------------------------------
-    let index_query = r#"
-        SELECT
-            TABLE_SCHEMA,
-            TABLE_NAME,
-            INDEX_NAME,
-            NON_UNIQUE,
-            COLUMN_NAME
-        FROM
-            information_schema.STATISTICS
-        WHERE
-            TABLE_SCHEMA = ?
-        ORDER BY
-            TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX
-    "#;
-
     let index_rows: Vec<Row> = conn
-        .exec(index_query, (&current_db,))
+        .exec(queries.indexes, (&current_db,))
         .await
         .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query indexes: {}", e)))?;
 
@@ -156,20 +105,8 @@ pub async fn get_database_schema(
     }
 
     // -- row count estimates ------------------------------------------------
-    let count_query = r#"
-        SELECT
-            TABLE_SCHEMA,
-            TABLE_NAME,
-            TABLE_ROWS
-        FROM
-            information_schema.TABLES
-        WHERE
-            TABLE_TYPE = 'BASE TABLE'
-            AND TABLE_SCHEMA = ?
-    "#;
-
     let count_rows: Vec<Row> = conn
-        .exec(count_query, (&current_db,))
+        .exec(queries.row_counts, (&current_db,))
         .await
         .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query row counts: {}", e)))?;
 
