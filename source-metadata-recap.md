@@ -30,13 +30,32 @@ You asked for a **thin compatibility layer** on top of Dora’s existing structu
 | Local data files | CSV, JSON, Parquet (via DuckDB views) |
 | Developer infra | Docker PostgreSQL (separate feature today) |
 
-### Phased migration (planned, not all done)
+### Phased migration
 
-1. **Phase 1:** Add metadata/capabilities beside existing engine code ✅ (implemented)
-2. **Phase 2:** Replace obvious UI conditionals with capability helpers ✅ (partially done)
-3. **Phase 3:** Normalize provider presets (display badges, optional persistence)
-4. **Phase 4:** Improve DuckDB file source handling (surface register errors, attach files)
-5. **Phase 5:** Deeper engine adapter cleanup only if still painful
+#### ✅ Mergeable unit (Phases 1 + 2)
+
+| Phase | Scope | Doc |
+|-------|-------|-----|
+| **Phase 1** | Source metadata and capabilities | `source-metadata-phase1-hardening.md` |
+| **Phase 2** | Source metadata made visible in the UI | `source-metadata-phase2-ux.md` |
+
+Ship together. No further frontend metadata work before the next backend slice.
+
+#### 🔜 Next — Phase 3: backend-backed file-source status ✅
+
+Expose Rust registration results to the frontend. **Implemented** — see `source-metadata-phase3-file-sources.md`.
+
+#### ⏸ Postponed — provider preset persistence
+
+Persist `DbPreset` on connections only if redacted URLs losing Neon/Supabase labels becomes a real problem. Nice-to-have, not core.
+
+#### Later
+
+- Attach-file UI for native `.duckdb` databases
+- Command palette / mapping cleanup
+- Deeper engine adapter work only if still painful
+
+Full priority order: **`source-metadata-roadmap.md`**
 
 ---
 
@@ -162,8 +181,27 @@ Scope was narrowed to **only caps the UI actually uses**, with these names:
 
 ---
 
+## Phase 2 UX (implemented)
+
+See **`source-metadata-phase2-ux.md`** for the full report.
+
+| Deliverable | Module / component |
+|-------------|-------------------|
+| Provider labels | `source-labels.ts` → `resolveProviderLabel()` |
+| Source kind badges | `source-labels.ts` → `resolveSourceKindBadge()` |
+| Connection list / header badges | `source-badges.tsx`, `connection-switcher.tsx` |
+| Data-file detail panel | `data-file-source-panel.tsx` |
+| Readonly banner | `data-file-readonly-notice.tsx` |
+| Studio wrapper for data files | `data-file-session-chrome.tsx` |
+| View name derivation | `data-file-views.ts` (mirrors Rust) |
+| Attach-file guard | `ui-actions.ts` → `ATTACH_FILE_UI_IMPLEMENTED` |
+
+Tests: 9 new (25 source-metadata total, 261 suite-wide).
+
+---
+
 ## Bottom line
 
-The goal was to **stop source-specific UI conditionals from spreading** while keeping Dora’s current architecture intact. Phase 1 is in place on the frontend; execution, schema introspection, and persistence are unchanged.
+The goal was to **stop source-specific UI conditionals from spreading** while keeping Dora’s current architecture intact. Phase 1 provides caps and readonly gating; Phase 2 adds provider/source badges, data-file UX, and attach-file guardrails. Execution, schema introspection, and persistence are unchanged.
 
 **Framing:** Open any database. Open any data file. Query it locally.

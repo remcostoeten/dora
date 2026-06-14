@@ -201,10 +201,12 @@ No Rust regressions. No connection form regressions found in review.
 - Backend `get_source_capabilities` command
 - Pooler mode as a capability flag
 - Command palette display using caps
-- Attaching files to native `.duckdb` databases (cap exists, no UI)
-- Normalized provider preset badges in connection list
+- Attaching files to native `.duckdb` databases (cap exists, UI gated — see Phase 2 `ATTACH_FILE_UI_IMPLEMENTED`)
+- Normalized provider preset badges in connection list ✅ (Phase 2)
 
-Phase 1 is **complete enough to merge** and stop new `type === 'duckdb'` UI conditionals from spreading. Further cleanup is incremental, not blocking.
+Phase 1 is **complete**. Phase 2 UX is documented in `source-metadata-phase2-ux.md`.
+
+**Merge guidance:** Ship Phase 1 + Phase 2 as one unit. See `source-metadata-roadmap.md`.
 
 ---
 
