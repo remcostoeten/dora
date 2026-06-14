@@ -26,11 +26,31 @@ export function resolveProviderLabel(meta: SourceMeta): string {
 			return 'Supabase'
 		case 'planetscale':
 			return 'PlanetScale'
+		case 'tidb':
+			return 'TiDB Cloud'
 		case 'turso':
 		case 'libsql':
 			return 'Turso'
 		case 'cockroach':
 			return 'CockroachDB'
+		case 'cockroach-cloud':
+			return 'CockroachDB Cloud'
+		case 'railway':
+			return 'Railway'
+		case 'fly':
+			return 'Fly.io'
+		case 'aiven':
+			return 'Aiven'
+		case 'render':
+			return 'Render'
+		case 'vercel':
+			return 'Vercel Postgres'
+		case 'digitalocean':
+			return 'DigitalOcean'
+		case 'timescale':
+			return 'Timescale'
+		case 'crunchy':
+			return 'Crunchy Bridge'
 		case 'mariadb':
 			return 'MariaDB'
 		case 'mysql':
