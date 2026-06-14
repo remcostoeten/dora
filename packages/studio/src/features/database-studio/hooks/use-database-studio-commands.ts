@@ -5,8 +5,8 @@ import { commands } from '@studio/lib/bindings'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { getTableRefParts } from '@studio/shared/utils/table-ref'
 import type { ColumnFormData } from '../components/add-column-dialog'
-import { rowsToCsv } from '../utils/studio-data'
-import type { TableData } from '../types'
+import { rowsToCsv, rowsToSqlInsert } from '../utils/studio-data'
+import type { FilterConjunction, FilterDescriptor, SortDescriptor, TableData } from '../types'
 
 type Args = {
 	adapter: DataAdapter
@@ -15,12 +15,18 @@ type Args = {
 	tableName: string | null
 	tableRefName: string | null
 	tableData: TableData | null
+	sort?: SortDescriptor
+	filters?: FilterDescriptor[]
+	filterConjunction?: FilterConjunction
 	loadTableData: () => void
 	setIsDdlLoading: (value: boolean) => void
 	setShowAddColumnDialog: (value: boolean) => void
 	setShowDropTableDialog: (value: boolean) => void
 	notifyActionFailure: (title: string, error: unknown) => void
 }
+
+/** Upper bound on rows fetched for an export, to avoid unbounded queries. */
+const EXPORT_ROW_CAP = 100_000
 
 function downloadTextFile(content: string, fileName: string, mimeType: string) {
 	const blob = new Blob([content], { type: mimeType })
@@ -41,6 +47,9 @@ export function useDatabaseStudioCommands(args: Args) {
 		tableName,
 		tableRefName,
 		tableData,
+		sort,
+		filters,
+		filterConjunction,
 		loadTableData,
 		setIsDdlLoading,
 		setShowAddColumnDialog,
@@ -48,37 +57,60 @@ export function useDatabaseStudioCommands(args: Args) {
 		notifyActionFailure
 	} = args
 
-	function handleExport() {
-		if (!tableData || tableData.rows.length === 0) return
+	// Fetches every row matching the active filters/sort (up to a cap) so an
+	// export reflects what the user is looking at, not the whole table or just
+	// the loaded page. Returns null on failure (caller already notified).
+	async function fetchRowsForExport(): Promise<TableData | null> {
+		if (!activeConnectionId || !tableRefName) return null
+		const result = await adapter.fetchTableData(
+			activeConnectionId,
+			tableRefName,
+			0,
+			EXPORT_ROW_CAP,
+			sort,
+			filters,
+			filterConjunction
+		)
+		if (!result.ok) {
+			notifyActionFailure('Export failed', getAdapterError(result))
+			return null
+		}
+		return result.data
+	}
+
+	async function handleExport() {
+		const data = await fetchRowsForExport()
+		if (!data || data.rows.length === 0) return
 		downloadTextFile(
-			JSON.stringify(tableData.rows, null, 2),
+			JSON.stringify(data.rows, null, 2),
 			`${tableName || 'data'}.json`,
 			'application/json'
 		)
 	}
 
-	function handleExportCsvAll() {
-		if (!tableData || tableData.rows.length === 0) return
-		const csvString = rowsToCsv(tableData.rows, tableData.columns.map(function (col) {
-			return col.name
-		}))
+	async function handleExportCsvAll() {
+		const data = await fetchRowsForExport()
+		if (!data || data.rows.length === 0) return
+		const csvString = rowsToCsv(
+			data.rows,
+			data.columns.map(function (col) {
+				return col.name
+			})
+		)
 		downloadTextFile(csvString, `${tableName || 'data'}.csv`, 'text/csv')
 	}
 
 	async function handleExportSqlAll() {
-		if (!activeConnectionId || !tableId || !tableData || tableData.rows.length === 0) return
-
-		const result = await commands.exportTable(
-			activeConnectionId,
-			getTableRefParts(tableRefName).tableName,
-			getTableRefParts(tableRefName).schemaName,
-			'sql_insert',
-			null
+		const data = await fetchRowsForExport()
+		if (!data || data.rows.length === 0) return
+		const sqlString = rowsToSqlInsert(
+			data.rows,
+			getTableRefParts(tableRefName ?? '').tableName,
+			data.columns.map(function (col) {
+				return col.name
+			})
 		)
-
-		if (result.status === 'ok') {
-			downloadTextFile(result.data, `${tableName || 'data'}.sql`, 'text/sql')
-		}
+		downloadTextFile(sqlString, `${tableName || 'data'}.sql`, 'text/sql')
 	}
 
 	async function handleCopySchema() {

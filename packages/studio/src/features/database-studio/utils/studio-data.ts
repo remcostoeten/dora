@@ -139,3 +139,36 @@ export function rowsToCsv(rows: Record<string, unknown>[], columns?: string[]): 
 
 	return csvRows.join('\n')
 }
+
+/** Renders a single value as a SQL literal for an INSERT statement. */
+function toSqlLiteral(value: unknown): string {
+	if (value === null || value === undefined) return 'NULL'
+	if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'NULL'
+	if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'
+	if (typeof value === 'object') {
+		return `'${JSON.stringify(value).replace(/'/g, "''")}'`
+	}
+	return `'${String(value).replace(/'/g, "''")}'`
+}
+
+/**
+ * Builds `INSERT INTO` statements for the given rows. Used by the data-grid
+ * export so the exported SQL reflects the rows actually fetched (i.e. after any
+ * active filters and sort are applied).
+ */
+export function rowsToSqlInsert(
+	rows: Record<string, unknown>[],
+	tableName: string,
+	columns?: string[]
+): string {
+	if (rows.length === 0) return ''
+	const headers = columns ?? Object.keys(rows[0])
+	const columnList = headers.map((header) => `"${header}"`).join(', ')
+
+	return rows
+		.map(function (row) {
+			const values = headers.map((header) => toSqlLiteral(row[header])).join(', ')
+			return `INSERT INTO "${tableName}" (${columnList}) VALUES (${values});`
+		})
+		.join('\n')
+}
