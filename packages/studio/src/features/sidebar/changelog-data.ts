@@ -32,6 +32,8 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"binary/blob cells now show inline hex for small values and a `<type — size>` summary (with magic-byte detection) for large ones, instead of a bare byte count (#90)",
 			"data-grid filters can be joined with OR via an AND/OR toggle, not only AND (#102)",
 			"JSON/CSV/SQL export now respects the active filters and sort order instead of dumping the whole table or just the loaded page (#99)",
+			"back up a database to a `.sql` dump and restore from one via the data-grid actions menu (#103)",
+			"\"Fix with AI\" on a failed query sends the query and error to the AI assistant (#104)",
 			"README support matrix and **Local files** section explaining database files vs data files",
 			"add `docs/ai-providers.md` — per-provider setup, recommended models, key storage, and troubleshooting (#91)",
 		]
