@@ -73,8 +73,7 @@ impl RowWriter {
                     }
                 }
                 ValueRef::Blob(value) => {
-                    // TODO(vini): we can make this more informative eventually
-                    self.write_json_string(&format!("Blob({})", value.len()));
+                    self.write_json_string(&crate::database::blob_display::describe_blob(value));
                 }
             };
         }
@@ -305,11 +304,12 @@ mod tests {
     fn blob_handling() -> Result<(), Error> {
         let conn = create_test_db()?;
 
+        // Small blobs render as inline uppercase hex.
         let result = execute_query_one_row(&conn, "SELECT blob_col FROM test_data WHERE id = 1")?;
-        assert_eq!(result, serde_json::json!([["Blob(5)"]]));
+        assert_eq!(result, serde_json::json!([["0x48656C6C6F"]]));
 
         let result = execute_query_one_row(&conn, "SELECT blob_col FROM test_data WHERE id = 3")?;
-        assert_eq!(result, serde_json::json!([["Blob(0)"]]));
+        assert_eq!(result, serde_json::json!([["0x"]]));
 
         Ok(())
     }

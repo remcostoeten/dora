@@ -1,4 +1,5 @@
 pub mod adapter;
+pub mod blob_display;
 pub mod connection_repository;
 pub mod duckdb;
 pub mod libsql;
