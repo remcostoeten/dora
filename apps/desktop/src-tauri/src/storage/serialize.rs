@@ -118,16 +118,18 @@ pub(super) fn serialize_connection_data(database_type: &DatabaseInfo) -> Result<
     }
 }
 
-fn db_type_from_id(db_type_id: i32) -> &'static str {
+/// Maps a known `database_type_id` to its name. Returns `None` for ids we don't
+/// recognise so callers can fall back to the joined `database_types.name`.
+fn db_type_name_from_id(db_type_id: i32) -> Option<&'static str> {
     match db_type_id {
-        DB_TYPE_POSTGRES => "postgres",
-        DB_TYPE_SQLITE => "sqlite",
-        DB_TYPE_LIBSQL => "libsql",
-        DB_TYPE_MYSQL => "mysql",
-        DB_TYPE_COCKROACH => "cockroach",
-        DB_TYPE_MARIADB => "mariadb",
-        DB_TYPE_DUCKDB => "duckdb",
-        _ => "postgres",
+        DB_TYPE_POSTGRES => Some("postgres"),
+        DB_TYPE_SQLITE => Some("sqlite"),
+        DB_TYPE_LIBSQL => Some("libsql"),
+        DB_TYPE_MYSQL => Some("mysql"),
+        DB_TYPE_COCKROACH => Some("cockroach"),
+        DB_TYPE_MARIADB => Some("mariadb"),
+        DB_TYPE_DUCKDB => Some("duckdb"),
+        _ => None,
     }
 }
 
@@ -136,11 +138,16 @@ pub(super) fn deserialize_database_info(
     db_type_id: i32,
     connection_data: String,
 ) -> DatabaseInfo {
-    let db_type = if db_type.is_empty() {
-        db_type_from_id(db_type_id)
+    // `db_type_id` is written authoritatively by `serialize_connection_data`,
+    // whereas `db_type` comes from a LEFT JOIN that silently yields the
+    // 'postgres' COALESCE fallback when the `database_types` table is missing a
+    // row. Prefer the id mapping so a missing seed row can't mis-decode a
+    // connection as Postgres.
+    let db_type = db_type_name_from_id(db_type_id).unwrap_or(if db_type.is_empty() {
+        "postgres"
     } else {
         db_type
-    };
+    });
 
     match db_type {
         "postgres" => {

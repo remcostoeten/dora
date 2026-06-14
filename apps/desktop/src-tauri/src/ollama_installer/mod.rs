@@ -25,7 +25,9 @@ pub struct OllamaInstallStatus {
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OllamaInstallEvent {
-    Status { message: String },
+    Status {
+        message: String,
+    },
     Progress {
         completed: u64,
         total: Option<u64>,
@@ -35,7 +37,9 @@ pub enum OllamaInstallEvent {
         version: Option<String>,
         install_path: String,
     },
-    Error { message: String },
+    Error {
+        message: String,
+    },
 }
 
 pub async fn get_install_status(endpoint: &str) -> OllamaInstallStatus {
@@ -66,7 +70,9 @@ pub async fn install_managed(
 
     let root = install_root();
     std::fs::create_dir_all(&root).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to create install directory: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to create install directory: {error}"
+        ))
     })?;
 
     let (url, archive_name) = download::platform_download()?;
@@ -85,15 +91,18 @@ pub async fn install_managed(
     download::extract_archive(&archive_path, &root)?;
     let _ = std::fs::remove_file(&archive_path);
 
-    std::fs::write(root.join(".dora-managed"), b"1").map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to write install marker: {error}"))
-    })?;
+    std::fs::write(root.join(".dora-managed"), b"1")
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to write install marker: {error}")))?;
 
     #[cfg(target_os = "macos")]
     {
         if let Some(binary) = managed_binary_path() {
             let _ = std::process::Command::new("xattr")
-                .args(["-dr", "com.apple.quarantine", binary.to_string_lossy().as_ref()])
+                .args([
+                    "-dr",
+                    "com.apple.quarantine",
+                    binary.to_string_lossy().as_ref(),
+                ])
                 .status();
         }
     }
@@ -107,7 +116,9 @@ pub async fn install_managed(
     });
 
     start_managed_server().await?;
-    let version = runtime::wait_for_server("http://127.0.0.1:11434", 60).await.ok();
+    let version = runtime::wait_for_server("http://127.0.0.1:11434", 60)
+        .await
+        .ok();
 
     let _ = sender.send(OllamaInstallEvent::Done {
         version,

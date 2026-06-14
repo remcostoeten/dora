@@ -47,6 +47,9 @@ mod tests {
     #[test]
     fn unknown_for_empty_or_short() {
         assert_eq!(probe_database_file_header(&[]), DatabaseFileKind::Unknown);
-        assert_eq!(probe_database_file_header(b"not a db"), DatabaseFileKind::Unknown);
+        assert_eq!(
+            probe_database_file_header(b"not a db"),
+            DatabaseFileKind::Unknown
+        );
     }
 }

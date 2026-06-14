@@ -186,9 +186,7 @@ fn keyring_package(package_manager: Option<&str>) -> &'static str {
 #[cfg(target_os = "linux")]
 fn which(bin: &str) -> bool {
     std::env::var_os("PATH")
-        .map(|paths| {
-            std::env::split_paths(&paths).any(|dir| dir.join(bin).is_file())
-        })
+        .map(|paths| std::env::split_paths(&paths).any(|dir| dir.join(bin).is_file()))
         .unwrap_or(false)
 }
 
@@ -204,9 +202,7 @@ fn detect_package_manager() -> Option<(&'static str, Vec<&'static str>)> {
         ("apk", vec!["apk", "add"]),
     ];
 
-    candidates
-        .into_iter()
-        .find(|(_, args)| which(args[0]))
+    candidates.into_iter().find(|(_, args)| which(args[0]))
 }
 
 /// Describes how (or whether) the OS keyring can be installed on this machine.

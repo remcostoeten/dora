@@ -97,7 +97,9 @@ pub async fn open_data_files(app: tauri::AppHandle) -> Result<Vec<String>, Error
             .set_title("Open data files (CSV, Parquet, JSON)")
             .add_filter(
                 "Data files",
-                &["csv", "tsv", "txt", "parquet", "pq", "json", "ndjson", "jsonl"],
+                &[
+                    "csv", "tsv", "txt", "parquet", "pq", "json", "ndjson", "jsonl",
+                ],
             )
             .pick_files()
     })

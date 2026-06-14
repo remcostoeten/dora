@@ -20,9 +20,11 @@ pub async fn probe_server(endpoint: &str) -> Result<String, Error> {
         .build()
         .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
 
-    let response = client.get(url).send().await.map_err(|error| {
-        Error::Any(anyhow::anyhow!("Ollama unreachable: {error}"))
-    })?;
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|error| Error::Any(anyhow::anyhow!("Ollama unreachable: {error}")))?;
 
     if !response.status().is_success() {
         return Err(Error::Any(anyhow::anyhow!(
@@ -36,9 +38,10 @@ pub async fn probe_server(endpoint: &str) -> Result<String, Error> {
         version: String,
     }
 
-    let parsed: VersionResponse = response.json().await.map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to parse Ollama version: {error}"))
-    })?;
+    let parsed: VersionResponse = response
+        .json()
+        .await
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to parse Ollama version: {error}")))?;
 
     Ok(parsed.version)
 }
@@ -70,7 +73,9 @@ pub async fn start_managed_server() -> Result<(), Error> {
     stop_managed_server();
 
     std::fs::create_dir_all(models_dir()).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to create models directory: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to create models directory: {error}"
+        ))
     })?;
 
     let mut command = Command::new(&binary);
@@ -84,9 +89,9 @@ pub async fn start_managed_server() -> Result<(), Error> {
 
     apply_platform_env(&mut command, &binary);
 
-    let child = command.spawn().map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to start Ollama: {error}"))
-    })?;
+    let child = command
+        .spawn()
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to start Ollama: {error}")))?;
 
     if let Ok(mut slot) = child_slot().lock() {
         *slot = Some(child);

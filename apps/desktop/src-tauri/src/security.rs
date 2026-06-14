@@ -1,8 +1,7 @@
 use aes_gcm::aead::rand_core::RngCore;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
-    Aes256Gcm,
-    Nonce,
+    Aes256Gcm, Nonce,
 };
 use anyhow::{Context, Result};
 use keyring::Entry;

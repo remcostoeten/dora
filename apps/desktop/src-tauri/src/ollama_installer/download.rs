@@ -41,9 +41,11 @@ pub async fn fetch_with_progress(
         .build()
         .map_err(|error| Error::Any(anyhow::anyhow!("download client failed: {error}")))?;
 
-    let response = client.get(url).send().await.map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to download Ollama: {error}"))
-    })?;
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to download Ollama: {error}")))?;
 
     if !response.status().is_success() {
         return Err(Error::Any(anyhow::anyhow!(
@@ -54,9 +56,9 @@ pub async fn fetch_with_progress(
 
     let total = response.content_length();
     let mut stream = response.bytes_stream();
-    let mut file = tokio::fs::File::create(destination).await.map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to create archive file: {error}"))
-    })?;
+    let mut file = tokio::fs::File::create(destination)
+        .await
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to create archive file: {error}")))?;
     let mut completed = 0u64;
 
     while let Some(chunk) = stream.next().await {
@@ -65,7 +67,8 @@ pub async fn fetch_with_progress(
             return Ok(());
         }
 
-        let chunk = chunk.map_err(|error| Error::Any(anyhow::anyhow!("Download failed: {error}")))?;
+        let chunk =
+            chunk.map_err(|error| Error::Any(anyhow::anyhow!("Download failed: {error}")))?;
         completed += chunk.len() as u64;
         tokio::io::AsyncWriteExt::write_all(&mut file, &chunk)
             .await
@@ -111,41 +114,36 @@ pub fn extract_archive(archive_path: &Path, destination: &Path) -> Result<(), Er
 }
 
 fn extract_tar_zst(archive_path: &Path, destination: &Path) -> Result<(), Error> {
-    let file = File::open(archive_path).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to open archive: {error}"))
-    })?;
-    let decoder = zstd::stream::read::Decoder::new(file).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to decompress archive: {error}"))
-    })?;
+    let file = File::open(archive_path)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to open archive: {error}")))?;
+    let decoder = zstd::stream::read::Decoder::new(file)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to decompress archive: {error}")))?;
     let mut archive = tar::Archive::new(decoder);
-    archive.unpack(destination).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to extract archive: {error}"))
-    })
+    archive
+        .unpack(destination)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to extract archive: {error}")))
 }
 
 fn extract_tar_gz(archive_path: &Path, destination: &Path) -> Result<(), Error> {
-    let file = File::open(archive_path).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to open archive: {error}"))
-    })?;
+    let file = File::open(archive_path)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to open archive: {error}")))?;
     let decoder = GzDecoder::new(file);
     let mut archive = tar::Archive::new(decoder);
-    archive.unpack(destination).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to extract archive: {error}"))
-    })
+    archive
+        .unpack(destination)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to extract archive: {error}")))
 }
 
 fn extract_zip(archive_path: &Path, destination: &Path) -> Result<(), Error> {
-    let file = File::open(archive_path).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to open archive: {error}"))
-    })?;
-    let mut archive = ZipArchive::new(file).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to read zip archive: {error}"))
-    })?;
+    let file = File::open(archive_path)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to open archive: {error}")))?;
+    let mut archive = ZipArchive::new(file)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to read zip archive: {error}")))?;
 
     for index in 0..archive.len() {
-        let mut entry = archive.by_index(index).map_err(|error| {
-            Error::Any(anyhow::anyhow!("Failed to read zip entry: {error}"))
-        })?;
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| Error::Any(anyhow::anyhow!("Failed to read zip entry: {error}")))?;
         let Some(relative) = sanitize_zip_path(entry.name()) else {
             continue;
         };
@@ -161,12 +159,10 @@ fn extract_zip(archive_path: &Path, destination: &Path) -> Result<(), Error> {
                 Error::Any(anyhow::anyhow!("Failed to create directory: {error}"))
             })?;
         }
-        let mut out_file = File::create(&out_path).map_err(|error| {
-            Error::Any(anyhow::anyhow!("Failed to create file: {error}"))
-        })?;
-        copy(&mut entry, &mut out_file).map_err(|error| {
-            Error::Any(anyhow::anyhow!("Failed to extract file: {error}"))
-        })?;
+        let mut out_file = File::create(&out_path)
+            .map_err(|error| Error::Any(anyhow::anyhow!("Failed to create file: {error}")))?;
+        copy(&mut entry, &mut out_file)
+            .map_err(|error| Error::Any(anyhow::anyhow!("Failed to extract file: {error}")))?;
     }
 
     Ok(())
