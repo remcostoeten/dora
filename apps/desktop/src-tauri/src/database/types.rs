@@ -213,9 +213,6 @@ pub enum Database {
         /// uses the simple-query protocol instead. Detected from
         /// `?pgbouncer=true` in the connection string (Prisma-compatible flag).
         /// Required for PgBouncer in transaction-pool mode.
-        ///
-        /// NOTE (scaffold): the flag is currently plumbed but not yet honored
-        /// by `postgres/execute.rs` — see TODO markers there.
         use_simple_query: bool,
     },
     CockroachDB {
