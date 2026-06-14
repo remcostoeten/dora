@@ -82,7 +82,8 @@ const HOSTED_PROVIDERS = [
     { name: 'Turso', src: '/providers/libsql.svg' },
 ] as const
 
-const HOSTED_EXTRA = 'Railway, Render, Vercel Postgres, Fly.io, Aiven'
+const HOSTED_EXTRA =
+	'Railway, Render, Vercel Postgres, Fly.io, Aiven, DigitalOcean, Crunchy Bridge, Timescale, AWS RDS, Azure, Google Cloud SQL, CockroachDB Cloud, TiDB Cloud, PlanetScale'
 
 const ACCENT = '#f5c0c0'
 const REVEAL_EASE = 'cubic-bezier(0.23, 1, 0.32, 1)'

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ENV_MODE, getEnv } from "@studio/core/env";
-import { TooltipProvider } from "@studio/shared/ui/tooltip";
 import { useToast } from "@studio/shared/ui/use-toast";
 import { useAdapter, useIsTauri } from "@studio/core/data-provider";
 import { getAdapterError } from "@studio/core/data-provider/types";
@@ -835,7 +834,6 @@ function IndexInner() {
 
   return (
     <LiveMonitorProvider activeConnectionId={activeConnectionId || undefined}>
-      <TooltipProvider>
         <SidebarProvider>
           <div className="flex flex-col h-full w-full bg-background overflow-hidden">
             <div className="flex flex-1 overflow-hidden">
@@ -1104,7 +1102,6 @@ function IndexInner() {
             </div>
           </div>
         </SidebarProvider>
-      </TooltipProvider>
     </LiveMonitorProvider>
   );
 }

@@ -70,6 +70,8 @@ sudo snap install dora
 
 Dora separates the **wire engine** (Postgres, MySQL, …) from the **dialect/vendor** flavor, detecting the dialect at connect time and adapting schema introspection, capabilities, and type rendering per vendor. Serverless and compatible providers ride their base engine with a dedicated preset — adding a new one is metadata, not a fork. See [docs/architecture/data-sources.md](docs/architecture/data-sources.md).
 
+**Hosted & serverless providers** are auto-recognized from the connection string — correct engine, dialect, and SSL applied for you: Railway, Render, Vercel Postgres, Fly.io, Aiven, DigitalOcean, Crunchy Bridge, Timescale Cloud, AWS RDS/Aurora, Azure Database, Google Cloud SQL, CockroachDB Cloud, TiDB Cloud, and Yugabyte. They all speak standard Postgres/MySQL/libSQL, so there's no special integration to maintain — just paste the string.
+
 ## Local files
 
 Dora distinguishes **database files** from **data files**:
