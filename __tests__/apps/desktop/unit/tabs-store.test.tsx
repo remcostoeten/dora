@@ -126,4 +126,31 @@ describe('useTabs', () => {
     act(() => { result.current.closeTabsToRight(secondId) })
     expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2'])
   })
+
+  it('reorderTab moves a tab to the target position', () => {
+    const { result } = renderHook(() => useTabs(), { wrapper })
+    act(() => {
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t1', tableName: 't1', label: 't1' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t2', tableName: 't2', label: 't2' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t3', tableName: 't3', label: 't3' })
+    })
+    const t1 = result.current.tabs[0]
+    const t3 = result.current.tabs[2]
+    act(() => { result.current.reorderTab(t1.id, t3.id) })
+    expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2', 't3', 't1'])
+  })
+
+  it('reorderTab keeps pinned tabs ahead of unpinned ones', () => {
+    const { result } = renderHook(() => useTabs(), { wrapper })
+    act(() => {
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t1', tableName: 't1', label: 't1' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t2', tableName: 't2', label: 't2' })
+      result.current.openTab({ connectionId: 'c1', tableId: 'public.t3', tableName: 't3', label: 't3' })
+    })
+    const pinned = result.current.tabs[0]
+    act(() => { result.current.togglePinTab(pinned.id) })
+    const unpinnedLast = result.current.tabs[result.current.tabs.length - 1]
+    act(() => { result.current.reorderTab(unpinnedLast.id, pinned.id) })
+    expect(result.current.tabs[0].id).toBe(pinned.id)
+  })
 })

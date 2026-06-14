@@ -21,6 +21,7 @@ type TabsContextValue = {
   closeTabsToRight: (id: string) => void
   setActiveTab: (id: string) => void
   togglePinTab: (id: string) => void
+  reorderTab: (fromId: string, toId: string) => void
   closeTabsForConnection: (connectionId: string) => void
 }
 
@@ -41,6 +42,7 @@ type Action =
   | { type: 'CLOSE_TABS_TO_RIGHT'; id: string }
   | { type: 'SET_ACTIVE'; id: string }
   | { type: 'TOGGLE_PIN_TAB'; id: string }
+  | { type: 'MOVE_TAB'; fromId: string; toId: string }
   | { type: 'CLOSE_FOR_CONNECTION'; connectionId: string }
 
 function resolveActiveTabId(
@@ -131,6 +133,25 @@ function reducer(state: State, action: Action): State {
       )
       return { ...state, tabs: movePinnedTab(tabs, action.id) }
     }
+    case 'MOVE_TAB': {
+      if (action.fromId === action.toId) return state
+      const fromIdx = state.tabs.findIndex((t) => t.id === action.fromId)
+      const toIdx = state.tabs.findIndex((t) => t.id === action.toId)
+      if (fromIdx === -1 || toIdx === -1) return state
+
+      const next = [...state.tabs]
+      const [moved] = next.splice(fromIdx, 1)
+      // Insert at the target's original index so the dragged tab takes the
+      // target's slot (dropping after it when moving right, before it when
+      // moving left).
+      next.splice(toIdx, 0, moved)
+
+      // Keep pinned tabs grouped ahead of unpinned ones (stable within group),
+      // matching the invariant used elsewhere in the store.
+      const pinned = next.filter((t) => t.pinned)
+      const unpinned = next.filter((t) => !t.pinned)
+      return { ...state, tabs: [...pinned, ...unpinned] }
+    }
     case 'CLOSE_FOR_CONNECTION': {
       const tabs = state.tabs.filter((t) => t.connectionId !== action.connectionId)
       const stillExists = tabs.find((t) => t.id === state.activeTabId)
@@ -154,6 +175,10 @@ export function TabsProvider({ children }: { children: ReactNode }) {
   const closeTabsToRight = useCallback((id: string) => dispatch({ type: 'CLOSE_TABS_TO_RIGHT', id }), [])
   const setActiveTab = useCallback((id: string) => dispatch({ type: 'SET_ACTIVE', id }), [])
   const togglePinTab = useCallback((id: string) => dispatch({ type: 'TOGGLE_PIN_TAB', id }), [])
+  const reorderTab = useCallback(
+    (fromId: string, toId: string) => dispatch({ type: 'MOVE_TAB', fromId, toId }),
+    []
+  )
   const closeTabsForConnection = useCallback(
     (connectionId: string) => dispatch({ type: 'CLOSE_FOR_CONNECTION', connectionId }),
     []
@@ -169,6 +194,7 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     closeTabsToRight,
     setActiveTab,
     togglePinTab,
+    reorderTab,
     closeTabsForConnection,
   }
 

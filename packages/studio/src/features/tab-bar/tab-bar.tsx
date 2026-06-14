@@ -19,6 +19,7 @@ type Props = {
   onCloseOtherTabs?: (id: string) => void
   onCloseTabsToLeft?: (id: string) => void
   onCloseTabsToRight?: (id: string) => void
+  onTabReorder?: (fromId: string, toId: string) => void
   rightSlot?: ReactNode
 }
 
@@ -31,6 +32,7 @@ export function TabBar({
   onCloseOtherTabs,
   onCloseTabsToLeft,
   onCloseTabsToRight,
+  onTabReorder,
   rightSlot,
 }: Props) {
   return (
@@ -55,6 +57,19 @@ export function TabBar({
                       : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
                   )}
                   data-tauri-drag-region="false"
+                  draggable={Boolean(onTabReorder)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', tab.id)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={(e) => {
+                    if (onTabReorder) e.preventDefault()
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const fromId = e.dataTransfer.getData('text/plain')
+                    if (fromId && fromId !== tab.id) onTabReorder?.(fromId, tab.id)
+                  }}
                 >
                   <button
                     onClick={() => onTabClick(tab.id)}

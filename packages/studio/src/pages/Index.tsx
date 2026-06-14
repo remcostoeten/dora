@@ -101,6 +101,7 @@ function IndexInner() {
     closeTabsToRight,
     setActiveTab,
     togglePinTab,
+    reorderTab,
     closeTabsForConnection,
   } = useTabs();
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null;
@@ -822,6 +823,7 @@ function IndexInner() {
                         onCloseOtherTabs={closeOtherTabs}
                         onCloseTabsToLeft={closeTabsToLeft}
                         onCloseTabsToRight={closeTabsToRight}
+                        onTabReorder={reorderTab}
                         rightSlot={<WindowControls />}
                       />
                       <ErrorBoundary feature="Database Studio">
