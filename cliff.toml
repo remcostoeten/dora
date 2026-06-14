@@ -11,10 +11,8 @@ body = """
 ### {{ group | upper_first }}
 
 {% for commit in commits -%}
-- {% if commit.scope %}**{{ commit.scope }}**: {% endif %}{{ commit.message | upper_first | trim }}\
- ([`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/remcostoeten/dora/commit/{{ commit.id }}))\
-{% if commit.github.pr_number %} in [#{{ commit.github.pr_number }}](https://github.com/remcostoeten/dora/pull/{{ commit.github.pr_number }}){% endif %}\
-{% if commit.github.username %} by [@{{ commit.github.username }}](https://github.com/{{ commit.github.username }}){% endif %}
+- {{ commit.message | split(pat="\n") | first | trim }}{% if commit.github.pr_number %} (#{{ commit.github.pr_number }}){% endif %}
+
 {% endfor %}
 {% endfor %}
 """

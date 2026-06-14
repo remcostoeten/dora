@@ -63,10 +63,13 @@ export default function DocsView() {
                 </div>
 
                 <p className="mt-8 text-[15px] leading-relaxed text-muted-foreground">
-                    Dora connects to any PostgreSQL or libSQL host the same way —
-                    Railway, Render, Vercel Postgres, Fly.io, Aiven, and
-                    self-hosted databases all work with a standard connection
-                    string. More setup and workflow docs are on the way.
+                    Dora connects to any PostgreSQL, MySQL, or libSQL host the
+                    same way — Railway, Render, Vercel Postgres, Fly.io, Aiven,
+                    DigitalOcean, Crunchy Bridge, Timescale, AWS RDS, Azure,
+                    Google Cloud SQL, CockroachDB Cloud, TiDB Cloud, PlanetScale,
+                    and self-hosted databases all work with a standard
+                    connection string, recognized automatically with the right
+                    engine and SSL. More setup and workflow docs are on the way.
                 </p>
             </div>
         </ResourcesPageShell>

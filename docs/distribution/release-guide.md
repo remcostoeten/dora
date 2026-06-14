@@ -10,14 +10,29 @@ Dora ships through a tag-triggered GitHub Actions pipeline. You create and push 
 
 ## Quick start
 
-Bump versions in the repo first (see [Pre-release checklist](#pre-release-checklist)), then:
+From your machine (requires `gh` CLI):
 
 ```bash
-git tag v0.27.0
-git push origin v0.27.0
+bun run release          # patch bump (default)
+bun run release minor    # minor bump
+bun run release major    # major bump
 ```
 
-That is the only manual trigger. Everything else runs automatically.
+That dispatches the **Release dispatch** workflow, which:
+
+1. Bumps version files on `master`
+2. Prepends a `git-cliff` section to `CHANGELOG.md` (via `cliff.toml`)
+3. Syncs in-app changelog TypeScript data
+4. Commits, tags, and pushes
+5. Triggers the **Release** workflow to build and publish assets
+
+You can also start it from GitHub: **Actions → Release dispatch → Run workflow**.
+
+For a local dry-run without pushing:
+
+```bash
+bash scripts/release-prepare.sh patch
+```
 
 For an interactive preflight (branch, dirty tree, version sync, GitHub auth):
 
@@ -32,12 +47,13 @@ bun run release:guide
 
 ```mermaid
 flowchart TD
-  tag["git push tag v*.*.*"]
+  dispatch["bun run release / Release dispatch"]
+  prepare[release-dispatch: bump + changelog + tag]
+  tag["push tag v*.*.*"]
   preflight[preflight]
   linux[release-linux]
   windows[release-windows]
   macos[release-macos]
-  macosIntel[release-macos-intel]
   publish[publish-release]
   post[post-release]
   aur[publish-aur]
@@ -47,16 +63,15 @@ flowchart TD
   snap[publish-snap]
   flatpak[build-flatpak]
 
+  dispatch --> prepare --> tag
   tag --> preflight
   preflight --> linux
   preflight --> windows
   preflight --> macos
-  preflight --> macosIntel
 
   linux --> publish
   windows --> publish
   macos --> publish
-  macosIntel --> publish
 
   publish --> post
   publish --> aur
@@ -69,34 +84,32 @@ flowchart TD
 
 | Phase | Job | Runs on | Purpose |
 | --- | --- | --- | --- |
-| 0 | *(manual)* | local | Create and push semver tag |
+| 0 | `release-dispatch` | `ubuntu-latest` | Bump versions, `CHANGELOG.md`, tag, push |
 | 1 | `preflight` | `ubuntu-latest` | Validate metadata before any build |
 | 2 | `release-linux` | `ubuntu-latest` | Linux installers + tarball |
 | 2 | `release-windows` | `windows-latest` | Windows `.msi` + `.exe` |
 | 2 | `release-macos` | `macos-latest` | macOS ARM `.dmg` |
-| 2 | `release-macos-intel` | `macos-15-intel` | macOS Intel `.dmg` |
 | 3 | `publish-release` | `ubuntu-latest` | Upload assets, create GitHub release |
-| 4 | `post-release` | `ubuntu-latest` | Changelog, README, in-app data, commit to `master` |
+| 4 | `post-release` | `ubuntu-latest` | Update `README.md` on `master` |
 | 5 | package managers | `ubuntu-latest` | Dispatch AUR, Homebrew, APT, Winget, Snap, Flatpak |
 
 Platform builds in phase 2 run **in parallel** after preflight passes. Package-manager dispatches in phase 5 also run **in parallel** after the GitHub release is published.
 
 ---
 
-## Phase 0 — Tag the release
+## Phase 0 — Dispatch the release
 
 1. Ensure `master` contains everything you want to ship.
-2. Align version fields (see checklist below).
-3. Tag and push:
+2. Working tree is clean locally (CI enforces this too).
+3. Run `bun run release` (or dispatch **Release dispatch** in GitHub Actions).
 
-```bash
-git tag v0.27.0
-git push origin v0.27.0
-```
+The dispatch job bumps `package.json`, desktop/Tauri/Cargo versions, prepends a `git-cliff` entry to `CHANGELOG.md`, syncs in-app changelog data, commits `chore(release): vX.Y.Z`, creates the tag, and pushes `master` + the tag.
 
 Tags must match `vMAJOR.MINOR.PATCH` (plain semver, no suffix). Pushing the tag starts the `Release` workflow.
 
 Do **not** create or publish the GitHub release by hand. Manual publication before CI finishes is the main failure mode for APT, AUR, Homebrew, and Winget (they expect release assets to exist).
+
+**Emergency re-tag only:** `tag-create.yml` tags an existing SHA without version bumps — use only when recovering a broken release, not for normal shipping.
 
 ---
 
@@ -182,20 +195,20 @@ Waits for all four platform jobs, then:
 
 1. **Downloads** every artifact from the workflow run
 2. **Validates** the asset set:
-   - At least **10** files total
+   - At least **9** files total
    - At least one `.msi`
    - At least one `.exe`
-3. **Creates the GitHub release** with:
+3. **Creates the GitHub release** with `git-cliff` notes from `cliff.toml` (or curated `.github/release-notes/<tag>.md` when present):
 
 ```bash
-gh release create v0.27.0 \
-  --title "Dora v0.27.0" \
-  --generate-notes \
-  --notes "$(cat .github/release-notes/v0.27.0.md)" \
+git-cliff v0.27.0..v0.28.0 > /tmp/release-notes.md
+gh release create v0.28.0 \
+  --title "Dora v0.28.0" \
+  --notes-file /tmp/release-notes.md \
   <all assets...>
 ```
 
-If `.github/release-notes/<tag>.md` exists, CI prepends that curated summary to the GitHub release body. `--generate-notes` still pulls merged PRs since the previous tag and groups them using [`.github/release.yml`](../../.github/release.yml).
+If `.github/release-notes/<tag>.md` exists, that file is used instead of git-cliff output.
 
 If an empty pre-created release exists for the tag, CI deletes it and recreates. If a release already has assets, the job fails rather than overwrite.
 
@@ -205,37 +218,16 @@ If an empty pre-created release exists for the tag, CI deletes it and recreates.
 
 Runs on `master` after the release is published.
 
-1. **Fetches** the generated release body from GitHub
-2. **Normalises** the text:
-   - Strips PR author attribution (`by @user in #123`)
-   - Converts `*` list markers to `-` (for changelog parsing)
-   - Drops "Full Changelog", "New Contributors", and "What's Changed" boilerplate
-3. **Prepends** a new block to `CHANGELOG.md`:
-
-```markdown
-## [v0.27.0] - 2026-06-06
-
-<normalised release notes>
-```
-
-4. **Updates** `README.md`:
+1. **Updates** `README.md`:
    - Replaces `<version>` placeholder
    - Updates any previously hardcoded semver strings
-5. **Regenerates** in-app changelog data:
 
-```bash
-bun run generate:changelog-data
-```
+`CHANGELOG.md` and in-app changelog data are already committed by **Release dispatch** before the tag is pushed.
 
-This updates:
-
-- `packages/studio/src/features/sidebar/changelog-data.ts`
-- `apps/marketing/src/core/content/changelog-data.ts`
-
-6. **Commits and pushes** to `master`:
+2. **Commits and pushes** to `master` when README changed:
 
 ```
-chore(release): v0.27.0
+chore(release): update README for v0.27.0
 ```
 
 ---
@@ -299,41 +291,38 @@ The appendix below covers recovery for the six automated store workflows only. G
 
 ---
 
-## Release notes and PR labels
+## Release notes and commit messages
 
-The only ongoing manual discipline for meaningful release notes: **label every PR before merge**.
+Release notes are generated by **git-cliff** using [`cliff.toml`](../../cliff.toml). Commits are grouped by message prefix:
 
-GitHub groups auto-generated notes by label (configured in `.github/release.yml`). PRs without a matching label land in **Other Changes**.
-
-For releases that need a fuller human summary, add `.github/release-notes/<tag>.md` before pushing the tag. The publish job prepends that file and keeps GitHub's generated compare/PR notes below it.
-
-| Category | Labels |
+| Prefix | Section |
 | --- | --- |
-| New Features | `feat`, `feature`, `enhancement` |
-| Bug Fixes | `fix`, `bug`, `bugfix` |
-| Performance | `perf`, `performance` |
-| Improvements | `refactor`, `improvement`, `dx` |
-| Dependencies | `dependencies`, `deps` |
-| CI/CD | `ci`, `cd` |
-| Documentation | `docs`, `documentation` |
-| Other Changes | everything else |
+| `feat` | Features |
+| `fix` | Bug Fixes |
+| `docs` | Documentation |
+| `perf` | Performance |
+| `refactor` | Refactoring |
+| `test` | Testing |
+| `chore` | Chores |
+| `ci` | CI/CD |
+| `style` | Styling |
+| `build` | Build |
+| *(other)* | Other |
 
-One label per PR is enough. Pick the label that best describes user-visible impact.
+`chore(release)`, WIP, and merge commits are skipped.
+
+For releases that need a fuller human summary, add `.github/release-notes/<tag>.md` before dispatching. The publish job uses that file instead of git-cliff output.
 
 ---
 
 ## Pre-release checklist
 
-Before tagging:
+Before dispatching:
 
 - [ ] All intended changes are merged to `master`
 - [ ] Working tree is clean (`git status`)
-- [ ] Versions match across:
-  - [ ] `apps/desktop/package.json`
-  - [ ] `apps/desktop/src-tauri/tauri.conf.json`
-  - [ ] `apps/desktop/src-tauri/Cargo.toml`
-- [ ] Every merged PR since the last release has an appropriate label
-- [ ] GitHub CLI auth works if running the interactive guide locally
+- [ ] Commit messages since the last tag use recognizable prefixes (`feat`, `fix`, `docs`, …)
+- [ ] GitHub CLI auth works if running `bun run release` locally
 
 Optional: run `bun run release:guide` for an automated sanity check.
 
@@ -345,13 +334,13 @@ Optional: run `bun run release:guide` for an automated sanity check.
 
 - Linux: deb, rpm, AppImage, tarball, checksums
 - Windows: msi, exe, checksums
-- macOS: ARM and Intel dmg files
+- macOS: ARM `.dmg`
 
-**Repo updates (via `post-release`)**
+**Repo updates**
 
-- New `CHANGELOG.md` entry at the top
-- Updated `README.md` version strings
-- Regenerated TypeScript changelog data for studio and marketing
+- New `CHANGELOG.md` entry (from Release dispatch, before the tag)
+- Updated `README.md` version strings (from `post-release`)
+- Regenerated TypeScript changelog data (from Release dispatch)
 
 **Downstream**
 
@@ -365,7 +354,7 @@ Optional: run `bun run release:guide` for an automated sanity check.
 
 Update `apps/desktop/package.json`, `tauri.conf.json`, and `Cargo.toml` to the same semver, commit, then tag again.
 
-### `publish-release` fails: fewer than 10 assets
+### `publish-release` fails: fewer than 9 assets
 
 One or more platform jobs failed or produced incomplete artifacts. Open the failed platform job log first.
 
@@ -377,13 +366,13 @@ The Windows job failed or did not upload NSIS/MSI bundles. Check `release-window
 
 Usually means the GitHub release or its assets are not ready yet. Confirm `publish-release` finished and the release page lists all installers before debugging AUR/Homebrew/APT/Winget.
 
-### Release notes are all "Other Changes"
+### Release notes are mostly "Other"
 
-PRs were merged without labels. Label PRs before merge on the next release cycle; retroactive labeling does not rewrite an already-published release body (but `post-release` will still sync whatever GitHub generated into `CHANGELOG.md`).
+Commits since the last tag don't use recognized prefixes (`feat`, `fix`, `docs`, …). Use those prefixes in commit messages going forward.
 
 ### `post-release` did not commit
 
-Either nothing changed (files already matched) or the push to `master` failed. Check the `post-release` job log and branch protection rules.
+README version strings already matched, so nothing changed. Check the `post-release` job log and branch protection rules if a push failed.
 
 ---
 

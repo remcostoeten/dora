@@ -1,78 +1,36 @@
 #!/usr/bin/env bash
 # release.sh
-# Bumps version, updates CHANGELOG.md, creates a git tag, and pushes.
-# GitHub Actions builds every platform artifact and publishes the release
-# with notes and downloads after all jobs finish.
+# Triggers the automated release-dispatch workflow in GitHub Actions.
+# CI bumps versions, updates CHANGELOG.md, tags, builds, and publishes.
 #
 # Usage: ./scripts/release.sh [patch|minor|major]
 #   (default: patch)
+#
+# Local dry-run (no push): ./scripts/release-prepare.sh [patch|minor|major]
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$REPO_ROOT"
-
 BUMP="${1:-patch}"
-
-if ! command -v git-cliff &>/dev/null; then
-	echo "git-cliff is not installed. Install it with: cargo install git-cliff" >&2
-	exit 1
-fi
 
 if ! command -v gh &>/dev/null; then
 	echo "gh (GitHub CLI) is not installed." >&2
 	exit 1
 fi
 
-NEXT_TAG="$(git-cliff --bumped-version --bump "$BUMP" 2>/dev/null)"
-NEXT_VERSION="${NEXT_TAG#v}"
+if [[ ! "$BUMP" =~ ^(patch|minor|major)$ ]]; then
+	echo "Bump must be patch, minor, or major. Got: $BUMP" >&2
+	exit 1
+fi
 
-echo "━━ Release: $NEXT_TAG ━━"
+echo "━━ Starting automated release (${BUMP} bump) ━━"
 echo
 
-# Bump version in all package files so the GitHub Actions preflight passes.
-node - "$NEXT_VERSION" <<'NODE'
-const fs = require('fs');
-const version = process.argv[2];
-const files = [
-  'package.json',
-  'apps/desktop/package.json',
-  'apps/desktop/src-tauri/tauri.conf.json',
-];
-for (const f of files) {
-  const pkg = JSON.parse(fs.readFileSync(f, 'utf8'));
-  pkg.version = version;
-  fs.writeFileSync(f, JSON.stringify(pkg, null, '\t') + '\n');
-}
-NODE
+gh workflow run release-dispatch.yml -f bump="$BUMP"
 
-# Cargo.toml: bump the first `version = "..."` (the [package] one).
-sed -i '0,/^version = ".*"/s//version = "'"$NEXT_VERSION"'"/' apps/desktop/src-tauri/Cargo.toml
-
-# Cargo.lock: bump the `version = "..."` that immediately follows `name = "dora"`.
-sed -i '/^name = "dora"$/{n;s/^version = ".*"/version = "'"$NEXT_VERSION"'"/;}' apps/desktop/src-tauri/Cargo.lock
-
-echo "Bumped version files to $NEXT_VERSION"
+echo "Workflow dispatched."
 echo
-
-git-cliff -o CHANGELOG.md --tag "$NEXT_TAG"
-echo "Updated CHANGELOG.md"
+echo "Track progress:"
+echo "  https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/workflows/release-dispatch.yml"
 echo
-
-bun scripts/sync-changelog-data.ts
-echo "Synced in-app changelog data"
-echo
-
-git add CHANGELOG.md apps/desktop/src/features/sidebar/changelog-data.ts apps/marketing/src/core/content/changelog-data.ts package.json apps/desktop/package.json apps/desktop/src-tauri/tauri.conf.json apps/desktop/src-tauri/Cargo.toml apps/desktop/src-tauri/Cargo.lock
-git commit -m "chore(release): $NEXT_TAG"
-git tag "$NEXT_TAG"
-
-echo "Created tag $NEXT_TAG"
-echo
-
-git push origin master
-git push origin "$NEXT_TAG"
-echo "Pushed master and tag"
-echo
-echo "━━ Release workflow started: https://github.com/remcostoeten/dora/actions/workflows/release.yml ━━"
-echo "GitHub Actions will publish Dora ${NEXT_TAG} with release notes and all downloads when builds finish."
+echo "After prepare finishes, platform builds run here:"
+echo "  https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/workflows/release.yml"
