@@ -1,6 +1,33 @@
 import { describe, expect, it } from 'vitest'
 
-import { detectProviderName, parseConnectionUrl } from '@studio/features/connections/utils/providers'
+import { detectProviderName, isFlyPublicHost, parseConnectionUrl } from '@studio/features/connections/utils/providers'
+
+describe('isFlyPublicHost', function () {
+	it('returns true for fly.dev hostnames', function () {
+		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.fly.dev:5432/postgres')).toBe(true)
+	})
+
+	it('returns true for flympg hostnames', function () {
+		expect(isFlyPublicHost('postgresql://postgres:pw@my-db.flympg.com:5432/app')).toBe(true)
+	})
+
+	it('returns false for .internal private Fly hosts', function () {
+		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.internal:5432/postgres')).toBe(false)
+	})
+
+	it('returns false for .flycast private Fly hosts', function () {
+		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.flycast:5432/postgres')).toBe(false)
+	})
+
+	it('returns false for non-Fly hosts', function () {
+		expect(isFlyPublicHost('postgresql://user:pw@db.example.com:5432/mydb')).toBe(false)
+	})
+
+	it('returns false for an invalid/empty URL', function () {
+		expect(isFlyPublicHost('')).toBe(false)
+		expect(isFlyPublicHost('not-a-url')).toBe(false)
+	})
+})
 
 describe('detectProviderName', function () {
 	it('detects MariaDB hosts as a MySQL-compatible provider', function () {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Loader2, CheckCircle2, XCircle, DatabaseZap, FileSpreadsheet } from "lucide-react";
+import { Loader2, CheckCircle2, XCircle, DatabaseZap, FileSpreadsheet, Info, X } from "lucide-react";
 import { commands, DatabaseInfo } from "@studio/lib/bindings";
 import { formatBackendError } from "@studio/shared/utils/backend-error";
 import { cn } from "@studio/shared/utils/cn";
@@ -26,6 +26,7 @@ import {
   buildConnectionString,
   hasPostgresPoolerMode,
   setPostgresPoolerMode,
+  isFlyPublicHost,
   PROVIDER_CONFIGS,
 } from "../utils/providers";
 import { validateConnection } from "../validation";
@@ -92,6 +93,7 @@ export function ConnectionDialog({
     message?: string;
   } | null>(null);
   const [isDropTargetActive, setIsDropTargetActive] = useState(false);
+  const [flyHintDismissed, setFlyHintDismissed] = useState(false);
   const showDropOverlay = isDropTargetActive || externalDropActive;
 
   const applyDatabaseFile = useCallback(
@@ -199,6 +201,7 @@ export function ConnectionDialog({
           ...initialValues,
         });
         setUseConnectionString(!!hasUrl);
+        setFlyHintDismissed(false);
         setTestStatus("idle");
         setTestMessage("");
       }
@@ -671,6 +674,31 @@ export function ConnectionDialog({
             useConnectionString={useConnectionString}
             setUseConnectionString={setUseConnectionString}
           />
+
+          {!flyHintDismissed && isFlyPublicHost(formData.url ?? "") && (
+            <div className="relative flex items-start gap-3 border border-blue-500/20 bg-blue-500/8 px-4 py-3 text-xs text-blue-700 dark:text-blue-300">
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-blue-500/50" />
+              <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" strokeWidth={2} />
+              <p className="flex-1 leading-5">
+                Fly.io databases aren&apos;t reachable directly. Run{" "}
+                <code className="rounded bg-blue-500/12 px-1 font-mono text-[11px]">
+                  fly proxy 5432 -a &lt;your-app&gt;
+                </code>{" "}
+                then connect to <span className="font-medium">localhost:5432</span> — or use
+                the <span className="font-medium">.internal</span>/
+                <span className="font-medium">.flycast</span> host over a Fly WireGuard tunnel.
+              </p>
+              <button
+                type="button"
+                onClick={function () { setFlyHintDismissed(true); }}
+                className="mt-0.5 shrink-0 text-blue-500/60 hover:text-blue-500 transition-colors"
+                title="Dismiss"
+                aria-label="Dismiss Fly.io hint"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="border-t border-border/50 bg-muted/30 px-6 py-4">
