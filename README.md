@@ -99,7 +99,7 @@ Open database files via the connection dialog file picker. Open data files via d
 
 **Docker manager** — Create, start, stop, inspect, and remove local database containers without leaving the app. Open a container directly in the data viewer, view logs, run seed scripts, or export a Docker Compose file.
 
-**AI SQL generation** — Press `⌘I` / `Ctrl+I`, describe what you want, get schema-grounded SQL back. Supports Groq, Ollama, and other providers. API keys are stored encrypted (AES-256-GCM) with the master key in the OS keychain.
+**AI SQL generation** — Press `⌘I` / `Ctrl+I`, describe what you want, get schema-grounded SQL back. Supports Groq, Ollama, and other providers. API keys are stored encrypted (AES-256-GCM) with the master key in the OS keychain. See [docs/ai-providers.md](docs/ai-providers.md) for per-provider setup and troubleshooting.
 
 **Drizzle runner** — Write and run Drizzle ORM queries with schema-aware autocomplete and a SQL preview before execution.
 

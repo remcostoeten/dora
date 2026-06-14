@@ -511,4 +511,37 @@ mod tests {
             "VACUUM rewrites the database file — not read-only"
         );
     }
+
+    #[test]
+    fn test_vacuum_into() {
+        // `VACUUM INTO 'file'` writes a fresh copy of the database to disk and
+        // produces no result set, so it routes through the write path.
+        let results = parse_statements("VACUUM INTO 'backup.db';").unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(
+            !results[0].returns_values,
+            "VACUUM INTO should not return values"
+        );
+        assert!(
+            !results[0].is_read_only,
+            "VACUUM INTO writes a database copy — not read-only"
+        );
+    }
+
+    #[test]
+    fn test_pragma_assignment_with_keyword_value() {
+        // `PRAGMA journal_mode = WAL` is an assignment. SQLite echoes the new
+        // mode back, but the classifier treats every assignment as a write that
+        // yields no result set (matching `PRAGMA x = ON` handling).
+        let results = parse_statements("PRAGMA journal_mode = WAL;").unwrap();
+        assert_eq!(results.len(), 1);
+        assert!(
+            !results[0].returns_values,
+            "PRAGMA assignment should not return values"
+        );
+        assert!(
+            !results[0].is_read_only,
+            "PRAGMA journal_mode assignment mutates state — not read-only"
+        );
+    }
 }
