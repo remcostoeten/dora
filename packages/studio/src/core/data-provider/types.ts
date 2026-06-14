@@ -12,7 +12,11 @@ import {
 	JsonValue,
 	DatabaseInfo,
 	SavedQuery,
-	SnippetFolder
+	SnippetFolder,
+	DatabaseConnectResult,
+	DataFileSourceEntry,
+	ImportFilesIntoDuckDbResult,
+	SaveDataFileSessionResult,
 } from '@studio/lib/bindings'
 
 export type AdapterResult<T> =
@@ -52,9 +56,25 @@ export type DataAdapter = {
 	): Promise<AdapterResult<Connection>>
 	removeConnection(id: string): Promise<AdapterResult<void>>
 
-	connectToDatabase(connectionId: string): Promise<AdapterResult<boolean>>
+	connectToDatabase(connectionId: string): Promise<AdapterResult<DatabaseConnectResult>>
 	disconnectFromDatabase(connectionId: string): Promise<AdapterResult<void>>
 	testConnection(connectionId: string): Promise<AdapterResult<boolean>>
+
+	getDataFileSourceStatus(
+		connectionId: string
+	): Promise<AdapterResult<DataFileSourceEntry[]>>
+	retryDataFileRegistration(
+		connectionId: string
+	): Promise<AdapterResult<DatabaseConnectResult>>
+	saveDataFileSessionAsDuckdb(
+		connectionId: string,
+		destinationPath: string,
+		overwrite: boolean
+	): Promise<AdapterResult<SaveDataFileSessionResult>>
+	importFilesIntoDuckdb(
+		connectionId: string,
+		filePaths: string[]
+	): Promise<AdapterResult<ImportFilesIntoDuckDbResult>>
 
 	getSchema(connectionId: string): Promise<AdapterResult<DatabaseSchema>>
 

@@ -115,8 +115,50 @@ export function createTauriAdapter(): DataAdapter {
 			return err(formatError(result.error))
 		},
 
-		async connectToDatabase(connectionId: string): Promise<AdapterResult<boolean>> {
+		async connectToDatabase(
+			connectionId: string
+		): Promise<AdapterResult<import('@studio/lib/bindings').DatabaseConnectResult>> {
 			const result = await commands.connectToDatabase(connectionId)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async getDataFileSourceStatus(connectionId: string) {
+			const result = await commands.getDataFileSourceStatus(connectionId)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async retryDataFileRegistration(connectionId: string) {
+			const result = await commands.retryDataFileRegistration(connectionId)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async saveDataFileSessionAsDuckdb(
+			connectionId: string,
+			destinationPath: string,
+			overwrite: boolean
+		) {
+			const result = await commands.saveDataFileSessionAsDuckdb(
+				connectionId,
+				destinationPath,
+				overwrite
+			)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async importFilesIntoDuckdb(connectionId: string, filePaths: string[]) {
+			const result = await commands.importFilesIntoDuckdb(connectionId, filePaths)
 			if (result.status === 'ok') {
 				return ok(result.data)
 			}

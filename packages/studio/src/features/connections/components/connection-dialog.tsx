@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Loader2, CheckCircle2, XCircle, DatabaseZap, FileSpreadsheet } from "lucide-react";
 import { commands, DatabaseInfo } from "@studio/lib/bindings";
 import { formatBackendError } from "@studio/shared/utils/backend-error";
+import { cn } from "@studio/shared/utils/cn";
 import { Button } from "@studio/shared/ui/button";
 import { toast } from "@studio/shared/ui/notifier";
 import {
@@ -511,7 +513,7 @@ export function ConnectionDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="relative flex max-h-[min(calc(100vh-2rem),880px)] flex-col gap-0 overflow-hidden rounded-none border-border/70 bg-background p-0 shadow-2xl sm:max-w-[640px] [&_input]:rounded-none [&_button]:rounded-none"
+        className="flex max-h-[min(calc(100vh-2rem),880px)] flex-col gap-0 overflow-hidden rounded-none border-border/70 bg-background p-0 shadow-2xl sm:max-w-[640px] [&_input]:rounded-none [&_button]:rounded-none"
         onDragEnter={function (e) {
           if (!onOpenDataFiles && !resolveDatabaseType) return;
           e.preventDefault();
@@ -669,43 +671,17 @@ export function ConnectionDialog({
             useConnectionString={useConnectionString}
             setUseConnectionString={setUseConnectionString}
           />
-
-          {testMessage && (
-            <div
-              className={
-                testStatus === "success"
-                  ? "flex items-start gap-2.5 border border-emerald-500/20 bg-emerald-500/8 p-3 text-sm text-emerald-700 dark:text-emerald-300"
-                  : "flex items-start gap-2.5 border border-red-500/20 bg-red-500/8 p-3 text-sm text-red-700 dark:text-red-300"
-              }
-            >
-              {testStatus === "success" ? (
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
-              ) : (
-                <XCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
-              )}
-              <span className="leading-5">{testMessage}</span>
-            </div>
-          )}
         </div>
 
         <DialogFooter className="border-t border-border/50 bg-muted/30 px-6 py-4">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleTestConnection}
+            <TestConnectionButton
+              isTesting={isTesting}
+              status={testStatus}
+              message={testMessage}
               disabled={isTesting || !formData.type}
-              className="gap-2 self-start border-border/70 bg-background/65"
-            >
-              {isTesting ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Testing...
-                </>
-              ) : (
-                "Test Connection"
-              )}
-            </Button>
+              onClick={handleTestConnection}
+            />
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -737,5 +713,86 @@ export function ConnectionDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const MotionButton = motion(Button);
+
+// Strong ease-out — mirrors the --ease-out token in styles.css.
+const EASE_OUT = [0.23, 1, 0.32, 1] as const;
+
+type TTestPhase = "idle" | "testing" | "success" | "error";
+
+type TTestConnectionButtonProps = {
+  isTesting: boolean;
+  status: "idle" | "success" | "error";
+  message: string;
+  disabled: boolean;
+  onClick: (e: React.MouseEvent) => void;
+};
+
+function TestConnectionButton({
+  isTesting,
+  status,
+  message,
+  disabled,
+  onClick,
+}: TTestConnectionButtonProps) {
+  const reduceMotion = useReducedMotion();
+  const phase: TTestPhase = isTesting ? "testing" : status;
+
+  const phaseContent: Record<TTestPhase, React.ReactNode> = {
+    idle: <span className="whitespace-nowrap">Test Connection</span>,
+    testing: (
+      <>
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        <span className="whitespace-nowrap">Testing…</span>
+      </>
+    ),
+    success: (
+      <>
+        <CheckCircle2 className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+        <span className="whitespace-nowrap">{message || "Connection successful!"}</span>
+      </>
+    ),
+    error: (
+      <>
+        <XCircle className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+        <span className="truncate">{message || "Connection failed"}</span>
+      </>
+    ),
+  };
+
+  return (
+    <MotionButton
+      layout
+      type="button"
+      variant="outline"
+      onClick={onClick}
+      disabled={disabled}
+      title={phase === "error" ? message : undefined}
+      whileTap={disabled ? undefined : { scale: 0.97 }}
+      transition={{ layout: { duration: 0.32, ease: EASE_OUT } }}
+      className={cn(
+        "max-w-full gap-2 self-start overflow-hidden border-border/70 bg-background/65",
+        phase === "success" &&
+          "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300",
+        phase === "error" &&
+          "border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300"
+      )}
+    >
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={phase}
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 6, filter: "blur(4px)" }}
+          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: "blur(4px)" }}
+          transition={{ duration: 0.18, ease: EASE_OUT }}
+          className="flex min-w-0 items-center gap-2"
+        >
+          {phaseContent[phase]}
+        </motion.span>
+      </AnimatePresence>
+    </MotionButton>
   );
 }

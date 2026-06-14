@@ -270,7 +270,7 @@ export function createMockAdapter(): DataAdapter {
 			return ok(undefined)
 		},
 
-		async connectToDatabase(connectionId: string): Promise<AdapterResult<boolean>> {
+		async connectToDatabase(connectionId: string) {
 			await randomDelay()
 			const conn = MOCK_CONNECTIONS.find(function (c) {
 				return c.id === connectionId
@@ -278,7 +278,101 @@ export function createMockAdapter(): DataAdapter {
 			if (!conn) {
 				return err('Connection not found')
 			}
-			return ok(true)
+			return ok({ connected: true, fileSources: null })
+		},
+
+		async getDataFileSourceStatus(connectionId: string) {
+			await randomDelay()
+			const conn = MOCK_CONNECTIONS.find(function (c) {
+				return c.id === connectionId
+			})
+			if (!conn?.fileSources?.length) {
+				return ok([])
+			}
+			return ok(
+				conn.fileSources.map(function (path, index) {
+					return {
+						path,
+						viewName: `mock_view_${index + 1}`,
+						fileType: 'CSV',
+						status: 'active' as const,
+						error: null,
+					}
+				})
+			)
+		},
+
+		async retryDataFileRegistration(connectionId: string) {
+			await randomDelay()
+			const conn = MOCK_CONNECTIONS.find(function (c) {
+				return c.id === connectionId
+			})
+			if (!conn?.fileSources?.length) {
+				return ok({ connected: true, fileSources: [] })
+			}
+			const entries = conn.fileSources.map(function (path, index) {
+				return {
+					path,
+					viewName: `mock_view_${index + 1}`,
+					fileType: 'CSV',
+					status: 'active' as const,
+					error: null,
+				}
+			})
+			return ok({ connected: true, fileSources: entries })
+		},
+
+		async saveDataFileSessionAsDuckdb(
+			connectionId: string,
+			destinationPath: string,
+			overwrite: boolean
+		) {
+			await randomDelay()
+			const conn = MOCK_CONNECTIONS.find(function (c) {
+				return c.id === connectionId
+			})
+			if (!conn?.fileSources?.length) {
+				return err('Connection is not a DuckDB data-file session')
+			}
+
+			return ok({
+				path: destinationPath,
+				tables: conn.fileSources.map(function (path, index) {
+					return {
+						name: `mock_view_${index + 1}`,
+						sourcePath: path,
+						rowCount: 1,
+					}
+				}),
+				skipped: [],
+				warnings: overwrite ? ['Mock save replaced an existing file'] : [],
+			})
+		},
+
+		async importFilesIntoDuckdb(connectionId: string, filePaths: string[]) {
+			await randomDelay()
+			const conn = MOCK_CONNECTIONS.find(function (c) {
+				return c.id === connectionId
+			})
+			if (!conn || conn.type !== 'duckdb' || conn.fileSources?.length) {
+				return err('Import files is only available for native DuckDB database connections')
+			}
+			if (filePaths.length === 0) {
+				return err('At least one file path is required')
+			}
+
+			return ok({
+				tables: filePaths.map(function (path, index) {
+					return {
+						name: `imported_${index + 1}`,
+						sourcePath: path,
+						fileType: 'CSV',
+						rowCount: 1,
+					}
+				}),
+				failed: [],
+				warnings: [],
+			})
 		},
 
 		async disconnectFromDatabase(connectionId: string): Promise<AdapterResult<void>> {

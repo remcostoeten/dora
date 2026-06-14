@@ -149,3 +149,13 @@ export function getSourceCapsForConnection(connection: Connection): SourceCaps {
 export function isReadonlySource(connection: ConnectionSourceInput): boolean {
 	return getSourceCaps(connection).isReadonly
 }
+
+export function isDataFileSessionConnection(connection: ConnectionSourceInput): boolean {
+	return describeConnectionSource(connection).isDataFileSession
+}
+
+/** Native on-disk DuckDB file (editable, can import files). Not a readonly data-file session. */
+export function isNativeDuckDbFileConnection(connection: ConnectionSourceInput): boolean {
+	const caps = getSourceCaps(connection)
+	return caps.canAttachFiles && !caps.isReadonly
+}

@@ -3,6 +3,10 @@ import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tansta
 import type { SortDescriptor, FilterDescriptor, TableData } from '@studio/features/database-studio/types'
 import type { Connection } from '@studio/features/connections/types'
 import type { DatabaseInfo, JsonValue } from '@studio/lib/bindings'
+import {
+	applyConnectResult,
+	dataFileSourcesQueryKey,
+} from '@studio/features/database-studio/hooks/use-data-file-sources'
 import { useAdapter } from './context'
 import { getAdapterError } from './types'
 
@@ -105,7 +109,12 @@ export function useConnectionMutations() {
 			const res = await adapter.connectToDatabase(connectionId)
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
-		}
+		},
+		onSuccess: function (result, connectionId) {
+			if (result.fileSources) {
+				queryClient.setQueryData(dataFileSourcesQueryKey(connectionId), result.fileSources)
+			}
+		},
 	})
 
 	const disconnectFromDatabase = useMutation({
@@ -165,6 +174,11 @@ export function useSchema(connectionId: string | undefined) {
 			const connectResult = await adapter.connectToDatabase(connectionId)
 			if (!connectResult.ok) {
 				throw new Error(getAdapterError(connectResult))
+			}
+			applyConnectResult(queryClient, connectionId, connectResult.data)
+
+			if (!connectResult.data.connected) {
+				throw new Error('Could not connect to this database')
 			}
 
 			const res = await adapter.getSchema(connectionId)
