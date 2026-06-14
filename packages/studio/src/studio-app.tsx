@@ -4,13 +4,10 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { CredentialStorageNotice } from '@studio/components/credential-storage-notice'
 import { DemoBanner } from '@studio/components/demo-banner'
 import { Toaster } from '@studio/shared/ui/notifier'
-import { DataProvider } from '@studio/core/data-provider'
-import { PendingEditsProvider } from '@studio/core/pending-edits'
-import { SettingsProvider, useSettings } from '@studio/core/settings'
-import { AnalyticsProvider } from '@studio/features/analytics'
+import { useSettings } from '@studio/core/settings'
 import type { AnalyticsConfig } from '@studio/features/analytics'
-import { QueryHistoryProvider } from '@studio/features/sql-console/stores/query-history-store'
 import { ThemeSync } from '@studio/features/sidebar/components/theme-sync'
+import { AppProviders } from '@studio/providers'
 import Index from '@studio/pages/Index'
 import NotFound from '@studio/pages/NotFound'
 
@@ -43,30 +40,22 @@ export function StudioApp({ forceMock = false, analyticsConfig, basename }: Prop
 	return (
 		<BrowserRouter basename={basename}>
 			<QueryClientProvider client={queryClient}>
-				<AnalyticsProvider config={analyticsConfig}>
-					<SettingsProvider>
-						<PendingEditsProvider>
-							<DataProvider forceMock={forceMock}>
-								<QueryHistoryProvider>
-									<div className='flex flex-col h-screen'>
-										<DemoBanner />
-										<CredentialStorageNotice />
-										<div className='flex-1 overflow-hidden'>
-											<GlobalToaster />
-											<NuqsAdapter>
-												<ThemeSync />
-												<Routes>
-													<Route path='/' element={<Index />} />
-													<Route path='*' element={<NotFound />} />
-												</Routes>
-											</NuqsAdapter>
-										</div>
-									</div>
-								</QueryHistoryProvider>
-							</DataProvider>
-						</PendingEditsProvider>
-					</SettingsProvider>
-				</AnalyticsProvider>
+				<AppProviders forceMock={forceMock} analyticsConfig={analyticsConfig}>
+					<div className='flex flex-col h-screen'>
+						<DemoBanner />
+						<CredentialStorageNotice />
+						<div className='flex-1 overflow-hidden'>
+							<GlobalToaster />
+							<NuqsAdapter>
+								<ThemeSync />
+								<Routes>
+									<Route path='/' element={<Index />} />
+									<Route path='*' element={<NotFound />} />
+								</Routes>
+							</NuqsAdapter>
+						</div>
+					</div>
+				</AppProviders>
 			</QueryClientProvider>
 		</BrowserRouter>
 	)

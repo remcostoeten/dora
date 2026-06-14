@@ -7,6 +7,7 @@ use specta::Type;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use uuid::Uuid;
 
+use crate::database::dialect::{MySqlDialect, PgDialect};
 use crate::database::duckdb::file_source::DataFileSourceEntry;
 use crate::database::ssh_tunnel::SshTunnel;
 use crate::Error;
@@ -189,9 +190,16 @@ pub enum DatabaseClient {
     Postgres {
         client: Arc<tokio_postgres::Client>,
         use_simple_query: bool,
+        /// Runtime dialect of this Postgres-wire connection (vanilla unless a
+        /// CockroachDB server was detected). Threaded into adapters so schema
+        /// introspection and row writers can branch per dialect.
+        dialect: PgDialect,
     },
     MySQL {
         pool: Arc<mysql_async::Pool>,
+        /// Runtime dialect of this MySQL-wire connection (vanilla unless a
+        /// MariaDB server was detected).
+        dialect: MySqlDialect,
     },
     SQLite {
         connection: Arc<Mutex<rusqlite::Connection>>,
@@ -219,25 +227,20 @@ pub enum Database {
         /// `?pgbouncer=true` in the connection string (Prisma-compatible flag).
         /// Required for PgBouncer in transaction-pool mode.
         use_simple_query: bool,
-    },
-    CockroachDB {
-        connection_string: String,
-        ssh_config: Option<SshConfig>,
-        client: Option<Arc<tokio_postgres::Client>>,
-        tunnel: Option<Arc<SshTunnel>>,
-        use_simple_query: bool,
+        /// Runtime dialect behind this Postgres-wire connection. Defaults to
+        /// `Vanilla`; overwritten by `version()` detection at connect time and
+        /// is the source of truth for dialect-specific capability gating
+        /// (e.g. CockroachDB has no LISTEN/NOTIFY).
+        dialect: PgDialect,
     },
     MySQL {
         connection_string: String,
         ssh_config: Option<SshConfig>,
         pool: Option<Arc<mysql_async::Pool>>,
         tunnel: Option<Arc<SshTunnel>>,
-    },
-    MariaDB {
-        connection_string: String,
-        ssh_config: Option<SshConfig>,
-        pool: Option<Arc<mysql_async::Pool>>,
-        tunnel: Option<Arc<SshTunnel>>,
+        /// Runtime dialect behind this MySQL-wire connection. Defaults to
+        /// `Vanilla`; overwritten by `VERSION()` detection at connect time.
+        dialect: MySqlDialect,
     },
     SQLite {
         db_path: String,
@@ -263,6 +266,19 @@ impl DatabaseConnection {
             name: self.name.clone(),
             connected: self.connected,
             database_type: match &self.database {
+                // The runtime `dialect` field maps back onto the stable
+                // `DatabaseInfo` frontend contract: a CockroachDb/MariaDb
+                // dialect surfaces as the corresponding `DatabaseInfo` variant,
+                // everything else as the vanilla engine variant.
+                Database::Postgres {
+                    connection_string,
+                    ssh_config,
+                    dialect: PgDialect::CockroachDb,
+                    ..
+                } => DatabaseInfo::CockroachDB {
+                    connection_string: connection_string.clone(),
+                    ssh_config: ssh_config.clone(),
+                },
                 Database::Postgres {
                     connection_string,
                     ssh_config,
@@ -271,11 +287,12 @@ impl DatabaseConnection {
                     connection_string: connection_string.clone(),
                     ssh_config: ssh_config.clone(),
                 },
-                Database::CockroachDB {
+                Database::MySQL {
                     connection_string,
                     ssh_config,
+                    dialect: MySqlDialect::MariaDb,
                     ..
-                } => DatabaseInfo::CockroachDB {
+                } => DatabaseInfo::MariaDB {
                     connection_string: connection_string.clone(),
                     ssh_config: ssh_config.clone(),
                 },
@@ -284,14 +301,6 @@ impl DatabaseConnection {
                     ssh_config,
                     ..
                 } => DatabaseInfo::MySQL {
-                    connection_string: connection_string.clone(),
-                    ssh_config: ssh_config.clone(),
-                },
-                Database::MariaDB {
-                    connection_string,
-                    ssh_config,
-                    ..
-                } => DatabaseInfo::MariaDB {
                     connection_string: connection_string.clone(),
                     ssh_config: ssh_config.clone(),
                 },
@@ -334,16 +343,18 @@ impl DatabaseConnection {
                 ssh_config,
                 client: None,
                 tunnel: None,
+                dialect: PgDialect::Postgres,
             },
             DatabaseInfo::CockroachDB {
                 connection_string,
                 ssh_config,
-            } => Database::CockroachDB {
+            } => Database::Postgres {
                 use_simple_query: false,
                 connection_string,
                 ssh_config,
                 client: None,
                 tunnel: None,
+                dialect: PgDialect::CockroachDb,
             },
             DatabaseInfo::MySQL {
                 connection_string,
@@ -353,15 +364,17 @@ impl DatabaseConnection {
                 ssh_config,
                 pool: None,
                 tunnel: None,
+                dialect: MySqlDialect::MySql,
             },
             DatabaseInfo::MariaDB {
                 connection_string,
                 ssh_config,
-            } => Database::MariaDB {
+            } => Database::MySQL {
                 connection_string,
                 ssh_config,
                 pool: None,
                 tunnel: None,
+                dialect: MySqlDialect::MariaDb,
             },
             DatabaseInfo::SQLite { db_path } => Database::SQLite {
                 db_path,
@@ -406,16 +419,18 @@ impl DatabaseConnection {
                 ssh_config,
                 client: None,
                 tunnel: None,
+                dialect: PgDialect::Postgres,
             },
             DatabaseInfo::CockroachDB {
                 connection_string,
                 ssh_config,
-            } => Database::CockroachDB {
+            } => Database::Postgres {
                 use_simple_query: false,
                 connection_string,
                 ssh_config,
                 client: None,
                 tunnel: None,
+                dialect: PgDialect::CockroachDb,
             },
             DatabaseInfo::MySQL {
                 connection_string,
@@ -425,15 +440,17 @@ impl DatabaseConnection {
                 ssh_config,
                 pool: None,
                 tunnel: None,
+                dialect: MySqlDialect::MySql,
             },
             DatabaseInfo::MariaDB {
                 connection_string,
                 ssh_config,
-            } => Database::MariaDB {
+            } => Database::MySQL {
                 connection_string,
                 ssh_config,
                 pool: None,
                 tunnel: None,
+                dialect: MySqlDialect::MariaDb,
             },
             DatabaseInfo::SQLite { db_path } => Database::SQLite {
                 db_path,
@@ -471,19 +488,16 @@ impl DatabaseConnection {
         }
     }
 
-    /// Source capabilities for this connection, derived from the
-    /// runtime-detected dialect when available, otherwise from a safe default
-    /// based on the wire protocol (the existing vanilla behaviour).
+    /// Source capabilities for this connection.
+    ///
+    /// The per-engine `dialect` field is the source of truth: it defaults to
+    /// `Vanilla` and is overwritten by `version()` detection at connect time,
+    /// so caps follow the *runtime* engine rather than the user's variant pick.
     pub fn source_caps(&self) -> crate::database::dialect::SourceCaps {
         use crate::database::dialect::SourceCaps;
-        if let Some(dialect) = self.detected_dialect {
-            return SourceCaps::for_dialect(dialect);
-        }
         match &self.database {
-            Database::Postgres { .. } | Database::CockroachDB { .. } => {
-                SourceCaps::postgres_default()
-            }
-            Database::MySQL { .. } | Database::MariaDB { .. } => SourceCaps::mysql_default(),
+            Database::Postgres { dialect, .. } => dialect.caps(),
+            Database::MySQL { dialect, .. } => dialect.caps(),
             // Non Postgres/MySQL engines do not use LISTEN/NOTIFY live monitoring.
             _ => SourceCaps {
                 supports_listen_notify: false,
@@ -494,9 +508,7 @@ impl DatabaseConnection {
     pub fn is_client_connected(&self) -> bool {
         match &self.database {
             Database::Postgres { client, .. } => client.is_some(),
-            Database::CockroachDB { client, .. } => client.is_some(),
             Database::MySQL { pool, .. } => pool.is_some(),
-            Database::MariaDB { pool, .. } => pool.is_some(),
             Database::SQLite { connection, .. } => connection.is_some(),
             Database::DuckDB { connection, .. } => connection.is_some(),
             Database::LibSQL { connection, .. } => connection.is_some(),
@@ -509,40 +521,28 @@ impl DatabaseConnection {
             Database::Postgres {
                 client: Some(client),
                 use_simple_query,
+                dialect,
                 ..
             } => DatabaseClient::Postgres {
                 client: client.clone(),
                 use_simple_query: *use_simple_query,
+                dialect: *dialect,
             },
             Database::Postgres { client: None, .. } => {
                 return Err(Error::Any(anyhow::anyhow!(
                     "Postgres connection not active"
                 )));
             }
-            Database::CockroachDB {
-                client: Some(client),
-                use_simple_query,
-                ..
-            } => DatabaseClient::Postgres {
-                client: client.clone(),
-                use_simple_query: *use_simple_query,
-            },
-            Database::CockroachDB { client: None, .. } => {
-                return Err(Error::Any(anyhow::anyhow!(
-                    "CockroachDB connection not active"
-                )));
-            }
             Database::MySQL {
-                pool: Some(pool), ..
-            } => DatabaseClient::MySQL { pool: pool.clone() },
+                pool: Some(pool),
+                dialect,
+                ..
+            } => DatabaseClient::MySQL {
+                pool: pool.clone(),
+                dialect: *dialect,
+            },
             Database::MySQL { pool: None, .. } => {
                 return Err(Error::Any(anyhow::anyhow!("MySQL connection not active")));
-            }
-            Database::MariaDB {
-                pool: Some(pool), ..
-            } => DatabaseClient::MySQL { pool: pool.clone() },
-            Database::MariaDB { pool: None, .. } => {
-                return Err(Error::Any(anyhow::anyhow!("MariaDB connection not active")));
             }
             Database::SQLite {
                 connection: Some(sqlite_conn),

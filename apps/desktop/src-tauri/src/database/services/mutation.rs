@@ -702,7 +702,7 @@ async fn fetch_mysql_data(
     client: &DatabaseClient,
     query: &str,
 ) -> Result<(Vec<String>, Vec<Vec<serde_json::Value>>), Error> {
-    if let DatabaseClient::MySQL { pool } = client {
+    if let DatabaseClient::MySQL { pool, .. } = client {
         let mut conn = pool
             .get_conn()
             .await

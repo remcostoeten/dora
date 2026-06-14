@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -314,13 +315,13 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			m.subMenu = []subdir{
 				{label: "Desktop (Tauri)", command: "bun", args: []string{"run", "desktop:dev"}},
 				{label: "Web (mock mode)", command: "bun", args: []string{"run", "web:dev"}},
-				{label: "Marketing (Next.js)", command: "bun", args: []string{"--cwd", "apps/marketing", "run", "dev"}},
-				{label: "DB Tester", command: "bun", args: []string{"--cwd", "apps/db-tester", "run", "dev"}},
+				{label: "Marketing (Next.js)", command: "bun", args: []string{"run", "--cwd", "apps/marketing", "dev"}},
+				{label: "DB Tester", command: "bun", args: []string{"run", "--cwd", "apps/db-tester", "dev"}},
 				{label: "All (turbo)", command: "bun", args: []string{"run", "turbo", "dev"}},
 			}
 
 		case "Build all":
-			return m.startExec(executeCommand("bun", "run", "turbo", "build"))
+			return m.startExec(executeScriptCommand("bun", "run", "turbo", "build"))
 
 		case "Build specific platform...":
 			m.currentSection = sectionBuildPlatform
@@ -450,9 +451,13 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 		}
 
 	// ------------------------------------------------------------------
-	case sectionRunApp, sectionBuildPlatform, sectionVM:
+	case sectionRunApp:
 		choice := m.subMenu[m.subCursor]
 		return m.startExec(executeCommand(choice.command, choice.args...))
+
+	case sectionBuildPlatform, sectionVM:
+		choice := m.subMenu[m.subCursor]
+		return m.startExec(executeScriptCommand(choice.command, choice.args...))
 
 	// ------------------------------------------------------------------
 	case sectionBuilds:
@@ -499,7 +504,7 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 				m.optionCursor = 0
 			}
 		} else {
-			return m.startExec(executeCommand(script.command, script.args...))
+			return m.startExec(executeScriptCommand(script.command, script.args...))
 		}
 
 	// ------------------------------------------------------------------
@@ -507,7 +512,7 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 		if len(m.ciMenu) > 0 {
 			wf := m.ciMenu[m.ciCursor]
 			self := os.Args[0]
-			return m.startExec(executeCommand(self, "ci", "dispatch", "--workflow", wf.workflow, "--ref", "main"))
+			return m.startExec(executeScriptCommand(self, "ci", "dispatch", "--workflow", wf.workflow, "--ref", "main"))
 		}
 
 	// ------------------------------------------------------------------
@@ -527,7 +532,7 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			if !updated {
 				args = append(args, prefix+option)
 			}
-			return m.startExec(executeCommand(m.pendingScript.command, args...))
+			return m.startExec(executeScriptCommand(m.pendingScript.command, args...))
 		}
 
 	// ------------------------------------------------------------------
@@ -536,7 +541,7 @@ func (m model) handleSelect() (tea.Model, tea.Cmd) {
 			option := m.optionMenu[m.optionCursor]
 			args := append([]string{}, m.pendingScript.args...)
 			args = append(args, option)
-			return m.startExec(executeCommand(m.pendingScript.command, args...))
+			return m.startExec(executeScriptCommand(m.pendingScript.command, args...))
 		}
 	}
 
@@ -571,6 +576,24 @@ func executeCommand(name string, args ...string) tea.Cmd {
 	return tea.ExecProcess(cmd, func(err error) tea.Msg {
 		return execFinishedMsg{err}
 	})
+}
+
+// executeScriptCommand runs a script-menu command and waits for Enter before
+// returning to the TUI so output can be read.
+func executeScriptCommand(name string, args ...string) tea.Cmd {
+	parts := make([]string, 0, len(args)+1)
+	if runtime.GOOS == "windows" {
+		parts = append(parts, strconv.Quote(name))
+		for _, arg := range args {
+			parts = append(parts, strconv.Quote(arg))
+		}
+	} else {
+		parts = append(parts, shellEscape(name))
+		for _, arg := range args {
+			parts = append(parts, shellEscape(arg))
+		}
+	}
+	return runShellScript(strings.Join(parts, " "))
 }
 
 func runShellScript(script string) tea.Cmd {

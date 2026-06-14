@@ -123,7 +123,7 @@ impl<'a> SeedingService<'a> {
                         .await
                         .map_err(|e| Error::Any(anyhow::anyhow!("LibSQL insert failed: {}", e)))?;
                 }
-                crate::database::types::DatabaseClient::MySQL { pool } => {
+                crate::database::types::DatabaseClient::MySQL { pool, .. } => {
                     let mut mysql_conn = pool
                         .get_conn()
                         .await
@@ -287,6 +287,7 @@ mod tests {
             pool: Arc::new(mysql_async::Pool::new(
                 mysql_async::Opts::from_url("mysql://user:pass@localhost:3306/db").unwrap(),
             )),
+            dialect: crate::database::dialect::MySqlDialect::MySql,
         };
 
         let (_, qualified) = seed_target_for_client(&client, "users", "tenant_a", None);

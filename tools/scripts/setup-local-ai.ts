@@ -1,4 +1,4 @@
-import { execSync } from 'child_process'
+import { execSync, spawn } from 'child_process'
 import readline from 'readline'
 import { colors, log, logLevel, logHeader, logKeyValue } from './_shared'
 
@@ -48,6 +48,10 @@ function getFlagValue(flag: string): string | undefined {
 	return eqArg ? eqArg.substring(fullFlag.length + 1) : undefined
 }
 
+function isLocalHost(): boolean {
+	return CONFIG.host === 'localhost' || CONFIG.host === '127.0.0.1'
+}
+
 function checkOllamaInstalled(): boolean {
 	try {
 		execSync('ollama --version', { stdio: 'ignore' })
@@ -55,6 +59,88 @@ function checkOllamaInstalled(): boolean {
 	} catch (e) {
 		return false
 	}
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function installOllama(): Promise<boolean> {
+	const shouldInstall = await askQuestion(
+		'Install Ollama now? (Requires sudo) [y/N]'
+	)
+	if (shouldInstall.toLowerCase() !== 'y' && shouldInstall.toLowerCase() !== 'yes') {
+		log('Please install Ollama from https://ollama.com/download', colors.yellow)
+		return false
+	}
+
+	log('\nRunning: curl -fsSL https://ollama.com/install.sh | sh', colors.cyan)
+	try {
+		execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'inherit' })
+		logLevel('success', 'Ollama installed successfully!')
+		return checkOllamaInstalled()
+	} catch (e) {
+		logLevel('error', 'Installation failed.')
+		return false
+	}
+}
+
+async function startOllamaServer(): Promise<boolean> {
+	try {
+		const child = spawn('ollama', ['serve'], {
+			detached: true,
+			stdio: 'ignore',
+			env: process.env
+		})
+		child.unref()
+	} catch (e) {
+		return false
+	}
+
+	const deadline = Date.now() + 30_000
+	while (Date.now() < deadline) {
+		if (await checkServerRunning()) {
+			return true
+		}
+		await sleep(500)
+	}
+
+	return false
+}
+
+async function ensureOllamaServer(): Promise<boolean> {
+	if (await checkServerRunning()) {
+		return true
+	}
+
+	logLevel('error', `Server at ${CONFIG.host}:${CONFIG.port} is not reachable`)
+	log('\nPossible fixes:', colors.yellow)
+	log('  1. Start the server: ollama serve', colors.reset)
+	log('  2. Check firewall settings', colors.reset)
+	log('  3. Verify OLLAMA_HOST environment variable', colors.reset)
+
+	if (!isLocalHost()) {
+		return false
+	}
+
+	if (!checkOllamaInstalled()) {
+		logLevel('error', 'Cannot start server automatically — Ollama CLI not found in PATH')
+		return false
+	}
+
+	const shouldStart = await askQuestion('\nStart Ollama server now? [y/N]')
+	if (shouldStart.toLowerCase() !== 'y' && shouldStart.toLowerCase() !== 'yes') {
+		return false
+	}
+
+	log('\nStarting Ollama server...', colors.cyan)
+	if (await startOllamaServer()) {
+		logLevel('success', 'Server started successfully')
+		return true
+	}
+
+	logLevel('error', 'Failed to start server. Try running "ollama serve" manually.')
+	return false
 }
 
 async function checkServerRunning(): Promise<boolean> {
@@ -181,30 +267,27 @@ async function runDiagnose() {
 	console.log('')
 
 	// Step 1: CLI Check
-	const isLocal = CONFIG.host === 'localhost' || CONFIG.host === '127.0.0.1'
-	if (isLocal) {
-		const cliInstalled = checkOllamaInstalled()
-		if (cliInstalled) {
+	if (isLocalHost()) {
+		if (checkOllamaInstalled()) {
 			logLevel('success', 'Ollama CLI is installed')
 		} else {
 			logLevel('error', 'Ollama CLI not found in PATH')
+			if (!(await installOllama())) {
+				return
+			}
+			logLevel('success', 'Ollama CLI is installed')
 		}
 	} else {
 		logLevel('info', 'Remote host - skipping CLI check')
 	}
 
 	// Step 2: Server Check
-	const serverVersion = await getServerVersion()
-	if (serverVersion !== 'unreachable') {
-		logLevel('success', `Server is reachable (v${serverVersion})`)
-	} else {
-		logLevel('error', `Server at ${CONFIG.host}:${CONFIG.port} is not reachable`)
-		log('\nPossible fixes:', colors.yellow)
-		log('  1. Start the server: ollama serve', colors.reset)
-		log('  2. Check firewall settings', colors.reset)
-		log('  3. Verify OLLAMA_HOST environment variable', colors.reset)
+	if (!(await ensureOllamaServer())) {
 		return
 	}
+
+	const serverVersion = await getServerVersion()
+	logLevel('success', `Server is reachable (v${serverVersion})`)
 
 	// Step 3: Model Check
 	const modelExists = await checkModelExists(CONFIG.model)
@@ -255,41 +338,20 @@ ${colors.bold}Popular Models:${colors.reset}
 	logKeyValue('Model', CONFIG.model)
 
 	// Check CLI installation (only critical if running locally)
-	if (CONFIG.host === 'localhost' || CONFIG.host === '127.0.0.1') {
+	if (isLocalHost()) {
 		if (!checkOllamaInstalled()) {
 			logLevel('error', "'ollama' is not installed or not in your PATH.")
-
-			const shouldInstall = await askQuestion(
-				'\nDo you want to run the automatic installation? (Requires sudo) [y/N]'
-			)
-			if (shouldInstall.toLowerCase() === 'y' || shouldInstall.toLowerCase() === 'yes') {
-				log('\nRunning: curl -fsSL https://ollama.com/install.sh | sh', colors.cyan)
-				try {
-					execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'inherit' })
-					logLevel('success', 'Ollama installed successfully!')
-				} catch (e) {
-					logLevel('error', 'Installation failed.')
-					process.exit(1)
-				}
-			} else {
-				log('Please install Ollama from https://ollama.com/download', colors.yellow)
+			if (!(await installOllama())) {
 				process.exit(1)
 			}
-		} else {
-			logLevel('success', 'Ollama is installed')
 		}
+		logLevel('success', 'Ollama is installed')
 	}
 
 	// Check if server is reachable
-	const isRunning = await checkServerRunning()
-	if (!isRunning) {
-		logLevel('warning', `Ollama server at ${CONFIG.host}:${CONFIG.port} seems down.`)
-		if (CONFIG.host === 'localhost') {
-			log("Run 'ollama serve' in a separate terminal.", colors.yellow)
-		}
+	if (!(await ensureOllamaServer())) {
 		process.exit(1)
 	}
-	logLevel('success', 'Server is reachable')
 
 	if (await checkModelExists(CONFIG.model)) {
 		logLevel('success', `Model '${CONFIG.model}' is available`)

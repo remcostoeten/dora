@@ -25,13 +25,20 @@ use crate::database::postgres::row_writer::{
 pub struct RowWriter {
     buf: String,
     row_count: usize,
+    /// Runtime dialect of the connection that produced these rows. Stored so
+    /// Phase 2 can apply CockroachDB-specific value/type overrides; the vanilla
+    /// path ignores it (no behaviour change today).
+    // TODO(dialect-parity): override per dialect
+    #[allow(dead_code)]
+    dialect: crate::database::dialect::PgDialect,
 }
 
 impl RowWriter {
-    pub fn new() -> Self {
+    pub fn new(dialect: crate::database::dialect::PgDialect) -> Self {
         Self {
             buf: String::new(),
             row_count: 0,
+            dialect,
         }
     }
 
@@ -365,7 +372,7 @@ mod tests {
         assert_eq!(rows.len(), 1);
         let row = &rows[0];
 
-        let mut writer = RowWriter::new();
+        let mut writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         writer.add_row(row).unwrap();
         let result = writer.finish();
         let result: Value = serde_json::from_str(result.get()).unwrap();
@@ -395,7 +402,7 @@ mod tests {
         let empty_rows = client.query(empty_sql, &[]).await.unwrap();
         assert_eq!(empty_rows.len(), 0);
 
-        let mut empty_writer = RowWriter::new();
+        let mut empty_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         let empty_result = empty_writer.finish();
         let empty_result: Value = serde_json::from_str(empty_result.get()).unwrap();
         assert_eq!(empty_result, serde_json::json!([]));
@@ -413,7 +420,7 @@ mod tests {
         let null_rows = client.query(null_sql, &[]).await.unwrap();
         let null_row = &null_rows[0];
 
-        let mut null_writer = RowWriter::new();
+        let mut null_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         null_writer.add_row(null_row).unwrap();
         let null_result = null_writer.finish();
         let null_result: Value = serde_json::from_str(null_result.get()).unwrap();
@@ -433,7 +440,7 @@ mod tests {
         let multi_rows = client.query(multi_sql, &[]).await.unwrap();
         assert_eq!(multi_rows.len(), 3);
 
-        let mut multi_writer = RowWriter::new();
+        let mut multi_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         for row in &multi_rows {
             multi_writer.add_row(row).unwrap();
         }
@@ -457,7 +464,7 @@ mod tests {
         let float_rows = client.query(float_sql, &[]).await.unwrap();
         let float_row = &float_rows[0];
 
-        let mut float_writer = RowWriter::new();
+        let mut float_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         float_writer.add_row(float_row).unwrap();
         let float_result = float_writer.finish();
         let float_result: Value = serde_json::from_str(float_result.get()).unwrap();
@@ -479,7 +486,7 @@ mod tests {
         let escape_rows = client.query(escape_sql, &[]).await.unwrap();
         let escape_row = &escape_rows[0];
 
-        let mut escape_writer = RowWriter::new();
+        let mut escape_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         escape_writer.add_row(escape_row).unwrap();
         let escape_result = escape_writer.finish();
         let escape_result: Value = serde_json::from_str(escape_result.get()).unwrap();
@@ -503,7 +510,7 @@ mod tests {
         let array_rows = client.query(array_sql, &[]).await.unwrap();
         let array_row = &array_rows[0];
 
-        let mut array_writer = RowWriter::new();
+        let mut array_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         array_writer.add_row(array_row).unwrap();
         let array_result = array_writer.finish();
         let array_result: Value = serde_json::from_str(array_result.get()).unwrap();
@@ -528,7 +535,7 @@ mod tests {
         let numeric_rows = client.query(numeric_sql, &[]).await.unwrap();
         let numeric_row = &numeric_rows[0];
 
-        let mut numeric_writer = RowWriter::new();
+        let mut numeric_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         numeric_writer.add_row(numeric_row).unwrap();
         let numeric_result = numeric_writer.finish();
         let numeric_result: Value = serde_json::from_str(numeric_result.get()).unwrap();
@@ -554,7 +561,7 @@ mod tests {
         let interval_rows = client.query(interval_sql, &[]).await.unwrap();
         let interval_row = &interval_rows[0];
 
-        let mut interval_writer = RowWriter::new();
+        let mut interval_writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
         interval_writer.add_row(interval_row).unwrap();
         let interval_result = interval_writer.finish();
         let interval_result: Value = serde_json::from_str(interval_result.get()).unwrap();

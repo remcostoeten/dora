@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod connections;
+pub mod integrations;
 pub mod live_monitor;
 pub mod mutation;
 pub mod query;
@@ -15,6 +16,7 @@ pub mod storage;
 
 pub use ai::*;
 pub use connections::*;
+pub use integrations::*;
 pub use live_monitor::*;
 pub use mutation::*;
 pub use query::*;

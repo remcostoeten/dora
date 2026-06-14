@@ -307,12 +307,7 @@ async fn create_postgres_notification_receiver(
     }
 
     let (mut connection_string, tunnel_local_port) = match &connection_entry.value().database {
-        Database::CockroachDB {
-            connection_string,
-            tunnel,
-            ..
-        }
-        | Database::Postgres {
+        Database::Postgres {
             connection_string,
             tunnel,
             ..
@@ -654,7 +649,7 @@ async fn fetch_table_snapshot(
         DatabaseClient::LibSQL { connection } => {
             fetch_libsql_snapshot(connection, table_name).await
         }
-        DatabaseClient::MySQL { pool } => fetch_mysql_snapshot(pool, table_name).await,
+        DatabaseClient::MySQL { pool, .. } => fetch_mysql_snapshot(pool, table_name).await,
     }
 }
 
@@ -683,7 +678,9 @@ async fn fetch_postgres_snapshot(
 }
 
 fn postgres_row_to_values(row: &tokio_postgres::Row) -> Result<Vec<serde_json::Value>, Error> {
-    let mut writer = PostgresRowWriter::new();
+    // Vanilla serialization is dialect-agnostic; the writer ignores the dialect
+    // on the vanilla path. CockroachDB rows serialize identically here.
+    let mut writer = PostgresRowWriter::new(crate::database::dialect::PgDialect::Postgres);
     writer.add_row(row)?;
     let json = writer.finish();
     let value: serde_json::Value = serde_json::from_str(json.get())?;

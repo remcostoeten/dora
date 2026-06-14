@@ -123,9 +123,10 @@ pub fn write_adapter_from_client(
         crate::database::types::DatabaseClient::Postgres {
             client,
             use_simple_query,
-        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query)),
-        crate::database::types::DatabaseClient::MySQL { pool } => {
-            Box::new(MySqlAdapter::new(pool.clone()))
+            dialect,
+        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query, *dialect)),
+        crate::database::types::DatabaseClient::MySQL { pool, dialect } => {
+            Box::new(MySqlAdapter::new(pool.clone(), *dialect))
         }
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))

@@ -19,10 +19,10 @@ export function resolvePresetToEngine(preset: DbPreset): DbEngine {
 		case 'crunchy':
 		case 'postgres':
 			return 'postgres'
-		// cockroach-cloud uses the cockroach dialect (postgres-wire with cockroach extensions)
+		// CockroachDB uses the postgres wire protocol; cockroach-cloud is the managed variant
 		case 'cockroach':
 		case 'cockroach-cloud':
-			return 'cockroach'
+			return 'postgres'
 		case 'tidb':
 		case 'planetscale':
 		case 'mysql':

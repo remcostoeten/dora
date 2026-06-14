@@ -143,6 +143,16 @@ async fn execute_modification_query(
 fn mysql_value_to_json(value: MysqlValue) -> serde_json::Value {
     match value {
         MysqlValue::NULL => serde_json::Value::Null,
+        // MariaDB-specific types (`UUID`, `INET4`, `INET6`) that vanilla MySQL
+        // lacks are stringified by the server on the wire: in both the text and
+        // binary protocols MariaDB sends a `UUID` as its canonical
+        // `xxxxxxxx-xxxx-...` form, an `INET4` as a dotted-quad address, and an
+        // `INET6` as a colon-grouped address — all valid UTF-8 bytes. They
+        // therefore flow correctly through this `Bytes` arm with no
+        // type-specific branch needed (verified live against MariaDB 11.4.12:
+        // `f53d5225-...-c28ba064d794`, `192.168.1.10`, `2001:db8::1`). Adding a
+        // content-sniffing override here would be both unnecessary and unsafe,
+        // since these arrive indistinguishable from ordinary string columns.
         MysqlValue::Bytes(bytes) => match String::from_utf8(bytes) {
             Ok(s) => serde_json::Value::from(s),
             Err(e) => serde_json::Value::from(e.into_bytes()),

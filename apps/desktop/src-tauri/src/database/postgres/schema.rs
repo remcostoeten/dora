@@ -4,92 +4,35 @@ use anyhow::Context;
 use tokio_postgres::Client;
 
 use crate::{
-    database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, IndexInfo, TableInfo},
+    database::{
+        dialect::PgDialect,
+        types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, IndexInfo, TableInfo},
+    },
     Error,
 };
 
-pub async fn get_database_schema(client: &Client) -> Result<DatabaseSchema, Error> {
-    // Main columns query with primary key detection
-    let schema_query = r#"
-        SELECT 
-            c.table_schema,
-            c.table_name,
-            c.column_name,
-            c.data_type,
-            c.is_nullable = 'YES' as is_nullable,
-            c.column_default,
-            -- Check if column is part of primary key
-            CASE 
-                WHEN pk.column_name IS NOT NULL THEN true 
-                ELSE false 
-            END as is_primary_key,
-            -- Check if column has SERIAL/auto-increment
-            CASE 
-                WHEN c.column_default LIKE 'nextval%' THEN true
-                WHEN c.is_identity = 'YES' THEN true
-                ELSE false 
-            END as is_auto_increment
-        FROM 
-            information_schema.columns c
-        JOIN 
-            information_schema.tables t 
-            ON c.table_name = t.table_name 
-            AND c.table_schema = t.table_schema
-        LEFT JOIN (
-            -- Get primary key columns
-            SELECT 
-                kcu.table_schema,
-                kcu.table_name, 
-                kcu.column_name
-            FROM 
-                information_schema.table_constraints tc
-            JOIN 
-                information_schema.key_column_usage kcu 
-                ON tc.constraint_name = kcu.constraint_name 
-                AND tc.table_schema = kcu.table_schema
-            WHERE 
-                tc.constraint_type = 'PRIMARY KEY'
-        ) pk 
-            ON c.table_schema = pk.table_schema 
-            AND c.table_name = pk.table_name 
-            AND c.column_name = pk.column_name
-        WHERE 
-            t.table_type = 'BASE TABLE'
-            AND c.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-        ORDER BY 
-            c.table_schema, c.table_name, c.ordinal_position
-    "#;
+/// Introspect the schema for a Postgres-wire connection.
+///
+/// The catalog query strings come from `dialect.introspection()`: vanilla
+/// Postgres uses the canonical queries, while CockroachDB overrides only the
+/// queries whose vanilla form fails or returns wrong/empty results against a
+/// live cluster (see `PgIntrospection::COCKROACH`). The vanilla path is
+/// byte-for-byte identical to the previous inline queries.
+pub async fn get_database_schema(
+    client: &Client,
+    dialect: PgDialect,
+) -> Result<DatabaseSchema, Error> {
+    let queries = dialect.introspection();
 
+    // Main columns query with primary key detection
     let rows = client
-        .query(schema_query, &[])
+        .query(queries.tables_columns, &[])
         .await
         .context("Failed to query database schema")?;
 
     // Query for foreign keys
-    let fk_query = r#"
-        SELECT
-            kcu.table_schema,
-            kcu.table_name,
-            kcu.column_name,
-            ccu.table_schema AS referenced_schema,
-            ccu.table_name AS referenced_table,
-            ccu.column_name AS referenced_column
-        FROM
-            information_schema.table_constraints tc
-        JOIN
-            information_schema.key_column_usage kcu
-            ON tc.constraint_name = kcu.constraint_name
-            AND tc.table_schema = kcu.table_schema
-        JOIN
-            information_schema.constraint_column_usage ccu
-            ON ccu.constraint_name = tc.constraint_name
-            AND ccu.table_schema = tc.table_schema
-        WHERE
-            tc.constraint_type = 'FOREIGN KEY'
-    "#;
-
     let fk_rows = client
-        .query(fk_query, &[])
+        .query(queries.foreign_keys, &[])
         .await
         .context("Failed to query foreign keys")?;
 
@@ -114,20 +57,8 @@ pub async fn get_database_schema(client: &Client) -> Result<DatabaseSchema, Erro
     }
 
     // Query for indexes
-    let index_query = r#"
-        SELECT
-            schemaname,
-            tablename,
-            indexname,
-            indexdef
-        FROM
-            pg_indexes
-        WHERE
-            schemaname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-    "#;
-
     let index_rows = client
-        .query(index_query, &[])
+        .query(queries.indexes, &[])
         .await
         .context("Failed to query indexes")?;
 
@@ -156,7 +87,7 @@ pub async fn get_database_schema(client: &Client) -> Result<DatabaseSchema, Erro
 
         let column_names: Vec<String> = columns_part
             .split(',')
-            .map(|s| s.trim().to_string())
+            .map(|s| strip_index_column_direction(s.trim()).to_string())
             .filter(|s| !s.is_empty())
             .collect();
 
@@ -173,18 +104,10 @@ pub async fn get_database_schema(client: &Client) -> Result<DatabaseSchema, Erro
             .push(index_info);
     }
 
-    // Query for row count estimates (fast, uses pg_stat)
-    let count_query = r#"
-        SELECT 
-            schemaname,
-            relname,
-            n_live_tup
-        FROM 
-            pg_stat_user_tables
-    "#;
-
+    // Query for row count estimates (fast; vanilla uses pg_stat_user_tables,
+    // CockroachDB uses crdb_internal.table_row_statistics — see PgIntrospection).
     let count_rows = client
-        .query(count_query, &[])
+        .query(queries.row_counts, &[])
         .await
         .context("Failed to query row counts")?;
 
@@ -324,4 +247,61 @@ async fn exact_row_count(client: &Client, schema: &str, table: &str) -> Result<u
 
 fn quote_identifier(identifier: &str) -> String {
     format!("\"{}\"", identifier.replace('"', "\"\""))
+}
+
+/// Strip a trailing sort-direction token from an index column reference.
+///
+/// Vanilla Postgres' `pg_get_indexdef` emits a direction only for non-default
+/// ordering (e.g. `email DESC`), so plain ascending columns arrive bare
+/// (`email`). CockroachDB instead appends an explicit ` ASC` to *every* indexed
+/// column (`email ASC`), which would otherwise be captured as part of the column
+/// name. Stripping a trailing ` ASC`/` DESC` normalizes both: it is a no-op for
+/// vanilla ascending columns (no trailing token) and recovers the bare name for
+/// CockroachDB. A genuine `DESC` ordering loses only its direction marker, which
+/// the column-name list does not carry anyway.
+fn strip_index_column_direction(column: &str) -> &str {
+    for suffix in [" ASC", " DESC", " asc", " desc"] {
+        if let Some(stripped) = column.strip_suffix(suffix) {
+            return stripped.trim_end();
+        }
+    }
+    column
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::database::dialect::PgIntrospection;
+
+    #[test]
+    fn strips_cockroach_asc_direction() {
+        assert_eq!(strip_index_column_direction("id ASC"), "id");
+        assert_eq!(strip_index_column_direction("email ASC"), "email");
+    }
+
+    #[test]
+    fn strips_desc_direction() {
+        assert_eq!(strip_index_column_direction("created DESC"), "created");
+    }
+
+    #[test]
+    fn leaves_bare_vanilla_column_untouched() {
+        // Vanilla ascending columns arrive with no trailing direction token.
+        assert_eq!(strip_index_column_direction("email"), "email");
+        assert_eq!(strip_index_column_direction("lower(email)"), "lower(email)");
+    }
+
+    #[test]
+    fn vanilla_and_cockroach_share_unchanged_queries() {
+        // Tables/columns and FK queries are not overridden for CockroachDB, so
+        // they must be the same pointers/strings the vanilla path uses.
+        let v = PgIntrospection::VANILLA;
+        let c = PgIntrospection::COCKROACH;
+        assert_eq!(v.tables_columns, c.tables_columns);
+        assert_eq!(v.foreign_keys, c.foreign_keys);
+        assert_eq!(v.indexes, c.indexes);
+        // Only row counts diverge.
+        assert_ne!(v.row_counts, c.row_counts);
+        assert!(c.row_counts.contains("crdb_internal.table_row_statistics"));
+    }
 }

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { SqlResults } from '@/features/sql-console/components/sql-results'
+import { TooltipProvider } from '@/shared/ui/tooltip'
 import * as dataProviderModule from '@/core/data-provider'
 import * as settingsModule from '@/core/settings'
 
@@ -49,16 +50,18 @@ describe('SqlResults', function () {
 		} as any
 
 		render(
-			<dataProviderModule.DataProvider forceMock>
-				<SqlResults
-					result={result}
-					viewMode='table'
-					onViewModeChange={function () {}}
-					onExport={function () {}}
-					connectionId='conn-1'
-					showFilter
-				/>
-			</dataProviderModule.DataProvider>
+			<TooltipProvider>
+				<dataProviderModule.DataProvider forceMock>
+					<SqlResults
+						result={result}
+						viewMode='table'
+						onViewModeChange={function () {}}
+						onExport={function () {}}
+						connectionId='conn-1'
+						showFilter
+					/>
+				</dataProviderModule.DataProvider>
+			</TooltipProvider>
 		)
 
 		fireEvent.change(await screen.findByPlaceholderText('Filter results...'), {

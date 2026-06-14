@@ -105,6 +105,10 @@ impl<'a> ConnectionService<'a> {
 
             let config_changed = password_changed
                 || match (&connection.database, &database_info) {
+                    // Postgres-wire (vanilla + CockroachDB) and MySQL-wire
+                    // (vanilla + MariaDB) collapse onto a single runtime variant;
+                    // the incoming `DatabaseInfo` may still be either contract
+                    // variant, so match both against the same `Database` arm.
                     (
                         Database::Postgres {
                             connection_string: old,
@@ -114,15 +118,8 @@ impl<'a> ConnectionService<'a> {
                         DatabaseInfo::Postgres {
                             connection_string: new,
                             ssh_config: new_ssh,
-                        },
-                    ) => old != new || old_ssh != new_ssh,
-                    (
-                        Database::CockroachDB {
-                            connection_string: old,
-                            ssh_config: old_ssh,
-                            ..
-                        },
-                        DatabaseInfo::CockroachDB {
+                        }
+                        | DatabaseInfo::CockroachDB {
                             connection_string: new,
                             ssh_config: new_ssh,
                         },
@@ -136,15 +133,8 @@ impl<'a> ConnectionService<'a> {
                         DatabaseInfo::MySQL {
                             connection_string: new,
                             ssh_config: new_ssh,
-                        },
-                    ) => old != new || old_ssh != new_ssh,
-                    (
-                        Database::MariaDB {
-                            connection_string: old,
-                            ssh_config: old_ssh,
-                            ..
-                        },
-                        DatabaseInfo::MariaDB {
+                        }
+                        | DatabaseInfo::MariaDB {
                             connection_string: new,
                             ssh_config: new_ssh,
                         },
@@ -184,15 +174,7 @@ impl<'a> ConnectionService<'a> {
                         *client = None;
                         *tunnel = None;
                     }
-                    Database::CockroachDB { client, tunnel, .. } => {
-                        *client = None;
-                        *tunnel = None;
-                    }
                     Database::MySQL { pool, tunnel, .. } => {
-                        *pool = None;
-                        *tunnel = None;
-                    }
-                    Database::MariaDB { pool, tunnel, .. } => {
                         *pool = None;
                         *tunnel = None;
                     }
@@ -219,16 +201,18 @@ impl<'a> ConnectionService<'a> {
                         ssh_config,
                         client: None,
                         tunnel: None,
+                        dialect: crate::database::dialect::PgDialect::Postgres,
                     },
                     DatabaseInfo::CockroachDB {
                         connection_string,
                         ssh_config,
-                    } => Database::CockroachDB {
+                    } => Database::Postgres {
                         use_simple_query: false,
                         connection_string,
                         ssh_config,
                         client: None,
                         tunnel: None,
+                        dialect: crate::database::dialect::PgDialect::CockroachDb,
                     },
                     DatabaseInfo::MySQL {
                         connection_string,
@@ -238,15 +222,17 @@ impl<'a> ConnectionService<'a> {
                         ssh_config,
                         pool: None,
                         tunnel: None,
+                        dialect: crate::database::dialect::MySqlDialect::MySql,
                     },
                     DatabaseInfo::MariaDB {
                         connection_string,
                         ssh_config,
-                    } => Database::MariaDB {
+                    } => Database::MySQL {
                         connection_string,
                         ssh_config,
                         pool: None,
                         tunnel: None,
+                        dialect: crate::database::dialect::MySqlDialect::MariaDb,
                     },
                     DatabaseInfo::SQLite { db_path } => Database::SQLite {
                         db_path,
@@ -278,18 +264,8 @@ impl<'a> ConnectionService<'a> {
                         DatabaseInfo::Postgres {
                             connection_string: new_connection_string,
                             ssh_config: new_ssh_config,
-                        },
-                    ) => {
-                        *connection_string = new_connection_string;
-                        *ssh_config = new_ssh_config;
-                    }
-                    (
-                        Database::CockroachDB {
-                            connection_string,
-                            ssh_config,
-                            ..
-                        },
-                        DatabaseInfo::CockroachDB {
+                        }
+                        | DatabaseInfo::CockroachDB {
                             connection_string: new_connection_string,
                             ssh_config: new_ssh_config,
                         },
@@ -306,18 +282,8 @@ impl<'a> ConnectionService<'a> {
                         DatabaseInfo::MySQL {
                             connection_string: new_connection_string,
                             ssh_config: new_ssh_config,
-                        },
-                    ) => {
-                        *connection_string = new_connection_string;
-                        *ssh_config = new_ssh_config;
-                    }
-                    (
-                        Database::MariaDB {
-                            connection_string,
-                            ssh_config,
-                            ..
-                        },
-                        DatabaseInfo::MariaDB {
+                        }
+                        | DatabaseInfo::MariaDB {
                             connection_string: new_connection_string,
                             ssh_config: new_ssh_config,
                         },
@@ -449,18 +415,12 @@ impl<'a> ConnectionService<'a> {
         let connection = connection_entry.value_mut();
 
         match &mut connection.database {
-            Database::CockroachDB {
+            Database::Postgres {
                 connection_string,
                 ssh_config,
                 client,
                 tunnel,
-                ..
-            }
-            | Database::Postgres {
-                connection_string,
-                ssh_config,
-                client,
-                tunnel,
+                dialect,
                 ..
             } => {
                 // If we have an SSH config, start the tunnel
@@ -533,18 +493,24 @@ impl<'a> ConnectionService<'a> {
                     Ok((pg_client, conn_check)) => {
                         // Detect the real engine (Postgres vs CockroachDB) so
                         // capability gating (e.g. LISTEN/NOTIFY) is based on the
-                        // server, not the user's variant choice. Detection
-                        // failures are non-fatal: we keep the safe Postgres
-                        // default.
-                        let detected = match pg_client.query_one("SELECT version()", &[]).await {
-                            Ok(row) => row.try_get::<usize, String>(0).ok().map(|version| {
-                                crate::database::dialect::detect_pg_dialect(&version).into()
-                            }),
+                        // server, not the user's variant choice. The per-engine
+                        // `dialect` field is the source of truth; detection
+                        // failures are non-fatal and leave the existing (vanilla)
+                        // dialect in place.
+                        let detected_pg = match pg_client.query_one("SELECT version()", &[]).await {
+                            Ok(row) => row
+                                .try_get::<usize, String>(0)
+                                .ok()
+                                .map(|version| crate::database::dialect::detect_pg_dialect(&version)),
                             Err(e) => {
                                 log::warn!("Failed to detect Postgres dialect via version(): {}", e);
                                 None
                             }
                         };
+                        if let Some(detected_pg) = detected_pg {
+                            *dialect = detected_pg;
+                        }
+                        let detected = detected_pg.map(Into::into);
 
                         *client = Some(Arc::new(pg_client));
                         connection.connected = true;
@@ -566,17 +532,12 @@ impl<'a> ConnectionService<'a> {
                     }
                 }
             }
-            Database::MariaDB {
+            Database::MySQL {
                 connection_string,
                 ssh_config,
                 pool,
                 tunnel,
-            }
-            | Database::MySQL {
-                connection_string,
-                ssh_config,
-                pool,
-                tunnel,
+                dialect,
             } => {
                 // If we have an SSH config, start the tunnel and rewrite the MySQL target to localhost.
                 let mut mysql_url = url::Url::parse(connection_string).with_context(|| {
@@ -626,21 +587,27 @@ impl<'a> ConnectionService<'a> {
                     Ok(mut conn) => {
                         conn.ping().await?;
 
-                        // Detect the real engine (MySQL vs MariaDB). Non-fatal:
-                        // on failure we keep the safe MySQL default.
-                        let detected = match conn
+                        // Detect the real engine (MySQL vs MariaDB). The
+                        // per-engine `dialect` field is the source of truth.
+                        // Non-fatal: on failure we keep the existing (vanilla)
+                        // dialect.
+                        let detected_mysql = match conn
                             .query_first::<String, _>("SELECT VERSION()")
                             .await
                         {
-                            Ok(Some(version)) => Some(
-                                crate::database::dialect::detect_mysql_dialect(&version).into(),
-                            ),
+                            Ok(Some(version)) => {
+                                Some(crate::database::dialect::detect_mysql_dialect(&version))
+                            }
                             Ok(None) => None,
                             Err(e) => {
                                 log::warn!("Failed to detect MySQL dialect via VERSION(): {}", e);
                                 None
                             }
                         };
+                        if let Some(detected_mysql) = detected_mysql {
+                            *dialect = detected_mysql;
+                        }
+                        let detected = detected_mysql.map(Into::into);
                         drop(conn);
 
                         *pool = Some(Arc::new(mysql_pool));
@@ -1011,15 +978,7 @@ impl<'a> ConnectionService<'a> {
                 *client = None;
                 *tunnel = None;
             }
-            Database::CockroachDB { client, tunnel, .. } => {
-                *client = None;
-                *tunnel = None;
-            }
             Database::MySQL { pool, tunnel, .. } => {
-                *pool = None;
-                *tunnel = None;
-            }
-            Database::MariaDB { pool, tunnel, .. } => {
                 *pool = None;
                 *tunnel = None;
             }

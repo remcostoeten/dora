@@ -26,8 +26,13 @@ export type ProviderPattern = {
 	pattern: RegExp | string
 	/** Display name for detected provider */
 	displayName: string
-	/** Provider type (optional) */
+	/** Provider type (optional). Leave undefined to let the URL protocol/port decide the engine. */
 	type?: DatabaseType
+	/**
+	 * When true and the connection URL has no explicit `sslmode`/`ssl` query param,
+	 * `parseConnectionUrl` defaults `ssl` to true for this provider.
+	 */
+	requiresSsl?: boolean
 }
 
 /**
@@ -96,19 +101,74 @@ export const PROVIDER_CONFIGS: Record<DatabaseType, ProviderConfig> = {
  * Known provider patterns for auto-detection
  */
 export const PROVIDER_PATTERNS: ProviderPattern[] = [
-	{ pattern: 'supabase', displayName: 'Supabase DB', type: 'postgres' },
-	{ pattern: 'neon', displayName: 'Neon DB', type: 'postgres' },
-	{ pattern: 'turso', displayName: 'Turso DB', type: 'libsql' },
-	{ pattern: 'planetscale', displayName: 'PlanetScale DB', type: 'mysql' },
+	// --- Postgres-wire managed providers (TLS required) ---
+	{ pattern: /supabase\.(co|com)/, displayName: 'Supabase DB', type: 'postgres', requiresSsl: true },
+	{ pattern: 'neon.tech', displayName: 'Neon DB', type: 'postgres', requiresSsl: true },
+	// Vercel Postgres (Neon-backed)
+	{ pattern: /vercel-storage\.com|prisma-data/, displayName: 'Vercel Postgres', type: 'postgres', requiresSsl: true },
+	{ pattern: 'render.com', displayName: 'Render DB', type: 'postgres', requiresSsl: true },
+	{ pattern: 'postgresbridge.com', displayName: 'Crunchy Bridge', type: 'postgres', requiresSsl: true },
+	{ pattern: /tsdb\.cloud\.timescale\.com|timescaledb/, displayName: 'Timescale Cloud', type: 'postgres', requiresSsl: true },
+	{ pattern: /yugabyte\.cloud|ybdb/, displayName: 'Yugabyte', type: 'postgres', requiresSsl: true },
+
+	{ pattern: /fly\.dev|flympg/, displayName: 'Fly.io Postgres', type: 'postgres', requiresSsl: true },
+
+	// --- Dual-engine managed providers (engine decided by protocol/port) ---
+	// Railway private network has no TLS; public endpoints require it.
+	{ pattern: 'railway.internal', displayName: 'Railway DB', requiresSsl: false },
+	{ pattern: /railway\.app|rlwy\.net|containers-us-west/, displayName: 'Railway DB', requiresSsl: true },
+	{ pattern: 'aivencloud.com', displayName: 'Aiven DB', requiresSsl: true },
+	// Azure split by engine (must precede any generic azure match).
+	{ pattern: 'postgres.database.azure.com', displayName: 'Azure Database for PostgreSQL', type: 'postgres', requiresSsl: true },
+	{ pattern: 'mysql.database.azure.com', displayName: 'Azure Database for MySQL', type: 'mysql', requiresSsl: true },
+	{ pattern: 'azure', displayName: 'Azure DB', requiresSsl: true },
+	{ pattern: /db\.ondigitalocean\.com|ondigitalocean\.com/, displayName: 'DigitalOcean DB', requiresSsl: true },
+	// AWS RDS / Aurora — SSL optional; do not force it.
+	{ pattern: 'rds.amazonaws.com', displayName: 'AWS RDS', requiresSsl: false },
+	{ pattern: /aws.*rds/, displayName: 'AWS RDS', requiresSsl: false },
+
+	// --- MySQL-wire managed providers ---
+	{ pattern: 'planetscale', displayName: 'PlanetScale DB', type: 'mysql', requiresSsl: true },
+	{ pattern: /psdb\.cloud|connect\.psdb\.cloud/, displayName: 'PlanetScale DB', type: 'mysql', requiresSsl: true },
+	{ pattern: 'tidbcloud.com', displayName: 'TiDB Cloud', type: 'mysql', requiresSsl: true },
+
+	// --- CockroachDB Cloud (cockroach dialect, TLS required) ---
+	// Must precede the broad gcp/google and cockroach engine patterns: cloud hostnames
+	// embed substrings like "gcp" and "cockroach".
+	{ pattern: 'cockroachlabs.cloud', displayName: 'CockroachDB Cloud', type: 'cockroach', requiresSsl: true },
+
+	// --- libSQL ---
+	{ pattern: /turso\.io|turso\.tech/, displayName: 'Turso DB', type: 'libsql' },
+
+	// --- Self-described engines (broad; must precede Fly's .internal/.flycast catch-all) ---
 	{ pattern: /maria(?:db)?/, displayName: 'MariaDB DB', type: 'mariadb' },
 	{ pattern: /cockroach(?:db)?|crdb/, displayName: 'CockroachDB', type: 'cockroach' },
-	{ pattern: 'railway', displayName: 'Railway DB' },
-	{ pattern: 'render', displayName: 'Render DB' },
-	{ pattern: 'vercel', displayName: 'Vercel DB', type: 'postgres' },
-	{ pattern: /aws.*rds/, displayName: 'AWS RDS' },
-	{ pattern: 'azure', displayName: 'Azure DB' },
-	{ pattern: /gcp|google.*cloud/, displayName: 'Google Cloud SQL' }
+
+	// Google Cloud SQL (broad gcp/google match; after named cloud hosts above).
+	{ pattern: /gcp|google.*cloud/, displayName: 'Google Cloud SQL' },
+
+	// Fly.io private network (.internal / .flycast over WireGuard) — no TLS. Kept last
+	// so named engine/provider hosts are recognized before this broad suffix match.
+	{ pattern: /\.flycast$|\.internal$/, displayName: 'Fly.io Postgres', type: 'postgres', requiresSsl: false }
 ]
+
+/**
+ * Returns the first PROVIDER_PATTERNS entry whose pattern matches the hostname.
+ * Order in PROVIDER_PATTERNS is significant: specific patterns precede broad ones.
+ */
+function matchProviderPattern(hostname: string): ProviderPattern | undefined {
+	const host = hostname.toLowerCase()
+	for (const pattern of PROVIDER_PATTERNS) {
+		const matches =
+			typeof pattern.pattern === 'string'
+				? host.includes(pattern.pattern)
+				: pattern.pattern.test(host)
+		if (matches) {
+			return pattern
+		}
+	}
+	return undefined
+}
 
 function inferProviderFromUrl(parsed: URL): DatabaseType | undefined {
 	const hostname = parsed.hostname.toLowerCase()
@@ -300,16 +360,12 @@ export function parseConnectionUrl(url: string): Partial<ConnectionParams> | nul
 			type = 'mariadb'
 		}
 
-		for (const pattern of PROVIDER_PATTERNS) {
-			const matches =
-				typeof pattern.pattern === 'string'
-					? parsed.hostname.toLowerCase().includes(pattern.pattern)
-					: pattern.pattern.test(parsed.hostname.toLowerCase())
-
-			if (matches && pattern.type) {
-				type = pattern.type
-				break
-			}
+		const matchedProvider = matchProviderPattern(parsed.hostname)
+		// A pattern `type` overrides the protocol-derived engine only where the
+		// provider forces a dialect (e.g. cockroach) or is single-engine. Dual-engine
+		// providers leave `type` undefined so the protocol/port keeps deciding.
+		if (matchedProvider?.type) {
+			type = matchedProvider.type
 		}
 
 		// 2. If no exact match, try fuzzy matching (typo detection)
@@ -330,9 +386,13 @@ export function parseConnectionUrl(url: string): Partial<ConnectionParams> | nul
 			database: parsed.pathname.slice(1) || undefined // Remove leading slash
 		}
 
-		// Check for SSL in query params
+		// Check for SSL in query params. An explicit `sslmode`/`ssl` param always
+		// wins; otherwise a managed provider with `requiresSsl` defaults SSL on.
 		const searchParams = new URLSearchParams(parsed.search)
-		if (searchParams.has('sslmode') || searchParams.has('ssl')) {
+		const hasExplicitSsl = searchParams.has('sslmode') || searchParams.has('ssl')
+		if (hasExplicitSsl) {
+			params.ssl = true
+		} else if (matchedProvider?.requiresSsl) {
 			params.ssl = true
 		}
 
@@ -351,24 +411,19 @@ export function detectProviderName(url: string): string {
 		const hostname = parsed.hostname.toLowerCase()
 		const urlProviderHint = inferProviderFromUrl(parsed)
 
+		// A named host pattern (e.g. "CockroachDB Cloud") is more specific than the
+		// generic engine hint, so it wins when both apply.
+		const matched = matchProviderPattern(hostname)
+		if (matched) {
+			return matched.displayName
+		}
+
 		if (urlProviderHint === 'cockroach') {
 			return 'CockroachDB'
 		}
 
 		if (urlProviderHint === 'mariadb') {
 			return 'MariaDB DB'
-		}
-
-		// Check against known patterns
-		for (const pattern of PROVIDER_PATTERNS) {
-			const matches =
-				typeof pattern.pattern === 'string'
-					? hostname.includes(pattern.pattern)
-					: pattern.pattern.test(hostname)
-
-			if (matches) {
-				return pattern.displayName
-			}
 		}
 
 		// Fallback: use first part of hostname

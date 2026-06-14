@@ -199,6 +199,33 @@ async getConnectionHistory(dbTypeFilter: string | null, successFilter: boolean |
     else return { status: "error", error: e  as any };
 }
 },
+async supabaseSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("supabase_save_token", { token }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async supabaseListProjects() : Promise<Result<SupabaseProject[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("supabase_list_projects") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async supabaseDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("supabase_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async supabaseIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("supabase_is_connected");
+},
 async setConnectionPin(connectionId: string, pin: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_connection_pin", { connectionId, pin }) };
@@ -1086,6 +1113,7 @@ deleted_at: number;
 undo_window_seconds: number }
 export type SshConfig = { host: string; port: number; username: string; private_key_path: string | null; password: string | null }
 export type StatementInfo = { returns_values: boolean; status: QueryStatus; first_page: JsonValue; affected_rows: number | null; page_count: number; rows_received: number; error: string | null }
+export type SupabaseProject = { id: string; name: string; region: string; status: string; dbHost: string; dbVersion: string }
 export type TAURI_CHANNEL<TSend> = null
 export type TableInfo = { name: string; schema: string; columns: ColumnInfo[]; 
 /**

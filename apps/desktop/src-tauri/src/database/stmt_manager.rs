@@ -251,11 +251,17 @@ impl StatementManager {
             DatabaseClient::Postgres {
                 client,
                 use_simple_query,
+                dialect,
             } => {
                 let handle = spawn(async move {
-                    let result =
-                        postgres::execute::execute_query(&client, stmt, &sender, use_simple_query)
-                            .await;
+                    let result = postgres::execute::execute_query(
+                        &client,
+                        stmt,
+                        &sender,
+                        use_simple_query,
+                        dialect,
+                    )
+                    .await;
                     log_query_exec_outcome("Postgres", result);
                 });
                 self.execution_handles.insert(id, handle);
@@ -298,7 +304,7 @@ impl StatementManager {
                 });
                 self.execution_handles.insert(id, handle);
             }
-            DatabaseClient::MySQL { pool } => {
+            DatabaseClient::MySQL { pool, .. } => {
                 let handle = spawn(async move {
                     let result = mysql::execute::execute_query(&pool, stmt, &sender).await;
                     log_query_exec_outcome("MySQL", result);

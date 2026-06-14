@@ -16,6 +16,7 @@ import {
 } from "@studio/shared/ui/dialog";
 import { Input } from "@studio/shared/ui/input";
 import { Label } from "@studio/shared/ui/label";
+import { SupabaseConnectFlow } from "@studio/features/integrations/supabase/supabase-connect-flow";
 import { Connection, DatabaseType, SshAuthMethod, SshTunnelConfig } from "../types";
 import { getSourceCaps } from "../source-caps";
 import {
@@ -616,6 +617,15 @@ export function ConnectionDialog({
         </DialogHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
+          {!initialValues ? (
+            <SupabaseConnectFlow
+              onComplete={function (connection) {
+                onSave(connection);
+                onOpenChange(false);
+              }}
+            />
+          ) : null}
+
           <div className="border border-border/60 bg-card/45 p-4 shadow-sm">
             <Label
               htmlFor="name"

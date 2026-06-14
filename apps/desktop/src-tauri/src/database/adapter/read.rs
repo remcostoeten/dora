@@ -13,6 +13,7 @@ use tokio_postgres::Client as PgClient;
 
 use crate::{
     database::{
+        dialect::{MySqlDialect, PgDialect},
         parser::ParsedStatement,
         types::{DatabaseSchema, ExecSender},
     },
@@ -29,7 +30,7 @@ use crate::{
 /// # Example
 ///
 /// ```ignore
-/// let adapter = PostgresAdapter::new(client);
+/// let adapter = PostgresAdapter::new(client, use_simple_query, dialect);
 /// let statements = adapter.parse_statements("SELECT * FROM users")?;
 /// adapter.execute_query(statements[0], &sender).await?;
 /// ```
@@ -82,18 +83,26 @@ impl std::fmt::Display for DatabaseType {
 pub struct PostgresAdapter {
     client: Arc<PgClient>,
     use_simple_query: bool,
+    /// Runtime dialect (vanilla unless CockroachDB detected). Threaded into
+    /// schema introspection and the row writer; vanilla-only behaviour for now.
+    dialect: PgDialect,
 }
 
 impl PostgresAdapter {
-    pub fn new(client: Arc<PgClient>, use_simple_query: bool) -> Self {
+    pub fn new(client: Arc<PgClient>, use_simple_query: bool, dialect: PgDialect) -> Self {
         Self {
             client,
             use_simple_query,
+            dialect,
         }
     }
 
     pub fn client(&self) -> &PgClient {
         &self.client
+    }
+
+    pub fn dialect(&self) -> PgDialect {
+        self.dialect
     }
 }
 
@@ -109,12 +118,13 @@ impl DatabaseAdapter for PostgresAdapter {
             stmt,
             sender,
             self.use_simple_query,
+            self.dialect,
         )
         .await
     }
 
     async fn get_schema(&self) -> Result<DatabaseSchema, Error> {
-        crate::database::postgres::schema::get_database_schema(&self.client).await
+        crate::database::postgres::schema::get_database_schema(&self.client, self.dialect).await
     }
 
     fn is_connected(&self) -> bool {
@@ -277,15 +287,21 @@ impl DatabaseAdapter for LibSqlAdapter {
 
 pub struct MySqlAdapter {
     pool: Arc<mysql_async::Pool>,
+    /// Runtime dialect (vanilla unless MariaDB detected). Vanilla-only today.
+    dialect: MySqlDialect,
 }
 
 impl MySqlAdapter {
-    pub fn new(pool: Arc<mysql_async::Pool>) -> Self {
-        Self { pool }
+    pub fn new(pool: Arc<mysql_async::Pool>, dialect: MySqlDialect) -> Self {
+        Self { pool, dialect }
     }
 
     pub fn pool(&self) -> &mysql_async::Pool {
         &self.pool
+    }
+
+    pub fn dialect(&self) -> MySqlDialect {
+        self.dialect
     }
 }
 
@@ -300,7 +316,7 @@ impl DatabaseAdapter for MySqlAdapter {
     }
 
     async fn get_schema(&self) -> Result<DatabaseSchema, Error> {
-        crate::database::mysql::schema::get_database_schema(self.pool.clone()).await
+        crate::database::mysql::schema::get_database_schema(self.pool.clone(), self.dialect).await
     }
 
     fn is_connected(&self) -> bool {
@@ -319,9 +335,10 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
         crate::database::types::DatabaseClient::Postgres {
             client,
             use_simple_query,
-        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query)),
-        crate::database::types::DatabaseClient::MySQL { pool } => {
-            Box::new(MySqlAdapter::new(pool.clone()))
+            dialect,
+        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query, *dialect)),
+        crate::database::types::DatabaseClient::MySQL { pool, dialect } => {
+            Box::new(MySqlAdapter::new(pool.clone(), *dialect))
         }
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))

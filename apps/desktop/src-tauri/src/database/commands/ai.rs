@@ -93,10 +93,16 @@ fn engine_for_connection(state: &AppState, conn_id: Uuid) -> String {
         .connections
         .get(&conn_id)
         .map(|entry| match entry.value().database {
+            Database::Postgres {
+                dialect: crate::database::dialect::PgDialect::CockroachDb,
+                ..
+            } => "cockroach",
             Database::Postgres { .. } => "postgres",
-            Database::CockroachDB { .. } => "cockroach",
+            Database::MySQL {
+                dialect: crate::database::dialect::MySqlDialect::MariaDb,
+                ..
+            } => "mariadb",
             Database::MySQL { .. } => "mysql",
-            Database::MariaDB { .. } => "mariadb",
             Database::SQLite { .. } => "sqlite",
             Database::DuckDB { .. } => "duckdb",
             Database::LibSQL { .. } => "libsql",

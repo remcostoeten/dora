@@ -30,7 +30,7 @@ impl WatchAdapter for PostgresAdapter {
 
         let mut row_values = Vec::with_capacity(rows.len());
         for row in &rows {
-            let mut writer = PostgresRowWriter::new();
+            let mut writer = PostgresRowWriter::new(self.dialect());
             writer.add_row(row)?;
             let value: serde_json::Value = serde_json::from_str(writer.finish().get())?;
             let values = value
@@ -181,9 +181,10 @@ pub fn watch_adapter_from_client(
         crate::database::types::DatabaseClient::Postgres {
             client,
             use_simple_query,
-        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query)),
-        crate::database::types::DatabaseClient::MySQL { pool } => {
-            Box::new(MySqlAdapter::new(pool.clone()))
+            dialect,
+        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query, *dialect)),
+        crate::database::types::DatabaseClient::MySQL { pool, dialect } => {
+            Box::new(MySqlAdapter::new(pool.clone(), *dialect))
         }
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))

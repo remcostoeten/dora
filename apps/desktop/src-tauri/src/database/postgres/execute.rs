@@ -3,7 +3,8 @@ use tokio_postgres::{types::ToSql, Client, SimpleQueryMessage};
 
 use crate::{
     database::{
-        parser::ParsedStatement, postgres::row_writer::RowWriter, types::ExecSender, QueryExecEvent,
+        dialect::PgDialect, parser::ParsedStatement, postgres::row_writer::RowWriter,
+        types::ExecSender, QueryExecEvent,
     },
     utils::serialize_as_json_array,
     Error,
@@ -14,15 +15,17 @@ pub async fn execute_query(
     stmt: ParsedStatement,
     sender: &ExecSender,
     use_simple_query: bool,
+    dialect: PgDialect,
 ) -> Result<(), Error> {
     if use_simple_query {
-        return execute_simple_query(client, &stmt.statement, stmt.returns_values, sender).await;
+        return execute_simple_query(client, &stmt.statement, stmt.returns_values, sender, dialect)
+            .await;
     }
 
     if stmt.returns_values {
-        execute_query_with_results(client, &stmt.statement, sender).await?;
+        execute_query_with_results(client, &stmt.statement, sender, dialect).await?;
     } else {
-        execute_modification_query(client, &stmt.statement, sender).await?;
+        execute_modification_query(client, &stmt.statement, sender, dialect).await?;
     }
 
     Ok(())
@@ -33,6 +36,7 @@ async fn execute_simple_query(
     query: &str,
     returns_values: bool,
     sender: &ExecSender,
+    dialect: PgDialect,
 ) -> Result<(), Error> {
     let started_at = std::time::Instant::now();
     log::info!("Starting simple Postgres query: {}", query);
@@ -52,7 +56,7 @@ async fn execute_simple_query(
     pin_mut!(stream);
 
     let batch_size = 50;
-    let mut writer = RowWriter::new();
+    let mut writer = RowWriter::new(dialect);
     let mut affected_rows = 0;
     let mut sent_columns = !returns_values;
 
@@ -114,6 +118,7 @@ async fn execute_query_with_results(
     client: &Client,
     query: &str,
     sender: &ExecSender,
+    dialect: PgDialect,
 ) -> Result<(), Error> {
     let started_at = std::time::Instant::now();
     log::info!("Starting streaming query: {}", query);
@@ -132,7 +137,7 @@ async fn execute_query_with_results(
                 log::warn!(
                     "Falling back to simple Postgres query after duplicate prepared statement"
                 );
-                return execute_simple_query(client, query, true, sender).await;
+                return execute_simple_query(client, query, true, sender, dialect).await;
             }
 
             let error_msg = postgres_error_message("Query preparation failed", &e);
@@ -159,7 +164,7 @@ async fn execute_query_with_results(
             let batch_size = 50;
             let mut total_rows = 0;
 
-            let mut writer = RowWriter::new();
+            let mut writer = RowWriter::new(dialect);
 
             loop {
                 match stream.try_next().await {
@@ -236,6 +241,7 @@ async fn execute_modification_query(
     client: &Client,
     query: &str,
     sender: &ExecSender,
+    dialect: PgDialect,
 ) -> Result<(), Error> {
     log::info!("Executing modification query: {}", query);
     let started_at = std::time::Instant::now();
@@ -256,7 +262,7 @@ async fn execute_modification_query(
                 log::warn!(
                     "Falling back to simple Postgres query after duplicate prepared statement"
                 );
-                return execute_simple_query(client, query, false, sender).await;
+                return execute_simple_query(client, query, false, sender, dialect).await;
             }
 
             let error_msg = postgres_error_message("Modification query failed", &e);
@@ -309,7 +315,7 @@ mod tests {
         let (sender, mut recv) = channel();
 
         tokio::task::spawn(async move {
-            execute_query(&conn, stmt, &sender, false).await.unwrap();
+            execute_query(&conn, stmt, &sender, false, crate::database::dialect::PgDialect::Postgres).await.unwrap();
         });
 
         let mut events = Vec::new();
@@ -334,7 +340,7 @@ mod tests {
         let (sender, mut recv) = channel();
 
         tokio::task::spawn(async move {
-            execute_query(&conn, stmt, &sender, false).await.unwrap();
+            execute_query(&conn, stmt, &sender, false, crate::database::dialect::PgDialect::Postgres).await.unwrap();
         });
 
         let event = recv

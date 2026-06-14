@@ -10,6 +10,7 @@ pub mod credentials;
 pub mod database;
 mod error;
 mod init;
+mod integrations;
 mod observability;
 mod ollama_installer;
 mod storage;
@@ -190,6 +191,10 @@ pub fn run() {
             database::commands::get_setting,
             database::commands::set_setting,
             database::commands::get_connection_history,
+            database::commands::supabase_save_token,
+            database::commands::supabase_list_projects,
+            database::commands::supabase_disconnect,
+            database::commands::supabase_is_connected,
             // Mutation API commands
             database::commands::update_cell,
             database::commands::get_blob_bytes,
