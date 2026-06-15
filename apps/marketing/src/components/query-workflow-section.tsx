@@ -19,7 +19,7 @@ const REVEAL_CLASS = "flex h-full w-full";
 /* ---------------------------------------------------------------------------
  * Query Workflow — a standalone row sitting above the feature grid. Where the
  * grid below answers "what can it browse", this answers "how you write the
- * query": describe it in English or run type-safe Drizzle, live.
+ * query": describe it in English or run type-safe Drizzle / Prisma, live.
  * ------------------------------------------------------------------------- */
 export function QueryWorkflowSection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -50,7 +50,7 @@ export function QueryWorkflowSection() {
             Aww, is SQL to hard for you?
           </h2>
           <h3 className="text-balance text-3xl text-[#f0f0f0] font-semibold font-[family-name:var(--font-pixel)]">
-            Run queries via Drizzle
+            Run queries via Drizzle or Prisma
             <br /> or context aware LLM
           </h3>
         </ScrollReveal>
@@ -77,12 +77,20 @@ export function QueryWorkflowSection() {
           <ScrollReveal className={REVEAL_CLASS} delay={90}>
             <DrizzleRunnerCard animate={animate} />
           </ScrollReveal>
-          <Link
-            className="absolute bottom-4 right-4 z-10 text-[11px] text-[#ad8eb6] transition-colors hover:text-[#f5c0c0]"
-            href={getFeaturePath("drizzle-runner")}
-          >
-            Learn more →
-          </Link>
+          <div className="absolute bottom-4 right-4 z-10 flex items-center gap-3 text-[11px]">
+            <Link
+              className="text-[#ad8eb6] transition-colors hover:text-[#f5c0c0]"
+              href={getFeaturePath("drizzle-runner")}
+            >
+              Drizzle →
+            </Link>
+            <Link
+              className="text-[#ad8eb6] transition-colors hover:text-[#f5c0c0]"
+              href={getFeaturePath("prisma-runner")}
+            >
+              Prisma →
+            </Link>
+          </div>
         </div>
       </div>
     </section>

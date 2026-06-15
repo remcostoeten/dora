@@ -36,43 +36,46 @@ export const GUIDES: TGuideConfig[] = [
         engine: 'PostgreSQL',
         title: 'Connect Supabase to Dora',
         description:
-            'Connect a Supabase Postgres database to Dora, the desktop database GUI. Paste the Supabase connection string, browse tables, and run SQL — no extra config.',
-        lead: 'Supabase is hosted Postgres, so Dora connects to it with the standard connection string. Here is how to find yours and open it in the app.',
+            'Connect Supabase to Dora, the desktop database GUI, in one click with OAuth — authorize in the browser and pick a project. Or paste the connection string the classic way.',
+        lead: 'Supabase is the one provider Dora connects to with a single click: authorize in your browser, pick a project, and Dora builds the connection for you. Pasting a connection string still works too.',
         keywords: [
             'supabase gui',
             'supabase desktop client',
             'supabase database gui',
             'connect supabase postgres',
-            'supabase sql client'
+            'supabase sql client',
+            'supabase oauth',
+            'connect supabase one click'
         ],
         connectionString:
             'postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres',
         intro: [
-            'Every Supabase project is a full Postgres database. Dora talks to it over the same protocol as any other Postgres host — there is no Supabase-specific setup, you just need the connection string.',
-            'Once connected, you get the full Dora workbench: the data viewer, schema browser, and Monaco SQL editor over your Supabase tables.'
+            'Every Supabase project is a full Postgres database, so Dora can always connect with a standard connection string. But Supabase is also a first-class integration: connect your account once and Dora lists your projects and assembles the connection details for you — no host, port, or pooler URL to look up.',
+            'Authorization happens in your browser over OAuth. Dora never sees your Supabase account password; it receives a scoped token that is encrypted and stored only on your machine, and your project data never passes through Dora\'s servers.'
         ],
         steps: [
             {
-                title: 'Open the connection settings in Supabase',
-                body: 'In the Supabase dashboard, go to Project Settings → Database. Find the "Connection string" section and select the URI tab.'
+                title: 'Choose Supabase and click "Connect with Supabase"',
+                body: 'In Dora, create a new connection, pick Supabase from the provider grid, and click "Connect with Supabase". Your browser opens to the Supabase authorization screen.'
             },
             {
-                title: 'Copy the connection string',
-                body: 'Copy the URI. It looks like postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres. Replace [PASSWORD] with your database password (the one you set when creating the project).'
+                title: 'Authorize Dora in the browser',
+                body: 'Approve access on the Supabase screen. Dora stores the returned token encrypted on your device and brings you back to the app, now connected to your account.'
             },
             {
-                title: 'Add a connection in Dora',
-                body: 'In Dora, create a new connection and paste the string. Dora parses the host, port, user, and database out of it automatically — you do not need to fill the fields by hand.'
+                title: 'Pick a project and connection mode',
+                body: 'Dora lists your Supabase projects — search and select one. Choose a connection mode: Session pooler is recommended for a desktop client. Dora resolves the correct pooler host for that project automatically.'
             },
             {
-                title: 'Test and connect',
-                body: 'Hit test to confirm Dora can reach the database, then connect. Your schemas and tables appear in the sidebar.'
+                title: 'Enter the database password and connect',
+                body: 'Supabase does not expose the database password through its API, so enter it once (reset it under Project Settings → Database if needed). Dora builds the connection and your schemas and tables appear in the sidebar.'
             }
         ],
         notes: [
-            'Supabase requires SSL — Dora connects over SSL by default for Supabase hosts.',
-            'For IPv4 networks or serverless use, Supabase also offers a connection pooler host (aws-0-[region].pooler.supabase.com). The pooled string works in Dora the same way; use session mode (port 5432) for a desktop client.',
-            'Your database password is separate from your Supabase account password. Reset it under Project Settings → Database if you have lost it.'
+            'The OAuth token is scoped and encrypted on your device. You can disconnect at any time from the connect dialog to remove the stored credentials.',
+            'Connection modes: Session pooler (port 5432) is the right default for a desktop client; Transaction mode suits high-concurrency/serverless use; Direct is a persistent direct connection. Supabase requires SSL, which Dora applies automatically.',
+            'Prefer not to authorize with OAuth? Click "Use a personal access token instead" and paste a token from supabase.com/dashboard/account/tokens — Dora lists your projects the same way.',
+            'Fully manual path: in the Supabase dashboard go to Project Settings → Database, copy the URI connection string (postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres), and paste it into Dora. It parses the host, port, user, and database for you.'
         ]
     },
     {

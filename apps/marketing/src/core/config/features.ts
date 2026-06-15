@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
     Boxes,
+    Braces,
     Database,
     History,
     MessageSquare,
@@ -20,6 +21,7 @@ export type TFeatureSlug =
     | 'ssh-tunneling'
     | 'ai-assistant'
     | 'drizzle-runner'
+    | 'prisma-runner'
     | 'theming'
 
 export type TFeatureDemo =
@@ -30,6 +32,7 @@ export type TFeatureDemo =
     | 'ssh-tunneling'
     | 'ai-assistant'
     | 'drizzle-runner'
+    | 'prisma-runner'
     | 'theming'
 
 export type TFeatureConfig = {
@@ -71,10 +74,13 @@ export const FEATURES: TFeatureConfig[] = [
         lead: 'Use one keyboard-first app to open local files, hosted Postgres, Turso libSQL, and tunneled databases without juggling separate clients.',
         paragraphs: [
             'Dora keeps every connection in a searchable sidebar so you can move between production, staging, and local databases without reopening tools or retyping credentials.',
-            'Connection strings are parsed on paste, and the desktop app stores credentials with OS-backed secure storage when available.'
+            'Connection strings are parsed on paste, and the desktop app stores credentials with OS-backed secure storage when available.',
+            'Hosted providers get first-class presets — Supabase, Neon, Railway, Fly.io, and a dozen more prefill the right host, port, and SSL so you are not hand-assembling URLs. For Supabase you can skip the string entirely and connect with one-click OAuth: authorize in the browser and pick a project.'
         ],
         highlights: [
             'PostgreSQL, MySQL, SQLite, and libSQL support',
+            'One-click Supabase OAuth — authorize in the browser, pick a project',
+            'First-class presets for 10+ hosted Postgres & MySQL providers',
             'Saved connections with fast switching',
             'Connection string parsing on paste',
             'SSH tunnel and credential storage in the desktop app'
@@ -277,6 +283,36 @@ export const FEATURES: TFeatureConfig[] = [
             'drizzle sql client',
             'typescript database queries',
             'drizzle query builder'
+        ]
+    },
+    {
+        slug: 'prisma-runner',
+        demo: 'prisma-runner',
+        menuLabel: 'Prisma runner',
+        menuDescription: 'Run Prisma Client queries with live SQL preview',
+        icon: Braces,
+        inNav: false,
+        homepageAnchor: 'feature-prisma-runner',
+        title: 'Prisma runner in Dora',
+        description:
+            'Write Prisma Client queries in Dora and run them against your live database, with a SQL preview and no schema file or Node runtime required.',
+        lead: 'Query the way you already do in your app — Prisma Client syntax — and watch Dora translate it to SQL you can read before it runs.',
+        paragraphs: [
+            'Dora adds a Prisma tab next to the SQL console and the Drizzle runner. Write queries like prisma.user.findMany({ where: { active: true } }) and Dora translates them to SQL on the fly, executes them through the same native engine as everything else, and shows the rows in the standard results panel.',
+            'It is a translation layer, not a Prisma runtime: there is no generated client, no schema.prisma file, and no Node process to manage. Dora derives the model names from your live schema, so the runner reflects the database you are actually connected to.'
+        ],
+        highlights: [
+            'Write Prisma Client queries against any connected database',
+            'Live SQL preview before you run',
+            'No schema.prisma file, codegen, or Node runtime',
+            'Model names inferred from your live schema'
+        ],
+        keywords: [
+            'prisma orm gui',
+            'prisma client sql',
+            'run prisma queries',
+            'prisma studio alternative',
+            'prisma query runner'
         ]
     },
     {

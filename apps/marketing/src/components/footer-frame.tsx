@@ -3,31 +3,16 @@
 import type { CSSProperties } from 'react'
 
 import { CornerTick } from '@/components/corner-tick'
-import {
-    FRAME_EASE,
-    FRAME_LINE_MS,
-    useFrameDrawIn
-} from '@/shared/hooks/use-frame-draw-in'
+import { useFrameDrawIn } from '@/shared/hooks/use-frame-draw-in'
 
 /**
- * Footer frame draw-in: the top border wipes outward from center, then the two
- * side accents drip down from the top corners (they're top-anchored gradients,
- * so they grow from the top rather than the middle), and the two corner ticks
- * pop last.
+ * Footer frame: the top border, the two side accents (top-anchored gradients),
+ * and the corner ticks are all rendered statically — present from first paint.
  */
 export function FooterFrame() {
-    const { ref, visible, reduced, lineStyle, tickStyle } =
-        useFrameDrawIn<HTMLSpanElement>()
+    const { ref, lineStyle, tickStyle } = useFrameDrawIn<HTMLSpanElement>()
 
-    const sideStyle: CSSProperties = reduced
-        ? { transform: 'none' }
-        : {
-              transformOrigin: 'top',
-              transform: visible ? 'scaleY(1)' : 'scaleY(0)',
-              transitionProperty: 'transform',
-              transitionDuration: `${FRAME_LINE_MS}ms`,
-              transitionTimingFunction: FRAME_EASE
-          }
+    const sideStyle: CSSProperties = { transform: 'none' }
 
     return (
         <>

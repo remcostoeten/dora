@@ -1,95 +1,40 @@
 'use client'
 
-import type { CSSProperties } from 'react'
-
-import { useInView } from '@/shared/hooks/use-in-view'
-import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
+import { useRef, type CSSProperties } from 'react'
 
 /**
- * Shared timing for the marketing "frame draws itself in" effect: the four
- * border lines wipe outward from their center, then the rose corner ticks pop
- * once the lines land. Used by AnimatedFrame, the two-tone section frames, and
- * the footer so every frame across the app animates identically.
+ * Marketing frames render statically: the four border lines and the rose corner
+ * ticks are present from first paint (server HTML), with no scroll/draw-in
+ * animation. Only content eases in — that lives in `ScrollReveal`. Keeping these
+ * helpers (rather than inlining the styles) lets every frame component stay
+ * unchanged at the call site while the borders are just solid markup.
  */
-export const FRAME_EASE = 'cubic-bezier(0.23, 1, 0.32, 1)'
-export const FRAME_LINE_MS = 560
-export const FRAME_TICK_MS = 320
 
-type TFrameState = {
-    visible: boolean
-    reduced: boolean
-    delay: number
+/** A border line at full extent — no transform, so it's drawn immediately. */
+export function frameLineStyle(): CSSProperties {
+    return { transform: 'none' }
+}
+
+/** A corner tick, always visible. */
+export function frameTickStyle(): CSSProperties {
+    return { opacity: 1 }
 }
 
 /**
- * Style for a single border line. Horizontal lines (`x`) scale on X, verticals
- * (`y`) on Y — both from their center, so the line draws outward from the
- * middle. Pair with a `origin-center` element sized to the edge.
- */
-export function frameLineStyle(
-    axis: 'x' | 'y',
-    { visible, reduced, delay }: TFrameState
-): CSSProperties {
-    if (reduced) {
-        return { transform: 'none' }
-    }
-    const scale = axis === 'x' ? 'scaleX' : 'scaleY'
-    return {
-        transformOrigin: 'center',
-        transform: visible ? `${scale}(1)` : `${scale}(0)`,
-        transitionProperty: 'transform',
-        transitionDuration: `${FRAME_LINE_MS}ms`,
-        transitionTimingFunction: FRAME_EASE,
-        transitionDelay: `${delay}ms`
-    }
-}
-
-/**
- * Style for a corner tick. Opacity only — the ticks carry their straddle offset
- * in a Tailwind `-translate-*` transform, so leave `transform` untouched. Ticks
- * fade in after the lines land, lightly staggered by `index`.
- */
-export function frameTickStyle(
-    index: number,
-    { visible, reduced, delay }: TFrameState
-): CSSProperties {
-    if (reduced) {
-        return { opacity: 1 }
-    }
-    return {
-        opacity: visible ? 1 : 0,
-        transitionProperty: 'opacity',
-        transitionDuration: `${FRAME_TICK_MS}ms`,
-        transitionTimingFunction: FRAME_EASE,
-        transitionDelay: `${delay + FRAME_LINE_MS + index * 60}ms`
-    }
-}
-
-/**
- * Self-contained driver for frames that don't already track their own
- * visibility: attaches `ref`, watches for first view, and binds the line/tick
- * style helpers to the current state. Components that already observe their
- * own in-view state should call `frameLineStyle`/`frameTickStyle` directly
- * instead.
+ * Provides a ref (so frames can still anchor a DOM node) and the static line/tick
+ * style helpers. `visible`/`reduced` are retained for call sites that read them,
+ * but frames no longer animate, so both are constant.
  */
 export function useFrameDrawIn<T extends HTMLElement = HTMLDivElement>(
-    delay = 0
+    _delay = 0
 ) {
-    const [ref, inView] = useInView<T>({
-        once: true,
-        rootMargin: '0px 0px',
-        threshold: 0.01
-    })
-    const reduced = usePrefersReducedMotion()
-    const visible = inView || reduced
+    const ref = useRef<T>(null)
 
     return {
         ref,
-        visible,
-        reduced,
-        lineStyle: (axis: 'x' | 'y') =>
-            frameLineStyle(axis, { visible, reduced, delay }),
-        tickStyle: (index: number) =>
-            frameTickStyle(index, { visible, reduced, delay })
+        visible: true,
+        reduced: false,
+        lineStyle: (_axis?: 'x' | 'y') => frameLineStyle(),
+        tickStyle: (_index?: number) => frameTickStyle()
     }
 }

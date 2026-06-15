@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 
 import { CardAura } from "./card-aura";
 import { useGate } from "./use-scroll-motion";
+import { usePrefersReducedMotion } from "@/shared/hooks/use-prefers-reduced-motion";
 
 /* ---------------------------------------------------------------------------
- * Drizzle Runner — a live LSP autocomplete demo. The query types itself out;
- * at `db.` a method-completion popup floats in and the selection walks down to
- * `select`, at `users.` a column popup lands on `plan` (with type hints). Each
- * accept inserts the token, then the query runs and the rows stream in. Loops.
+ * ORM Runner — a live LSP autocomplete demo that alternates between Drizzle and
+ * Prisma on each loop. The query types itself out; a completion popup floats in
+ * and the selection walks to its target (the Drizzle method / the Prisma model),
+ * then a column popup lands on `plan` with type hints. Each accept inserts the
+ * token, then the query runs and the rows stream in. The language badge and
+ * heading flip with the active runner.
  * ------------------------------------------------------------------------- */
 const C = {
   punct: "#6a6a6a",
@@ -33,6 +36,13 @@ const METHODS: TItem[] = [
   { name: "update", detail: "set(values)", kind: "M" },
 ];
 
+const MODELS: TItem[] = [
+  { name: "order", detail: "OrderDelegate", kind: "M" },
+  { name: "post", detail: "PostDelegate", kind: "M" },
+  { name: "user", detail: "UserDelegate", kind: "M" },
+  { name: "session", detail: "SessionDelegate", kind: "M" },
+];
+
 const COLUMNS: TItem[] = [
   { name: "id", detail: "number", kind: "F" },
   { name: "email", detail: "string", kind: "F" },
@@ -41,10 +51,12 @@ const COLUMNS: TItem[] = [
   { name: "createdAt", detail: "Date", kind: "F" },
 ];
 
-// The query is authored as ordered segments. Plain segments type out char by
+type TLang = "drizzle" | "prisma";
+
+// Each query is authored as ordered segments. Plain segments type out char by
 // char; `accept` segments first float in a completion popup, walk the selection
 // to `target`, then insert the whole token at once.
-const SCRIPT: TSeg[] = [
+const DRIZZLE_SCRIPT: TSeg[] = [
   { text: "db", color: C.id },
   { text: ".", color: C.punct },
   { text: "select", color: C.method, accept: { items: METHODS, target: 3 } },
@@ -66,9 +78,38 @@ const SCRIPT: TSeg[] = [
   { text: "))", color: C.punct },
 ];
 
-const CHARS: { ch: string; color: string }[] = SCRIPT.flatMap((seg) =>
-  [...seg.text].map((ch) => ({ ch, color: seg.color })),
-);
+const PRISMA_SCRIPT: TSeg[] = [
+  { text: "prisma", color: C.id },
+  { text: ".", color: C.punct },
+  { text: "user", color: C.table, accept: { items: MODELS, target: 2 } },
+  { text: ".", color: C.punct },
+  { text: "findMany", color: C.method },
+  { text: "({", color: C.punct },
+  { text: "\n  ", color: C.punct },
+  { text: "where", color: C.prop },
+  { text: ": { ", color: C.punct },
+  { text: "plan", color: C.prop, accept: { items: COLUMNS, target: 3 } },
+  { text: ": ", color: C.punct },
+  { text: "'pro'", color: C.string },
+  { text: " },", color: C.punct },
+  { text: "\n})", color: C.punct },
+];
+
+const SCRIPTS: Record<TLang, TSeg[]> = {
+  drizzle: DRIZZLE_SCRIPT,
+  prisma: PRISMA_SCRIPT,
+};
+
+function charsFor(script: TSeg[]) {
+  return script.flatMap((seg) =>
+    [...seg.text].map((ch) => ({ ch, color: seg.color })),
+  );
+}
+
+const CHARS: Record<TLang, { ch: string; color: string }[]> = {
+  drizzle: charsFor(DRIZZLE_SCRIPT),
+  prisma: charsFor(PRISMA_SCRIPT),
+};
 
 const ROWS = [
   { id: "42", email: "maya@dora.dev", plan: "pro" },
@@ -102,12 +143,14 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const caretRef = useRef<HTMLSpanElement>(null);
   const gate = useGate(ref);
+  const reduced = usePrefersReducedMotion();
   const running = animate && gate.active;
 
   const [revealed, setRevealed] = useState(0);
   const [popup, setPopup] = useState<TPopupState | null>(null);
   const [stage, setStage] = useState<TStage>("type");
   const [rows, setRows] = useState(0);
+  const [lang, setLang] = useState<TLang>("drizzle");
 
   useEffect(() => {
     if (!running) return;
@@ -130,15 +173,17 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
     }
 
     async function play() {
+      let mode: TLang = "drizzle";
       while (!cancelled) {
+        setLang(mode);
         setStage("type");
         setRows(0);
         setPopup(null);
         setRevealed(0);
-        await sleep(560);
+        await sleep(220);
 
         let pos = 0;
-        for (const seg of SCRIPT) {
+        for (const seg of SCRIPTS[mode]) {
           if (cancelled) return;
           if (seg.accept) {
             await frame();
@@ -151,35 +196,36 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
                 top: at.top,
                 left: at.left,
               });
-              await sleep(s === 0 ? 260 : 135);
+              await sleep(s === 0 ? 150 : 70);
             }
-            await sleep(430);
+            await sleep(210);
             if (cancelled) return;
             setPopup(null);
             pos += seg.text.length;
             setRevealed(pos);
-            await sleep(200);
+            await sleep(100);
           } else {
             for (const ch of seg.text) {
               if (cancelled) return;
               pos += 1;
               setRevealed(pos);
-              await sleep(ch === "\n" ? 95 : 30);
+              await sleep(ch === "\n" ? 46 : 15);
             }
           }
         }
 
         if (cancelled) return;
         setStage("run");
-        await sleep(700);
+        await sleep(340);
         if (cancelled) return;
         setStage("rows");
         for (let r = 1; r <= ROWS.length; r++) {
           if (cancelled) return;
           setRows(r);
-          await sleep(240);
+          await sleep(120);
         }
-        await sleep(2600);
+        await sleep(1400);
+        mode = mode === "drizzle" ? "prisma" : "drizzle";
       }
     }
 
@@ -189,12 +235,18 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
     };
   }, [running]);
 
-  // Static fallback (off-screen / reduced motion): show the finished query.
-  const shownChars = running ? revealed : CHARS.length;
-  const shownRows = running ? rows : ROWS.length;
+  const activeLang: TLang = running ? lang : "drizzle";
+  const langChars = CHARS[activeLang];
+  // Reduced-motion users see the finished query statically. Motion users get a
+  // clean type-in from empty the moment the card scrolls into view — no flash
+  // of a completed query that then wipes itself, which is what made the entrance
+  // feel janky on first load.
+  const shownChars = running ? revealed : reduced ? langChars.length : 0;
+  const shownRows = running ? rows : reduced ? ROWS.length : 0;
+  const langAccent = activeLang === "prisma" ? "#5eead4" : "#e3b2b3";
   const isType = running && stage === "type";
   const isRun = running && stage === "run";
-  const spans = toSpans(CHARS.slice(0, shownChars));
+  const spans = toSpans(langChars.slice(0, shownChars));
 
   function status(): { color: string; label: string } {
     if (isRun) return { color: "#e3b2b3", label: "running…" };
@@ -313,6 +365,16 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
           <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#7a7a7a] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
             {statusLabel}
           </span>
+          <span
+            className="ml-auto rounded-[2px] border px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.12em] transition-colors duration-300 [font-family:var(--font-geist-mono),ui-monospace,monospace]"
+            style={{
+              color: langAccent,
+              borderColor: `${langAccent}55`,
+              backgroundColor: `${langAccent}14`,
+            }}
+          >
+            {activeLang}
+          </span>
         </div>
 
         {/* results */}
@@ -346,11 +408,12 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
 
       <div className="relative px-5 pt-3 pb-10">
         <h3 className="mb-1 font-pixel text-sm font-[500] text-[#e0e0e0]">
-          Drizzle support
+          Drizzle &amp; Prisma support
         </h3>
         <p className="text-xs text-[#8a8a8a] leading-relaxed">
-          Prefer Drizzle over raw SQL? Switch to Drizzle mode — context-aware
-          autocomplete, right in the query builder.
+          Prefer an ORM over raw SQL? Run type-safe Drizzle or Prisma Client
+          queries — context-aware autocomplete and a live SQL preview, right in
+          the query builder.
         </p>
       </div>
     </div>

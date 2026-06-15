@@ -1,6 +1,7 @@
 'use client'
 
 import {
+    Braces,
     Container,
     Network,
     SquareTerminal,
@@ -17,13 +18,15 @@ type TRailId =
     | 'schema'
     | 'docker'
     | 'drizzle'
+    | 'prisma'
 
 const RAIL_ITEMS: { id: TRailId; icon: LucideIcon; label: string }[] = [
     { id: 'sql-console', icon: SquareTerminal, label: 'SQL Console' },
     { id: 'data-viewer', icon: Table2, label: 'Data Viewer' },
     { id: 'schema', icon: Network, label: 'Schema' },
     { id: 'docker', icon: Container, label: 'Docker Manager' },
-    { id: 'drizzle', icon: Terminal, label: 'Drizzle Runner' }
+    { id: 'drizzle', icon: Terminal, label: 'Drizzle Runner' },
+    { id: 'prisma', icon: Braces, label: 'Prisma Runner' }
 ]
 
 const DEMO_ACTIVE: Record<TFeatureDemo, TRailId> = {
@@ -34,6 +37,7 @@ const DEMO_ACTIVE: Record<TFeatureDemo, TRailId> = {
     'ssh-tunneling': 'data-viewer',
     'ai-assistant': 'sql-console',
     'drizzle-runner': 'drizzle',
+    'prisma-runner': 'prisma',
     'theming': 'data-viewer'
 }
 

@@ -8,7 +8,6 @@ import { AnimatedFrame } from '@/components/animated-frame'
 import { AppDemo } from '@/components/hero-app-demo'
 import { ScrollReveal } from '@/components/scroll-reveal'
 import { useInView } from '@/shared/hooks/use-in-view'
-import { FRAME_LINE_MS } from '@/shared/hooks/use-frame-draw-in'
 import {
     findAsset,
     LATEST_RELEASE_URL,
@@ -23,12 +22,11 @@ const InteractiveCube = dynamic(
     { ssr: false }
 )
 
-// The hero frame draws its border lines in first; only once they land does the
-// content stagger in. Keep the content start derived from the frame timing so
-// the two stay in sync if either value changes.
-const HERO_FRAME_DELAY = 120
-const HERO_CONTENT_START = HERO_FRAME_DELAY + FRAME_LINE_MS
-const HERO_STAGGER = 120
+// The hero frame is static (present from first paint), so the content no longer
+// waits on a border draw-in — it eases in almost immediately, lightly staggered.
+const HERO_FRAME_DELAY = 0
+const HERO_CONTENT_START = 80
+const HERO_STAGGER = 100
 
 type OsPlatform = 'mac-arm' | 'mac-x64' | 'windows' | 'linux'
 

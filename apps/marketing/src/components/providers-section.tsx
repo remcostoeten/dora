@@ -416,7 +416,8 @@ export function ProvidersSection() {
                             footerDelay + STAGGER_MS + HOSTED_PROVIDERS.length * STAGGER_MS
                         )}
                     >
-                        + {HOSTED_EXTRA}, and any Postgres connection string
+                        + {HOSTED_EXTRA}, and any Postgres connection string. Supabase
+                        connects in one click with OAuth — no connection string to copy.
                     </span>
                 </div>
             </div>

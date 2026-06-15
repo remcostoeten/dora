@@ -15,3 +15,4 @@ bun.lockb
 .venv/
 
 tmp/wW
+.env*.local
