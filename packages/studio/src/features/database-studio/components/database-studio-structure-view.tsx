@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
-import { Columns, Trash2 } from 'lucide-react'
+import { Columns, Trash2, X } from 'lucide-react'
 import type { ChangeEvent, LiveMonitorConfig } from '@studio/core/live-monitor'
 import { AddColumnDialog } from './add-column-dialog'
 import type { ColumnFormData } from './add-column-dialog'
 import { BottomStatusBar } from './bottom-status-bar'
+import { DropColumnDialog } from './drop-column-dialog'
 import { DropTableDialog } from './drop-table-dialog'
 import { StudioToolbar } from './studio-toolbar'
 import type { ColumnDefinition, PaginationState, TableData, ViewMode } from '../types'
@@ -40,6 +42,7 @@ type Props = {
 	showDropTableDialog: boolean
 	onShowDropTableDialogChange: (open: boolean) => void
 	onDropTable?: () => void
+	onDropColumn?: (columnName: string) => void
 	isDdlLoading: boolean
 }
 
@@ -75,8 +78,13 @@ export function DatabaseStudioStructureView({
 	showDropTableDialog,
 	onShowDropTableDialogChange,
 	onDropTable,
+	onDropColumn,
 	isDdlLoading
 }: Props) {
+	const [columnPendingDrop, setColumnPendingDrop] = useState<string | null>(null)
+
+	const canDropColumn = Boolean(onDropColumn) && tableData.columns.length > 1
+
 	return (
 		<div className='flex flex-col h-full bg-background'>
 			<StudioToolbar
@@ -121,11 +129,12 @@ export function DatabaseStudioStructureView({
 								<th className='text-left py-2 px-3 text-muted-foreground font-medium'>
 									Primary Key
 								</th>
+								{canDropColumn && <th className='w-8 py-2 px-3' />}
 							</tr>
 						</thead>
 						<tbody>
 							{tableData.columns.map((col: ColumnDefinition) => (
-								<tr key={col.name} className='border-b border-sidebar-border/50'>
+								<tr key={col.name} className='group border-b border-sidebar-border/50'>
 									<td className='py-2 px-3 font-mono text-sidebar-foreground'>
 										{col.name}
 									</td>
@@ -144,6 +153,21 @@ export function DatabaseStudioStructureView({
 											<span className='text-warning font-medium'>PK</span>
 										)}
 									</td>
+									{canDropColumn && (
+										<td className='py-2 px-3 text-right'>
+											<button
+												type='button'
+												aria-label={`Drop column ${col.name}`}
+												title={`Drop column "${col.name}"`}
+												onClick={function () {
+													setColumnPendingDrop(col.name)
+												}}
+												className='text-muted-foreground/50 opacity-0 transition hover:text-destructive group-hover:opacity-100 focus:opacity-100'
+											>
+												<X className='h-4 w-4' />
+											</button>
+										</td>
+									)}
 								</tr>
 							))}
 						</tbody>
@@ -207,6 +231,24 @@ export function DatabaseStudioStructureView({
 					onOpenChange={onShowDropTableDialogChange}
 					tableName={displayTableName}
 					onConfirm={onDropTable}
+					isLoading={isDdlLoading}
+				/>
+			)}
+
+			{onDropColumn && (
+				<DropColumnDialog
+					open={columnPendingDrop !== null}
+					onOpenChange={function (open) {
+						if (!open) setColumnPendingDrop(null)
+					}}
+					tableName={displayTableName}
+					columnName={columnPendingDrop ?? ''}
+					onConfirm={function () {
+						if (columnPendingDrop) {
+							onDropColumn(columnPendingDrop)
+							setColumnPendingDrop(null)
+						}
+					}}
 					isLoading={isDdlLoading}
 				/>
 			)}

@@ -482,6 +482,51 @@ export function createMockAdapter(): DataAdapter {
 			return ok(undefined)
 		},
 
+		async dropColumn(
+			connectionId: string,
+			tableName: string,
+			columnName: string
+		): Promise<AdapterResult<void>> {
+			await randomDelay()
+
+			const { schemaName, tableName: normalizedTableName } = getTableRefParts(tableName)
+			const schema = MOCK_SCHEMAS[connectionId]
+			const table = schema?.tables.find(function (t) {
+				if (t.name !== normalizedTableName) return false
+				if (!schemaName) return true
+				return t.schema === schemaName
+			})
+
+			if (!table) {
+				return err('Table not found')
+			}
+
+			const columnExists = table.columns.some(function (c) {
+				return c.name === columnName
+			})
+			if (!columnExists) {
+				return err(`Column "${columnName}" not found`)
+			}
+
+			// Drop from the schema definition.
+			table.columns = table.columns.filter(function (c) {
+				return c.name !== columnName
+			})
+
+			// Drop the value from every stored row.
+			const key = resolveStoreKey(connectionId, tableName)
+			const rows = store.tables[key]
+			if (rows) {
+				store.tables[key] = rows.map(function (row) {
+					const { [columnName]: _dropped, ...rest } = row
+					return rest
+				})
+			}
+
+			saveToStorage()
+			return ok(undefined)
+		},
+
 		async getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>> {
 			await randomDelay()
 			return ok(`-- Mock DDL for connection ${connectionId}

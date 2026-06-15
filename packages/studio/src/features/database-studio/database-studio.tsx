@@ -686,7 +686,8 @@ export function DatabaseStudio({
 		handleCopySchema,
 		handleCopyDrizzleSchema,
 		handleAddColumn,
-		handleDropTable
+		handleDropTable,
+		handleDropColumn
 	} = useDatabaseStudioCommands({
 		adapter,
 		activeConnectionId,
@@ -834,6 +835,7 @@ export function DatabaseStudio({
 				showDropTableDialog={showDropTableDialog}
 				onShowDropTableDialogChange={setShowDropTableDialog}
 				onDropTable={canEditRows ? handleDropTable : undefined}
+				onDropColumn={canEditRows ? handleDropColumn : undefined}
 				isDdlLoading={isDdlLoading}
 			/>
 		)
