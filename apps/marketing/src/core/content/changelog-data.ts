@@ -13,14 +13,61 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.28.0"
+export const CURRENT_VERSION = "0.29.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
+		version: "0.29.0",
+		date: "2026-06-15",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.29.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(backend): replace high-risk unwrap/panic with error propagation",
+				"fix(studio): resolve strictNullChecks violations",
+				]
+			},
+			{
+				name: "CI/CD",
+				items: [
+				"ci: lower asset count floor to 9 after dropping Intel-macOS build",
+				"ci: bump bun pin to 1.3.14 and add tsc --noEmit typecheck gate",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(ts): enable strictNullChecks for studio and desktop",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(marketing): add 15 hosted-provider connection guides for SEO",
+				"feat(connections): Fly.io proxy hint in connection dialog",
+				"feat(connections): first-class presets for 10 hosted providers",
+				"feat(prisma-runner): Prisma ORM Runner — write & execute Prisma client queries natively (#137)",
+				"feat(connections): hosted/serverless provider support + Supabase integration (#128)",
+				"feat(connections): one-click Supabase OAuth + reliable pooler host",
+				"feat(marketing): feature-showcase polish + Prisma runner showcase",
+				"feat(studio): connection dialog, docker view & Supabase flow refinements",
+				"feat(database-studio): drop column support",
+				]
+			}
+		]
+	},
+	{
 		version: "Unreleased",
-		date: "2026-06-14",
+		date: "2026-06-15",
 		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/vUnreleased",
 		groups: [
+			{
+				name: "Features",
+				items: [
+				"keep multiple database connections open at once, each with its own isolated tab group; a connection tab bar above the table tabs switches between them (with status dots and per-connection close), and switching preserves each connection's open tabs, active tab, filters and scroll state. Cycle connections with `Ctrl+Shift+[` / `Ctrl+Shift+]` (#96)",
+				]
+			},
 			{
 				name: "Bug Fixes",
 				items: [
