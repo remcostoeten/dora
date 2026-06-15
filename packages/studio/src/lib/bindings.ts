@@ -207,9 +207,25 @@ async supabaseSaveToken(token: string) : Promise<Result<null, { kind: string; de
     else return { status: "error", error: e  as any };
 }
 },
+async supabaseOauthConnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("supabase_oauth_connect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async supabaseListProjects() : Promise<Result<SupabaseProject[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("supabase_list_projects") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async supabasePoolerHost(projectRef: string) : Promise<Result<string, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("supabase_pooler_host", { projectRef }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };

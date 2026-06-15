@@ -192,7 +192,9 @@ pub fn run() {
             database::commands::set_setting,
             database::commands::get_connection_history,
             database::commands::supabase_save_token,
+            database::commands::supabase_oauth_connect,
             database::commands::supabase_list_projects,
+            database::commands::supabase_pooler_host,
             database::commands::supabase_disconnect,
             database::commands::supabase_is_connected,
             // Mutation API commands

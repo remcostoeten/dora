@@ -10,7 +10,9 @@ import { cn } from "@studio/shared/utils/cn";
 import type { Connection } from "../../connections/types";
 import {
   buildSupabaseConnectionUrl,
+  connectSupabaseWithOauth,
   disconnectSupabase,
+  getSupabasePoolerHost,
   isSupabaseConnected,
   saveSupabaseToken,
   type SupabaseConnectionMode,
@@ -36,7 +38,9 @@ const MODES: Array<{
 export function SupabaseConnectFlow({ onComplete }: Props) {
   const [isConnected, setIsConnected] = useState(false);
   const [tokenInput, setTokenInput] = useState("");
+  const [showTokenFallback, setShowTokenFallback] = useState(false);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [isOauthConnecting, setIsOauthConnecting] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selectedProject, setSelectedProject] = useState<SupabaseProject | null>(null);
@@ -67,6 +71,20 @@ export function SupabaseConnectFlow({ onComplete }: Props) {
       );
     });
   }, [projects, query]);
+
+  async function handleOauthConnect() {
+    setIsOauthConnecting(true);
+    setAuthError(null);
+    try {
+      await connectSupabaseWithOauth();
+      setIsConnected(true);
+      await refresh();
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsOauthConnecting(false);
+    }
+  }
 
   async function handleConnect() {
     const token = tokenInput.trim();
@@ -102,16 +120,30 @@ export function SupabaseConnectFlow({ onComplete }: Props) {
     }
   }
 
-  function handleCreateConnection() {
+  const [isBuilding, setIsBuilding] = useState(false);
+
+  async function handleCreateConnection() {
     if (!selectedProject || !password) return;
-    const url = buildSupabaseConnectionUrl(selectedProject, password, mode);
-    onComplete({
-      name: selectedProject.name || `Supabase ${selectedProject.id}`,
-      type: "postgres",
-      url,
-      poolerMode: mode !== "direct",
-      status: "idle",
-    });
+    setIsBuilding(true);
+    setAuthError(null);
+    try {
+      // Pooler modes need the project's real cluster host; direct uses the
+      // reported db host and needs no extra call.
+      const poolerHost =
+        mode === "direct" ? undefined : await getSupabasePoolerHost(selectedProject.id);
+      const url = buildSupabaseConnectionUrl(selectedProject, password, mode, poolerHost);
+      onComplete({
+        name: selectedProject.name || `Supabase ${selectedProject.id}`,
+        type: "postgres",
+        url,
+        poolerMode: mode !== "direct",
+        status: "idle",
+      });
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setIsBuilding(false);
+    }
   }
 
   return (
@@ -122,7 +154,7 @@ export function SupabaseConnectFlow({ onComplete }: Props) {
             Connect via provider
           </Label>
           <p className="mt-1 text-xs text-muted-foreground/75">
-            Connect Supabase with an access token to pick a project without copying host details.
+            Connect your Supabase account to pick a project without copying host details.
           </p>
         </div>
         {isConnected ? (
@@ -145,57 +177,88 @@ export function SupabaseConnectFlow({ onComplete }: Props) {
       ) : null}
 
       {!isConnected ? (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="supabase-token" className="text-xs text-muted-foreground">
-              Personal access token
-            </Label>
+        <div className="space-y-3">
+          <Button
+            type="button"
+            onClick={handleOauthConnect}
+            disabled={isOauthConnecting}
+            className="w-full gap-2"
+          >
+            {isOauthConnecting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <PlugZap className="h-3.5 w-3.5" />
+            )}
+            {isOauthConnecting ? "Waiting for browser…" : "Connect with Supabase"}
+          </Button>
+          <p className="text-xs text-muted-foreground/70">
+            Opens your browser to authorize Dora. Access is encrypted and stored on this device only.
+          </p>
+
+          {showTokenFallback ? (
+            <div className="space-y-2 border-t border-border/50 pt-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="supabase-token" className="text-xs text-muted-foreground">
+                  Personal access token
+                </Label>
+                <button
+                  type="button"
+                  onClick={function () {
+                    void open(TOKENS_URL);
+                  }}
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Generate one
+                  <ExternalLink className="h-3 w-3" />
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="supabase-token"
+                  type="password"
+                  value={tokenInput}
+                  onChange={function (event) {
+                    setTokenInput(event.target.value);
+                  }}
+                  onKeyDown={function (event) {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleConnect();
+                    }
+                  }}
+                  placeholder="sbp_..."
+                  autoComplete="off"
+                  className="h-9 bg-background/70"
+                />
+                <Button
+                  type="button"
+                  onClick={handleConnect}
+                  disabled={isAuthorizing || !tokenInput.trim()}
+                  className="shrink-0 gap-2"
+                >
+                  {isAuthorizing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <PlugZap className="h-3.5 w-3.5" />
+                  )}
+                  Connect
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground/70">
+                The token is validated, then encrypted and stored on this device only.
+              </p>
+            </div>
+          ) : (
             <button
               type="button"
               onClick={function () {
-                void open(TOKENS_URL);
+                setShowTokenFallback(true);
               }}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              className="text-xs text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline"
             >
-              Generate one
-              <ExternalLink className="h-3 w-3" />
+              Use a personal access token instead
             </button>
-          </div>
-          <div className="flex gap-2">
-            <Input
-              id="supabase-token"
-              type="password"
-              value={tokenInput}
-              onChange={function (event) {
-                setTokenInput(event.target.value);
-              }}
-              onKeyDown={function (event) {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void handleConnect();
-                }
-              }}
-              placeholder="sbp_..."
-              autoComplete="off"
-              className="h-9 bg-background/70"
-            />
-            <Button
-              type="button"
-              onClick={handleConnect}
-              disabled={isAuthorizing || !tokenInput.trim()}
-              className="shrink-0 gap-2"
-            >
-              {isAuthorizing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <PlugZap className="h-3.5 w-3.5" />
-              )}
-              Connect
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground/70">
-            The token is validated, then encrypted and stored on this device only.
-          </p>
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -302,10 +365,14 @@ export function SupabaseConnectFlow({ onComplete }: Props) {
               <Button
                 type="button"
                 onClick={handleCreateConnection}
-                disabled={!password || selectedProject.status !== "ACTIVE_HEALTHY"}
+                disabled={!password || isBuilding || selectedProject.status !== "ACTIVE_HEALTHY"}
                 className="self-start gap-2"
               >
-                <PlugZap className="h-3.5 w-3.5" />
+                {isBuilding ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PlugZap className="h-3.5 w-3.5" />
+                )}
                 Create Supabase Connection
               </Button>
             </div>

@@ -28,13 +28,21 @@ describe('buildSupabaseConnectionUrl', function () {
 
 	it('builds a session pooler URL on port 5432 with the tenant-qualified user', function () {
 		expect(buildSupabaseConnectionUrl(PROJECT, 'pw', 'session')).toBe(
-			'postgresql://postgres.abcdefghijklmnopqrst:pw@aws-eu-west-2.pooler.supabase.com:5432/postgres?pgbouncer=true'
+			'postgresql://postgres.abcdefghijklmnopqrst:pw@aws-0-eu-west-2.pooler.supabase.com:5432/postgres?pgbouncer=true'
 		)
 	})
 
 	it('builds a transaction pooler URL on port 6543', function () {
 		expect(buildSupabaseConnectionUrl(PROJECT, 'pw', 'transaction')).toBe(
-			'postgresql://postgres.abcdefghijklmnopqrst:pw@aws-eu-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true'
+			'postgresql://postgres.abcdefghijklmnopqrst:pw@aws-0-eu-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true'
+		)
+	})
+
+	it('uses the resolved pooler host when provided (real cluster index)', function () {
+		expect(
+			buildSupabaseConnectionUrl(PROJECT, 'pw', 'session', 'aws-1-eu-west-2.pooler.supabase.com')
+		).toBe(
+			'postgresql://postgres.abcdefghijklmnopqrst:pw@aws-1-eu-west-2.pooler.supabase.com:5432/postgres?pgbouncer=true'
 		)
 	})
 
