@@ -8,7 +8,7 @@ type TProps = TBase & {
 	title?: string
 }
 
-type TName = 'sqlite' | 'turso' | 'postgres' | 'postgresFill' | 'sql'
+type TName = 'sqlite' | 'turso' | 'postgres' | 'postgresFill' | 'sql' | 'supabase'
 
 type TIcon = {
 	sqlite: (p: TProps) => React.ReactElement
@@ -16,6 +16,7 @@ type TIcon = {
 	postgres: (p: TProps) => React.ReactElement
 	postgresFill: (p: TProps) => React.ReactElement
 	sql: (p: TProps) => React.ReactElement
+	supabase: (p: TProps) => React.ReactElement
 }
 
 function cx(...v: Array<string | undefined | null | false>) {
@@ -42,7 +43,13 @@ function baseSvg(p: TProps, fbTitle: string) {
 	return {
 		w,
 		h,
-		cls: cx('inline-block align-middle', 'text-neutral-900 dark:text-neutral-100', className),
+		// No baked-in color: these glyphs use `currentColor`, so they inherit the
+		// surrounding text color and call sites stay in control (e.g.
+		// `text-muted-foreground`). A hardcoded default would both override that
+		// intent and break on the app's non-`.dark` dark themes (midnight, night,
+		// claude-dark, …), where `dark:` variants never fire — leaving the icons
+		// near-black on a dark background.
+		cls: cx('inline-block align-middle', className),
 		sty: color ? { ...style, color } : style,
 		ttl: title ?? fbTitle,
 		role: role ?? 'img',
@@ -171,12 +178,34 @@ export function Sql(p: TProps) {
 	)
 }
 
+export function Supabase(p: TProps) {
+	const b = baseSvg(p, 'Supabase')
+	return (
+		<svg
+			height={b.h}
+			width={b.w}
+			role={b.role}
+			viewBox='0 0 24 24'
+			xmlns='http://www.w3.org/2000/svg'
+			className={b.cls}
+			style={b.sty}
+			focusable={b.focusable}
+			fill='currentColor'
+			{...b.rest}
+		>
+			<title>{b.ttl}</title>
+			<path d='M21.362 9.354H12V.396a.396.396 0 0 0-.716-.233L2.203 12.424l-.401.562a1.04 1.04 0 0 0 .836 1.659H12v8.959a.396.396 0 0 0 .716.233l9.081-12.261.401-.562a1.04 1.04 0 0 0-.836-1.66z' />
+		</svg>
+	)
+}
+
 export const icons: TIcon = {
 	sqlite: Sqlite,
 	turso: Turso,
 	postgres: Postgres,
 	postgresFill: PostgresFill,
-	sql: Sql
+	sql: Sql,
+	supabase: Supabase
 }
 
 export type { TProps as TIconProps, TName as TIconName }

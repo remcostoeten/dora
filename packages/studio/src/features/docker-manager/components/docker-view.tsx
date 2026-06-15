@@ -3,6 +3,7 @@ import {
   Search,
   Container,
   AlertTriangle,
+  ChevronDown,
   ArrowDown,
   ArrowUp,
   Activity,
@@ -45,6 +46,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@studio/shared/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@studio/shared/ui/dropdown-menu";
 import { cn } from "@studio/shared/utils/cn";
 
 type Props = {
@@ -69,7 +78,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
   const [selectedContainerId, setSelectedContainerId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [createProviderPreset, setCreateProviderPreset] = useState<DatabaseProvider>("postgres");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("running");
   const [sortBy, setSortBy] = useState<SortField>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [terminalContainerId, setTerminalContainerId] = useState<string | null>(null);
@@ -481,199 +490,193 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      <header className="border-b border-border bg-gradient-to-r from-emerald-500/10 via-transparent to-cyan-500/10">
+      <header className="border-b border-border/70 bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div
-          className="flex items-center justify-between gap-4 px-4 py-3"
+          className="flex items-start justify-between gap-4 px-5 py-4"
           data-tauri-drag-region="true"
         >
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10">
+          <div className="flex min-w-0 flex-1 items-start gap-4">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
               <Container className="h-5 w-5 text-emerald-500" />
             </div>
-            <div className="min-w-0">
-              <h1 className="text-lg font-semibold">Docker Containers</h1>
-              <p className="text-xs text-muted-foreground">
-                Local database containers with one-click controls.
-              </p>
+            <div className="min-w-0 space-y-3">
+              <div className="min-w-0">
+                <h1 className="text-base font-semibold tracking-tight">Docker Containers</h1>
+                <p className="max-w-xl text-xs text-muted-foreground">
+                  Local database containers with one-click controls.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <StatPill
+                  label="Visible"
+                  value={containerSummary.total}
+                  icon={<Container className="h-3.5 w-3.5" aria-hidden="true" />}
+                />
+                <StatPill
+                  label="Running"
+                  value={containerSummary.running}
+                  icon={<Activity className="h-3.5 w-3.5" aria-hidden="true" />}
+                />
+                <StatPill
+                  label="Healthy"
+                  value={containerSummary.healthy}
+                  icon={<HeartPulse className="h-3.5 w-3.5" aria-hidden="true" />}
+                />
+              </div>
             </div>
           </div>
           {windowControls ? (
-            <div className="shrink-0" data-tauri-drag-region="false">
+            <div className="shrink-0 pt-0.5" data-tauri-drag-region="false">
               {windowControls}
             </div>
           ) : null}
         </div>
-
-        <div className="px-4 pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatPill
-              label="Visible"
-              value={containerSummary.total}
-              icon={<Container className="h-3.5 w-3.5" aria-hidden="true" />}
-            />
-            <StatPill
-              label="Running"
-              value={containerSummary.running}
-              icon={<Activity className="h-3.5 w-3.5" aria-hidden="true" />}
-            />
-            <StatPill
-              label="Healthy"
-              value={containerSummary.healthy}
-              icon={<HeartPulse className="h-3.5 w-3.5" aria-hidden="true" />}
-            />
-          </div>
-        </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-border/70 bg-background/80 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="relative flex-1 max-w-sm">
-          <Label htmlFor="container-search" className="sr-only">
-            Search containers
-          </Label>
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            id="container-search"
-            ref={searchInputRef}
-            placeholder="Search containers..."
-            name="container_search"
-            autoComplete="off"
-            value={searchQuery}
-            onChange={function (e) {
-              setSearchQuery(e.target.value);
-            }}
-            className="pl-9 pr-12"
-          />
-          <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-5 select-none items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-            /
-          </kbd>
-        </div>
+      <div className="border-b border-border/70 bg-background/80 px-5 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+            <div className="relative min-w-[260px] flex-1 max-w-md">
+              <Label htmlFor="container-search" className="sr-only">
+                Search containers
+              </Label>
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="container-search"
+                ref={searchInputRef}
+                placeholder="Search containers..."
+                name="container_search"
+                autoComplete="off"
+                value={searchQuery}
+                onChange={function (e) {
+                  setSearchQuery(e.target.value);
+                }}
+                className="pl-9 pr-12"
+              />
+              <kbd className="pointer-events-none absolute right-2 top-1/2 inline-flex h-5 select-none items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground -translate-y-1/2">
+                /
+              </kbd>
+            </div>
 
-        <div className="flex items-center gap-2">
-          <Switch id="show-external" checked={showExternal} onCheckedChange={setShowExternal} />
-          <Label htmlFor="show-external" className="text-sm whitespace-nowrap">
-            Show all
-            {!showExternal && externalCount > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-muted text-[10px] font-medium text-muted-foreground tabular-nums">
-                +{externalCount}
-              </span>
-            )}
-          </Label>
-        </div>
+            <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-3 py-2">
+              <Switch id="show-external" checked={showExternal} onCheckedChange={setShowExternal} />
+              <Label htmlFor="show-external" className="whitespace-nowrap text-sm">
+                Show all
+                {!showExternal && externalCount > 0 && (
+                  <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground tabular-nums">
+                    +{externalCount}
+                  </span>
+                )}
+              </Label>
+            </div>
 
-        <div className="h-4 w-px bg-border mx-2" />
+            <div className="flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 p-1">
+              {STATUS_FILTER_OPTIONS.map(function (option) {
+                const isActive = option.value === statusFilter;
 
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div
-            className="flex items-center gap-1 overflow-x-auto pb-1"
-            role="toolbar"
-            aria-label="Filter containers by status"
-          >
-            {STATUS_FILTER_OPTIONS.map(function (option) {
-              const isActive = option.value === statusFilter;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={isActive}
+                    onClick={function () {
+                      setStatusFilter(option.value);
+                    }}
+                    className={cn(
+                      "inline-flex h-7 items-center rounded-full px-3 text-xs font-medium transition-colors",
+                      "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
 
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={function () {
-                    setStatusFilter(option.value);
-                  }}
-                  className={cn(
-                    "inline-flex h-7 items-center rounded-full border px-2.5 text-xs font-medium transition-colors",
-                    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                    isActive
-                      ? "border-transparent bg-primary text-primary-foreground shadow-sm"
-                      : "border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent",
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+            <div className="flex items-center gap-2 rounded-full border border-border/70 bg-background/70 px-2 py-1.5">
+              <Select
+                value={sortBy}
+                onValueChange={function (value) {
+                  setSortBy(value as SortField);
+                }}
+              >
+                <SelectTrigger aria-label="Sort containers" className="h-7 w-[130px] border-0 bg-transparent text-xs shadow-none">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="created">Created</SelectItem>
+                  <SelectItem value="status">Status</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                onClick={function () {
+                  setSortDirection(function (current) {
+                    return current === "asc" ? "desc" : "asc";
+                  });
+                }}
+                aria-label={
+                  sortDirection === "asc"
+                    ? "Sorting ascending. Activate to sort descending"
+                    : "Sorting descending. Activate to sort ascending"
+                }
+              >
+                {sortDirection === "asc" ? (
+                  <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
+                ) : (
+                  <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+                )}
+              </Button>
+            </div>
           </div>
 
-          <Select
-            value={sortBy}
-            onValueChange={function (value) {
-              setSortBy(value as SortField);
-            }}
-          >
-            <SelectTrigger aria-label="Sort containers" className="w-[130px] h-7 text-xs">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="created">Created</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={function () {
+                handleOpenCreateDialog("postgres");
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              New Container
+            </Button>
 
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="outline"
-            onClick={function () {
-              setSortDirection(function (current) {
-                return current === "asc" ? "desc" : "asc";
-              });
-            }}
-            aria-label={
-              sortDirection === "asc"
-                ? "Sorting ascending. Activate to sort descending"
-                : "Sorting descending. Activate to sort ascending"
-            }
-          >
-            {sortDirection === "asc" ? (
-              <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : (
-              <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-          </Button>
-        </div>
-
-        <Button
-          size="sm"
-          className="gap-1.5"
-          onClick={function () {
-            handleOpenCreateDialog("postgres");
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          New Container
-        </Button>
-
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={function () {
-              handleOpenCreateDialog("postgres");
-            }}
-          >
-            PostgreSQL
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={function () {
-              handleOpenCreateDialog("mariadb");
-            }}
-          >
-            MariaDB
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={function () {
-              handleOpenCreateDialog("cockroach");
-            }}
-          >
-            CockroachDB
-          </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5">
+                  Templates
+                  <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-48">
+                <DropdownMenuLabel>Quick start</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={function () {
+                  handleOpenCreateDialog("postgres");
+                }}>
+                  PostgreSQL
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={function () {
+                  handleOpenCreateDialog("mariadb");
+                }}>
+                  MariaDB
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={function () {
+                  handleOpenCreateDialog("cockroach");
+                }}>
+                  CockroachDB
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

@@ -151,10 +151,10 @@ export function SupabaseConnectFlow({ onComplete }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <Label className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-            Connect via provider
+            Supabase
           </Label>
           <p className="mt-1 text-xs text-muted-foreground/75">
-            Connect your Supabase account to pick a project without copying host details.
+            Connect your account to pick a project without copying host details.
           </p>
         </div>
         {isConnected ? (

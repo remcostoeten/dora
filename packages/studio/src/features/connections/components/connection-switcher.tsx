@@ -124,7 +124,7 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 				onClick={onClick}
 				onKeyDown={onKeyDown}
 				className={cn(
-					'group/row relative gap-2.5 p-2 cursor-pointer overflow-hidden',
+					'group/row gap-2.5 p-2 cursor-pointer overflow-hidden',
 					'flex items-center outline-hidden',
 					'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
 					'focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent',
@@ -133,14 +133,6 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 				)}
 				{...props}
 			>
-				<span
-					aria-hidden
-					className={cn(
-						'pointer-events-none absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full',
-						'origin-left transition-[transform,background-color] duration-200 ease-[var(--ease-out)]',
-						isActive ? 'scale-x-100 bg-primary' : 'scale-x-0 bg-primary'
-					)}
-				/>
 				<div
 					className={cn(
 						'flex h-7 w-7 items-center justify-center rounded-md border shrink-0',

@@ -137,7 +137,7 @@ describe('DockerView', () => {
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue(mockContainers as any)
 
 		renderWithProviders(<DockerView />)
-		expect(screen.getByText('Containers: 2')).toBeInTheDocument()
+		expect(screen.getByText('Containers: 1')).toBeInTheDocument()
 		expect(screen.getByText('Docker Containers')).toBeInTheDocument()
 	})
 

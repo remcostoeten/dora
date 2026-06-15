@@ -1,11 +1,15 @@
 # Copy to .dora-vm.yaml in the repo root and adjust values for your host.
-name: dora-windows-test
-uri: qemu:///system
+name: dora-linux-test
+# Use qemu:///session for repo-local storage under $HOME.
+# For qemu:///system, set storage_dir outside $HOME (e.g. /var/lib/libvirt/images/dora-vm).
+uri: qemu:///session
 storage_dir: .cache/dora-vm
 
-# Base image should be a prepared Windows qcow2 image with qemu-guest-agent installed.
+# Linux: leave base_image_url empty to auto-download Ubuntu Noble, or set your own URL.
+# Windows: use a prepared Windows qcow2 with qemu-guest-agent and leave base_image_url empty
+# unless you host the image at a reachable URL.
 base_image: .cache/dora-vm/base.qcow2
-base_image_url: ''
+base_image_url: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
 
 overlay_image: .cache/dora-vm/overlay.qcow2
 seed_iso: .cache/dora-vm/seed.iso
@@ -18,6 +22,11 @@ disk_size_gb: 80
 network: default
 
 # Used by `dora vm run` when --command is not provided.
-guest_shell: cmd.exe /c
-guest_run_command: powershell -ExecutionPolicy Bypass -File C:\\ci\\run-tests.ps1
+guest_shell: /bin/bash -lc
+guest_run_command: uname -a && echo dora vm smoke test ok
 agent_timeout_sec: 180
+
+# Windows example (requires manual base.qcow2 — no public auto-download):
+# name: dora-windows-test
+# guest_shell: cmd.exe /c
+# guest_run_command: powershell -ExecutionPolicy Bypass -File C:\\ci\\run-tests.ps1

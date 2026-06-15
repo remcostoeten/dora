@@ -1,11 +1,22 @@
 import { Check } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
+import { Supabase as SupabaseIcon } from '@studio/components/provider.icons'
 import { DatabaseType } from '../../types'
 import { DatabaseIcon, DATABASE_META } from '../database-icons'
 
+/**
+ * A tile in the provider grid. This is wider than `DatabaseType` because
+ * Supabase is offered as a first-class entry even though it resolves to a
+ * plain Postgres connection — selecting it swaps the form for the OAuth flow
+ * rather than changing `formData.type`.
+ */
+export type ProviderKey = DatabaseType | 'supabase'
+
 type Props = {
-	selectedType: DatabaseType
-	onSelect: (type: DatabaseType) => void
+	selectedType: ProviderKey
+	onSelect: (type: ProviderKey) => void
+	/** Show the Supabase OAuth tile (new connections only). */
+	showSupabase?: boolean
 	disabled?: boolean
 }
 
@@ -19,7 +30,9 @@ const DATABASE_TYPES: DatabaseType[] = [
 	'libsql'
 ]
 
-const TYPE_THEME: Record<DatabaseType, { accent: string; wash: string }> = {
+type Theme = { accent: string; wash: string }
+
+const TYPE_THEME: Record<ProviderKey, Theme> = {
 	postgres: {
 		accent: 'hsl(207 72% 58%)',
 		wash: 'color-mix(in srgb, hsl(207 72% 58%) 9%, hsl(var(--card)))',
@@ -48,22 +61,51 @@ const TYPE_THEME: Record<DatabaseType, { accent: string; wash: string }> = {
 		accent: 'hsl(169 62% 45%)',
 		wash: 'color-mix(in srgb, hsl(169 62% 45%) 9%, hsl(var(--card)))',
 	},
+	supabase: {
+		accent: 'hsl(153 60% 45%)',
+		wash: 'color-mix(in srgb, hsl(153 60% 45%) 10%, hsl(var(--card)))',
+	},
 }
 
-export function DatabaseTypeSelector({ selectedType, onSelect, disabled }: Props) {
+type Tile = {
+	key: ProviderKey
+	name: string
+	description: string
+	icon: React.ReactNode
+}
+
+const SUPABASE_TILE: Tile = {
+	key: 'supabase',
+	name: 'Supabase',
+	description: 'Connect your account, pick a project',
+	icon: <SupabaseIcon className='h-[18px] w-[18px]' />,
+}
+
+export function DatabaseTypeSelector({ selectedType, onSelect, showSupabase, disabled }: Props) {
+	const tiles: Tile[] = DATABASE_TYPES.map(function (type) {
+		const meta = DATABASE_META[type]
+		return {
+			key: type,
+			name: meta.name,
+			description: meta.description,
+			icon: <DatabaseIcon type={type} className='h-[18px] w-[18px]' />,
+		}
+	})
+
+	if (showSupabase) tiles.push(SUPABASE_TILE)
+
 	return (
 		<div className='grid grid-cols-2 gap-2 sm:grid-cols-3'>
-			{DATABASE_TYPES.map(function (type) {
-				const meta = DATABASE_META[type]
-				const isActive = selectedType === type
-				const theme = TYPE_THEME[type]
+			{tiles.map(function (tile) {
+				const isActive = selectedType === tile.key
+				const theme = TYPE_THEME[tile.key]
 
 				return (
 					<button
-						key={type}
+						key={tile.key}
 						type='button'
 						onClick={function () {
-							onSelect(type)
+							onSelect(tile.key)
 						}}
 						disabled={disabled}
 						style={
@@ -106,17 +148,17 @@ export function DatabaseTypeSelector({ selectedType, onSelect, disabled }: Props
 										: undefined
 								}
 							>
-								<DatabaseIcon type={type} className='h-[18px] w-[18px]' />
+								{tile.icon}
 							</div>
 							<div className='min-w-0 flex-1 pt-0.5'>
 								<span className={cn(
 									'block truncate text-sm font-medium tracking-tight',
 									isActive ? 'text-foreground' : 'text-foreground/85'
 								)}>
-									{meta.name}
+									{tile.name}
 								</span>
 								<span className='mt-0.5 block truncate text-[11px] leading-4 text-muted-foreground/75'>
-									{meta.description}
+									{tile.description}
 								</span>
 							</div>
 							{isActive && (

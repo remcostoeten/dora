@@ -585,6 +585,20 @@ layer(base);
 		border-color: hsl(var(--border));
 	}
 
+	/* The desktop shell owns all of its scrolling — every panel is its own
+	 * overflow container. Pinning the root chain to the viewport keeps the body
+	 * from ever growing a scrollbar. That matters beyond aesthetics: when the
+	 * body has a scrollbar, Radix overlays (dropdown, dialog, context menu) lock
+	 * scroll via react-remove-scroll, which compensates by padding the body —
+	 * shifting the entire UI sideways and reading as a "flash" every time a
+	 * connection dropdown or the edit dialog opens. No body scrollbar, no shift. */
+	html,
+	body,
+	#root {
+		height: 100%;
+		overflow: hidden;
+	}
+
 	body {
 		@apply bg-background text-foreground antialiased;
 		font-family: var(--font-sans);

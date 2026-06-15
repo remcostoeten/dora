@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +19,9 @@ import (
 )
 
 const defaultVMConfigPath = ".dora-vm.yaml"
+
+// Ubuntu Noble cloud image (qcow2-compatible). Used when base_image_url is unset for Linux guests.
+const defaultBaseImageURL = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 
 type vmConfig struct {
 	Name            string `yaml:"name"`
@@ -42,8 +46,8 @@ func defaultVMConfig() vmConfig {
 	root := findProjectRoot()
 	storage := filepath.Join(root, ".cache", "dora-vm")
 	return vmConfig{
-		Name:            "dora-windows-test",
-		URI:             "qemu:///system",
+		Name:            "dora-linux-test",
+		URI:             "qemu:///session",
 		StorageDir:      storage,
 		BaseImage:       filepath.Join(storage, "base.qcow2"),
 		BaseImageURL:    "",
@@ -55,8 +59,8 @@ func defaultVMConfig() vmConfig {
 		VCPUs:           4,
 		DiskSizeGB:      80,
 		Network:         "default",
-		GuestShell:      "cmd.exe /c",
-		GuestRunCommand: "powershell -ExecutionPolicy Bypass -File C:\\ci\\run-tests.ps1",
+		GuestShell:      "/bin/bash -lc",
+		GuestRunCommand: "uname -a && echo dora vm smoke test ok",
 		AgentTimeoutSec: 180,
 	}
 }
@@ -162,23 +166,59 @@ func vmInit(configPath string) error {
 	return nil
 }
 
+func isWindowsGuest(cfg vmConfig) bool {
+	shell := strings.ToLower(cfg.GuestShell)
+	return strings.Contains(shell, "cmd.exe") || strings.Contains(shell, "powershell")
+}
+
+func effectiveBaseImageURL(cfg vmConfig) string {
+	if isWindowsGuest(cfg) {
+		if url := strings.TrimSpace(cfg.BaseImageURL); url != "" {
+			return url
+		}
+		return strings.TrimSpace(os.Getenv("DORA_VM_BASE_IMAGE_URL"))
+	}
+	if url := strings.TrimSpace(cfg.BaseImageURL); url != "" {
+		return url
+	}
+	if url := strings.TrimSpace(os.Getenv("DORA_VM_BASE_IMAGE_URL")); url != "" {
+		return url
+	}
+	return defaultBaseImageURL
+}
+
+func baseImageMissingMessage(cfg vmConfig) string {
+	if isWindowsGuest(cfg) {
+		return fmt.Sprintf(
+			"base image not found at %s: Windows guests need a prepared Windows qcow2 with qemu-guest-agent installed. Place the file there or set base_image_url in %s",
+			cfg.BaseImage,
+			defaultVMConfigPath,
+		)
+	}
+	return fmt.Sprintf(
+		"base image not found at %s: set base_image_url in %s, export DORA_VM_BASE_IMAGE_URL, or place the file manually",
+		cfg.BaseImage,
+		defaultVMConfigPath,
+	)
+}
+
 func maybeFetchBaseImage(cfg vmConfig) error {
 	if _, err := os.Stat(cfg.BaseImage); err == nil {
 		return nil
 	}
-	if strings.TrimSpace(cfg.BaseImageURL) == "" {
-		fmt.Printf("Base image not found at %s. Set base_image_url to auto-download or place the file manually.\n", cfg.BaseImage)
-		return nil
+	url := effectiveBaseImageURL(cfg)
+	if url == "" {
+		return errors.New(baseImageMissingMessage(cfg))
 	}
 	if err := os.MkdirAll(filepath.Dir(cfg.BaseImage), 0o755); err != nil {
 		return err
 	}
-	fmt.Printf("Downloading base image from %s...\n", cfg.BaseImageURL)
+	fmt.Printf("Downloading base image from %s...\n", url)
 	if _, err := exec.LookPath("curl"); err == nil {
-		return runCommandStreaming("curl", "-fL", "-o", cfg.BaseImage, cfg.BaseImageURL)
+		return runCommandStreaming("curl", "-fL", "-o", cfg.BaseImage, url)
 	}
 	if _, err := exec.LookPath("wget"); err == nil {
-		return runCommandStreaming("wget", "-O", cfg.BaseImage, cfg.BaseImageURL)
+		return runCommandStreaming("wget", "-O", cfg.BaseImage, url)
 	}
 	return errors.New("need curl or wget to download base image")
 }
@@ -233,6 +273,7 @@ func vmEnsure(cfg vmConfig, noStart bool) error {
 	if err := ensureOverlayDisk(cfg); err != nil {
 		return err
 	}
+	ensureLibvirtStorageAccess(cfg)
 	if err := writeDomainXML(cfg); err != nil {
 		return err
 	}
@@ -244,6 +285,9 @@ func vmEnsure(cfg vmConfig, noStart bool) error {
 		return nil
 	}
 	if err := ensureStarted(cfg); err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "permission denied") && strings.Contains(cfg.StorageDir, os.Getenv("HOME")) && cfg.URI == "qemu:///system" {
+			return fmt.Errorf("%w\nhint: system libvirt cannot read VM files under $HOME; use uri: qemu:///session or move storage_dir outside your home directory", err)
+		}
 		return err
 	}
 	fmt.Printf("VM ensured and running: %s\n", cfg.Name)
@@ -280,6 +324,17 @@ func ensureOverlayDisk(cfg vmConfig) error {
 	return runCommandStreaming("qemu-img", args...)
 }
 
+func ensureLibvirtStorageAccess(cfg vmConfig) {
+	if cfg.URI != "qemu:///system" {
+		return
+	}
+	if _, err := exec.LookPath("chgrp"); err != nil {
+		return
+	}
+	_ = exec.Command("chgrp", "-R", "libvirt", cfg.StorageDir).Run()
+	_ = exec.Command("chmod", "-R", "g+rwX,o+rX", cfg.StorageDir).Run()
+}
+
 func writeDomainXML(cfg vmConfig) error {
 	xml := renderDomainXML(cfg)
 	if err := os.MkdirAll(filepath.Dir(cfg.DomainXML), 0o755); err != nil {
@@ -299,6 +354,8 @@ func renderDomainXML(cfg vmConfig) string {
       <readonly/>
     </disk>`, escapeXML(cfg.SeedISO))
 	}
+
+	network := renderNetworkXML(cfg)
 
 	return fmt.Sprintf(`<domain type='kvm'>
   <name>%s</name>
@@ -320,10 +377,7 @@ func renderDomainXML(cfg vmConfig) string {
       <source file='%s'/>
       <target dev='vda' bus='virtio'/>
     </disk>%s
-    <interface type='network'>
-      <source network='%s'/>
-      <model type='virtio'/>
-    </interface>
+%s
     <channel type='unix'>
       <target type='virtio' name='org.qemu.guest_agent.0'/>
     </channel>
@@ -334,10 +388,31 @@ func renderDomainXML(cfg vmConfig) string {
     <console type='pty'>
       <target type='serial' port='0'/>
     </console>
-    <graphics type='none'/>
+    <graphics type='vnc' port='-1' autoport='yes' listen='127.0.0.1'/>
   </devices>
 </domain>
-`, escapeXML(cfg.Name), cfg.MemoryMB, cfg.VCPUs, escapeXML(cfg.OverlayImage), seedDisk, escapeXML(cfg.Network), escapeXML(cfg.SerialLog))
+`, escapeXML(cfg.Name), cfg.MemoryMB, cfg.VCPUs, escapeXML(cfg.OverlayImage), seedDisk, network, escapeXML(cfg.SerialLog))
+}
+
+func renderNetworkXML(cfg vmConfig) string {
+	network := strings.TrimSpace(cfg.Network)
+	if network == "" || network == "default" {
+		if cfg.URI == "qemu:///session" {
+			return `    <interface type='user'>
+      <model type='virtio'/>
+    </interface>`
+		}
+		network = "default"
+	}
+	if network == "user" {
+		return `    <interface type='user'>
+      <model type='virtio'/>
+    </interface>`
+	}
+	return fmt.Sprintf(`    <interface type='network'>
+      <source network='%s'/>
+      <model type='virtio'/>
+    </interface>`, escapeXML(network))
 }
 
 func escapeXML(value string) string {
@@ -538,8 +613,8 @@ func vmLogs(cfg vmConfig) error {
 }
 
 func vmClean(cfg vmConfig) error {
-	_ = runCommandStreaming("virsh", "-c", cfg.URI, "shutdown", cfg.Name)
-	_ = runCommandStreaming("virsh", "-c", cfg.URI, "destroy", cfg.Name)
+	virshQuiet(cfg.URI, "shutdown", cfg.Name)
+	virshQuiet(cfg.URI, "destroy", cfg.Name)
 	_ = os.Remove(cfg.OverlayImage)
 	_ = os.Remove(cfg.SeedISO)
 	_ = os.Remove(cfg.SerialLog)
@@ -548,9 +623,9 @@ func vmClean(cfg vmConfig) error {
 }
 
 func vmNuke(cfg vmConfig) error {
-	_ = runCommandStreaming("virsh", "-c", cfg.URI, "shutdown", cfg.Name)
-	_ = runCommandStreaming("virsh", "-c", cfg.URI, "destroy", cfg.Name)
-	_ = runCommandStreaming("virsh", "-c", cfg.URI, "undefine", cfg.Name, "--nvram")
+	virshQuiet(cfg.URI, "shutdown", cfg.Name)
+	virshQuiet(cfg.URI, "destroy", cfg.Name)
+	virshQuiet(cfg.URI, "undefine", cfg.Name, "--nvram")
 	if err := safeRemoveAll(cfg.StorageDir); err != nil {
 		return err
 	}
@@ -687,7 +762,11 @@ func renderVMConfigYAML(cfg vmConfig) string {
 	writeKV("uri", cfg.URI)
 	writeKV("storage_dir", cfg.StorageDir)
 	writeKV("base_image", cfg.BaseImage)
-	writeKV("base_image_url", cfg.BaseImageURL)
+	baseImageURL := cfg.BaseImageURL
+	if strings.TrimSpace(baseImageURL) == "" && !isWindowsGuest(cfg) {
+		baseImageURL = defaultBaseImageURL
+	}
+	writeKV("base_image_url", baseImageURL)
 	writeKV("overlay_image", cfg.OverlayImage)
 	writeKV("seed_iso", cfg.SeedISO)
 	writeKV("domain_xml", cfg.DomainXML)
@@ -711,6 +790,14 @@ func parseGuestShell(shell string) (string, []string) {
 		return parts[0], nil
 	}
 	return parts[0], parts[1:]
+}
+
+func virshQuiet(uri string, args ...string) {
+	cmdArgs := append([]string{"-c", uri}, args...)
+	cmd := exec.Command("virsh", cmdArgs...)
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
+	_ = cmd.Run()
 }
 
 func runCommandStreaming(name string, args ...string) error {

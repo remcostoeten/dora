@@ -1,7 +1,14 @@
+import type { DatabaseType } from '@studio/features/connections/types'
 import type { DatabaseProvider, DockerContainer } from '../types'
 
 export type ContainerConnectionDetails = {
 	provider: DatabaseProvider
+	/**
+	 * The connection type to open in the data viewer. Unlike `provider` (which is
+	 * limited to the engines we can spin up locally), this distinguishes plain
+	 * MySQL from MariaDB so the backend dialect and SQL generation are correct.
+	 */
+	type: DatabaseType
 	host: string
 	port: number
 	user: string
@@ -10,11 +17,27 @@ export type ContainerConnectionDetails = {
 	connectionUrl: string
 }
 
-export function detectDatabaseProvider(container: DockerContainer): DatabaseProvider {
+/**
+ * Detects the concrete database engine of a container from its image name.
+ * Recognises MySQL/Percona separately from MariaDB so the data viewer connects
+ * with the right driver instead of falling back to Postgres.
+ */
+export function detectConnectionType(container: DockerContainer): DatabaseType {
 	const image = `${container.image}:${container.imageTag}`.toLowerCase()
 
 	if (image.includes('cockroach')) return 'cockroach'
 	if (image.includes('mariadb')) return 'mariadb'
+	if (image.includes('mysql') || image.includes('percona')) return 'mysql'
+	return 'postgres'
+}
+
+export function detectDatabaseProvider(container: DockerContainer): DatabaseProvider {
+	const type = detectConnectionType(container)
+
+	// MySQL is wire-compatible with MariaDB; reuse the MariaDB code paths
+	// (port, env vars, connection URL, CLI snippets) for it.
+	if (type === 'mariadb' || type === 'mysql') return 'mariadb'
+	if (type === 'cockroach') return 'cockroach'
 	return 'postgres'
 }
 
@@ -65,20 +88,27 @@ function buildUrl(
 
 export function getContainerConnectionDetails(container: DockerContainer): ContainerConnectionDetails {
 	const provider = detectDatabaseProvider(container)
+	const type = detectConnectionType(container)
 	const host = 'localhost'
 	const port = getPrimaryDatabasePort(container)
 
 	if (provider === 'mariadb') {
-		const user = readEnvValue(container, ['MARIADB_USER', 'MARIADB_ROOT_USER'], 'root')
+		// Covers both MariaDB (MARIADB_*) and MySQL (MYSQL_*) images.
+		const user = readEnvValue(
+			container,
+			['MARIADB_USER', 'MYSQL_USER', 'MARIADB_ROOT_USER'],
+			'root'
+		)
 		const password = readEnvValue(
 			container,
-			['MARIADB_PASSWORD', 'MARIADB_ROOT_PASSWORD'],
+			['MARIADB_PASSWORD', 'MYSQL_PASSWORD', 'MARIADB_ROOT_PASSWORD', 'MYSQL_ROOT_PASSWORD'],
 			'rootpass'
 		)
-		const database = readEnvValue(container, ['MARIADB_DATABASE'], 'dora')
+		const database = readEnvValue(container, ['MARIADB_DATABASE', 'MYSQL_DATABASE'], 'dora')
 
 		return {
 			provider,
+			type,
 			host,
 			port,
 			user,
@@ -94,6 +124,7 @@ export function getContainerConnectionDetails(container: DockerContainer): Conta
 
 		return {
 			provider,
+			type,
 			host,
 			port,
 			user,
@@ -109,6 +140,7 @@ export function getContainerConnectionDetails(container: DockerContainer): Conta
 
 	return {
 		provider,
+		type,
 		host,
 		port,
 		user,

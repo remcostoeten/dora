@@ -32,7 +32,7 @@ import {
 } from "../utils/providers";
 import { validateConnection } from "../validation";
 import { ConnectionForm } from "./connection-dialog/connection-form";
-import { DatabaseTypeSelector } from "./connection-dialog/database-type-selector";
+import { DatabaseTypeSelector, type ProviderKey } from "./connection-dialog/database-type-selector";
 import { DatabaseIcon, DATABASE_META } from "./database-icons";
 import {
   classifyDroppedPaths,
@@ -95,6 +95,10 @@ export function ConnectionDialog({
   } | null>(null);
   const [isDropTargetActive, setIsDropTargetActive] = useState(false);
   const [flyHintDismissed, setFlyHintDismissed] = useState(false);
+  // Supabase isn't a real DatabaseType (it resolves to Postgres), so its
+  // selection lives outside formData.type. When active, the standard form is
+  // swapped for the OAuth project picker.
+  const [supabaseSelected, setSupabaseSelected] = useState(false);
   const showDropOverlay = isDropTargetActive || externalDropActive;
 
   const applyDatabaseFile = useCallback(
@@ -203,6 +207,7 @@ export function ConnectionDialog({
         });
         setUseConnectionString(!!hasUrl);
         setFlyHintDismissed(false);
+        setSupabaseSelected(false);
         setTestStatus("idle");
         setTestMessage("");
       }
@@ -301,10 +306,16 @@ export function ConnectionDialog({
     }
   }
 
-  function handleTypeSelect(type: DatabaseType) {
-    updateField("type", type);
+  function handleProviderSelect(key: ProviderKey) {
+    if (key === "supabase") {
+      setSupabaseSelected(true);
+      setTestStatus("idle");
+      return;
+    }
+    setSupabaseSelected(false);
+    updateField("type", key);
     const caps = getSourceCaps({
-      type,
+      type: key,
       fileSources: formData.fileSources,
       url: formData.url,
     });
@@ -617,33 +628,26 @@ export function ConnectionDialog({
         </DialogHeader>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
-          {!initialValues ? (
-            <SupabaseConnectFlow
-              onComplete={function (connection) {
-                onSave(connection);
-                onOpenChange(false);
-              }}
-            />
+          {!supabaseSelected ? (
+            <div className="border border-border/60 bg-card/45 p-4 shadow-sm">
+              <Label
+                htmlFor="name"
+                className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
+              >
+                Connection Name
+              </Label>
+              <Input
+                id="name"
+                placeholder="e.g. Production Database"
+                value={formData.name || ""}
+                onChange={function (e) {
+                  updateField("name", e.target.value);
+                }}
+                className="input-glow mt-2 h-10 bg-background/70"
+                autoFocus
+              />
+            </div>
           ) : null}
-
-          <div className="border border-border/60 bg-card/45 p-4 shadow-sm">
-            <Label
-              htmlFor="name"
-              className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
-            >
-              Connection Name
-            </Label>
-            <Input
-              id="name"
-              placeholder="e.g. Production Database"
-              value={formData.name || ""}
-              onChange={function (e) {
-                updateField("name", e.target.value);
-              }}
-              className="input-glow mt-2 h-10 bg-background/70"
-              autoFocus
-            />
-          </div>
 
           <div className="space-y-3 border border-border/60 bg-card/35 p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
@@ -657,10 +661,11 @@ export function ConnectionDialog({
               </div>
             </div>
             <DatabaseTypeSelector
-              selectedType={formData.type || "postgres"}
-              onSelect={handleTypeSelect}
+              selectedType={supabaseSelected ? "supabase" : formData.type || "postgres"}
+              onSelect={handleProviderSelect}
+              showSupabase={!initialValues}
             />
-            {onOpenDataFiles && (
+            {!supabaseSelected && onOpenDataFiles && (
               <button
                 type="button"
                 onClick={function () {
@@ -677,15 +682,24 @@ export function ConnectionDialog({
             )}
           </div>
 
-          <ConnectionForm
-            formData={formData}
-            updateField={updateField}
-            setFormData={setFormData}
-            useConnectionString={useConnectionString}
-            setUseConnectionString={setUseConnectionString}
-          />
+          {supabaseSelected ? (
+            <SupabaseConnectFlow
+              onComplete={function (connection) {
+                onSave(connection);
+                onOpenChange(false);
+              }}
+            />
+          ) : (
+            <ConnectionForm
+              formData={formData}
+              updateField={updateField}
+              setFormData={setFormData}
+              useConnectionString={useConnectionString}
+              setUseConnectionString={setUseConnectionString}
+            />
+          )}
 
-          {!flyHintDismissed && isFlyPublicHost(formData.url ?? "") && (
+          {!supabaseSelected && !flyHintDismissed && isFlyPublicHost(formData.url ?? "") && (
             <div className="relative flex items-start gap-3 border border-blue-500/20 bg-blue-500/8 px-4 py-3 text-xs text-blue-700 dark:text-blue-300">
               <div className="pointer-events-none absolute inset-y-0 left-0 w-px bg-blue-500/50" />
               <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" strokeWidth={2} />
@@ -713,13 +727,19 @@ export function ConnectionDialog({
 
         <DialogFooter className="border-t border-border/50 bg-muted/30 px-6 py-4">
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <TestConnectionButton
-              isTesting={isTesting}
-              status={testStatus}
-              message={testMessage}
-              disabled={isTesting || !formData.type}
-              onClick={handleTestConnection}
-            />
+            {supabaseSelected ? (
+              <span className="text-xs text-muted-foreground/75">
+                Authorize Supabase and pick a project to create the connection.
+              </span>
+            ) : (
+              <TestConnectionButton
+                isTesting={isTesting}
+                status={testStatus}
+                message={testMessage}
+                disabled={isTesting || !formData.type}
+                onClick={handleTestConnection}
+              />
+            )}
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -731,21 +751,23 @@ export function ConnectionDialog({
               >
                 Cancel
               </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving || !formData.name}
-                className="gap-2"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Connection"
-                )}
-              </Button>
+              {!supabaseSelected && (
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving || !formData.name}
+                  className="gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Connection"
+                  )}
+                </Button>
+              )}
             </div>
           </div>
         </DialogFooter>

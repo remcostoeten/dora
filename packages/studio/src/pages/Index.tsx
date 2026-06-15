@@ -18,6 +18,7 @@ import {
 } from "@studio/features/connections/utils/mapping";
 import { ConnectionDialog } from "@studio/features/connections/components/connection-dialog";
 import { Connection } from "@studio/features/connections/types";
+import { getContainerConnectionDetails } from "@studio/features/docker-manager/utilities/container-connection";
 import {
   classifyDroppedPaths,
   buildConnectionFromDataFiles,
@@ -990,32 +991,20 @@ function IndexInner() {
                       <DockerView
                         windowControls={<WindowControls />}
                         onOpenInDataViewer={async function (container) {
-                          const userEnv = container.env.find(function (e) {
-                            return e.startsWith("POSTGRES_USER=");
-                          });
-                          const passEnv = container.env.find(function (e) {
-                            return e.startsWith("POSTGRES_PASSWORD=");
-                          });
-                          const dbEnv = container.env.find(function (e) {
-                            return e.startsWith("POSTGRES_DB=");
-                          });
-                          const primaryPort = container.ports.find(function (p) {
-                            return p.containerPort === 5432;
-                          });
-
-                          const user = userEnv ? userEnv.split("=")[1] : "postgres";
-                          const password = passEnv ? passEnv.split("=")[1] : "postgres";
-                          const database = dbEnv ? dbEnv.split("=")[1] : "postgres";
-                          const port = primaryPort ? primaryPort.hostPort : 5432;
+                          // Detect the actual engine (Postgres/MySQL/MariaDB/
+                          // CockroachDB) from the image and env vars instead of
+                          // assuming Postgres — otherwise MySQL/MariaDB
+                          // containers get added as Postgres and fail to connect.
+                          const details = getContainerConnectionDetails(container);
 
                           const connectionData = {
                             name: container.name,
-                            type: "postgres" as const,
-                            host: "localhost",
-                            port,
-                            user,
-                            password,
-                            database,
+                            type: details.type,
+                            host: details.host,
+                            port: details.port,
+                            user: details.user,
+                            password: details.password,
+                            database: details.database,
                           };
 
                           await handleAddConnection(connectionData);

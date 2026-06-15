@@ -24,6 +24,14 @@ export {
 } from './utilities/container-naming'
 
 export {
+	getContainerConnectionDetails,
+	detectConnectionType,
+	detectDatabaseProvider,
+	getPrimaryDatabasePort
+} from './utilities/container-connection'
+export type { ContainerConnectionDetails } from './utilities/container-connection'
+
+export {
 	CONTAINER_PREFIX,
 	DATABASE_PROVIDERS,
 	POSTGRES_VERSIONS,
