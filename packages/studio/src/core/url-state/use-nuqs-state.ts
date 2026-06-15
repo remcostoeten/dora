@@ -1,4 +1,4 @@
-import { useQueryStates, parseAsInteger } from 'nuqs'
+import { useQueryStates, parseAsInteger, createParser } from 'nuqs'
 import { useCallback } from 'react'
 
 type CellPosition = {
@@ -16,22 +16,19 @@ function parseCellPosition(value: string | null): CellPosition | null {
 	return { row, col }
 }
 
-function serializeCellPosition(cell: CellPosition | null): string | null {
-	if (!cell) return null
-	return `${cell.row}:${cell.col}`
-}
+const cellParser = createParser<CellPosition>({
+	parse: (value: string): CellPosition | null => parseCellPosition(value),
+	serialize: (cell: CellPosition): string => `${cell.row}:${cell.col}`
+})
 
-const cellParser = {
-	parse: (value: string | null): CellPosition | null => parseCellPosition(value),
-	serialize: (cell: CellPosition | null): string | null => serializeCellPosition(cell)
-}
-
-type ContextMenuState = {
+type ContextMenuValue = {
 	kind: 'cell' | 'row'
 	cell: CellPosition
 	x: number
 	y: number
-} | null
+}
+
+type ContextMenuState = ContextMenuValue | null
 
 function parseContextMenu(value: string | null): ContextMenuState {
 	if (!value) return null
@@ -59,8 +56,7 @@ function parseContextMenu(value: string | null): ContextMenuState {
 	}
 }
 
-function serializeContextMenu(ctx: ContextMenuState): string | null {
-	if (!ctx) return null
+function serializeContextMenu(ctx: ContextMenuValue): string {
 	const { kind, cell, x, y } = ctx
 	if (kind === 'cell') {
 		return `cell:${cell.row}:${cell.col}:${x}:${y}`
@@ -68,11 +64,10 @@ function serializeContextMenu(ctx: ContextMenuState): string | null {
 	return `row:${cell.row}:${x}:${y}`
 }
 
-const contextMenuParser = {
-	parse: (value: string | null): ContextMenuState => parseContextMenu(value),
-	serialize: (ctx: ContextMenuState | null): string | null =>
-		ctx == null ? null : serializeContextMenu(ctx)
-}
+const contextMenuParser = createParser<ContextMenuValue>({
+	parse: (value: string): ContextMenuState => parseContextMenu(value),
+	serialize: (ctx: ContextMenuValue): string => serializeContextMenu(ctx)
+})
 
 const MAX_SERIALIZED_CELLS = 50
 
@@ -91,17 +86,16 @@ function parseSelectedCells(value: string | null): Set<string> {
 	return cells
 }
 
-function serializeSelectedCells(cells: Set<string>): string | null {
-	if (!cells || cells.size === 0) return null
+function serializeSelectedCells(cells: Set<string>): string {
+	if (!cells || cells.size === 0) return ''
 	if (cells.size > MAX_SERIALIZED_CELLS) return 'truncated'
 	return Array.from(cells).join(',')
 }
 
-const selectedCellsParser = {
-	parse: (value: string | null): Set<string> => parseSelectedCells(value),
-	serialize: (cells: Set<string> | null): string | null =>
-		cells == null ? null : serializeSelectedCells(cells)
-}
+const selectedCellsParser = createParser<Set<string>>({
+	parse: (value: string): Set<string> => parseSelectedCells(value),
+	serialize: (cells: Set<string>): string => serializeSelectedCells(cells)
+})
 
 export type UrlState = {
 	focusedCell: CellPosition | null
@@ -115,14 +109,14 @@ export type UrlState = {
 export function useNuqsState() {
 	const [state, setState] = useQueryStates({
 		focusedCell: cellParser,
-		selectedRow: parseAsInteger.withDefault(null),
+		selectedRow: parseAsInteger,
 		selectedCells: selectedCellsParser,
 		contextMenu: contextMenuParser,
-		addRecordMode: {
-			parse: (value: string | null): boolean => value === 'true',
-			serialize: (value: boolean): string | null => (value ? 'true' : null)
-		},
-		addRecordIndex: parseAsInteger.withDefault(null)
+		addRecordMode: createParser<boolean>({
+			parse: (value: string): boolean => value === 'true',
+			serialize: (value: boolean): string => (value ? 'true' : 'false')
+		}).withDefault(false),
+		addRecordIndex: parseAsInteger
 	})
 
 	const setFocusedCell = useCallback(

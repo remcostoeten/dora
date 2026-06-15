@@ -27,7 +27,7 @@ export function useRowSelection({
 			if (e.shiftKey && lastClickedRowRef.current !== null && onRowsSelect) {
 				const start = Math.min(lastClickedRowRef.current, rowIndex)
 				const end = Math.max(lastClickedRowRef.current, rowIndex)
-				const range = []
+				const range: number[] = []
 				for (let i = start; i <= end; i++) {
 					range.push(i)
 				}

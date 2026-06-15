@@ -120,7 +120,7 @@ export function useDatabaseStudioSync(args: Args) {
       return loadRequestIdRef.current === requestId;
     };
 
-    if (!tableId || !activeConnectionId) {
+    if (!tableId || !tableRefName || !activeConnectionId) {
       setIsLoading(false);
       return;
     }

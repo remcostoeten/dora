@@ -60,18 +60,19 @@ export function ContainerDetailsPanel({
 		)
 	}
 
-	const isRunning = container.state === 'running'
+	const activeContainer = container
+	const isRunning = activeContainer.state === 'running'
 
 	function handleStart() {
-		containerActions.mutate({ containerId: container.id, action: 'start' })
+		containerActions.mutate({ containerId: activeContainer.id, action: 'start' })
 	}
 
 	function handleStop() {
-		containerActions.mutate({ containerId: container.id, action: 'stop' })
+		containerActions.mutate({ containerId: activeContainer.id, action: 'stop' })
 	}
 
 	function handleRestart() {
-		containerActions.mutate({ containerId: container.id, action: 'restart' })
+		containerActions.mutate({ containerId: activeContainer.id, action: 'restart' })
 	}
 
 	function handleRemove() {
@@ -80,7 +81,7 @@ export function ContainerDetailsPanel({
 
 	function handleConfirmRemove(options: RemoveContainerOptions) {
 		removeContainer.mutate({
-			containerId: container!.id,
+			containerId: activeContainer.id,
 			options
 		})
 		setShowRemoveDialog(false)
@@ -88,7 +89,7 @@ export function ContainerDetailsPanel({
 
 	function handleOpenInViewer() {
 		if (onOpenInDataViewer) {
-			onOpenInDataViewer(container)
+			onOpenInDataViewer(activeContainer)
 		}
 	}
 

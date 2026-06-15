@@ -817,7 +817,7 @@ export function DatabaseSidebar({
 
       {schema && (
         <div className="flex flex-col gap-2 px-2 py-2 border-t border-sidebar-border shrink-0">
-          {availableSchemas.length > 1 && (
+          {availableSchemas.length > 1 && selectedSchema && (
             <SchemaSelector
               schemas={availableSchemas}
               selectedSchema={selectedSchema}

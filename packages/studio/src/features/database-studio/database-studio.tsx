@@ -82,7 +82,7 @@ export function DatabaseStudio({
 	onRowSelectionChange
 }: Props) {
 	const tableRefName = tableId || tableName
-	const displayTableName = tableName || getTableRefParts(tableId).tableName
+	const displayTableName = tableName || getTableRefParts(tableId ?? '').tableName
 	const initialCacheEntry = tableDataCache.get(
 		buildTableCacheKey(activeConnectionId, tableId, 50, 0, undefined, [])
 	)
@@ -573,7 +573,7 @@ export function DatabaseStudio({
 			for (const row of data) {
 				await insertRow.mutateAsync({
 					connectionId: activeConnectionId,
-					tableName: tableRefName,
+					tableName: tableRefName ?? tableId,
 					rowData: row
 				})
 			}
@@ -593,7 +593,7 @@ export function DatabaseStudio({
 			try {
 				await insertRow.mutateAsync({
 					connectionId: activeConnectionId,
-					tableName: tableRefName,
+					tableName: tableRefName ?? tableId,
 					rowData: row
 				})
 				imported++
@@ -1129,7 +1129,7 @@ export function DatabaseStudio({
 									deleteRows.mutate(
 										{
 											connectionId: activeConnectionId,
-											tableName: tableRefName,
+											tableName: tableRefName ?? tableId,
 											primaryKeyColumn:
 												pendingSingleDeleteRow.primaryKeyColumn,
 											primaryKeyValues: [
@@ -1185,7 +1185,7 @@ export function DatabaseStudio({
 								const row = tableData.rows[rowIndex]
 								return updateCell.mutateAsync({
 									connectionId: activeConnectionId,
-									tableName: tableRefName,
+									tableName: tableRefName ?? tableId,
 									primaryKeyColumn: primaryKeyColumn.name,
 									primaryKeyValue: row[primaryKeyColumn.name],
 									columnName,
@@ -1234,7 +1234,7 @@ export function DatabaseStudio({
 								const row = tableData.rows[rowIndex]
 								return updateCell.mutateAsync({
 									connectionId: activeConnectionId,
-									tableName: tableRefName,
+									tableName: tableRefName ?? tableId,
 									primaryKeyColumn: primaryKeyColumn.name,
 									primaryKeyValue: row[primaryKeyColumn.name],
 									columnName,

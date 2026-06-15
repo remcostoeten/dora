@@ -941,7 +941,7 @@ function SqlConsoleInner({
             parseInt(id, 10),
             newName,
             snippet.content,
-            activeConnectionId,
+            activeConnectionId ?? null,
             null,
             folderId,
           );

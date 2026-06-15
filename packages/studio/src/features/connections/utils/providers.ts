@@ -252,7 +252,7 @@ export function buildConnectionString(params: ConnectionParams): string {
  * Used for typo detection in connection protocols.
  */
 function levenshtein(a: string, b: string): number {
-	const matrix = []
+	const matrix: number[][] = []
 
 	for (let i = 0; i <= b.length; i++) {
 		matrix[i] = [i]

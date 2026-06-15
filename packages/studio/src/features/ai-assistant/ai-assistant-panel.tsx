@@ -89,7 +89,10 @@ export function AiAssistantPanel({
 			if (!el) return
 
 			function onScroll() {
-				const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+				const target = scrollRef.current
+				if (!target) return
+				const distanceFromBottom =
+					target.scrollHeight - target.scrollTop - target.clientHeight
 				stickToBottomRef.current = distanceFromBottom < 96
 			}
 
