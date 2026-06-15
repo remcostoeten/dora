@@ -18,7 +18,7 @@ import type {
 } from '@studio/lib/bindings'
 import { commands } from '@studio/lib/bindings'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
-import { getTableRefParts, getTableSqlIdentifier, type TableDialect } from '@studio/shared/utils/table-ref'
+import { buildDropColumnSql, getTableRefParts, getTableSqlIdentifier, type TableDialect } from '@studio/shared/utils/table-ref'
 import type { DataAdapter, AdapterResult, QueryResult } from '../types'
 
 import { backendToFrontendConnection } from '@studio/features/connections/utils/mapping'
@@ -205,6 +205,20 @@ export function createTauriAdapter(): DataAdapter {
 		async dropTable(connectionId: string, tableName: string): Promise<AdapterResult<void>> {
 			const dialect = await resolveConnectionDialect(connectionId)
 			const sql = `DROP TABLE IF EXISTS ${getTableSqlIdentifier(tableName, dialect)}`
+			const result = await commands.executeBatch(connectionId, [sql])
+			if (result.status === 'ok') {
+				return ok(undefined)
+			}
+			return err(formatError(result.error))
+		},
+
+		async dropColumn(
+			connectionId: string,
+			tableName: string,
+			columnName: string
+		): Promise<AdapterResult<void>> {
+			const dialect = await resolveConnectionDialect(connectionId)
+			const sql = buildDropColumnSql(tableName, columnName, dialect)
 			const result = await commands.executeBatch(connectionId, [sql])
 			if (result.status === 'ok') {
 				return ok(undefined)

@@ -308,6 +308,33 @@ export function useDatabaseStudioCommands(args: Args) {
 		}
 	}
 
+	async function handleDropColumn(columnName: string) {
+		if (!activeConnectionId || !tableRefName || !columnName) return
+
+		setIsDdlLoading(true)
+		try {
+			const result = await adapter.dropColumn(activeConnectionId, tableRefName, columnName)
+			if (result.ok) {
+				tableDataCache.clear()
+				window.dispatchEvent(
+					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
+				)
+				toast({
+					title: 'Column dropped',
+					description: `"${columnName}" has been removed.`,
+					variant: 'success'
+				})
+				loadTableData()
+			} else {
+				notifyActionFailure('Failed to drop column', getAdapterError(result))
+			}
+		} catch (error) {
+			notifyActionFailure('Failed to drop column', error)
+		} finally {
+			setIsDdlLoading(false)
+		}
+	}
+
 	return {
 		handleExport,
 		handleExportCsvAll,
@@ -318,6 +345,7 @@ export function useDatabaseStudioCommands(args: Args) {
 		handleCopySchema,
 		handleCopyDrizzleSchema,
 		handleAddColumn,
-		handleDropTable
+		handleDropTable,
+		handleDropColumn
 	}
 }

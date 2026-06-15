@@ -124,6 +124,11 @@ export type DataAdapter = {
 	// Schema Management
 	getDatabaseDDL(connectionId: string): Promise<AdapterResult<string>>
 	dropTable(connectionId: string, tableName: string): Promise<AdapterResult<void>>
+	dropColumn(
+		connectionId: string,
+		tableName: string,
+		columnName: string
+	): Promise<AdapterResult<void>>
 
 	// Script/Snippet management
 	getScripts(connectionId: string | null): Promise<AdapterResult<SavedQuery[]>>
