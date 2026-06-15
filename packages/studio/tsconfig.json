@@ -16,7 +16,7 @@
 		"noUnusedParameters": false,
 		"noImplicitAny": false,
 		"noFallthroughCasesInSwitch": false,
-		"strictNullChecks": false,
+		"strictNullChecks": true,
 		"allowJs": true,
 		"baseUrl": ".",
 		"paths": {
