@@ -16,6 +16,9 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         window_commands::open_file,
         window_commands::open_data_files,
         window_commands::probe_database_file,
+        window_commands::pick_folder,
+        window_commands::read_project_file,
+        window_commands::list_dir,
         // Database commands
         db_commands::add_connection,
         db_commands::update_connection,

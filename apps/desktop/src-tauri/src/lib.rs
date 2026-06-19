@@ -301,6 +301,9 @@ pub fn run() {
             window::commands::open_file,
             window::commands::open_data_files,
             window::commands::probe_database_file,
+            window::commands::pick_folder,
+            window::commands::read_project_file,
+            window::commands::list_dir,
             // Commands system
             commands_system::get_all_commands,
             commands_system::get_command,

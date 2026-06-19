@@ -79,6 +79,30 @@ async probeDatabaseFile(path: string) : Promise<Result<DatabaseFileKind, { kind:
     else return { status: "error", error: e  as any };
 }
 },
+async pickFolder() : Promise<Result<string | null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("pick_folder") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async readProjectFile(path: string) : Promise<Result<string, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("read_project_file", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listDir(path: string) : Promise<Result<string[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_dir", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("add_connection", { name, databaseInfo, color }) };

@@ -79,6 +79,43 @@ async probeDatabaseFile(path: string) : Promise<Result<DatabaseFileKind, { kind:
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Open a folder picker and return the chosen directory path. Used by the ORM
+ * cockpit to let the user link a project folder.
+ */
+async pickFolder() : Promise<Result<string | null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("pick_folder") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Read a project schema/config file (Drizzle `.ts`, Prisma `.prisma`, …) as
+ * UTF-8 text, size-capped. Feeds the ORM detection + parsers.
+ */
+async readProjectFile(path: string) : Promise<Result<string, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("read_project_file", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Shallowly list a directory's entries as absolute paths. ORM detection in TS
+ * filters these by extension / known names (e.g. a multi-file Drizzle
+ * `schema/` dir or Prisma `prisma/schema/` dir).
+ */
+async listDir(path: string) : Promise<Result<string[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_dir", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("add_connection", { name, databaseInfo, color }) };
