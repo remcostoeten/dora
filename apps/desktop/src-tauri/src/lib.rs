@@ -220,6 +220,12 @@ pub fn run() {
             database::commands::neon_create_connection_uri,
             database::commands::neon_disconnect,
             database::commands::neon_is_connected,
+            database::commands::xata_save_token,
+            database::commands::xata_list_databases,
+            database::commands::xata_build_connection_string,
+            database::commands::xata_account,
+            database::commands::xata_disconnect,
+            database::commands::xata_is_connected,
             // Mutation API commands
             database::commands::update_cell,
             database::commands::get_blob_bytes,

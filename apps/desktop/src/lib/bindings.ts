@@ -441,6 +441,63 @@ async neonDisconnect() : Promise<Result<null, { kind: string; detail: string }>>
 async neonIsConnected() : Promise<boolean> {
     return await TAURI_INVOKE("neon_is_connected");
 },
+/**
+ * Validates and stores a Xata API key (encrypted on-device).
+ */
+async xataSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_save_token", { token }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Lists connectable Xata databases, flattened across the user's workspaces.
+ */
+async xataListDatabases() : Promise<Result<XataDatabase[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_list_databases") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Mints the Postgres connection string for a Xata database/branch, embedding
+ * the stored API key as the password so it never crosses to the UI.
+ */
+async xataBuildConnectionString(workspaceId: string, region: string, databaseName: string, branch: string | null) : Promise<Result<string, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_build_connection_string", { workspaceId, region, databaseName, branch }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The Xata account the stored key belongs to, so the UI can show which account
+ * is currently connected.
+ */
+async xataAccount() : Promise<Result<XataAccount, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_account") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async xataDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async xataIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("xata_is_connected");
+},
 async setConnectionPin(connectionId: string, pin: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_connection_pin", { connectionId, pin }) };
@@ -1361,6 +1418,20 @@ export type TruncateResult = { success: boolean; affected_rows: number; tables_t
  */
 export type TursoDatabase = { name: string; hostname: string; organizationSlug: string; group: string; primaryRegion: string }
 export type TursoOrganization = { slug: string; name?: string }
+export type XataAccount = { email?: string; fullname?: string }
+/**
+ * A selectable Xata database, flattened across the user's workspaces. The
+ * workspace id (PG user) and region (PG host) are carried so we can assemble a
+ * Postgres connection string for it later without re-discovering anything. The
+ * branch defaults to `main` at connect time.
+ */
+export type XataDatabase = { workspaceId: string; workspaceName: string; databaseName: string; region: string; 
+/**
+ * Whether Xata reports this database as reachable over the Postgres
+ * protocol. Databases without it can't be connected as a Postgres source,
+ * so the connect-flow can flag them.
+ */
+postgresEnabled: boolean }
 
 /** tauri-specta globals **/
 

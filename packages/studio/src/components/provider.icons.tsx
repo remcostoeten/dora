@@ -220,6 +220,27 @@ export function Neon(p: TProps) {
 	)
 }
 
+export function Xata(p: TProps) {
+	const b = baseSvg(p, 'Xata')
+	return (
+		<svg
+			height={b.h}
+			width={b.w}
+			role={b.role}
+			viewBox='0 0 24 24'
+			xmlns='http://www.w3.org/2000/svg'
+			className={b.cls}
+			style={b.sty}
+			focusable={b.focusable}
+			fill='currentColor'
+			{...b.rest}
+		>
+			<title>{b.ttl}</title>
+			<path d='M11.247 4.964a.997.997 0 0 0-.291-.704L7.46.763A1.001 1.001 0 0 0 5.746.05L1.59.054a1 1 0 0 0-.706 1.708l9.658 9.66a.5.5 0 0 0 .708 0 .997.997 0 0 0 .291-.704zm1.506 0a.997.997 0 0 1 .291-.704l3.497-3.497A1.001 1.001 0 0 1 18.254.05L22.41.054a1 1 0 0 1 .706 1.708l-9.658 9.66a.5.5 0 0 1-.708 0 .997.997 0 0 1-.291-.704zM11.247 13.04a.997.997 0 0 0-.291.704l.003 5.292a1 1 0 0 1-1.707.706L.884 11.59a1 1 0 0 1 .706-1.708l5.293.003a.997.997 0 0 1 .704.291l3.369 3.37a.5.5 0 0 1 0 .707zm1.506 0a.997.997 0 0 1 .291.704l-.003 5.292a1 1 0 0 0 1.707.706l8.362-8.152a1 1 0 0 0-.706-1.708l-5.293.003a.997.997 0 0 0-.704.291l-3.369 3.37a.5.5 0 0 0 0 .707z' />
+		</svg>
+	)
+}
+
 export const icons: TIcon = {
 	sqlite: Sqlite,
 	turso: Turso,

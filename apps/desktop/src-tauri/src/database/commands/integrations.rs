@@ -5,6 +5,7 @@ use crate::{
     integrations::neon::{self, NeonAccount, NeonDatabase},
     integrations::supabase::{self, SupabaseOrganization, SupabaseProject},
     integrations::turso::{self, TursoDatabase, TursoOrganization},
+    integrations::xata::{self, XataAccount, XataDatabase},
     AppState, Error,
 };
 
@@ -245,4 +246,63 @@ pub fn neon_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
 #[specta::specta]
 pub fn neon_is_connected(state: State<'_, AppState>) -> bool {
     neon::is_connected(&state.storage)
+}
+
+// ---------------------------------------------------------------------------
+// Xata
+// ---------------------------------------------------------------------------
+
+/// Validates and stores a Xata API key (encrypted on-device).
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_save_token(token: String, state: State<'_, AppState>) -> Result<(), Error> {
+    xata::save_token(&state.storage, token).await
+}
+
+/// Lists connectable Xata databases, flattened across the user's workspaces.
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_list_databases(state: State<'_, AppState>) -> Result<Vec<XataDatabase>, Error> {
+    xata::list_databases(&state.storage).await
+}
+
+/// Mints the Postgres connection string for a Xata database/branch, embedding
+/// the stored API key as the password so it never crosses to the UI.
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_build_connection_string(
+    workspace_id: String,
+    region: String,
+    database_name: String,
+    branch: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, Error> {
+    xata::build_connection_string(
+        &state.storage,
+        &workspace_id,
+        &region,
+        &database_name,
+        branch.as_deref(),
+    )
+    .await
+}
+
+/// The Xata account the stored key belongs to, so the UI can show which account
+/// is currently connected.
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_account(state: State<'_, AppState>) -> Result<XataAccount, Error> {
+    xata::current_account(&state.storage).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn xata_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
+    xata::disconnect(&state.storage)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn xata_is_connected(state: State<'_, AppState>) -> bool {
+    xata::is_connected(&state.storage)
 }
