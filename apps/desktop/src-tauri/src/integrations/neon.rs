@@ -36,6 +36,17 @@ pub struct NeonDatabase {
     pub role_name: String,
 }
 
+/// A selectable Neon branch within a project. Surfaced so the user can connect
+/// to a non-primary branch (e.g. a preview branch) instead of always landing on
+/// the default one. `is_default` lets the UI preselect the primary branch.
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct NeonBranch {
+    pub id: String,
+    pub name: String,
+    pub is_default: bool,
+}
+
 #[derive(Debug, Deserialize)]
 struct ProjectsResponse {
     projects: Vec<ProjectResponse>,
@@ -64,6 +75,10 @@ struct BranchesResponse {
 #[derive(Debug, Deserialize)]
 struct BranchResponse {
     id: String,
+    // The human-readable branch name (e.g. `main`, `preview/pr-123`). Defaults
+    // to empty if Neon ever omits it so decoding never fails on a sparse payload.
+    #[serde(default)]
+    name: String,
     // Neon flags the project's primary branch with `default`; older payloads
     // used `primary`, and current payloads carry BOTH keys. Read them as two
     // separate optional fields — a serde `alias` would route both keys into one
@@ -238,7 +253,9 @@ pub async fn save_token(storage: &Storage, token: String) -> Result<()> {
     store_token(storage, &token)
 }
 
-async fn get_default_branch(token: &str, project_id: &str) -> Result<Option<String>> {
+/// Fetches every branch of a project. Shared by `get_default_branch` (which just
+/// wants the primary) and `list_branches` (which surfaces all of them to the UI).
+async fn get_branches(token: &str, project_id: &str) -> Result<Vec<BranchResponse>> {
     let response = reqwest::Client::new()
         .get(format!("{API_BASE_URL}/projects/{project_id}/branches"))
         .bearer_auth(token)
@@ -259,14 +276,34 @@ async fn get_default_branch(token: &str, project_id: &str) -> Result<Option<Stri
             "Failed to decode Neon branches response: {error}"
         ))
     })?;
+    Ok(parsed.branches)
+}
+
+async fn get_default_branch(token: &str, project_id: &str) -> Result<Option<String>> {
+    let branches = get_branches(token, project_id).await?;
     // Prefer the primary branch; fall back to the first one a project has.
-    let branch = parsed
-        .branches
+    let branch = branches
         .iter()
         .find(|branch| branch.is_default())
-        .or_else(|| parsed.branches.first())
+        .or_else(|| branches.first())
         .map(|branch| branch.id.clone());
     Ok(branch)
+}
+
+/// Lists every branch of a project so the user can connect to a non-primary one.
+/// The primary branch is flagged via `is_default` so the UI can preselect it.
+pub async fn list_branches(storage: &Storage, project_id: &str) -> Result<Vec<NeonBranch>> {
+    let token = require_token(storage)?;
+    let branches = get_branches(&token, project_id)
+        .await?
+        .into_iter()
+        .map(|branch| NeonBranch {
+            is_default: branch.is_default(),
+            id: branch.id,
+            name: branch.name,
+        })
+        .collect();
+    Ok(branches)
 }
 
 async fn get_branch_databases(
@@ -408,6 +445,42 @@ mod tests {
         )
         .expect("branches json should deserialize with both default and primary");
         assert!(parsed.branches[0].is_default());
+    }
+
+    #[test]
+    fn decodes_branch_names_and_default_flag() {
+        // What `list_branches` maps into NeonBranch: id + name + is_default. A
+        // non-primary preview branch must surface its name and read as non-default.
+        let parsed: BranchesResponse = serde_json::from_str(
+            r#"{ "branches": [
+                { "id": "br-main", "name": "main", "default": true },
+                { "id": "br-prev", "name": "preview/pr-123", "primary": false }
+            ] }"#,
+        )
+        .expect("named branches json should deserialize");
+        let mapped: Vec<NeonBranch> = parsed
+            .branches
+            .into_iter()
+            .map(|branch| NeonBranch {
+                is_default: branch.is_default(),
+                id: branch.id,
+                name: branch.name,
+            })
+            .collect();
+        assert_eq!(mapped.len(), 2);
+        assert_eq!(mapped[0].name, "main");
+        assert!(mapped[0].is_default);
+        assert_eq!(mapped[1].name, "preview/pr-123");
+        assert!(!mapped[1].is_default);
+    }
+
+    #[test]
+    fn tolerates_branch_missing_name() {
+        // A sparse payload (no `name`) must still decode — name falls back to "".
+        let parsed: BranchesResponse =
+            serde_json::from_str(r#"{ "branches": [ { "id": "br-1", "default": true } ] }"#)
+                .expect("branches json should deserialize without a name");
+        assert_eq!(parsed.branches[0].name, "");
     }
 
     #[test]

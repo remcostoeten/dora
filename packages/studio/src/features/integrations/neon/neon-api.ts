@@ -1,7 +1,7 @@
 import { assertTauriRuntime } from "@studio/core/platform/runtime";
-import { commands, type NeonAccount, type NeonDatabase } from "@studio/lib/bindings";
+import { commands, type NeonAccount, type NeonBranch, type NeonDatabase } from "@studio/lib/bindings";
 
-export type { NeonAccount, NeonDatabase };
+export type { NeonAccount, NeonBranch, NeonDatabase };
 
 export async function isNeonConnected(): Promise<boolean> {
   assertTauriRuntime();
@@ -27,13 +27,29 @@ export async function listNeonDatabases(): Promise<NeonDatabase[]> {
   return result.data;
 }
 
+// Lists every branch of a Neon project so the user can connect to a non-primary
+// branch (e.g. a preview branch) instead of the default one.
+export async function listNeonBranches(projectId: string): Promise<NeonBranch[]> {
+  assertTauriRuntime();
+  const result = await commands.neonListBranches(projectId);
+  if (result.status === "error") {
+    throw result.error;
+  }
+  return result.data;
+}
+
 // Mints a pooled connection URI (password embedded) for a database. This is the
-// credential stored on the connection — the user never copies a secret.
-export async function createNeonConnectionUri(database: NeonDatabase): Promise<string> {
+// credential stored on the connection — the user never copies a secret. Pass a
+// `branchId` to target a non-default branch; otherwise the database's own
+// (default) branch is used.
+export async function createNeonConnectionUri(
+  database: NeonDatabase,
+  branchId?: string,
+): Promise<string> {
   assertTauriRuntime();
   const result = await commands.neonCreateConnectionUri(
     database.projectId,
-    database.branchId,
+    branchId ?? database.branchId,
     database.databaseName,
     database.roleName,
   );

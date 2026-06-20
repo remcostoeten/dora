@@ -3,9 +3,14 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::{
     integrations::cloudflare::{self, CloudflareAccount, CloudflareD1Database},
-    integrations::neon::{self, NeonAccount, NeonDatabase},
+    integrations::neon::{self, NeonAccount, NeonBranch, NeonDatabase},
     integrations::supabase::{self, SupabaseOrganization, SupabaseProject},
+    integrations::planetscale::{
+        self, PlanetscaleBranch, PlanetscaleDatabase, PlanetscaleOrganization, PlanetscalePassword,
+    },
     integrations::turso::{self, TursoDatabase, TursoOrganization},
+    integrations::xata::{self, XataAccount, XataDatabase},
+    integrations::vercel::{self, VercelAccount, VercelStore},
     AppState, Error,
 };
 
@@ -207,6 +212,17 @@ pub async fn neon_list_databases(
     neon::list_databases(&state.storage).await
 }
 
+/// Lists every branch of a Neon project so the user can connect to a non-primary
+/// branch (e.g. a preview branch) instead of always landing on the default one.
+#[tauri::command]
+#[specta::specta]
+pub async fn neon_list_branches(
+    project_id: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<NeonBranch>, Error> {
+    neon::list_branches(&state.storage, &project_id).await
+}
+
 /// The Neon account the stored key belongs to, so the UI can show which account
 /// is currently connected.
 #[tauri::command]
@@ -300,4 +316,171 @@ pub fn cloudflare_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
 #[specta::specta]
 pub fn cloudflare_is_connected(state: State<'_, AppState>) -> bool {
     cloudflare::is_connected(&state.storage)
+}
+
+// ---------------------------------------------------------------------------
+// Xata
+// ---------------------------------------------------------------------------
+
+/// Validates and stores a Xata API key (encrypted on-device).
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_save_token(token: String, state: State<'_, AppState>) -> Result<(), Error> {
+    xata::save_token(&state.storage, token).await
+}
+
+/// Lists connectable Xata databases, flattened across the user's workspaces.
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_list_databases(state: State<'_, AppState>) -> Result<Vec<XataDatabase>, Error> {
+    xata::list_databases(&state.storage).await
+}
+
+/// Mints the Postgres connection string for a Xata database/branch, embedding
+/// the stored API key as the password so it never crosses to the UI.
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_build_connection_string(
+    workspace_id: String,
+    region: String,
+    database_name: String,
+    branch: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<String, Error> {
+    xata::build_connection_string(
+        &state.storage,
+        &workspace_id,
+        &region,
+        &database_name,
+        branch.as_deref(),
+    )
+    .await
+}
+
+/// The Xata account the stored key belongs to, so the UI can show which account
+/// is currently connected.
+#[tauri::command]
+#[specta::specta]
+pub async fn xata_account(state: State<'_, AppState>) -> Result<XataAccount, Error> {
+    xata::current_account(&state.storage).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn xata_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
+    xata::disconnect(&state.storage)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn xata_is_connected(state: State<'_, AppState>) -> bool {
+    xata::is_connected(&state.storage)
+}
+
+// ---------------------------------------------------------------------------
+// PlanetScale
+// ---------------------------------------------------------------------------
+
+/// Validates and stores a PlanetScale service token (encrypted on-device).
+#[tauri::command]
+#[specta::specta]
+pub async fn planetscale_save_token(
+    token: String,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    planetscale::save_token(&state.storage, token).await
+}
+
+/// The PlanetScale organizations the stored token can access, so the UI can show
+/// which account is currently connected.
+#[tauri::command]
+#[specta::specta]
+pub async fn planetscale_account(
+    state: State<'_, AppState>,
+) -> Result<Vec<PlanetscaleOrganization>, Error> {
+    planetscale::current_account(&state.storage).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn planetscale_list_databases(
+    organization: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<PlanetscaleDatabase>, Error> {
+    planetscale::list_databases(&state.storage, &organization).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn planetscale_list_branches(
+    organization: String,
+    database: String,
+    default_branch: String,
+    state: State<'_, AppState>,
+) -> Result<Vec<PlanetscaleBranch>, Error> {
+    planetscale::list_branches(&state.storage, &organization, &database, &default_branch).await
+}
+
+/// Mints a fresh MySQL password on a branch (PlanetScale returns the plaintext
+/// only at creation), so the connection needs no hand-copied secret.
+#[tauri::command]
+#[specta::specta]
+pub async fn planetscale_create_password(
+    organization: String,
+    database: String,
+    branch: String,
+    state: State<'_, AppState>,
+) -> Result<PlanetscalePassword, Error> {
+    planetscale::create_password(&state.storage, &organization, &database, &branch).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn planetscale_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
+    planetscale::disconnect(&state.storage)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn planetscale_is_connected(state: State<'_, AppState>) -> bool {
+    planetscale::is_connected(&state.storage)
+}
+
+// ---------------------------------------------------------------------------
+// Vercel
+// ---------------------------------------------------------------------------
+
+/// Validates and stores a Vercel access token (encrypted on-device).
+#[tauri::command]
+#[specta::specta]
+pub async fn vercel_save_token(token: String, state: State<'_, AppState>) -> Result<(), Error> {
+    vercel::save_token(&state.storage, token).await
+}
+
+/// Lists connectable Vercel Postgres stores (one per project), attaching a
+/// connection string when the API can read it.
+#[tauri::command]
+#[specta::specta]
+pub async fn vercel_list_stores(state: State<'_, AppState>) -> Result<Vec<VercelStore>, Error> {
+    vercel::list_stores(&state.storage).await
+}
+
+/// The Vercel account the stored token belongs to, so the UI can show which
+/// account is currently connected.
+#[tauri::command]
+#[specta::specta]
+pub async fn vercel_account(state: State<'_, AppState>) -> Result<VercelAccount, Error> {
+    vercel::current_account(&state.storage).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn vercel_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
+    vercel::disconnect(&state.storage)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn vercel_is_connected(state: State<'_, AppState>) -> bool {
+    vercel::is_connected(&state.storage)
 }

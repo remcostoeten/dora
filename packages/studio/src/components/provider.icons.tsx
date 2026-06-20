@@ -220,6 +220,69 @@ export function Neon(p: TProps) {
 	)
 }
 
+export function Xata(p: TProps) {
+	const b = baseSvg(p, 'Xata')
+	return (
+		<svg
+			height={b.h}
+			width={b.w}
+			role={b.role}
+			viewBox='0 0 24 24'
+			xmlns='http://www.w3.org/2000/svg'
+			className={b.cls}
+			style={b.sty}
+			focusable={b.focusable}
+			fill='currentColor'
+			{...b.rest}
+		>
+			<title>{b.ttl}</title>
+			<path d='M11.247 4.964a.997.997 0 0 0-.291-.704L7.46.763A1.001 1.001 0 0 0 5.746.05L1.59.054a1 1 0 0 0-.706 1.708l9.658 9.66a.5.5 0 0 0 .708 0 .997.997 0 0 0 .291-.704zm1.506 0a.997.997 0 0 1 .291-.704l3.497-3.497A1.001 1.001 0 0 1 18.254.05L22.41.054a1 1 0 0 1 .706 1.708l-9.658 9.66a.5.5 0 0 1-.708 0 .997.997 0 0 1-.291-.704zM11.247 13.04a.997.997 0 0 0-.291.704l.003 5.292a1 1 0 0 1-1.707.706L.884 11.59a1 1 0 0 1 .706-1.708l5.293.003a.997.997 0 0 1 .704.291l3.369 3.37a.5.5 0 0 1 0 .707zm1.506 0a.997.997 0 0 1 .291.704l-.003 5.292a1 1 0 0 0 1.707.706l8.362-8.152a1 1 0 0 0-.706-1.708l-5.293.003a.997.997 0 0 0-.704.291l-3.369 3.37a.5.5 0 0 0 0 .707z' />
+		</svg>
+	)
+}
+
+export function Planetscale(p: TProps) {
+	const b = baseSvg(p, 'PlanetScale')
+	return (
+		<svg
+			height={b.h}
+			width={b.w}
+			role={b.role}
+			viewBox='0 0 24 24'
+			xmlns='http://www.w3.org/2000/svg'
+			className={b.cls}
+			style={b.sty}
+			focusable={b.focusable}
+			fill='currentColor'
+			{...b.rest}
+		>
+			<title>{b.ttl}</title>
+			<path d='M12 0C5.373 0 0 5.373 0 12c0 5.084 3.163 9.43 7.63 11.18L13.62.81A11.964 11.964 0 0 0 12 0Zm3.474.828L8.382 23.51A12.002 12.002 0 0 0 24 12c0-5.514-3.72-10.16-8.526-11.172ZM12 6.857A5.143 5.143 0 0 0 6.857 12a5.12 5.12 0 0 0 1.357 3.476l4.6-8.6A5.16 5.16 0 0 0 12 6.857Z' />
+		</svg>
+	)
+}
+
+export function Vercel(p: TProps) {
+	const b = baseSvg(p, 'Vercel')
+	return (
+		<svg
+			height={b.h}
+			width={b.w}
+			role={b.role}
+			viewBox='0 0 24 24'
+			xmlns='http://www.w3.org/2000/svg'
+			className={b.cls}
+			style={b.sty}
+			focusable={b.focusable}
+			fill='currentColor'
+			{...b.rest}
+		>
+			<title>{b.ttl}</title>
+			<path d='M24 22.525H0l12-21.05 12 21.05z' />
+		</svg>
+	)
+}
+
 export const icons: TIcon = {
 	sqlite: Sqlite,
 	turso: Turso,

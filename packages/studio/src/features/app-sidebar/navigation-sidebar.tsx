@@ -1,4 +1,4 @@
-import { SquareTerminal, Table2, Container, Network, Settings } from 'lucide-react'
+import { SquareTerminal, Table2, Container, Network, Settings, GitCompare } from 'lucide-react'
 import { useCallback, useRef, KeyboardEvent } from 'react'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
@@ -43,6 +43,12 @@ function SidebarContent({ activeNavId, onNavSelect, databasePanelToggle }: Conte
 			label: 'Schema',
 			icon: Network,
 			onClick: () => onNavSelect?.('schema-visualizer')
+		},
+		{
+			id: 'orm-cockpit',
+			label: 'ORM Cockpit',
+			icon: GitCompare,
+			onClick: () => onNavSelect?.('orm-cockpit')
 		},
 		{
 			id: 'docker',

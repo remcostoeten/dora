@@ -1,7 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, ExternalLink, GitBranch, Loader2, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
+import {
+	Check,
+	ChevronLeft,
+	Copy,
+	ExternalLink,
+	GitBranch,
+	Loader2,
+	LogOut,
+	PlugZap,
+	RefreshCw,
+	Search
+} from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
-import type { NeonAccount, NeonDatabase } from '@studio/lib/bindings'
+import type {
+	PlanetscaleBranch,
+	PlanetscaleDatabase,
+	PlanetscaleOrganization
+} from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
@@ -10,14 +25,14 @@ import { cn } from '@studio/shared/utils/cn'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import type { Connection } from '../../connections/types'
 import {
-	createNeonConnectionUri,
-	disconnectNeon,
-	getNeonAccount,
-	isNeonConnected,
-	saveNeonToken
-} from './neon-api'
-import { useNeonDatabases } from './use-neon-databases'
-import { useNeonBranches } from './use-neon-branches'
+	createPlanetscalePassword,
+	disconnectPlanetscale,
+	getPlanetscaleAccount,
+	isPlanetscaleConnected,
+	listPlanetscaleBranches,
+	savePlanetscaleToken
+} from './planetscale-api'
+import { usePlanetscaleDatabases } from './use-planetscale-databases'
 import { useIsTauri } from '@studio/core/data-provider'
 import { DesktopOnlyNotice } from '@studio/core/platform'
 
@@ -25,47 +40,65 @@ type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
 }
 
-const TOKENS_URL = 'https://console.neon.tech/app/settings/api-keys'
+const TOKENS_URL = 'https://app.planetscale.com/settings/service-tokens'
 
-export function NeonConnectFlow({ onComplete }: Props) {
+// PlanetScale speaks the MySQL wire protocol and requires TLS. The MySQL adapter
+// (mysql_async) only enables TLS via `?require_ssl=true` — it rejects the
+// Postgres-style `sslmode=require`. So we build the URL with `require_ssl=true`
+// here and hand back a `url` rather than discrete fields (which the connection
+// mapper would otherwise turn into a broken `sslmode=require` URL).
+function buildMysqlUrl(args: {
+	host: string
+	user: string
+	password: string
+	database: string
+}): string {
+	const user = encodeURIComponent(args.user)
+	const password = encodeURIComponent(args.password)
+	const database = encodeURIComponent(args.database)
+	return `mysql://${user}:${password}@${args.host}:3306/${database}?require_ssl=true`
+}
+
+export function PlanetscaleConnectFlow({ onComplete }: Props) {
 	const isTauri = useIsTauri()
 
 	if (!isTauri) {
 		return (
 			<DesktopOnlyNotice
-				title='Neon lives in the desktop app'
-				description='Encrypted key storage and database discovery need the native app. Download Dora to connect your Neon databases.'
+				title='PlanetScale lives in the desktop app'
+				description='Encrypted token storage, database discovery, and password minting need the native app. Download Dora to connect your PlanetScale databases.'
 			/>
 		)
 	}
 
-	return <NeonConnectFlowInner onComplete={onComplete} />
+	return <PlanetscaleConnectFlowInner onComplete={onComplete} />
 }
 
-function NeonConnectFlowInner({ onComplete }: Props) {
+function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 	const [isConnected, setIsConnected] = useState(false)
-	const [account, setAccount] = useState<NeonAccount | null>(null)
+	const [organization, setOrganization] = useState<PlanetscaleOrganization | null>(null)
 	const [tokenInput, setTokenInput] = useState('')
 	const [isAuthorizing, setIsAuthorizing] = useState(false)
 	const [authError, setAuthError] = useState<string | null>(null)
 	const [query, setQuery] = useState('')
-	const [selected, setSelected] = useState<NeonDatabase | null>(null)
-	const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null)
+	const [selectedDatabase, setSelectedDatabase] = useState<PlanetscaleDatabase | null>(null)
+	const [branches, setBranches] = useState<PlanetscaleBranch[]>([])
+	const [isLoadingBranches, setIsLoadingBranches] = useState(false)
+	const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
 	const [isBuilding, setIsBuilding] = useState(false)
 	const [tokenUrlCopied, setTokenUrlCopied] = useState(false)
 	const tokenUrlCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	const { databases, isLoading, error, refresh, reset } = useNeonDatabases(isConnected)
-	// Only fetch branches once a database is picked — most connects never need
-	// the picker, so we don't pay the per-project call until it's relevant.
-	const { branches, isLoading: branchesLoading } = useNeonBranches(
-		selected?.projectId ?? null
+	const organizationName = organization?.name ?? null
+	const { databases, isLoading, error, refresh, reset } = usePlanetscaleDatabases(
+		isConnected,
+		organizationName
 	)
 
-	// Hydrate from a key stored in a previous session so a returning user lands
+	// Hydrate from a token stored in a previous session so a returning user lands
 	// straight on the database picker.
 	useEffect(function hydrateConnectionState() {
 		let cancelled = false
-		void isNeonConnected().then(function (connected) {
+		void isPlanetscaleConnected().then(function (connected) {
 			if (!cancelled) setIsConnected(connected)
 		})
 		return function () {
@@ -81,21 +114,21 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 		}
 	}, [])
 
-	// Resolve which account the stored key belongs to, so the user can confirm
-	// they're connected as the right one before picking a database.
+	// Resolve which organization the stored token belongs to, so the user can
+	// confirm they're connected as the right account before picking a database.
 	useEffect(
 		function loadAccount() {
 			if (!isConnected) {
-				setAccount(null)
+				setOrganization(null)
 				return
 			}
 			let cancelled = false
-			void getNeonAccount()
-				.then(function (resolved) {
-					if (!cancelled) setAccount(resolved)
+			void getPlanetscaleAccount()
+				.then(function (orgs) {
+					if (!cancelled) setOrganization(orgs[0] ?? null)
 				})
 				.catch(function () {
-					if (!cancelled) setAccount(null)
+					if (!cancelled) setOrganization(null)
 				})
 			return function () {
 				cancelled = true
@@ -106,11 +139,9 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 
 	const accountLabel = useMemo(
 		function deriveAccountLabel() {
-			if (!account) return null
-			const label = account.email?.trim() || account.name?.trim()
-			return label || null
+			return organization?.name?.trim() || null
 		},
-		[account]
+		[organization]
 	)
 
 	const filteredDatabases = useMemo(
@@ -118,47 +149,10 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			const normalizedQuery = query.trim().toLowerCase()
 			if (!normalizedQuery) return databases
 			return databases.filter(function (database) {
-				return (
-					database.databaseName.toLowerCase().includes(normalizedQuery) ||
-					database.projectName.toLowerCase().includes(normalizedQuery) ||
-					database.projectId.toLowerCase().includes(normalizedQuery)
-				)
+				return database.name.toLowerCase().includes(normalizedQuery)
 			})
 		},
 		[databases, query]
-	)
-
-	// Once a database is picked and its branches load, default the picker to the
-	// branch the database was discovered on (the project's primary), keeping any
-	// explicit choice the user already made for this same project.
-	useEffect(
-		function preselectBranch() {
-			if (!selected || branches.length === 0) {
-				setSelectedBranchId(null)
-				return
-			}
-			setSelectedBranchId(function (previous) {
-				if (previous && branches.some((branch) => branch.id === previous)) {
-					return previous
-				}
-				const fallback =
-					branches.find((branch) => branch.id === selected.branchId) ??
-					branches.find((branch) => branch.isDefault) ??
-					branches[0]
-				return fallback?.id ?? null
-			})
-		},
-		[selected, branches]
-	)
-
-	// The branch the connection will actually target, and whether it differs from
-	// the project's primary — used to label the connection and gate the picker.
-	const chosenBranch = useMemo(
-		function resolveChosenBranch() {
-			if (!selectedBranchId) return null
-			return branches.find((branch) => branch.id === selectedBranchId) ?? null
-		},
-		[branches, selectedBranchId]
 	)
 
 	async function handleConnect() {
@@ -167,10 +161,9 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 		setIsAuthorizing(true)
 		setAuthError(null)
 		try {
-			await saveNeonToken(token)
+			await savePlanetscaleToken(token)
 			setTokenInput('')
 			setIsConnected(true)
-			await refresh()
 		} catch (error) {
 			setAuthError(formatBackendError(error))
 		} finally {
@@ -180,29 +173,64 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 
 	async function handleDisconnect() {
 		try {
-			await disconnectNeon()
+			await disconnectPlanetscale()
 			setIsConnected(false)
-			setSelected(null)
-			setSelectedBranchId(null)
+			setOrganization(null)
+			setSelectedDatabase(null)
+			setSelectedBranch(null)
+			setBranches([])
 			setQuery('')
 			setTokenInput('')
 			reset()
-			toast('Neon disconnected', {
-				description: 'Stored Neon credentials were removed.'
+			toast('PlanetScale disconnected', {
+				description: 'Stored PlanetScale credentials were removed.'
 			})
 		} catch (error) {
 			setAuthError(formatBackendError(error))
 		}
 	}
 
+	async function handleSelectDatabase(database: PlanetscaleDatabase) {
+		if (!organizationName) return
+		setSelectedDatabase(database)
+		setSelectedBranch(null)
+		setBranches([])
+		setAuthError(null)
+		setIsLoadingBranches(true)
+		try {
+			const list = await listPlanetscaleBranches(
+				organizationName,
+				database.name,
+				database.defaultBranch
+			)
+			setBranches(list)
+			// Preselect the default branch so the common case is one click.
+			const preferred = list.find(function (branch) {
+				return branch.isDefault
+			})
+			setSelectedBranch(preferred?.name ?? list[0]?.name ?? null)
+		} catch (error) {
+			setAuthError(formatBackendError(error))
+		} finally {
+			setIsLoadingBranches(false)
+		}
+	}
+
+	function handleBackToDatabases() {
+		setSelectedDatabase(null)
+		setSelectedBranch(null)
+		setBranches([])
+		setAuthError(null)
+	}
+
 	async function handleGenerateToken() {
 		try {
 			await open(TOKENS_URL)
 		} catch (error) {
-			toast.error('Could not open Neon', {
+			toast.error('Could not open PlanetScale', {
 				description: 'Use Copy URL here and open it in your browser.'
 			})
-			console.error('Failed to open Neon API keys page:', error)
+			console.error('Failed to open PlanetScale service tokens page:', error)
 		}
 	}
 
@@ -220,28 +248,30 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			toast.error('Could not copy URL', {
 				description: TOKENS_URL
 			})
-			console.error('Failed to copy Neon API keys URL:', error)
+			console.error('Failed to copy PlanetScale service tokens URL:', error)
 		}
 	}
 
 	async function handleCreateConnection() {
-		if (!selected) return
+		if (!organizationName || !selectedDatabase || !selectedBranch) return
 		setIsBuilding(true)
 		setAuthError(null)
 		try {
-			const url = await createNeonConnectionUri(selected, selectedBranchId ?? undefined)
-			const baseName = selected.projectName || selected.databaseName
-			// Distinguish a non-primary branch on the connection list so
-			// `myapp · main` and `myapp · preview-123` don't look identical.
-			const name =
-				chosenBranch && !chosenBranch.isDefault
-					? `${baseName} · ${chosenBranch.name}`
-					: baseName
+			const credential = await createPlanetscalePassword(
+				organizationName,
+				selectedDatabase.name,
+				selectedBranch
+			)
+			const url = buildMysqlUrl({
+				host: credential.host,
+				user: credential.username,
+				password: credential.password,
+				database: selectedDatabase.name
+			})
 			onComplete({
-				name,
-				type: 'postgres',
+				name: `${selectedDatabase.name}/${selectedBranch}`,
+				type: 'mysql',
 				url,
-				poolerMode: true,
 				status: 'idle'
 			})
 		} catch (error) {
@@ -256,7 +286,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			<div className='flex items-start justify-between gap-3'>
 				<div>
 					<Label className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'>
-						Neon
+						PlanetScale
 					</Label>
 					{isConnected ? (
 						<p className='mt-1 flex items-center gap-1.5 text-xs text-muted-foreground/75'>
@@ -272,8 +302,8 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						</p>
 					) : (
 						<p className='mt-1 text-xs text-muted-foreground/75'>
-							Add an API key to pick a database — Dora builds the pooled connection
-							for you.
+							Add a service token to pick a database — Dora mints the MySQL
+							password for you.
 						</p>
 					)}
 				</div>
@@ -283,7 +313,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						variant='outline'
 						onClick={handleDisconnect}
 						className='gap-2 border-border/70'
-						title='Remove this Neon account connection so you can connect a different one'
+						title='Remove this PlanetScale account connection so you can connect a different one'
 					>
 						<LogOut className='h-3.5 w-3.5' />
 						Disconnect
@@ -300,8 +330,8 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			{!isConnected ? (
 				<div className='space-y-2'>
 					<div className='flex flex-wrap items-center justify-between gap-2'>
-						<Label htmlFor='neon-token' className='text-xs text-muted-foreground'>
-							API key
+						<Label htmlFor='planetscale-token' className='text-xs text-muted-foreground'>
+							Service token
 						</Label>
 						<div className='flex flex-wrap items-center justify-end gap-x-2 gap-y-1'>
 							<button
@@ -338,7 +368,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 					</div>
 					<div className='flex gap-2'>
 						<Input
-							id='neon-token'
+							id='planetscale-token'
 							type='password'
 							value={tokenInput}
 							onChange={function (event) {
@@ -350,7 +380,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 									void handleConnect()
 								}
 							}}
-							placeholder='napi_...'
+							placeholder='<token-id>:<token>'
 							autoComplete='off'
 							className='h-9 bg-background/70'
 						/>
@@ -369,8 +399,97 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						</Button>
 					</div>
 					<p className='text-xs text-muted-foreground/70'>
-						The key is validated, then encrypted and stored on this device only.
+						Create a service token with the read_databases, read_branch, and
+						create_password scopes. It is validated, then encrypted and stored on this
+						device only.
 					</p>
+				</div>
+			) : selectedDatabase ? (
+				<div className='min-h-0 space-y-4'>
+					<div className='flex items-center justify-between gap-2'>
+						<button
+							type='button'
+							onClick={handleBackToDatabases}
+							className='inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground'
+						>
+							<ChevronLeft className='h-3.5 w-3.5' />
+							Databases
+						</button>
+						<span className='truncate text-xs font-medium text-foreground'>
+							{selectedDatabase.name}
+						</span>
+					</div>
+
+					<div className='space-y-1.5'>
+						<Label className='text-xs text-muted-foreground'>Branch</Label>
+						<div className='max-h-[min(14rem,28vh)] space-y-2 overflow-y-auto pr-1'>
+							{isLoadingBranches ? (
+								<div className='flex items-center gap-2 py-3 text-sm text-muted-foreground'>
+									<Loader2 className='h-3.5 w-3.5 animate-spin' />
+									Loading branches
+								</div>
+							) : null}
+							{!isLoadingBranches && branches.length === 0 ? (
+								<p className='px-1 py-3 text-xs text-muted-foreground'>
+									No branches found for this database.
+								</p>
+							) : null}
+							{branches.map(function (branch) {
+								const isSelected = selectedBranch === branch.name
+								return (
+									<button
+										key={branch.name}
+										type='button'
+										onClick={function () {
+											setSelectedBranch(branch.name)
+											setAuthError(null)
+										}}
+										className={cn(
+											'flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors',
+											isSelected
+												? 'border-emerald-500/45 bg-emerald-500/10'
+												: 'border-border/60 bg-background/45 hover:border-border hover:bg-card/65'
+										)}
+									>
+										<GitBranch className='h-3.5 w-3.5 shrink-0 text-muted-foreground' />
+										<span className='min-w-0 flex-1'>
+											<span className='block truncate text-sm font-medium text-foreground'>
+												{branch.name}
+											</span>
+											<span className='block truncate text-xs text-muted-foreground'>
+												{branch.isDefault
+													? 'Default branch'
+													: branch.production
+														? 'Production'
+														: 'Development'}
+											</span>
+										</span>
+										{isSelected ? (
+											<Check className='h-4 w-4 text-emerald-500' />
+										) : null}
+									</button>
+								)
+							})}
+						</div>
+					</div>
+
+					{selectedBranch ? (
+						<div className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'>
+							<Button
+								type='button'
+								onClick={handleCreateConnection}
+								disabled={isBuilding}
+								className='gap-2'
+							>
+								{isBuilding ? (
+									<Loader2 className='h-3.5 w-3.5 animate-spin' />
+								) : (
+									<PlugZap className='h-3.5 w-3.5' />
+								)}
+								Create PlanetScale Connection
+							</Button>
+						</div>
+					) : null}
 				</div>
 			) : (
 				<div className='min-h-0 space-y-4'>
@@ -382,7 +501,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								onChange={function (event) {
 									setQuery(event.target.value)
 								}}
-								placeholder='Search Neon databases'
+								placeholder='Search PlanetScale databases'
 								className='h-9 bg-background/70 pl-9'
 							/>
 						</div>
@@ -394,7 +513,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							}}
 							disabled={isLoading}
 							className='h-9 shrink-0 gap-1.5 border-border/70 px-3'
-							title='Re-fetch databases from Neon'
+							title='Re-fetch databases from PlanetScale'
 						>
 							<RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
 							Refresh
@@ -416,105 +535,32 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						{!isLoading && !error && filteredDatabases.length === 0 ? (
 							<p className='px-1 py-3 text-xs text-muted-foreground'>
 								{databases.length === 0
-									? 'No Neon databases found for this account. Create one in the Neon console, then Refresh.'
+									? 'No PlanetScale databases found for this account. Create one in the PlanetScale dashboard, then Refresh.'
 									: 'No databases match your search.'}
 							</p>
 						) : null}
 						{filteredDatabases.map(function (database) {
-							const isSelected =
-								selected?.projectId === database.projectId &&
-								selected?.databaseName === database.databaseName
 							return (
 								<button
-									key={`${database.projectId}/${database.databaseName}`}
+									key={database.name}
 									type='button'
 									onClick={function () {
-										setSelected(database)
-										setSelectedBranchId(null)
-										setAuthError(null)
+										void handleSelectDatabase(database)
 									}}
-									className={cn(
-										'flex w-full items-center gap-3 border px-3 py-2.5 text-left transition-colors',
-										isSelected
-											? 'border-emerald-500/45 bg-emerald-500/10'
-											: 'border-border/60 bg-background/45 hover:border-border hover:bg-card/65'
-									)}
+									className='flex w-full items-center gap-3 border border-border/60 bg-background/45 px-3 py-2.5 text-left transition-colors hover:border-border hover:bg-card/65'
 								>
 									<span className='min-w-0 flex-1'>
 										<span className='block truncate text-sm font-medium text-foreground'>
-											{database.databaseName}
+											{database.name}
 										</span>
 										<span className='block truncate text-xs text-muted-foreground'>
-											{database.projectName || database.projectId}
+											Default branch: {database.defaultBranch || 'unknown'}
 										</span>
 									</span>
-									{isSelected ? (
-										<Check className='h-4 w-4 text-emerald-500' />
-									) : null}
 								</button>
 							)
 						})}
 					</div>
-
-					{selected && branches.length > 1 ? (
-						<div className='space-y-2'>
-							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-								<GitBranch className='h-3.5 w-3.5' />
-								<span>Branch</span>
-								{branchesLoading ? (
-									<Loader2 className='h-3 w-3 animate-spin' />
-								) : null}
-							</div>
-							<div className='flex flex-wrap gap-2'>
-								{branches.map(function (branch) {
-									const isActive = branch.id === selectedBranchId
-									return (
-										<button
-											key={branch.id}
-											type='button'
-											onClick={function () {
-												setSelectedBranchId(branch.id)
-											}}
-											className={cn(
-												'inline-flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors',
-												isActive
-													? 'border-emerald-500/45 bg-emerald-500/10 text-foreground'
-													: 'border-border/60 bg-background/45 text-muted-foreground hover:border-border hover:bg-card/65'
-											)}
-										>
-											<span className='truncate max-w-[12rem]'>{branch.name}</span>
-											{branch.isDefault ? (
-												<span className='text-[0.65rem] uppercase tracking-wide text-muted-foreground/70'>
-													primary
-												</span>
-											) : null}
-										</button>
-									)
-								})}
-							</div>
-						</div>
-					) : null}
-
-					{selected ? (
-						<div
-							data-neon-action-bar
-							className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'
-						>
-							<Button
-								type='button'
-								onClick={handleCreateConnection}
-								disabled={isBuilding}
-								className='gap-2'
-							>
-								{isBuilding ? (
-									<Loader2 className='h-3.5 w-3.5 animate-spin' />
-								) : (
-									<PlugZap className='h-3.5 w-3.5' />
-								)}
-								Create Neon Connection
-							</Button>
-						</div>
-					) : null}
 				</div>
 			)}
 		</div>

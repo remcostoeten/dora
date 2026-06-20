@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, ExternalLink, GitBranch, Loader2, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
+import { Check, Copy, ExternalLink, Loader2, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
-import type { NeonAccount, NeonDatabase } from '@studio/lib/bindings'
+import type { VercelAccount, VercelStore } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
@@ -10,14 +10,12 @@ import { cn } from '@studio/shared/utils/cn'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import type { Connection } from '../../connections/types'
 import {
-	createNeonConnectionUri,
-	disconnectNeon,
-	getNeonAccount,
-	isNeonConnected,
-	saveNeonToken
-} from './neon-api'
-import { useNeonDatabases } from './use-neon-databases'
-import { useNeonBranches } from './use-neon-branches'
+	disconnectVercel,
+	getVercelAccount,
+	isVercelConnected,
+	saveVercelToken
+} from './vercel-api'
+import { useVercelStores } from './use-vercel-stores'
 import { useIsTauri } from '@studio/core/data-provider'
 import { DesktopOnlyNotice } from '@studio/core/platform'
 
@@ -25,47 +23,49 @@ type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
 }
 
-const TOKENS_URL = 'https://console.neon.tech/app/settings/api-keys'
+const TOKENS_URL = 'https://vercel.com/account/settings/tokens'
 
-export function NeonConnectFlow({ onComplete }: Props) {
+export function VercelConnectFlow({ onComplete }: Props) {
 	const isTauri = useIsTauri()
 
 	if (!isTauri) {
 		return (
 			<DesktopOnlyNotice
-				title='Neon lives in the desktop app'
-				description='Encrypted key storage and database discovery need the native app. Download Dora to connect your Neon databases.'
+				title='Vercel lives in the desktop app'
+				description='Encrypted token storage and store discovery need the native app. Download Dora to connect your Vercel Postgres databases.'
 			/>
 		)
 	}
 
-	return <NeonConnectFlowInner onComplete={onComplete} />
+	return <VercelConnectFlowInner onComplete={onComplete} />
 }
 
-function NeonConnectFlowInner({ onComplete }: Props) {
+function storeKey(store: VercelStore) {
+	return store.projectId
+}
+
+function VercelConnectFlowInner({ onComplete }: Props) {
 	const [isConnected, setIsConnected] = useState(false)
-	const [account, setAccount] = useState<NeonAccount | null>(null)
+	const [account, setAccount] = useState<VercelAccount | null>(null)
 	const [tokenInput, setTokenInput] = useState('')
 	const [isAuthorizing, setIsAuthorizing] = useState(false)
 	const [authError, setAuthError] = useState<string | null>(null)
 	const [query, setQuery] = useState('')
-	const [selected, setSelected] = useState<NeonDatabase | null>(null)
-	const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null)
+	const [selected, setSelected] = useState<VercelStore | null>(null)
+	// For stores whose connection string the API couldn't read (e.g. a sensitive
+	// env var), the user pastes the POSTGRES_URL here. Reset whenever the
+	// selection changes so a pasted URL never leaks onto the wrong store.
+	const [pastedUrl, setPastedUrl] = useState('')
 	const [isBuilding, setIsBuilding] = useState(false)
 	const [tokenUrlCopied, setTokenUrlCopied] = useState(false)
 	const tokenUrlCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	const { databases, isLoading, error, refresh, reset } = useNeonDatabases(isConnected)
-	// Only fetch branches once a database is picked — most connects never need
-	// the picker, so we don't pay the per-project call until it's relevant.
-	const { branches, isLoading: branchesLoading } = useNeonBranches(
-		selected?.projectId ?? null
-	)
+	const { stores, isLoading, error, refresh, reset } = useVercelStores(isConnected)
 
-	// Hydrate from a key stored in a previous session so a returning user lands
-	// straight on the database picker.
+	// Hydrate from a token stored in a previous session so a returning user lands
+	// straight on the store picker.
 	useEffect(function hydrateConnectionState() {
 		let cancelled = false
-		void isNeonConnected().then(function (connected) {
+		void isVercelConnected().then(function (connected) {
 			if (!cancelled) setIsConnected(connected)
 		})
 		return function () {
@@ -81,8 +81,8 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 		}
 	}, [])
 
-	// Resolve which account the stored key belongs to, so the user can confirm
-	// they're connected as the right one before picking a database.
+	// Resolve which account the stored token belongs to, so the user can confirm
+	// they're connected as the right one before picking a store.
 	useEffect(
 		function loadAccount() {
 			if (!isConnected) {
@@ -90,7 +90,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 				return
 			}
 			let cancelled = false
-			void getNeonAccount()
+			void getVercelAccount()
 				.then(function (resolved) {
 					if (!cancelled) setAccount(resolved)
 				})
@@ -107,59 +107,29 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 	const accountLabel = useMemo(
 		function deriveAccountLabel() {
 			if (!account) return null
-			const label = account.email?.trim() || account.name?.trim()
+			const label = account.username?.trim() || account.email?.trim() || account.name?.trim()
 			return label || null
 		},
 		[account]
 	)
 
-	const filteredDatabases = useMemo(
-		function filterDatabases() {
+	const filteredStores = useMemo(
+		function filterStores() {
 			const normalizedQuery = query.trim().toLowerCase()
-			if (!normalizedQuery) return databases
-			return databases.filter(function (database) {
+			if (!normalizedQuery) return stores
+			return stores.filter(function (store) {
 				return (
-					database.databaseName.toLowerCase().includes(normalizedQuery) ||
-					database.projectName.toLowerCase().includes(normalizedQuery) ||
-					database.projectId.toLowerCase().includes(normalizedQuery)
+					store.projectName.toLowerCase().includes(normalizedQuery) ||
+					store.projectId.toLowerCase().includes(normalizedQuery)
 				)
 			})
 		},
-		[databases, query]
+		[stores, query]
 	)
 
-	// Once a database is picked and its branches load, default the picker to the
-	// branch the database was discovered on (the project's primary), keeping any
-	// explicit choice the user already made for this same project.
-	useEffect(
-		function preselectBranch() {
-			if (!selected || branches.length === 0) {
-				setSelectedBranchId(null)
-				return
-			}
-			setSelectedBranchId(function (previous) {
-				if (previous && branches.some((branch) => branch.id === previous)) {
-					return previous
-				}
-				const fallback =
-					branches.find((branch) => branch.id === selected.branchId) ??
-					branches.find((branch) => branch.isDefault) ??
-					branches[0]
-				return fallback?.id ?? null
-			})
-		},
-		[selected, branches]
-	)
-
-	// The branch the connection will actually target, and whether it differs from
-	// the project's primary — used to label the connection and gate the picker.
-	const chosenBranch = useMemo(
-		function resolveChosenBranch() {
-			if (!selectedBranchId) return null
-			return branches.find((branch) => branch.id === selectedBranchId) ?? null
-		},
-		[branches, selectedBranchId]
-	)
+	// Whether the selected store needs a manually pasted connection string (the
+	// API couldn't read one for it).
+	const needsManualUrl = !!selected && !selected.connectionString
 
 	async function handleConnect() {
 		const token = tokenInput.trim()
@@ -167,7 +137,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 		setIsAuthorizing(true)
 		setAuthError(null)
 		try {
-			await saveNeonToken(token)
+			await saveVercelToken(token)
 			setTokenInput('')
 			setIsConnected(true)
 			await refresh()
@@ -180,15 +150,15 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 
 	async function handleDisconnect() {
 		try {
-			await disconnectNeon()
+			await disconnectVercel()
 			setIsConnected(false)
 			setSelected(null)
-			setSelectedBranchId(null)
+			setPastedUrl('')
 			setQuery('')
 			setTokenInput('')
 			reset()
-			toast('Neon disconnected', {
-				description: 'Stored Neon credentials were removed.'
+			toast('Vercel disconnected', {
+				description: 'Stored Vercel credentials were removed.'
 			})
 		} catch (error) {
 			setAuthError(formatBackendError(error))
@@ -199,10 +169,10 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 		try {
 			await open(TOKENS_URL)
 		} catch (error) {
-			toast.error('Could not open Neon', {
+			toast.error('Could not open Vercel', {
 				description: 'Use Copy URL here and open it in your browser.'
 			})
-			console.error('Failed to open Neon API keys page:', error)
+			console.error('Failed to open Vercel tokens page:', error)
 		}
 	}
 
@@ -220,28 +190,25 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			toast.error('Could not copy URL', {
 				description: TOKENS_URL
 			})
-			console.error('Failed to copy Neon API keys URL:', error)
+			console.error('Failed to copy Vercel tokens URL:', error)
 		}
 	}
 
-	async function handleCreateConnection() {
+	function handleCreateConnection() {
 		if (!selected) return
+		const url = selected.connectionString ?? pastedUrl.trim()
+		if (!url) {
+			setAuthError('Paste the POSTGRES_URL for this store to continue.')
+			return
+		}
 		setIsBuilding(true)
 		setAuthError(null)
 		try {
-			const url = await createNeonConnectionUri(selected, selectedBranchId ?? undefined)
-			const baseName = selected.projectName || selected.databaseName
-			// Distinguish a non-primary branch on the connection list so
-			// `myapp · main` and `myapp · preview-123` don't look identical.
-			const name =
-				chosenBranch && !chosenBranch.isDefault
-					? `${baseName} · ${chosenBranch.name}`
-					: baseName
 			onComplete({
-				name,
+				name: selected.projectName || selected.projectId,
 				type: 'postgres',
 				url,
-				poolerMode: true,
+				poolerMode: url.includes('pooler') || url.includes('pgbouncer=true'),
 				status: 'idle'
 			})
 		} catch (error) {
@@ -256,7 +223,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			<div className='flex items-start justify-between gap-3'>
 				<div>
 					<Label className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'>
-						Neon
+						Vercel Postgres
 					</Label>
 					{isConnected ? (
 						<p className='mt-1 flex items-center gap-1.5 text-xs text-muted-foreground/75'>
@@ -272,8 +239,8 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						</p>
 					) : (
 						<p className='mt-1 text-xs text-muted-foreground/75'>
-							Add an API key to pick a database — Dora builds the pooled connection
-							for you.
+							Add an access token to pick a store — Dora reads its connection string
+							when it can.
 						</p>
 					)}
 				</div>
@@ -283,7 +250,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						variant='outline'
 						onClick={handleDisconnect}
 						className='gap-2 border-border/70'
-						title='Remove this Neon account connection so you can connect a different one'
+						title='Remove this Vercel account connection so you can connect a different one'
 					>
 						<LogOut className='h-3.5 w-3.5' />
 						Disconnect
@@ -300,8 +267,8 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			{!isConnected ? (
 				<div className='space-y-2'>
 					<div className='flex flex-wrap items-center justify-between gap-2'>
-						<Label htmlFor='neon-token' className='text-xs text-muted-foreground'>
-							API key
+						<Label htmlFor='vercel-token' className='text-xs text-muted-foreground'>
+							Access token
 						</Label>
 						<div className='flex flex-wrap items-center justify-end gap-x-2 gap-y-1'>
 							<button
@@ -338,7 +305,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 					</div>
 					<div className='flex gap-2'>
 						<Input
-							id='neon-token'
+							id='vercel-token'
 							type='password'
 							value={tokenInput}
 							onChange={function (event) {
@@ -350,7 +317,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 									void handleConnect()
 								}
 							}}
-							placeholder='napi_...'
+							placeholder='Vercel access token'
 							autoComplete='off'
 							className='h-9 bg-background/70'
 						/>
@@ -369,7 +336,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						</Button>
 					</div>
 					<p className='text-xs text-muted-foreground/70'>
-						The key is validated, then encrypted and stored on this device only.
+						The token is validated, then encrypted and stored on this device only.
 					</p>
 				</div>
 			) : (
@@ -382,7 +349,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								onChange={function (event) {
 									setQuery(event.target.value)
 								}}
-								placeholder='Search Neon databases'
+								placeholder='Search Vercel projects'
 								className='h-9 bg-background/70 pl-9'
 							/>
 						</div>
@@ -394,7 +361,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							}}
 							disabled={isLoading}
 							className='h-9 shrink-0 gap-1.5 border-border/70 px-3'
-							title='Re-fetch databases from Neon'
+							title='Re-fetch stores from Vercel'
 						>
 							<RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
 							Refresh
@@ -405,7 +372,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						{isLoading ? (
 							<div className='flex items-center gap-2 py-3 text-sm text-muted-foreground'>
 								<Loader2 className='h-3.5 w-3.5 animate-spin' />
-								Loading databases
+								Loading stores
 							</div>
 						) : null}
 						{error ? (
@@ -413,24 +380,22 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								{error}
 							</p>
 						) : null}
-						{!isLoading && !error && filteredDatabases.length === 0 ? (
+						{!isLoading && !error && filteredStores.length === 0 ? (
 							<p className='px-1 py-3 text-xs text-muted-foreground'>
-								{databases.length === 0
-									? 'No Neon databases found for this account. Create one in the Neon console, then Refresh.'
-									: 'No databases match your search.'}
+								{stores.length === 0
+									? 'No Vercel projects found for this account. Add a Postgres store in the Vercel dashboard, then Refresh.'
+									: 'No projects match your search.'}
 							</p>
 						) : null}
-						{filteredDatabases.map(function (database) {
-							const isSelected =
-								selected?.projectId === database.projectId &&
-								selected?.databaseName === database.databaseName
+						{filteredStores.map(function (store) {
+							const isSelected = selected?.projectId === store.projectId
 							return (
 								<button
-									key={`${database.projectId}/${database.databaseName}`}
+									key={storeKey(store)}
 									type='button'
 									onClick={function () {
-										setSelected(database)
-										setSelectedBranchId(null)
+										setSelected(store)
+										setPastedUrl('')
 										setAuthError(null)
 									}}
 									className={cn(
@@ -442,10 +407,12 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								>
 									<span className='min-w-0 flex-1'>
 										<span className='block truncate text-sm font-medium text-foreground'>
-											{database.databaseName}
+											{store.projectName || store.projectId}
 										</span>
 										<span className='block truncate text-xs text-muted-foreground'>
-											{database.projectName || database.projectId}
+											{store.connectionString
+												? `Connection ready · ${store.envKey ?? 'POSTGRES_URL'}`
+												: 'Paste connection string to connect'}
 										</span>
 									</span>
 									{isSelected ? (
@@ -456,54 +423,48 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						})}
 					</div>
 
-					{selected && branches.length > 1 ? (
-						<div className='space-y-2'>
-							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-								<GitBranch className='h-3.5 w-3.5' />
-								<span>Branch</span>
-								{branchesLoading ? (
-									<Loader2 className='h-3 w-3 animate-spin' />
-								) : null}
-							</div>
-							<div className='flex flex-wrap gap-2'>
-								{branches.map(function (branch) {
-									const isActive = branch.id === selectedBranchId
-									return (
-										<button
-											key={branch.id}
-											type='button'
-											onClick={function () {
-												setSelectedBranchId(branch.id)
-											}}
-											className={cn(
-												'inline-flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors',
-												isActive
-													? 'border-emerald-500/45 bg-emerald-500/10 text-foreground'
-													: 'border-border/60 bg-background/45 text-muted-foreground hover:border-border hover:bg-card/65'
-											)}
-										>
-											<span className='truncate max-w-[12rem]'>{branch.name}</span>
-											{branch.isDefault ? (
-												<span className='text-[0.65rem] uppercase tracking-wide text-muted-foreground/70'>
-													primary
-												</span>
-											) : null}
-										</button>
-									)
-								})}
-							</div>
-						</div>
-					) : null}
-
 					{selected ? (
 						<div
-							data-neon-action-bar
-							className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'
+							data-vercel-action-bar
+							className='sticky bottom-0 z-10 -mx-4 -mb-4 space-y-3 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'
 						>
+							{needsManualUrl ? (
+								<div className='space-y-1.5'>
+									<Label
+										htmlFor='vercel-postgres-url'
+										className='text-xs text-muted-foreground'
+									>
+										POSTGRES_URL
+									</Label>
+									<Input
+										id='vercel-postgres-url'
+										type='password'
+										value={pastedUrl}
+										onChange={function (event) {
+											setPastedUrl(event.target.value)
+											setAuthError(null)
+										}}
+										onKeyDown={function (event) {
+											if (event.key === 'Enter') {
+												event.preventDefault()
+												handleCreateConnection()
+											}
+										}}
+										placeholder='postgres://...'
+										autoComplete='off'
+										className='h-9 bg-background/70'
+									/>
+									<p className='text-[11px] text-muted-foreground/70'>
+										Vercel marks this store&apos;s connection string as sensitive,
+										so it can&apos;t be read via the API. Copy POSTGRES_URL from
+										the store&apos;s settings and paste it here.
+									</p>
+								</div>
+							) : null}
 							<Button
 								type='button'
 								onClick={handleCreateConnection}
-								disabled={isBuilding}
+								disabled={isBuilding || (needsManualUrl && !pastedUrl.trim())}
 								className='gap-2'
 							>
 								{isBuilding ? (
@@ -511,7 +472,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								) : (
 									<PlugZap className='h-3.5 w-3.5' />
 								)}
-								Create Neon Connection
+								Create Vercel Connection
 							</Button>
 						</div>
 					) : null}

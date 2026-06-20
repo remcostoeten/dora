@@ -130,6 +130,71 @@ pub async fn probe_database_file(path: String) -> Result<DatabaseFileKind, Error
     Ok(probe_database_file_header(&header[..read]))
 }
 
+/// Open a folder picker and return the chosen directory path. Used by the ORM
+/// cockpit to let the user link a project folder.
+#[tauri::command]
+#[specta::specta]
+pub async fn pick_folder(app: tauri::AppHandle) -> Result<Option<String>, Error> {
+    let chosen = run_dialog(app, || {
+        AsyncFileDialog::new()
+            .set_title("Select a project folder")
+            .pick_folder()
+    })
+    .await?
+    .map(|folder| folder.path().to_string_lossy().to_string());
+
+    Ok(chosen)
+}
+
+/// Largest project file we'll read into memory for schema parsing. A
+/// mistargeted path (e.g. a build artifact) shouldn't load something huge.
+const MAX_PROJECT_FILE_BYTES: u64 = 2 * 1024 * 1024;
+
+/// Read a project schema/config file (Drizzle `.ts`, Prisma `.prisma`, …) as
+/// UTF-8 text, size-capped. Feeds the ORM detection + parsers.
+#[tauri::command]
+#[specta::specta]
+pub async fn read_project_file(path: String) -> Result<String, Error> {
+    let metadata = tokio::fs::metadata(&path)
+        .await
+        .with_context(|| format!("Failed to stat file: {path}"))?;
+    if !metadata.is_file() {
+        return Err(Error::Any(anyhow::anyhow!("Not a file: {path}")));
+    }
+    if metadata.len() > MAX_PROJECT_FILE_BYTES {
+        return Err(Error::Any(anyhow::anyhow!(
+            "File too large to read ({} bytes): {path}",
+            metadata.len()
+        )));
+    }
+    tokio::fs::read_to_string(&path)
+        .await
+        .with_context(|| format!("Failed to read file: {path}"))
+        .map_err(Error::from)
+}
+
+/// Shallowly list a directory's entries as absolute paths. ORM detection in TS
+/// filters these by extension / known names (e.g. a multi-file Drizzle
+/// `schema/` dir or Prisma `prisma/schema/` dir).
+#[tauri::command]
+#[specta::specta]
+pub async fn list_dir(path: String) -> Result<Vec<String>, Error> {
+    let mut entries = tokio::fs::read_dir(&path)
+        .await
+        .with_context(|| format!("Failed to read directory: {path}"))?;
+
+    let mut paths = Vec::new();
+    while let Some(entry) = entries
+        .next_entry()
+        .await
+        .with_context(|| format!("Failed to read directory entry in: {path}"))?
+    {
+        paths.push(entry.path().to_string_lossy().to_string());
+    }
+
+    Ok(paths)
+}
+
 async fn run_dialog<F, Fut, T>(app: tauri::AppHandle, make_future: F) -> Result<Option<T>, Error>
 where
     F: FnOnce() -> Fut + Send + 'static,

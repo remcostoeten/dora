@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Copy, ExternalLink, GitBranch, Loader2, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
+import { Check, Copy, ExternalLink, Loader2, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
 import { open } from '@tauri-apps/plugin-shell'
-import type { NeonAccount, NeonDatabase } from '@studio/lib/bindings'
+import type { XataAccount, XataDatabase } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
@@ -10,14 +10,13 @@ import { cn } from '@studio/shared/utils/cn'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import type { Connection } from '../../connections/types'
 import {
-	createNeonConnectionUri,
-	disconnectNeon,
-	getNeonAccount,
-	isNeonConnected,
-	saveNeonToken
-} from './neon-api'
-import { useNeonDatabases } from './use-neon-databases'
-import { useNeonBranches } from './use-neon-branches'
+	buildXataConnectionString,
+	disconnectXata,
+	getXataAccount,
+	isXataConnected,
+	saveXataToken
+} from './xata-api'
+import { useXataDatabases } from './use-xata-databases'
 import { useIsTauri } from '@studio/core/data-provider'
 import { DesktopOnlyNotice } from '@studio/core/platform'
 
@@ -25,47 +24,45 @@ type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
 }
 
-const TOKENS_URL = 'https://console.neon.tech/app/settings/api-keys'
+const TOKENS_URL = 'https://app.xata.io/settings'
 
-export function NeonConnectFlow({ onComplete }: Props) {
+export function XataConnectFlow({ onComplete }: Props) {
 	const isTauri = useIsTauri()
 
 	if (!isTauri) {
 		return (
 			<DesktopOnlyNotice
-				title='Neon lives in the desktop app'
-				description='Encrypted key storage and database discovery need the native app. Download Dora to connect your Neon databases.'
+				title='Xata lives in the desktop app'
+				description='Encrypted key storage and database discovery need the native app. Download Dora to connect your Xata Postgres databases.'
 			/>
 		)
 	}
 
-	return <NeonConnectFlowInner onComplete={onComplete} />
+	return <XataConnectFlowInner onComplete={onComplete} />
 }
 
-function NeonConnectFlowInner({ onComplete }: Props) {
+function databaseKey(database: XataDatabase) {
+	return `${database.workspaceId}/${database.databaseName}`
+}
+
+function XataConnectFlowInner({ onComplete }: Props) {
 	const [isConnected, setIsConnected] = useState(false)
-	const [account, setAccount] = useState<NeonAccount | null>(null)
+	const [account, setAccount] = useState<XataAccount | null>(null)
 	const [tokenInput, setTokenInput] = useState('')
 	const [isAuthorizing, setIsAuthorizing] = useState(false)
 	const [authError, setAuthError] = useState<string | null>(null)
 	const [query, setQuery] = useState('')
-	const [selected, setSelected] = useState<NeonDatabase | null>(null)
-	const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null)
+	const [selected, setSelected] = useState<XataDatabase | null>(null)
 	const [isBuilding, setIsBuilding] = useState(false)
 	const [tokenUrlCopied, setTokenUrlCopied] = useState(false)
 	const tokenUrlCopyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	const { databases, isLoading, error, refresh, reset } = useNeonDatabases(isConnected)
-	// Only fetch branches once a database is picked — most connects never need
-	// the picker, so we don't pay the per-project call until it's relevant.
-	const { branches, isLoading: branchesLoading } = useNeonBranches(
-		selected?.projectId ?? null
-	)
+	const { databases, isLoading, error, refresh, reset } = useXataDatabases(isConnected)
 
 	// Hydrate from a key stored in a previous session so a returning user lands
 	// straight on the database picker.
 	useEffect(function hydrateConnectionState() {
 		let cancelled = false
-		void isNeonConnected().then(function (connected) {
+		void isXataConnected().then(function (connected) {
 			if (!cancelled) setIsConnected(connected)
 		})
 		return function () {
@@ -90,7 +87,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 				return
 			}
 			let cancelled = false
-			void getNeonAccount()
+			void getXataAccount()
 				.then(function (resolved) {
 					if (!cancelled) setAccount(resolved)
 				})
@@ -107,7 +104,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 	const accountLabel = useMemo(
 		function deriveAccountLabel() {
 			if (!account) return null
-			const label = account.email?.trim() || account.name?.trim()
+			const label = account.fullname?.trim() || account.email?.trim()
 			return label || null
 		},
 		[account]
@@ -120,46 +117,17 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			return databases.filter(function (database) {
 				return (
 					database.databaseName.toLowerCase().includes(normalizedQuery) ||
-					database.projectName.toLowerCase().includes(normalizedQuery) ||
-					database.projectId.toLowerCase().includes(normalizedQuery)
+					database.workspaceName.toLowerCase().includes(normalizedQuery) ||
+					database.region.toLowerCase().includes(normalizedQuery)
 				)
 			})
 		},
 		[databases, query]
 	)
 
-	// Once a database is picked and its branches load, default the picker to the
-	// branch the database was discovered on (the project's primary), keeping any
-	// explicit choice the user already made for this same project.
-	useEffect(
-		function preselectBranch() {
-			if (!selected || branches.length === 0) {
-				setSelectedBranchId(null)
-				return
-			}
-			setSelectedBranchId(function (previous) {
-				if (previous && branches.some((branch) => branch.id === previous)) {
-					return previous
-				}
-				const fallback =
-					branches.find((branch) => branch.id === selected.branchId) ??
-					branches.find((branch) => branch.isDefault) ??
-					branches[0]
-				return fallback?.id ?? null
-			})
-		},
-		[selected, branches]
-	)
-
-	// The branch the connection will actually target, and whether it differs from
-	// the project's primary — used to label the connection and gate the picker.
-	const chosenBranch = useMemo(
-		function resolveChosenBranch() {
-			if (!selectedBranchId) return null
-			return branches.find((branch) => branch.id === selectedBranchId) ?? null
-		},
-		[branches, selectedBranchId]
-	)
+	// The selected database can't be connected over Postgres unless Xata reports
+	// it as `postgresEnabled`.
+	const selectedUnreachable = !!selected && !selected.postgresEnabled
 
 	async function handleConnect() {
 		const token = tokenInput.trim()
@@ -167,7 +135,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 		setIsAuthorizing(true)
 		setAuthError(null)
 		try {
-			await saveNeonToken(token)
+			await saveXataToken(token)
 			setTokenInput('')
 			setIsConnected(true)
 			await refresh()
@@ -180,15 +148,14 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 
 	async function handleDisconnect() {
 		try {
-			await disconnectNeon()
+			await disconnectXata()
 			setIsConnected(false)
 			setSelected(null)
-			setSelectedBranchId(null)
 			setQuery('')
 			setTokenInput('')
 			reset()
-			toast('Neon disconnected', {
-				description: 'Stored Neon credentials were removed.'
+			toast('Xata disconnected', {
+				description: 'Stored Xata credentials were removed.'
 			})
 		} catch (error) {
 			setAuthError(formatBackendError(error))
@@ -199,10 +166,10 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 		try {
 			await open(TOKENS_URL)
 		} catch (error) {
-			toast.error('Could not open Neon', {
+			toast.error('Could not open Xata', {
 				description: 'Use Copy URL here and open it in your browser.'
 			})
-			console.error('Failed to open Neon API keys page:', error)
+			console.error('Failed to open Xata settings page:', error)
 		}
 	}
 
@@ -220,28 +187,35 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			toast.error('Could not copy URL', {
 				description: TOKENS_URL
 			})
-			console.error('Failed to copy Neon API keys URL:', error)
+			console.error('Failed to copy Xata settings URL:', error)
 		}
 	}
 
 	async function handleCreateConnection() {
 		if (!selected) return
+		if (selectedUnreachable) {
+			setAuthError(
+				'This database isn’t reachable over Postgres. Enable the Postgres endpoint for it in the Xata dashboard, then Refresh.'
+			)
+			return
+		}
 		setIsBuilding(true)
 		setAuthError(null)
 		try {
-			const url = await createNeonConnectionUri(selected, selectedBranchId ?? undefined)
-			const baseName = selected.projectName || selected.databaseName
-			// Distinguish a non-primary branch on the connection list so
-			// `myapp · main` and `myapp · preview-123` don't look identical.
-			const name =
-				chosenBranch && !chosenBranch.isDefault
-					? `${baseName} · ${chosenBranch.name}`
-					: baseName
+			// The connection string is minted on-device — the API key stays in the
+			// backend and is embedded as the Postgres password there. Branch defaults
+			// to `main` (passed as null).
+			const url = await buildXataConnectionString(
+				selected.workspaceId,
+				selected.region,
+				selected.databaseName,
+				null
+			)
 			onComplete({
-				name,
+				name: selected.databaseName || selected.workspaceName,
 				type: 'postgres',
 				url,
-				poolerMode: true,
+				ssl: true,
 				status: 'idle'
 			})
 		} catch (error) {
@@ -256,7 +230,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			<div className='flex items-start justify-between gap-3'>
 				<div>
 					<Label className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'>
-						Neon
+						Xata
 					</Label>
 					{isConnected ? (
 						<p className='mt-1 flex items-center gap-1.5 text-xs text-muted-foreground/75'>
@@ -272,8 +246,8 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						</p>
 					) : (
 						<p className='mt-1 text-xs text-muted-foreground/75'>
-							Add an API key to pick a database — Dora builds the pooled connection
-							for you.
+							Add an API key to pick a database — Dora mints its Postgres connection
+							string for you.
 						</p>
 					)}
 				</div>
@@ -283,7 +257,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						variant='outline'
 						onClick={handleDisconnect}
 						className='gap-2 border-border/70'
-						title='Remove this Neon account connection so you can connect a different one'
+						title='Remove this Xata account connection so you can connect a different one'
 					>
 						<LogOut className='h-3.5 w-3.5' />
 						Disconnect
@@ -300,7 +274,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			{!isConnected ? (
 				<div className='space-y-2'>
 					<div className='flex flex-wrap items-center justify-between gap-2'>
-						<Label htmlFor='neon-token' className='text-xs text-muted-foreground'>
+						<Label htmlFor='xata-token' className='text-xs text-muted-foreground'>
 							API key
 						</Label>
 						<div className='flex flex-wrap items-center justify-end gap-x-2 gap-y-1'>
@@ -338,7 +312,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 					</div>
 					<div className='flex gap-2'>
 						<Input
-							id='neon-token'
+							id='xata-token'
 							type='password'
 							value={tokenInput}
 							onChange={function (event) {
@@ -350,7 +324,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 									void handleConnect()
 								}
 							}}
-							placeholder='napi_...'
+							placeholder='Xata API key'
 							autoComplete='off'
 							className='h-9 bg-background/70'
 						/>
@@ -382,7 +356,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								onChange={function (event) {
 									setQuery(event.target.value)
 								}}
-								placeholder='Search Neon databases'
+								placeholder='Search Xata databases'
 								className='h-9 bg-background/70 pl-9'
 							/>
 						</div>
@@ -394,7 +368,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							}}
 							disabled={isLoading}
 							className='h-9 shrink-0 gap-1.5 border-border/70 px-3'
-							title='Re-fetch databases from Neon'
+							title='Re-fetch databases from Xata'
 						>
 							<RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
 							Refresh
@@ -416,21 +390,20 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 						{!isLoading && !error && filteredDatabases.length === 0 ? (
 							<p className='px-1 py-3 text-xs text-muted-foreground'>
 								{databases.length === 0
-									? 'No Neon databases found for this account. Create one in the Neon console, then Refresh.'
+									? 'No Xata databases found for this account. Create one in the Xata dashboard, then Refresh.'
 									: 'No databases match your search.'}
 							</p>
 						) : null}
 						{filteredDatabases.map(function (database) {
 							const isSelected =
-								selected?.projectId === database.projectId &&
+								selected?.workspaceId === database.workspaceId &&
 								selected?.databaseName === database.databaseName
 							return (
 								<button
-									key={`${database.projectId}/${database.databaseName}`}
+									key={databaseKey(database)}
 									type='button'
 									onClick={function () {
 										setSelected(database)
-										setSelectedBranchId(null)
 										setAuthError(null)
 									}}
 									className={cn(
@@ -445,65 +418,31 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 											{database.databaseName}
 										</span>
 										<span className='block truncate text-xs text-muted-foreground'>
-											{database.projectName || database.projectId}
+											{database.workspaceName} · {database.region}
+											{database.postgresEnabled ? '' : ' · Postgres disabled'}
 										</span>
 									</span>
-									{isSelected ? (
-										<Check className='h-4 w-4 text-emerald-500' />
-									) : null}
+									{isSelected ? <Check className='h-4 w-4 text-emerald-500' /> : null}
 								</button>
 							)
 						})}
 					</div>
 
-					{selected && branches.length > 1 ? (
-						<div className='space-y-2'>
-							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-								<GitBranch className='h-3.5 w-3.5' />
-								<span>Branch</span>
-								{branchesLoading ? (
-									<Loader2 className='h-3 w-3 animate-spin' />
-								) : null}
-							</div>
-							<div className='flex flex-wrap gap-2'>
-								{branches.map(function (branch) {
-									const isActive = branch.id === selectedBranchId
-									return (
-										<button
-											key={branch.id}
-											type='button'
-											onClick={function () {
-												setSelectedBranchId(branch.id)
-											}}
-											className={cn(
-												'inline-flex items-center gap-1.5 border px-2.5 py-1 text-xs transition-colors',
-												isActive
-													? 'border-emerald-500/45 bg-emerald-500/10 text-foreground'
-													: 'border-border/60 bg-background/45 text-muted-foreground hover:border-border hover:bg-card/65'
-											)}
-										>
-											<span className='truncate max-w-[12rem]'>{branch.name}</span>
-											{branch.isDefault ? (
-												<span className='text-[0.65rem] uppercase tracking-wide text-muted-foreground/70'>
-													primary
-												</span>
-											) : null}
-										</button>
-									)
-								})}
-							</div>
-						</div>
-					) : null}
-
 					{selected ? (
 						<div
-							data-neon-action-bar
-							className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'
+							data-xata-action-bar
+							className='sticky bottom-0 z-10 -mx-4 -mb-4 space-y-3 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'
 						>
+							{selectedUnreachable ? (
+								<p className='text-[11px] text-muted-foreground/70'>
+									Xata reports this database as not reachable over Postgres. Enable its
+									Postgres endpoint in the dashboard, then Refresh.
+								</p>
+							) : null}
 							<Button
 								type='button'
 								onClick={handleCreateConnection}
-								disabled={isBuilding}
+								disabled={isBuilding || selectedUnreachable}
 								className='gap-2'
 							>
 								{isBuilding ? (
@@ -511,7 +450,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								) : (
 									<PlugZap className='h-3.5 w-3.5' />
 								)}
-								Create Neon Connection
+								Create Xata Connection
 							</Button>
 						</div>
 					) : null}

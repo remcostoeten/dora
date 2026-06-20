@@ -53,6 +53,13 @@ const SchemaVisualizer = lazy(function () {
     return { default: m.SchemaVisualizer };
   });
 });
+const OrmCockpitPanel = lazy(function () {
+  return import(
+    "@studio/features/orm-cockpit/components/orm-cockpit-panel"
+  ).then(function (m) {
+    return { default: m.OrmCockpitPanel };
+  });
+});
 const AiAssistantPanel = lazy(function () {
   return import("@studio/features/ai-assistant/ai-assistant-panel").then(function (m) {
     return { default: m.AiAssistantPanel };
@@ -1072,6 +1079,23 @@ function IndexInner() {
                         windowControls={<WindowControls />}
                         initialSection={settingsInitialSection}
                         highlightSection={settingsHighlightSection}
+                      />
+                    </ErrorBoundary>
+                  ) : activeNavId === "orm-cockpit" ? (
+                    <ErrorBoundary feature="ORM Cockpit">
+                      <OrmCockpitPanel
+                        activeConnectionId={activeConnectionId}
+                        windowControls={<WindowControls />}
+                        onOpenInSqlConsole={function (sql) {
+                          setActiveNavId("sql-console");
+                          window.setTimeout(function () {
+                            window.dispatchEvent(
+                              new CustomEvent("dora-open-sql-content", {
+                                detail: { sql },
+                              }),
+                            );
+                          }, 0);
+                        }}
                       />
                     </ErrorBoundary>
                   ) : activeNavId === "docker" ? (

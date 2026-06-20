@@ -79,6 +79,30 @@ async probeDatabaseFile(path: string) : Promise<Result<DatabaseFileKind, { kind:
     else return { status: "error", error: e  as any };
 }
 },
+async pickFolder() : Promise<Result<string | null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("pick_folder") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async readProjectFile(path: string) : Promise<Result<string, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("read_project_file", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listDir(path: string) : Promise<Result<string[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_dir", { path }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("add_connection", { name, databaseInfo, color }) };
@@ -384,6 +408,18 @@ async neonListDatabases() : Promise<Result<NeonDatabase[], { kind: string; detai
 }
 },
 /**
+ * Lists every branch of a Neon project so the user can connect to a non-primary
+ * branch (e.g. a preview branch) instead of always landing on the default one.
+ */
+async neonListBranches(projectId: string) : Promise<Result<NeonBranch[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("neon_list_branches", { projectId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
  * The Neon account the stored key belongs to, so the UI can show which account
  * is currently connected.
  */
@@ -463,6 +499,171 @@ async cloudflareDisconnect() : Promise<Result<null, { kind: string; detail: stri
 },
 async cloudflareIsConnected() : Promise<boolean> {
     return await TAURI_INVOKE("cloudflare_is_connected");
+},
+/**
+ * Validates and stores a Xata API key (encrypted on-device).
+ */
+async xataSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_save_token", { token }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Lists connectable Xata databases, flattened across the user's workspaces.
+ */
+async xataListDatabases() : Promise<Result<XataDatabase[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_list_databases") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Mints the Postgres connection string for a Xata database/branch, embedding
+ * the stored API key as the password so it never crosses to the UI.
+ */
+async xataBuildConnectionString(workspaceId: string, region: string, databaseName: string, branch: string | null) : Promise<Result<string, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_build_connection_string", { workspaceId, region, databaseName, branch }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The Xata account the stored key belongs to, so the UI can show which account
+ * is currently connected.
+ */
+async xataAccount() : Promise<Result<XataAccount, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_account") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async xataDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("xata_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async xataIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("xata_is_connected");
+},
+/**
+ * Validates and stores a PlanetScale service token (encrypted on-device).
+ */
+async planetscaleSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("planetscale_save_token", { token }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The PlanetScale organizations the stored token can access, so the UI can show
+ * which account is currently connected.
+ */
+async planetscaleAccount() : Promise<Result<PlanetscaleOrganization[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("planetscale_account") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async planetscaleListDatabases(organization: string) : Promise<Result<PlanetscaleDatabase[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("planetscale_list_databases", { organization }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async planetscaleListBranches(organization: string, database: string, defaultBranch: string) : Promise<Result<PlanetscaleBranch[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("planetscale_list_branches", { organization, database, defaultBranch }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Mints a fresh MySQL password on a branch (PlanetScale returns the plaintext
+ * only at creation), so the connection needs no hand-copied secret.
+ */
+async planetscaleCreatePassword(organization: string, database: string, branch: string) : Promise<Result<PlanetscalePassword, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("planetscale_create_password", { organization, database, branch }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async planetscaleDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("planetscale_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async planetscaleIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("planetscale_is_connected");
+},
+/**
+ * Validates and stores a Vercel access token (encrypted on-device).
+ */
+async vercelSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_save_token", { token }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Lists connectable Vercel Postgres stores (one per project), attaching a
+ * connection string when the API can read it.
+ */
+async vercelListStores() : Promise<Result<VercelStore[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_list_stores") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The Vercel account the stored token belongs to, so the UI can show which
+ * account is currently connected.
+ */
+async vercelAccount() : Promise<Result<VercelAccount, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_account") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async vercelDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async vercelIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("vercel_is_connected");
 },
 async setConnectionPin(connectionId: string, pin: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
@@ -1357,7 +1558,61 @@ export type TursoOrganization = { slug: string; name?: string }
 export type CloudflareAccount = { id: string; name?: string }
 export type CloudflareD1Database = { accountId: string; uuid: string; name: string }
 export type NeonAccount = { email?: string; name?: string }
+export type NeonBranch = { id: string; name: string; isDefault: boolean }
 export type NeonDatabase = { projectId: string; projectName: string; branchId: string; databaseName: string; roleName: string }
+export type XataAccount = { email?: string; fullname?: string }
+/**
+ * A selectable Xata database, flattened across the user's workspaces. The
+ * workspace id (PG user) and region (PG host) are carried so we can assemble a
+ * Postgres connection string for it later without re-discovering anything. The
+ * branch defaults to `main` at connect time.
+ */
+export type XataDatabase = { workspaceId: string; workspaceName: string; databaseName: string; region: string;
+/**
+ * Whether Xata reports this database as reachable over the Postgres
+ * protocol. Databases without it can't be connected as a Postgres source,
+ * so the connect-flow can flag them.
+ */
+postgresEnabled: boolean }
+/**
+ * A branch of a PlanetScale database. `is_default` marks the database's default
+ * branch (the one to preselect). This is the branch-aware hook other plans
+ * (05-branch-aware-connects) build on.
+ */
+export type PlanetscaleBranch = { name: string; production: boolean; isDefault: boolean }
+/**
+ * A selectable PlanetScale database. `default_branch` is carried so the
+ * connect-flow can preselect the primary branch without re-discovering it.
+ */
+export type PlanetscaleDatabase = { name: string; defaultBranch: string }
+/**
+ * The PlanetScale organization the stored token belongs to, shown in the UI so
+ * the user can confirm which account is connected.
+ */
+export type PlanetscaleOrganization = { name: string }
+/**
+ * A freshly minted MySQL credential for a branch. PlanetScale only returns the
+ * plaintext password once (at creation), so the connect-flow uses this
+ * immediately to assemble a connection string — the user never copies a secret.
+ */
+export type PlanetscalePassword = { username: string; host: string; password: string }
+export type VercelAccount = { username?: string; email?: string; name?: string }
+/**
+ * A selectable Vercel Postgres "store" (one per project that has a Postgres
+ * connection string in its environment). `connection_string` is `None` when the
+ * value couldn't be read (e.g. the env var is marked `sensitive`), in which case
+ * the connect-flow asks the user to paste the `POSTGRES_URL` instead.
+ */
+export type VercelStore = { projectId: string; projectName: string;
+/**
+ * The env key the connection string came from (e.g. `POSTGRES_URL`), shown
+ * in the picker so the user knows which credential they're connecting with.
+ */
+envKey?: string | null;
+/**
+ * The decrypted connection string, when the API returned a readable value.
+ */
+connectionString?: string | null }
 export type StatementInfo = { returns_values: boolean; status: QueryStatus; first_page: JsonValue; affected_rows: number | null; page_count: number; rows_received: number; error: string | null }
 export type TAURI_CHANNEL<TSend> = null
 export type TableInfo = { name: string; schema: string; columns: ColumnInfo[]; 
