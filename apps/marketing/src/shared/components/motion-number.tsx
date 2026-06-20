@@ -12,7 +12,7 @@ import {
 } from 'react'
 import {
 	AnimatePresence,
-	motion,
+	m,
 	useReducedMotion,
 	type Transition,
 } from 'framer-motion'
@@ -275,7 +275,7 @@ function CharSlot({
 				{char === ' ' ? ' ' : char}
 			</span>
 			<AnimatePresence initial={false} mode="popLayout">
-				<motion.span
+				<m.span
 					key={char}
 					className="absolute inset-0 flex items-center justify-center"
 					initial={
@@ -292,7 +292,7 @@ function CharSlot({
 					transition={t}
 				>
 					{char === ' ' ? ' ' : char}
-				</motion.span>
+				</m.span>
 			</AnimatePresence>
 		</span>
 	)

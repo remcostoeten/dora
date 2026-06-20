@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { m } from 'framer-motion'
 import { Download, Terminal } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
@@ -200,7 +200,7 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                                 }`}
                             >
                                 {isActive && (
-                                    <motion.span
+                                    <m.span
                                         layoutId="os-tab-pill"
                                         className="absolute inset-0 border border-[rgba(173,142,182,0.5)] bg-[rgba(173,142,182,0.1)]"
                                         transition={{

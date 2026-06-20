@@ -20,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { useMemo, useState } from "react";
 
 /**
@@ -242,7 +242,7 @@ function TableRow({
   }
 
   return (
-    <motion.div
+    <m.div
       layout
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -276,7 +276,7 @@ function TableRow({
     >
       <AnimatePresence>
         {isDeleting && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.08 }}
@@ -286,7 +286,7 @@ function TableRow({
       </AnimatePresence>
       <GridCheckbox active={rowSelected} onClick={selectRow} />
       {row.map(renderCell)}
-    </motion.div>
+    </m.div>
   );
 }
 

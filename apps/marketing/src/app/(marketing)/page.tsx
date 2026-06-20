@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import { getRoute } from '@/core/config/routes'
 import { createMetadata } from '@/core/config/seo'
+import { MotionProvider } from '@/shared/components/motion-provider'
 import { HomeView } from '@/views'
 
 export const metadata: Metadata = createMetadata(getRoute('/'))
@@ -11,5 +12,9 @@ export const metadata: Metadata = createMetadata(getRoute('/'))
 export const revalidate = 300
 
 export default function Page() {
-    return <HomeView />
+    return (
+        <MotionProvider>
+            <HomeView />
+        </MotionProvider>
+    )
 }
