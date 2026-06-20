@@ -438,6 +438,52 @@ async neonDisconnect() : Promise<Result<null, { kind: string; detail: string }>>
 async neonIsConnected() : Promise<boolean> {
     return await TAURI_INVOKE("neon_is_connected");
 },
+/**
+ * Validates and stores a Vercel access token (encrypted on-device).
+ */
+async vercelSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_save_token", { token }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Lists connectable Vercel Postgres stores (one per project), attaching a
+ * connection string when the API can read it.
+ */
+async vercelListStores() : Promise<Result<VercelStore[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_list_stores") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The Vercel account the stored token belongs to, so the UI can show which
+ * account is currently connected.
+ */
+async vercelAccount() : Promise<Result<VercelAccount, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_account") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async vercelDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("vercel_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async vercelIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("vercel_is_connected");
+},
 async setConnectionPin(connectionId: string, pin: string | null) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("set_connection_pin", { connectionId, pin }) };
@@ -1330,6 +1376,23 @@ export type TursoDatabase = { name: string; hostname: string; organizationSlug: 
 export type TursoOrganization = { slug: string; name?: string }
 export type NeonAccount = { email?: string; name?: string }
 export type NeonDatabase = { projectId: string; projectName: string; branchId: string; databaseName: string; roleName: string }
+export type VercelAccount = { username?: string; email?: string; name?: string }
+/**
+ * A selectable Vercel Postgres "store" (one per project that has a Postgres
+ * connection string in its environment). `connection_string` is `None` when the
+ * value couldn't be read (e.g. the env var is marked `sensitive`), in which case
+ * the connect-flow asks the user to paste the `POSTGRES_URL` instead.
+ */
+export type VercelStore = { projectId: string; projectName: string;
+/**
+ * The env key the connection string came from (e.g. `POSTGRES_URL`), shown
+ * in the picker so the user knows which credential they're connecting with.
+ */
+envKey?: string | null;
+/**
+ * The decrypted connection string, when the API returned a readable value.
+ */
+connectionString?: string | null }
 export type StatementInfo = { returns_values: boolean; status: QueryStatus; first_page: JsonValue; affected_rows: number | null; page_count: number; rows_received: number; error: string | null }
 export type TAURI_CHANNEL<TSend> = null
 export type TableInfo = { name: string; schema: string; columns: ColumnInfo[]; 

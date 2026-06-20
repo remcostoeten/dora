@@ -220,6 +220,11 @@ pub fn run() {
             database::commands::neon_create_connection_uri,
             database::commands::neon_disconnect,
             database::commands::neon_is_connected,
+            database::commands::vercel_save_token,
+            database::commands::vercel_list_stores,
+            database::commands::vercel_account,
+            database::commands::vercel_disconnect,
+            database::commands::vercel_is_connected,
             // Mutation API commands
             database::commands::update_cell,
             database::commands::get_blob_bytes,
