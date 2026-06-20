@@ -359,6 +359,25 @@ function SqlConsoleInner({
     [activeTab.id, tabStore],
   );
 
+  // Seed the active tab with arbitrary SQL handed off from another feature
+  // (e.g. the ORM cockpit's generated migration). Mirrors the table-open event.
+  useEffect(
+    function listenForOpenSqlContent() {
+      function onOpenSql(event: Event) {
+        const { sql } = (event as CustomEvent<{ sql?: string }>).detail ?? {};
+        if (typeof sql !== "string") return;
+        tabStore.setTabMode(activeTab.id, "sql");
+        tabStore.updateTabContent(activeTab.id, "sqlContent", sql);
+      }
+
+      window.addEventListener("dora-open-sql-content", onOpenSql as EventListener);
+      return function () {
+        window.removeEventListener("dora-open-sql-content", onOpenSql as EventListener);
+      };
+    },
+    [activeTab.id, tabStore],
+  );
+
   const handleExecute = useCallback(
     async (codeOverride?: string, modeOverride?: "sql" | "drizzle") => {
       if (isExecuting) return;
