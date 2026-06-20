@@ -7,17 +7,16 @@ import { usePageVisible } from "@/shared/hooks/use-page-visible";
 import { usePrefersReducedMotion } from "@/shared/hooks/use-prefers-reduced-motion";
 
 /* ---------------------------------------------------------------------------
- * FormatSwapper — the rotating word in "That CSV doesn't need a database
- * first." It cycles through the flat-file formats Dora reads in place, so the
- * headline keeps making its point about each one.
+ * WordSwapper — a single rotating word that cycles through a list, blur-masking
+ * the swap and animating its width so the surrounding sentence reslides instead
+ * of jumping. Used for the flat-file formats (".csv", ".parquet", …) and the
+ * supported ORMs ("Drizzle", "Prisma", …).
  *
  * Motion follows the explanatory-animation rules: a custom ease-out curve, a
  * faster exit than enter, a touch of blur to mask the text swap, and an
  * animated width so the trailing sentence reslides instead of jumping. The
  * loop is gated on scroll/visibility/reduced-motion so it never runs unseen.
  * ------------------------------------------------------------------------- */
-const FORMATS = ["CSV", "JSON", "Parquet", "NDJSON", "TSV"];
-
 const HOLD_MS = 2200; // time a word stays put before swapping
 const EXIT_MS = 170; // exit is snappy — the system clearing the old word
 const ENTER_MS = 300; // enter is a touch slower — the new word settling in
@@ -25,7 +24,16 @@ const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 
 type TPhase = "rest" | "exiting" | "entering";
 
-export function FormatSwapper() {
+type TWordSwapperProps = {
+  words: string[];
+  /** Tailwind classes for the live word — usually just its accent color. */
+  wordClassName?: string;
+};
+
+export function WordSwapper({
+  words,
+  wordClassName = "text-accent-pink",
+}: TWordSwapperProps) {
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const [viewRef, inView] = useInView<HTMLSpanElement>({ threshold: 0 });
   const pageVisible = usePageVisible();
@@ -52,12 +60,12 @@ export function FormatSwapper() {
   useEffect(() => {
     if (inView && pageVisible && reducedMotion) {
       const id = setInterval(
-        () => setIndex((i) => (i + 1) % FORMATS.length),
+        () => setIndex((i) => (i + 1) % words.length),
         HOLD_MS + ENTER_MS,
       );
       return () => clearInterval(id);
     }
-  }, [inView, pageVisible, reducedMotion]);
+  }, [inView, pageVisible, reducedMotion, words.length]);
 
   useEffect(() => {
     if (!running) return;
@@ -75,7 +83,7 @@ export function FormatSwapper() {
         setPhase("exiting");
         await wait(EXIT_MS);
         if (cancelled) return;
-        setIndex((i) => (i + 1) % FORMATS.length);
+        setIndex((i) => (i + 1) % words.length);
         setPhase("entering");
         // Next frame the word is mounted at its start offset; flipping to
         // "rest" lets the transition carry it home.
@@ -121,7 +129,7 @@ export function FormatSwapper() {
       {/* Live word — the only thing the user sees. */}
       <span
         key={running ? "rolling" : "static"}
-        className="inline-block whitespace-nowrap not-italic text-[#f5c0c0]"
+        className={`inline-block whitespace-nowrap not-italic ${wordClassName}`}
         style={{
           opacity,
           filter: `blur(${blur})`,
@@ -132,7 +140,7 @@ export function FormatSwapper() {
               : `opacity ${ENTER_MS}ms ${EASE_OUT}, transform ${ENTER_MS}ms ${EASE_OUT}, filter ${ENTER_MS}ms ${EASE_OUT}`,
         }}
       >
-        {FORMATS[index]}
+        {words[index]}
       </span>
 
       {/* Hidden measuring rail — same type, never painted. */}
@@ -140,7 +148,7 @@ export function FormatSwapper() {
         aria-hidden
         className="pointer-events-none invisible absolute left-0 top-0 whitespace-nowrap"
       >
-        {FORMATS.map((f, i) => (
+        {words.map((f, i) => (
           <span
             key={f}
             ref={(el) => {
@@ -154,4 +162,20 @@ export function FormatSwapper() {
       </span>
     </span>
   );
+}
+
+/* The rotating word in "That .csv doesn't need a database first." — the flat
+ * file formats Dora reads in place, written as the extensions you'd drop in. */
+const FORMATS = [".csv", ".json", ".parquet", ".ndjson", ".tsv"];
+
+export function FormatSwapper() {
+  return <WordSwapper words={FORMATS} />;
+}
+
+/* The rotating word in the ORM runner heading — the ORMs whose client queries
+ * Dora translates to SQL before they run. */
+const ORMS = ["Drizzle", "Prisma"];
+
+export function OrmSwapper() {
+  return <WordSwapper words={ORMS} wordClassName="text-accent-rose" />;
 }

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { CardAura } from "./card-aura";
 import { useGate } from "./use-scroll-motion";
+import { OrmSwapper } from "@/components/format-swapper";
 import { usePrefersReducedMotion } from "@/shared/hooks/use-prefers-reduced-motion";
 
 /* ---------------------------------------------------------------------------
@@ -262,7 +263,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
         {/* editor — relative anchor for the caret + floating popup */}
         <div
           ref={editorRef}
-          className="relative border border-[#2b252c] bg-[#0d0a0f]/80 px-3 py-2.5"
+          className="relative border border-line bg-surface-deeper/80 px-3 py-2.5"
         >
           {/* run flash */}
           {isRun ? (
@@ -286,7 +287,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
             <span
               ref={caretRef}
               aria-hidden
-              className="ml-px inline-block w-[1.5px] h-[1.05em] -mb-[0.18em] bg-[#e3b2b3]"
+              className="ml-px inline-block w-[1.5px] h-[1.05em] -mb-[0.18em] bg-accent-rose"
               style={{
                 opacity: isType ? 1 : 0,
                 animation: isType ? "lspCaret 1s steps(1) infinite" : "none",
@@ -297,7 +298,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
           {/* LSP completion popup */}
           {running && popup ? (
             <div
-              className="absolute z-20 overflow-hidden border border-[#3a3138] bg-[#16121a] py-1 shadow-[0_10px_28px_rgba(0,0,0,0.55)]"
+              className="absolute z-20 overflow-hidden border border-line-strong bg-[#16121a] py-1 shadow-[0_10px_28px_rgba(0,0,0,0.55)]"
               style={{
                 top: popup.top,
                 left: popup.left,
@@ -343,7 +344,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
                     >
                       {item.name}
                     </span>
-                    <span className="ml-auto truncate text-[#6a6a6a]">
+                    <span className="ml-auto truncate text-ink-700">
                       {item.detail}
                     </span>
                   </div>
@@ -362,7 +363,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
               boxShadow: `0 0 8px ${statusColor}99`,
             }}
           />
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-[#7a7a7a] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+          <span className="font-mono text-[9.5px] uppercase tracking-[0.12em] text-ink-600 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
             {statusLabel}
           </span>
           <span
@@ -378,8 +379,8 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
         </div>
 
         {/* results */}
-        <div className="mt-1.5 overflow-hidden border border-[#2b252c] bg-[#100d12]/70">
-          <div className="grid grid-cols-[2rem_minmax(0,1fr)_2.6rem] gap-1 border-b border-[#2b252c] px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-[#6a6a6a] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+        <div className="mt-1.5 overflow-hidden border border-line bg-surface-deep/70">
+          <div className="grid grid-cols-[2rem_minmax(0,1fr)_2.6rem] gap-1 border-b border-line px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-700 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
             <span>id</span>
             <span>email</span>
             <span className="text-right">plan</span>
@@ -397,9 +398,9 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
                     "opacity 320ms ease, transform 360ms cubic-bezier(0.34,1.56,0.64,1)",
                 }}
               >
-                <span className="text-[#7a7a7a] tabular-nums">{row.id}</span>
-                <span className="truncate text-[#cfcfcf]">{row.email}</span>
-                <span className="text-right text-[#e3b2b3]">{row.plan}</span>
+                <span className="text-ink-600 tabular-nums">{row.id}</span>
+                <span className="truncate text-ink-300">{row.email}</span>
+                <span className="text-right text-accent-rose">{row.plan}</span>
               </div>
             );
           })}
@@ -407,10 +408,10 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
       </div>
 
       <div className="relative px-5 pt-3 pb-10">
-        <h3 className="mb-1 font-pixel text-sm font-[500] text-[#e0e0e0]">
-          Drizzle &amp; Prisma support
+        <h3 className="mb-1 font-pixel text-sm font-[500] text-ink-200">
+          <OrmSwapper /> support
         </h3>
-        <p className="text-xs text-[#8a8a8a] leading-relaxed">
+        <p className="text-xs text-ink-500 leading-relaxed">
           Prefer an ORM over raw SQL? Run type-safe Drizzle or Prisma Client
           queries — context-aware autocomplete and a live SQL preview, right in
           the query builder.

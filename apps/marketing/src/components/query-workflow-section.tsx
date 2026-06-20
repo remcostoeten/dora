@@ -7,13 +7,14 @@ import { CornerTick } from "@/components/corner-tick";
 import { SectionFrame } from "@/components/section-frame";
 import { AIAssistantCard } from "@/components/features/ai-assistant-card";
 import { DrizzleRunnerCard } from "@/components/features/drizzle-runner-card";
+import { OrmSwapper } from "@/components/format-swapper";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { getFeaturePath } from "@/core/config/features";
 import { usePageVisible } from "@/shared/hooks/use-page-visible";
 import { usePrefersReducedMotion } from "@/shared/hooks/use-prefers-reduced-motion";
 
 const CELL_CLASS =
-  "relative min-h-[340px] scroll-mt-28 border-r border-b border-[#2b252c] overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-[rgba(245,192,192,0.06)]";
+  "relative min-h-[340px] scroll-mt-28 border-r border-b border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-[rgba(245,192,192,0.06)]";
 const REVEAL_CLASS = "flex h-full w-full";
 
 /* ---------------------------------------------------------------------------
@@ -44,13 +45,13 @@ export function QueryWorkflowSection() {
     >
       <SectionFrame />
 
-      <div className="px-6 sm:px-8 py-12 border-b border-r border-[#2b252c]">
+      <div className="px-6 sm:px-8 py-12 border-b border-r border-line">
         <ScrollReveal delay={40}>
-          <h2 className="text-2xl text-[#7a7a7a] font-light italic mb-1 font-[family-name:var(--font-pixel)]">
+          <h2 className="text-2xl text-ink-600 font-light italic mb-1 font-[family-name:var(--font-pixel)]">
             Aww, is SQL to hard for you?
           </h2>
-          <h3 className="text-balance text-3xl text-[#f0f0f0] font-semibold font-[family-name:var(--font-pixel)]">
-            Run queries via Drizzle or Prisma
+          <h3 className="text-balance text-3xl text-ink-100 font-semibold font-[family-name:var(--font-pixel)]">
+            Run queries via <OrmSwapper />
             <br /> or context aware LLM
           </h3>
         </ScrollReveal>
@@ -67,7 +68,7 @@ export function QueryWorkflowSection() {
             <AIAssistantCard animate={animate} />
           </ScrollReveal>
           <Link
-            className="absolute bottom-4 right-4 z-10 text-[11px] text-[#ad8eb6] transition-colors hover:text-[#f5c0c0]"
+            className="absolute bottom-4 right-4 z-10 text-[11px] text-accent-violet transition-colors hover:text-accent-pink"
             href={getFeaturePath("ai-assistant")}
           >
             Learn more →
@@ -79,13 +80,13 @@ export function QueryWorkflowSection() {
           </ScrollReveal>
           <div className="absolute bottom-4 right-4 z-10 flex items-center gap-3 text-[11px]">
             <Link
-              className="text-[#ad8eb6] transition-colors hover:text-[#f5c0c0]"
+              className="text-accent-violet transition-colors hover:text-accent-pink"
               href={getFeaturePath("drizzle-runner")}
             >
               Drizzle →
             </Link>
             <Link
-              className="text-[#ad8eb6] transition-colors hover:text-[#f5c0c0]"
+              className="text-accent-violet transition-colors hover:text-accent-pink"
               href={getFeaturePath("prisma-runner")}
             >
               Prisma →
