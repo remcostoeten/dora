@@ -5,6 +5,7 @@ import {
 	Supabase as SupabaseIcon,
 	Turso as TursoIcon,
 	Neon as NeonIcon,
+	Xata as XataIcon,
 	Planetscale as PlanetscaleIcon,
 	Vercel as VercelIcon
 } from '@studio/components/provider.icons'
@@ -36,6 +37,7 @@ export type ProviderKey =
 	| 'supabase'
 	| 'turso'
 	| 'neon'
+	| 'xata'
 	| 'planetscale'
 	| 'vercel'
 	| 'files'
@@ -49,6 +51,8 @@ type Props = {
 	showTurso?: boolean
 	/** Show the Neon connect tile (new connections only). */
 	showNeon?: boolean
+	/** Show the Xata connect tile (new connections only). */
+	showXata?: boolean
 	/** Show the PlanetScale connect tile (new connections only). */
 	showPlanetscale?: boolean
 	/** Show the Vercel Postgres connect tile (new connections only). */
@@ -112,6 +116,10 @@ const TYPE_THEME: Record<ProviderKey, Theme> = {
 		accent: 'hsl(149 74% 52%)',
 		wash: 'color-mix(in srgb, hsl(149 74% 52%) 10%, hsl(var(--card)))'
 	},
+	xata: {
+		accent: 'hsl(265 84% 64%)',
+		wash: 'color-mix(in srgb, hsl(265 84% 64%) 10%, hsl(var(--card)))'
+	},
 	planetscale: {
 		accent: 'hsl(0 0% 88%)',
 		wash: 'color-mix(in srgb, hsl(0 0% 88%) 9%, hsl(var(--card)))'
@@ -154,6 +162,13 @@ const NEON_TILE: Tile = {
 	icon: <NeonIcon className='h-[18px] w-[18px]' />
 }
 
+const XATA_TILE: Tile = {
+	key: 'xata',
+	name: 'Xata',
+	description: 'Add a key, pick a database',
+	icon: <XataIcon className='h-[18px] w-[18px]' />
+}
+
 const PLANETSCALE_TILE: Tile = {
 	key: 'planetscale',
 	name: 'PlanetScale',
@@ -168,7 +183,6 @@ const VERCEL_TILE: Tile = {
 	icon: <VercelIcon className='h-[18px] w-[18px]' />
 }
 
-
 const FILES_TILE: Tile = {
 	key: 'files',
 	name: 'Files',
@@ -182,6 +196,7 @@ export function DatabaseTypeSelector({
 	showSupabase,
 	showTurso,
 	showNeon,
+	showXata,
 	showPlanetscale,
 	showVercel,
 	showFiles,
@@ -201,6 +216,7 @@ export function DatabaseTypeSelector({
 	if (showSupabase) tiles.push(SUPABASE_TILE)
 	if (showTurso) tiles.push(TURSO_TILE)
 	if (showNeon) tiles.push(NEON_TILE)
+	if (showXata) tiles.push(XATA_TILE)
 	if (showPlanetscale) tiles.push(PLANETSCALE_TILE)
 	if (showVercel) tiles.push(VERCEL_TILE)
 	if (showFiles) tiles.push(FILES_TILE)

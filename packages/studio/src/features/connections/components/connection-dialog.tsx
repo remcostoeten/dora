@@ -30,6 +30,7 @@ import { Label } from '@studio/shared/ui/label'
 import { SupabaseConnectFlow } from '@studio/features/integrations/supabase/supabase-connect-flow'
 import { TursoConnectFlow } from '@studio/features/integrations/turso/turso-connect-flow'
 import { NeonConnectFlow } from '@studio/features/integrations/neon/neon-connect-flow'
+import { XataConnectFlow } from '@studio/features/integrations/xata/xata-connect-flow'
 import { PlanetscaleConnectFlow } from '@studio/features/integrations/planetscale/planetscale-connect-flow'
 import { VercelConnectFlow } from '@studio/features/integrations/vercel/vercel-connect-flow'
 import { Connection, DatabaseType, SshAuthMethod, SshTunnelConfig } from '../types'
@@ -111,10 +112,11 @@ export function ConnectionDialog({
 	// resolve to an engine connection but live outside formData.type. When one is
 	// active, the standard form is swapped for that provider's connect flow.
 	const [selectedIntegration, setSelectedIntegration] = useState<
-		'supabase' | 'turso' | 'neon' | 'planetscale' | 'vercel' | null
+		'supabase' | 'turso' | 'neon' | 'xata' | 'planetscale' | 'vercel' | null
 	>(null)
 	const supabaseSelected = selectedIntegration === 'supabase'
 	const tursoSelected = selectedIntegration === 'turso'
+	const xataSelected = selectedIntegration === 'xata'
 	const planetscaleSelected = selectedIntegration === 'planetscale'
 	const vercelSelected = selectedIntegration === 'vercel'
 	const integrationSelected = selectedIntegration !== null
@@ -335,6 +337,7 @@ export function ConnectionDialog({
 			key === 'supabase' ||
 			key === 'turso' ||
 			key === 'neon' ||
+			key === 'xata' ||
 			key === 'planetscale' ||
 			key === 'vercel'
 		) {
@@ -756,6 +759,7 @@ export function ConnectionDialog({
 							showSupabase={!initialValues}
 							showTurso={!initialValues}
 							showNeon={!initialValues}
+							showXata={!initialValues}
 							showPlanetscale={!initialValues}
 							showVercel={!initialValues}
 							showFiles={!!onOpenDataFiles}
@@ -778,6 +782,13 @@ export function ConnectionDialog({
 								/>
 							) : tursoSelected ? (
 								<TursoConnectFlow
+									onComplete={function (connection) {
+										onSave(connection)
+										onOpenChange(false)
+									}}
+								/>
+							) : xataSelected ? (
+								<XataConnectFlow
 									onComplete={function (connection) {
 										onSave(connection)
 										onOpenChange(false)
