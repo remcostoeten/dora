@@ -497,7 +497,7 @@ After the `microsoft/winget-pkgs` PR merges:
 ### Snap
 
 **Workflow:** `.github/workflows/snap.yml`  
-**Manifest:** `snap/snapcraft.yaml`
+**Manifest:** `packaging/snap/snapcraft.yaml`
 
 1. Register the `dora` snap name on Snapcraft.
 2. Export credentials:
@@ -509,7 +509,7 @@ snapcraft export-login --snaps=dora \
 ```
 
 3. Set GitHub secret `SNAPCRAFT_STORE_CREDENTIALS` to the contents of `exported.txt`.
-4. Tag a release — CI builds with `snapcraft pack --destructive-mode` on `ubuntu-22.04` and publishes to the stable channel.
+4. Tag a release — CI builds with `bash scripts/snapcraft.sh --sudo --destructive-mode` on `ubuntu-22.04` and publishes to the stable channel.
 
 ### Flatpak (GitHub release bundle)
 

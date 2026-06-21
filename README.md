@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/dora-backgroundless.png" alt="Dora" width="120" />
+  <img src="docs/assets/dora-backgroundless.png" alt="Dora" width="120" />
   <h1>Dora</h1>
   <p><em>A native desktop database workbench that stays out of your way.</em></p>
 
@@ -12,7 +12,7 @@
 </div>
 
 <p align="center">
-  <img src="assets/demo-tour.webp" alt="Dora in use" width="92%" />
+  <img src="docs/assets/demo-tour.webp" alt="Dora in use" width="92%" />
 </p>
 
 Dora is a cross-platform database workbench built with Tauri and Rust. It ships as a **~10 MB binary** — versus the 100+ MB you get from Electron-based alternatives — and covers the full day-to-day loop without asking you to leave the app.
@@ -123,7 +123,7 @@ Interactive ER diagram with pan, zoom, FK edges, and a search that dims unrelate
 
 ### Docker manager
 
-Create, start, stop, inspect, and remove local database containers without leaving the app. Open a container directly in the data viewer, view logs, run seed scripts, or export a Docker Compose file.
+Spin up a local PostgreSQL, MySQL, MariaDB, or CockroachDB container in one click, then start, stop, inspect, and remove it without leaving the app. Open a container directly in the data viewer, view logs, run seed scripts, or export a Docker Compose file.
 
 ### Local files
 

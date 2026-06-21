@@ -7,7 +7,7 @@ import path from 'node:path'
 const BASE_URL = 'http://localhost:1420'
 const WIDTH = 1280
 const HEIGHT = 800
-const RECORDINGS_DIR = path.join(process.cwd(), 'recordings')
+const RECORDINGS_DIR = path.join(process.cwd(), 'docs/assets/recordings')
 const OUTPUT_WEBM = path.join(RECORDINGS_DIR, 'drizzle-update-lsp-demo.webm')
 const OUTPUT_MP4 = path.join(RECORDINGS_DIR, 'drizzle-update-lsp-demo.mp4')
 const CHROMIUM_EXECUTABLE = path.join(

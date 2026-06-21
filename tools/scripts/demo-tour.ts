@@ -14,6 +14,7 @@ import path from 'path';
 const RECORDING_WIDTH = 1280;
 const RECORDING_HEIGHT = 800;
 const BASE_URL = 'http://localhost:1420';
+const RECORDINGS_DIR = path.join(process.cwd(), 'docs/assets/recordings');
 
 /**
  * Bezier easing for ultra-smooth cinematic movement
@@ -86,7 +87,7 @@ async function run() {
   const context = await browser.newContext({
     viewport: { width: RECORDING_WIDTH, height: RECORDING_HEIGHT },
     recordVideo: {
-      dir: path.join(process.cwd(), 'recordings'),
+      dir: RECORDINGS_DIR,
       size: { width: RECORDING_WIDTH, height: RECORDING_HEIGHT }
     }
   });
@@ -187,7 +188,7 @@ async function run() {
     console.error('Error during tour:', err);
   } finally {
     await browser.close();
-    console.log('Recording finished. Check the recordings folder.');
+    console.log(`Recording finished. Check ${RECORDINGS_DIR}.`);
   }
 }
 

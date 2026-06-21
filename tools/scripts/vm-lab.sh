@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-LAB_DIR="${DORA_VM_LAB_DIR:-$ROOT_DIR/.cache/dora-vm-lab}"
+LAB_DIR="${DORA_VM_LAB_DIR:-/var/lib/libvirt/images/dora-vm-lab}"
 URI="${DORA_VM_URI:-qemu:///system}"
 NETWORK="${DORA_VM_NETWORK:-default}"
 DEFAULT_USER="${DORA_VM_USER:-dora}"
@@ -13,12 +13,110 @@ DEFAULT_WINDOWS_MEMORY_MB="${DORA_VM_WINDOWS_MEMORY_MB:-8192}"
 DEFAULT_WINDOWS_VCPUS="${DORA_VM_WINDOWS_VCPUS:-4}"
 DEFAULT_WINDOWS_DISK_GB="${DORA_VM_WINDOWS_DISK_GB:-96}"
 
+PKG_MANAGER=""
+PKG_UPDATE=""
+PKG_INSTALL=""
+
+detect_pkg_manager() {
+	if command -v apt-get &>/dev/null; then
+		PKG_MANAGER="apt"
+		PKG_UPDATE="sudo_run apt-get update"
+		PKG_INSTALL="sudo_run apt-get install -y"
+	elif command -v pacman &>/dev/null; then
+		PKG_MANAGER="pacman"
+		PKG_UPDATE="sudo_run pacman -Sy"
+		PKG_INSTALL="sudo_run pacman -S --needed --noconfirm"
+	elif command -v dnf &>/dev/null; then
+		PKG_MANAGER="dnf"
+		PKG_UPDATE="sudo_run dnf check-update || true"
+		PKG_INSTALL="sudo_run dnf install -y"
+	elif command -v zypper &>/dev/null; then
+		PKG_MANAGER="zypper"
+		PKG_UPDATE="sudo_run zypper refresh"
+		PKG_INSTALL="sudo_run zypper install -y"
+	else
+		die "No supported package manager found (apt, pacman, dnf, zypper)"
+	fi
+}
+
+pkg_name() {
+	case "${PKG_MANAGER}:$1" in
+		apt:qemu-kvm)           echo "qemu-kvm" ;;
+		pacman:qemu-kvm)        echo "qemu-desktop" ;;
+		dnf:qemu-kvm)           echo "@virtualization" ;;
+		zypper:qemu-kvm)        echo "qemu-kvm" ;;
+
+		apt:libvirt-daemon)     echo "libvirt-daemon-system" ;;
+		pacman:libvirt-daemon)  echo "libvirt" ;;
+		dnf:libvirt-daemon)     echo "libvirt-daemon-config-network" ;;
+		zypper:libvirt-daemon)  echo "libvirt" ;;
+
+		apt:virtinst)           echo "virtinst" ;;
+		pacman:virtinst)        echo "virt-install" ;;
+		dnf:virtinst)           echo "virt-install" ;;
+		zypper:virtinst)        echo "virt-install" ;;
+
+		apt:virt-viewer)        echo "virt-viewer" ;;
+		pacman:virt-viewer)     echo "virt-viewer" ;;
+		dnf:virt-viewer)        echo "virt-viewer" ;;
+		zypper:virt-viewer)     echo "virt-viewer" ;;
+
+		apt:qemu-utils)         echo "qemu-utils" ;;
+		pacman:qemu-utils)      echo "qemu-desktop" ;;
+		dnf:qemu-utils)         echo "qemu-img" ;;
+		zypper:qemu-utils)      echo "qemu-tools" ;;
+
+		apt:cloud-image-utils)  echo "cloud-image-utils" ;;
+		pacman:cloud-image-utils) echo "cloud-image-utils" ;;
+		dnf:cloud-image-utils)  echo "cloud-utils" ;;
+		zypper:cloud-image-utils) echo "cloud-image-utils" ;;
+
+		apt:genisoimage)        echo "genisoimage" ;;
+		pacman:genisoimage)     echo "cdrtools" ;;
+		dnf:genisoimage)        echo "genisoimage" ;;
+		zypper:genisoimage)     echo "genisoimage" ;;
+
+		apt:ovmf)               echo "ovmf" ;;
+		pacman:ovmf)            echo "edk2-ovmf" ;;
+		dnf:ovmf)               echo "edk2-ovmf" ;;
+		zypper:ovmf)            echo "qemu-ovmf-x86_64" ;;
+
+		apt:swtpm)              echo "swtpm" ;;
+		pacman:swtpm)           echo "swtpm" ;;
+		dnf:swtpm)              echo "swtpm" ;;
+		zypper:swtpm)           echo "swtpm" ;;
+
+		apt:swtpm-tools)        echo "swtpm-tools" ;;
+		pacman:swtpm-tools)     echo "" ;;
+		dnf:swtpm-tools)        echo "swtpm-tools" ;;
+		zypper:swtpm-tools)     echo "swtpm-tools" ;;
+
+		apt:cpu-checker)        echo "cpu-checker" ;;
+		pacman:cpu-checker)     echo "" ;;
+		dnf:cpu-checker)        echo "cpu-checker" ;;
+		zypper:cpu-checker)     echo "" ;;
+
+		apt:libvirt-clients)    echo "libvirt-clients" ;;
+		pacman:libvirt-clients) echo "" ;;
+		dnf:libvirt-clients)    echo "" ;;
+		zypper:libvirt-clients) echo "" ;;
+
+		*) die "Unknown package key: $1" ;;
+	esac
+}
+
+install_pkg() {
+	local key="$1"
+	local name
+	name="$(pkg_name "$key")"
+	[[ -z "$name" ]] && return 0
+	$PKG_INSTALL "$name"
+}
+
 UBUNTU_PROFILE="ubuntu-noble"
 UBUNTU_URL="https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
 ARCH_PROFILE="archlinux"
 ARCH_URL="https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-cloudimg.qcow2"
-
-mkdir -p "$LAB_DIR"
 
 blue() { printf '\033[36m%s\033[0m\n' "$1"; }
 green() { printf '\033[32m%s\033[0m\n' "$1"; }
@@ -115,24 +213,34 @@ ssh_public_key() {
 	return 1
 }
 
+ensure_lab_dir() {
+	sudo_run mkdir -p "$LAB_DIR"
+	sudo_run chown "$USER:" "$LAB_DIR"
+	sudo_run chmod 755 "$LAB_DIR"
+}
+
 ensure_host_tools() {
-	require_cmd apt-get
-	sudo_run apt-get update
-	sudo_run apt-get install -y \
-		qemu-kvm \
-		libvirt-daemon-system \
-		libvirt-clients \
-		virtinst \
-		virt-viewer \
-		qemu-utils \
-		cloud-image-utils \
-		genisoimage \
-		ovmf \
-		swtpm \
-		swtpm-tools \
-		curl \
-		wget \
-		cpu-checker
+	detect_pkg_manager
+	ensure_lab_dir
+	$PKG_UPDATE
+	for pkg in qemu-kvm libvirt-daemon virtinst virt-viewer qemu-utils cloud-image-utils genisoimage ovmf swtpm swtpm-tools curl wget cpu-checker libvirt-clients; do
+		install_pkg "$pkg"
+	done
+
+	# On Arch, cloud-image-utils is in AUR — try yay/paru fallback
+	if [[ "$PKG_MANAGER" == "pacman" ]] && ! command -v cloud-localds &>/dev/null; then
+		if command -v yay &>/dev/null; then
+			yellow "cloud-localds not found — trying AUR via yay..."
+			run yay -S --needed --noconfirm cloud-image-utils
+		elif command -v paru &>/dev/null; then
+			yellow "cloud-localds not found — trying AUR via paru..."
+			run paru -S --needed --noconfirm cloud-image-utils
+		else
+			yellow "cloud-image-utils (provides cloud-localds) is in AUR. Install it manually:"
+			yellow "  yay -S cloud-image-utils   # or paru -S cloud-image-utils"
+		fi
+	fi
+
 	sudo_run systemctl enable --now libvirtd
 	sudo_run virsh net-start "$NETWORK" || true
 	sudo_run virsh net-autostart "$NETWORK" || true
@@ -271,8 +379,13 @@ ensure_linux_vm() {
 	local base disk password
 
 	for tool in virt-install virsh qemu-img cloud-localds; do
-		require_cmd "$tool"
+		if ! command -v "$tool" >/dev/null 2>&1; then
+			yellow "Missing required tool: $tool — installing dependencies"
+			ensure_host_tools
+			break
+		fi
 	done
+	require_cmd cloud-localds
 
 	download_profile_image "$profile"
 	base="$(base_image_path "$profile")"
@@ -522,6 +635,8 @@ parse_create() {
 
 main() {
 	cd "$ROOT_DIR"
+
+	ensure_lab_dir 2>/dev/null || true
 
 	if [[ $# -eq 0 ]]; then
 		menu

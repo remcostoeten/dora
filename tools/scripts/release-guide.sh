@@ -232,7 +232,7 @@ AUR on this machine:
 
 Snap on Ubuntu:
   sudo snap install snapcraft --classic
-  snapcraft --destructive-mode
+  bash scripts/snapcraft.sh --sudo --destructive-mode
 
 Flatpak on Linux:
   bun run release:flatpak:build
