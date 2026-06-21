@@ -55,6 +55,7 @@ describe('parseDrizzleSchema (postgres, multi-file)', function () {
 		expect(byName.id.rawType).toBe('serial')
 		expect(byName.id.autoIncrement).toBe(true)
 		expect(byName.email.type).toBe('varchar')
+		expect(byName.email.typeParams).toBe('255')
 		expect(byName.is_active.type).toBe('bool')
 		expect(byName.created_at.type).toBe('timestamp')
 	})
@@ -229,6 +230,28 @@ describe('parseDrizzleSchema (conservative degradation)', function () {
 		expect(widget.primaryKey).toEqual(['id'])
 		const id = widget.columns.find((c) => c.name === 'id')!
 		expect(id.type).toBe('int')
+	})
+})
+
+const PGVECTOR = `
+import { pgTable, integer, vector } from 'drizzle-orm/pg-core'
+
+export const messages = pgTable('messages', {
+	id: integer('id').primaryKey(),
+	embedding: vector('embedding', { dimensions: 1536 }),
+})
+`
+
+describe('parseDrizzleSchema (pgvector)', function () {
+	const result = parseDrizzleSchema([{ path: 'schema.ts', text: PGVECTOR }], 'postgres')
+
+	it('recognizes the pgvector vector builder without warning', function () {
+		const messages = result.ir.tables.find((t) => t.name === 'messages')!
+		const embedding = messages.columns.find((c) => c.name === 'embedding')!
+		expect(embedding.type).toBe('vector')
+		expect(embedding.rawType).toBe('vector')
+		expect(embedding.typeParams).toBe('1536')
+		expect(result.warnings.some((w) => w.includes('unrecognized builder'))).toBe(false)
 	})
 })
 

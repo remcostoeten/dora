@@ -16,15 +16,24 @@ import {
 	ChevronDown,
 	Wand2,
 	AlertCircle,
+	GitCompareArrows,
+	ListChecks,
+	Eye,
+	EyeOff,
 } from 'lucide-react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Button } from '@studio/shared/ui/button'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { cn } from '@studio/shared/utils/cn'
+import { useConnections } from '@studio/core/data-provider'
 import type { MigrationResult } from '@studio/features/orm-cockpit/migration/generate-sql'
 import { useOrmCockpit } from '@studio/features/orm-cockpit/components/use-orm-cockpit'
+import { useMigrationStatus } from '@studio/features/orm-cockpit/components/use-migration-status'
 import { DriftView } from '@studio/features/orm-cockpit/components/drift-view'
 import { MigrationPreview } from '@studio/features/orm-cockpit/components/migration-preview'
+import { MigrationStatusView } from '@studio/features/orm-cockpit/components/migration-status-view'
+
+type CockpitTab = 'drift' | 'migrations'
 
 type Props = {
 	activeConnectionId: string | undefined
@@ -39,14 +48,89 @@ function shortFolder(path: string): string {
 	return parts.slice(-2).join('/') || path
 }
 
+/**
+ * The always-visible "what is being compared against what" indicator:
+ * `your code <folder>  ⟷  ● <database>`. Keeping this in the header means the
+ * user never has to wonder which direction the diff runs or which DB it hit.
+ */
+function CompareContext({
+	orm,
+	folder,
+	connectionName,
+}: {
+	orm: string
+	folder: string
+	connectionName: string
+}) {
+	return (
+		<span className='flex items-center gap-1.5 text-xs text-muted-foreground'>
+			<span>your code</span>
+			<span
+				className='font-mono text-foreground/70'
+				title={`${folder} · ${orm}`}
+			>
+				{shortFolder(folder)}
+			</span>
+			<GitCompareArrows className='h-3 w-3' />
+			<Database className='h-3 w-3 text-emerald-500' />
+			<span className='font-mono text-foreground/70'>{connectionName}</span>
+		</span>
+	)
+}
+
+/**
+ * Sets expectations on the link screen. The cockpit is push-style: it reads
+ * your schema source and the live DB and computes the diff itself — it does
+ * NOT read the `drizzle/` migration files. Spelling that out here avoids the
+ * common "why isn't it showing my migrations?" confusion.
+ */
+function HowItWorks() {
+	return (
+		<div className='mt-2 max-w-md rounded-md border border-border/60 bg-muted/30 px-4 py-3 text-left text-xs text-muted-foreground'>
+			<p className='mb-1.5 font-medium text-foreground/80'>How this works</p>
+			<ul className='space-y-1'>
+				<li>
+					· <span className='font-medium text-foreground/80'>Differences</span> reads your{' '}
+					<span className='font-mono'>schema.ts</span> / <span className='font-mono'>schema.prisma</span>{' '}
+					and the live database and computes the difference, then generates fresh SQL (like{' '}
+					<span className='font-mono'>drizzle-kit push</span>).
+				</li>
+				<li>
+					· <span className='font-medium text-foreground/80'>Migrations</span> reads your{' '}
+					<span className='font-mono'>drizzle/</span> journal and shows which generated migrations
+					this database has applied vs. pending.
+				</li>
+				<li>
+					· Read-only. Generated SQL opens in the SQL console, where the usual safety guardrails
+					apply — nothing is applied from here.
+				</li>
+			</ul>
+		</div>
+	)
+}
+
 export function OrmCockpitPanel({
 	activeConnectionId,
 	onOpenInSqlConsole,
 	windowControls,
 }: Props) {
 	const cockpit = useOrmCockpit(activeConnectionId)
+	const { data: connections } = useConnections()
+	const connectionName =
+		connections?.find(function (c) {
+			return c.id === activeConnectionId
+		})?.name ?? 'this database'
 	const [migration, setMigration] = useState<MigrationResult | null>(null)
 	const [notesOpen, setNotesOpen] = useState(false)
+	const [tab, setTab] = useState<CockpitTab>('drift')
+
+	const migrationStatus = useMigrationStatus({
+		folder: cockpit.linked?.folder ?? null,
+		configPath: cockpit.linked?.link.configPath,
+		orm: cockpit.linked?.orm ?? null,
+		connectionId: activeConnectionId,
+		dialect: cockpit.dialect,
+	})
 
 	const busy = cockpit.phase === 'linking' || cockpit.phase === 'analyzing'
 
@@ -67,16 +151,14 @@ export function OrmCockpitPanel({
 		<div className='flex h-full w-full flex-col bg-background text-sm'>
 			<header className='flex h-10 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-2'>
 				<div className='flex items-center gap-2 px-2'>
-					<Database className='h-4 w-4 text-muted-foreground' />
-					<span className='font-semibold text-sidebar-foreground'>ORM Cockpit</span>
+					<GitCompareArrows className='h-4 w-4 text-muted-foreground' />
+					<span className='font-semibold text-sidebar-foreground'>Schema Diff</span>
 					{cockpit.linked ? (
-						<span className='flex items-center gap-1 text-xs text-muted-foreground'>
-							<span className='capitalize'>{cockpit.linked.orm}</span>
-							<span>·</span>
-							<span className='font-mono' title={cockpit.linked.folder}>
-								{shortFolder(cockpit.linked.folder)}
-							</span>
-						</span>
+						<CompareContext
+							orm={cockpit.linked.orm}
+							folder={cockpit.linked.folder}
+							connectionName={connectionName}
+						/>
 					) : null}
 				</div>
 				<div className='flex items-center gap-1'>
@@ -118,7 +200,7 @@ export function OrmCockpitPanel({
 				<EmptyState
 					icon={<Database className='h-10 w-10' />}
 					title='No database connection'
-					description='Select a connection to compare a linked project against its live schema.'
+					description='Select a connection, then link a project to compare your code schema against it.'
 				/>
 			)
 		}
@@ -128,7 +210,9 @@ export function OrmCockpitPanel({
 				<div className='flex h-full flex-col items-center justify-center gap-3 text-muted-foreground'>
 					<Loader2 className='h-6 w-6 animate-spin' />
 					<span className='text-sm'>
-						{cockpit.phase === 'linking' ? 'Detecting project…' : 'Analyzing schema drift…'}
+						{cockpit.phase === 'linking'
+							? 'Detecting project…'
+							: 'Comparing your code to the database…'}
 					</span>
 				</div>
 			)
@@ -179,69 +263,135 @@ export function OrmCockpitPanel({
 
 		if (!cockpit.linked || !cockpit.diff) {
 			return (
-				<EmptyState
-					icon={<FolderGit2 className='h-10 w-10' />}
-					title='Link a project folder'
-					description='Compare a Drizzle or Prisma project’s schema with this database to detect drift and preview a migration.'
-					action={{ label: 'Link project', onClick: cockpit.link }}
-				/>
-			)
-		}
-
-		if (!cockpit.diff.hasChanges) {
-			return (
-				<div className='flex h-full flex-col'>
-					{renderNotes()}
+				<div className='flex h-full flex-col items-center justify-center'>
 					<EmptyState
-						icon={<Database className='h-10 w-10 text-emerald-500' />}
-						title='In sync'
-						description='The linked project’s schema matches the live database. No migration needed.'
+						className='min-h-0'
+						icon={<GitCompareArrows className='h-10 w-10' />}
+						title='Does this database match your code?'
+						description={`Link your Drizzle or Prisma project and Schema Diff shows exactly how your code schema differs from ${connectionName} — and the SQL to reconcile them.`}
+						action={{ label: 'Link project', onClick: cockpit.link }}
 					/>
+					<HowItWorks />
 				</div>
 			)
 		}
 
 		return (
 			<div className='flex h-full flex-col'>
-				{renderNotes()}
-				<PanelGroup direction='horizontal' className='flex-1'>
-					<Panel defaultSize={50} minSize={30}>
-						<div className='flex h-full flex-col'>
-							<div className='flex items-center justify-between border-b border-border/60 px-3 py-2'>
-								<span className='text-xs font-medium text-muted-foreground'>
-									Schema drift
-								</span>
-								<Button
-									size='sm'
-									className='h-7 gap-1.5 bg-emerald-600 text-xs text-white hover:bg-emerald-700'
-									onClick={handleGenerate}
-								>
-									<Wand2 className='h-3.5 w-3.5' />
-									Generate migration
-								</Button>
-							</div>
-							<div className='min-h-0 flex-1 overflow-auto p-3'>
-								<DriftView diff={cockpit.diff} />
-							</div>
-						</div>
-					</Panel>
-					<PanelResizeHandle className='w-1 bg-sidebar-border hover:bg-primary/20' />
-					<Panel defaultSize={50} minSize={30}>
-						{migration ? (
-							<MigrationPreview
-								migration={migration}
-								onOpenInSqlConsole={onOpenInSqlConsole}
-							/>
-						) : (
-							<EmptyState
-								icon={<Wand2 className='h-8 w-8' />}
-								title='No migration generated yet'
-								description='Generate a migration from the drift on the left to preview the SQL.'
-							/>
-						)}
-					</Panel>
-				</PanelGroup>
+				{renderTabBar()}
+				{tab === 'migrations' ? (
+					<MigrationStatusView state={migrationStatus} />
+				) : (
+					<div className='flex min-h-0 flex-1 flex-col'>
+						{renderNotes()}
+						{renderDrift()}
+					</div>
+				)}
 			</div>
+		)
+	}
+
+	function renderTabBar() {
+		const tabs: Array<{ id: CockpitTab; label: string; icon: React.ReactNode }> = [
+			{ id: 'drift', label: 'Differences', icon: <GitCompareArrows className='h-3.5 w-3.5' /> },
+			{ id: 'migrations', label: 'Migrations', icon: <ListChecks className='h-3.5 w-3.5' /> },
+		]
+		return (
+			<div className='flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-1'>
+				{tabs.map(function (t) {
+					const active = tab === t.id
+					return (
+						<button
+							key={t.id}
+							type='button'
+							onClick={function () {
+								setTab(t.id)
+							}}
+							className={cn(
+								'flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors',
+								active
+									? 'bg-muted text-foreground'
+									: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+							)}
+						>
+							{t.icon}
+							{t.label}
+						</button>
+					)
+				})}
+			</div>
+		)
+	}
+
+	function renderDrift() {
+		if (!cockpit.diff) {
+			return null
+		}
+		if (!cockpit.diff.hasChanges) {
+			return (
+				<EmptyState
+					icon={<Database className='h-10 w-10 text-emerald-500' />}
+					title='In sync'
+					description={`Your code schema matches ${connectionName}. No changes needed.`}
+				/>
+			)
+		}
+		return (
+			<PanelGroup direction='horizontal' className='min-h-0 flex-1'>
+				<Panel defaultSize={50} minSize={30}>
+					<div className='flex h-full flex-col'>
+						<div className='flex items-center justify-between border-b border-border/60 px-3 py-2'>
+							<div className='flex items-center gap-2'>
+								<span className='text-xs font-medium text-muted-foreground'>
+									{connectionName}
+								</span>
+								{cockpit.hiddenCount > 0 || cockpit.showExternal ? (
+									<button
+										type='button'
+										onClick={function () {
+											cockpit.setShowExternal(!cockpit.showExternal)
+										}}
+										className='flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+										title='Migration bookkeeping and provider/system tables (e.g. Supabase auth, storage) are hidden by default.'
+									>
+										{cockpit.showExternal ? (
+											<EyeOff className='h-3 w-3' />
+										) : (
+											<Eye className='h-3 w-3' />
+										)}
+										{cockpit.showExternal
+											? 'Hide system tables'
+											: `Show ${cockpit.hiddenCount} system table${cockpit.hiddenCount === 1 ? '' : 's'}`}
+									</button>
+								) : null}
+							</div>
+							<Button
+								size='sm'
+								className='h-7 gap-1.5 bg-emerald-600 text-xs text-white hover:bg-emerald-700'
+								onClick={handleGenerate}
+							>
+								<Wand2 className='h-3.5 w-3.5' />
+								Generate migration
+							</Button>
+						</div>
+						<div className='min-h-0 flex-1 overflow-auto p-3'>
+							<DriftView diff={cockpit.diff} />
+						</div>
+					</div>
+				</Panel>
+				<PanelResizeHandle className='w-1 bg-sidebar-border hover:bg-primary/20' />
+				<Panel defaultSize={50} minSize={30}>
+					{migration ? (
+						<MigrationPreview migration={migration} onOpenInSqlConsole={onOpenInSqlConsole} />
+					) : (
+						<EmptyState
+							icon={<Wand2 className='h-8 w-8' />}
+							title='No migration generated yet'
+							description='Generate a migration from the drift on the left to preview the SQL.'
+						/>
+					)}
+				</Panel>
+			</PanelGroup>
 		)
 	}
 

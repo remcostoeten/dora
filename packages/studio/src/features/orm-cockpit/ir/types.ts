@@ -41,6 +41,7 @@ export type NormalizedType =
 	| 'date'
 	| 'time'
 	| 'bytes'
+	| 'vector'
 	| 'unknown'
 
 export type ColumnIR = {
@@ -49,6 +50,13 @@ export type ColumnIR = {
 	type: NormalizedType
 	/** Original DB/ORM type, kept for display and fallback comparison. */
 	rawType: string
+	/**
+	 * Normalized type parameters — length/precision/dimensions — as a compact
+	 * string: `"255"` (varchar), `"10,2"` (decimal), `"1536"` (vector). Undefined
+	 * when not captured on a side; the diff only compares params when BOTH sides
+	 * carry them, so a missing value never fabricates drift.
+	 */
+	typeParams?: string
 	nullable: boolean
 	/** Normalized textual default, or null when there is none. */
 	default: string | null

@@ -453,6 +453,28 @@ function typeToken(col: ColumnIR, dialect: Dialect, warnings: string[]): string 
 	if (dialect === 'postgres' && col.autoIncrement && isIntFamily(col.type)) {
 		return col.type === 'bigint' ? 'BIGSERIAL' : col.type === 'smallint' ? 'SMALLSERIAL' : 'SERIAL'
 	}
+	if (col.type === 'vector') {
+		// pgvector needs an explicit dimension, e.g. VECTOR(1536). The live DB
+		// reports it in rawType ("vector(1536)"); prefer that. A code-side column
+		// only carries the bare builder name, so warn that the bare token is
+		// incomplete rather than emit invalid DDL silently.
+		if (/\(\s*\d+\s*\)/.test(col.rawType)) {
+			return col.rawType
+		}
+		warnings.push(
+			`column "${col.name}": vector has no dimension; emitting "VECTOR" — add a dimension (e.g. vector(1536)) before applying.`,
+		)
+		return SQL_TYPES[dialect][col.type]
+	}
+	// Carry length/precision through to the DDL when the base token has none,
+	// e.g. Postgres VARCHAR → VARCHAR(255), NUMERIC → NUMERIC(10,2). SQLite uses
+	// type affinity, so width is meaningless there.
+	if (dialect !== 'sqlite' && col.typeParams && (col.type === 'varchar' || col.type === 'decimal')) {
+		const base = SQL_TYPES[dialect][col.type]
+		if (!base.includes('(')) {
+			return `${base}(${col.typeParams})`
+		}
+	}
 	return SQL_TYPES[dialect][col.type]
 }
 
@@ -674,6 +696,7 @@ const SQL_TYPES: Record<Dialect, Record<Exclude<NormalizedType, 'unknown'>, stri
 		date: 'DATE',
 		time: 'TIME',
 		bytes: 'BYTEA',
+		vector: 'VECTOR',
 	},
 	mysql: {
 		int: 'INT',
@@ -693,6 +716,7 @@ const SQL_TYPES: Record<Dialect, Record<Exclude<NormalizedType, 'unknown'>, stri
 		date: 'DATE',
 		time: 'TIME',
 		bytes: 'BLOB',
+		vector: 'VECTOR',
 	},
 	sqlite: {
 		int: 'INTEGER',
@@ -712,5 +736,8 @@ const SQL_TYPES: Record<Dialect, Record<Exclude<NormalizedType, 'unknown'>, stri
 		date: 'TEXT',
 		time: 'TEXT',
 		bytes: 'BLOB',
+		// SQLite has no native vector type (sqlite-vec uses virtual tables);
+		// unreachable in practice since vector only normalizes under postgres.
+		vector: 'BLOB',
 	},
 }

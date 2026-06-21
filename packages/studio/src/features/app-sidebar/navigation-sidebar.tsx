@@ -46,7 +46,7 @@ function SidebarContent({ activeNavId, onNavSelect, databasePanelToggle }: Conte
 		},
 		{
 			id: 'orm-cockpit',
-			label: 'ORM Cockpit',
+			label: 'Schema Diff',
 			icon: GitCompare,
 			onClick: () => onNavSelect?.('orm-cockpit')
 		},

@@ -27,6 +27,10 @@ import type {
 import { parseDrizzleSchema } from '@studio/features/orm-cockpit/parsers/drizzle/parse-drizzle-schema'
 import { parsePrismaSchema } from '@studio/features/orm-cockpit/parsers/prisma/parse-prisma-schema'
 import { diffSchema } from '@studio/features/orm-cockpit/diff/diff-schema'
+import {
+	filterManagedTables,
+	countManagedTables,
+} from '@studio/features/orm-cockpit/diff/filter-managed-tables'
 import type { SchemaDiff } from '@studio/features/orm-cockpit/diff/types'
 import {
 	generateMigrationSql,
@@ -85,6 +89,12 @@ export type UseOrmCockpit = OrmCockpitState & {
 	/** Generate migration SQL from the current diff on demand. */
 	generate: () => MigrationResult | null
 	reset: () => void
+	/** Whether managed/system tables are included in the diff. */
+	showExternal: boolean
+	/** Toggle managed/system tables in the diff (re-diffs from cached IRs). */
+	setShowExternal: (show: boolean) => void
+	/** How many managed/system tables are currently hidden (0 when shown). */
+	hiddenCount: number
 }
 
 /**
@@ -120,6 +130,11 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			hasConnection: Boolean(connectionId),
 		}
 	})
+
+	// Whether to include managed/system tables (migration bookkeeping, Supabase
+	// `auth`/`storage`, …) in the diff. Hidden by default — they're never in the
+	// code schema and would otherwise read as destructive drops.
+	const [showExternal, setShowExternal] = useState(false)
 
 	// Guards against a stale async chain (e.g. user re-links mid-analysis)
 	// committing its result over a newer one.
@@ -315,11 +330,39 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 		[state.choiceFolder, analyze],
 	)
 
+	// The live IR with managed/system tables filtered out (unless revealed), and
+	// the diff derived from it. Toggling `showExternal` re-diffs from the cached
+	// IRs — no re-introspection — and the generator works off the SAME filtered
+	// view, so it can never emit a DROP for a hidden bookkeeping/system table.
+	const liveForDiff = useMemo(
+		function () {
+			return state.liveIr
+				? filterManagedTables(state.liveIr, state.dialect, showExternal)
+				: null
+		},
+		[state.liveIr, state.dialect, showExternal],
+	)
+
+	const visibleDiff = useMemo(
+		function () {
+			if (!liveForDiff || !state.codeIr) return state.diff
+			return diffSchema(liveForDiff, state.codeIr)
+		},
+		[liveForDiff, state.codeIr, state.diff],
+	)
+
+	const hiddenCount = useMemo(
+		function () {
+			return state.liveIr ? countManagedTables(state.liveIr, state.dialect) : 0
+		},
+		[state.liveIr, state.dialect],
+	)
+
 	const generate = useCallback(
 		function (): MigrationResult | null {
-			if (!state.diff) return null
-			const result = generateMigrationSql(state.diff, state.dialect, {
-				from: state.liveIr ?? undefined,
+			if (!visibleDiff) return null
+			const result = generateMigrationSql(visibleDiff, state.dialect, {
+				from: liveForDiff ?? undefined,
 				to: state.codeIr ?? undefined,
 			})
 			// Fold generator warnings into the notes area, deduped against existing.
@@ -338,7 +381,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			}
 			return result
 		},
-		[state.diff, state.dialect, state.liveIr, state.codeIr],
+		[visibleDiff, state.dialect, liveForDiff, state.codeIr],
 	)
 
 	const reset = useCallback(function () {
@@ -403,10 +446,14 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 
 	return {
 		...state,
+		diff: visibleDiff,
 		link,
 		rescan,
 		chooseOrm,
 		generate,
 		reset,
+		showExternal,
+		setShowExternal,
+		hiddenCount,
 	}
 }

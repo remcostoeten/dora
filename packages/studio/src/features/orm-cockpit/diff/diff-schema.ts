@@ -56,6 +56,44 @@ const NUMERIC_RANK: Partial<Record<NormalizedType, number>> = {
 	decimal: 6,
 }
 
+/** Types whose length/precision/dimensions participate in the diff. */
+const PARAM_TYPES = new Set<NormalizedType>(['varchar', 'decimal', 'vector'])
+
+/** True only when both sides carry comparable params for the same param-type. */
+function paramsComparable(b: ColumnIR, a: ColumnIR): boolean {
+	return (
+		b.type === a.type &&
+		PARAM_TYPES.has(a.type) &&
+		b.typeParams !== undefined &&
+		a.typeParams !== undefined
+	)
+}
+
+function paramsDiffer(b: ColumnIR, a: ColumnIR): boolean {
+	return paramsComparable(b, a) && b.typeParams !== a.typeParams
+}
+
+/** First integer of a param string (`"10,2"` → 10), or null. */
+function leadingInt(params: string | undefined): number | null {
+	if (params === undefined) return null
+	const n = parseInt(params, 10)
+	return Number.isFinite(n) ? n : null
+}
+
+/**
+ * A param change to a strictly smaller leading value (varchar 255→100, vector
+ * 1536→768, decimal precision drop) can truncate → destructive; anything else
+ * (a widen, or a scale-only tweak) is review.
+ */
+function classifyParamChange(before: ColumnIR, after: ColumnIR): Confidence {
+	const from = leadingInt(before.typeParams)
+	const to = leadingInt(after.typeParams)
+	if (from !== null && to !== null && to < from) {
+		return 'destructive'
+	}
+	return 'review'
+}
+
 function byName<T extends { name: string }>(items: T[]): Map<string, T> {
 	const map = new Map<string, T>()
 	for (const item of items) {
@@ -157,6 +195,10 @@ function diffColumn(before: ColumnIR | undefined, after: ColumnIR | undefined): 
 	if (typesDiffer) {
 		changedFields.push('type')
 		confidences.push(classifyTypeChange(b, a))
+	} else if (paramsDiffer(b, a)) {
+		// Same normalized type, differing length/precision/dimensions.
+		changedFields.push('type')
+		confidences.push(classifyParamChange(b, a))
 	}
 
 	// Nullable. nullable→NOT NULL can fail on existing NULL rows → review.
@@ -218,6 +260,9 @@ function columnsIdentical(b: ColumnIR, a: ColumnIR): boolean {
 		if (b.rawType !== a.rawType) {
 			return false
 		}
+	}
+	if (paramsDiffer(b, a)) {
+		return false
 	}
 	return (
 		b.type === a.type &&

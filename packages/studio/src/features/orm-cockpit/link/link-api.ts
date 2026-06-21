@@ -4,6 +4,10 @@ import {
 	type DetectOrmResult,
 	type ProjectReader,
 } from '@studio/features/orm-cockpit/link/detect-orm'
+import {
+	readJournalWithReader,
+	type JournalEntry,
+} from '@studio/features/orm-cockpit/migration/read-journal'
 
 /**
  * Tauri-backed wrappers over the `pick_folder` / `read_project_file` /
@@ -46,6 +50,19 @@ export function createTauriProjectReader(): ProjectReader {
 /** Detect the ORM in an already-chosen folder using the live fs. */
 export async function detectProjectOrm(folder: string): Promise<DetectOrmResult> {
 	return detectOrm(folder, createTauriProjectReader())
+}
+
+/**
+ * Read the Drizzle migration journal under a linked folder, honoring a custom
+ * `out` dir from the given drizzle.config path when available.
+ */
+export async function readDrizzleJournal(
+	folder: string,
+	configPath?: string,
+): Promise<{ entries: JournalEntry[]; journalPath: string | null }> {
+	const reader = createTauriProjectReader()
+	const configText = configPath ? await reader.readFile(configPath) : null
+	return readJournalWithReader(folder, configText, reader)
 }
 
 /**

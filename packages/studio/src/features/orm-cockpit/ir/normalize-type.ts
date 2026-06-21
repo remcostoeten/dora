@@ -44,6 +44,9 @@ function has(t: string, needle: string): boolean {
 function normalizePostgres(t: string): NormalizedType {
 	if (has(t, 'bool')) return 'bool'
 	if (has(t, 'uuid')) return 'uuid'
+	// pgvector: `vector`/`vector(1536)`. Anchored so we don't catch unrelated
+	// builders that merely contain "vector" (halfvec/sparsevec stay 'unknown').
+	if (t === 'vector' || t.startsWith('vector(')) return 'vector'
 	if (has(t, 'jsonb')) return 'jsonb'
 	if (has(t, 'json')) return 'json'
 

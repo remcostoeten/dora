@@ -115,6 +115,49 @@ describe('fromLiveSchema (postgres)', function () {
 	})
 })
 
+describe('fromLiveSchema (postgres type params)', function () {
+	function pgColumn(name: string, dataType: string) {
+		return {
+			name,
+			data_type: dataType,
+			is_nullable: true,
+			default_value: null,
+			is_primary_key: false,
+			is_auto_increment: false,
+			foreign_key: null,
+		}
+	}
+
+	const ir = fromLiveSchema(
+		schema([
+			{
+				name: 't',
+				schema: 'public',
+				primary_key_columns: [],
+				columns: [
+					pgColumn('a', 'character varying(255)'),
+					pgColumn('b', 'numeric(10,2)'),
+					pgColumn('c', 'vector(1536)'),
+					pgColumn('d', 'timestamp(6) with time zone'),
+				],
+				indexes: [],
+			},
+		]),
+		'postgres',
+	)
+	const byName = Object.fromEntries(ir.tables[0].columns.map((c) => [c.name, c]))
+
+	it('extracts varchar / decimal / vector params', function () {
+		expect(byName.a.typeParams).toBe('255')
+		expect(byName.b.typeParams).toBe('10,2')
+		expect(byName.c.typeParams).toBe('1536')
+	})
+
+	it('does not capture params for noisy types like timestamp(6)', function () {
+		expect(byName.d.typeParams).toBeUndefined()
+	})
+})
+
 describe('fromLiveSchema (sqlite)', function () {
 	const sqlite = schema([
 		{

@@ -60,7 +60,7 @@ function kindVerb(kind: 'added' | 'removed' | 'changed'): string {
 }
 
 function columnSummary(col: ColumnIR): string {
-	const bits: string[] = [col.type]
+	const bits: string[] = [col.typeParams ? `${col.type}(${col.typeParams})` : col.type]
 	if (col.rawType && col.rawType !== col.type) bits.push(`(${col.rawType})`)
 	bits.push(col.nullable ? 'null' : 'not null')
 	if (col.default !== null) bits.push(`default ${col.default}`)
@@ -188,13 +188,52 @@ function TableCard({ table }: { table: TableDiff }) {
 	)
 }
 
+/** A labeled group of table diffs sharing a direction. */
+function DriftGroup({
+	title,
+	hint,
+	tables,
+}: {
+	title: string
+	hint: string
+	tables: TableDiff[]
+}) {
+	if (tables.length === 0) {
+		return null
+	}
+	return (
+		<div className='space-y-2'>
+			<div className='flex items-baseline gap-2'>
+				<span className='text-xs font-semibold text-foreground'>{title}</span>
+				<span className='text-[11px] text-muted-foreground'>{hint}</span>
+				<span className='ml-auto text-[11px] text-muted-foreground'>{tables.length}</span>
+			</div>
+			<div className='space-y-2'>
+				{tables.map(function (table) {
+					return <TableCard key={table.name} table={table} />
+				})}
+			</div>
+		</div>
+	)
+}
+
 export function DriftView({ diff }: Props) {
 	const destructiveCount = diff.tables.filter(function (t) {
 		return t.confidence === 'destructive'
 	}).length
 
+	// Group by direction so "apply to the DB" is never confused with "exists in
+	// the DB but not your code". `removed` = in the live DB, gone from code;
+	// everything else (`added`/`changed`) is work your code wants applied.
+	const toApply = diff.tables.filter(function (t) {
+		return t.kind !== 'removed'
+	})
+	const onlyInDb = diff.tables.filter(function (t) {
+		return t.kind === 'removed'
+	})
+
 	return (
-		<div className='space-y-2'>
+		<div className='space-y-4'>
 			<div className='flex items-center gap-2 text-xs text-muted-foreground'>
 				<span className='font-medium text-foreground'>
 					{diff.tables.length} table{diff.tables.length === 1 ? '' : 's'} differ
@@ -207,15 +246,18 @@ export function DriftView({ diff }: Props) {
 						</span>
 					</>
 				) : null}
-				<span className='ml-auto'>
-					Comparing <span className='text-foreground'>live DB</span> → project code
-				</span>
 			</div>
-			<div className='space-y-2'>
-				{diff.tables.map(function (table) {
-					return <TableCard key={table.name} table={table} />
-				})}
-			</div>
+
+			<DriftGroup
+				title='In your code, not yet in the database'
+				hint='your schema would create / alter these'
+				tables={toApply}
+			/>
+			<DriftGroup
+				title='In the database, not in your code'
+				hint='dropping these would lose data'
+				tables={onlyInDb}
+			/>
 		</div>
 	)
 }

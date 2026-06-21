@@ -19,6 +19,7 @@ function col(name: string, type: NormalizedType, over: Partial<ColumnIR> = {}): 
 		nullable: over.nullable ?? false,
 		default: over.default ?? null,
 		autoIncrement: over.autoIncrement ?? false,
+		...(over.typeParams !== undefined ? { typeParams: over.typeParams } : {}),
 	}
 }
 
@@ -55,6 +56,40 @@ describe('diffSchema — identical', function () {
 		const b = schema([table('t', [col('c', 'varchar', { rawType: 'character varying(255)' })])])
 		const diff = diffSchema(a, b)
 		expect(diff.hasChanges).toBe(false)
+	})
+})
+
+// ---- type params (length / precision / dimensions) -------------------------
+
+describe('diffSchema — type params', function () {
+	it('flags a varchar length change and marks a shrink destructive', function () {
+		const from = schema([table('t', [col('c', 'varchar', { typeParams: '255' })])])
+		const to = schema([table('t', [col('c', 'varchar', { typeParams: '100' })])])
+		const diff = diffSchema(from, to)
+		expect(diff.hasChanges).toBe(true)
+		const c = diff.tables[0].columns[0]
+		expect(c.kind).toBe('changed')
+		expect(c.changedFields).toContain('type')
+		expect(c.confidence).toBe('destructive')
+	})
+
+	it('treats a widen as review, not destructive', function () {
+		const from = schema([table('t', [col('c', 'vector', { typeParams: '768' })])])
+		const to = schema([table('t', [col('c', 'vector', { typeParams: '1536' })])])
+		const diff = diffSchema(from, to)
+		expect(diff.tables[0].columns[0].confidence).toBe('review')
+	})
+
+	it('does not flag equal params', function () {
+		const from = schema([table('t', [col('c', 'decimal', { typeParams: '10,2' })])])
+		const to = schema([table('t', [col('c', 'decimal', { typeParams: '10,2' })])])
+		expect(diffSchema(from, to).hasChanges).toBe(false)
+	})
+
+	it('ignores params when one side does not carry them (conservative)', function () {
+		const from = schema([table('t', [col('c', 'varchar', { typeParams: '255' })])])
+		const to = schema([table('t', [col('c', 'varchar')])])
+		expect(diffSchema(from, to).hasChanges).toBe(false)
 	})
 })
 

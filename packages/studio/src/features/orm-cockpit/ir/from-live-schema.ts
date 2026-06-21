@@ -10,9 +10,27 @@ import type {
 	Dialect,
 	ForeignKeyIR,
 	IndexIR,
+	NormalizedType,
 	SchemaIR,
 	TableIR,
 } from '@studio/features/orm-cockpit/ir/types'
+
+/** Types whose length/precision/dimensions we compare (see ColumnIR.typeParams). */
+const PARAM_TYPES = new Set<NormalizedType>(['varchar', 'decimal', 'vector'])
+
+/**
+ * Extract the parenthetical params from a live `data_type` string for the few
+ * types where they matter, e.g. `character varying(255)` → `"255"`,
+ * `numeric(10,2)` → `"10,2"`, `vector(1536)` → `"1536"`. Returns undefined for
+ * other types so we don't compare noisy widths (e.g. `timestamp(6)`).
+ */
+function liveTypeParams(dataType: string, type: NormalizedType): string | undefined {
+	if (!PARAM_TYPES.has(type)) {
+		return undefined
+	}
+	const match = dataType.match(/\(([^)]+)\)/)
+	return match ? match[1].replace(/\s+/g, '') : undefined
+}
 
 /**
  * Map the live database's {@link DatabaseSchema} (as it crosses the Rust→TS
@@ -67,10 +85,12 @@ function mapTable(table: TableInfo, dialect: Dialect): TableIR {
 }
 
 function mapColumn(column: ColumnInfo, dialect: Dialect): ColumnIR {
+	const type = normalizeDbType(column.data_type, dialect)
 	return {
 		name: column.name,
-		type: normalizeDbType(column.data_type, dialect),
+		type,
 		rawType: column.data_type,
+		typeParams: liveTypeParams(column.data_type, type),
 		nullable: column.is_nullable,
 		default: normalizeDefault(column.default_value),
 		autoIncrement: column.is_auto_increment ?? false,

@@ -272,6 +272,7 @@ const BUILDER_TYPES: Record<string, NormalizedType> = {
 	blob: 'bytes',
 	binary: 'bytes',
 	varbinary: 'bytes',
+	vector: 'vector',
 }
 
 // Builders that imply an auto-incrementing column.
@@ -307,6 +308,7 @@ function parseColumn(
 		type = normalizeDbType(builderName, dialect)
 	}
 	const rawType = builderName ?? 'unknown'
+	const typeParams = extractTypeParams(baseArgs)
 
 	if (type === 'unknown') {
 		warnings.push(
@@ -371,11 +373,53 @@ function parseColumn(
 	}
 
 	return {
-		column: { name: dbName, type, rawType, nullable, default: defaultText, autoIncrement },
+		column: { name: dbName, type, rawType, typeParams, nullable, default: defaultText, autoIncrement },
 		isPrimaryKey,
 		uniqueIndex,
 		foreignKey,
 	}
+}
+
+/**
+ * Pull length/precision/dimensions out of a builder's options object, e.g.
+ * `varchar('x', { length: 255 })`, `numeric('x', { precision: 10, scale: 2 })`,
+ * `vector('x', { dimensions: 1536 })`. Returns a normalized param string or
+ * undefined when none are present.
+ */
+function extractTypeParams(args: ts.NodeArray<ts.Expression>): string | undefined {
+	let obj: ts.ObjectLiteralExpression | undefined
+	for (const arg of args) {
+		if (ts.isObjectLiteralExpression(arg)) {
+			obj = arg
+			break
+		}
+	}
+	if (!obj) {
+		return undefined
+	}
+
+	const nums = new Map<string, string>()
+	for (const prop of obj.properties) {
+		if (!ts.isPropertyAssignment(prop)) {
+			continue
+		}
+		const key = propertyName(prop.name)
+		if (key !== null && ts.isNumericLiteral(prop.initializer)) {
+			nums.set(key, prop.initializer.text)
+		}
+	}
+
+	if (nums.has('dimensions')) {
+		return nums.get('dimensions')
+	}
+	if (nums.has('length')) {
+		return nums.get('length')
+	}
+	if (nums.has('precision')) {
+		const precision = nums.get('precision')
+		return nums.has('scale') ? `${precision},${nums.get('scale')}` : precision
+	}
+	return undefined
 }
 
 type TModifier = { name: string; args: ts.NodeArray<ts.Expression> }
