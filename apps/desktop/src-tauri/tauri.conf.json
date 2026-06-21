@@ -35,7 +35,7 @@
 			"endpoints": [
 				"https://github.com/remcostoeten/dora/releases/latest/download/latest.json"
 			],
-			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDI2NzQwMzIyODQ4MzlBMTIKUldRU21vT0VJZ04wSmg0WGRnLzZmOVZ6cGJhN1pZR2FCTmdpWGlEekEyQVYrQU82WE9KYmd0ZFMK"
+			"pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlBM0UzNEJFRDExNjdFNTEKUldSUmZoYlJ2alErbXU5UWZJTllCTFpMeUJZdTRuRXdRQlJnN0FWeFRvNndKSlhaV2VvUmMrMTgK"
 		}
 	},
 	"bundle": {
