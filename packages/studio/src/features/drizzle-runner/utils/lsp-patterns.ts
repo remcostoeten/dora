@@ -13,7 +13,7 @@
  * Returns "db" for db., "tx" for tx., null otherwise.
  */
 export function getDbName(text: string): 'db' | 'tx' | null {
-	const match = text.match(/\b(db|tx)\.[\w]*$/)
+	const match = text.match(/\b(db|tx)\.[\w$]*$/)
 	if (!match) return null
 	if (match[1] === 'tx') return 'tx'
 	return 'db'
@@ -139,6 +139,10 @@ export function isInsideFromParens(text: string): boolean {
 
 export function isInsideJoinParens(text: string): boolean {
 	return /\.(left|right|inner|full)Join\(\s*[\w]*$/.test(text)
+}
+
+export function isInsideCountParens(text: string): boolean {
+	return /\b(?:db|tx)\.\$count\(\s*[\w]*$/.test(text)
 }
 
 export function isInsideWhereParens(text: string): boolean {
