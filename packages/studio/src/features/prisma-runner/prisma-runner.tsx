@@ -1,4 +1,4 @@
-import { Play, Sparkles, Download, Loader2, Braces, X } from 'lucide-react'
+import { Play, Sparkles, Download, Loader2, Braces, X, FileCode2 } from 'lucide-react'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useConnections } from '@studio/core/data-provider'
@@ -8,8 +8,10 @@ import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
 import { ResultsPanel } from '../drizzle-runner/components/results-panel'
 import { CodeEditor } from './components/code-editor'
+import { PrismaSchemaDialog } from './components/prisma-schema-dialog'
 import { SchemaViewer } from './components/schema-viewer'
 import type { PrismaRunnerProps, QueryResult, TranslationError } from './types'
+import { databaseSchemaToPrisma } from './utils/generate-prisma-schema'
 import { buildModelMap, tableToModelKey } from './utils/model-mapper'
 import { prismaToSql, type Dialect } from './utils/prisma-to-sql'
 
@@ -31,6 +33,7 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 	const [showJson, setShowJson] = useState(false)
 	const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 	const [translationError, setTranslationError] = useState<TranslationError | null>(null)
+	const [showSchema, setShowSchema] = useState(false)
 
 	const activeConnectionId = useMemo(
 		function () {
@@ -54,6 +57,13 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 			return deriveDialect(connection?.type)
 		},
 		[connections, activeConnectionId]
+	)
+
+	const prismaSchema = useMemo(
+		function () {
+			return databaseSchemaToPrisma(schema, dialect)
+		},
+		[schema, dialect]
 	)
 
 	useEffect(
@@ -269,8 +279,24 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 					)}
 				>
 					<div className='h-full flex flex-col'>
-						<div className='p-3 border-b border-sidebar-border/50 text-xs font-medium text-muted-foreground uppercase tracking-wider'>
-							Models
+						<div className='flex items-center justify-between gap-2 border-b border-sidebar-border/50 py-2 pl-3 pr-2'>
+							<span className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+								Models
+							</span>
+							<Button
+								variant='ghost'
+								size='sm'
+								className='h-6 gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97] disabled:opacity-40'
+								onClick={function () {
+									setShowSchema(true)
+								}}
+								disabled={schema.tables.length === 0}
+								title='View generated schema.prisma'
+								aria-label='View generated schema.prisma'
+							>
+								<FileCode2 className='h-3.5 w-3.5' />
+								<span>schema.prisma</span>
+							</Button>
 						</div>
 						<SchemaViewer schema={schema} onInsert={handleInsert} />
 					</div>
@@ -330,6 +356,8 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 					</PanelGroup>
 				</Panel>
 			</PanelGroup>
+
+			<PrismaSchemaDialog open={showSchema} onOpenChange={setShowSchema} code={prismaSchema} />
 		</div>
 	)
 }
