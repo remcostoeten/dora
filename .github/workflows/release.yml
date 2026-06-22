@@ -93,17 +93,10 @@ jobs:
       - name: install rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: cache cargo registry
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+      - name: cache rust build
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+          workspaces: apps/desktop/src-tauri
 
       - name: install dependencies (ubuntu)
         run: |
@@ -201,17 +194,10 @@ jobs:
       - name: install rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: cache cargo registry
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+      - name: cache rust build
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+          workspaces: apps/desktop/src-tauri
 
       - name: install sqlite3 via vcpkg
         shell: pwsh
@@ -274,17 +260,10 @@ jobs:
       - name: install rust stable
         uses: dtolnay/rust-toolchain@stable
 
-      - name: cache cargo registry
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+      - name: cache rust build
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+          workspaces: apps/desktop/src-tauri
 
       - name: install frontend dependencies
         run: bun install
