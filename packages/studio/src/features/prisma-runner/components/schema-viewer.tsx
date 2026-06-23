@@ -1,4 +1,4 @@
-import { Box, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react'
+import { Box, ChevronRight, ChevronDown, CornerDownRight, KeyRound, Link2 } from 'lucide-react'
 import { useState } from 'react'
 import type { DatabaseSchema, ColumnInfo } from '@studio/lib/bindings'
 import { ScrollArea } from '@studio/shared/ui/scroll-area'
@@ -57,7 +57,7 @@ export function SchemaViewer({ schema, onInsert }: Props) {
 								)}
 								<Box className='h-4 w-4 shrink-0 opacity-70' />
 								<span className='font-medium truncate'>{modelName}</span>
-								<span className='ml-auto text-xs text-muted-foreground/50 tabular-nums'>
+								<span className='ml-auto shrink-0 rounded bg-sidebar-accent/40 px-1.5 py-0.5 text-[10px] tabular-nums text-muted-foreground/70'>
 									{table.columns.length}
 								</span>
 							</button>
@@ -68,13 +68,20 @@ export function SchemaViewer({ schema, onInsert }: Props) {
 										return (
 											<button
 												key={col.name}
-												className='flex items-center gap-2 w-full px-2 py-1 text-xs text-muted-foreground hover:text-sidebar-foreground transition-colors text-left'
+												className='flex items-center gap-2 w-full rounded px-2 py-1 text-xs text-muted-foreground hover:bg-sidebar-accent/40 hover:text-sidebar-foreground transition-colors text-left'
 												onClick={function () {
 													onInsert(`prisma.${modelKey}`)
 												}}
 											>
+												{col.is_primary_key ? (
+													<KeyRound className='h-3 w-3 shrink-0 text-amber-400/80' />
+												) : col.foreign_key ? (
+													<Link2 className='h-3 w-3 shrink-0 text-sky-400/70' />
+												) : (
+													<span className='h-1 w-1 shrink-0 rounded-full bg-muted-foreground/30' />
+												)}
 												<span className='font-mono flex-1 truncate'>{col.name}</span>
-												<span className='font-mono text-[10px] text-muted-foreground/50'>
+												<span className='shrink-0 rounded bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80'>
 													{tsType(col)}
 													{col.is_nullable ? '?' : ''}
 												</span>

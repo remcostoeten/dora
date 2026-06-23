@@ -1,10 +1,10 @@
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useState, useEffect } from 'react'
 import { useAdapter } from '@studio/core/data-provider'
 import { useIsTauri } from '@studio/core/data-provider/context'
 import { getAdapterError } from '@studio/core/data-provider/types'
 import type { TableInfo } from '@studio/lib/bindings'
 import { ScrollArea } from '@studio/shared/ui/scroll-area'
-import { Spinner } from '@studio/shared/ui/spinner'
 import {
 	Dialog,
 	DialogContent,
@@ -184,112 +184,108 @@ export function TableInfoDialog({
 					<DialogDescription className='font-mono text-xs'>{tableName}</DialogDescription>
 				</DialogHeader>
 
-				<ScrollArea
-					className='min-h-0'
-					style={{ maxHeight: 'calc(min(100vh - 2rem, 720px) - 5rem)' }}
-				>
+				<ScrollArea className='min-h-0' style={{ maxHeight: 'calc(min(100vh - 2rem, 720px) - 5rem)' }}>
 					<div className='py-2 pr-4'>
-						{isLoading && (
-							<div className='flex items-center justify-center py-8'>
-								<Spinner className='h-6 w-6 text-muted-foreground' />
+					{isLoading && (
+						<div className='flex items-center justify-center py-8'>
+							<Spinner className='h-6 w-6 text-muted-foreground' />
+						</div>
+					)}
+
+					{error && (
+						<div className='text-sm text-destructive py-4 text-center'>{error}</div>
+					)}
+
+					{tableInfo && (
+						<div className='space-y-1'>
+							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2'>
+								Overview
 							</div>
-						)}
+							<MetricRow label='Schema' value={tableInfo.schema} />
+							<MetricRow label='Columns' value={tableInfo.columns.length} />
+							<MetricRow
+								label='Estimated Rows'
+								value={tableInfo.row_count_estimate?.toLocaleString() ?? 'N/A'}
+							/>
+							<MetricRow
+								label='Primary Key'
+								value={
+									tableInfo.primary_key_columns?.length
+										? tableInfo.primary_key_columns.join(', ')
+										: 'None'
+								}
+							/>
+							<MetricRow
+								label='Indexes'
+								value={tableInfo.indexes?.length ?? 0}
+							/>
 
-						{error && (
-							<div className='text-sm text-destructive py-4 text-center'>{error}</div>
-						)}
-
-						{tableInfo && (
-							<div className='space-y-1'>
-								<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2'>
-									Overview
-								</div>
-								<MetricRow label='Schema' value={tableInfo.schema} />
-								<MetricRow label='Columns' value={tableInfo.columns.length} />
-								<MetricRow
-									label='Estimated Rows'
-									value={tableInfo.row_count_estimate?.toLocaleString() ?? 'N/A'}
-								/>
-								<MetricRow
-									label='Primary Key'
-									value={
-										tableInfo.primary_key_columns?.length
-											? tableInfo.primary_key_columns.join(', ')
-											: 'None'
-									}
-								/>
-								<MetricRow label='Indexes' value={tableInfo.indexes?.length ?? 0} />
-
-								<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
-									Columns
-								</div>
-								<div className='space-y-2'>
-									{tableInfo.columns.map(function (column) {
-										return (
-											<div
-												key={column.name}
-												className='flex items-start justify-between gap-4 py-2 border-b border-sidebar-border/50 last:border-b-0'
-											>
-												<div className='min-w-0'>
-													<div className='text-sm text-sidebar-foreground break-words'>
-														{column.name}
-													</div>
-													<div className='text-xs text-muted-foreground'>
-														{column.is_primary_key
-															? 'Primary key'
-															: column.is_nullable
-																? 'Nullable'
-																: 'Required'}
-													</div>
+							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
+								Columns
+							</div>
+							<div className='space-y-2'>
+								{tableInfo.columns.map(function (column) {
+									return (
+										<div
+											key={column.name}
+											className='flex items-start justify-between gap-4 py-2 border-b border-sidebar-border/50 last:border-b-0'
+										>
+											<div className='min-w-0'>
+												<div className='text-sm text-sidebar-foreground break-words'>
+													{column.name}
 												</div>
-												<div className='text-xs font-mono text-muted-foreground text-right break-all'>
-													{column.data_type}
+												<div className='text-xs text-muted-foreground'>
+													{column.is_primary_key ? 'Primary key' : column.is_nullable ? 'Nullable' : 'Required'}
 												</div>
 											</div>
-										)
-									})}
-								</div>
-							</div>
-						)}
-
-						{metrics && !isLoading && (
-							<div className='space-y-1 mt-4'>
-								<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2'>
-									PostgreSQL Metrics
-								</div>
-								<MetricRow label='Table Size' value={metrics.tableSizeMb} />
-								<MetricRow label='Index Size' value={metrics.indexSizeMb} />
-								<MetricRow label='Total Size' value={metrics.totalSizeMb} />
-
-								<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
-									Records
-								</div>
-								<MetricRow
-									label='Row Count'
-									value={metrics.rowCount.toLocaleString()}
-								/>
-								<MetricRow
-									label='Dead Tuples'
-									value={metrics.deadTuples.toLocaleString()}
-								/>
-
-								{(metrics.firstDate || metrics.lastDate) && (
-									<>
-										<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
-											Date Range
+											<div className='text-xs font-mono text-muted-foreground text-right break-all'>
+												{column.data_type}
+											</div>
 										</div>
-										<MetricRow label='First Date' value={metrics.firstDate} />
-										<MetricRow label='Last Date' value={metrics.lastDate} />
-									</>
-								)}
-
-								<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
-									Maintenance
-								</div>
-								<MetricRow label='Last Vacuum' value={metrics.lastVacuum} />
-								<MetricRow label='Last Analyze' value={metrics.lastAnalyze} />
+									)
+								})}
 							</div>
-						)}
+						</div>
+					)}
+
+					{metrics && !isLoading && (
+						<div className='space-y-1 mt-4'>
+							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2'>
+								PostgreSQL Metrics
+							</div>
+							<MetricRow label='Table Size' value={metrics.tableSizeMb} />
+							<MetricRow label='Index Size' value={metrics.indexSizeMb} />
+							<MetricRow label='Total Size' value={metrics.totalSizeMb} />
+
+							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
+								Records
+							</div>
+							<MetricRow
+								label='Row Count'
+								value={metrics.rowCount.toLocaleString()}
+							/>
+							<MetricRow
+								label='Dead Tuples'
+								value={metrics.deadTuples.toLocaleString()}
+							/>
+
+							{(metrics.firstDate || metrics.lastDate) && (
+								<>
+									<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
+										Date Range
+									</div>
+									<MetricRow label='First Date' value={metrics.firstDate} />
+									<MetricRow label='Last Date' value={metrics.lastDate} />
+								</>
+							)}
+
+							<div className='text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 mt-4'>
+								Maintenance
+							</div>
+							<MetricRow label='Last Vacuum' value={metrics.lastVacuum} />
+							<MetricRow label='Last Analyze' value={metrics.lastAnalyze} />
+						</div>
+					)}
 					</div>
 				</ScrollArea>
 			</DialogContent>

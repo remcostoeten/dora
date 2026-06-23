@@ -1,12 +1,11 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 /**
- * Renders the Drizzle migration status: the repo's journal entries,
-	each tagged
+ * Renders the Drizzle migration status: the repo's journal entries, each tagged
  * applied (in the live DB) or pending. Read-only — applying migrations is a CLI
  * concern (`drizzle-kit migrate`); this just shows the gap.
  */
 
 import { CheckCircle2, Clock, Info } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { cn } from '@studio/shared/utils/cn'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import type { MigrationStatusState } from '@studio/features/orm-cockpit/components/use-migration-status'
@@ -49,8 +48,8 @@ export function MigrationStatusView({ state }: { state: MigrationStatusState }) 
 
 			{tableMissing ? (
 				<p className='border-b border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300'>
-					No <span className='font-mono'>__drizzle_migrations</span> table in this
-					database — nothing has been applied here yet.
+					No <span className='font-mono'>__drizzle_migrations</span> table in this database —
+					nothing has been applied here yet.
 				</p>
 			) : null}
 
@@ -73,7 +72,7 @@ export function MigrationStatusView({ state }: { state: MigrationStatusState }) 
 									'ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium uppercase',
 									applied
 										? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-										: 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+										: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
 								)}
 							>
 								{row.state}

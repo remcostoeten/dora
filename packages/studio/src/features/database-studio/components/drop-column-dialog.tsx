@@ -1,11 +1,11 @@
 import { AlertTriangle } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useEffect, useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
 import { StudioDialog } from './studio-dialog'
 
-import { Spinner } from '@studio/shared/ui/spinner'
 type Props = {
 	open: boolean
 	onOpenChange: (open: boolean) => void
@@ -87,18 +87,15 @@ export function DropColumnDialog({
 				<div className='rounded-lg border border-destructive/50 bg-destructive/5 p-4'>
 					<p className='text-sm text-foreground'>
 						You are about to permanently delete the column{' '}
-						<span className='font-mono font-semibold text-destructive'>
-							{columnName}
-						</span>{' '}
-						from <span className='font-mono font-semibold'>{tableName}</span> and all of
-						its data.
+						<span className='font-mono font-semibold text-destructive'>{columnName}</span>{' '}
+						from <span className='font-mono font-semibold'>{tableName}</span> and all of its
+						data.
 					</p>
 				</div>
 
 				<div className='space-y-2'>
 					<Label htmlFor='confirm-column-name'>
-						Type <span className='font-mono font-semibold'>{columnName}</span> to
-						confirm
+						Type <span className='font-mono font-semibold'>{columnName}</span> to confirm
 					</Label>
 					<Input
 						id='confirm-column-name'

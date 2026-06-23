@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
 	buildExplainQueryPrompt,
-	buildFixErrorPrompt,
-	buildSuggestIndexesPrompt
+	buildFixErrorPrompt
 } from '@/features/ai-assistant/ai-actions'
 
 describe('AI contextual prompt builders', () => {
@@ -16,13 +15,6 @@ describe('AI contextual prompt builders', () => {
 		expect(buildFixErrorPrompt('SELECT * FROM userz', 'relation "userz" does not exist')).toBe(
 			'This SQL query failed with the following error. Suggest a fix:\n\n' +
 				'Query:\nSELECT * FROM userz\n\nError:\nrelation "userz" does not exist'
-		)
-	})
-
-	it('builds a suggest-indexes prompt with schema and queries', () => {
-		expect(buildSuggestIndexesPrompt('CREATE TABLE t (...)', 'SELECT ...')).toBe(
-			'Given this table schema and these queries, what indexes would improve performance?\n\n' +
-				'CREATE TABLE t (...)\n\nSELECT ...'
 		)
 	})
 })

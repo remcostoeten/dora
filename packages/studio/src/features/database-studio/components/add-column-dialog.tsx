@@ -1,18 +1,12 @@
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Checkbox } from '@studio/shared/ui/checkbox'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue
-} from '@studio/shared/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@studio/shared/ui/select'
 import { StudioDialog } from './studio-dialog'
 
-import { Spinner } from '@studio/shared/ui/spinner'
 type Props = {
 	open: boolean
 	onOpenChange: (open: boolean) => void

@@ -1,4 +1,5 @@
 import { Upload, FileCode, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useState, useRef } from 'react'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { Button } from '@studio/shared/ui/button'
@@ -6,7 +7,6 @@ import { useSeedDatabase } from '../api/mutations/use-seed-database'
 import type { DockerContainer } from '../types'
 import { getContainerConnectionDetails } from '../utilities/container-connection'
 
-import { Spinner } from '@studio/shared/ui/spinner'
 type Props = {
 	container: DockerContainer
 }

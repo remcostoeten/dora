@@ -1,4 +1,5 @@
-import { Play, Sparkles, Download, Braces, X } from 'lucide-react'
+import { Play, Sparkles, Download, Braces, X, FileCode2 } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useConnections } from '@studio/core/data-provider'
@@ -8,12 +9,13 @@ import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
 import { ResultsPanel } from '../drizzle-runner/components/results-panel'
 import { CodeEditor } from './components/code-editor'
+import { PrismaSchemaDialog } from './components/prisma-schema-dialog'
 import { SchemaViewer } from './components/schema-viewer'
 import type { PrismaRunnerProps, QueryResult, TranslationError } from './types'
+import { databaseSchemaToPrisma } from './utils/generate-prisma-schema'
 import { buildModelMap, tableToModelKey } from './utils/model-mapper'
 import { prismaToSql, type Dialect } from './utils/prisma-to-sql'
 
-import { Spinner } from '@studio/shared/ui/spinner'
 const EMPTY_SCHEMA: DatabaseSchema = { tables: [], schemas: [], unique_columns: [] }
 
 function deriveDialect(type: string | undefined): Dialect {
@@ -32,6 +34,7 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 	const [showJson, setShowJson] = useState(false)
 	const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
 	const [translationError, setTranslationError] = useState<TranslationError | null>(null)
+	const [showSchema, setShowSchema] = useState(false)
 
 	const activeConnectionId = useMemo(
 		function () {
@@ -55,6 +58,13 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 			return deriveDialect(connection?.type)
 		},
 		[connections, activeConnectionId]
+	)
+
+	const prismaSchema = useMemo(
+		function () {
+			return databaseSchemaToPrisma(schema, dialect)
+		},
+		[schema, dialect]
 	)
 
 	useEffect(
@@ -167,44 +177,17 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 
 	return (
 		<div className='flex h-full w-full flex-col bg-background overflow-hidden text-sm'>
-			<div className='flex items-center h-10 border-b border-sidebar-border bg-sidebar shrink-0 px-2 justify-between'>
-				<div className='flex items-center gap-2'>
-					<span className='font-semibold text-sidebar-foreground px-2'>
-						Prisma Runner
-					</span>
-				</div>
-
-				<div className='flex items-center gap-1 mx-4'>
-					<Button
-						size='sm'
-						variant='default'
-						className={cn(
-							'h-7 px-3 gap-1.5 text-xs font-medium shadow-sm transition-all',
-							isRunning
-								? 'bg-muted text-muted-foreground cursor-wait'
-								: 'bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-105 active:scale-95'
-						)}
-						onClick={function () {
-							handleExecute()
-						}}
-						disabled={isRunning}
-					>
-						{isRunning ? (
-							<Spinner className='h-3 w-3' />
-						) : (
-							<Play className='h-3 w-3 fill-current' />
-						)}
-						<span>{isRunning ? 'Running...' : 'Run'}</span>
-					</Button>
-
-					<div className='w-px h-4 bg-border/50 mx-1' />
+			<div className='flex h-9 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border bg-sidebar px-2'>
+				<div className='flex min-w-0 items-center gap-1'>
+					<span className='px-2 text-xs font-medium text-muted-foreground'>Prisma</span>
 
 					<Button
 						variant='ghost'
 						size='icon'
-						className='h-7 w-7 text-muted-foreground hover:text-foreground'
+						className='h-8 w-8 rounded-md text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97]'
 						onClick={handlePrettify}
 						title='Format code (Shift+Alt+F)'
+						aria-label='Format code'
 					>
 						<Sparkles className='h-3.5 w-3.5' />
 					</Button>
@@ -213,13 +196,15 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 						variant='ghost'
 						size='icon'
 						className={cn(
-							'h-7 w-7 text-muted-foreground hover:text-foreground',
-							showJson && 'text-primary bg-primary/10'
+							'h-8 w-8 rounded-md text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97]',
+							showJson && 'bg-sidebar-accent text-sidebar-foreground'
 						)}
 						onClick={function () {
 							setShowJson(!showJson)
 						}}
 						title='Toggle JSON view'
+						aria-label='Toggle JSON view'
+						aria-pressed={showJson}
 					>
 						<Braces className='h-3.5 w-3.5' />
 					</Button>
@@ -228,25 +213,48 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 						variant='ghost'
 						size='icon'
 						className={cn(
-							'h-7 w-7 text-muted-foreground hover:text-foreground',
-							(!result || result.rows.length === 0) && 'opacity-50 cursor-not-allowed'
+							'h-8 w-8 rounded-md text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97]',
+							(!result || result.rows.length === 0) && 'cursor-not-allowed opacity-45'
 						)}
 						onClick={handleExport}
 						disabled={!result || result.rows.length === 0}
 						title='Export results as JSON'
+						aria-label='Export results as JSON'
 					>
 						<Download className='h-3.5 w-3.5' />
 					</Button>
 				</div>
 
-				<div className='flex items-center gap-1'>
+				<div className='flex shrink-0 items-center gap-1.5'>
+					<Button
+						size='sm'
+						variant='default'
+						className='h-7 gap-2 rounded-md px-3 text-xs font-semibold shadow-sm transition-[background-color,color,transform,box-shadow] duration-150 ease-out active:scale-[0.97] bg-sidebar-foreground text-sidebar hover:bg-sidebar-foreground/90'
+						onClick={function () {
+							handleExecute()
+						}}
+						disabled={isRunning}
+					>
+						{isRunning ? (
+							<Spinner className='h-3.5 w-3.5' />
+						) : (
+							<Play className='h-3.5 w-3.5 fill-current' />
+						)}
+						<span>{isRunning ? 'Running…' : 'Run'}</span>
+					</Button>
+
 					<Button
 						variant='ghost'
 						size='sm'
-						className={cn('h-7 text-xs', isSidebarCollapsed && 'bg-sidebar-accent')}
+						className={cn(
+							'h-7 gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97]',
+							isSidebarCollapsed && 'bg-sidebar-accent'
+						)}
 						onClick={function () {
 							setIsSidebarCollapsed(!isSidebarCollapsed)
 						}}
+						aria-expanded={!isSidebarCollapsed}
+						aria-label={isSidebarCollapsed ? 'Show schema sidebar' : 'Hide schema sidebar'}
 					>
 						{isSidebarCollapsed ? 'Show Schema' : 'Hide Schema'}
 					</Button>
@@ -272,8 +280,24 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 					)}
 				>
 					<div className='h-full flex flex-col'>
-						<div className='p-3 border-b border-sidebar-border/50 text-xs font-medium text-muted-foreground uppercase tracking-wider'>
-							Models
+						<div className='flex items-center justify-between gap-2 border-b border-sidebar-border/50 py-2 pl-3 pr-2'>
+							<span className='text-xs font-medium uppercase tracking-wider text-muted-foreground'>
+								Models
+							</span>
+							<Button
+								variant='ghost'
+								size='sm'
+								className='h-6 gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-[background-color,color,transform] duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-foreground active:scale-[0.97] disabled:opacity-40'
+								onClick={function () {
+									setShowSchema(true)
+								}}
+								disabled={schema.tables.length === 0}
+								title='View generated schema.prisma'
+								aria-label='View generated schema.prisma'
+							>
+								<FileCode2 className='h-3.5 w-3.5' />
+								<span>schema.prisma</span>
+							</Button>
 						</div>
 						<SchemaViewer schema={schema} onInsert={handleInsert} />
 					</div>
@@ -333,6 +357,8 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 					</PanelGroup>
 				</Panel>
 			</PanelGroup>
+
+			<PrismaSchemaDialog open={showSchema} onOpenChange={setShowSchema} code={prismaSchema} />
 		</div>
 	)
 }

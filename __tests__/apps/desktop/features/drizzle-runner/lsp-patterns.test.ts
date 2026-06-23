@@ -9,6 +9,7 @@ import {
 	isInsideFromParens,
 	isInsideWhereParens,
 	isInsideJoinParens,
+	isInsideCountParens,
 	getTableMatch,
 	getColumnMatch
 } from '@/features/drizzle-runner/utils/lsp-patterns'
@@ -26,6 +27,32 @@ describe('Drizzle LSP Patterns', () => {
 
 		it('returns null for unrelated text', () => {
 			expect(getDbName('const x = ')).toBeNull()
+		})
+
+		it('detects $-prefixed members like $count while typing', () => {
+			expect(getDbName('db.$')).toBe('db')
+			expect(getDbName('db.$c')).toBe('db')
+			expect(getDbName('await db.$count')).toBe('db')
+		})
+
+		it('does not match once the call is closed', () => {
+			expect(getDbName('db.$count(messages).')).toBeNull()
+		})
+	})
+
+	describe('isInsideCountParens', () => {
+		it('matches empty and partial parens', () => {
+			expect(isInsideCountParens('db.$count(')).toBe(true)
+			expect(isInsideCountParens('db.$count(mess')).toBe(true)
+			expect(isInsideCountParens('await tx.$count(')).toBe(true)
+		})
+
+		it('does not match closed parens', () => {
+			expect(isInsideCountParens('db.$count(messages)')).toBe(false)
+		})
+
+		it('does not match a second-arg condition', () => {
+			expect(isInsideCountParens('db.$count(messages, eq(')).toBe(false)
 		})
 	})
 

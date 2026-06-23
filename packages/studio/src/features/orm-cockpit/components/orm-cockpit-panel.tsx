@@ -1,4 +1,3 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 /**
  * ORM cockpit — link a project folder,
 	see how its schema drifts from the live
@@ -24,6 +23,7 @@ import {
 	Eye,
 	EyeOff
 } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Button } from '@studio/shared/ui/button'
 import { EmptyState } from '@studio/shared/ui/empty-state'

@@ -1,7 +1,15 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 import { useState, useEffect, useCallback } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { CheckCircle2, XCircle, DatabaseZap, FileSpreadsheet, Info, X, Monitor } from 'lucide-react'
+import {
+	CheckCircle2,
+	XCircle,
+	DatabaseZap,
+	FileSpreadsheet,
+	Info,
+	X,
+	Monitor
+} from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { commands, DatabaseInfo } from '@studio/lib/bindings'
 import { useIsTauri } from '@studio/core/data-provider'
 import { isDesktopOnlyError } from '@studio/core/platform/runtime'

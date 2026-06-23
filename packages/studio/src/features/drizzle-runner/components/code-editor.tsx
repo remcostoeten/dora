@@ -1,4 +1,4 @@
-import Editor, { OnMount, BeforeMount } from "@monaco-editor/react";
+import Editor, { OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import { useState, useEffect, useRef, type MutableRefObject } from "react";
 import { useSetting } from "@studio/core/settings";
@@ -19,14 +19,8 @@ import {
   isInsideDeleteParens,
   isInsideFromParens,
   isInsideJoinParens,
+  isInsideCountParens,
 } from "../utils/lsp-patterns";
-import {
-  scanCode,
-  getStatementPrefix,
-  isSafeIdentifier,
-  maskStringsAndComments,
-  collectDeclaredIdentifiers,
-} from "../utils/lsp-context";
 
 type Props = {
   value: string;
@@ -43,7 +37,7 @@ type MonacoApi = Parameters<OnMount>[1];
 type Suggestion = Monaco.languages.CompletionItem;
 type SuggestList = Monaco.languages.CompletionList;
 type TextRange = Monaco.IRange;
-type TypeKind = "number" | "bigint" | "string" | "boolean" | "date" | "json" | "unknown";
+type TypeKind = "number" | "string" | "boolean" | "date" | "unknown";
 
 const DRIZZLE_MODEL_URI = "file:///dora-drizzle-query.ts";
 const DRIZZLE_TYPES_URI = "file:///dora-drizzle-schema.d.ts";
@@ -56,39 +50,26 @@ const IGNORED_DRIZZLE_DIAGNOSTICS = [
 ];
 
 function getTypeKind(columnType: string): TypeKind {
-  const normalized = columnType.toLowerCase();
-  if (/\b(bigint|bigserial|int8)\b/.test(normalized)) {
-    return "bigint";
-  }
-  if (
-    /\b(smallint|integer|int|int2|int4|serial|smallserial|float|float4|float8|double|decimal|numeric|real|money)\b/.test(
-      normalized,
-    )
-  ) {
+  if (/int|serial|decimal|double|float|numeric|real/.test(columnType)) {
     return "number";
   }
-  if (/\b(boolean|bool)\b/.test(normalized)) {
+  if (/char|text|uuid|json|enum/.test(columnType)) {
+    return "string";
+  }
+  if (/bool/.test(columnType)) {
     return "boolean";
   }
-  if (/\b(timestamp|timestamptz|date|datetime|time)\b/.test(normalized)) {
+  if (/timestamp|date|time/.test(columnType)) {
     return "date";
-  }
-  if (/\b(json|jsonb)\b/.test(normalized)) {
-    return "json";
-  }
-  if (/\b(char|varchar|text|uuid|enum|inet|cidr|macaddr|xml)\b/.test(normalized)) {
-    return "string";
   }
   return "unknown";
 }
 
 function getValueSnippet(kind: TypeKind): string {
   if (kind === "number") return "0";
-  if (kind === "bigint") return "0n";
   if (kind === "string") return '""';
   if (kind === "boolean") return "false";
   if (kind === "date") return "new Date()";
-  if (kind === "json") return "{}";
   return "null";
 }
 
@@ -112,21 +93,6 @@ function getColumn(table: SchemaTable, columnName: string): SchemaColumn | undef
   });
 }
 
-function tableRef(table: SchemaTable): string {
-  return isSafeIdentifier(table.name) ? table.name : `schema[${JSON.stringify(table.name)}]`;
-}
-
-function columnRef(table: SchemaTable, column: SchemaColumn): string {
-  const base = tableRef(table);
-  return isSafeIdentifier(column.name)
-    ? `${base}.${column.name}`
-    : `${base}[${JSON.stringify(column.name)}]`;
-}
-
-function safePropertyKey(name: string): string {
-  return isSafeIdentifier(name) ? name : JSON.stringify(name);
-}
-
 function getRange(
   monaco: MonacoApi,
   model: Monaco.editor.ITextModel,
@@ -141,29 +107,12 @@ function getRange(
   );
 }
 
-function getTableParenRange(
-  monaco: MonacoApi,
-  model: Monaco.editor.ITextModel,
-  position: Monaco.Position,
-): TextRange {
-  const word = model.getWordUntilPosition(position);
-  const lineContent = model.getLineContent(position.lineNumber);
-  const charAfterWord = lineContent.charAt(word.endColumn - 1);
-  const endColumn = charAfterWord === ")" ? word.endColumn + 1 : word.endColumn;
-  return new monaco.Range(
-    position.lineNumber,
-    word.startColumn,
-    position.lineNumber,
-    endColumn,
-  );
-}
-
 function tableSnippet(table: SchemaTable): string {
-  return `${tableRef(table)}).$0`;
+  return `${table.name}).$0`;
 }
 
 function tablePropertySnippet(table: SchemaTable): string {
-  return isSafeIdentifier(table.name) ? `${table.name}.$0` : `${tableRef(table)}.$0`;
+  return `${table.name}.$0`;
 }
 
 function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
@@ -174,9 +123,9 @@ function valuesSnippet(table: SchemaTable, includePrimary: boolean): string {
   const items = columns.map(function (column, index) {
     const value = getValueSnippet(getTypeKind(column.type));
     if (index === 0) {
-      return `${safePropertyKey(column.name)}: \${1:${value}}`;
+      return `${column.name}: \${1:${value}}`;
     }
-    return `${safePropertyKey(column.name)}: ${value}`;
+    return `${column.name}: ${value}`;
   });
   return `{ ${items.join(", ")} }`;
 }
@@ -185,7 +134,7 @@ function returningSnippet(table: SchemaTable): string {
   const columns = table.columns.slice(0, 8);
   const items = columns.map(function (column, index) {
     const prefix = index === 0 ? "" : " ";
-    return `${prefix}${safePropertyKey(column.name)}: ${columnRef(table, column)}`;
+    return `${prefix}${column.name}: ${table.name}.${column.name}`;
   });
   return `{ ${items.join(",")} }`;
 }
@@ -234,7 +183,7 @@ function getJoinSnippet(leftTable: SchemaTable, rightTable: SchemaTable): string
     return column.name === `${leftTable.name}Id` || column.name === `${leftTable.name}_id`;
   });
   if (!rightMatch) return null;
-  return `eq(${columnRef(leftTable, leftId)}, ${columnRef(rightTable, rightMatch)})`;
+  return `eq(${leftTable.name}.${leftId.name}, ${rightTable.name}.${rightMatch.name})`;
 }
 
 function buildSuggestions(range: TextRange, suggestions: Suggestion[]): SuggestList {
@@ -253,7 +202,7 @@ function tableColumnSuggestions(
   },
 ): Suggestion[] {
   return table.columns.map(function (column, index) {
-    const insertText = options?.wrap ? options.wrap(column) : columnRef(table, column);
+    const insertText = options?.wrap ? options.wrap(column) : `${table.name}.${column.name}`;
     return {
       label: column.name,
       kind: options?.kind ?? monaco.languages.CompletionItemKind.Field,
@@ -267,50 +216,6 @@ function tableColumnSuggestions(
 
 function isDrizzleModel(model: Monaco.editor.ITextModel): boolean {
   return model.uri.toString() === DRIZZLE_MODEL_URI;
-}
-
-function configureTypescriptDefaults(monaco: MonacoApi): void {
-  const ts = monaco.languages.typescript.typescriptDefaults;
-
-  ts.setEagerModelSync(true);
-  ts.setCompilerOptions({
-    target: monaco.languages.typescript.ScriptTarget.ES2020,
-    allowNonTsExtensions: true,
-    allowSyntheticDefaultImports: true,
-    esModuleInterop: true,
-    moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-    module: monaco.languages.typescript.ModuleKind.ESNext,
-    noEmit: true,
-    strict: true,
-    noImplicitAny: false,
-    noUnusedLocals: false,
-    noUnusedParameters: false,
-    skipLibCheck: true,
-    typeRoots: [],
-  });
-
-  ts.setDiagnosticsOptions({
-    noSemanticValidation: false,
-    noSyntaxValidation: false,
-    noSuggestionDiagnostics: true,
-    diagnosticCodesToIgnore: IGNORED_DRIZZLE_DIAGNOSTICS,
-  });
-
-  ts.setModeConfiguration({
-    completionItems: false,
-    hovers: true,
-    documentSymbols: true,
-    definitions: true,
-    references: true,
-    documentHighlights: true,
-    rename: true,
-    diagnostics: true,
-    documentRangeFormattingEdits: true,
-    signatureHelp: true,
-    onTypeFormattingEdits: true,
-    codeActions: true,
-    inlayHints: true,
-  });
 }
 
 function replaceDrizzleTypes(
@@ -549,12 +454,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
 
         import("../utils/fuzzy-match")
           .then(function ({ detectTyposInQuery }) {
-            const maskedQuery = maskStringsAndComments(value);
-            const declared = new Set(collectDeclaredIdentifiers(value));
-            const typos = detectTyposInQuery(maskedQuery, tables).filter(function (typo) {
-              const head = typo.word.split(".")[0];
-              return !declared.has(typo.word) && !declared.has(head);
-            });
+            const typos = detectTyposInQuery(value, tables);
 
             const markers: Monaco.editor.IMarkerData[] = typos.map(function (typo) {
               const startPos = modelInTimeout.getPositionAt(typo.startIndex);
@@ -600,10 +500,6 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
     };
   }, []);
 
-  const handleEditorWillMount: BeforeMount = function (monaco) {
-    configureTypescriptDefaults(monaco);
-  };
-
   const handleEditorDidMount: OnMount = function (editor, monaco) {
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -611,7 +507,29 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
 
     monaco.editor.setTheme(editorTheme);
 
-    configureTypescriptDefaults(monaco);
+    monaco.languages.typescript.typescriptDefaults.setEagerModelSync(true);
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+      target: monaco.languages.typescript.ScriptTarget.ES2020,
+      allowNonTsExtensions: true,
+      allowSyntheticDefaultImports: true,
+      esModuleInterop: true,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.ESNext,
+      noEmit: true,
+      strict: true,
+      noImplicitAny: false,
+      noUnusedLocals: false,
+      noUnusedParameters: false,
+      skipLibCheck: true,
+      typeRoots: [],
+    });
+
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: false,
+      noSyntaxValidation: false,
+      noSuggestionDiagnostics: true,
+      diagnosticCodesToIgnore: IGNORED_DRIZZLE_DIAGNOSTICS,
+    });
 
     replaceDrizzleTypes(monaco, drizzleTypesRef, tablesRef.current);
 
@@ -631,17 +549,13 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
         if (!isDrizzleModel(model)) return undefined;
 
         const currentTables = tablesRef.current;
-        const docPrefix = model.getValueInRange({
-          startLineNumber: 1,
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
           startColumn: 1,
           endLineNumber: position.lineNumber,
           endColumn: position.column,
         });
-        const { masked, endScope } = scanCode(docPrefix);
-        if (endScope !== "code") return undefined;
-        const textUntilPosition = getStatementPrefix(masked);
         const range = getRange(monaco, model, position);
-        const parenRange = getTableParenRange(monaco, model, position);
 
         if (/\b(?:db|tx)\.query\.[\w]*$/.test(textUntilPosition)) {
           return buildSuggestions(
@@ -832,54 +746,73 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
               },
             },
             {
-              label: "batch",
+              label: "$count",
               kind: monaco.languages.CompletionItemKind.Method,
-              insertText: "batch([$0])",
-              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              detail: "Run a batch of queries",
+              insertText: "$count(",
+              detail: "Count rows in a table",
               range: range,
               sortText: "4",
-            },
-          ];
-          if (dbName === "db") {
-            suggestions.splice(4, 0, {
-              label: "transaction",
-              kind: monaco.languages.CompletionItemKind.Method,
-              insertText: "transaction(async tx => {\n  $0\n})",
-              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              detail: "Run queries in a transaction",
-              range: range,
-              sortText: "4",
-            });
-          }
-          return buildSuggestions(range, suggestions);
-        }
-
-        if (isInsideSelectParens(textUntilPosition)) {
-          return buildSuggestions(parenRange, [
-            {
-              label: "(all columns)",
-              kind: monaco.languages.CompletionItemKind.Snippet,
-              insertText: ").from($0)",
-              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              detail: "Select every column → pick a table",
-              range: parenRange,
-              sortText: "0",
               command: {
                 id: "editor.action.triggerSuggest",
                 title: "Trigger Suggest",
               },
             },
             {
-              label: "{ } selected columns",
-              kind: monaco.languages.CompletionItemKind.Snippet,
-              insertText: "{ $1 }).from($0)",
+              label: "batch",
+              kind: monaco.languages.CompletionItemKind.Method,
+              insertText: "batch([$0])",
               insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              detail: "Project specific columns (e.g. { id: users.id })",
-              range: parenRange,
-              sortText: "1",
+              detail: "Run a batch of queries",
+              range: range,
+              sortText: "5",
             },
-          ]);
+          ];
+          if (dbName === "db") {
+            suggestions.splice(5, 0, {
+              label: "transaction",
+              kind: monaco.languages.CompletionItemKind.Method,
+              insertText: "transaction(async tx => {\n  $0\n})",
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              detail: "Run queries in a transaction",
+              range: range,
+              sortText: "6",
+            });
+          }
+          return buildSuggestions(range, suggestions);
+        }
+
+        if (isInsideCountParens(textUntilPosition)) {
+          return buildSuggestions(
+            range,
+            currentTables.map(function (table, index) {
+              return {
+                label: table.name,
+                kind: monaco.languages.CompletionItemKind.Variable,
+                insertText: `${table.name})$0`,
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: "Table to count",
+                range: range,
+                sortText: String(index).padStart(3, "0"),
+              };
+            }),
+          );
+        }
+
+        if (isInsideSelectParens(textUntilPosition)) {
+          return buildSuggestions(
+            range,
+            currentTables.map(function (table, index) {
+              return {
+                label: table.name,
+                kind: monaco.languages.CompletionItemKind.Variable,
+                insertText: `).from(${table.name})$0`,
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: "Table",
+                range: range,
+                sortText: String(index).padStart(3, "0"),
+              };
+            }),
+          );
         }
 
         if (
@@ -888,7 +821,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
           isInsideDeleteParens(textUntilPosition)
         ) {
           return buildSuggestions(
-            parenRange,
+            range,
             currentTables.map(function (table, index) {
               return {
                 label: table.name,
@@ -896,7 +829,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 insertText: tableSnippet(table),
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 detail: "Table",
-                range: parenRange,
+                range: range,
                 sortText: String(index).padStart(3, "0"),
                 command: {
                   id: "editor.action.triggerSuggest",
@@ -909,7 +842,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
 
         if (isInsideFromParens(textUntilPosition)) {
           return buildSuggestions(
-            parenRange,
+            range,
             currentTables.map(function (table, index) {
               return {
                 label: table.name,
@@ -917,7 +850,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 insertText: tableSnippet(table),
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 detail: "Table",
-                range: parenRange,
+                range: range,
                 sortText: String(index).padStart(3, "0"),
                 command: {
                   id: "editor.action.triggerSuggest",
@@ -930,15 +863,15 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
 
         if (isInsideJoinParens(textUntilPosition)) {
           return buildSuggestions(
-            parenRange,
+            range,
             currentTables.map(function (table, index) {
               return {
                 label: table.name,
                 kind: monaco.languages.CompletionItemKind.Variable,
-                insertText: `${tableRef(table)}, $0)`,
+                insertText: `${table.name}, $0)`,
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 detail: "Join table",
-                range: parenRange,
+                range: range,
                 sortText: String(index).padStart(3, "0"),
                 command: {
                   id: "editor.action.triggerSuggest",
@@ -1119,47 +1052,24 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
             },
           ];
 
-          const directComparisonSuggestions: Suggestion[] = [];
-
           if (fromMatch) {
             const table = getTable(currentTables, normalizeTableReference(fromMatch[1]));
             if (table) {
-              table.columns.forEach(function (column, index) {
-                directComparisonSuggestions.push({
-                  label: `${column.name} =`,
-                  kind: monaco.languages.CompletionItemKind.Field,
-                  insertText: `'${column.name}', '=', \${1:${getValueSnippet(
-                    getTypeKind(column.type),
-                  )}}`,
-                  insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                  detail: "Direct comparison",
-                  range: range,
-                  sortText: `8${String(index).padStart(3, "0")}`,
-                  command: {
-                    id: "editor.action.triggerSuggest",
-                    title: "Trigger Suggest",
-                  },
-                });
-              });
-
               const tableSuggestions: Suggestion[] = table.columns.map(function (column, index) {
                 return {
                   label: `${table.name}.${column.name}`,
                   kind: monaco.languages.CompletionItemKind.Field,
-                  insertText: `eq(${columnRef(table, column)}, $0)`,
+                  insertText: `eq(${table.name}.${column.name}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Condition",
                   range: range,
                   sortText: `9${String(index).padStart(3, "0")}`,
                 };
               });
-              return buildSuggestions(
-                range,
-                baseSuggestions.concat(directComparisonSuggestions).concat(tableSuggestions),
-              );
+              return buildSuggestions(range, baseSuggestions.concat(tableSuggestions));
             }
           }
-          return buildSuggestions(range, baseSuggestions.concat(directComparisonSuggestions));
+          return buildSuggestions(range, baseSuggestions);
         }
 
         if (
@@ -1182,7 +1092,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                   tableColumnSuggestions(monaco, range, table, {
                     sortPrefix: "2",
                     wrap: function (column) {
-                      return `desc(${columnRef(table, column)})`;
+                      return `desc(${table.name}.${column.name})`;
                     },
                     detail: function (column) {
                       return `Descending ${column.type}`;
@@ -1191,7 +1101,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                   tableColumnSuggestions(monaco, range, table, {
                     sortPrefix: "3",
                     wrap: function (column) {
-                      return `asc(${columnRef(table, column)})`;
+                      return `asc(${table.name}.${column.name})`;
                     },
                     detail: function (column) {
                       return `Ascending ${column.type}`;
@@ -1221,7 +1131,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
               ...tableColumnSuggestions(monaco, range, table, {
                 sortPrefix: "1",
                 wrap: function (column) {
-                  return `{ ${safePropertyKey(column.name)}: ${columnRef(table, column)} }`;
+                  return `{ ${column.name}: ${table.name}.${column.name} }`;
                 },
                 detail: function (column) {
                   return `Return ${column.type}`;
@@ -1260,7 +1170,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
               suggestions.push({
                 label: `${table.name}.${column.name}`,
                 kind: monaco.languages.CompletionItemKind.Field,
-                insertText: `${columnRef(table, column)}, \${1})`,
+                insertText: `${table.name}.${column.name}, \${1})`,
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 detail: column.type,
                 range: range,
@@ -1344,34 +1254,6 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                   sortText: "0",
                 });
               }
-              if (kind === "bigint") {
-                valueSuggestions.push(
-                  {
-                    label: "1n",
-                    kind: monaco.languages.CompletionItemKind.Value,
-                    insertText: "1n",
-                    range: range,
-                    sortText: "0",
-                  },
-                  {
-                    label: "100n",
-                    kind: monaco.languages.CompletionItemKind.Value,
-                    insertText: "100n",
-                    range: range,
-                    sortText: "1",
-                  },
-                );
-              }
-              if (kind === "json") {
-                valueSuggestions.push({
-                  label: "{}",
-                  kind: monaco.languages.CompletionItemKind.Value,
-                  insertText: "{$0}",
-                  insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                  range: range,
-                  sortText: "0",
-                });
-              }
               valueSuggestions.push({
                 label: "param()",
                 kind: monaco.languages.CompletionItemKind.Function,
@@ -1392,12 +1274,12 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
           if (table) {
             const column = getColumn(table, columnMatch[2]);
             if (column) {
-              const ref = columnRef(table, column);
+              const columnRef = `${table.name}.${column.name}`;
               return buildSuggestions(range, [
                 {
                   label: "eq",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `eq(${ref}, $0)`,
+                  insertText: `eq(${columnRef}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Equal",
                   range: range,
@@ -1410,7 +1292,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 {
                   label: "ne",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `ne(${ref}, $0)`,
+                  insertText: `ne(${columnRef}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Not equal",
                   range: range,
@@ -1423,7 +1305,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 {
                   label: "gt",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `gt(${ref}, $0)`,
+                  insertText: `gt(${columnRef}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Greater than",
                   range: range,
@@ -1436,7 +1318,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 {
                   label: "gte",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `gte(${ref}, $0)`,
+                  insertText: `gte(${columnRef}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Greater or equal",
                   range: range,
@@ -1449,7 +1331,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 {
                   label: "lt",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `lt(${ref}, $0)`,
+                  insertText: `lt(${columnRef}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Less than",
                   range: range,
@@ -1462,7 +1344,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 {
                   label: "lte",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `lte(${ref}, $0)`,
+                  insertText: `lte(${columnRef}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Less or equal",
                   range: range,
@@ -1475,7 +1357,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 {
                   label: "inArray",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `inArray(${ref}, $0)`,
+                  insertText: `inArray(${columnRef}, $0)`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "In array",
                   range: range,
@@ -1488,7 +1370,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 {
                   label: "isNull",
                   kind: monaco.languages.CompletionItemKind.Function,
-                  insertText: `isNull(${ref})`,
+                  insertText: `isNull(${columnRef})`,
                   insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                   detail: "Is null",
                   range: range,
@@ -1541,6 +1423,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
               },
             });
           } else {
+            // Executable chain methods first — these auto-translate to SQL.
             suggestions.push(
               {
                 label: "where",
@@ -1556,87 +1439,13 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 },
               },
               {
-                label: "leftJoin",
-                kind: monaco.languages.CompletionItemKind.Method,
-                insertText: "leftJoin(",
-                detail: "Left join",
-                range: range,
-                sortText: "2",
-                command: {
-                  id: "editor.action.triggerSuggest",
-                  title: "Trigger Suggest",
-                },
-              },
-              {
-                label: "rightJoin",
-                kind: monaco.languages.CompletionItemKind.Method,
-                insertText: "rightJoin(",
-                detail: "Right join",
-                range: range,
-                sortText: "3",
-                command: {
-                  id: "editor.action.triggerSuggest",
-                  title: "Trigger Suggest",
-                },
-              },
-              {
-                label: "innerJoin",
-                kind: monaco.languages.CompletionItemKind.Method,
-                insertText: "innerJoin(",
-                detail: "Inner join",
-                range: range,
-                sortText: "4",
-                command: {
-                  id: "editor.action.triggerSuggest",
-                  title: "Trigger Suggest",
-                },
-              },
-              {
-                label: "fullJoin",
-                kind: monaco.languages.CompletionItemKind.Method,
-                insertText: "fullJoin(",
-                detail: "Full join",
-                range: range,
-                sortText: "5",
-                command: {
-                  id: "editor.action.triggerSuggest",
-                  title: "Trigger Suggest",
-                },
-              },
-              {
-                label: "groupBy",
-                kind: monaco.languages.CompletionItemKind.Method,
-                insertText: "groupBy(${1:column})$0",
-                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                detail: "Group results",
-                range: range,
-                sortText: "6",
-                command: {
-                  id: "editor.action.triggerSuggest",
-                  title: "Trigger Suggest",
-                },
-              },
-              {
-                label: "having",
-                kind: monaco.languages.CompletionItemKind.Method,
-                insertText: "having($0)",
-                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                detail: "Filter groups",
-                range: range,
-                sortText: "7",
-                command: {
-                  id: "editor.action.triggerSuggest",
-                  title: "Trigger Suggest",
-                },
-              },
-              {
                 label: "orderBy",
                 kind: monaco.languages.CompletionItemKind.Method,
                 insertText: "orderBy(${1:column})$0",
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 detail: "Order results",
                 range: range,
-                sortText: "8",
+                sortText: "2",
                 command: {
                   id: "editor.action.triggerSuggest",
                   title: "Trigger Suggest",
@@ -1649,7 +1458,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 detail: "Limit rows",
                 range: range,
-                sortText: "9",
+                sortText: "3",
               },
               {
                 label: "offset",
@@ -1658,17 +1467,70 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                 detail: "Skip rows",
                 range: range,
-                sortText: "10",
+                sortText: "4",
               },
             );
 
+            // Methods below are valid Drizzle but not auto-translated by the
+            // runner — they require db.execute(sql`...`). Flagged + sorted last.
+            const rawSqlOnly = "raw SQL only · use db.execute(sql``)";
             suggestions.push(
+              {
+                label: "leftJoin",
+                kind: monaco.languages.CompletionItemKind.Method,
+                insertText: "leftJoin(",
+                detail: `Left join — ${rawSqlOnly}`,
+                range: range,
+                sortText: "5",
+              },
+              {
+                label: "rightJoin",
+                kind: monaco.languages.CompletionItemKind.Method,
+                insertText: "rightJoin(",
+                detail: `Right join — ${rawSqlOnly}`,
+                range: range,
+                sortText: "6",
+              },
+              {
+                label: "innerJoin",
+                kind: monaco.languages.CompletionItemKind.Method,
+                insertText: "innerJoin(",
+                detail: `Inner join — ${rawSqlOnly}`,
+                range: range,
+                sortText: "7",
+              },
+              {
+                label: "fullJoin",
+                kind: monaco.languages.CompletionItemKind.Method,
+                insertText: "fullJoin(",
+                detail: `Full join — ${rawSqlOnly}`,
+                range: range,
+                sortText: "8",
+              },
+              {
+                label: "groupBy",
+                kind: monaco.languages.CompletionItemKind.Method,
+                insertText: "groupBy(${1:column})$0",
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: `Group results — ${rawSqlOnly}`,
+                range: range,
+                sortText: "9",
+              },
+              {
+                label: "having",
+                kind: monaco.languages.CompletionItemKind.Method,
+                insertText: "having($0)",
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                detail: `Filter groups — ${rawSqlOnly}`,
+                range: range,
+                sortText: "10",
+              },
               {
                 label: "union",
                 kind: monaco.languages.CompletionItemKind.Method,
                 insertText: "union(${1:query})",
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                detail: "Union",
+                detail: `Union — ${rawSqlOnly}`,
                 range: range,
                 sortText: "11",
               },
@@ -1677,7 +1539,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 kind: monaco.languages.CompletionItemKind.Method,
                 insertText: "unionAll(${1:query})",
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                detail: "Union All",
+                detail: `Union All — ${rawSqlOnly}`,
                 range: range,
                 sortText: "12",
               },
@@ -1686,7 +1548,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 kind: monaco.languages.CompletionItemKind.Method,
                 insertText: "intersect(${1:query})",
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                detail: "Intersect",
+                detail: `Intersect — ${rawSqlOnly}`,
                 range: range,
                 sortText: "13",
               },
@@ -1695,7 +1557,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
                 kind: monaco.languages.CompletionItemKind.Method,
                 insertText: "except(${1:query})",
                 insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                detail: "Except",
+                detail: `Except — ${rawSqlOnly}`,
                 range: range,
                 sortText: "14",
               },
@@ -1732,7 +1594,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
               kind: monaco.languages.CompletionItemKind.Method,
               insertText: "onConflictDoUpdate({ target: ${1:column}, set: { $0 } })",
               insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              detail: "Upsert (Update on conflict)",
+              detail: "Upsert (update on conflict) — raw SQL only · use db.execute(sql``)",
               range: range,
               sortText: "2",
             },
@@ -1741,7 +1603,7 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
               kind: monaco.languages.CompletionItemKind.Method,
               insertText: "onConflictDoNothing()",
               insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              detail: "Ignore conflict",
+              detail: "Ignore conflict — raw SQL only · use db.execute(sql``)",
               range: range,
               sortText: "3",
             },
@@ -2122,11 +1984,12 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
           },
         ];
 
+        // Add table names
         currentTables.forEach(function (table, index) {
           defaultSuggestions.push({
             label: table.name,
             kind: monaco.languages.CompletionItemKind.Variable,
-            insertText: tableRef(table),
+            insertText: table.name,
             detail: "Table",
             range: range,
             sortText: `5${String(index).padStart(3, "0")}`,
@@ -2146,11 +2009,10 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
           if (!isExactMatch) {
             const fuzzyMatches = getSuggestions(word.word, tableNames, 3);
             fuzzyMatches.forEach(function (match, index) {
-              const matchedTable = getTable(currentTables, match.value);
               defaultSuggestions.push({
                 label: `${match.value} (did you mean?)`,
                 kind: monaco.languages.CompletionItemKind.Variable,
-                insertText: matchedTable ? tableRef(matchedTable) : match.value,
+                insertText: match.value,
                 detail: `Suggestion for "${word.word}"`,
                 range: range,
                 sortText: `0${String(index).padStart(3, "0")}`,
@@ -2304,7 +2166,6 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
           onChange={function (newValue) {
             onChange(newValue || "");
           }}
-          beforeMount={handleEditorWillMount}
           onMount={handleEditorDidMount}
           theme={editorTheme}
           options={{
@@ -2315,12 +2176,25 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
             scrollBeyondLastLine: false,
             automaticLayout: true,
             tabSize: 2,
-            autoClosingBrackets: "never",
-            autoSurround: "never",
             wordBasedSuggestions: "off",
             suggestOnTriggerCharacters: true,
             quickSuggestions: false,
             suggest: {
+              showKeywords: false,
+              showSnippets: false,
+              showWords: false,
+              showClasses: false,
+              showInterfaces: false,
+              showFunctions: false,
+              showVariables: false,
+              showConstants: false,
+              showEnums: false,
+              showEnumMembers: false,
+              showModules: false,
+              showOperators: false,
+              showReferences: false,
+              showStructs: false,
+              showTypeParameters: false,
               filterGraceful: false,
             },
             readOnly: isExecuting,

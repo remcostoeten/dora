@@ -208,7 +208,7 @@ export function AiAssistantPanel({
 	return (
 		<aside
 			className={cn(
-				'fixed right-0 top-0 z-40 flex h-full w-[420px] max-w-[90vw] flex-col border-l border-sidebar-border bg-sidebar shadow-2xl'
+				'fixed right-0 top-9 z-40 flex h-[calc(100%-2.25rem)] w-[420px] max-w-[90vw] flex-col border-l border-sidebar-border bg-sidebar shadow-2xl'
 			)}
 		>
 			<header className='flex items-center gap-2 border-b border-sidebar-border px-3 py-2'>

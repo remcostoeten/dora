@@ -1,15 +1,6 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-	Check,
-	Copy,
-	ExternalLink,
-	GitBranch,
-	LogOut,
-	PlugZap,
-	RefreshCw,
-	Search
-} from 'lucide-react'
+import { Check, Copy, ExternalLink, GitBranch, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { open } from '@tauri-apps/plugin-shell'
 import type { NeonAccount, NeonDatabase } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
@@ -29,8 +20,7 @@ import {
 import { useNeonDatabases } from './use-neon-databases'
 import { useNeonBranches } from './use-neon-branches'
 import { useIsTauri } from '@studio/core/data-provider'
-import { MockProviderConnectFlow } from '../_shared/mock-connect-flow'
-import { NEON_MOCK } from '../_shared/mock-provider-data'
+import { DesktopOnlyNotice } from '@studio/core/platform'
 
 type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
@@ -42,7 +32,12 @@ export function NeonConnectFlow({ onComplete }: Props) {
 	const isTauri = useIsTauri()
 
 	if (!isTauri) {
-		return <MockProviderConnectFlow config={NEON_MOCK} onComplete={onComplete} />
+		return (
+			<DesktopOnlyNotice
+				title='Neon lives in the desktop app'
+				description='Encrypted key storage and database discovery need the native app. Download Dora to connect your Neon databases.'
+			/>
+		)
 	}
 
 	return <NeonConnectFlowInner onComplete={onComplete} />
@@ -63,7 +58,9 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 	const { databases, isLoading, error, refresh, reset } = useNeonDatabases(isConnected)
 	// Only fetch branches once a database is picked — most connects never need
 	// the picker, so we don't pay the per-project call until it's relevant.
-	const { branches, isLoading: branchesLoading } = useNeonBranches(selected?.projectId ?? null)
+	const { branches, isLoading: branchesLoading } = useNeonBranches(
+		selected?.projectId ?? null
+	)
 
 	// Hydrate from a key stored in a previous session so a returning user lands
 	// straight on the database picker.
@@ -268,9 +265,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							{accountLabel ? (
 								<span>
 									Connected as{' '}
-									<span className='font-medium text-foreground'>
-										{accountLabel}
-									</span>
+									<span className='font-medium text-foreground'>{accountLabel}</span>
 								</span>
 							) : (
 								<span>Connected</span>
@@ -402,11 +397,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							className='h-9 shrink-0 gap-1.5 border-border/70 px-3'
 							title='Re-fetch databases from Neon'
 						>
-							{isLoading ? (
-								<Spinner className='h-3.5 w-3.5' />
-							) : (
-								<RefreshCw className='h-3.5 w-3.5' />
-							)}
+							<RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
 							Refresh
 						</Button>
 					</div>
@@ -471,7 +462,9 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							<div className='flex items-center gap-1.5 text-xs text-muted-foreground'>
 								<GitBranch className='h-3.5 w-3.5' />
 								<span>Branch</span>
-								{branchesLoading ? <Spinner className='h-3 w-3' /> : null}
+								{branchesLoading ? (
+									<Spinner className='h-3 w-3' />
+								) : null}
 							</div>
 							<div className='flex flex-wrap gap-2'>
 								{branches.map(function (branch) {
@@ -490,9 +483,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 													: 'border-border/60 bg-background/45 text-muted-foreground hover:border-border hover:bg-card/65'
 											)}
 										>
-											<span className='truncate max-w-[12rem]'>
-												{branch.name}
-											</span>
+											<span className='truncate max-w-[12rem]'>{branch.name}</span>
 											{branch.isDefault ? (
 												<span className='text-[0.65rem] uppercase tracking-wide text-muted-foreground/70'>
 													primary

@@ -1,11 +1,11 @@
 import { AlertTriangle } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useState, useEffect } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
 import { StudioDialog } from './studio-dialog'
 
-import { Spinner } from '@studio/shared/ui/spinner'
 type Props = {
 	open: boolean
 	onOpenChange: (open: boolean) => void

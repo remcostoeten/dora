@@ -1,4 +1,3 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
 	Check,
@@ -11,6 +10,7 @@ import {
 	RefreshCw,
 	Search
 } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { open } from '@tauri-apps/plugin-shell'
 import type {
 	PlanetscaleBranch,

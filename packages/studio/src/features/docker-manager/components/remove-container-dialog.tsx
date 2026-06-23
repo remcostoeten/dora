@@ -1,8 +1,8 @@
 import { AlertTriangle } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Checkbox } from '@studio/shared/ui/checkbox'
-import { Spinner } from '@studio/shared/ui/spinner'
 import {
 	Dialog,
 	DialogContent,

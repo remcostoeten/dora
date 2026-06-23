@@ -1,6 +1,6 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 import { Channel } from '@tauri-apps/api/core'
 import { Check, Download, ExternalLink, Trash2 } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useIsTauri } from '@studio/core/data-provider'
 import {
@@ -77,39 +77,36 @@ export function OllamaModelsSection() {
 		requestId: null
 	})
 
-	const refresh = useCallback(
-		async function refresh() {
-			setLoading(true)
-			setMessage(null)
-			try {
-				if (!isTauri) {
-					setStatus(buildMockOllamaStatus())
-					setCatalog(buildMockOllamaCatalog())
-					return
-				}
-
-				const configResult = await commands.aiGetConfig()
-				if (configResult.status === 'ok') {
-					setEndpoint(configResult.data.ollama_endpoint || DEFAULT_ENDPOINT)
-				}
-
-				const [statusResult, catalogResult] = await Promise.all([
-					commands.aiGetOllamaStatus(),
-					commands.aiListOllamaCatalog()
-				])
-
-				if (statusResult.status === 'ok') {
-					setStatus(statusResult.data)
-				}
-				if (catalogResult.status === 'ok') {
-					setCatalog(catalogResult.data)
-				}
-			} finally {
-				setLoading(false)
+	const refresh = useCallback(async function refresh() {
+		setLoading(true)
+		setMessage(null)
+		try {
+			if (!isTauri) {
+				setStatus(buildMockOllamaStatus())
+				setCatalog(buildMockOllamaCatalog())
+				return
 			}
-		},
-		[isTauri]
-	)
+
+			const configResult = await commands.aiGetConfig()
+			if (configResult.status === 'ok') {
+				setEndpoint(configResult.data.ollama_endpoint || DEFAULT_ENDPOINT)
+			}
+
+			const [statusResult, catalogResult] = await Promise.all([
+				commands.aiGetOllamaStatus(),
+				commands.aiListOllamaCatalog()
+			])
+
+			if (statusResult.status === 'ok') {
+				setStatus(statusResult.data)
+			}
+			if (catalogResult.status === 'ok') {
+				setCatalog(catalogResult.data)
+			}
+		} finally {
+			setLoading(false)
+		}
+	}, [isTauri])
 
 	useEffect(
 		function loadOnMount() {
@@ -171,9 +168,7 @@ export function OllamaModelsSection() {
 		if (!isTauri) {
 			setCatalog(function (current) {
 				return current.map(function (entry) {
-					return entry.name === model
-						? { ...entry, installed: false, size_bytes: null }
-						: entry
+					return entry.name === model ? { ...entry, installed: false, size_bytes: null } : entry
 				})
 			})
 			return
@@ -316,7 +311,9 @@ export function OllamaModelsSection() {
 					case 'done':
 						setInstallState(null)
 						setMessage(
-							event.version ? `Ollama ${event.version} installed` : 'Ollama installed'
+							event.version
+								? `Ollama ${event.version} installed`
+								: 'Ollama installed'
 						)
 						void refresh()
 						break
@@ -413,12 +410,7 @@ export function OllamaModelsSection() {
 	}
 
 	const canInstall =
-		isTauri &&
-		!loading &&
-		!status?.running &&
-		!status?.binary_ready &&
-		!installState &&
-		!pullState
+		isTauri && !loading && !status?.running && !status?.binary_ready && !installState && !pullState
 	const canStartManaged =
 		isTauri &&
 		!loading &&
@@ -430,8 +422,8 @@ export function OllamaModelsSection() {
 	return (
 		<div className='space-y-3'>
 			<p className='text-xs leading-tight text-muted-foreground'>
-				Run models locally with Ollama. Install the runtime from Settings, pull models
-				below, then choose Ollama as your provider.
+				Run models locally with Ollama. Install the runtime from Settings, pull models below,
+				then choose Ollama as your provider.
 				{!isTauri ? ' Install and pull progress are simulated in the browser demo.' : null}
 			</p>
 
@@ -441,13 +433,7 @@ export function OllamaModelsSection() {
 						Ollama is not installed yet. Dora can download and set it up locally without
 						admin rights.
 					</p>
-					<Button
-						size='sm'
-						className='h-8 text-xs'
-						onClick={function () {
-							void installOllama()
-						}}
-					>
+					<Button size='sm' className='h-8 text-xs' onClick={function () { void installOllama() }}>
 						<Download className='mr-1 h-3 w-3' />
 						Install Ollama
 					</Button>
@@ -515,22 +501,16 @@ export function OllamaModelsSection() {
 				) : null}
 				{status ? (
 					<span className='text-muted-foreground'>
-						{status.installed_count} model{status.installed_count === 1 ? '' : 's'}{' '}
-						installed
+						{status.installed_count} model{status.installed_count === 1 ? '' : 's'} installed
 						{status.managed ? ' · managed by Dora' : ''}
 					</span>
 				) : null}
 			</div>
 
-			{!loading &&
-			status &&
-			!status.running &&
-			isTauri &&
-			!status.binary_ready &&
-			!installState ? (
+			{!loading && status && !status.running && isTauri && !status.binary_ready && !installState ? (
 				<div className='rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-500'>
-					Ollama is not reachable at {endpoint}. Use Install Ollama above, or install
-					manually from{' '}
+					Ollama is not reachable at {endpoint}. Use Install Ollama above, or install manually
+					from{' '}
 					<a
 						href='https://ollama.com/download'
 						target='_blank'
@@ -557,9 +537,7 @@ export function OllamaModelsSection() {
 							Cancel
 						</Button>
 					</div>
-					<div className='mb-1 text-[10px] text-muted-foreground'>
-						{installState.message}
-					</div>
+					<div className='mb-1 text-[10px] text-muted-foreground'>{installState.message}</div>
 					<div className='h-2 overflow-hidden rounded bg-sidebar-accent'>
 						<div
 							className='h-full bg-primary transition-all'
@@ -577,18 +555,11 @@ export function OllamaModelsSection() {
 				<div className='rounded border border-sidebar-border bg-background p-2'>
 					<div className='mb-1 flex items-center justify-between gap-2 text-[10px]'>
 						<span className='font-medium'>{pullState.model}</span>
-						<Button
-							variant='ghost'
-							size='sm'
-							className='h-6 px-2 text-[10px]'
-							onClick={cancelPull}
-						>
+						<Button variant='ghost' size='sm' className='h-6 px-2 text-[10px]' onClick={cancelPull}>
 							Cancel
 						</Button>
 					</div>
-					<div className='mb-1 text-[10px] text-muted-foreground'>
-						{pullState.message}
-					</div>
+					<div className='mb-1 text-[10px] text-muted-foreground'>{pullState.message}</div>
 					<div className='h-2 overflow-hidden rounded bg-sidebar-accent'>
 						<div
 							className='h-full bg-primary transition-all'
@@ -669,10 +640,7 @@ export function OllamaModelsSection() {
 												onClick={function () {
 													void pullModel(entry.name)
 												}}
-												disabled={
-													Boolean(pullState) ||
-													(!status?.running && isTauri)
-												}
+												disabled={Boolean(pullState) || (!status?.running && isTauri)}
 											>
 												<Download className='h-3 w-3 mr-1' />
 												Pull
@@ -701,9 +669,7 @@ export function OllamaModelsSection() {
 					onClick={function () {
 						void pullModel(customModel)
 					}}
-					disabled={
-						!customModel.trim() || Boolean(pullState) || (!status?.running && isTauri)
-					}
+					disabled={!customModel.trim() || Boolean(pullState) || (!status?.running && isTauri)}
 				>
 					Pull
 				</Button>

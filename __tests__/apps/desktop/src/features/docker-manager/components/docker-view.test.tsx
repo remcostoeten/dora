@@ -141,7 +141,7 @@ describe('DockerView', () => {
 		expect(screen.getByText('Docker')).toBeInTheDocument()
 	})
 
-	it('opens create dialog when "New" is clicked', () => {
+	it('opens create dialog when "New Container" is clicked', () => {
 		vi.spyOn(useContainersModule, 'useDockerAvailability').mockReturnValue({
 			data: { available: true },
 			isLoading: false
@@ -156,7 +156,7 @@ describe('DockerView', () => {
 
 		renderWithProviders(<DockerView />)
 
-		const newButton = screen.getByRole('button', { name: /new/i })
+		const newButton = screen.getByText('New')
 		fireEvent.click(newButton)
 
 		expect(screen.getByTestId('create-dialog')).toBeInTheDocument()

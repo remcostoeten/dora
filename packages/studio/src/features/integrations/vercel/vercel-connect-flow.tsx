@@ -1,6 +1,6 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Copy, ExternalLink, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { open } from '@tauri-apps/plugin-shell'
 import type { VercelAccount, VercelStore } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
@@ -18,8 +18,7 @@ import {
 } from './vercel-api'
 import { useVercelStores } from './use-vercel-stores'
 import { useIsTauri } from '@studio/core/data-provider'
-import { MockProviderConnectFlow } from '../_shared/mock-connect-flow'
-import { VERCEL_MOCK } from '../_shared/mock-provider-data'
+import { DesktopOnlyNotice } from '@studio/core/platform'
 
 type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
@@ -31,7 +30,12 @@ export function VercelConnectFlow({ onComplete }: Props) {
 	const isTauri = useIsTauri()
 
 	if (!isTauri) {
-		return <MockProviderConnectFlow config={VERCEL_MOCK} onComplete={onComplete} />
+		return (
+			<DesktopOnlyNotice
+				title='Vercel lives in the desktop app'
+				description='Encrypted token storage and store discovery need the native app. Download Dora to connect your Vercel Postgres databases.'
+			/>
+		)
 	}
 
 	return <VercelConnectFlowInner onComplete={onComplete} />
@@ -228,9 +232,7 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 							{accountLabel ? (
 								<span>
 									Connected as{' '}
-									<span className='font-medium text-foreground'>
-										{accountLabel}
-									</span>
+									<span className='font-medium text-foreground'>{accountLabel}</span>
 								</span>
 							) : (
 								<span>Connected</span>
@@ -362,11 +364,7 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 							className='h-9 shrink-0 gap-1.5 border-border/70 px-3'
 							title='Re-fetch stores from Vercel'
 						>
-							{isLoading ? (
-								<Spinner className='h-3.5 w-3.5' />
-							) : (
-								<RefreshCw className='h-3.5 w-3.5' />
-							)}
+							<RefreshCw className={cn('h-3.5 w-3.5', isLoading && 'animate-spin')} />
 							Refresh
 						</Button>
 					</div>
@@ -458,10 +456,9 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 										className='h-9 bg-background/70'
 									/>
 									<p className='text-[11px] text-muted-foreground/70'>
-										Vercel marks this store&apos;s connection string as
-										sensitive, so it can&apos;t be read via the API. Copy
-										POSTGRES_URL from the store&apos;s settings and paste it
-										here.
+										Vercel marks this store&apos;s connection string as sensitive,
+										so it can&apos;t be read via the API. Copy POSTGRES_URL from
+										the store&apos;s settings and paste it here.
 									</p>
 								</div>
 							) : null}

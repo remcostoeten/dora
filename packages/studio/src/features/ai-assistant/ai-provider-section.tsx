@@ -1,10 +1,10 @@
 import { RefreshCw } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useIsTauri } from '@studio/core/data-provider'
 import { commands, type AiModelOption, type AiServiceConfig } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
-import { Spinner } from '@studio/shared/ui/spinner'
 import {
 	Select,
 	SelectContent,
@@ -79,25 +79,18 @@ export function AiProviderSection() {
 	const [saving, setSaving] = useState(false)
 	const [message, setMessage] = useState<string | null>(null)
 
-	const groupedModels = useMemo(
-		function () {
-			return groupModels(modelOptions)
-		},
-		[modelOptions]
-	)
+	const groupedModels = useMemo(function () {
+		return groupModels(modelOptions)
+	}, [modelOptions])
 
-	const knownModelIds = useMemo(
-		function () {
-			return new Set(
-				modelOptions.map(function (option) {
-					return option.id
-				})
-			)
-		},
-		[modelOptions]
-	)
+	const knownModelIds = useMemo(function () {
+		return new Set(modelOptions.map(function (option) {
+			return option.id
+		}))
+	}, [modelOptions])
 
-	const usingCustomModel = config.provider !== 'mock' && !knownModelIds.has(config.model)
+	const usingCustomModel =
+		config.provider !== 'mock' && !knownModelIds.has(config.model)
 
 	const selectValue = usingCustomModel ? CUSTOM_MODEL_VALUE : config.model
 
@@ -121,33 +114,30 @@ export function AiProviderSection() {
 		[isTauri]
 	)
 
-	const load = useCallback(
-		async function load() {
-			setLoading(true)
-			setMessage(null)
-			try {
-				if (!isTauri) {
-					const mock = buildMockAiStatus()
-					setConfig({
-						provider: mock.active_provider,
-						model: mock.active_model,
-						ollama_endpoint: DEFAULT_CONFIG.ollama_endpoint
-					})
-					setModelOptions(buildMockProviderModels(mock.active_provider))
-					return
-				}
-
-				const result = await commands.aiGetConfig()
-				if (result.status === 'ok') {
-					setConfig(result.data)
-					await loadModels(result.data.provider)
-				}
-			} finally {
-				setLoading(false)
+	const load = useCallback(async function load() {
+		setLoading(true)
+		setMessage(null)
+		try {
+			if (!isTauri) {
+				const mock = buildMockAiStatus()
+				setConfig({
+					provider: mock.active_provider,
+					model: mock.active_model,
+					ollama_endpoint: DEFAULT_CONFIG.ollama_endpoint
+				})
+				setModelOptions(buildMockProviderModels(mock.active_provider))
+				return
 			}
-		},
-		[isTauri, loadModels]
-	)
+
+			const result = await commands.aiGetConfig()
+			if (result.status === 'ok') {
+				setConfig(result.data)
+				await loadModels(result.data.provider)
+			}
+		} finally {
+			setLoading(false)
+		}
+	}, [isTauri, loadModels])
 
 	useEffect(
 		function loadOnMount() {
@@ -225,11 +215,7 @@ export function AiProviderSection() {
 							<SelectContent>
 								{PROVIDER_OPTIONS.map(function (option) {
 									return (
-										<SelectItem
-											key={option.id}
-											value={option.id}
-											className='text-xs'
-										>
+										<SelectItem key={option.id} value={option.id} className='text-xs'>
 											{option.label}
 										</SelectItem>
 									)
@@ -253,11 +239,9 @@ export function AiProviderSection() {
 									className='inline-flex items-center gap-1 text-[10px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50'
 									title='Refresh model list from provider'
 								>
-									{loadingModels ? (
-										<Spinner className='h-3 w-3' />
-									) : (
-										<RefreshCw className='h-3 w-3' />
-									)}
+									<RefreshCw
+										className={cn('h-3 w-3', loadingModels ? 'animate-spin' : undefined)}
+									/>
 									Refresh
 								</button>
 							) : null}
@@ -366,9 +350,7 @@ export function AiProviderSection() {
 							<span
 								className={cn(
 									'text-[10px]',
-									message === 'Saved'
-										? 'text-emerald-500'
-										: 'text-muted-foreground'
+									message === 'Saved' ? 'text-emerald-500' : 'text-muted-foreground'
 								)}
 							>
 								{message}

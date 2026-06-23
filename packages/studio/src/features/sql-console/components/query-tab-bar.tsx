@@ -1,6 +1,6 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 import { useState, useRef, useEffect } from 'react'
 import { Plus, X, ChevronLeft, ChevronRight, Copy } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useQueryTabs } from '../stores/tab-store'
 import { cn } from '@studio/shared/utils/cn'
 import {
@@ -12,8 +12,15 @@ import {
 } from '@studio/shared/ui/context-menu'
 
 export function QueryTabBar() {
-	const { tabs, activeTabId, setActiveTab, addTab, closeTab, renameTab, duplicateTab } =
-		useQueryTabs()
+	const {
+		tabs,
+		activeTabId,
+		setActiveTab,
+		addTab,
+		closeTab,
+		renameTab,
+		duplicateTab
+	} = useQueryTabs()
 
 	const [editingTabId, setEditingTabId] = useState<string | null>(null)
 	const [editValue, setEditValue] = useState('')
@@ -22,37 +29,29 @@ export function QueryTabBar() {
 	const editInputRef = useRef<HTMLInputElement>(null)
 
 	// Check if we need scroll buttons
-	useEffect(
-		function () {
-			function checkOverflow() {
-				const el = scrollContainerRef.current
-				if (el) {
-					setShowScrollButtons(el.scrollWidth > el.clientWidth)
-				}
+	useEffect(function () {
+		function checkOverflow() {
+			const el = scrollContainerRef.current
+			if (el) {
+				setShowScrollButtons(el.scrollWidth > el.clientWidth)
 			}
+		}
 
-			checkOverflow()
-			const observer = new ResizeObserver(checkOverflow)
-			if (scrollContainerRef.current) {
-				observer.observe(scrollContainerRef.current)
-			}
-			return function () {
-				observer.disconnect()
-			}
-		},
-		[tabs.length]
-	)
+		checkOverflow()
+		const observer = new ResizeObserver(checkOverflow)
+		if (scrollContainerRef.current) {
+			observer.observe(scrollContainerRef.current)
+		}
+		return function () { observer.disconnect() }
+	}, [tabs.length])
 
 	// Focus input when editing
-	useEffect(
-		function () {
-			if (editingTabId && editInputRef.current) {
-				editInputRef.current.focus()
-				editInputRef.current.select()
-			}
-		},
-		[editingTabId]
-	)
+	useEffect(function () {
+		if (editingTabId && editInputRef.current) {
+			editInputRef.current.focus()
+			editInputRef.current.select()
+		}
+	}, [editingTabId])
 
 	function handleDoubleClick(tabId: string, title: string) {
 		setEditingTabId(tabId)
@@ -122,15 +121,9 @@ export function QueryTabBar() {
 											? 'bg-background text-foreground query-tab--active'
 											: 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
 									)}
-									onClick={function () {
-										setActiveTab(tab.id)
-									}}
-									onMouseDown={function (e) {
-										handleMiddleClick(e, tab.id)
-									}}
-									onDoubleClick={function () {
-										handleDoubleClick(tab.id, tab.title)
-									}}
+									onClick={function () { setActiveTab(tab.id) }}
+									onMouseDown={function (e) { handleMiddleClick(e, tab.id) }}
+									onDoubleClick={function () { handleDoubleClick(tab.id, tab.title) }}
 									title={tab.title}
 									data-tauri-drag-region='false'
 								>
@@ -155,12 +148,8 @@ export function QueryTabBar() {
 											ref={editInputRef}
 											className='bg-transparent border-none outline-none text-xs font-medium w-full min-w-[60px] text-foreground'
 											value={editValue}
-											onChange={function (e) {
-												setEditValue(e.target.value)
-											}}
-											onBlur={function () {
-												handleRenameSubmit(tab.id)
-											}}
+											onChange={function (e) { setEditValue(e.target.value) }}
+											onBlur={function () { handleRenameSubmit(tab.id) }}
 											onKeyDown={function (e) {
 												if (e.key === 'Enter') {
 													handleRenameSubmit(tab.id)
@@ -197,18 +186,10 @@ export function QueryTabBar() {
 								</button>
 							</ContextMenuTrigger>
 							<ContextMenuContent>
-								<ContextMenuItem
-									onClick={function () {
-										handleDoubleClick(tab.id, tab.title)
-									}}
-								>
+								<ContextMenuItem onClick={function () { handleDoubleClick(tab.id, tab.title) }}>
 									Rename Tab
 								</ContextMenuItem>
-								<ContextMenuItem
-									onClick={function () {
-										duplicateTab(tab.id)
-									}}
-								>
+								<ContextMenuItem onClick={function () { duplicateTab(tab.id) }}>
 									<Copy className='size-3.5' />
 									Duplicate Tab
 								</ContextMenuItem>
@@ -216,9 +197,7 @@ export function QueryTabBar() {
 								<ContextMenuItem
 									disabled={tabs.length <= 1}
 									variant='destructive'
-									onClick={function () {
-										closeTab(tab.id)
-									}}
+									onClick={function () { closeTab(tab.id) }}
 								>
 									<X className='size-3.5' />
 									Close Tab

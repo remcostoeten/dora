@@ -1,13 +1,9 @@
-import { Spinner } from '@studio/shared/ui/spinner'
 import { useState } from 'react'
 import { save } from '@tauri-apps/plugin-dialog'
 import { exists } from '@tauri-apps/plugin-fs'
 import type { Connection } from '@studio/features/connections/types'
 import type { DataFileSourceEntry } from '@studio/features/connections/types/data-file-source'
-import {
-	SAVE_AS_DUCKDB_PLACEHOLDER_HINT,
-	SAVE_AS_DUCKDB_PLACEHOLDER_LABEL
-} from '@studio/features/connections/data-file-health'
+import { SAVE_AS_DUCKDB_PLACEHOLDER_HINT, SAVE_AS_DUCKDB_PLACEHOLDER_LABEL } from '@studio/features/connections/data-file-health'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,7 +12,7 @@ import {
 	AlertDialogDescription,
 	AlertDialogFooter,
 	AlertDialogHeader,
-	AlertDialogTitle
+	AlertDialogTitle,
 } from '@studio/shared/ui/alert-dialog'
 import { useConnections } from '@studio/core/data-provider'
 import { DesktopOnlyButton } from '@studio/core/platform'
@@ -24,11 +20,12 @@ import { mapSaveDataFileSessionError } from '@studio/features/connections/local-
 import { useToast } from '@studio/shared/ui/use-toast'
 import { cn } from '@studio/shared/utils/cn'
 import { Database } from 'lucide-react'
+import { Spinner } from '@studio/shared/ui/spinner'
 import { useSaveDataFileSession } from '../hooks/use-save-data-file-session'
 import {
 	basename,
 	formatSaveDataFileSessionToast,
-	hasSkippedDataFileSources
+	hasSkippedDataFileSources,
 } from '../utils/save-data-file-session'
 
 type Props = {
@@ -43,7 +40,12 @@ type PendingSave = {
 	overwrite: boolean
 }
 
-export function SaveAsDuckDbButton({ connection, entries, className, onConnectionSelect }: Props) {
+export function SaveAsDuckDbButton({
+	connection,
+	entries,
+	className,
+	onConnectionSelect,
+}: Props) {
 	const { toast } = useToast()
 	const { data: connections = [] } = useConnections()
 	const { saveSession, openSavedConnection } = useSaveDataFileSession()
@@ -57,12 +59,12 @@ export function SaveAsDuckDbButton({ connection, entries, className, onConnectio
 			const result = await saveSession.mutateAsync({
 				connectionId: connection.id,
 				destinationPath: params.destinationPath,
-				overwrite: params.overwrite
+				overwrite: params.overwrite,
 			})
 
 			const savedConnection = await openSavedConnection.mutateAsync({
 				result,
-				connections
+				connections,
 			})
 
 			onConnectionSelect?.(savedConnection.id)
@@ -71,14 +73,14 @@ export function SaveAsDuckDbButton({ connection, entries, className, onConnectio
 			toast({
 				title: message.title,
 				description: message.description,
-				variant: 'success'
+				variant: 'success',
 			})
 		} catch (error) {
 			const raw = error instanceof Error ? error.message : 'Save failed'
 			toast({
 				title: 'Could not save as DuckDB',
 				description: mapSaveDataFileSessionError(raw),
-				variant: 'destructive'
+				variant: 'destructive',
 			})
 		} finally {
 			setPendingSave(null)
@@ -101,7 +103,7 @@ export function SaveAsDuckDbButton({ connection, entries, className, onConnectio
 		const defaultPath = `${connection.name.replace(/[^\w.-]+/g, '_')}.duckdb`
 		const destinationPath = await save({
 			filters: [{ name: 'DuckDB database', extensions: ['duckdb'] }],
-			defaultPath
+			defaultPath,
 		})
 
 		if (!destinationPath) {
@@ -138,7 +140,7 @@ export function SaveAsDuckDbButton({ connection, entries, className, onConnectio
 				}}
 			>
 				{isBusy ? (
-					<Spinner className='h-3 w-3' aria-hidden />
+					<Spinner className='h-3 w-3' />
 				) : (
 					<Database className='h-3 w-3' aria-hidden />
 				)}
@@ -151,8 +153,8 @@ export function SaveAsDuckDbButton({ connection, entries, className, onConnectio
 						<AlertDialogTitle>Overwrite existing DuckDB file?</AlertDialogTitle>
 						<AlertDialogDescription>
 							{basename(pendingSave?.destinationPath ?? '')} already exists on disk.
-							Overwriting permanently replaces that file with materialized tables from
-							this session. This cannot be undone.
+							Overwriting permanently replaces that file with materialized tables from this
+							session. This cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -180,8 +182,8 @@ export function SaveAsDuckDbButton({ connection, entries, className, onConnectio
 					<AlertDialogHeader>
 						<AlertDialogTitle>Save with skipped sources?</AlertDialogTitle>
 						<AlertDialogDescription>
-							Some files in this session are missing or failed to register. Only
-							active sources will be materialized into the DuckDB file.
+							Some files in this session are missing or failed to register. Only active
+							sources will be materialized into the DuckDB file.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

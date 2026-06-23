@@ -10,7 +10,6 @@ import { useUndo } from '@studio/core/undo'
 import { getTableRefParts } from '@studio/shared/utils/table-ref'
 import { getSourceCaps } from '@studio/features/connections/source-caps'
 import { isUiActionVisible } from '@studio/features/connections/ui-actions'
-import { askAi, buildSuggestIndexesPrompt } from '@studio/features/ai-assistant/ai-actions'
 import { DataFileSessionChrome } from './components/data-file-session-chrome'
 import { ImportFilesIntoDuckDbButton } from './components/import-files-into-duckdb-button'
 import {
@@ -734,29 +733,6 @@ export function DatabaseStudio({
 		[hasActiveFilters, runExport]
 	)
 
-	const handleSuggestIndexes = useCallback(
-		function () {
-			if (!tableData) return
-			const columnLines = tableData.columns
-				.map(function (col) {
-					const flags: string[] = [col.type]
-					if (col.primaryKey) flags.push('PRIMARY KEY')
-					if (!col.nullable) flags.push('NOT NULL')
-					if (col.foreignKey) {
-						flags.push(
-							`REFERENCES ${col.foreignKey.referencedTable}(${col.foreignKey.referencedColumn})`
-						)
-					}
-					return `  ${col.name} ${flags.join(' ')}`
-				})
-				.join('\n')
-			const schema = `CREATE TABLE ${displayTableName} (\n${columnLines}\n);`
-			const queries =
-				'No recent query samples available; base suggestions on the schema and common access patterns.'
-			askAi(buildSuggestIndexesPrompt(schema, queries))
-		},
-		[tableData, displayTableName]
-	)
 
 	// No connection selected
 	if (!activeConnectionId) {
@@ -871,7 +847,6 @@ export function DatabaseStudio({
 					onDryEditModeChange={canEditRows ? setDryEditMode : undefined}
 					onCopySchema={handleCopySchema}
 					onCopyDrizzleSchema={handleCopyDrizzleSchema}
-					onSuggestIndexes={handleSuggestIndexes}
 					liveMonitorConfig={showLiveMonitor ? liveMonitor.config : undefined}
 					onLiveMonitorConfigChange={showLiveMonitor ? liveMonitor.setConfig : undefined}
 					isLiveMonitorPolling={showLiveMonitor ? liveMonitor.isPolling : false}
@@ -922,7 +897,6 @@ export function DatabaseStudio({
 				onDryEditModeChange={canEditRows ? setDryEditMode : undefined}
 				onCopySchema={handleCopySchema}
 				onCopyDrizzleSchema={handleCopyDrizzleSchema}
-				onSuggestIndexes={handleSuggestIndexes}
 				liveMonitorConfig={showLiveMonitor ? liveMonitor.config : undefined}
 				onLiveMonitorConfigChange={showLiveMonitor ? liveMonitor.setConfig : undefined}
 				isLiveMonitorPolling={showLiveMonitor ? liveMonitor.isPolling : false}

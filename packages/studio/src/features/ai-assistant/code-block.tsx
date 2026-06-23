@@ -1,5 +1,13 @@
+import {
+	Check,
+	Copy,
+	FileInput,
+	Maximize2,
+	Minimize2,
+	Play,
+	ShieldCheck
+} from 'lucide-react'
 import { Spinner } from '@studio/shared/ui/spinner'
-import { Check, Copy, FileInput, Maximize2, Minimize2, Play, ShieldCheck } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { getEnv } from '@studio/core/env'
 import { notifySchemaChanged } from '@studio/core/schema-refresh'
@@ -22,7 +30,8 @@ const QUERY_POLL_INTERVAL_MS =
 	DEFAULT_QUERY_POLL_INTERVAL_MS
 
 const QUERY_POLL_ATTEMPTS =
-	Number.parseInt(getEnv('VITE_AI_QUERY_POLL_ATTEMPTS') ?? '', 10) || DEFAULT_QUERY_POLL_ATTEMPTS
+	Number.parseInt(getEnv('VITE_AI_QUERY_POLL_ATTEMPTS') ?? '', 10) ||
+	DEFAULT_QUERY_POLL_ATTEMPTS
 
 type Props = {
 	language: string | undefined
@@ -253,8 +262,7 @@ export function CodeBlock({
 					<span className='font-semibold text-zinc-300'>{language ?? 'code'}</span>
 					{isSql && (
 						<span className='truncate normal-case tracking-normal text-muted-foreground'>
-							{sqlKind} · {statementCount} stmt{statementCount === 1 ? '' : 's'} ·{' '}
-							{lineCount} line{lineCount === 1 ? '' : 's'}
+							{sqlKind} · {statementCount} stmt{statementCount === 1 ? '' : 's'} · {lineCount} line{lineCount === 1 ? '' : 's'}
 						</span>
 					)}
 				</div>
@@ -353,10 +361,7 @@ export function CodeBlock({
 					{isSql
 						? highlightedTokens.map(function (token, index) {
 								return (
-									<span
-										key={`${index}-${token.text}`}
-										className={tokenClassName[token.kind]}
-									>
+									<span key={`${index}-${token.text}`} className={tokenClassName[token.kind]}>
 										{token.text}
 									</span>
 								)
