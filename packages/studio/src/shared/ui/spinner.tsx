@@ -1,38 +1,42 @@
+import type { ComponentPropsWithoutRef } from 'react'
 import { cn } from '@studio/shared/utils/cn'
 
-type Props = {
-	className?: string
-}
+type Props = ComponentPropsWithoutRef<'span'>
+
+const BLADES = Array.from({ length: 12 }, (_, index) => index)
 
 /**
- * App-wide loading spinner. A clean two-tone ring with a rotating accent arc.
- * Size and spacing come from `className` (e.g. `h-4 w-4 mr-2`); defaults to `h-4 w-4`.
- * Colour follows `currentColor`, so set text colour on the element or a parent.
+ * Radial blade spinner: tapered bars fanned around a circle with an opacity
+ * ramp, rotated as a group so the brightest blade chases around. Inherits
+ * color via `currentColor` and scales with any `size-*` utility.
+ *
+ * @example
+ * ```tsx
+ * <Spinner />
+ * <Spinner className='size-8 text-[var(--color-accent)]' />
+ * ```
  */
-export function Spinner({ className }: Props) {
+export function Spinner({ className, ...props }: Props) {
 	return (
-		<svg
+		<span
 			role='status'
 			aria-label='Loading'
-			viewBox='0 0 24 24'
-			fill='none'
-			xmlns='http://www.w3.org/2000/svg'
-			className={cn('h-4 w-4 animate-spin text-current', className)}
+			{...props}
+			className={cn(
+				'relative inline-flex size-4 shrink-0 animate-spin',
+				className
+			)}
 		>
-			<circle
-				cx='12'
-				cy='12'
-				r='9'
-				stroke='currentColor'
-				strokeWidth='2.5'
-				className='opacity-20'
-			/>
-			<path
-				d='M21 12a9 9 0 0 0-9-9'
-				stroke='currentColor'
-				strokeWidth='2.5'
-				strokeLinecap='round'
-			/>
-		</svg>
+			{BLADES.map((index) => (
+				<span
+					key={index}
+					className='absolute left-1/2 top-1/2 h-[28%] w-[14%] rounded-full bg-current'
+					style={{
+						opacity: (index + 1) / BLADES.length,
+						transform: `translate(-50%, -50%) rotate(${index * 30}deg) translateY(-130%)`,
+					}}
+				/>
+			))}
+		</span>
 	)
 }
