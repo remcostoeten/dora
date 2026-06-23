@@ -138,7 +138,7 @@ describe('DockerView', () => {
 
 		renderWithProviders(<DockerView />)
 		expect(screen.getByText('Containers: 1')).toBeInTheDocument()
-		expect(screen.getByText('Docker Containers')).toBeInTheDocument()
+		expect(screen.getByText('Docker')).toBeInTheDocument()
 	})
 
 	it('opens create dialog when "New Container" is clicked', () => {
@@ -156,7 +156,7 @@ describe('DockerView', () => {
 
 		renderWithProviders(<DockerView />)
 
-		const newButton = screen.getByText('New Container')
+		const newButton = screen.getByText('New')
 		fireEvent.click(newButton)
 
 		expect(screen.getByTestId('create-dialog')).toBeInTheDocument()
