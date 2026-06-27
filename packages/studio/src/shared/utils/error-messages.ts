@@ -1,11 +1,32 @@
 /**
+ * Pulls a `host` or `host:port` target out of a raw libpq/driver connection
+ * error so callers can show which server was unreachable. Returns null when no
+ * host can be confidently extracted.
+ */
+function extractHostTarget(raw: string): string | null {
+	const hostPortMatch = raw.match(/\b((?:(?:\d{1,3}\.){3}\d{1,3}|[a-z][\w.\-]*):\d{2,5})\b/i)
+	if (hostPortMatch) {
+		return hostPortMatch[1]
+	}
+	const host = raw.match(/host\s+"([\w.\-]+)"/i)?.[1]
+	if (!host) {
+		return null
+	}
+	const port = raw.match(/port\s+"?(\d+)"?/i)?.[1]
+	return port ? `${host}:${port}` : host
+}
+
+/**
  * Maps technical database/connection errors to user-friendly messages
  */
 export function mapConnectionError(error: Error | string): string {
-	const msg = (typeof error === 'string' ? error : error.message).toLowerCase()
+	const raw = typeof error === 'string' ? error : error.message
+	const msg = raw.toLowerCase()
 
 	if (msg.includes('connection refused') || msg.includes('econnrefused')) {
-		return 'Connection refused. Make sure the database server is running and accessible.'
+		const target = extractHostTarget(raw)
+		const where = target ? ` to ${target}` : ''
+		return `Connection refused${where}. Make sure the database server is running and accessible.`
 	}
 
 	if (
