@@ -41,6 +41,8 @@ type Props = {
 		row: Record<string, unknown>
 	) => void
 	onOpenChange?: (open: boolean, rowIndex: number, colIndex: number) => void
+	/** Privacy mode: render the cell without any context menu (no copy/edit/export). */
+	disabled?: boolean
 	children: React.ReactNode
 }
 
@@ -55,8 +57,13 @@ export function CellContextMenu({
 	onAction,
 	onBlobAction,
 	onOpenChange,
+	disabled = false,
 	children
 }: Props) {
+	if (disabled) {
+		return <>{children}</>
+	}
+
 	function handleCopy() {
 		const text = value === null || value === undefined ? '' : String(value)
 		navigator.clipboard.writeText(text)

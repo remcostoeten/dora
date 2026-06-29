@@ -136,8 +136,8 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 	{
 		id: 'safety',
 		title: 'Safety',
-		description: 'Destructive action confirmations',
-		keywords: ['delete', 'confirm', 'danger']
+		description: 'Destructive action confirmations and privacy',
+		keywords: ['delete', 'confirm', 'danger', 'privacy', 'mask', 'hide']
 	},
 	{
 		id: 'startup',
@@ -195,6 +195,15 @@ const SETTING_SEARCH_ITEMS: SettingsSearchResult[] = [
 		kind: 'setting',
 		focusId: 'safety-confirm-before-delete',
 		keywords: ['delete', 'destructive', 'danger']
+	},
+	{
+		id: 'setting-safety-privacy-mask',
+		sectionId: 'safety',
+		title: 'Privacy mode',
+		description: 'Hide all cell values in tables and query results',
+		kind: 'setting',
+		focusId: 'safety-privacy-mask',
+		keywords: ['privacy', 'mask', 'hide', 'redact', 'blur', 'asterisk', 'sensitive', 'screenshot']
 	},
 	{
 		id: 'setting-startup-connection-behavior',
@@ -1396,33 +1405,60 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 									id='safety'
 									title='Safety'
 									description={renderHighlightedText(
-										'Control confirmation prompts for destructive actions.',
+										'Control confirmation prompts for destructive actions and data privacy.',
 										searchQuery
 									)}
 									sectionRef={registerSectionRef('safety')}
 									onFocusReturn={focusSearchInput}
 									query={searchQuery}
 								>
-									<div
-										className='flex items-start justify-between gap-4'
-										tabIndex={-1}
-										data-settings-focus='safety-confirm-before-delete'
-									>
-										<div className='flex-1'>
-											<div className='text-sm text-sidebar-foreground'>
-												Confirm before delete
+									<div className='space-y-4'>
+										<div
+											className='flex items-start justify-between gap-4'
+											tabIndex={-1}
+											data-settings-focus='safety-confirm-before-delete'
+										>
+											<div className='flex-1'>
+												<div className='text-sm text-sidebar-foreground'>
+													Confirm before delete
+												</div>
+												<div className='text-xs leading-tight text-muted-foreground'>
+													Show confirmation for destructive actions
+												</div>
 											</div>
-											<div className='text-xs leading-tight text-muted-foreground'>
-												Show confirmation for destructive actions
+											<div className='flex-shrink-0 pt-0.5'>
+												<Switch
+													checked={settings.confirmBeforeDelete}
+													onCheckedChange={function (checked) {
+														updateSetting('confirmBeforeDelete', checked)
+													}}
+												/>
 											</div>
 										</div>
-										<div className='flex-shrink-0 pt-0.5'>
-											<Switch
-												checked={settings.confirmBeforeDelete}
-												onCheckedChange={function (checked) {
-													updateSetting('confirmBeforeDelete', checked)
-												}}
-											/>
+
+										<div
+											className='flex items-start justify-between gap-4'
+											tabIndex={-1}
+											data-settings-focus='safety-privacy-mask'
+										>
+											<div className='flex-1'>
+												<div className='text-sm text-sidebar-foreground'>
+													Privacy mode
+												</div>
+												<div className='text-xs leading-tight text-muted-foreground'>
+													Hide all cell values in tables and query results with
+													••••••. Tables, columns, and queries stay visible; data
+													becomes read-only and can't be copied or exported.
+												</div>
+											</div>
+											<div className='flex-shrink-0 pt-0.5'>
+												<Switch
+													checked={settings.privacyMaskData}
+													onCheckedChange={function (checked) {
+														updateSetting('privacyMaskData', checked)
+													}}
+												/>
+											</div>
 										</div>
 									</div>
 								</SectionCard>

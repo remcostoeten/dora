@@ -105,10 +105,15 @@ export function DatabaseStudio({
 		},
 		[activeConnection]
 	)
-	const canEditRows = sourceCaps ? isUiActionVisible('edit-rows', sourceCaps) : false
+	// Privacy mode hides every cell's contents. While it is on, the whole data
+	// surface is read-only and non-exportable so the values can't leak through
+	// edits, copies, or exports — only the structure (tables, columns) is shown.
+	const { settings } = useSettings()
+	const privacyMaskData = settings.privacyMaskData
+	const canEditRows = (sourceCaps ? isUiActionVisible('edit-rows', sourceCaps) : false) && !privacyMaskData
 	const canImportFile = sourceCaps ? isUiActionVisible('import-csv', sourceCaps) : false
 	const canAttachFiles = sourceCaps ? isUiActionVisible('attach-file', sourceCaps) : false
-	const canExportFile = sourceCaps ? isUiActionVisible('export-data', sourceCaps) : true
+	const canExportFile = (sourceCaps ? isUiActionVisible('export-data', sourceCaps) : true) && !privacyMaskData
 	const showLiveMonitor = sourceCaps ? isUiActionVisible('live-monitor', sourceCaps) : false
 	const existingTableNames = useMemo(
 		function () {
@@ -162,7 +167,6 @@ export function DatabaseStudio({
 		[schemaQuery.data]
 	)
 	const { updateCell, deleteRows, insertRow } = useDataMutation()
-	const { settings } = useSettings()
 	const {
 		isDryEditMode,
 		setDryEditMode,
@@ -981,7 +985,7 @@ export function DatabaseStudio({
 					ref={toolbarRef}
 					selectedCount={rowsForActions.size}
 					onDelete={canEditRows ? handleBulkDelete : undefined}
-					onCopy={handleBulkCopy}
+					onCopy={privacyMaskData ? undefined : handleBulkCopy}
 					onSetNull={canEditRows ? handleOpenSetNull : undefined}
 					onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
 					onExportJson={canExportFile ? handleExportJson : undefined}
@@ -1018,7 +1022,7 @@ export function DatabaseStudio({
 						ref={toolbarRef}
 						selectedCount={rowsForActions.size}
 						onDelete={canEditRows ? handleBulkDelete : undefined}
-						onCopy={handleBulkCopy}
+						onCopy={privacyMaskData ? undefined : handleBulkCopy}
 						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
 						onExportJson={canExportFile ? handleExportJson : undefined}
 						onExportCsv={canExportFile ? handleExportCsv : undefined}

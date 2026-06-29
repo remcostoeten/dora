@@ -11,6 +11,8 @@ type UseGridKeyboardArgs = {
 	editingCell: EditingCell | null
 	focusedCell: CellPosition | null
 	lastClickedRowRef: React.MutableRefObject<number | null>
+	/** Privacy mode: block editing, copy, paste, and deletion (read-only). */
+	masked?: boolean
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
 	onDeleteSelectedRows?: () => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
@@ -33,6 +35,7 @@ export function useGridKeyboard({
 	editingCell,
 	focusedCell,
 	lastClickedRowRef,
+	masked,
 	onCellEdit,
 	onDeleteSelectedRows,
 	onRowsSelect,
@@ -134,6 +137,7 @@ export function useGridKeyboard({
 
 			// Start editing the focused cell by typing a printable character.
 			function beginTypeEdit(char: string) {
+				if (masked) return
 				startTypeEdit(row, columns[col].name, rows[row][columns[col].name], char)
 			}
 
@@ -190,7 +194,9 @@ export function useGridKeyboard({
 				case 'Enter':
 				case 'F2':
 					e.preventDefault()
-					startCellEdit(row, columns[col].name, rows[row][columns[col].name])
+					if (!masked) {
+						startCellEdit(row, columns[col].name, rows[row][columns[col].name])
+					}
 					break
 				case 'Delete':
 				case 'Backspace':
@@ -200,6 +206,7 @@ export function useGridKeyboard({
 					// focused row via the rowsForActions fallback) does not
 					// also fire — the grid handler is authoritative here.
 					e.preventDefault()
+					if (masked) break
 					if (selectedRows.size > 0) {
 						onDeleteSelectedRows?.()
 					} else if (onCellEdit) {
@@ -244,7 +251,9 @@ export function useGridKeyboard({
 				case 'e':
 					if (!e.ctrlKey && !e.metaKey && !e.altKey) {
 						e.preventDefault()
-						startCellEdit(row, columns[col].name, rows[row][columns[col].name])
+						if (!masked) {
+							startCellEdit(row, columns[col].name, rows[row][columns[col].name])
+						}
 					}
 					break
 				// Single-key command: delete the selected rows (or the focused
@@ -252,7 +261,9 @@ export function useGridKeyboard({
 				case 'd':
 					if (!e.ctrlKey && !e.metaKey && !e.altKey) {
 						e.preventDefault()
-						onDeleteSelectedRows?.()
+						if (!masked) {
+							onDeleteSelectedRows?.()
+						}
 					}
 					break
 				case 'a':
@@ -267,7 +278,9 @@ export function useGridKeyboard({
 				case 'c':
 					if (e.ctrlKey || e.metaKey) {
 						e.preventDefault()
-						copySelectionToClipboard(selectedCellsSet, focusedCell, rows, columns)
+						if (!masked) {
+							copySelectionToClipboard(selectedCellsSet, focusedCell, rows, columns)
+						}
 					} else if (!e.altKey) {
 						e.preventDefault()
 						beginTypeEdit('c')
@@ -276,7 +289,9 @@ export function useGridKeyboard({
 				case 'v':
 					if ((e.ctrlKey || e.metaKey) && focusedCell && onCellEdit) {
 						e.preventDefault()
-						pasteClipboardIntoGrid(focusedCell, rows.length, columns, onCellEdit)
+						if (!masked) {
+							pasteClipboardIntoGrid(focusedCell, rows.length, columns, onCellEdit)
+						}
 					} else if (!e.ctrlKey && !e.metaKey && !e.altKey) {
 						e.preventDefault()
 						beginTypeEdit('v')
@@ -297,6 +312,7 @@ export function useGridKeyboard({
 			editingCell,
 			focusedCell,
 			lastClickedRowRef,
+			masked,
 			onCellEdit,
 			onDeleteSelectedRows,
 			onRowsSelect,

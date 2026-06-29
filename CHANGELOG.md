@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 
 
+## [Unreleased]
+
+## [v0.30.2] - 2026-06-28
+
+### Features
+
+- Privacy mode can now mask cell values in database results, including grids, SQL results, and runner output (#182)
+
+### Bug Fixes
+
+- Debian/Ubuntu install instructions and apt repository generation now use the current GitHub Pages path
+
+### Chores
+
+- Updated the Tauri updater plugin to 2.10.1
+- Changelog data generation now skips the empty Unreleased placeholder
+
 ## [v0.30.1] - 2026-06-27
 
 ### Bug Fixes
@@ -25,8 +42,6 @@ All notable changes to this project will be documented in this file.
 - feat(drizzle-runner): align translator with LSP, add $count, fix Prisma toolbar (#179) (#179)
 
 - feat(prisma-runner): style schema viewer + add syntax-highlighted schema.prisma preview (#180) (#180)
-
-## [Unreleased]
 
 ## [v0.30.0] - 2026-06-20
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useShortcut, useEffectiveShortcuts, useActiveScope } from '@studio/core/shortcuts'
+import { useSettings } from '@studio/core/settings'
 import { cn } from '@studio/shared/utils/cn'
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
 import { NoColumnsState } from './data-grid/empty-states'
@@ -91,6 +92,9 @@ export function DataGrid({
 	onFKNavigate
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
+
+	const { settings } = useSettings()
+	const masked = settings.privacyMaskData
 
 	const { resizingColumn, getColumnWidth, handleResizeStart, handleResizeDoubleClick } =
 		useColumnResize()
@@ -266,6 +270,7 @@ export function DataGrid({
 		editingCell,
 		focusedCell,
 		lastClickedRowRef,
+		masked,
 		onCellEdit,
 		onDeleteSelectedRows,
 		onRowsSelect,
@@ -384,6 +389,7 @@ export function DataGrid({
 						selectedCellsByRow={selectedCellsByRow}
 						selectedRows={selectedRows}
 						tableName={tableName}
+						masked={masked}
 							ensureRowSelectionForContextMenu={ensureRowSelectionForContextMenu}
 						setEditValue={setEditValue}
 						virtualRows={virtualRows}

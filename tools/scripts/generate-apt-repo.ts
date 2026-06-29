@@ -54,7 +54,7 @@ async function main() {
 	const version = inferVersion()
 	const repoUrl = getFlagValue('repo-url') || 'https://github.com/remcostoeten/dora'
 	const pagesBase =
-		getFlagValue('pages-base') || 'https://remcostoeten.github.io/dora'
+		getFlagValue('pages-base') || 'https://remco-stoeten.github.io/dora'
 	const outDir = path.resolve(getFlagValue('out-dir') || 'packaging/apt')
 	const debFile = getFlagValue('deb-file') || `Dora_${version}_amd64.deb`
 	const debUrl =

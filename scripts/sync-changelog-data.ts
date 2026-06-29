@@ -63,6 +63,11 @@ function parseChangelog(markdown: string): ParsedRelease[] {
 		const versionMatch = line.match(/^## \[(v?.+?)\]/)
 		if (versionMatch) {
 			if (current) releases.push(current)
+			if (versionMatch[1].toLowerCase() === 'unreleased') {
+				current = null
+				currentGroup = null
+				continue
+			}
 			current = {
 				version: versionMatch[1].replace(/^v/, ''),
 				groups: []

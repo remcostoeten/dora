@@ -11,9 +11,23 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.30.1"
+export const CURRENT_VERSION = "0.30.2"
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: "0.30.2",
+		date: "2026-06-28",
+		commit: "v0.30.2",
+		title: "Privacy mode can now mask cell values in database results, including grids, SQL results, and runner output (#182)",
+		description: "Privacy mode can now mask cell values in database results, including grids, SQL results, and runner output (#182). Debian/Ubuntu install instructions and apt repository generation now use the current GitHub Pages path.",
+		type: "feature",
+		details: [
+			"Privacy mode can now mask cell values in database results, including grids, SQL results, and runner output (#182)",
+			"Debian/Ubuntu install instructions and apt repository generation now use the current GitHub Pages path",
+			"Updated the Tauri updater plugin to 2.10.1",
+			"Changelog data generation now skips the empty Unreleased placeholder",
+		]
+	},
 	{
 		version: "0.30.1",
 		date: "2026-06-27",
@@ -28,14 +42,6 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"fix(studio): pin Monaco loader to bundled core so editor loads in release builds",
 			"chore(aur): update dora to 0.30.0",
 		]
-	},
-	{
-		version: "Unreleased",
-		date: "2026-06-27",
-		commit: "vUnreleased",
-		title: "Release vUnreleased",
-		description: "Updates in vUnreleased.",
-		type: "feature"
 	},
 	{
 		version: "0.30.0",

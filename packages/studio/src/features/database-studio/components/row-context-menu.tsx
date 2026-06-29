@@ -27,6 +27,8 @@ type Props = {
 	) => void
 	onOpenChange?: (open: boolean, rowIndex: number) => void
 	selectedRows?: Set<number>
+	/** Privacy mode: render the row without any context menu (no copy/edit/export). */
+	disabled?: boolean
 	children: React.ReactNode
 }
 
@@ -39,8 +41,13 @@ export function RowContextMenu({
 	onAction,
 	onOpenChange,
 	selectedRows,
+	disabled = false,
 	children
 }: Props) {
+	if (disabled) {
+		return <>{children}</>
+	}
+
 	const isSelected = selectedRows?.has(rowIndex)
 	const batchCount = isSelected && selectedRows ? selectedRows.size : 0
 	const isBatch = batchCount > 1

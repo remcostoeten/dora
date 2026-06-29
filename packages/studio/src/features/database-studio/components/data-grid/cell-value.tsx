@@ -1,5 +1,6 @@
 import { Check, X, ChevronRight, ChevronDown } from 'lucide-react'
 import React, { useState } from 'react'
+import { MASK_TOKEN } from '@studio/core/privacy/mask'
 import { ColumnDefinition } from '../../types'
 import { BlobCell } from '../cells/blob-cell'
 import { detectBlob } from '../cells/blob-utils'
@@ -79,7 +80,26 @@ function tryParseJson(value: string): object | null {
 	}
 }
 
-export function formatCellValue(value: unknown, column: ColumnDefinition): React.ReactNode {
+export function formatCellValue(
+	value: unknown,
+	column: ColumnDefinition,
+	masked?: boolean
+): React.ReactNode {
+	// Privacy mode: hide the cell contents entirely. A fixed token (not derived
+	// from the value) so neither the value nor its length leaks, and it can't be
+	// revealed by selecting the text.
+	if (masked) {
+		return (
+			<span
+				className='select-none tracking-widest text-muted-foreground'
+				title='Hidden (privacy mode)'
+				aria-label='Hidden value'
+			>
+				{MASK_TOKEN}
+			</span>
+		)
+	}
+
 	if (value === null || value === undefined) {
 		return <span className='text-muted-foreground italic'>NULL</span>
 	}

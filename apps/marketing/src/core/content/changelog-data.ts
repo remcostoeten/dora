@@ -13,9 +13,35 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.30.1"
+export const CURRENT_VERSION = "0.30.2"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.30.2",
+		date: "2026-06-28",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.30.2",
+		groups: [
+			{
+				name: "Features",
+				items: [
+				"Privacy mode can now mask cell values in database results, including grids, SQL results, and runner output (#182)",
+				]
+			},
+			{
+				name: "Bug Fixes",
+				items: [
+				"Debian/Ubuntu install instructions and apt repository generation now use the current GitHub Pages path",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"Updated the Tauri updater plugin to 2.10.1",
+				"Changelog data generation now skips the empty Unreleased placeholder",
+				]
+			}
+		]
+	},
 	{
 		version: "0.30.1",
 		date: "2026-06-27",
@@ -41,14 +67,6 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				"feat(prisma-runner): style schema viewer + add syntax-highlighted schema.prisma preview (#180) (#180)",
 				]
 			}
-		]
-	},
-	{
-		version: "Unreleased",
-		date: "2026-06-27",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/vUnreleased",
-		groups: [
-
 		]
 	},
 	{

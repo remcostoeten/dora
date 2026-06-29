@@ -16,6 +16,7 @@ import {
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useDataMutation } from '@studio/core/data-provider'
 import { useSettings } from '@studio/core/settings'
+import { MASK_TOKEN, maskRowsForJson } from '@studio/core/privacy/mask'
 import { Button } from '@studio/shared/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import {
@@ -75,6 +76,7 @@ export function SqlResults({
 	)
 	const { updateCell, deleteRows } = useDataMutation()
 	const { settings } = useSettings()
+	const masked = settings.privacyMaskData
 	const { toast } = useToast()
 	const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
 	const [filterText, setFilterText] = useState('')
@@ -102,6 +104,14 @@ export function SqlResults({
 
 		return 'Statement executed successfully.'
 	}, [result])
+
+	// In privacy mode the JSON view must not leak raw values either, so mask the
+	// rows before serializing.
+	const resultJsonText = useMemo(() => {
+		if (!result) return ''
+		const rows = masked ? maskRowsForJson(result.rows) : result.rows
+		return JSON.stringify(rows, null, 2)
+	}, [result, masked])
 
 	function formatCellValue(value: unknown): string {
 		if (value === null || value === undefined) {
@@ -424,7 +434,7 @@ export function SqlResults({
 							size='icon'
 							className='h-6 w-6 text-muted-foreground hover:text-sidebar-foreground'
 							onClick={onExport}
-							disabled={!result || result.rows.length === 0}
+							disabled={!result || result.rows.length === 0 || masked}
 							aria-label='Export results'
 						>
 							<Download className='h-3.5 w-3.5' />
@@ -489,7 +499,7 @@ export function SqlResults({
 						<Editor
 							height='100%'
 							defaultLanguage='json'
-							value={JSON.stringify(result.rows, null, 2)}
+							value={resultJsonText}
 							theme='vs-dark'
 							options={{
 								readOnly: true,
@@ -510,9 +520,7 @@ export function SqlResults({
 							variant='ghost'
 							size='icon'
 							className='absolute top-2 right-2 h-7 w-7 bg-background/80 backdrop-blur-xs border border-border hover:bg-background'
-							onClick={() =>
-								navigator.clipboard.writeText(JSON.stringify(result.rows, null, 2))
-							}
+							onClick={() => navigator.clipboard.writeText(resultJsonText)}
 							title='Copy JSON'
 						>
 							<Copy className='h-3.5 w-3.5' />
@@ -567,12 +575,12 @@ export function SqlResults({
 																key={col}
 																className={cn(
 																	'px-3 py-1.5 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono whitespace-nowrap relative min-h-[30px]',
-																	mutationContext
+																	mutationContext && !masked
 																		? 'cursor-cell'
 																		: 'cursor-default'
 																)}
 																onDoubleClick={() => {
-																	if (!mutationContext) return
+																	if (!mutationContext || masked) return
 																	handleCellDoubleClick(
 																		row,
 																		col,
@@ -608,6 +616,12 @@ export function SqlResults({
 																			}
 																		}}
 																	/>
+																) : masked ? (
+																	<div className='truncate max-w-[300px]'>
+																		<span className='select-none tracking-widest text-muted-foreground'>
+																			{MASK_TOKEN}
+																		</span>
+																	</div>
 																) : (
 																	<div
 																		className='truncate max-w-[300px]'
@@ -625,18 +639,20 @@ export function SqlResults({
 											</ContextMenuTrigger>
 											<ContextMenuContent>
 												<ContextMenuItem
-													onClick={() =>
+													disabled={masked}
+													onClick={() => {
+														if (masked) return
 														navigator.clipboard.writeText(
 															JSON.stringify(row, null, 2)
 														)
-													}
+													}}
 												>
 													<Copy />
 													Copy Row JSON
 												</ContextMenuItem>
 												<ContextMenuSeparator />
 												<ContextMenuItem
-													disabled={!mutationContext}
+													disabled={!mutationContext || masked}
 													variant='destructive'
 													onClick={() => handleDeleteRow(row)}
 												>

@@ -1,6 +1,8 @@
 import { Copy } from 'lucide-react'
 import { Button } from '@studio/shared/ui/button'
 import { ScrollArea } from '@studio/shared/ui/scroll-area'
+import { useSettings } from '@studio/core/settings'
+import { MASK_TOKEN, maskRowsForJson } from '@studio/core/privacy/mask'
 import { QueryResult } from '../types'
 
 type Props = {
@@ -9,6 +11,9 @@ type Props = {
 }
 
 export function ResultsPanel({ result, showJson }: Props) {
+	const { settings } = useSettings()
+	const masked = settings.privacyMaskData
+
 	if (!result) {
 		return (
 			<div className='flex items-center justify-center h-full text-muted-foreground text-sm'>
@@ -37,20 +42,25 @@ export function ResultsPanel({ result, showJson }: Props) {
 	}
 
 	if (showJson) {
+		// Privacy mode: mask values before serializing so the JSON view doesn't
+		// leak the raw data.
+		const jsonText = JSON.stringify(
+			masked ? maskRowsForJson(result.rows) : result.rows,
+			null,
+			2
+		)
 		return (
 			<div className='relative h-full'>
 				<ScrollArea className='h-full'>
 					<pre className='p-4 text-sm font-mono text-sidebar-foreground whitespace-pre-wrap'>
-						{JSON.stringify(result.rows, null, 2)}
+						{jsonText}
 					</pre>
 				</ScrollArea>
 				<Button
 					variant='ghost'
 					size='icon'
 					className='absolute top-2 right-2 h-7 w-7 bg-background/80 backdrop-blur-xs border border-border hover:bg-background z-10'
-					onClick={() =>
-						navigator.clipboard.writeText(JSON.stringify(result.rows, null, 2))
-					}
+					onClick={() => navigator.clipboard.writeText(jsonText)}
 					title='Copy JSON'
 				>
 					<Copy className='h-3.5 w-3.5' />
@@ -95,7 +105,13 @@ export function ResultsPanel({ result, showJson }: Props) {
 										key={col}
 										className='px-3 py-2 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono'
 									>
-										{formatCellValue(row[col])}
+										{masked ? (
+											<span className='select-none tracking-widest text-muted-foreground'>
+												{MASK_TOKEN}
+											</span>
+										) : (
+											formatCellValue(row[col])
+										)}
 									</td>
 								))}
 							</tr>

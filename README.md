@@ -38,10 +38,10 @@ yay -S dora
 
 **Debian / Ubuntu**
 ```bash
-curl -fsSL https://remcostoeten.github.io/dora/KEY.gpg \
+curl -fsSL https://remco-stoeten.github.io/dora/KEY.gpg \
   | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg
 echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/dora.gpg] \
-  https://remcostoeten.github.io/dora stable main" \
+  https://remco-stoeten.github.io/dora stable main" \
   | sudo tee /etc/apt/sources.list.d/dora.list
 sudo apt update && sudo apt install dora
 ```

@@ -17,6 +17,7 @@ export type SettingsState = {
 	editorFontSize: number
 	editorTheme: EditorTheme
 	enableVimMode: boolean
+	privacyMaskData: boolean
 	restoreLastConnection: boolean
 	restoreTabsOnLaunch: boolean
 	startupConnectionMode: 'auto' | 'empty'
@@ -32,6 +33,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
 	editorFontSize: 14,
 	editorTheme: 'auto',
 	enableVimMode: false,
+	privacyMaskData: false,
 	restoreLastConnection: true,
 	restoreTabsOnLaunch: true,
 	startupConnectionMode: 'auto',
@@ -113,6 +115,10 @@ export function sanitizeSettings(value: unknown): SettingsState {
 			typeof value.enableVimMode === 'boolean'
 				? value.enableVimMode
 				: DEFAULT_SETTINGS.enableVimMode,
+		privacyMaskData:
+			typeof value.privacyMaskData === 'boolean'
+				? value.privacyMaskData
+				: DEFAULT_SETTINGS.privacyMaskData,
 		restoreLastConnection: startupConnectionMode === 'auto',
 		restoreTabsOnLaunch:
 			typeof value.restoreTabsOnLaunch === 'boolean'

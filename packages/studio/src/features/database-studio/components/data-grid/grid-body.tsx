@@ -53,6 +53,8 @@ type GridBodyProps = {
 	selectedCellsByRow: Map<number, Set<number>>
 	selectedRows: Set<number>
 	tableName?: string
+	/** Privacy mode: mask every cell value and disable editing/copy/context menus. */
+	masked?: boolean
 	ensureRowSelectionForContextMenu: (rowIndex: number) => void
 	setEditValue: (value: string) => void
 	onFKNavigate?: (referencedTable: string, referencedColumn: string, value: unknown) => void
@@ -95,6 +97,7 @@ export function GridBody({
 	selectedCellsByRow,
 	selectedRows,
 	tableName,
+	masked,
 	ensureRowSelectionForContextMenu,
 	setEditValue,
 	onFKNavigate,
@@ -158,6 +161,7 @@ export function GridBody({
 				return (
 					<React.Fragment key={rowIndex}>
 						<RowContextMenu
+							disabled={masked}
 							row={row}
 							rowIndex={rowIndex}
 							columns={columns}
@@ -223,6 +227,7 @@ export function GridBody({
 									return (
 										<CellContextMenu
 											key={col.name}
+											disabled={masked}
 											value={row[col.name]}
 											column={col}
 											rowIndex={rowIndex}
@@ -287,6 +292,7 @@ export function GridBody({
 													handleCellMouseEnter(rowIndex, colIndex)
 												}}
 												onDoubleClick={function () {
+													if (masked) return
 													handleCellDoubleClick(
 														rowIndex,
 														col.name,
@@ -310,9 +316,9 @@ export function GridBody({
 												) : (
 													<div className='flex items-center min-w-0 relative'>
 														<span className='truncate flex-1'>
-															{formatCellValue(row[col.name], col)}
+															{formatCellValue(row[col.name], col, masked)}
 														</span>
-														{col.foreignKey && onFKNavigate && (
+														{col.foreignKey && onFKNavigate && !masked && (
 															<FKNavigateIcon
 																foreignKey={col.foreignKey}
 																cellValue={row[col.name]}
