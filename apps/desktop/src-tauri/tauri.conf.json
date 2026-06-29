@@ -49,7 +49,6 @@
 			"rpm",
 			"appimage",
 			"nsis",
-			"msi",
 			"dmg"
 		],
 		"shortDescription": "A modern database client",
