@@ -1,8 +1,11 @@
 #![warn(clippy::unwrap_used)]
 #![cfg_attr(test, allow(clippy::unwrap_used))]
 
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 mod bindings;
-mod commands;
+pub mod commands;
 pub mod commands_system;
 pub mod config;
 pub mod credential_storage;
@@ -348,6 +351,8 @@ pub fn run() {
             commands::credential_storage::get_credential_storage_status,
             commands::credential_storage::get_keyring_install_plan,
             commands::credential_storage::install_credential_keyring,
+            commands::build_cache::get_build_cache_stats,
+            commands::build_cache::clean_build_cache,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

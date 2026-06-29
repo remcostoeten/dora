@@ -10,9 +10,11 @@
 use std::collections::HashSet;
 use std::path::Path;
 
-use duckdb::Connection;
 use serde::{Deserialize, Serialize};
 use specta::Type;
+
+#[cfg(feature = "duckdb-engine")]
+use duckdb::Connection;
 
 /// Outcome of registering a batch of file sources. A missing or malformed file
 /// never aborts the whole connection; it is reported so the UI can surface it.
@@ -138,6 +140,7 @@ pub fn view_name_for(path: &str, taken: &HashSet<String>) -> String {
 /// Registers every file source as a view on `conn`. Missing/failed files are
 /// collected rather than propagated so a connection with one bad path still
 /// opens with the rest of its tables.
+#[cfg(feature = "duckdb-engine")]
 pub fn register_sources(conn: &Connection, sources: &[String]) -> Vec<DataFileSourceEntry> {
     let mut entries = Vec::with_capacity(sources.len());
     let mut taken: HashSet<String> = HashSet::new();
@@ -207,6 +210,7 @@ fn extension(path: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "duckdb-engine")]
     use std::io::Write;
 
     #[test]
@@ -246,6 +250,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "duckdb-engine")]
     fn register_reports_missing_files() {
         let conn = Connection::open_in_memory().unwrap();
         let entries = register_sources(&conn, &["/no/such/file.csv".to_string()]);
@@ -255,6 +260,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "duckdb-engine")]
     fn register_creates_queryable_view_from_csv() {
         let dir = std::env::temp_dir();
         let path = dir.join("dora_filesource_test.csv");

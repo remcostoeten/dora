@@ -1,14 +1,20 @@
 //! Materialize readonly data-file DuckDB views into a persistent `.duckdb` file.
 
-use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use duckdb::Connection;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
-use super::file_source::{DataFileSourceEntry, DataFileSourceStatus};
+#[cfg(feature = "duckdb-engine")]
+use super::file_source::DataFileSourceEntry;
+use super::file_source::DataFileSourceStatus;
 
+#[cfg(feature = "duckdb-engine")]
+use duckdb::Connection;
+#[cfg(feature = "duckdb-engine")]
+use std::collections::HashSet;
+
+#[cfg(feature = "duckdb-engine")]
 const DEST_ALIAS: &str = "dora_dest";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -68,14 +74,17 @@ pub fn validate_destination_path(destination_path: &str) -> Result<PathBuf, Stri
     Ok(path)
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn escape_sql_string(value: &str) -> String {
     value.replace('\'', "''")
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn quote_ident(name: &str) -> String {
     format!("\"{}\"", name.replace('"', "\"\""))
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn resolve_table_name(base: &str, taken: &HashSet<String>) -> String {
     if !taken.contains(base) {
         return base.to_string();
@@ -91,6 +100,7 @@ fn resolve_table_name(base: &str, taken: &HashSet<String>) -> String {
     }
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn existing_dest_tables(conn: &Connection) -> Result<HashSet<String>, String> {
     let sql =
         format!("SELECT table_name FROM duckdb_tables() WHERE database_name = '{DEST_ALIAS}'");
@@ -106,6 +116,7 @@ fn existing_dest_tables(conn: &Connection) -> Result<HashSet<String>, String> {
     Ok(taken)
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn count_rows(conn: &Connection, table_name: &str) -> Result<i64, String> {
     let sql = format!(
         "SELECT COUNT(*) FROM {}.{}",
@@ -117,6 +128,7 @@ fn count_rows(conn: &Connection, table_name: &str) -> Result<i64, String> {
 }
 
 /// Copies every active data-file view from `source_conn` into `destination_path`.
+#[cfg(feature = "duckdb-engine")]
 pub fn materialize_data_file_session(
     source_conn: &Connection,
     entries: &[DataFileSourceEntry],

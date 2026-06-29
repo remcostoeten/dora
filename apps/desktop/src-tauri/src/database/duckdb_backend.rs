@@ -11,17 +11,20 @@
 //! the DuckDB-only operations (counts, file-source registration, import,
 //! session materialisation, and the two ad-hoc raw queries).
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(feature = "duckdb-engine")]
+use std::sync::Mutex;
 
 use async_trait::async_trait;
 
+#[cfg(feature = "duckdb-engine")]
+use crate::database::adapter::{
+    read::{DatabaseAdapter, DuckDbAdapter},
+    watch::WatchAdapter,
+    write::WriteAdapter,
+};
 use crate::{
     database::{
-        adapter::{
-            read::{DatabaseAdapter, DuckDbAdapter},
-            watch::WatchAdapter,
-            write::WriteAdapter,
-        },
         duckdb::{
             file_source::DataFileSourceEntry, import_files::ImportFilesIntoDuckDbResult,
             save_session::SaveDataFileSessionResult,
@@ -186,11 +189,8 @@ pub trait DuckDbConn: Send + Sync + std::fmt::Debug {
 }
 
 /// In-process `DuckDbConn`: the engine runs in this process, linked via the
-/// `duckdb` crate. Read/write/watch operations delegate to the existing
-/// `DuckDbAdapter` (no logic duplicated); the DuckDB-only operations call the
-/// existing free functions. Phase 2 adds an `IpcDuckDbConn` sibling that drives
-/// the helper process instead, at which point this impl and the `duckdb`
-/// dependency move into the helper crate.
+/// `duckdb` crate. This is compiled only into the helper-side engine build.
+#[cfg(feature = "duckdb-engine")]
 pub struct InProcessDuckDbConn {
     connection: Arc<Mutex<duckdb::Connection>>,
     /// True for file-source (CSV/Parquet/JSON view) connections, which refuse
@@ -198,6 +198,7 @@ pub struct InProcessDuckDbConn {
     read_only: bool,
 }
 
+#[cfg(feature = "duckdb-engine")]
 impl std::fmt::Debug for InProcessDuckDbConn {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("InProcessDuckDbConn")
@@ -206,6 +207,7 @@ impl std::fmt::Debug for InProcessDuckDbConn {
     }
 }
 
+#[cfg(feature = "duckdb-engine")]
 impl InProcessDuckDbConn {
     pub fn new(connection: duckdb::Connection, read_only: bool) -> Self {
         Self {
@@ -225,6 +227,7 @@ impl InProcessDuckDbConn {
     }
 }
 
+#[cfg(feature = "duckdb-engine")]
 #[async_trait]
 impl DuckDbConn for InProcessDuckDbConn {
     async fn execute_query(
@@ -435,6 +438,7 @@ impl DuckDbConn for InProcessDuckDbConn {
 /// Open a DuckDB connection in this process and register any data-file sources.
 /// Shared by the in-process backend path (`build_duckdb_backend`) and the
 /// helper process's `Open` handler so both produce identical state.
+#[cfg(feature = "duckdb-engine")]
 pub fn open_in_process(
     db_path: &str,
     file_sources: &[String],
@@ -457,16 +461,11 @@ pub fn open_in_process(
     Ok((handle, registration))
 }
 
-/// Build a DuckDB connection handle, routing through the helper process when
-/// `DORA_DUCKDB_IPC` is set and otherwise opening in-process. Returns the
+/// Build a DuckDB connection handle through the helper process. Returns the
 /// handle plus the registered data-file-source entries.
 pub async fn build_duckdb_backend(
     db_path: &str,
     file_sources: &[String],
 ) -> Result<(BoxedDuckDbConn, Vec<DataFileSourceEntry>), Error> {
-    if crate::database::duckdb_ipc::ipc_enabled() {
-        crate::database::duckdb_ipc::client::open(db_path.to_string(), file_sources.to_vec()).await
-    } else {
-        open_in_process(db_path, file_sources)
-    }
+    crate::database::duckdb_ipc::client::open(db_path.to_string(), file_sources.to_vec()).await
 }

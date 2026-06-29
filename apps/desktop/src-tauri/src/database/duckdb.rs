@@ -1,7 +1,10 @@
+#[cfg(feature = "duckdb-engine")]
 pub mod execute;
 pub mod file_source;
 pub mod import_files;
 pub mod parser;
+#[cfg(feature = "duckdb-engine")]
 pub(crate) mod row_writer;
 pub mod save_session;
+#[cfg(feature = "duckdb-engine")]
 pub mod schema;

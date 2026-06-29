@@ -1280,24 +1280,12 @@ impl ConnectionService<'_> {
                 db_path,
                 file_sources,
             } => {
+                let (_conn, entries) =
+                    crate::database::duckdb_backend::build_duckdb_backend(&db_path, &file_sources)
+                        .await?;
                 if file_sources.is_empty() {
-                    match duckdb::Connection::open(db_path) {
-                        Ok(_) => Ok(true),
-                        Err(e) => {
-                            log::error!("DuckDB connection test failed: {}", e);
-                            Err(Error::Any(anyhow::anyhow!(
-                                "DuckDB connection failed: {}",
-                                e
-                            )))
-                        }
-                    }
+                    Ok(true)
                 } else {
-                    // Verify the in-memory engine opens and at least one source
-                    // registers; report missing files clearly.
-                    let conn = duckdb::Connection::open_in_memory().map_err(|e| {
-                        Error::Any(anyhow::anyhow!("DuckDB connection failed: {}", e))
-                    })?;
-                    let entries = file_source::register_sources(&conn, &file_sources);
                     if !file_source::has_active_sources(&entries) {
                         let detail = entries
                             .iter()

@@ -175,15 +175,16 @@ fn helper_binary_path() -> Result<PathBuf, Error> {
     } else {
         "duckdb_helper"
     };
-    let candidate = dir.join(name);
-    if candidate.exists() {
-        Ok(candidate)
-    } else {
-        Err(Error::Internal(format!(
-            "DuckDB helper binary not found at {} (set DORA_DUCKDB_HELPER to override)",
-            candidate.display()
-        )))
+    let candidates = [dir.join("binaries").join(name), dir.join(name)];
+    for candidate in candidates {
+        if candidate.exists() {
+            return Ok(candidate);
+        }
     }
+    Err(Error::Internal(format!(
+        "DuckDB helper binary not found near {} (set DORA_DUCKDB_HELPER to override)",
+        dir.display()
+    )))
 }
 
 /// Open a DuckDB connection in the helper and return a handle plus the

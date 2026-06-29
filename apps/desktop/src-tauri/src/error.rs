@@ -84,6 +84,7 @@ pub enum Error {
     Postgres(#[from] tokio_postgres::Error),
     #[error(transparent)]
     MySQL(#[from] mysql_async::Error),
+    #[cfg(feature = "duckdb-engine")]
     #[error(transparent)]
     DuckDB(#[from] duckdb::Error),
 }
@@ -120,9 +121,9 @@ impl Error {
             Error::NotImplemented(_) => "NotImplemented",
             Error::InvalidInput(_) => "InvalidInput",
             Error::Io(_) => "Io",
-            Error::Rusqlite(_) | Error::Postgres(_) | Error::MySQL(_) | Error::DuckDB(_) => {
-                "Driver"
-            }
+            #[cfg(feature = "duckdb-engine")]
+            Error::DuckDB(_) => "Driver",
+            Error::Rusqlite(_) | Error::Postgres(_) | Error::MySQL(_) => "Driver",
             Error::Internal(_) | Error::Any(_) | Error::Tauri(_) | Error::Fmt(_) => "Internal",
         }
     }

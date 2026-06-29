@@ -175,6 +175,7 @@ pub fn get_sqlite_counts(conn: &rusqlite::Connection) -> Result<(u32, u64), Erro
 }
 
 /// Get table and row counts from a DuckDB connection
+#[cfg(feature = "duckdb-engine")]
 pub fn get_duckdb_counts(conn: &duckdb::Connection) -> Result<(u32, u64), Error> {
     let (table_count, total_rows): (i64, Option<i64>) = conn
         .query_row(

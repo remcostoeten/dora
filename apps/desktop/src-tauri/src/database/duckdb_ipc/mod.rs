@@ -13,6 +13,7 @@
 
 pub mod client;
 pub mod framing;
+#[cfg(feature = "duckdb-engine")]
 pub mod helper;
 pub mod proto;
 
@@ -56,8 +57,8 @@ impl From<StreamEvent> for QueryExecEvent {
 }
 
 /// Whether DuckDB connections should be routed through the helper process.
-/// Default (unset/`0`) keeps the historical in-process backend so the shipping
-/// path is unchanged until the helper is wired into packaging (phase 4c).
+/// Kept for compatibility with older dev scripts; the default app path now
+/// always uses IPC.
 pub fn ipc_enabled() -> bool {
     matches!(
         std::env::var("DORA_DUCKDB_IPC").ok().as_deref(),

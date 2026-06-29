@@ -7,7 +7,7 @@
 		"frontendDist": "../dist",
 		"devUrl": "http://localhost:1420",
 		"beforeDevCommand": "bun vite --port 1420 --strictPort",
-		"beforeBuildCommand": "bun run build",
+		"beforeBuildCommand": "bun run build:sidecar && bun run build",
 		"removeUnusedCommands": true
 	},
 	"app": {
@@ -41,6 +41,7 @@
 	"bundle": {
 		"active": true,
 		"createUpdaterArtifacts": true,
+		"externalBin": ["binaries/duckdb_helper"],
 		"targets": [
 			"deb",
 			"rpm",

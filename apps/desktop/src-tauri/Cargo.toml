@@ -9,9 +9,18 @@ default-run = "dora"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+duckdb-engine = ["dep:duckdb"]
+
 [lib]
 name = "app_lib"
 crate-type = ["lib"]
+
+[[bin]]
+name = "duckdb_helper"
+path = "src/bin/duckdb_helper.rs"
+required-features = ["duckdb-engine"]
 
 [build-dependencies]
 tauri-build = { version = "2.3.1", features = [] }
@@ -93,9 +102,9 @@ libsql = { version = "0.9", default-features = false, features = [
 	"replication",
 	"tls"
 ] }
-ssh2 = "0.9"
+russh = "0.61"
 mysql_async = "0.36"
-duckdb = { version = "1", features = ["bundled"] }
+duckdb = { version = "1", features = ["bundled"], optional = true }
 sqlparser = { version = "0.52", features = ["serde"] }
 fake = { version = "3", features = ["derive"] }
 rand = "0.9"
@@ -113,6 +122,7 @@ zstd = "0.13"
 tar = "0.4"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 flate2 = "1.1"
+mimalloc = { version = "0.1", default-features = false }
 
 [profile.release]
 panic = "abort"

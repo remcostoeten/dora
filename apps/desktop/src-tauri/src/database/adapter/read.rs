@@ -189,6 +189,7 @@ impl DatabaseAdapter for SqliteAdapter {
 }
 
 /// DuckDB adapter implementation.
+#[cfg(feature = "duckdb-engine")]
 pub struct DuckDbAdapter {
     connection: Arc<Mutex<duckdb::Connection>>,
     /// True for file-source connections (CSV/Parquet/JSON views): the write
@@ -196,6 +197,7 @@ pub struct DuckDbAdapter {
     read_only: bool,
 }
 
+#[cfg(feature = "duckdb-engine")]
 impl DuckDbAdapter {
     pub fn new(connection: Arc<Mutex<duckdb::Connection>>) -> Self {
         Self {
@@ -220,6 +222,7 @@ impl DuckDbAdapter {
     }
 }
 
+#[cfg(feature = "duckdb-engine")]
 #[async_trait]
 impl DatabaseAdapter for DuckDbAdapter {
     fn parse_statements(&self, query: &str) -> Result<Vec<ParsedStatement>, Error> {

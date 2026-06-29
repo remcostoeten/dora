@@ -1,12 +1,16 @@
 //! Import flat data files as physical tables in a native DuckDB database file.
 
-use std::collections::HashSet;
-use std::path::Path;
-
-use duckdb::Connection;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+#[cfg(feature = "duckdb-engine")]
+use duckdb::Connection;
+#[cfg(feature = "duckdb-engine")]
+use std::collections::HashSet;
+#[cfg(feature = "duckdb-engine")]
+use std::path::Path;
+
+#[cfg(feature = "duckdb-engine")]
 use super::file_source::{file_type_label, reader_expr, view_name_for};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -34,10 +38,12 @@ pub struct FailedDuckDbImport {
     pub error: String,
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn quote_ident(name: &str) -> String {
     format!("\"{}\"", name.replace('"', "\"\""))
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn resolve_table_name(base: &str, taken: &HashSet<String>) -> String {
     if !taken.contains(base) {
         return base.to_string();
@@ -53,6 +59,7 @@ fn resolve_table_name(base: &str, taken: &HashSet<String>) -> String {
     }
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn existing_main_tables(conn: &Connection) -> Result<HashSet<String>, String> {
     let mut stmt = conn
         .prepare(
@@ -71,6 +78,7 @@ fn existing_main_tables(conn: &Connection) -> Result<HashSet<String>, String> {
     Ok(taken)
 }
 
+#[cfg(feature = "duckdb-engine")]
 fn count_rows(conn: &Connection, table_name: &str) -> Result<i64, String> {
     let sql = format!("SELECT COUNT(*) FROM main.{}", quote_ident(table_name));
     conn.query_row(&sql, [], |row| row.get(0))
@@ -78,6 +86,7 @@ fn count_rows(conn: &Connection, table_name: &str) -> Result<i64, String> {
 }
 
 /// Imports each supported file as a physical table in the connected DuckDB database.
+#[cfg(feature = "duckdb-engine")]
 pub fn import_files_into_duckdb(
     conn: &Connection,
     file_paths: &[String],
