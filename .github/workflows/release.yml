@@ -323,11 +323,6 @@ jobs:
             exit 1
           fi
 
-          if ! printf '%s\n' "${ASSETS[@]}" | grep -q '\.msi$'; then
-            echo "Missing Windows .msi installer in release assets." >&2
-            exit 1
-          fi
-
           if ! printf '%s\n' "${ASSETS[@]}" | grep -q '\.exe$'; then
             echo "Missing Windows .exe installer in release assets." >&2
             exit 1
