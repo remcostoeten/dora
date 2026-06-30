@@ -1,6 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod cli;
+
 /// Linux WebKit/GTK env vars must be set before any toolkit code runs.
 #[cfg(target_os = "linux")]
 fn configure_linux_webview_backend() {
@@ -14,6 +16,11 @@ fn configure_linux_webview_backend() {
 }
 
 fn main() {
+    match cli::handle_args(std::env::args().skip(1)) {
+        cli::StartupAction::RunApp => {}
+        cli::StartupAction::Exit(code) => std::process::exit(code),
+    }
+
     #[cfg(target_os = "linux")]
     configure_linux_webview_backend();
 

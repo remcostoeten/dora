@@ -243,7 +243,7 @@ pub fn materialize_data_file_session(
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "duckdb-engine"))]
 mod tests {
     use super::*;
     use crate::database::duckdb::file_source::{has_active_sources, register_sources};

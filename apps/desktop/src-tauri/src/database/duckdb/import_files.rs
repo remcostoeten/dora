@@ -175,7 +175,7 @@ pub fn import_files_into_duckdb(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "duckdb-engine"))]
 mod tests {
     use super::*;
     use std::io::Write;

@@ -299,6 +299,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "duckdb-engine")]
     fn register_partial_success_keeps_active_views() {
         let dir = std::env::temp_dir();
         let good_path = dir.join("dora_filesource_good.csv");
@@ -339,6 +340,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "duckdb-engine")]
     fn duplicate_stems_get_stable_view_names_in_one_session() {
         let dir = std::env::temp_dir();
         let first = dir.join("dora_filesource_dup_a.csv");
@@ -369,6 +371,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "duckdb-engine")]
     fn register_reports_invalid_json_as_failed() {
         let dir = std::env::temp_dir();
         let path = dir.join("dora_filesource_invalid.json");

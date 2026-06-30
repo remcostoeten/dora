@@ -7,7 +7,7 @@ import {
 
 describe('settings panel search', function () {
 	it('returns all sections for an empty query', function () {
-		expect(filterSections('')).toHaveLength(12)
+		expect(filterSections('')).toHaveLength(13)
 	})
 
 	it('matches sections by title, description, and keywords', function () {

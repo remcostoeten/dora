@@ -12,6 +12,7 @@
 		"generate:changelog-data": "bun scripts/sync-changelog-data.ts",
 		"release": "bash scripts/release.sh",
 		"release:prepare": "bash scripts/release-prepare.sh",
+		"ship": "bash scripts/ship.sh",
 		"prebuild": "bun run tools/print-flathub-reminder.ts && bun run tools/prebuild.ts",
 		"build": "turbo build",
 		"lint": "bun run --cwd packages/style lint",
