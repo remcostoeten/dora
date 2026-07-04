@@ -9,7 +9,7 @@ import {
     type ProviderLogoId
 } from '@/components/provider-logo'
 import { ProviderInfoPopover } from '@/components/provider-info-popover'
-import { usePageVisible } from '@/shared/hooks/use-page-visible'
+
 import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 
 /* -------------------------------------------------------------------------- */
@@ -175,10 +175,8 @@ export function ProvidersSection() {
     const [canHover, setCanHover] = useState(false)
     const [scrollProgress, setScrollProgress] = useState(0)
     const scrollProgressRef = useRef(0)
-    const [isInView, setIsInView] = useState(false)
-    const pageVisible = usePageVisible()
     const reducedMotion = usePrefersReducedMotion()
-    const running = isInView && pageVisible && !reducedMotion
+    const running = !reducedMotion
 
     useEffect(() => {
         if (reducedMotion) {
@@ -248,15 +246,6 @@ export function ProvidersSection() {
     const fillOverride = hoveredId ? activeIndex / (PROVIDERS.length - 1) : null
 
     useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => setIsInView(entry.isIntersecting),
-            { rootMargin: '120px 0px', threshold: 0.15 }
-        )
-        if (sectionRef.current) observer.observe(sectionRef.current)
-        return () => observer.disconnect()
-    }, [])
-
-    useEffect(() => {
         const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
         const update = () => setCanHover(mq.matches)
         update()
@@ -280,7 +269,7 @@ export function ProvidersSection() {
         setHoveredId(id)
     }
 
-    const revealed = isInView || reducedMotion
+    const revealed = true
 
     function revealStyle(delay: number): CSSProperties {
         return {
@@ -489,20 +478,38 @@ export function ProvidersSection() {
                             native engine
                         </span>
                     </span>
+                    {/* PostHog — reached over the HogQL Query API, another new
+                        engine (not a Postgres shim), so it earns the same badge. */}
+                    <span
+                        className="flex items-center gap-2"
+                        style={revealStyle(
+                            footerDelay +
+                                STAGGER_MS +
+                                (HOSTED_PROVIDERS.length + 1) * STAGGER_MS
+                        )}
+                    >
+                        <span className="text-[13px] font-medium text-[#c4bcc4]">
+                            PostHog
+                        </span>
+                        <span className="rounded-[2px] border border-accent-rose/40 bg-accent-rose/10 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-accent-rose">
+                            native engine
+                        </span>
+                    </span>
                 </div>
                 <p
                     className="mt-5 max-w-2xl text-[13px] leading-relaxed text-ink-700"
                     style={revealStyle(
                         footerDelay +
                             STAGGER_MS +
-                            (HOSTED_PROVIDERS.length + 1) * STAGGER_MS
+                            (HOSTED_PROVIDERS.length + 2) * STAGGER_MS
                     )}
                 >
                     Connect with OAuth, an API token, or a branch picker — not
                     just a pasted string. Supabase authorizes in one click; Neon
                     and PlanetScale connect branch-aware; Cloudflare D1 speaks
-                    its own HTTP engine. Plus {HOSTED_EXTRA}, and any Postgres,
-                    MySQL, or libSQL connection string.
+                    its own HTTP engine, and PostHog turns HogQL events into a
+                    built-in analytics dashboard. Plus {HOSTED_EXTRA}, and any
+                    Postgres, MySQL, or libSQL connection string.
                 </p>
             </div>
         </section>

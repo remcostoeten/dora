@@ -1,6 +1,7 @@
 'use client'
 
 import { AiAssistantShowcase } from '@/components/feature-showcases/ai-assistant-showcase'
+import { AnalyticsShowcase } from '@/components/feature-showcases/analytics-showcase'
 import { DockerContainersShowcase } from '@/components/feature-showcases/docker-containers-showcase'
 import { DrizzleRunnerShowcase } from '@/components/feature-showcases/drizzle-runner-showcase'
 import { FeatureShowcaseShell } from '@/components/feature-showcases/feature-showcase-shell'
@@ -39,6 +40,8 @@ function ShowcaseContent({ demo }: { demo: TFeatureDemo }) {
             return <OrmCockpitShowcase />
         case 'theming':
             return <ThemingShowcase />
+        case 'posthog-analytics':
+            return <AnalyticsShowcase />
     }
 }
 

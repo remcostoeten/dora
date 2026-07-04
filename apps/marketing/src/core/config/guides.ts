@@ -9,7 +9,7 @@ export type TGuideConfig = {
     slug: string
     provider: string
     logo: string
-    engine: 'PostgreSQL' | 'MySQL' | 'libSQL' | 'SQLite'
+    engine: 'PostgreSQL' | 'MySQL' | 'libSQL' | 'SQLite' | 'HogQL'
     title: string
     description: string
     lead: string
@@ -970,6 +970,57 @@ export const GUIDES: TGuideConfig[] = [
             'YugabyteDB YSQL uses port 5433, not the standard 5432. Make sure to include the port in the connection string.',
             'YugabyteDB Managed requires SSL (sslmode=require). The connection string from the console includes this.',
             'YugabyteDB is PostgreSQL-compatible, so standard SQL, joins, indexes, and transactions all work as expected in Dora.'
+        ]
+    },
+    {
+        slug: 'posthog',
+        provider: 'PostHog',
+        logo: '/providers/posthog.svg',
+        engine: 'HogQL',
+        title: 'Connect PostHog to Dora',
+        description:
+            'Connect your PostHog project to Dora with a personal API key and start querying events, persons, and sessions with HogQL.',
+        lead: 'PostHog is product analytics with a SQL-like query language called HogQL. Dora connects through the HogQL Query API so you can explore data from the same workbench you use for databases.',
+        keywords: [
+            'posthog desktop client',
+            'posthog hogql gui',
+            'posthog analytics desktop',
+            'posthog query tool',
+            'hogql client'
+        ],
+        connectionString: '',
+        connectionLabel: 'PostHog API key',
+        intro: [
+            'PostHog exposes a RESTful HogQL Query API that returns grid-shaped results. Dora connects to it with a personal API key, no Postgres wire protocol needed.',
+            'You can browse events, persons, sessions, and groups in the standard data grid, inspect schemas, run ad-hoc HogQL queries, and export results.'
+        ],
+        steps: [
+            {
+                title: 'Get your PostHog project API key',
+                body: 'In your PostHog instance, go to **Project Settings → Project API Key**. Copy the key that looks like `phx_...`.'
+            },
+            {
+                title: 'Choose your region',
+                body: 'PostHog Cloud serves US (`us`) and EU (`eu`) regions. The region is shown in your instance URL: `us.posthog.com` or `eu.posthog.com`.'
+            },
+            {
+                title: 'Find your project ID',
+                body: 'Your project ID is visible in Project Settings. It is a UUID like `018b1234-...`. You will need it together with the API key.'
+            },
+            {
+                title: 'Add a PostHog connection in Dora',
+                body: 'Open the connection dialog and select **PostHog** from the provider tiles. Paste your API key, select the region, and enter the project ID.'
+            },
+            {
+                title: 'Connect and start querying',
+                body: 'Click Connect. Dora validates the key with a trivial HogQL query. Once connected, you can browse tables (events, persons, sessions, groups), inspect schemas, and run HogQL queries in the SQL console.'
+            }
+        ],
+        notes: [
+            'PostHog connections are read-only. Dora queries the HogQL API which does not support writes.',
+            'The API key is stored encrypted on-device and never sent to the frontend.',
+            'Self-hosted PostHog instances are not yet supported — only PostHog Cloud (US or EU region).',
+            'HogQL is similar to SQL but has ClickHouse-specific syntax for arrays, nested data, and time-series functions.'
         ]
     }
 ]

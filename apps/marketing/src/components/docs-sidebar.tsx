@@ -48,6 +48,13 @@ const DOCS_NAV: TNavSection[] = [
             label: g.provider,
             href: getGuidePath(g.slug)
         }))
+    },
+    {
+        title: 'Analytics',
+        items: GUIDES.filter((g) => g.engine === 'HogQL').map((g) => ({
+            label: g.provider,
+            href: getGuidePath(g.slug)
+        }))
     }
 ]
 

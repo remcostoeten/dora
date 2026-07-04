@@ -1,7 +1,6 @@
 import Link from 'next/link'
 
 import { FooterFrame } from '@/components/footer-frame'
-import { ScrollReveal } from '@/components/scroll-reveal'
 import { getGitHubStats } from '@/core/github/get-github-stats'
 
 const FOOTER_LINKS = [
@@ -88,72 +87,66 @@ export default async function Footer() {
             <FooterFrame />
             <footer className="flex flex-col gap-6 px-5 py-6">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <ScrollReveal delay={0} rootMargin="0px">
-                        <span className="text-xs text-muted-foreground">
-                            Engineered by{' '}
-                            <a
-                                href="https://remcostoeten.nl"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="border-0 text-xs text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:text-foreground"
-                            >
-                                Remco Stoeten
-                            </a>
-                        </span>
-                    </ScrollReveal>
-
-                    <ScrollReveal delay={100} rootMargin="0px">
-                        <nav
-                            aria-label="Footer navigation"
-                            className="flex flex-wrap items-center gap-x-6 gap-y-2"
+                    <span className="text-xs text-muted-foreground">
+                        Engineered by{' '}
+                        <a
+                            href="https://remcostoeten.nl"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="border-0 text-xs text-muted-foreground outline-none transition-colors duration-150 hover:text-foreground focus-visible:text-foreground"
                         >
-                            {FOOTER_LINKS.map(renderLink)}
-                        </nav>
-                    </ScrollReveal>
+                            Remco Stoeten
+                        </a>
+                    </span>
+
+                    <nav
+                        aria-label="Footer navigation"
+                        className="flex flex-wrap items-center gap-x-6 gap-y-2"
+                    >
+                        {FOOTER_LINKS.map(renderLink)}
+                    </nav>
                 </div>
 
-                <ScrollReveal delay={50} rootMargin="0px">
-                    <div className="flex flex-col gap-1 border-t border-line-strong/40 pt-4 text-xs leading-relaxed text-muted-foreground/70 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                        <span>&copy; {year} Dora. All rights reserved.</span>
-                        {latestCommitLine ? (
-                            latestCommitUrl ? (
-                                <a
-                                    href={latestCommitUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="border-0 outline-none transition-colors duration-150 hover:text-foreground focus-visible:text-foreground"
-                                    title={
-                                        stats?.latestCommitDateTime
-                                            ? new Date(
-                                                  stats.latestCommitDateTime
-                                              ).toLocaleString('en-US', {
-                                                  dateStyle: 'medium',
-                                                  timeStyle: 'short'
-                                              })
-                                            : undefined
-                                    }
-                                >
-                                    {latestCommitLine}
-                                </a>
-                            ) : (
-                                <span
-                                    title={
-                                        stats?.latestCommitDateTime
-                                            ? new Date(
-                                                  stats.latestCommitDateTime
-                                              ).toLocaleString('en-US', {
-                                                  dateStyle: 'medium',
-                                                  timeStyle: 'short'
-                                              })
-                                            : undefined
-                                    }
-                                >
-                                    {latestCommitLine}
-                                </span>
-                            )
-                        ) : null}
-                    </div>
-                </ScrollReveal>
+                <div className="flex flex-col gap-1 border-t border-line-strong/40 pt-4 text-xs leading-relaxed text-muted-foreground/70 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <span>&copy; {year} Dora. All rights reserved.</span>
+                    {latestCommitLine ? (
+                        latestCommitUrl ? (
+                            <a
+                                href={latestCommitUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="border-0 outline-none transition-colors duration-150 hover:text-foreground focus-visible:text-foreground"
+                                title={
+                                    stats?.latestCommitDateTime
+                                        ? new Date(
+                                              stats.latestCommitDateTime
+                                          ).toLocaleString('en-US', {
+                                              dateStyle: 'medium',
+                                              timeStyle: 'short'
+                                          })
+                                        : undefined
+                                }
+                            >
+                                {latestCommitLine}
+                            </a>
+                        ) : (
+                            <span
+                                title={
+                                    stats?.latestCommitDateTime
+                                        ? new Date(
+                                              stats.latestCommitDateTime
+                                          ).toLocaleString('en-US', {
+                                              dateStyle: 'medium',
+                                              timeStyle: 'short'
+                                          })
+                                        : undefined
+                                }
+                            >
+                                {latestCommitLine}
+                            </span>
+                        )
+                    ) : null}
+                </div>
             </footer>
         </section>
     )

@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+    BarChart3,
     Boxes,
     Braces,
     Database,
@@ -25,6 +26,7 @@ export type TFeatureSlug =
     | 'prisma-runner'
     | 'orm-cockpit'
     | 'theming'
+    | 'analytics'
 
 export type TFeatureDemo =
     | 'database-connection'
@@ -37,6 +39,7 @@ export type TFeatureDemo =
     | 'prisma-runner'
     | 'orm-cockpit'
     | 'theming'
+    | 'posthog-analytics'
 
 export type TFeatureConfig = {
     slug: TFeatureSlug
@@ -60,7 +63,7 @@ export const FEATURES_INDEX = {
     description:
         'Explore Dora features for multi-database connections, schema visualization, query history, Docker workflows, SSH tunneling, and AI-assisted SQL.',
     lead: 'Browse the capabilities that ship in Dora today, from connection management to schema exploration and AI-assisted querying.'
-} satisfies Pick<TRouteConfig, 'path' | 'title' | 'description'>
+} satisfies Pick<TRouteConfig, 'path' | 'title' | 'description'> & { lead: string }
 
 export const FEATURES: TFeatureConfig[] = [
     {
@@ -387,6 +390,36 @@ export const FEATURES: TFeatureConfig[] = [
             'dark mode sql client',
             'custom database workbench',
             'sql client appearance'
+        ]
+    },
+    {
+        slug: 'analytics',
+        demo: 'posthog-analytics',
+        menuLabel: 'Analytics',
+        menuDescription: 'Query PostHog with HogQL, build dashboards',
+        icon: BarChart3,
+        inNav: true,
+        homepageAnchor: 'feature-analytics',
+        title: 'Product analytics in Dora',
+        description:
+            'Query PostHog with HogQL, build dashboards, and explore events, persons, and sessions — all from the same workbench.',
+        lead: 'Run product analytics queries alongside your database work without switching between tools.',
+        paragraphs: [
+            'Dora connects to PostHog projects through an API key, giving you a HogQL query surface that mirrors the SQL console you already use.',
+            'Browse events, persons, sessions, and groups in a data grid, inspect schemas, and export results — all within the same keyboard-first workbench.'
+        ],
+        highlights: [
+            'PostHog integration with HogQL query support',
+            'Browse events, persons, sessions, and groups',
+            'Schema inspection and data grid exploration',
+            'Results export and query history'
+        ],
+        keywords: [
+            'posthog desktop client',
+            'hogql gui',
+            'product analytics desktop',
+            'posthog query tool',
+            'analytics dashboard desktop'
         ]
     }
 ]

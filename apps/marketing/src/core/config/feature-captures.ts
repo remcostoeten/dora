@@ -10,7 +10,8 @@ export const FEATURE_DEMO_SLUG: Record<TFeatureDemo, TFeatureSlug> = {
     'drizzle-runner': 'drizzle-runner',
     'prisma-runner': 'prisma-runner',
     'orm-cockpit': 'orm-cockpit',
-    theming: 'theming'
+    theming: 'theming',
+    'posthog-analytics': 'analytics'
 }
 
 export const FEATURE_SHOWCASE_LABELS: Record<TFeatureDemo, string> = {
@@ -29,7 +30,8 @@ export const FEATURE_SHOWCASE_LABELS: Record<TFeatureDemo, string> = {
         'Prisma runner translating Prisma Client queries to SQL before they run',
     'orm-cockpit':
         'ORM Cockpit diffing a Drizzle/Prisma schema against the live database and previewing a migration',
-    theming: 'Custom theming and look-and-feel settings in Dora'
+    theming: 'Custom theming and look-and-feel settings in Dora',
+    'posthog-analytics': 'PostHog analytics query surface with HogQL, schema, and data grid'
 }
 
 export const FEATURE_CAPTURE_SEEK_SEC = 0
@@ -38,7 +40,8 @@ export const FEATURE_CAPTURE_SEEK_SEC = 0
 export const FEATURE_SLUGS_WITHOUT_VIDEO: TFeatureSlug[] = [
     'ssh-tunneling',
     'prisma-runner',
-    'orm-cockpit'
+    'orm-cockpit',
+    'analytics'
 ]
 
 export function featureUsesCaptureVideo(slug: TFeatureSlug) {

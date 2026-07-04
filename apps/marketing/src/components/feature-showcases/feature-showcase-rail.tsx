@@ -42,7 +42,8 @@ const DEMO_ACTIVE: Record<TFeatureDemo, TRailId> = {
     'drizzle-runner': 'drizzle',
     'prisma-runner': 'prisma',
     'orm-cockpit': 'orm-cockpit',
-    theming: 'data-viewer'
+    theming: 'data-viewer',
+    'posthog-analytics': 'sql-console'
 }
 
 function Tip({ label }: { label: string }) {
