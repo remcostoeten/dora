@@ -17,6 +17,7 @@ export type DbPreset =
 	| 'libsql'
 	| 'turso'
 	| 'd1'
+	| 'posthog'
 	| 'railway'
 	| 'fly'
 	| 'aiven'

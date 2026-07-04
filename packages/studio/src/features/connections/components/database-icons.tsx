@@ -1,4 +1,5 @@
 import {
+	BarChart3,
 	Boxes,
 	Cloud,
 	Cylinder,
@@ -57,6 +58,7 @@ type DatabaseType =
 	| 'duckdb'
 	| 'libsql'
 	| 'd1'
+	| 'posthog'
 
 type DatabaseIconProps = {
 	type: DatabaseType
@@ -90,6 +92,8 @@ export function DatabaseIcon({ type, className }: DatabaseIconProps) {
 			return <LibSQLIcon className={className} />
 		case 'd1':
 			return <CloudflareD1Icon className={className} />
+		case 'posthog':
+			return <DatabaseGlyph icon={BarChart3} className={className} />
 		default:
 			return <DatabaseGlyph icon={FileStack} className={className} />
 	}
@@ -127,5 +131,9 @@ export const DATABASE_META: Record<DatabaseType, { name: string; description: st
 	d1: {
 		name: 'Cloudflare D1',
 		description: 'Serverless SQLite on the edge'
+	},
+	posthog: {
+		name: 'PostHog',
+		description: 'Product analytics, queried with HogQL'
 	}
 }

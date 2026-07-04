@@ -118,7 +118,7 @@ pub fn write_adapter_from_client(
     client: &crate::database::types::DatabaseClient,
 ) -> BoxedWriteAdapter {
     use super::read::{
-        D1Adapter, LibSqlAdapter, MySqlAdapter, PostgresAdapter, SqliteAdapter,
+        D1Adapter, LibSqlAdapter, MySqlAdapter, PosthogAdapter, PostgresAdapter, SqliteAdapter,
     };
 
     match client {
@@ -143,6 +143,9 @@ pub fn write_adapter_from_client(
         }
         crate::database::types::DatabaseClient::D1 { http } => {
             Box::new(D1Adapter::new(http.clone()))
+        }
+        crate::database::types::DatabaseClient::Posthog { http } => {
+            Box::new(PosthogAdapter::new(http.clone()))
         }
     }
 }

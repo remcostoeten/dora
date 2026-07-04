@@ -15,7 +15,9 @@ use rusqlite::types::ValueRef;
 
 #[cfg(feature = "duckdb-engine")]
 use super::read::DuckDbAdapter;
-use super::read::{D1Adapter, LibSqlAdapter, MySqlAdapter, PostgresAdapter, SqliteAdapter};
+use super::read::{
+    D1Adapter, LibSqlAdapter, MySqlAdapter, PosthogAdapter, PostgresAdapter, SqliteAdapter,
+};
 use crate::{database::postgres::row_writer::RowWriter as PostgresRowWriter, Error};
 
 #[async_trait]
@@ -90,6 +92,16 @@ impl WatchAdapter for D1Adapter {
         // monitor never starts a watch for it. This exists only to satisfy the
         // `watch_adapter_from_client` factory's exhaustive match.
         Err(Error::NotImplemented("table watch for Cloudflare D1"))
+    }
+}
+
+#[async_trait]
+impl WatchAdapter for PosthogAdapter {
+    async fn poll_table_hash(&self, _table: &str, _schema: Option<&str>) -> Result<u64, Error> {
+        // PostHog's `source_caps().supports_listen_notify` is false, so the live
+        // monitor never starts a watch for it. This exists only to satisfy the
+        // `watch_adapter_from_client` factory's exhaustive match.
+        Err(Error::NotImplemented("table watch for PostHog"))
     }
 }
 
@@ -212,6 +224,9 @@ pub fn watch_adapter_from_client(
         }
         crate::database::types::DatabaseClient::D1 { http } => {
             Box::new(D1Adapter::new(http.clone()))
+        }
+        crate::database::types::DatabaseClient::Posthog { http } => {
+            Box::new(PosthogAdapter::new(http.clone()))
         }
     }
 }

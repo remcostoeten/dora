@@ -190,6 +190,9 @@ impl<'a> ConnectionService<'a> {
                     Database::D1 {
                         connection: conn, ..
                     } => *conn = None,
+                    Database::Posthog {
+                        connection: conn, ..
+                    } => *conn = None,
                 }
                 connection.connected = false;
                 connection.database = match database_info {
@@ -256,6 +259,10 @@ impl<'a> ConnectionService<'a> {
                         connection: None,
                     },
                     DatabaseInfo::D1 { url } => Database::D1 {
+                        url,
+                        connection: None,
+                    },
+                    DatabaseInfo::Posthog { url } => Database::Posthog {
                         url,
                         connection: None,
                     },
@@ -822,6 +829,52 @@ impl<'a> ConnectionService<'a> {
                     }
                 }
             }
+            Database::Posthog {
+                url,
+                connection: posthog_conn,
+            } => {
+                // PostHog has no wire protocol: "connecting" means loading the
+                // encrypted personal API key, building the HTTP handle, and
+                // probing it with a trivial HogQL query so a bad/expired key
+                // fails here rather than on first use.
+                let url_str = url.clone();
+                let api_key = match crate::integrations::posthog::connect_token(&self.storage) {
+                    Ok(api_key) => api_key,
+                    Err(e) => {
+                        log::error!("PostHog connect failed for {}: {}", url_str, e);
+                        connection.connected = false;
+                        return Ok(connect_result(false));
+                    }
+                };
+
+                let http = match crate::database::posthog::PosthogHttp::from_url(url, &api_key) {
+                    Ok(http) => http,
+                    Err(e) => {
+                        log::error!("Malformed PostHog URL {}: {}", url_str, e);
+                        connection.connected = false;
+                        return Ok(connect_result(false));
+                    }
+                };
+
+                match http.query("SELECT 1").await {
+                    Ok(_) => {
+                        *posthog_conn = Some(Arc::new(http));
+                        connection.connected = true;
+
+                        if let Err(e) = self.storage.update_last_connected(&connection_id) {
+                            log::warn!("Failed to update last connected timestamp: {}", e);
+                        }
+
+                        log::info!("Successfully connected to PostHog: {}", url_str);
+                        Ok(connect_result(true))
+                    }
+                    Err(e) => {
+                        log::error!("Failed to reach PostHog {}: {}", url_str, e);
+                        connection.connected = false;
+                        Ok(connect_result(false))
+                    }
+                }
+            }
         }
     }
 
@@ -1051,6 +1104,10 @@ impl<'a> ConnectionService<'a> {
                 connection: d1_conn,
                 ..
             } => *d1_conn = None,
+            Database::Posthog {
+                connection: posthog_conn,
+                ..
+            } => *posthog_conn = None,
         }
         connection.connected = false;
         Ok(())
@@ -1418,6 +1475,16 @@ impl ConnectionService<'_> {
                 // `d1://account/database` URL shape; the live query probe runs in
                 // `connect_to_database`.
                 crate::database::d1::parse_d1_url(&url)?;
+                Ok(true)
+            }
+            DatabaseInfo::Posthog { url } => {
+                log::info!("Testing PostHog connection: {}", url);
+                // The API key lives in the encrypted PostHog setting, not on the
+                // connection, and was already validated when it was saved. This
+                // static test path has no storage handle, so it validates the
+                // `posthog://region/project` URL shape; the live query probe runs
+                // in `connect_to_database`.
+                crate::database::posthog::parse_posthog_url(&url)?;
                 Ok(true)
             }
         }

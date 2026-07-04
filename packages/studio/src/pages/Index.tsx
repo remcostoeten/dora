@@ -72,6 +72,11 @@ const AiAssistantPanel = lazy(function () {
     return { default: m.AiAssistantPanel };
   });
 });
+const PosthogAnalytics = lazy(function () {
+  return import("@studio/features/posthog-analytics").then(function (m) {
+    return { default: m.PosthogAnalytics };
+  });
+});
 import { DatabaseSidebar } from "@studio/features/sidebar/database-sidebar";
 import { SettingsView, type SettingsSectionId } from "@studio/features/sidebar/components/settings-panel";
 import { WindowControls } from "@studio/components/window-controls";
@@ -381,12 +386,11 @@ function IndexInner() {
     { description: shortcuts.zoomReset.description },
   );
   $.bind(shortcuts.toggleFullscreen.combo)
-    .except("typing")
     .on(
       function () {
         toggleFullscreen();
       },
-      { description: shortcuts.toggleFullscreen.description },
+      { description: shortcuts.toggleFullscreen.description, preventDefault: true },
     );
 
   $.bind(shortcuts.quitApp.combo).on(
@@ -397,6 +401,17 @@ function IndexInner() {
     },
     { description: shortcuts.quitApp.description },
   );
+
+  $.bind(shortcuts.closeTab.combo)
+    .except("typing")
+    .on(
+      function () {
+        if (activeConnectionId) {
+          handleCloseConnection(activeConnectionId);
+        }
+      },
+      { description: shortcuts.closeTab.description },
+    );
 
   // Connection switching by index (1-9)
   connections.slice(0, 9).forEach(function (conn, i) {
@@ -946,6 +961,11 @@ function IndexInner() {
     openConnections.length > 0 &&
     (activeNavId === "database-studio" || activeNavId === "sql-console");
 
+  const activeConnection = connections.find(function (c) {
+    return c.id === activeConnectionId;
+  });
+  const isPosthogConnection = activeConnection?.type === "posthog";
+
   const connectionTabBar = showConnectionTabBar ? (
     <ConnectionTabBar
       connections={openConnections}
@@ -970,6 +990,7 @@ function IndexInner() {
               <NavigationSidebar
                 activeNavId={activeNavId}
                 onNavSelect={setActiveNavId}
+                analyticsAvailable={isPosthogConnection}
                 databasePanelToggle={
                   showDatabasePanel
                     ? {
@@ -1112,6 +1133,31 @@ function IndexInner() {
                         />
                       </ErrorBoundary>
                     </div>
+                  ) : activeNavId === "analytics" ? (
+                    <ErrorBoundary feature="Analytics">
+                      {isPosthogConnection && activeConnectionId ? (
+                        <PosthogAnalytics
+                          key={activeConnectionId}
+                          connectionId={activeConnectionId}
+                          connectionName={activeConnection?.name}
+                          windowControls={<WindowControls />}
+                        />
+                      ) : (
+                        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Analytics is available for PostHog connections.
+                          </p>
+                          <button
+                            onClick={function () {
+                              setActiveNavId("database-studio");
+                            }}
+                            className="rounded-md border border-border/70 px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:border-border hover:text-foreground"
+                          >
+                            Back to Data Viewer
+                          </button>
+                        </div>
+                      )}
+                    </ErrorBoundary>
                   ) : activeNavId === "schema-visualizer" ? (
                     <ErrorBoundary feature="Schema Visualizer">
                       <SchemaVisualizer

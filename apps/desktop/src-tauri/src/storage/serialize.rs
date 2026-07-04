@@ -12,6 +12,7 @@ pub(super) const DB_TYPE_COCKROACH: i32 = 5;
 pub(super) const DB_TYPE_MARIADB: i32 = 6;
 pub(super) const DB_TYPE_DUCKDB: i32 = 7;
 pub(super) const DB_TYPE_D1: i32 = 8;
+pub(super) const DB_TYPE_POSTHOG: i32 = 9;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StoredPostgresConnection {
@@ -119,6 +120,10 @@ pub(super) fn serialize_connection_data(database_type: &DatabaseInfo) -> Result<
         // D1 stores only its `d1://account/database` URL; the API token lives in
         // the encrypted Cloudflare integration setting, not on the connection.
         DatabaseInfo::D1 { url } => Ok((DB_TYPE_D1, url.clone())),
+        // PostHog stores only its `posthog://region/project` URL; the API key
+        // lives in the encrypted PostHog integration setting, not on the
+        // connection.
+        DatabaseInfo::Posthog { url } => Ok((DB_TYPE_POSTHOG, url.clone())),
     }
 }
 
@@ -134,6 +139,7 @@ fn db_type_name_from_id(db_type_id: i32) -> Option<&'static str> {
         DB_TYPE_MARIADB => Some("mariadb"),
         DB_TYPE_DUCKDB => Some("duckdb"),
         DB_TYPE_D1 => Some("d1"),
+        DB_TYPE_POSTHOG => Some("posthog"),
         _ => None,
     }
 }
@@ -172,6 +178,9 @@ pub(super) fn deserialize_database_info(
             db_path: connection_data,
         },
         "d1" => DatabaseInfo::D1 {
+            url: connection_data,
+        },
+        "posthog" => DatabaseInfo::Posthog {
             url: connection_data,
         },
         "duckdb" => {

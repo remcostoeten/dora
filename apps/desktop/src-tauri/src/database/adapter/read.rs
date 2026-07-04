@@ -66,6 +66,7 @@ pub enum DatabaseType {
     DuckDB,
     LibSQL,
     D1,
+    Posthog,
 }
 
 impl std::fmt::Display for DatabaseType {
@@ -77,6 +78,7 @@ impl std::fmt::Display for DatabaseType {
             DatabaseType::DuckDB => write!(f, "DuckDB"),
             DatabaseType::LibSQL => write!(f, "libSQL"),
             DatabaseType::D1 => write!(f, "Cloudflare D1"),
+            DatabaseType::Posthog => write!(f, "PostHog"),
         }
     }
 }
@@ -365,6 +367,35 @@ impl DatabaseAdapter for D1Adapter {
     }
 }
 
+/// PostHog HogQL adapter. PostHog is HogQL (ClickHouse-flavoured) over an HTTP
+/// transport and is read-only; it reuses the SQLite statement parser for
+/// splitting/`returns_values` detection, while execution and schema
+/// introspection go through `PosthogHttp` (the HogQL Query API).
+pub use crate::database::posthog::PosthogAdapter;
+
+#[async_trait]
+impl DatabaseAdapter for PosthogAdapter {
+    fn parse_statements(&self, query: &str) -> Result<Vec<ParsedStatement>, Error> {
+        crate::database::sqlite::parser::parse_statements(query).map_err(Into::into)
+    }
+
+    async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error> {
+        self.run_statement(stmt, sender).await
+    }
+
+    async fn get_schema(&self) -> Result<DatabaseSchema, Error> {
+        crate::database::posthog::schema::get_database_schema(self.http()).await
+    }
+
+    fn is_connected(&self) -> bool {
+        true
+    }
+
+    fn database_type(&self) -> DatabaseType {
+        DatabaseType::Posthog
+    }
+}
+
 pub type BoxedAdapter = Box<dyn DatabaseAdapter>;
 
 pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> BoxedAdapter {
@@ -390,6 +421,9 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
         }
         crate::database::types::DatabaseClient::D1 { http } => {
             Box::new(D1Adapter::new(http.clone()))
+        }
+        crate::database::types::DatabaseClient::Posthog { http } => {
+            Box::new(PosthogAdapter::new(http.clone()))
         }
     }
 }

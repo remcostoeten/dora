@@ -34,6 +34,7 @@ import { CloudflareConnectFlow } from '@studio/features/integrations/cloudflare/
 import { XataConnectFlow } from '@studio/features/integrations/xata/xata-connect-flow'
 import { PlanetscaleConnectFlow } from '@studio/features/integrations/planetscale/planetscale-connect-flow'
 import { VercelConnectFlow } from '@studio/features/integrations/vercel/vercel-connect-flow'
+import { PosthogConnectFlow } from '@studio/features/integrations/posthog/posthog-connect-flow'
 import { Connection, DatabaseType, SshAuthMethod, SshTunnelConfig } from '../types'
 import { getSourceCaps } from '../source-caps'
 import {
@@ -113,7 +114,15 @@ export function ConnectionDialog({
 	// resolve to an engine connection but live outside formData.type. When one is
 	// active, the standard form is swapped for that provider's connect flow.
 	const [selectedIntegration, setSelectedIntegration] = useState<
-		'supabase' | 'turso' | 'neon' | 'cloudflare' | 'xata' | 'planetscale' | 'vercel' | null
+		| 'supabase'
+		| 'turso'
+		| 'neon'
+		| 'cloudflare'
+		| 'xata'
+		| 'planetscale'
+		| 'vercel'
+		| 'posthog'
+		| null
 	>(null)
 	const supabaseSelected = selectedIntegration === 'supabase'
 	const tursoSelected = selectedIntegration === 'turso'
@@ -121,6 +130,7 @@ export function ConnectionDialog({
 	const xataSelected = selectedIntegration === 'xata'
 	const planetscaleSelected = selectedIntegration === 'planetscale'
 	const vercelSelected = selectedIntegration === 'vercel'
+	const posthogSelected = selectedIntegration === 'posthog'
 	const integrationSelected = selectedIntegration !== null
 	const [showDesktopOnlyHint, setShowDesktopOnlyHint] = useState(false)
 	const isTauri = useIsTauri()
@@ -342,7 +352,8 @@ export function ConnectionDialog({
 			key === 'cloudflare' ||
 			key === 'xata' ||
 			key === 'planetscale' ||
-			key === 'vercel'
+			key === 'vercel' ||
+			key === 'posthog'
 		) {
 			setSelectedIntegration(key)
 			setTestStatus('idle')
@@ -766,6 +777,7 @@ export function ConnectionDialog({
 							showXata={!initialValues}
 							showPlanetscale={!initialValues}
 							showVercel={!initialValues}
+							showPosthog={!initialValues}
 							showFiles={!!onOpenDataFiles}
 							compact={integrationSelected}
 						/>
@@ -814,6 +826,13 @@ export function ConnectionDialog({
 								/>
 							) : vercelSelected ? (
 								<VercelConnectFlow
+									onComplete={function (connection) {
+										onSave(connection)
+										onOpenChange(false)
+									}}
+								/>
+							) : posthogSelected ? (
+								<PosthogConnectFlow
 									onComplete={function (connection) {
 										onSave(connection)
 										onOpenChange(false)
@@ -879,7 +898,9 @@ export function ConnectionDialog({
 							<span className='text-xs text-muted-foreground/75'>
 								{supabaseSelected
 									? 'Authorize Supabase and pick a project to create the connection.'
-									: 'Add a token and pick a database to create the connection.'}
+									: posthogSelected
+										? 'Add a personal API key to query your PostHog project with HogQL.'
+										: 'Add a token and pick a database to create the connection.'}
 							</span>
 						) : (
 							<TestConnectionButton

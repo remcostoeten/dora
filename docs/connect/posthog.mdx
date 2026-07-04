@@ -1,0 +1,50 @@
+---
+title: Connect PostHog
+description: Connect Dora to a PostHog project with a personal API key and query analytics with HogQL.
+---
+
+# Connect PostHog
+
+PostHog is product analytics with a SQL-like query language called HogQL.
+Dora connects through the HogQL Query API so you can explore events, persons,
+sessions, and groups from the same workbench you use for databases.
+
+## With a personal API key
+
+1. In your PostHog instance, go to **Project Settings → Project API Key**.
+2. Copy the personal API key (starts with `phx_...`).
+3. Note your **region** (US or EU) and **project ID** from Project Settings.
+
+4. In Dora open the connection dialog and select **PostHog** from the provider
+   tiles. Paste the API key, select the region, and enter the project ID.
+
+5. Click **Test**, then **Connect**. Dora validates the key and your tables
+   appear in the sidebar.
+
+<Callout type='info'>
+  PostHog connections are **read-only**. Dora queries the HogQL API which does
+  not support writes. The API key is stored encrypted on-device.
+</Callout>
+
+## Querying with HogQL
+
+Once connected, you can:
+
+- Browse tables — `events`, `persons`, `sessions`, `groups`
+- Inspect schemas and column types
+- Run HogQL in the SQL console — it works like SQL with ClickHouse-specific
+  functions for arrays, nested data, and time-series
+- Export results and use query history
+
+HogQL example:
+
+```sql
+SELECT
+  event,
+  count() AS count
+FROM events
+WHERE timestamp > now() - INTERVAL 7 DAY
+GROUP BY event
+ORDER BY count DESC
+LIMIT 20
+```

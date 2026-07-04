@@ -8,6 +8,7 @@ use crate::{
     integrations::planetscale::{
         self, PlanetscaleBranch, PlanetscaleDatabase, PlanetscaleOrganization, PlanetscalePassword,
     },
+    integrations::posthog::{self, PosthogConfig, PosthogQueryResult, PosthogRegion},
     integrations::turso::{self, TursoDatabase, TursoOrganization},
     integrations::xata::{self, XataAccount, XataDatabase},
     integrations::vercel::{self, VercelAccount, VercelStore},
@@ -483,4 +484,52 @@ pub fn vercel_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
 #[specta::specta]
 pub fn vercel_is_connected(state: State<'_, AppState>) -> bool {
     vercel::is_connected(&state.storage)
+}
+
+// ---------------------------------------------------------------------------
+// PostHog
+// ---------------------------------------------------------------------------
+
+/// Validates a pasted personal API key against the given project/region by
+/// running a trivial HogQL query, then stores the credential set encrypted.
+#[tauri::command]
+#[specta::specta]
+pub async fn posthog_save_credentials(
+    api_key: String,
+    region: PosthogRegion,
+    project_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    posthog::save_credentials(&state.storage, api_key, region, project_id).await
+}
+
+/// Runs an arbitrary HogQL query against the connected PostHog project and
+/// returns grid-shaped rows.
+#[tauri::command]
+#[specta::specta]
+pub async fn posthog_run_query(
+    hogql: String,
+    state: State<'_, AppState>,
+) -> Result<PosthogQueryResult, Error> {
+    posthog::run_query(&state.storage, &hogql).await
+}
+
+/// The connected project's region and id (never the API key), for prefilling
+/// the connect form and showing which project is active.
+#[tauri::command]
+#[specta::specta]
+pub fn posthog_config(state: State<'_, AppState>) -> Result<Option<PosthogConfig>, Error> {
+    posthog::current_config(&state.storage)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn posthog_disconnect(state: State<'_, AppState>) -> Result<(), Error> {
+    posthog::disconnect(&state.storage)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn posthog_is_connected(state: State<'_, AppState>) -> bool {
+    posthog::is_connected(&state.storage)
 }

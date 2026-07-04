@@ -7,6 +7,7 @@ export type DatabaseType =
 	| 'duckdb'
 	| 'libsql'
 	| 'd1'
+	| 'posthog'
 
 export type SshAuthMethod = 'password' | 'keyfile'
 
@@ -61,5 +62,6 @@ export const DEFAULT_PORTS: Record<DatabaseType, number> = {
 	sqlite: 0,
 	duckdb: 0,
 	libsql: 0,
-	d1: 0
+	d1: 0,
+	posthog: 0
 }

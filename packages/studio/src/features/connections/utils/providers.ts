@@ -102,6 +102,14 @@ export const PROVIDER_CONFIGS: Record<DatabaseType, ProviderConfig> = {
 		defaultDatabase: '',
 		protocols: ['d1'],
 		supportsSSL: false
+	},
+	posthog: {
+		name: 'PostHog',
+		defaultPort: 0,
+		defaultUser: '',
+		defaultDatabase: '',
+		protocols: ['posthog'],
+		supportsSSL: false
 	}
 }
 
@@ -295,6 +303,10 @@ type ProtocolMatch = {
 	sharesPrefix: boolean
 }
 
+// Engines whose URL scheme is internal (built by an integration flow, never
+// pasted by a user), so they must be skipped by fuzzy protocol typo detection.
+const FUZZY_EXCLUDED_TYPES: DatabaseType[] = ['posthog']
+
 function findClosestProtocol(input: string): DatabaseType | undefined {
 	const MIN_PROTOCOL_LENGTH = 4
 	const MAX_NORMALIZED_DISTANCE = 0.4
@@ -309,6 +321,12 @@ function findClosestProtocol(input: string): DatabaseType | undefined {
 	let bestMatch: ProtocolMatch | undefined
 
 	for (const [dbType, config] of Object.entries(PROVIDER_CONFIGS)) {
+		// PostHog's `posthog://` scheme is internal — it's built after API-key
+		// auth, never typed by a user — so it must not shadow real DB protocols in
+		// typo detection (e.g. `postttgr` should resolve to postgres, not posthog).
+		if (FUZZY_EXCLUDED_TYPES.includes(dbType as DatabaseType)) {
+			continue
+		}
 		for (const proto of config.protocols) {
 			const protoLower = proto.toLowerCase()
 			const distance = levenshtein(inputLower, protoLower)

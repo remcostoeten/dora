@@ -240,6 +240,24 @@ pub async fn get_d1_metadata(
     })
 }
 
+/// Metadata for a PostHog project. PostHog exposes a fixed set of HogQL tables
+/// and no on-disk size; row counts are left unknown (0) to avoid a `count()`
+/// scan per table on every metadata fetch.
+pub async fn get_posthog_metadata(
+    _http: &crate::database::posthog::PosthogHttp,
+    url: &str,
+) -> Result<DatabaseMetadata, Error> {
+    Ok(DatabaseMetadata {
+        size_bytes: 0,
+        created_at: None,
+        last_updated: None,
+        row_count_total: 0,
+        table_count: 0,
+        host: url.to_string(),
+        database_name: None,
+    })
+}
+
 /// Table and row counts for a D1 database over HTTP, mirroring
 /// [`get_libsql_counts`] but issuing each query as a REST call.
 async fn get_d1_counts(http: &crate::database::d1::D1Http) -> Result<(u32, u64), Error> {

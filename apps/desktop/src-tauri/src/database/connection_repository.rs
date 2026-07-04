@@ -71,6 +71,10 @@ impl ConnectionRepository for AppState {
                 // D1 is the SQLite dialect.
                 crate::database::sqlite::parser::parse_statements(query).map_err(Into::into)
             }
+            Database::Posthog { .. } => {
+                // PostHog reuses the SQLite parser for statement splitting.
+                crate::database::sqlite::parser::parse_statements(query).map_err(Into::into)
+            }
         }
     }
 }

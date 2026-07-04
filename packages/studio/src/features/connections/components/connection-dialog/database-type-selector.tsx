@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Check, FileSpreadsheet } from 'lucide-react'
+import { Check, FileSpreadsheet, BarChart3 } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 import {
 	Supabase as SupabaseIcon,
@@ -41,6 +41,7 @@ export type ProviderKey =
 	| 'xata'
 	| 'planetscale'
 	| 'vercel'
+	| 'posthog'
 	| 'files'
 
 type Props = {
@@ -60,6 +61,8 @@ type Props = {
 	showPlanetscale?: boolean
 	/** Show the Vercel Postgres connect tile (new connections only). */
 	showVercel?: boolean
+	/** Show the PostHog connect tile (new connections only). */
+	showPosthog?: boolean
 	/** Show the Files tile (opens flat files as a read-only DuckDB connection). */
 	showFiles?: boolean
 	compact?: boolean
@@ -139,6 +142,10 @@ const TYPE_THEME: Record<ProviderKey, Theme> = {
 		accent: 'hsl(0 0% 80%)',
 		wash: 'color-mix(in srgb, hsl(0 0% 80%) 10%, hsl(var(--card)))'
 	},
+	posthog: {
+		accent: 'hsl(20 90% 55%)',
+		wash: 'color-mix(in srgb, hsl(20 90% 55%) 10%, hsl(var(--card)))'
+	},
 	files: {
 		accent: 'hsl(38 80% 55%)',
 		wash: 'color-mix(in srgb, hsl(38 80% 55%) 10%, hsl(var(--card)))'
@@ -201,6 +208,13 @@ const VERCEL_TILE: Tile = {
 	icon: <VercelIcon className='h-[18px] w-[18px]' />
 }
 
+const POSTHOG_TILE: Tile = {
+	key: 'posthog',
+	name: 'PostHog',
+	description: 'Add an API key, query with HogQL',
+	icon: <BarChart3 className='h-[18px] w-[18px]' strokeWidth={1.8} />
+}
+
 const FILES_TILE: Tile = {
 	key: 'files',
 	name: 'Files',
@@ -218,6 +232,7 @@ export function DatabaseTypeSelector({
 	showXata,
 	showPlanetscale,
 	showVercel,
+	showPosthog,
 	showFiles,
 	compact,
 	disabled
@@ -239,6 +254,7 @@ export function DatabaseTypeSelector({
 	if (showXata) tiles.push(XATA_TILE)
 	if (showPlanetscale) tiles.push(PLANETSCALE_TILE)
 	if (showVercel) tiles.push(VERCEL_TILE)
+	if (showPosthog) tiles.push(POSTHOG_TILE)
 	if (showFiles) tiles.push(FILES_TILE)
 	const orderedTiles = compact
 		? [...tiles].sort(function (a, b) {

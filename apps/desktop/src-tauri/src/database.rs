@@ -7,6 +7,7 @@ pub mod duckdb_backend;
 pub mod duckdb_ipc;
 pub mod libsql;
 pub mod mysql;
+pub mod posthog;
 pub mod postgres;
 pub mod sqlite;
 

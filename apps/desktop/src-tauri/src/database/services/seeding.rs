@@ -137,6 +137,11 @@ impl<'a> SeedingService<'a> {
                         .await
                         .map_err(|e| Error::Any(anyhow::anyhow!("Cloudflare D1 insert failed: {}", e)))?;
                 }
+                crate::database::types::DatabaseClient::Posthog { .. } => {
+                    return Err(Error::Any(anyhow::anyhow!(
+                        "PostHog is a read-only data source and cannot be seeded."
+                    )));
+                }
             }
             inserted += chunk.len() as u32;
         }

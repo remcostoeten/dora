@@ -12,6 +12,7 @@ export type TableDialect =
 	| 'duckdb'
 	| 'libsql'
 	| 'd1'
+	| 'posthog'
 
 export type TableRefParts = {
 	schemaName: string | null

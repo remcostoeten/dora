@@ -656,6 +656,9 @@ async fn fetch_table_snapshot(
         DatabaseClient::D1 { .. } => {
             Err(Error::NotImplemented("live monitoring for Cloudflare D1"))
         }
+        DatabaseClient::Posthog { .. } => {
+            Err(Error::NotImplemented("live monitoring for PostHog"))
+        }
     }
 }
 

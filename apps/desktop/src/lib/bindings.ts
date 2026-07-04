@@ -425,6 +425,53 @@ async tursoAccount() : Promise<Result<TursoOrganization[], { kind: string; detai
 }
 },
 /**
+ * Validates a pasted personal API key against the given project/region by
+ * running a trivial HogQL query, then stores the credential set encrypted.
+ */
+async posthogSaveCredentials(apiKey: string, region: PosthogRegion, projectId: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_save_credentials", { apiKey, region, projectId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * Runs an arbitrary HogQL query against the connected PostHog project and
+ * returns grid-shaped rows.
+ */
+async posthogRunQuery(hogql: string) : Promise<Result<PosthogQueryResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_run_query", { hogql }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * The connected project's region and id (never the API key), for prefilling
+ * the connect form and showing which project is active.
+ */
+async posthogConfig() : Promise<Result<PosthogConfig | null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_config") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async posthogDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async posthogIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("posthog_is_connected");
+},
+/**
  * Validates and stores a Neon API key (encrypted on-device).
  */
 async neonSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
@@ -1521,7 +1568,14 @@ auth_token: string | null } } |
  * the encrypted Cloudflare integration setting at connect time, so it is
  * never persisted on the connection itself.
  */
-{ D1: { url: string } }
+{ D1: { url: string } } | 
+/**
+ * PostHog project, queried read-only over the HogQL Query API (no SQL wire
+ * protocol). `url` is `posthog://{region}/{project_id}`; the personal API
+ * key is loaded from the encrypted PostHog integration setting at connect
+ * time, so it is never persisted on the connection itself.
+ */
+{ Posthog: { url: string } }
 /**
  * Database-level metadata information
  */
@@ -1651,6 +1705,21 @@ export type PlanetscaleOrganization = { name: string }
  * immediately to assemble a connection string — the user never copies a secret.
  */
 export type PlanetscalePassword = { username: string; host: string; password: string }
+/**
+ * The connection config surfaced to the UI for prefilling — deliberately
+ * excludes the API key, which never leaves the device unencrypted.
+ */
+export type PosthogConfig = { region: PosthogRegion; projectId: string }
+/**
+ * A HogQL query result, shaped for the grid: a column header list, the
+ * ClickHouse type per column (best-effort), and rows of raw JSON cells.
+ */
+export type PosthogQueryResult = { columns: string[]; types: (string | null)[]; rows: JsonValue[][] }
+/**
+ * Which PostHog Cloud region the project lives in. Self-hosted instances are
+ * not supported by this path (they'd need a direct ClickHouse connection).
+ */
+export type PosthogRegion = "us" | "eu"
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
 export type RegisteredDatabase = { name: string; path: string; active: boolean }

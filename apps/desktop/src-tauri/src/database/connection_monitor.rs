@@ -66,6 +66,10 @@ impl ConnectionMonitor {
                 connection: d1_conn,
                 ..
             } => *d1_conn = None,
+            crate::database::types::Database::Posthog {
+                connection: posthog_conn,
+                ..
+            } => *posthog_conn = None,
         }
     }
 

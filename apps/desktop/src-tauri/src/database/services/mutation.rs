@@ -267,6 +267,17 @@ impl<'a> MutationService<'a> {
                     "d1",
                 )
             }
+            DatabaseClient::Posthog { .. } => {
+                // PostHog is HogQL; identifiers use ANSI double quotes.
+                let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
+                (
+                    format!(
+                        "SELECT * FROM \"{}\"{}{}{}",
+                        table_name, where_sql, order_sql, limit_clause
+                    ),
+                    "posthog",
+                )
+            }
         };
 
         let (columns, rows) = match db_type {
@@ -276,6 +287,7 @@ impl<'a> MutationService<'a> {
             "libsql" => fetch_libsql_data(&client, &query).await?,
             "mysql" => fetch_mysql_data(&client, &query).await?,
             "d1" => fetch_d1_data(&client, &query).await?,
+            "posthog" => fetch_posthog_data(&client, &query).await?,
             _ => unreachable!(),
         };
 
@@ -716,6 +728,18 @@ async fn fetch_d1_data(
         Ok((columns, data))
     } else {
         Err(Error::Any(anyhow!("Expected Cloudflare D1 client")))
+    }
+}
+
+async fn fetch_posthog_data(
+    client: &DatabaseClient,
+    query: &str,
+) -> Result<(Vec<String>, Vec<Vec<serde_json::Value>>), Error> {
+    if let DatabaseClient::Posthog { http } = client {
+        let set = http.query(query).await?;
+        Ok((set.columns, set.rows))
+    } else {
+        Err(Error::Any(anyhow!("Expected PostHog client")))
     }
 }
 

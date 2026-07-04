@@ -317,7 +317,12 @@ export function createTauriAdapter(): DataAdapter {
 				query += ` ORDER BY "${sort.column}" ${sort.direction.toUpperCase()}`
 			}
 
-			query += ` LIMIT ${pageSize} OFFSET ${page * pageSize}`
+			query += ` LIMIT ${pageSize}`
+			// PostHog's HogQL Query API rejects OFFSET for personal API keys, so
+			// posthog browsing is limited to the first page rather than paged offsets.
+			if (dialect !== 'posthog' && page > 0) {
+				query += ` OFFSET ${page * pageSize}`
+			}
 
 			const startResult = await commands.startQuery(connectionId, query)
 

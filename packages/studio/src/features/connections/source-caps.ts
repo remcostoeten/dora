@@ -132,6 +132,23 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsLiveMonitor: false,
 		isReadonly: false,
 	},
+	posthog: {
+		// PostHog: HogQL over the Query API. Read-only analytics source — browse
+		// and query events/persons/sessions/groups, but never mutate. No local
+		// file or SSH; live monitoring is disabled.
+		canRunSql: true,
+		canInspectSchema: true,
+		canEditRows: false,
+		canImportFile: false,
+		canExportFile: true,
+		canQueryFiles: false,
+		canAttachFiles: false,
+		supportsLocalFile: false,
+		supportsRemoteUrl: true,
+		supportsSshTunnel: false,
+		supportsLiveMonitor: false,
+		isReadonly: true,
+	},
 }
 
 function applyDataFileSessionOverrides(caps: SourceCaps): SourceCaps {

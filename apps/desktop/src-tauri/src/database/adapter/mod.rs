@@ -14,6 +14,7 @@ mod write_d1;
 mod write_duckdb;
 mod write_libsql;
 mod write_mysql;
+mod write_posthog;
 mod write_postgres;
 mod write_sqlite;
 

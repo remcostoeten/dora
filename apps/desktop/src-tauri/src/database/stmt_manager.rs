@@ -138,6 +138,7 @@ impl StatementManager {
                 },
                 DatabaseClient::MySQL { .. } => mysql::parser::parse_statements,
                 DatabaseClient::D1 { .. } => sqlite::parser::parse_statements,
+                DatabaseClient::Posthog { .. } => sqlite::parser::parse_statements,
             };
 
         let statements = parse_statements(query)?;
@@ -316,6 +317,14 @@ impl StatementManager {
                     let adapter = crate::database::d1::D1Adapter::new(http);
                     let result = adapter.run_statement(stmt, &sender).await;
                     log_query_exec_outcome("Cloudflare D1", result);
+                });
+                self.execution_handles.insert(id, handle);
+            }
+            DatabaseClient::Posthog { http } => {
+                let handle = spawn(async move {
+                    let adapter = crate::database::posthog::PosthogAdapter::new(http);
+                    let result = adapter.run_statement(stmt, &sender).await;
+                    log_query_exec_outcome("PostHog", result);
                 });
                 self.execution_handles.insert(id, handle);
             }

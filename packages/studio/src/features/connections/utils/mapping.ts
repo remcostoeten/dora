@@ -48,7 +48,7 @@ export function frontendToBackendSshConfig(conn: FrontendConnection) {
 }
 
 export function backendToFrontendConnection(conn: BackendConnection): FrontendConnection {
-	let type: 'postgres' | 'cockroach' | 'mysql' | 'mariadb' | 'sqlite' | 'duckdb' | 'libsql' = 'sqlite'
+	let type: 'postgres' | 'cockroach' | 'mysql' | 'mariadb' | 'sqlite' | 'duckdb' | 'libsql' | 'd1' | 'posthog' = 'sqlite'
 	let host, port, user, database, url, authToken, sshConfig, poolerMode
 	let fileSources: string[] | undefined
 
@@ -126,6 +126,12 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 		type = 'libsql'
 		url = conn.database_type.LibSQL.url
 		authToken = conn.database_type.LibSQL.auth_token ?? undefined
+	} else if ('D1' in conn.database_type) {
+		type = 'd1'
+		url = conn.database_type.D1.url
+	} else if ('Posthog' in conn.database_type) {
+		type = 'posthog'
+		url = conn.database_type.Posthog.url
 	}
 
 	return {
@@ -213,6 +219,10 @@ export function frontendToBackendDatabaseInfo(conn: FrontendConnection): Databas
 		return { DuckDB: { db_path: conn.url || ':memory:' } }
 	} else if (conn.type === 'libsql') {
 		return { LibSQL: { url: conn.url || 'file:local.db', auth_token: conn.authToken ?? null } }
+	} else if (conn.type === 'd1') {
+		return { D1: { url: conn.url || '' } }
+	} else if (conn.type === 'posthog') {
+		return { Posthog: { url: conn.url || '' } }
 	}
 	throw new Error(`Unsupported database type: ${conn.type}`)
 }

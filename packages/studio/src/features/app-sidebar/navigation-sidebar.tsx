@@ -1,4 +1,4 @@
-import { SquareTerminal, Table2, Container, Network, Settings, GitCompare } from 'lucide-react'
+import { SquareTerminal, Table2, Container, Network, Settings, GitCompare, ChartLine } from 'lucide-react'
 import { useCallback, useRef, KeyboardEvent } from 'react'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
@@ -17,9 +17,15 @@ type ContentProps = {
 	activeNavId?: string
 	onNavSelect?: (id: string) => void
 	databasePanelToggle?: DatabasePanelToggle
+	analyticsAvailable?: boolean
 }
 
-function SidebarContent({ activeNavId, onNavSelect, databasePanelToggle }: ContentProps) {
+function SidebarContent({
+	activeNavId,
+	onNavSelect,
+	databasePanelToggle,
+	analyticsAvailable
+}: ContentProps) {
 	const { variant } = useSidebar()
 	const isFloating = false
 	const navRef = useRef<HTMLElement>(null)
@@ -38,6 +44,16 @@ function SidebarContent({ activeNavId, onNavSelect, databasePanelToggle }: Conte
 			icon: Table2,
 			onClick: () => onNavSelect?.('database-studio')
 		},
+		...(analyticsAvailable
+			? [
+					{
+						id: 'analytics',
+						label: 'Analytics',
+						icon: ChartLine,
+						onClick: () => onNavSelect?.('analytics')
+					}
+				]
+			: []),
 		{
 			id: 'schema-visualizer',
 			label: 'Schema',
@@ -192,13 +208,15 @@ export type AppSidebarProps = {
 	activeNavId?: string
 	onNavSelect?: (id: string) => void
 	databasePanelToggle?: DatabasePanelToggle
+	analyticsAvailable?: boolean
 }
 
 export function NavigationSidebar({
 	variant = 'default',
 	activeNavId,
 	onNavSelect,
-	databasePanelToggle
+	databasePanelToggle,
+	analyticsAvailable
 }: AppSidebarProps) {
 	return (
 		<SidebarProvider defaultVariant={variant}>
@@ -206,6 +224,7 @@ export function NavigationSidebar({
 				activeNavId={activeNavId}
 				onNavSelect={onNavSelect}
 				databasePanelToggle={databasePanelToggle}
+				analyticsAvailable={analyticsAvailable}
 			/>
 		</SidebarProvider>
 	)

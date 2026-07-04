@@ -174,6 +174,13 @@ pub enum DatabaseInfo {
     D1 {
         url: String,
     },
+    /// PostHog project, queried read-only over the HogQL Query API (no SQL wire
+    /// protocol). `url` is `posthog://{region}/{project_id}`; the personal API
+    /// key is loaded from the encrypted PostHog integration setting at connect
+    /// time, so it is never persisted on the connection itself.
+    Posthog {
+        url: String,
+    },
 }
 
 #[derive(Debug)]
@@ -226,6 +233,12 @@ pub enum DatabaseClient {
     D1 {
         http: Arc<crate::database::d1::D1Http>,
     },
+    /// PostHog over HTTP. The `PosthogHttp` holds the region/project and the
+    /// personal API key; cheap to clone (the inner `reqwest::Client` is an
+    /// `Arc`), so it lives behind an `Arc` like the other driver handles.
+    Posthog {
+        http: Arc<crate::database::posthog::PosthogHttp>,
+    },
 }
 
 #[derive(Debug)]
@@ -276,6 +289,13 @@ pub enum Database {
     D1 {
         url: String,
         connection: Option<Arc<crate::database::d1::D1Http>>,
+    },
+    /// PostHog. `url` is `posthog://{region}/{project_id}`. `connection` is
+    /// `None` until `connect` loads the encrypted PostHog API key and builds a
+    /// `PosthogHttp`.
+    Posthog {
+        url: String,
+        connection: Option<Arc<crate::database::posthog::PosthogHttp>>,
     },
 }
 
@@ -342,6 +362,7 @@ impl DatabaseConnection {
                     auth_token: auth_token.clone(),
                 },
                 Database::D1 { url, .. } => DatabaseInfo::D1 { url: url.clone() },
+                Database::Posthog { url, .. } => DatabaseInfo::Posthog { url: url.clone() },
             },
             last_connected_at: None,
             created_at: Some(self.created_at),
@@ -416,6 +437,10 @@ impl DatabaseConnection {
                 connection: None,
             },
             DatabaseInfo::D1 { url } => Database::D1 {
+                url,
+                connection: None,
+            },
+            DatabaseInfo::Posthog { url } => Database::Posthog {
                 url,
                 connection: None,
             },
@@ -499,6 +524,10 @@ impl DatabaseConnection {
                 url,
                 connection: None,
             },
+            DatabaseInfo::Posthog { url } => Database::Posthog {
+                url,
+                connection: None,
+            },
         };
 
         Self {
@@ -542,6 +571,7 @@ impl DatabaseConnection {
             Database::DuckDB { connection, .. } => connection.is_some(),
             Database::LibSQL { connection, .. } => connection.is_some(),
             Database::D1 { connection, .. } => connection.is_some(),
+            Database::Posthog { connection, .. } => connection.is_some(),
         }
     }
 
@@ -619,6 +649,15 @@ impl DatabaseConnection {
                 return Err(Error::Any(anyhow::anyhow!(
                     "Cloudflare D1 connection not active"
                 )));
+            }
+            Database::Posthog {
+                connection: Some(http),
+                ..
+            } => DatabaseClient::Posthog { http: http.clone() },
+            Database::Posthog {
+                connection: None, ..
+            } => {
+                return Err(Error::Any(anyhow::anyhow!("PostHog connection not active")));
             }
         };
 

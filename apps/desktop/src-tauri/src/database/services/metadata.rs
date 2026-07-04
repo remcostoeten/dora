@@ -75,6 +75,13 @@ impl<'a> MetadataService<'a> {
             Database::D1 {
                 connection: None, ..
             } => return Err(Error::Any(anyhow!("Cloudflare D1 connection not active"))),
+            Database::Posthog {
+                connection: Some(http),
+                ..
+            } => crate::database::posthog::schema::get_database_schema(http).await?,
+            Database::Posthog {
+                connection: None, ..
+            } => return Err(Error::Any(anyhow!("PostHog connection not active"))),
             // TODO(dialect-parity, #88): MariaDB shares the MySQL introspection
             // path. MariaDB-specific types (UUID, INET4/INET6) and some
             // information_schema differences need a dialect branch; the
@@ -163,6 +170,13 @@ impl<'a> MetadataService<'a> {
             Database::D1 {
                 connection: None, ..
             } => Err(Error::Any(anyhow!("Cloudflare D1 connection not active"))),
+            Database::Posthog {
+                url,
+                connection: Some(http),
+            } => metadata::get_posthog_metadata(http, url).await,
+            Database::Posthog {
+                connection: None, ..
+            } => Err(Error::Any(anyhow!("PostHog connection not active"))),
             Database::MySQL {
                 connection_string,
                 pool: Some(pool),

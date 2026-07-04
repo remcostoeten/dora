@@ -46,7 +46,7 @@ export const APP_SHORTCUTS = {
 		scope: 'global'
 	},
 	newConnection: {
-		combo: 'mod+shift+n',
+		combo: ['mod+shift+n', 'ctrl+n'],
 		description: 'Add connection',
 		scope: 'global'
 	},

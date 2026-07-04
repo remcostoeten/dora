@@ -107,6 +107,7 @@ fn engine_for_connection(state: &AppState, conn_id: Uuid) -> String {
             Database::DuckDB { .. } => "duckdb",
             Database::LibSQL { .. } => "libsql",
             Database::D1 { .. } => "d1",
+            Database::Posthog { .. } => "posthog",
         })
         .unwrap_or("sql")
         .to_string()

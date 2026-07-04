@@ -48,6 +48,9 @@ pub fn extract_sensitive_data(
         // D1's credential (the Cloudflare API token) is stored separately in the
         // encrypted integration setting, so there is nothing to extract here.
         DatabaseInfo::D1 { .. } => Ok((database_info, None)),
+        // PostHog's credential (the personal API key) is stored separately in
+        // the encrypted integration setting, so there is nothing to extract.
+        DatabaseInfo::Posthog { .. } => Ok((database_info, None)),
         DatabaseInfo::MariaDB {
             connection_string, ..
         }

@@ -34,6 +34,8 @@ export function resolvePresetToEngine(preset: DbPreset): DbEngine {
 			return 'libsql'
 		case 'd1':
 			return 'd1'
+		case 'posthog':
+			return 'posthog'
 		case 'duckdb':
 			return 'duckdb'
 		case 'sqlite':
@@ -50,6 +52,7 @@ function inferPresetFromConnection(connection: ConnectionSourceInput): DbPreset 
 	if (connection.type === 'libsql') return 'turso'
 	if (connection.type === 'mysql') return 'mysql'
 	if (connection.type === 'd1') return 'd1'
+	if (connection.type === 'posthog') return 'posthog'
 
 	if (connection.url) {
 		// Use detectProviderName which delegates to PROVIDER_PATTERNS — single source of truth.

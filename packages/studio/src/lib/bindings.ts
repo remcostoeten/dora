@@ -391,6 +391,41 @@ async tursoAccount() : Promise<Result<TursoOrganization[], { kind: string; detai
     else return { status: "error", error: e  as any };
 }
 },
+async posthogSaveCredentials(apiKey: string, region: PosthogRegion, projectId: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_save_credentials", { apiKey, region, projectId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async posthogRunQuery(hogql: string) : Promise<Result<PosthogQueryResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_run_query", { hogql }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async posthogConfig() : Promise<Result<PosthogConfig | null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_config") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async posthogDisconnect() : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("posthog_disconnect") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async posthogIsConnected() : Promise<boolean> {
+    return await TAURI_INVOKE("posthog_is_connected");
+},
 async neonSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("neon_save_token", { token }) };
@@ -1437,7 +1472,21 @@ url: string;
 /**
  * Auth token for remote connections (optional for local)
  */
-auth_token: string | null } }
+auth_token: string | null } } |
+/**
+ * Cloudflare D1 database, queried over the REST API (no SQL wire protocol).
+ * `url` is `d1://{account_id}/{database_id}`; the API token is loaded from
+ * the encrypted Cloudflare integration setting at connect time, so it is
+ * never persisted on the connection itself.
+ */
+{ D1: { url: string } } |
+/**
+ * PostHog project, queried read-only over the HogQL Query API (no SQL wire
+ * protocol). `url` is `posthog://{region}/{project_id}`; the personal API
+ * key is loaded from the encrypted PostHog integration setting at connect
+ * time, so it is never persisted on the connection itself.
+ */
+{ Posthog: { url: string } }
 /**
  * Database-level metadata information
  */
@@ -1560,6 +1609,9 @@ export type TursoDatabase = { name: string; hostname: string; organizationSlug: 
 export type TursoOrganization = { slug: string; name?: string }
 export type CloudflareAccount = { id: string; name?: string }
 export type CloudflareD1Database = { accountId: string; uuid: string; name: string }
+export type PosthogConfig = { region: PosthogRegion; projectId: string }
+export type PosthogQueryResult = { columns: string[]; types: (string | null)[]; rows: JsonValue[][] }
+export type PosthogRegion = "us" | "eu"
 export type NeonAccount = { email?: string; name?: string }
 export type NeonBranch = { id: string; name: string; isDefault: boolean }
 export type NeonDatabase = { projectId: string; projectName: string; branchId: string; databaseName: string; roleName: string }

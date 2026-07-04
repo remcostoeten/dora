@@ -21,6 +21,7 @@ paste a URL. Dora reads the scheme and host to figure out the rest:
 | `libsql://` | libSQL (Turso) |
 | `sqlite://` | SQLite |
 | `duckdb://` | DuckDB |
+| `posthog://` | PostHog (HogQL) |
 
 ## Automatic engine and SSL detection
 
@@ -43,8 +44,8 @@ instead of failing silently.
 ## Connect from a provider account
 
 For some providers you can skip copying strings entirely. Dora has account
-integrations for **Supabase, Neon, Vercel, PlanetScale, Xata, Cloudflare D1, and
-Turso**: sign in once, and Dora lists your projects/databases and builds the
+integrations for **Supabase, Neon, Vercel, PlanetScale, Xata, Cloudflare D1,
+PostHog, and Turso**: sign in once, and Dora lists your projects/databases and builds the
 connection for you. Look for the **Connect with…** option in the connection
 dialog. The provider-specific pages note where this is available.
 

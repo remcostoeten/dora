@@ -1,6 +1,7 @@
 {
 	"title": "Connections",
 	"pages": [
+		"posthog",
 		"supabase",
 		"neon",
 		"vercel-postgres",
