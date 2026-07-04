@@ -11,9 +11,26 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.30.3"
+export const CURRENT_VERSION = "0.31.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: "0.31.0",
+		date: "2026-07-04",
+		commit: "v0.31.0",
+		title: "Feat(cli): add dora cli with various args for tests, deployment and debug (#184) (#184)",
+		description: "Feat(cli): add dora cli with various args for tests, deployment and debug (#184) (#184). Feat(posthog): HogQL connector, built-in analytics dashboard, and browsing fixes.",
+		type: "feature",
+		details: [
+			"feat(cli): add dora cli with various args for tests, deployment and debug (#184) (#184)",
+			"feat: add Ctrl+Q shortcut to quit application",
+			"feat(posthog): HogQL connector, built-in analytics dashboard, and browsing fixes",
+			"feat(marketing): promote PostHog and rework the multi-connection showcase",
+			"build(winget): use standalone wingetcreate.exe (Appx unsupported on PS7)",
+			"build(winget): submit generated manifests instead of wingetcreate update",
+			"chore(aur): update dora to 0.30.3",
+		]
+	},
 	{
 		version: "0.30.3",
 		date: "2026-06-29",

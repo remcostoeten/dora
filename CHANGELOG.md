@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 
 
+
+## [v0.31.0] - 2026-07-04
+
+### Build
+
+- build(winget): use standalone wingetcreate.exe (Appx unsupported on PS7)
+
+- build(winget): submit generated manifests instead of wingetcreate update
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.30.3
+
+
+
+### Features
+
+- feat(cli): add dora cli with various args for tests, deployment and debug (#184) (#184)
+
+- feat: add Ctrl+Q shortcut to quit application
+
+- feat(posthog): HogQL connector, built-in analytics dashboard, and browsing fixes
+
+- feat(marketing): promote PostHog and rework the multi-connection showcase
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

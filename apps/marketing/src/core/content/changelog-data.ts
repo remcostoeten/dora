@@ -13,9 +13,38 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.30.3"
+export const CURRENT_VERSION = "0.31.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.31.0",
+		date: "2026-07-04",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.31.0",
+		groups: [
+			{
+				name: "Build",
+				items: [
+				"build(winget): use standalone wingetcreate.exe (Appx unsupported on PS7)",
+				"build(winget): submit generated manifests instead of wingetcreate update",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.30.3",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(cli): add dora cli with various args for tests, deployment and debug (#184) (#184)",
+				"feat: add Ctrl+Q shortcut to quit application",
+				"feat(posthog): HogQL connector, built-in analytics dashboard, and browsing fixes",
+				"feat(marketing): promote PostHog and rework the multi-connection showcase",
+				]
+			}
+		]
+	},
 	{
 		version: "0.30.3",
 		date: "2026-06-29",
