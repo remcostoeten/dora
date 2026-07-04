@@ -86,6 +86,33 @@ export const APP_SHORTCUTS = {
 	switchConnection9: { combo: 'mod+9', description: 'Switch to connection 9', scope: 'global' },
 	prevConnection: { combo: 'ctrl+shift+bracketleft', description: 'Previous open connection', scope: 'global' },
 	nextConnection: { combo: 'ctrl+shift+bracketright', description: 'Next open connection', scope: 'global' },
+	quitApp: {
+		combo: 'ctrl+q',
+		description: 'Quit application',
+		scope: 'global'
+	},
+
+	// ── View ─────────────────────────────────────────────────────────────────
+	zoomIn: {
+		combo: ['mod+equal', 'mod+plus'],
+		description: 'Zoom in',
+		scope: 'global'
+	},
+	zoomOut: {
+		combo: 'mod+minus',
+		description: 'Zoom out',
+		scope: 'global'
+	},
+	zoomReset: {
+		combo: 'mod+0',
+		description: 'Reset zoom',
+		scope: 'global'
+	},
+	toggleFullscreen: {
+		combo: ['ctrl+enter', 'f11'],
+		description: 'Toggle fullscreen',
+		scope: 'global'
+	},
 
 	// ── Go-To chords (G → key) ───────────────────────────────────────────────
 	gotoDashboard:   { combo: 'g d', description: 'Go to dashboard',   scope: 'global' },
@@ -246,7 +273,7 @@ export type ShortcutName = keyof typeof APP_SHORTCUTS
 export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 	'Navigation': [
 		'openCommandPalette', 'newConnection', 'toggleSidebar', 'toggleAiAssistant', 'openSettings',
-		'closeTab', 'reconnect',
+		'closeTab', 'reconnect', 'quitApp',
 		'switchConnection1', 'switchConnection2', 'switchConnection3',
 		'switchConnection4', 'switchConnection5', 'switchConnection6',
 		'switchConnection7', 'switchConnection8', 'switchConnection9',
@@ -254,6 +281,9 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 	],
 	'Go To (G → key)': [
 		'gotoDashboard', 'gotoSettings', 'gotoConnections', 'gotoEditor', 'gotoDocker',
+	],
+	'View': [
+		'zoomIn', 'zoomOut', 'zoomReset', 'toggleFullscreen',
 	],
 	'SQL Console': [
 		'runQuery', 'runSelection', 'formatQuery', 'saveScript', 'openQueryHistory', 'newTab', 'aiCmdK',

@@ -7,6 +7,13 @@ import { getAdapterError } from "@studio/core/data-provider/types";
 import { commands } from "@studio/lib/bindings";
 import { useSettings } from "@studio/core/settings";
 import { useEffectiveShortcuts, useShortcut, formatShortcut } from "@studio/core/shortcuts";
+import {
+  zoomIn,
+  zoomOut,
+  resetZoom,
+  initZoom,
+  toggleFullscreen,
+} from "@studio/shared/lib/ui-zoom";
 import { LiveMonitorProvider } from "@studio/core/live-monitor";
 import { NavigationSidebar, SidebarProvider } from "@studio/features/app-sidebar";
 import { CommandPalette } from "@studio/features/command-palette";
@@ -348,6 +355,48 @@ function IndexInner() {
       },
       { description: shortcuts.nextConnection.description },
     );
+
+  // View: zoom + fullscreen. `except('typing')` lets the SQL editor keep
+  // mod+enter for "run query" and stops zoom keys firing inside inputs.
+  useEffect(function applyPersistedZoom() {
+    initZoom();
+  }, []);
+
+  $.bind(shortcuts.zoomIn.combo).on(
+    function () {
+      zoomIn();
+    },
+    { description: shortcuts.zoomIn.description },
+  );
+  $.bind(shortcuts.zoomOut.combo).on(
+    function () {
+      zoomOut();
+    },
+    { description: shortcuts.zoomOut.description },
+  );
+  $.bind(shortcuts.zoomReset.combo).on(
+    function () {
+      resetZoom();
+    },
+    { description: shortcuts.zoomReset.description },
+  );
+  $.bind(shortcuts.toggleFullscreen.combo)
+    .except("typing")
+    .on(
+      function () {
+        toggleFullscreen();
+      },
+      { description: shortcuts.toggleFullscreen.description },
+    );
+
+  $.bind(shortcuts.quitApp.combo).on(
+    function () {
+      if (isTauri) {
+        commands.closeWindow();
+      }
+    },
+    { description: shortcuts.quitApp.description },
+  );
 
   // Connection switching by index (1-9)
   connections.slice(0, 9).forEach(function (conn, i) {
