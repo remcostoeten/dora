@@ -211,6 +211,7 @@ export function AiKeysSection() {
 	)
 
 	const load = useCallback(async function load() {
+		if (!isTauri) return
 		setLoading(true)
 		try {
 			const res = await commands.aiKeysList(provider)
@@ -218,7 +219,7 @@ export function AiKeysSection() {
 		} finally {
 			setLoading(false)
 		}
-	}, [provider])
+	}, [provider, isTauri])
 
 	useEffect(
 		function loadOnMount() {

@@ -35,6 +35,14 @@ export function softwareSchema(version?: string) {
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'macOS, Windows, Linux',
         description: siteConfig.description,
+        featureList: [
+            'Browse and edit database tables',
+            'Inspect schemas and relationships',
+            'SQL console with query history',
+            'Connect Postgres, MySQL, SQLite, and libSQL databases',
+            'Query PostHog product analytics with HogQL',
+            'ORM cockpit for Drizzle and Prisma'
+        ],
         url: siteConfig.url,
         downloadUrl: absoluteUrl('/downloads'),
         screenshot: absoluteUrl(siteConfig.assets.ogImage),

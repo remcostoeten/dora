@@ -5,7 +5,7 @@ description: A Go-based command-line and terminal-UI tool for building, releasin
 
 # Dora runner
 
-The Dora runner is a developer tool for working on **Dora itself** — not a
+The Dora runner is a developer tool for working on **Dora itself**, not a
 database client. It is a single Go binary that runs either as an interactive
 **TUI** (terminal UI) for browsing and running the project's build, test, and
 release tasks, or as a scriptable **CLI** for CI dispatch and test-VM
@@ -34,11 +34,11 @@ The menu groups the project's workflows, including:
 - **Run app** and **build** for Linux, macOS, or Windows,
 - **View / install builds** (list and install `.deb` artifacts, check build
   sizes),
-- **Database ops** — back up `dora.db`, dump SQL, introspect schema,
-- **Release notes** — version bump, generate notes, run the full release
+- **Database ops**: back up `dora.db`, dump SQL, introspect schema,
+- **Release notes**: version bump, generate notes, run the full release
   pipeline,
-- **Release packaging** — WinGet, AUR, Homebrew, Flatpak, Snap, APT metadata,
-- **AI setup** — configure or diagnose a local Ollama model,
+- **Release packaging**: WinGet, AUR, Homebrew, Flatpak, Snap, APT metadata,
+- **AI setup**: configure or diagnose a local Ollama model,
 - **CI dispatch** and **VM operations** (Linux).
 
 ## CLI commands
@@ -78,7 +78,7 @@ Key fields:
 | --- | --- | --- |
 | `name` | libvirt domain name | `dora-linux-test` |
 | `uri` | libvirt connection URI | `qemu:///session` |
-| `base_image` / `base_image_url` | base qcow2 template (auto-downloaded for Linux) | — |
+| `base_image` / `base_image_url` | base qcow2 template (auto-downloaded for Linux) | none |
 | `memory_mb` / `vcpus` / `disk_size_gb` | guest resources | `8192` / `4` / `80` |
 | `guest_run_command` | default command run in the guest | smoke test |
 | `agent_timeout_sec` | qemu-guest-agent timeout | `180` |

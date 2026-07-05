@@ -3,7 +3,7 @@ export const siteConfig = {
     tagline: 'The database explorah',
     footerTagline: 'Engineered for developers. Built for production.',
     description:
-        'Dora is a desktop database explorer for browsing data, inspecting schemas, and moving through database work with less friction.',
+        'Dora is a desktop database explorer for browsing data, inspecting schemas, and querying PostHog product analytics with HogQL, all in one keyboard-first workbench.',
     author: {
         name: 'remco stoeten',
         url: 'https://remcostoeten.com'
@@ -35,7 +35,11 @@ export const siteConfig = {
         'Timescale Cloud GUI',
         'Azure Database client',
         'Google Cloud SQL GUI',
-        'YugabyteDB client'
+        'YugabyteDB client',
+        'PostHog desktop client',
+        'HogQL GUI',
+        'PostHog query tool',
+        'product analytics desktop app'
     ],
     assets: {
         icon: '/icons/icon.png',

@@ -9,7 +9,7 @@ Fly.io runs PostgreSQL close to your app. By default a Fly Postgres app is only
 reachable on the private `*.internal` / `*.flycast` network, so connecting from
 your machine usually means proxying it out first.
 
-## Option A — proxy the database locally
+## Option A: proxy the database locally
 
 1. Forward the database to your machine with the Fly CLI:
 
@@ -25,7 +25,7 @@ your machine usually means proxying it out first.
 
    Get the password with `fly secrets list` / your app's `DATABASE_URL`.
 
-## Option B — a public host
+## Option B: a public host
 
 If your database has a public address (a `*.fly.dev` endpoint), paste its
 connection string directly. Dora enables SSL for public Fly hosts and skips TLS

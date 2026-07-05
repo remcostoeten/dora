@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAdapter, useConnections } from '@studio/core/data-provider'
+import { isDesktopOnlyError } from '@studio/core/platform'
 import { commands } from '@studio/lib/bindings'
 import type { DatabaseType } from '@studio/features/connections/types'
 import type { Dialect, SchemaIR } from '@studio/features/orm-cockpit/ir/types'
@@ -20,6 +21,7 @@ import {
 	detectProjectOrm,
 	resolveProjectDatabaseTarget,
 } from '@studio/features/orm-cockpit/link/link-api'
+import { isWebDemo, DEMO_PROJECT_FOLDER } from '@studio/features/orm-cockpit/link/demo-project'
 import type {
 	DetectedOrm,
 	DetectOrmResult,
@@ -493,9 +495,20 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			if (!connectionId) return
 			let cancelled = false
 			async function restore() {
-				const result = await commands.getSetting(SETTING_PREFIX + connectionId)
-				if (cancelled) return
-				const folder = result.status === 'ok' ? result.data : null
+				let folder: string | null
+				if (isWebDemo()) {
+					folder = DEMO_PROJECT_FOLDER
+				} else {
+					let result: Awaited<ReturnType<typeof commands.getSetting>>
+					try {
+						result = await commands.getSetting(SETTING_PREFIX + connectionId)
+					} catch (caught) {
+						if (isDesktopOnlyError(caught)) return
+						throw caught
+					}
+					if (cancelled) return
+					folder = result.status === 'ok' ? result.data : null
+				}
 				if (!folder) return
 				const runId = ++runIdRef.current
 				setState(function (prev) {

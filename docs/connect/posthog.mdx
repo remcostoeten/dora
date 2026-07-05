@@ -1,42 +1,53 @@
 ---
 title: Connect PostHog
-description: Connect Dora to a PostHog project with a personal API key and query analytics with HogQL.
+description: Connect Dora to a PostHog project and query product analytics with HogQL. A desktop PostHog client for exploring events, persons, sessions, and groups next to your databases.
 ---
 
 # Connect PostHog
 
-PostHog is product analytics with a SQL-like query language called HogQL.
-Dora connects through the HogQL Query API so you can explore events, persons,
-sessions, and groups from the same workbench you use for databases.
+Dora is a desktop PostHog client: point it at a PostHog project and query your
+product analytics with HogQL, the SQL-like language PostHog runs on. Dora talks
+to the HogQL Query API directly, so you can explore events, persons, sessions,
+and groups from the same keyboard-first workbench you use for Postgres, MySQL,
+SQLite, and libSQL databases. No Postgres wire protocol, no separate analytics
+tab, no context switch.
 
 ## With a personal API key
 
-1. In your PostHog instance, go to **Project Settings → Project API Key**.
+1. In your PostHog instance, go to **Project Settings: Project API Key**.
 2. Copy the personal API key (starts with `phx_...`).
 3. Note your **region** (US or EU) and **project ID** from Project Settings.
-
 4. In Dora open the connection dialog and select **PostHog** from the provider
    tiles. Paste the API key, select the region, and enter the project ID.
-
 5. Click **Test**, then **Connect**. Dora validates the key and your tables
    appear in the sidebar.
 
 <Callout type='info'>
-  PostHog connections are **read-only**. Dora queries the HogQL API which does
+  PostHog connections are **read-only**. Dora queries the HogQL API, which does
   not support writes. The API key is stored encrypted on-device.
 </Callout>
 
-## Querying with HogQL
+### Regions
 
-Once connected, you can:
+PostHog Cloud serves two regions, and your region decides which host Dora calls:
 
-- Browse tables — `events`, `persons`, `sessions`, `groups`
-- Inspect schemas and column types
-- Run HogQL in the SQL console — it works like SQL with ClickHouse-specific
-  functions for arrays, nested data, and time-series
-- Export results and use query history
+- **US**: `us.posthog.com`
+- **EU**: `eu.posthog.com`
 
-HogQL example:
+Your region is visible in your PostHog instance URL. Self-hosted PostHog
+instances are not supported yet; connect PostHog Cloud (US or EU).
+
+## What you can query
+
+Once connected, PostHog behaves like any other data source in Dora:
+
+- Browse tables: `events`, `persons`, `sessions`, and `groups`
+- Inspect schemas and column types in the sidebar
+- Run HogQL in the SQL console, with ClickHouse-style functions for arrays,
+  nested data, and time-series
+- Export results and reuse queries from query history
+
+HogQL example, the top 20 events over the last week:
 
 ```sql
 SELECT
@@ -48,3 +59,17 @@ GROUP BY event
 ORDER BY count DESC
 LIMIT 20
 ```
+
+## Built-in analytics dashboard
+
+Beyond the raw query surface, Dora ships a PostHog analytics view that turns
+your project into a dashboard without writing HogQL: KPI tiles for events,
+users, and pageviews, a 14-day activity chart, top events, pages, and browsers,
+and a monitored-sites table. An **exclude localhost** toggle drops development
+traffic so the numbers reflect real usage.
+
+## Related
+
+- [Connection basics](/docs/connect) for how Dora detects engines and SSL
+- [SQL console](/docs/guides/sql-console) for running HogQL and saving queries
+- [Export](/docs/guides/export) for getting results out of Dora

@@ -1,12 +1,12 @@
 ---
 title: AI Assistant
-description: Generate, explain, and fix SQL with Groq, OpenAI, Anthropic, Gemini, or a local Ollama model — with your keys encrypted at rest.
+description: Generate, explain, and fix SQL with Groq, OpenAI, Anthropic, Gemini, or a local Ollama model, with your keys encrypted at rest.
 ---
 
 # AI Assistant
 
 Dora's AI assistant helps you write SQL from a description, explain an existing
-query, fix an error, or suggest indexes — with the connected schema as context.
+query, fix an error, or suggest indexes, with the connected schema as context.
 It works with a hosted provider (with an API key) or a fully local model.
 
 ## Providers
@@ -19,7 +19,7 @@ It works with a hosted provider (with an API key) or a fully local model.
 | Gemini | Yes | No |
 | Ollama | No | Yes |
 
-**Groq is the default**, using `llama-3.3-70b-versatile` — fast, with a generous
+**Groq is the default**, using `llama-3.3-70b-versatile`, which is fast and has a generous
 free tier.
 
 ## Configure a provider
@@ -40,7 +40,7 @@ the app takes precedence):
 
 ## Run models locally with Ollama
 
-[Ollama](https://ollama.com) runs models on your machine — no API key, and no
+[Ollama](https://ollama.com) runs models on your machine: no API key, and no
 data leaves your computer.
 
 1. Install Ollama (Dora can detect it and guide a managed install from
@@ -56,7 +56,7 @@ pulls models with live progress, and removes models you no longer need.
 From the [SQL Console](/docs/guides/sql-console) or [Data
 Studio](/docs/guides/data-studio), open the assistant and ask it to:
 
-- **generate** — "find users who haven't logged in for 30 days",
-- **explain** — paste a query and ask what it does,
-- **fix** — share a failing query and its error,
-- **optimize** — ask which indexes would help a query.
+- **generate**: "find users who haven't logged in for 30 days",
+- **explain**: paste a query and ask what it does,
+- **fix**: share a failing query and its error,
+- **optimize**: ask which indexes would help a query.

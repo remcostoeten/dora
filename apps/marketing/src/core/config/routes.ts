@@ -24,7 +24,7 @@ export const routeConfig = [
         path: '/',
         title: 'Dora',
         description:
-            'Dora is a desktop database explorer for browsing data, inspecting schemas, and moving through database work with less friction.',
+            'Dora is a desktop database explorer for browsing data, inspecting schemas, and querying PostHog product analytics with HogQL, all in one keyboard-first workbench.',
         sitemap: true,
         index: true,
         priority: 1,
@@ -53,7 +53,7 @@ export const routeConfig = [
         path: '/docs',
         title: 'Dora docs',
         description:
-            'Connection guides and setup docs for Dora — connect Supabase, Neon, Turso, and any Postgres or libSQL database to the desktop app.',
+            'Connection guides and setup docs for Dora: connect Supabase, Neon, Turso, PostHog, and any Postgres or libSQL database to the desktop app.',
         sitemap: true,
         index: true,
         priority: 0.7,

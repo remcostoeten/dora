@@ -12,7 +12,7 @@ the middle.
 ## Connection credentials
 
 Saved connections are stored in a local SQLite database in your app data
-directory. Connection passwords are not persisted in plaintext — for a saved
+directory. Connection passwords are not persisted in plaintext. For a saved
 connection you re-enter the password when needed rather than having it written to
 disk unprotected.
 
@@ -24,9 +24,9 @@ API keys for the [AI assistant](/docs/guides/ai-assistant) are encrypted at rest
 with **AES-256-GCM**. The master encryption key is generated on first run and
 stored in your operating system keychain:
 
-- **macOS** — Keychain,
-- **Linux** — Secret Service (gnome-keyring / libsecret),
-- **Windows** — Credential Manager.
+- **macOS**: Keychain,
+- **Linux**: Secret Service (gnome-keyring / libsecret),
+- **Windows**: Credential Manager.
 
 It is never written to disk in plaintext. If no OS keychain is available, Dora
 falls back to a local key file so the app still works, but the keychain is
@@ -38,7 +38,7 @@ them.
 To reach a database that is not exposed to the internet, use an
 [SSH tunnel](/docs/connect#ssh-tunnels). Dora authenticates with a
 private key file, a password, or your SSH agent, opens the tunnel before
-connecting, and closes it on disconnect — your database stays unexposed.
+connecting, and closes it on disconnect, so your database stays unexposed.
 
 ## Cloud provider tokens
 
