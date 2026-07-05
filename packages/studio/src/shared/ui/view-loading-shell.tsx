@@ -87,64 +87,73 @@ export function DatabaseStudioLoadingShell() {
 
 export function SqlConsoleLoadingShell() {
 	return (
-		<LoadingFrame>
-			<div className='border-b border-border bg-card/70 px-4 py-3'>
-				<div className='flex items-center justify-between gap-3'>
-					<div className='flex items-center gap-3'>
-						<div className='flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background/80'>
-							<SquareTerminal className='h-4 w-4 text-muted-foreground' />
+		<LoadingFrame className='flex-row'>
+			<div className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
+				<div className='flex h-10 shrink-0 items-center justify-between gap-3 border-b border-sidebar-border bg-sidebar px-3'>
+					<div className='flex min-w-0 items-center gap-2'>
+						<div className='hidden items-center gap-2 rounded-md border border-sidebar-border/60 bg-sidebar-accent/35 px-2.5 py-1 sm:flex'>
+							<SquareTerminal className='h-3.5 w-3.5 text-muted-foreground' />
+							<Skeleton className='h-3 w-20' />
 						</div>
-						<div className='space-y-2'>
-							<Skeleton className='h-3 w-28' />
-							<Skeleton className='h-5 w-44' />
-						</div>
+						<Skeleton className='h-8 w-8 rounded-md' />
+						<Skeleton className='h-7 w-[184px] rounded-lg' />
 					</div>
 					<div className='flex items-center gap-2'>
-						<Skeleton className='h-9 w-28 rounded-md' />
-						<Skeleton className='h-9 w-24 rounded-md' />
-						<Skeleton className='h-9 w-9 rounded-md' />
+						<Skeleton className='h-6 w-6 rounded-md' />
+						<Skeleton className='h-6 w-6 rounded-md' />
+						<Skeleton className='h-6 w-6 rounded-md' />
+					</div>
+				</div>
+
+				<div className='flex h-[33px] shrink-0 items-center gap-1 border-b border-sidebar-border bg-sidebar px-2'>
+					{['w-24', 'w-20'].map(function (width) {
+						return <Skeleton key={width} className={cn('h-6 rounded-md', width)} />
+					})}
+				</div>
+
+				<div className='grid min-h-0 flex-1 grid-rows-[minmax(0,55fr)_minmax(0,45fr)] overflow-hidden'>
+					<div className='flex min-h-0 flex-col'>
+						<div className='relative flex-1 bg-editor p-4'>
+							<div className='h-full rounded-xl border border-border/60 bg-black/20 p-4'>
+								<div className='space-y-3'>
+									{['w-5/12', 'w-8/12', 'w-6/12', 'w-7/12', 'w-4/12'].map(function (width, index) {
+										return <Skeleton key={index} className={cn('h-4 bg-white/10', width)} />
+									})}
+								</div>
+							</div>
+						</div>
+						<div className='flex h-9 shrink-0 items-center justify-between gap-2 border-t border-sidebar-border bg-sidebar px-2'>
+							<div className='flex items-center gap-1'>
+								{['w-16', 'w-7', 'w-7', 'w-7'].map(function (width, index) {
+									return <Skeleton key={index} className={cn('h-7 rounded-md', width)} />
+								})}
+							</div>
+							<Skeleton className='h-7 w-16 rounded-md' />
+						</div>
+					</div>
+					<div className='min-h-0 border-t border-border bg-card/60 p-3'>
+						<TableSkeleton rows={4} columns={4} />
 					</div>
 				</div>
 			</div>
 
-			<div className='grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)] overflow-hidden'>
-				<div className='border-r border-border bg-sidebar/30 p-3'>
-					<div className='space-y-3'>
-						<div className='flex items-center gap-2 rounded-md border border-border bg-background/60 px-3 py-2'>
-							<Search className='h-4 w-4 text-muted-foreground' />
-							<Skeleton className='h-4 w-24' />
-						</div>
-						{Array.from({ length: 6 }).map(function (_, index) {
-							return (
-								<div key={index} className='rounded-lg border border-border/70 bg-card/60 p-3'>
-									<Skeleton className='h-4 w-28' />
-									<Skeleton className='mt-2 h-3 w-20' />
-								</div>
-							)
-						})}
+			<div
+				className='hidden h-full shrink-0 border-l border-sidebar-border bg-sidebar p-3 lg:block'
+				style={{ width: 256 }}
+			>
+				<div className='space-y-3'>
+					<div className='flex items-center gap-2 rounded-md border border-border bg-background/60 px-3 py-2'>
+						<Search className='h-4 w-4 text-muted-foreground' />
+						<Skeleton className='h-4 w-24' />
 					</div>
-				</div>
-
-				<div className='grid min-h-0 grid-rows-[auto_minmax(0,1fr)_220px] overflow-hidden'>
-					<div className='border-b border-border bg-card/50 px-4 py-2'>
-						<div className='flex items-center gap-2'>
-							{['w-32', 'w-28', 'w-36'].map(function (width) {
-								return <Skeleton key={width} className={cn('h-8 rounded-md', width)} />
-							})}
-						</div>
-					</div>
-					<div className='bg-editor p-4'>
-						<div className='h-full rounded-xl border border-border/60 bg-black/20 p-4'>
-							<div className='space-y-3'>
-								{['w-5/12', 'w-8/12', 'w-6/12', 'w-7/12', 'w-4/12'].map(function (width, index) {
-									return <Skeleton key={index} className={cn('h-4 bg-white/10', width)} />
-								})}
+					{Array.from({ length: 6 }).map(function (_, index) {
+						return (
+							<div key={index} className='rounded-lg border border-border/70 bg-card/60 p-3'>
+								<Skeleton className='h-4 w-28' />
+								<Skeleton className='mt-2 h-3 w-20' />
 							</div>
-						</div>
-					</div>
-					<div className='border-t border-border bg-card/60 p-3'>
-						<TableSkeleton rows={4} columns={4} />
-					</div>
+						)
+					})}
 				</div>
 			</div>
 		</LoadingFrame>

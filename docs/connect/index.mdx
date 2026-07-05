@@ -1,6 +1,6 @@
 ---
 title: Connection basics
-description: How Dora connects to a database — connection strings, automatic engine and SSL detection, account integrations, and SSH tunnels.
+description: How Dora connects to a database, from connection strings to automatic engine and SSL detection, account integrations, and SSH tunnels.
 ---
 
 # Connection basics
@@ -28,12 +28,12 @@ paste a URL. Dora reads the scheme and host to figure out the rest:
 Dora recognizes the major managed hosts by their hostname and applies the right
 settings for you:
 
-- **Engine** — for example a `*.planetscale.com` host is treated as MySQL, while
+- **Engine**: for example a `*.planetscale.com` host is treated as MySQL, while
   `*.cockroachlabs.cloud` is treated as CockroachDB.
-- **SSL** — managed providers that require TLS (Supabase, Neon, Vercel Postgres,
+- **SSL**: managed providers that require TLS (Supabase, Neon, Vercel Postgres,
   Render, PlanetScale, and others) have SSL enabled automatically. An explicit
   `?sslmode=...` or `?ssl=...` in your URL always wins.
-- **Port hints** — for hosts that serve more than one engine, the port helps:
+- **Port hints**: for hosts that serve more than one engine, the port helps:
   `26257` → CockroachDB, `3306` → MySQL, `5432` → PostgreSQL.
 
 If you mistype a scheme (`postgrss://`), Dora suggests the closest valid one
@@ -55,11 +55,11 @@ To reach a Postgres or MySQL database on a private network, enable **SSH tunnel*
 in the connection dialog and provide:
 
 - SSH host, port (default `22`), and username,
-- an authentication method — **private key file** or **password** (Dora also
+- an authentication method: **private key file** or **password** (Dora also
   falls back to your SSH agent if neither is given).
 
 Dora opens the tunnel before connecting and tears it down on disconnect. Your
-database host and port stay as they are on the private network — Dora forwards
+database host and port stay as they are on the private network. Dora forwards
 them locally for you.
 
 ## Pooled vs direct connections

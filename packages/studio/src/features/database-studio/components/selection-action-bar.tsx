@@ -104,7 +104,7 @@ function createToolbarKeyHandler(onEscapeToGrid?: () => void) {
 function ShortcutBadge({ children }: { children: React.ReactNode }) {
 	return (
 		<span
-			className='ml-1 dark:bg-background/50 hidden lg:inline-flex h-4.5 min-w-[24px] items-center justify-center rounded-sm border border-border bg-background px-1.5 font-sans text-[9px] font-bold text-muted-foreground uppercase tracking-tight'
+			className='ml-1 hidden lg:inline-flex h-4.5 min-w-[20px] items-center justify-center rounded-md border border-border/60 bg-muted/40 px-1 font-sans text-[9px] font-medium text-muted-foreground/80 tracking-tight'
 			aria-hidden='true'
 		>
 			{children}
@@ -276,13 +276,14 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 
 	const floatingClasses = [
 		'absolute bottom-10 inset-x-0 mx-auto w-fit max-w-[calc(100%-2rem)] z-[100]',
-		'flex items-center gap-1.5 pl-4 pr-3 py-2',
-		'bg-popover/95 backdrop-blur-sm border border-border shadow-2xl rounded-2xl',
+		'flex items-center gap-1 pl-3 pr-2 py-1.5',
+		'bg-popover/90 backdrop-blur-xl border border-border/60 rounded-2xl',
+		'shadow-[0_8px_30px_rgba(0,0,0,0.12)]',
 		'animate-in slide-in-from-bottom-4 fade-in duration-300 ease-out'
 	]
 
 	const staticClasses = [
-		'flex items-center justify-between h-10 px-3 bg-sidebar border-t border-sidebar-border shrink-0',
+		'flex items-center gap-2 h-11 px-3 bg-sidebar/80 backdrop-blur-sm border-t border-sidebar-border shrink-0',
 		'animate-in slide-in-from-bottom-2 duration-200'
 	]
 
@@ -290,10 +291,8 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 
 	function getButtonClasses() {
 		return cn(
-			'text-xs gap-1.5 shrink-0',
-			isFloating
-				? 'h-8 px-3 hover:bg-primary/10 hover:text-primary'
-				: 'h-7 px-2 text-muted-foreground hover:text-foreground'
+			'text-xs gap-1.5 shrink-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]',
+			isFloating ? 'h-8 px-2.5' : 'h-7 px-2.5'
 		)
 	}
 
@@ -383,21 +382,21 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 				{isFloating ? (
 					<>
 						<span
-							className='flex h-5 min-w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1.5'
+							className='flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold tabular-nums px-1.5'
 							title={`${rowLabel} selected — press Alt+T to focus this toolbar`}
 							aria-hidden='true'
 						>
 							{selectedCount}
 						</span>
-						<span className='text-sm font-medium text-foreground whitespace-nowrap'>
+						<span className='text-sm text-foreground/70 whitespace-nowrap'>
 							<span className='sr-only'>{rowLabel} </span>
 							Selected
 						</span>
 					</>
 				) : (
-					<div className='flex items-center gap-2 text-sm font-medium text-muted-foreground'>
+					<div className='flex items-center gap-2 text-sm text-foreground/70'>
 						<span
-							className='bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full'
+							className='flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold tabular-nums px-1.5'
 							aria-hidden='true'
 						>
 							{selectedCount}
@@ -410,7 +409,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 				)}
 			</div>
 
-			<div className='h-4 w-px bg-border mx-0.5 shrink-0' aria-hidden='true' />
+			<div className='h-5 w-px bg-border/60 mx-0.5 shrink-0' aria-hidden='true' />
 
 			{/* ── Visible actions ─────────────────────────────────── */}
 			<motion.div
@@ -552,7 +551,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 			<motion.div
 				layout='position'
 				transition={LAYOUT_SPRING}
-				className='h-4 w-px bg-border mx-0.5 shrink-0'
+				className='h-5 w-px bg-border/60 mx-0.5 shrink-0'
 				aria-hidden='true'
 			/>
 
@@ -569,8 +568,8 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 						className={cn(
 							'text-xs gap-1.5 shrink-0',
 							isFloating
-								? 'h-8.5 rounded-full pl-3 pr-2 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 dark:text-emerald-400 dark:hover:bg-emerald-900/20 dark:hover:text-emerald-300'
-								: 'h-7 px-2 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20'
+								? 'h-8 rounded-lg px-2.5 text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 dark:text-emerald-400'
+								: 'h-7 rounded-lg px-2.5 text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 dark:text-emerald-400'
 						)}
 						onClick={onSave}
 						title={`Save ${pendingEditCount} pending edit${pendingEditCount !== 1 ? 's' : ''}`}
@@ -593,8 +592,8 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 						className={cn(
 							'text-xs gap-1.5 shrink-0',
 							isFloating
-								? 'h-8.5 rounded-full pl-3 pr-2 text-destructive hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300'
-								: 'h-7 px-2 text-destructive hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+								? 'h-8 rounded-lg px-2.5 text-destructive bg-destructive/[0.08] hover:bg-destructive/[0.15] dark:text-red-400'
+								: 'h-7 rounded-lg px-2.5 text-destructive bg-destructive/[0.08] hover:bg-destructive/[0.15] dark:text-red-400'
 						)}
 						onClick={onDelete}
 						title={`Delete ${rowLabel} (Del)`}
@@ -607,14 +606,14 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 					</Button>
 				)}
 
-				{isFloating && <div className='h-4 w-px bg-border mx-1' aria-hidden='true' />}
+				{isFloating && <div className='h-5 w-px bg-border/60 mx-1' aria-hidden='true' />}
 
 				<Button
 					variant='ghost'
 					size='sm'
 					className={cn(
-						'hover:bg-muted shrink-0 gap-1.5',
-						isFloating ? 'h-8.5 px-2 rounded-xl' : 'h-7 px-2 rounded-md ml-auto'
+						'shrink-0 rounded-lg p-0 text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]',
+						isFloating ? 'h-8 w-8' : 'h-7 w-7'
 					)}
 					onClick={onClearSelection}
 					title='Clear selection (Esc)'
@@ -622,7 +621,6 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 					aria-keyshortcuts='Escape'
 				>
 					<X className='h-4 w-4' aria-hidden='true' />
-					<ShortcutBadge>Esc</ShortcutBadge>
 				</Button>
 			</motion.div>
 		</motion.div>

@@ -11,7 +11,7 @@ live database, and shows you exactly where the two have drifted apart. When
 there is drift, Dora generates a dialect-correct migration you can review before
 anything touches the database.
 
-<Callout type='info'>The cockpit is read-first. It never alters your database on its own — it shows drift and generates SQL, and you decide what to run.</Callout>
+<Callout type='info'>The cockpit is read-first. It never alters your database on its own. It shows drift and generates SQL, and you decide what to run.</Callout>
 
 ## What it does
 
@@ -44,7 +44,7 @@ something that needs care.
 
 When you open the migration preview, Dora shows the generated SQL statements in
 order. Safe statements are ready to go. **Review and destructive statements are
-gated behind an explicit opt-in** — you have to consciously include them before
+gated behind an explicit opt-in**: you have to consciously include them before
 they become part of the SQL handed to the query console.
 
 From there you run the SQL in Dora's console like any other query, with the
@@ -54,8 +54,8 @@ generated statements in front of you the whole time. Nothing is applied silently
 
 ## Supported ORMs
 
-- **Drizzle** — schema files and `drizzle.config.*`
-- **Prisma** — `prisma/schema.prisma`
+- **Drizzle**: schema files and `drizzle.config.*`
+- **Prisma**: `prisma/schema.prisma`
 
 If you write type-safe queries with these ORMs, see the
 [ORM Runners](/docs/guides/orm-runners) guide for running Drizzle and Prisma

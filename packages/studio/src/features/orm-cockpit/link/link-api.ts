@@ -13,6 +13,11 @@ import {
 	resolveProjectTarget,
 	type DbTarget,
 } from '@studio/features/orm-cockpit/link/connection-target'
+import {
+	isWebDemo,
+	demoDrizzleLink,
+	DEMO_PROJECT_FOLDER,
+} from '@studio/features/orm-cockpit/link/demo-project'
 
 /**
  * Tauri-backed wrappers over the `pick_folder` / `read_project_file` /
@@ -22,6 +27,9 @@ import {
 
 /** Open the folder picker. Returns null if the user cancels. */
 export async function pickProjectFolder(): Promise<string | null> {
+	if (isWebDemo()) {
+		return DEMO_PROJECT_FOLDER
+	}
 	try {
 		const result = await commands.pickFolder()
 		return result.status === 'ok' ? result.data : null
@@ -54,6 +62,9 @@ export function createTauriProjectReader(): ProjectReader {
 
 /** Detect the ORM in an already-chosen folder using the live fs. */
 export async function detectProjectOrm(folder: string): Promise<DetectOrmResult> {
+	if (isWebDemo()) {
+		return { kind: 'linked', link: demoDrizzleLink() }
+	}
 	return detectOrm(folder, createTauriProjectReader())
 }
 
