@@ -44,7 +44,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve DMG asset URLs and compute SHA-256
+      - name: Resolve DMG asset URL and compute SHA-256
         id: dmg
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -54,40 +54,30 @@ jobs:
           TAG="${{ steps.meta.outputs.tag }}"
 
           ARM_URL=""
-          INTEL_URL=""
           for attempt in {1..60}; do
             ARM_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
               --jq '.assets[] | select(.name | endswith("_aarch64.dmg")) | .browser_download_url' \
               | head -1)"
-            INTEL_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
-              --jq '.assets[] | select(.name | endswith("_x64.dmg")) | .browser_download_url' \
-              | head -1)"
-            if [[ -n "$ARM_URL" && -n "$INTEL_URL" ]]; then
+            if [[ -n "$ARM_URL" ]]; then
               break
             fi
-            echo "Waiting for both DMG assets on ${TAG} (${attempt}/60)..."
+            echo "Waiting for the Apple Silicon DMG asset on ${TAG} (${attempt}/60)..."
             sleep 30
           done
 
-          if [[ -z "$ARM_URL" || -z "$INTEL_URL" ]]; then
-            echo "Could not find both DMG assets on release ${TAG}. The Release workflow must publish only after macOS assets are uploaded." >&2
+          if [[ -z "$ARM_URL" ]]; then
+            echo "Could not find the aarch64 DMG asset on release ${TAG}. The Release workflow must publish only after macOS assets are uploaded." >&2
             exit 1
           fi
 
           echo "arm_url=$ARM_URL" >> "$GITHUB_OUTPUT"
-          echo "intel_url=$INTEL_URL" >> "$GITHUB_OUTPUT"
 
-          # Download and compute SHA-256
           curl -sL "$ARM_URL" -o /tmp/dora_arm.dmg
           ARM_SHA=$(shasum -a 256 /tmp/dora_arm.dmg | awk '{print $1}')
-          curl -sL "$INTEL_URL" -o /tmp/dora_intel.dmg
-          INTEL_SHA=$(shasum -a 256 /tmp/dora_intel.dmg | awk '{print $1}')
 
           echo "arm_sha=$ARM_SHA" >> "$GITHUB_OUTPUT"
-          echo "intel_sha=$INTEL_SHA" >> "$GITHUB_OUTPUT"
 
-          echo "ARM SHA:   $ARM_SHA"
-          echo "Intel SHA: $INTEL_SHA"
+          echo "ARM SHA: $ARM_SHA"
 
       - name: Generate Homebrew Cask
         run: |
@@ -95,9 +85,7 @@ jobs:
             --version=${{ steps.meta.outputs.version }} \
             --tag=${{ steps.meta.outputs.tag }} \
             --dmg-url-arm=${{ steps.dmg.outputs.arm_url }} \
-            --dmg-url-intel=${{ steps.dmg.outputs.intel_url }} \
-            --dmg-sha256-arm=${{ steps.dmg.outputs.arm_sha }} \
-            --dmg-sha256-intel=${{ steps.dmg.outputs.intel_sha }}
+            --dmg-sha256-arm=${{ steps.dmg.outputs.arm_sha }}
 
       - name: Archive Cask file
         run: |

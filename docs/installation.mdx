@@ -18,7 +18,7 @@ release assets:
 
 | Platform | Architectures | Package | How to get it |
 | --- | --- | --- | --- |
-| macOS | Apple Silicon, Intel | `.dmg` | [Downloads](https://doradb.app/downloads) or GitHub releases |
+| macOS | Apple Silicon, Intel | `.dmg`, Homebrew Cask | [Downloads](https://doradb.app/downloads), GitHub releases, or Homebrew |
 | Windows | x64 | `.exe`, `.msi` | [Downloads](https://doradb.app/downloads) or GitHub releases |
 | Linux | x64 | `.AppImage`, `.deb`, `.rpm`, `.snap`, `.tar.gz` | [Downloads](https://doradb.app/downloads) or GitHub releases |
 | Arch Linux | x64 | AUR | `yay -S dora` |
@@ -31,6 +31,14 @@ release assets:
 3. Launch Dora from Applications.
 
 <Callout type='warn'>If macOS reports that Dora "cannot be opened because the developer cannot be verified", right-click the app and choose **Open**, then confirm. This only needs to be done on first launch.</Callout>
+
+### Homebrew
+
+Dora is also published as a Homebrew Cask via a dedicated tap:
+
+```bash
+brew install --cask remcostoeten/dora/dora
+```
 
 ## Windows
 

@@ -7,9 +7,7 @@ type Config = {
 	version: string
 	tag: string
 	dmgUrlArm: string
-	dmgUrlIntel: string
 	dmgSha256Arm: string
-	dmgSha256Intel: string
 	outDir: string
 	name: string
 	desc: string
@@ -47,16 +45,15 @@ function writeFile(filePath: string, contents: string) {
 
 function createCaskFile(config: Config): string {
 	return `cask "dora" do
-  arch arm: "aarch64", intel: "x64"
-
   version "${config.version}"
-  sha256 arm:   "${config.dmgSha256Arm}",
-         intel: "${config.dmgSha256Intel}"
+  sha256 "${config.dmgSha256Arm}"
 
-  url "https://github.com/remcostoeten/dora/releases/download/v\#{version}/Dora_\#{version}_\#{arch}.dmg"
+  url "https://github.com/remcostoeten/dora/releases/download/v\#{version}/Dora_\#{version}_aarch64.dmg"
   name "${config.name}"
   desc "${config.desc}"
   homepage "${config.homepage}"
+
+  depends_on arch: :arm64
 
   app "Dora.app"
 end
@@ -71,19 +68,14 @@ async function main() {
 
 	const dmgUrlArm =
 		getFlagValue('dmg-url-arm') || `${baseUrl}/${tag}/Dora_${version}_aarch64.dmg`
-	const dmgUrlIntel =
-		getFlagValue('dmg-url-intel') || `${baseUrl}/${tag}/Dora_${version}_x64.dmg`
 
 	const explicitShaArm = getFlagValue('dmg-sha256-arm')
-	const explicitShaIntel = getFlagValue('dmg-sha256-intel')
 
 	const config: Config = {
 		version,
 		tag,
 		dmgUrlArm,
-		dmgUrlIntel,
 		dmgSha256Arm: explicitShaArm || (await sha256FromUrl(dmgUrlArm)),
-		dmgSha256Intel: explicitShaIntel || (await sha256FromUrl(dmgUrlIntel)),
 		outDir: path.resolve(getFlagValue('out-dir') || path.join('packaging', 'homebrew', 'Casks')),
 		name: getFlagValue('name') || 'Dora',
 		desc:
@@ -96,7 +88,6 @@ async function main() {
 	logKeyValue('Version', config.version)
 	logKeyValue('Tag', config.tag)
 	logKeyValue('DMG ARM', config.dmgUrlArm)
-	logKeyValue('DMG Intel', config.dmgUrlIntel)
 	logKeyValue('Output', config.outDir)
 
 	writeFile(path.join(config.outDir, 'dora.rb'), createCaskFile(config))
