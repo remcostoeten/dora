@@ -208,6 +208,10 @@ pub enum DatabaseClient {
         /// CockroachDB server was detected). Threaded into adapters so schema
         /// introspection and row writers can branch per dialect.
         dialect: PgDialect,
+        /// SSL mode the connection was opened with, so a cancel request (which
+        /// opens a fresh short-lived connection to the server) can pick a
+        /// matching TLS strategy. See `StatementManager::cancel_active_queries`.
+        ssl_mode: tokio_postgres::config::SslMode,
     },
     MySQL {
         pool: Arc<mysql_async::Pool>,
@@ -580,6 +584,7 @@ impl DatabaseConnection {
         let client = match &self.database {
             Database::Postgres {
                 client: Some(client),
+                connection_string,
                 use_simple_query,
                 dialect,
                 ..
@@ -587,6 +592,13 @@ impl DatabaseConnection {
                 client: client.clone(),
                 use_simple_query: *use_simple_query,
                 dialect: *dialect,
+                // Parse the same string the client was opened with so the cancel
+                // path matches the live connection's SSL posture. Defaults to
+                // Prefer if the string somehow no longer parses.
+                ssl_mode: connection_string
+                    .parse::<tokio_postgres::Config>()
+                    .map(|config| config.get_ssl_mode())
+                    .unwrap_or(tokio_postgres::config::SslMode::Prefer),
             },
             Database::Postgres { client: None, .. } => {
                 return Err(Error::Any(anyhow::anyhow!(

@@ -126,6 +126,7 @@ pub fn write_adapter_from_client(
             client,
             use_simple_query,
             dialect,
+            ..
         } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query, *dialect)),
         crate::database::types::DatabaseClient::MySQL { pool, dialect } => {
             Box::new(MySqlAdapter::new(pool.clone(), *dialect))

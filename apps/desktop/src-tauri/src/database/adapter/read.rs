@@ -404,6 +404,7 @@ pub fn adapter_from_client(client: &crate::database::types::DatabaseClient) -> B
             client,
             use_simple_query,
             dialect,
+            ..
         } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query, *dialect)),
         crate::database::types::DatabaseClient::MySQL { pool, dialect } => {
             Box::new(MySqlAdapter::new(pool.clone(), *dialect))

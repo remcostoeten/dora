@@ -6,8 +6,11 @@ use std::sync::{
 use anyhow::Context;
 use serde_json::value::RawValue;
 use tauri::async_runtime::{spawn, spawn_blocking, JoinHandle};
+use tokio_postgres::{config::SslMode, NoTls};
 
 use dashmap::DashMap;
+
+use crate::database::postgres::connect::no_verify_tls;
 
 use crate::{
     database::{
@@ -52,6 +55,17 @@ enum ExecResult {
     NoRows,
 }
 
+/// Everything needed to cancel a running Postgres/CockroachDB statement on the
+/// server. Aborting the local executor future only drops our end of the socket;
+/// the backend keeps executing the (possibly expensive) query. A real cancel
+/// opens a fresh short-lived connection and issues a `CancelRequest`, so we hold
+/// the `CancelToken` plus the SSL mode needed to reconnect the same way the live
+/// connection did.
+struct PgCancel {
+    token: tokio_postgres::CancelToken,
+    ssl_mode: tokio_postgres::config::SslMode,
+}
+
 /// The storage/state for an individual statement being executed
 struct ExecState {
     status: AtomicU8,
@@ -59,6 +73,7 @@ struct ExecState {
     result: ExecResult,
     rows_affected: RwLock<Option<usize>>,
     sqlite_interrupt_handle: RwLock<Option<rusqlite::InterruptHandle>>,
+    pg_cancel: RwLock<Option<PgCancel>>,
 }
 
 /// Executes and keeps track of the execution of queries.
@@ -96,6 +111,30 @@ impl StatementManager {
                     .as_ref()
                 {
                     handle.interrupt();
+                }
+
+                // Postgres/CockroachDB: aborting the executor future below only
+                // drops our socket; the server keeps running the query. Issue a
+                // real CancelRequest over a fresh connection. Best-effort and
+                // fire-and-forget — if it fails we still fall back to the abort.
+                if let Some(pg) = entry.pg_cancel.read().expect("RwLock poisoned").as_ref() {
+                    let token = pg.token.clone();
+                    let ssl_mode = pg.ssl_mode;
+                    spawn(async move {
+                        // Mirror the SSL strategy `postgres::connect::connect`
+                        // uses so the cancel connection negotiates the same way
+                        // the live one did (encrypt-only, no cert verification,
+                        // which is enough for a single control message).
+                        let outcome = match ssl_mode {
+                            SslMode::Require | SslMode::Prefer => {
+                                token.cancel_query(no_verify_tls()).await
+                            }
+                            _ => token.cancel_query(NoTls).await,
+                        };
+                        if let Err(err) = outcome {
+                            log::warn!("Postgres cancel request failed: {err}");
+                        }
+                    });
                 }
             }
         }
@@ -242,6 +281,7 @@ impl StatementManager {
             result,
             rows_affected: RwLock::new(None),
             sqlite_interrupt_handle: RwLock::new(None),
+            pg_cancel: RwLock::new(None),
         };
 
         let exec_storage = Arc::new(exec_storage);
@@ -254,7 +294,12 @@ impl StatementManager {
                 client,
                 use_simple_query,
                 dialect,
+                ssl_mode,
             } => {
+                *exec_storage.pg_cancel.write().expect("RwLock poisoned") = Some(PgCancel {
+                    token: client.cancel_token(),
+                    ssl_mode,
+                });
                 let handle = spawn(async move {
                     let result = postgres::execute::execute_query(
                         &client,
