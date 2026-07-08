@@ -366,8 +366,7 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			const columns = parseColumns(columnsResult.data ?? [])
-			// pageInfo.first_page contains the rows for the first page
-			const rows = parseRows(pageInfo.first_page, columns)
+			const rows = await collectAllRows(queryId, pageInfo, columns)
 
 			return ok({
 				columns,
@@ -417,7 +416,7 @@ export function createTauriAdapter(): DataAdapter {
 			const columnsResult = await commands.getColumns(queryId)
 			const columnDefs =
 				columnsResult.status === 'ok' ? parseColumns(columnsResult.data ?? []) : []
-			const rows = parseRows(pageInfo.first_page, columnDefs)
+			const rows = await collectAllRows(queryId, pageInfo, columnDefs)
 
 			return ok({
 				rows,
@@ -674,4 +673,40 @@ function parseRows(data: JsonValue, columns: ColumnDefinition[]): Record<string,
 		}
 		return {}
 	})
+}
+
+/**
+ * Collect every row of a completed query. The backend buffers results in pages
+ * of `DEFAULT_QUERY_PAGE_SIZE` (50) rows; `first_page` is only page 0. Reading
+ * `first_page` alone silently truncated any result larger than one page — an
+ * ad-hoc SQL query capped at 50 rows, and a `pageSize > 50` browse/export (e.g.
+ * the 10k-row table export) dropped everything past the first page. This walks
+ * pages 1..page_count and concatenates them. Must only be called once the query
+ * has reached `Completed`, so `page_count` reflects the full result.
+ */
+async function collectAllRows(
+	queryId: number,
+	pageInfo: QueryPage,
+	columns: ColumnDefinition[]
+): Promise<Record<string, unknown>[]> {
+	const rows = parseRows(pageInfo.first_page, columns)
+
+	for (let pageIndex = 1; pageIndex < pageInfo.page_count; pageIndex++) {
+		const pageResult = await commands.fetchPage(queryId, pageIndex)
+		if (pageResult.status !== 'ok' || pageResult.data == null) {
+			console.error(
+				'[TauriAdapter] Failed to fetch page',
+				pageIndex,
+				'of',
+				pageInfo.page_count,
+				'for query',
+				queryId
+			)
+			break
+		}
+		const pageRows = parseRows(pageResult.data, columns)
+		for (const row of pageRows) rows.push(row)
+	}
+
+	return rows
 }
