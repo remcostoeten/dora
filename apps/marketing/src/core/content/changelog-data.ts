@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.31.0"
+export const CURRENT_VERSION = "0.32.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -41,6 +41,27 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				"feat: add Ctrl+Q shortcut to quit application",
 				"feat(posthog): HogQL connector, built-in analytics dashboard, and browsing fixes",
 				"feat(marketing): promote PostHog and rework the multi-connection showcase",
+				]
+			}
+		]
+	},
+	{
+		version: "0.32.0",
+		date: "2026-07-08",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.32.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(studio): fetch all result pages instead of only the first 50 rows",
+				"fix(backend): issue a real cancel request for Postgres/CockroachDB queries",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.31.0",
+				"chore: docs polish, PostHog showcase, ORM cockpit link fixes, studio toolbar/ai-keys fixes (#186) (#186)",
 				]
 			}
 		]

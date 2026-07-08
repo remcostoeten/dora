@@ -31,6 +31,23 @@ All notable changes to this project will be documented in this file.
 
 - feat(marketing): promote PostHog and rework the multi-connection showcase
 
+
+## [v0.32.0] - 2026-07-08
+
+### Bug Fixes
+
+- fix(studio): fetch all result pages instead of only the first 50 rows
+
+- fix(backend): issue a real cancel request for Postgres/CockroachDB queries
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.31.0
+
+- chore: docs polish, PostHog showcase, ORM cockpit link fixes, studio toolbar/ai-keys fixes (#186) (#186)
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

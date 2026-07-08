@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.31.0"
+export const CURRENT_VERSION = "0.32.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -29,6 +29,20 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"build(winget): use standalone wingetcreate.exe (Appx unsupported on PS7)",
 			"build(winget): submit generated manifests instead of wingetcreate update",
 			"chore(aur): update dora to 0.30.3",
+		]
+	},
+	{
+		version: "0.32.0",
+		date: "2026-07-08",
+		commit: "v0.32.0",
+		title: "Fix(studio): fetch all result pages instead of only the first 50 rows",
+		description: "Fix(studio): fetch all result pages instead of only the first 50 rows. Fix(backend): issue a real cancel request for Postgres/CockroachDB queries.",
+		type: "fix",
+		details: [
+			"fix(studio): fetch all result pages instead of only the first 50 rows",
+			"fix(backend): issue a real cancel request for Postgres/CockroachDB queries",
+			"chore(aur): update dora to 0.31.0",
+			"chore: docs polish, PostHog showcase, ORM cockpit link fixes, studio toolbar/ai-keys fixes (#186) (#186)",
 		]
 	},
 	{
