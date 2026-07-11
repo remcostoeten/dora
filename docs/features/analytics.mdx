@@ -1,0 +1,55 @@
+---
+title: Analytics
+description: Connect a PostHog project and query events, persons, and sessions with HogQL — no separate analytics tool required.
+---
+
+# Analytics
+
+Dora connects to a PostHog project over the read-only [HogQL Query
+API](https://posthog.com/docs/hogql) — there's no wire protocol to
+implement, so the connector works the same way against PostHog Cloud (US or
+EU) as it does against a self-hosted instance.
+
+## Connecting a project
+
+Add a PostHog connection the same way you'd add any other data source, using
+a personal API key with `query:read` scope. See [Connect →
+PostHog](/docs/connect/posthog) for the credential setup.
+
+## Browsing the schema
+
+PostHog has no `information_schema`, so Dora reflects each virtual table's
+columns by running a zero-row `SELECT *` and reading back the HogQL Query
+API's `columns`/`types` metadata. The tables surfaced in the schema browser
+are:
+
+- `events`
+- `persons`
+- `sessions`
+- `groups`
+- `cohort_people`
+- `raw_sessions`
+
+Row counts shown next to each table are a live `SELECT count()` — they're
+hidden rather than shown as zero if the count can't be read.
+
+## The built-in dashboard
+
+Opening a PostHog connection adds an **Analytics** entry to the sidebar. It
+runs six HogQL queries against the connection and renders them as a
+dashboard:
+
+| Panel | What it shows |
+|---|---|
+| KPI tiles | Total events, unique users, and pageviews over the last 7 days |
+| Monitored sites | Hosts sending events in the last 30 days, with per-site event/user/pageview counts |
+| Activity | Daily events and unique users over the last 14 days |
+| Top events | The 12 most frequent event names in the last 7 days |
+| Top pages | The 10 most-viewed URLs (`$pageview` events) in the last 7 days |
+| Top browsers | The 8 most common `$browser` values in the last 7 days |
+
+Every query accepts an **exclude localhost** filter that drops traffic from
+`localhost`, `127.0.0.1`, `0.0.0.0`, and `[::1]` hosts, and a manual refresh
+re-runs all six.
+
+<Callout type='info'>The dashboard is read-only, matching the connector's write-blocking behavior for PostHog: Dora never mutates PostHog data, only queries it.</Callout>

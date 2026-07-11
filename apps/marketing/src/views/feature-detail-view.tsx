@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { FeatureCtaButtons } from '@/components/feature-cta-buttons'
 import { FeatureDemo } from '@/components/feature-demo'
 import { ResourcesPageShell } from '@/components/resources-page-shell'
 import {
@@ -85,26 +86,10 @@ export default function FeatureDetailView({
                             </ul>
                         </section>
 
-                        <div className="mt-10 flex flex-wrap gap-3">
-                            <Link
-                                className="inline-flex min-h-10 items-center border border-accent-pink/50 px-4 text-[13px] text-accent-pink transition-colors hover:bg-[rgba(245,192,192,0.06)]"
-                                href="/downloads"
-                            >
-                                Download Dora
-                            </Link>
-                            <Link
-                                className="inline-flex min-h-10 items-center border border-line px-4 text-[13px] text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
-                                href="/app"
-                            >
-                                Open web demo
-                            </Link>
-                            <Link
-                                className="inline-flex min-h-10 items-center border border-line px-4 text-[13px] text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
-                                href={`/#${feature.homepageAnchor}`}
-                            >
-                                View on homepage
-                            </Link>
-                        </div>
+                        <FeatureCtaButtons
+                            featureSlug={feature.slug}
+                            homepageAnchor={feature.homepageAnchor}
+                        />
                     </article>
 
                     <section

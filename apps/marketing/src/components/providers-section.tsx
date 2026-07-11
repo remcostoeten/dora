@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import posthog from 'posthog-js'
 import { CornerTick } from '@/components/corner-tick'
 import { SectionFrame } from '@/components/section-frame'
 import { HubSphere, ProviderRowGraph } from '@/components/provider-row-graph'
@@ -265,8 +266,11 @@ export function ProvidersSection() {
           }
         : null
 
-    function focusProvider(id: ProviderLogoId) {
+    function focusProvider(id: ProviderLogoId, source: 'hover' | 'focus') {
         setHoveredId(id)
+        if (source === 'focus') {
+            posthog.capture('provider_engaged', { provider: id })
+        }
     }
 
     const revealed = true
@@ -378,10 +382,12 @@ export function ProvidersSection() {
                                         providerStart + i * STAGGER_MS
                                     )}
                                     onMouseEnter={() =>
-                                        focusProvider(provider.id)
+                                        focusProvider(provider.id, 'hover')
                                     }
                                     onMouseLeave={() => setHoveredId(null)}
-                                    onFocus={() => focusProvider(provider.id)}
+                                    onFocus={() =>
+                                        focusProvider(provider.id, 'focus')
+                                    }
                                     onBlur={() => setHoveredId(null)}
                                 >
                                     <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2" />

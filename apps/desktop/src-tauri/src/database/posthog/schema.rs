@@ -10,9 +10,15 @@ use crate::database::posthog::PosthogHttp;
 use crate::database::types::{ColumnInfo, DatabaseSchema, TableInfo};
 use crate::Error;
 
-/// The HogQL top-level tables surfaced in the sidebar. PostHog exposes more
-/// (cohort_people, raw_sessions, …) but these are the ones people browse.
-const TABLES: &[&str] = &["events", "persons", "sessions", "groups"];
+/// The HogQL top-level tables surfaced in the sidebar.
+const TABLES: &[&str] = &[
+    "events",
+    "persons",
+    "sessions",
+    "groups",
+    "cohort_people",
+    "raw_sessions",
+];
 
 /// Builds the `DatabaseSchema` for a PostHog project: one `TableInfo` per
 /// curated HogQL table, with columns reflected from a zero-row `SELECT *`.

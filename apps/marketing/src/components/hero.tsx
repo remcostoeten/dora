@@ -4,6 +4,7 @@ import { m } from 'framer-motion'
 import { Download, Terminal } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
+import posthog from 'posthog-js'
 import { AnimatedFrame } from '@/components/animated-frame'
 import { AppDemo } from '@/components/hero-app-demo'
 import { ScrollReveal } from '@/components/scroll-reveal'
@@ -52,8 +53,16 @@ const PLATFORM_GROUPS = [
         os: 'macOS',
         platforms: ['mac-arm', 'mac-x64'] as OsPlatform[],
         downloads: [
-            { label: 'Apple Silicon', suffix: '.dmg', archPattern: /(?:aarch64|arm64)/i } as TDownload,
-            { label: 'Intel', suffix: '.dmg', archPattern: /(?:x64|x86_64|amd64)/i } as TDownload
+            {
+                label: 'Apple Silicon',
+                suffix: '.dmg',
+                archPattern: /(?:aarch64|arm64)/i
+            } as TDownload,
+            {
+                label: 'Intel',
+                suffix: '.dmg',
+                archPattern: /(?:x64|x86_64|amd64)/i
+            } as TDownload
         ]
     },
     {
@@ -85,14 +94,23 @@ function detectPlatform(): OsPlatform {
     return 'linux'
 }
 
-function assetUrl(assets: TAsset[], download: TDownload, fallback: string): string {
+function assetUrl(
+    assets: TAsset[],
+    download: TDownload,
+    fallback: string
+): string {
     const asset = findAsset(assets, download)
     return asset?.browser_download_url ?? download.fallbackHref ?? fallback
 }
 
 function AppleIcon({ className }: { className?: string }) {
     return (
-        <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+        >
             <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
         </svg>
     )
@@ -100,14 +118,26 @@ function AppleIcon({ className }: { className?: string }) {
 
 function WindowsIcon({ className }: { className?: string }) {
     return (
-        <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <svg
+            className={className}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+        >
             <path d="M3 5.56 9.58 4.6l.003 6.54-6.574.038L3 5.56zm6.576 6.277.005 6.551-6.578-.95V11.8l6.573.037zm.829-7.357L21 3v8.088l-10.593.083L10.405 4.48zM21 11.905l-.003 8.08L10.406 18.52l-.012-6.625L21 11.905z" />
         </svg>
     )
 }
 
-function OsIcon({ platform, className }: { platform: OsPlatform; className?: string }) {
-    if (platform === 'mac-arm' || platform === 'mac-x64') return <AppleIcon className={className} />
+function OsIcon({
+    platform,
+    className
+}: {
+    platform: OsPlatform
+    className?: string
+}) {
+    if (platform === 'mac-arm' || platform === 'mac-x64')
+        return <AppleIcon className={className} />
     if (platform === 'windows') return <WindowsIcon className={className} />
     return <Terminal className={className} />
 }
@@ -141,7 +171,8 @@ function HeroDownload({ release }: { release: TLatest | null }) {
     const assets = release?.assets ?? []
     const releaseUrl = release?.htmlUrl ?? LATEST_RELEASE_URL
 
-    const group = PLATFORM_GROUPS.find((g) => g.os === activeOs) ?? PLATFORM_GROUPS[0]
+    const group =
+        PLATFORM_GROUPS.find((g) => g.os === activeOs) ?? PLATFORM_GROUPS[0]
     const detectedInTab = detected ? group.platforms.includes(detected) : false
 
     // The primary action follows the active tab. When the tab matches the
@@ -161,6 +192,13 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                 target="_blank"
                 rel="noreferrer"
                 className="group relative flex items-center gap-4 border border-[rgba(173,142,182,0.45)] px-6 py-5 transition-colors duration-200 hover:border-[rgba(173,142,182,0.75)] hover:bg-[rgba(173,142,182,0.05)]"
+                onClick={() =>
+                    posthog.capture('download_clicked', {
+                        platform: primary.os,
+                        format: primary.label,
+                        version: release?.tagName ?? null
+                    })
+                }
             >
                 <div className="grid h-11 w-11 shrink-0 place-items-center rounded-sm bg-[rgba(173,142,182,0.1)] text-accent-violet transition-colors group-hover:bg-[rgba(173,142,182,0.16)]">
                     <OsIcon platform={iconPlatform} className="h-6 w-6" />
@@ -173,7 +211,9 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                         <span>{primary.label}</span>
                         {release && (
                             <>
-                                <span className="text-muted-foreground/30">·</span>
+                                <span className="text-muted-foreground/30">
+                                    ·
+                                </span>
                                 <span>{release.tagName}</span>
                             </>
                         )}
@@ -187,12 +227,19 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                     {PLATFORM_GROUPS.map((g) => {
                         const isActive = g.os === activeOs
                         const isDetected =
-                            detected !== null && OS_FOR_PLATFORM[detected] === g.os
+                            detected !== null &&
+                            OS_FOR_PLATFORM[detected] === g.os
                         return (
                             <button
                                 key={g.os}
                                 type="button"
-                                onClick={() => setActiveOs(g.os)}
+                                onClick={() => {
+                                    setActiveOs(g.os)
+                                    posthog.capture(
+                                        'download_os_tab_switched',
+                                        { os: g.os }
+                                    )
+                                }}
                                 className={`group/tab relative flex items-center gap-1.5 border border-line px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors duration-300 ${
                                     isActive
                                         ? 'text-accent-violet'
@@ -236,7 +283,9 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                         return (
                             <span key={d.label} className="flex items-center">
                                 {i > 0 && (
-                                    <span className="px-2 text-muted-foreground/20">/</span>
+                                    <span className="px-2 text-muted-foreground/20">
+                                        /
+                                    </span>
                                 )}
                                 <a
                                     href={assetUrl(assets, d, releaseUrl)}
@@ -256,6 +305,9 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                     <a
                         href="/downloads"
                         className="ml-auto font-mono text-[11px] text-muted-foreground/40 transition-colors hover:text-accent-violet"
+                        onClick={() =>
+                            posthog.capture('all_downloads_link_clicked')
+                        }
                     >
                         All downloads →
                     </a>
@@ -277,8 +329,8 @@ function HeroText({ release }: { release: TLatest | null }) {
             </h1>
             <p className="mt-6 max-w-[440px] [font-family:system-ui,sans-serif] text-[14px] leading-relaxed text-muted-foreground">
                 A native, keyboard-first database workbench. Connect Postgres,
-                MySQL, SQLite, or Turso, or just drop in a CSV. Then query it
-                in SQL, type-safe Drizzle/Prisma, or plain English.
+                MySQL, SQLite, or Turso, or just drop in a CSV. Then query it in
+                SQL, type-safe Drizzle/Prisma, or plain English.
             </p>
             <div className="mt-10">
                 <HeroDownload release={release} />
