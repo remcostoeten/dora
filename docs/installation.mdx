@@ -17,8 +17,8 @@ release assets:
 | Platform | Architectures | Package | How to get it |
 | --- | --- | --- | --- |
 | macOS | Apple Silicon, Intel | `.dmg`, Homebrew Cask | [Downloads](https://doradb.app/downloads), GitHub releases, or Homebrew |
-| Windows | x64 | `.exe`, `.msi` | [Downloads](https://doradb.app/downloads) or GitHub releases |
-| Linux | x64 | `.AppImage`, `.deb`, `.rpm`, `.snap`, `.tar.gz` | [Downloads](https://doradb.app/downloads) or GitHub releases |
+| Windows | x64 | `.exe`, `.msi`, Winget | [Downloads](https://doradb.app/downloads), GitHub releases, or Winget |
+| Linux | x64 | `.AppImage`, `.deb`, `.rpm`, `.snap`, `.tar.gz`, APT | [Downloads](https://doradb.app/downloads), GitHub releases, or APT |
 | Arch Linux | x64 | AUR | `yay -S dora` |
 
 ## macOS
@@ -46,6 +46,14 @@ brew install --cask remcostoeten/dora/dora
    **More info** then **Run anyway**.
 3. Launch Dora from the Start menu.
 
+### Winget
+
+Dora is published to the Windows Package Manager as `RemcoStoeten.Dora`:
+
+```powershell
+winget install RemcoStoeten.Dora
+```
+
 ## Linux
 
 Pick the package that fits your distribution:
@@ -57,6 +65,17 @@ Pick the package that fits your distribution:
 | Fedora / RHEL | `sudo rpm -i dora-*.rpm` |
 | Snap | `sudo snap install dora` |
 | Archive | `tar -xzf dora_*.tar.gz` and run the extracted binary |
+
+### APT (Debian / Ubuntu)
+
+Dora also publishes a hosted APT repository, so you get updates through
+`apt` instead of re-downloading the `.deb` each release:
+
+```bash
+curl -fsSL https://remco-stoeten.github.io/dora/KEY.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/dora.gpg] https://remco-stoeten.github.io/dora stable main" | sudo tee /etc/apt/sources.list.d/dora.list
+sudo apt update && sudo apt install dora
+```
 
 ### Arch Linux (AUR)
 
