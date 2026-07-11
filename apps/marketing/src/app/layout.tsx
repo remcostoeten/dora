@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { Inter, JetBrains_Mono } from 'next/font/google'
 import localFont from 'next/font/local'
 import type { ReactNode } from 'react'
 import { GeistMono } from 'geist/font/mono'
@@ -28,6 +29,21 @@ const PixelFont = localFont({
         'monospace'
     ],
     adjustFontFallback: false
+})
+
+/* The /app demo replicas render in the desktop app's typefaces (Inter +
+   JetBrains Mono) so they match the real studio instead of the marketing
+   site's Geist. */
+const InterFont = Inter({
+    subsets: ['latin'],
+    weight: ['400', '500', '600'],
+    variable: '--font-inter'
+})
+
+const JetBrainsMono = JetBrains_Mono({
+    subsets: ['latin'],
+    weight: ['400', '500'],
+    variable: '--font-jetbrains-mono'
 })
 
 export const metadata: Metadata = {
@@ -61,7 +77,7 @@ type TRootProps = {
 export default function RootLayout({ children }: TRootProps) {
     return (
         <html
-            className={`${GeistSans.variable} ${GeistMono.variable} ${PixelFont.variable} dark`}
+            className={`${GeistSans.variable} ${GeistMono.variable} ${PixelFont.variable} ${InterFont.variable} ${JetBrainsMono.variable} dark`}
             lang="en"
             suppressHydrationWarning
         >

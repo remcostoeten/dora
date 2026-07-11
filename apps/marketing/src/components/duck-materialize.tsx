@@ -102,8 +102,8 @@ export function DuckMaterialize() {
           className="absolute top-1/2 h-1 w-1 -translate-y-1/2 rounded-full"
           style={{
             left: 0,
-            backgroundColor: "#f5c0c0",
-            boxShadow: "0 0 6px rgba(245,192,192,0.8)",
+            backgroundColor: "var(--color-brand-200)",
+            boxShadow: "0 0 6px color-mix(in srgb, var(--color-brand-200) 80%, transparent)",
             opacity: saved && move ? 1 : 0,
             transform: saved && move ? "translateX(24px)" : "translateX(0)",
             transition: `transform 520ms ${EASE_OUT}, opacity 200ms ease`,
@@ -116,11 +116,11 @@ export function DuckMaterialize() {
         className="flex shrink-0 items-center gap-1.5 rounded-[3px] px-2 py-0.5 font-mono text-[10px] [font-family:var(--font-geist-mono),ui-monospace,monospace]"
         style={{
           border: saved
-            ? "1px solid rgba(245,192,192,0.45)"
-            : "1px dashed #3a3138",
-          backgroundColor: saved ? "rgba(245,192,192,0.12)" : "transparent",
-          color: saved ? "#f5c0c0" : "#6a6a6a",
-          boxShadow: saved ? "0 0 16px rgba(245,192,192,0.4)" : "0 0 0 transparent",
+            ? "1px solid color-mix(in srgb, var(--color-brand-200) 45%, transparent)"
+            : "1px dashed var(--color-line-strong)",
+          backgroundColor: saved ? "color-mix(in srgb, var(--color-brand-200) 12%, transparent)" : "transparent",
+          color: saved ? "var(--color-brand-200)" : "var(--color-ink-700)",
+          boxShadow: saved ? "0 0 16px color-mix(in srgb, var(--color-brand-200) 40%, transparent)" : "0 0 0 transparent",
           transform: saved && move ? "scale(1)" : move ? "scale(0.96)" : "none",
           transition: `color 300ms ${EASE_OUT}, background-color 300ms ${EASE_OUT}, border-color 300ms ${EASE_OUT}, box-shadow 360ms ${EASE_OUT}, transform 360ms ${EASE_BACK}`,
         }}
@@ -129,8 +129,8 @@ export function DuckMaterialize() {
           aria-hidden
           className="h-1.5 w-1.5 rounded-full"
           style={{
-            backgroundColor: saved ? "#f5c0c0" : "#4a444a",
-            boxShadow: saved ? "0 0 8px rgba(245,192,192,0.9)" : "none",
+            backgroundColor: saved ? "var(--color-brand-200)" : "var(--color-line-bright)",
+            boxShadow: saved ? "0 0 8px color-mix(in srgb, var(--color-brand-200) 90%, transparent)" : "none",
             transition: `background-color 300ms ${EASE_OUT}, box-shadow 300ms ${EASE_OUT}`,
           }}
         />
@@ -149,7 +149,7 @@ export function DuckMaterialize() {
           in-memory
         </span>
         <span
-          className="absolute inset-0 flex items-center text-[#9a7d86]"
+          className="absolute inset-0 flex items-center text-ink-400"
           style={{
             opacity: saved ? 1 : 0,
             transition: `opacity 240ms ${EASE_OUT}`,

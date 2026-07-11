@@ -20,7 +20,7 @@ export function ResourcesPageShell({
             <SectionFrame />
 
             <header className="border-b border-r border-line px-6 py-12 sm:px-8">
-                <p className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-accent-violet">
+                <p className="mb-3 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-brand-600">
                     {eyebrow}
                 </p>
                 <h1 className="font-pixel text-balance text-[clamp(2rem,5vw,3rem)] font-medium leading-[1.05] tracking-normal text-foreground">

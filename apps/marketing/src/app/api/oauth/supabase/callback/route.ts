@@ -13,8 +13,6 @@ import { getPostHogClient } from '@/lib/posthog-server'
 // tokens (using the client secret), then bounce the browser back to the desktop
 // app's loopback listener with the tokens. The tokens land on the user's own
 // machine and are never stored by the proxy.
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
 
 function fail(message: string, status = 400): NextResponse {
     return new NextResponse(errorPage(message), {

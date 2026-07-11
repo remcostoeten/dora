@@ -13,7 +13,7 @@ const GitHubStats = dynamic(
 
 function GitHubStatsFrame() {
     return (
-        <div className="w-full bg-[#0a0a0a]">
+        <div className="w-full bg-surface-base">
             <AnimatedFrame className="overflow-hidden">
                 <div className="flex flex-col sm:flex-row">
                     <div className="min-h-[150px] w-full flex-shrink-0 border-b border-surface-elevated sm:min-h-[120px] sm:w-1/3 sm:border-b-0 sm:border-r" />

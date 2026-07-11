@@ -13,21 +13,21 @@ const CONF: Record<
 > = {
     safe: {
         label: 'safe',
-        fg: '#6fb98a',
-        bg: 'rgba(111,185,138,0.12)',
-        bd: 'rgba(111,185,138,0.32)'
+        fg: 'var(--color-syntax-string)',
+        bg: 'color-mix(in srgb, var(--color-syntax-string) 12%, transparent)',
+        bd: 'color-mix(in srgb, var(--color-syntax-string) 32%, transparent)'
     },
     review: {
         label: 'review',
-        fg: '#d2a86a',
-        bg: 'rgba(210,168,106,0.12)',
-        bd: 'rgba(210,168,106,0.32)'
+        fg: 'var(--color-syntax-keyword)',
+        bg: 'color-mix(in srgb, var(--color-syntax-keyword) 12%, transparent)',
+        bd: 'color-mix(in srgb, var(--color-syntax-keyword) 32%, transparent)'
     },
     destructive: {
         label: 'destructive',
-        fg: '#d18a8a',
-        bg: 'rgba(209,138,138,0.12)',
-        bd: 'rgba(209,138,138,0.32)'
+        fg: 'var(--color-brand-500)',
+        bg: 'color-mix(in srgb, var(--color-brand-500) 12%, transparent)',
+        bd: 'color-mix(in srgb, var(--color-brand-500) 32%, transparent)'
     }
 }
 
@@ -101,12 +101,12 @@ export function OrmCockpitShowcase() {
             <div className="flex min-w-0 flex-1 flex-col">
                 {/* Header — linked project + actions */}
                 <div className="flex h-10 items-center gap-2 border-b border-sidebar-border px-3">
-                    <FolderGit2 className="h-4 w-4 text-accent-violet" />
+                    <FolderGit2 className="h-4 w-4 text-brand-600" />
                     <span className="font-mono text-[11px] text-foreground/90">
                         apps/web/db
                     </span>
                     <span className="text-foreground/30">·</span>
-                    <span className="rounded-[2px] border border-accent-rose/40 bg-accent-rose/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-accent-rose">
+                    <span className="rounded-[2px] border border-brand-300/40 bg-brand-300/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-brand-300">
                         drizzle
                     </span>
                     <span className="ml-auto inline-flex items-center gap-1 rounded-[2px] border border-sidebar-border px-2 py-1 text-[10px] text-muted-foreground">
@@ -136,7 +136,7 @@ export function OrmCockpitShowcase() {
                                         className="flex items-center gap-2 px-3 py-2 font-mono text-[11px] transition-colors duration-300"
                                         style={{
                                             backgroundColor: on
-                                                ? 'rgba(245,192,192,0.05)'
+                                                ? 'color-mix(in srgb, var(--color-brand-200) 5%, transparent)'
                                                 : 'transparent'
                                         }}
                                     >
@@ -151,7 +151,7 @@ export function OrmCockpitShowcase() {
                                             <span className="text-foreground/40">
                                                 .
                                             </span>
-                                            <span className="text-accent-mauve">
+                                            <span className="text-brand-400">
                                                 {row.col}
                                             </span>
                                         </span>
@@ -175,7 +175,7 @@ export function OrmCockpitShowcase() {
                     </div>
 
                     {/* Migration preview */}
-                    <div className="flex min-h-0 flex-col bg-[#0a0a0a]">
+                    <div className="flex min-h-0 flex-col bg-surface-base">
                         <div className="border-b border-sidebar-border px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             Migration preview · postgres
                         </div>
@@ -190,10 +190,10 @@ export function OrmCockpitShowcase() {
                                         className="whitespace-pre rounded-[2px] px-1 transition-colors duration-300"
                                         style={{
                                             color: line.comment
-                                                ? '#d18a8a'
-                                                : 'rgba(230,224,232,0.85)',
+                                                ? 'var(--color-brand-500)'
+                                                : 'color-mix(in srgb, var(--color-ink-200) 85%, transparent)',
                                             backgroundColor: on
-                                                ? 'rgba(245,192,192,0.06)'
+                                                ? 'color-mix(in srgb, var(--color-brand-200) 6%, transparent)'
                                                 : 'transparent'
                                         }}
                                     >

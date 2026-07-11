@@ -79,7 +79,7 @@ export default function GoCliRunnerView() {
                                             <h3 className="text-sm font-medium text-foreground">
                                                 {item.name}
                                             </h3>
-                                            <code className="font-mono text-[11px] text-accent-pink">
+                                            <code className="font-mono text-[11px] text-brand-200">
                                                 {item.command}
                                             </code>
                                         </div>
@@ -104,7 +104,7 @@ export default function GoCliRunnerView() {
                                 return (
                                     <li
                                         key={note}
-                                        className="relative pl-4 text-sm leading-relaxed text-muted-foreground before:absolute before:left-0 before:top-[0.65em] before:h-1 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-accent-pink/60"
+                                        className="relative pl-4 text-sm leading-relaxed text-muted-foreground before:absolute before:left-0 before:top-[0.65em] before:h-1 before:w-1 before:-translate-y-1/2 before:rounded-full before:bg-brand-200/60"
                                     >
                                         {note}
                                     </li>
@@ -188,7 +188,7 @@ export default function GoCliRunnerView() {
 
                 <div className="flex flex-wrap gap-3">
                     <Link
-                        className="inline-flex min-h-10 items-center border border-accent-pink/50 px-4 text-[13px] text-accent-pink transition-colors hover:bg-[rgba(245,192,192,0.06)]"
+                        className="inline-flex min-h-10 items-center border border-brand-200/50 px-4 text-[13px] text-brand-200 transition-colors hover:bg-brand-200/6"
                         href="/docs"
                     >
                         Back to docs

@@ -26,7 +26,7 @@ export function ProviderLogoMark({
         <div
             className={[
                 'relative flex size-11 items-center justify-center border bg-surface-deeper/90 transition-colors duration-300 sm:size-12',
-                active ? 'border-accent-pink/35 bg-surface-deep' : 'border-line',
+                active ? 'border-brand-200/35 bg-surface-deep' : 'border-line',
             ].join(' ')}
         >
             <CornerTick className={`-left-px -top-px -translate-x-1/2 -translate-y-1/2 ${tickOpacity}`} />
@@ -37,7 +37,7 @@ export function ProviderLogoMark({
                 aria-hidden
                 className="absolute inset-x-0 bottom-0 h-px transition-opacity duration-300"
                 style={{
-                    backgroundColor: '#f5c0c0',
+                    backgroundColor: 'var(--color-brand-200)',
                     opacity: active ? 0.85 : 0.2,
                 }}
             />

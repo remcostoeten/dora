@@ -18,7 +18,7 @@ export function FeatureCtaButtons({
     return (
         <div className="mt-10 flex flex-wrap gap-3">
             <Link
-                className="inline-flex min-h-10 items-center border border-accent-pink/50 px-4 text-[13px] text-accent-pink transition-colors hover:bg-[rgba(245,192,192,0.06)]"
+                className="inline-flex min-h-10 items-center border border-brand-200/50 px-4 text-[13px] text-brand-200 transition-colors hover:bg-brand-200/6"
                 href="/downloads"
                 onClick={() =>
                     posthog.capture('feature_download_cta_clicked', {

@@ -38,7 +38,7 @@ export function AiAssistantShowcase() {
                 <div className="absolute inset-0 flex items-start justify-center bg-background/75 p-6 pt-12 backdrop-blur-[2px]">
                     <div className="w-full max-w-xl overflow-hidden rounded-lg border border-sidebar-border bg-popover shadow-2xl">
                         <div className="flex items-center gap-2 border-b border-sidebar-border px-4 py-3">
-                            <Sparkles className="h-4 w-4 text-accent-violet" />
+                            <Sparkles className="h-4 w-4 text-brand-600" />
                             <span className="text-sm font-medium text-foreground">
                                 AI SQL assistant
                             </span>
@@ -61,9 +61,9 @@ export function AiAssistantShowcase() {
                             <div>
                                 <div className="mb-1.5 flex items-center gap-2 text-[10px] uppercase tracking-wide text-muted-foreground">
                                     Generated SQL
-                                    <Loader2 className="h-3 w-3 animate-spin text-accent-violet" />
+                                    <Loader2 className="h-3 w-3 animate-spin text-brand-600" />
                                 </div>
-                                <div className="rounded-[2px] border border-sidebar-border bg-[#0d0d0d] p-3 font-mono text-[11px] leading-relaxed">
+                                <div className="rounded-[2px] border border-sidebar-border bg-surface-deeper p-3 font-mono text-[11px] leading-relaxed">
                                     {typedSql.split('\n').map(function (
                                         line,
                                         index
@@ -81,7 +81,7 @@ export function AiAssistantShowcase() {
                                                             return (
                                                                 <span
                                                                     key={i}
-                                                                    className="text-accent-rose"
+                                                                    className="text-brand-300"
                                                                 >
                                                                     {part}
                                                                 </span>
@@ -93,7 +93,7 @@ export function AiAssistantShowcase() {
                                                             return (
                                                                 <span
                                                                     key={i}
-                                                                    className="text-accent-mauve"
+                                                                    className="text-brand-400"
                                                                 >
                                                                     {part}
                                                                 </span>

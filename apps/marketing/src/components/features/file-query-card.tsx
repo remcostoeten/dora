@@ -11,12 +11,12 @@ import { useGate } from "./use-scroll-motion";
  * stream from the join. Mirrors the Drizzle card's staged-loop choreography.
  * ------------------------------------------------------------------------- */
 const C = {
-  punct: "#6a6a6a",
-  kw: "#e3b2b3",
-  fn: "#9a9a9a",
-  table: "#ad8eb6",
-  col: "#c9a3b5",
-  id: "#cfcfcf",
+  punct: "var(--color-ink-700)",
+  kw: "var(--color-brand-300)",
+  fn: "var(--color-ink-400)",
+  table: "var(--color-brand-600)",
+  col: "var(--color-brand-400)",
+  id: "var(--color-ink-300)",
 };
 
 type TSeg = { text: string; color: string };
@@ -131,12 +131,12 @@ export function FileQueryCard({ animate }: { animate: boolean }) {
   const spans = toSpans(CHARS.slice(0, shownChars));
 
   function status(): { color: string; label: string } {
-    if (isRun) return { color: "#e3b2b3", label: "scanning files…" };
+    if (isRun) return { color: "var(--color-brand-300)", label: "scanning files…" };
     if (running && stage === "type")
-      return { color: "#7a7a7a", label: "in-memory · DuckDB" };
+      return { color: "var(--color-ink-600)", label: "in-memory · DuckDB" };
     if (running && stage === "drop")
-      return { color: "#7a7a7a", label: "reading schema…" };
-    return { color: "#4a7a55", label: `${shownRows} rows · 11 ms` };
+      return { color: "var(--color-ink-600)", label: "reading schema…" };
+    return { color: "var(--color-status-ok-dim)", label: `${shownRows} rows · 11 ms` };
   }
   const { color: statusColor, label: statusLabel } = status();
 
@@ -162,8 +162,8 @@ export function FileQueryCard({ animate }: { animate: boolean }) {
                 <span
                   className="flex h-3.5 shrink-0 items-center rounded-[2px] px-1 text-[7px] font-bold tracking-[0.06em]"
                   style={{
-                    backgroundColor: "rgba(245,240,0,0.14)",
-                    color: "#d8d06a",
+                    backgroundColor: "color-mix(in srgb, var(--color-syntax-number) 14%, transparent)",
+                    color: "var(--color-syntax-number)",
                   }}
                 >
                   {file.kind}
@@ -183,7 +183,7 @@ export function FileQueryCard({ animate }: { animate: boolean }) {
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(90deg, rgba(227,178,179,0.04), rgba(227,178,179,0.12), rgba(227,178,179,0.04))",
+                  "linear-gradient(90deg, color-mix(in srgb, var(--color-brand-300) 4%, transparent), color-mix(in srgb, var(--color-brand-300) 12%, transparent), color-mix(in srgb, var(--color-brand-300) 4%, transparent))",
                 animation: "lspFlash 0.7s ease-out",
               }}
             />
@@ -231,7 +231,7 @@ export function FileQueryCard({ animate }: { animate: boolean }) {
                 }}
               >
                 <span className="truncate text-ink-300">{row.region}</span>
-                <span className="text-right text-accent-rose">{row.revenue}</span>
+                <span className="text-right text-brand-300">{row.revenue}</span>
               </div>
             );
           })}

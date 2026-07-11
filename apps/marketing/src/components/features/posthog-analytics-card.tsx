@@ -12,8 +12,8 @@ import { useGate } from './use-scroll-motion'
  * in miniature and animates its bars in when scrolled into view.
  * ------------------------------------------------------------------------- */
 
-const ACCENT = '#f5c0c0'
-const MAUVE = '#ad8eb6'
+const ACCENT = 'var(--color-brand-200)'
+const MAUVE = 'var(--color-brand-600)'
 
 // Two weeks of event volume — the shape the real Activity chart draws.
 const BARS = [34, 41, 38, 52, 61, 47, 55, 68, 72, 63, 81, 77, 92, 86]
@@ -56,8 +56,8 @@ export function PosthogAnalyticsCard({ animate }: { animate: boolean }) {
                             className="flex h-3 w-5 items-center rounded-full px-px transition-colors duration-300"
                             style={{
                                 backgroundColor: grown
-                                    ? 'rgba(245,192,192,0.35)'
-                                    : '#241f26'
+                                    ? 'color-mix(in srgb, var(--color-brand-200) 35%, transparent)'
+                                    : 'var(--color-surface-raised)'
                             }}
                         >
                             <span
@@ -69,7 +69,7 @@ export function PosthogAnalyticsCard({ animate }: { animate: boolean }) {
                                 }}
                             />
                         </span>
-                        <span className="font-mono text-[9px] text-[#5a5258]">
+                        <span className="font-mono text-[9px] text-ink-800">
                             exclude localhost
                         </span>
                     </span>
@@ -82,7 +82,7 @@ export function PosthogAnalyticsCard({ animate }: { animate: boolean }) {
                             key={kpi.label}
                             className="rounded-[3px] border border-line bg-surface-deep/80 px-2 py-1.5"
                         >
-                            <div className="font-mono text-[8px] uppercase tracking-[0.08em] text-[#5a5258]">
+                            <div className="font-mono text-[8px] uppercase tracking-[0.08em] text-ink-800">
                                 {kpi.label}
                             </div>
                             <div className="mt-0.5 font-mono text-[12px] leading-none text-ink-200 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
@@ -111,7 +111,7 @@ export function PosthogAnalyticsCard({ animate }: { animate: boolean }) {
 
                 {/* monitored sites */}
                 <div className="flex items-center gap-1.5 overflow-hidden">
-                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-[#5a5258]">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] text-ink-800">
                         sites
                     </span>
                     {SITES.map((site) => (
@@ -134,7 +134,7 @@ export function PosthogAnalyticsCard({ animate }: { animate: boolean }) {
             <div className="px-5 pb-5 pt-3">
                 <h3 className="mb-1 flex items-center gap-2 font-pixel text-sm font-[500] text-ink-200">
                     PostHog analytics, built in
-                    <span className="rounded-[2px] border border-accent-rose/40 bg-accent-rose/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-accent-rose">
+                    <span className="rounded-[2px] border border-brand-300/40 bg-brand-300/10 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.1em] text-brand-300">
                         native engine
                     </span>
                 </h3>

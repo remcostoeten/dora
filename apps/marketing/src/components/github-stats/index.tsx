@@ -121,12 +121,12 @@ function SyntaxHighlight({ command }: { command: string }) {
                 const isSubcmd = i === 1 && !isFlag
 
                 const color = isCmd
-                    ? '#e3b2b3'
+                    ? 'var(--color-brand-300)'
                     : isFlag
-                      ? '#8ab4c9'
+                      ? 'var(--color-syntax-flag)'
                       : isSubcmd
-                        ? '#a89ab6'
-                        : '#8aab8a'
+                        ? 'var(--color-ink-400)'
+                        : 'var(--color-syntax-path)'
 
                 const parts =
                     !isCmd && !isFlag && !isSubcmd && token.includes('/')
@@ -141,7 +141,7 @@ function SyntaxHighlight({ command }: { command: string }) {
                                 <span key={j}>
                                     <span style={{ color }}>{part}</span>
                                     {j < parts.length - 1 && (
-                                        <span style={{ color: '#5a5252' }}>
+                                        <span style={{ color: 'var(--color-ink-800)' }}>
                                             /
                                         </span>
                                     )}
@@ -171,7 +171,7 @@ function CopyButton({ text }: { text: string }) {
     return (
         <button
             onClick={handleCopy}
-            className="relative border border-line-strong p-1.5 text-ink-500 transition-colors hover:border-accent-rose/45 hover:bg-accent-rose/5 hover:text-accent-rose"
+            className="relative border border-line-strong p-1.5 text-ink-500 transition-colors hover:border-brand-300/45 hover:bg-brand-300/5 hover:text-brand-300"
             title="Copy command"
         >
             {copied ? (
@@ -293,7 +293,7 @@ function TabIndicator({ activeRect }: { activeRect: DOMRect | null }) {
     return (
         <div
             aria-hidden
-            className="pointer-events-none absolute left-0 top-0 border border-accent-rose/45 bg-accent-rose/5"
+            className="pointer-events-none absolute left-0 top-0 border border-brand-300/45 bg-brand-300/5"
             style={{
                 width: activeRect.width,
                 height: activeRect.height,
@@ -407,7 +407,7 @@ export function GitHubStats({
 
     return (
         <>
-            <div className="w-full bg-[#0a0a0a]">
+            <div className="w-full bg-surface-base">
                 <AnimatedFrame className="overflow-hidden">
                     {/* Top row: Info + Commits */}
                     <div className="flex flex-col sm:flex-row">
@@ -420,7 +420,7 @@ export function GitHubStats({
                                 href={versionUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block border-b border-surface-elevated px-5 py-4 transition-colors hover:bg-[#0d0d0d]"
+                                className="block border-b border-surface-elevated px-5 py-4 transition-colors hover:bg-surface-deeper"
                             >
                                 <div
                                     className={revealClass}
@@ -532,11 +532,11 @@ export function GitHubStats({
                                     </div>
                                     <div className="mt-1 hidden items-center gap-2 text-[10px] text-ink-500 sm:flex">
                                         <span>Scroll to pan</span>
-                                        <span className="text-[#2a2a2a]">
+                                        <span className="text-line">
                                             |
                                         </span>
                                         <span className="flex items-center gap-1">
-                                            <kbd className="rounded border border-[#2a2a2a] bg-surface-elevated px-1 py-0.5 font-mono text-[8px] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                                            <kbd className="rounded border border-line bg-surface-elevated px-1 py-0.5 font-mono text-[8px] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                                                 shift
                                             </kbd>
                                             scroll to zoom
@@ -582,10 +582,10 @@ export function GitHubStats({
                                         onClick={() =>
                                             setActiveInstall(pkg.platform)
                                         }
-                                        className={`group/tab relative z-10 flex shrink-0 items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium transition-[color,border-color,transform] duration-200 ease-out hover:border-accent-rose/25 motion-safe:active:scale-[0.97] ${
+                                        className={`group/tab relative z-10 flex shrink-0 items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium transition-[color,border-color,transform] duration-200 ease-out hover:border-brand-300/25 motion-safe:active:scale-[0.97] ${
                                             activeInstall === pkg.platform
-                                                ? 'border-accent-rose/45 text-accent-rose'
-                                                : 'text-ink-500 hover:text-[#b0b0b0]'
+                                                ? 'border-brand-300/45 text-brand-300'
+                                                : 'text-ink-500 hover:text-ink-350'
                                         }`}
                                         title={pkg.name}
                                     >
@@ -654,7 +654,7 @@ export function GitHubStats({
                                             href={activePackage.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="group/cmd relative flex items-center gap-3 border border-line-strong bg-[#0d0d0d] px-4 py-2.5 transition-[border-color,background-color,transform] duration-200 ease-out hover:border-accent-rose/45 hover:bg-accent-rose/5 motion-safe:active:scale-[0.99]"
+                                            className="group/cmd relative flex items-center gap-3 border border-line-strong bg-surface-deeper px-4 py-2.5 transition-[border-color,background-color,transform] duration-200 ease-out hover:border-brand-300/45 hover:bg-brand-300/5 motion-safe:active:scale-[0.99]"
                                         >
                                             <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
                                             <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />

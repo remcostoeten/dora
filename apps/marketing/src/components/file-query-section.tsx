@@ -9,11 +9,11 @@ import { DuckMaterialize } from "@/components/duck-materialize";
 import { FormatSwapper } from "@/components/format-swapper";
 
 const CELL_CLASS =
-  "relative min-h-[340px] scroll-mt-28 border-r border-b border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-[rgba(245,192,192,0.06)]";
+  "relative min-h-[340px] scroll-mt-28 border-r border-b border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-brand-200/6";
 
 function Ext({ children }: { children: string }) {
   return (
-    <code className="rounded-[3px] border border-line bg-surface-deeper px-1 py-px font-mono text-[11px] text-[#cdb4bd] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+    <code className="rounded-[3px] border border-line bg-surface-deeper px-1 py-px font-mono text-[11px] text-brand-300 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
       {children}
     </code>
   );
@@ -66,10 +66,10 @@ export function FileQuerySection() {
                 <span
                   aria-hidden
                   className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: "#f5c0c0" }}
+                  style={{ backgroundColor: "var(--color-brand-200)" }}
                 />
                 <div>
-                  <p className="font-[family-name:var(--font-pixel)] text-[13px] font-medium text-[#e8e0e8]">
+                  <p className="font-[family-name:var(--font-pixel)] text-[13px] font-medium text-ink-200">
                     {point.head}
                   </p>
                   <p className="mt-0.5 text-xs leading-relaxed text-ink-500">
@@ -83,10 +83,10 @@ export function FileQuerySection() {
               <span
                 aria-hidden
                 className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ backgroundColor: "#f5c0c0" }}
+                style={{ backgroundColor: "var(--color-brand-200)" }}
               />
               <div className="min-w-0 flex-1">
-                <p className="font-[family-name:var(--font-pixel)] text-[13px] font-medium text-[#e8e0e8]">
+                <p className="font-[family-name:var(--font-pixel)] text-[13px] font-medium text-ink-200">
                   Keep it as DuckDB
                 </p>
                 <p className="mt-0.5 text-xs leading-relaxed text-ink-500">

@@ -44,9 +44,9 @@ function highlightPrismaLine(line: string) {
                     <span>{match[1]}</span>
                     <span className="text-foreground/90">{match[2]}</span>
                     <span className="text-foreground/60">.</span>
-                    <span className="text-accent-violet">{match[3]}</span>
+                    <span className="text-brand-600">{match[3]}</span>
                     <span className="text-foreground/60">.</span>
-                    <span className="text-accent-rose">{match[4]}</span>
+                    <span className="text-brand-300">{match[4]}</span>
                     <span className="text-foreground/85">{line.slice(match[0].length - 1)}</span>
                 </>
             )
@@ -58,7 +58,7 @@ function highlightPrismaLine(line: string) {
         return (
             <>
                 <span>{keyMatch[1]}</span>
-                <span className="text-[#9ec6e0]">{keyMatch[2]}</span>
+                <span className="text-syntax-key">{keyMatch[2]}</span>
                 <span className="text-foreground/85">{line.slice(keyMatch[0].length - 1)}</span>
             </>
         )
@@ -109,7 +109,7 @@ export function PrismaRunnerShowcase() {
                                 <Braces className="h-3 w-3" />
                                 Prisma
                             </span>
-                            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-accent-violet">
+                            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-brand-600">
                                 <Sparkles className="h-3 w-3" />
                                 Translated to SQL
                             </span>
@@ -136,7 +136,7 @@ export function PrismaRunnerShowcase() {
                             })}
                         </div>
                     </div>
-                    <div className="flex min-h-0 flex-col bg-[#0a0a0a]">
+                    <div className="flex min-h-0 flex-col bg-surface-base">
                         <div className="border-b border-sidebar-border px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             SQL preview
                         </div>

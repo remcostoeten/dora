@@ -14,13 +14,13 @@ import { useGate } from './use-scroll-motion'
 // One colour per field, reused across every sample so the URL token and its
 // parsed field always share a hue.
 const COLORS: Record<string, string> = {
-    type: '#f0b9a4',
-    host: '#f5c0c0',
-    port: '#e3b2b3',
-    user: '#d9a6b0',
-    password: '#c9a3b5',
-    database: '#ad8eb6',
-    ssl: '#f0b9a4'
+    type: 'var(--color-syntax-value)',
+    host: 'var(--color-brand-200)',
+    port: 'var(--color-brand-300)',
+    user: 'var(--color-brand-300)',
+    password: 'var(--color-brand-400)',
+    database: 'var(--color-brand-600)',
+    ssl: 'var(--color-syntax-value)'
 }
 
 type TField = { key: string; label: string; value: string; color: string }
@@ -227,7 +227,7 @@ export function PasteConnectCard({ animate }: { animate: boolean }) {
                                 return (
                                     <span
                                         key={i}
-                                        className="whitespace-nowrap text-[#5a5258]"
+                                        className="whitespace-nowrap text-ink-800"
                                     >
                                         {token.str}
                                     </span>
@@ -247,7 +247,7 @@ export function PasteConnectCard({ animate }: { animate: boolean }) {
                                     key={i}
                                     className="whitespace-nowrap rounded-[2px] px-px transition-all duration-300"
                                     style={{
-                                        color: isLit ? color : '#6a6a6a',
+                                        color: isLit ? color : 'var(--color-ink-700)',
                                         opacity: isLit ? (isActive ? 1 : 0.82) : 1,
                                         backgroundColor: isActive
                                             ? `${color}24`
@@ -296,7 +296,7 @@ export function PasteConnectCard({ animate }: { animate: boolean }) {
                                         ? `${field.color}b3`
                                         : filled
                                           ? `${field.color}40`
-                                          : '#241f26',
+                                          : 'var(--color-surface-raised)',
                                     backgroundColor: isActive
                                         ? `${field.color}12`
                                         : 'transparent',
@@ -311,7 +311,7 @@ export function PasteConnectCard({ animate }: { animate: boolean }) {
                                 <div className="relative mt-0.5 h-3.5">
                                     {/* skeleton placeholder */}
                                     <span
-                                        className="absolute left-0 top-1/2 block h-[3px] w-2/3 -translate-y-1/2 rounded-full bg-[#241f26] transition-opacity duration-300"
+                                        className="absolute left-0 top-1/2 block h-[3px] w-2/3 -translate-y-1/2 rounded-full bg-surface-raised transition-opacity duration-300"
                                         style={{ opacity: filled ? 0 : 1 }}
                                     />
                                     {/* parsed value */}

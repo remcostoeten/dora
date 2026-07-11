@@ -94,7 +94,7 @@ export function DockerContainersCard({ animate }: { animate: boolean }) {
                 {CONTAINERS.map((c, idx) => {
                     const starting = restarting === idx
                     const lit = hover === idx
-                    const color = starting ? '#ad8eb6' : '#e3b2b3'
+                    const color = starting ? 'var(--color-brand-600)' : 'var(--color-brand-300)'
                     const entryDelay = idx * 70
                     return (
                         <div
@@ -103,9 +103,9 @@ export function DockerContainersCard({ animate }: { animate: boolean }) {
                             onMouseLeave={() => setHover(null)}
                             className="relative flex flex-col items-center justify-between gap-2 rounded-md border px-2 py-2.5 cursor-pointer"
                             style={{
-                                borderColor: lit ? '#3a3138' : '#2b252c',
+                                borderColor: lit ? 'var(--color-line-strong)' : 'var(--color-line)',
                                 backgroundColor: lit
-                                    ? '#161218'
+                                    ? 'var(--color-surface)'
                                     : 'transparent',
                                 opacity: revealed ? 1 : 0,
                                 transform: getContainerTransform(
@@ -136,7 +136,7 @@ export function DockerContainersCard({ animate }: { animate: boolean }) {
                                 />
                                 {starting && running ? (
                                     <span
-                                        className="absolute h-4 w-4 rounded-full border border-accent-violet/60 border-t-[#f0c9d2]"
+                                        className="absolute h-4 w-4 rounded-full border border-brand-600/60 border-t-[var(--color-brand-100)]"
                                         style={{
                                             animation:
                                                 'dockerBootSpin 720ms linear infinite, dockerBootPulse 1180ms cubic-bezier(0.23, 1, 0.32, 1) infinite'
@@ -162,7 +162,7 @@ export function DockerContainersCard({ animate }: { animate: boolean }) {
                                         {starting ? 'boot' : 'up'}
                                     </span>
                                 </span>
-                                <span className="font-mono text-[7px] text-[#5a4f56] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                                <span className="font-mono text-[7px] text-ink-800 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                                     :{c.port}
                                 </span>
                             </div>

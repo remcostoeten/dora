@@ -10,7 +10,7 @@ export function ThemingCard({ animate }: { animate: boolean }) {
         <div className="flex h-full w-full flex-col gap-0 p-6 pt-7">
             <div className="mb-5 flex items-center gap-2">
                 <Palette className="h-4 w-4 shrink-0" style={{ color: ACCENT }} />
-                <span className="text-[12px] font-medium text-[#c4bcc4]">
+                <span className="text-[12px] font-medium text-ink-350">
                     Appearance
                 </span>
             </div>
@@ -27,14 +27,14 @@ export function ThemingCard({ animate }: { animate: boolean }) {
                                 className={[
                                     'flex flex-col gap-1 rounded-md border p-2 text-[10px]',
                                     i === 0
-                                        ? 'border-accent-pink/30 bg-[rgba(245,192,192,0.05)] text-[#c4bcc4]'
+                                        ? 'border-brand-200/30 bg-brand-200/5 text-ink-350'
                                         : 'border-line text-ink-700',
                                 ].join(' ')}
                             >
                                 <div
                                     className="h-4 w-full rounded-sm"
                                     style={{
-                                        background: i === 0 ? '#0d0b0e' : i === 1 ? '#191520' : '#f4f4f5',
+                                        background: i === 0 ? 'var(--color-surface-deeper)' : i === 1 ? 'var(--color-surface-elevated)' : 'var(--color-ink-50)',
                                     }}
                                 />
                                 {t}
@@ -54,7 +54,7 @@ export function ThemingCard({ animate }: { animate: boolean }) {
                                 className={[
                                     'h-5 w-5 rounded-full transition-transform',
                                     animate ? 'duration-300' : '',
-                                    i === 0 ? 'ring-1 ring-offset-1 ring-offset-[#0d0b0e] scale-110' : '',
+                                    i === 0 ? 'ring-1 ring-offset-1 ring-offset-[var(--color-surface-deeper)] scale-110' : '',
                                 ].join(' ')}
                                 style={{ backgroundColor: s }}
                             />

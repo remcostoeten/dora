@@ -17,3 +17,4 @@ bun.lockb
 
 tmp/wW
 .env*.local
+dev-menu.config.ts

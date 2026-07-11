@@ -8,7 +8,7 @@ import { OrmSwapper } from "@/components/format-swapper";
 import { getFeaturePath } from "@/core/config/features";
 
 const CELL_CLASS =
-  "relative min-h-[340px] scroll-mt-28 border-r border-b border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-[rgba(245,192,192,0.06)]";
+  "relative min-h-[340px] scroll-mt-28 border-r border-b border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-brand-200/6";
 
 export function QueryWorkflowSection() {
   return (
@@ -32,7 +32,7 @@ export function QueryWorkflowSection() {
         <div id="feature-ai-assistant" className={CELL_CLASS}>
           <AIAssistantCard animate />
           <Link
-            className="absolute bottom-4 right-4 z-10 text-[11px] text-accent-violet transition-colors hover:text-accent-pink"
+            className="absolute bottom-4 right-4 z-10 text-[11px] text-brand-600 transition-colors hover:text-brand-200"
             href={getFeaturePath("ai-assistant")}
           >
             Learn more →
@@ -42,13 +42,13 @@ export function QueryWorkflowSection() {
           <DrizzleRunnerCard animate />
           <div className="absolute bottom-4 right-4 z-10 flex items-center gap-3 text-[11px]">
             <Link
-              className="text-accent-violet transition-colors hover:text-accent-pink"
+              className="text-brand-600 transition-colors hover:text-brand-200"
               href={getFeaturePath("drizzle-runner")}
             >
               Drizzle →
             </Link>
             <Link
-              className="text-accent-violet transition-colors hover:text-accent-pink"
+              className="text-brand-600 transition-colors hover:text-brand-200"
               href={getFeaturePath("prisma-runner")}
             >
               Prisma →

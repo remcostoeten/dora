@@ -52,13 +52,13 @@ function SqlTokens({ text }: { text: string }) {
             {parts.map((part, i) => {
                 if (/^'.*'?$/.test(part.trim()) && part.includes("'"))
                     return (
-                        <span key={i} className="text-accent-mauve">
+                        <span key={i} className="text-brand-400">
                             {part}
                         </span>
                     )
                 if (KEYWORDS.has(part.toLowerCase()))
                     return (
-                        <span key={i} className="text-accent-rose">
+                        <span key={i} className="text-brand-300">
                             {part}
                         </span>
                     )
@@ -83,8 +83,8 @@ function Sparkle({ className, spin }: { className?: string; spin?: boolean }) {
         >
             <defs>
                 <linearGradient id="ai-spark" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stopColor="#ad8eb6" />
-                    <stop offset="1" stopColor="#f5c0c0" />
+                    <stop offset="0" stopColor="var(--color-brand-600)" />
+                    <stop offset="1" stopColor="var(--color-brand-200)" />
                 </linearGradient>
             </defs>
             <path
@@ -168,9 +168,9 @@ export function AIAssistantCard({ animate }: { animate: boolean }) {
     const answering = thinking || showSql
 
     function aiStatus(): { label: string; color: string } {
-        if (thinking) return { label: 'generating…', color: '#9a8aa0' }
-        if (genTyping) return { label: 'writing SQL', color: '#9a8aa0' }
-        return { label: 'ready ✓', color: '#6f9e78' }
+        if (thinking) return { label: 'generating…', color: 'var(--color-ink-400)' }
+        if (genTyping) return { label: 'writing SQL', color: 'var(--color-ink-400)' }
+        return { label: 'ready ✓', color: 'var(--color-status-ok-soft)' }
     }
 
     function renderBody() {
@@ -180,7 +180,7 @@ export function AIAssistantCard({ animate }: { animate: boolean }) {
                     {[0, 1, 2].map((d) => (
                         <span
                             key={d}
-                            className="h-1 w-1 rounded-full bg-accent-mauve"
+                            className="h-1 w-1 rounded-full bg-brand-400"
                             style={{
                                 animation: `particleFloat 0.9s ease-in-out ${d * 140}ms infinite alternate`
                             }}
@@ -193,7 +193,7 @@ export function AIAssistantCard({ animate }: { animate: boolean }) {
             <pre className="whitespace-pre-wrap break-words font-mono text-[10.5px] leading-[1.5] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                 <SqlTokens text={pair.sql.slice(0, sqlLen)} />
                 {genTyping && active ? (
-                    <span className="ml-px inline-block h-3 w-px animate-pulse bg-accent-rose align-middle" />
+                    <span className="ml-px inline-block h-3 w-px animate-pulse bg-brand-300 align-middle" />
                 ) : null}
             </pre>
         )
@@ -206,12 +206,12 @@ export function AIAssistantCard({ animate }: { animate: boolean }) {
             <>
                 {/* AI assistant label */}
                 <div className="mb-2 flex items-center gap-1.5">
-                    <span className="flex items-center gap-1 rounded-full border border-accent-violet/30 bg-accent-violet/10 py-[1px] pl-1 pr-1.5">
+                    <span className="flex items-center gap-1 rounded-full border border-brand-600/30 bg-brand-600/10 py-[1px] pl-1 pr-1.5">
                         <Sparkle
                             className="h-2.5 w-2.5"
                             spin={active && thinking}
                         />
-                        <span className="font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-accent-mauve [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                        <span className="font-mono text-[8px] font-medium uppercase tracking-[0.16em] text-brand-400 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                             Dora AI
                         </span>
                     </span>
@@ -237,25 +237,25 @@ export function AIAssistantCard({ animate }: { animate: boolean }) {
             <div className="relative px-4 pt-5 pb-4">
                 {/* prompt row — the user's question */}
                 <div className="flex items-center gap-2 border border-line bg-surface-deep/80 px-3 py-2">
-                    <span className="shrink-0 font-mono text-[12px] leading-none text-accent-violet/70 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                    <span className="shrink-0 font-mono text-[12px] leading-none text-brand-600/70 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                         ›
                     </span>
                     <span className="min-w-0 truncate font-mono text-[11px] text-ink-300 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                         {askLen === 0 && active ? (
-                            <span className="text-[#5a5560]">
+                            <span className="text-ink-800">
                                 ask your database…
                             </span>
                         ) : (
                             pair.ask.slice(0, askLen)
                         )}
                         {askTyping && active ? (
-                            <span className="ml-px inline-block h-3 w-px animate-pulse bg-accent-violet align-middle" />
+                            <span className="ml-px inline-block h-3 w-px animate-pulse bg-brand-600 align-middle" />
                         ) : null}
                     </span>
                 </div>
 
                 {/* AI-generated answer */}
-                <div className="mt-2.5 min-h-[112px] border border-accent-violet/15 bg-surface-deeper/80 px-3 py-2.5">
+                <div className="mt-2.5 min-h-[112px] border border-brand-600/15 bg-surface-deeper/80 px-3 py-2.5">
                     {renderAnswer()}
                 </div>
             </div>

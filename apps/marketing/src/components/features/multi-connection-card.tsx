@@ -29,9 +29,9 @@ type TConnection = {
 // Dot colours + labels mirror the studio ConnectionTabBar: connected -> green,
 // connecting/idle -> amber, error -> red.
 const STATUS_COLOR: Record<TStatus, string> = {
-    connected: '#22c55e',
-    connecting: '#f59e0b',
-    error: '#ef4444'
+    connected: 'var(--color-status-ok)',
+    connecting: 'var(--color-status-pending)',
+    error: 'var(--color-status-error)'
 }
 
 const STATUS_LABEL: Record<TStatus, string> = {
@@ -138,10 +138,10 @@ export function MultiConnectionCard({ animate }: { animate: boolean }) {
                                 className="group/conn relative flex min-w-0 items-center gap-1.5 rounded-[2px] px-2 py-1 outline-none transition-all duration-300"
                                 style={{
                                     backgroundColor: isActive
-                                        ? 'rgba(245,192,192,0.10)'
+                                        ? 'color-mix(in srgb, var(--color-brand-200) 10%, transparent)'
                                         : 'transparent',
                                     boxShadow: isActive
-                                        ? 'inset 0 0 0 1px rgba(245,192,192,0.35)'
+                                        ? 'inset 0 0 0 1px color-mix(in srgb, var(--color-brand-200) 35%, transparent)'
                                         : 'none'
                                 }}
                             >
@@ -162,15 +162,15 @@ export function MultiConnectionCard({ animate }: { animate: boolean }) {
                                 <span
                                     className="truncate font-mono text-[10.5px] leading-none transition-colors duration-300 [font-family:var(--font-geist-mono),ui-monospace,monospace]"
                                     style={{
-                                        color: isActive ? '#f0d4d4' : '#8a8a8a'
+                                        color: isActive ? 'var(--color-brand-100)' : 'var(--color-ink-500)'
                                     }}
                                 >
                                     {conn.name}
                                 </span>
                                 <span
-                                    className="shrink-0 transition-colors duration-300 group-hover/conn:text-accent-mauve"
+                                    className="shrink-0 transition-colors duration-300 group-hover/conn:text-brand-400"
                                     style={{
-                                        color: isActive ? '#9a8a90' : '#3a3138'
+                                        color: isActive ? 'var(--color-ink-400)' : 'var(--color-line-strong)'
                                     }}
                                 >
                                     <CloseGlyph />
@@ -179,13 +179,13 @@ export function MultiConnectionCard({ animate }: { animate: boolean }) {
                                 {/* status tooltip, revealed on hover/focus */}
                                 <span
                                     role="tooltip"
-                                    className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 flex -translate-x-1/2 translate-y-1 items-center gap-1.5 whitespace-nowrap rounded-[3px] border border-line bg-[#15111a] px-2 py-1 opacity-0 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.6)] transition-all duration-200 group-hover/conn:translate-y-0 group-hover/conn:opacity-100 group-focus-visible/conn:translate-y-0 group-focus-visible/conn:opacity-100"
+                                    className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 flex -translate-x-1/2 translate-y-1 items-center gap-1.5 whitespace-nowrap rounded-[3px] border border-line bg-surface px-2 py-1 opacity-0 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.6)] transition-all duration-200 group-hover/conn:translate-y-0 group-hover/conn:opacity-100 group-focus-visible/conn:translate-y-0 group-focus-visible/conn:opacity-100"
                                 >
                                     <span
                                         className="h-1.5 w-1.5 shrink-0 rounded-full"
                                         style={{ backgroundColor: color }}
                                     />
-                                    <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-[#cdb4bd]">
+                                    <span className="font-mono text-[9.5px] uppercase tracking-[0.08em] text-brand-300">
                                         {STATUS_LABEL[conn.status]}
                                     </span>
                                 </span>
@@ -204,19 +204,19 @@ export function MultiConnectionCard({ animate }: { animate: boolean }) {
                                 className="truncate rounded-[2px] border px-2 py-1 font-mono text-[10px] leading-none transition-all duration-300 [font-family:var(--font-geist-mono),ui-monospace,monospace]"
                                 style={{
                                     borderColor: isActive
-                                        ? 'rgba(173,142,182,0.5)'
-                                        : '#241f26',
+                                        ? 'color-mix(in srgb, var(--color-brand-600) 50%, transparent)'
+                                        : 'var(--color-surface-raised)',
                                     backgroundColor: isActive
-                                        ? 'rgba(173,142,182,0.10)'
+                                        ? 'color-mix(in srgb, var(--color-brand-600) 10%, transparent)'
                                         : 'transparent',
-                                    color: isActive ? '#cdb4bd' : '#6a6a6a'
+                                    color: isActive ? 'var(--color-brand-300)' : 'var(--color-ink-700)'
                                 }}
                             >
                                 {tab}
                             </span>
                         )
                     })}
-                    <span className="ml-auto shrink-0 font-mono text-[9px] uppercase tracking-[0.08em] text-[#5a5258]">
+                    <span className="ml-auto shrink-0 font-mono text-[9px] uppercase tracking-[0.08em] text-ink-800">
                         {current.tabs.length} tab
                         {current.tabs.length === 1 ? '' : 's'}
                     </span>
@@ -230,7 +230,7 @@ export function MultiConnectionCard({ animate }: { animate: boolean }) {
                     <kbd className="rounded-[2px] border border-line bg-surface-deep px-1 py-px font-mono text-[9px] text-ink-400">
                         ]
                     </kbd>
-                    <span className="font-mono text-[9px] text-[#5a5258]">
+                    <span className="font-mono text-[9px] text-ink-800">
                         cycle connections
                     </span>
                 </div>

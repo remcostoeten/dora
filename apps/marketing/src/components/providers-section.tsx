@@ -93,7 +93,7 @@ const HOSTED_PROVIDERS = [
 const HOSTED_EXTRA =
     'Railway, Render, Fly.io, Aiven, DigitalOcean, Crunchy Bridge, Timescale, AWS RDS, Azure, Google Cloud SQL, CockroachDB Cloud, TiDB Cloud'
 
-const ACCENT = '#f5c0c0'
+const ACCENT = 'var(--color-brand-200)'
 const REVEAL_EASE = 'cubic-bezier(0.23, 1, 0.32, 1)'
 const STAGGER_MS = 52
 
@@ -322,7 +322,7 @@ export function ProvidersSection() {
                         className="pointer-events-none absolute inset-0 opacity-[0.22]"
                         style={{
                             backgroundImage:
-                                'linear-gradient(to right, rgba(227,178,179,0.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(227,178,179,0.08) 1px, transparent 1px)',
+                                'linear-gradient(to right, color-mix(in srgb, var(--color-brand-300) 8%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--color-brand-300) 8%, transparent) 1px, transparent 1px)',
                             backgroundSize: '24px 24px'
                         }}
                     />
@@ -357,7 +357,7 @@ export function ProvidersSection() {
                                 aria-hidden
                                 className="h-px w-px shrink-0"
                             />
-                            <span className="font-[family-name:var(--font-pixel)] text-[10px] font-medium uppercase tracking-[0.08em] text-[#9a8aa2]">
+                            <span className="font-[family-name:var(--font-pixel)] text-[10px] font-medium uppercase tracking-[0.08em] text-ink-400">
                                 Dora
                             </span>
                         </div>
@@ -375,8 +375,8 @@ export function ProvidersSection() {
                                     className={[
                                         'relative flex flex-col items-center justify-center gap-2 border-r border-line px-1 py-6 transition-colors duration-300 last:border-r-0 sm:gap-3 sm:px-2 sm:py-10',
                                         isActive
-                                            ? 'bg-[rgba(245,192,192,0.04)]'
-                                            : 'hover:bg-[rgba(245,192,192,0.02)]'
+                                            ? 'bg-brand-200/4'
+                                            : 'hover:bg-brand-200/2'
                                     ].join(' ')}
                                     style={revealStyle(
                                         providerStart + i * STAGGER_MS
@@ -407,8 +407,8 @@ export function ProvidersSection() {
                                         className="max-w-[4.75rem] truncate text-center font-[family-name:var(--font-pixel)] text-[10px] font-medium leading-tight transition-colors duration-300 sm:max-w-none sm:text-[11px]"
                                         style={{
                                             color: isActive
-                                                ? '#f0e8f0'
-                                                : '#9a8aa2'
+                                                ? 'var(--color-ink-100)'
+                                                : 'var(--color-ink-400)'
                                         }}
                                     >
                                         {provider.name}
@@ -437,7 +437,7 @@ export function ProvidersSection() {
 
             <div className="border-t border-r border-line px-6 py-8 sm:px-8">
                 <p
-                    className="mb-5 font-[family-name:var(--font-pixel)] text-[11px] font-medium uppercase tracking-[0.12em] text-[#7a6a72]"
+                    className="mb-5 font-[family-name:var(--font-pixel)] text-[11px] font-medium uppercase tracking-[0.12em] text-ink-600"
                     style={revealStyle(footerDelay)}
                 >
                     First-class native connectors
@@ -462,7 +462,7 @@ export function ProvidersSection() {
                                 }}
                                 draggable={false}
                             />
-                            <span className="text-[13px] font-medium text-[#c4bcc4]">
+                            <span className="text-[13px] font-medium text-ink-350">
                                 {provider.name}
                             </span>
                         </span>
@@ -477,10 +477,10 @@ export function ProvidersSection() {
                                 HOSTED_PROVIDERS.length * STAGGER_MS
                         )}
                     >
-                        <span className="text-[13px] font-medium text-[#c4bcc4]">
+                        <span className="text-[13px] font-medium text-ink-350">
                             Cloudflare D1
                         </span>
-                        <span className="rounded-[2px] border border-accent-rose/40 bg-accent-rose/10 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-accent-rose">
+                        <span className="rounded-[2px] border border-brand-300/40 bg-brand-300/10 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-brand-300">
                             native engine
                         </span>
                     </span>
@@ -494,10 +494,10 @@ export function ProvidersSection() {
                                 (HOSTED_PROVIDERS.length + 1) * STAGGER_MS
                         )}
                     >
-                        <span className="text-[13px] font-medium text-[#c4bcc4]">
+                        <span className="text-[13px] font-medium text-ink-350">
                             PostHog
                         </span>
-                        <span className="rounded-[2px] border border-accent-rose/40 bg-accent-rose/10 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-accent-rose">
+                        <span className="rounded-[2px] border border-brand-300/40 bg-brand-300/10 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-brand-300">
                             native engine
                         </span>
                     </span>

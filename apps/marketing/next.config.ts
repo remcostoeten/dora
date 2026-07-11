@@ -48,6 +48,11 @@ const nextConfig: NextConfig = {
     reactStrictMode: true,
     poweredByHeader: false,
     typedRoutes: true,
+    reactCompiler: true,
+    cacheComponents: true,
+    experimental: {
+        inlineCss: true
+    },
     skipTrailingSlashRedirect: true,
     async rewrites() {
         return [

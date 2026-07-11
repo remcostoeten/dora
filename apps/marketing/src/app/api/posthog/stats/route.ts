@@ -6,7 +6,6 @@ import { queryHogql } from '@/lib/posthog-server'
 // `{ unavailable: true }` when the project isn't configured for querying
 // (no POSTHOG_PROJECT_ID / POSTHOG_PERSONAL_API_KEY) so the client falls
 // back to static copy instead of erroring.
-export const runtime = 'nodejs'
 
 // A showcase that boasts "2 events / 1 visitor" argues against the product it
 // is selling, so hold the static copy until the numbers are worth showing.

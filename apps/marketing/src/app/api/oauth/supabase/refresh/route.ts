@@ -4,8 +4,6 @@ import { getPostHogClient } from '@/lib/posthog-server'
 
 // The desktop app calls this when its access token is near expiry. Refresh also
 // requires the client secret, so it must run here rather than on-device.
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
 
 export async function POST(request: Request) {
     let config

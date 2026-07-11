@@ -14,8 +14,6 @@ import { getPostHogClient } from '@/lib/posthog-server'
 // loopback callback as `redirect_uri`. We mint PKCE + an encrypted state blob
 // (carrying the verifier and the loopback URL), then 302 to Supabase's consent
 // screen. Nothing is persisted server-side — the proxy stays stateless.
-export const runtime = 'nodejs'
-export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
     let config
