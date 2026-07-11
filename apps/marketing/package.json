@@ -10,7 +10,6 @@
         "seo:setup": "tools/seo/setup-ci.sh",
         "seo:prod": "tools/seo/index.sh",
         "build": "bun --bun next build",
-        "postbuild": "tools/seo/build-audit.sh",
         "build:ci": "bun --bun next build",
         "start": "bun --bun next start",
         "typecheck": "bun --bun tsc --noEmit",
