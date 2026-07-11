@@ -70,7 +70,7 @@ fn registry_register_and_get() {
 fn registry_find_by_shortcut() {
     let registry = CommandRegistry::new();
 
-    let keys = vec!["Ctrl".to_string(), "P".to_string()];
+    let keys = vec!["Ctrl".to_string(), "K".to_string()];
     let found = registry.find_by_shortcut(&keys);
     assert!(found.is_some());
     assert_eq!(found.unwrap().id, "palette.open");
