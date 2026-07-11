@@ -8,6 +8,11 @@ export async function executeSqlQuery(
 ): Promise<SqlQueryResult> {
 	const startTime = performance.now()
 	try {
+		// Submitting no longer supersedes in-flight queries (concurrent callers
+		// each need their own), so a console run cancels the previous one itself
+		// — otherwise a slow query keeps holding the connection.
+		await commands.cancelQuery()
+
 		const startResult = await commands.startQuery(connectionId, query)
 
 		if (startResult.status !== 'ok') {
