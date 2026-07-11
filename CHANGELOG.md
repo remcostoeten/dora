@@ -48,6 +48,45 @@ All notable changes to this project will be documented in this file.
 
 - chore: docs polish, PostHog showcase, ORM cockpit link fixes, studio toolbar/ai-keys fixes (#186) (#186)
 
+
+## [v0.33.0] - 2026-07-11
+
+### Bug Fixes
+
+- fix(release): ship arm64-only Homebrew cask, add tap docs
+
+- fix(studio): keep the connection dropdown open across repeated deletes
+
+- fix(backend): give every query a unique id so concurrent submissions don't clobber each other
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.32.0
+
+- chore(marketing): drop the postbuild SEO audit
+
+
+
+### Features
+
+- feat(marketing): instrument PostHog and show live HogQL stats
+
+- feat(studio): build out the PostHog analytics dashboard
+
+- feat(studio): infer column types for metadata-less query results
+
+- feat: PostHog analytics dashboard, typed ad-hoc results, single-hue brand palette (#187) (#187)
+
+
+
+### Refactoring
+
+- refactor(studio): extract command palette internals, move palette to Ctrl+K
+
+- refactor(marketing): derive the whole palette from one brand hue
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

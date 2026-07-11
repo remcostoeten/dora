@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.32.0"
+export const CURRENT_VERSION = "0.33.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -62,6 +62,44 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				items: [
 				"chore(aur): update dora to 0.31.0",
 				"chore: docs polish, PostHog showcase, ORM cockpit link fixes, studio toolbar/ai-keys fixes (#186) (#186)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.33.0",
+		date: "2026-07-11",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.33.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(release): ship arm64-only Homebrew cask, add tap docs",
+				"fix(studio): keep the connection dropdown open across repeated deletes",
+				"fix(backend): give every query a unique id so concurrent submissions don't clobber each other",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.32.0",
+				"chore(marketing): drop the postbuild SEO audit",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(marketing): instrument PostHog and show live HogQL stats",
+				"feat(studio): build out the PostHog analytics dashboard",
+				"feat(studio): infer column types for metadata-less query results",
+				"feat: PostHog analytics dashboard, typed ad-hoc results, single-hue brand palette (#187) (#187)",
+				]
+			},
+			{
+				name: "Refactoring",
+				items: [
+				"refactor(studio): extract command palette internals, move palette to Ctrl+K",
+				"refactor(marketing): derive the whole palette from one brand hue",
 				]
 			}
 		]
