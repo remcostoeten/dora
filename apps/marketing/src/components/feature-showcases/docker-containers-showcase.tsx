@@ -134,7 +134,7 @@ export function DockerContainersShowcase() {
                                                 <Play className="h-3 w-3" />
                                             </span>
                                         )}
-                                        <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-accent-violet">
+                                        <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-brand-600">
                                             <Database className="h-3 w-3" />
                                             Open in viewer
                                         </span>
@@ -150,7 +150,7 @@ export function DockerContainersShowcase() {
                                 Terminal
                             </span>
                         </div>
-                        <div className="h-[88px] overflow-hidden bg-[#0d0d0d] p-3 font-mono text-[10px] leading-relaxed text-emerald-400/90">
+                        <div className="h-[88px] overflow-hidden bg-surface-deeper p-3 font-mono text-[10px] leading-relaxed text-emerald-400/90">
                             <div className="feature-showcase__log-scroll">
                                 <div>
                                     2026-06-07 14:02:11 UTC [1] LOG: database
@@ -208,7 +208,7 @@ export function DockerContainersShowcase() {
                                 </div>
                             </div>
                         </div>
-                        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-[2px] border border-accent-violet/40 px-3 py-2 text-xs text-accent-violet">
+                        <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-[2px] border border-brand-600/40 px-3 py-2 text-xs text-brand-600">
                             <Database className="h-3.5 w-3.5" />
                             Connect as database
                         </span>

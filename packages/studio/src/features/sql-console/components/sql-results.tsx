@@ -34,6 +34,9 @@ import { cn } from '@studio/shared/utils/cn'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
 import { ResultChartPanel } from '@studio/features/result-charts/result-chart-panel'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
+import { formatCellValue as renderCellValue } from '@studio/features/database-studio/components/data-grid/cell-value'
+import type { ColumnDefinition } from '@studio/features/database-studio/types'
+import { inferColumnDefinitions } from '../lib/infer-column-definitions'
 import { SqlQueryResult, ResultViewMode } from '../types'
 
 type Props = {
@@ -113,6 +116,11 @@ export function SqlResults({
 		const rows = masked ? maskRowsForJson(result.rows) : result.rows
 		return JSON.stringify(rows, null, 2)
 	}, [result, masked])
+
+	const cellColumns = useMemo(() => {
+		if (!result) return new Map<string, ColumnDefinition>()
+		return inferColumnDefinitions(result.columns, result.rows, result.columnDefinitions)
+	}, [result])
 
 	function formatCellValue(value: unknown): string {
 		if (value === null || value === undefined) {
@@ -631,7 +639,15 @@ export function SqlResults({
 																			cellValue
 																		)}
 																	>
-																		{formatCellValue(cellValue)}
+																		{renderCellValue(
+																			cellValue,
+																			cellColumns.get(col) ?? {
+																				name: col,
+																				type: 'text',
+																				nullable: true,
+																				primaryKey: false
+																			}
+																		)}
 																	</div>
 																)}
 															</td>

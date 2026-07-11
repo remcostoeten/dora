@@ -32,7 +32,7 @@ type TWordSwapperProps = {
 
 export function WordSwapper({
   words,
-  wordClassName = "text-accent-pink",
+  wordClassName = "text-brand-200",
 }: TWordSwapperProps) {
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const [viewRef, inView] = useInView<HTMLSpanElement>({ threshold: 0 });
@@ -177,5 +177,5 @@ export function FormatSwapper() {
 const ORMS = ["Drizzle", "Prisma"];
 
 export function OrmSwapper() {
-  return <WordSwapper words={ORMS} wordClassName="text-accent-rose" />;
+  return <WordSwapper words={ORMS} wordClassName="text-brand-300" />;
 }

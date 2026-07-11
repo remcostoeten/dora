@@ -29,8 +29,8 @@ export function HubSphere({ running }: { running: boolean }) {
                             repeatCount="indefinite"
                         />
                     ) : null}
-                    <ellipse cx="0" cy="0" rx="18" ry="7" fill="none" stroke="rgba(245,192,192,0.4)" strokeWidth="1" />
-                    <ellipse cx="0" cy="0" rx="18" ry="18" fill="none" stroke="rgba(245,192,192,0.25)" strokeWidth="0.9" />
+                    <ellipse cx="0" cy="0" rx="18" ry="7" fill="none" stroke="color-mix(in srgb, var(--color-brand-200) 40%, transparent)" strokeWidth="1" />
+                    <ellipse cx="0" cy="0" rx="18" ry="18" fill="none" stroke="color-mix(in srgb, var(--color-brand-200) 25%, transparent)" strokeWidth="0.9" />
                 </g>
                 <g>
                     {running ? (
@@ -43,10 +43,10 @@ export function HubSphere({ running }: { running: boolean }) {
                             repeatCount="indefinite"
                         />
                     ) : null}
-                    <ellipse cx="0" cy="0" rx="7" ry="18" fill="none" stroke="rgba(227,178,179,0.3)" strokeWidth="0.9" />
+                    <ellipse cx="0" cy="0" rx="7" ry="18" fill="none" stroke="color-mix(in srgb, var(--color-brand-300) 30%, transparent)" strokeWidth="0.9" />
                 </g>
-                <circle cx="0" cy="0" r="5" fill="#161218" stroke="rgba(245,192,192,0.55)" strokeWidth="1" />
-                <circle cx="0" cy="0" r="2.2" fill="#f5c0c0" />
+                <circle cx="0" cy="0" r="5" fill="var(--color-surface)" stroke="color-mix(in srgb, var(--color-brand-200) 55%, transparent)" strokeWidth="1" />
+                <circle cx="0" cy="0" r="2.2" fill="var(--color-brand-200)" />
             </g>
         </svg>
     )
@@ -230,7 +230,7 @@ export function ProviderRowGraph({
         providers.length - 1,
         Math.round(clampedFill * (providers.length - 1))
     )
-    const activeColor = '#f5c0c0'
+    const activeColor = 'var(--color-brand-200)'
 
     return (
         <svg
@@ -244,7 +244,7 @@ export function ProviderRowGraph({
                 y1={layout.track.y1}
                 x2={layout.track.x2}
                 y2={layout.track.y1}
-                stroke="#2b252c"
+                stroke="var(--color-line)"
                 strokeWidth="1"
                 pathLength={1}
                 strokeDasharray="1"
@@ -260,7 +260,7 @@ export function ProviderRowGraph({
                 y1={layout.track.y1 + 3}
                 x2={layout.track.x2}
                 y2={layout.track.y1 + 3}
-                stroke="#1a161c"
+                stroke="var(--color-surface-elevated)"
                 strokeWidth="1"
                 pathLength={1}
                 strokeDasharray="1"
@@ -286,10 +286,10 @@ export function ProviderRowGraph({
                             y2={node.y}
                             stroke={
                                 leading
-                                    ? 'rgba(245,192,192,0.35)'
+                                    ? 'color-mix(in srgb, var(--color-brand-200) 35%, transparent)'
                                     : lit
-                                      ? 'rgba(245,192,192,0.18)'
-                                      : '#3a3138'
+                                      ? 'color-mix(in srgb, var(--color-brand-200) 18%, transparent)'
+                                      : 'var(--color-line-strong)'
                             }
                             strokeWidth="1"
                             style={stemRevealStyle(revealed, stemDelay, reducedMotion)}
@@ -299,8 +299,8 @@ export function ProviderRowGraph({
                             y={node.y - 2}
                             width="4"
                             height="4"
-                            fill={leading ? activeColor : lit ? '#2a2228' : '#161218'}
-                            stroke={leading ? activeColor : lit ? 'rgba(245,192,192,0.45)' : '#3a3138'}
+                            fill={leading ? activeColor : lit ? 'var(--color-line)' : 'var(--color-surface)'}
+                            stroke={leading ? activeColor : lit ? 'color-mix(in srgb, var(--color-brand-200) 45%, transparent)' : 'var(--color-line-strong)'}
                             strokeWidth="0.75"
                             style={{
                                 opacity: revealed ? 1 : 0,
@@ -319,7 +319,7 @@ export function ProviderRowGraph({
                     y1={layout.track.y1}
                     x2={fillPoint.x}
                     y2={layout.track.y1}
-                    stroke="#f5c0c0"
+                    stroke="var(--color-brand-200)"
                     strokeWidth="1.25"
                     strokeDasharray="3 3"
                     strokeLinecap="round"
@@ -342,7 +342,7 @@ export function ProviderRowGraph({
                 cx={layout.hub.x}
                 cy={layout.track.y1}
                 r="2.5"
-                fill="#f5c0c0"
+                fill="var(--color-brand-200)"
                 opacity={clampedFill > 0 ? 1 : 0}
             />
 
@@ -351,7 +351,7 @@ export function ProviderRowGraph({
                 y1={layout.hub.y - STEM_LENGTH}
                 x2={layout.hub.x}
                 y2={layout.hub.y}
-                stroke="rgba(245,192,192,0.35)"
+                stroke="color-mix(in srgb, var(--color-brand-200) 35%, transparent)"
                 strokeWidth="1"
                 style={stemRevealStyle(revealed, hubDelay, reducedMotion)}
             />

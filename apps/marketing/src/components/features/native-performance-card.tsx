@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState } from 'react'
 
+import { readThemeRgb } from '@/shared/lib/theme-color'
+
 import { useGate, type Motion } from './use-scroll-motion'
 
 const PARTICLES = [
@@ -49,6 +51,10 @@ export function NativePerformanceCard({
         const cy = rect.height / 2
         let time = 0
 
+        const [br, bg, bb] = readThemeRgb('--color-line-strong', canvas)
+        const [ar, ag, ab] = readThemeRgb('--color-brand-300', canvas)
+        const [cr, cg, cb] = readThemeRgb('--color-line', canvas)
+
         const draw = (running: boolean) => {
             const vel = running ? Math.abs(motion.velocityRef.current ?? 0) : 0
             // scroll only nudges the spin speed; colour responds to hover only, so
@@ -67,15 +73,14 @@ export function NativePerformanceCard({
                 // each node pulses green on its own staggered cycle
                 const pulse = (Math.sin(t * 1.6 - idx * 1.1) + 1) / 2 // 0..1
                 const lit = active ? 1 : pulse * pulse
-                // interpolate from neutral grey (#3a3a3a) to rose (#e3b2b3)
-                const r = Math.round(58 + lit * (227 - 58))
-                const g = Math.round(58 + lit * (178 - 58))
-                const b = Math.round(58 + lit * (179 - 58))
+                const r = Math.round(br + lit * (ar - br))
+                const g = Math.round(bg + lit * (ag - bg))
+                const b = Math.round(bb + lit * (ab - bb))
                 const node = `rgb(${r}, ${g}, ${b})`
 
                 ctx.beginPath()
                 ctx.arc(cx, cy, radius, 0, Math.PI * 2)
-                ctx.strokeStyle = `rgba(227,178,179,${0.05 + lit * 0.15})`
+                ctx.strokeStyle = `rgba(${ar}, ${ag}, ${ab}, ${0.05 + lit * 0.15})`
                 ctx.setLineDash([4, 4])
                 ctx.lineWidth = 1
                 ctx.stroke()
@@ -94,7 +99,7 @@ export function NativePerformanceCard({
             const coreLit = active ? 1 : corePulse * corePulse
             ctx.beginPath()
             ctx.arc(cx, cy, 6, 0, Math.PI * 2)
-            ctx.fillStyle = `rgb(${Math.round(42 + coreLit * (227 - 42))}, ${Math.round(42 + coreLit * (178 - 42))}, ${Math.round(42 + coreLit * (179 - 42))})`
+            ctx.fillStyle = `rgb(${Math.round(cr + coreLit * (ar - cr))}, ${Math.round(cg + coreLit * (ag - cg))}, ${Math.round(cb + coreLit * (ab - cb))})`
             ctx.fill()
 
             if (running) animationRef.current = requestAnimationFrame(loop)
@@ -117,14 +122,14 @@ export function NativePerformanceCard({
                 className="pointer-events-none absolute left-1/2 top-[38%] h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-75 blur-2xl"
                 style={{
                     background:
-                        'radial-gradient(circle, rgba(227,178,179,0.13) 0%, rgba(173,142,182,0.05) 38%, transparent 70%)'
+                        'radial-gradient(circle, color-mix(in srgb, var(--color-brand-300) 13%, transparent) 0%, color-mix(in srgb, var(--color-brand-600) 5%, transparent) 38%, transparent 70%)'
                 }}
             />
             {PARTICLES.map((particle, index) => (
                 <span
                     aria-hidden
                     key={`${particle.left}-${particle.top}`}
-                    className="pointer-events-none absolute rounded-full bg-accent-pink"
+                    className="pointer-events-none absolute rounded-full bg-brand-200"
                     style={{
                         left: particle.left,
                         top: particle.top,

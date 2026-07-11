@@ -20,7 +20,7 @@ import { usePrefersReducedMotion } from "@/shared/hooks/use-prefers-reduced-moti
  * ------------------------------------------------------------------------- */
 const EASE_OUT = "cubic-bezier(0.23, 1, 0.32, 1)";
 const EASE_BACK = "cubic-bezier(0.34, 1.56, 0.64, 1)";
-const ACCENT = "#f5c0c0";
+const ACCENT = "var(--color-brand-200)";
 const GOO_ID = "provider-popover-goo";
 
 export type TProviderInfo = {
@@ -132,7 +132,7 @@ export function ProviderInfoPopover({ info, anchor, open }: TProps) {
           >
             {/* base puddle under the card — swells as it opens */}
             <span
-              className="absolute bottom-[12px] left-1/2 h-5 w-10 -translate-x-1/2 rounded-full bg-[#181219]"
+              className="absolute bottom-[12px] left-1/2 h-5 w-10 -translate-x-1/2 rounded-full bg-surface"
               style={{
                 transformOrigin: "center bottom",
                 transform: visible ? "scaleY(1) scaleX(1)" : "scaleY(0.4) scaleX(0.8)",
@@ -141,7 +141,7 @@ export function ProviderInfoPopover({ info, anchor, open }: TProps) {
             />
             {/* primary drip toward the icon */}
             <span
-              className="absolute left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-[#181219]"
+              className="absolute left-1/2 h-4 w-4 -translate-x-1/2 rounded-full bg-surface"
               style={{
                 bottom: visible ? "-3px" : "14px",
                 opacity: visible ? 1 : 0,
@@ -150,7 +150,7 @@ export function ProviderInfoPopover({ info, anchor, open }: TProps) {
             />
             {/* trailing droplet — lags so the goo reads as stretching */}
             <span
-              className="absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-[#181219]"
+              className="absolute left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-surface"
               style={{
                 bottom: visible ? "-9px" : "12px",
                 opacity: visible ? 1 : 0,
@@ -161,14 +161,14 @@ export function ProviderInfoPopover({ info, anchor, open }: TProps) {
         ) : null}
 
         {/* crisp card */}
-        <div className="relative overflow-hidden rounded-[12px] border border-line bg-[#13101a]/95 px-3.5 py-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.7)] backdrop-blur-sm">
+        <div className="relative overflow-hidden rounded-[12px] border border-line bg-surface/95 px-3.5 py-3 shadow-[0_12px_40px_-8px_rgba(0,0,0,0.7)] backdrop-blur-sm">
           {/* soft pink wash up top */}
           <div
             aria-hidden
             className="pointer-events-none absolute inset-x-0 top-0 h-12"
             style={{
               background:
-                "radial-gradient(120% 100% at 50% 0%, rgba(245,192,192,0.12), transparent 70%)",
+                "radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--color-brand-200) 12%, transparent), transparent 70%)",
             }}
           />
           <div className="relative flex items-center gap-2">
@@ -176,10 +176,10 @@ export function ProviderInfoPopover({ info, anchor, open }: TProps) {
               className="h-1.5 w-1.5 shrink-0 rounded-full"
               style={{ backgroundColor: ACCENT, boxShadow: `0 0 8px ${ACCENT}` }}
             />
-            <span className="font-[family-name:var(--font-pixel)] text-[13px] font-semibold text-[#f0e8f0]">
+            <span className="font-[family-name:var(--font-pixel)] text-[13px] font-semibold text-ink-100">
               {shown.name}
             </span>
-            <span className="ml-auto font-mono text-[8.5px] uppercase tracking-[0.1em] text-[#9a7d86] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+            <span className="ml-auto font-mono text-[8.5px] uppercase tracking-[0.1em] text-ink-400 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
               {shown.tag}
             </span>
           </div>

@@ -64,7 +64,7 @@ export function ActivitySparkline({
                 y1={H - 0.5}
                 x2={W}
                 y2={H - 0.5}
-                stroke="#2b252c"
+                stroke="var(--color-line)"
                 strokeWidth="0.5"
             />
             <line
@@ -72,7 +72,7 @@ export function ActivitySparkline({
                 y1={H / 2}
                 x2={W}
                 y2={H / 2}
-                stroke="#241f26"
+                stroke="var(--color-surface-raised)"
                 strokeWidth="0.5"
                 strokeDasharray="1.5 2.5"
             />

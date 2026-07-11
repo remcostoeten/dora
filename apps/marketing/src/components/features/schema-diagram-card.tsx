@@ -115,21 +115,21 @@ function isNodeLit(id: string, active: string | null): boolean {
 }
 
 function colBadge(col: TCol): { label: string; bg: string; fg: string } | null {
-    if (col.pk) return { label: 'PK', bg: 'rgba(173,142,182,0.22)', fg: '#ad8eb6' }
-    if (col.fk) return { label: 'FK', bg: 'rgba(227,178,179,0.18)', fg: '#e3b2b3' }
+    if (col.pk) return { label: 'PK', bg: 'color-mix(in srgb, var(--color-brand-600) 22%, transparent)', fg: 'var(--color-brand-600)' }
+    if (col.fk) return { label: 'FK', bg: 'color-mix(in srgb, var(--color-brand-300) 18%, transparent)', fg: 'var(--color-brand-300)' }
     return null
 }
 
 function fkColColor(col: TCol, tableId: string, active: string | null): string {
     const linked = active === null || active === tableId || active === col.fk
-    return linked ? '#e3b2b3' : '#6a6a6a'
+    return linked ? 'var(--color-brand-300)' : 'var(--color-ink-700)'
 }
 
 function colColor(col: TCol, tableId: string, active: string | null): string {
-    if (!isNodeLit(tableId, active)) return '#4a4548'
-    if (col.pk) return '#ad8eb6'
+    if (!isNodeLit(tableId, active)) return 'var(--color-line-bright)'
+    if (col.pk) return 'var(--color-brand-600)'
     if (col.fk) return fkColColor(col, tableId, active)
-    return '#9a9a9a'
+    return 'var(--color-ink-400)'
 }
 
 // The relationship surfaced in the readout: prefer an edge where the active
@@ -176,14 +176,14 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                 className="pointer-events-none absolute left-1/2 top-[42%] h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-2xl"
                 style={{
                     background:
-                        'radial-gradient(circle, rgba(227,178,179,0.12) 0%, rgba(173,142,182,0.05) 38%, transparent 70%)',
+                        'radial-gradient(circle, color-mix(in srgb, var(--color-brand-300) 12%, transparent) 0%, color-mix(in srgb, var(--color-brand-600) 5%, transparent) 38%, transparent 70%)',
                 }}
             />
             {PARTICLES.map((particle, index) => (
                 <span
                     aria-hidden
                     key={`${particle.left}-${particle.top}`}
-                    className="pointer-events-none absolute rounded-full bg-accent-pink"
+                    className="pointer-events-none absolute rounded-full bg-brand-200"
                     style={{
                         left: particle.left,
                         top: particle.top,
@@ -215,7 +215,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                         >
                             <path
                                 d="M0 4 L6.5 1 M0 4 L6.5 4 M0 4 L6.5 7"
-                                stroke="rgba(227,178,179,0.75)"
+                                stroke="color-mix(in srgb, var(--color-brand-300) 75%, transparent)"
                                 strokeWidth="0.8"
                                 fill="none"
                             />
@@ -234,7 +234,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                 y1="1.5"
                                 x2="2"
                                 y2="6.5"
-                                stroke="rgba(227,178,179,0.75)"
+                                stroke="color-mix(in srgb, var(--color-brand-300) 75%, transparent)"
                                 strokeWidth="0.8"
                             />
                         </marker>
@@ -246,7 +246,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                             refY="2"
                             orient="auto"
                         >
-                            <polygon points="0 0, 5 2, 0 4" fill="#2b252c" />
+                            <polygon points="0 0, 5 2, 0 4" fill="var(--color-line)" />
                         </marker>
                     </defs>
 
@@ -260,7 +260,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                 d={edgePath(edge)}
                                 fill="none"
                                 stroke={
-                                    lit ? 'rgba(227,178,179,0.48)' : '#2b252c'
+                                    lit ? 'color-mix(in srgb, var(--color-brand-300) 48%, transparent)' : 'var(--color-line)'
                                 }
                                 strokeWidth="1.2"
                                 strokeDasharray={lit ? '3 3' : undefined}
@@ -292,7 +292,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                         if (!lit || !running) return null
                         const dur = `${1.5 + edgeIndex * 0.25}s`
                         return (
-                            <circle key={`p-${edgeIndex}`} r="1.5" fill="#f5c0c0">
+                            <circle key={`p-${edgeIndex}`} r="1.5" fill="var(--color-brand-200)">
                                 <animateMotion
                                     dur={dur}
                                     repeatCount="indefinite"
@@ -329,11 +329,11 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                     width={table.w}
                                     height={height}
                                     rx="3"
-                                    fill="#161218"
+                                    fill="var(--color-surface)"
                                     stroke={
                                         lit
-                                            ? 'rgba(227,178,179,0.38)'
-                                            : '#2b252c'
+                                            ? 'color-mix(in srgb, var(--color-brand-300) 38%, transparent)'
+                                            : 'var(--color-line)'
                                     }
                                     strokeWidth="1"
                                 />
@@ -346,8 +346,8 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                     rx="2.5"
                                     fill={
                                         lit
-                                            ? 'rgba(227,178,179,0.11)'
-                                            : '#1c1820'
+                                            ? 'color-mix(in srgb, var(--color-brand-300) 11%, transparent)'
+                                            : 'var(--color-surface-elevated)'
                                     }
                                 />
                                 {/* table name */}
@@ -355,7 +355,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                     x={table.x + 6}
                                     y={table.y + 9}
                                     fontSize="6"
-                                    fill={lit ? '#e3b2b3' : '#6a6a6a'}
+                                    fill={lit ? 'var(--color-brand-300)' : 'var(--color-ink-700)'}
                                     style={{
                                         fontFamily: 'var(--font-geist-mono)',
                                         fontWeight: 600,
@@ -369,7 +369,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                     y1={table.y + HEADER_H}
                                     x2={table.x + table.w - 1}
                                     y2={table.y + HEADER_H}
-                                    stroke="#2b252c"
+                                    stroke="var(--color-line)"
                                     strokeWidth="1"
                                 />
                                 {/* column rows */}
@@ -392,8 +392,8 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                                     height={ROW_H - 1}
                                                     fill={
                                                         col.pk
-                                                            ? 'rgba(173,142,182,0.07)'
-                                                            : 'rgba(227,178,179,0.05)'
+                                                            ? 'color-mix(in srgb, var(--color-brand-600) 7%, transparent)'
+                                                            : 'color-mix(in srgb, var(--color-brand-300) 5%, transparent)'
                                                     }
                                                 />
                                             ) : null}
@@ -444,7 +444,7 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
                                                 y={rowBaseY + 6.5}
                                                 fontSize="4.5"
                                                 fill={
-                                                    lit ? '#5a5560' : '#333038'
+                                                    lit ? 'var(--color-ink-800)' : 'var(--color-line-strong)'
                                                 }
                                                 textAnchor="end"
                                                 style={{
@@ -466,13 +466,13 @@ export function SchemaDiagramCard({ animate }: { animate: boolean }) {
             {/* active relationship readout */}
             <div className="relative px-5">
                 <div className="flex h-4 items-center gap-2 overflow-hidden font-mono text-[10px] leading-none [font-family:var(--font-geist-mono),ui-monospace,monospace]">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-rose" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-300" />
                     <span className="truncate whitespace-nowrap">
-                        <span style={{ color: '#ad8eb6' }}>
+                        <span style={{ color: 'var(--color-brand-600)' }}>
                             {relSrc.id}.{relSrcCol.name}
                         </span>
                         <span className="px-1.5 text-ink-700">─&lt;</span>
-                        <span style={{ color: '#e3b2b3' }}>
+                        <span style={{ color: 'var(--color-brand-300)' }}>
                             {relDst.id}.{relDstCol.name}
                         </span>
                     </span>

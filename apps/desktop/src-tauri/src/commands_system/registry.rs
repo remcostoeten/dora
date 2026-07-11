@@ -31,7 +31,7 @@ impl CommandRegistry {
                 "Search and execute commands",
                 "General",
             )
-            .with_shortcut(vec!["Ctrl", "P"]),
+            .with_shortcut(vec!["Ctrl", "K"]),
         );
 
         // Theme
@@ -259,7 +259,7 @@ mod tests {
     #[test]
     fn test_shortcut_lookup() {
         let registry = CommandRegistry::new();
-        let keys = vec!["Ctrl".to_string(), "P".to_string()];
+        let keys = vec!["Ctrl".to_string(), "K".to_string()];
         let cmd = registry.find_by_shortcut(&keys);
         assert!(cmd.is_some());
         assert_eq!(cmd.unwrap().id, "palette.open");

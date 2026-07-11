@@ -26,8 +26,8 @@ const FACE_COORDS = FACE_ENGINES.map((e) => e.coord)
  *  - shows orbiting face labels with connector lines projected to screen
  */
 
-const CYAN = '#f5f5f5'
-const MAGENTA = '#888888'
+const CYAN = '#ffffff'
+const MAGENTA = '#8a8a8a'
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
 // Shared per-face screen-space data updated each frame inside Canvas,
@@ -214,7 +214,7 @@ function makeFaceTexture(variant: number) {
     const ctx = c.getContext('2d')!
     ctx.clearRect(0, 0, size, size)
 
-    ctx.strokeStyle = '#888888'
+    ctx.strokeStyle = '#8a8a8a'
     ctx.globalAlpha = 0.18
     ctx.lineWidth = 1
     for (let y = 0; y < size; y += 4) {
@@ -994,7 +994,7 @@ export function InteractiveCube({ className = '' }: { className?: string }) {
                 className="absolute inset-0 pointer-events-none"
                 style={{
                     background:
-                        'radial-gradient(circle at 50% 50%, rgba(227,178,179,0.22), transparent 60%)',
+                        'radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--color-brand-300) 22%, transparent), transparent 60%)',
                     filter: 'blur(20px)'
                 }}
             />

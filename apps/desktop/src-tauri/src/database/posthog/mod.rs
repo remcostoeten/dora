@@ -65,15 +65,21 @@ impl PosthogHttp {
     /// set (columns, types, rows). Errors are mapped to friendly messages for
     /// the connect-flow and SQL console.
     pub async fn query(&self, hogql: &str) -> Result<PosthogResultSet, Error> {
-        let body = serde_json::json!({
-            "query": { "kind": "HogQLQuery", "query": hogql }
-        });
+        let text = self
+            .post_query(serde_json::json!({ "kind": "HogQLQuery", "query": hogql }))
+            .await?;
+        parse_result_set(&text)
+    }
 
+    /// Posts any Query API `query` node (`HogQLQuery`, `DatabaseSchemaQuery`, …)
+    /// and returns the raw response body, mapping transport and auth failures to
+    /// the friendly messages the connect-flow and SQL console surface.
+    pub async fn post_query(&self, query: Value) -> Result<String, Error> {
         let response = self
             .client
             .post(self.query_endpoint())
             .bearer_auth(&self.api_key)
-            .json(&body)
+            .json(&serde_json::json!({ "query": query }))
             .send()
             .await
             .map_err(|error| {
@@ -103,7 +109,7 @@ impl PosthogHttp {
             )));
         }
 
-        parse_result_set(&text)
+        Ok(text)
     }
 }
 

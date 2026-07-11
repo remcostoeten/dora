@@ -70,17 +70,17 @@ export function QueryHistoryCard({ animate }: { animate: boolean }) {
                         >
                             <stop
                                 offset="0"
-                                stopColor="#e3b2b3"
+                                stopColor="var(--color-brand-300)"
                                 stopOpacity="0"
                             />
                             <stop
                                 offset="0.5"
-                                stopColor="#e3b2b3"
+                                stopColor="var(--color-brand-300)"
                                 stopOpacity="0.5"
                             />
                             <stop
                                 offset="1"
-                                stopColor="#e3b2b3"
+                                stopColor="var(--color-brand-300)"
                                 stopOpacity="0"
                             />
                         </linearGradient>
@@ -92,7 +92,7 @@ export function QueryHistoryCard({ animate }: { animate: boolean }) {
                         y1={BASE}
                         x2={X1 + 4}
                         y2={BASE}
-                        stroke="#2b252c"
+                        stroke="var(--color-line)"
                         strokeWidth="0.6"
                     />
 
@@ -150,14 +150,14 @@ export function QueryHistoryCard({ animate }: { animate: boolean }) {
                                     width="4.8"
                                     height={hgt}
                                     rx="1.4"
-                                    fill={lit ? '#e3b2b3' : '#4a3f46'}
+                                    fill={lit ? 'var(--color-brand-300)' : 'var(--color-line-bright)'}
                                     className="transition-[fill] duration-200"
                                 />
                                 <circle
                                     cx={x}
                                     cy={BASE - hgt}
                                     r="1.6"
-                                    fill={lit ? '#f5c0c0' : '#5a4f56'}
+                                    fill={lit ? 'var(--color-brand-200)' : 'var(--color-ink-800)'}
                                     className="transition-[fill] duration-200"
                                 >
                                     {idx === 0 && running ? (
@@ -178,11 +178,11 @@ export function QueryHistoryCard({ animate }: { animate: boolean }) {
             {/* readout */}
             <div className="px-5">
                 <div className="grid h-4 overflow-hidden grid-cols-[auto_minmax(0,1fr)_2.25rem_1.75rem] items-center gap-2 font-mono text-[10px] leading-none [font-family:var(--font-geist-mono),ui-monospace,monospace]">
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-rose" />
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-300" />
                     <span className="block min-w-0 truncate whitespace-nowrap text-ink-300">
                         {q.sql}
                     </span>
-                    <span className="block text-right text-accent-rose/80 tabular-nums">
+                    <span className="block text-right text-brand-300/80 tabular-nums">
                         {q.ms}ms
                     </span>
                     <span className="block text-right text-ink-500">

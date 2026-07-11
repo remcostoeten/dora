@@ -38,20 +38,20 @@ export function GraphTooltip({
                 top: tooltipY
             }}
         >
-            <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-md px-3 py-2 text-xs whitespace-nowrap shadow-xl backdrop-blur-sm">
+            <div className="bg-surface-deep border border-line rounded-md px-3 py-2 text-xs whitespace-nowrap shadow-xl backdrop-blur-sm">
                 <div className="text-ink-700 mb-0.5">{data.date}</div>
                 <div className="font-medium" style={{ color: accentColor }}>
                     {data.commits} commit{data.commits !== 1 ? 's' : ''}
                 </div>
-                <div className="mt-1.5 pt-1.5 border-t border-[#2a2a2a] flex items-center gap-1.5 text-[10px] text-[#4a4a4a]">
-                    <kbd className="px-1.5 py-0.5 bg-surface-elevated border border-[#2a2a2a] rounded text-[9px] font-mono text-ink-700">
+                <div className="mt-1.5 pt-1.5 border-t border-line flex items-center gap-1.5 text-[10px] text-line-bright">
+                    <kbd className="px-1.5 py-0.5 bg-surface-elevated border border-line rounded text-[9px] font-mono text-ink-700">
                         click
                     </kbd>
                     <span>for details</span>
                 </div>
             </div>
             {/* Tooltip arrow */}
-            <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 rotate-45 bg-[#0f0f0f] border-r border-b border-[#2a2a2a]" />
+            <div className="absolute left-1/2 -translate-x-1/2 -bottom-1 w-2 h-2 rotate-45 bg-surface-deep border-r border-b border-line" />
         </div>,
         document.body
     )

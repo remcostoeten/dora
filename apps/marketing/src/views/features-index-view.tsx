@@ -25,16 +25,16 @@ export default function FeaturesIndexView() {
                         return (
                             <article
                                 key={feature.slug}
-                                className="border border-line bg-background/40 p-5 transition-colors hover:bg-[rgba(245,192,192,0.04)]"
+                                className="border border-line bg-background/40 p-5 transition-colors hover:bg-brand-200/4"
                             >
                                 <div className="mb-4 flex items-start gap-3">
-                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-line text-accent-violet">
+                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center border border-line text-brand-600">
                                         <Icon className="h-4 w-4" aria-hidden />
                                     </span>
                                     <div>
                                         <h2 className="font-pixel text-lg font-medium text-foreground">
                                             <Link
-                                                className="transition-colors hover:text-accent-pink"
+                                                className="transition-colors hover:text-brand-200"
                                                 href={`/features/${feature.slug}`}
                                             >
                                                 {feature.menuLabel}
@@ -49,7 +49,7 @@ export default function FeaturesIndexView() {
                                     {feature.lead}
                                 </p>
                                 <Link
-                                    className="mt-4 inline-flex text-sm text-accent-violet transition-colors hover:text-accent-pink"
+                                    className="mt-4 inline-flex text-sm text-brand-600 transition-colors hover:text-brand-200"
                                     href={`/features/${feature.slug}`}
                                 >
                                     Read more →

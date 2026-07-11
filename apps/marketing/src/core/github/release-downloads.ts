@@ -22,12 +22,6 @@ export type TLatest = {
     assets: TAsset[]
 }
 
-type TApiRelease = {
-    tag_name?: string
-    html_url?: string
-    assets?: TAsset[]
-}
-
 const REPO_OWNER = 'remcostoeten'
 const REPO_NAME = 'dora'
 const RELEASES_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases`
@@ -95,48 +89,6 @@ export const RELEASE_GROUPS: TGroup[] = [
         ]
     }
 ]
-
-function getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'dora-marketing'
-    }
-    const token = process.env.GITHUB_TOKEN
-
-    if (token) {
-        headers.Authorization = `Bearer ${token}`
-    }
-
-    return headers
-}
-
-function normalizeRelease(release: TApiRelease): TLatest {
-    return {
-        tagName: release.tag_name ?? 'latest',
-        htmlUrl: release.html_url ?? LATEST_RELEASE_URL,
-        assets: release.assets ?? []
-    }
-}
-
-export async function getRelease(): Promise<TLatest | null> {
-    try {
-        const response = await fetch(
-            `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`,
-            {
-                headers: getHeaders(),
-                next: { revalidate: 1800 }
-            }
-        )
-
-        if (!response.ok) {
-            return null
-        }
-
-        return normalizeRelease((await response.json()) as TApiRelease)
-    } catch {
-        return null
-    }
-}
 
 function matchesDownload(asset: TAsset, download: TDownload): boolean {
     if (!asset.name.endsWith(download.suffix)) {

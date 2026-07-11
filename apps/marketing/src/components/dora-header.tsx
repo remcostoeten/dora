@@ -125,14 +125,14 @@ function NavLink({
 function NavItem({ label, href, chevron }: TNavItem) {
     return (
         <NavLink
-            className="group inline-flex items-center gap-1 rounded-[1px] px-[13px] py-[9px] text-[14px] leading-none text-white/90 transition-colors hover:text-accent-pink"
+            className="group inline-flex items-center gap-1 rounded-[1px] px-[13px] py-[9px] text-[14px] leading-none text-white/90 transition-colors hover:text-brand-200"
             href={href}
         >
             {label}
             {chevron ? (
                 <ChevronDown
                     aria-hidden
-                    className="h-3.5 w-3.5 text-white/40 transition-colors group-hover:text-accent-pink"
+                    className="h-3.5 w-3.5 text-white/40 transition-colors group-hover:text-brand-200"
                 />
             ) : null}
         </NavLink>
@@ -192,8 +192,8 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
             }}
         >
             <NavLink
-                className={`group inline-flex items-center gap-1 rounded-[1px] px-[13px] py-[9px] text-[14px] leading-none transition-colors hover:text-accent-pink ${
-                    open ? 'text-accent-pink' : 'text-white/90'
+                className={`group inline-flex items-center gap-1 rounded-[1px] px-[13px] py-[9px] text-[14px] leading-none transition-colors hover:text-brand-200 ${
+                    open ? 'text-brand-200' : 'text-white/90'
                 }`}
                 href={item.href}
                 onClick={() => setOpen(false)}
@@ -201,8 +201,8 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
                 {item.label}
                 <ChevronDown
                     aria-hidden
-                    className={`h-3.5 w-3.5 transition-[transform,color] duration-200 group-hover:text-accent-pink ${
-                        open ? 'text-accent-pink' : 'text-white/40'
+                    className={`h-3.5 w-3.5 transition-[transform,color] duration-200 group-hover:text-brand-200 ${
+                        open ? 'text-brand-200' : 'text-white/40'
                     }`}
                     style={{
                         transform: open ? 'rotate(180deg)' : 'rotate(0deg)'
@@ -230,19 +230,19 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
                 >
                     <span
                         aria-hidden
-                        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[rgba(245,192,192,0.17)]"
+                        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-brand-200/17"
                     />
                     {menu.map((link, index) => {
                         const Icon = link.icon
                         return (
                             <NavLink
                                 key={link.label}
-                                className="group/item flex items-start gap-3 rounded-[2px] px-3 py-2.5 transition-colors hover:bg-[rgba(245,192,192,0.06)]"
+                                className="group/item flex items-start gap-3 rounded-[2px] px-3 py-2.5 transition-colors hover:bg-brand-200/6"
                                 href={link.href}
                                 onClick={() => setOpen(false)}
                             >
                                 <span
-                                    className="mt-px flex size-8 shrink-0 items-center justify-center border border-line bg-surface text-accent-rose transition-colors group-hover/item:border-accent-pink/40 group-hover/item:text-accent-pink"
+                                    className="mt-px flex size-8 shrink-0 items-center justify-center border border-line bg-surface text-brand-300 transition-colors group-hover/item:border-brand-200/40 group-hover/item:text-brand-200"
                                     style={{
                                         opacity: open ? 1 : 0,
                                         transform: open
@@ -271,11 +271,11 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
                                             : '0ms'
                                     }}
                                 >
-                                    <span className="flex items-center gap-1.5 text-[13px] leading-none text-white/90 transition-colors group-hover/item:text-accent-pink">
+                                    <span className="flex items-center gap-1.5 text-[13px] leading-none text-white/90 transition-colors group-hover/item:text-brand-200">
                                         {link.label}
                                         <ArrowRight
                                             aria-hidden
-                                            className="h-3 w-3 shrink-0 text-accent-pink opacity-0 transition-[opacity,transform] duration-200 group-hover/item:translate-x-0.5 group-hover/item:opacity-100"
+                                            className="h-3 w-3 shrink-0 text-brand-200 opacity-0 transition-[opacity,transform] duration-200 group-hover/item:translate-x-0.5 group-hover/item:opacity-100"
                                         />
                                     </span>
                                     <span className="text-[11px] leading-snug text-white/40">
@@ -295,7 +295,7 @@ function Logo() {
     return (
         <Link
             aria-label="Dora home"
-            className="select-none px-2 [font-family:system-ui,sans-serif] text-[20px] font-semibold tracking-[0.08em] text-accent-pink [text-shadow:0_0_14px_rgba(245,192,192,0.45)]"
+            className="select-none px-2 [font-family:system-ui,sans-serif] text-[20px] font-semibold tracking-[0.08em] text-brand-200 [text-shadow:0_0_14px_color-mix(in srgb, var(--color-brand-200) 45%, transparent)]"
             href="/"
         >
             DORA
@@ -306,15 +306,15 @@ function Logo() {
 function ViewAppButton({ className = '' }: { className?: string }) {
     // Open rings centered on each corner, faint by default and brighter on hover.
     const ring =
-        'pointer-events-none absolute size-[17px] rounded-full border border-[rgba(245,192,192,0.3)] transition-colors group-hover:border-[rgba(245,192,192,0.6)]'
+        'pointer-events-none absolute size-[17px] rounded-full border border-brand-200/30 transition-colors group-hover:border-brand-200/60'
     return (
         <Link
-            className={`group relative inline-flex h-[38px] items-center justify-center overflow-visible border border-accent-pink bg-background px-4 text-[14px] leading-none text-accent-pink transition-colors hover:bg-[rgba(245,192,192,0.06)] ${className}`}
+            className={`group relative inline-flex h-[38px] items-center justify-center overflow-visible border border-brand-200 bg-background px-4 text-[14px] leading-none text-brand-200 transition-colors hover:bg-brand-200/6 ${className}`}
             href={APP_PATH}
         >
             <span
                 aria-hidden
-                className="pointer-events-none absolute inset-px opacity-20 bg-[linear-gradient(35deg,rgba(245,192,192,0.85),rgba(173,142,182,0.5))]"
+                className="pointer-events-none absolute inset-px opacity-20 bg-[linear-gradient(35deg,color-mix(in srgb, var(--color-brand-200) 85%, transparent),color-mix(in srgb, var(--color-brand-600) 50%, transparent))]"
             />
             <span className="relative z-[1]">View web app</span>
             <span
@@ -351,13 +351,13 @@ function MobileMenuRow({
             href={item.href}
             onClick={onNavigate}
         >
-            <Icon className="h-5 w-5 shrink-0 text-accent-rose" />
-            <span className="flex-1 text-[17px] text-white/90 transition-colors group-hover:text-accent-pink">
+            <Icon className="h-5 w-5 shrink-0 text-brand-300" />
+            <span className="flex-1 text-[17px] text-white/90 transition-colors group-hover:text-brand-200">
                 {item.label}
             </span>
             <ChevronRight
                 aria-hidden
-                className="h-5 w-5 shrink-0 text-white/40 transition-colors group-hover:text-accent-pink"
+                className="h-5 w-5 shrink-0 text-white/40 transition-colors group-hover:text-brand-200"
             />
         </NavLink>
     )
@@ -375,7 +375,7 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
                 <Logo />
                 <button
                     aria-label="Close menu"
-                    className="inline-flex size-10 items-center justify-center rounded-full border border-line-strong text-white/80 transition-colors hover:border-accent-pink hover:text-accent-pink"
+                    className="inline-flex size-10 items-center justify-center rounded-full border border-line-strong text-white/80 transition-colors hover:border-brand-200 hover:text-brand-200"
                     onClick={onClose}
                     type="button"
                 >
@@ -447,7 +447,7 @@ export function DoraHeader() {
             />
             <div
                 aria-hidden
-                className="h-px w-full bg-[linear-gradient(90deg,transparent,rgba(227,178,179,0.4),transparent)]"
+                className="h-px w-full bg-[linear-gradient(90deg,transparent,color-mix(in srgb, var(--color-brand-300) 40%, transparent),transparent)]"
             />
             <nav
                 className={`relative backdrop-blur-xl transition-colors duration-300 ${
@@ -464,7 +464,7 @@ export function DoraHeader() {
                 {/* hairline glow that fades in once the header detaches from the top */}
                 <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,rgba(227,178,179,0.4),transparent)] transition-opacity duration-300"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-[linear-gradient(90deg,transparent,color-mix(in srgb, var(--color-brand-300) 40%, transparent),transparent)] transition-opacity duration-300"
                     style={{ opacity: scrolled ? 1 : 0 }}
                 />
                 <div
@@ -501,7 +501,7 @@ export function DoraHeader() {
                         <button
                             aria-expanded={menuOpen}
                             aria-label="Open menu"
-                            className="inline-flex size-9 items-center justify-center text-white/90 transition-colors hover:text-accent-pink"
+                            className="inline-flex size-9 items-center justify-center text-white/90 transition-colors hover:text-brand-200"
                             onClick={() => setMenuOpen(true)}
                             type="button"
                         >

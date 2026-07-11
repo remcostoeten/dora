@@ -438,7 +438,7 @@ export function CommitGraph({
                                 key={`${d.date}-segment`}
                                 d={generateSegmentPath(i)}
                                 fill="none"
-                                stroke={wave > 0.28 ? '#f5c0c0' : accentColor}
+                                stroke={wave > 0.28 ? 'var(--color-brand-200)' : accentColor}
                                 strokeLinecap="round"
                                 strokeWidth={0.75 + wave * 1.7}
                                 pathLength="1"
@@ -450,7 +450,7 @@ export function CommitGraph({
                                         wave > 0.08
                                             ? `drop-shadow(0 0 ${4 + wave * 10}px ${
                                                   wave > 0.28
-                                                      ? '#f5c0c0'
+                                                      ? 'var(--color-brand-200)'
                                                       : accentColor
                                               })`
                                             : undefined
@@ -476,11 +476,11 @@ export function CommitGraph({
                                         animationProgress
                                 }
                                 r={0.65 + wave * 1.35}
-                                fill={wave > 0.35 ? '#f5c0c0' : accentColor}
+                                fill={wave > 0.35 ? 'var(--color-brand-200)' : accentColor}
                                 style={{
                                     opacity,
                                     filter: `drop-shadow(0 0 ${3 + wave * 7}px ${
-                                        wave > 0.35 ? '#f5c0c0' : accentColor
+                                        wave > 0.35 ? 'var(--color-brand-200)' : accentColor
                                     })`
                                 }}
                             />
@@ -534,7 +534,7 @@ export function CommitGraph({
 
             {/* Zoom indicator */}
             {zoom > 1 && (
-                <div className="absolute bottom-1 right-1 text-[9px] text-[#3a3a3a] pointer-events-none z-20 font-mono">
+                <div className="absolute bottom-1 right-1 text-[9px] text-line-strong pointer-events-none z-20 font-mono">
                     {zoom.toFixed(1)}x
                 </div>
             )}

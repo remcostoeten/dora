@@ -1,5 +1,5 @@
 use std::sync::{
-    atomic::{AtomicU8, Ordering},
+    atomic::{AtomicU8, AtomicUsize, Ordering},
     Arc, RwLock,
 };
 
@@ -76,11 +76,22 @@ struct ExecState {
     pg_cancel: RwLock<Option<PgCancel>>,
 }
 
+/// How many finished statements to keep addressable before the oldest are
+/// reaped. Submissions no longer wipe the map, so this is what bounds memory;
+/// it must stay comfortably above the largest batch a single view issues (the
+/// analytics dashboard fires six at once) so a caller can never have its own
+/// results pruned out from under it while it is still polling.
+const MAX_RETAINED_QUERIES: usize = 64;
+
 /// Executes and keeps track of the execution of queries.
 pub struct StatementManager {
     queries: DashMap<QueryId, Arc<ExecState>>,
     execution_handles: DashMap<QueryId, JoinHandle<()>>,
     listener_handles: DashMap<QueryId, tokio::task::JoinHandle<()>>,
+    /// Hands out globally unique `QueryId`s. Statement ids used to restart from
+    /// `0` on every submission, so two concurrent submissions both got id `0`
+    /// and each overwrote the other's results.
+    next_id: AtomicUsize,
 }
 
 impl std::fmt::Debug for StatementManager {
@@ -96,6 +107,7 @@ impl StatementManager {
             queries: DashMap::new(),
             execution_handles: DashMap::new(),
             listener_handles: DashMap::new(),
+            next_id: AtomicUsize::new(0),
         }
     }
 
@@ -161,11 +173,11 @@ impl StatementManager {
 
     /// Submits a new query (possibly containing multiple statements) for execution.
     ///
-    /// Note that this _will_ cancel the execution of any ongoing query, and replace it with the new one.
+    /// Each statement gets a globally unique `QueryId`, so concurrent submissions
+    /// (the analytics dashboard runs six at once) never collide. This does *not*
+    /// cancel queries already in flight — callers that need to supersede their
+    /// previous run, like the SQL console, call `cancel_query` first.
     pub fn submit_query(&self, client: DatabaseClient, query: &str) -> Result<Vec<QueryId>, Error> {
-        self.cancel_active_queries();
-        self.queries.clear();
-
         let parse_statements: fn(&str) -> Result<Vec<ParsedStatement>, anyhow::Error> =
             match &client {
                 DatabaseClient::Postgres { .. } => postgres::parser::parse_statements,
@@ -183,12 +195,42 @@ impl StatementManager {
         let statements = parse_statements(query)?;
         let mut query_ids = Vec::with_capacity(statements.len());
 
-        for (idx, statement) in statements.into_iter().enumerate() {
-            self.create_worker(idx as QueryId, client.clone(), statement);
-            query_ids.push(idx);
+        for statement in statements {
+            let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+            self.create_worker(id, client.clone(), statement);
+            query_ids.push(id);
         }
 
+        self.reap_finished_queries();
+
         Ok(query_ids)
+    }
+
+    /// Drops the oldest *finished* statements once the map outgrows
+    /// `MAX_RETAINED_QUERIES`. Running and pending statements are never reaped,
+    /// so this can't pull results out from under an in-flight poll.
+    fn reap_finished_queries(&self) {
+        let excess = self.queries.len().saturating_sub(MAX_RETAINED_QUERIES);
+        if excess == 0 {
+            return;
+        }
+
+        let mut finished = self
+            .queries
+            .iter()
+            .filter(|entry| {
+                let status = entry.status.load(Ordering::Relaxed);
+                status == QueryStatus::Completed as u8 || status == QueryStatus::Error as u8
+            })
+            .map(|entry| *entry.key())
+            .collect::<Vec<_>>();
+        finished.sort_unstable();
+
+        for id in finished.into_iter().take(excess) {
+            self.queries.remove(&id);
+            self.execution_handles.remove(&id);
+            self.listener_handles.remove(&id);
+        }
     }
 
     /// Fetches some general data on a query execution.
@@ -490,6 +532,65 @@ mod tests {
         let info = stmt_manager.fetch_query(0).unwrap();
         assert_eq!(info.page_count, 1);
         assert_eq!(info.rows_received, 1);
+    }
+
+    /// The analytics dashboard submits several queries at once. Statement ids
+    /// used to restart at `0` on every submission, so each submission overwrote
+    /// the previous one's results and every caller polling id `0` got whichever
+    /// query landed last.
+    #[tokio::test]
+    async fn concurrent_submissions_keep_their_own_results() {
+        let stmt_manager = StatementManager::new();
+        let client = DatabaseClient::SQLite {
+            connection: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
+        };
+
+        let first = stmt_manager
+            .submit_query(client.clone(), "SELECT 111")
+            .unwrap();
+        let second = stmt_manager
+            .submit_query(client.clone(), "SELECT 222")
+            .unwrap();
+
+        assert_ne!(first, second, "concurrent submissions must not share ids");
+
+        for id in [first[0], second[0]] {
+            for _ in 0..10 {
+                if stmt_manager.get_query_status(id).unwrap() == QueryStatus::Completed {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        }
+
+        let first_page = stmt_manager.fetch_page(first[0], 0).unwrap().unwrap();
+        let second_page = stmt_manager.fetch_page(second[0], 0).unwrap().unwrap();
+        assert_eq!(serde_json::to_string(&first_page).unwrap(), "[[111]]");
+        assert_eq!(serde_json::to_string(&second_page).unwrap(), "[[222]]");
+    }
+
+    /// A submission must not cancel queries already in flight — only an explicit
+    /// `cancel_active_queries` does that.
+    #[tokio::test]
+    async fn submitting_does_not_cancel_an_earlier_submission() {
+        let stmt_manager = StatementManager::new();
+        let client = DatabaseClient::SQLite {
+            connection: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
+        };
+
+        let first = stmt_manager.submit_query(client.clone(), "SELECT 1").unwrap();
+        for _ in 0..10 {
+            if stmt_manager.get_query_status(first[0]).unwrap() == QueryStatus::Completed {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+
+        stmt_manager.submit_query(client.clone(), "SELECT 2").unwrap();
+
+        let earlier = stmt_manager.fetch_query(first[0]).unwrap();
+        assert_eq!(earlier.status, QueryStatus::Completed);
+        assert_eq!(earlier.error, None);
     }
 
     #[tokio::test]

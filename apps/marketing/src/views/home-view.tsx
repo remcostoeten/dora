@@ -10,7 +10,7 @@ import { QueryWorkflowSection } from "@/components/query-workflow-section";
 import { DeferredGitHubStats } from "@/components/github-stats/deferred-github-stats";
 import { Hero } from "@/components/hero";
 import { getGitHubStats } from "@/core/github/get-github-stats";
-import { getRelease } from "@/core/github/release-downloads";
+import { getRelease } from "@/core/github/get-release";
 
 export default async function HomeView() {
   const [stats, release] = await Promise.all([getGitHubStats(), getRelease()]);

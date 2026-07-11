@@ -12,28 +12,28 @@ const CONNECTION_STRINGS = [
     {
         db: 'PostgreSQL',
         conn: 'postgresql://user:pass@db.neon.tech/mydb',
-        color: '#f5c0c0'
+        color: 'var(--color-brand-200)'
     },
     {
         db: 'MySQL',
         conn: 'mysql://user:pass@localhost:3306/mydb',
-        color: '#e3b2b3'
+        color: 'var(--color-brand-300)'
     },
     {
         db: 'MariaDB',
         conn: 'mysql://user:pass@mariadb.internal:3306/mydb',
-        color: '#d9a6b0'
+        color: 'var(--color-brand-300)'
     },
-    { db: 'SQLite', conn: 'file:///path/to/database.db', color: '#c9a3b5' },
+    { db: 'SQLite', conn: 'file:///path/to/database.db', color: 'var(--color-brand-400)' },
     {
         db: 'libSQL',
         conn: 'libsql://database.turso.io?authToken=token',
-        color: '#ad8eb6'
+        color: 'var(--color-brand-600)'
     },
     {
         db: 'CockroachDB',
         conn: 'postgresql://user:pass@cockroach.internal:26257/defaultdb',
-        color: '#f0b9a4'
+        color: 'var(--color-syntax-value)'
     }
 ]
 
@@ -178,7 +178,7 @@ export function DatabaseConnectionCard({
                     className="pointer-events-none absolute inset-0"
                     style={{
                         background:
-                            'radial-gradient(circle at 50% 46%, rgba(245,192,192,0.12), transparent 62%)'
+                            'radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--color-brand-200) 12%, transparent), transparent 62%)'
                     }}
                 />
                 <div
@@ -200,7 +200,7 @@ export function DatabaseConnectionCard({
                                     y1={HUB.y}
                                     x2={n.x}
                                     y2={n.y}
-                                    stroke={on ? current.color : '#3a3138'}
+                                    stroke={on ? current.color : 'var(--color-line-strong)'}
                                     strokeWidth={on ? 0.7 : 0.4}
                                     strokeDasharray="2 2"
                                     className="transition-[stroke,stroke-width] duration-300"
@@ -224,7 +224,7 @@ export function DatabaseConnectionCard({
                             cy={HUB.y}
                             r="9"
                             fill="none"
-                            stroke="rgba(245,192,192,0.22)"
+                            stroke="color-mix(in srgb, var(--color-brand-200) 22%, transparent)"
                             strokeWidth="0.4"
                             strokeDasharray="1.5 3"
                         >
@@ -245,11 +245,11 @@ export function DatabaseConnectionCard({
                             cx={HUB.x}
                             cy={HUB.y}
                             r="4"
-                            fill="#161218"
-                            stroke="rgba(245,192,192,0.5)"
+                            fill="var(--color-surface)"
+                            stroke="color-mix(in srgb, var(--color-brand-200) 50%, transparent)"
                             strokeWidth="0.6"
                         />
-                        <circle cx={HUB.x} cy={HUB.y} r="1.6" fill="#f5c0c0">
+                        <circle cx={HUB.x} cy={HUB.y} r="1.6" fill="var(--color-brand-200)">
                             {running ? (
                                 <animate
                                     attributeName="r"
@@ -317,7 +317,7 @@ export function DatabaseConnectionCard({
                                         cx={n.x}
                                         cy={n.y}
                                         r={on ? 3 : 2.2}
-                                        fill={on ? c : '#161218'}
+                                        fill={on ? c : 'var(--color-surface)'}
                                         stroke={c}
                                         strokeWidth="0.6"
                                         className="transition-all duration-300"
@@ -377,7 +377,7 @@ export function DatabaseConnectionCard({
                             }`}
                             style={{
                                 backgroundColor:
-                                    idx === active ? db.color : '#3a3138'
+                                    idx === active ? db.color : 'var(--color-line-strong)'
                             }}
                         />
                     </button>

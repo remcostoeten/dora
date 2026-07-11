@@ -16,13 +16,13 @@ import { usePrefersReducedMotion } from "@/shared/hooks/use-prefers-reduced-moti
  * heading flip with the active runner.
  * ------------------------------------------------------------------------- */
 const C = {
-  punct: "#6a6a6a",
-  method: "#e3b2b3",
-  fn: "#9a9a9a",
-  table: "#ad8eb6",
-  prop: "#c9a3b5",
-  id: "#cfcfcf",
-  string: "#c9a3b5",
+  punct: "var(--color-ink-700)",
+  method: "var(--color-brand-300)",
+  fn: "var(--color-ink-400)",
+  table: "var(--color-brand-600)",
+  prop: "var(--color-brand-400)",
+  id: "var(--color-ink-300)",
+  string: "var(--color-brand-400)",
 };
 
 type TItem = { name: string; detail: string; kind: "M" | "F" };
@@ -244,15 +244,15 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
   // feel janky on first load.
   const shownChars = running ? revealed : reduced ? langChars.length : 0;
   const shownRows = running ? rows : reduced ? ROWS.length : 0;
-  const langAccent = activeLang === "prisma" ? "#5eead4" : "#e3b2b3";
+  const langAccent = activeLang === "prisma" ? "var(--color-vendor-prisma)" : "var(--color-brand-300)";
   const isType = running && stage === "type";
   const isRun = running && stage === "run";
   const spans = toSpans(langChars.slice(0, shownChars));
 
   function status(): { color: string; label: string } {
-    if (isRun) return { color: "#e3b2b3", label: "running…" };
-    if (isType) return { color: "#7a7a7a", label: "autocomplete" };
-    return { color: "#4a7a55", label: `${shownRows} rows · 3 ms` };
+    if (isRun) return { color: "var(--color-brand-300)", label: "running…" };
+    if (isType) return { color: "var(--color-ink-600)", label: "autocomplete" };
+    return { color: "var(--color-status-ok-dim)", label: `${shownRows} rows · 3 ms` };
   }
   const { color: statusColor, label: statusLabel } = status();
 
@@ -272,7 +272,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(90deg, rgba(227,178,179,0.04), rgba(227,178,179,0.12), rgba(227,178,179,0.04))",
+                  "linear-gradient(90deg, color-mix(in srgb, var(--color-brand-300) 4%, transparent), color-mix(in srgb, var(--color-brand-300) 12%, transparent), color-mix(in srgb, var(--color-brand-300) 4%, transparent))",
                 animation: "lspFlash 0.7s ease-out",
               }}
             />
@@ -287,7 +287,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
             <span
               ref={caretRef}
               aria-hidden
-              className="ml-px inline-block w-[1.5px] h-[1.05em] -mb-[0.18em] bg-accent-rose"
+              className="ml-px inline-block w-[1.5px] h-[1.05em] -mb-[0.18em] bg-brand-300"
               style={{
                 opacity: isType ? 1 : 0,
                 animation: isType ? "lspCaret 1s steps(1) infinite" : "none",
@@ -298,7 +298,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
           {/* LSP completion popup */}
           {running && popup ? (
             <div
-              className="absolute z-20 overflow-hidden border border-line-strong bg-[#16121a] py-1 shadow-[0_10px_28px_rgba(0,0,0,0.55)]"
+              className="absolute z-20 overflow-hidden border border-line-strong bg-surface py-1 shadow-[0_10px_28px_rgba(0,0,0,0.55)]"
               style={{
                 top: popup.top,
                 left: popup.left,
@@ -311,12 +311,12 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
                 const badge =
                   item.kind === "M"
                     ? {
-                        bg: "rgba(227,178,179,0.16)",
-                        fg: "#e3b2b3",
+                        bg: "color-mix(in srgb, var(--color-brand-300) 16%, transparent)",
+                        fg: "var(--color-brand-300)",
                       }
                     : {
-                        bg: "rgba(173,142,182,0.16)",
-                        fg: "#ad8eb6",
+                        bg: "color-mix(in srgb, var(--color-brand-600) 16%, transparent)",
+                        fg: "var(--color-brand-600)",
                       };
                 return (
                   <div
@@ -324,7 +324,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
                     className="flex items-center gap-2 px-2 py-[3px] font-mono text-[10px] [font-family:var(--font-geist-mono),ui-monospace,monospace]"
                     style={{
                       backgroundColor: on
-                        ? "rgba(227,178,179,0.12)"
+                        ? "color-mix(in srgb, var(--color-brand-300) 12%, transparent)"
                         : "transparent",
                     }}
                   >
@@ -339,7 +339,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
                     </span>
                     <span
                       style={{
-                        color: on ? "#f0e3e3" : "#cfcfcf",
+                        color: on ? "var(--color-brand-50)" : "var(--color-ink-300)",
                       }}
                     >
                       {item.name}
@@ -400,7 +400,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
               >
                 <span className="text-ink-600 tabular-nums">{row.id}</span>
                 <span className="truncate text-ink-300">{row.email}</span>
-                <span className="text-right text-accent-rose">{row.plan}</span>
+                <span className="text-right text-brand-300">{row.plan}</span>
               </div>
             );
           })}

@@ -11,11 +11,17 @@ export const docs = defineDocs({
             'types.mdx',
             'go-cli-runner.mdx',
             'connect/*.mdx',
-            'guides/*.mdx'
+            'guides/*.mdx',
+            'features/*.mdx'
         ]
     },
     meta: {
-        files: ['meta.json', 'connect/meta.json', 'guides/meta.json']
+        files: [
+            'meta.json',
+            'connect/meta.json',
+            'guides/meta.json',
+            'features/meta.json'
+        ]
     }
 })
 

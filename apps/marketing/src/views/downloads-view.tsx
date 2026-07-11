@@ -1,36 +1,36 @@
+import { TrackedDownloadLink } from '@/components/tracked-download-link'
 import { ResourcesPageShell } from '@/components/resources-page-shell'
 import {
     findAsset,
     getHref,
     getLead,
-    getRelease,
     LATEST_RELEASE_URL,
     RELEASE_GROUPS,
     type TAsset,
     type TDownload,
     type TGroup
 } from '@/core/github/release-downloads'
+import { getRelease } from '@/core/github/get-release'
 
 const DOWNLOAD_LINK_CLASS =
-    'inline-flex min-h-9 items-center justify-center border border-line-strong px-3.5 text-[13px] text-foreground transition-colors hover:border-accent-violet/50 hover:bg-[rgba(173,142,182,0.06)]'
+    'inline-flex min-h-9 items-center justify-center border border-line-strong px-3.5 text-[13px] text-foreground transition-colors hover:border-brand-600/50 hover:bg-brand-600/6'
 
 function renderDownload(
     download: TDownload,
     assets: TAsset[],
-    releaseUrl: string
+    releaseUrl: string,
+    platform: string
 ) {
     const asset = findAsset(assets, download)
 
     return (
-        <a
+        <TrackedDownloadLink
             className={DOWNLOAD_LINK_CLASS}
             href={getHref(asset, download, releaseUrl)}
             key={download.label}
-            rel="noreferrer"
-            target="_blank"
-        >
-            {download.label}
-        </a>
+            label={download.label}
+            platform={platform}
+        />
     )
 }
 
@@ -38,7 +38,9 @@ function renderDownloads(group: TGroup, assets: TAsset[], releaseUrl: string) {
     const downloads = []
 
     for (const download of group.downloads) {
-        downloads.push(renderDownload(download, assets, releaseUrl))
+        downloads.push(
+            renderDownload(download, assets, releaseUrl, group.title)
+        )
     }
 
     return downloads

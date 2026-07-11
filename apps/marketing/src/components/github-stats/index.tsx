@@ -7,6 +7,7 @@ import {
     useLayoutEffect,
     type CSSProperties
 } from 'react'
+import posthog from 'posthog-js'
 import {
     Tag,
     Calendar,
@@ -120,16 +121,17 @@ function SyntaxHighlight({ command }: { command: string }) {
                 const isSubcmd = i === 1 && !isFlag
 
                 const color = isCmd
-                    ? '#e3b2b3'
+                    ? 'var(--color-brand-300)'
                     : isFlag
-                    ? '#8ab4c9'
-                    : isSubcmd
-                    ? '#a89ab6'
-                    : '#8aab8a'
+                      ? 'var(--color-syntax-flag)'
+                      : isSubcmd
+                        ? 'var(--color-ink-400)'
+                        : 'var(--color-syntax-path)'
 
-                const parts = !isCmd && !isFlag && !isSubcmd && token.includes('/')
-                    ? token.split('/')
-                    : null
+                const parts =
+                    !isCmd && !isFlag && !isSubcmd && token.includes('/')
+                        ? token.split('/')
+                        : null
 
                 return (
                     <span key={i}>
@@ -139,7 +141,9 @@ function SyntaxHighlight({ command }: { command: string }) {
                                 <span key={j}>
                                     <span style={{ color }}>{part}</span>
                                     {j < parts.length - 1 && (
-                                        <span style={{ color: '#5a5252' }}>/</span>
+                                        <span style={{ color: 'var(--color-ink-800)' }}>
+                                            /
+                                        </span>
                                     )}
                                 </span>
                             ))
@@ -167,7 +171,7 @@ function CopyButton({ text }: { text: string }) {
     return (
         <button
             onClick={handleCopy}
-            className="relative border border-line-strong p-1.5 text-ink-500 transition-colors hover:border-accent-rose/45 hover:bg-accent-rose/5 hover:text-accent-rose"
+            className="relative border border-line-strong p-1.5 text-ink-500 transition-colors hover:border-brand-300/45 hover:bg-brand-300/5 hover:text-brand-300"
             title="Copy command"
         >
             {copied ? (
@@ -289,7 +293,7 @@ function TabIndicator({ activeRect }: { activeRect: DOMRect | null }) {
     return (
         <div
             aria-hidden
-            className="pointer-events-none absolute left-0 top-0 border border-accent-rose/45 bg-accent-rose/5"
+            className="pointer-events-none absolute left-0 top-0 border border-brand-300/45 bg-brand-300/5"
             style={{
                 width: activeRect.width,
                 height: activeRect.height,
@@ -375,6 +379,10 @@ export function GitHubStats({
 
     const handleDayClick = (index: number) => {
         setSelectedDayIndex(index)
+        posthog.capture('github_stats_day_expanded', {
+            date: commitData[index]?.date ?? null,
+            commits: commitData[index]?.commits ?? null
+        })
     }
 
     const handleCloseModal = () => {
@@ -399,7 +407,7 @@ export function GitHubStats({
 
     return (
         <>
-            <div className="w-full bg-[#0a0a0a]">
+            <div className="w-full bg-surface-base">
                 <AnimatedFrame className="overflow-hidden">
                     {/* Top row: Info + Commits */}
                     <div className="flex flex-col sm:flex-row">
@@ -412,7 +420,7 @@ export function GitHubStats({
                                 href={versionUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="block border-b border-surface-elevated px-5 py-4 transition-colors hover:bg-[#0d0d0d]"
+                                className="block border-b border-surface-elevated px-5 py-4 transition-colors hover:bg-surface-deeper"
                             >
                                 <div
                                     className={revealClass}
@@ -441,7 +449,9 @@ export function GitHubStats({
                                                 Started
                                             </div>
                                             <div className="text-ink-600">
-                                                <ScrollMotionNumber value={startedAt} />
+                                                <ScrollMotionNumber
+                                                    value={startedAt}
+                                                />
                                             </div>
                                         </div>
                                         <div className="w-px h-8 bg-surface-elevated" />
@@ -460,7 +470,9 @@ export function GitHubStats({
                                                 Latest
                                             </div>
                                             <div className="text-ink-600">
-                                                <ScrollMotionNumber value={latestCommitAt} />
+                                                <ScrollMotionNumber
+                                                    value={latestCommitAt}
+                                                />
                                             </div>
                                         </a>
                                     </div>
@@ -514,15 +526,17 @@ export function GitHubStats({
                                         Commits
                                     </div>
                                     <div className="font-pixel text-2xl font-[500] tabular-nums text-ink-400">
-                                        <ScrollMotionNumber value={totalCommits} />
+                                        <ScrollMotionNumber
+                                            value={totalCommits}
+                                        />
                                     </div>
                                     <div className="mt-1 hidden items-center gap-2 text-[10px] text-ink-500 sm:flex">
                                         <span>Scroll to pan</span>
-                                        <span className="text-[#2a2a2a]">
+                                        <span className="text-line">
                                             |
                                         </span>
                                         <span className="flex items-center gap-1">
-                                            <kbd className="rounded border border-[#2a2a2a] bg-surface-elevated px-1 py-0.5 font-mono text-[8px] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                                            <kbd className="rounded border border-line bg-surface-elevated px-1 py-0.5 font-mono text-[8px] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                                                 shift
                                             </kbd>
                                             scroll to zoom
@@ -568,10 +582,10 @@ export function GitHubStats({
                                         onClick={() =>
                                             setActiveInstall(pkg.platform)
                                         }
-                                        className={`group/tab relative z-10 flex shrink-0 items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium transition-[color,border-color,transform] duration-200 ease-out hover:border-accent-rose/25 motion-safe:active:scale-[0.97] ${
+                                        className={`group/tab relative z-10 flex shrink-0 items-center gap-2 border border-transparent px-3 py-2 text-xs font-medium transition-[color,border-color,transform] duration-200 ease-out hover:border-brand-300/25 motion-safe:active:scale-[0.97] ${
                                             activeInstall === pkg.platform
-                                                ? 'border-accent-rose/45 text-accent-rose'
-                                                : 'text-ink-500 hover:text-[#b0b0b0]'
+                                                ? 'border-brand-300/45 text-brand-300'
+                                                : 'text-ink-500 hover:text-ink-350'
                                         }`}
                                         title={pkg.name}
                                     >
@@ -613,7 +627,16 @@ export function GitHubStats({
                                             />
                                         ) : pkg.platform === 'github' ? (
                                             <CyclingLabel
-                                                words={['GitHub', 'AppImg', 'deb', 'dmg', 'exe', 'msi', 'rpm', 'tar.gz']}
+                                                words={[
+                                                    'GitHub',
+                                                    'AppImg',
+                                                    'deb',
+                                                    'dmg',
+                                                    'exe',
+                                                    'msi',
+                                                    'rpm',
+                                                    'tar.gz'
+                                                ]}
                                             />
                                         ) : (
                                             <span>{pkg.name}</span>
@@ -624,45 +647,51 @@ export function GitHubStats({
 
                             {/* Command box + downloads */}
                             <div className="flex min-w-0 items-center gap-3">
-                            <div className="min-w-0 flex-1">
-                                {activePackage && (
-                                    <a
-                                        key={activePackage.platform}
-                                        href={activePackage.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="group/cmd relative flex items-center gap-3 border border-line-strong bg-[#0d0d0d] px-4 py-2.5 transition-[border-color,background-color,transform] duration-200 ease-out hover:border-accent-rose/45 hover:bg-accent-rose/5 motion-safe:active:scale-[0.99]"
-                                    >
-                                        <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
-                                        <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
-                                        <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
-                                        <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
-                                        <code className="min-w-0 flex-1 font-mono text-sm [font-family:var(--font-geist-mono),ui-monospace,monospace]">
-                                            <CommandSwap>
-                                                {activePackage.command
-                                                    ? <SyntaxHighlight command={activePackage.command} />
-                                                    : <span className="text-ink-700">{`Download from ${activePackage.name}`}</span>}
-                                            </CommandSwap>
-                                        </code>
-                                        {activePackage.command && (
-                                            <CopyButton
-                                                text={activePackage.command}
-                                            />
-                                        )}
-                                    </a>
-                                )}
-                            </div>
+                                <div className="min-w-0 flex-1">
+                                    {activePackage && (
+                                        <a
+                                            key={activePackage.platform}
+                                            href={activePackage.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="group/cmd relative flex items-center gap-3 border border-line-strong bg-surface-deeper px-4 py-2.5 transition-[border-color,background-color,transform] duration-200 ease-out hover:border-brand-300/45 hover:bg-brand-300/5 motion-safe:active:scale-[0.99]"
+                                        >
+                                            <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                            <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                            <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                            <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2 opacity-0 transition-opacity group-hover/cmd:opacity-100" />
+                                            <code className="min-w-0 flex-1 font-mono text-sm [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                                                <CommandSwap>
+                                                    {activePackage.command ? (
+                                                        <SyntaxHighlight
+                                                            command={
+                                                                activePackage.command
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        <span className="text-ink-700">{`Download from ${activePackage.name}`}</span>
+                                                    )}
+                                                </CommandSwap>
+                                            </code>
+                                            {activePackage.command && (
+                                                <CopyButton
+                                                    text={activePackage.command}
+                                                />
+                                            )}
+                                        </a>
+                                    )}
+                                </div>
 
-                            {/* Downloads indicator */}
-                            {activePackage?.downloads !== undefined &&
-                                activePackage.downloads > 0 && (
-                                    <span className="shrink-0 text-[10px] text-ink-500 whitespace-nowrap">
-                                        {formatDownloads(
-                                            activePackage.downloads
-                                        )}{' '}
-                                        downloads
-                                    </span>
-                                )}
+                                {/* Downloads indicator */}
+                                {activePackage?.downloads !== undefined &&
+                                    activePackage.downloads > 0 && (
+                                        <span className="shrink-0 text-[10px] text-ink-500 whitespace-nowrap">
+                                            {formatDownloads(
+                                                activePackage.downloads
+                                            )}{' '}
+                                            downloads
+                                        </span>
+                                    )}
                             </div>
                         </div>
                     </div>

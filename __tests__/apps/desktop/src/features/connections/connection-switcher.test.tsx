@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
@@ -29,7 +29,7 @@ const connections: Connection[] = [
 	}
 ]
 
-function renderSwitcher() {
+function renderSwitcher(overrides?: { onDeleteConnection?: (id: string) => void }) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: { retry: false },
@@ -46,6 +46,7 @@ function renderSwitcher() {
 					onConnectionSelect={vi.fn()}
 					onAddConnection={vi.fn()}
 					onManageConnections={vi.fn()}
+					onDeleteConnection={overrides?.onDeleteConnection}
 				/>
 			</DataProvider>
 		</QueryClientProvider>
@@ -77,5 +78,30 @@ describe('ConnectionSwitcher', function () {
 
 		await user.tab()
 		expect(screen.getByRole('menuitem', { name: /add connection/i })).toHaveFocus()
+	})
+
+	it('keeps the dropdown open after deleting so several can be removed in a row', async function () {
+		const user = userEvent.setup()
+		const onDeleteConnection = vi.fn()
+		renderSwitcher({ onDeleteConnection })
+
+		const trigger = await screen.findByRole('button', {
+			name: /change database connection/i
+		})
+		trigger.focus()
+		await user.keyboard('{Enter}')
+
+		await waitFor(function () {
+			expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
+		})
+
+		fireEvent.click(screen.getByRole('button', { name: /delete local postgres/i }))
+		expect(onDeleteConnection).toHaveBeenCalledWith('local-postgres')
+
+		expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
+
+		fireEvent.click(screen.getByRole('button', { name: /delete analytics/i }))
+		expect(onDeleteConnection).toHaveBeenCalledWith('analytics')
+		expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
 	})
 })

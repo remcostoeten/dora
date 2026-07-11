@@ -8,7 +8,7 @@ const LINE = 'pointer-events-none absolute z-[2] bg-line-strong'
 /**
  * Frame for the two-tone marketing section grids. Draws the rose outer edges
  * (top + left, the ones the section owns) outward from center on first view,
- * then pops the four corner ticks. The grey inner-cell grid (#2b252c) that
+ * then pops the four corner ticks. The grey inner-cell grid (var(--color-line)) that
  * forms the right/bottom edges stays static.
  *
  * Drop inside a `relative` section in place of the old

@@ -62,7 +62,7 @@ export function DocsSidebar() {
     const pathname = usePathname()
 
     return (
-        <aside className="hidden w-72 shrink-0 border-r border-line bg-[#09080a]/70 lg:block">
+        <aside className="hidden w-72 shrink-0 border-r border-line bg-surface-base/70 lg:block">
             <div className="docs-sidebar-scroll sticky top-[4.75rem] max-h-[calc(100vh-4.75rem)] overflow-y-auto px-5 py-6">
                 <Link
                     href="/docs"
@@ -73,7 +73,7 @@ export function DocsSidebar() {
                 <nav aria-label="Documentation" className="space-y-7">
                     {DOCS_NAV.map((section) => (
                         <section key={section.title}>
-                            <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-accent-violet">
+                            <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-brand-600">
                                 {section.title}
                             </h2>
                             <ul className="grid gap-1">
@@ -88,7 +88,7 @@ export function DocsSidebar() {
                                                 }
                                                 className={
                                                     active
-                                                        ? 'block border-l border-accent-pink bg-accent-pink/[0.06] px-3 py-2 text-[13px] text-foreground'
+                                                        ? 'block border-l border-brand-200 bg-brand-200/[0.06] px-3 py-2 text-[13px] text-foreground'
                                                         : 'block border-l border-transparent px-3 py-2 text-[13px] text-muted-foreground transition-colors hover:border-line-strong hover:bg-white/[0.02] hover:text-foreground'
                                                 }
                                             >

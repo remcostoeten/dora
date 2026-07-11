@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState } from 'react'
 
+import { readThemeColor, readThemeRgb } from '@/shared/lib/theme-color'
+
 import { useGate, type Motion } from './use-scroll-motion'
 
 /* ---------------------------------------------------------------------------
@@ -44,6 +46,11 @@ export function RegionGlobeCard({
         const cy = rect.height / 2 - 10
         const baseRadius = Math.min(rect.width, rect.height) * 0.35
 
+        const lineColor = readThemeColor('--color-line', canvas)
+        const lineStrongColor = readThemeColor('--color-line-strong', canvas)
+        const [dr, dg, db] = readThemeRgb('--color-line', canvas)
+        const [lr, lg, lb] = readThemeRgb('--color-brand-300', canvas)
+
         const draw = (running: boolean) => {
             const vel = running ? (motion.velocityRef.current ?? 0) : 0
             // gently drifts at rest; scrolling just nudges the rotation speed
@@ -64,20 +71,19 @@ export function RegionGlobeCard({
                     0,
                     Math.PI * 2
                 )
-                ctx.strokeStyle = '#2b252c'
+                ctx.strokeStyle = lineColor
                 ctx.lineWidth = 1
                 ctx.stroke()
             }
 
             for (let i = 0; i < 8; i++) {
                 const angle = (i / 8) * Math.PI + rotationRef.current
-                // a rose glow sweeps smoothly from one meridian to the next over time
+                // a brand glow sweeps smoothly from one meridian to the next over time
                 const glow = (Math.sin(t * 1.4 - i * 0.8) + 1) / 2 // 0..1
                 const g2 = glow * glow
-                // interpolate from the warm-dark base (#2b252c) to rose (#e3b2b3)
-                const gr = Math.round(43 + g2 * (227 - 43))
-                const gg = Math.round(37 + g2 * (178 - 37))
-                const gb = Math.round(44 + g2 * (179 - 44))
+                const gr = Math.round(dr + g2 * (lr - dr))
+                const gg = Math.round(dg + g2 * (lg - dg))
+                const gb = Math.round(db + g2 * (lb - db))
                 ctx.beginPath()
                 ctx.ellipse(
                     cx,
@@ -95,7 +101,7 @@ export function RegionGlobeCard({
 
             ctx.beginPath()
             ctx.arc(cx, cy, baseRadius, 0, Math.PI * 2)
-            ctx.strokeStyle = '#3a3138'
+            ctx.strokeStyle = lineStrongColor
             ctx.lineWidth = 1
             ctx.stroke()
 
@@ -134,15 +140,15 @@ export function RegionGlobeCard({
                             <div
                                 className={`flex items-center gap-1.5 px-2 py-1 rounded border transition-all ${
                                     hoveredRegion === region.name
-                                        ? 'border-accent-rose/50 bg-surface'
+                                        ? 'border-brand-300/50 bg-surface'
                                         : 'border-line bg-surface/80'
                                 }`}
                             >
                                 <span
                                     className={`w-1.5 h-1.5 rounded-full transition-colors ${
                                         hoveredRegion === region.name
-                                            ? 'bg-accent-rose'
-                                            : 'bg-[#3a3a3a]'
+                                            ? 'bg-brand-300'
+                                            : 'bg-line-strong'
                                     }`}
                                 />
                                 <span className="text-[9px] text-ink-500 font-mono">

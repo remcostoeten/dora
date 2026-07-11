@@ -97,7 +97,7 @@ const commands = {
 
 ### 3. Key Features
 
-- **Command Palette**: Ctrl+P opens searchable command list
+- **Command Palette**: Ctrl+K opens searchable command list
 - **Shortcut Management**: Register/unregister shortcuts dynamically
 - **Performance**: Rust handles all timing-critical operations
 - **Extensibility**: Easy to add new commands without code changes

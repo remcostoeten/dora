@@ -1,3 +1,5 @@
+import { cacheLife, cacheTag } from 'next/cache'
+
 interface GitHubCommit {
     sha: string
     commit: {
@@ -80,11 +82,15 @@ const REPO_NAME = 'dora'
 /**
  * Fetches and shapes the GitHub stats rendered in the marketing stats panel.
  * Runs on the server so the data lands in the initial HTML (SEO + no client
- * waterfall). The per-`fetch` `revalidate` windows make the consuming page ISR:
- * served statically from cache, refreshed in the background. Returns `null` on
- * failure so the page can omit the section gracefully rather than error.
+ * waterfall). Cached under the `github-stats` tag so consuming pages stay
+ * prerenderable. Returns `null` on failure so the page can omit the section
+ * gracefully rather than error.
  */
 export async function getGitHubStats(): Promise<GitHubStatsData | null> {
+    'use cache'
+    cacheTag('github-stats')
+    cacheLife('minutes')
+
     try {
         const headers: HeadersInit = {
             Accept: 'application/vnd.github.v3+json',
@@ -101,29 +107,25 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
                 fetch(
                     `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}`,
                     {
-                        headers,
-                        next: { revalidate: 3600 }
+                        headers
                     }
                 ),
                 fetch(
                     `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=10`,
                     {
-                        headers,
-                        next: { revalidate: 3600 }
+                        headers
                     }
                 ),
                 fetch(
                     `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?per_page=100`,
                     {
-                        headers,
-                        next: { revalidate: 300 }
+                        headers
                     }
                 ),
                 fetch(
                     `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contributors?per_page=100&anon=true`,
                     {
-                        headers,
-                        next: { revalidate: 3600 }
+                        headers
                     }
                 )
             ])
@@ -165,8 +167,8 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
             {
                 name: 'Homebrew',
                 platform: 'brew',
-    command: 'brew install --cask remcostoeten/dora/dora',
-    url: 'https://github.com/remcostoeten/homebrew-dora'
+                command: 'brew install --cask remcostoeten/dora/dora',
+                url: 'https://github.com/remcostoeten/homebrew-dora'
             },
             // Snap Store (Linux)
             {
@@ -221,7 +223,7 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
             while (page <= 4) {
                 const moreRes = await fetch(
                     `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/commits?per_page=100&page=${page}`,
-                    { headers, next: { revalidate: 300 } }
+                    { headers }
                 )
                 if (!moreRes.ok) break
                 const pageCommits: GitHubCommit[] = await moreRes.json()
@@ -300,10 +302,13 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
         const latestCommitMessage =
             latestCommit?.commit.message.split('\n')[0] || ''
 
-        const startedAt = new Date(repo.created_at).toLocaleDateString('en-US', {
-            month: 'short',
-            year: 'numeric'
-        })
+        const startedAt = new Date(repo.created_at).toLocaleDateString(
+            'en-US',
+            {
+                month: 'short',
+                year: 'numeric'
+            }
+        )
 
         return {
             version,

@@ -40,7 +40,7 @@ function highlightDrizzleLine(line: string) {
     if (line.trimStart().startsWith('await db')) {
         return (
             <>
-                <span className="text-accent-rose">await </span>
+                <span className="text-brand-300">await </span>
                 <span className="text-foreground/90">db</span>
             </>
         )
@@ -52,7 +52,7 @@ function highlightDrizzleLine(line: string) {
         return (
             <>
                 <span>{match[1]}</span>
-                <span className="text-accent-rose">{match[2]}</span>
+                <span className="text-brand-300">{match[2]}</span>
                 <span className="text-foreground/85">{line.slice(match[0].length)}</span>
             </>
         )
@@ -103,7 +103,7 @@ export function DrizzleRunnerShowcase() {
                                 <Braces className="h-3 w-3" />
                                 JSON
                             </span>
-                            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-accent-violet">
+                            <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-brand-600">
                                 <Sparkles className="h-3 w-3" />
                                 Autocomplete active
                             </span>
@@ -133,7 +133,7 @@ export function DrizzleRunnerShowcase() {
                             })}
                         </div>
                     </div>
-                    <div className="flex min-h-0 flex-col bg-[#0a0a0a]">
+                    <div className="flex min-h-0 flex-col bg-surface-base">
                         <div className="border-b border-sidebar-border px-3 py-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             SQL preview
                         </div>

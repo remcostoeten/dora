@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
 	Area,
@@ -15,21 +15,39 @@ import {
 	XAxis,
 	YAxis
 } from 'recharts'
-import { Activity, BarChart3, Globe, RefreshCw, TriangleAlert, Users } from 'lucide-react'
+import {
+	Activity,
+	BarChart3,
+	Globe,
+	MousePointerClick,
+	RefreshCw,
+	TrendingDown,
+	TrendingUp,
+	TriangleAlert,
+	Users,
+	X
+} from 'lucide-react'
 import { Button } from '@studio/shared/ui/button'
 import { Skeleton } from '@studio/shared/ui/skeleton'
 import { Switch } from '@studio/shared/ui/switch'
 import { cn } from '@studio/shared/utils/cn'
 import {
 	activityQuery,
+	DAY_RANGES,
+	DRILL_LABELS,
 	kpiQuery,
+	percentChange,
 	sitesQuery,
 	toLabel,
 	toNumber,
 	topBrowsersQuery,
+	topCountriesQuery,
+	topDevicesQuery,
 	topEventsQuery,
 	topPagesQuery,
-	type AnalyticsFilters
+	topReferrersQuery,
+	type AnalyticsFilters,
+	type DrillKey
 } from './queries'
 import { useHogqlQuery } from './use-hogql-query'
 
@@ -58,16 +76,40 @@ const TOOLTIP_STYLE = {
 
 const AXIS_TICK = { fill: 'hsl(var(--muted-foreground))', fontSize: 11 }
 
+/** One row of a "top values of a property" panel. */
+type BreakdownDatum = {
+	/** The raw property value, used when drilling. */
+	value: string
+	/** The display form (URLs are shortened for the axis). */
+	label: string
+	count: number
+	users: number
+}
+
 export function PosthogAnalytics({ connectionId, connectionName, windowControls }: Props) {
 	const [refreshKey, setRefreshKey] = useState(0)
 	const [excludeLocalhost, setExcludeLocalhost] = useState(false)
+	const [days, setDays] = useState<number>(7)
+	const [drills, setDrills] = useState<Partial<Record<DrillKey, string>>>({})
 
 	const filters = useMemo<AnalyticsFilters>(
 		function () {
-			return { excludeLocalhost }
+			return { excludeLocalhost, days, drills }
 		},
-		[excludeLocalhost]
+		[excludeLocalhost, days, drills]
 	)
+
+	const drill = useCallback((key: DrillKey, value: string) => {
+		setDrills((current) => ({ ...current, [key]: value }))
+	}, [])
+
+	const clearDrill = useCallback((key: DrillKey) => {
+		setDrills((current) => {
+			const next = { ...current }
+			delete next[key]
+			return next
+		})
+	}, [])
 
 	const kpi = useHogqlQuery(connectionId, kpiQuery(filters), refreshKey)
 	const sites = useHogqlQuery(connectionId, sitesQuery(filters), refreshKey)
@@ -75,6 +117,9 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 	const topEvents = useHogqlQuery(connectionId, topEventsQuery(filters), refreshKey)
 	const topPages = useHogqlQuery(connectionId, topPagesQuery(filters), refreshKey)
 	const topBrowsers = useHogqlQuery(connectionId, topBrowsersQuery(filters), refreshKey)
+	const topReferrers = useHogqlQuery(connectionId, topReferrersQuery(filters), refreshKey)
+	const topCountries = useHogqlQuery(connectionId, topCountriesQuery(filters), refreshKey)
+	const topDevices = useHogqlQuery(connectionId, topDevicesQuery(filters), refreshKey)
 
 	const isRefreshing =
 		kpi.isLoading ||
@@ -82,87 +127,76 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 		activity.isLoading ||
 		topEvents.isLoading ||
 		topPages.isLoading ||
-		topBrowsers.isLoading
+		topBrowsers.isLoading ||
+		topReferrers.isLoading ||
+		topCountries.isLoading ||
+		topDevices.isLoading
 
 	const kpiRow = kpi.rows[0]
-	const kpiEvents = cellNumber(kpiRow, kpi.columns, 0)
-	const kpiUsers = cellNumber(kpiRow, kpi.columns, 1)
-	const kpiPageviews = cellNumber(kpiRow, kpi.columns, 2)
 	const sitesData = useMemo(
 		function () {
-			return sites.rows.map(function (row) {
-				return {
-					site: cellLabel(row, sites.columns, 0, '(unknown)'),
-					events: cellNumber(row, sites.columns, 1),
-					users: cellNumber(row, sites.columns, 2),
-					pageviews: cellNumber(row, sites.columns, 3),
-					lastSeen: cellLabel(row, sites.columns, 4, '')
-				}
-			})
+			return sites.rows.map((row) => ({
+				site: cellLabel(row, sites.columns, 0, '(unknown)'),
+				events: cellNumber(row, sites.columns, 1),
+				users: cellNumber(row, sites.columns, 2),
+				pageviews: cellNumber(row, sites.columns, 3),
+				lastSeen: cellLabel(row, sites.columns, 4, '')
+			}))
 		},
 		[sites.rows, sites.columns]
 	)
 	const activityData = useMemo(
 		function () {
-			return activity.rows.map(function (row) {
-				return {
-					day: cellLabel(row, activity.columns, 0, ''),
-					events: cellNumber(row, activity.columns, 1),
-					users: cellNumber(row, activity.columns, 2)
-				}
-			})
+			return activity.rows.map((row) => ({
+				day: cellLabel(row, activity.columns, 0, ''),
+				events: cellNumber(row, activity.columns, 1),
+				users: cellNumber(row, activity.columns, 2)
+			}))
 		},
 		[activity.rows, activity.columns]
 	)
-	const topEventsData = useMemo(
-		function () {
-			return topEvents.rows.map(function (row) {
-				return {
-					label: cellLabel(row, topEvents.columns, 0, '(unknown)'),
-					value: cellNumber(row, topEvents.columns, 1)
-				}
-			})
-		},
-		[topEvents.rows, topEvents.columns]
-	)
-	const topPagesData = useMemo(
-		function () {
-			return topPages.rows.map(function (row) {
-				return {
-					label: shortenUrl(cellLabel(row, topPages.columns, 0, '(direct)')),
-					value: cellNumber(row, topPages.columns, 1)
-				}
-			})
-		},
-		[topPages.rows, topPages.columns]
-	)
-	const topBrowsersData = useMemo(
-		function () {
-			return topBrowsers.rows.map(function (row) {
-				return {
-					label: cellLabel(row, topBrowsers.columns, 0, '(unknown)'),
-					value: cellNumber(row, topBrowsers.columns, 1)
-				}
-			})
-		},
-		[topBrowsers.rows, topBrowsers.columns]
-	)
+
+	const topEventsData = useBreakdown(topEvents, '(unknown)')
+	const topPagesData = useBreakdown(topPages, '(direct)', shortenUrl)
+	const topBrowsersData = useBreakdown(topBrowsers, '(unknown)')
+	const topReferrersData = useBreakdown(topReferrers, '(direct)')
+	const topCountriesData = useBreakdown(topCountries, '(unknown)')
+	const topDevicesData = useBreakdown(topDevices, '(unknown)')
+
+	const activeDrills = Object.entries(drills).filter(([, value]) => Boolean(value)) as [
+		DrillKey,
+		string
+	][]
 
 	return (
 		<div className='flex h-full min-h-0 flex-col bg-background'>
 			<header className='flex shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-accent/10 px-4 py-2.5'>
 				<div className='flex min-w-0 items-center gap-2'>
 					<BarChart3 className='h-4 w-4 text-primary' />
-					<span className='truncate text-sm font-medium text-sidebar-foreground'>
-						Analytics
-					</span>
+					<span className='truncate text-sm font-medium text-sidebar-foreground'>Analytics</span>
 					{connectionName && (
 						<span className='truncate text-xs text-muted-foreground'>· {connectionName}</span>
 					)}
 				</div>
-				<span className='hidden text-[11px] uppercase tracking-wide text-muted-foreground sm:inline'>
-					Last 7–14 days
-				</span>
+
+				<div className='ml-2 flex items-center rounded-md border border-sidebar-border p-0.5'>
+					{DAY_RANGES.map((range) => (
+						<button
+							key={range}
+							type='button'
+							onClick={() => setDays(range)}
+							className={cn(
+								'rounded px-2 py-0.5 text-[11px] font-medium tabular-nums transition-colors',
+								days === range
+									? 'bg-primary text-primary-foreground'
+									: 'text-muted-foreground hover:text-sidebar-foreground'
+							)}
+						>
+							{range}d
+						</button>
+					))}
+				</div>
+
 				<div className='ml-auto flex items-center gap-3'>
 					<label className='flex cursor-pointer select-none items-center gap-2 text-xs text-muted-foreground'>
 						<Switch
@@ -188,25 +222,67 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 
 			<div className='min-h-0 flex-1 overflow-y-auto p-4'>
 				<div className='mx-auto flex max-w-6xl flex-col gap-4'>
-					<div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
+					{activeDrills.length > 0 && (
+						<div className='flex flex-wrap items-center gap-2'>
+							<span className='text-[11px] uppercase tracking-wide text-muted-foreground'>
+								Filtered by
+							</span>
+							{activeDrills.map(([key, value]) => (
+								<button
+									key={key}
+									type='button'
+									onClick={() => clearDrill(key)}
+									className='group flex items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar-accent/20 py-0.5 pl-2.5 pr-1.5 text-xs text-sidebar-foreground hover:border-primary/50'
+								>
+									<span className='text-muted-foreground'>{DRILL_LABELS[key]}</span>
+									<span className='max-w-[220px] truncate font-medium'>{value}</span>
+									<X className='h-3 w-3 text-muted-foreground group-hover:text-sidebar-foreground' />
+								</button>
+							))}
+							<button
+								type='button'
+								onClick={() => setDrills({})}
+								className='text-xs text-muted-foreground underline-offset-2 hover:underline'
+							>
+								Clear all
+							</button>
+						</div>
+					)}
+
+					<div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
 						<StatTile
 							icon={<Activity className='h-4 w-4' />}
 							label='Events'
-							value={kpiRow ? kpiEvents : null}
+							value={kpiRow ? cellNumber(kpiRow, kpi.columns, 0) : null}
+							previous={kpiRow ? cellNumber(kpiRow, kpi.columns, 4) : null}
+							days={days}
 							isLoading={kpi.isLoading}
 							error={kpi.error}
 						/>
 						<StatTile
 							icon={<Users className='h-4 w-4' />}
 							label='Unique users'
-							value={kpiRow ? kpiUsers : null}
+							value={kpiRow ? cellNumber(kpiRow, kpi.columns, 1) : null}
+							previous={kpiRow ? cellNumber(kpiRow, kpi.columns, 5) : null}
+							days={days}
 							isLoading={kpi.isLoading}
 							error={kpi.error}
 						/>
 						<StatTile
 							icon={<BarChart3 className='h-4 w-4' />}
 							label='Pageviews'
-							value={kpiRow ? kpiPageviews : null}
+							value={kpiRow ? cellNumber(kpiRow, kpi.columns, 2) : null}
+							previous={kpiRow ? cellNumber(kpiRow, kpi.columns, 6) : null}
+							days={days}
+							isLoading={kpi.isLoading}
+							error={kpi.error}
+						/>
+						<StatTile
+							icon={<MousePointerClick className='h-4 w-4' />}
+							label='Sessions'
+							value={kpiRow ? cellNumber(kpiRow, kpi.columns, 3) : null}
+							previous={kpiRow ? cellNumber(kpiRow, kpi.columns, 7) : null}
+							days={days}
 							isLoading={kpi.isLoading}
 							error={kpi.error}
 						/>
@@ -214,12 +290,15 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 
 					<SitesCard
 						sites={sitesData}
+						days={days}
 						isLoading={sites.isLoading}
 						error={sites.error}
+						activeSite={drills.site}
+						onDrill={(site) => drill('site', site)}
 					/>
 
 					<ChartCard
-						title='Activity — last 14 days'
+						title={`Activity — last ${days} days`}
 						isLoading={activity.isLoading}
 						error={activity.error}
 						isEmpty={activityData.length === 0}
@@ -265,87 +344,201 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 					</ChartCard>
 
 					<div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
-						<ChartCard
-							title='Top events — last 7 days'
-							isLoading={topEvents.isLoading}
-							error={topEvents.error}
-							isEmpty={topEventsData.length === 0}
-							className='h-[320px]'
-						>
-							<ResponsiveContainer width='100%' height='100%'>
-								<BarChart
-									data={topEventsData}
-									layout='vertical'
-									margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
-								>
-									<CartesianGrid stroke='hsl(var(--border))' strokeDasharray='3 3' horizontal={false} />
-									<XAxis type='number' tick={AXIS_TICK} tickFormatter={formatCompact} />
-									<YAxis
-										type='category'
-										dataKey='label'
-										tick={AXIS_TICK}
-										width={140}
-										interval={0}
-									/>
-									<Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'hsl(var(--muted) / 0.35)' }} />
-									<Bar dataKey='value' name='Count' fill={SERIES_COLORS[0]} radius={[0, 4, 4, 0]} isAnimationActive={false} />
-								</BarChart>
-							</ResponsiveContainer>
-						</ChartCard>
-
-						<ChartCard
-							title='Top browsers — last 7 days'
-							isLoading={topBrowsers.isLoading}
-							error={topBrowsers.error}
-							isEmpty={topBrowsersData.length === 0}
-							className='h-[320px]'
-						>
-							<ResponsiveContainer width='100%' height='100%'>
-								<PieChart>
-									<Tooltip contentStyle={TOOLTIP_STYLE} />
-									<Legend wrapperStyle={{ fontSize: 12 }} />
-									<Pie
-										data={topBrowsersData}
-										dataKey='value'
-										nameKey='label'
-										innerRadius='45%'
-										outerRadius='78%'
-										paddingAngle={1}
-										isAnimationActive={false}
-									>
-										{topBrowsersData.map(function (_entry, index) {
-											return <Cell key={index} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
-										})}
-									</Pie>
-								</PieChart>
-							</ResponsiveContainer>
-						</ChartCard>
+						<BreakdownBarCard
+							title={`Top events — last ${days} days`}
+							data={topEventsData}
+							state={topEvents}
+							color={SERIES_COLORS[0]}
+							labelWidth={140}
+							onDrill={(value) => drill('event', value)}
+						/>
+						<DonutCard
+							title={`Top browsers — last ${days} days`}
+							data={topBrowsersData}
+							state={topBrowsers}
+							onDrill={(value) => drill('browser', value)}
+						/>
 					</div>
 
-					<ChartCard
-						title='Top pages — last 7 days'
-						isLoading={topPages.isLoading}
-						error={topPages.error}
-						isEmpty={topPagesData.length === 0}
-						className='h-[320px]'
-					>
-						<ResponsiveContainer width='100%' height='100%'>
-							<BarChart
-								data={topPagesData}
-								layout='vertical'
-								margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
-							>
-								<CartesianGrid stroke='hsl(var(--border))' strokeDasharray='3 3' horizontal={false} />
-								<XAxis type='number' tick={AXIS_TICK} tickFormatter={formatCompact} />
-								<YAxis type='category' dataKey='label' tick={AXIS_TICK} width={220} interval={0} />
-								<Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'hsl(var(--muted) / 0.35)' }} />
-								<Bar dataKey='value' name='Views' fill={SERIES_COLORS[2]} radius={[0, 4, 4, 0]} isAnimationActive={false} />
-							</BarChart>
-						</ResponsiveContainer>
-					</ChartCard>
+					<BreakdownBarCard
+						title={`Top pages — last ${days} days`}
+						data={topPagesData}
+						state={topPages}
+						color={SERIES_COLORS[2]}
+						labelWidth={220}
+						onDrill={(value) => drill('path', value)}
+					/>
+
+					<div className='grid grid-cols-1 gap-4 lg:grid-cols-2'>
+						<BreakdownBarCard
+							title={`Top referrers — last ${days} days`}
+							data={topReferrersData}
+							state={topReferrers}
+							color={SERIES_COLORS[3]}
+							labelWidth={160}
+							onDrill={(value) => drill('referrer', value)}
+						/>
+						<BreakdownBarCard
+							title={`Top countries — last ${days} days`}
+							data={topCountriesData}
+							state={topCountries}
+							color={SERIES_COLORS[4]}
+							labelWidth={160}
+							onDrill={(value) => drill('country', value)}
+						/>
+					</div>
+
+					<DonutCard
+						title={`Devices — last ${days} days`}
+						data={topDevicesData}
+						state={topDevices}
+						onDrill={(value) => drill('device', value)}
+					/>
 				</div>
 			</div>
 		</div>
+	)
+}
+
+type QueryState = {
+	rows: Record<string, unknown>[]
+	columns: string[]
+	isLoading: boolean
+	error: string | null
+}
+
+/**
+ * Shapes a breakdown result (`label, count, users`) into chart data, keeping the
+ * raw property value alongside the display label so a click can drill on the
+ * real value rather than the shortened one.
+ */
+function useBreakdown(
+	state: QueryState,
+	fallback: string,
+	format?: (value: string) => string
+): BreakdownDatum[] {
+	return useMemo(
+		function () {
+			return state.rows.map((row) => {
+				const value = cellLabel(row, state.columns, 0, fallback)
+				return {
+					value,
+					label: format ? format(value) : value,
+					count: cellNumber(row, state.columns, 1),
+					users: cellNumber(row, state.columns, 2)
+				}
+			})
+		},
+		[state.rows, state.columns, fallback, format]
+	)
+}
+
+function BreakdownBarCard({
+	title,
+	data,
+	state,
+	color,
+	labelWidth,
+	onDrill
+}: {
+	title: string
+	data: BreakdownDatum[]
+	state: QueryState
+	color: string
+	labelWidth: number
+	onDrill: (value: string) => void
+}) {
+	return (
+		<ChartCard
+			title={title}
+			isLoading={state.isLoading}
+			error={state.error}
+			isEmpty={data.length === 0}
+			className='h-[320px]'
+			hint='Click a bar to filter'
+		>
+			<ResponsiveContainer width='100%' height='100%'>
+				<BarChart data={data} layout='vertical' margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
+					<CartesianGrid stroke='hsl(var(--border))' strokeDasharray='3 3' horizontal={false} />
+					<XAxis type='number' tick={AXIS_TICK} tickFormatter={formatCompact} />
+					<YAxis
+						type='category'
+						dataKey='label'
+						tick={AXIS_TICK}
+						width={labelWidth}
+						interval={0}
+					/>
+					<Tooltip
+						contentStyle={TOOLTIP_STYLE}
+						cursor={{ fill: 'hsl(var(--muted) / 0.35)' }}
+						formatter={(value: number, name: string) => [value.toLocaleString(), name]}
+					/>
+					<Bar
+						dataKey='count'
+						name='Events'
+						fill={color}
+						radius={[0, 4, 4, 0]}
+						isAnimationActive={false}
+						cursor='pointer'
+						onClick={(entry: unknown) => {
+							const value = drillValueOf(entry)
+							if (value) onDrill(value)
+						}}
+					/>
+				</BarChart>
+			</ResponsiveContainer>
+		</ChartCard>
+	)
+}
+
+function DonutCard({
+	title,
+	data,
+	state,
+	onDrill
+}: {
+	title: string
+	data: BreakdownDatum[]
+	state: QueryState
+	onDrill: (value: string) => void
+}) {
+	return (
+		<ChartCard
+			title={title}
+			isLoading={state.isLoading}
+			error={state.error}
+			isEmpty={data.length === 0}
+			className='h-[320px]'
+			hint='Click a slice to filter'
+		>
+			<ResponsiveContainer width='100%' height='100%'>
+				<PieChart>
+					<Tooltip
+						contentStyle={TOOLTIP_STYLE}
+						formatter={(value: number, name: string) => [value.toLocaleString(), name]}
+					/>
+					<Legend wrapperStyle={{ fontSize: 12 }} />
+					<Pie
+						data={data}
+						dataKey='count'
+						nameKey='label'
+						innerRadius='45%'
+						outerRadius='78%'
+						paddingAngle={1}
+						isAnimationActive={false}
+						cursor='pointer'
+						onClick={(entry: unknown) => {
+							const value = drillValueOf(entry)
+							if (value) onDrill(value)
+						}}
+					>
+						{data.map((_entry, index) => (
+							<Cell key={index} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
+						))}
+					</Pie>
+				</PieChart>
+			</ResponsiveContainer>
+		</ChartCard>
 	)
 }
 
@@ -359,19 +552,25 @@ type SiteRow = {
 
 function SitesCard({
 	sites,
+	days,
 	isLoading,
-	error
+	error,
+	activeSite,
+	onDrill
 }: {
 	sites: SiteRow[]
+	days: number
 	isLoading: boolean
 	error: string | null
+	activeSite?: string
+	onDrill: (site: string) => void
 }) {
 	return (
 		<div className='rounded-lg border border-sidebar-border bg-background'>
 			<div className='flex items-center gap-2 border-b border-sidebar-border px-4 py-2.5 text-xs font-medium text-sidebar-foreground'>
 				<Globe className='h-4 w-4 text-primary' />
 				Monitored sites
-				<span className='text-muted-foreground'>· last 30 days</span>
+				<span className='text-muted-foreground'>· last {days} days</span>
 				{!isLoading && !error && (
 					<span className='ml-auto rounded-full bg-sidebar-accent/40 px-2 py-0.5 text-[11px] tabular-nums text-muted-foreground'>
 						{sites.length}
@@ -401,42 +600,46 @@ function SitesCard({
 									<th className='px-3 py-2 text-right font-medium'>Events</th>
 									<th className='px-3 py-2 text-right font-medium'>Users</th>
 									<th className='px-3 py-2 text-right font-medium'>Pageviews</th>
-									<th className='hidden px-3 py-2 text-right font-medium sm:table-cell'>Last event</th>
+									<th className='hidden px-3 py-2 text-right font-medium sm:table-cell'>
+										Last event
+									</th>
 								</tr>
 							</thead>
 							<tbody>
-								{sites.map(function (row) {
-									return (
-										<tr
-											key={row.site}
-											className='border-t border-sidebar-border/60 hover:bg-sidebar-accent/10'
-										>
-											<td className='max-w-0 px-3 py-2'>
-												<div className='flex items-center gap-2'>
-													<span
-														className='h-1.5 w-1.5 shrink-0 rounded-full bg-primary'
-														aria-hidden
-													/>
-													<span className='truncate font-medium text-sidebar-foreground'>
-														{row.site}
-													</span>
-												</div>
-											</td>
-											<td className='px-3 py-2 text-right tabular-nums text-sidebar-foreground'>
-												{row.events.toLocaleString()}
-											</td>
-											<td className='px-3 py-2 text-right tabular-nums text-muted-foreground'>
-												{row.users.toLocaleString()}
-											</td>
-											<td className='px-3 py-2 text-right tabular-nums text-muted-foreground'>
-												{row.pageviews.toLocaleString()}
-											</td>
-											<td className='hidden px-3 py-2 text-right text-muted-foreground sm:table-cell'>
-												{formatRelative(row.lastSeen)}
-											</td>
-										</tr>
-									)
-								})}
+								{sites.map((row) => (
+									<tr
+										key={row.site}
+										onClick={() => onDrill(row.site)}
+										className={cn(
+											'cursor-pointer border-t border-sidebar-border/60 hover:bg-sidebar-accent/10',
+											activeSite === row.site && 'bg-primary/10'
+										)}
+									>
+										<td className='max-w-0 px-3 py-2'>
+											<div className='flex items-center gap-2'>
+												<span
+													className='h-1.5 w-1.5 shrink-0 rounded-full bg-primary'
+													aria-hidden
+												/>
+												<span className='truncate font-medium text-sidebar-foreground'>
+													{row.site}
+												</span>
+											</div>
+										</td>
+										<td className='px-3 py-2 text-right tabular-nums text-sidebar-foreground'>
+											{row.events.toLocaleString()}
+										</td>
+										<td className='px-3 py-2 text-right tabular-nums text-muted-foreground'>
+											{row.users.toLocaleString()}
+										</td>
+										<td className='px-3 py-2 text-right tabular-nums text-muted-foreground'>
+											{row.pageviews.toLocaleString()}
+										</td>
+										<td className='hidden px-3 py-2 text-right text-muted-foreground sm:table-cell'>
+											{formatRelative(row.lastSeen)}
+										</td>
+									</tr>
+								))}
 							</tbody>
 						</table>
 					</div>
@@ -450,15 +653,21 @@ function StatTile({
 	icon,
 	label,
 	value,
+	previous,
+	days,
 	isLoading,
 	error
 }: {
 	icon: ReactNode
 	label: string
 	value: number | null
+	previous: number | null
+	days: number
 	isLoading: boolean
 	error: string | null
 }) {
+	const change = value === null || previous === null ? null : percentChange(value, previous)
+
 	return (
 		<div className='rounded-lg border border-sidebar-border bg-sidebar-accent/10 p-4'>
 			<div className='flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground'>
@@ -474,6 +683,22 @@ function StatTile({
 					(value ?? 0).toLocaleString()
 				)}
 			</div>
+			{!isLoading && !error && change !== null && (
+				<div
+					className={cn(
+						'mt-1 flex items-center gap-1 text-[11px] tabular-nums',
+						change >= 0 ? 'text-emerald-500' : 'text-rose-500'
+					)}
+				>
+					{change >= 0 ? (
+						<TrendingUp className='h-3 w-3' />
+					) : (
+						<TrendingDown className='h-3 w-3' />
+					)}
+					{formatPercent(change)}
+					<span className='text-muted-foreground'>vs previous {days}d</span>
+				</div>
+			)}
 		</div>
 	)
 }
@@ -484,6 +709,7 @@ function ChartCard({
 	error,
 	isEmpty,
 	className,
+	hint,
 	children
 }: {
 	title: string
@@ -491,12 +717,16 @@ function ChartCard({
 	error: string | null
 	isEmpty: boolean
 	className?: string
+	hint?: string
 	children: ReactNode
 }) {
 	return (
 		<div className='rounded-lg border border-sidebar-border bg-background'>
-			<div className='border-b border-sidebar-border px-4 py-2.5 text-xs font-medium text-sidebar-foreground'>
+			<div className='flex items-center gap-2 border-b border-sidebar-border px-4 py-2.5 text-xs font-medium text-sidebar-foreground'>
 				{title}
+				{hint && !isLoading && !error && !isEmpty && (
+					<span className='ml-auto text-[11px] font-normal text-muted-foreground'>{hint}</span>
+				)}
 			</div>
 			<div className={cn('p-3', className)}>
 				{isLoading ? (
@@ -527,11 +757,29 @@ function CardMessage({ icon, text }: { icon: ReactNode; text: string }) {
 	)
 }
 
+/**
+ * Pulls the raw property value out of a Recharts click payload. `Bar` hands back
+ * the datum with its fields spread onto the entry, while `Pie` nests it under
+ * `payload`, so both shapes are tried.
+ */
+function drillValueOf(entry: unknown): string | undefined {
+	if (!entry || typeof entry !== 'object') return undefined
+	const candidate = entry as { value?: unknown; payload?: { value?: unknown } }
+	const raw = candidate.payload?.value ?? candidate.value
+	return typeof raw === 'string' && raw.length > 0 ? raw : undefined
+}
+
 /** Compacts large axis/tooltip numbers (12500 → 12.5K, 3_400_000 → 3.4M). */
 function formatCompact(value: number): string {
 	if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
 	if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, '')}K`
 	return String(value)
+}
+
+/** Renders a fractional change as a signed percentage (0.25 → +25%). */
+function formatPercent(change: number): string {
+	const percent = Math.round(change * 100)
+	return `${percent >= 0 ? '+' : ''}${percent}%`
 }
 
 /**

@@ -38,7 +38,7 @@ export function ThemingShowcase() {
                                         className={[
                                             'flex flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors',
                                             i === 0
-                                                ? 'border-accent-pink/40 bg-[rgba(245,192,192,0.06)]'
+                                                ? 'border-brand-200/40 bg-brand-200/6'
                                                 : 'border-border bg-card hover:border-border/80',
                                         ].join(' ')}
                                     >
@@ -46,10 +46,10 @@ export function ThemingShowcase() {
                                             className="h-8 w-full rounded"
                                             style={{
                                                 background: i === 0
-                                                    ? '#0d0b0e'
+                                                    ? 'var(--color-surface-deeper)'
                                                     : i === 1
-                                                    ? '#191520'
-                                                    : '#f4f4f5',
+                                                    ? 'var(--color-surface-elevated)'
+                                                    : 'var(--color-ink-50)',
                                             }}
                                         />
                                         <span className="text-[11px] text-foreground/80">{t}</span>
@@ -92,7 +92,7 @@ export function ThemingShowcase() {
                                         className={[
                                             'rounded-lg border p-3 text-left text-[12px] transition-colors',
                                             i === 1
-                                                ? 'border-accent-pink/40 bg-[rgba(245,192,192,0.06)] text-foreground'
+                                                ? 'border-brand-200/40 bg-brand-200/6 text-foreground'
                                                 : 'border-border bg-card text-muted-foreground',
                                         ].join(' ')}
                                     >

@@ -25,21 +25,21 @@ const CONF: Record<
 > = {
     safe: {
         label: 'safe',
-        fg: '#6fb98a',
-        bg: 'rgba(111,185,138,0.12)',
-        bd: 'rgba(111,185,138,0.32)'
+        fg: 'var(--color-syntax-string)',
+        bg: 'color-mix(in srgb, var(--color-syntax-string) 12%, transparent)',
+        bd: 'color-mix(in srgb, var(--color-syntax-string) 32%, transparent)'
     },
     review: {
         label: 'review',
-        fg: '#d2a86a',
-        bg: 'rgba(210,168,106,0.12)',
-        bd: 'rgba(210,168,106,0.32)'
+        fg: 'var(--color-syntax-keyword)',
+        bg: 'color-mix(in srgb, var(--color-syntax-keyword) 12%, transparent)',
+        bd: 'color-mix(in srgb, var(--color-syntax-keyword) 32%, transparent)'
     },
     destructive: {
         label: 'destructive',
-        fg: '#d18a8a',
-        bg: 'rgba(209,138,138,0.12)',
-        bd: 'rgba(209,138,138,0.32)'
+        fg: 'var(--color-brand-500)',
+        bg: 'color-mix(in srgb, var(--color-brand-500) 12%, transparent)',
+        bd: 'color-mix(in srgb, var(--color-brand-500) 32%, transparent)'
     }
 }
 
@@ -86,11 +86,11 @@ const DRIFT: TDrift[] = [
 ]
 
 const C = {
-    kw: '#e3b2b3',
-    punct: '#6a6a6a',
-    ident: '#c9a3b5',
-    type: '#9a9a9a',
-    comment: '#6a6a6a'
+    kw: 'var(--color-brand-300)',
+    punct: 'var(--color-ink-700)',
+    ident: 'var(--color-brand-400)',
+    type: 'var(--color-ink-400)',
+    comment: 'var(--color-ink-700)'
 }
 
 type TSeg = { text: string; color: string }
@@ -147,8 +147,8 @@ type TLang = 'drizzle' | 'prisma'
 type TStage = 'link' | 'drift' | 'generate' | 'sql'
 
 const SOURCE: Record<TLang, { folder: string; accent: string }> = {
-    drizzle: { folder: 'apps/web/db', accent: '#e3b2b3' },
-    prisma: { folder: 'server/prisma', accent: '#5eead4' }
+    drizzle: { folder: 'apps/web/db', accent: 'var(--color-brand-300)' },
+    prisma: { folder: 'server/prisma', accent: 'var(--color-vendor-prisma)' }
 }
 
 export function OrmCockpitCard({ animate }: { animate: boolean }) {
@@ -235,16 +235,16 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
     ).length
 
     function status(): { color: string; label: string } {
-        if (isLinking) return { color: '#7a7a7a', label: 'detecting project…' }
+        if (isLinking) return { color: 'var(--color-ink-600)', label: 'detecting project…' }
         if (running && stage === 'drift')
             return {
-                color: '#d2a86a',
+                color: 'var(--color-syntax-keyword)',
                 label: `${shownDrift} changes · diffing`
             }
         if (running && stage === 'generate')
-            return { color: '#e3b2b3', label: 'generating migration…' }
+            return { color: 'var(--color-brand-300)', label: 'generating migration…' }
         return {
-            color: '#6fb98a',
+            color: 'var(--color-syntax-string)',
             label: `${safeCount} safe · ${reviewCount} review · ${destructiveCount} destructive`
         }
     }
@@ -266,13 +266,13 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                             className="pointer-events-none absolute inset-0"
                             style={{
                                 background:
-                                    'linear-gradient(90deg, transparent, rgba(227,178,179,0.10), transparent)',
+                                    'linear-gradient(90deg, transparent, color-mix(in srgb, var(--color-brand-300) 10%, transparent), transparent)',
                                 animation:
                                     'providerScanSweep 1.1s ease-in-out infinite'
                             }}
                         />
                     ) : null}
-                    <FolderGit2 className="h-3.5 w-3.5 shrink-0 text-accent-violet" />
+                    <FolderGit2 className="h-3.5 w-3.5 shrink-0 text-brand-600" />
                     <span className="truncate font-mono text-[10.5px] text-ink-300 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                         {src.folder}
                     </span>
@@ -296,7 +296,7 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                             {shownDrift > 0 ? `${shownDrift} changes` : '—'}
                         </span>
                     </div>
-                    <div className="divide-y divide-[#211c23]">
+                    <div className="divide-y divide-[var(--color-surface-raised)]">
                         {DRIFT.map((row, i) => {
                             const shown = shownDrift > i
                             const conf = CONF[row.conf]
@@ -324,7 +324,7 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                                         <span className="text-ink-700">
                                             .
                                         </span>
-                                        <span className="text-accent-mauve">
+                                        <span className="text-brand-400">
                                             {row.col}
                                         </span>
                                     </span>
@@ -352,11 +352,11 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                     <span
                         className="inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-1 font-mono text-[9.5px] uppercase tracking-[0.1em] transition-all duration-150 [font-family:var(--font-geist-mono),ui-monospace,monospace]"
                         style={{
-                            color: '#9ad7ad',
-                            borderColor: 'rgba(95,167,119,0.4)',
+                            color: 'var(--color-syntax-ident)',
+                            borderColor: 'color-mix(in srgb, var(--color-status-ok-dim) 40%, transparent)',
                             backgroundColor: pressed
-                                ? 'rgba(95,167,119,0.22)'
-                                : 'rgba(95,167,119,0.10)',
+                                ? 'color-mix(in srgb, var(--color-status-ok-dim) 22%, transparent)'
+                                : 'color-mix(in srgb, var(--color-status-ok-dim) 10%, transparent)',
                             transform: pressed ? 'scale(0.96)' : 'scale(1)'
                         }}
                     >
@@ -387,7 +387,7 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                                 </span>
                             ))
                         ) : (
-                            <span className="text-[#5a5560]">
+                            <span className="text-ink-800">
                                 Generate a migration from the drift above.
                             </span>
                         )}
@@ -395,7 +395,7 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                             <span
                                 ref={caretRef}
                                 aria-hidden
-                                className="ml-px inline-block h-[1.05em] w-[1.5px] -mb-[0.18em] bg-accent-rose"
+                                className="ml-px inline-block h-[1.05em] w-[1.5px] -mb-[0.18em] bg-brand-300"
                                 style={{
                                     animation: 'lspCaret 1s steps(1) infinite'
                                 }}

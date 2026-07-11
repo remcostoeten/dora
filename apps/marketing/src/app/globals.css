@@ -5,7 +5,41 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── The one knob ────────────────────────────────────────────────────────────
+ * Every color on this site that expresses the Dora brand is derived from this
+ * single hue angle. Rotate it and the accents, the near-black chassis, the
+ * borders, every glow and every hover tint rotate with it, in step.
+ *
+ *   --brand-hue: 75    amber/gold
+ *   --brand-hue: 18    the warm blush the site launched with
+ *   --brand-hue: 265   indigo
+ *   --brand-hue: 150   green
+ *
+ * --brand-chroma scales how much of that hue actually shows. 1 is the fully
+ * saturated site. Lower it and the accents desaturate toward paper-and-ink
+ * while the hue still governs which way the near-neutrals lean.
+ *
+ *   --brand-chroma: 1     the saturated site
+ *   --brand-chroma: 0.22  a warm chassis with the accent drained out
+ *   --brand-chroma: 0     grayscale, what midday.ai's dark theme ships
+ *
+ * At --brand-chroma: 0 the hue angle stops mattering and the brand ramp stops
+ * being an accent: it is the white-on-near-black ramp the buttons ride on.
+ *
+ * Deliberately NOT downstream of the hue, because they must not rotate:
+ *   --color-status-*   connected / connecting / error. A "connected" dot that
+ *                      turns red-ish when you retint the site is a lie.
+ *   --color-syntax-*   code highlighting. Tied to token meaning, not to us.
+ *   --color-vendor-*   third-party brand marks (Prisma's teal is Prisma's).
+ *   --color-ink-*      body/muted text. Stays chromatically neutral so copy
+ *                      never picks up a cast.
+ * The swatches in the theming feature card are content, not theme: they are
+ * literal hexes in the component, and that is correct.
+ * ─────────────────────────────────────────────────────────────────────────── */
 :root {
+  --brand-hue: 85;
+  --brand-chroma: 0;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -110,29 +144,62 @@
   --color-frame: var(--frame-line);
   --color-frame-strong: var(--frame-line-strong);
 
-  /* Marketing palette — the warm-dark accent system used across the home page.
-   * Each token is the exact hex it replaces (1:1), so it's pure indirection.
-   * Accents: brand hues. line/-strong: hairline borders. surface/-deep/-deeper
-   * /-elevated: the near-black panel ramp. ink-100..700: the text gray ramp,
-   * light to dark. One-off decorative/syntax colors stay as arbitrary values. */
-  --color-accent-pink: #f5c0c0;
-  --color-accent-rose: #e3b2b3;
-  --color-accent-violet: #ad8eb6;
-  --color-accent-mauve: #c9a3b5;
-  --color-accent-teal: #5eead4;
-  --color-line: #2b252c;
-  --color-line-strong: #3a3138;
-  --color-surface: #161218;
-  --color-surface-deep: #100d12;
-  --color-surface-deeper: #0d0a0f;
-  --color-surface-elevated: #1a1a1a;
-  --color-ink-100: #f0f0f0;
-  --color-ink-200: #e0e0e0;
-  --color-ink-300: #cfcfcf;
-  --color-ink-400: #9a9a9a;
-  --color-ink-500: #8a8a8a;
-  --color-ink-600: #7a7a7a;
-  --color-ink-700: #6a6a6a;
+  /* Brand ramp — the accent, lightest to deepest. All one hue.
+   * Lightness is pitched at midday's white-on-near-black primary (98%) rather
+   * than the mid-tone an accent hue could get away with: with no chroma to
+   * carry it, only lightness separates an accent from body copy. */
+  --color-brand-50: oklch(98.5% calc(0.014 * var(--brand-chroma)) var(--brand-hue));
+  --color-brand-100: oklch(97% calc(0.03 * var(--brand-chroma)) var(--brand-hue));
+  --color-brand-200: oklch(95% calc(0.061 * var(--brand-chroma)) var(--brand-hue));
+  --color-brand-300: oklch(90% calc(0.057 * var(--brand-chroma)) var(--brand-hue));
+  --color-brand-400: oklch(84% calc(0.051 * var(--brand-chroma)) var(--brand-hue));
+  --color-brand-500: oklch(79% calc(0.087 * var(--brand-chroma)) var(--brand-hue));
+  --color-brand-600: oklch(72% calc(0.067 * var(--brand-chroma)) var(--brand-hue));
+
+  /* Chassis — the near-black panel ramp and hairlines, faintly brand-tinted.
+   * Lightness tracks midday's dark theme: bg 5%, panel 7%, hairline 11% in HSL,
+   * which land at 15.8 / 18.2 / 22.6 once converted to oklch. Their borders sit
+   * on the same step as their muted fill, so hairlines are deliberately faint. */
+  --color-surface-base: oklch(15.8% calc(0.005 * var(--brand-chroma)) var(--brand-hue));
+  --color-surface-deeper: oklch(16.6% calc(0.008 * var(--brand-chroma)) var(--brand-hue));
+  --color-surface-deep: oklch(17.4% calc(0.011 * var(--brand-chroma)) var(--brand-hue));
+  --color-surface: oklch(18.2% calc(0.014 * var(--brand-chroma)) var(--brand-hue));
+  --color-surface-elevated: oklch(19.6% calc(0.015 * var(--brand-chroma)) var(--brand-hue));
+  --color-surface-raised: oklch(21% calc(0.015 * var(--brand-chroma)) var(--brand-hue));
+  --color-line: oklch(22.6% calc(0.015 * var(--brand-chroma)) var(--brand-hue));
+  --color-line-strong: oklch(26% calc(0.018 * var(--brand-chroma)) var(--brand-hue));
+  --color-line-bright: oklch(32% calc(0.013 * var(--brand-chroma)) var(--brand-hue));
+
+  /* Ink — text ramp, light to dark. Neutral on purpose: copy takes no cast. */
+  --color-ink-50: oklch(97% 0 0);
+  --color-ink-100: oklch(95.5% 0 0);
+  --color-ink-200: oklch(90.7% 0 0);
+  --color-ink-300: oklch(85.5% 0 0);
+  --color-ink-350: oklch(80.4% 0 0);
+  --color-ink-400: oklch(68.6% 0 0);
+  --color-ink-500: oklch(63.3% 0 0);
+  --color-ink-600: oklch(58% 0 0);
+  --color-ink-700: oklch(52.4% 0 0);
+  --color-ink-800: oklch(44.8% 0 0);
+  --color-ink-900: oklch(40% 0 0);
+
+  /* Independent of --brand-hue by design. See the note at the top of the file. */
+  --color-status-ok: oklch(72.3% 0.192 150);
+  --color-status-ok-soft: oklch(63.5% 0.075 150);
+  --color-status-ok-dim: oklch(53.4% 0.078 150);
+  --color-status-pending: oklch(76.9% 0.165 70);
+  --color-status-error: oklch(63.7% 0.208 25);
+
+  --color-syntax-string: oklch(72.4% 0.102 155);
+  --color-syntax-keyword: oklch(75.6% 0.094 76);
+  --color-syntax-number: oklch(84.3% 0.125 105);
+  --color-syntax-key: oklch(80.7% 0.056 237);
+  --color-syntax-value: oklch(83% 0.07 42);
+  --color-syntax-ident: oklch(82.6% 0.086 154);
+  --color-syntax-flag: oklch(74.7% 0.054 230);
+  --color-syntax-path: oklch(70.7% 0.06 145);
+
+  --color-vendor-prisma: oklch(85.5% 0.125 181);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -181,7 +248,7 @@
 
 .docs-sidebar-scroll::-webkit-scrollbar-thumb {
   background: var(--color-line-strong);
-  border: 2px solid #09080a;
+  border: 2px solid var(--color-surface-base);
 }
 
 .dora-docs {
@@ -204,31 +271,31 @@
   --ring: oklch(0.439 0 0);
   --color-fd-background: var(--background);
   --color-fd-foreground: var(--foreground);
-  --color-fd-muted: #161218;
+  --color-fd-muted: var(--color-surface);
   --color-fd-muted-foreground: color-mix(
     in srgb,
     var(--muted-foreground) 88%,
-    var(--color-accent-rose) 12%
+    var(--color-brand-300) 12%
   );
-  --color-fd-popover: #100d12;
+  --color-fd-popover: var(--color-surface-deep);
   --color-fd-popover-foreground: var(--foreground);
-  --color-fd-card: #0d0a0f;
+  --color-fd-card: var(--color-surface-deeper);
   --color-fd-card-foreground: var(--foreground);
-  --color-fd-border: #2b252c;
-  --color-fd-primary: #f5c0c0;
-  --color-fd-primary-foreground: #09080a;
-  --color-fd-secondary: #161218;
+  --color-fd-border: var(--color-line);
+  --color-fd-primary: var(--color-brand-200);
+  --color-fd-primary-foreground: var(--color-surface-base);
+  --color-fd-secondary: var(--color-surface);
   --color-fd-secondary-foreground: var(--foreground);
-  --color-fd-accent: rgba(245, 192, 192, 0.07);
-  --color-fd-accent-foreground: #f5c0c0;
-  --color-fd-ring: rgba(245, 192, 192, 0.48);
+  --color-fd-accent: color-mix(in srgb, var(--color-brand-200) 7%, transparent);
+  --color-fd-accent-foreground: var(--color-brand-200);
+  --color-fd-ring: color-mix(in srgb, var(--color-brand-200) 48%, transparent);
   --fd-sidebar-width: 286px;
   --fd-layout-width: 1600px;
   min-height: 100vh;
   background:
     radial-gradient(
       circle at 50% 0%,
-      rgba(245, 192, 192, 0.055),
+      color-mix(in srgb, var(--color-brand-200) 5.5%, transparent),
       transparent 34rem
     ),
     var(--background);
@@ -243,16 +310,16 @@
 .dora-docs #nd-sidebar {
   border-color: var(--color-line);
   background:
-    linear-gradient(180deg, rgba(16, 13, 18, 0.92), rgba(9, 8, 10, 0.96)),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-surface-deep) 92%, transparent), color-mix(in srgb, var(--color-surface-base) 96%, transparent)),
     var(--background);
-  box-shadow: inset -1px 0 0 rgba(245, 192, 192, 0.035);
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--color-brand-200) 3.5%, transparent);
 }
 
 .dora-docs #nd-sidebar [class*="text-[0.9375rem]"] {
   font-family: var(--font-geist-pixel-square), var(--font-geist-mono),
     ui-monospace, monospace;
-  color: var(--color-accent-pink);
-  text-shadow: 0 0 14px rgba(245, 192, 192, 0.28);
+  color: var(--color-brand-200);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--color-brand-200) 28%, transparent);
 }
 
 .dora-docs #nd-sidebar [role="button"],
@@ -277,20 +344,20 @@
 }
 
 .dora-docs #nd-sidebar [data-active="true"] {
-  border-left: 1px solid var(--color-accent-pink);
-  background: rgba(245, 192, 192, 0.065);
+  border-left: 1px solid var(--color-brand-200);
+  background: color-mix(in srgb, var(--color-brand-200) 6.5%, transparent);
   color: var(--foreground);
 }
 
 .dora-docs #nd-sidebar [data-active="true"]::before {
-  background: var(--color-accent-pink);
-  box-shadow: 0 0 12px rgba(245, 192, 192, 0.45);
+  background: var(--color-brand-200);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--color-brand-200) 45%, transparent);
 }
 
 .dora-docs #nd-sidebar a:hover,
 .dora-docs #nd-sidebar button:hover {
-  background: rgba(245, 192, 192, 0.045);
-  color: var(--color-accent-pink);
+  background: color-mix(in srgb, var(--color-brand-200) 4.5%, transparent);
+  color: var(--color-brand-200);
 }
 
 .dora-docs #nd-sidebar [cmdk-input],
@@ -299,7 +366,7 @@
 .dora-docs button[aria-label*="Search"] {
   border: 1px solid var(--color-line);
   border-radius: 2px;
-  background: rgba(13, 10, 15, 0.82);
+  background: color-mix(in srgb, var(--color-surface-deeper) 82%, transparent);
   color: var(--muted-foreground);
 }
 
@@ -322,7 +389,7 @@
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--muted-foreground) 78%, var(--color-accent-rose) 22%);
+  color: color-mix(in srgb, var(--muted-foreground) 78%, var(--color-brand-300) 22%);
 }
 
 .dora-docs #nd-page > h1 {
@@ -337,16 +404,16 @@
   --tw-prose-body: color-mix(in srgb, var(--foreground) 78%, var(--color-ink-500) 22%);
   --tw-prose-headings: var(--foreground);
   --tw-prose-lead: var(--muted-foreground);
-  --tw-prose-links: var(--color-accent-pink);
+  --tw-prose-links: var(--color-brand-200);
   --tw-prose-bold: var(--foreground);
-  --tw-prose-counters: #6a5f66;
-  --tw-prose-bullets: var(--color-accent-pink);
+  --tw-prose-counters: var(--color-ink-700);
+  --tw-prose-bullets: var(--color-brand-200);
   --tw-prose-hr: var(--color-line);
   --tw-prose-quotes: var(--foreground);
-  --tw-prose-quote-borders: rgba(245, 192, 192, 0.42);
+  --tw-prose-quote-borders: color-mix(in srgb, var(--color-brand-200) 42%, transparent);
   --tw-prose-captions: var(--muted-foreground);
-  --tw-prose-code: var(--color-accent-rose);
-  --tw-prose-pre-code: #ddd4dc;
+  --tw-prose-code: var(--color-brand-300);
+  --tw-prose-pre-code: var(--color-ink-300);
   --tw-prose-pre-bg: var(--color-surface-deeper);
   --tw-prose-th-borders: var(--color-line-strong);
   --tw-prose-td-borders: var(--color-line);
@@ -377,7 +444,7 @@
 }
 
 .dora-docs-body a {
-  text-decoration-color: rgba(245, 192, 192, 0.32);
+  text-decoration-color: color-mix(in srgb, var(--color-brand-200) 32%, transparent);
   text-underline-offset: 3px;
   transition:
     color 160ms cubic-bezier(0.23, 1, 0.32, 1),
@@ -385,8 +452,8 @@
 }
 
 .dora-docs-body a:hover {
-  color: #ffdada;
-  text-decoration-color: rgba(245, 192, 192, 0.85);
+  color: var(--color-brand-100);
+  text-decoration-color: color-mix(in srgb, var(--color-brand-200) 85%, transparent);
 }
 
 .dora-docs-body :not(pre) > code {
@@ -394,7 +461,7 @@
   border-radius: 2px;
   background: var(--color-surface-deeper);
   padding: 0.12rem 0.32rem;
-  color: var(--color-accent-rose);
+  color: var(--color-brand-300);
   font-weight: 500;
 }
 
@@ -403,33 +470,33 @@
   border: 1px solid var(--color-line);
   border-radius: 2px;
   background:
-    linear-gradient(180deg, rgba(245, 192, 192, 0.035), transparent 42px),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-brand-200) 3.5%, transparent), transparent 42px),
     var(--color-surface-deeper);
-  box-shadow: inset 0 1px 0 rgba(245, 192, 192, 0.045);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-brand-200) 4.5%, transparent);
 }
 
 .dora-docs-body table {
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: 2px;
-  background: rgba(13, 10, 15, 0.55);
+  background: color-mix(in srgb, var(--color-surface-deeper) 55%, transparent);
 }
 
 .dora-docs-body thead {
   border-bottom-color: var(--color-line-strong);
-  background: rgba(245, 192, 192, 0.045);
+  background: color-mix(in srgb, var(--color-brand-200) 4.5%, transparent);
 }
 
 .dora-docs-body th {
-  color: var(--color-accent-rose);
+  color: var(--color-brand-300);
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.72rem;
   letter-spacing: 0.04em;
 }
 
 .dora-docs-body blockquote {
-  border-left-color: rgba(245, 192, 192, 0.48);
-  background: rgba(245, 192, 192, 0.035);
+  border-left-color: color-mix(in srgb, var(--color-brand-200) 48%, transparent);
+  background: color-mix(in srgb, var(--color-brand-200) 3.5%, transparent);
   padding: 0.75rem 1rem;
 }
 
@@ -442,7 +509,7 @@
 .dora-docs aside[class*="toc"],
 .dora-docs [data-toc] {
   border-color: var(--color-line);
-  background-color: rgba(13, 10, 15, 0.88);
+  background-color: color-mix(in srgb, var(--color-surface-deeper) 88%, transparent);
 }
 
 .dora-docs [data-toc] a,
@@ -453,18 +520,18 @@
 
 .dora-docs [data-toc] a:hover,
 .dora-docs aside[class*="toc"] a:hover {
-  color: var(--color-accent-pink);
+  color: var(--color-brand-200);
 }
 
 .dora-docs [data-toc] a[data-active="true"],
 .dora-docs aside[class*="toc"] a[data-active="true"] {
-  color: var(--color-accent-pink);
+  color: var(--color-brand-200);
 }
 
 .dora-docs [data-radix-dialog-content],
 .dora-docs [data-sidebar-drawer] {
   border-color: var(--color-line);
-  background: #09080a;
+  background: var(--color-surface-base);
 }
 
 .hero-frame {
@@ -486,33 +553,40 @@
   /* The demo intentionally drifts a touch darker than the real /app so it
        sits in line with the marketing page's near-black background and the
        full-bleed edges/fade merge seamlessly. The base + sidebar are pinned to
-       the page background (oklch(0.145 0 0)); surfaces step up from there. */
+       the page background (oklch(0.145 0 0)); surfaces step up from there.
+       Foreground/primary stay off-white rather than pure white so the demo
+       doesn't glare against the dark marketing page. */
   --background: oklch(0.145 0 0);
-  --foreground: hsl(0 0% 95%);
+  --foreground: hsl(0 0% 84%);
   --card: hsl(0 0% 7%);
-  --card-foreground: hsl(0 0% 95%);
+  --card-foreground: hsl(0 0% 84%);
   --popover: hsl(0 0% 9%);
-  --popover-foreground: hsl(0 0% 95%);
-  --primary: hsl(0 0% 98%);
+  --popover-foreground: hsl(0 0% 84%);
+  --primary: hsl(0 0% 78%);
   --primary-foreground: hsl(0 0% 9%);
   --muted: hsl(0 0% 17%);
-  --muted-foreground: hsl(0 0% 58%);
+  --muted-foreground: hsl(0 0% 50%);
   --accent: hsl(0 0% 14%);
-  --accent-foreground: hsl(0 0% 98%);
+  --accent-foreground: hsl(0 0% 86%);
   --border: hsl(0 0% 16%);
   --input: hsl(0 0% 16%);
-  --ring: hsl(0 0% 83%);
+  --ring: hsl(0 0% 66%);
   --sidebar: oklch(0.145 0 0);
-  --sidebar-foreground: hsl(0 0% 86%);
+  --sidebar-foreground: hsl(0 0% 76%);
   --sidebar-accent: hsl(0 0% 14%);
-  --sidebar-accent-foreground: hsl(0 0% 98%);
+  --sidebar-accent-foreground: hsl(0 0% 86%);
   --sidebar-border: hsl(0 0% 28%);
+  /* The real studio renders in Inter + JetBrains Mono; remap the Geist vars
+     inside the demo so every font-sans/font-mono utility picks them up. */
+  --font-geist-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-geist-mono:
+    var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, monospace;
   position: relative;
   z-index: 2;
   margin: clamp(32px, 5vw, 56px) clamp(32px, 5vw, 56px) 0;
   width: calc(100% + 3rem);
   height: clamp(420px, 50vw, 590px);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-inter), "Inter", system-ui, sans-serif;
 }
 
 .hero-app-demo__viewport {
@@ -524,7 +598,7 @@
   background:
     radial-gradient(
       circle at 50% 0%,
-      rgba(245, 192, 192, 0.08),
+      color-mix(in srgb, var(--color-brand-200) 8%, transparent),
       transparent 38%
     ),
     var(--background);
@@ -610,6 +684,15 @@
 }
 
 .install-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.hero-tab-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hero-tab-scroll::-webkit-scrollbar {
   display: none;
 }
 
@@ -712,7 +795,7 @@
   background:
     radial-gradient(
       circle at 50% 0%,
-      rgba(245, 192, 192, 0.08),
+      color-mix(in srgb, var(--color-brand-200) 8%, transparent),
       transparent 38%
     ),
     var(--background);

@@ -190,7 +190,7 @@ export function SchemaVisualizationShowcase() {
                         </div>
                     </div>
                 </aside>
-                <div className="relative min-w-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,192,192,0.06),transparent_40%),var(--background)]">
+                <div className="relative min-w-0 bg-[radial-gradient(circle_at_50%_0%,color-mix(in srgb, var(--color-brand-200) 6%, transparent),transparent_40%),var(--background)]">
                     <div className="flex h-10 items-center justify-between border-b border-sidebar-border px-3">
                         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                             <Move className="h-3.5 w-3.5" />
@@ -231,8 +231,8 @@ export function SchemaVisualizationShowcase() {
                                         fill="none"
                                         stroke={
                                             isActive
-                                                ? 'rgba(245,192,192,0.85)'
-                                                : 'rgba(173,142,182,0.55)'
+                                                ? 'color-mix(in srgb, var(--color-brand-200) 85%, transparent)'
+                                                : 'color-mix(in srgb, var(--color-brand-600) 55%, transparent)'
                                         }
                                         strokeWidth={isActive ? 2.2 : 1.5}
                                         className={

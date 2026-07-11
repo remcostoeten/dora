@@ -49,7 +49,7 @@ function renderItem(item: string, issuesUrl: string | null): ReactNode {
                 href={`${issuesUrl}/${issueNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-accent-pink underline decoration-accent-pink/30 underline-offset-2 transition-colors hover:decoration-accent-pink"
+                className="font-mono text-brand-200 underline decoration-brand-200/30 underline-offset-2 transition-colors hover:decoration-brand-200"
             >
                 {token}
             </a>
@@ -104,7 +104,7 @@ function ChangelogReleaseCard({
                         v{release.version}
                     </h2>
                     {isLatest ? (
-                        <span className="inline-flex items-center rounded-[2px] border border-accent-pink/40 bg-[rgba(245,192,192,0.08)] px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-accent-pink">
+                        <span className="inline-flex items-center rounded-[2px] border border-brand-200/40 bg-brand-200/8 px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-brand-200">
                             Latest
                         </span>
                     ) : null}
@@ -116,7 +116,7 @@ function ChangelogReleaseCard({
                         href={release.tagUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-foreground/80 transition-colors hover:text-accent-pink"
+                        className="inline-flex items-center gap-1.5 text-foreground/80 transition-colors hover:text-brand-200"
                     >
                         View on GitHub
                         <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" />
@@ -181,7 +181,7 @@ export function ChangelogTimeline({
                         <a
                             key={release.version}
                             href={`#v${release.version}`}
-                            className="inline-flex items-center rounded-[2px] border border-line px-2.5 py-1 font-mono text-[11px] text-muted-foreground transition-colors hover:border-line-strong hover:bg-[rgba(173,142,182,0.06)] hover:text-foreground"
+                            className="inline-flex items-center rounded-[2px] border border-line px-2.5 py-1 font-mono text-[11px] text-muted-foreground transition-colors hover:border-line-strong hover:bg-brand-600/6 hover:text-foreground"
                         >
                             v{release.version}
                         </a>
