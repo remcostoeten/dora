@@ -54,6 +54,8 @@ import {
 	resolveProviderLabel
 } from '../source-labels'
 
+const KEEP_OPEN_AFTER_DELETE_MS = 600
+
 function normalizeTimestamp(value: number | null | undefined): number | null {
 	if (!value) return null
 	return value < 1_000_000_000_000 ? value * 1000 : value
@@ -254,7 +256,7 @@ export function ConnectionSwitcher({
 	const [searchQuery, setSearchQuery] = useState('')
 	const [dropdownOpen, setDropdownOpen] = useState(false)
 	const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null)
-	const keepOpenAfterDeleteRef = useRef(false)
+	const keepOpenUntilRef = useRef(0)
 	const connectionRowRefs = useRef(new Map<string, HTMLDivElement>())
 	const activeConnection = connections.find((c) => c.id === activeConnectionId)
 	const status = activeConnection?.status || 'idle'
@@ -320,8 +322,12 @@ export function ConnectionSwitcher({
 		[dropdownOpen]
 	)
 
+	function markKeepOpenAfterDelete() {
+		keepOpenUntilRef.current = Date.now() + KEEP_OPEN_AFTER_DELETE_MS
+	}
+
 	function confirmDelete(id: string) {
-		keepOpenAfterDeleteRef.current = true
+		markKeepOpenAfterDelete()
 		onDeleteConnection?.(id)
 		setDropdownOpen(true)
 	}
@@ -428,8 +434,7 @@ export function ConnectionSwitcher({
 			<DropdownMenu
 				open={dropdownOpen}
 				onOpenChange={function handleMenuOpenChange(open) {
-					if (!open && keepOpenAfterDeleteRef.current) {
-						keepOpenAfterDeleteRef.current = false
+					if (!open && Date.now() < keepOpenUntilRef.current) {
 						setDropdownOpen(true)
 						return
 					}
@@ -523,7 +528,11 @@ export function ConnectionSwitcher({
 						e.preventDefault()
 					}}
 					onInteractOutside={function handleDropdownInteractOutside() {
+						keepOpenUntilRef.current = 0
 						setContextMenuConnectionId(null)
+					}}
+					onEscapeKeyDown={function handleDropdownEscape() {
+						keepOpenUntilRef.current = 0
 					}}
 					onKeyDownCapture={handleConnectionListKeyDownCapture}
 					onKeyDown={handleConnectionListKeyDown}
@@ -603,9 +612,7 @@ export function ConnectionSwitcher({
 														onEditConnection={onEditConnection}
 														onDeleteConnection={onDeleteConnection}
 														onConfirmDelete={confirmDelete}
-														onKeepOpenAfterDelete={function markKeepOpenAfterDelete() {
-															keepOpenAfterDeleteRef.current = true
-														}}
+														onKeepOpenAfterDelete={markKeepOpenAfterDelete}
 														onContextMenuCapture={function handleConnectionContextMenu() {
 															setContextMenuConnectionId(
 																connection.id
