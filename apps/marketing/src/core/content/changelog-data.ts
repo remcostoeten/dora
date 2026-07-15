@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.33.0"
+export const CURRENT_VERSION = "0.34.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -100,6 +100,37 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				items: [
 				"refactor(studio): extract command palette internals, move palette to Ctrl+K",
 				"refactor(marketing): derive the whole palette from one brand hue",
+				]
+			}
+		]
+	},
+	{
+		version: "0.34.0",
+		date: "2026-07-15",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.34.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(docs): remove duplicate H1 from doc bodies",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.33.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(installation): document Winget and APT install channels",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat: refresh Dora promo and analytics",
 				]
 			}
 		]

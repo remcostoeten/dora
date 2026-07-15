@@ -87,6 +87,31 @@ All notable changes to this project will be documented in this file.
 
 - refactor(marketing): derive the whole palette from one brand hue
 
+
+## [v0.34.0] - 2026-07-15
+
+### Bug Fixes
+
+- fix(docs): remove duplicate H1 from doc bodies
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.33.0
+
+
+
+### Documentation
+
+- docs(installation): document Winget and APT install channels
+
+
+
+### Features
+
+- feat: refresh Dora promo and analytics
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

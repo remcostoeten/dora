@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.33.0"
+export const CURRENT_VERSION = "0.34.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -64,6 +64,20 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"refactor(marketing): derive the whole palette from one brand hue",
 			"chore(aur): update dora to 0.32.0",
 			"chore(marketing): drop the postbuild SEO audit",
+		]
+	},
+	{
+		version: "0.34.0",
+		date: "2026-07-15",
+		commit: "v0.34.0",
+		title: "Feat: refresh Dora promo and analytics",
+		description: "Feat: refresh Dora promo and analytics. Docs(installation): document Winget and APT install channels.",
+		type: "feature",
+		details: [
+			"feat: refresh Dora promo and analytics",
+			"fix(docs): remove duplicate H1 from doc bodies",
+			"docs(installation): document Winget and APT install channels",
+			"chore(aur): update dora to 0.33.0",
 		]
 	},
 	{
