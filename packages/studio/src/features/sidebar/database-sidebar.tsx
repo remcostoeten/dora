@@ -1,9 +1,9 @@
-import { Plus, Database as DatabaseIcon, GripHorizontal } from "lucide-react";
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { Plus, Database as DatabaseIcon } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { SidebarTableSkeleton } from "@studio/shared/ui/skeleton";
 import { useToast } from "@studio/shared/ui/use-toast";
 import { toast as appToast } from "@studio/shared/ui/notifier";
-import { useAdapter } from "@studio/core/data-provider";
+import { useAdapter, useSchema } from "@studio/core/data-provider";
 import { useIsTauri } from "@studio/core/data-provider/context";
 import { getAdapterError } from "@studio/core/data-provider/types";
 import type { DatabaseSchema, TableInfo } from "@studio/lib/bindings";
@@ -35,6 +35,11 @@ import { TableInfoDialog } from "./components/table-info-dialog";
 import { TableList } from "./components/table-list";
 import type { TableRightClickAction } from "./components/table-list";
 import { TableSearch, FilterState } from "./components/table-search";
+import {
+  useSidebarWidth,
+  SIDEBAR_MIN_WIDTH,
+  SIDEBAR_MAX_WIDTH,
+} from "./hooks/use-sidebar-width";
 import { Schema, TableItem } from "./types";
 import { cn } from "@studio/shared/utils/cn";
 import {
@@ -90,6 +95,7 @@ export function DatabaseSidebar({
   const { toast } = useToast();
   const adapter = useAdapter();
   const isTauri = useIsTauri();
+  const { width, isResizing, startResize, resetWidth, nudgeWidth } = useSidebarWidth();
   const [internalNavId, setInternalNavId] = useState("database-studio");
   const activeNavId = controlledNavId ?? internalNavId;
 
@@ -110,23 +116,37 @@ export function DatabaseSidebar({
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [editingTableId, setEditingTableId] = useState<string | undefined>();
 
-  const [schema, setSchema] = useState<DatabaseSchema | null>(null);
-  const [isLoadingSchema, setIsLoadingSchema] = useState(false);
-  const [schemaError, setSchemaError] = useState<string | null>(null);
+  // Shares the ['schema', connectionId] query with DatabaseStudio — a private
+  // fetch here meant every connect ran connect + introspection twice.
+  const schemaQuery = useSchema(activeConnectionId);
+  const schema: DatabaseSchema | null = schemaQuery.data ?? null;
+  const isLoadingSchema = schemaQuery.isFetching;
+  const schemaError = schemaQuery.isError
+    ? schemaQuery.error instanceof Error
+      ? schemaQuery.error.message
+      : "Failed to load schema"
+    : null;
 
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showDropDialog, setShowDropDialog] = useState(false);
   const [showTruncateDialog, setShowTruncateDialog] = useState(false);
   const [targetTableName, setTargetTableName] = useState<string>("");
   const [isDdlLoading, setIsDdlLoading] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showTableInfoDialog, setShowTableInfoDialog] = useState(false);
   const [tableInfoTarget, setTableInfoTarget] = useState<string>("");
   const [bulkActionConfirm, setBulkActionConfirm] = useState<{
     open: boolean;
     action: BulkAction | null;
   }>({ open: false, action: null });
-  const schemaFetchIdRef = useRef(0);
+
+  const refreshSchema = useCallback(
+    function () {
+      window.dispatchEvent(
+        new CustomEvent("dora-schema-refresh", { detail: { connectionId: activeConnectionId } }),
+      );
+    },
+    [activeConnectionId],
+  );
 
   useEffect(function initAppearance() {
     const settings = getAppearanceSettings();
@@ -137,96 +157,46 @@ export function DatabaseSidebar({
   }, []);
 
   useEffect(
-    function listenForSchemaRefresh() {
-      function onSchemaRefresh(event: Event) {
-        const customEvent = event as CustomEvent<{ connectionId?: string }>;
-        const targetConnectionId = customEvent.detail?.connectionId;
-        if (!targetConnectionId || targetConnectionId === activeConnectionId) {
-          setRefreshTrigger(function (prev) {
-            return prev + 1;
-          });
-        }
-      }
-
-      window.addEventListener("dora-schema-refresh", onSchemaRefresh as EventListener);
-      return function () {
-        window.removeEventListener("dora-schema-refresh", onSchemaRefresh as EventListener);
-      };
+    function reportSchemaError() {
+      if (!schemaQuery.isError) return;
+      const error = schemaQuery.error;
+      console.error("Failed to fetch schema:", error);
+      appToast.error("Failed to fetch schema", {
+        description: error instanceof Error ? error.message : String(error),
+      });
     },
-    [activeConnectionId],
+    [schemaQuery.isError, schemaQuery.error],
+  );
+
+  useEffect(
+    function syncSelectedSchema() {
+      if (!schema || schema.schemas.length === 0 || !activeConnectionId) {
+        setSelectedSchema(undefined);
+        return;
+      }
+      setSelectedSchema(function (current) {
+        if (current && schema.schemas.includes(current.name)) return current;
+        return {
+          id: schema.schemas[0],
+          name: schema.schemas[0],
+          databaseId: activeConnectionId,
+        };
+      });
+    },
+    [schema, activeConnectionId],
   );
 
   useEffect(
     function handleAutoSelectFirstTable() {
-      async function fetchSchema() {
-        if (!activeConnectionId) {
-          setSchema(null);
-          setSchemaError(null);
-          setSelectedSchema(undefined);
-          setIsLoadingSchema(false);
-          return;
-        }
-
-        const requestId = ++schemaFetchIdRef.current;
-        setIsLoadingSchema(true);
-        setSchemaError(null);
-
-        try {
-          const connectResult = await adapter.connectToDatabase(activeConnectionId);
-          if (!connectResult.ok) {
-            throw new Error(getAdapterError(connectResult));
-          }
-
-          const result = await adapter.getSchema(activeConnectionId);
-          if (requestId !== schemaFetchIdRef.current) {
-            return;
-          }
-          if (result.ok) {
-            setSchema(result.data);
-            if (result.data.schemas.length > 0) {
-              setSelectedSchema({
-                id: result.data.schemas[0],
-                name: result.data.schemas[0],
-                databaseId: activeConnectionId,
-              });
-            }
-
-            if (autoSelectFirstTable && result.data.tables.length > 0 && onTableSelect) {
-              const firstTable = result.data.tables[0];
-              onTableSelect(getTableRefId(firstTable), firstTable.name);
-              if (onAutoSelectComplete) {
-                onAutoSelectComplete();
-              }
-            }
-          } else {
-            throw new Error(getAdapterError(result));
-          }
-        } catch (error) {
-          if (requestId !== schemaFetchIdRef.current) {
-            return;
-          }
-          console.error("Failed to fetch schema:", error);
-          appToast.error("Failed to fetch schema", {
-            description: error instanceof Error ? error.message : String(error),
-          });
-          setSchemaError(error instanceof Error ? error.message : "Failed to load schema");
-          setSchema(null);
-        } finally {
-          if (requestId === schemaFetchIdRef.current) {
-            setIsLoadingSchema(false);
-          }
-        }
+      if (!autoSelectFirstTable || !schema || schema.tables.length === 0 || !onTableSelect) return;
+      const firstTable = schema.tables[0];
+      onTableSelect(getTableRefId(firstTable), firstTable.name);
+      if (onAutoSelectComplete) {
+        onAutoSelectComplete();
       }
-
-      fetchSchema();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      activeConnectionId,
-      refreshTrigger,
-      autoSelectFirstTable,
-      // adapter is stable, onTableSelect and onAutoSelectComplete are useCallback with stable deps
-    ],
+    [schema, autoSelectFirstTable],
   );
 
   const tables = useMemo(
@@ -374,9 +344,7 @@ export function DatabaseSidebar({
         // Don't null the schema — that blanks the tree before the refetch
         // returns (flash). The refetch keeps the current tree visible and
         // swaps in the renamed table when it lands.
-        setRefreshTrigger(function (prev) {
-          return prev + 1;
-        });
+        refreshSchema();
       } else {
         console.error("Failed to rename table:", result.error);
         appToast.error("Failed to rename table", {
@@ -403,9 +371,7 @@ export function DatabaseSidebar({
         setShowDropDialog(false);
         // Keep the tree painted during the refetch; nulling it flashes an
         // empty sidebar before the fresh schema arrives.
-        setRefreshTrigger(function (prev) {
-          return prev + 1;
-        });
+        refreshSchema();
         if (activeTableId === targetTableName) {
           setInternalTableId(undefined);
         }
@@ -441,9 +407,7 @@ export function DatabaseSidebar({
       ]);
       if (result.status === "ok") {
         setShowTruncateDialog(false);
-        setRefreshTrigger(function (prev) {
-          return prev + 1;
-        });
+        refreshSchema();
         toast({
           title: "Table truncated",
           description: `All rows from "${getTableRefParts(targetTableName).tableName}" have been deleted.`,
@@ -565,9 +529,7 @@ export function DatabaseSidebar({
         });
         // Keep the current tree visible during the refetch; the duplicated
         // table appears when the fresh schema lands, no empty-tree flash.
-        setRefreshTrigger(function (prev) {
-          return prev + 1;
-        });
+        refreshSchema();
       } else {
         throw new Error(formatBackendError(result.error));
       }
@@ -612,9 +574,7 @@ export function DatabaseSidebar({
           setIsMultiSelectMode(false);
           // Don't blank the tree — let the refetch swap the dropped tables out
           // when the fresh schema arrives, instead of flashing an empty list.
-          setRefreshTrigger(function (prev) {
-            return prev + 1;
-          });
+          refreshSchema();
         } else {
           throw new Error(formatBackendError(result.error));
         }
@@ -641,9 +601,7 @@ export function DatabaseSidebar({
           });
           setSelectedTableIds([]);
           setIsMultiSelectMode(false);
-          setRefreshTrigger(function (prev) {
-            return prev + 1;
-          });
+          refreshSchema();
         } else {
           throw new Error(formatBackendError(result.error));
         }
@@ -775,8 +733,34 @@ export function DatabaseSidebar({
 
   return (
     <div
-      className="relative flex flex-col h-full w-[244px] shrink-0 bg-sidebar border-r border-sidebar-border select-none"
+      className="relative flex flex-col h-full shrink-0 bg-sidebar border-r border-sidebar-border select-none"
+      style={{ width }}
     >
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize sidebar"
+        aria-valuenow={width}
+        aria-valuemin={SIDEBAR_MIN_WIDTH}
+        aria-valuemax={SIDEBAR_MAX_WIDTH}
+        tabIndex={0}
+        className={cn(
+          "absolute inset-y-0 right-0 z-20 w-1.5 translate-x-1/2 cursor-col-resize bg-transparent transition-colors hover:bg-primary/40 focus-visible:bg-primary/40 focus-visible:outline-none",
+          isResizing && "bg-primary/60",
+        )}
+        onMouseDown={startResize}
+        onDoubleClick={resetWidth}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            nudgeWidth(event.shiftKey ? -32 : -8);
+          } else if (event.key === "ArrowRight") {
+            event.preventDefault();
+            nudgeWidth(event.shiftKey ? 32 : 8);
+          }
+        }}
+      />
+
       <div className="flex flex-col shrink-0">
         <div className="p-0">
           <ConnectionSwitcher
@@ -810,9 +794,7 @@ export function DatabaseSidebar({
             isRefreshing={isLoadingSchema}
             onRefresh={function () {
               if (activeConnectionId) {
-                setRefreshTrigger(function (prev) {
-                  return prev + 1;
-                });
+                refreshSchema();
               }
             }}
           />
@@ -852,9 +834,7 @@ export function DatabaseSidebar({
               size="sm"
               className="text-xs h-7 px-3 mt-1"
               onClick={function () {
-                setRefreshTrigger(function (prev) {
-                  return prev + 1;
-                });
+                refreshSchema();
               }}
             >
               Try again

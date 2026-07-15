@@ -14,6 +14,5 @@ export const dialogContentMotion = [
 	'data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95',
 	'data-[state=open]:duration-200 data-[state=closed]:duration-150',
 	'data-[state=open]:ease-[cubic-bezier(0.16,1,0.3,1)]',
-	'data-[state=closed]:ease-[cubic-bezier(0.4,0,1,1)]',
-	'motion-reduce:data-[state=open]:zoom-in-100 motion-reduce:data-[state=closed]:zoom-out-100'
+	'data-[state=closed]:ease-[cubic-bezier(0.4,0,1,1)]'
 ].join(' ')

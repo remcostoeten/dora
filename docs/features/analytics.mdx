@@ -8,6 +8,19 @@ API](https://posthog.com/docs/hogql) — there's no wire protocol to
 implement, so the connector works the same way against PostHog Cloud (US or
 EU) as it does against a self-hosted instance.
 
+<video
+  src='/features/posthog-analytics.webm'
+  poster='/features/posthog-analytics.png'
+  autoPlay
+  loop
+  muted
+  playsInline
+  controls
+  className='w-full rounded-lg border'
+>
+  Your browser does not support the video tag.
+</video>
+
 ## Connecting a project
 
 Add a PostHog connection the same way you'd add any other data source, using
@@ -34,20 +47,35 @@ hidden rather than shown as zero if the count can't be read.
 ## The built-in dashboard
 
 Opening a PostHog connection adds an **Analytics** entry to the sidebar. It
-runs six HogQL queries against the connection and renders them as a
+runs a set of HogQL queries against the connection and renders them as a
 dashboard:
 
 | Panel | What it shows |
 |---|---|
-| KPI tiles | Total events, unique users, and pageviews over the last 7 days |
-| Monitored sites | Hosts sending events in the last 30 days, with per-site event/user/pageview counts |
-| Activity | Daily events and unique users over the last 14 days |
-| Top events | The 12 most frequent event names in the last 7 days |
-| Top pages | The 10 most-viewed URLs (`$pageview` events) in the last 7 days |
-| Top browsers | The 8 most common `$browser` values in the last 7 days |
+| KPI tiles | Events, unique users, pageviews, and sessions, each against the previous period of the same length |
+| Monitored sites | Hosts sending events, with per-site event/user/pageview counts |
+| Activity | Daily events and unique users |
+| Top events | The most frequent event names |
+| Top pages | The most-viewed URLs (`$pageview` events) |
+| Top browsers | The most common `$browser` values |
+| Top referrers | Where traffic came from |
+| Top countries | Geographic breakdown |
+| Devices | Device-type breakdown |
 
-Every query accepts an **exclude localhost** filter that drops traffic from
-`localhost`, `127.0.0.1`, `0.0.0.0`, and `[::1]` hosts, and a manual refresh
-re-runs all six.
+### Ranges, filters, and drill-downs
+
+The range selector in the header switches every panel between **7, 14, 30,
+and 90 days** at once — the tiles re-compare against the matching previous
+period as you go.
+
+Clicking a slice of any breakdown panel **drills down**: the value becomes a
+filter chip, and every other panel re-queries within it. Drills are additive,
+so you can stack a site, an event, and a browser to narrow the whole
+dashboard to one slice of traffic. Chips are removable individually, or with
+**Clear all**.
+
+Two more controls sit in the header: an **exclude localhost** switch that
+drops traffic from `localhost`, `127.0.0.1`, `0.0.0.0`, and `[::1]` hosts,
+and a manual refresh that re-runs every query.
 
 <Callout type='info'>The dashboard is read-only, matching the connector's write-blocking behavior for PostHog: Dora never mutates PostHog data, only queries it.</Callout>

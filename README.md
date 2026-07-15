@@ -12,12 +12,14 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/demo-tour.webp" alt="Dora in use" width="92%" />
+  <video src="https://raw.githubusercontent.com/remco-stoeten/dora/master/docs/assets/dora-promo.mp4" controls muted playsinline width="92%">
+    <a href="https://github.com/remco-stoeten/dora/blob/master/docs/assets/dora-promo.mp4">Watch the 24-second Dora promo</a>
+  </video>
 </p>
 
-Dora is a cross-platform database workbench built with Tauri and Rust. It ships as a **~10 MB binary**, versus the 100+ MB you get from Electron-based alternatives, and covers the full day-to-day loop without asking you to leave the app.
+Dora is a cross-platform database workbench built with Tauri and Rust. The installer is a **20–30 MB download** that starts instantly, versus the several-hundred-MB Chromium bundle you get from Electron-based alternatives, and it covers the full day-to-day loop without asking you to leave the app.
 
-Connect to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB. Open CSV, JSON, Parquet, and NDJSON as queryable data files. Sign in to a provider account (Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1) and pick a database without hunting for a connection string, or paste a string for any of 15+ auto-recognized hosted providers. Browse data, run SQL in a Monaco editor, generate SQL with AI, write ORM queries with Drizzle or Prisma, compare a Drizzle/Prisma schema against the live database and preview the migration, inspect schemas as an ER diagram, and manage local Docker databases, all keyboard-first.
+Connect to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB. Open CSV, JSON, Parquet, and NDJSON as queryable data files. Point it at a PostHog project and query your product analytics with HogQL, with a built-in dashboard on top. Sign in to a provider account (Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1) and pick a database without hunting for a connection string, or paste a string for any of 15+ auto-recognized hosted providers. Browse data, run SQL in a Monaco editor, generate SQL with AI, write ORM queries with Drizzle or Prisma, compare a Drizzle/Prisma schema against the live database and preview the migration, inspect schemas as an ER diagram, and manage local Docker databases, all keyboard-first.
 
 ## Install
 
@@ -112,6 +114,16 @@ Press `⌘I` / `Ctrl+I`, describe what you want, get schema-grounded SQL back. H
 ### ORM cockpit
 
 Link a project folder, and Dora detects your Drizzle or Prisma schema, parses it, and compares it against the live database. The **drift view** groups every difference by table and flags each change as safe, review, or destructive. From there it generates a reconciling migration, dialect-correct `up`/`down` SQL, with destructive and review statements gated behind explicit opt-in toggles. The preview is read-only: hand the SQL off to the SQL console with one click, where the normal execution guardrails apply. Nothing is run behind your back.
+
+### Product analytics (PostHog)
+
+<p align="center">
+  <img src="docs/assets/posthog-analytics.webp" alt="Dora's PostHog analytics dashboard: switching the range, drilling into a site" width="92%" />
+</p>
+
+Connect a PostHog project with a personal API key and Dora becomes a desktop PostHog client. Query `events`, `persons`, and `sessions` with HogQL in the SQL console, right next to your databases, and get a built-in **Analytics** dashboard for free: KPI tiles compared against the previous period, an activity chart, and breakdowns of top events, pages, browsers, referrers, countries, and devices.
+
+Switch the whole dashboard between 7, 14, 30, and 90 days, click any slice of a breakdown to drill into it (drills stack, so you can narrow to one site, event, and browser at once), and toggle **exclude localhost** to drop development traffic. PostHog connections are read-only: Dora queries the HogQL API, it never writes. See [docs/features/analytics.mdx](docs/features/analytics.mdx).
 
 ### Query history
 

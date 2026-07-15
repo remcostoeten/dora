@@ -231,20 +231,22 @@ pub async fn get_database_schema(
         });
     }
 
-    for table in tables_map.values_mut() {
-        if table.row_count_estimate.unwrap_or(0) != 0 {
-            continue;
-        }
+    let mut pending_counts: Vec<&mut TableInfo> = tables_map
+        .values_mut()
+        .filter(|table| table.row_count_estimate.unwrap_or(0) == 0)
+        .collect();
 
-        match exact_row_count(client, &table.schema, &table.name).await {
-            Ok(count) => table.row_count_estimate = Some(count),
+    if !pending_counts.is_empty() {
+        match exact_row_counts(client, &pending_counts).await {
+            Ok(counts) => {
+                for (table, count) in pending_counts.iter_mut().zip(counts) {
+                    if let Some(count) = count {
+                        table.row_count_estimate = Some(count);
+                    }
+                }
+            }
             Err(err) => {
-                log::debug!(
-                    "Failed to get exact row count for {}.{}: {}",
-                    table.schema,
-                    table.name,
-                    err
-                );
+                log::debug!("Failed to get exact row counts: {}", err);
             }
         }
     }
@@ -261,6 +263,65 @@ pub async fn get_database_schema(
         schemas,
         unique_columns,
     })
+}
+
+/// Batch size for the UNION ALL count query. Keeps a single statement from
+/// growing unbounded on schemas with hundreds of never-analyzed tables.
+const ROW_COUNT_BATCH_SIZE: usize = 50;
+
+/// Exact `COUNT(*)` for every table, batched into as few round-trips as
+/// possible. Issuing one query per table serializes a network RTT per table,
+/// which costs seconds against a remote database (Neon, Supabase, RDS).
+/// Returns counts positionally, `None` where the count could not be read.
+async fn exact_row_counts(
+    client: &Client,
+    tables: &[&mut TableInfo],
+) -> Result<Vec<Option<u64>>, Error> {
+    let mut counts: Vec<Option<u64>> = Vec::with_capacity(tables.len());
+
+    for batch in tables.chunks(ROW_COUNT_BATCH_SIZE) {
+        let selects: Vec<String> = batch
+            .iter()
+            .enumerate()
+            .map(|(index, table)| {
+                format!(
+                    "SELECT {} AS idx, COUNT(*)::text AS count FROM {}.{}",
+                    index,
+                    quote_identifier(&table.schema),
+                    quote_identifier(&table.name)
+                )
+            })
+            .collect();
+
+        let query = selects.join(" UNION ALL ");
+        let messages = match client.simple_query(&query).await {
+            Ok(messages) => messages,
+            // One unreadable relation fails the whole batch, so fall back to
+            // counting this batch table-by-table and keep what we can get.
+            Err(err) => {
+                log::debug!("Batched row count failed, falling back per table: {}", err);
+                for table in batch {
+                    counts.push(exact_row_count(client, &table.schema, &table.name).await.ok());
+                }
+                continue;
+            }
+        };
+
+        let mut batch_counts: Vec<Option<u64>> = vec![None; batch.len()];
+        for message in messages {
+            if let tokio_postgres::SimpleQueryMessage::Row(row) = message {
+                let index = match row.try_get("idx")?.and_then(|v| v.parse::<usize>().ok()) {
+                    Some(index) if index < batch_counts.len() => index,
+                    _ => continue,
+                };
+                batch_counts[index] = row.try_get("count")?.and_then(|v| v.parse::<u64>().ok());
+            }
+        }
+
+        counts.extend(batch_counts);
+    }
+
+    Ok(counts)
 }
 
 async fn exact_row_count(client: &Client, schema: &str, table: &str) -> Result<u64, Error> {

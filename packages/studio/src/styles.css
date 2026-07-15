@@ -34,7 +34,6 @@
 		max-width: 1400px;
 	}
 }
-
 @utility scrollbar-hide {
 	-ms-overflow-style: none;
 	scrollbar-width: none;
@@ -907,21 +906,6 @@
 		animation: dbTypeIconGlint 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.db-type-icon-glint {
-			animation: none;
-			opacity: 0;
-		}
-
-		.desktop-only-hint {
-			animation: none;
-		}
-
-		.desktop-only-notice__shimmer::after {
-			animation: none;
-			opacity: 0;
-		}
-	}
 
 	@keyframes desktopOnlyPulse {
 		0%,
@@ -1011,12 +995,6 @@
 		animation: cockpitSkeletonSheen 3.6s var(--ease-out) infinite;
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.cockpit-skeleton::after {
-			animation: none;
-			opacity: 0;
-		}
-	}
 }
 
 /* ===== Query Tab Bar ===== */
@@ -1295,12 +1273,6 @@
 	stroke: hsl(var(--primary) / 0.72) !important;
 	stroke-dasharray: 7 5;
 	animation-duration: 0.9s;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.sv-edge-flow {
-		animation: none;
-	}
 }
 
 .schema-visualizer .react-flow__background {
@@ -2102,15 +2074,5 @@
 		max-width: 40%;
 		overflow-wrap: anywhere;
 		text-align: right;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	*,
-	::before,
-	::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.01ms !important;
 	}
 }

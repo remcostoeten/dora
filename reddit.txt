@@ -1,0 +1,22 @@
+Title: I spent the last year building Dora — a fast, keyboard-first database workbench. 100% open source, no telemetry, no paid tier.
+
+Over the last year I've been building Dora, a desktop database explorer that has grown into much more than that. It's 100% open source (GPLv3), with no telemetry and no paid option — there's nothing to upsell you on.
+
+The main goal was building something for myself: fully keyboard-controllable and *fast*. The backend is Rust (Tauri) instead of Electron, so it's light — the installer is ~20–30 MB and it starts instantly, versus the several-hundred-MB, Chromium-shipping alternatives. Design-wise I've put a lot of care into it — I honestly think the UI holds up against paid tools.
+
+**What it does:**
+
+- Connects to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB
+- Sign in to Supabase, Neon, Turso, PlanetScale, Vercel, or Xata and pick a database — no hunting for connection strings (pasted strings from 15+ hosted providers are auto-recognized too)
+- Open CSV / JSON / Parquet / NDJSON files as queryable tables, including cross-file JOINs
+- SQL console (Monaco), AI SQL generation, Drizzle/Prisma query support, schema diffing with migration preview, ER diagrams
+- Manage local Docker databases from inside the app
+- Bonus: point it at a PostHog project and query your analytics with HogQL
+
+**Install:** available on every package manager I could get it on — Homebrew, Winget, AUR, APT, Snap, Flatpak, plus AppImage/deb/rpm on Linux, Mac* and Windows*.
+
+*unsigned builds for now, so macOS Gatekeeper / Windows SmartScreen will warn you — code signing certs are expensive for a free project.
+
+Repo: https://github.com/remcostoeten/dora
+
+Happy to answer anything about building desktop apps with Tauri/Rust, or take feature requests.
