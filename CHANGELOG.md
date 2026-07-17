@@ -125,6 +125,19 @@ All notable changes to this project will be documented in this file.
 
 - perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)
 
+
+## [v0.35.1] - 2026-07-17
+
+### Chores
+
+- chore(aur): update dora to 0.35.0
+
+
+
+### Documentation
+
+- docs(readme): lead with compressed demo tour, tighten intro
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

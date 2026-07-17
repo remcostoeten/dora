@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.35.0"
+export const CURRENT_VERSION = "0.35.1"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -90,6 +90,18 @@ export const CHANGELOG: ChangelogEntry[] = [
 		details: [
 			"perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)",
 			"chore(aur): update dora to 0.34.0",
+		]
+	},
+	{
+		version: "0.35.1",
+		date: "2026-07-17",
+		commit: "v0.35.1",
+		title: "Docs(readme): lead with compressed demo tour, tighten intro",
+		description: "Docs(readme): lead with compressed demo tour, tighten intro",
+		type: "feature",
+		details: [
+			"docs(readme): lead with compressed demo tour, tighten intro",
+			"chore(aur): update dora to 0.35.0",
 		]
 	},
 	{

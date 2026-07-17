@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.35.0"
+export const CURRENT_VERSION = "0.35.1"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -150,6 +150,25 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				name: "Performance",
 				items: [
 				"perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.35.1",
+		date: "2026-07-17",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.35.1",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.35.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(readme): lead with compressed demo tour, tighten intro",
 				]
 			}
 		]
