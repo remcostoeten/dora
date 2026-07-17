@@ -9,6 +9,7 @@
   },
   "scripts": {
     "render": "node src/cli.mjs",
+    "hero": "node record-hero-flow.mjs",
     "author": "node src/cli.mjs author",
     "edit": "node src/cli.mjs edit",
     "list": "node src/cli.mjs --list"

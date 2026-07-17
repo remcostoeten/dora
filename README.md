@@ -12,7 +12,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/assets/demo-tour.webp" alt="Dora in action: browsing tables, running SQL, and inspecting schemas" width="92%" />
+  <img src="docs/assets/demo-tour.webp" alt="Dora in action: browsing a 1,200-row table, inline-editing a cell, and running SQL in the query console" width="92%" />
 </p>
 
 Dora is a native, cross-platform database workbench built with Tauri and Rust. The installer is a **20–30 MB download** that starts instantly, versus the several-hundred-MB Chromium bundle of Electron-based alternatives, and it covers the full day-to-day loop without asking you to leave the app.
