@@ -1,27 +1,27 @@
 <div align="center">
   <img src="docs/assets/dora-backgroundless.png" alt="Dora" width="120" />
   <h1>Dora</h1>
-  <p><em>A native desktop database workbench that stays out of your way.</em></p>
+  <p><em>The database explorah</em></p>
 
 [![Release](https://img.shields.io/github/v/release/remcostoeten/dora?display_name=tag&sort=semver)](https://github.com/remcostoeten/dora/releases)
 [![Downloads](https://img.shields.io/github/downloads/remcostoeten/dora/total)](https://github.com/remcostoeten/dora/releases)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Snap](https://img.shields.io/badge/snap-install-82BEA0?logo=snapcraft&logoColor=ffffff)](https://snapcraft.io/dora)
-[![Built with Tauri](https://img.shields.io/badge/built%20with-tauri-FFC131?logo=tauri&logoColor=ffffff)](https://tauri.app/)
+[![Platforms](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-8A63D2)](https://github.com/remcostoeten/dora/releases)
+[![Native binary](https://img.shields.io/badge/~20%20MB-native%20%C2%B7%20Rust-F74C00?logo=rust&logoColor=white)](https://github.com/remcostoeten/dora/releases)
 
 </div>
 
 <p align="center">
-  <img src="docs/assets/demo-tour.webp" alt="Dora in action: browsing a 1,200-row table, inline-editing a cell, and running SQL in the query console" width="92%" />
+  <img src="docs/assets/demo-tour.webp" alt="Dora in action: browsing a 1,200-row table, inline-editing a cell, opening the command palette, and running SQL in the query console" width="92%" />
 </p>
 
-Dora is a native, cross-platform database workbench built with Tauri and Rust. The installer is a **20–30 MB download** that starts instantly, versus the several-hundred-MB Chromium bundle of Electron-based alternatives, and it covers the full day-to-day loop without asking you to leave the app.
+Dora is a native, cross-platform database workbench built with Tauri and Rust. The installer is a **20-30 MB download** that starts instantly, versus the several-hundred-MB Chromium bundle of Electron-based alternatives, and it covers the full day-to-day loop without asking you to leave the app.
 
-- **Connect anything** — PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB, plus CSV/JSON/Parquet/NDJSON as queryable data files.
-- **Skip the connection string** — sign in to Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1 and pick a database, or paste a string for 15+ auto-recognized hosted providers.
-- **Query your way** — browse and inline-edit data, run SQL in a Monaco editor, generate SQL with AI, or write Drizzle/Prisma queries.
-- **Stay in sync** — diff a Drizzle/Prisma schema against the live database and preview the migration, inspect schemas as an ER diagram, and spin up local Docker databases.
-- **Product analytics built in** — point it at a PostHog project and query with HogQL, with a dashboard on top.
+- **Connect anything** - PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB, plus CSV/JSON/Parquet/NDJSON as queryable data files.
+- **Skip the connection string** - sign in to Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1 and pick a database, or paste a string for 15+ auto-recognized hosted providers.
+- **Query your way** - browse and inline-edit data, run SQL in a Monaco editor, generate SQL with AI, or write Drizzle/Prisma queries.
+- **Stay in sync** - diff a Drizzle/Prisma schema against the live database and preview the migration, inspect schemas as an ER diagram, and spin up local Docker databases.
+- **Product analytics built in** - point it at a PostHog project and query with HogQL, with a dashboard on top.
 
 Everything is keyboard-first.
 

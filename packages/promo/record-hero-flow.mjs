@@ -1,7 +1,8 @@
 /**
  * Records the README hero clip: browse a data-rich table, inline-edit a cell,
- * jump to the SQL Console, and run a query. Drives the Studio UI in a plain
- * browser (mock adapter, no Tauri) at localhost:1420.
+ * open the command palette (Ctrl/Cmd+K) to jump to the SQL Console, and run a
+ * query. Drives the Studio UI in a plain browser (mock adapter, no Tauri) at
+ * localhost:1420.
  *
  * Prereq: `bun vite --port 1420 --strictPort` in apps/desktop.
  * Usage:   node packages/promo/record-hero-flow.mjs [--out <dir>] [--base <url>] [--headed]
@@ -151,13 +152,15 @@ async function main() {
     await page.keyboard.press("Enter");
     await hold(1900);
 
-    log("open the SQL Console");
-    const sqlNav = page.locator('[aria-label="SQL Console"]').first();
-    await moveTo(page, sqlNav);
-    await hold(250);
-    await sqlNav.click();
+    log("open the command palette (Ctrl/Cmd+K) and jump to the SQL Console");
+    await page.keyboard.press("Control+K");
+    await page.waitForSelector('[role="option"]', { timeout: 8000 });
+    await hold(1300);
+    await page.keyboard.type("SQL Console", { delay: 85 });
+    await hold(1100);
+    await page.keyboard.press("Enter");
     await page.waitForSelector(".monaco-editor", { timeout: 15000 });
-    await hold(1600);
+    await hold(1500);
 
     log("write and run a query");
     const editor = page.locator(".monaco-editor").first();
