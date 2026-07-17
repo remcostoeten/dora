@@ -16,14 +16,22 @@ import {
 } from "@studio/shared/lib/ui-zoom";
 import { LiveMonitorProvider } from "@studio/core/live-monitor";
 import { NavigationSidebar, SidebarProvider } from "@studio/features/app-sidebar";
-import { CommandPalette } from "@studio/features/command-palette";
+const CommandPalette = lazy(function () {
+  return import("@studio/features/command-palette").then(function (m) {
+    return { default: m.CommandPalette };
+  });
+});
 import { scheduleSqlConsoleCommand } from "@studio/features/command-palette/events";
 import { useConnections, useConnectionMutations } from "@studio/core/data-provider/hooks";
 import {
   backendToFrontendConnection,
   frontendToBackendDatabaseInfo,
 } from "@studio/features/connections/utils/mapping";
-import { ConnectionDialog } from "@studio/features/connections/components/connection-dialog";
+const ConnectionDialog = lazy(function () {
+  return import("@studio/features/connections/components/connection-dialog").then(function (m) {
+    return { default: m.ConnectionDialog };
+  });
+});
 import { Connection } from "@studio/features/connections/types";
 import { getContainerConnectionDetails } from "@studio/features/docker-manager/utilities/container-connection";
 import {
@@ -94,7 +102,7 @@ function IndexInner() {
       return !open;
     });
   }, []);
-  const { settings, updateSetting, updateSettings, isLoading: isSettingsLoading } = useSettings();
+  const { settings, persistSetting, isLoading: isSettingsLoading } = useSettings();
 
   const { data: connections = [], isLoading: isConnectionsLoading } = useConnections();
   const isLoading = isSettingsLoading || isConnectionsLoading;
@@ -190,6 +198,24 @@ function IndexInner() {
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [editingConnection, setEditingConnection] = useState<Connection | undefined>(undefined);
   const isConnectionDialogOpenRef = useRef(isConnectionDialogOpen);
+  // The connection dialog (and its framer-motion dependency) is a lazy chunk;
+  // mount it the first time it opens and keep it mounted so its exit animation
+  // still plays on close.
+  const [connectionDialogEverOpened, setConnectionDialogEverOpened] = useState(false);
+  useEffect(
+    function trackConnectionDialogFirstOpen() {
+      if (isConnectionDialogOpen) setConnectionDialogEverOpened(true);
+    },
+    [isConnectionDialogOpen],
+  );
+  // Same lazy-mount treatment for the command palette.
+  const [commandPaletteEverOpened, setCommandPaletteEverOpened] = useState(false);
+  useEffect(
+    function trackCommandPaletteFirstOpen() {
+      if (isCommandPaletteOpen) setCommandPaletteEverOpened(true);
+    },
+    [isCommandPaletteOpen],
+  );
 
   const startupConnectionMode =
     settings.startupConnectionMode ?? (settings.restoreLastConnection ? "auto" : "empty");
@@ -553,31 +579,12 @@ function IndexInner() {
     function saveLastConnection() {
       if (!activeConnectionId || isSettingsLoading) return;
 
-      const updates: Partial<typeof settings> = {};
-      let hasUpdates = false;
-
-      if (settings.lastConnectionId !== activeConnectionId) {
-        updates.lastConnectionId = activeConnectionId;
-        hasUpdates = true;
-      }
-
-      if (selectedTableId && settings.lastTableId !== selectedTableId) {
-        updates.lastTableId = selectedTableId;
-        hasUpdates = true;
-      }
-
-      if (hasUpdates) {
-        updateSettings(updates);
+      persistSetting("lastConnectionId", activeConnectionId);
+      if (selectedTableId) {
+        persistSetting("lastTableId", selectedTableId);
       }
     },
-    [
-      activeConnectionId,
-      selectedTableId,
-      isSettingsLoading,
-      settings.lastConnectionId,
-      settings.lastTableId,
-      updateSettings,
-    ],
+    [activeConnectionId, selectedTableId, isSettingsLoading, persistSetting],
   );
 
   async function handleAddConnection(connection: Omit<Connection, "id" | "status" | "createdAt">) {
@@ -1093,9 +1100,7 @@ function IndexInner() {
                           tableName={selectedTableName}
                           initialRowPK={settings.lastRowPK}
                           onRowSelectionChange={function (pk) {
-                            if (pk !== settings.lastRowPK) {
-                              updateSetting("lastRowPK", pk);
-                            }
+                            persistSetting("lastRowPK", pk);
                           }}
                           activeConnectionId={studioConnectionId}
                           onConnectionSelect={setActiveConnectionId}
@@ -1240,46 +1245,54 @@ function IndexInner() {
                 </Suspense>
               </main>
 
-              <ConnectionDialog
-                open={isConnectionDialogOpen}
-                onOpenChange={handleConnectionDialogOpenChange}
-                onSave={handleDialogSave}
-                droppedFilePaths={connectionDialogDroppedPaths}
-                externalDropActive={connectionDialogDragActive}
-                onDroppedFilePathsHandled={function () {
-                  setConnectionDialogDroppedPaths(null);
-                }}
-                onOpenDataFiles={
-                  isTauri
-                    ? async function (paths?: string[]) {
-                        if (paths && paths.length > 0) {
-                          setIsConnectionDialogOpen(false);
-                          await handleOpenDataFiles(paths);
-                          return;
-                        }
-                        setIsConnectionDialogOpen(false);
-                        await handlePickDataFiles();
-                      }
-                    : undefined
-                }
-                resolveDatabaseType={resolveDatabaseType}
-                initialValues={editingConnection}
-              />
+              {connectionDialogEverOpened && (
+                <Suspense fallback={null}>
+                  <ConnectionDialog
+                    open={isConnectionDialogOpen}
+                    onOpenChange={handleConnectionDialogOpenChange}
+                    onSave={handleDialogSave}
+                    droppedFilePaths={connectionDialogDroppedPaths}
+                    externalDropActive={connectionDialogDragActive}
+                    onDroppedFilePathsHandled={function () {
+                      setConnectionDialogDroppedPaths(null);
+                    }}
+                    onOpenDataFiles={
+                      isTauri
+                        ? async function (paths?: string[]) {
+                            if (paths && paths.length > 0) {
+                              setIsConnectionDialogOpen(false);
+                              await handleOpenDataFiles(paths);
+                              return;
+                            }
+                            setIsConnectionDialogOpen(false);
+                            await handlePickDataFiles();
+                          }
+                        : undefined
+                    }
+                    resolveDatabaseType={resolveDatabaseType}
+                    initialValues={editingConnection}
+                  />
+                </Suspense>
+              )}
 
-              <CommandPalette
-                open={isCommandPaletteOpen}
-                onOpenChange={setIsCommandPaletteOpen}
-                activeNavId={paletteActiveNavId}
-                onNavigate={setActiveNavId}
-                connections={connections}
-                activeConnectionId={activeConnectionId}
-                selectedTableId={selectedTableId}
-                onSelectConnection={handleConnectionSelect}
-                onCreateConnection={handleOpenNewConnection}
-                onEditConnection={handleEditConnection}
-                onDeleteConnection={handleDeleteConnection}
-                onSelectTable={handleTableSelect}
-              />
+              {commandPaletteEverOpened && (
+                <Suspense fallback={null}>
+                  <CommandPalette
+                    open={isCommandPaletteOpen}
+                    onOpenChange={setIsCommandPaletteOpen}
+                    activeNavId={paletteActiveNavId}
+                    onNavigate={setActiveNavId}
+                    connections={connections}
+                    activeConnectionId={activeConnectionId}
+                    selectedTableId={selectedTableId}
+                    onSelectConnection={handleConnectionSelect}
+                    onCreateConnection={handleOpenNewConnection}
+                    onEditConnection={handleEditConnection}
+                    onDeleteConnection={handleDeleteConnection}
+                    onSelectTable={handleTableSelect}
+                  />
+                </Suspense>
+              )}
 
               <AiAssistantToggle />
               <AiAssistantPanelHost

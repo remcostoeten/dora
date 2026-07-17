@@ -99,6 +99,7 @@ export function useDatabaseStudioSync(args: Args) {
   const initializedFromUrlRef = useRef(false);
   const isUpdatingUrlRef = useRef(false);
   const loadRequestIdRef = useRef(0);
+  const restoredFromPKRef = useRef(false);
   // The cache key whose data is currently painted on screen. Used to tell a
   // genuine view switch (paint the cache for an instant result) apart from an
   // in-place refresh of the view already shown (don't paint the now-stale
@@ -431,11 +432,16 @@ export function useDatabaseStudioSync(args: Args) {
 
   useEffect(
     function restoreSelectionFromPK() {
+      if (restoredFromPKRef.current) return;
       if (!tableData || !initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current)
         return;
 
       const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey);
       if (!primaryKeyColumn) return;
+
+      // One-shot: restoring launch state must never resurrect a selection the
+      // user has since cleared.
+      restoredFromPKRef.current = true;
 
       const rowIndex = tableData.rows.findIndex(
         (row) => String(row[primaryKeyColumn.name]) === String(initialRowPK),

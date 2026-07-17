@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { createMockAdapter } from './adapters/mock'
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
 import { createTauriAdapter } from './adapters/tauri'
 import type { DataAdapter, DataProviderContextValue } from './types'
 
@@ -28,22 +27,32 @@ export function DataProvider({ children, forceMock = false }: Props) {
 		function () {
 			if (isTauri) {
 				setAdapter(createTauriAdapter())
-			} else {
-				setAdapter(createMockAdapter())
+				setIsReady(true)
+				return
 			}
-			setIsReady(true)
+
+			// The mock adapter (and its bundled demo dataset) is only for the web
+			// demo — load it on demand so desktop startup never pays for it.
+			let cancelled = false
+			import('./adapters/mock').then(function (m) {
+				if (cancelled) return
+				setAdapter(m.createMockAdapter())
+				setIsReady(true)
+			})
+			return function () {
+				cancelled = true
+			}
 		},
 		[isTauri]
 	)
 
-	if (!isReady || !adapter) {
-		return null
-	}
+	const value: DataProviderContextValue | null = useMemo(
+		() => (adapter ? { adapter, isTauri, isReady } : null),
+		[adapter, isTauri, isReady]
+	)
 
-	const value: DataProviderContextValue = {
-		adapter,
-		isTauri,
-		isReady
+	if (!value || !isReady) {
+		return null
 	}
 
 	return <DataProviderContext.Provider value={value}>{children}</DataProviderContext.Provider>

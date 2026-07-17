@@ -12,7 +12,16 @@ import { AppProviders } from '@studio/providers'
 import Index from '@studio/pages/Index'
 import NotFound from '@studio/pages/NotFound'
 
-const queryClient = new QueryClient()
+// Desktop-tuned defaults: alt-tabbing back to the app must not refetch every
+// active query (connections, schemas, table pages) — data changes flow through
+// explicit refreshes, mutations, and the live monitor instead.
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			refetchOnWindowFocus: false
+		}
+	}
+})
 
 function GlobalToaster() {
 	const { settings } = useSettings()
