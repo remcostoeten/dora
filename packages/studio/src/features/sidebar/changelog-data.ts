@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.34.0"
+export const CURRENT_VERSION = "0.35.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -78,6 +78,18 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"fix(docs): remove duplicate H1 from doc bodies",
 			"docs(installation): document Winget and APT install channels",
 			"chore(aur): update dora to 0.33.0",
+		]
+	},
+	{
+		version: "0.35.0",
+		date: "2026-07-17",
+		commit: "v0.35.0",
+		title: "Perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)",
+		description: "Perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)",
+		type: "feature",
+		details: [
+			"perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)",
+			"chore(aur): update dora to 0.34.0",
 		]
 	},
 	{

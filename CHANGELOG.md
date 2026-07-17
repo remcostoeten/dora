@@ -112,6 +112,19 @@ All notable changes to this project will be documented in this file.
 
 - feat: refresh Dora promo and analytics
 
+
+## [v0.35.0] - 2026-07-17
+
+### Chores
+
+- chore(aur): update dora to 0.34.0
+
+
+
+### Performance
+
+- perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29
