@@ -12,14 +12,18 @@
 </div>
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/remco-stoeten/dora/master/docs/assets/dora-promo.mp4" controls muted playsinline width="92%">
-    <a href="https://github.com/remco-stoeten/dora/blob/master/docs/assets/dora-promo.mp4">Watch the 24-second Dora promo</a>
-  </video>
+  <img src="docs/assets/demo-tour.webp" alt="Dora in action: browsing tables, running SQL, and inspecting schemas" width="92%" />
 </p>
 
-Dora is a cross-platform database workbench built with Tauri and Rust. The installer is a **20–30 MB download** that starts instantly, versus the several-hundred-MB Chromium bundle you get from Electron-based alternatives, and it covers the full day-to-day loop without asking you to leave the app.
+Dora is a native, cross-platform database workbench built with Tauri and Rust. The installer is a **20–30 MB download** that starts instantly, versus the several-hundred-MB Chromium bundle of Electron-based alternatives, and it covers the full day-to-day loop without asking you to leave the app.
 
-Connect to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB. Open CSV, JSON, Parquet, and NDJSON as queryable data files. Point it at a PostHog project and query your product analytics with HogQL, with a built-in dashboard on top. Sign in to a provider account (Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1) and pick a database without hunting for a connection string, or paste a string for any of 15+ auto-recognized hosted providers. Browse data, run SQL in a Monaco editor, generate SQL with AI, write ORM queries with Drizzle or Prisma, compare a Drizzle/Prisma schema against the live database and preview the migration, inspect schemas as an ER diagram, and manage local Docker databases, all keyboard-first.
+- **Connect anything** — PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB, plus CSV/JSON/Parquet/NDJSON as queryable data files.
+- **Skip the connection string** — sign in to Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1 and pick a database, or paste a string for 15+ auto-recognized hosted providers.
+- **Query your way** — browse and inline-edit data, run SQL in a Monaco editor, generate SQL with AI, or write Drizzle/Prisma queries.
+- **Stay in sync** — diff a Drizzle/Prisma schema against the live database and preview the migration, inspect schemas as an ER diagram, and spin up local Docker databases.
+- **Product analytics built in** — point it at a PostHog project and query with HogQL, with a dashboard on top.
+
+Everything is keyboard-first.
 
 ## Install
 
