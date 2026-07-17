@@ -433,15 +433,18 @@ export function useDatabaseStudioSync(args: Args) {
   useEffect(
     function restoreSelectionFromPK() {
       if (restoredFromPKRef.current) return;
-      if (!tableData || !initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current)
-        return;
+      if (!tableData) return;
+
+      // Consume the one-shot the moment data is available — this is our single
+      // restore opportunity. `initialRowPK` no longer changes during the session
+      // (it's persisted without React state), so without consuming the ref here
+      // a later selection-clear would re-run this and resurrect the launch row.
+      restoredFromPKRef.current = true;
+
+      if (!initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current) return;
 
       const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey);
       if (!primaryKeyColumn) return;
-
-      // One-shot: restoring launch state must never resurrect a selection the
-      // user has since cleared.
-      restoredFromPKRef.current = true;
 
       const rowIndex = tableData.rows.findIndex(
         (row) => String(row[primaryKeyColumn.name]) === String(initialRowPK),
