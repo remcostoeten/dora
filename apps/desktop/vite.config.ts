@@ -82,6 +82,19 @@ export default defineConfig({
 
           // Feature-based splitting
           if (id.includes("src/features/")) {
+            // The data seeder is lazy-loaded (it drags in faker's locale data);
+            // keep it out of the eager feature-studio chunk.
+            if (id.includes("data-seeder-dialog")) return;
+            // The connection dialog + every provider connect-flow is only needed
+            // when adding/editing a connection. It's a lazy import — let Rollup
+            // give it its own async chunk instead of welding it into the eager
+            // feature-core chunk (which the always-visible sidebar lives in).
+            if (
+              id.includes("features/connections/components/connection-dialog") ||
+              id.includes("features/integrations")
+            ) {
+              return;
+            }
             if (id.includes("database-studio")) return "feature-studio";
             if (id.includes("schema-visualizer")) return "feature-visualizer";
             if (id.includes("sql-console")) return "feature-sql";

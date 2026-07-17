@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 
 export type QueryHistoryItem = {
@@ -129,21 +129,20 @@ export function QueryHistoryProvider({ children }: Props) {
 		})
 	}, [])
 
-	return (
-		<QueryHistoryContext.Provider
-			value={{
-				history,
-				addToHistory,
-				clearHistory,
-				removeFromHistory,
-				pinItem,
-				unpinItem,
-				updateChartConfig
-			}}
-		>
-			{children}
-		</QueryHistoryContext.Provider>
+	const value = useMemo(
+		() => ({
+			history,
+			addToHistory,
+			clearHistory,
+			removeFromHistory,
+			pinItem,
+			unpinItem,
+			updateChartConfig
+		}),
+		[history, addToHistory, clearHistory, removeFromHistory, pinItem, unpinItem, updateChartConfig]
 	)
+
+	return <QueryHistoryContext.Provider value={value}>{children}</QueryHistoryContext.Provider>
 }
 
 export function useQueryHistory(): QueryHistoryContextValue {

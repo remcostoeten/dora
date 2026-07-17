@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
 
 export type PendingEdit = {
 	rowIndex: number
@@ -104,17 +104,29 @@ export function PendingEditsProvider({ children }: Props) {
 		[getEditCount]
 	)
 
-	const value: PendingEditsContextValue = {
-		isDryEditMode,
-		setDryEditMode,
-		pendingEdits,
-		addEdit,
-		removeEdit,
-		clearEdits,
-		getEditsForTable,
-		getEditCount,
-		hasEdits
-	}
+	const value: PendingEditsContextValue = useMemo(
+		() => ({
+			isDryEditMode,
+			setDryEditMode,
+			pendingEdits,
+			addEdit,
+			removeEdit,
+			clearEdits,
+			getEditsForTable,
+			getEditCount,
+			hasEdits
+		}),
+		[
+			isDryEditMode,
+			pendingEdits,
+			addEdit,
+			removeEdit,
+			clearEdits,
+			getEditsForTable,
+			getEditCount,
+			hasEdits
+		]
+	)
 
 	return <PendingEditsContext.Provider value={value}>{children}</PendingEditsContext.Provider>
 }

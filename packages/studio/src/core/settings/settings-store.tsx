@@ -5,6 +5,7 @@ import {
 	useState,
 	ReactNode,
 	useCallback,
+	useMemo,
 	useRef
 } from 'react'
 import { commands } from '@studio/lib/bindings'
@@ -147,6 +148,12 @@ type SettingsContextValue = {
 	isLoading: boolean
 	updateSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void
 	updateSettings: (partial: Partial<SettingsState>) => void
+	/**
+	 * Persist a setting WITHOUT re-rendering consumers. For restore-on-launch
+	 * keys written on hot paths (row selection, table switches) where the live
+	 * value is never read back reactively — only saved for the next launch.
+	 */
+	persistSetting: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void
 	resetSettings: () => void
 }
 
@@ -211,18 +218,14 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 	const [isLoading, setIsLoading] = useState(true)
 	const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	const initialLoadDone = useRef(false)
+	// Source of truth for persistence. Holds reactive state PLUS keys written
+	// through `persistSetting` (which bypass React state on purpose).
 	const latestSettingsRef = useRef(settings)
-
-	useEffect(
-		function syncLatestSettingsRef() {
-			latestSettingsRef.current = settings
-		},
-		[settings]
-	)
 
 	useEffect(() => {
 		async function load() {
 			const loaded = await loadSettingsFromBackend()
+			latestSettingsRef.current = loaded
 			setSettings(loaded)
 			setIsLoading(false)
 			initialLoadDone.current = true
@@ -230,7 +233,7 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 		load()
 	}, [])
 
-	useEffect(() => {
+	const scheduleSave = useCallback(function scheduleSave() {
 		if (!initialLoadDone.current) return
 
 		if (saveTimeoutRef.current) {
@@ -241,13 +244,17 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 			saveSettingsToBackend(latestSettingsRef.current)
 			saveTimeoutRef.current = null
 		}, 300)
+	}, [])
+
+	useEffect(() => {
+		scheduleSave()
 
 		return () => {
 			if (saveTimeoutRef.current) {
 				clearTimeout(saveTimeoutRef.current)
 			}
 		}
-	}, [settings])
+	}, [settings, scheduleSave])
 
 	useEffect(function flushSettingsBeforeExit() {
 		function flush() {
@@ -270,32 +277,47 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 
 	const updateSetting = useCallback(
 		<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
-			setSettings((prev) => ({ ...prev, [key]: value }))
+			const next = { ...latestSettingsRef.current, [key]: value }
+			latestSettingsRef.current = next
+			setSettings(next)
 		},
 		[]
 	)
 
 	const updateSettings = useCallback((partial: Partial<SettingsState>) => {
-		setSettings((prev) => ({ ...prev, ...partial }))
+		const next = { ...latestSettingsRef.current, ...partial }
+		latestSettingsRef.current = next
+		setSettings(next)
 	}, [])
+
+	const persistSetting = useCallback(
+		<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
+			if (latestSettingsRef.current[key] === value) return
+			latestSettingsRef.current = { ...latestSettingsRef.current, [key]: value }
+			scheduleSave()
+		},
+		[scheduleSave]
+	)
 
 	const resetSettings = useCallback(() => {
-		setSettings({ ...DEFAULT_SETTINGS })
+		const next = { ...DEFAULT_SETTINGS }
+		latestSettingsRef.current = next
+		setSettings(next)
 	}, [])
 
-	return (
-		<SettingsContext.Provider
-			value={{
-				settings,
-				isLoading,
-				updateSetting,
-				updateSettings,
-				resetSettings
-			}}
-		>
-			{children}
-		</SettingsContext.Provider>
+	const value = useMemo(
+		() => ({
+			settings,
+			isLoading,
+			updateSetting,
+			updateSettings,
+			persistSetting,
+			resetSettings
+		}),
+		[settings, isLoading, updateSetting, updateSettings, persistSetting, resetSettings]
 	)
+
+	return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
 }
 
 // ============================================================================

@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useReducer, useCallback, useEffect, useMemo, ReactNode } from 'react'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { QueryTab, SqlQueryResult, ResultViewMode } from '../types'
 import { DEFAULT_SQL } from '../data'
@@ -444,28 +444,52 @@ export function QueryTabProvider({ children, connectionId }: TProps) {
 		}
 	}, [state.tabs])
 
-	const value: TabContextValue = {
-		tabs: state.tabs,
-		activeTabId: state.activeTabId,
-		activeTab,
-		addTab,
-		closeTab,
-		setActiveTab,
-		renameTab,
-		updateTabContent,
-		setTabMode,
-		setTabResult,
-		setTabExecuting,
-		setTabViewMode,
-		setTabChartConfig,
-		setTabHistoryEntry,
-		autoTitleTab,
-		reorderTabs,
-		duplicateTab,
-		nextTab,
-		prevTab,
-		goToTab
-	}
+	const value: TabContextValue = useMemo(
+		() => ({
+			tabs: state.tabs,
+			activeTabId: state.activeTabId,
+			activeTab,
+			addTab,
+			closeTab,
+			setActiveTab,
+			renameTab,
+			updateTabContent,
+			setTabMode,
+			setTabResult,
+			setTabExecuting,
+			setTabViewMode,
+			setTabChartConfig,
+			setTabHistoryEntry,
+			autoTitleTab,
+			reorderTabs,
+			duplicateTab,
+			nextTab,
+			prevTab,
+			goToTab
+		}),
+		[
+			state.tabs,
+			state.activeTabId,
+			activeTab,
+			addTab,
+			closeTab,
+			setActiveTab,
+			renameTab,
+			updateTabContent,
+			setTabMode,
+			setTabResult,
+			setTabExecuting,
+			setTabViewMode,
+			setTabChartConfig,
+			setTabHistoryEntry,
+			autoTitleTab,
+			reorderTabs,
+			duplicateTab,
+			nextTab,
+			prevTab,
+			goToTab
+		]
+	)
 
 	return (
 		<TabContext.Provider value={value}>

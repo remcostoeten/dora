@@ -446,26 +446,48 @@ export function TabsProvider({ children }: { children: ReactNode }) {
   )
   const activeTabId = activeTabIdOf(state)
 
-  const value: TabsContextValue = {
-    tabs: state.tabs,
-    visibleTabs,
-    activeTabId,
-    activeConnectionId: state.activeConnectionId,
-    openConnectionIds: state.openConnectionIds,
-    openTab,
-    closeTab,
-    closeOtherTabs,
-    closeTabsToLeft,
-    closeTabsToRight,
-    setActiveTab,
-    togglePinTab,
-    reorderTab,
-    closeTabsForConnection,
-    hydrateSession,
-    setActiveConnection,
-    openConnection,
-    closeConnection,
-  }
+  const value: TabsContextValue = useMemo(
+    () => ({
+      tabs: state.tabs,
+      visibleTabs,
+      activeTabId,
+      activeConnectionId: state.activeConnectionId,
+      openConnectionIds: state.openConnectionIds,
+      openTab,
+      closeTab,
+      closeOtherTabs,
+      closeTabsToLeft,
+      closeTabsToRight,
+      setActiveTab,
+      togglePinTab,
+      reorderTab,
+      closeTabsForConnection,
+      hydrateSession,
+      setActiveConnection,
+      openConnection,
+      closeConnection,
+    }),
+    [
+      state.tabs,
+      visibleTabs,
+      activeTabId,
+      state.activeConnectionId,
+      state.openConnectionIds,
+      openTab,
+      closeTab,
+      closeOtherTabs,
+      closeTabsToLeft,
+      closeTabsToRight,
+      setActiveTab,
+      togglePinTab,
+      reorderTab,
+      closeTabsForConnection,
+      hydrateSession,
+      setActiveConnection,
+      openConnection,
+      closeConnection,
+    ]
+  )
 
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>
 }

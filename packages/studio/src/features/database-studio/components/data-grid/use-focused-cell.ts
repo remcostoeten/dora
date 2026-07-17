@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CellPosition } from './types'
 
 export function useFocusedCell(
@@ -25,10 +25,13 @@ export function useFocusedCell(
 		}
 	}, [initialFocusedCell, focusedCell])
 
-	function setFocusedCell(cell: CellPosition | null) {
-		setFocusedCellInternal(cell)
-		onFocusedCellChange?.(cell)
-	}
+	const setFocusedCell = useCallback(
+		function (cell: CellPosition | null) {
+			setFocusedCellInternal(cell)
+			onFocusedCellChange?.(cell)
+		},
+		[onFocusedCellChange]
+	)
 
 	return { focusedCell, setFocusedCell }
 }

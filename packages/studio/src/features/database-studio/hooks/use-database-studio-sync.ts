@@ -99,6 +99,7 @@ export function useDatabaseStudioSync(args: Args) {
   const initializedFromUrlRef = useRef(false);
   const isUpdatingUrlRef = useRef(false);
   const loadRequestIdRef = useRef(0);
+  const restoredFromPKRef = useRef(false);
   // The cache key whose data is currently painted on screen. Used to tell a
   // genuine view switch (paint the cache for an instant result) apart from an
   // in-place refresh of the view already shown (don't paint the now-stale
@@ -431,8 +432,16 @@ export function useDatabaseStudioSync(args: Args) {
 
   useEffect(
     function restoreSelectionFromPK() {
-      if (!tableData || !initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current)
-        return;
+      if (restoredFromPKRef.current) return;
+      if (!tableData) return;
+
+      // Consume the one-shot the moment data is available — this is our single
+      // restore opportunity. `initialRowPK` no longer changes during the session
+      // (it's persisted without React state), so without consuming the ref here
+      // a later selection-clear would re-run this and resurrect the launch row.
+      restoredFromPKRef.current = true;
+
+      if (!initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current) return;
 
       const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey);
       if (!primaryKeyColumn) return;
