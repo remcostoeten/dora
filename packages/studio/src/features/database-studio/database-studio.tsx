@@ -23,7 +23,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle
 } from '@studio/shared/ui/alert-dialog'
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
@@ -45,7 +45,11 @@ import { SetNullDialog } from './components/set-null-dialog'
 import { StudioToolbar } from './components/studio-toolbar'
 import { ExportOptionsDialog, type ExportFormatChoice } from './components/export-options-dialog'
 import { ImportCsvDialog } from './components/import-csv-dialog'
-import { DataSeederDialog } from './data-seeder-dialog'
+const DataSeederDialog = lazy(function () {
+	return import('./data-seeder-dialog').then(function (m) {
+		return { default: m.DataSeederDialog }
+	})
+})
 import { useDatabaseStudioSync } from './hooks/use-database-studio-sync'
 import { useDatabaseStudioActions } from './hooks/use-database-studio-actions'
 import { useDatabaseStudioEdits } from './hooks/use-database-studio-edits'
@@ -54,7 +58,11 @@ import { buildDefaultTableCacheKey, buildTableCacheKey } from './utils/table-cac
 import { appendRows, removeRowsByPrimaryKey } from './utils/studio-data'
 import { FilterConjunction, FilterDescriptor, FilterGroup, PaginationState, SortDescriptor, TableData, ViewMode } from './types'
 import { flatFiltersToGroup, groupToFlatFilters } from '@studio/core/data-provider/filter-sql'
-import { ResultChartPanel } from '@studio/features/result-charts/result-chart-panel'
+const ResultChartPanel = lazy(function () {
+	return import('@studio/features/result-charts/result-chart-panel').then(function (m) {
+		return { default: m.ResultChartPanel }
+	})
+})
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { commands } from '@studio/lib/bindings'
 import type { ColumnDefinition } from './types'
@@ -903,13 +911,15 @@ export function DatabaseStudio({
 					onMarkChangesRead={showLiveMonitor ? liveMonitor.markRead : undefined}
 				/>
 				<div className='min-h-0 flex-1'>
-					<ResultChartPanel
-						columns={tableData.columns}
-						rows={tableData.rows}
-						config={chartConfig}
-						onConfigChange={setChartConfig}
-						title={`${displayTableName} chart`}
-					/>
+					<Suspense fallback={null}>
+						<ResultChartPanel
+							columns={tableData.columns}
+							rows={tableData.rows}
+							config={chartConfig}
+							onConfigChange={setChartConfig}
+							title={`${displayTableName} chart`}
+						/>
+					</Suspense>
 				</div>
 			</div>
 		)
@@ -1237,19 +1247,21 @@ export function DatabaseStudio({
 				/>
 			)}
 
-			{tableData && (
-				<DataSeederDialog
-					open={showDataSeederDialog}
-					onOpenChange={setShowDataSeederDialog}
-					tableName={displayTableName || ''}
-					columns={tableData.columns.map((c) => ({
-						name: c.name,
-						type: c.type,
-						isNullable: c.nullable,
-						isPrimaryKey: c.primaryKey
-					}))}
-					onGenerate={handleSeederGenerate}
-				/>
+			{tableData && showDataSeederDialog && (
+				<Suspense fallback={null}>
+					<DataSeederDialog
+						open={showDataSeederDialog}
+						onOpenChange={setShowDataSeederDialog}
+						tableName={displayTableName || ''}
+						columns={tableData.columns.map((c) => ({
+							name: c.name,
+							type: c.type,
+							isNullable: c.nullable,
+							isPrimaryKey: c.primaryKey
+						}))}
+						onGenerate={handleSeederGenerate}
+					/>
+				</Suspense>
 			)}
 
 			<ExportOptionsDialog
