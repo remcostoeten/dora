@@ -43,12 +43,15 @@ export function useRowSelection({
 		[lastClickedRowRef, onRowSelect, onRowsSelect, selectedRows]
 	)
 
-	function ensureRowSelectionForContextMenu(rowIndex: number) {
-		if (selectedRows.has(rowIndex)) return
-		onSelectAll(false)
-		onRowSelect(rowIndex, true)
-		lastClickedRowRef.current = rowIndex
-	}
+	const ensureRowSelectionForContextMenu = useCallback(
+		function (rowIndex: number) {
+			if (selectedRows.has(rowIndex)) return
+			onSelectAll(false)
+			onRowSelect(rowIndex, true)
+			lastClickedRowRef.current = rowIndex
+		},
+		[lastClickedRowRef, onRowSelect, onSelectAll, selectedRows]
+	)
 
 	return { handleRowClick, ensureRowSelectionForContextMenu }
 }

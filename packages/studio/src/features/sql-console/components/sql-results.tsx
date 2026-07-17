@@ -13,7 +13,8 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle
 } from '@studio/shared/ui/alert-dialog'
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { lazy, Suspense, useState, useRef, useEffect, useMemo, useCallback } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useDataMutation } from '@studio/core/data-provider'
 import { useSettings } from '@studio/core/settings'
 import { MASK_TOKEN, maskRowsForJson } from '@studio/core/privacy/mask'
@@ -32,7 +33,11 @@ import { useToast } from '@studio/shared/ui/use-toast'
 import { remeasureMonacoFonts } from '@studio/shared/lib/font-loader'
 import { cn } from '@studio/shared/utils/cn'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
-import { ResultChartPanel } from '@studio/features/result-charts/result-chart-panel'
+const ResultChartPanel = lazy(function () {
+	return import('@studio/features/result-charts/result-chart-panel').then(function (m) {
+		return { default: m.ResultChartPanel }
+	})
+})
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { formatCellValue as renderCellValue } from '@studio/features/database-studio/components/data-grid/cell-value'
 import type { ColumnDefinition } from '@studio/features/database-studio/types'
@@ -110,12 +115,14 @@ export function SqlResults({
 	}, [result])
 
 	// In privacy mode the JSON view must not leak raw values either, so mask the
-	// rows before serializing.
+	// rows before serializing. Only serialized while the JSON view is showing —
+	// stringifying a large result set is too expensive to pay on every query
+	// when the table view is active.
 	const resultJsonText = useMemo(() => {
-		if (!result) return ''
+		if (!result || viewMode !== 'json') return ''
 		const rows = masked ? maskRowsForJson(result.rows) : result.rows
 		return JSON.stringify(rows, null, 2)
-	}, [result, masked])
+	}, [result, masked, viewMode])
 
 	const cellColumns = useMemo(() => {
 		if (!result) return new Map<string, ColumnDefinition>()
@@ -362,6 +369,37 @@ export function SqlResults({
 		return { filteredRows: rows, filterTime: (end - start).toFixed(2) }
 	}, [result, filterText])
 
+	// The scroll element lives inside the Radix ScrollArea; hold it in state so
+	// the virtualizer re-measures once the viewport mounts.
+	const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(null)
+	const scrollAreaRef = useCallback((node: HTMLDivElement | null) => {
+		setScrollViewport(
+			node?.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]') ?? null
+		)
+	}, [])
+
+	// Virtualize large result sets — rendering thousands of rows (each wrapped
+	// in a context menu) makes big SELECTs unusable.
+	const VIRTUALIZE_THRESHOLD = 100
+	const shouldVirtualize = viewMode === 'table' && filteredRows.length > VIRTUALIZE_THRESHOLD
+	const rowVirtualizer = useVirtualizer({
+		count: shouldVirtualize ? filteredRows.length : 0,
+		getScrollElement: () => scrollViewport,
+		estimateSize: () => 34,
+		overscan: 12,
+		enabled: shouldVirtualize
+	})
+	const virtualRows = shouldVirtualize ? rowVirtualizer.getVirtualItems() : null
+	const totalVirtualSize = shouldVirtualize ? rowVirtualizer.getTotalSize() : 0
+	const topPad = virtualRows && virtualRows.length > 0 ? virtualRows[0].start : 0
+	const bottomPad =
+		virtualRows && virtualRows.length > 0
+			? totalVirtualSize - virtualRows[virtualRows.length - 1].end
+			: 0
+	const rowIndexesToRender = virtualRows
+		? virtualRows.map((vr) => vr.index)
+		: filteredRows.map((_, i) => i)
+
 	// Reset filter if hidden
 	useEffect(() => {
 		if (!showFilter) setFilterText('')
@@ -482,18 +520,20 @@ export function SqlResults({
 				) : isExplainQuery(result.executedQuery) ? (
 					<QueryPlanPanel result={result} />
 				) : viewMode === 'chart' ? (
-					<ResultChartPanel
-						columns={result.columns.map(function (column) {
-							const definition = result.columnDefinitions?.find(function (item) {
-								return item.name === column
-							})
-							return { name: column, type: definition?.type }
-						})}
-						rows={result.rows}
-						config={chartConfig}
-						onConfigChange={onChartConfigChange}
-						title='Query chart'
-					/>
+					<Suspense fallback={null}>
+						<ResultChartPanel
+							columns={result.columns.map(function (column) {
+								const definition = result.columnDefinitions?.find(function (item) {
+									return item.name === column
+								})
+								return { name: column, type: definition?.type }
+							})}
+							rows={result.rows}
+							config={chartConfig}
+							onConfigChange={onChartConfigChange}
+							title='Query chart'
+						/>
+					</Suspense>
 				) : result.rows.length === 0 ? (
 					<div className='flex flex-col items-center justify-center h-full text-muted-foreground'>
 						<div className='inline-flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-600 dark:text-emerald-400'>
@@ -549,7 +589,7 @@ export function SqlResults({
 								/>
 							</div>
 						)}
-						<ScrollArea className='flex-1'>
+						<ScrollArea ref={scrollAreaRef} className='flex-1'>
 							<table className='w-full text-sm'>
 								<thead className='sticky top-0 bg-sidebar-accent z-10'>
 									<tr>
@@ -567,7 +607,14 @@ export function SqlResults({
 									</tr>
 								</thead>
 								<tbody>
-									{filteredRows.map((row, rowIndex) => (
+									{topPad > 0 && (
+										<tr style={{ height: topPad }}>
+											<td colSpan={result.columns.length + 1} />
+										</tr>
+									)}
+									{rowIndexesToRender.map((rowIndex) => {
+										const row = filteredRows[rowIndex]
+										return (
 										<ContextMenu key={rowIndex}>
 											<ContextMenuTrigger asChild>
 												<tr className='hover:bg-sidebar-accent/50 transition-colors group'>
@@ -679,7 +726,13 @@ export function SqlResults({
 												</ContextMenuItem>
 											</ContextMenuContent>
 										</ContextMenu>
-									))}
+										)
+									})}
+									{bottomPad > 0 && (
+										<tr style={{ height: bottomPad }}>
+											<td colSpan={result.columns.length + 1} />
+										</tr>
+									)}
 								</tbody>
 							</table>
 						</ScrollArea>

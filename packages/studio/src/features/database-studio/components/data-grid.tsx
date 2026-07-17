@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { useShortcut, useEffectiveShortcuts, useActiveScope } from '@studio/core/shortcuts'
 import { useSettings } from '@studio/core/settings'
 import { cn } from '@studio/shared/utils/cn'
@@ -112,12 +112,6 @@ export function DataGrid({
 		onCellSelectionChange
 	)
 
-	const effectiveSelectedRows = useMemo(() => {
-		if (selectedRows.size > 0) return selectedRows
-		if (focusedCell) return new Set([focusedCell.row])
-		return new Set<number>()
-	}, [selectedRows, focusedCell])
-
 	const primaryKeyColumnName = useMemo(() => {
 		return columns.find(function (c) {
 			return c.primaryKey
@@ -161,19 +155,22 @@ export function DataGrid({
 	const { handleCellContextMenuChange, handleRowContextMenuChange, handleContextMenuCapture } =
 		useContextMenuReporting(onContextMenuChange)
 
-	function handleCellMouseDown(e: React.MouseEvent, rowIndex: number, colIndex: number) {
-		if (e.button !== 0) return
-		if (editingCell) {
-			// Clicking another cell while editing – commit the in-flight edit
-			// then fall through so the new cell gets focused.
-			handleSaveEdit()
-		}
+	const handleCellMouseDown = useCallback(
+		function (e: React.MouseEvent, rowIndex: number, colIndex: number) {
+			if (e.button !== 0) return
+			if (editingCell) {
+				// Clicking another cell while editing – commit the in-flight edit
+				// then fall through so the new cell gets focused.
+				handleSaveEdit()
+			}
 
-		// Simplified logic: Just set focus and let event bubble to row for selection
-		const cellPos: CellPosition = { row: rowIndex, col: colIndex }
-		setFocusedCell(cellPos)
-		setAnchorCell(cellPos)
-	}
+			// Simplified logic: Just set focus and let event bubble to row for selection
+			const cellPos: CellPosition = { row: rowIndex, col: colIndex }
+			setFocusedCell(cellPos)
+			setAnchorCell(cellPos)
+		},
+		[editingCell, handleSaveEdit, setFocusedCell]
+	)
 
 	const { handleRowClick, ensureRowSelectionForContextMenu } = useRowSelection({
 		lastClickedRowRef,
@@ -199,13 +196,16 @@ export function DataGrid({
 		[focusedCell]
 	)
 
-	function handleCellMouseEnter(rowIndex: number, colIndex: number) {
-		if (!isDragging || !dragStart) return
+	const handleCellMouseEnter = useCallback(
+		function (rowIndex: number, colIndex: number) {
+			if (!isDragging || !dragStart) return
 
-		const cellPos: CellPosition = { row: rowIndex, col: colIndex }
-		const rangeCells = getCellsInRectangle(dragStart, cellPos)
-		updateCellSelection(rangeCells)
-	}
+			const cellPos: CellPosition = { row: rowIndex, col: colIndex }
+			const rangeCells = getCellsInRectangle(dragStart, cellPos)
+			updateCellSelection(rangeCells)
+		},
+		[isDragging, dragStart, updateCellSelection]
+	)
 
 	useEffect(
 		function () {
@@ -361,7 +361,6 @@ export function DataGrid({
 						editInputRef={editInputRef}
 						editingCell={editingCell}
 						editValue={editValue}
-						effectiveSelectedRows={effectiveSelectedRows}
 						focusedCell={focusedCell}
 						getColumnWidth={getColumnWidth}
 						handleCellContextMenuChange={handleCellContextMenuChange}

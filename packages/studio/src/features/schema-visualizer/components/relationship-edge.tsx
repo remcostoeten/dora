@@ -5,6 +5,7 @@ import {
 	type Edge,
 	type EdgeProps,
 } from '@xyflow/react'
+import { memo } from 'react'
 import { cn } from '@studio/shared/utils/cn'
 import type { RelationshipEdgeData } from '../hooks/use-schema-graph'
 
@@ -72,7 +73,7 @@ function getEdgeVisuals(data: RelationshipEdgeData | undefined): EdgeVisuals {
 	}
 }
 
-export function RelationshipEdge({
+function RelationshipEdgeInner({
 	id,
 	sourceX,
 	sourceY,
@@ -167,3 +168,9 @@ export function RelationshipEdge({
 		</>
 	)
 }
+
+/**
+ * React Flow re-renders every edge on any node position change (drag). Memoize
+ * so only edges whose geometry or data actually changed re-run their path math.
+ */
+export const RelationshipEdge = memo(RelationshipEdgeInner)

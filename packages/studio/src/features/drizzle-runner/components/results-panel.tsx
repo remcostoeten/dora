@@ -1,4 +1,6 @@
 import { Copy } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Button } from '@studio/shared/ui/button'
 import { ScrollArea } from '@studio/shared/ui/scroll-area'
 import { useSettings } from '@studio/core/settings'
@@ -10,9 +12,28 @@ type Props = {
 	showJson: boolean
 }
 
+const VIRTUALIZE_THRESHOLD = 100
+
 export function ResultsPanel({ result, showJson }: Props) {
 	const { settings } = useSettings()
 	const masked = settings.privacyMaskData
+
+	const [scrollViewport, setScrollViewport] = useState<HTMLDivElement | null>(null)
+	const scrollAreaRef = useCallback((node: HTMLDivElement | null) => {
+		setScrollViewport(
+			node?.querySelector<HTMLDivElement>('[data-radix-scroll-area-viewport]') ?? null
+		)
+	}, [])
+
+	const rowCount = result?.rows.length ?? 0
+	const shouldVirtualize = !showJson && rowCount > VIRTUALIZE_THRESHOLD
+	const rowVirtualizer = useVirtualizer({
+		count: shouldVirtualize ? rowCount : 0,
+		getScrollElement: () => scrollViewport,
+		estimateSize: () => 37,
+		overscan: 12,
+		enabled: shouldVirtualize
+	})
 
 	if (!result) {
 		return (
@@ -69,6 +90,17 @@ export function ResultsPanel({ result, showJson }: Props) {
 		)
 	}
 
+	const virtualRows = shouldVirtualize ? rowVirtualizer.getVirtualItems() : null
+	const totalVirtualSize = shouldVirtualize ? rowVirtualizer.getTotalSize() : 0
+	const topPad = virtualRows && virtualRows.length > 0 ? virtualRows[0].start : 0
+	const bottomPad =
+		virtualRows && virtualRows.length > 0
+			? totalVirtualSize - virtualRows[virtualRows.length - 1].end
+			: 0
+	const rowIndexesToRender = virtualRows
+		? virtualRows.map((vr) => vr.index)
+		: result.rows.map((_, i) => i)
+
 	return (
 		<div className='flex flex-col h-full'>
 			{/* Status bar */}
@@ -80,7 +112,7 @@ export function ResultsPanel({ result, showJson }: Props) {
 			</div>
 
 			{/* Data table */}
-			<ScrollArea className='flex-1'>
+			<ScrollArea ref={scrollAreaRef} className='flex-1'>
 				<table className='w-full text-sm'>
 					<thead className='sticky top-0 bg-sidebar-accent'>
 						<tr>
@@ -95,27 +127,40 @@ export function ResultsPanel({ result, showJson }: Props) {
 						</tr>
 					</thead>
 					<tbody>
-						{result.rows.map((row, rowIndex) => (
-							<tr
-								key={rowIndex}
-								className='hover:bg-sidebar-accent/50 transition-colors'
-							>
-								{result.columns.map((col) => (
-									<td
-										key={col}
-										className='px-3 py-2 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono'
-									>
-										{masked ? (
-											<span className='select-none tracking-widest text-muted-foreground'>
-												{MASK_TOKEN}
-											</span>
-										) : (
-											formatCellValue(row[col])
-										)}
-									</td>
-								))}
+						{topPad > 0 && (
+							<tr style={{ height: topPad }}>
+								<td colSpan={result.columns.length} />
 							</tr>
-						))}
+						)}
+						{rowIndexesToRender.map((rowIndex) => {
+							const row = result.rows[rowIndex]
+							return (
+								<tr
+									key={rowIndex}
+									className='hover:bg-sidebar-accent/50 transition-colors'
+								>
+									{result.columns.map((col) => (
+										<td
+											key={col}
+											className='px-3 py-2 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono'
+										>
+											{masked ? (
+												<span className='select-none tracking-widest text-muted-foreground'>
+													{MASK_TOKEN}
+												</span>
+											) : (
+												formatCellValue(row[col])
+											)}
+										</td>
+									))}
+								</tr>
+							)
+						})}
+						{bottomPad > 0 && (
+							<tr style={{ height: bottomPad }}>
+								<td colSpan={result.columns.length} />
+							</tr>
+						)}
 					</tbody>
 				</table>
 			</ScrollArea>

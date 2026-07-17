@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 export function useCellSelection(
 	externalSelectedCells?: Set<string>,
@@ -23,13 +23,16 @@ export function useCellSelection(
 		return byRow
 	}, [selectedCellsSet])
 
-	function updateCellSelection(cells: Set<string>) {
-		if (onCellSelectionChange) {
-			onCellSelectionChange(cells)
-		} else {
-			setInternalSelectedCells(cells)
-		}
-	}
+	const updateCellSelection = useCallback(
+		function (cells: Set<string>) {
+			if (onCellSelectionChange) {
+				onCellSelectionChange(cells)
+			} else {
+				setInternalSelectedCells(cells)
+			}
+		},
+		[onCellSelectionChange]
+	)
 
 	return { selectedCellsSet, selectedCellsByRow, updateCellSelection }
 }
