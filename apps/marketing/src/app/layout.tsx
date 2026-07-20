@@ -103,7 +103,8 @@ export default function RootLayout({ children }: TRootProps) {
                     projectId={process.env.NEXT_PUBLIC_ANALYTICS_PROJECT_ID}
                     ingestUrl={process.env.NEXT_PUBLIC_ANALYTICS_INGEST_URL}
                     disabled={process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'false'}
-                    // trackOutbound and trackErrors available after publishing v1.5.0
+                    trackOutbound
+                    trackErrors
                 />
             </body>
         </html>
