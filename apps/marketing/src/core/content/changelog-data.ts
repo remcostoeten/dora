@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.35.1"
+export const CURRENT_VERSION = "0.36.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -169,6 +169,27 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				name: "Documentation",
 				items: [
 				"docs(readme): lead with compressed demo tour, tighten intro",
+				]
+			}
+		]
+	},
+	{
+		version: "0.36.0",
+		date: "2026-07-20",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.36.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.35.1",
+				"chore(deps): upgrade @remcostoeten/analytics to 1.7.0 (#189) (#189)",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(readme): new hero clip (browse → edit cell → run SQL), drop stale hero.webp",
+				"docs(readme): refresh header + hero clip with command palette",
 				]
 			}
 		]

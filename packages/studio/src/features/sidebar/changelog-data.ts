@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.35.1"
+export const CURRENT_VERSION = "0.36.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -102,6 +102,20 @@ export const CHANGELOG: ChangelogEntry[] = [
 		details: [
 			"docs(readme): lead with compressed demo tour, tighten intro",
 			"chore(aur): update dora to 0.35.0",
+		]
+	},
+	{
+		version: "0.36.0",
+		date: "2026-07-20",
+		commit: "v0.36.0",
+		title: "Docs(readme): new hero clip (browse → edit cell → run SQL), drop stale hero.webp",
+		description: "Docs(readme): new hero clip (browse → edit cell → run SQL), drop stale hero.webp. Docs(readme): refresh header + hero clip with command palette.",
+		type: "feature",
+		details: [
+			"docs(readme): new hero clip (browse → edit cell → run SQL), drop stale hero.webp",
+			"docs(readme): refresh header + hero clip with command palette",
+			"chore(aur): update dora to 0.35.1",
+			"chore(deps): upgrade @remcostoeten/analytics to 1.7.0 (#189) (#189)",
 		]
 	},
 	{

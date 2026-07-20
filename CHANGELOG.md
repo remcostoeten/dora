@@ -138,6 +138,23 @@ All notable changes to this project will be documented in this file.
 
 - docs(readme): lead with compressed demo tour, tighten intro
 
+
+## [v0.36.0] - 2026-07-20
+
+### Chores
+
+- chore(aur): update dora to 0.35.1
+
+- chore(deps): upgrade @remcostoeten/analytics to 1.7.0 (#189) (#189)
+
+
+
+### Documentation
+
+- docs(readme): new hero clip (browse → edit cell → run SQL), drop stale hero.webp
+
+- docs(readme): refresh header + hero clip with command palette
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29
