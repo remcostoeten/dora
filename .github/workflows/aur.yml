@@ -18,7 +18,7 @@ jobs:
       AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
       AUR_KNOWN_HOSTS: ${{ secrets.AUR_KNOWN_HOSTS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
           fetch-depth: 0
           ref: master
