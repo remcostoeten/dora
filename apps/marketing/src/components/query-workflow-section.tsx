@@ -1,61 +1,73 @@
-import Link from "next/link";
+import Link from 'next/link'
 
-import { CornerTick } from "@/components/corner-tick";
-import { SectionFrame } from "@/components/section-frame";
-import { AIAssistantCard } from "@/components/features/ai-assistant-card";
-import { DrizzleRunnerCard } from "@/components/features/drizzle-runner-card";
-import { OrmSwapper } from "@/components/format-swapper";
-import { getFeaturePath } from "@/core/config/features";
-
-const CELL_CLASS =
-  "relative min-h-[340px] scroll-mt-28 border-r border-b border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-brand-200/6";
+import { SectionFrame } from '@/components/section-frame'
+import { QuerySwitchboard } from '@/components/features/query-switchboard'
+import { getFeaturePath } from '@/core/config/features'
 
 export function QueryWorkflowSection() {
-  return (
-    <section className="relative w-full">
-      <SectionFrame />
+    return (
+        <section className="relative w-full">
+            <SectionFrame />
 
-      <div className="px-6 sm:px-8 py-12 border-b border-r border-line">
-        <h2 className="text-2xl text-ink-600 font-light italic mb-1 font-[family-name:var(--font-pixel)]">
-          Aww, is SQL to hard for you?
-        </h2>
-        <h3 className="text-balance text-3xl text-ink-100 font-semibold font-[family-name:var(--font-pixel)]">
-          Run queries via <OrmSwapper />
-          <br /> or context aware LLM
-        </h3>
-      </div>
+            <div className="px-6 sm:px-8 py-12 border-b border-r border-line">
+                <h2 className="text-2xl text-ink-600 font-light italic mb-1 font-[family-name:var(--font-pixel)]">
+                    Aww, is SQL too hard for you?
+                </h2>
+                <h3 className="text-balance text-3xl text-ink-100 font-semibold font-[family-name:var(--font-pixel)]">
+                    Three ways to ask. One engine.
+                </h3>
+            </div>
 
-      <div className="relative grid grid-cols-1 md:grid-cols-2">
-        <CornerTick className="hidden md:block left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
-        <CornerTick className="hidden md:block left-1/2 top-0 -translate-x-1/2 -translate-y-1/2" />
-        <CornerTick className="hidden md:block left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2" />
-        <div id="feature-ai-assistant" className={CELL_CLASS}>
-          <AIAssistantCard animate />
-          <Link
-            className="absolute bottom-4 right-4 z-10 text-[11px] text-brand-600 transition-colors hover:text-brand-200"
-            href={getFeaturePath("ai-assistant")}
-          >
-            Learn more →
-          </Link>
-        </div>
-        <div id="feature-drizzle-runner" className={CELL_CLASS}>
-          <DrizzleRunnerCard animate />
-          <div className="absolute bottom-4 right-4 z-10 flex items-center gap-3 text-[11px]">
-            <Link
-              className="text-brand-600 transition-colors hover:text-brand-200"
-              href={getFeaturePath("drizzle-runner")}
+            <div
+                id="feature-ai-assistant"
+                className="relative scroll-mt-28 border-b border-r border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-brand-200/6"
             >
-              Drizzle →
-            </Link>
-            <Link
-              className="text-brand-600 transition-colors hover:text-brand-200"
-              href={getFeaturePath("prisma-runner")}
-            >
-              Prisma →
-            </Link>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+                <span
+                    id="feature-drizzle-runner"
+                    className="absolute top-0 scroll-mt-28"
+                    aria-hidden
+                />
+                <span
+                    id="feature-prisma-runner"
+                    className="absolute top-0 scroll-mt-28"
+                    aria-hidden
+                />
+
+                <QuerySwitchboard animate />
+
+                <div className="relative flex flex-col gap-3 px-5 pb-8 sm:flex-row sm:items-end sm:justify-between sm:px-8">
+                    <div className="max-w-md">
+                        <h3 className="mb-1 font-pixel text-sm font-[500] text-ink-200">
+                            Every dialect lands in the same place
+                        </h3>
+                        <p className="text-xs text-ink-500 leading-relaxed">
+                            Describe it in English, or stay type-safe in Drizzle
+                            or Prisma — each path compiles to plain SQL you can
+                            read, edit, and run on the same engine.
+                        </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3 text-[11px]">
+                        <Link
+                            className="text-brand-600 transition-colors hover:text-brand-200"
+                            href={getFeaturePath('ai-assistant')}
+                        >
+                            Ask in English →
+                        </Link>
+                        <Link
+                            className="text-brand-600 transition-colors hover:text-brand-200"
+                            href={getFeaturePath('drizzle-runner')}
+                        >
+                            Drizzle →
+                        </Link>
+                        <Link
+                            className="text-brand-600 transition-colors hover:text-brand-200"
+                            href={getFeaturePath('prisma-runner')}
+                        >
+                            Prisma →
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        </section>
+    )
 }

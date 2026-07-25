@@ -6,8 +6,13 @@ import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
 import { Analytics } from '@remcostoeten/analytics'
 
+import { BrandTuner } from '@/components/dev/brand-tuner'
 import { siteConfig } from '@/core/config/site'
-import { organizationSchema, websiteSchema, softwareSchema } from '@/core/config/structured-data'
+import {
+    organizationSchema,
+    websiteSchema,
+    softwareSchema
+} from '@/core/config/structured-data'
 import '@/core/three-suppress'
 
 import './globals.css'
@@ -84,25 +89,35 @@ export default function RootLayout({ children }: TRootProps) {
             <head>
                 <script
                     type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify(organizationSchema)
+                    }}
                 />
                 <script
                     type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify(websiteSchema)
+                    }}
                 />
                 <script
                     type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema()) }}
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify(softwareSchema())
+                    }}
                 />
             </head>
             <body>
                 <main className="min-h-screen bg-background text-foreground">
                     {children}
                 </main>
+                {process.env.NODE_ENV === 'development' ? <BrandTuner /> : null}
                 <Analytics
                     projectId={process.env.NEXT_PUBLIC_ANALYTICS_PROJECT_ID}
                     ingestUrl={process.env.NEXT_PUBLIC_ANALYTICS_INGEST_URL}
-                    disabled={process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'false'}
+                    disabled={
+                        process.env.NODE_ENV !== 'production' ||
+                        process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'false'
+                    }
                     trackOutbound
                     trackErrors
                 />
