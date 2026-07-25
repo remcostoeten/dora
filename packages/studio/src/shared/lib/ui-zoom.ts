@@ -78,34 +78,57 @@ export function initZoom(): Promise<number> {
 	return setZoom(getZoom())
 }
 
-const WHEEL_ZOOM_INTERVAL_MS = 60
+const WHEEL_LINE_HEIGHT_PX = 16
+const WHEEL_PAGE_HEIGHT_PX = 400
+const WHEEL_STEP_THRESHOLD_PX = 50
+
+function normalizeWheelDelta(event: WheelEvent): number {
+	if (event.deltaMode === 1) return event.deltaY * WHEEL_LINE_HEIGHT_PX
+	if (event.deltaMode === 2) return event.deltaY * WHEEL_PAGE_HEIGHT_PX
+	return event.deltaY
+}
 
 /**
- * Bind Ctrl/Cmd + mouse-wheel to zoom the UI, mirroring the keyboard shortcuts.
- * Throttled so a single physical scroll steps zoom smoothly instead of jumping
- * to the clamp. Returns a cleanup that removes the listener.
+ * Bind Ctrl/Cmd + mouse-wheel (and trackpad pinch, which browsers deliver as a
+ * synthetic ctrl-wheel) to zoom the UI, mirroring the keyboard shortcuts.
+ *
+ * Delta is accumulated rather than throttled, so high-frequency small-delta
+ * trackpad gestures track the finger instead of having most events dropped.
+ * Returns a cleanup that removes the listener.
  */
 export function attachWheelZoom(target: Window = window): () => void {
-	let lastAt = 0
+	let accumulated = 0
 
 	function onWheel(event: WheelEvent): void {
 		if (!event.ctrlKey && !event.metaKey) return
+		// Suppress native page/pinch zoom on every matching event, including the
+		// ones that have not yet accumulated enough delta to move a zoom step.
 		event.preventDefault()
 
-		const now = Date.now()
-		if (now - lastAt < WHEEL_ZOOM_INTERVAL_MS) return
-		lastAt = now
+		const delta = normalizeWheelDelta(event)
+		if (delta === 0) return
 
-		if (event.deltaY < 0) {
-			zoomIn()
-		} else if (event.deltaY > 0) {
-			zoomOut()
+		if (accumulated !== 0 && Math.sign(delta) !== Math.sign(accumulated)) {
+			accumulated = 0
 		}
+		accumulated += delta
+
+		const steps = Math.trunc(accumulated / WHEEL_STEP_THRESHOLD_PX)
+		if (steps === 0) return
+		accumulated -= steps * WHEEL_STEP_THRESHOLD_PX
+
+		const current = getZoom()
+		const next = clampZoom(current - steps * ZOOM_STEP)
+		if (next === current) return
+
+		setZoom(next)
 	}
 
-	target.addEventListener('wheel', onWheel, { passive: false })
+	// Capture phase: Monaco and other nested scrollers consume `wheel` on their
+	// own containers, so a bubble-phase listener never sees gestures over them.
+	target.addEventListener('wheel', onWheel, { passive: false, capture: true })
 	return function () {
-		target.removeEventListener('wheel', onWheel)
+		target.removeEventListener('wheel', onWheel, { capture: true })
 	}
 }
 
