@@ -78,6 +78,37 @@ export function initZoom(): Promise<number> {
 	return setZoom(getZoom())
 }
 
+const WHEEL_ZOOM_INTERVAL_MS = 60
+
+/**
+ * Bind Ctrl/Cmd + mouse-wheel to zoom the UI, mirroring the keyboard shortcuts.
+ * Throttled so a single physical scroll steps zoom smoothly instead of jumping
+ * to the clamp. Returns a cleanup that removes the listener.
+ */
+export function attachWheelZoom(target: Window = window): () => void {
+	let lastAt = 0
+
+	function onWheel(event: WheelEvent): void {
+		if (!event.ctrlKey && !event.metaKey) return
+		event.preventDefault()
+
+		const now = Date.now()
+		if (now - lastAt < WHEEL_ZOOM_INTERVAL_MS) return
+		lastAt = now
+
+		if (event.deltaY < 0) {
+			zoomIn()
+		} else if (event.deltaY > 0) {
+			zoomOut()
+		}
+	}
+
+	target.addEventListener('wheel', onWheel, { passive: false })
+	return function () {
+		target.removeEventListener('wheel', onWheel)
+	}
+}
+
 /** Toggle native fullscreen (desktop) or the Fullscreen API (browser). */
 export async function toggleFullscreen(): Promise<void> {
 	if (isTauriRuntime()) {

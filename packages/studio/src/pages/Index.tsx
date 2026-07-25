@@ -12,6 +12,7 @@ import {
   zoomOut,
   resetZoom,
   initZoom,
+  attachWheelZoom,
   toggleFullscreen,
 } from "@studio/shared/lib/ui-zoom";
 import { LiveMonitorProvider } from "@studio/core/live-monitor";
@@ -391,6 +392,7 @@ function IndexInner() {
   // mod+enter for "run query" and stops zoom keys firing inside inputs.
   useEffect(function applyPersistedZoom() {
     initZoom();
+    return attachWheelZoom();
   }, []);
 
   $.bind(shortcuts.zoomIn.combo).on(

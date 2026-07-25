@@ -94,7 +94,7 @@ export const APP_SHORTCUTS = {
 
 	// ── View ─────────────────────────────────────────────────────────────────
 	zoomIn: {
-		combo: ['mod+equal', 'mod+plus'],
+		combo: ['mod+=', 'mod+shift+plus'],
 		description: 'Zoom in',
 		scope: 'global'
 	},
