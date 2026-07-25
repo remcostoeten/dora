@@ -3,9 +3,9 @@ import { renderHook, act } from '@testing-library/react'
 import React from 'react'
 import { TabsProvider, useTabs } from '@/core/tabs/tabs-store'
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <TabsProvider>{children}</TabsProvider>
-)
+function wrapper({ children }: { children: React.ReactNode }) {
+  return <TabsProvider>{children}</TabsProvider>
+}
 
 describe('useTabs', () => {
   // Tabs persist to localStorage; clear it so each case starts isolated.

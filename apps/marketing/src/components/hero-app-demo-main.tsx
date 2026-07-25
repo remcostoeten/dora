@@ -1030,7 +1030,7 @@ function TableWorkspace({ table }: { table: TDemoTable }) {
   );
 }
 
-type TMainProps = {
+type Props = {
   activeTable: string;
   openTables: string[];
   openConnectionIds: string[];
@@ -1052,7 +1052,7 @@ export function DemoMain({
   onSelectConnection,
   onCloseConnection,
   onAddConnection,
-}: TMainProps) {
+}: Props) {
   const table = findTable(activeTable);
 
   return (

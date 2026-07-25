@@ -7,7 +7,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@studio/shared/ui/toolt
 import { cn } from '@studio/shared/utils/cn'
 import type { ChangeEvent, ChangeType } from '@studio/core/live-monitor'
 
-type TProps = {
+type Props = {
 	events: ChangeEvent[]
 	unreadCount: number
 	onClear: () => void
@@ -47,7 +47,7 @@ function formatRelativeTime(ts: number): string {
 	return `${Math.floor(diff / 3600000)}h ago`
 }
 
-export function ChangeFeed({ events, unreadCount, onClear, onMarkRead }: TProps) {
+export function ChangeFeed({ events, unreadCount, onClear, onMarkRead }: Props) {
 	const scrollRef = useRef<HTMLDivElement>(null)
 
 	useEffect(

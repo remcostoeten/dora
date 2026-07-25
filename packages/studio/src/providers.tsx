@@ -7,7 +7,7 @@ import type { AnalyticsConfig } from '@studio/features/analytics'
 import { QueryHistoryProvider } from '@studio/features/sql-console/stores/query-history-store'
 import { TooltipProvider } from '@studio/shared/ui/tooltip'
 
-type AppProvidersProps = {
+type Props = {
 	/** Force the in-memory mock adapter (web demo). */
 	forceMock?: boolean
 	/** Analytics configuration for the host. */
@@ -26,7 +26,7 @@ type AppProvidersProps = {
  * `TooltipProvider` belongs here (not deep inside a page) so every tooltip in
  * the tree has a provider ancestor without each surface re-wrapping one.
  */
-export function AppProviders({ forceMock = false, analyticsConfig, children }: AppProvidersProps) {
+export function AppProviders({ forceMock = false, analyticsConfig, children }: Props) {
 	return (
 		<AnalyticsProvider config={analyticsConfig}>
 			<SettingsProvider>

@@ -5,7 +5,7 @@ import { FEATURES, getFeature, getFeaturePath } from '@/core/config/features'
 import { createMetadata } from '@/core/config/seo'
 import FeatureDetailView from '@/views/feature-detail-view'
 
-type TPageProps = {
+type Props = {
     params: Promise<{ slug: string }>
 }
 
@@ -17,7 +17,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
     params
-}: TPageProps): Promise<Metadata> {
+}: Props): Promise<Metadata> {
     const { slug } = await params
     const feature = getFeature(slug)
 
@@ -33,7 +33,7 @@ export async function generateMetadata({
     })
 }
 
-export default async function Page({ params }: TPageProps) {
+export default async function Page({ params }: Props) {
     const { slug } = await params
     const feature = getFeature(slug)
 
