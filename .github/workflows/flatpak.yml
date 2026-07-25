@@ -20,7 +20,7 @@ jobs:
   flatpak:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
       - name: Resolve release metadata
         id: meta

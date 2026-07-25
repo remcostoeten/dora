@@ -41,7 +41,9 @@ fn postgres_with_percent_encoded_password() {
 
     let (sanitized, pw) = extract_sensitive_data(dbi).expect("ok");
 
-    assert_eq!(pw.as_deref(), Some("p%404ss"));
+    // The keyring stores the real secret, so the percent-encoded form in the URL
+    // is decoded on extraction; `Url::set_password` re-encodes on reinsertion.
+    assert_eq!(pw.as_deref(), Some("p@4ss"));
 
     match sanitized {
         DatabaseInfo::Postgres {

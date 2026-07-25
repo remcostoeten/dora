@@ -29,8 +29,53 @@ function dialectUsesSchemas(dialect?: TableDialect): boolean {
 	)
 }
 
+// Index of the schema/table separator, skipping over quoted spans so a dot
+// inside `"weird.schema"` is not mistaken for the separator. Doubled quotes
+// ("" / ``) are escapes and do not close the span.
+function findSeparatorIndex(value: string): number {
+	let index = 0
+
+	while (index < value.length) {
+		const char = value[index]
+
+		if (char === '"' || char === '`') {
+			index++
+			while (index < value.length) {
+				if (value[index] === char) {
+					if (value[index + 1] === char) {
+						index += 2
+						continue
+					}
+					index++
+					break
+				}
+				index++
+			}
+			continue
+		}
+
+		if (char === '.') return index
+		index++
+	}
+
+	return -1
+}
+
+// Quotes an identifier, doubling any embedded quote characters. An already
+// quoted identifier is returned unchanged so callers can pass through
+// user-supplied quoting.
+function quoteIdentifier(value: string, quote: '"' | '`'): string {
+	const trimmed = value.trim()
+
+	if (trimmed.length >= 2 && trimmed.startsWith(quote) && trimmed.endsWith(quote)) {
+		return trimmed
+	}
+
+	return `${quote}${trimmed.split(quote).join(quote + quote)}${quote}`
+}
+
 export function getTableRefParts(value: string): TableRefParts {
-	const separatorIndex = value.indexOf('.')
+	const separatorIndex = findSeparatorIndex(value)
 	if (separatorIndex === -1) {
 		return {
 			schemaName: null,
@@ -66,20 +111,20 @@ export function getTableSqlIdentifier(
 
 	if (dialect === 'mysql' || dialect === 'mariadb') {
 		if (parts.schemaName) {
-			return `\`${parts.schemaName}\`.\`${parts.tableName}\``
+			return `${quoteIdentifier(parts.schemaName, '`')}.${quoteIdentifier(parts.tableName, '`')}`
 		}
 
-		return `\`${parts.tableName}\``
+		return quoteIdentifier(parts.tableName, '`')
 	}
 
 	if (
 		parts.schemaName &&
 		(dialect === undefined || dialectUsesSchemas(dialect))
 	) {
-		return `"${parts.schemaName}"."${parts.tableName}"`
+		return `${quoteIdentifier(parts.schemaName, '"')}.${quoteIdentifier(parts.tableName, '"')}`
 	}
 
-	return `"${parts.tableName}"`
+	return quoteIdentifier(parts.tableName, '"')
 }
 
 // Quotes a bare column name for the given dialect. MySQL/MariaDB use backticks,
@@ -87,18 +132,11 @@ export function getTableSqlIdentifier(
 // already-quoted identifier (starts with the dialect's quote char) is returned
 // unchanged so callers can pass through user-supplied quoting.
 export function getColumnSqlIdentifier(column: string, dialect?: TableDialect): string {
-	const trimmed = column.trim()
 	if (dialect === 'mysql' || dialect === 'mariadb') {
-		if (trimmed.startsWith('`') && trimmed.endsWith('`')) {
-			return trimmed
-		}
-		return `\`${trimmed}\``
+		return quoteIdentifier(column, '`')
 	}
 
-	if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-		return trimmed
-	}
-	return `"${trimmed}"`
+	return quoteIdentifier(column, '"')
 }
 
 // Builds the `ALTER TABLE ... DROP COLUMN` statement for the given dialect.

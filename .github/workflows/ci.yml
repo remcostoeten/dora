@@ -86,7 +86,7 @@ jobs:
                   echo "Using PostgreSQL tools from: ${PG_BIN_DIR}"
                   export PATH="${PG_BIN_DIR}:$PATH"
                   which initdb
-                  cargo test --lib
+                  cargo test
               env:
                   DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
 

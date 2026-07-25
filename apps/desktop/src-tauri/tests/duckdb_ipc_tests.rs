@@ -2,6 +2,11 @@
 //! `duckdb_helper` binary and drives it through the `IpcDuckDbConn` client,
 //! exercising open, a transactional batch, a raw query, and a streaming
 //! `execute_query`.
+//!
+//! Gated on `duckdb-engine` to match the `duckdb_helper` binary's
+//! `required-features`: without it the helper is never built, so the spawn
+//! below would fail on a path that only exists in a stale target dir.
+#![cfg(feature = "duckdb-engine")]
 
 use app_lib::database::duckdb_ipc::client;
 use app_lib::database::parser::ParsedStatement;

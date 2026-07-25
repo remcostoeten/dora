@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, useEffect, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useReducer, useCallback, useEffect, useMemo, useRef, ReactNode } from 'react'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { QueryTab, SqlQueryResult, ResultViewMode } from '../types'
 import { DEFAULT_SQL } from '../data'
@@ -349,8 +349,15 @@ export function QueryTabProvider({ children, connectionId }: TProps) {
 
 	const [state, dispatch] = useReducer(tabReducer, undefined, initialState)
 
+	// The connection whose tabs are actually in `state`. Effects run in
+	// declaration order, so on a connectionId change the persist effect below
+	// would otherwise write the outgoing connection's tabs under the incoming
+	// connection's key, destroying its saved queries before the load effect runs.
+	const loadedConnectionIdRef = useRef(connectionId)
+
 	// Persist whenever state changes
 	useEffect(function () {
+		if (loadedConnectionIdRef.current !== connectionId) return
 		saveTabsToStorage(connectionId, state)
 	}, [state, connectionId])
 
@@ -363,6 +370,7 @@ export function QueryTabProvider({ children, connectionId }: TProps) {
 			const defaultTab = createDefaultTab(connectionId)
 			dispatch({ type: 'LOAD_TABS', tabs: [defaultTab], activeTabId: defaultTab.id })
 		}
+		loadedConnectionIdRef.current = connectionId
 	}, [connectionId])
 
 	const activeTab = state.tabs.find(function (t) { return t.id === state.activeTabId }) || state.tabs[0]
