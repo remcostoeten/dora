@@ -201,8 +201,14 @@ bun run desktop:build:mac                # dmg
 **Tests**
 
 ```bash
-bun test
+bun run test          # full Vitest suite (via turbo)
+bun run test:watch    # watch mode
+bun run test:coverage # with coverage
 ```
+
+> [!NOTE]
+> Use `bun run test`, not a bare `bun test` — the latter invokes Bun's own
+> runner, which picks up Vitest and Playwright specs it cannot execute.
 
 > [!NOTE]
 > The desktop app uses Vite as its dev server (`http://localhost:1420`). Hot-reload works for the TypeScript frontend; Rust changes require a full rebuild.
