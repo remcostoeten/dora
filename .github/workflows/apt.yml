@@ -12,6 +12,17 @@ on:
         required: false
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing GitHub release tag (e.g. v0.26.6). Leave empty to use latest.
+        required: false
+        type: string
+      publish:
+        description: Publish to GitHub Pages (requires pages to be enabled).
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read

@@ -7,6 +7,12 @@ on:
         description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
         required: false
         type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
+        required: false
+        type: string
 
 permissions:
   contents: write

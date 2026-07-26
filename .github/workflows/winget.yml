@@ -12,6 +12,17 @@ on:
         required: false
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.26.6.
+        required: true
+        type: string
+      submit_update:
+        description: Submit a wingetcreate update PR.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write

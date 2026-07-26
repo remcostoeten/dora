@@ -22,6 +22,24 @@ on:
           - candidate
           - beta
           - edge
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
+        required: false
+        type: string
+      publish:
+        description: Publish the built snap to the Snap Store.
+        required: false
+        type: boolean
+        default: false
+      # workflow_call has no `choice` input type; the dispatch UI keeps the
+      # dropdown, callers pass a plain string.
+      release_channel:
+        description: Snap Store channel to release to.
+        required: false
+        type: string
+        default: stable
 
 permissions:
   contents: write
