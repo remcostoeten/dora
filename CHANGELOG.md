@@ -155,6 +155,59 @@ All notable changes to this project will be documented in this file.
 
 - docs(readme): refresh header + hero clip with command palette
 
+
+## [v0.37.0] - 2026-07-26
+
+### Bug Fixes
+
+- fix(studio): accumulate ctrl+wheel zoom delta and listen in capture phase
+
+- fix: audit batch — SQL tab data loss, dark failing test, dead CI gates (#211) (#211)
+
+- fix(studio): pending-edit integrity — partial apply, undo-by-PK, reload guard (#213) (#213)
+
+- fix(rust): connection hygiene — redact secrets, connect timeouts, monitor deregistration, sane MySQL pooling (#214) (#214)
+
+- fix(studio): grid paste sanitization, per-tab query cancel, resettable ErrorBoundary (#215) (#215)
+
+- fix(rust): canonical identifier quoting — escape TRUNCATE/INSERT/UPDATE paths across all dialects (#216) (#216)
+
+- fix(studio): resolve SQL-console mutation PK from declared metadata, drop the 'id'-name guess (#218) (#218)
+
+- fix(studio): repaint pending dry edits after every table reload + beforeunload guard (#219) (#219)
+
+
+
+### CI/CD
+
+- ci(release): make packaging channels propagate real status into the Release run (#220) (#220)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.36.0
+
+- chore(style): narrow the style rules to real violations and enforce them in CI (#212) (#212)
+
+
+
+### Features
+
+- feat(studio): ctrl/cmd+wheel UI zoom, fix zoom-in key combo
+
+- feat(marketing): query switchboard section + dev brand tuner
+
+- feat(studio): hide-AI setting, macOS window controls, onboarding tour, Drizzle operator intellisense (#222) (#222)
+
+
+
+### Testing
+
+- test(e2e): boot smoke test using the existing browser harness (#217) (#217)
+
+- test(dialect): real adapter lifecycle coverage + opt-in live-DB CI; prune dead demo scripts (#221) (#221)
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29
