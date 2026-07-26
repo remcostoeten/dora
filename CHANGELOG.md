@@ -183,6 +183,25 @@ All notable changes to this project will be documented in this file.
 
 - The AUR, Homebrew, APT, Winget, Snap, and Flatpak publishing workflows now run *inside* the release run and fail it if any channel fails — a green release means every channel actually published. (#220)
 
+
+## [v0.38.0] - 2026-07-26
+
+### Chores
+
+- chore(aur): update dora to 0.37.0
+
+
+
+### Documentation
+
+- docs(changelog): curate v0.37.0 notes and sync in-app changelog data
+
+
+
+### Features
+
+- feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

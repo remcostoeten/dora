@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.37.0"
+export const CURRENT_VERSION = "0.38.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -230,6 +230,31 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				name: "Release pipeline",
 				items: [
 				"The AUR, Homebrew, APT, Winget, Snap, and Flatpak publishing workflows now run *inside* the release run and fail it if any channel fails — a green release means every channel actually published. (#220)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.38.0",
+		date: "2026-07-26",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.38.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.37.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(changelog): curate v0.37.0 notes and sync in-app changelog data",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)",
 				]
 			}
 		]

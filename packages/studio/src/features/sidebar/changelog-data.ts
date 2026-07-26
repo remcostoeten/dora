@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.37.0"
+export const CURRENT_VERSION = "0.38.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -125,6 +125,19 @@ export const CHANGELOG: ChangelogEntry[] = [
 		title: "Release v0.37.0",
 		description: "Updates in v0.37.0.",
 		type: "feature"
+	},
+	{
+		version: "0.38.0",
+		date: "2026-07-26",
+		commit: "v0.38.0",
+		title: "Feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)",
+		description: "Feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225). Docs(changelog): curate v0.37.0 notes and sync in-app changelog data.",
+		type: "feature",
+		details: [
+			"feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)",
+			"docs(changelog): curate v0.37.0 notes and sync in-app changelog data",
+			"chore(aur): update dora to 0.37.0",
+		]
 	},
 	{
 		version: "0.30.3",
