@@ -45,6 +45,7 @@
 			"binaries/duckdb_helper"
 		],
 		"targets": [
+			"app",
 			"deb",
 			"rpm",
 			"appimage",
