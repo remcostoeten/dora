@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
 import { useLiveMonitor } from "@studio/core/live-monitor";
+import { overlayPendingEditsOnRows, type PendingEdit } from "@studio/core/pending-edits";
 import { useNuqsState } from "@studio/core/url-state/use-nuqs-state";
 import { tableDataCache } from "@studio/core/table-cache";
 import { getAdapterError } from "@studio/core/data-provider/types";
@@ -29,6 +30,7 @@ type Args = {
   draftInsertIndex: number | null;
   isApplyingEdits: boolean;
   hasPendingEdits: boolean;
+  getEditsForTable: (tableId: string) => PendingEdit[];
   selectedRows: Set<number>;
   selectedCells: Set<string>;
   focusedCell: { row: number; col: number } | null;
@@ -68,6 +70,7 @@ export function useDatabaseStudioSync(args: Args) {
     draftInsertIndex,
     isApplyingEdits,
     hasPendingEdits,
+    getEditsForTable,
     selectedRows,
     selectedCells,
     focusedCell,
@@ -107,6 +110,21 @@ export function useDatabaseStudioSync(args: Args) {
   // in-place refresh of the view already shown (don't paint the now-stale
   // cache — it flashes the pre-mutation rows before the fetch returns).
   const displayedCacheKeyRef = useRef<string | null>(null);
+  // Read through a ref so loadTableData's identity doesn't change on every
+  // buffered edit — its identity drives the loadWhenQueryChanges effect, and
+  // reloading on each keystroke of a dry edit would defeat the buffer.
+  const getEditsForTableRef = useRef(getEditsForTable);
+  getEditsForTableRef.current = getEditsForTable;
+
+  const withPendingEdits = useCallback(
+    function (data: TableData, forTableId: string | null): TableData {
+      if (!forTableId) return data;
+      const edits = getEditsForTableRef.current(forTableId);
+      if (edits.length === 0) return data;
+      return { ...data, rows: overlayPendingEditsOnRows(data.rows, edits) };
+    },
+    [],
+  );
 
   const stableUrlState = useMemo(
     function () {
@@ -143,7 +161,7 @@ export function useDatabaseStudioSync(args: Args) {
     // is stale relative to the mutation, so painting it here is the "flash back
     // to the old state". Keep the current rows visible and swap in fresh data.
     if (cached && currentCacheKey !== displayedCacheKeyRef.current) {
-      setTableData(cached.data);
+      setTableData(withPendingEdits(cached.data, tableId));
       if (cached.visibleColumns.length > 0) {
         setVisibleColumns(new Set(cached.visibleColumns));
       }
@@ -199,7 +217,7 @@ export function useDatabaseStudioSync(args: Args) {
           );
         }
 
-        setTableData(data);
+        setTableData(withPendingEdits(data, tableId));
         displayedCacheKeyRef.current = currentCacheKey;
         let nextVisibleColumns: string[] = [];
         if (data.columns.length > 0) {
@@ -257,6 +275,7 @@ export function useDatabaseStudioSync(args: Args) {
     sort,
     tableId,
     tableRefName,
+    withPendingEdits,
   ]);
 
   useEffect(
@@ -312,7 +331,7 @@ export function useDatabaseStudioSync(args: Args) {
       const cached = tableDataCache.get(defaultCacheKey);
 
       if (cached) {
-        setTableData(cached.data);
+        setTableData(withPendingEdits(cached.data, tableId));
         setVisibleColumns(new Set(cached.visibleColumns));
         setIsTableTransitioning(false);
         return;
@@ -330,6 +349,7 @@ export function useDatabaseStudioSync(args: Args) {
       setTableData,
       setVisibleColumns,
       tableId,
+      withPendingEdits,
     ],
   );
 
