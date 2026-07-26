@@ -10,7 +10,8 @@
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit",
-		"test": "vitest run -c ../../vitest.config.ts"
+		"test": "vitest run -c ../../vitest.config.ts",
+		"smoke": "node smoke/boot-smoke.mjs"
 	},
 	"peerDependencies": {
 		"react": ">=18",
@@ -73,6 +74,7 @@
 		"@tauri-apps/plugin-updater": "^2.9.0"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.59.1",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.2",
 		"@testing-library/user-event": "^14.6.1",

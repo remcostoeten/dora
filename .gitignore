@@ -79,3 +79,4 @@ dev-menu.config.ts
 
 # promo recorder output
 promo-out/
+smoke-artifacts/
