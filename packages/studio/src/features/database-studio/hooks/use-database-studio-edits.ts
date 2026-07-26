@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
+import { createEditKey } from '@studio/core/pending-edits/pending-edits-store'
 import { tableDataCache } from '@studio/core/table-cache'
 import { normalizeValueForInsert } from '../utils/studio-data'
 import type { TableData } from '../types'
@@ -10,7 +11,17 @@ type PendingEdit = {
 	columnName: string
 	oldValue: unknown
 	newValue: unknown
-	rowIndex: number
+}
+
+// Names the rows and columns that failed so the toast points at something the
+// user can act on, instead of a bare "failed to apply changes".
+function describeFailedEdits(failed: { edit: PendingEdit; reason: unknown }[]): string {
+	return failed
+		.map(function ({ edit, reason }) {
+			const message = reason instanceof Error ? reason.message : String(reason)
+			return `${edit.primaryKeyColumn}=${String(edit.primaryKeyValue)} · ${edit.columnName}: ${message}`
+		})
+		.join('\n')
 }
 
 type Args = {
@@ -105,7 +116,7 @@ export function useDatabaseStudioEdits(args: Args) {
 		}
 
 		if (isDryEditMode) {
-			const key = `${tableId}:${String(row[primaryKeyColumn.name])}:${columnName}`
+			const key = createEditKey(tableId, row[primaryKeyColumn.name], columnName)
 			const existingEdit = pendingEdits.get(key)
 			const oldValue = existingEdit ? existingEdit.oldValue : row[columnName]
 
@@ -121,7 +132,6 @@ export function useDatabaseStudioEdits(args: Args) {
 			}
 
 			addEdit(tableId, {
-				rowIndex,
 				primaryKeyColumn: primaryKeyColumn.name,
 				primaryKeyValue: row[primaryKeyColumn.name],
 				columnName,
@@ -218,16 +228,21 @@ export function useDatabaseStudioEdits(args: Args) {
 				const lastEdit = edits[edits.length - 1]
 				if (!lastEdit) return
 
-				const key = `${tableId}:${String(lastEdit.primaryKeyValue)}:${lastEdit.columnName}`
+				const key = createEditKey(tableId, lastEdit.primaryKeyValue, lastEdit.columnName)
 				removeEdit(tableId, key)
 				setTableData(function (prev) {
 					if (!prev) return prev
+					// Resolve by primary key, not a stored page position: after a
+					// sort, filter or page change that index points at a different row.
+					const index = prev.rows.findIndex(function (row) {
+						return row[lastEdit.primaryKeyColumn] === lastEdit.primaryKeyValue
+					})
+					if (index === -1) return prev
+
 					const newRows = [...prev.rows]
-					if (newRows[lastEdit.rowIndex]) {
-						newRows[lastEdit.rowIndex] = {
-							...newRows[lastEdit.rowIndex],
-							[lastEdit.columnName]: lastEdit.oldValue
-						}
+					newRows[index] = {
+						...newRows[index],
+						[lastEdit.columnName]: lastEdit.oldValue
 					}
 					return { ...prev, rows: newRows }
 				})
@@ -249,7 +264,7 @@ export function useDatabaseStudioEdits(args: Args) {
 
 		setIsApplyingEdits(true)
 		try {
-			await Promise.all(
+			const outcomes = await Promise.allSettled(
 				edits.map(function (edit) {
 					return updateCell.mutateAsync({
 						connectionId: activeConnectionId,
@@ -261,13 +276,35 @@ export function useDatabaseStudioEdits(args: Args) {
 					})
 				})
 			)
-			clearEdits(tableId)
+
+			const applied: PendingEdit[] = []
+			const failed: { edit: PendingEdit; reason: unknown }[] = []
+
+			outcomes.forEach(function (outcome, index) {
+				const edit = edits[index]
+				if (outcome.status === 'fulfilled') {
+					applied.push(edit)
+				} else {
+					failed.push({ edit, reason: outcome.reason })
+				}
+			})
+
+			// Drop only what actually landed, so a retry does not re-issue
+			// updates the database has already accepted.
+			if (failed.length === 0) {
+				clearEdits(tableId)
+			} else {
+				for (const edit of applied) {
+					removeEdit(tableId, createEditKey(tableId, edit.primaryKeyValue, edit.columnName))
+				}
+			}
+
 			// The edited values are already on screen from dry-edit mode, so
 			// patch the cached page instead of reloading (mirrors handleCellEdit).
 			const cached = tableDataCache.get(currentCacheKey)
 			if (cached) {
 				const patchedRows = cached.data.rows.map(function (cachedRow) {
-					const matching = edits.filter(function (edit) {
+					const matching = applied.filter(function (edit) {
 						return cachedRow[edit.primaryKeyColumn] === edit.primaryKeyValue
 					})
 					if (matching.length === 0) return cachedRow
@@ -281,6 +318,31 @@ export function useDatabaseStudioEdits(args: Args) {
 					...cached,
 					data: { ...cached.data, rows: patchedRows }
 				})
+			}
+
+			if (failed.length > 0) {
+				// Put the failed cells back to their pre-edit values on screen so
+				// the grid stops showing writes the database rejected.
+				setTableData(function (current) {
+					if (!current) return current
+					const rows = current.rows.map(function (row) {
+						const matching = failed.filter(function (entry) {
+							return row[entry.edit.primaryKeyColumn] === entry.edit.primaryKeyValue
+						})
+						if (matching.length === 0) return row
+						const reverted = { ...row }
+						for (const entry of matching) {
+							reverted[entry.edit.columnName] = entry.edit.oldValue
+						}
+						return reverted
+					})
+					return { ...current, rows }
+				})
+
+				notifyActionFailure(
+					`Failed to apply ${failed.length} of ${edits.length} change(s)`,
+					describeFailedEdits(failed)
+				)
 			}
 		} catch (error) {
 			notifyActionFailure('Failed to apply changes', error)
