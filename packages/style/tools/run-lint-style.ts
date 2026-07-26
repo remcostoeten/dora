@@ -1,15 +1,22 @@
-import { Project, SyntaxKind } from 'ts-morph'
+import { Node, Project, SyntaxKind } from 'ts-morph'
 
 /**
  * Read-only counterpart to `run-lint-style-fix.ts`.
  *
  * Reports the two project style rules oxlint does not cover:
- *   1. standalone functions must be `function` declarations, not arrows
- *      assigned to a `const`;
- *   2. a file's single non-exported type is named `Props`.
  *
- * Exits non-zero only with `--strict`, so CI can surface the count while the
- * existing backlog of violations is worked down. See issue #201.
+ *   1. `arrow-const` — a standalone function must be a `function` declaration.
+ *      Only module-scope arrows that are never passed as an argument count:
+ *      a nested or passed-along arrow is a callback, which the rule says
+ *      should stay an arrow.
+ *
+ *   2. `props-naming` — a component's props type is named `Props`. Only types
+ *      whose name already ends in `Props` are flagged; a file's single
+ *      non-exported type is not necessarily a props type (`LogLevel`,
+ *      `TableCacheEntry`, …) and renaming those would be wrong.
+ *
+ * Both rules are deliberately narrow so the gate can block in CI without
+ * false positives. See issue #201.
  */
 
 type Violation = {
@@ -17,6 +24,23 @@ type Violation = {
 	line: number
 	rule: 'arrow-const' | 'props-naming'
 	detail: string
+}
+
+function isPassedAsArgument(varDecl: Node): boolean {
+	const nameNode = varDecl.asKind(SyntaxKind.VariableDeclaration)?.getNameNode()
+	if (!nameNode || nameNode.getKind() !== SyntaxKind.Identifier) return false
+
+	for (const reference of nameNode.asKindOrThrow(SyntaxKind.Identifier).findReferencesAsNodes()) {
+		const parent = reference.getParent()
+		if (!parent) continue
+		if (parent.getKind() === SyntaxKind.CallExpression) {
+			const call = parent.asKindOrThrow(SyntaxKind.CallExpression)
+			if (call.getArguments().some(function (arg) { return arg === reference })) return true
+		}
+		if (parent.getKind() === SyntaxKind.JsxExpression) return true
+	}
+
+	return false
 }
 
 function collectViolations(): Violation[] {
@@ -49,11 +73,18 @@ function collectViolations(): Violation[] {
 			if (!varStmt || varStmt.getKind() !== SyntaxKind.VariableStatement) continue
 			if (varDeclList.getDeclarations().length !== 1) continue
 
+			// Nested arrows are closures over local state; converting them to
+			// declarations changes nothing the rule cares about.
+			if (varStmt.getParent()?.getKind() !== SyntaxKind.SourceFile) continue
+
+			// A named arrow that is handed to something else is a callback.
+			if (isPassedAsArgument(varDecl)) continue
+
 			violations.push({
 				file,
 				line: arrowFunction.getStartLineNumber(),
 				rule: 'arrow-const',
-				detail: `${varDecl.getName()} is an arrow assigned to a const; use a function declaration`
+				detail: `${varDecl.getName()} is a module-scope arrow assigned to a const; use a function declaration`
 			})
 		}
 
@@ -62,15 +93,19 @@ function collectViolations(): Violation[] {
 			...sourceFile.getTypeAliases().filter(function (t) { return !t.isExported() })
 		]
 
+		// Only a file whose *single* non-exported type is a props type must call
+		// it `Props`. With several types the rule asks for descriptive names
+		// instead, which `FooProps` / `BarProps` already are.
 		if (nonExported.length === 1) {
 			const decl = nonExported[0]
 			const name = decl.getName()
-			if (name !== 'Props') {
+
+			if (name !== 'Props' && name.endsWith('Props')) {
 				violations.push({
 					file,
 					line: decl.getStartLineNumber(),
 					rule: 'props-naming',
-					detail: `single non-exported type is named ${name}; rename to Props`
+					detail: `single non-exported props type is named ${name}; rename to Props`
 				})
 			}
 		}

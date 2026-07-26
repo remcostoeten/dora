@@ -2,7 +2,7 @@ import * as React from 'react'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 
-type TProps = {
+type Props = {
 	value?: string | number
 	onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
 	min?: number
@@ -24,7 +24,7 @@ export function NumberInput({
 	placeholder,
 	disabled,
 	title
-}: TProps) {
+}: Props) {
 	const inputRef = React.useRef<HTMLInputElement>(null)
 
 	function handleIncrement() {

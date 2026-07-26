@@ -75,11 +75,11 @@ export const viewport: Viewport = {
     themeColor: siteConfig.themeColor
 }
 
-type TRootProps = {
+type Props = {
     children: ReactNode
 }
 
-export default function RootLayout({ children }: TRootProps) {
+export default function RootLayout({ children }: Props) {
     return (
         <html
             className={`${GeistSans.variable} ${GeistMono.variable} ${PixelFont.variable} ${InterFont.variable} ${JetBrainsMono.variable} dark`}

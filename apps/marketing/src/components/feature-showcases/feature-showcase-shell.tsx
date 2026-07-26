@@ -14,7 +14,7 @@ import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-moti
 
 const FRAME_LINE = 'pointer-events-none absolute z-[2] bg-line-strong'
 
-type TFeatureShowcaseShellProps = {
+type Props = {
     slug: TFeatureSlug
     label: string
     children: ReactNode
@@ -24,7 +24,7 @@ export function FeatureShowcaseShell({
     slug,
     label,
     children
-}: TFeatureShowcaseShellProps) {
+}: Props) {
     const reducedMotion = usePrefersReducedMotion()
     const frame = useFrameDrawIn<HTMLDivElement>()
     const videoRef = useRef<HTMLVideoElement>(null)

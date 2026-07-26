@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 import { SectionFrame } from '@/components/section-frame'
 
-type TResourcesPageShellProps = {
+type Props = {
     eyebrow: string
     title: string
     lead: string
@@ -14,7 +14,7 @@ export function ResourcesPageShell({
     title,
     lead,
     children
-}: TResourcesPageShellProps) {
+}: Props) {
     return (
         <section className="relative">
             <SectionFrame />

@@ -29,13 +29,13 @@ export type TProviderInfo = {
   blurb: string;
 };
 
-type TProps = {
+type Props = {
   info: TProviderInfo | null;
   anchor: HTMLElement | null;
   open: boolean;
 };
 
-export function ProviderInfoPopover({ info, anchor, open }: TProps) {
+export function ProviderInfoPopover({ info, anchor, open }: Props) {
   const reduced = usePrefersReducedMotion();
   const [mounted, setMounted] = useState(false);
 

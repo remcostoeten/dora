@@ -21,7 +21,7 @@ export interface CommitDataPoint {
     details?: CommitDetail[]
 }
 
-interface CommitGraphProps {
+interface Props {
     data: CommitDataPoint[]
     hoveredIndex: number | null
     onHoverChange: (
@@ -38,7 +38,7 @@ export function CommitGraph({
     onHoverChange,
     onClick,
     accentColor = ACCENT_COLOR
-}: CommitGraphProps) {
+}: Props) {
     const [animationProgress, setAnimationProgress] = useState(0)
     const [isInView, setIsInView] = useState(false)
     const [hasAnimated, setHasAnimated] = useState(false)

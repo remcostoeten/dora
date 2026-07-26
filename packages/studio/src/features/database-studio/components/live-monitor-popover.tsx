@@ -8,7 +8,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@studio/shared/ui/toolt
 import { cn } from '@studio/shared/utils/cn'
 import type { LiveMonitorConfig, ChangeType } from '@studio/core/live-monitor'
 
-type TProps = {
+type Props = {
 	config: LiveMonitorConfig
 	onConfigChange: (config: LiveMonitorConfig) => void
 	isPolling: boolean
@@ -31,7 +31,7 @@ function formatInterval(ms: number): string {
 	return `${ms / 1000}s`
 }
 
-export function LiveMonitorPopover({ config, onConfigChange, isPolling }: TProps) {
+export function LiveMonitorPopover({ config, onConfigChange, isPolling }: Props) {
 	function handleToggleEnabled(enabled: boolean) {
 		onConfigChange({ ...config, enabled })
 	}

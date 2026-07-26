@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import type { CommitDataPoint } from './commit-graph'
 import { ACCENT_COLOR } from './constants'
 
-interface GraphTooltipProps {
+interface Props {
     data: CommitDataPoint | null
     position: { x: number; y: number } | null
     containerRef: React.RefObject<HTMLDivElement | null>
@@ -17,7 +17,7 @@ export function GraphTooltip({
     position,
     containerRef,
     accentColor = ACCENT_COLOR
-}: GraphTooltipProps) {
+}: Props) {
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {

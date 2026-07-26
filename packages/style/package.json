@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"lint": "cd ../.. && oxlint -c packages/style/.oxlintrc.json . && bun run packages/style/tools/run-lint-style.ts",
+		"lint": "cd ../.. && oxlint -c packages/style/.oxlintrc.json . && bun run packages/style/tools/run-lint-style.ts --strict",
 		"lint:fix": "cd ../.. && oxlint --fix -c packages/style/.oxlintrc.json . && bun run packages/style/tools/run-lint-style-fix.ts",
 		"format": "cd ../.. && oxfmt --check -c packages/style/.oxfmtrc.json .",
 		"format:fix": "cd ../.. && oxfmt --write -c packages/style/.oxfmtrc.json . && bun run packages/style/tools/run-fix-imports.ts",

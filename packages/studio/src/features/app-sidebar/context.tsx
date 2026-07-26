@@ -3,7 +3,7 @@ import type { SidebarContextValue, SidebarVariant } from './types'
 
 const SidebarContext = createContext<SidebarContextValue | null>(null)
 
-type SidebarProviderProps = {
+type Props = {
 	children: ReactNode
 	defaultVariant?: SidebarVariant
 	defaultActiveItemId?: string | null
@@ -13,7 +13,7 @@ export function SidebarProvider({
 	children,
 	defaultVariant = 'default',
 	defaultActiveItemId = null
-}: SidebarProviderProps) {
+}: Props) {
 	const [variant, setVariant] = useState<SidebarVariant>(defaultVariant)
 	const [activeItemId, setActiveItemId] = useState<string | null>(defaultActiveItemId)
 

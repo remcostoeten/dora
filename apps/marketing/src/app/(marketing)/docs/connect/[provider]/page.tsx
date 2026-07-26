@@ -5,7 +5,7 @@ import { GUIDES, getGuide, getGuidePath } from '@/core/config/guides'
 import { createMetadata } from '@/core/config/seo'
 import GuideDetailView from '@/views/guide-detail-view'
 
-type TPageProps = {
+type Props = {
     params: Promise<{ provider: string }>
 }
 
@@ -17,7 +17,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
     params
-}: TPageProps): Promise<Metadata> {
+}: Props): Promise<Metadata> {
     const { provider } = await params
     const guide = getGuide(provider)
 
@@ -33,7 +33,7 @@ export async function generateMetadata({
     })
 }
 
-export default async function Page({ params }: TPageProps) {
+export default async function Page({ params }: Props) {
     const { provider } = await params
     const guide = getGuide(provider)
 
