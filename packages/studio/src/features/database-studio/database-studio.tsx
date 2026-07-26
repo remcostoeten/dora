@@ -309,6 +309,7 @@ export function DatabaseStudio({
 		draftInsertIndex,
 		isApplyingEdits,
 		hasPendingEdits: Boolean(tableId) && hasEdits(tableId as string),
+		getEditsForTable,
 		selectedRows,
 		selectedCells,
 		focusedCell,
@@ -329,6 +330,21 @@ export function DatabaseStudio({
 		setDraftRow,
 		setDraftInsertIndex
 	})
+
+	useEffect(
+		function guardUnloadWithPendingEdits() {
+			if (!hasEdits()) return
+			function onBeforeUnload(event: BeforeUnloadEvent) {
+				event.preventDefault()
+				event.returnValue = ''
+			}
+			window.addEventListener('beforeunload', onBeforeUnload)
+			return function () {
+				window.removeEventListener('beforeunload', onBeforeUnload)
+			}
+		},
+		[hasEdits]
+	)
 
 	const handleEscapeToGrid = useCallback(function () {
 		const grid = gridContainerRef.current?.querySelector<HTMLElement>('table[role="grid"]')
