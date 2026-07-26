@@ -142,6 +142,7 @@ pub async fn disconnect_from_database(
     connection_id: Uuid,
     state: State<'_, AppState>,
     live_monitor: State<'_, crate::database::LiveMonitorManager>,
+    monitor: State<'_, crate::database::ConnectionMonitor>,
 ) -> Result<(), Error> {
     live_monitor.stop_monitors_for_connection(connection_id);
 
@@ -149,7 +150,7 @@ pub async fn disconnect_from_database(
         connections: &state.connections,
         storage: &state.storage,
     };
-    svc.disconnect_from_database(connection_id).await
+    svc.disconnect_from_database(&monitor, connection_id).await
 }
 
 #[tauri::command]
@@ -167,12 +168,13 @@ pub async fn get_connections(state: State<'_, AppState>) -> Result<Vec<Connectio
 pub async fn remove_connection(
     connection_id: Uuid,
     state: State<'_, AppState>,
+    monitor: State<'_, crate::database::ConnectionMonitor>,
 ) -> Result<(), Error> {
     let svc = ConnectionService {
         connections: &state.connections,
         storage: &state.storage,
     };
-    svc.remove_connection(connection_id).await
+    svc.remove_connection(&monitor, connection_id).await
 }
 
 #[tauri::command]

@@ -198,7 +198,7 @@ async fn read_body(response: reqwest::Response) -> String {
 /// decide how to treat a 401 (validate-only paths surface it; `authed_get`
 /// refreshes and retries).
 async fn send_get(token: &str, path: &str) -> Result<(reqwest::StatusCode, String)> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{API_BASE_URL}{path}"))
         .bearer_auth(token)
         .send()
@@ -387,7 +387,7 @@ impl From<ProxyTokens> for OAuthTokens {
 }
 
 async fn refresh_oauth(refresh_token: &str) -> Result<OAuthTokens> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .post(format!("{}/api/oauth/supabase/refresh", proxy_base()))
         .json(&serde_json::json!({ "refreshToken": refresh_token }))
         .send()

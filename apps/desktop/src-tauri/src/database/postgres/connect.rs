@@ -89,6 +89,10 @@ pub async fn connect(
 ) -> Result<(Client, ConnectionCheck), Error> {
     use tokio_postgres::config::SslMode;
 
+    let mut config = config.clone();
+    config.connect_timeout(crate::http::CONNECT_TIMEOUT);
+    let config = &config;
+
     let client = match config.get_ssl_mode() {
         SslMode::Require if verify_tls => {
             let certificate_store = certificates.read().await?;

@@ -84,7 +84,7 @@ pub fn disconnect(storage: &Storage) -> Result<()> {
 }
 
 async fn fetch_organizations(token: &str) -> Result<Vec<TursoOrganization>> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{API_BASE_URL}/organizations"))
         .bearer_auth(token)
         .send()
@@ -143,7 +143,7 @@ pub async fn save_token(storage: &Storage, token: String) -> Result<()> {
 /// Lists every database the token can see, across all of its organizations.
 pub async fn list_databases(storage: &Storage) -> Result<Vec<TursoDatabase>> {
     let token = require_token(storage)?;
-    let client = reqwest::Client::new();
+    let client = crate::http::client();
     let mut databases = Vec::new();
 
     for slug in get_organizations(&token).await? {
@@ -194,7 +194,7 @@ pub async fn create_token(
     database_name: &str,
 ) -> Result<String> {
     let token = require_token(storage)?;
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .post(format!(
             "{API_BASE_URL}/organizations/{organization_slug}/databases/{database_name}/auth/tokens"
         ))

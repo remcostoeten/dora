@@ -12,6 +12,7 @@ pub mod credential_storage;
 pub mod credentials;
 pub mod database;
 mod error;
+pub mod http;
 mod init;
 mod integrations;
 mod observability;

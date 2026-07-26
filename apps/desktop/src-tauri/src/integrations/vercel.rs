@@ -176,7 +176,7 @@ async fn read_body(response: reqwest::Response) -> String {
 }
 
 async fn get_projects(token: &str) -> Result<Vec<ProjectResponse>> {
-    let client = reqwest::Client::new();
+    let client = crate::http::client();
     let limit = PROJECTS_PAGE_LIMIT.to_string();
     let mut projects = Vec::new();
     let mut from: Option<String> = None;
@@ -236,7 +236,7 @@ async fn get_projects(token: &str) -> Result<Vec<ProjectResponse>> {
 /// show which account is connected.
 pub async fn current_account(storage: &Storage) -> Result<VercelAccount> {
     let token = require_token(storage)?;
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{API_BASE_URL}/v2/user"))
         .bearer_auth(&token)
         .send()
@@ -306,7 +306,7 @@ fn pick_connection_string(envs: &[EnvVar]) -> Option<(String, String)> {
 /// fetch are swallowed (returns `None`) so one inaccessible project doesn't sink
 /// the whole store list.
 async fn project_connection_string(token: &str, project_id: &str) -> Option<(String, String)> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{API_BASE_URL}/v10/projects/{project_id}/env"))
         .query(&[("decrypt", "true")])
         .bearer_auth(token)

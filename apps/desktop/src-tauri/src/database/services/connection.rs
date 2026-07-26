@@ -23,6 +23,36 @@ use crate::{
     storage::Storage,
 };
 
+/// A GUI client issues few concurrent queries; mysql_async's default
+/// constraints (min 10 / max 100) would hold ten idle server sessions per
+/// saved connection. Min 0 means an idle Dora holds nothing.
+const MYSQL_POOL_MIN: usize = 0;
+const MYSQL_POOL_MAX: usize = 4;
+
+fn mysql_opts_with_pool_constraints(
+    mysql_url: &url::Url,
+    max_connections: usize,
+) -> Result<mysql_async::Opts, Error> {
+    let opts = mysql_async::Opts::from_url(mysql_url.as_str())
+        .map_err(|e| Error::Any(anyhow::anyhow!("Invalid MySQL URL: {}", e)))?;
+    let constraints = mysql_async::PoolConstraints::new(MYSQL_POOL_MIN, max_connections)
+        .expect("MYSQL_POOL_MIN <= max_connections");
+    Ok(mysql_async::OptsBuilder::from_opts(opts)
+        .pool_opts(mysql_async::PoolOpts::default().with_constraints(constraints))
+        .into())
+}
+
+/// `Pool::disconnect()` is mysql_async's deterministic teardown; plain `Drop`
+/// only closes server sessions best-effort. Sync call sites can't await it, so
+/// spawn the close.
+pub(crate) fn spawn_mysql_pool_disconnect(pool: mysql_async::Pool) {
+    tauri::async_runtime::spawn(async move {
+        if let Err(e) = pool.disconnect().await {
+            log::warn!("MySQL pool disconnect failed: {e}");
+        }
+    });
+}
+
 fn connect_result(connected: bool) -> DatabaseConnectResult {
     DatabaseConnectResult {
         connected,
@@ -175,7 +205,9 @@ impl<'a> ConnectionService<'a> {
                         *tunnel = None;
                     }
                     Database::MySQL { pool, tunnel, .. } => {
-                        *pool = None;
+                        if let Some(old_pool) = pool.take() {
+                            spawn_mysql_pool_disconnect((*old_pool).clone());
+                        }
                         *tunnel = None;
                     }
                     Database::SQLite {
@@ -477,7 +509,10 @@ impl<'a> ConnectionService<'a> {
 
                 let mut config: tokio_postgres::Config =
                     cleaned_string.parse().with_context(|| {
-                        format!("Failed to parse connection string: {}", cleaned_string)
+                        format!(
+                            "Failed to parse connection string: {}",
+                            crate::utils::redact_connection_string(&cleaned_string)
+                        )
                     })?;
                 if disable_channel_binding {
                     config.channel_binding(tokio_postgres::config::ChannelBinding::Disable);
@@ -557,7 +592,7 @@ impl<'a> ConnectionService<'a> {
                 let mut mysql_url = url::Url::parse(connection_string).with_context(|| {
                     format!(
                         "Failed to parse MySQL connection string: {}",
-                        connection_string
+                        crate::utils::redact_connection_string(connection_string)
                     )
                 })?;
 
@@ -593,12 +628,14 @@ impl<'a> ConnectionService<'a> {
                     }
                 }
 
-                let mysql_opts = mysql_async::Opts::from_url(&mysql_url.to_string())
-                    .map_err(|e| Error::Any(anyhow::anyhow!("Invalid MySQL URL: {}", e)))?;
+                let mysql_opts = mysql_opts_with_pool_constraints(&mysql_url, MYSQL_POOL_MAX)?;
                 let mysql_pool = mysql_async::Pool::new(mysql_opts);
 
-                match mysql_pool.get_conn().await {
-                    Ok(mut conn) => {
+                let conn_attempt =
+                    tokio::time::timeout(crate::http::CONNECT_TIMEOUT, mysql_pool.get_conn()).await;
+
+                match conn_attempt {
+                    Ok(Ok(mut conn)) => {
                         conn.ping().await?;
 
                         // Detect the real engine (MySQL vs MariaDB). The
@@ -634,8 +671,20 @@ impl<'a> ConnectionService<'a> {
 
                         Ok(connect_result(true))
                     }
-                    Err(e) => {
+                    Ok(Err(e)) => {
                         log::error!("Failed to connect to MySQL: {}", e);
+                        spawn_mysql_pool_disconnect(mysql_pool);
+                        *tunnel = None;
+                        *pool = None;
+                        connection.connected = false;
+                        Ok(connect_result(false))
+                    }
+                    Err(_) => {
+                        log::error!(
+                            "MySQL connection timed out after {:?}",
+                            crate::http::CONNECT_TIMEOUT
+                        );
+                        spawn_mysql_pool_disconnect(mysql_pool);
                         *tunnel = None;
                         *pool = None;
                         connection.connected = false;
@@ -1071,8 +1120,14 @@ impl<'a> ConnectionService<'a> {
         Ok(result)
     }
 
-    #[instrument(skip(self), fields(connection_id = %connection_id))]
-    pub async fn disconnect_from_database(&self, connection_id: Uuid) -> Result<(), Error> {
+    #[instrument(skip(self, monitor), fields(connection_id = %connection_id))]
+    pub async fn disconnect_from_database(
+        &self,
+        monitor: &ConnectionMonitor,
+        connection_id: Uuid,
+    ) -> Result<(), Error> {
+        monitor.remove_connection(connection_id).await;
+
         let mut connection_entry = self
             .connections
             .get_mut(&connection_id)
@@ -1085,7 +1140,9 @@ impl<'a> ConnectionService<'a> {
                 *tunnel = None;
             }
             Database::MySQL { pool, tunnel, .. } => {
-                *pool = None;
+                if let Some(old_pool) = pool.take() {
+                    spawn_mysql_pool_disconnect((*old_pool).clone());
+                }
                 *tunnel = None;
             }
             Database::SQLite {
@@ -1127,7 +1184,13 @@ impl<'a> ConnectionService<'a> {
         Ok(stored_connections)
     }
 
-    pub async fn remove_connection(&self, connection_id: Uuid) -> Result<(), Error> {
+    pub async fn remove_connection(
+        &self,
+        monitor: &ConnectionMonitor,
+        connection_id: Uuid,
+    ) -> Result<(), Error> {
+        monitor.remove_connection(connection_id).await;
+
         if let Err(e) = credentials::delete_password(&connection_id) {
             log::debug!(
                 "Could not delete password from keyring (may not exist): {}",
@@ -1136,7 +1199,13 @@ impl<'a> ConnectionService<'a> {
         }
 
         self.storage.remove_connection(&connection_id)?;
-        self.connections.remove(&connection_id);
+        if let Some((_, mut removed)) = self.connections.remove(&connection_id) {
+            if let Database::MySQL { pool, .. } = &mut removed.database {
+                if let Some(old_pool) = pool.take() {
+                    spawn_mysql_pool_disconnect((*old_pool).clone());
+                }
+            }
+        }
 
         Ok(())
     }
@@ -1292,7 +1361,10 @@ impl ConnectionService<'_> {
 
                 let mut config: tokio_postgres::Config =
                     cleaned_string.parse().with_context(|| {
-                        format!("Failed to parse connection string: {}", cleaned_string)
+                        format!(
+                            "Failed to parse connection string: {}",
+                            crate::utils::redact_connection_string(&cleaned_string)
+                        )
                     })?;
                 if disable_channel_binding {
                     config.channel_binding(tokio_postgres::config::ChannelBinding::Disable);
@@ -1412,7 +1484,7 @@ impl ConnectionService<'_> {
                 let mut mysql_url = url::Url::parse(&connection_string).with_context(|| {
                     format!(
                         "Failed to parse MySQL connection string: {}",
-                        connection_string
+                        crate::utils::redact_connection_string(&connection_string)
                     )
                 })?;
 
@@ -1455,16 +1527,29 @@ impl ConnectionService<'_> {
                     })?;
                 }
 
-                let mysql_opts = mysql_async::Opts::from_url(&mysql_url.to_string())
-                    .map_err(|e| Error::Any(anyhow::anyhow!("Invalid MySQL URL: {}", e)))?;
+                // A test issues a single query; one pooled connection is enough.
+                let mysql_opts = mysql_opts_with_pool_constraints(&mysql_url, 1)?;
                 let pool = mysql_async::Pool::new(mysql_opts);
-                match pool.get_conn().await {
-                    Ok(mut conn) => {
-                        conn.ping().await?;
-                        Ok(true)
-                    }
-                    Err(e) => Err(Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e))),
+
+                let conn_attempt =
+                    tokio::time::timeout(crate::http::CONNECT_TIMEOUT, pool.get_conn()).await;
+                let result = match conn_attempt {
+                    Ok(Ok(mut conn)) => match conn.ping().await {
+                        Ok(()) => Ok(true),
+                        Err(e) => Err(Error::Any(anyhow::anyhow!("MySQL ping failed: {}", e))),
+                    },
+                    Ok(Err(e)) => Err(Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e))),
+                    Err(_) => Err(Error::Any(anyhow::anyhow!(
+                        "MySQL connect timed out after {:?}",
+                        crate::http::CONNECT_TIMEOUT
+                    ))),
+                };
+
+                if let Err(e) = pool.disconnect().await {
+                    log::warn!("MySQL pool disconnect failed: {e}");
                 }
+
+                result
             }
             DatabaseInfo::D1 { url } => {
                 log::info!("Testing Cloudflare D1 connection: {}", url);

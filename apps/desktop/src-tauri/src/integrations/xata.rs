@@ -134,7 +134,7 @@ async fn read_body(response: reqwest::Response) -> String {
 }
 
 async fn get_workspaces(token: &str) -> Result<Vec<WorkspaceResponse>> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{CORE_API_BASE_URL}/workspaces"))
         .bearer_auth(token)
         .send()
@@ -163,7 +163,7 @@ async fn get_workspaces(token: &str) -> Result<Vec<WorkspaceResponse>> {
 }
 
 async fn get_workspace_databases(token: &str, workspace_id: &str) -> Result<Vec<DatabaseResponse>> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{CORE_API_BASE_URL}/workspaces/{workspace_id}/dbs"))
         .bearer_auth(token)
         .send()
@@ -190,7 +190,7 @@ async fn get_workspace_databases(token: &str, workspace_id: &str) -> Result<Vec<
 /// which account is connected.
 pub async fn current_account(storage: &Storage) -> Result<XataAccount> {
     let token = require_token(storage)?;
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{CORE_API_BASE_URL}/user"))
         .bearer_auth(&token)
         .send()
