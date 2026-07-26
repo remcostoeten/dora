@@ -698,6 +698,10 @@ CREATE TABLE posts (
 			// no-op in mock adapter
 		},
 
+		async cancelQueries(_queryIds: number[]): Promise<void> {
+			// no-op in mock adapter
+		},
+
 		async updateCell(
 			connectionId: string,
 			tableName: string,

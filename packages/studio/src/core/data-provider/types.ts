@@ -45,6 +45,11 @@ export type QueryResult = {
 }
 import type { Connection } from '@studio/features/connections/types'
 
+export type ExecuteQueryOptions = {
+	/** Called with the backend statement ids as soon as the query starts, so the caller can cancel just those statements. */
+	onStarted?: (queryIds: number[]) => void
+}
+
 export type DataAdapter = {
 	getConnections(): Promise<AdapterResult<Connection[]>>
 	addConnection(
@@ -91,8 +96,13 @@ export type DataAdapter = {
 		filterGroup?: FilterGroup
 	): Promise<AdapterResult<TableData>>
 
-	executeQuery(connectionId: string, query: string): Promise<AdapterResult<QueryResult>>
+	executeQuery(
+		connectionId: string,
+		query: string,
+		options?: ExecuteQueryOptions
+	): Promise<AdapterResult<QueryResult>>
 	cancelActiveQuery(connectionId: string): Promise<void>
+	cancelQueries(queryIds: number[]): Promise<void>
 
 	updateCell(
 		connectionId: string,

@@ -175,6 +175,7 @@ pub fn run() {
             database::commands::import_files_into_duckdb,
             database::commands::disconnect_from_database,
             database::commands::cancel_query,
+            database::commands::cancel_queries,
             database::commands::start_query,
             database::commands::fetch_query,
             database::commands::fetch_page,

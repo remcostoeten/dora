@@ -76,6 +76,40 @@ struct ExecState {
     pg_cancel: RwLock<Option<PgCancel>>,
 }
 
+/// Signals the database engine itself to stop a running statement: interrupts
+/// SQLite, and for Postgres/CockroachDB issues a real `CancelRequest` over a
+/// fresh connection — aborting the executor future alone only drops our
+/// socket while the server keeps running the (possibly expensive) query.
+/// Best-effort and fire-and-forget; the caller still aborts the executor.
+fn signal_engine_cancel(entry: &ExecState) {
+    if let Some(handle) = entry
+        .sqlite_interrupt_handle
+        .read()
+        .expect("RwLock poisoned")
+        .as_ref()
+    {
+        handle.interrupt();
+    }
+
+    if let Some(pg) = entry.pg_cancel.read().expect("RwLock poisoned").as_ref() {
+        let token = pg.token.clone();
+        let ssl_mode = pg.ssl_mode;
+        spawn(async move {
+            // Mirror the SSL strategy `postgres::connect::connect` uses so the
+            // cancel connection negotiates the same way the live one did
+            // (encrypt-only, no cert verification, which is enough for a
+            // single control message).
+            let outcome = match ssl_mode {
+                SslMode::Require | SslMode::Prefer => token.cancel_query(no_verify_tls()).await,
+                _ => token.cancel_query(NoTls).await,
+            };
+            if let Err(err) = outcome {
+                log::warn!("Postgres cancel request failed: {err}");
+            }
+        });
+    }
+}
+
 /// How many finished statements to keep addressable before the oldest are
 /// reaped. Submissions no longer wipe the map, so this is what bounds memory;
 /// it must stay comfortably above the largest batch a single view issues (the
@@ -113,62 +147,49 @@ impl StatementManager {
 
     /// Cancels all currently running queries, marking them as errors and aborting their listener tasks.
     pub fn cancel_active_queries(&self) {
-        for entry in self.queries.iter() {
-            let status = entry.status.load(Ordering::Relaxed);
-            if status == QueryStatus::Running as u8 || status == QueryStatus::Pending as u8 {
-                if let Some(handle) = entry
-                    .sqlite_interrupt_handle
-                    .read()
-                    .expect("RwLock poisoned")
-                    .as_ref()
-                {
-                    handle.interrupt();
-                }
+        let active_ids: Vec<QueryId> = self
+            .queries
+            .iter()
+            .filter(|entry| {
+                let status = entry.status.load(Ordering::Relaxed);
+                status == QueryStatus::Running as u8 || status == QueryStatus::Pending as u8
+            })
+            .map(|entry| *entry.key())
+            .collect();
 
-                // Postgres/CockroachDB: aborting the executor future below only
-                // drops our socket; the server keeps running the query. Issue a
-                // real CancelRequest over a fresh connection. Best-effort and
-                // fire-and-forget — if it fails we still fall back to the abort.
-                if let Some(pg) = entry.pg_cancel.read().expect("RwLock poisoned").as_ref() {
-                    let token = pg.token.clone();
-                    let ssl_mode = pg.ssl_mode;
-                    spawn(async move {
-                        // Mirror the SSL strategy `postgres::connect::connect`
-                        // uses so the cancel connection negotiates the same way
-                        // the live one did (encrypt-only, no cert verification,
-                        // which is enough for a single control message).
-                        let outcome = match ssl_mode {
-                            SslMode::Require | SslMode::Prefer => {
-                                token.cancel_query(no_verify_tls()).await
-                            }
-                            _ => token.cancel_query(NoTls).await,
-                        };
-                        if let Err(err) = outcome {
-                            log::warn!("Postgres cancel request failed: {err}");
-                        }
-                    });
-                }
-            }
-        }
+        self.cancel_queries(&active_ids);
 
-        for entry in self.execution_handles.iter() {
-            entry.value().abort();
-        }
-        for entry in self.queries.iter() {
-            let status = entry.status.load(Ordering::Relaxed);
-            if status == QueryStatus::Running as u8 || status == QueryStatus::Pending as u8 {
-                *entry.error.write().expect("RwLock poisoned") =
-                    Some("Query cancelled".to_string());
-                entry
-                    .status
-                    .store(QueryStatus::Error as u8, Ordering::Relaxed);
-            }
-        }
-        for entry in self.listener_handles.iter() {
-            entry.value().abort();
-        }
         self.execution_handles.clear();
         self.listener_handles.clear();
+    }
+
+    /// Cancels only the given statements, so one SQL-console tab can cancel its
+    /// own query without killing queries running in other tabs.
+    pub fn cancel_queries(&self, query_ids: &[QueryId]) {
+        for query_id in query_ids {
+            let Some(entry) = self.queries.get(query_id) else {
+                continue;
+            };
+            let status = entry.status.load(Ordering::Relaxed);
+            if status != QueryStatus::Running as u8 && status != QueryStatus::Pending as u8 {
+                continue;
+            }
+
+            signal_engine_cancel(&entry);
+
+            if let Some((_, handle)) = self.execution_handles.remove(query_id) {
+                handle.abort();
+            }
+
+            *entry.error.write().expect("RwLock poisoned") = Some("Query cancelled".to_string());
+            entry
+                .status
+                .store(QueryStatus::Error as u8, Ordering::Relaxed);
+
+            if let Some((_, handle)) = self.listener_handles.remove(query_id) {
+                handle.abort();
+            }
+        }
     }
 
     /// Submits a new query (possibly containing multiple statements) for execution.
@@ -619,5 +640,39 @@ mod tests {
         let cancelled = stmt_manager.fetch_query(0).unwrap();
         assert_eq!(cancelled.status, QueryStatus::Error);
         assert_eq!(cancelled.error.as_deref(), Some("Query cancelled"));
+    }
+
+    #[tokio::test]
+    async fn cancel_queries_only_cancels_the_given_statements() {
+        let stmt_manager = StatementManager::new();
+        let slow_query = "WITH RECURSIVE t(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM t WHERE x < 100000000) SELECT count(*) FROM t;";
+
+        let client_a = DatabaseClient::SQLite {
+            connection: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
+        };
+        let client_b = DatabaseClient::SQLite {
+            connection: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
+        };
+
+        let ids_a = stmt_manager.submit_query(client_a, slow_query).unwrap();
+        let ids_b = stmt_manager.submit_query(client_b, slow_query).unwrap();
+
+        for _ in 0..10 {
+            if stmt_manager.get_query_status(ids_a[0]).unwrap() == QueryStatus::Running {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+
+        stmt_manager.cancel_queries(&ids_a);
+
+        let cancelled = stmt_manager.fetch_query(ids_a[0]).unwrap();
+        assert_eq!(cancelled.status, QueryStatus::Error);
+        assert_eq!(cancelled.error.as_deref(), Some("Query cancelled"));
+
+        let untouched = stmt_manager.get_query_status(ids_b[0]).unwrap();
+        assert_ne!(untouched, QueryStatus::Error);
+
+        stmt_manager.cancel_active_queries();
     }
 }

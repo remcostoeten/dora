@@ -19,7 +19,7 @@ import type {
 import { commands } from '@studio/lib/bindings'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import { buildDropColumnSql, getTableRefParts, getTableSqlIdentifier, type TableDialect } from '@studio/shared/utils/table-ref'
-import type { DataAdapter, AdapterResult, QueryResult } from '../types'
+import type { DataAdapter, AdapterResult, ExecuteQueryOptions, QueryResult } from '../types'
 
 import { backendToFrontendConnection } from '@studio/features/connections/utils/mapping'
 import type { Connection } from '@studio/features/connections/types'
@@ -378,7 +378,8 @@ export function createTauriAdapter(): DataAdapter {
 
 		async executeQuery(
 			connectionId: string,
-			query: string
+			query: string,
+			options?: ExecuteQueryOptions
 		): Promise<AdapterResult<QueryResult>> {
 			const startTime = performance.now()
 
@@ -393,6 +394,8 @@ export function createTauriAdapter(): DataAdapter {
 				console.error('[TauriAdapter] No query ID returned:', startResult)
 				return err('Backend returned no query ID')
 			}
+
+			options?.onStarted?.(startResult.data)
 
 			const queryId = startResult.data[0]
 
@@ -431,6 +434,10 @@ export function createTauriAdapter(): DataAdapter {
 
 		async cancelActiveQuery(_connectionId: string): Promise<void> {
 			await commands.cancelQuery()
+		},
+
+		async cancelQueries(queryIds: number[]): Promise<void> {
+			await commands.cancelQueries(queryIds)
 		},
 
 		async updateCell(

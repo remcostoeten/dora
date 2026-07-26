@@ -1095,7 +1095,10 @@ function IndexInner() {
                           showConnectionTabBar ? undefined : <WindowControls />
                         }
                       />
-                      <ErrorBoundary feature="Database Studio">
+                      <ErrorBoundary
+                        feature="Database Studio"
+                        resetKeys={[studioConnectionId, selectedTableId]}
+                      >
                         <DatabaseStudio
                           key={studioConnectionId || "empty"}
                           tableId={selectedTableId}
@@ -1126,7 +1129,10 @@ function IndexInner() {
                   ) : activeNavId === "sql-console" ? (
                     <div className="flex flex-col flex-1 min-h-0">
                       {connectionTabBar}
-                      <ErrorBoundary feature="SQL Console">
+                      <ErrorBoundary
+                        feature="SQL Console"
+                        resetKeys={[activeConnectionId]}
+                      >
                         <SqlConsole
                           activeConnectionId={activeConnectionId}
                           onEditorContextChange={setSqlConsoleEditorContext}
@@ -1230,7 +1236,10 @@ function IndexInner() {
                       />
                     </ErrorBoundary>
                   ) : (
-                    <ErrorBoundary feature="SQL Console">
+                    <ErrorBoundary
+                      feature="SQL Console"
+                      resetKeys={[activeConnectionId]}
+                    >
                       <SqlConsole
                         activeConnectionId={activeConnectionId}
                         onEditorContextChange={setSqlConsoleEditorContext}
