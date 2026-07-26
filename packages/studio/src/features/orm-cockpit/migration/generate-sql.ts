@@ -471,6 +471,9 @@ function typeToken(col: ColumnIR, dialect: Dialect, warnings: string[]): string 
 		if (/\(\s*\d+\s*\)/.test(col.rawType)) {
 			return col.rawType
 		}
+		if (col.typeParams) {
+			return `${SQL_TYPES[dialect][col.type]}(${col.typeParams})`
+		}
 		warnings.push(
 			`column "${col.name}": vector has no dimension; emitting "VECTOR" — add a dimension (e.g. vector(1536)) before applying.`,
 		)
@@ -480,10 +483,8 @@ function typeToken(col: ColumnIR, dialect: Dialect, warnings: string[]): string 
 	// e.g. Postgres VARCHAR → VARCHAR(255), NUMERIC → NUMERIC(10,2). SQLite uses
 	// type affinity, so width is meaningless there.
 	if (dialect !== 'sqlite' && col.typeParams && (col.type === 'varchar' || col.type === 'decimal')) {
-		const base = SQL_TYPES[dialect][col.type]
-		if (!base.includes('(')) {
-			return `${base}(${col.typeParams})`
-		}
+		const base = SQL_TYPES[dialect][col.type].replace(/\(.*\)$/, '')
+		return `${base}(${col.typeParams})`
 	}
 	return SQL_TYPES[dialect][col.type]
 }

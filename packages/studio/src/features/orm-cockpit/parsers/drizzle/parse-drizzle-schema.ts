@@ -307,6 +307,9 @@ function parseColumn(
 	} else if (builderName) {
 		type = normalizeDbType(builderName, dialect)
 	}
+	if (type === 'timestamp' && hasTrueOption(baseArgs, 'withTimezone')) {
+		type = 'timestamptz'
+	}
 	const rawType = builderName ?? 'unknown'
 	const typeParams = extractTypeParams(baseArgs)
 
@@ -328,6 +331,9 @@ function parseColumn(
 			case 'primaryKey':
 				isPrimaryKey = true
 				nullable = false
+				if (hasTrueOption(mod.args, 'autoIncrement')) {
+					autoIncrement = true
+				}
 				break
 			case 'notNull':
 				nullable = false
@@ -828,6 +834,25 @@ function defaultLiteral(args: ts.NodeArray<ts.Expression>): string {
 	}
 	// sql`...`, arrays, objects, function calls — not statically comparable.
 	return 'unknown'
+}
+
+/** Whether any object-literal arg carries `<key>: true`. */
+function hasTrueOption(args: ts.NodeArray<ts.Expression>, key: string): boolean {
+	for (const arg of args) {
+		if (!ts.isObjectLiteralExpression(arg)) {
+			continue
+		}
+		for (const prop of arg.properties) {
+			if (
+				ts.isPropertyAssignment(prop) &&
+				propertyName(prop.name) === key &&
+				prop.initializer.kind === ts.SyntaxKind.TrueKeyword
+			) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 function literalString(node: ts.Expression | undefined): string | null {

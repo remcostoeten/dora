@@ -90,7 +90,7 @@ export const customers = mysqlTable('customers', {
 	slugIdx: uniqueIndex('customers_slug_unique').on(t.slug),
 }))
 `,
-		sql: "CREATE TABLE `customers` (\n    `id` INT AUTO_INCREMENT PRIMARY KEY,\n    `slug` VARCHAR(255) NOT NULL\n);\n\nCREATE UNIQUE INDEX `customers_slug_unique` ON `customers` (`slug`);",
+		sql: "CREATE TABLE `customers` (\n    `id` INT AUTO_INCREMENT PRIMARY KEY,\n    `slug` VARCHAR(64) NOT NULL\n);\n\nCREATE UNIQUE INDEX `customers_slug_unique` ON `customers` (`slug`);",
 	},
 	{
 		name: 'query: select star',

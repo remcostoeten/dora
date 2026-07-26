@@ -5,11 +5,8 @@
  */
 
 import { useEffect, useMemo, useReducer } from 'react'
-// TODO(#162): swap mock-converters for drizzle-to-sql / sql-to-drizzle once merged
-import {
-	mockDrizzleToSql,
-	mockSqlToDrizzle
-} from '@studio/features/orm-cockpit/converters/mock-converters'
+import { convertDrizzleToSql } from '@studio/features/orm-cockpit/converters/drizzle-to-sql'
+import { convertSqlToDrizzle } from '@studio/features/orm-cockpit/converters/sql-to-drizzle'
 import type { Dialect } from '@studio/features/orm-cockpit/converters/contract'
 import {
 	converterReducer,
@@ -24,8 +21,8 @@ import {
 } from '@studio/features/orm-cockpit/components/converter-state'
 
 const CONVERTERS: ConverterPair = {
-	drizzleToSql: mockDrizzleToSql,
-	sqlToDrizzle: mockSqlToDrizzle
+	drizzleToSql: convertDrizzleToSql,
+	sqlToDrizzle: convertSqlToDrizzle
 }
 
 const DEBOUNCE_MS = 300

@@ -14,12 +14,6 @@ import {
 	type ConverterPair,
 	type ConverterState
 } from '@studio/features/orm-cockpit/components/converter-state'
-import {
-	mockDrizzleToSql,
-	mockSqlToDrizzle
-} from '@studio/features/orm-cockpit/converters/mock-converters'
-
-const MOCKS: ConverterPair = { drizzleToSql: mockDrizzleToSql, sqlToDrizzle: mockSqlToDrizzle }
 
 function spyPair(): { pair: ConverterPair; calls: Array<[string, ConvertOptions, string]> } {
 	const calls: Array<[string, ConvertOptions, string]> = []
@@ -142,55 +136,5 @@ describe('converter-state', function () {
 			['a', { dialect: 'mysql' }, 'drizzleToSql'],
 			['b', { dialect: 'sqlite' }, 'sqlToDrizzle']
 		])
-	})
-})
-
-describe('mock converters (placeholder wiring)', function () {
-	it('is deterministic for the same input and options', function () {
-		const first = runConversion(
-			{
-				input: 'CREATE TABLE users (id int)',
-				dialect: 'postgres',
-				direction: 'sql-to-drizzle'
-			},
-			MOCKS
-		)
-		const second = runConversion(
-			{
-				input: 'CREATE TABLE users (id int)',
-				dialect: 'postgres',
-				direction: 'sql-to-drizzle'
-			},
-			MOCKS
-		)
-		expect(first).toEqual(second)
-		expect(outputText(first)).toContain('pgTable')
-	})
-
-	it('fails on empty input', function () {
-		const result = runConversion(
-			{ input: '   ', dialect: 'postgres', direction: 'drizzle-to-sql' },
-			MOCKS
-		)
-		expect(result.ok).toBe(false)
-		if (!result.ok) {
-			expect(result.errors[0].code).toBe('empty-input')
-		}
-	})
-
-	it('reports an unsupported construct with its line', function () {
-		const result = runConversion(
-			{
-				input: 'db.select()\n\t.from(users)\n\t.having(gt(count(), 2))',
-				dialect: 'postgres',
-				direction: 'drizzle-to-sql'
-			},
-			MOCKS
-		)
-		expect(result.ok).toBe(false)
-		if (!result.ok) {
-			expect(result.errors[0].code).toBe('unsupported-construct')
-			expect(result.errors[0].line).toBe(3)
-		}
 	})
 })
