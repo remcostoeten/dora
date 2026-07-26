@@ -17,6 +17,7 @@ import {
 } from "@studio/shared/lib/ui-zoom";
 import { LiveMonitorProvider } from "@studio/core/live-monitor";
 import { NavigationSidebar, SidebarProvider } from "@studio/features/app-sidebar";
+import { OnboardingTour } from "@studio/features/onboarding";
 const CommandPalette = lazy(function () {
   return import("@studio/features/command-palette").then(function (m) {
     return { default: m.CommandPalette };
@@ -278,6 +279,7 @@ function IndexInner() {
 
   $.bind(shortcuts.toggleAiAssistant.combo).on(
     function () {
+      if (settings.hideAi) return;
       toggleAiAssistant();
     },
     { description: shortcuts.toggleAiAssistant.description },
@@ -1305,8 +1307,9 @@ function IndexInner() {
                 </Suspense>
               )}
 
-              <AiAssistantToggle />
-              <AiAssistantPanelHost
+              <OnboardingTour />
+              {!settings.hideAi && <AiAssistantToggle />}
+              {!settings.hideAi && <AiAssistantPanelHost
                 activeConnectionId={activeConnectionId || null}
                 activeView={activeNavId}
                 selectedTableId={selectedTableId || null}
@@ -1314,7 +1317,7 @@ function IndexInner() {
                 editorContext={activeNavId === "sql-console" ? sqlConsoleEditorContext : null}
                 onEditorInsert={handleInsertSqlInConsole}
                 onRunInConsole={handleRunSqlInConsole}
-              />
+              />}
             </div>
           </div>
         </SidebarProvider>

@@ -1,5 +1,6 @@
 import { Minus, Square, X } from 'lucide-react'
 import { useCallback, useState, useEffect } from 'react'
+import { useSettings } from '@studio/core/settings'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
 
@@ -8,6 +9,7 @@ type Props = {
 }
 
 export function WindowControls({ className }: Props) {
+	const { settings } = useSettings()
 	const [isMaximized, setIsMaximized] = useState(false)
 	const [isTauri, setIsTauri] = useState(false)
 
@@ -102,6 +104,40 @@ export function WindowControls({ className }: Props) {
 	)
 
 	if (!isTauri) return null
+
+	if (settings.windowControlsStyle === 'macos') {
+		return (
+			<div
+				className={cn('group flex items-center gap-2 px-1', className)}
+				data-tauri-drag-region='false'
+			>
+				<button
+					type='button'
+					onClick={handleClose}
+					className='flex h-3 w-3 items-center justify-center rounded-full bg-[#ff5f57] text-black/60 transition-opacity hover:opacity-90'
+					aria-label='Close window'
+				>
+					<X className='h-2 w-2 opacity-0 transition-opacity group-hover:opacity-100' />
+				</button>
+				<button
+					type='button'
+					onClick={handleMinimize}
+					className='flex h-3 w-3 items-center justify-center rounded-full bg-[#febc2e] text-black/60 transition-opacity hover:opacity-90'
+					aria-label='Minimize window'
+				>
+					<Minus className='h-2 w-2 opacity-0 transition-opacity group-hover:opacity-100' />
+				</button>
+				<button
+					type='button'
+					onClick={handleMaximize}
+					className='flex h-3 w-3 items-center justify-center rounded-full bg-[#28c840] text-black/60 transition-opacity hover:opacity-90'
+					aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
+				>
+					<Square className='h-1.5 w-1.5 opacity-0 transition-opacity group-hover:opacity-100' />
+				</button>
+			</div>
+		)
+	}
 
 	return (
 		<div className={cn('flex items-center gap-1', className)} data-tauri-drag-region='false'>

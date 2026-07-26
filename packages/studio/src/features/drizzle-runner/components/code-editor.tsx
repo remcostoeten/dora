@@ -22,6 +22,10 @@ import {
   isInsideJoinParens,
   isInsideCountParens,
 } from "../utils/lsp-patterns";
+import {
+  DRIZZLE_OPERATOR_SIGNATURES,
+  findEnclosingOperatorCall,
+} from "../utils/operator-signatures";
 
 type Props = {
   value: string;
@@ -255,6 +259,8 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
   const loadedThemesRef = useRef<Set<string>>(new Set());
   const decorRef = useRef<string[]>([]);
   const completionProviderRef = useRef<Monaco.IDisposable | null>(null);
+  const signatureProviderRef = useRef<Monaco.IDisposable | null>(null);
+  const hoverProviderRef = useRef<Monaco.IDisposable | null>(null);
   const drizzleTypesRef = useRef<Monaco.IDisposable | null>(null);
   const tablesRef = useRef<SchemaTable[]>(tables);
   const onExecuteRef = useRef(onExecute);
@@ -414,6 +420,14 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
       if (completionProviderRef.current) {
         completionProviderRef.current.dispose();
         completionProviderRef.current = null;
+      }
+      if (signatureProviderRef.current) {
+        signatureProviderRef.current.dispose();
+        signatureProviderRef.current = null;
+      }
+      if (hoverProviderRef.current) {
+        hoverProviderRef.current.dispose();
+        hoverProviderRef.current = null;
       }
       if (drizzleTypesRef.current) {
         drizzleTypesRef.current.dispose();
@@ -2029,6 +2043,70 @@ export function CodeEditor({ value, onChange, onExecute, onSave, onModeChange, i
         }
 
         return buildSuggestions(range, defaultSuggestions);
+      },
+    });
+
+    if (signatureProviderRef.current) {
+      signatureProviderRef.current.dispose();
+    }
+    signatureProviderRef.current = monaco.languages.registerSignatureHelpProvider("typescript", {
+      signatureHelpTriggerCharacters: ["(", ","],
+      signatureHelpRetriggerCharacters: [","],
+      provideSignatureHelp: function (model, position) {
+        if (!isDrizzleModel(model)) return null;
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: 1,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+        const call = findEnclosingOperatorCall(textUntilPosition);
+        if (!call) return null;
+        const operator = DRIZZLE_OPERATOR_SIGNATURES[call.name];
+        return {
+          value: {
+            signatures: [
+              {
+                label: operator.signature,
+                documentation: operator.documentation,
+                parameters: operator.parameters.map(function (parameter) {
+                  return { label: parameter.label, documentation: parameter.documentation };
+                }),
+              },
+            ],
+            activeSignature: 0,
+            activeParameter: Math.min(
+              call.activeParameter,
+              Math.max(operator.parameters.length - 1, 0),
+            ),
+          },
+          dispose: function () {},
+        };
+      },
+    });
+
+    if (hoverProviderRef.current) {
+      hoverProviderRef.current.dispose();
+    }
+    hoverProviderRef.current = monaco.languages.registerHoverProvider("typescript", {
+      provideHover: function (model, position) {
+        if (!isDrizzleModel(model)) return null;
+        const word = model.getWordAtPosition(position);
+        if (!word) return null;
+        const operator = DRIZZLE_OPERATOR_SIGNATURES[word.word];
+        if (!operator) return null;
+        return {
+          range: new monaco.Range(
+            position.lineNumber,
+            word.startColumn,
+            position.lineNumber,
+            word.endColumn,
+          ),
+          contents: [
+            { value: "```ts\n" + operator.signature + "\n```" },
+            { value: operator.documentation },
+          ],
+        };
       },
     });
 

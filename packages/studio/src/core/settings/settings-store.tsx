@@ -18,6 +18,7 @@ export type SettingsState = {
 	editorFontSize: number
 	editorTheme: EditorTheme
 	enableVimMode: boolean
+	hideAi: boolean
 	privacyMaskData: boolean
 	restoreLastConnection: boolean
 	restoreTabsOnLaunch: boolean
@@ -27,6 +28,7 @@ export type SettingsState = {
 	lastRowPK: string | number | null
 	selectionBarStyle: 'floating' | 'static'
 	showToasts: boolean
+	windowControlsStyle: 'custom' | 'macos'
 }
 
 export const DEFAULT_SETTINGS: SettingsState = {
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
 	editorFontSize: 14,
 	editorTheme: 'auto',
 	enableVimMode: false,
+	hideAi: false,
 	privacyMaskData: false,
 	restoreLastConnection: true,
 	restoreTabsOnLaunch: true,
@@ -42,7 +45,8 @@ export const DEFAULT_SETTINGS: SettingsState = {
 	lastTableId: null,
 	lastRowPK: null,
 	selectionBarStyle: 'static',
-	showToasts: true
+	showToasts: true,
+	windowControlsStyle: 'custom'
 }
 
 const STORAGE_KEY = 'ui_settings'
@@ -116,6 +120,7 @@ export function sanitizeSettings(value: unknown): SettingsState {
 			typeof value.enableVimMode === 'boolean'
 				? value.enableVimMode
 				: DEFAULT_SETTINGS.enableVimMode,
+		hideAi: typeof value.hideAi === 'boolean' ? value.hideAi : DEFAULT_SETTINGS.hideAi,
 		privacyMaskData:
 			typeof value.privacyMaskData === 'boolean'
 				? value.privacyMaskData
@@ -135,7 +140,11 @@ export function sanitizeSettings(value: unknown): SettingsState {
 			? (value.selectionBarStyle as SettingsState['selectionBarStyle'])
 			: DEFAULT_SETTINGS.selectionBarStyle,
 		showToasts:
-			typeof value.showToasts === 'boolean' ? value.showToasts : DEFAULT_SETTINGS.showToasts
+			typeof value.showToasts === 'boolean' ? value.showToasts : DEFAULT_SETTINGS.showToasts,
+		windowControlsStyle:
+			value.windowControlsStyle === 'macos' || value.windowControlsStyle === 'custom'
+				? value.windowControlsStyle
+				: DEFAULT_SETTINGS.windowControlsStyle
 	}
 }
 

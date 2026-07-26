@@ -482,7 +482,7 @@ export function SqlResults({
 							<div className='text-destructive text-sm font-mono bg-destructive/10 px-4 py-3 rounded-md border border-destructive/20'>
 								{result.error}
 							</div>
-							{query?.trim() && (
+							{query?.trim() && !settings.hideAi && (
 								<Button
 									variant='outline'
 									size='sm'
