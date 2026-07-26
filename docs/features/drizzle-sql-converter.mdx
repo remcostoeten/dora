@@ -1,0 +1,64 @@
+---
+title: Drizzle ↔ SQL converter
+description: Convert Drizzle schemas and queries to SQL and back — deterministic, offline, and dialect-aware. No AI involved.
+---
+
+The ORM cockpit includes a two-pane converter that translates between
+Drizzle TypeScript and SQL in both directions. It's a real parser and
+emitter, not an LLM call: the same input always produces byte-identical
+output, it works offline, and nothing leaves your machine.
+
+Open it from the **Schema Diff** entry in the sidebar — the converter lives
+in its own tab next to Drift and Migrations, and needs no database
+connection.
+
+## What it converts
+
+The converter auto-detects which of two surfaces you pasted:
+
+**Schemas** — Drizzle table definitions ↔ SQL DDL.
+
+- `pgTable` / `mysqlTable` / `sqliteTable` with column builders, `.notNull()`,
+  `.default()` / `.defaultNow()`, `.unique()`, `.references()` with
+  `onDelete`/`onUpdate`, and table-level composite primary keys, foreign
+  keys, and indexes.
+- Going SQL → Drizzle, `CREATE TABLE`, `CREATE [UNIQUE] INDEX`, and
+  `ALTER TABLE … ADD` statements become idiomatic Drizzle code: camelCase
+  property keys, `.references(() => users.id)`, and a config callback for
+  composite constraints. Tables are ordered so referenced tables come first.
+
+**Queries** — Drizzle query-builder calls ↔ SQL DML.
+
+- `select` (all four join kinds, `where`, `groupBy`, `orderBy`,
+  `limit`/`offset`), `insert` (multi-row, `returning`), `update`, and
+  `delete`.
+- The full operator set the editor's autocomplete knows: `eq`, `ne`, `gt`,
+  `gte`, `lt`, `lte`, `like`, `ilike`, `inArray`, `notInArray`, `between`,
+  `notBetween`, `isNull`, `isNotNull`, `and`, `or`, `not`, `exists`,
+  `notExists`.
+
+## Dialects
+
+Pick the target dialect — Postgres, MySQL, or SQLite — and the output
+follows its rules: backtick vs double-quote identifiers, `SERIAL` vs
+`AUTO_INCREMENT` vs `INTEGER PRIMARY KEY AUTOINCREMENT`, boolean literals,
+and SQLite's inline foreign keys. Dialect-specific constructs degrade
+loudly: `ilike` outside Postgres becomes `LIKE` with a warning rather than
+silently changing meaning.
+
+## When something isn't supported
+
+The converter never guesses. Constructs outside the supported surface —
+`HAVING`, aggregates, CTEs, window functions, `sql` template literals —
+produce a clear error naming the construct and, where possible, the line.
+Severable issues (an unknown column type, a lossy type mapping) convert
+anyway and surface as dismissable warnings above the output.
+
+## Round-tripping
+
+Conversions are built to survive the return trip: SQL converted to Drizzle
+converts back to the same SQL, byte for byte. Going Drizzle → SQL → Drizzle,
+queries round-trip exactly; schemas round-trip semantically (the same
+tables, columns, and constraints) but normalize declaration order and type
+spelling — `char(3)` comes back as `varchar({ length: 3 })`, since both map
+to the same schema representation Dora uses for diffing.
