@@ -308,6 +308,7 @@ export function DatabaseStudio({
 		draftRow,
 		draftInsertIndex,
 		isApplyingEdits,
+		hasPendingEdits: Boolean(tableId) && hasEdits(tableId as string),
 		selectedRows,
 		selectedCells,
 		focusedCell,

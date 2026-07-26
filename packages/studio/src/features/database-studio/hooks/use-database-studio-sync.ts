@@ -28,6 +28,7 @@ type Args = {
   draftRow: Record<string, unknown> | null;
   draftInsertIndex: number | null;
   isApplyingEdits: boolean;
+  hasPendingEdits: boolean;
   selectedRows: Set<number>;
   selectedCells: Set<string>;
   focusedCell: { row: number; col: number } | null;
@@ -66,6 +67,7 @@ export function useDatabaseStudioSync(args: Args) {
     draftRow,
     draftInsertIndex,
     isApplyingEdits,
+    hasPendingEdits,
     selectedRows,
     selectedCells,
     focusedCell,
@@ -280,11 +282,22 @@ export function useDatabaseStudioSync(args: Args) {
       const hasChangeForThisTable = liveMonitor.recentEvents.some(function (e) {
         return e.tableName === tableRefName || e.tableName === tableName;
       });
-      if (hasChangeForThisTable && !draftRow && !isApplyingEdits) {
+      // Reloading while dry edits are buffered would repaint database values
+      // over them, leaving the pending-changes count describing writes the user
+      // can no longer see.
+      if (hasChangeForThisTable && !draftRow && !isApplyingEdits && !hasPendingEdits) {
         loadTableData();
       }
     },
-    [liveMonitor.recentEvents, draftRow, isApplyingEdits, loadTableData, tableName, tableRefName],
+    [
+      liveMonitor.recentEvents,
+      draftRow,
+      isApplyingEdits,
+      hasPendingEdits,
+      loadTableData,
+      tableName,
+      tableRefName,
+    ],
   );
 
   useEffect(

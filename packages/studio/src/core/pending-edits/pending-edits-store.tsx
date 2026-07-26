@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react'
 
 export type PendingEdit = {
-	rowIndex: number
 	primaryKeyColumn: string
 	primaryKeyValue: unknown
 	columnName: string
@@ -23,7 +22,7 @@ type PendingEditsContextValue = {
 
 const PendingEditsContext = createContext<PendingEditsContextValue | null>(null)
 
-function createEditKey(tableId: string, primaryKeyValue: unknown, columnName: string): string {
+export function createEditKey(tableId: string, primaryKeyValue: unknown, columnName: string): string {
 	return `${tableId}:${String(primaryKeyValue)}:${columnName}`
 }
 
