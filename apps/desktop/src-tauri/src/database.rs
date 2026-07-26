@@ -5,6 +5,7 @@ pub mod d1;
 pub mod duckdb;
 pub mod duckdb_backend;
 pub mod duckdb_ipc;
+pub mod ident;
 pub mod libsql;
 pub mod mysql;
 pub mod posthog;

@@ -980,9 +980,7 @@ fn mysql_qualified_table_name(schema: Option<&str>, table: &str) -> String {
     }
 }
 
-fn quote_mysql_identifier(identifier: &str) -> String {
-    format!("`{}`", identifier.replace('`', "``"))
-}
+use crate::database::ident::quote_mysql as quote_mysql_identifier;
 
 fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
     match value {
@@ -1325,9 +1323,7 @@ fn split_table_reference(table_name: &str) -> Result<(Option<String>, String), E
     }
 }
 
-fn quote_identifier(identifier: &str) -> String {
-    format!("\"{}\"", identifier.replace('"', "\"\""))
-}
+use crate::database::ident::quote_ansi as quote_identifier;
 
 fn quote_table_reference(table_name: &str) -> Result<String, Error> {
     let (schema, table) = split_table_reference(table_name)?;

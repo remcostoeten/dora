@@ -327,7 +327,7 @@ impl SqlGenerator {
     }
 
     fn quote_identifier(&self, name: &str) -> String {
-        format!("\"{}\"", name)
+        crate::database::ident::quote_ansi(name)
     }
 }
 

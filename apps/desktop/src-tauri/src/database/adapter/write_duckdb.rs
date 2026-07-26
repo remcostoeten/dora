@@ -7,9 +7,7 @@ use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult}
 use crate::database::services::mutation::MutationResult;
 use crate::Error;
 
-fn quote_ident(identifier: &str) -> String {
-    format!("\"{}\"", identifier.replace('"', "\"\""))
-}
+use crate::database::ident::quote_ansi as quote_ident;
 
 /// Error returned when a mutation is attempted against a read-only data-file
 /// source (a CSV/Parquet/JSON view).

@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 
+use super::grid_sql;
 use super::read::LibSqlAdapter;
 use super::write::WriteAdapter;
 use crate::database::adapter::DatabaseAdapter;
@@ -22,10 +23,7 @@ impl WriteAdapter for LibSqlAdapter {
         column: String,
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let query = format!(
-            "UPDATE `{}` SET `{}` = ? WHERE `{}` = ?",
-            table, column, pk_column
-        );
+        let query = grid_sql::update_cell_sql(&table, &column, &pk_column);
         let new_val = json_to_libsql_value(&new_value);
         let pk_val = json_to_libsql_value(&pk_value);
         let result = self
@@ -61,13 +59,7 @@ impl WriteAdapter for LibSqlAdapter {
             });
         }
 
-        let placeholders: Vec<&str> = pk_values.iter().map(|_| "?").collect();
-        let query = format!(
-            "DELETE FROM `{}` WHERE `{}` IN ({})",
-            table,
-            pk_column,
-            placeholders.join(", ")
-        );
+        let query = grid_sql::delete_rows_sql(&table, &pk_column, pk_values.len());
         let params: Vec<libsql::Value> = pk_values.iter().map(json_to_libsql_value).collect();
         let total_deleted = self
             .connection()
@@ -97,20 +89,7 @@ impl WriteAdapter for LibSqlAdapter {
             });
         }
 
-        let columns: Vec<&String> = row_data.keys().collect();
-        let col_names: String = columns
-            .iter()
-            .map(|c| format!("\"{}\"", c))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let placeholders: String = std::iter::repeat("?")
-            .take(row_data.len())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let query = format!(
-            "INSERT INTO \"{}\" ({}) VALUES ({})",
-            table, col_names, placeholders
-        );
+        let query = grid_sql::insert_row_sql(&table, row_data.keys().map(String::as_str));
         let params: Vec<libsql::Value> = row_data.values().map(json_to_libsql_value).collect();
 
         self.connection()
@@ -132,10 +111,7 @@ impl WriteAdapter for LibSqlAdapter {
         pk_column: String,
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let query = format!(
-            "SELECT * FROM \"{}\" WHERE \"{}\" = ? LIMIT 1",
-            table, pk_column
-        );
+        let query = grid_sql::select_row_sql(&table, &pk_column);
         let params = vec![json_to_libsql_value(&pk_value)];
         let mut rows = self
             .connection()
@@ -182,10 +158,7 @@ impl WriteAdapter for LibSqlAdapter {
         pk_value: serde_json::Value,
         column: String,
     ) -> Result<Vec<u8>, Error> {
-        let query = format!(
-            "SELECT \"{}\" FROM \"{}\" WHERE \"{}\" = ? LIMIT 1",
-            column, table, pk_column
-        );
+        let query = grid_sql::select_blob_sql(&table, &column, &pk_column);
         let params = vec![json_to_libsql_value(&pk_value)];
         let mut rows = self
             .connection()

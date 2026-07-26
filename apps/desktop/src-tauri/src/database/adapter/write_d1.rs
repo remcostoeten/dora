@@ -9,6 +9,7 @@
 use async_trait::async_trait;
 use serde_json::Value;
 
+use super::grid_sql;
 use super::read::D1Adapter;
 use super::write::WriteAdapter;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
@@ -48,19 +49,7 @@ impl WriteAdapter for D1Adapter {
             });
         }
 
-        let col_names: String = row_data
-            .keys()
-            .map(|c| format!("\"{}\"", c))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let placeholders: String = std::iter::repeat("?")
-            .take(row_data.len())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let query = format!(
-            "INSERT INTO \"{}\" ({}) VALUES ({})",
-            table, col_names, placeholders
-        );
+        let query = grid_sql::insert_row_sql(&table, row_data.keys().map(String::as_str));
         let params: Vec<Value> = row_data.values().cloned().collect();
 
         let (_rows, changes) = run(self, &query, params).await?;
@@ -80,10 +69,7 @@ impl WriteAdapter for D1Adapter {
         column: String,
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let query = format!(
-            "UPDATE `{}` SET `{}` = ? WHERE `{}` = ?",
-            table, column, pk_column
-        );
+        let query = grid_sql::update_cell_sql(&table, &column, &pk_column);
         let (_rows, changes) = run(self, &query, vec![new_value, pk_value]).await?;
         Ok(MutationResult {
             success: changes > 0,
@@ -111,13 +97,7 @@ impl WriteAdapter for D1Adapter {
             });
         }
 
-        let placeholders: Vec<&str> = pk_values.iter().map(|_| "?").collect();
-        let query = format!(
-            "DELETE FROM `{}` WHERE `{}` IN ({})",
-            table,
-            pk_column,
-            placeholders.join(", ")
-        );
+        let query = grid_sql::delete_rows_sql(&table, &pk_column, pk_values.len());
         let (_rows, changes) = run(self, &query, pk_values).await?;
         Ok(MutationResult {
             success: changes > 0,
@@ -133,10 +113,7 @@ impl WriteAdapter for D1Adapter {
         pk_column: String,
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let query = format!(
-            "SELECT * FROM \"{}\" WHERE \"{}\" = ? LIMIT 1",
-            table, pk_column
-        );
+        let query = grid_sql::select_row_sql(&table, &pk_column);
         let (rows, _changes) = run(self, &query, vec![pk_value]).await?;
         let row = rows.into_iter().next().ok_or_else(|| {
             Error::Any(anyhow::anyhow!(
@@ -168,7 +145,7 @@ impl WriteAdapter for D1Adapter {
         _cascade: Option<bool>,
     ) -> Result<TruncateResult, Error> {
         // SQLite/D1 has no TRUNCATE; an unfiltered DELETE is the equivalent.
-        let query = format!("DELETE FROM \"{}\"", table);
+        let query = grid_sql::delete_all_sql(&table);
         let (_rows, changes) = run(self, &query, Vec::new()).await?;
         Ok(TruncateResult {
             success: true,

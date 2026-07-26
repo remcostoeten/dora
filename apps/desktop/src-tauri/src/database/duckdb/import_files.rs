@@ -39,9 +39,7 @@ pub struct FailedDuckDbImport {
 }
 
 #[cfg(feature = "duckdb-engine")]
-fn quote_ident(name: &str) -> String {
-    format!("\"{}\"", name.replace('"', "\"\""))
-}
+use crate::database::ident::quote_ansi as quote_ident;
 
 #[cfg(feature = "duckdb-engine")]
 fn resolve_table_name(base: &str, taken: &HashSet<String>) -> String {

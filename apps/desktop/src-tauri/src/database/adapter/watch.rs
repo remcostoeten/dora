@@ -248,9 +248,7 @@ fn qualified_table(schema: Option<&str>, table: &str) -> String {
     }
 }
 
-fn quote_identifier(identifier: &str) -> String {
-    format!("\"{}\"", identifier.replace('"', "\"\""))
-}
+use crate::database::ident::quote_ansi as quote_identifier;
 
 fn qualified_mysql_table(schema: Option<&str>, table: &str) -> String {
     if let Some(schema) = schema {
@@ -264,9 +262,7 @@ fn qualified_mysql_table(schema: Option<&str>, table: &str) -> String {
     }
 }
 
-fn quote_mysql_identifier(identifier: &str) -> String {
-    format!("`{}`", identifier.replace('`', "``"))
-}
+use crate::database::ident::quote_mysql as quote_mysql_identifier;
 
 fn sqlite_value_to_json(value: ValueRef<'_>) -> serde_json::Value {
     match value {

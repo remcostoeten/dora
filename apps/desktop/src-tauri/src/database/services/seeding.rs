@@ -81,7 +81,7 @@ impl<'a> SeedingService<'a> {
             seed_target_for_client(&client, &table.name, &table.schema, schema_name.as_deref());
         let column_names: Vec<String> = seedable_columns
             .iter()
-            .map(|c| quote_identifier(&c.name, identifier_quote))
+            .map(|c| identifier_quote(&c.name))
             .collect();
         let column_list = column_names.join(", ");
 
@@ -226,10 +226,10 @@ fn seed_target_for_client(
     table_name: &str,
     table_schema: &str,
     requested_schema: Option<&str>,
-) -> (char, String) {
-    let quote = match client {
-        crate::database::types::DatabaseClient::MySQL { .. } => '`',
-        _ => '"',
+) -> (fn(&str) -> String, String) {
+    let quote: fn(&str) -> String = match client {
+        crate::database::types::DatabaseClient::MySQL { .. } => crate::database::ident::quote_mysql,
+        _ => crate::database::ident::quote_ansi,
     };
 
     let schema = requested_schema
@@ -248,19 +248,11 @@ fn seed_target_for_client(
         });
 
     let qualified_table = match schema {
-        Some(schema_name) => format!(
-            "{}.{}",
-            quote_identifier(&schema_name, quote),
-            quote_identifier(table_name, quote)
-        ),
-        None => quote_identifier(table_name, quote),
+        Some(schema_name) => format!("{}.{}", quote(&schema_name), quote(table_name)),
+        None => quote(table_name),
     };
 
     (quote, qualified_table)
-}
-
-fn quote_identifier(identifier: &str, quote: char) -> String {
-    format!("{quote}{identifier}{quote}")
 }
 
 fn sql_string_literal(value: &str) -> String {
