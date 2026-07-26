@@ -1,0 +1,62 @@
+name: Live DB Tests
+
+# Opt-in dialect integration tests: boots real MySQL/MariaDB servers from
+# docker-compose.databases.yml and runs the env-gated adapter lifecycle tests
+# in apps/desktop/src-tauri/tests/live_db_tests.rs. Kept off the PR path so
+# regular CI stays fast; run manually or let the weekly cron catch drift.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  live-db:
+    name: Live DB Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            apps/desktop/src-tauri/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Start database containers
+        run: docker compose -f docker-compose.databases.yml up -d --wait mysql mariadb
+
+      - name: Run live adapter tests
+        working-directory: apps/desktop/src-tauri
+        env:
+          DORA_LIVE_DB_TESTS: "1"
+        run: cargo test --test live_db_tests -- --nocapture
+
+      - name: Stop database containers
+        if: always()
+        run: docker compose -f docker-compose.databases.yml down -v
