@@ -1320,6 +1320,7 @@ function SqlConsoleInner({
                     showFilter={showFilter}
                     onRefresh={() => handleExecute()}
                     query={mode === "sql" ? currentSqlQuery : currentDrizzleQuery}
+                    schemaTables={tables}
                   />
                 }
               />
