@@ -158,55 +158,30 @@ All notable changes to this project will be documented in this file.
 
 ## [v0.37.0] - 2026-07-26
 
-### Bug Fixes
+### Highlights
 
-- fix(studio): accumulate ctrl+wheel zoom delta and listen in capture phase
+- **Hide AI completely** — a new *Settings → Safety → Hide AI* toggle removes every AI surface from the app: the assistant panel and its corner button, Cmd+K query generation, the AI explain/fix actions, and all AI settings sections. For people who want a database client with no AI in it. (#222)
+- **Onboarding tour** — a skippable, non-intrusive 5-step tour introduces the Data Viewer, SQL Console, Schema view, and Settings on first launch. It offers itself for the first three launches and never again once completed or skipped. (#222)
+- **macOS-style window controls** — *Settings → Interface → Window Controls* switches the desktop window buttons between the custom style and macOS traffic lights. (#222)
+- **Drizzle operator intellisense** — the Drizzle runner now shows signature help with live parameter tracking inside `eq()`, `between()`, `inArray()` and friends, plus hover documentation for all condition operators. (#222)
+- **UI zoom** — Ctrl/Cmd + mouse wheel zooms the whole interface, with smooth delta accumulation.
 
-- fix: audit batch — SQL tab data loss, dark failing test, dead CI gates (#211) (#211)
+### Editing safety
 
-- fix(studio): pending-edit integrity — partial apply, undo-by-PK, reload guard (#213) (#213)
+- SQL-console cell edits and row deletes no longer guess the primary key from any column merely named `id` — a heuristic that could silently update or delete *every* matching row on tables without a real primary key. The key is now resolved strictly from declared metadata (result or schema), which also means mutations finally work on tables whose primary key isn't named `id`. (#218)
+- Buffered dry-mode edits now survive table switches, page/sort/filter changes, and live-monitor reloads — the grid repaints your unsaved values instead of silently reverting to database state — and closing the window with unsaved edits warns first. (#219, completes #213's partial apply and undo-by-primary-key work)
+- Pasting into the grid is sanitized, cancelling a query in one SQL tab no longer aborts other tabs, and crashed views recover via a resettable error boundary. (#215)
 
-- fix(rust): connection hygiene — redact secrets, connect timeouts, monitor deregistration, sane MySQL pooling (#214) (#214)
+### Reliability
 
-- fix(studio): grid paste sanitization, per-tab query cancel, resettable ErrorBoundary (#215) (#215)
+- Connection hygiene: secrets are redacted from logs and errors, all provider API calls share one HTTP client with hard connect/request timeouts, MySQL pools are sized sanely and disconnect deterministically, and the connection monitor no longer grows without bound. (#214)
+- Identifier quoting is canonical across every dialect's TRUNCATE/INSERT/UPDATE paths — tables and columns with spaces, quotes, or reserved-word names are safe everywhere. (#216)
+- A boot smoke test now runs in CI on every PR, failing if the studio doesn't render. (#217)
+- Real dialect coverage: the grid mutation lifecycle (insert → update → delete → truncate) runs through the actual adapters against in-memory SQLite/DuckDB on every test run, and against live MySQL 8.4 + MariaDB 11.4 containers in a weekly CI job. (#221)
 
-- fix(rust): canonical identifier quoting — escape TRUNCATE/INSERT/UPDATE paths across all dialects (#216) (#216)
+### Release pipeline
 
-- fix(studio): resolve SQL-console mutation PK from declared metadata, drop the 'id'-name guess (#218) (#218)
-
-- fix(studio): repaint pending dry edits after every table reload + beforeunload guard (#219) (#219)
-
-
-
-### CI/CD
-
-- ci(release): make packaging channels propagate real status into the Release run (#220) (#220)
-
-
-
-### Chores
-
-- chore(aur): update dora to 0.36.0
-
-- chore(style): narrow the style rules to real violations and enforce them in CI (#212) (#212)
-
-
-
-### Features
-
-- feat(studio): ctrl/cmd+wheel UI zoom, fix zoom-in key combo
-
-- feat(marketing): query switchboard section + dev brand tuner
-
-- feat(studio): hide-AI setting, macOS window controls, onboarding tour, Drizzle operator intellisense (#222) (#222)
-
-
-
-### Testing
-
-- test(e2e): boot smoke test using the existing browser harness (#217) (#217)
-
-- test(dialect): real adapter lifecycle coverage + opt-in live-DB CI; prune dead demo scripts (#221) (#221)
+- The AUR, Homebrew, APT, Winget, Snap, and Flatpak publishing workflows now run *inside* the release run and fail it if any channel fails — a green release means every channel actually published. (#220)
 
 ## [Unreleased]
 
