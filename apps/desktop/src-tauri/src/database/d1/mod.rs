@@ -47,7 +47,7 @@ pub struct D1Http {
 impl D1Http {
     pub fn new(account_id: String, database_id: String, token: String) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: crate::http::query_client(),
             account_id,
             database_id,
             token,

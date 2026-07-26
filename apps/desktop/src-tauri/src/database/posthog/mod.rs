@@ -43,7 +43,7 @@ pub struct PosthogHttp {
 impl PosthogHttp {
     pub fn new(region: &str, project_id: String, api_key: String) -> Self {
         Self {
-            client: reqwest::Client::new(),
+            client: crate::http::query_client(),
             api_base: region_api_base(region).to_string(),
             project_id,
             api_key,

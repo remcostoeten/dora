@@ -180,7 +180,7 @@ fn has_next_page(next_page: &Option<serde_json::Value>) -> bool {
 /// Maps 401/403 to a scope/credential-specific error and any other non-2xx to an
 /// error carrying the response body.
 async fn authed_get(token: &str, url: &str, query: &[(&str, &str)], what: &str) -> Result<String> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(url)
         .header(reqwest::header::AUTHORIZATION, token)
         .query(query)
@@ -387,7 +387,7 @@ pub async fn create_password(
             .unwrap_or(0)
     );
 
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .post(format!(
             "{API_BASE_URL}/organizations/{organization}/databases/{database}/branches/{branch}/passwords"
         ))

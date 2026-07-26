@@ -133,7 +133,7 @@ async fn execute(config: &StoredConfig, hogql: &str) -> Result<PosthogQueryResul
         "query": { "kind": "HogQLQuery", "query": hogql }
     });
 
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .post(&url)
         .bearer_auth(&config.api_key)
         .json(&body)

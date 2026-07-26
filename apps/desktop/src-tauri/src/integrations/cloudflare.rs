@@ -164,7 +164,7 @@ async fn get_paginated<T>(token: &str, path: &str, context: &str) -> Result<Vec<
 where
     T: for<'de> Deserialize<'de>,
 {
-    let client = reqwest::Client::new();
+    let client = crate::http::client();
     let per_page = PAGE_SIZE.to_string();
     let mut all = Vec::new();
     let mut page: u64 = 1;

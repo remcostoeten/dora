@@ -156,7 +156,7 @@ async fn read_body(response: reqwest::Response) -> String {
 }
 
 async fn get_projects(token: &str) -> Result<Vec<ProjectResponse>> {
-    let client = reqwest::Client::new();
+    let client = crate::http::client();
     let limit = PROJECTS_PAGE_LIMIT.to_string();
     let mut projects = Vec::new();
     let mut cursor: Option<String> = None;
@@ -215,7 +215,7 @@ async fn get_projects(token: &str) -> Result<Vec<ProjectResponse>> {
 /// which account is connected.
 pub async fn current_account(storage: &Storage) -> Result<NeonAccount> {
     let token = require_token(storage)?;
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{API_BASE_URL}/users/me"))
         .bearer_auth(&token)
         .send()
@@ -256,7 +256,7 @@ pub async fn save_token(storage: &Storage, token: String) -> Result<()> {
 /// Fetches every branch of a project. Shared by `get_default_branch` (which just
 /// wants the primary) and `list_branches` (which surfaces all of them to the UI).
 async fn get_branches(token: &str, project_id: &str) -> Result<Vec<BranchResponse>> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{API_BASE_URL}/projects/{project_id}/branches"))
         .bearer_auth(token)
         .send()
@@ -311,7 +311,7 @@ async fn get_branch_databases(
     project_id: &str,
     branch_id: &str,
 ) -> Result<Vec<DatabaseResponse>> {
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!(
             "{API_BASE_URL}/projects/{project_id}/branches/{branch_id}/databases"
         ))
@@ -369,7 +369,7 @@ pub async fn create_connection_uri(
     role_name: &str,
 ) -> Result<String> {
     let token = require_token(storage)?;
-    let response = reqwest::Client::new()
+    let response = crate::http::client()
         .get(format!("{API_BASE_URL}/projects/{project_id}/connection_uri"))
         .query(&[
             ("branch_id", branch_id),
