@@ -402,86 +402,66 @@ jobs:
           git commit -m "chore(release): update README for ${VERSION}"
           git push origin master
 
+  # Each channel runs as a reusable-workflow job so its real outcome shows up
+  # in this run: a failed AUR push or Winget manifest turns the release run
+  # red instead of vanishing into a detached fire-and-forget dispatch.
   publish-aur:
     needs: publish-release
     permissions:
-      actions: write
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Dispatch AUR publish workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run aur.yml --ref master -f tag="${{ github.ref_name }}"
+      contents: write
+    uses: ./.github/workflows/aur.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit
 
   publish-homebrew:
     needs: publish-release
     permissions:
-      actions: write
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Dispatch Homebrew publish workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run brew.yml --ref master -f tag="${{ github.ref_name }}" -f publish=true
+      contents: write
+    uses: ./.github/workflows/brew.yml
+    with:
+      tag: ${{ github.ref_name }}
+      publish: true
+    secrets: inherit
 
   publish-apt:
     needs: publish-release
     permissions:
-      actions: write
       contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Dispatch APT repository workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run apt.yml --ref master -f tag="${{ github.ref_name }}" -f publish=true
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/apt.yml
+    with:
+      tag: ${{ github.ref_name }}
+      publish: true
+    secrets: inherit
 
   publish-winget:
     needs: publish-release
     permissions:
-      actions: write
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Dispatch Winget workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run winget.yml --ref master -f tag="${{ github.ref_name }}" -f submit_update=true
+      contents: write
+    uses: ./.github/workflows/winget.yml
+    with:
+      tag: ${{ github.ref_name }}
+      submit_update: true
+    secrets: inherit
 
   publish-snap:
     needs: publish-release
     permissions:
-      actions: write
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Dispatch Snap workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run snap.yml --ref master -f tag="${{ github.ref_name }}" -f publish=true -f release_channel=stable
+      contents: write
+    uses: ./.github/workflows/snap.yml
+    with:
+      tag: ${{ github.ref_name }}
+      publish: true
+      release_channel: stable
+    secrets: inherit
 
   build-flatpak:
     needs: publish-release
     permissions:
-      actions: write
-      contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Dispatch Flatpak build workflow
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run flatpak.yml --ref master -f tag="${{ github.ref_name }}"
+      contents: write
+    uses: ./.github/workflows/flatpak.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

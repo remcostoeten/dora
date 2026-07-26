@@ -91,9 +91,11 @@ flowchart TD
 | 2 | `release-macos` | `macos-latest` | macOS ARM `.dmg` |
 | 3 | `publish-release` | `ubuntu-latest` | Upload assets, create GitHub release |
 | 4 | `post-release` | `ubuntu-latest` | Update `README.md` on `master` |
-| 5 | package managers | `ubuntu-latest` | Dispatch AUR, Homebrew, APT, Winget, Snap, Flatpak |
+| 5 | package managers | varies | AUR, Homebrew, APT, Winget, Snap, Flatpak as reusable-workflow jobs |
 
-Platform builds in phase 2 run **in parallel** after preflight passes. Package-manager dispatches in phase 5 also run **in parallel** after the GitHub release is published.
+Platform builds in phase 2 run **in parallel** after preflight passes. Package-manager jobs in phase 5 also run **in parallel** after the GitHub release is published.
+
+The phase-5 jobs call `aur.yml`, `brew.yml`, `apt.yml`, `winget.yml`, `snap.yml`, and `flatpak.yml` via `workflow_call`, so each channel's real outcome is part of the `Release` run itself: **if the Release run for a tag is green, every channel published; if any channel fails, the run goes red on that job.** There is no need to separately check each channel workflow's history under Actions — that was only necessary when these were fire-and-forget `gh workflow run` dispatches. The channel workflows all keep their `workflow_dispatch` triggers for manual re-runs of a single channel (e.g. re-publishing Homebrew after fixing a tap secret).
 
 ---
 
@@ -236,9 +238,9 @@ chore(release): update README for v0.27.0
 
 ---
 
-## Phase 5 — Package manager dispatches
+## Phase 5 — Package manager channels
 
-These jobs run in parallel after `publish-release` succeeds. Each dispatches a dedicated workflow on `master` with the release tag:
+These jobs run in parallel after `publish-release` succeeds. Each calls a dedicated channel workflow as a reusable workflow (`workflow_call`) with the release tag, so the channel's success or failure is the job's own status inside the `Release` run:
 
 | Job | Workflow | Notes |
 | --- | --- | --- |
@@ -320,7 +322,7 @@ Built by `release.yml` and attached to every release. Users install directly fro
 | `dora-x86_64-unknown-linux-gnu.tar.gz` | Arch tarball | Also feeds AUR |
 | `checksums-linux.txt`, `checksums-windows.txt` | All | Used by Winget manifest generation |
 
-### Store / registry (automatic — dispatched after publish)
+### Store / registry (automatic — run as part of the Release workflow after publish)
 
 | Channel | Workflow | Install example |
 | --- | --- | --- |

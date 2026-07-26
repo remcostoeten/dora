@@ -12,6 +12,17 @@ on:
         required: false
         type: boolean
         default: false
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing GitHub release tag like v0.26.6. Leave empty to use latest.
+        required: false
+        type: string
+      publish:
+        description: Push the updated Cask to remcostoeten/homebrew-dora.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
