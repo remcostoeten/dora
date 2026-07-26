@@ -1,11 +1,18 @@
 import { Component, ErrorInfo, ReactNode } from 'react'
 import { ErrorFallback } from './error-fallback'
 
+function resetKeysChanged(prev: unknown[] | undefined, next: unknown[] | undefined): boolean {
+	if (prev === next) return false
+	if (!prev || !next) return true
+	return prev.length !== next.length || prev.some((key, index) => !Object.is(key, next[index]))
+}
+
 type Props = {
 	children: ReactNode
 	fallback?: ReactNode
 	onReset?: () => void
 	feature?: string
+	resetKeys?: unknown[]
 }
 
 type State = {
@@ -27,6 +34,13 @@ export class ErrorBoundary extends Component<Props, State> {
 	componentDidCatch(error: Error, errorInfo: ErrorInfo) {
 		console.error('[ErrorBoundary] Caught error:', error)
 		console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack)
+	}
+
+	componentDidUpdate(prevProps: Props) {
+		if (!this.state.hasError) return
+		if (resetKeysChanged(prevProps.resetKeys, this.props.resetKeys)) {
+			this.setState({ hasError: false, error: null })
+		}
 	}
 
 	handleReset() {

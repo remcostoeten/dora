@@ -724,6 +724,14 @@ async cancelQuery() : Promise<Result<null, { kind: string; detail: string }>> {
     else return { status: "error", error: e  as any };
 }
 },
+async cancelQueries(queryIds: number[]) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("cancel_queries", { queryIds }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async startQuery(connectionId: string, query: string) : Promise<Result<number[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("start_query", { connectionId, query }) };

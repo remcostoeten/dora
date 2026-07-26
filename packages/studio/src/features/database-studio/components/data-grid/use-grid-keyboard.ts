@@ -381,6 +381,26 @@ function copySelectionToClipboard(
 	}
 }
 
+/**
+ * Splits clipboard text into a grid of cell values. Normalises CRLF/CR line
+ * endings (Excel, Sheets, Windows apps) so no `\r` ends up in cell values,
+ * and drops the single trailing newline most copy sources append so it does
+ * not become a phantom row that overwrites the row below the paste target.
+ */
+export function parseClipboardGrid(clipboardText: string): string[][] {
+	return clipboardText
+		.replace(/\r\n?/g, '\n')
+		.replace(/\n$/, '')
+		.split('\n')
+		.map(function (line) {
+			return line.split('\t')
+		})
+}
+
+function isEmptyPasteRow(pasteRow: string[]): boolean {
+	return pasteRow.length === 1 && pasteRow[0] === ''
+}
+
 function pasteClipboardIntoGrid(
 	focusedCell: CellPosition,
 	rowCount: number,
@@ -391,10 +411,9 @@ function pasteClipboardIntoGrid(
 		.readText()
 		.then(function (clipboardText) {
 			if (!clipboardText) return
-			const pasteRows = clipboardText.split('\n').map(function (line) {
-				return line.split('\t')
-			})
+			const pasteRows = parseClipboardGrid(clipboardText)
 			pasteRows.forEach(function (pasteRow, pasteRowIndex) {
+				if (isEmptyPasteRow(pasteRow)) return
 				const targetRow = focusedCell.row + pasteRowIndex
 				if (targetRow >= rowCount) return
 				pasteRow.forEach(function (pasteValue, pasteColIndex) {

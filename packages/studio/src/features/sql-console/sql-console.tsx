@@ -161,7 +161,11 @@ function SqlConsoleInner({
   const [showRightSidebar, setShowRightSidebar] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SQL_CONSOLE_SIDEBAR_WIDTH);
   const sbwRef = useRef(DEFAULT_SQL_CONSOLE_SIDEBAR_WIDTH);
-  const cancelledRef = useRef(false);
+  // Cancellation is per tab: each tab tracks its own in-flight backend
+  // statement ids and cancelled flag, so cancelling one tab's query never
+  // cancels or silences a query running in another tab.
+  const cancelledTabsRef = useRef<Set<string>>(new Set());
+  const inFlightQueryIdsRef = useRef<Map<string, number[]>>(new Map());
   const [autoExpandFolder, setAutoExpandFolder] = useState<string | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -416,7 +420,13 @@ function SqlConsoleInner({
       // Prisma mode is handled by the self-contained PrismaRunner.
       if (!modeOverride && mode === "prisma") return;
 
-      cancelledRef.current = false;
+      const executingTabId = activeTab.id;
+      cancelledTabsRef.current.delete(executingTabId);
+      const trackQueryIds = {
+        onStarted: function (queryIds: number[]) {
+          inFlightQueryIdsRef.current.set(executingTabId, queryIds);
+        },
+      };
       setIsExecuting(true);
       setResult(null);
       const nextMode = modeOverride || mode;
@@ -429,7 +439,7 @@ function SqlConsoleInner({
           if (!activeConnectionId) {
             throw new Error("No connection selected");
           }
-          const res = await adapter.executeQuery(activeConnectionId, queryToRun);
+          const res = await adapter.executeQuery(activeConnectionId, queryToRun, trackQueryIds);
           if (res.ok) {
             const columns = Array.isArray(res.data.columns) ? res.data.columns : [];
             const columnDefinitions = res.data.columnDefinitions;
@@ -502,7 +512,7 @@ function SqlConsoleInner({
           }
 
           const sqlToRun = drizzleQueryToSql(queryToRun);
-          const res = await adapter.executeQuery(activeConnectionId, sqlToRun);
+          const res = await adapter.executeQuery(activeConnectionId, sqlToRun, trackQueryIds);
 
           if (res.ok) {
             setResult({
@@ -541,17 +551,22 @@ function SqlConsoleInner({
           }
         }
       } catch (error) {
-        if (!cancelledRef.current) {
-          const errorMsg = error instanceof Error ? error.message : "An error occurred";
-          setResult({
-            columns: [],
-            rows: [],
-            rowCount: 0,
-            executionTime: 0,
-            error: errorMsg,
-            queryType: "OTHER",
-          });
+        const wasCancelled = cancelledTabsRef.current.has(executingTabId);
+        const errorMsg = wasCancelled
+          ? "Query cancelled"
+          : error instanceof Error
+            ? error.message
+            : "An error occurred";
+        setResult({
+          columns: [],
+          rows: [],
+          rowCount: 0,
+          executionTime: 0,
+          error: errorMsg,
+          queryType: "OTHER",
+        });
 
+        if (!wasCancelled) {
           const historyId = addToHistory({
             query: historyQuery,
             connectionId: activeConnectionId || null,
@@ -562,7 +577,8 @@ function SqlConsoleInner({
           tabStore.setTabHistoryEntry(activeTab.id, historyId);
         }
       } finally {
-        cancelledRef.current = false;
+        cancelledTabsRef.current.delete(executingTabId);
+        inFlightQueryIdsRef.current.delete(executingTabId);
         setIsExecuting(false);
       }
     },
@@ -581,11 +597,17 @@ function SqlConsoleInner({
   );
 
   const handleCancel = useCallback(async () => {
-    cancelledRef.current = true;
-    if (activeConnectionId) {
+    const tabId = activeTab.id;
+    cancelledTabsRef.current.add(tabId);
+    const queryIds = inFlightQueryIdsRef.current.get(tabId);
+    if (queryIds && queryIds.length > 0) {
+      await adapter.cancelQueries(queryIds);
+    } else if (activeConnectionId) {
+      // The query has not reported its statement ids yet (still starting);
+      // fall back to the connection-wide cancel.
       await adapter.cancelActiveQuery(activeConnectionId);
     }
-  }, [adapter, activeConnectionId]);
+  }, [adapter, activeConnectionId, activeTab.id]);
 
   const activeDialect = useMemo(() => {
     const connection = connections?.find(function (c) {

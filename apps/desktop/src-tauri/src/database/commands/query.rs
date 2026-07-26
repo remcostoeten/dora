@@ -21,6 +21,16 @@ pub async fn cancel_query(state: State<'_, AppState>) -> Result<(), Error> {
 
 #[tauri::command]
 #[specta::specta]
+pub async fn cancel_queries(
+    query_ids: Vec<usize>,
+    state: State<'_, AppState>,
+) -> Result<(), Error> {
+    state.stmt_manager.cancel_queries(&query_ids);
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn start_query(
     connection_id: Uuid,
     query: &str,
