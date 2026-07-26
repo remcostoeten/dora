@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useAdapter, useIsTauri } from "@studio/core/data-provider/context";
+import { useSettings } from "@studio/core/settings";
 import { useConnections } from "@studio/core/data-provider";
 import { askAi, buildExplainQueryPrompt } from "@studio/features/ai-assistant/ai-actions";
 import { getAdapterError } from "@studio/core/data-provider/types";
@@ -108,6 +109,8 @@ function SqlConsoleInner({
 }: Props) {
   const adapter = useAdapter();
   const isTauri = useIsTauri();
+  const { settings: appSettings } = useSettings();
+  const hideAi = appSettings.hideAi;
   const { data: connections } = useConnections();
   const tabStore = useQueryTabs();
   const { activeTab } = tabStore;
@@ -1085,6 +1088,7 @@ function SqlConsoleInner({
 
   $.bind(sqlShortcuts.aiCmdK.combo).on(
     function () {
+      if (hideAi) return;
       setShowAiCmdK(function (v) {
         return !v;
       });
@@ -1303,7 +1307,7 @@ function SqlConsoleInner({
                         setShowFilter(!showFilter);
                       }}
                       onSave={handleSaveSnippet}
-                      onExplainQuery={handleExplainQuery}
+                      onExplainQuery={hideAi ? undefined : handleExplainQuery}
                       onExplainAnalyze={mode === "sql" ? handleExplainAnalyze : undefined}
                     />
                   </div>
@@ -1381,7 +1385,7 @@ function SqlConsoleInner({
       </div>
 
       <AiCmdK
-        open={showAiCmdK}
+        open={showAiCmdK && !hideAi}
         onClose={() => setShowAiCmdK(false)}
         activeConnectionId={activeConnectionId}
         isTauri={isTauri}

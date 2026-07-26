@@ -86,6 +86,13 @@ type SettingsSearchResult = {
 	shortcutName?: ShortcutName
 }
 
+const AI_SECTION_IDS: ReadonlySet<SettingsSectionId> = new Set([
+	'ai-provider',
+	'ollama-models',
+	'ai-keys',
+	'ai-usage'
+])
+
 const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 	{
 		id: 'editor',
@@ -145,7 +152,7 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 		id: 'safety',
 		title: 'Safety',
 		description: 'Destructive action confirmations and privacy',
-		keywords: ['delete', 'confirm', 'danger', 'privacy', 'mask', 'hide']
+		keywords: ['delete', 'confirm', 'danger', 'privacy', 'mask', 'hide', 'ai', 'assistant', 'disable ai']
 	},
 	{
 		id: 'startup',
@@ -156,8 +163,8 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 	{
 		id: 'interface',
 		title: 'Interface',
-		description: 'Selection bar and toast behavior',
-		keywords: ['selection', 'toasts', 'ui', 'layout']
+		description: 'Selection bar, window controls, and toast behavior',
+		keywords: ['selection', 'toasts', 'ui', 'layout', 'window controls', 'traffic lights', 'titlebar']
 	},
 	{
 		id: 'updates',
@@ -698,14 +705,16 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 	const searchResults = useMemo(function () {
 		return filterSettingsSearchResults(searchQuery, effectiveShortcuts)
 	}, [searchQuery, effectiveShortcuts])
+	const hideAi = settings.hideAi
 	const visibleSections = useMemo(function () {
 		const visibleSectionIds = new Set(searchResults.map(function (result) {
 			return result.sectionId
 		}))
 		return SETTINGS_SECTIONS.filter(function (section) {
+			if (hideAi && AI_SECTION_IDS.has(section.id)) return false
 			return visibleSectionIds.has(section.id)
 		})
-	}, [searchResults])
+	}, [searchResults, hideAi])
 	const visibleSectionIds = useMemo(function () {
 		return new Set(visibleSections.map(function (section) {
 			return section.id
@@ -1495,6 +1504,32 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 												/>
 											</div>
 										</div>
+
+										<div
+											className='flex items-start justify-between gap-4'
+											tabIndex={-1}
+											data-settings-focus='safety-hide-ai'
+										>
+											<div className='flex-1'>
+												<div className='text-sm text-sidebar-foreground'>
+													Hide AI
+												</div>
+												<div className='text-xs leading-tight text-muted-foreground'>
+													Remove every AI entry point: the assistant panel and its
+													corner button, Cmd+K generation in the SQL console,
+													AI-powered explain/fix actions, and the AI sections in
+													these settings.
+												</div>
+											</div>
+											<div className='flex-shrink-0 pt-0.5'>
+												<Switch
+													checked={settings.hideAi}
+													onCheckedChange={function (checked) {
+														updateSetting('hideAi', checked)
+													}}
+												/>
+											</div>
+										</div>
 									</div>
 								</SectionCard>
 							) : null}
@@ -1610,6 +1645,41 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													<SelectContent>
 														<SelectItem value='floating'>Floating Pill</SelectItem>
 														<SelectItem value='static'>Static Bar</SelectItem>
+													</SelectContent>
+												</Select>
+											</div>
+										</div>
+
+										<div
+											className='flex items-start justify-between gap-4'
+											tabIndex={-1}
+											data-settings-focus='interface-window-controls'
+										>
+											<div className='flex-1'>
+												<div className='text-sm text-sidebar-foreground'>
+													Window Controls
+												</div>
+												<div className='text-xs leading-tight text-muted-foreground'>
+													Choose between the custom buttons and macOS-style
+													traffic lights (desktop app only)
+												</div>
+											</div>
+											<div className='min-w-[120px] flex-shrink-0 pt-0.5'>
+												<Select
+													value={settings.windowControlsStyle || 'custom'}
+													onValueChange={function (value) {
+														updateSetting(
+															'windowControlsStyle',
+															value as SettingsState['windowControlsStyle']
+														)
+													}}
+												>
+													<SelectTrigger className='h-8 w-full text-xs'>
+														<SelectValue placeholder='Select style' />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value='custom'>Custom</SelectItem>
+														<SelectItem value='macos'>macOS</SelectItem>
 													</SelectContent>
 												</Select>
 											</div>

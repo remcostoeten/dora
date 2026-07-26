@@ -71,6 +71,7 @@ export const SidebarNavItem = forwardRef<HTMLButtonElement, NavItemProps>(functi
 					disabled={item.disabled}
 					className={cn(navItemVariants({ variant, size, state }), className)}
 					aria-label={item.label}
+					data-nav-id={item.id}
 					aria-current={isActive ? 'page' : undefined}
 					aria-disabled={item.disabled}
 					{...props}
