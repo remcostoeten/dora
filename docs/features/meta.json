@@ -1,4 +1,7 @@
 {
 	"title": "Features",
-	"pages": ["analytics"]
+	"pages": [
+		"analytics",
+		"drizzle-sql-converter"
+	]
 }

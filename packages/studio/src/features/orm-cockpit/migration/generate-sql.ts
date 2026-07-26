@@ -392,17 +392,27 @@ function emitForeignKeyChange(
 // SQL fragment builders
 // ---------------------------------------------------------------------------
 
-function buildCreateTableSql(
+/**
+ * Render a full `CREATE TABLE` for a table IR. `inlineForeignKeys` are emitted
+ * as table constraints inside the parentheses (SQLite cannot ALTER them in);
+ * pass an empty list when the dialect adds them via ALTER afterwards.
+ */
+export function buildCreateTableSql(
 	tableName: string,
 	columns: ColumnIR[],
 	primaryKey: string[],
 	dialect: Dialect,
+	inlineForeignKeys: ForeignKeyIR[] = [],
+	warnings: string[] = [],
 ): string {
 	const lines = columns.map(function (col) {
-		return `    ${columnDefinition(col, dialect, primaryKey, [])}`
+		return `    ${columnDefinition(col, dialect, primaryKey, warnings)}`
 	})
 	if (primaryKey.length > 1) {
 		lines.push(`    PRIMARY KEY (${primaryKey.map((c) => quote(c, dialect)).join(', ')})`)
+	}
+	for (const fk of inlineForeignKeys) {
+		lines.push(`    ${inlineForeignKey(fk, dialect)}`)
 	}
 	return `CREATE TABLE ${quote(tableName, dialect)} (\n${lines.join(',\n')}\n);`
 }
@@ -461,6 +471,9 @@ function typeToken(col: ColumnIR, dialect: Dialect, warnings: string[]): string 
 		if (/\(\s*\d+\s*\)/.test(col.rawType)) {
 			return col.rawType
 		}
+		if (col.typeParams) {
+			return `${SQL_TYPES[dialect][col.type]}(${col.typeParams})`
+		}
 		warnings.push(
 			`column "${col.name}": vector has no dimension; emitting "VECTOR" — add a dimension (e.g. vector(1536)) before applying.`,
 		)
@@ -470,10 +483,8 @@ function typeToken(col: ColumnIR, dialect: Dialect, warnings: string[]): string 
 	// e.g. Postgres VARCHAR → VARCHAR(255), NUMERIC → NUMERIC(10,2). SQLite uses
 	// type affinity, so width is meaningless there.
 	if (dialect !== 'sqlite' && col.typeParams && (col.type === 'varchar' || col.type === 'decimal')) {
-		const base = SQL_TYPES[dialect][col.type]
-		if (!base.includes('(')) {
-			return `${base}(${col.typeParams})`
-		}
+		const base = SQL_TYPES[dialect][col.type].replace(/\(.*\)$/, '')
+		return `${base}(${col.typeParams})`
 	}
 	return SQL_TYPES[dialect][col.type]
 }
@@ -484,7 +495,8 @@ function inlineForeignKey(fk: ForeignKeyIR, dialect: Dialect): string {
 	return `FOREIGN KEY (${cols}) REFERENCES ${quote(fk.refTable, dialect)} (${refCols})${fkActions(fk)}`
 }
 
-function addForeignKeySql(tableName: string, fk: ForeignKeyIR, dialect: Dialect): string {
+/** `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY ...` for one foreign key IR. */
+export function addForeignKeySql(tableName: string, fk: ForeignKeyIR, dialect: Dialect): string {
 	const cols = fk.columns.map((c) => quote(c, dialect)).join(', ')
 	const refCols = fk.refColumns.map((c) => quote(c, dialect)).join(', ')
 	return `ALTER TABLE ${quote(tableName, dialect)} ADD CONSTRAINT ${quote(fkConstraintName(tableName, fk), dialect)} FOREIGN KEY (${cols}) REFERENCES ${quote(fk.refTable, dialect)} (${refCols})${fkActions(fk)};`
@@ -497,7 +509,8 @@ function dropForeignKeySql(tableName: string, constraintName: string, dialect: D
 	return `ALTER TABLE ${quote(tableName, dialect)} DROP CONSTRAINT ${quote(constraintName, dialect)};`
 }
 
-function createIndexSql(tableName: string, idx: IndexIR, dialect: Dialect): string {
+/** `CREATE [UNIQUE] INDEX ...` for one index IR. */
+export function createIndexSql(tableName: string, idx: IndexIR, dialect: Dialect): string {
 	const cols = idx.columns.map((c) => quote(c, dialect)).join(', ')
 	const unique = idx.unique ? 'UNIQUE ' : ''
 	return `CREATE ${unique}INDEX ${quote(idx.name, dialect)} ON ${quote(tableName, dialect)} (${cols});`
@@ -540,7 +553,8 @@ function mapDefault(value: string, dialect: Dialect): string {
 	return value
 }
 
-function quote(name: string, dialect: Dialect): string {
+/** Dialect-correct identifier quoting: backticks for MySQL, double quotes elsewhere. */
+export function quote(name: string, dialect: Dialect): string {
 	return dialect === 'mysql' ? `\`${name}\`` : `"${name}"`
 }
 

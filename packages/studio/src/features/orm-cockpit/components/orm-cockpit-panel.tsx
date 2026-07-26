@@ -18,6 +18,7 @@ import {
 	Wand2,
 	AlertCircle,
 	GitCompareArrows,
+	ArrowLeftRight,
 	ListChecks,
 	ShieldCheck,
 	AlertTriangle,
@@ -44,8 +45,9 @@ import { useMigrationStatus } from '@studio/features/orm-cockpit/components/use-
 import { DriftView } from '@studio/features/orm-cockpit/components/drift-view'
 import { MigrationPreview } from '@studio/features/orm-cockpit/components/migration-preview'
 import { MigrationStatusView } from '@studio/features/orm-cockpit/components/migration-status-view'
+import { ConverterPanel } from '@studio/features/orm-cockpit/components/converter-panel'
 
-type CockpitTab = 'drift' | 'migrations'
+type CockpitTab = 'drift' | 'migrations' | 'converter'
 
 type Props = {
 	activeConnectionId: string | undefined
@@ -346,7 +348,12 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 				/>
 			) : null}
 
-			<div className='min-h-0 flex-1'>{renderBody()}</div>
+			<div className='flex min-h-0 flex-1 flex-col'>
+				{renderTabBar()}
+				<div className='min-h-0 flex-1'>
+					{tab === 'converter' ? <ConverterPanel /> : renderBody()}
+				</div>
+			</div>
 		</div>
 	)
 
@@ -456,7 +463,6 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 
 		return (
 			<div className='flex h-full flex-col'>
-				{renderTabBar()}
 				{tab === 'migrations' ? (
 					<MigrationStatusView state={migrationStatus} />
 				) : (
@@ -470,13 +476,27 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 	}
 
 	function renderTabBar() {
+		const analyzed = Boolean(cockpit.linked && cockpit.diff)
 		const tabs: Array<{ id: CockpitTab; label: string; icon: React.ReactNode }> = [
 			{
 				id: 'drift',
 				label: 'Differences',
 				icon: <GitCompareArrows className='h-3.5 w-3.5' />
 			},
-			{ id: 'migrations', label: 'Migrations', icon: <ListChecks className='h-3.5 w-3.5' /> }
+			...(analyzed
+				? [
+						{
+							id: 'migrations' as CockpitTab,
+							label: 'Migrations',
+							icon: <ListChecks className='h-3.5 w-3.5' />
+						}
+					]
+				: []),
+			{
+				id: 'converter',
+				label: 'Converter',
+				icon: <ArrowLeftRight className='h-3.5 w-3.5' />
+			}
 		]
 		return (
 			<div className='flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-1'>
