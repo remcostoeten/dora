@@ -42,7 +42,8 @@ import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { formatCellValue as renderCellValue } from '@studio/features/database-studio/components/data-grid/cell-value'
 import type { ColumnDefinition } from '@studio/features/database-studio/types'
 import { inferColumnDefinitions } from '../lib/infer-column-definitions'
-import { SqlQueryResult, ResultViewMode } from '../types'
+import { resolveMutationPrimaryKey } from '../mutation-primary-key'
+import { SqlQueryResult, ResultViewMode, TableInfo } from '../types'
 
 type Props = {
 	result: SqlQueryResult | null
@@ -56,6 +57,7 @@ type Props = {
 	onRefresh?: () => void
 	sourceTable?: string
 	query?: string
+	schemaTables?: TableInfo[]
 }
 
 type EditingCell = {
@@ -76,7 +78,8 @@ export function SqlResults({
 	showFilter,
 	onRefresh,
 	sourceTable,
-	query
+	query,
+	schemaTables
 }: Props) {
 	const asyncRowCount = useAsyncRowCount(
 		connectionId,
@@ -198,58 +201,35 @@ export function SqlResults({
 		return value
 	}
 
-	function getPrimaryKey() {
-		if (!result?.columnDefinitions) return null
-		const primaryKeys = result.columnDefinitions.filter(function (column) {
-			return column.primaryKey
+	const primaryKeyResolution = useMemo(() => {
+		if (!result) return null
+		return resolveMutationPrimaryKey({
+			sourceTable: result.sourceTable,
+			resultColumns: result.columns,
+			columnDefinitions: result.columnDefinitions,
+			schemaTables: schemaTables ?? []
 		})
-		if (primaryKeys.length !== 1) return null
-		return primaryKeys[0]
-	}
+	}, [result, schemaTables])
 
 	const mutationContext = useMemo(() => {
-		if (!result || !connectionId) return null
-
-		const primaryKey = getPrimaryKey()
-		const primaryKeyName =
-			primaryKey?.name || result.columns.find((column) => column.toLowerCase() === 'id')
-
-		if (!result.sourceTable || !primaryKeyName) {
-			return null
-		}
+		if (!result?.sourceTable || !connectionId) return null
+		if (primaryKeyResolution?.kind !== 'ok') return null
 
 		return {
 			tableName: result.sourceTable,
-			primaryKeyName
+			primaryKeyName: primaryKeyResolution.name
 		}
-	}, [connectionId, result])
+	}, [connectionId, result, primaryKeyResolution])
 
 	const mutationDisabledReason = useMemo(() => {
 		if (!result || !connectionId) {
 			return 'Connect to a database to enable row mutations.'
 		}
-
-		if (!result.sourceTable) {
-			return 'This result set is not tied to a single source table, so edit/delete is disabled.'
+		if (primaryKeyResolution?.kind === 'disabled') {
+			return primaryKeyResolution.reason
 		}
-
-		const primaryKeys = (result.columnDefinitions || []).filter(function (column) {
-			return column.primaryKey
-		})
-		if (primaryKeys.length > 1) {
-			return 'Composite primary keys are not yet supported for SQL result mutations.'
-		}
-
-		const primaryKey = getPrimaryKey()
-		const primaryKeyName =
-			primaryKey?.name || result.columns.find((column) => column.toLowerCase() === 'id')
-
-		if (!primaryKeyName) {
-			return 'No primary key metadata was found for this result set, so edit/delete is disabled.'
-		}
-
 		return null
-	}, [connectionId, result])
+	}, [connectionId, result, primaryKeyResolution])
 
 	function handleCellDoubleClick(
 		rowData: Record<string, unknown>,
