@@ -230,12 +230,6 @@ var devToolScripts = []scriptDef{
 		args:        []string{"tools/scan-unused.ts"},
 	},
 	{
-		label:       "Diagnose Tauri Dev",
-		description: "Debug tauri dev startup issues",
-		command:     "bash",
-		args:        []string{"tools/diagnose-tauri-dev.sh"},
-	},
-	{
 		label:       "VM Lab",
 		description: "Interactive VM lab script",
 		command:     "bash",

@@ -409,4 +409,61 @@ mod tests {
         assert_eq!(n, 456);
         assert_eq!(name, "world");
     }
+
+    // The full grid mutation sequence the studio issues, end to end through
+    // the real adapter: insert → update → delete → truncate, asserting
+    // affected_rows at each step and reading the data back.
+    #[tokio::test]
+    async fn full_mutation_lifecycle() {
+        let (adapter, shared) = setup();
+
+        let mut row = serde_json::Map::new();
+        row.insert("id".into(), json!(10));
+        row.insert("n".into(), json!(1));
+        row.insert("name".into(), json!("alpha"));
+        let inserted = adapter.insert_row("t".into(), None, row).await.unwrap();
+        assert!(inserted.success);
+        assert_eq!(inserted.affected_rows, 1);
+
+        let updated = adapter
+            .update_cell(
+                "t".into(),
+                None,
+                "id".into(),
+                json!(10),
+                "name".into(),
+                json!("beta"),
+            )
+            .await
+            .unwrap();
+        assert_eq!(updated.affected_rows, 1);
+        {
+            let conn = shared.lock().unwrap();
+            let name: String = conn
+                .query_row("SELECT name FROM t WHERE id = 10", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(name, "beta");
+        }
+
+        let deleted = adapter
+            .delete_rows("t".into(), None, "id".into(), vec![json!(10)])
+            .await
+            .unwrap();
+        assert_eq!(deleted.affected_rows, 1);
+        {
+            let conn = shared.lock().unwrap();
+            let remaining: i64 = conn
+                .query_row("SELECT COUNT(*) FROM t WHERE id = 10", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(remaining, 0);
+        }
+
+        let truncated = adapter.truncate_table("t".into(), None, None).await.unwrap();
+        assert!(truncated.success);
+        let conn = shared.lock().unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM t", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
 }
