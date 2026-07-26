@@ -81,9 +81,7 @@ pub async fn soft_delete_postgres(
         });
     }
 
-    let schema_prefix = schema_name
-        .map(|s| format!("\"{}\".", s))
-        .unwrap_or_default();
+    let qualified_table = crate::database::ident::qualified_ansi(schema_name, table_name);
 
     // Build parameterized query
     let placeholders: Vec<String> = (1..=primary_key_values.len())
@@ -91,9 +89,11 @@ pub async fn soft_delete_postgres(
         .collect();
 
     let query = format!(
-        "UPDATE {}\"{table_name}\" SET \"{soft_delete_column}\" = NOW() WHERE \"{primary_key_column}\" IN ({}) AND \"{soft_delete_column}\" IS NULL",
-        schema_prefix,
-        placeholders.join(", ")
+        "UPDATE {} SET {sd} = NOW() WHERE {pk} IN ({}) AND {sd} IS NULL",
+        qualified_table,
+        placeholders.join(", "),
+        sd = quote_ansi(soft_delete_column),
+        pk = quote_ansi(primary_key_column),
     );
 
     // Convert values to params
@@ -239,17 +239,17 @@ pub async fn undo_soft_delete_postgres(
         return Ok(0);
     }
 
-    let schema_prefix = schema_name
-        .map(|s| format!("\"{}\".", s))
-        .unwrap_or_default();
+    let qualified_table = crate::database::ident::qualified_ansi(schema_name, table_name);
 
     let placeholders: Vec<String> = (1..=primary_key_values.len())
         .map(|i| format!("${}", i))
         .collect();
 
     let query = format!(
-        "UPDATE {}\"{table_name}\" SET \"{soft_delete_column}\" = NULL WHERE \"{primary_key_column}\" IN ({})",
-        schema_prefix,
+        "UPDATE {} SET {} = NULL WHERE {} IN ({})",
+        qualified_table,
+        quote_ansi(soft_delete_column),
+        quote_ansi(primary_key_column),
         placeholders.join(", ")
     );
 
@@ -281,24 +281,19 @@ pub async fn truncate_table_postgres(
     schema_name: Option<&str>,
     cascade: bool,
 ) -> Result<TruncateResult, Error> {
-    let schema_prefix = schema_name
-        .map(|s| format!("\"{}\".", s))
-        .unwrap_or_default();
+    let qualified_table = crate::database::ident::qualified_ansi(schema_name, table_name);
 
     let cascade_clause = if cascade { " CASCADE" } else { "" };
 
     // Get row count before truncate
-    let count_query = format!("SELECT COUNT(*) FROM {}\"{}\"", schema_prefix, table_name);
+    let count_query = format!("SELECT COUNT(*) FROM {}", qualified_table);
     let row_count: i64 = client
         .query_one(&count_query, &[])
         .await
         .map(|r| r.get(0))
         .unwrap_or(0);
 
-    let query = format!(
-        "TRUNCATE TABLE {}\"{}\"{}",
-        schema_prefix, table_name, cascade_clause
-    );
+    let query = format!("TRUNCATE TABLE {}{}", qualified_table, cascade_clause);
 
     client
         .execute(&query, &[])
@@ -324,13 +319,13 @@ pub fn truncate_table_sqlite(
     // Get row count before delete
     let row_count: i64 = conn
         .query_row(
-            &format!("SELECT COUNT(*) FROM \"{}\"", table_name),
+            &format!("SELECT COUNT(*) FROM {}", quote_ansi(table_name)),
             [],
             |row| row.get(0),
         )
         .unwrap_or(0);
 
-    conn.execute(&format!("DELETE FROM \"{}\"", table_name), [])
+    conn.execute(&format!("DELETE FROM {}", quote_ansi(table_name)), [])
         .map_err(|e| Error::Any(anyhow::anyhow!("Truncate failed: {}", e)))?;
 
     // Reset autoincrement counter
@@ -403,12 +398,11 @@ pub async fn soft_delete_libsql(
     let now = chrono::Utc::now().timestamp();
 
     let query = format!(
-        "UPDATE \"{}\" SET \"{}\" = ? WHERE \"{}\" IN ({}) AND \"{}\" IS NULL",
-        table_name,
-        soft_delete_column,
-        primary_key_column,
+        "UPDATE {} SET {sd} = ? WHERE {pk} IN ({}) AND {sd} IS NULL",
+        quote_ansi(table_name),
         placeholders.join(", "),
-        soft_delete_column
+        sd = quote_ansi(soft_delete_column),
+        pk = quote_ansi(primary_key_column),
     );
 
     let mut params: Vec<libsql::Value> = vec![libsql::Value::Integer(now)];
@@ -447,7 +441,7 @@ pub async fn truncate_table_libsql(
     conn: &libsql::Connection,
     table_name: &str,
 ) -> Result<TruncateResult, Error> {
-    let count_query = format!("SELECT COUNT(*) FROM \"{}\"", table_name);
+    let count_query = format!("SELECT COUNT(*) FROM {}", quote_ansi(table_name));
     let mut rows = conn
         .query(&count_query, ())
         .await
@@ -459,7 +453,7 @@ pub async fn truncate_table_libsql(
         0
     };
 
-    conn.execute(&format!("DELETE FROM \"{}\"", table_name), ())
+    conn.execute(&format!("DELETE FROM {}", quote_ansi(table_name)), ())
         .await
         .map_err(|e| Error::Any(anyhow::anyhow!("Truncate failed: {}", e)))?;
 
@@ -512,7 +506,7 @@ pub async fn truncate_database_postgres(
     // Truncate all tables at once with CASCADE
     let table_list = tables
         .iter()
-        .map(|t| format!("\"{}\".\"{}\"", schema, t))
+        .map(|t| crate::database::ident::qualified_ansi(Some(schema), t))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -562,7 +556,10 @@ pub async fn dump_database_postgres(
             .map_err(|e| Error::Any(anyhow::anyhow!("Failed to write to dump file: {}", e)))?;
 
         // Export table data as INSERT statements
-        let query = format!("SELECT * FROM \"{}\".\"{}\"", table.schema, table.name);
+        let query = format!(
+            "SELECT * FROM {}",
+            crate::database::ident::qualified_ansi(Some(&table.schema), &table.name)
+        );
 
         let rows = client.query(&query, &[]).await.unwrap_or_default();
         let columns: Vec<String> = table.columns.iter().map(|c| c.name.clone()).collect();
@@ -576,12 +573,11 @@ pub async fn dump_database_postgres(
 
             writeln!(
                 file,
-                "INSERT INTO \"{}\".\"{}\" ({}) VALUES ({});",
-                table.schema,
-                table.name,
+                "INSERT INTO {} ({}) VALUES ({});",
+                crate::database::ident::qualified_ansi(Some(&table.schema), &table.name),
                 columns
                     .iter()
-                    .map(|c| format!("\"{}\"", c))
+                    .map(|c| quote_ansi(c))
                     .collect::<Vec<_>>()
                     .join(", "),
                 values.join(", ")
@@ -690,7 +686,7 @@ pub async fn dump_database_libsql(
         writeln!(file, "\n-- Table: {}", table.name)
             .map_err(|e| Error::Any(anyhow::anyhow!("Failed to write to dump file: {}", e)))?;
 
-        let query = format!("SELECT * FROM \"{}\"", table.name);
+        let query = format!("SELECT * FROM {}", quote_ansi(&table.name));
         let mut rows = conn.query(&query, ()).await.map_err(|e| {
             Error::Any(anyhow::anyhow!(
                 "Failed to query table {}: {}",
@@ -710,11 +706,11 @@ pub async fn dump_database_libsql(
 
             writeln!(
                 file,
-                "INSERT INTO \"{}\" ({}) VALUES ({});",
-                table.name,
+                "INSERT INTO {} ({}) VALUES ({});",
+                quote_ansi(&table.name),
                 columns
                     .iter()
-                    .map(|c| format!("\"{}\"", c))
+                    .map(|c| quote_ansi(c))
                     .collect::<Vec<_>>()
                     .join(", "),
                 values.join(", ")
@@ -840,9 +836,8 @@ pub async fn dump_database_mysql(
     })
 }
 
-fn mysql_quote_identifier(identifier: &str) -> String {
-    format!("`{}`", identifier.replace('`', "``"))
-}
+use crate::database::ident::quote_ansi;
+use crate::database::ident::quote_mysql as mysql_quote_identifier;
 
 fn mysql_qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
     match schema_name {

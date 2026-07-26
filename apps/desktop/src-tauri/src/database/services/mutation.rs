@@ -199,15 +199,14 @@ impl<'a> MutationService<'a> {
 
         let (query, db_type) = match &client {
             DatabaseClient::Postgres { .. } => {
-                let schema_prefix = schema_name
-                    .as_ref()
-                    .map(|s| format!("\"{}\".", s))
-                    .unwrap_or_default();
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
                     format!(
-                        "SELECT * FROM {}\"{}\"{}{}{}",
-                        schema_prefix, table_name, where_sql, order_sql, limit_clause
+                        "SELECT * FROM {}{}{}{}",
+                        crate::database::ident::qualified_ansi(schema_name.as_deref(), &table_name),
+                        where_sql,
+                        order_sql,
+                        limit_clause
                     ),
                     "postgres",
                 )
@@ -216,22 +215,24 @@ impl<'a> MutationService<'a> {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
                     format!(
-                        "SELECT * FROM \"{}\"{}{}{}",
-                        table_name, where_sql, order_sql, limit_clause
+                        "SELECT * FROM {}{}{}{}",
+                        crate::database::ident::quote_ansi(&table_name),
+                        where_sql,
+                        order_sql,
+                        limit_clause
                     ),
                     "sqlite",
                 )
             }
             DatabaseClient::DuckDB { .. } => {
-                let schema_prefix = schema_name
-                    .as_ref()
-                    .map(|s| format!("\"{}\".", s))
-                    .unwrap_or_default();
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
                     format!(
-                        "SELECT * FROM {}\"{}\"{}{}{}",
-                        schema_prefix, table_name, where_sql, order_sql, limit_clause
+                        "SELECT * FROM {}{}{}{}",
+                        crate::database::ident::qualified_ansi(schema_name.as_deref(), &table_name),
+                        where_sql,
+                        order_sql,
+                        limit_clause
                     ),
                     "duckdb",
                 )
@@ -240,8 +241,11 @@ impl<'a> MutationService<'a> {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
                     format!(
-                        "SELECT * FROM `{}`{}{}{}",
-                        table_name, where_sql, order_sql, limit_clause
+                        "SELECT * FROM {}{}{}{}",
+                        crate::database::ident::quote_ansi(&table_name),
+                        where_sql,
+                        order_sql,
+                        limit_clause
                     ),
                     "libsql",
                 )
@@ -250,8 +254,11 @@ impl<'a> MutationService<'a> {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
                     format!(
-                        "SELECT * FROM `{}`{}{}{}",
-                        table_name, where_sql, order_sql, limit_clause
+                        "SELECT * FROM {}{}{}{}",
+                        crate::database::ident::quote_mysql(&table_name),
+                        where_sql,
+                        order_sql,
+                        limit_clause
                     ),
                     "mysql",
                 )
@@ -261,8 +268,11 @@ impl<'a> MutationService<'a> {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
                     format!(
-                        "SELECT * FROM \"{}\"{}{}{}",
-                        table_name, where_sql, order_sql, limit_clause
+                        "SELECT * FROM {}{}{}{}",
+                        crate::database::ident::quote_ansi(&table_name),
+                        where_sql,
+                        order_sql,
+                        limit_clause
                     ),
                     "d1",
                 )
@@ -272,8 +282,11 @@ impl<'a> MutationService<'a> {
                 let limit_clause = limit.map(|l| format!(" LIMIT {}", l)).unwrap_or_default();
                 (
                     format!(
-                        "SELECT * FROM \"{}\"{}{}{}",
-                        table_name, where_sql, order_sql, limit_clause
+                        "SELECT * FROM {}{}{}{}",
+                        crate::database::ident::quote_ansi(&table_name),
+                        where_sql,
+                        order_sql,
+                        limit_clause
                     ),
                     "posthog",
                 )
@@ -307,21 +320,10 @@ impl<'a> MutationService<'a> {
             }
             ExportFormat::SqlInsert => {
                 let is_mysql = db_type == "mysql";
-                let schema_prefix = if is_mysql {
-                    schema_name
-                        .as_ref()
-                        .map(|s| format!("{}.", mysql_quote_identifier(s)))
-                        .unwrap_or_default()
-                } else {
-                    schema_name
-                        .as_ref()
-                        .map(|s| format!("\"{}\".", s))
-                        .unwrap_or_default()
-                };
                 let table_name_sql = if is_mysql {
-                    mysql_quote_identifier(&table_name)
+                    crate::database::ident::qualified_mysql(schema_name.as_deref(), &table_name)
                 } else {
-                    format!("\"{}\"", table_name)
+                    crate::database::ident::qualified_ansi(schema_name.as_deref(), &table_name)
                 };
                 let column_list = if is_mysql {
                     columns
@@ -332,7 +334,7 @@ impl<'a> MutationService<'a> {
                 } else {
                     columns
                         .iter()
-                        .map(|c| format!("\"{}\"", c))
+                        .map(|c| crate::database::ident::quote_ansi(c))
                         .collect::<Vec<_>>()
                         .join(", ")
                 };
@@ -341,8 +343,7 @@ impl<'a> MutationService<'a> {
                     .map(|row| {
                         let values: Vec<String> = row.iter().map(json_to_sql_literal).collect();
                         format!(
-                            "INSERT INTO {}{} ({}) VALUES ({});",
-                            schema_prefix,
+                            "INSERT INTO {} ({}) VALUES ({});",
                             table_name_sql,
                             column_list,
                             values.join(", ")
@@ -504,10 +505,7 @@ impl<'a> MutationService<'a> {
 
 // Helpers
 pub(crate) fn qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
-    match schema_name {
-        Some(schema_name) => format!("\"{schema_name}\".\"{table_name}\""),
-        None => format!("\"{table_name}\""),
-    }
+    crate::database::ident::qualified_ansi(schema_name, table_name)
 }
 
 pub fn json_to_pg_param(
@@ -892,9 +890,7 @@ pub(crate) fn mysql_value_to_json(value: MySqlValue) -> serde_json::Value {
     }
 }
 
-pub(crate) fn mysql_quote_identifier(identifier: &str) -> String {
-    format!("`{}`", identifier.replace('`', "``"))
-}
+pub(crate) use crate::database::ident::quote_mysql as mysql_quote_identifier;
 
 pub(crate) fn mysql_qualified_table_name(table_name: &str, schema_name: Option<&str>) -> String {
     match schema_name {
@@ -921,6 +917,14 @@ mod tests {
         assert_eq!(
             qualified_table_name("users", Some("public")),
             "\"public\".\"users\""
+        );
+    }
+
+    #[test]
+    fn qualified_table_name_escapes_embedded_quotes() {
+        assert_eq!(
+            qualified_table_name("ta\"ble", Some("we\"ird")),
+            "\"we\"\"ird\".\"ta\"\"ble\""
         );
     }
 }

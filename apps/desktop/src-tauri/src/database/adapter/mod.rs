@@ -6,6 +6,7 @@
 //! - `watch` — live change monitoring per driver.
 
 pub mod duckdb_proxy;
+pub mod grid_sql;
 pub mod read;
 pub mod watch;
 pub mod write;

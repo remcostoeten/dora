@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use super::read::PostgresAdapter;
 use super::write::WriteAdapter;
 use crate::database::adapter::DatabaseAdapter;
+use crate::database::ident::quote_ansi;
 use crate::database::maintenance;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
@@ -28,13 +29,9 @@ impl WriteAdapter for PostgresAdapter {
         // infer $1 as that type and tokio-postgres fails with
         // "error serializing parameter" when the Rust value is a String.
         // Routing through text works for ints, timestamps, bools, uuids, ….
-        let query = format!(
-            "UPDATE {} SET \"{}\" = $1::text::{} WHERE \"{}\" = $2",
-            qualified_table_name(&table, schema.as_deref()),
-            column,
-            pg_column_type(self.client(), &table, schema.as_deref(), &column).await?,
-            pk_column
-        );
+        let col_type = pg_column_type(self.client(), &table, schema.as_deref(), &column).await?;
+        let query =
+            build_update_cell_sql(&table, schema.as_deref(), &column, &col_type, &pk_column);
         let new_val_text: Option<String> = match &new_value {
             serde_json::Value::Null => None,
             serde_json::Value::String(s) => Some(s.clone()),
@@ -74,19 +71,7 @@ impl WriteAdapter for PostgresAdapter {
             });
         }
 
-        let schema_prefix = schema
-            .as_ref()
-            .map(|s| format!("\"{}\".", s))
-            .unwrap_or_default();
-
-        let placeholders: Vec<String> = (1..=pk_values.len()).map(|i| format!("${}", i)).collect();
-        let query = format!(
-            "DELETE FROM {}\"{}\" WHERE \"{}\" IN ({})",
-            schema_prefix,
-            table,
-            pk_column,
-            placeholders.join(", ")
-        );
+        let query = build_delete_rows_sql(&table, schema.as_deref(), &pk_column, pk_values.len());
 
         let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
             pk_values.iter().map(|v| json_to_pg_param(v)).collect();
@@ -118,11 +103,6 @@ impl WriteAdapter for PostgresAdapter {
             });
         }
 
-        let schema_prefix = schema
-            .as_ref()
-            .map(|s| format!("\"{}\".", s))
-            .unwrap_or_default();
-
         // Bind every value as text and let Postgres parse it into the column's
         // type via `$n::text::<type>` — same rationale as update_cell: the UI
         // sends edits as strings, and a string bound straight to a typed param
@@ -134,7 +114,7 @@ impl WriteAdapter for PostgresAdapter {
             Vec::with_capacity(row_data.len());
         for (idx, (col, value)) in row_data.iter().enumerate() {
             let col_type = pg_column_type(self.client(), &table, schema.as_deref(), col).await?;
-            col_names_vec.push(format!("\"{}\"", col));
+            col_names_vec.push(quote_ansi(col));
             placeholders_vec.push(format!("${}::text::{}", idx + 1, col_type));
             let text: Option<String> = match value {
                 serde_json::Value::Null => None,
@@ -144,13 +124,8 @@ impl WriteAdapter for PostgresAdapter {
             params.push(Box::new(text));
         }
 
-        let query = format!(
-            "INSERT INTO {}\"{}\" ({}) VALUES ({})",
-            schema_prefix,
-            table,
-            col_names_vec.join(", "),
-            placeholders_vec.join(", ")
-        );
+        let query =
+            build_insert_row_sql(&table, schema.as_deref(), &col_names_vec, &placeholders_vec);
 
         let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
             .iter()
@@ -173,9 +148,9 @@ impl WriteAdapter for PostgresAdapter {
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
         let query = format!(
-            "SELECT * FROM {} WHERE \"{}\" = $1 LIMIT 1",
+            "SELECT * FROM {} WHERE {} = $1 LIMIT 1",
             qualified_table_name(&table, schema.as_deref()),
-            pk_column
+            quote_ansi(&pk_column)
         );
         let pk_param = json_to_pg_param(&pk_value);
         let row = self
@@ -215,10 +190,10 @@ impl WriteAdapter for PostgresAdapter {
         column: String,
     ) -> Result<Vec<u8>, Error> {
         let query = format!(
-            "SELECT \"{}\" FROM {} WHERE \"{}\" = $1 LIMIT 1",
-            column,
+            "SELECT {} FROM {} WHERE {} = $1 LIMIT 1",
+            quote_ansi(&column),
             qualified_table_name(&table, schema.as_deref()),
-            pk_column
+            quote_ansi(&pk_column)
         );
         let pk_param = json_to_pg_param(&pk_value);
         let row = self
@@ -346,6 +321,51 @@ impl WriteAdapter for PostgresAdapter {
     }
 }
 
+fn build_update_cell_sql(
+    table: &str,
+    schema: Option<&str>,
+    column: &str,
+    col_type: &str,
+    pk_column: &str,
+) -> String {
+    format!(
+        "UPDATE {} SET {} = $1::text::{} WHERE {} = $2",
+        qualified_table_name(table, schema),
+        quote_ansi(column),
+        col_type,
+        quote_ansi(pk_column)
+    )
+}
+
+fn build_delete_rows_sql(
+    table: &str,
+    schema: Option<&str>,
+    pk_column: &str,
+    pk_count: usize,
+) -> String {
+    let placeholders: Vec<String> = (1..=pk_count).map(|i| format!("${}", i)).collect();
+    format!(
+        "DELETE FROM {} WHERE {} IN ({})",
+        qualified_table_name(table, schema),
+        quote_ansi(pk_column),
+        placeholders.join(", ")
+    )
+}
+
+fn build_insert_row_sql(
+    table: &str,
+    schema: Option<&str>,
+    quoted_columns: &[String],
+    placeholders: &[String],
+) -> String {
+    format!(
+        "INSERT INTO {} ({}) VALUES ({})",
+        qualified_table_name(table, schema),
+        quoted_columns.join(", "),
+        placeholders.join(", ")
+    )
+}
+
 async fn pg_column_type(
     client: &tokio_postgres::Client,
     table: &str,
@@ -375,4 +395,43 @@ async fn pg_column_type(
     };
 
     Ok(row.get::<_, String>(0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn update_cell_sql_quotes_identifiers_and_casts_via_text() {
+        assert_eq!(
+            build_update_cell_sql("users", Some("public"), "name", "text", "id"),
+            "UPDATE \"public\".\"users\" SET \"name\" = $1::text::text WHERE \"id\" = $2"
+        );
+        assert_eq!(
+            build_update_cell_sql("we\"ird", None, "na\"me", "int4", "i\"d"),
+            "UPDATE \"we\"\"ird\" SET \"na\"\"me\" = $1::text::int4 WHERE \"i\"\"d\" = $2"
+        );
+    }
+
+    #[test]
+    fn delete_rows_sql_numbers_placeholders_and_quotes_identifiers() {
+        assert_eq!(
+            build_delete_rows_sql("users", None, "id", 3),
+            "DELETE FROM \"users\" WHERE \"id\" IN ($1, $2, $3)"
+        );
+        assert_eq!(
+            build_delete_rows_sql("t", Some("we\"ird"), "id", 1),
+            "DELETE FROM \"we\"\"ird\".\"t\" WHERE \"id\" IN ($1)"
+        );
+    }
+
+    #[test]
+    fn insert_row_sql_joins_prequoted_columns() {
+        let cols = vec![quote_ansi("a"), quote_ansi("b\"b")];
+        let placeholders = vec!["$1::text::text".to_string(), "$2::text::int4".to_string()];
+        assert_eq!(
+            build_insert_row_sql("users", Some("public"), &cols, &placeholders),
+            "INSERT INTO \"public\".\"users\" (\"a\", \"b\"\"b\") VALUES ($1::text::text, $2::text::int4)"
+        );
+    }
 }

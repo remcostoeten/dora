@@ -19,15 +19,17 @@ impl WriteAdapter for MySqlAdapter {
     async fn update_cell(
         &self,
         table: String,
-        _schema: Option<String>,
+        schema: Option<String>,
         pk_column: String,
         pk_value: serde_json::Value,
         column: String,
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
         let query = format!(
-            "UPDATE `{}` SET `{}` = ? WHERE `{}` = ?",
-            table, column, pk_column
+            "UPDATE {} SET {} = ? WHERE {} = ?",
+            mysql_qualified_table_name(&table, schema.as_deref()),
+            mysql_quote_identifier(&column),
+            mysql_quote_identifier(&pk_column)
         );
         let mut conn = self
             .pool()

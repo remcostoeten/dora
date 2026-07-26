@@ -350,9 +350,7 @@ async fn exact_row_count(client: &Client, schema: &str, table: &str) -> Result<u
     Ok(0)
 }
 
-fn quote_identifier(identifier: &str) -> String {
-    format!("\"{}\"", identifier.replace('"', "\"\""))
-}
+use crate::database::ident::quote_ansi as quote_identifier;
 
 /// Extract the allowed-value list from a single-column `CHECK` constraint
 /// definition as returned by `pg_get_constraintdef`.

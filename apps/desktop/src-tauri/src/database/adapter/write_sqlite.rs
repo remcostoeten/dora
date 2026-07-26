@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 
+use super::grid_sql;
 use super::read::SqliteAdapter;
 use super::write::WriteAdapter;
 use crate::database::maintenance;
@@ -25,10 +26,7 @@ impl WriteAdapter for SqliteAdapter {
             .connection()
             .lock()
             .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
-        let query = format!(
-            "UPDATE \"{}\" SET \"{}\" = ? WHERE \"{}\" = ?",
-            table, column, pk_column
-        );
+        let query = grid_sql::update_cell_sql(&table, &column, &pk_column);
         let new_val = json_to_sqlite_value(&new_value);
         let pk_val = json_to_sqlite_value(&pk_value);
         let result = conn.execute(
@@ -69,13 +67,7 @@ impl WriteAdapter for SqliteAdapter {
             .connection()
             .lock()
             .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
-        let placeholders: Vec<&str> = pk_values.iter().map(|_| "?").collect();
-        let query = format!(
-            "DELETE FROM \"{}\" WHERE \"{}\" IN ({})",
-            table,
-            pk_column,
-            placeholders.join(", ")
-        );
+        let query = grid_sql::delete_rows_sql(&table, &pk_column, pk_values.len());
         let params: Vec<rusqlite::types::Value> =
             pk_values.iter().map(json_to_sqlite_value).collect();
         let params_ref: Vec<&dyn rusqlite::ToSql> =
@@ -107,20 +99,7 @@ impl WriteAdapter for SqliteAdapter {
             .connection()
             .lock()
             .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
-        let columns: Vec<&String> = row_data.keys().collect();
-        let col_names: String = columns
-            .iter()
-            .map(|c| format!("\"{}\"", c))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let placeholders: String = std::iter::repeat("?")
-            .take(row_data.len())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let query = format!(
-            "INSERT INTO \"{}\" ({}) VALUES ({})",
-            table, col_names, placeholders
-        );
+        let query = grid_sql::insert_row_sql(&table, row_data.keys().map(String::as_str));
         let params: Vec<rusqlite::types::Value> =
             row_data.values().map(json_to_sqlite_value).collect();
         let params_ref: Vec<&dyn rusqlite::ToSql> =
@@ -146,10 +125,7 @@ impl WriteAdapter for SqliteAdapter {
                 .connection()
                 .lock()
                 .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
-            let query = format!(
-                "SELECT * FROM \"{}\" WHERE \"{}\" = ? LIMIT 1",
-                table, pk_column
-            );
+            let query = grid_sql::select_row_sql(&table, &pk_column);
             let pk_val = json_to_sqlite_value(&pk_value);
             let mut stmt = conn.prepare(&query)?;
             let column_names: Vec<String> = stmt
@@ -200,16 +176,11 @@ impl WriteAdapter for SqliteAdapter {
             .connection()
             .lock()
             .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
-        let query = format!(
-            "SELECT \"{}\" FROM \"{}\" WHERE \"{}\" = ? LIMIT 1",
-            column, table, pk_column
-        );
+        let query = grid_sql::select_blob_sql(&table, &column, &pk_column);
         let pk_val = json_to_sqlite_value(&pk_value);
-        let bytes = conn.query_row(
-            &query,
-            [&pk_val as &dyn rusqlite::ToSql],
-            |row| row.get::<_, Option<Vec<u8>>>(0),
-        );
+        let bytes = conn.query_row(&query, [&pk_val as &dyn rusqlite::ToSql], |row| {
+            row.get::<_, Option<Vec<u8>>>(0)
+        });
         match bytes {
             Ok(Some(b)) => Ok(b),
             Ok(None) => Ok(Vec::new()),
