@@ -27,4 +27,21 @@ jobs:
               run: bun install
 
             - name: Build desktop app
+              env:
+                  TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+                  TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
               run: bun run desktop:build
+
+            - name: Verify macOS updater artifacts
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  BUNDLE=apps/desktop/src-tauri/target/release/bundle
+                  for pattern in "$BUNDLE/dmg"/*.dmg "$BUNDLE/macos"/*.app.tar.gz "$BUNDLE/macos"/*.app.tar.gz.sig; do
+                    if ! compgen -G "$pattern" >/dev/null; then
+                      echo "Missing macOS artifact matching $pattern" >&2
+                      find "$BUNDLE" -maxdepth 2 -mindepth 1 >&2 || true
+                      exit 1
+                    fi
+                  done
+                  echo "macOS updater artifacts present"

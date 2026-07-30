@@ -58,10 +58,17 @@ jobs:
           const fs = require('fs')
           const config = require('./apps/desktop/src-tauri/tauri.conf.json')
           const targets = new Set(config.bundle?.targets || [])
-          const requiredTargets = ['deb', 'rpm', 'appimage', 'nsis', 'dmg']
+          // `app` is what makes the macOS updater tarball (.app.tar.gz) exist: with an
+          // explicit targets list that omits it, the bundler warns "no updater-enabled
+          // targets were built" and deletes the .app, so darwin never reaches latest.json.
+          const requiredTargets = ['app', 'deb', 'rpm', 'appimage', 'nsis', 'dmg']
           const missingTargets = requiredTargets.filter((target) => !targets.has(target))
           if (missingTargets.length > 0) {
             throw new Error(`Missing Tauri bundle targets: ${missingTargets.join(', ')}`)
+          }
+
+          if (config.bundle?.createUpdaterArtifacts !== true) {
+            throw new Error('bundle.createUpdaterArtifacts must be true to publish updater assets')
           }
 
           const requiredFiles = [
@@ -172,6 +179,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-linux-assets
+          if-no-files-found: error
           path: |
             dora-x86_64-unknown-linux-gnu.tar.gz
             ./apps/desktop/src-tauri/target/release/bundle/deb/*.deb
@@ -240,6 +248,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-windows-assets
+          if-no-files-found: error
           path: |
             ./apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
             ./apps/desktop/src-tauri/target/release/bundle/nsis/*.exe.sig
@@ -279,10 +288,24 @@ jobs:
         with:
           projectPath: ./apps/desktop
 
+      - name: verify macOS updater artifacts exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE=./apps/desktop/src-tauri/target/release/bundle
+          for pattern in "$BUNDLE/dmg"/*.dmg "$BUNDLE/macos"/*.app.tar.gz "$BUNDLE/macos"/*.app.tar.gz.sig; do
+            if ! compgen -G "$pattern" >/dev/null; then
+              echo "Missing macOS release artifact matching $pattern" >&2
+              find "$BUNDLE" -maxdepth 2 -mindepth 1 >&2 || true
+              exit 1
+            fi
+          done
+
       - name: upload macOS assets
         uses: actions/upload-artifact@v4
         with:
           name: release-macos-assets
+          if-no-files-found: error
           path: |
             ./apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
             ./apps/desktop/src-tauri/target/release/bundle/macos/*.app.tar.gz
@@ -317,14 +340,32 @@ jobs:
           gh run download "${{ github.run_id }}" -D /tmp/release-assets
 
           mapfile -t ASSETS < <(find /tmp/release-assets -type f | sort)
-          if [ "${#ASSETS[@]}" -lt 9 ]; then
-            echo "Expected at least 9 release assets, found ${#ASSETS[@]}" >&2
+          if [ "${#ASSETS[@]}" -lt 11 ]; then
+            echo "Expected at least 11 release assets, found ${#ASSETS[@]}" >&2
             find /tmp/release-assets -type f || true
             exit 1
           fi
 
-          if ! printf '%s\n' "${ASSETS[@]}" | grep -q '\.exe$'; then
-            echo "Missing Windows .exe installer in release assets." >&2
+          # Every updater channel needs its signed artifact here or latest.json
+          # silently ships without that platform (see #223 for the macOS case).
+          REQUIRED_PATTERNS=(
+            '\.exe$'
+            '\.exe\.sig$'
+            '\.AppImage$'
+            '\.AppImage\.sig$'
+            '\.dmg$'
+            '\.app\.tar\.gz$'
+            '\.app\.tar\.gz\.sig$'
+          )
+          MISSING=()
+          for pattern in "${REQUIRED_PATTERNS[@]}"; do
+            if ! printf '%s\n' "${ASSETS[@]}" | grep -q "$pattern"; then
+              MISSING+=("$pattern")
+            fi
+          done
+          if [ "${#MISSING[@]}" -gt 0 ]; then
+            echo "Missing required release assets matching: ${MISSING[*]}" >&2
+            printf '%s\n' "${ASSETS[@]}" >&2
             exit 1
           fi
 
