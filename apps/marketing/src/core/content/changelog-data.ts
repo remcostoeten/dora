@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.38.0"
+export const CURRENT_VERSION = "0.38.1"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -255,6 +255,25 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				name: "Features",
 				items: [
 				"feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.38.1",
+		date: "2026-07-30",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.38.1",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.38.0",
 				]
 			}
 		]

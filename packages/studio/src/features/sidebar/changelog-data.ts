@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.38.0"
+export const CURRENT_VERSION = "0.38.1"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -137,6 +137,18 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)",
 			"docs(changelog): curate v0.37.0 notes and sync in-app changelog data",
 			"chore(aur): update dora to 0.37.0",
+		]
+	},
+	{
+		version: "0.38.1",
+		date: "2026-07-30",
+		commit: "v0.38.1",
+		title: "Fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)",
+		description: "Fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)",
+		type: "fix",
+		details: [
+			"fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)",
+			"chore(aur): update dora to 0.38.0",
 		]
 	},
 	{

@@ -202,6 +202,19 @@ All notable changes to this project will be documented in this file.
 
 - feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)
 
+
+## [v0.38.1] - 2026-07-30
+
+### Bug Fixes
+
+- fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.38.0
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29
