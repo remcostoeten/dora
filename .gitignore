@@ -35,19 +35,8 @@ yarn-error.log*
 # Local agent/tool state
 .agents/
 .cache/
+.claude/
 .tauri-logs/
-
-# Agent skill roots: ignore locally installed third-party skills, but track the
-# `dora-*` skills this repo generates from .agent-skills/ (see .agent-skills/README.md).
-# A parent directory must not be excluded outright or git will not descend into it.
-.claude/*
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/dora-*/
-.codex/*
-!.codex/skills/
-.codex/skills/*
-!.codex/skills/dora-*/
 
 # TypeScript
 *.tsbuildinfo

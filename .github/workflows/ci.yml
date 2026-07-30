@@ -108,9 +108,6 @@ jobs:
             - name: Run lint
               run: bun run lint
 
-            - name: Check agent skills
-              run: bun run skills:check
-
     typecheck:
         name: TypeScript Typecheck
         runs-on: ubuntu-latest
