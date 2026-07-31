@@ -215,6 +215,29 @@ All notable changes to this project will be documented in this file.
 
 - chore(aur): update dora to 0.38.0
 
+
+## [v0.39.0] - 2026-07-31
+
+### Chores
+
+- chore(aur): update dora to 0.38.1
+
+- chore(skills): add project-local agent skill system
+
+
+
+### Features
+
+- feat: harden database safety and query lifecycle
+
+
+
+### Other
+
+- Revert "chore(skills): add project-local agent skill system"
+
+- Reapply "chore(skills): add project-local agent skill system"
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.38.1"
+export const CURRENT_VERSION = "0.39.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -274,6 +274,33 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				name: "Chores",
 				items: [
 				"chore(aur): update dora to 0.38.0",
+				]
+			}
+		]
+	},
+	{
+		version: "0.39.0",
+		date: "2026-07-31",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.39.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.38.1",
+				"chore(skills): add project-local agent skill system",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat: harden database safety and query lifecycle",
+				]
+			},
+			{
+				name: "Other",
+				items: [
+				"Revert \"chore(skills): add project-local agent skill system\"",
+				"Reapply \"chore(skills): add project-local agent skill system\"",
 				]
 			}
 		]

@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.38.1"
+export const CURRENT_VERSION = "0.39.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -149,6 +149,21 @@ export const CHANGELOG: ChangelogEntry[] = [
 		details: [
 			"fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)",
 			"chore(aur): update dora to 0.38.0",
+		]
+	},
+	{
+		version: "0.39.0",
+		date: "2026-07-31",
+		commit: "v0.39.0",
+		title: "Feat: harden database safety and query lifecycle",
+		description: "Feat: harden database safety and query lifecycle. Reapply \"chore(skills): add project-local agent skill system\".",
+		type: "feature",
+		details: [
+			"feat: harden database safety and query lifecycle",
+			"Revert \"chore(skills): add project-local agent skill system\"",
+			"Reapply \"chore(skills): add project-local agent skill system\"",
+			"chore(aur): update dora to 0.38.1",
+			"chore(skills): add project-local agent skill system",
 		]
 	},
 	{
