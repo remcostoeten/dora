@@ -31,11 +31,9 @@ The live setup supplies jest-dom, Testing Library cleanup and a localStorage
 fallback. React-related aliases point at `packages/studio/node_modules` to keep
 one React instance.
 
-These files currently do not participate in the live command:
-
-- `apps/desktop/vitest.config.ts`
-- `__tests__/setup/vitest.setup.ts`
-- `packages/studio/src/test/setup.ts`
+Three legacy package-local setup/configuration files were removed because they
+did not participate in the live command. Keep the root configuration and root
+setup as the single Vitest authority.
 
 ## Choosing a test layer
 
@@ -91,7 +89,7 @@ The workflow starts only MySQL and MariaDB and sets
 | Job | Primary proof | Depends on |
 | --- | --- | --- |
 | `test-typescript` | `bun run test:desktop` | none |
-| `test-rust` | Default `cargo test`, Postgres service available | none |
+| `test-rust` | Default and DuckDB-feature Cargo tests, generated-binding drift check, Postgres service available | none |
 | `lint` | Style lint and `skills:check` | none |
 | `typecheck` | Studio and desktop TypeScript projects | none |
 | `build` | Desktop Vite build | TypeScript tests, Rust tests, lint, typecheck |

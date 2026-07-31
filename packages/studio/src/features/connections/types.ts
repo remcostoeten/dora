@@ -19,6 +19,7 @@ export type SshTunnelConfig = {
 	authMethod: SshAuthMethod
 	password?: string
 	privateKeyPath?: string
+	hostKeyFingerprint?: string
 }
 
 export type Connection = {
@@ -43,6 +44,8 @@ export type Connection = {
 	status?: 'connected' | 'error' | 'idle'
 	error?: string
 	sshConfig?: SshTunnelConfig
+	/** Edit-form intent only; never persisted as connection metadata. */
+	clearSavedPassword?: boolean
 	createdAt: number
 	lastConnectedAt?: number | null
 }

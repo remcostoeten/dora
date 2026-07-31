@@ -120,6 +120,7 @@ export const PROVIDER_PATTERNS: ProviderPattern[] = [
 	// --- Postgres-wire managed providers (TLS required) ---
 	{ pattern: /supabase\.(co|com)/, displayName: 'Supabase DB', type: 'postgres', requiresSsl: true },
 	{ pattern: 'neon.tech', displayName: 'Neon DB', type: 'postgres', requiresSsl: true },
+	{ pattern: 'sql.xata.sh', displayName: 'Xata DB', type: 'postgres', requiresSsl: true },
 	// Vercel Postgres (Neon-backed)
 	{ pattern: /vercel-storage\.com|prisma-data/, displayName: 'Vercel Postgres', type: 'postgres', requiresSsl: true },
 	{ pattern: 'render.com', displayName: 'Render DB', type: 'postgres', requiresSsl: true },

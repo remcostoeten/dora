@@ -37,7 +37,7 @@ describe('migration-sections (cockpit preview toggles)', function () {
 		expect(sections.safe).toContain('ADD COLUMN')
 		expect(sections.destructive).toBe('')
 
-		const preview = buildPreviewSql(migration.up, {
+		const preview = buildPreviewSql(migration.sections, {
 			includeDestructive: false,
 			includeReview: false,
 		})
@@ -55,17 +55,17 @@ describe('migration-sections (cockpit preview toggles)', function () {
 		const diff = diffSchema(live, code)
 		const migration = generateMigrationSql(diff, 'postgres', { from: live, to: code })
 
-		const gated = migrationHasGatedSections(migration.up)
+		const gated = migrationHasGatedSections(migration.sections)
 		expect(gated.hasDestructive).toBe(true)
 
-		const withoutDestructive = buildPreviewSql(migration.up, {
+		const withoutDestructive = buildPreviewSql(migration.sections, {
 			includeDestructive: false,
 			includeReview: false,
 		})
 		expect(withoutDestructive).not.toContain('DROP COLUMN')
 		expect(withoutDestructive).not.toContain(DESTRUCTIVE_BANNER)
 
-		const withDestructive = buildPreviewSql(migration.up, {
+		const withDestructive = buildPreviewSql(migration.sections, {
 			includeDestructive: true,
 			includeReview: false,
 		})
@@ -85,14 +85,14 @@ describe('migration-sections (cockpit preview toggles)', function () {
 		// helper is consistent with whatever the generator decided.
 		if (sections.review) {
 			expect(migration.up).toContain(REVIEW_HEADER)
-			const off = buildPreviewSql(migration.up, {
+			const off = buildPreviewSql(migration.sections, {
 				includeDestructive: false,
 				includeReview: false,
 			})
 			// commented out by default — the bare ALTER must not appear uncommented.
 			expect(off).not.toMatch(/^\s*ALTER TABLE/m)
 
-			const on = buildPreviewSql(migration.up, {
+			const on = buildPreviewSql(migration.sections, {
 				includeDestructive: false,
 				includeReview: true,
 			})

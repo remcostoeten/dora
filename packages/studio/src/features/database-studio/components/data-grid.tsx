@@ -126,7 +126,7 @@ export function DataGrid({
 
 	// Virtualize when we have > 100 rows — zero overhead for small datasets
 	const VIRTUALIZE_THRESHOLD = 100
-	const { virtualRows, totalSize } = useRowVirtualizer({
+	const { virtualizer, measureElement, virtualRows, totalSize } = useRowVirtualizer({
 		scrollContainerRef,
 		rowCount: rows.length,
 		enabled: rows.length > VIRTUALIZE_THRESHOLD,
@@ -191,9 +191,19 @@ export function DataGrid({
 					block: 'nearest',
 					inline: 'nearest'
 				})
+				return
+			}
+			if (rows.length > VIRTUALIZE_THRESHOLD) {
+				virtualizer.scrollToIndex(focusedCell.row, { align: 'auto' })
+				window.requestAnimationFrame(function () {
+					const mountedCell = gridRef.current?.querySelector(
+						`[data-cell-key="${focusedCell.row}:${focusedCell.col}"]`
+					) as HTMLElement | null
+					mountedCell?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+				})
 			}
 		},
-		[focusedCell]
+		[focusedCell, rows.length, virtualizer]
 	)
 
 	const handleCellMouseEnter = useCallback(
@@ -393,6 +403,7 @@ export function DataGrid({
 						setEditValue={setEditValue}
 						virtualRows={virtualRows}
 						totalVirtualSize={totalSize}
+						measureRow={virtualRows ? measureElement : undefined}
 					/>
 				</table>
 			</div>

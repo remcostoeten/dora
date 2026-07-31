@@ -2,8 +2,8 @@
 //!
 //! PostHog is an analytics data source browsed over the HogQL Query API; the
 //! studio can never mutate it. Every `WriteAdapter` method therefore returns a
-//! friendly read-only error. The UI also gates writes off via
-//! `source_caps().is_readonly`, so these are a backstop that keeps the
+//! friendly read-only error. The Studio capability table also gates writes off,
+//! so these are a backstop that keeps the
 //! `write_adapter_from_client` factory's exhaustive match total.
 
 use async_trait::async_trait;

@@ -22,10 +22,17 @@ impl Storage {
             .context("Failed to encrypt connection data")?;
 
         conn.execute(
-            "INSERT OR REPLACE INTO connections
-             (id, name, connection_data, database_type_id, created_at, updated_at, sort_order, color)
+            "INSERT INTO connections
+             (id, name, connection_data, database_type_id, created_at, updated_at, sort_order, color, pin_hash)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6,
-                (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM connections), ?7)",
+                (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM connections), ?7, ?8)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                connection_data = excluded.connection_data,
+                database_type_id = excluded.database_type_id,
+                updated_at = excluded.updated_at,
+                color = excluded.color,
+                pin_hash = excluded.pin_hash",
             (
                 &connection.id.to_string(),
                 &connection.name,
@@ -34,6 +41,7 @@ impl Storage {
                 now,
                 now,
                 connection.color.as_deref(),
+                connection.pin_hash.as_deref(),
             ),
         )
         .context("Failed to save connection")?;
@@ -56,7 +64,7 @@ impl Storage {
         let updated_rows = conn
             .execute(
                 "UPDATE connections
-             SET name = ?2, connection_data = ?3, database_type_id = ?4, updated_at = ?5, color = ?6
+             SET name = ?2, connection_data = ?3, database_type_id = ?4, updated_at = ?5, color = ?6, pin_hash = ?7
              WHERE id = ?1",
                 (
                     &connection.id.to_string(),
@@ -65,6 +73,7 @@ impl Storage {
                     db_type_id,
                     now,
                     connection.color.as_deref(),
+                    connection.pin_hash.as_deref(),
                 ),
             )
             .context("Failed to update connection")?;
@@ -89,7 +98,7 @@ impl Storage {
                 "SELECT c.id, c.name, c.connection_data,
                         c.database_type_id,
                         COALESCE(dt.name, 'postgres') as db_type,
-                        c.last_connected_at, c.favorite, c.color, c.sort_order
+                        c.last_connected_at, c.favorite, c.color, c.sort_order, c.pin_hash
                  FROM connections c
                  LEFT JOIN database_types dt ON c.database_type_id = dt.id
                  WHERE c.id = ?1",
@@ -127,7 +136,7 @@ impl Storage {
                     sort_order: row.get(8).ok(),
                     created_at: None,
                     updated_at: None,
-                    pin_hash: None,
+                    pin_hash: row.get(9).ok(),
                 })
             })
             .context("Failed to query connection")?;
@@ -150,7 +159,7 @@ impl Storage {
                 "SELECT c.id, c.name, c.connection_data,
                         c.database_type_id,
                         COALESCE(dt.name, 'postgres') as db_type,
-                        c.last_connected_at, c.favorite, c.color, c.sort_order
+                        c.last_connected_at, c.favorite, c.color, c.sort_order, c.pin_hash
                  FROM connections c
                  LEFT JOIN database_types dt ON c.database_type_id = dt.id
                  ORDER BY c.sort_order, c.name",
@@ -187,7 +196,7 @@ impl Storage {
                     sort_order: row.get(8).ok(),
                     created_at: None,
                     updated_at: None,
-                    pin_hash: None,
+                    pin_hash: row.get(9).ok(),
                 })
             })
             .context("Failed to query connections")?;
@@ -226,5 +235,69 @@ impl Storage {
         )
         .context("Failed to update last connected time")?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Storage;
+    use crate::database::types::{ConnectionInfo, DatabaseInfo};
+    use uuid::Uuid;
+
+    #[test]
+    fn pin_hash_survives_save_update_and_reload() {
+        let path =
+            std::env::temp_dir().join(format!("dora-pin-storage-{}.sqlite", Uuid::new_v4()));
+        let storage = Storage::new(path.clone()).expect("storage should initialize");
+        let id = Uuid::new_v4();
+        let mut connection = ConnectionInfo {
+            id,
+            name: "PIN test".to_string(),
+            connected: false,
+            database_type: DatabaseInfo::SQLite {
+                db_path: ":memory:".to_string(),
+            },
+            last_connected_at: None,
+            created_at: None,
+            updated_at: None,
+            pin_hash: Some("hash-one".to_string()),
+            favorite: None,
+            color: None,
+            sort_order: None,
+        };
+
+        storage
+            .save_connection(&connection)
+            .expect("connection should save");
+        assert_eq!(
+            storage
+                .get_connection(&id)
+                .expect("connection should load")
+                .expect("connection should exist")
+                .pin_hash
+                .as_deref(),
+            Some("hash-one")
+        );
+
+        connection.pin_hash = Some("hash-two".to_string());
+        storage
+            .update_connection(&connection)
+            .expect("connection should update");
+        drop(storage);
+
+        let reopened = Storage::new(path.clone()).expect("storage should reopen");
+        assert_eq!(
+            reopened
+                .get_connections()
+                .expect("connections should load")
+                .into_iter()
+                .find(|saved| saved.id == id)
+                .expect("saved connection should exist")
+                .pin_hash
+                .as_deref(),
+            Some("hash-two")
+        );
+        drop(reopened);
+        std::fs::remove_file(path).expect("test database should be removable");
     }
 }

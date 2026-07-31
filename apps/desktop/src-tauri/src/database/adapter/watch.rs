@@ -88,9 +88,7 @@ impl WatchAdapter for SqliteAdapter {
 #[async_trait]
 impl WatchAdapter for D1Adapter {
     async fn poll_table_hash(&self, _table: &str, _schema: Option<&str>) -> Result<u64, Error> {
-        // D1's `source_caps().supports_listen_notify` is false, so the live
-        // monitor never starts a watch for it. This exists only to satisfy the
-        // `watch_adapter_from_client` factory's exhaustive match.
+        // Backend capability validation rejects D1 before the watch factory.
         Err(Error::NotImplemented("table watch for Cloudflare D1"))
     }
 }
@@ -98,9 +96,7 @@ impl WatchAdapter for D1Adapter {
 #[async_trait]
 impl WatchAdapter for PosthogAdapter {
     async fn poll_table_hash(&self, _table: &str, _schema: Option<&str>) -> Result<u64, Error> {
-        // PostHog's `source_caps().supports_listen_notify` is false, so the live
-        // monitor never starts a watch for it. This exists only to satisfy the
-        // `watch_adapter_from_client` factory's exhaustive match.
+        // Backend capability validation rejects PostHog before the watch factory.
         Err(Error::NotImplemented("table watch for PostHog"))
     }
 }

@@ -33,9 +33,6 @@ Source has two or more answers. Ask before deciding.
   `__tests__` files and colocated `*.test.*` files, while
   `__tests__/README.md` claims centralized tests are the only convention
   (FINDINGS 4.15).
-- Whether to delete, revive or ignore `apps/desktop/vitest.config.ts`,
-  `__tests__/setup/vitest.setup.ts` and `packages/studio/src/test/setup.ts`.
-  None is used by the live test command.
 - Whether `bun run test` should continue running the same shared Vitest suite
   through multiple workspace packages. Turbo invokes package scripts, and both
   desktop and studio point at the root config.
@@ -132,7 +129,8 @@ Async work uses `#[tokio::test]`.
 
 **`cargo test` means default features only.** The crate's default feature set is
 empty. DuckDB's in-process backend and its tests require
-`cargo test --features duckdb-engine`; PR CI does not run that command. Any
+`cargo test --features duckdb-engine`; PR CI runs that command after the
+default suite. Any
 change under feature-gated DuckDB code is unverified until both configurations
 compile and the feature run passes.
 
@@ -165,10 +163,11 @@ and writes text, JSON and HTML under the generated .cache/coverage directory.
 There is no configured threshold and CI does not run it. Report coverage
 numbers as observations, not as a pass/fail contract.
 
-**PR CI has five independent proofs and an ordered build.**
-`.github/workflows/ci.yml` runs TypeScript tests, default-feature Rust tests,
-lint plus `skills:check`, both TypeScript typechecks, and the Playwright boot
-smoke. The desktop build waits for tests, Rust, lint and typecheck; the smoke
+**PR CI has independent proofs and an ordered build.**
+`.github/workflows/ci.yml` runs TypeScript tests, default- and DuckDB-feature
+Rust tests, generated-binding drift verification, lint plus `skills:check`,
+both TypeScript typechecks, and the Playwright boot smoke. The desktop build
+waits for tests, Rust, lint and typecheck; the smoke
 waits for TypeScript tests, lint and typecheck. Do not fold independent failures
 into a script that can mask which gate failed.
 
@@ -184,11 +183,8 @@ ports or durable user state behind.
 ## Known gaps
 
 - Centralized and colocated TypeScript test conventions conflict.
-- Three setup/config files are dead, and their existence makes the canonical
-  harness easy to misidentify.
 - Root Turbo testing may execute the same shared Vitest suite more than once.
 - There is no coverage threshold or coverage job.
-- DuckDB feature tests are absent from PR CI.
 - Live adapter CI covers only MySQL and MariaDB and runs weekly or manually.
 - The boot smoke uses a web mock and does not launch the Tauri binary.
 - No single command proves all operating-system-specific behavior.
@@ -196,7 +192,7 @@ ports or durable user state behind.
 ## Common mistakes
 
 - Adding a test to a path the root include globs do not discover.
-- Editing `apps/desktop/vitest.config.ts` and expecting CI to use it.
+- Adding a package-local Vitest config and expecting CI to use it.
 - Running bare `bun test` and reporting the configured Vitest suite green.
 - Removing the studio dependency aliases and reintroducing two React instances.
 - Leaving localStorage, fake timers, global mocks or module state dirty for the

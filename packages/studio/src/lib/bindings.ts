@@ -79,6 +79,10 @@ async probeDatabaseFile(path: string) : Promise<Result<DatabaseFileKind, { kind:
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Open a folder picker and return the chosen directory path. Used by the ORM
+ * cockpit to let the user link a project folder.
+ */
 async pickFolder() : Promise<Result<string | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("pick_folder") };
@@ -87,6 +91,10 @@ async pickFolder() : Promise<Result<string | null, { kind: string; detail: strin
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Read a project schema/config file (Drizzle `.ts`, Prisma `.prisma`, …) as
+ * UTF-8 text, size-capped. Feeds the ORM detection + parsers.
+ */
 async readProjectFile(path: string) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("read_project_file", { path }) };
@@ -95,6 +103,11 @@ async readProjectFile(path: string) : Promise<Result<string, { kind: string; det
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Shallowly list a directory's entries as absolute paths. ORM detection in TS
+ * filters these by extension / known names (e.g. a multi-file Drizzle
+ * `schema/` dir or Prisma `prisma/schema/` dir).
+ */
 async listDir(path: string) : Promise<Result<string[], { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("list_dir", { path }) };
@@ -111,9 +124,9 @@ async addConnection(name: string, databaseInfo: DatabaseInfo, color: number | nu
     else return { status: "error", error: e  as any };
 }
 },
-async updateConnection(connId: string, name: string, databaseInfo: DatabaseInfo, color: number | null) : Promise<Result<ConnectionInfo, { kind: string; detail: string }>> {
+async updateConnection(connId: string, name: string, databaseInfo: DatabaseInfo, clearPassword: boolean, color: number | null) : Promise<Result<ConnectionInfo, { kind: string; detail: string }>> {
     try {
-    return { status: "ok", data: await TAURI_INVOKE("update_connection", { connId, name, databaseInfo, color }) };
+    return { status: "ok", data: await TAURI_INVOKE("update_connection", { connId, name, databaseInfo, clearPassword, color }) };
 } catch (e) {
     if(e instanceof Error) throw e;
     else return { status: "error", error: e  as any };
@@ -231,6 +244,10 @@ async supabaseSaveToken(token: string) : Promise<Result<null, { kind: string; de
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * One-click OAuth: opens the consent page in the browser and waits for the
+ * hosted proxy to redirect tokens back to a local loopback listener.
+ */
 async supabaseOauthConnect() : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("supabase_oauth_connect") };
@@ -259,6 +276,10 @@ async supabaseAccount() : Promise<Result<SupabaseOrganization[], { kind: string;
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Resolves the real Supavisor pooler host for a project (the cluster index
+ * can't be guessed from the region), used to build pooler connection strings.
+ */
 async supabasePoolerHost(projectRef: string) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("supabase_pooler_host", { projectRef }) };
@@ -278,6 +299,11 @@ async supabaseDisconnect() : Promise<Result<null, { kind: string; detail: string
 async supabaseIsConnected() : Promise<boolean> {
     return await TAURI_INVOKE("supabase_is_connected");
 },
+/**
+ * Remembers a project's database password (encrypted on-device) so it can be
+ * prefilled on the next connect. The Management API never returns it, so this
+ * is the only way to avoid re-typing it every time.
+ */
 async supabaseSaveProjectPassword(projectRef: string, password: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("supabase_save_project_password", { projectRef, password }) };
@@ -294,6 +320,9 @@ async supabaseGetProjectPassword(projectRef: string) : Promise<Result<string | n
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Validates and stores a Turso Platform API token (encrypted on-device).
+ */
 async tursoSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("turso_save_token", { token }) };
@@ -310,6 +339,10 @@ async tursoListDatabases() : Promise<Result<TursoDatabase[], { kind: string; det
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Mints a database auth token (JWT) for a Turso database so the connection
+ * needs no hand-copied secret.
+ */
 async tursoCreateToken(organizationSlug: string, databaseName: string) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("turso_create_token", { organizationSlug, databaseName }) };
@@ -391,6 +424,10 @@ async tursoAccount() : Promise<Result<TursoOrganization[], { kind: string; detai
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Validates a pasted personal API key against the given project/region by
+ * running a trivial HogQL query, then stores the credential set encrypted.
+ */
 async posthogSaveCredentials(apiKey: string, region: PosthogRegion, projectId: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("posthog_save_credentials", { apiKey, region, projectId }) };
@@ -399,6 +436,10 @@ async posthogSaveCredentials(apiKey: string, region: PosthogRegion, projectId: s
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Runs an arbitrary HogQL query against the connected PostHog project and
+ * returns grid-shaped rows.
+ */
 async posthogRunQuery(hogql: string) : Promise<Result<PosthogQueryResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("posthog_run_query", { hogql }) };
@@ -407,6 +448,10 @@ async posthogRunQuery(hogql: string) : Promise<Result<PosthogQueryResult, { kind
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * The connected project's region and id (never the API key), for prefilling
+ * the connect form and showing which project is active.
+ */
 async posthogConfig() : Promise<Result<PosthogConfig | null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("posthog_config") };
@@ -426,6 +471,9 @@ async posthogDisconnect() : Promise<Result<null, { kind: string; detail: string 
 async posthogIsConnected() : Promise<boolean> {
     return await TAURI_INVOKE("posthog_is_connected");
 },
+/**
+ * Validates and stores a Neon API key (encrypted on-device).
+ */
 async neonSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("neon_save_token", { token }) };
@@ -466,6 +514,10 @@ async neonAccount() : Promise<Result<NeonAccount, { kind: string; detail: string
     else return { status: "error", error: e  as any };
 }
 },
+/**
+ * Mints a pooled connection URI for a Neon database so the connection needs no
+ * hand-copied password.
+ */
 async neonCreateConnectionUri(projectId: string, branchId: string, databaseName: string, roleName: string) : Promise<Result<string, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("neon_create_connection_uri", { projectId, branchId, databaseName, roleName }) };
@@ -485,6 +537,9 @@ async neonDisconnect() : Promise<Result<null, { kind: string; detail: string }>>
 async neonIsConnected() : Promise<boolean> {
     return await TAURI_INVOKE("neon_is_connected");
 },
+/**
+ * Validates and stores a Cloudflare API token (encrypted on-device).
+ */
 async cloudflareSaveToken(token: string) : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("cloudflare_save_token", { token }) };
@@ -1412,12 +1467,32 @@ async getKeyringInstallPlan() : Promise<KeyringInstallPlan | null> {
 },
 async installCredentialKeyring() : Promise<KeyringInstallResult> {
     return await TAURI_INVOKE("install_credential_keyring");
+},
+async getBuildCacheStats() : Promise<Result<BuildCacheStats, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_build_cache_stats") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async cleanBuildCache(request: BuildCacheCleanRequest) : Promise<Result<BuildCacheCleanResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("clean_build_cache", { request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
 /** user-defined events **/
 
+
+
 /** user-defined constants **/
+
+
 
 /** user-defined types **/
 
@@ -1432,6 +1507,20 @@ export type AiStreamEvent = { type: "token"; text: string } | { type: "final"; c
 export type AiUsageEntry = { id: number; provider: string; model: string; source: string; input_tokens: number | null; output_tokens: number | null; total_tokens: number | null; estimated_cost_usd: number | null; estimated: boolean; created_at: number }
 export type AiUsageProviderSummary = { provider: string; request_count: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number }
 export type AiUsageSummary = { total_requests: number; input_tokens: number; output_tokens: number; total_tokens: number; estimated_cost_usd: number; providers: AiUsageProviderSummary[]; recent: AiUsageEntry[] }
+export type BuildCacheCleanRequest = { entries: string[] }
+export type BuildCacheCleanResult = { removed_bytes: number; removed_entries: string[]; stats: BuildCacheStats }
+export type BuildCacheEntry = { name: string; path: string; bytes: number; removable: boolean }
+export type BuildCacheStats = { target_path: string; exists: boolean; total_bytes: number; entries: BuildCacheEntry[] }
+/**
+ * A Cloudflare account the token can see — used for the "Connected as …" label
+ * and as the first pick step (D1 databases are account-scoped).
+ */
+export type CloudflareAccount = { id: string; name?: string }
+/**
+ * A selectable D1 database within an account. `uuid` is the database id used in
+ * the query endpoint path; the connect-flow encodes it into the connection URL.
+ */
+export type CloudflareD1Database = { accountId: string; uuid: string; name: string }
 export type ColumnInfo = { name: string; data_type: string; is_nullable: boolean; default_value: string | null; 
 /**
  * Whether this column is part of the primary key
@@ -1444,7 +1533,7 @@ is_auto_increment?: boolean;
 /**
  * Foreign key relationship, if any
  */
-foreign_key?: ForeignKeyInfo | null;
+foreign_key?: ForeignKeyInfo | null; 
 /**
  * Closed set of values the database constrains this column to: a Postgres
  * `enum` type's labels, or the literals in a `CHECK (col IN (...))`
@@ -1480,14 +1569,14 @@ url: string;
 /**
  * Auth token for remote connections (optional for local)
  */
-auth_token: string | null } } |
+auth_token: string | null } } | 
 /**
  * Cloudflare D1 database, queried over the REST API (no SQL wire protocol).
  * `url` is `d1://{account_id}/{database_id}`; the API token is loaded from
  * the encrypted Cloudflare integration setting at connect time, so it is
  * never persisted on the connection itself.
  */
-{ D1: { url: string } } |
+{ D1: { url: string } } | 
 /**
  * PostHog project, queried read-only over the HogQL Query API (no SQL wire
  * protocol). `url` is `posthog://{region}/{project_id}`; the personal API
@@ -1585,58 +1674,23 @@ export type LiveMonitorSession = { monitorId: string; eventName: string }
  * Result of a mutation operation
  */
 export type MutationResult = { success: boolean; affected_rows: number; message: string | null }
+export type NeonAccount = { email?: string; name?: string }
+/**
+ * A selectable Neon branch within a project. Surfaced so the user can connect
+ * to a non-primary branch (e.g. a preview branch) instead of always landing on
+ * the default one. `is_default` lets the UI preselect the primary branch.
+ */
+export type NeonBranch = { id: string; name: string; isDefault: boolean }
+/**
+ * A selectable Neon database, flattened across projects and their default
+ * branch. The ids/names are carried so we can mint a pooled connection URI for
+ * it later without re-discovering anything.
+ */
+export type NeonDatabase = { projectId: string; projectName: string; branchId: string; databaseName: string; roleName: string }
 export type OllamaCatalogEntry = { name: string; label: string; description: string; installed: boolean; size_bytes: number | null }
 export type OllamaInstallEvent = { type: "status"; message: string } | { type: "progress"; completed: number; total: number | null; percent: number } | { type: "done"; version: string | null; install_path: string } | { type: "error"; message: string }
 export type OllamaPullEvent = { type: "status"; message: string } | { type: "progress"; completed: number; total: number; percent: number; eta_seconds: number | null } | { type: "done"; model: string } | { type: "error"; message: string }
 export type OllamaStatus = { running: boolean; endpoint: string; version: string | null; installed_count: number; managed: boolean; install_path: string | null; binary_ready: boolean }
-export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
-export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
-export type RegisteredDatabase = { name: string; path: string; active: boolean }
-export type SaveDataFileSessionResult = { path: string; tables: SavedDataFileTable[]; skipped: SkippedDataFileSource[]; warnings: string[] }
-export type SavedDataFileTable = { name: string; sourcePath: string; rowCount: number | null }
-export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; category: string | null; created_at: number; updated_at: number; favorite: boolean; is_snippet: boolean; is_system: boolean; language: string | null; folder_id: number | null }
-export type SeedResult = { rows_inserted: number; table: string }
-export type SkippedDataFileSource = { path: string; viewName: string; status: DataFileSourceStatus; error: string | null }
-export type SnippetFolder = { id: number; name: string; parent_id: number | null; color: string | null; created_at: number; updated_at: number }
-/**
- * Result of a soft delete operation
- */
-export type SoftDeleteResult = { success: boolean; affected_rows: number; message: string | null; 
-/**
- * Unix timestamp when deletion happened (for undo window)
- */
-deleted_at: number; 
-/**
- * How many seconds the undo window lasts
- */
-undo_window_seconds: number }
-export type SshConfig = { host: string; port: number; username: string; private_key_path: string | null; password: string | null }
-export type SupabaseProject = { id: string; name: string; region: string; status: string; dbHost: string; dbVersion: string }
-export type SupabaseOrganization = { id: string; name: string }
-export type TursoDatabase = { name: string; hostname: string; organizationSlug: string; group: string; primaryRegion: string }
-export type TursoOrganization = { slug: string; name?: string }
-export type CloudflareAccount = { id: string; name?: string }
-export type CloudflareD1Database = { accountId: string; uuid: string; name: string }
-export type PosthogConfig = { region: PosthogRegion; projectId: string }
-export type PosthogQueryResult = { columns: string[]; types: (string | null)[]; rows: JsonValue[][] }
-export type PosthogRegion = "us" | "eu"
-export type NeonAccount = { email?: string; name?: string }
-export type NeonBranch = { id: string; name: string; isDefault: boolean }
-export type NeonDatabase = { projectId: string; projectName: string; branchId: string; databaseName: string; roleName: string }
-export type XataAccount = { email?: string; fullname?: string }
-/**
- * A selectable Xata database, flattened across the user's workspaces. The
- * workspace id (PG user) and region (PG host) are carried so we can assemble a
- * Postgres connection string for it later without re-discovering anything. The
- * branch defaults to `main` at connect time.
- */
-export type XataDatabase = { workspaceId: string; workspaceName: string; databaseName: string; region: string;
-/**
- * Whether Xata reports this database as reachable over the Postgres
- * protocol. Databases without it can't be connected as a Postgres source,
- * so the connect-flow can flag them.
- */
-postgresEnabled: boolean }
 /**
  * A branch of a PlanetScale database. `is_default` marks the database's default
  * branch (the one to preselect). This is the branch-aware hook other plans
@@ -1659,24 +1713,46 @@ export type PlanetscaleOrganization = { name: string }
  * immediately to assemble a connection string — the user never copies a secret.
  */
 export type PlanetscalePassword = { username: string; host: string; password: string }
-export type VercelAccount = { username?: string; email?: string; name?: string }
 /**
- * A selectable Vercel Postgres "store" (one per project that has a Postgres
- * connection string in its environment). `connection_string` is `None` when the
- * value couldn't be read (e.g. the env var is marked `sensitive`), in which case
- * the connect-flow asks the user to paste the `POSTGRES_URL` instead.
+ * The connection config surfaced to the UI for prefilling — deliberately
+ * excludes the API key, which never leaves the device unencrypted.
  */
-export type VercelStore = { projectId: string; projectName: string;
+export type PosthogConfig = { region: PosthogRegion; projectId: string }
 /**
- * The env key the connection string came from (e.g. `POSTGRES_URL`), shown
- * in the picker so the user knows which credential they're connecting with.
+ * A HogQL query result, shaped for the grid: a column header list, the
+ * ClickHouse type per column (best-effort), and rows of raw JSON cells.
  */
-envKey?: string | null;
+export type PosthogQueryResult = { columns: string[]; types: (string | null)[]; rows: JsonValue[][] }
 /**
- * The decrypted connection string, when the API returned a readable value.
+ * Which PostHog Cloud region the project lives in. Self-hosted instances are
+ * not supported by this path (they'd need a direct ClickHouse connection).
  */
-connectionString?: string | null }
+export type PosthogRegion = "us" | "eu"
+export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
+export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
+export type RegisteredDatabase = { name: string; path: string; active: boolean }
+export type SaveDataFileSessionResult = { path: string; tables: SavedDataFileTable[]; skipped: SkippedDataFileSource[]; warnings: string[] }
+export type SavedDataFileTable = { name: string; sourcePath: string; rowCount: number | null }
+export type SavedQuery = { id: number; name: string; description: string | null; query_text: string; connection_id: string | null; tags: string | null; category: string | null; created_at: number; updated_at: number; favorite: boolean; is_snippet: boolean; is_system: boolean; language: string | null; folder_id: number | null }
+export type SeedResult = { rows_inserted: number; table: string }
+export type SkippedDataFileSource = { path: string; viewName: string; status: DataFileSourceStatus; error: string | null }
+export type SnippetFolder = { id: number; name: string; parent_id: number | null; color: string | null; created_at: number; updated_at: number }
+/**
+ * Result of a soft delete operation
+ */
+export type SoftDeleteResult = { success: boolean; affected_rows: number; message: string | null; 
+/**
+ * Unix timestamp when deletion happened (for undo window)
+ */
+deleted_at: number; 
+/**
+ * How many seconds the undo window lasts
+ */
+undo_window_seconds: number }
+export type SshConfig = { host: string; port: number; username: string; private_key_path: string | null; password: string | null; host_key_fingerprint?: string | null }
 export type StatementInfo = { returns_values: boolean; status: QueryStatus; first_page: JsonValue; affected_rows: number | null; page_count: number; rows_received: number; error: string | null }
+export type SupabaseOrganization = { id: string; name: string }
+export type SupabaseProject = { id: string; name: string; region: string; status: string; dbHost: string; dbVersion: string }
 export type TAURI_CHANNEL<TSend> = null
 export type TableInfo = { name: string; schema: string; columns: ColumnInfo[]; 
 /**
@@ -1695,6 +1771,43 @@ row_count_estimate?: number | null }
  * Result of a truncate operation
  */
 export type TruncateResult = { success: boolean; affected_rows: number; tables_truncated: string[]; message: string | null }
+/**
+ * A Turso database, flattened across the organizations the token can see. The
+ * `organization_slug` is carried so we can mint an auth token for it later.
+ */
+export type TursoDatabase = { name: string; hostname: string; organizationSlug: string; group: string; primaryRegion: string }
+export type TursoOrganization = { slug: string; name?: string }
+export type VercelAccount = { username?: string; email?: string; name?: string }
+/**
+ * A selectable Vercel Postgres "store" (one per project that has a Postgres
+ * connection string in its environment). `connection_string` is `None` when the
+ * value couldn't be read (e.g. the env var is marked `sensitive`), in which case
+ * the connect-flow asks the user to paste the `POSTGRES_URL` instead.
+ */
+export type VercelStore = { projectId: string; projectName: string; 
+/**
+ * The env key the connection string came from (e.g. `POSTGRES_URL`), shown
+ * in the picker so the user knows which credential they're connecting with.
+ */
+envKey?: string | null; 
+/**
+ * The decrypted connection string, when the API returned a readable value.
+ */
+connectionString?: string | null }
+export type XataAccount = { email?: string; fullname?: string }
+/**
+ * A selectable Xata database, flattened across the user's workspaces. The
+ * workspace id (PG user) and region (PG host) are carried so we can assemble a
+ * Postgres connection string for it later without re-discovering anything. The
+ * branch defaults to `main` at connect time.
+ */
+export type XataDatabase = { workspaceId: string; workspaceName: string; databaseName: string; region: string; 
+/**
+ * Whether Xata reports this database as reachable over the Postgres
+ * protocol. Databases without it can't be connected as a Postgres source,
+ * so the connect-flow can flag them.
+ */
+postgresEnabled: boolean }
 
 /** tauri-specta globals **/
 

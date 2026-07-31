@@ -11,13 +11,16 @@ import {
 	ContextMenuSeparator
 } from '@studio/shared/ui/context-menu'
 
-export function QueryTabBar() {
+type Props = {
+	onCloseTab: (tabId: string) => void
+}
+
+export function QueryTabBar({ onCloseTab }: Props) {
 	const {
 		tabs,
 		activeTabId,
 		setActiveTab,
 		addTab,
-		closeTab,
 		renameTab,
 		duplicateTab
 	} = useQueryTabs()
@@ -69,7 +72,7 @@ export function QueryTabBar() {
 	function handleMiddleClick(e: React.MouseEvent, tabId: string) {
 		if (e.button === 1 && tabs.length > 1) {
 			e.preventDefault()
-			closeTab(tabId)
+			onCloseTab(tabId)
 		}
 	}
 
@@ -173,7 +176,7 @@ export function QueryTabBar() {
 											)}
 											onClick={function (e) {
 												e.stopPropagation()
-												closeTab(tab.id)
+												onCloseTab(tab.id)
 											}}
 											role='button'
 											tabIndex={-1}
@@ -197,7 +200,7 @@ export function QueryTabBar() {
 								<ContextMenuItem
 									disabled={tabs.length <= 1}
 									variant='destructive'
-									onClick={function () { closeTab(tab.id) }}
+									onClick={function () { onCloseTab(tab.id) }}
 								>
 									<X className='size-3.5' />
 									Close Tab

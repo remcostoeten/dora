@@ -612,6 +612,32 @@ function SqlConsoleInner({
     }
   }, [adapter, activeConnectionId, activeTab.id]);
 
+  const handleCloseQueryTab = useCallback(
+    async (tabId: string) => {
+      const queryIds = inFlightQueryIdsRef.current.get(tabId);
+      if (queryIds && queryIds.length > 0) {
+        cancelledTabsRef.current.add(tabId);
+        await adapter.cancelQueries(queryIds);
+        inFlightQueryIdsRef.current.delete(tabId);
+      }
+      tabStore.closeTab(tabId);
+    },
+    [adapter, tabStore],
+  );
+
+  useEffect(
+    function cancelQueriesWhenConsoleUnmounts() {
+      return function cleanup() {
+        const queryIds = Array.from(inFlightQueryIdsRef.current.values()).flat();
+        if (queryIds.length > 0) {
+          void adapter.cancelQueries(queryIds);
+          inFlightQueryIdsRef.current.clear();
+        }
+      };
+    },
+    [adapter],
+  );
+
   const activeDialect = useMemo(() => {
     const connection = connections?.find(function (c) {
       return c.id === activeConnectionId;
@@ -1155,7 +1181,7 @@ function SqlConsoleInner({
   $.bind("ctrl+w").on(
     function () {
       if (tabStore.tabs.length > 1) {
-        tabStore.closeTab(activeTab.id);
+        void handleCloseQueryTab(activeTab.id);
       }
     },
     { description: "Close current tab" },
@@ -1239,7 +1265,7 @@ function SqlConsoleInner({
             />
 
             {/* Tab Bar */}
-            <QueryTabBar />
+            <QueryTabBar onCloseTab={handleCloseQueryTab} />
 
             {/* Editor and Results */}
             <div className="flex-1 overflow-hidden">

@@ -29,7 +29,15 @@ describe('isFlyPublicHost', function () {
 	})
 })
 
-describe('detectProviderName', function () {
+	describe('detectProviderName', function () {
+		it('recognizes Xata connection strings minted by the integration', function () {
+			expect(
+				detectProviderName(
+					'postgresql://workspace:key@us-east-1.sql.xata.sh:5432/app:main?sslmode=require'
+				)
+			).toBe('Xata DB')
+		})
+
 	it('detects MariaDB hosts as a MySQL-compatible provider', function () {
 		expect(
 			detectProviderName('mysql://user:pass@mariadb.internal:3306/app')

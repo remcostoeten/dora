@@ -16,14 +16,7 @@ Rendering a value once it has arrived belongs to `dora-data-grid`.
 
 ## Unencodable
 
-No rule is given for these. Source contains two answers and
-`.agent-skills/FINDINGS.md` declines to pick one. Ask before deciding.
-
-- Which of the two `bindings.ts` files is canonical, and how a regenerated file
-  reaches the studio. `export_ts_bindings` writes to `apps/desktop/src/lib/bindings.ts`,
-  which nothing imports; all code imports `packages/studio/src/lib/bindings.ts`,
-  a separate copy that has already drifted (FINDINGS 4.1). The one fact you can
-  rely on: a command is invisible to the studio until the studio copy declares it.
+No rule is given for these. Ask before deciding.
 - Whether a new command must also be listed in `get_command_contract()` in
   `apps/desktop/src-tauri/src/database/contract.rs` (FINDINGS 4.18).
 - Which runtime guard to place in front of a direct `commands.*` call; three
@@ -67,6 +60,12 @@ argument keys become camelCase (`api_key` crosses as `apiKey`) — and the only
 place that converts a rejection into a value instead of a throw. Importing
 `Channel` from `@tauri-apps/api/core` is fine and required; importing `invoke`
 is not.
+
+**The Studio binding is canonical.** `export_ts_bindings` writes directly to
+`packages/studio/src/lib/bindings.ts`, using `CARGO_MANIFEST_DIR` so the result
+does not depend on the caller's working directory. The desktop-local binding
+file is only a compatibility re-export. Regenerate after every IPC change and
+make CI fail when regeneration changes the canonical file.
 
 **If `DataAdapter` declares the operation, go through the adapter.** Components
 reach it with `useAdapter()` from `packages/studio/src/core/data-provider/context.tsx`,

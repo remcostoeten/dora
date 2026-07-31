@@ -553,6 +553,8 @@ pub struct SourceCaps {
     /// monitor uses for push-based change notifications. CockroachDB does NOT
     /// support it, so live monitoring must fall back to polling (or be hidden).
     pub supports_listen_notify: bool,
+    /// Whether Dora has a polling/snapshot implementation for this source.
+    pub supports_live_monitor: bool,
 }
 
 impl SourceCaps {
@@ -561,6 +563,7 @@ impl SourceCaps {
     pub const fn postgres_default() -> Self {
         Self {
             supports_listen_notify: true,
+            supports_live_monitor: true,
         }
     }
 
@@ -570,6 +573,7 @@ impl SourceCaps {
     pub const fn mysql_default() -> Self {
         Self {
             supports_listen_notify: false,
+            supports_live_monitor: true,
         }
     }
 
@@ -579,15 +583,18 @@ impl SourceCaps {
             // Vanilla Postgres: full LISTEN/NOTIFY support.
             DetectedDialect::Postgres => Self {
                 supports_listen_notify: true,
+                supports_live_monitor: true,
             },
             // CockroachDB intentionally does not implement LISTEN/NOTIFY.
             // https://github.com/cockroachdb/cockroach/issues/41522
             DetectedDialect::CockroachDb => Self {
                 supports_listen_notify: false,
+                supports_live_monitor: true,
             },
             // MySQL/MariaDB: polling-based monitoring only.
             DetectedDialect::MySql | DetectedDialect::MariaDb => Self {
                 supports_listen_notify: false,
+                supports_live_monitor: true,
             },
         }
     }

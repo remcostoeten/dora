@@ -27,7 +27,8 @@ describe('connection mapping', function () {
 			port: 22,
 			username: 'admin',
 			private_key_path: null,
-			password: 'secret'
+			password: 'secret',
+			host_key_fingerprint: null
 		})
 
 		expect(frontendToBackendDatabaseInfo(connection)).toEqual({
@@ -38,7 +39,8 @@ describe('connection mapping', function () {
 					port: 22,
 					username: 'admin',
 					private_key_path: null,
-					password: 'secret'
+					password: 'secret',
+					host_key_fingerprint: null
 				}
 			}
 		})
@@ -68,7 +70,8 @@ describe('connection mapping', function () {
 			port: 22,
 			username: 'admin',
 			private_key_path: '/keys/id_ed25519',
-			password: null
+			password: null,
+			host_key_fingerprint: null
 		})
 	})
 })

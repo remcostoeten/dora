@@ -89,8 +89,8 @@ State these rather than assuming they are handled:
 - No connection records which provider created it. There is no origin field, so
   nothing can refresh a rotated credential for an existing connection —
   reconnecting means going through the flow again.
-- `sql.xata.sh` has no `PROVIDER_PATTERNS` row, so an Xata connection displays as
-  a generic Postgres.
+- Xata is recognized from `sql.xata.sh`, but the saved connection still carries
+  no provider origin or selected project/branch identifier.
 - `tools/scripts/verify-providers.ts` covers only some of the eight providers.
 - PlanetScale's `create_password` mints a new named credential in the user's
   account on every connect and nothing ever deletes them.

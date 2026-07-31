@@ -176,11 +176,13 @@ derives the top pad from the first virtual item's `start` and the bottom pad fro
 `totalSize` minus the last item's `start` plus `size`, and emits each as a single
 spacer `<tr>` with one `colSpan` cell.
 
-Consequences worth restating: there is no `measureElement`, the header is sticky
-via CSS rather than virtualized, the checkbox column is sticky and needs an
-opaque background token (translucent row tints let scrolled content bleed
-through), and the inline draft row only appears when its anchor row index is
-inside the window.
+Each mounted virtual row passes its `<tr>` to `measureElement` and carries its
+logical index in `data-index`, so expanded JSON and other variable-height
+content update the virtualizer's measurements. The header is sticky via CSS
+rather than virtualized, the checkbox column is sticky and needs an opaque
+background token (translucent row tints let scrolled content bleed through),
+and the inline draft row only appears when its anchor row index is inside the
+window.
 
 ## Staged edits, end to end
 

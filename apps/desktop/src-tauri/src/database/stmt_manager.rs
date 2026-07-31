@@ -6,7 +6,9 @@ use std::sync::{
 use anyhow::Context;
 use serde_json::value::RawValue;
 use tauri::async_runtime::{spawn, spawn_blocking, JoinHandle};
+use tokio::sync::oneshot;
 use tokio_postgres::{config::SslMode, NoTls};
+use uuid::Uuid;
 
 use dashmap::DashMap;
 
@@ -68,6 +70,7 @@ struct PgCancel {
 
 /// The storage/state for an individual statement being executed
 struct ExecState {
+    connection_id: Uuid,
     status: AtomicU8,
     error: RwLock<Option<String>>,
     result: ExecResult,
@@ -192,13 +195,33 @@ impl StatementManager {
         }
     }
 
+    pub fn cancel_connection_queries(&self, connection_id: Uuid) {
+        let query_ids = self
+            .queries
+            .iter()
+            .filter(|entry| entry.connection_id == connection_id)
+            .map(|entry| *entry.key())
+            .collect::<Vec<_>>();
+        self.cancel_queries(&query_ids);
+    }
+
     /// Submits a new query (possibly containing multiple statements) for execution.
     ///
     /// Each statement gets a globally unique `QueryId`, so concurrent submissions
     /// (the analytics dashboard runs six at once) never collide. This does *not*
     /// cancel queries already in flight — callers that need to supersede their
     /// previous run, like the SQL console, call `cancel_query` first.
+    #[cfg(test)]
     pub fn submit_query(&self, client: DatabaseClient, query: &str) -> Result<Vec<QueryId>, Error> {
+        self.submit_query_for_connection(Uuid::nil(), client, query)
+    }
+
+    pub fn submit_query_for_connection(
+        &self,
+        connection_id: Uuid,
+        client: DatabaseClient,
+        query: &str,
+    ) -> Result<Vec<QueryId>, Error> {
         let parse_statements: fn(&str) -> Result<Vec<ParsedStatement>, anyhow::Error> =
             match &client {
                 DatabaseClient::Postgres { .. } => postgres::parser::parse_statements,
@@ -215,10 +238,20 @@ impl StatementManager {
 
         let statements = parse_statements(query)?;
         let mut query_ids = Vec::with_capacity(statements.len());
+        let mut start_gate = None;
 
         for statement in statements {
             let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-            self.create_worker(id, client.clone(), statement);
+            let (finished_tx, finished_rx) = oneshot::channel();
+            self.create_worker(
+                id,
+                connection_id,
+                client.clone(),
+                statement,
+                start_gate,
+                Some(finished_tx),
+            );
+            start_gate = Some(finished_rx);
             query_ids.push(id);
         }
 
@@ -327,7 +360,15 @@ impl StatementManager {
 
 /// Impl block for internal methods
 impl StatementManager {
-    fn create_worker(&self, id: QueryId, client: DatabaseClient, stmt: ParsedStatement) {
+    fn create_worker(
+        &self,
+        id: QueryId,
+        connection_id: Uuid,
+        client: DatabaseClient,
+        stmt: ParsedStatement,
+        start_gate: Option<oneshot::Receiver<bool>>,
+        finished_gate: Option<oneshot::Sender<bool>>,
+    ) {
         let result = if stmt.returns_values {
             ExecResult::Rows {
                 pages: RwLock::new(vec![]),
@@ -339,6 +380,7 @@ impl StatementManager {
         };
 
         let exec_storage = ExecState {
+            connection_id,
             status: AtomicU8::new(QueryStatus::Pending as u8),
             error: RwLock::new(None),
             result,
@@ -363,7 +405,11 @@ impl StatementManager {
                     token: client.cancel_token(),
                     ssl_mode,
                 });
+                let worker_storage = exec_storage.clone();
                 let handle = spawn(async move {
+                    if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
+                        return;
+                    }
                     let result = postgres::execute::execute_query(
                         &client,
                         stmt,
@@ -386,17 +432,28 @@ impl StatementManager {
                     .write()
                     .expect("RwLock poisoned") = Some(interrupt_handle);
 
-                let handle = spawn_blocking(move || {
-                    let conn = connection.lock().expect("Mutex poisoned");
-                    log_query_exec_outcome(
-                        "SQLite",
-                        sqlite::execute::execute_query(&conn, stmt, &sender),
-                    );
+                let worker_storage = exec_storage.clone();
+                let handle = spawn(async move {
+                    if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
+                        return;
+                    }
+                    let result = spawn_blocking(move || {
+                        let conn = connection.lock().expect("Mutex poisoned");
+                        sqlite::execute::execute_query(&conn, stmt, &sender)
+                    })
+                    .await
+                    .map_err(|error| Error::Internal(format!("SQLite query task failed: {error}")))
+                    .and_then(|result| result);
+                    log_query_exec_outcome("SQLite", result);
                 });
                 self.execution_handles.insert(id, handle);
             }
             DatabaseClient::DuckDB { connection, .. } => {
+                let worker_storage = exec_storage.clone();
                 let handle = spawn(async move {
+                    if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
+                        return;
+                    }
                     log_query_exec_outcome(
                         "DuckDB",
                         connection.execute_query(stmt, &sender).await,
@@ -405,7 +462,11 @@ impl StatementManager {
                 self.execution_handles.insert(id, handle);
             }
             DatabaseClient::LibSQL { connection } => {
+                let worker_storage = exec_storage.clone();
                 let handle = spawn(async move {
+                    if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
+                        return;
+                    }
                     let result =
                         crate::database::libsql::execute::execute_query(&connection, stmt, &sender)
                             .await;
@@ -414,14 +475,22 @@ impl StatementManager {
                 self.execution_handles.insert(id, handle);
             }
             DatabaseClient::MySQL { pool, .. } => {
+                let worker_storage = exec_storage.clone();
                 let handle = spawn(async move {
+                    if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
+                        return;
+                    }
                     let result = mysql::execute::execute_query(&pool, stmt, &sender).await;
                     log_query_exec_outcome("MySQL", result);
                 });
                 self.execution_handles.insert(id, handle);
             }
             DatabaseClient::D1 { http } => {
+                let worker_storage = exec_storage.clone();
                 let handle = spawn(async move {
+                    if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
+                        return;
+                    }
                     let adapter = crate::database::d1::D1Adapter::new(http);
                     let result = adapter.run_statement(stmt, &sender).await;
                     log_query_exec_outcome("Cloudflare D1", result);
@@ -429,7 +498,11 @@ impl StatementManager {
                 self.execution_handles.insert(id, handle);
             }
             DatabaseClient::Posthog { http } => {
+                let worker_storage = exec_storage.clone();
                 let handle = spawn(async move {
+                    if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
+                        return;
+                    }
                     let adapter = crate::database::posthog::PosthogAdapter::new(http);
                     let result = adapter.run_statement(stmt, &sender).await;
                     log_query_exec_outcome("PostHog", result);
@@ -440,10 +513,7 @@ impl StatementManager {
 
         let handle = tokio::task::spawn(async move {
             let mut recv = recv;
-
-            exec_storage
-                .status
-                .store(QueryStatus::Running as u8, Ordering::Relaxed);
+            let mut succeeded = false;
 
             while let Some(event) = recv.recv().await {
                 match event {
@@ -480,6 +550,7 @@ impl StatementManager {
                                 .status
                                 .store(QueryStatus::Error as u8, Ordering::Relaxed);
                         } else {
+                            succeeded = true;
                             exec_storage
                                 .status
                                 .store(QueryStatus::Completed as u8, Ordering::Relaxed);
@@ -491,6 +562,10 @@ impl StatementManager {
                         break;
                     }
                 }
+            }
+
+            if let Some(finished_gate) = finished_gate {
+                let _ = finished_gate.send(succeeded);
             }
         });
 
@@ -508,6 +583,28 @@ impl StatementManager {
     }
 }
 
+async fn wait_for_batch_turn(
+    start_gate: Option<oneshot::Receiver<bool>>,
+    exec_storage: &ExecState,
+    sender: &crate::database::types::ExecSender,
+) -> bool {
+    if let Some(start_gate) = start_gate {
+        if !matches!(start_gate.await, Ok(true)) {
+            let _ = sender.send(QueryExecEvent::Finished {
+                elapsed_ms: 0,
+                affected_rows: 0,
+                error: Some("Skipped because an earlier statement failed".to_string()),
+            });
+            return false;
+        }
+    }
+
+    exec_storage
+        .status
+        .store(QueryStatus::Running as u8, Ordering::Relaxed);
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -516,8 +613,23 @@ mod tests {
     };
 
     use crate::database::{stmt_manager::QueryStatus, types::DatabaseClient};
+    use uuid::Uuid;
 
     use super::StatementManager;
+
+    async fn wait_for_terminal_status(
+        stmt_manager: &StatementManager,
+        query_id: usize,
+    ) -> QueryStatus {
+        for _ in 0..50 {
+            let status = stmt_manager.get_query_status(query_id).unwrap();
+            if matches!(status, QueryStatus::Completed | QueryStatus::Error) {
+                return status;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        stmt_manager.get_query_status(query_id).unwrap()
+    }
 
     #[tokio::test]
     async fn test_basic_functionality() {
@@ -615,6 +727,77 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn statements_in_one_submission_run_in_order() {
+        let stmt_manager = StatementManager::new();
+        let connection = Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap()));
+        let client = DatabaseClient::SQLite {
+            connection: connection.clone(),
+        };
+
+        let ids = stmt_manager
+            .submit_query(
+                client,
+                "CREATE TABLE ordered (value INTEGER); INSERT INTO ordered VALUES (42); SELECT value FROM ordered;",
+            )
+            .unwrap();
+        assert_eq!(ids.len(), 3);
+
+        for id in &ids {
+            assert_eq!(
+                wait_for_terminal_status(&stmt_manager, *id).await,
+                QueryStatus::Completed
+            );
+        }
+
+        let value: i64 = connection
+            .lock()
+            .unwrap()
+            .query_row("SELECT value FROM ordered", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(value, 42);
+    }
+
+    #[tokio::test]
+    async fn failed_statement_skips_the_rest_of_its_submission() {
+        let stmt_manager = StatementManager::new();
+        let connection = Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap()));
+        let client = DatabaseClient::SQLite {
+            connection: connection.clone(),
+        };
+
+        let ids = stmt_manager
+            .submit_query(
+                client,
+                "SELECT * FROM missing_table; CREATE TABLE must_not_exist (id INTEGER);",
+            )
+            .unwrap();
+
+        assert_eq!(
+            wait_for_terminal_status(&stmt_manager, ids[0]).await,
+            QueryStatus::Error
+        );
+        assert_eq!(
+            wait_for_terminal_status(&stmt_manager, ids[1]).await,
+            QueryStatus::Error
+        );
+        assert_eq!(
+            stmt_manager.fetch_query(ids[1]).unwrap().error.as_deref(),
+            Some("Skipped because an earlier statement failed")
+        );
+
+        let exists: i64 = connection
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'must_not_exist'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(exists, 0);
+    }
+
+    #[tokio::test]
     async fn test_cancel_active_queries_marks_running_sqlite_query_cancelled() {
         let stmt_manager = StatementManager::new();
         let client = DatabaseClient::SQLite {
@@ -672,6 +855,50 @@ mod tests {
 
         let untouched = stmt_manager.get_query_status(ids_b[0]).unwrap();
         assert_ne!(untouched, QueryStatus::Error);
+
+        stmt_manager.cancel_active_queries();
+    }
+
+    #[tokio::test]
+    async fn disconnect_cancellation_is_scoped_to_one_connection() {
+        let stmt_manager = StatementManager::new();
+        let slow_query = "WITH RECURSIVE t(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM t WHERE x < 100000000) SELECT count(*) FROM t;";
+        let connection_a = Uuid::new_v4();
+        let connection_b = Uuid::new_v4();
+
+        let ids_a = stmt_manager
+            .submit_query_for_connection(
+                connection_a,
+                DatabaseClient::SQLite {
+                    connection: Arc::new(Mutex::new(
+                        rusqlite::Connection::open_in_memory().unwrap(),
+                    )),
+                },
+                slow_query,
+            )
+            .unwrap();
+        let ids_b = stmt_manager
+            .submit_query_for_connection(
+                connection_b,
+                DatabaseClient::SQLite {
+                    connection: Arc::new(Mutex::new(
+                        rusqlite::Connection::open_in_memory().unwrap(),
+                    )),
+                },
+                slow_query,
+            )
+            .unwrap();
+
+        stmt_manager.cancel_connection_queries(connection_a);
+
+        assert_eq!(
+            stmt_manager.get_query_status(ids_a[0]).unwrap(),
+            QueryStatus::Error
+        );
+        assert_ne!(
+            stmt_manager.get_query_status(ids_b[0]).unwrap(),
+            QueryStatus::Error
+        );
 
         stmt_manager.cancel_active_queries();
     }

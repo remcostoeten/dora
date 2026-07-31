@@ -35,6 +35,7 @@ pub async fn update_connection(
     conn_id: Uuid,
     name: String,
     database_info: DatabaseInfo,
+    clear_password: bool,
     color: Option<i32>,
     state: State<'_, AppState>,
 ) -> Result<ConnectionInfo, Error> {
@@ -42,7 +43,7 @@ pub async fn update_connection(
         connections: &state.connections,
         storage: &state.storage,
     };
-    svc.update_connection(conn_id, name, database_info, color)
+    svc.update_connection(conn_id, name, database_info, clear_password, color)
         .await
 }
 
@@ -145,6 +146,7 @@ pub async fn disconnect_from_database(
     monitor: State<'_, crate::database::ConnectionMonitor>,
 ) -> Result<(), Error> {
     live_monitor.stop_monitors_for_connection(connection_id);
+    state.stmt_manager.cancel_connection_queries(connection_id);
 
     let svc = ConnectionService {
         connections: &state.connections,
@@ -170,6 +172,7 @@ pub async fn remove_connection(
     state: State<'_, AppState>,
     monitor: State<'_, crate::database::ConnectionMonitor>,
 ) -> Result<(), Error> {
+    state.stmt_manager.cancel_connection_queries(connection_id);
     let svc = ConnectionService {
         connections: &state.connections,
         storage: &state.storage,

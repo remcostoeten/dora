@@ -307,7 +307,8 @@ export function createMockAdapter(): DataAdapter {
 		async updateConnection(
 			id: string,
 			name: string,
-			databaseType: DatabaseInfo
+			databaseType: DatabaseInfo,
+			_clearPassword = false
 		): Promise<AdapterResult<Connection>> {
 			await randomDelay()
 			const idx = store.connections.findIndex(function (c) {

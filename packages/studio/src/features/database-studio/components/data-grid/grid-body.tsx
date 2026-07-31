@@ -59,6 +59,7 @@ type GridRowProps = {
 	ensureRowSelectionForContextMenu: (rowIndex: number) => void
 	setEditValue: (value: string) => void
 	onFKNavigate?: (referencedTable: string, referencedColumn: string, value: unknown) => void
+	measureRow?: (element: HTMLTableRowElement | null) => void
 }
 
 /**
@@ -100,7 +101,8 @@ const GridRow = memo(function GridRow({
 	onRowSelect,
 	ensureRowSelectionForContextMenu,
 	setEditValue,
-	onFKNavigate
+	onFKNavigate,
+	measureRow
 }: GridRowProps) {
 	// Selection the context menus act on. Falls back to this row when nothing is
 	// selected but a cell here is focused — batch actions (which need size > 1)
@@ -148,6 +150,8 @@ const GridRow = memo(function GridRow({
 			selectedRows={menuSelectedRows}
 		>
 			<tr
+				ref={measureRow}
+				data-index={rowIndex}
 				className={rowClasses}
 				onClick={function (e) {
 					handleRowClick(e, rowIndex)
@@ -358,6 +362,7 @@ type GridBodyProps = {
 	virtualRows?: VirtualItem[] | null
 	/** Total scroll height when virtualizing. */
 	totalVirtualSize?: number | null
+	measureRow?: (element: HTMLTableRowElement | null) => void
 }
 
 export function GridBody({
@@ -398,7 +403,8 @@ export function GridBody({
 	setEditValue,
 	onFKNavigate,
 	virtualRows,
-	totalVirtualSize
+	totalVirtualSize,
+	measureRow
 }: GridBodyProps) {
 	// Determine which rows to actually render
 	const rowIndexesToRender: number[] = virtualRows
@@ -479,6 +485,7 @@ export function GridBody({
 							ensureRowSelectionForContextMenu={ensureRowSelectionForContextMenu}
 							setEditValue={setEditValue}
 							onFKNavigate={onFKNavigate}
+							measureRow={measureRow}
 						/>
 						{draftRow && draftInsertIndex === rowIndex + 1 && (
 							<DraftRow

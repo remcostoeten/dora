@@ -138,7 +138,9 @@ impl<'a> QueryService<'a> {
     #[instrument(skip(self, query), fields(connection_id = %connection_id))]
     pub async fn start_query(&self, connection_id: Uuid, query: &str) -> Result<Vec<usize>, Error> {
         let client = self.connection_repo.get_client(connection_id)?;
-        let query_ids = self.stmt_manager.submit_query(client, query)?;
+        let query_ids = self
+            .stmt_manager
+            .submit_query_for_connection(connection_id, client, query)?;
 
         Ok(query_ids)
     }

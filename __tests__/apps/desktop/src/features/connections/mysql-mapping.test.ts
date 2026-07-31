@@ -33,9 +33,10 @@ describe('connections/api mapping (mysql)', function () {
 				ssh_config: {
 					host: 'bastion.example.com',
 					port: 22,
-					username: 'deploy',
-					private_key_path: null,
-					password: 'ssh-pass'
+				username: 'deploy',
+				private_key_path: null,
+				password: 'ssh-pass',
+				host_key_fingerprint: null
 				}
 			}
 		})

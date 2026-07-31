@@ -53,9 +53,9 @@ changing any mapping.
    change the other.
 2. Change the classification in `diffSchema` only if the *risk* changed.
    Change the emitter only if the *SQL* changed.
-3. If you touch a banner or header string, update
-   `packages/studio/src/features/orm-cockpit/components/migration-sections.ts` in the same edit — it re-parses the
-   generated text by exact string match.
+3. Keep banner/header constants exported from the generator for the legacy
+   text-splitting compatibility path. Preview safety decisions consume
+   `MigrationResult.sections`, not parsed display text.
 4. Give every new statement a `reverse`, or deliberately leave it absent. If it
    is reversible but lossy, set `reverseCaveat` rather than omitting `reverse`.
 5. Run the orm-cockpit tests. They pin the mapping, not just the plumbing.
@@ -149,13 +149,11 @@ pair back off before sectioning and re-adds it after. MySQL additionally warns
 that a mid-migration failure leaves partial state. Do not wrap MySQL to make the
 scripts uniform.
 
-**The section markers are a parsing contract between two files.**
-`DESTRUCTIVE_BANNER` and `REVIEW_HEADER` are duplicated as exported constants in
-`packages/studio/src/features/orm-cockpit/components/migration-sections.ts` specifically so the split can find them, and
-that file says to update both in lockstep. Editing a banner in
-`generate-sql.ts` alone silently un-gates a section: the marker is not found,
-the whole body reads as safe, and destructive statements land in the default
-output.
+**Safety sections are structured output.** `MigrationResult.sections` carries
+safe, destructive, review and transaction-wrap state from generation to the
+preview. Marker constants are exported once from `generate-sql.ts` and reused
+only by the legacy string-splitting compatibility path; rendered wording cannot
+silently change a safety gate.
 
 **ORM bookkeeping tables are filtered before the diff, not after.**
 `filter-managed-tables.ts` removes `__drizzle_migrations` and

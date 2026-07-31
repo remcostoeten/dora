@@ -123,8 +123,8 @@ rather than writing `simple_query` yourself.
 **The vendor label is recovered from the URL, never set by the flow.**
 `inferPresetFromConnection` re-derives the preset by matching the URL against
 `PROVIDER_PATTERNS`. A flow that emits a hostname no pattern matches produces a
-connection that displays as generic — Xata's `sql.xata.sh` has no row today and
-shows as plain Postgres. Add the pattern for the host your flow emits.
+connection that displays as generic. Xata's `sql.xata.sh` is included; add a
+pattern for every other hostname a flow emits.
 
 **Where the credential lives follows from whether the engine has a slot for
 it.** Postgres, MySQL and libSQL take a URL, so mint the secret into the URL,

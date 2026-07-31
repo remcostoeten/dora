@@ -31,16 +31,16 @@ export function MigrationPreview({ migration, onOpenInSqlConsole }: Props) {
 
 	const gated = useMemo(
 		function () {
-			return migrationHasGatedSections(migration.up)
+			return migrationHasGatedSections(migration.sections)
 		},
-		[migration.up],
+		[migration.sections],
 	)
 
 	const sql = useMemo(
 		function () {
-			return buildPreviewSql(migration.up, { includeDestructive, includeReview })
+			return buildPreviewSql(migration.sections, { includeDestructive, includeReview })
 		},
-		[migration.up, includeDestructive, includeReview],
+		[migration.sections, includeDestructive, includeReview],
 	)
 
 	async function handleCopy() {

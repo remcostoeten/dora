@@ -18,7 +18,8 @@ and `get_columns` all answer empty for a `NoRows` statement rather than failing.
 
 Two task handles exist per statement: the executor in `execution_handles` and
 the listener draining `QueryExecEvent`s in `listener_handles`. Cancellation
-aborts both. `cancel_active_queries` additionally clears both maps wholesale.
+aborts both. Each state also records its connection id, allowing disconnect to
+cancel only that connection's pending and running statements.
 
 Events flow executor to listener over an unbounded channel:
 `TypesResolved { columns }` once, `Page { page_amount, page }` repeatedly, and
@@ -70,15 +71,17 @@ DuckDB hold one mutex-guarded connection each; libSQL, D1 and PostHog are HTTP.
 sequence for both read paths:
 
 1. `startQuery` returns a `Vec<usize>` of statement ids. `executeQuery` hands the
-   whole vector to `options.onStarted` for cancellation, then uses `data[0]` for
-   everything else.
-2. `pollQueryToCompletion` calls `fetchQuery` every `QUERY_POLL_INTERVAL_MS`
+   whole vector to `options.onStarted` for cancellation, then polls the ids in
+   submission order. The backend gates each statement on its predecessor and
+   skips the remainder after the first error.
+2. For each id, `pollQueryToCompletion` calls `fetchQuery` every `QUERY_POLL_INTERVAL_MS`
    (100) until the status is `Completed` or `Error`, giving up at
    `QUERY_POLL_TIMEOUT_MS` (30 000). It distinguishes four outcomes —
    `completed`, `error`, `timeout`, `fetch-failed` — so a still-running query is
    never misreported as missing columns.
-3. `getColumns`, parsed into `ColumnDefinition[]`.
-4. `collectAllRows` parses `first_page` from the poll result, then loops
+3. After the final statement, `getColumns` is parsed into
+   `ColumnDefinition[]`.
+4. `collectAllRows` parses that final result's `first_page`, then loops
    `fetchPage` for indices `1..page_count`, appending. A failed page breaks the
    loop and returns what it has, logging to the console.
 
@@ -129,10 +132,16 @@ In `apps/desktop/src-tauri/src/database/stmt_manager.rs`:
   concurrent callers overwrote each other.
 - `submitting_does_not_cancel_an_earlier_submission` — submission never
   supersedes.
+- `statements_in_one_submission_run_in_order` — later statements wait for their
+  predecessor.
+- `failed_statement_skips_the_rest_of_its_submission` — a failed statement
+  prevents later SQL in the same submission from running.
 - `test_cancel_active_queries_marks_running_sqlite_query_cancelled` — a running
   SQLite statement ends as `Error` with `Query cancelled`.
 - `cancel_queries_only_cancels_the_given_statements` — a second connection's
   statement is untouched.
+- `disconnect_cancellation_is_scoped_to_one_connection` — disconnect cleanup
+  does not cancel another connection's query.
 
 Frontend tests that touch this area live beside their subjects, for example
 `packages/studio/src/features/sql-console/stores/tab-store.test.tsx`.

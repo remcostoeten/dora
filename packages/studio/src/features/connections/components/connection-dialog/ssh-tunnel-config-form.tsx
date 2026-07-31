@@ -81,6 +81,28 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
         />
       </div>
 
+      <div className="space-y-2">
+        <Label
+          htmlFor="ssh-host-key-fingerprint"
+          className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+        >
+          Host Key Fingerprint
+        </Label>
+        <Input
+          id="ssh-host-key-fingerprint"
+          placeholder="SHA256:… (optional when present in ~/.ssh/known_hosts)"
+          value={config.hostKeyFingerprint || ""}
+          onChange={function (e) {
+            updateConfig({ hostKeyFingerprint: e.target.value });
+          }}
+          className="input-glow font-mono text-sm"
+        />
+        <p className="text-xs text-muted-foreground">
+          Dora rejects unknown SSH hosts. Pin the SHA-256 fingerprint here, or add the host to
+          your OpenSSH known_hosts file.
+        </p>
+      </div>
+
       <div className="space-y-3">
         <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Authentication Method

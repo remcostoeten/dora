@@ -93,13 +93,11 @@ to the row index — `resolveMutationPrimaryKey` in
 `data-grid.tsx` gates `useRowVirtualizer`; at or below it `virtualRows` is null,
 both spacer rows have zero height, and every row is in the DOM. Above it,
 `grid-body.tsx` renders only the windowed indexes between a top and a bottom
-spacer `<tr>`. Three things hold below the threshold and break above it: row
-height is a fixed 34px estimate with no `measureElement`, so a cell that renders
-taller than one line — an expanded `JsonCell` — desyncs the scroll math;
-`keepFocusedCellInView` resolves `[data-cell-key]` with `querySelector`, which
-finds only mounted cells, so moving focus to a row outside the window scrolls
-nothing; and browser find-in-page, screen readers and any DOM query see only the
-window. Never write grid code that assumes a row index has a DOM node.
+spacer `<tr>`. Mounted rows are measured through `measureElement`, so expanded
+JSON and other variable-height content updates scroll math. When keyboard focus
+moves outside the mounted window, the grid first calls `scrollToIndex`, then
+focuses the mounted cell on the next frame. Browser find-in-page, screen readers
+and DOM queries still see only the window; never assume every row has a DOM node.
 
 **A row you add to the body is not part of the virtual size.** The draft row and
 the empty state are rendered outside the windowed range and contribute height

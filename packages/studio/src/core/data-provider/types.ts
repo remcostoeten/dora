@@ -59,7 +59,8 @@ export type DataAdapter = {
 	updateConnection(
 		id: string,
 		name: string,
-		databaseType: DatabaseInfo
+		databaseType: DatabaseInfo,
+		clearPassword?: boolean
 	): Promise<AdapterResult<Connection>>
 	removeConnection(id: string): Promise<AdapterResult<void>>
 

@@ -116,11 +116,12 @@ impl<'a> ConnectionService<'a> {
         conn_id: Uuid,
         name: String,
         database_info: DatabaseInfo,
+        clear_password: bool,
         color: Option<i32>,
     ) -> Result<ConnectionInfo, Error> {
         let original_database_info = database_info.clone();
         let (mut database_info, password) = credentials::extract_sensitive_data(database_info)?;
-        let password_changed = password.is_some();
+        let password_changed = password.is_some() || clear_password;
         if let Some(password) = password {
             if let Err(error) = credentials::store_sensitive_data(&conn_id, &password) {
                 log::warn!(
@@ -128,6 +129,8 @@ impl<'a> ConnectionService<'a> {
                 );
                 database_info = original_database_info;
             }
+        } else if clear_password {
+            credentials::delete_password(&conn_id)?;
         }
 
         if let Some(mut connection_entry) = self.connections.get_mut(&conn_id) {
@@ -496,6 +499,7 @@ impl<'a> ConnectionService<'a> {
                             &ssh_conf.username,
                             ssh_conf.private_key_path.as_deref(),
                             ssh_conf.password.as_deref(),
+                            ssh_conf.host_key_fingerprint.as_deref(),
                             target_host,
                             target_port,
                         )?;
@@ -613,6 +617,7 @@ impl<'a> ConnectionService<'a> {
                         &ssh_conf.username,
                         ssh_conf.private_key_path.as_deref(),
                         ssh_conf.password.as_deref(),
+                        ssh_conf.host_key_fingerprint.as_deref(),
                         target_host,
                         target_port,
                     )?;
@@ -1289,20 +1294,15 @@ impl<'a> ConnectionService<'a> {
                 .map_err(|e| Error::Any(anyhow::anyhow!("Failed to verify PIN: {}", e)))?;
 
             if !valid {
-                return Err(Error::Any(anyhow::anyhow!("Invalid PIN")));
+                return Err(Error::PermissionDenied("Invalid connection PIN".to_string()));
             }
 
             // PIN matches, retrieve password
             credentials::get_password(&connection_id).map_err(Into::into)
         } else {
-            // No PIN set - should we allow or error?
-            // "Show only if pin is given" implies pin MUST be set to require it.
-            // But if no PIN is set, user can just access credentials normally?
-            // Current "reveal" UI should likely check `has_pin` first.
-            // If connection has no pin, maybe return password directly?
-            // But safety-wise, "verify_pin" suggests checking "Security".
-            // If no PIN set, we just return the password.
-            credentials::get_password(&connection_id).map_err(Into::into)
+            Err(Error::PermissionDenied(
+                "Set a connection PIN before revealing credentials".to_string(),
+            ))
         }
     }
 }
@@ -1337,6 +1337,7 @@ impl ConnectionService<'_> {
                             &conf.username,
                             conf.private_key_path.as_deref(),
                             conf.password.as_deref(),
+                            conf.host_key_fingerprint.as_deref(),
                             target_host,
                             target_port,
                         ) {
@@ -1499,6 +1500,7 @@ impl ConnectionService<'_> {
                             &conf.username,
                             conf.private_key_path.as_deref(),
                             conf.password.as_deref(),
+                            conf.host_key_fingerprint.as_deref(),
                             target_host.to_string(),
                             target_port,
                         ) {

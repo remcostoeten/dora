@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="@testing-library/jest-dom" />
 
 interface Window {
 	__DORA_CAPTURE_MODE?: boolean

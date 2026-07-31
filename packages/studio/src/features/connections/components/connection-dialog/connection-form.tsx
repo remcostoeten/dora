@@ -344,6 +344,7 @@ export function ConnectionForm({
                           authMethod: prev.sshConfig?.authMethod || "password",
                           password: prev.sshConfig?.password || "",
                           privateKeyPath: prev.sshConfig?.privateKeyPath || "",
+                          hostKeyFingerprint: prev.sshConfig?.hostKeyFingerprint || "",
                         },
                       };
                     });
@@ -367,6 +368,17 @@ export function ConnectionForm({
               )}
             </div>
           </>
+        )}
+        {formData.id && (
+          <label className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Checkbox
+              checked={formData.clearSavedPassword ?? false}
+              onCheckedChange={function (checked) {
+                updateField("clearSavedPassword", checked);
+              }}
+            />
+            Forget the previously saved password
+          </label>
         )}
       </div>
     );

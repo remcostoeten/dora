@@ -11,24 +11,13 @@
  * tests pin the round-trip).
  */
 
-/** Must match `DESTRUCTIVE_BANNER` in `migration/generate-sql.ts`. */
-export const DESTRUCTIVE_BANNER =
-	'-- ⚠ DESTRUCTIVE: drops or rewrites data — review before running'
+import {
+	DESTRUCTIVE_BANNER,
+	REVIEW_HEADER,
+	type MigrationSections,
+} from '@studio/features/orm-cockpit/migration/generate-sql'
 
-/** Must match the review header in `migration/generate-sql.ts` `renderUp`. */
-export const REVIEW_HEADER =
-	'-- The following changes need review and are commented out. Enable them deliberately.'
-
-export type MigrationSections = {
-	/** `true` when the script is transaction-wrapped (postgres). */
-	wrapped: boolean
-	/** Creates + additive ALTERs — always safe to apply. */
-	safe: string
-	/** Destructive block (banner + statements), or '' when none. */
-	destructive: string
-	/** Review block (header + commented statements), or '' when none. */
-	review: string
-}
+export { DESTRUCTIVE_BANNER, REVIEW_HEADER, type MigrationSections }
 
 function stripWrapper(up: string): { wrapped: boolean; body: string } {
 	const trimmed = up.trim()
@@ -98,8 +87,11 @@ export type PreviewOptions = {
  * destructive/review opt-ins. Display and clipboard use the same text so what
  * the user sees is what they run.
  */
-export function buildPreviewSql(up: string, options: PreviewOptions): string {
-	const sections = splitMigrationSql(up)
+export function buildPreviewSql(
+	source: string | MigrationSections,
+	options: PreviewOptions
+): string {
+	const sections = typeof source === 'string' ? splitMigrationSql(source) : source
 	const blocks: string[] = []
 
 	if (sections.safe && sections.safe !== '-- No changes.') {
@@ -122,11 +114,11 @@ export function buildPreviewSql(up: string, options: PreviewOptions): string {
 }
 
 /** Whether the script carries destructive / review sections at all. */
-export function migrationHasGatedSections(up: string): {
+export function migrationHasGatedSections(source: string | MigrationSections): {
 	hasDestructive: boolean
 	hasReview: boolean
 } {
-	const sections = splitMigrationSql(up)
+	const sections = typeof source === 'string' ? splitMigrationSql(source) : source
 	return {
 		hasDestructive: sections.destructive.length > 0,
 		hasReview: sections.review.length > 0,

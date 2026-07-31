@@ -98,11 +98,17 @@ when `mysql_url.password().is_none()`. The whole connection blob is separately
 decrypted on every `Storage::get_connection` / `get_connections`. Do not add a
 call site that reads a credential eagerly or on a list refresh.
 
-**Nothing clears a credential from memory.** There is no zeroization; the
-plaintext lives in the `Database` variant and in the driver config for the
-process lifetime. The only deletion anywhere is `credentials::delete_password`
-in `remove_connection`. `verify_pin_and_get_credentials` is the one sanctioned
-path that returns a plaintext password across IPC — do not add a second.
+**Password removal is explicit.** There is no zeroization; plaintext still
+lives in the active driver config for the process lifetime. Removing a saved
+password requires `clear_password` on `update_connection`, which deletes the
+keyring entry when no replacement password is supplied. Removal also deletes
+it. `verify_pin_and_get_credentials` is the one sanctioned plaintext-password
+IPC path and refuses connections without a persisted PIN.
+
+**SSH host keys are verified before authentication.** A configured
+`host_key_fingerprint` pins the SHA-256 fingerprint. Without a pin, the tunnel
+uses strict OpenSSH `~/.ssh/known_hosts`; unknown or mismatched keys fail rather
+than being accepted on first use.
 
 **Health is a dead-handle poll, not a probe.** `connect` returns a
 `ConnectionCheck`, which is the `JoinHandle` of the tokio-postgres connection
@@ -193,18 +199,8 @@ clearing that field. Read this as the rule for what a change must release.
 
 State these as gaps; do not write around them as if they were solved.
 
-- Nothing in `packages/studio/src` listens for `end-of-connection`. A
-  server-side drop only reaches the UI when the `connections` query refetches,
-  because `status` is derived from `connected` in that payload.
 - Health monitoring covers Postgres and CockroachDB only. Every other engine can
   be dead in the map with `connected: true` until its next query fails.
-- The tunnel's `check_server_key` returns `Ok(true)` unconditionally: there is
-  no SSH host-key verification.
-- `update_connection` never deletes a keyring entry. Removing the password from
-  a connection string leaves the old keyring password in place, and connect will
-  re-apply it because the parsed config has none.
-- `pin_hash` is never persisted — no column is written and every storage read
-  sets it to `None` — so a connection PIN lives only until the process exits.
 - `initialize_connections` is registered as a command and has no caller.
 
 ## Common mistakes

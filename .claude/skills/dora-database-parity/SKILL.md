@@ -91,7 +91,8 @@ Export the new symbol from
 behaviour is a field on the Rust `SourceCaps` in
 `apps/desktop/src-tauri/src/database/dialect.rs`, filled in `for_dialect` for
 every `DetectedDialect` and read through `DatabaseConnection::source_caps()` —
-which is how the live monitor decides between push and polling.
+which is how the live monitor first admits/refuses an engine and then decides
+between push and polling.
 
 **An engine that cannot do something returns an error; the factory match stays
 total.** Every per-driver factory is an exhaustive match, so a missing engine is
@@ -166,8 +167,7 @@ State these as gaps; do not write around them as if they were solved.
 - Nothing checks behavioural parity. The exhaustive matches and the
   `Record<DbEngine, ...>` types force every engine to be *mentioned*; no test
   asserts that two engines behave the same.
-- Three engines — libSQL, D1, PostHog — have no automated coverage of any kind.
-- DuckDB is not compiled in CI, so its adapter and its tests can rot silently.
+- Live adapter coverage is still absent for libSQL, D1 and PostHog.
 - `Error::NotImplemented` reaches the user as raw text; there is no mapping in
   `formatBackendError` that turns it into engine-aware copy.
 

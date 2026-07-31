@@ -172,7 +172,11 @@ and asks `isUiActionVisible(action, caps)` / `getVisibleUiActions(caps)` in
 when a new axis of difference appears; never add an engine check at the call
 site.
 
-**The live monitor always polls; push only shortens the wait.** `run_monitor_loop`
+**Live monitoring has an explicit backend admission flag.**
+`SourceCaps.supports_live_monitor` must be set for the engine before a monitor
+task can start, and must match the Studio capability table.
+
+**An admitted live monitor always polls; push only shortens the wait.** `run_monitor_loop`
 calls `poll_table_hash` every tick and re-snapshots only when the hash changed.
 When `source_caps().supports_listen_notify` is true it also opens a notification
 receiver and `select!`s it against the sleep, so `LISTEN`/`NOTIFY` is an

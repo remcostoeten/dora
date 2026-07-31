@@ -127,6 +127,8 @@ pub struct SshConfig {
     pub username: String,
     pub private_key_path: Option<String>,
     pub password: Option<String>,
+    #[serde(default)]
+    pub host_key_fingerprint: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
@@ -560,9 +562,16 @@ impl DatabaseConnection {
         match &self.database {
             Database::Postgres { dialect, .. } => dialect.caps(),
             Database::MySQL { dialect, .. } => dialect.caps(),
-            // Non Postgres/MySQL engines do not use LISTEN/NOTIFY live monitoring.
-            _ => SourceCaps {
+            Database::SQLite { .. } => SourceCaps {
                 supports_listen_notify: false,
+                supports_live_monitor: true,
+            },
+            Database::DuckDB { .. }
+            | Database::LibSQL { .. }
+            | Database::D1 { .. }
+            | Database::Posthog { .. } => SourceCaps {
+                supports_listen_notify: false,
+                supports_live_monitor: false,
             },
         }
     }

@@ -17,6 +17,7 @@ function JsonCell({ value }: { value: object }) {
 	if (!expanded) {
 		return (
 			<button
+				tabIndex={-1}
 				className='flex items-center gap-1 text-warning hover:text-warning/80 font-mono text-xs transition-colors'
 				onClick={function (e) {
 					e.stopPropagation()
@@ -32,6 +33,7 @@ function JsonCell({ value }: { value: object }) {
 	return (
 		<div className='text-xs font-mono' onClick={function (e) { e.stopPropagation() }}>
 			<button
+				tabIndex={-1}
 				className='flex items-center gap-1 text-warning hover:text-warning/80 transition-colors mb-1'
 				onClick={function () { setExpanded(false) }}
 			>

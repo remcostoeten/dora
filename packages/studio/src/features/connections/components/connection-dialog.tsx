@@ -94,7 +94,8 @@ export function ConnectionDialog({
 			username: '',
 			authMethod: 'password' as SshAuthMethod,
 			password: '',
-			privateKeyPath: ''
+			privateKeyPath: '',
+			hostKeyFingerprint: ''
 		},
 		...initialValues
 	})
@@ -470,7 +471,9 @@ export function ConnectionDialog({
 							password:
 								formData.sshConfig.authMethod === 'password'
 									? formData.sshConfig.password || null
-									: null
+									: null,
+							host_key_fingerprint:
+								formData.sshConfig.hostKeyFingerprint?.trim() || null
 						}
 					: null
 

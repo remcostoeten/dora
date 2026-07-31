@@ -167,10 +167,8 @@ changed. A release where master moved once did not finish.
 
 - Editing a version file, writing the CHANGELOG section, creating the tag, or
   creating the GitHub release by hand.
-- Trusting the asset tables in `docs/distribution/release-guide.md`. That doc
-  still describes an Intel macOS job, `.msi` outputs, and a 9-asset gate;
-  `.github/workflows/release.yml` and `apps/desktop/src-tauri/tauri.conf.json`
-  have no `msi` target, no Intel job, and an 11-asset gate.
+- Adding an Intel macOS or MSI asset based on an obsolete release assumption;
+  the workflow has three platform jobs, NSIS on Windows and an 11-asset gate.
 - Adding `.github/release-notes/<tag>.md` after the tag was pushed.
 - Re-dispatching Release dispatch to retry anything, which cuts a second version.
 - Re-running the whole Release run to fix a single channel.

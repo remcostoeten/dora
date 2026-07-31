@@ -9,6 +9,7 @@ function backendToFrontendSshConfig(
 		username: string
 		private_key_path: string | null
 		password: string | null
+		host_key_fingerprint?: string | null
 	} | null
 ) {
 	if (!sshConfig) {
@@ -22,7 +23,8 @@ function backendToFrontendSshConfig(
 		username: sshConfig.username,
 		authMethod: sshConfig.private_key_path ? 'keyfile' : 'password',
 		password: sshConfig.password ?? undefined,
-		privateKeyPath: sshConfig.private_key_path ?? undefined
+		privateKeyPath: sshConfig.private_key_path ?? undefined,
+		hostKeyFingerprint: sshConfig.host_key_fingerprint ?? undefined
 	} as const
 }
 
@@ -43,7 +45,8 @@ export function frontendToBackendSshConfig(conn: FrontendConnection) {
 		username: conn.sshConfig.username,
 		private_key_path:
 			conn.sshConfig.authMethod === 'keyfile' ? conn.sshConfig.privateKeyPath || null : null,
-		password: conn.sshConfig.authMethod === 'password' ? conn.sshConfig.password || null : null
+		password: conn.sshConfig.authMethod === 'password' ? conn.sshConfig.password || null : null,
+		host_key_fingerprint: conn.sshConfig.hostKeyFingerprint?.trim() || null
 	}
 }
 

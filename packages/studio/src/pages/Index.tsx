@@ -106,11 +106,43 @@ function IndexInner() {
   }, []);
   const { settings, persistSetting, isLoading: isSettingsLoading } = useSettings();
 
-  const { data: connections = [], isLoading: isConnectionsLoading } = useConnections();
+  const {
+    data: connections = [],
+    isLoading: isConnectionsLoading,
+    refetch: refetchConnections,
+  } = useConnections();
   const isLoading = isSettingsLoading || isConnectionsLoading;
   const { addConnection, updateConnection, removeConnection, disconnectFromDatabase } =
     useConnectionMutations();
   const isTauri = useIsTauri();
+
+  useEffect(
+    function listenForServerSideDisconnects() {
+      if (!isTauri) return;
+      let disposed = false;
+      let unlisten: (() => void) | undefined;
+
+      void import("@tauri-apps/api/event")
+        .then(function ({ listen }) {
+          return listen<string>("end-of-connection", function () {
+            void refetchConnections();
+          });
+        })
+        .then(function (cleanup) {
+          if (disposed) cleanup();
+          else unlisten = cleanup;
+        })
+        .catch(function (error) {
+          console.warn("Failed to listen for connection status changes:", error);
+        });
+
+      return function cleanup() {
+        disposed = true;
+        unlisten?.();
+      };
+    },
+    [isTauri, refetchConnections],
+  );
 
   const urlView = searchParams.get("view");
   const urlTable = searchParams.get("table");
@@ -728,6 +760,7 @@ function IndexInner() {
         id: editingConnection.id,
         name: connection.name,
         databaseType: dbInfo,
+        clearPassword: connection.clearSavedPassword,
       });
       setIsConnectionDialogOpen(false);
       setEditingConnection(undefined);

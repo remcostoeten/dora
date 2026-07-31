@@ -87,6 +87,9 @@ jobs:
                   export PATH="${PG_BIN_DIR}:$PATH"
                   which initdb
                   cargo test
+                  cargo test export_bindings -- --ignored
+                  git diff --exit-code -- packages/studio/src/lib/bindings.ts
+                  cargo test --features duckdb-engine
               env:
                   DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
 

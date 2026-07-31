@@ -68,8 +68,14 @@ export function useConnectionMutations() {
 			id: string
 			name: string
 			databaseType: DatabaseInfo
+			clearPassword?: boolean
 		}) => {
-			const res = await adapter.updateConnection(params.id, params.name, params.databaseType)
+			const res = await adapter.updateConnection(
+				params.id,
+				params.name,
+				params.databaseType,
+				params.clearPassword
+			)
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},

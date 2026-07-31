@@ -89,10 +89,9 @@ marked `Error` locally and the server finishes the work anyway. Never describe
 cancel as guaranteed for those engines in UI copy or comments.
 
 **Cancel by statement id.** The tab's ids come from the `onStarted` callback into
-`inFlightQueryIdsRef`, keyed by tab id. `cancelActiveQuery` ignores the
-`connectionId` it is given and cancels every running and pending statement in
-the process; it exists only for the window before ids are known, and is never
-the right call once you have ids.
+`inFlightQueryIdsRef`, keyed by tab id. Closing a tab and unmounting the console
+cancel those exact ids. Disconnect/remove use the connection id recorded on
+each `ExecState`, so another connection's statements are not touched.
 
 **The string `Query cancelled` is load-bearing on both sides.** `cancel_queries`
 writes it as the statement's error, and the adapter compares against it to turn
@@ -105,11 +104,11 @@ that tab's `isExecuting` is set. Submitting never supersedes anything:
 `submitting_does_not_cancel_an_earlier_submission` pins. A caller that wants to
 replace its previous run cancels it first, by id.
 
-**A submission with N statements starts N executors at once.** `submit_query`
-loops over the parsed statements and spawns a worker for each without awaiting,
-so there is no ordering between them, and the console reads only the first id
-for status and rows. Do not build a feature on a multi-statement script whose
-statements depend on each other's order.
+**Statements in one submission execute in order and stop after failure.**
+`submit_query_for_connection` allocates every id up front, then gates each
+executor on its predecessor's successful completion. The frontend polls the
+ids in order and returns the final statement's result. Separate submissions
+remain independent.
 
 **The bound on concurrency is the connection, not the pipeline.** Postgres and
 CockroachDB share one client across every statement. MySQL and MariaDB use a
@@ -122,12 +121,10 @@ bounds the map; running and pending statements are never reaped, so a poll
 cannot lose its own results, but a view that fans out has to stay well under
 that figure or an older result is dropped while still referenced.
 
-**Neither closing a tab nor disconnecting cancels anything.** `CLOSE_TAB` just
-removes the tab from state. `disconnect_from_database` clears the client handle
-on the connection entry, but every executor was handed its own clone of the
-client, so the statement runs to completion and its pages sit in the manager
-until reaped. Any code that destroys a query's consumer must call
-`cancelQueries` with that consumer's ids first.
+**A disappearing consumer cancels its work.** Tab close and console unmount
+cancel the ids held by that consumer. Disconnect/remove cancel every pending or
+running statement whose state records that connection id before the handle is
+cleared.
 
 **Browse drops stale loads with a monotonic request id.** `loadTableData`
 increments `loadRequestIdRef` on entry, captures the value, and checks
@@ -159,8 +156,8 @@ State these as gaps; do not write around them as if they were solved.
 - No row cap on the console path. A large `SELECT` materializes every row into
   one array; the only bound is the 30-second poll timeout, which surfaces as an
   error while the query keeps running.
-- Nothing cancels on tab close, on unmount, on view switch or on disconnect. The
-  Cancel button in the console is the only cancel trigger in live code.
+- Browse/view-switch cancellation is still request-staleness suppression rather
+  than backend cancellation.
 - No streaming. The frontend polls `fetch_query` every 100ms and only renders
   once the statement has reached a terminal state, so a long query shows nothing
   until it finishes even though pages already exist in the manager.
@@ -168,8 +165,7 @@ State these as gaps; do not write around them as if they were solved.
 ## Common mistakes
 
 - Assuming an aborted promise, an unmount or a dropped future stopped the query.
-- Cancelling with `cancelActiveQuery` when statement ids are already known,
-  which kills other tabs' queries.
+- Cancelling process-wide when statement ids or a connection id are known.
 - Adding an engine without an arm in `signal_engine_cancel`, so its Cancel
   button silently does nothing server-side.
 - Making a submission supersede the previous one inside `submit_query` instead
@@ -181,7 +177,7 @@ State these as gaps; do not write around them as if they were solved.
 - Adding a filter, sort or pagination input without adding it to
   `buildTableCacheKey`.
 - Treating backend pages as windowing and assuming a partial fetch is possible.
-- Relying on statement order inside one multi-statement submission.
+- Starting all statements in one submission concurrently.
 - Raising `QUERY_POLL_TIMEOUT_MS` to make a slow or oversized query pass.
 
 ## Verification

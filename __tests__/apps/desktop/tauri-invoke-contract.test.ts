@@ -94,7 +94,7 @@ function extractFrontendCommandUsages(sourceRoot: string): string[] {
 
 describe('Tauri invoke contract', function () {
 	it('keeps every generated invoke registered in Rust generate_handler', function () {
-		const bindingsSource = readRepoFile('apps/desktop/src/lib/bindings.ts')
+		const bindingsSource = readRepoFile('packages/studio/src/lib/bindings.ts')
 		const libSource = readRepoFile('apps/desktop/src-tauri/src/lib.rs')
 
 		const invokeNames = extractInvokeNames(bindingsSource)
@@ -107,7 +107,7 @@ describe('Tauri invoke contract', function () {
 	})
 
 	it('keeps every frontend commands.* call backed by a generated binding', function () {
-		const bindingsSource = readRepoFile('apps/desktop/src/lib/bindings.ts')
+		const bindingsSource = readRepoFile('packages/studio/src/lib/bindings.ts')
 		const bindingMethodNames = extractBindingMethodNames(bindingsSource)
 		const frontendCommandNames = extractFrontendCommandUsages(
 			path.join(getRepoRoot(), 'apps/desktop/src')

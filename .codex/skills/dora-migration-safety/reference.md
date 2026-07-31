@@ -11,7 +11,7 @@ They are computed in different modules and do not mean the same thing.
 - **`Confidence`** (`diff/types.ts`) — `'safe' | 'review' | 'destructive'`.
   Produced by `diffSchema`, attached to every `ColumnDiff` and `TableDiff`.
   Drives the badges in `components/drift-view.tsx`.
-- **`Section`** (`migration/generate-sql.ts`, not exported) —
+- **`Section`** (`migration/generate-sql.ts`, internal statement classification) —
   `'create' | 'additive' | 'destructive'`, plus an optional `review` string on
   the same `Stmt`. Drives what `renderUp` banners, comments out, and what
   `buildPreviewSql` gates.
@@ -132,10 +132,13 @@ nothing survives the filter, `down` is exactly `-- No reversible statements.`
 - `assemble` for MySQL when `stmts.length > 0` — no transactional DDL, so a
   mid-migration failure leaves partial state.
 
-## 7. Marker strings
+## 7. Structured preview sections and marker strings
 
-`components/migration-sections.ts` re-parses the `up` text by exact string
-match, and its own doc comment says to update both files in lockstep.
+`MigrationResult.sections` carries `safe`, `destructive`, `review` and
+transaction-wrap metadata directly from generation to the preview. The preview
+uses that structure for safety gates; it does not infer semantics by re-parsing
+rendered SQL. `splitMigrationSections` still accepts legacy SQL text for
+compatibility and tests, using the exported marker constants below.
 
 - `DESTRUCTIVE_BANNER` = `-- ⚠ DESTRUCTIVE: drops or rewrites data — review before running`
 - `REVIEW_HEADER` = `-- The following changes need review and are commented out. Enable them deliberately.`
@@ -156,4 +159,5 @@ Under `__tests__/packages/studio/orm-cockpit/`:
 - `migration/generate-sql.test.ts` — emitted sections, caveats, warnings.
 - `migration/migration-status.test.ts` — `reconcileMigrations`.
 - `migration/read-journal.test.ts` — journal parsing and `out` resolution.
-- `components/migration-sections.test.ts` — the split/reassemble round-trip.
+- `components/migration-sections.test.ts` — structured preview/gate behavior
+  plus the legacy split/reassemble compatibility path.

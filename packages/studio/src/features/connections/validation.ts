@@ -96,7 +96,15 @@ export const sshTunnelSchema = z
 		username: z.string().min(1, 'SSH username is required'),
 		authMethod: z.enum(['password', 'keyfile']),
 		password: z.string().optional(),
-		privateKeyPath: z.string().optional()
+		privateKeyPath: z.string().optional(),
+		hostKeyFingerprint: z
+			.string()
+			.trim()
+			.refine(
+				(value) => value.length === 0 || /^SHA256:[A-Za-z0-9+/]+={0,2}$/.test(value),
+				'Host key fingerprint must use the SHA256:… OpenSSH format'
+			)
+			.optional()
 	})
 	.refine(
 		(data) => {

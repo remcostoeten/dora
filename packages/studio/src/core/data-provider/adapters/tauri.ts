@@ -143,9 +143,10 @@ export function createTauriAdapter(): DataAdapter {
 		async updateConnection(
 			id: string,
 			name: string,
-			databaseType: DatabaseInfo
+			databaseType: DatabaseInfo,
+			clearPassword = false
 		): Promise<AdapterResult<Connection>> {
-			const result = await commands.updateConnection(id, name, databaseType, null)
+			const result = await commands.updateConnection(id, name, databaseType, clearPassword, null)
 			if (result.status === 'ok') {
 				return ok(backendToFrontendConnection(result.data))
 			}
@@ -397,37 +398,44 @@ export function createTauriAdapter(): DataAdapter {
 
 			options?.onStarted?.(startResult.data)
 
-			const queryId = startResult.data[0]
+			let finalRows: Record<string, unknown>[] = []
+			let finalColumnDefs: ColumnDefinition[] = []
+			let finalRowCount = 0
 
-			const poll = await pollQueryToCompletion(queryId)
-			if (poll.kind === 'fetch-failed') {
-				return err('Failed to fetch query results')
-			}
-			if (poll.kind === 'timeout') {
-				return err(
-					`Query is still running after ${QUERY_POLL_TIMEOUT_MS / 1000}s. The database may be slow to respond (a serverless cold start, a large result, or a dropped connection). Try again or reconnect.`
-				)
-			}
-			if (poll.kind === 'error') {
-				if (poll.message === 'Query cancelled') return err('Query cancelled')
-				console.error('[TauriAdapter] Query execution error:', poll.message)
-				return err(poll.message)
-			}
+			for (const queryId of startResult.data) {
+				const poll = await pollQueryToCompletion(queryId)
+				if (poll.kind === 'fetch-failed') {
+					return err('Failed to fetch query results')
+				}
+				if (poll.kind === 'timeout') {
+					return err(
+						`Query is still running after ${QUERY_POLL_TIMEOUT_MS / 1000}s. The database may be slow to respond (a serverless cold start, a large result, or a dropped connection). Try again or reconnect.`
+					)
+				}
+				if (poll.kind === 'error') {
+					if (poll.message === 'Query cancelled') return err('Query cancelled')
+					console.error('[TauriAdapter] Query execution error:', poll.message)
+					return err(poll.message)
+				}
 
-			const pageInfo = poll.pageInfo
+				const pageInfo = poll.pageInfo
+				const columnsResult = await commands.getColumns(queryId)
+				const columnDefs =
+					columnsResult.status === 'ok' ? parseColumns(columnsResult.data ?? []) : []
+				const rows = await collectAllRows(queryId, pageInfo, columnDefs)
 
-			const columnsResult = await commands.getColumns(queryId)
-			const columnDefs =
-				columnsResult.status === 'ok' ? parseColumns(columnsResult.data ?? []) : []
-			const rows = await collectAllRows(queryId, pageInfo, columnDefs)
+				finalRows = rows
+				finalColumnDefs = columnDefs
+				finalRowCount = pageInfo.affected_rows ?? rows.length
+			}
 
 			return ok({
-				rows,
-				columns: columnDefs.map(function (col) {
+				rows: finalRows,
+				columns: finalColumnDefs.map(function (col) {
 					return col.name
 				}),
-				columnDefinitions: columnDefs,
-				rowCount: pageInfo.affected_rows ?? rows.length,
+				columnDefinitions: finalColumnDefs,
+				rowCount: finalRowCount,
 				executionTime: Math.round(performance.now() - startTime)
 			})
 		},

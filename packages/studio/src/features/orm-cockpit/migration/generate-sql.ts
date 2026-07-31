@@ -37,9 +37,24 @@ import type {
 
 export type MigrationContext = { from?: SchemaIR; to?: SchemaIR }
 
-export type MigrationResult = { up: string; down: string; warnings: string[] }
+export type MigrationSections = {
+	wrapped: boolean
+	safe: string
+	destructive: string
+	review: string
+}
 
-const DESTRUCTIVE_BANNER = '-- ⚠ DESTRUCTIVE: drops or rewrites data — review before running'
+export type MigrationResult = {
+	up: string
+	down: string
+	warnings: string[]
+	sections: MigrationSections
+}
+
+export const DESTRUCTIVE_BANNER =
+	'-- ⚠ DESTRUCTIVE: drops or rewrites data — review before running'
+export const REVIEW_HEADER =
+	'-- The following changes need review and are commented out. Enable them deliberately.'
 
 type Section = 'create' | 'additive' | 'destructive'
 
@@ -564,45 +579,49 @@ export function quote(name: string, dialect: Dialect): string {
 
 function assemble(stmts: Stmt[], dialect: Dialect, warnings: string[]): MigrationResult {
 	const wrap = dialect === 'postgres'
-	const up = renderUp(stmts, wrap)
+	const sections = buildMigrationSections(stmts, wrap)
+	const up = renderUp(sections)
 	const down = renderDown(stmts, wrap)
 	if (dialect === 'mysql' && stmts.length > 0) {
 		warnings.push('MySQL does not support transactional DDL; statements are not wrapped in a transaction and a failure mid-migration leaves a partial state.')
 	}
-	return { up, down, warnings }
+	return { up, down, warnings, sections }
 }
 
-function renderUp(stmts: Stmt[], wrap: boolean): string {
+function buildMigrationSections(stmts: Stmt[], wrapped: boolean): MigrationSections {
 	const creates = stmts.filter((s) => s.section === 'create' && !s.review)
 	const additive = stmts.filter((s) => s.section === 'additive' && !s.review)
 	const destructive = stmts.filter((s) => s.section === 'destructive' && !s.review)
 	const reviews = stmts.filter((s) => s.review)
 
-	const blocks: string[] = []
+	const safeBlocks: string[] = []
 	if (creates.length > 0) {
-		blocks.push(creates.map((s) => s.sql).join('\n'))
+		safeBlocks.push(creates.map((s) => s.sql).join('\n'))
 	}
 	if (additive.length > 0) {
-		blocks.push(additive.map((s) => s.sql).join('\n'))
-	}
-	if (destructive.length > 0) {
-		blocks.push([DESTRUCTIVE_BANNER, ...destructive.map((s) => s.sql)].join('\n'))
-	}
-	if (reviews.length > 0) {
-		blocks.push(
-			[
-				'-- The following changes need review and are commented out. Enable them deliberately.',
-				...reviews.map(renderReview),
-			].join('\n\n'),
-		)
+		safeBlocks.push(additive.map((s) => s.sql).join('\n'))
 	}
 
-	if (blocks.length === 0) {
-		return '-- No changes.'
+	const safe = safeBlocks.join('\n\n')
+	const destructiveSql =
+		destructive.length > 0
+			? [DESTRUCTIVE_BANNER, ...destructive.map((s) => s.sql)].join('\n')
+			: ''
+	const review =
+		reviews.length > 0
+			? [REVIEW_HEADER, ...reviews.map(renderReview)].join('\n\n')
+			: ''
+
+	if (!safe && !destructiveSql && !review) {
+		return { wrapped: false, safe: '-- No changes.', destructive: '', review: '' }
 	}
 
-	const body = blocks.join('\n\n')
-	return wrap ? `BEGIN;\n\n${body}\n\nCOMMIT;` : body
+	return { wrapped, safe, destructive: destructiveSql, review }
+}
+
+function renderUp(sections: MigrationSections): string {
+	const body = [sections.safe, sections.destructive, sections.review].filter(Boolean).join('\n\n')
+	return sections.wrapped ? `BEGIN;\n\n${body}\n\nCOMMIT;` : body
 }
 
 function renderDown(stmts: Stmt[], wrap: boolean): string {

@@ -108,6 +108,24 @@ impl LiveMonitorManager {
         interval_ms: u64,
         change_types: Vec<LiveMonitorChangeType>,
     ) -> Result<LiveMonitorSession, Error> {
+        let state = self
+            .app
+            .try_state::<AppState>()
+            .ok_or_else(|| Error::Internal("App state unavailable".to_string()))?;
+        let connection = state
+            .connections
+            .get(&connection_id)
+            .ok_or(Error::ConnectionNotFound(connection_id))?;
+        if !connection.connected {
+            return Err(Error::ConnectionFailed(
+                "Connect the database before starting live monitoring".to_string(),
+            ));
+        }
+        if !connection.source_caps().supports_live_monitor {
+            return Err(Error::NotImplemented("live monitoring for this source"));
+        }
+        drop(connection);
+
         let monitor_id = Uuid::new_v4().to_string();
         let app = self.app.clone();
         let poll_interval_ms = interval_ms.max(1000);
@@ -650,9 +668,7 @@ async fn fetch_table_snapshot(
             fetch_libsql_snapshot(connection, table_name).await
         }
         DatabaseClient::MySQL { pool, .. } => fetch_mysql_snapshot(pool, table_name).await,
-        // D1 has no live monitoring: `source_caps().supports_listen_notify` is
-        // false, so `start_live_monitor` returns before reaching this snapshot
-        // path. The arm exists only to keep the match exhaustive.
+        // Backend capability validation rejects D1 before a task is spawned.
         DatabaseClient::D1 { .. } => {
             Err(Error::NotImplemented("live monitoring for Cloudflare D1"))
         }

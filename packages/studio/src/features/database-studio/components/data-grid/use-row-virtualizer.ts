@@ -25,6 +25,7 @@ export function useRowVirtualizer({ scrollContainerRef, rowCount, enabled }: Opt
 
 	return {
 		virtualizer,
+		measureElement: virtualizer.measureElement,
 		virtualRows: enabled ? virtualizer.getVirtualItems() : null,
 		totalSize: enabled ? virtualizer.getTotalSize() : null,
 	}

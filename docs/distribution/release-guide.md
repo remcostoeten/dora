@@ -87,8 +87,8 @@ flowchart TD
 | 0 | `release-dispatch` | `ubuntu-latest` | Bump versions, `CHANGELOG.md`, tag, push |
 | 1 | `preflight` | `ubuntu-latest` | Validate metadata before any build |
 | 2 | `release-linux` | `ubuntu-latest` | Linux installers + tarball |
-| 2 | `release-windows` | `windows-latest` | Windows `.msi` + `.exe` |
-| 2 | `release-macos` | `macos-latest` | macOS ARM `.dmg` |
+| 2 | `release-windows` | `windows-2022` | Windows NSIS `.exe` + updater signature |
+| 2 | `release-macos` | `macos-latest` | macOS ARM `.dmg` + updater archive |
 | 3 | `publish-release` | `ubuntu-latest` | Upload assets, create GitHub release |
 | 4 | `post-release` | `ubuntu-latest` | Update `README.md` on `master` |
 | 5 | package managers | varies | AUR, Homebrew, APT, Winget, Snap, Flatpak as reusable-workflow jobs |
@@ -136,14 +136,15 @@ Root `package.json` is checked separately; if it differs, CI logs a warning but 
 
 Preflight also verifies:
 
-- Required Tauri bundle targets: `deb`, `rpm`, `appimage`, `nsis`, `msi`, `dmg`
+- Required Tauri bundle targets: `app`, `deb`, `rpm`, `appimage`, `nsis`, `dmg`
+- `bundle.createUpdaterArtifacts` is enabled
 - Distribution files exist (AUR PKGBUILD, desktop entry, Snap/Flatpak manifests, generator scripts)
 
 ---
 
 ## Phase 2 — Platform builds
 
-Four jobs run in parallel. Each job:
+Three jobs run in parallel. Each job:
 
 1. Checks out the repo
 2. Installs Bun, Rust, and platform-specific dependencies
@@ -173,9 +174,9 @@ Four jobs run in parallel. Each job:
 
 | Asset | Description |
 | --- | --- |
-| `.msi` | Windows installer |
 | `.exe` | NSIS installer |
-| `checksums-windows.txt` | Checksums for msi, exe |
+| `.exe.sig` | Signed updater artifact |
+| `checksums-windows.txt` | Checksums for the NSIS installer |
 
 ### macOS ARM (`release-macos`)
 
@@ -183,23 +184,17 @@ Four jobs run in parallel. Each job:
 
 **Outputs:** `.dmg` for Apple Silicon.
 
-### macOS Intel (`release-macos-intel`)
-
-**Runner:** `macos-15-intel`
-
-**Outputs:** `.dmg` for Intel Macs.
-
 ---
 
 ## Phase 3 — `publish-release`
 
-Waits for all four platform jobs, then:
+Waits for all three platform jobs, then:
 
 1. **Downloads** every artifact from the workflow run
 2. **Validates** the asset set:
-   - At least **9** files total
-   - At least one `.msi`
-   - At least one `.exe`
+   - At least **11** files total
+   - Signed `.exe`, `.AppImage`, and `.app.tar.gz` updater artifacts
+   - At least one `.dmg`
 3. **Creates the GitHub release** with `git-cliff` notes from `cliff.toml` (or curated `.github/release-notes/<tag>.md` when present):
 
 ```bash
@@ -314,8 +309,8 @@ Built by `release.yml` and attached to every release. Users install directly fro
 
 | Asset | Platform | Store workflow |
 | --- | --- | --- |
-| `.dmg` (Apple Silicon + Intel) | macOS | Also feeds Homebrew |
-| `.msi`, `.exe` | Windows | Also feeds Winget |
+| `.dmg` (Apple Silicon) | macOS | Also feeds Homebrew |
+| `.exe` | Windows | Also feeds Winget |
 | `.deb` | Debian/Ubuntu | Also feeds APT repo |
 | `.rpm` | Fedora/RHEL/openSUSE | **Direct download only** — no COPR/RPM-repo workflow |
 | `.AppImage` | Linux portable | Direct download only |
@@ -409,13 +404,13 @@ Optional: run `bun run release:guide` for an automated sanity check.
 
 Update `apps/desktop/package.json`, `tauri.conf.json`, and `Cargo.toml` to the same semver, commit, then tag again.
 
-### `publish-release` fails: fewer than 9 assets
+### `publish-release` fails: fewer than 11 assets
 
 One or more platform jobs failed or produced incomplete artifacts. Open the failed platform job log first.
 
-### Missing `.msi` or `.exe`
+### Missing `.exe` or `.exe.sig`
 
-The Windows job failed or did not upload NSIS/MSI bundles. Check `release-windows` logs and Tauri bundle targets in `tauri.conf.json`.
+The Windows job failed or did not upload the NSIS bundle and updater signature. Check `release-windows` logs, signing secrets, and the `nsis` target in `tauri.conf.json`.
 
 ### Package manager workflow fails immediately
 
@@ -487,7 +482,7 @@ First-time bootstrap (Windows, one-time):
 
 ```powershell
 winget install wingetcreate
-wingetcreate new "https://github.com/remcostoeten/dora/releases/download/vX.Y.Z/Dora_X.Y.Z_x64_en-US.msi"
+wingetcreate new "https://github.com/remcostoeten/dora/releases/download/vX.Y.Z/Dora_X.Y.Z_x64-setup.exe"
 ```
 
 After the `microsoft/winget-pkgs` PR merges:

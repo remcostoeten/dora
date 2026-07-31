@@ -38,9 +38,10 @@ describe('connections/api SSH mapping', function () {
 				ssh_config: {
 					host: 'bastion.example.com',
 					port: 22,
-					username: 'deploy',
-					private_key_path: '/home/app/.ssh/id_ed25519',
-					password: null
+				username: 'deploy',
+				private_key_path: '/home/app/.ssh/id_ed25519',
+				password: null,
+				host_key_fingerprint: null
 				}
 			}
 		})
