@@ -65,7 +65,7 @@ export function DocsSidebar() {
         <aside className="hidden w-72 shrink-0 border-r border-line bg-surface-base/70 lg:block">
             <div className="docs-sidebar-scroll sticky top-[4.75rem] max-h-[calc(100vh-4.75rem)] overflow-y-auto px-5 py-6">
                 <Link
-                    href="/docs"
+                    href={'/docs' as Route}
                     className="mb-7 inline-flex h-8 items-center border border-line px-3 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
                 >
                     All docs

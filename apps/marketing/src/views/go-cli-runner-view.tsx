@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 
 import { ResourcesPageShell } from '@/components/resources-page-shell'
@@ -6,26 +7,24 @@ const COMMANDS = [
     {
         name: 'Interactive runner',
         command: 'cd tools/dora-cli && go run .',
-        detail:
-            'Launches the Bubble Tea TUI for build, VM, release, and maintenance flows.'
+        detail: 'Launches the Bubble Tea TUI for build, VM, release, and maintenance flows.'
     },
     {
         name: 'VM bootstrap',
         command: 'dora-manager-executor vm init --config .dora-vm.yaml',
-        detail:
-            'Creates the VM config, prepares storage, and can download the base image when configured.'
+        detail: 'Creates the VM config, prepares storage, and can download the base image when configured.'
     },
     {
         name: 'VM execution',
-        command: 'dora-manager-executor vm ensure && dora-manager-executor vm run --command "..."',
-        detail:
-            'Ensures the guest is defined and running, then runs a command through the guest agent.'
+        command:
+            'dora-manager-executor vm ensure && dora-manager-executor vm run --command "..."',
+        detail: 'Ensures the guest is defined and running, then runs a command through the guest agent.'
     },
     {
         name: 'macOS CI dispatch',
-        command: 'dora-manager-executor ci mac --ref main --workflow ci-mac.yml',
-        detail:
-            'Dispatches the GitHub Actions workflow used for the macOS CI path.'
+        command:
+            'dora-manager-executor ci mac --ref main --workflow ci-mac.yml',
+        detail: 'Dispatches the GitHub Actions workflow used for the macOS CI path.'
     }
 ] as const
 
@@ -47,17 +46,19 @@ export default function GoCliRunnerView() {
                 <article className="grid gap-6">
                     <div className="grid gap-4 text-[15px] leading-relaxed text-muted-foreground">
                         <p>
-                            The executor lives in <code>tools/dora-cli</code> and is
-                            designed for the work that usually gets split across a
-                            terminal, a VM shell, and GitHub Actions. If you run it
-                            with no arguments, you get the interactive TUI. If you
-                            pass a subcommand, it switches to the CLI path.
+                            The executor lives in <code>tools/dora-cli</code>{' '}
+                            and is designed for the work that usually gets split
+                            across a terminal, a VM shell, and GitHub Actions.
+                            If you run it with no arguments, you get the
+                            interactive TUI. If you pass a subcommand, it
+                            switches to the CLI path.
                         </p>
                         <p>
-                            The main goal is to keep release, test, and maintenance
-                            flows close to the repository. That makes it easier to
-                            automate repeatable developer tasks without introducing a
-                            separate toolchain or a second control surface.
+                            The main goal is to keep release, test, and
+                            maintenance flows close to the repository. That
+                            makes it easier to automate repeatable developer
+                            tasks without introducing a separate toolchain or a
+                            second control surface.
                         </p>
                     </div>
 
@@ -125,16 +126,18 @@ export default function GoCliRunnerView() {
                                 The VM flow is driven by{' '}
                                 <code>dora-manager-executor vm init</code>,{' '}
                                 <code>dora-manager-executor vm ensure</code>,{' '}
-                                <code>dora-manager-executor vm run</code>, and the
-                                cleanup commands that stop or remove the managed
-                                guest. The config lives in{' '}
-                                <code>.dora-vm.yaml</code> at the repository root.
+                                <code>dora-manager-executor vm run</code>, and
+                                the cleanup commands that stop or remove the
+                                managed guest. The config lives in{' '}
+                                <code>.dora-vm.yaml</code> at the repository
+                                root.
                             </p>
                             <p>
                                 That keeps the guest shell, image path, storage
-                                directory, and guest-agent command in one place so the
-                                same executor can bootstrap, run, inspect logs, and clean
-                                up the VM without manual setup in every session.
+                                directory, and guest-agent command in one place
+                                so the same executor can bootstrap, run, inspect
+                                logs, and clean up the VM without manual setup
+                                in every session.
                             </p>
                         </div>
                     </section>
@@ -148,17 +151,17 @@ export default function GoCliRunnerView() {
                         </h2>
                         <div className="grid gap-4 text-[15px] leading-relaxed text-muted-foreground">
                             <p>
-                                <code>dora-manager-executor ci mac</code> wraps GitHub
-                                CLI workflow
-                                dispatch for the macOS pipeline. It accepts a ref,
-                                workflow name, and optional repo override, then streams
-                                the <code>gh workflow run</code> command for you.
+                                <code>dora-manager-executor ci mac</code> wraps
+                                GitHub CLI workflow dispatch for the macOS
+                                pipeline. It accepts a ref, workflow name, and
+                                optional repo override, then streams the{' '}
+                                <code>gh workflow run</code> command for you.
                             </p>
                             <p>
-                                This is useful when you want the runner to stay close
-                                to the repository rather than copy workflow names into a
-                                separate script or remember the exact GitHub CLI flags
-                                every time.
+                                This is useful when you want the runner to stay
+                                close to the repository rather than copy
+                                workflow names into a separate script or
+                                remember the exact GitHub CLI flags every time.
                             </p>
                         </div>
                     </section>
@@ -172,15 +175,19 @@ export default function GoCliRunnerView() {
                         </h2>
                         <div className="grid gap-4 text-[15px] leading-relaxed text-muted-foreground">
                             <p>
-                            The module targets Go 1.24 and uses Bubble Tea for the
-                                terminal UI. The VM commands are Linux-only on the host
-                                because they rely on KVM/libvirt and qemu-guest-agent.
+                                The module targets Go 1.24 and uses Bubble Tea
+                                for the terminal UI. The VM commands are
+                                Linux-only on the host because they rely on
+                                KVM/libvirt and qemu-guest-agent.
                             </p>
                             <p>
-                                If you want the same commands in your shell, run the
-                                module from <code>tools/dora-cli</code> with{' '}
+                                If you want the same commands in your shell, run
+                                the module from <code>tools/dora-cli</code> with{' '}
                                 <code>go run .</code> or build it with{' '}
-                                <code>go build -o ../../dora-manager-executor .</code>.
+                                <code>
+                                    go build -o ../../dora-manager-executor .
+                                </code>
+                                .
                             </p>
                         </div>
                     </section>
@@ -189,7 +196,7 @@ export default function GoCliRunnerView() {
                 <div className="flex flex-wrap gap-3">
                     <Link
                         className="inline-flex min-h-10 items-center border border-brand-200/50 px-4 text-[13px] text-brand-200 transition-colors hover:bg-brand-200/6"
-                        href="/docs"
+                        href={'/docs' as Route}
                     >
                         Back to docs
                     </Link>
