@@ -70,6 +70,9 @@ export function recorderClient(config) {
         step.key = u.value;
       } else if (u.kind === "wait") {
         step.wait = u.value;
+      } else if (u.kind === "move") {
+        step.move = u.value;
+        step.click = true;
       }
       if (u._caption) step.caption = u._caption;
       if (hold) step.holdAfter = hold;
@@ -97,6 +100,17 @@ export function recorderClient(config) {
       const key = k === " " ? "Space" : k;
       events.push({ t, kind: "key", value: mods.length ? mods.concat(key).join("+") : key });
     }
+    render();
+  };
+
+  const onPointer = (e) => {
+    const tgt = e.target;
+    if (tgt && tgt.closest && tgt.closest("#promo-overlay")) return;
+    events.push({
+      t: performance.now(),
+      kind: "move",
+      value: { x: Math.round(e.clientX), y: Math.round(e.clientY) },
+    });
     render();
   };
 
@@ -141,6 +155,7 @@ export function recorderClient(config) {
   const holdInput = wrap.querySelector("#promo-hold-input");
 
   function describe(s) {
+    if (s.move != null) return "move  " + s.move.x + "," + s.move.y + " + click";
     if (s.type != null) return "type  " + JSON.stringify(s.type).slice(1, -1);
     if (s.key != null) return "key   " + s.key;
     if (s.wait != null) return "wait  " + s.wait + "ms";
@@ -194,6 +209,7 @@ export function recorderClient(config) {
 
   function cleanup() {
     document.removeEventListener("keydown", onKey, true);
+    document.removeEventListener("click", onPointer, true);
     wrap.remove();
   }
 
@@ -217,5 +233,6 @@ export function recorderClient(config) {
   };
 
   document.addEventListener("keydown", onKey, true);
+  document.addEventListener("click", onPointer, true);
   render();
 }

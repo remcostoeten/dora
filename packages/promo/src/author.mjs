@@ -30,6 +30,13 @@ export async function authorScene(name, opts = {}) {
     closeRightSidebar: true,
     leadInMs: 600,
     defaultDelay: 95,
+    cursor: {
+      duration: 420,
+      bend: 0.16,
+      easing: [0.22, 0.8, 0.25, 1],
+      size: 16,
+      ripple: true,
+    },
     steps: [],
   };
   if (opts.table) scene.url.table = opts.table;

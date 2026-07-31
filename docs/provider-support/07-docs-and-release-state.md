@@ -12,7 +12,6 @@ Safe write scope:
 
 - `README.md`
 - `apps/desktop/RELEASE_TASKS.md`
-- `docs/app-audit-2026-02-20.md`
 - `docs/provider-support-roadmap.md`
 - files in `docs/provider-support/`
 

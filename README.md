@@ -4,6 +4,7 @@
   <p><em>The database explorah</em></p>
 
 [![Release](https://img.shields.io/github/v/release/remcostoeten/dora?display_name=tag&sort=semver)](https://github.com/remcostoeten/dora/releases)
+[![CI](https://github.com/remcostoeten/dora/actions/workflows/ci.yml/badge.svg)](https://github.com/remcostoeten/dora/actions/workflows/ci.yml)
 [![Downloads](https://img.shields.io/github/downloads/remcostoeten/dora/total)](https://github.com/remcostoeten/dora/releases)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-8A63D2)](https://github.com/remcostoeten/dora/releases)
@@ -15,7 +16,7 @@
   <img src="docs/assets/demo-tour.webp" alt="Dora in action: browsing a 1,200-row table, inline-editing a cell, opening the command palette, and running SQL in the query console" width="92%" />
 </p>
 
-Dora is a native, cross-platform database workbench built with Tauri and Rust. The installer is a **20-30 MB download** that starts instantly, versus the several-hundred-MB Chromium bundle of Electron-based alternatives, and it covers the full day-to-day loop without asking you to leave the app.
+Dora is a native, cross-platform database workbench built with Tauri and Rust. It is fully free and open source: there is no paid edition, subscription, or feature gate. The installer is a **20-30 MB download**, rather than the several-hundred-MB Chromium bundle used by Electron-based alternatives, and it covers the day-to-day database workflow in one app.
 
 - **Connect anything** - PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB, plus CSV/JSON/Parquet/NDJSON as queryable data files.
 - **Skip the connection string** - sign in to Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1 and pick a database, or paste a string for 15+ auto-recognized hosted providers.
@@ -24,6 +25,31 @@ Dora is a native, cross-platform database workbench built with Tauri and Rust. T
 - **Product analytics built in** - point it at a PostHog project and query with HogQL, with a dashboard on top.
 
 Everything is keyboard-first.
+
+## See it in action
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="apps/marketing/public/features/ai-assistant.png" alt="Generating a schema-aware SQL query with Dora's AI assistant" />
+      <br /><strong>Schema-aware AI</strong>
+    </td>
+    <td width="50%">
+      <img src="apps/marketing/public/features/schema-visualization.png" alt="Exploring database relationships in Dora's interactive schema visualizer" />
+      <br /><strong>Interactive schema visualization</strong>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="apps/marketing/public/features/drizzle-runner.png" alt="Writing a typed Drizzle query with autocomplete and SQL preview in Dora" />
+      <br /><strong>Drizzle and Prisma runners</strong>
+    </td>
+    <td width="50%">
+      <img src="apps/marketing/public/features/docker-containers.png" alt="Managing local database containers from Dora" />
+      <br /><strong>Local database containers</strong>
+    </td>
+  </tr>
+</table>
 
 ## Install
 
@@ -176,6 +202,14 @@ packages/
   style/     # Shared oxlint + oxfmt config
 ```
 
+The React/TypeScript studio owns the user interface and application state. The
+Tauri boundary exposes typed commands to the Rust backend, where database
+connections, queries, schema inspection, exports, and credential handling live.
+Provider-specific behavior is kept behind shared database capabilities so the
+same browse, query, mutation, and export flows work consistently across
+engines. See the [data-source architecture](docs/architecture/data-sources.md)
+for the connection model.
+
 **Prerequisites:** [Bun](https://bun.sh), [Rust](https://rustup.rs), and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform.
 
 ```bash
@@ -201,14 +235,21 @@ bun run desktop:build:mac                # dmg
 **Tests**
 
 ```bash
-bun run test          # full Vitest suite (via turbo)
-bun run test:watch    # watch mode
-bun run test:coverage # with coverage
+bun run lint                                      # TypeScript lint
+bun run --cwd packages/studio typecheck           # Studio typecheck
+bun run --cwd apps/desktop typecheck              # Desktop typecheck
+bun run test                                      # Vitest suite via Turborepo
+bun run --cwd apps/desktop test                   # Desktop frontend tests
+(cd apps/desktop/src-tauri && cargo test)          # Rust tests
 ```
 
 > [!NOTE]
-> Use `bun run test`, not a bare `bun test` — the latter invokes Bun's own
+> Use `bun run test`, not a bare `bun test`. The latter invokes Bun's own
 > runner, which picks up Vitest and Playwright specs it cannot execute.
+
+CI runs linting, TypeScript type checks, frontend and Rust tests, a production
+build, and a browser boot smoke test. A separate workflow exercises database
+adapters against real MySQL and MariaDB servers.
 
 > [!NOTE]
 > The desktop app uses Vite as its dev server (`http://localhost:1420`). Hot-reload works for the TypeScript frontend; Rust changes require a full rebuild.

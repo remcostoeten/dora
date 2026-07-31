@@ -11,6 +11,11 @@ import { chromium } from "@playwright/test";
  * @property {number} [wait] Pause in ms (a step that only waits).
  * @property {number} [holdAfter] Pause in ms after the step completes.
  * @property {string} [caption] Lower-third caption shown from this step until the next caption.
+ * @property {{ x: number, y: number }} [move] Pointer destination in viewport coordinates.
+ * @property {boolean} [click] Click after completing a pointer movement.
+ * @property {number} [duration] Per-movement duration override in ms.
+ * @property {number} [bend] Per-movement arc bend override, as a distance ratio.
+ * @property {[number, number, number, number]} [easing] Per-movement cubic easing override.
  */
 
 /**
@@ -23,6 +28,7 @@ import { chromium } from "@playwright/test";
  * @property {boolean} [closeRightSidebar]
  * @property {number} [leadInMs] How much empty-editor lead-in to keep before typing.
  * @property {number} [defaultDelay] Default per-character typing delay.
+ * @property {{ duration?: number, bend?: number, easing?: [number, number, number, number], size?: number, ripple?: boolean }} [cursor]
  * @property {Step[]} steps
  * @property {string} [expect] Expected final editor value (asserted, warns on mismatch).
  */
@@ -35,6 +41,98 @@ const DEFAULTS = {
 };
 
 const MODE_KEY = { sql: "Alt+KeyS", drizzle: "Alt+KeyD", prisma: "Alt+KeyP" };
+
+const cursorPosition = new WeakMap();
+
+async function installCursor(page, config = {}) {
+  await page.evaluate(({ size, ripple }) => {
+    const old = document.getElementById("__promo_cursor");
+    if (old) old.remove();
+    const cursor = document.createElement("div");
+    cursor.id = "__promo_cursor";
+    const diameter = size ?? 16;
+    cursor.style.cssText = [
+      "position:fixed",
+      "left:0",
+      "top:0",
+      "z-index:2147483647",
+      "pointer-events:none",
+      `width:${diameter}px`,
+      `height:${diameter}px`,
+      `margin:${-diameter / 2}px 0 0 ${-diameter / 2}px`,
+      "border:2px solid rgba(255,255,255,.95)",
+      "border-radius:50%",
+      "background:rgba(10,10,12,.72)",
+      "box-shadow:0 2px 10px rgba(0,0,0,.55)",
+      "transform:translate(-40px,-40px)",
+    ].join(";");
+    document.documentElement.appendChild(cursor);
+    window.__PROMO_CURSOR_RIPPLE = ripple !== false;
+    window.addEventListener(
+      "mousemove",
+      (event) => {
+        cursor.style.transform = `translate(${event.clientX}px,${event.clientY}px)`;
+      },
+      true,
+    );
+    window.addEventListener(
+      "mousedown",
+      (event) => {
+        if (!window.__PROMO_CURSOR_RIPPLE) return;
+        const ring = document.createElement("div");
+        ring.style.cssText = [
+          "position:fixed",
+          "z-index:2147483646",
+          "pointer-events:none",
+          `left:${event.clientX}px`,
+          `top:${event.clientY}px`,
+          "width:12px",
+          "height:12px",
+          "margin:-6px 0 0 -6px",
+          "border:2px solid rgba(255,255,255,.8)",
+          "border-radius:50%",
+          "opacity:1",
+          "transition:all .38s cubic-bezier(.16,1,.3,1)",
+        ].join(";");
+        document.documentElement.appendChild(ring);
+        requestAnimationFrame(() => {
+          ring.style.width = "38px";
+          ring.style.height = "38px";
+          ring.style.margin = "-19px 0 0 -19px";
+          ring.style.opacity = "0";
+        });
+        setTimeout(() => ring.remove(), 420);
+      },
+      true,
+    );
+  }, config);
+}
+
+async function moveCursor(page, step, defaults = {}) {
+  const start = cursorPosition.get(page) || { x: 72, y: 828 };
+  const end = step.move;
+  const duration = step.duration ?? defaults.duration ?? 420;
+  const bendRatio = step.bend ?? defaults.bend ?? 0.16;
+  const easing = step.easing ?? defaults.easing ?? [0.22, 0.8, 0.25, 1];
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const distance = Math.hypot(dx, dy) || 1;
+  const bend = Math.min(140, Math.max(0, distance * bendRatio));
+  const normal = { x: (-dy / distance) * bend, y: (dx / distance) * bend };
+  const a = { x: start.x + dx * easing[0] + normal.x, y: start.y + dy * easing[1] + normal.y };
+  const b = { x: start.x + dx * easing[2] + normal.x * 0.45, y: start.y + dy * easing[3] + normal.y * 0.45 };
+  const frames = Math.max(18, Math.round(duration / 14));
+  for (let i = 1; i <= frames; i++) {
+    const t = i / frames;
+    const u = 1 - t;
+    const x = u ** 3 * start.x + 3 * u ** 2 * t * a.x + 3 * u * t ** 2 * b.x + t ** 3 * end.x;
+    const y = u ** 3 * start.y + 3 * u ** 2 * t * a.y + 3 * u * t ** 2 * b.y + t ** 3 * end.y;
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(duration / frames);
+  }
+  cursorPosition.set(page, end);
+  if (step.click) await page.mouse.click(end.x, end.y);
+}
 
 function log(...args) {
   console.log("[promo]", ...args);
@@ -191,6 +289,7 @@ export async function renderScene(scene, opts) {
 
   try {
     await setupStudioEditor(page, scene, { base });
+    await installCursor(page, scene.cursor);
 
     typeStartMs = Date.now() - t0;
     log("typing starts at", typeStartMs, "ms");
@@ -203,7 +302,9 @@ export async function renderScene(scene, opts) {
         await hold(step.wait);
         continue;
       }
-      if (step.type) {
+      if (step.move) {
+        await moveCursor(page, step, scene.cursor);
+      } else if (step.type) {
         await page.keyboard.type(step.type, {
           delay: step.delay ?? defaultDelay,
         });
