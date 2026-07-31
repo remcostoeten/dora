@@ -85,8 +85,7 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 - DDL tab: shows `CREATE TABLE` statement (already exported via `export_schema_sql` command)
 
 ### 2-2. Todo list feature
-**Spec doc:** `src/features/todo-list/todo-spec.md` (already written)  
-**Status:** Spec only, no implementation.  
+**Status:** Planned, no implementation.
 **Implementation path:**
 - Backend: add `todos` table to SQLite storage migrations (add `migrator.rs`)
 - Tauri commands: `create_todo`, `list_todos`, `update_todo`, `delete_todo`
@@ -124,7 +123,6 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 **Estimate:** ~3 days backend + 1 day frontend after WriteAdapter (Phase 5b) lands.
 
 ### 3-3. Live monitor per-driver trait (Phase 5c)
-**See:** `docs/backend-refactor-checklist.md` — Phase 5c  
 **What:** Extract SQLite-specific polling from `live_monitor.rs` into `WatchAdapter` trait, implement per driver so live monitoring works for Postgres, MySQL, LibSQL.
 
 ### 3-4. Native notifications for live monitor events
@@ -152,7 +150,7 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 - [ ] Schema visualizer (branch: `feat/schema-visualizer`) — **Tier 1-2**
 - [ ] Query history: search + pin + group by connection — **Tier 1-3**
 - [ ] Table structure view tab in Database Studio — **Tier 2-1**
-- [ ] Todo list implementation (spec already in `todo-spec.md`) — **Tier 2-2**
+- [ ] Todo list implementation — **Tier 2-2**
 - [ ] Keyboard shortcut UI in settings — **Tier 2-3**
 - [ ] Connection groups/folders — **Tier 2-4**
 - [ ] Telemetry opt-in dialog or removal — **Tier 2-5**

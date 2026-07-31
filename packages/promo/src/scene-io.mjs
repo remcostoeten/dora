@@ -31,6 +31,11 @@ function q(s) {
 
 function serializeStep(step) {
   const parts = [];
+  if (step.move != null) parts.push(`move: ${JSON.stringify(step.move)}`);
+  if (step.click != null) parts.push(`click: ${step.click}`);
+  if (step.duration != null) parts.push(`duration: ${step.duration}`);
+  if (step.bend != null) parts.push(`bend: ${step.bend}`);
+  if (step.easing != null) parts.push(`easing: ${JSON.stringify(step.easing)}`);
   if (step.type != null) parts.push(`type: ${q(step.type)}`);
   if (step.key != null) parts.push(`key: ${q(step.key)}`);
   if (step.wait != null) parts.push(`wait: ${step.wait}`);
@@ -71,6 +76,9 @@ export function serializeScene(scene) {
   if (scene.closeRightSidebar) lines.push("  closeRightSidebar: true,");
   if (scene.leadInMs != null) lines.push(`  leadInMs: ${scene.leadInMs},`);
   if (scene.defaultDelay != null) lines.push(`  defaultDelay: ${scene.defaultDelay},`);
+  if (scene.cursor) {
+    lines.push(`  cursor: ${JSON.stringify(scene.cursor)},`);
+  }
 
   lines.push("  steps: [");
   for (const s of scene.steps || []) lines.push(serializeStep(s));

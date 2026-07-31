@@ -15,6 +15,16 @@ export function editorClient(config) {
   const meta = {
     leadInMs: scene.leadInMs ?? 600,
     defaultDelay: scene.defaultDelay ?? 95,
+    cursor: Object.assign(
+      {
+        duration: 420,
+        bend: 0.16,
+        easing: [0.22, 0.8, 0.25, 1],
+        size: 16,
+        ripple: true,
+      },
+      scene.cursor || {},
+    ),
   };
 
   document.body.style.cssText =
@@ -44,6 +54,7 @@ export function editorClient(config) {
   }
 
   function kindOf(s) {
+    if (s.move != null) return "move";
     if (s.type != null) return "type";
     if (s.key != null) return "key";
     if (s.wait != null) return "wait";
@@ -55,6 +66,20 @@ export function editorClient(config) {
     return Number.isFinite(n) ? n : undefined;
   }
 
+  function decimal(v) {
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  function curve(v) {
+    const values = String(v)
+      .split(",")
+      .map((part) => parseFloat(part.trim()));
+    return values.length === 4 && values.every(Number.isFinite)
+      ? values
+      : undefined;
+  }
+
   const header = el("div", "display:flex;align-items:baseline;gap:10px;margin-bottom:6px");
   header.appendChild(el("h1", "font-size:18px;margin:0", { textContent: "edit: " }));
   header.appendChild(el("span", "color:#7fd1ff;font-size:18px", { textContent: scene.name }));
@@ -64,6 +89,18 @@ export function editorClient(config) {
   const globals = el("div", "display:flex;flex-wrap:wrap;margin:10px 0 18px;padding-bottom:14px;border-bottom:1px solid #2a2e37");
   globals.appendChild(field("leadInMs", meta.leadInMs, "number", (v) => { meta.leadInMs = num(v) ?? 0; renderFooter(); }));
   globals.appendChild(field("defaultDelay", meta.defaultDelay, "number", (v) => { meta.defaultDelay = num(v) ?? 0; renderFooter(); }));
+  globals.appendChild(field("cursor duration", meta.cursor.duration, "number", (v) => { meta.cursor.duration = num(v) ?? 420; renderFooter(); }));
+  globals.appendChild(field("cursor bend", meta.cursor.bend, "number", (v) => { meta.cursor.bend = decimal(v) ?? 0.16; }, "72px"));
+  globals.appendChild(field("cubic curve", meta.cursor.easing.join(", "), "text", (v) => { meta.cursor.easing = curve(v) ?? meta.cursor.easing; }, "170px"));
+  globals.appendChild(field("cursor size", meta.cursor.size, "number", (v) => { meta.cursor.size = num(v) ?? 16; }, "72px"));
+  const ripple = el("label", "display:inline-flex;align-items:center;gap:7px;margin:18px 10px 6px 0");
+  const rippleInput = el("input");
+  rippleInput.type = "checkbox";
+  rippleInput.checked = meta.cursor.ripple !== false;
+  rippleInput.onchange = () => { meta.cursor.ripple = rippleInput.checked; };
+  ripple.appendChild(rippleInput);
+  ripple.appendChild(el("span", "font-size:11px;opacity:.7", { textContent: "click ripple" }));
+  globals.appendChild(ripple);
   root.appendChild(globals);
 
   const list = el("div");
@@ -100,7 +137,21 @@ export function editorClient(config) {
     card.appendChild(top);
 
     const fields = el("div", "display:flex;flex-wrap:wrap;align-items:flex-end");
-    if (kind === "type") {
+    if (kind === "move") {
+      fields.appendChild(field("x", s.move.x, "number", (v) => { s.move.x = num(v) ?? 0; }, "72px"));
+      fields.appendChild(field("y", s.move.y, "number", (v) => { s.move.y = num(v) ?? 0; }, "72px"));
+      fields.appendChild(field("duration", s.duration, "number", (v) => { s.duration = num(v); renderFooter(); }));
+      fields.appendChild(field("bend", s.bend, "number", (v) => { s.bend = decimal(v); }, "72px"));
+      fields.appendChild(field("cubic curve", s.easing?.join(", "), "text", (v) => { s.easing = curve(v); }, "170px"));
+      const clickLabel = el("label", "display:inline-flex;align-items:center;gap:6px;margin:18px 10px 6px 0");
+      const clickInput = el("input");
+      clickInput.type = "checkbox";
+      clickInput.checked = s.click !== false;
+      clickInput.onchange = () => { s.click = clickInput.checked; };
+      clickLabel.appendChild(clickInput);
+      clickLabel.appendChild(el("span", "font-size:11px;opacity:.7", { textContent: "click" }));
+      fields.appendChild(clickLabel);
+    } else if (kind === "type") {
       fields.appendChild(field("type", s.type, "text", (v) => { s.type = v; renderFooter(); }, "260px"));
       fields.appendChild(field("delay", s.delay, "number", (v) => { s.delay = num(v); renderFooter(); }));
     } else if (kind === "key") {
@@ -124,11 +175,12 @@ export function editorClient(config) {
 
   const addBar = el("div", "display:flex;gap:8px;align-items:center;margin:14px 0");
   const sel = el("select", "background:#16181d;color:#e6e6e6;border:1px solid #2a2e37;border-radius:6px;padding:6px 8px;font:inherit");
-  for (const k of ["type", "key", "wait", "caption"]) sel.appendChild(el("option", "", { value: k, textContent: "+ " + k }));
+  for (const k of ["move", "type", "key", "wait", "caption"]) sel.appendChild(el("option", "", { value: k, textContent: "+ " + k }));
   const addBtn = el("button", "background:#222630;color:#e6e6e6;border:1px solid #2a2e37;border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit", { textContent: "add step" });
   addBtn.onclick = () => {
     const k = sel.value;
-    if (k === "type") steps.push({ type: "" });
+    if (k === "move") steps.push({ move: { x: 450, y: 450 }, click: true });
+    else if (k === "type") steps.push({ type: "" });
     else if (k === "key") steps.push({ key: "Enter" });
     else if (k === "wait") steps.push({ wait: 800 });
     else steps.push({ caption: "" });
@@ -152,6 +204,7 @@ export function editorClient(config) {
     let ms = meta.leadInMs;
     for (const s of steps) {
       if (s.type != null) ms += (s.delay ?? meta.defaultDelay) * s.type.length;
+      if (s.move != null) ms += s.duration ?? meta.cursor.duration;
       if (s.wait != null) ms += s.wait;
       if (s.holdAfter != null) ms += s.holdAfter;
     }
@@ -161,6 +214,11 @@ export function editorClient(config) {
   function normalize() {
     return steps.map((s) => {
       const out = {};
+      if (s.move != null) out.move = { x: s.move.x, y: s.move.y };
+      if (s.click != null) out.click = s.click;
+      if (s.duration != null && !Number.isNaN(s.duration)) out.duration = s.duration;
+      if (s.bend != null && !Number.isNaN(s.bend)) out.bend = s.bend;
+      if (s.easing) out.easing = s.easing;
       if (s.type != null) out.type = s.type;
       if (s.key != null) out.key = s.key;
       if (s.wait != null) out.wait = s.wait;
@@ -174,7 +232,12 @@ export function editorClient(config) {
   saveBtn.onclick = () => {
     root.remove();
     footer.remove();
-    window.__promoSave({ steps: normalize(), leadInMs: meta.leadInMs, defaultDelay: meta.defaultDelay });
+    window.__promoSave({
+      steps: normalize(),
+      leadInMs: meta.leadInMs,
+      defaultDelay: meta.defaultDelay,
+      cursor: meta.cursor,
+    });
   };
   cancelBtn.onclick = () => {
     root.remove();

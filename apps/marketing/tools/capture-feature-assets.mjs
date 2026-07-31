@@ -44,6 +44,137 @@ function pause(ms = PAUSE_MS) {
     })
 }
 
+const CURSOR_SCRIPT = `
+    (function () {
+        function install() {
+            if (document.getElementById('__dora_capture_cursor')) return
+            const cursor = document.createElement('div')
+            cursor.id = '__dora_capture_cursor'
+            cursor.style.cssText = [
+                'position:fixed',
+                'left:0',
+                'top:0',
+                'z-index:2147483647',
+                'pointer-events:none',
+                'width:16px',
+                'height:16px',
+                'margin:-8px 0 0 -8px',
+                'border:2px solid rgba(255,255,255,.95)',
+                'border-radius:50%',
+                'background:rgba(10,10,12,.72)',
+                'box-shadow:0 2px 10px rgba(0,0,0,.55)',
+                'transform:translate(-40px,-40px)'
+            ].join(';')
+            document.documentElement.appendChild(cursor)
+            window.__DORA_CAPTURE_CURSOR = { x: -40, y: -40 }
+            window.addEventListener('mousemove', function (event) {
+                window.__DORA_CAPTURE_CURSOR = {
+                    x: event.clientX,
+                    y: event.clientY
+                }
+                cursor.style.transform =
+                    'translate(' + event.clientX + 'px,' + event.clientY + 'px)'
+            }, true)
+            window.addEventListener('mousedown', function (event) {
+                const ring = document.createElement('div')
+                ring.style.cssText = [
+                    'position:fixed',
+                    'z-index:2147483646',
+                    'pointer-events:none',
+                    'left:' + event.clientX + 'px',
+                    'top:' + event.clientY + 'px',
+                    'width:12px',
+                    'height:12px',
+                    'margin:-6px 0 0 -6px',
+                    'border:2px solid rgba(255,255,255,.8)',
+                    'border-radius:50%',
+                    'opacity:1',
+                    'transition:all .38s cubic-bezier(.16,1,.3,1)'
+                ].join(';')
+                document.documentElement.appendChild(ring)
+                requestAnimationFrame(function () {
+                    ring.style.width = '38px'
+                    ring.style.height = '38px'
+                    ring.style.margin = '-19px 0 0 -19px'
+                    ring.style.opacity = '0'
+                })
+                setTimeout(function () {
+                    ring.remove()
+                }, 420)
+            }, true)
+        }
+        if (document.documentElement) install()
+        else document.addEventListener('DOMContentLoaded', install)
+    })()
+`
+
+/**
+ * Move to the center of a locator along a deterministic cubic Bézier arc.
+ *
+ * @param {Page} page
+ * @param {import('playwright').Locator} locator
+ * @param {number} [duration]
+ */
+async function curveTo(page, locator, duration = 420) {
+    const box = await locator.boundingBox()
+    if (!box) return
+
+    const end = {
+        x: box.x + box.width / 2,
+        y: box.y + box.height / 2
+    }
+    const start = await page.evaluate(function () {
+        const current = window.__DORA_CAPTURE_CURSOR
+        if (current && current.x >= 0 && current.y >= 0) return current
+        return { x: 72, y: window.innerHeight - 72 }
+    })
+    const dx = end.x - start.x
+    const dy = end.y - start.y
+    const distance = Math.hypot(dx, dy)
+    const bend = Math.min(110, Math.max(28, distance * 0.16))
+    const direction = end.x >= start.x ? 1 : -1
+    const length = distance || 1
+    const normal = { x: (-dy / length) * bend * direction, y: (dx / length) * bend * direction }
+    const controlA = {
+        x: start.x + dx * 0.32 + normal.x,
+        y: start.y + dy * 0.32 + normal.y
+    }
+    const controlB = {
+        x: start.x + dx * 0.72 + normal.x * 0.45,
+        y: start.y + dy * 0.72 + normal.y * 0.45
+    }
+    const frames = Math.max(18, Math.round(duration / 14))
+
+    for (let frame = 1; frame <= frames; frame++) {
+        const progress = frame / frames
+        const eased = 1 - Math.pow(1 - progress, 3)
+        const inverse = 1 - eased
+        const x =
+            inverse ** 3 * start.x +
+            3 * inverse ** 2 * eased * controlA.x +
+            3 * inverse * eased ** 2 * controlB.x +
+            eased ** 3 * end.x
+        const y =
+            inverse ** 3 * start.y +
+            3 * inverse ** 2 * eased * controlA.y +
+            3 * inverse * eased ** 2 * controlB.y +
+            eased ** 3 * end.y
+        await page.mouse.move(x, y)
+        await pause(duration / frames)
+    }
+}
+
+/**
+ * @param {Page} page
+ * @param {import('playwright').Locator} locator
+ * @param {Parameters<import('playwright').Locator['click']>[0]} [options]
+ */
+async function curveClick(page, locator, options) {
+    await curveTo(page, locator)
+    await pause(90)
+    await locator.click(options)
+}
+
 /**
  * @param {string} view
  */
@@ -64,9 +195,12 @@ function captureUrl(view, extra = '') {
  */
 async function armCaptureClock(context) {
     await context.addInitScript(function () {
+        localStorage.setItem('dora_demo_notice_dismissed', 'true')
+        localStorage.setItem('dora_onboarding_tour_completed', '1')
         window.__DORA_CAPTURE_T0 = performance.now()
         window.__DORA_CAPTURE_READY_AT = 0
     })
+    await context.addInitScript(CURSOR_SCRIPT)
 }
 
 /**
@@ -92,6 +226,12 @@ async function waitForCaptureReady(page) {
             undefined,
             { timeout: 15000 }
         )
+        .catch(function () {})
+    await page
+        .locator('[aria-label="Open brand tuner"]')
+        .evaluate(function (button) {
+            button.parentElement?.remove()
+        })
         .catch(function () {})
     await pause(700)
 }
@@ -366,7 +506,7 @@ async function performSchemaTour(page) {
 
     const search = page.getByPlaceholder(/search tables or columns/i)
     if (await search.count()) {
-        await search.click()
+        await curveClick(page, search)
         await search.fill('order')
         await pause(1800)
         await search.fill('')
@@ -398,18 +538,13 @@ async function performSchemaTour(page) {
     const limit = Math.min(count, 5)
     for (let i = 0; i < limit; i++) {
         await closeDetails()
-        await nodes
-            .nth(i)
-            .evaluate(function (el) {
-                el.click()
-            })
-            .catch(function () {})
+        await curveClick(page, nodes.nth(i)).catch(function () {})
         await pause(1500)
     }
 
     const zoomIn = page.locator('.react-flow__controls button').first()
     if (await zoomIn.count()) {
-        await zoomIn.click().catch(function () {})
+        await curveClick(page, zoomIn).catch(function () {})
         await pause(600)
         await zoomIn.click().catch(function () {})
         await pause(900)
@@ -417,12 +552,7 @@ async function performSchemaTour(page) {
 
     await closeDetails()
     if (count > 1) {
-        await nodes
-            .nth(1)
-            .evaluate(function (el) {
-                el.click()
-            })
-            .catch(function () {})
+        await curveClick(page, nodes.nth(1)).catch(function () {})
         await pause(1800)
     }
 }
@@ -601,7 +731,7 @@ async function selectDockerContainer(page, name) {
         .locator('[data-container-card="true"]')
         .filter({ hasText: name })
         .first()
-    await card.click({ timeout: 5000 }).catch(function () {})
+    await curveClick(page, card, { timeout: 5000 }).catch(function () {})
     await pause(1500)
 }
 
@@ -617,7 +747,7 @@ async function performDockerTour(page) {
 
     const logsTab = page.getByText(/^Logs$/i).first()
     if (await logsTab.count()) {
-        await logsTab.click().catch(function () {})
+        await curveClick(page, logsTab).catch(function () {})
         await pause(1400)
         await page.mouse.wheel(0, 180)
         await pause(900)
@@ -719,16 +849,18 @@ async function performAiTour(page) {
         }
     }
 
-    await page
-        .getByRole('button', { name: /open ai assistant/i })
-        .click({ timeout: 8000 })
+    await curveClick(
+        page,
+        page.getByRole('button', { name: /open ai assistant/i }),
+        { timeout: 8000, force: true }
+    )
     await pause(1000)
 
     const suggestion = page
         .getByRole('button', { name: /write a join between customers and products/i })
         .first()
     if (await suggestion.count()) {
-        await suggestion.click({ timeout: 5000 }).catch(function () {})
+        await curveClick(page, suggestion, { timeout: 5000 }).catch(function () {})
         await pause(500)
     } else {
         const prompt = page.getByPlaceholder(/ask anything about your database/i)
@@ -745,7 +877,7 @@ async function performAiTour(page) {
 
     const insert = page.getByTitle('Insert into editor').first()
     if (await insert.count()) {
-        await insert.click({ timeout: 5000 }).catch(function () {})
+        await curveClick(page, insert, { timeout: 5000 }).catch(function () {})
         await pause(2200)
     }
 }
@@ -764,7 +896,9 @@ async function setDrizzleEditorContent(page, code) {
     }, code)
 
     if (!usedHook) {
-        await page.getByRole('button', { name: /^drizzle$/i }).click({ timeout: 8000 })
+        await curveClick(page, page.getByRole('button', { name: /^drizzle$/i }), {
+            timeout: 8000
+        })
         await pause(700)
         const editor = page.locator('.monaco-editor').first()
         await editor.click({ timeout: 5000 }).catch(function () {})
@@ -799,7 +933,9 @@ async function runDrizzleQuery(page, code) {
     }, code)
 
     if (!usedHook) {
-        await page.getByRole('button', { name: /^run$/i }).click({ timeout: 5000 }).catch(function () {})
+        await curveClick(page, page.getByRole('button', { name: /^run$/i }), {
+            timeout: 5000
+        }).catch(function () {})
     }
 }
 
@@ -825,9 +961,13 @@ async function performDrizzleTour(page) {
     const drizzleCode = 'db.select().from(customers).limit(25)'
 
     await setDrizzleEditorContent(page, drizzleCode)
+    await curveTo(page, page.locator('.monaco-editor').first(), 520)
     await pause(500)
     await runDrizzleQuery(page, drizzleCode)
     await waitForQueryResult(page, 15000)
+    await curveTo(page, page.getByRole('button', { name: /^run$/i }), 460).catch(
+        function () {}
+    )
     await page.keyboard.press('Escape').catch(function () {})
     await pause(1800)
 }

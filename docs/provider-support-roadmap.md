@@ -380,7 +380,6 @@ Keep product docs honest while support is partial.
 
 - `README.md`
 - `apps/desktop/RELEASE_TASKS.md`
-- `docs/app-audit-2026-02-20.md`
 - this file
 
 ### Tasks

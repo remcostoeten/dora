@@ -57,6 +57,7 @@ export async function editScene(name) {
     ...scene,
     leadInMs: payload.leadInMs,
     defaultDelay: payload.defaultDelay,
+    cursor: payload.cursor,
     steps: payload.steps,
   };
 
