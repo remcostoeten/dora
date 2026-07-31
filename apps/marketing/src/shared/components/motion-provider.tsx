@@ -1,7 +1,7 @@
 'use client'
 
 import { LazyMotion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 
 /**
  * Lazily loads the framer-motion feature engine (`domMax`) in a separate async
@@ -20,11 +20,12 @@ import type { ReactNode } from 'react'
  * guarantees the heavy engine can never sneak back into the initial bundle.
  */
 const loadFeatures = () => import('framer-motion').then((mod) => mod.domMax)
+type LazyMotionChildren = ComponentProps<typeof LazyMotion>['children']
 
 export function MotionProvider({ children }: { children: ReactNode }) {
     return (
         <LazyMotion features={loadFeatures} strict>
-            {children}
+            {children as LazyMotionChildren}
         </LazyMotion>
     )
 }

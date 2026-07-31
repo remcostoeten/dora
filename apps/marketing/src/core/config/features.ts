@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import type { Route } from 'next'
 import {
     BarChart3,
     Boxes,
@@ -432,8 +433,8 @@ export function getFeature(slug: string): TFeatureConfig | undefined {
     return featureBySlug.get(slug as TFeatureSlug)
 }
 
-export function getFeaturePath(slug: TFeatureSlug): string {
-    return `/features/${slug}`
+export function getFeaturePath(slug: TFeatureSlug): Route {
+    return `/features/${slug}` as Route
 }
 
 export function getNavFeatures(): TFeatureConfig[] {

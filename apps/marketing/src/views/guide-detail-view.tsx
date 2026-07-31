@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 
 import { ResourcesPageShell } from '@/components/resources-page-shell'
@@ -39,13 +40,15 @@ export default function GuideDetailView({ guide }: { guide: TGuideConfig }) {
                             <li>
                                 <Link
                                     className="transition-colors hover:text-foreground"
-                                    href="/docs"
+                                    href={'/docs' as Route}
                                 >
                                     Docs
                                 </Link>
                             </li>
                             <li aria-hidden="true">/</li>
-                            <li className="text-foreground">{guide.provider}</li>
+                            <li className="text-foreground">
+                                {guide.provider}
+                            </li>
                         </ol>
                     </nav>
 
@@ -137,7 +140,7 @@ export default function GuideDetailView({ guide }: { guide: TGuideConfig }) {
                             </Link>
                             <Link
                                 className="inline-flex min-h-10 items-center border border-line px-4 text-[13px] text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
-                                href="/docs"
+                                href={'/docs' as Route}
                             >
                                 All connection guides
                             </Link>

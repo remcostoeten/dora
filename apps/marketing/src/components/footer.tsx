@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { cacheLife, cacheTag } from 'next/cache'
 
@@ -39,7 +40,7 @@ function FooterLink({ href, label, external }: (typeof FOOTER_LINKS)[number]) {
     }
 
     return (
-        <Link className={className} href={href}>
+        <Link className={className} href={href as Route}>
             {label}
         </Link>
     )

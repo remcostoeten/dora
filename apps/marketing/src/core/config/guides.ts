@@ -1,3 +1,5 @@
+import type { Route } from 'next'
+
 import type { TRouteConfig } from '@/core/config/routes'
 
 export type TGuideStep = {
@@ -1031,8 +1033,8 @@ export function getGuide(slug: string): TGuideConfig | undefined {
     return guideBySlug.get(slug)
 }
 
-export function getGuidePath(slug: string): string {
-    return `/docs/connect/${slug}`
+export function getGuidePath(slug: string): Route {
+    return `/docs/connect/${slug}` as Route
 }
 
 export function getGuideRouteEntries(): TRouteConfig[] {
