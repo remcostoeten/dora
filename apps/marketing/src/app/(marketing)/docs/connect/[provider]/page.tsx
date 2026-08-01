@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 
+import { ResourceFallback } from '@/components/resource-route-fallback'
 import { GUIDES, getGuide, getGuidePath } from '@/core/config/guides'
 import { createMetadata } from '@/core/config/seo'
 import GuideDetailView from '@/views/guide-detail-view'
@@ -9,15 +11,17 @@ type Props = {
     params: Promise<{ provider: string }>
 }
 
+export const instant = true
+
 export function generateStaticParams() {
     return GUIDES.map(function (guide) {
         return { provider: guide.slug }
     })
 }
 
-export async function generateMetadata({
-    params
-}: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+    'use cache'
+
     const { provider } = await params
     const guide = getGuide(provider)
 
@@ -33,7 +37,7 @@ export async function generateMetadata({
     })
 }
 
-export default async function Page({ params }: Props) {
+async function GuideContent({ params }: Props) {
     const { provider } = await params
     const guide = getGuide(provider)
 
@@ -42,4 +46,21 @@ export default async function Page({ params }: Props) {
     }
 
     return <GuideDetailView guide={guide} />
+}
+
+export default function Page({ params }: Props) {
+    return (
+        <Suspense
+            fallback={
+                <ResourceFallback
+                    eyebrow="Connection guide"
+                    title="Loading guide…"
+                    lead="Preparing the provider-specific connection steps."
+                    testId="connection-guide-shell"
+                />
+            }
+        >
+            <GuideContent params={params} />
+        </Suspense>
+    )
 }

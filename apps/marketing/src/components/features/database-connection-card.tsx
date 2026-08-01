@@ -5,7 +5,7 @@ import { useRef, useEffect, useState } from 'react'
 import { useGate, type Motion } from './use-scroll-motion'
 
 /* ---------------------------------------------------------------------------
- * Connection String Morph — database URIs cycle through with staggered
+ * Connection String Morph: database URIs cycle through with staggered
  * character animation and abstract visual elements.
  * ------------------------------------------------------------------------- */
 const CONNECTION_STRINGS = [
@@ -77,7 +77,7 @@ function useTypewriter(
 }
 
 /* ---------------------------------------------------------------------------
- * Multi-Database — an interactive "connection constellation". A rose core sits
+ * Multi-Database: an interactive "connection constellation". A rose core sits
  * at the centre with the six supported providers orbiting it; links flow with
  * animated dashes and a data packet streams along the active link. Hovering a
  * provider (or its dot) focuses it, pausing the auto-cycle, and types that
@@ -150,7 +150,7 @@ export function DatabaseConnectionCard({
         return () => cancelAnimationFrame(raf)
     }, [active, animate, running, motion, gate.activeRef])
 
-    // Pointer parallax — the whole cluster leans a few px toward the cursor.
+    // Pointer parallax: the whole cluster leans a few px toward the cursor.
     function onMove(event: React.MouseEvent) {
         const g = groupRef.current
         if (!g) return
@@ -269,7 +269,7 @@ export function DatabaseConnectionCard({
                             fill={current.color}
                         />
 
-                        {/* provider nodes — interactive */}
+                        {/* provider nodes, interactive */}
                         {NODE_POS.map((n, i) => {
                             const on = i === active
                             const c = CONNECTION_STRINGS[i].color
@@ -389,7 +389,7 @@ export function DatabaseConnectionCard({
                     Multi-Database
                 </h3>
                 <p className="text-xs text-ink-500 leading-relaxed">
-                    PostgreSQL, SQLite, libSQL, MySQL. Connect anywhere — local,
+                    PostgreSQL, SQLite, libSQL, MySQL. Connect anywhere: local,
                     hosted, tunneled, SSH.
                 </p>
             </div>

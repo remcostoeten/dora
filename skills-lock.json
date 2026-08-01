@@ -1,29 +1,11 @@
 {
   "version": 1,
   "skills": {
-    "copywriting": {
-      "source": "nexu-io/open-design",
+    "find-skills": {
+      "source": "vercel-labs/skills",
       "sourceType": "github",
-      "skillPath": "skills/copywriting/SKILL.md",
-      "computedHash": "0c80ef86794636c2d9c7661bf1a29b38dd5cd987209fa51a6a387ffa302dea28"
-    },
-    "crafting-effective-readmes": {
-      "source": "softaworks/agent-toolkit",
-      "sourceType": "github",
-      "skillPath": "skills/crafting-effective-readmes/SKILL.md",
-      "computedHash": "c931a8c22160e8925400778fcb2266b5d1df762f3052edba65f72479f79f2d6c"
-    },
-    "create-readme": {
-      "source": "github/awesome-copilot",
-      "sourceType": "github",
-      "skillPath": "skills/create-readme/SKILL.md",
-      "computedHash": "d0ece1b2164ce1376e4ab6e98d6ac079df3a2a94f5f02224362b6a1ce2516ae9"
-    },
-    "readme-generator": {
-      "source": "jeremylongshore/claude-code-plugins-plus-skills",
-      "sourceType": "github",
-      "skillPath": "skills/01-devops-basics/readme-generator/SKILL.md",
-      "computedHash": "b4ed52abb24f2c495354856d915a8acdefb0d76b54ee0812fd3510e16f9df80e"
+      "skillPath": "skills/find-skills/SKILL.md",
+      "computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
     }
   }
 }

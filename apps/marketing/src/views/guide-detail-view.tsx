@@ -1,6 +1,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 
+import { IntentLink } from '@/components/intent-prefetch-link'
 import { ResourcesPageShell } from '@/components/resources-page-shell'
 import { GUIDES, getGuidePath, type TGuideConfig } from '@/core/config/guides'
 import {
@@ -161,13 +162,13 @@ export default function GuideDetailView({ guide }: { guide: TGuideConfig }) {
                             <div className="grid gap-3 sm:grid-cols-3">
                                 {related.map(function (item) {
                                     return (
-                                        <Link
+                                        <IntentLink
                                             key={item.slug}
                                             className="border border-line px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
                                             href={getGuidePath(item.slug)}
                                         >
                                             Connect {item.provider}
-                                        </Link>
+                                        </IntentLink>
                                     )
                                 })}
                             </div>

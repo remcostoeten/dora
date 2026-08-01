@@ -8,11 +8,11 @@ import { useGate } from './use-scroll-motion'
 import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 
 /* ---------------------------------------------------------------------------
- * ORM Cockpit — a four-beat loop that mirrors the real cockpit flow: link a
+ * ORM Cockpit: a four-beat loop that mirrors the real cockpit flow: link a
  * Drizzle / Prisma project, watch the live DB get diffed against the code
  * schema, then generate the migration. Drift rows land one by one, each tagged
  * safe / review / destructive; "Generate migration" presses itself and the SQL
- * types out into the preview — destructive operations commented out, gated.
+ * types out into the preview, destructive operations commented out and gated.
  * Source flips between Drizzle and Prisma on each loop. Honors reduced motion
  * by snapping to the finished state.
  * ------------------------------------------------------------------------- */
@@ -51,7 +51,7 @@ type TDrift = {
     conf: TConf
 }
 
-// DB (live) is the `from` side, code schema the `to` side — so "added in code"
+// DB (live) is the `from` side, code schema the `to` side, so "added in code"
 // reads as "needs creating in the database". Same diff for either ORM; only the
 // linked folder + badge flip.
 const DRIFT: TDrift[] = [
@@ -95,7 +95,7 @@ const C = {
 
 type TSeg = { text: string; color: string }
 
-// Generated migration, postgres dialect — the safe + review ops run, the
+// Generated migration, postgres dialect. The safe + review ops run, the
 // destructive drop stays commented behind the review gate.
 const SQL_SCRIPT: TSeg[] = [
     { text: 'ALTER TABLE ', color: C.kw },
@@ -293,7 +293,7 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                     <div className="flex items-center justify-between border-b border-line px-2.5 py-1 font-mono text-[9px] uppercase tracking-[0.1em] text-ink-700 [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                         <span>schema drift</span>
                         <span>
-                            {shownDrift > 0 ? `${shownDrift} changes` : '—'}
+                            {shownDrift > 0 ? `${shownDrift} changes` : 'none'}
                         </span>
                     </div>
                     <div className="divide-y divide-[var(--color-surface-raised)]">

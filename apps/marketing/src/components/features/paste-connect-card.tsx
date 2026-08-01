@@ -5,7 +5,7 @@ import { useRef, useEffect, useState } from 'react'
 import { useGate } from './use-scroll-motion'
 
 /* ---------------------------------------------------------------------------
- * Paste to Connect — a parse-on-paste demo. A connection string sits in a
+ * Paste to Connect: a parse-on-paste demo. A connection string sits in a
  * paste bar; a left-to-right "parse sweep" lights each segment of the URL and
  * fills the matching form field beneath it in the SAME colour, so the
  * segment -> field mapping reads at a glance. Cycles across providers.
@@ -39,7 +39,7 @@ type TSpec = {
     sslValue: string
 }
 
-// Fields are listed in the order the sweep reads them — which is also the
+// Fields are listed in the order the sweep reads them, which is also the
 // order they appear in the grid below.
 function makeSample(spec: TSpec): TSample {
     const masked = '•'.repeat(6)
@@ -339,7 +339,7 @@ export function PasteConnectCard({ animate }: { animate: boolean }) {
                     Paste to Connect
                 </h3>
                 <p className="text-xs text-ink-500 leading-relaxed">
-                    Drop in any connection string — Dora parses every field
+                    Drop in any connection string, and Dora parses every field
                     automatically.
                 </p>
             </div>

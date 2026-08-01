@@ -160,28 +160,28 @@ All notable changes to this project will be documented in this file.
 
 ### Highlights
 
-- **Hide AI completely** — a new *Settings → Safety → Hide AI* toggle removes every AI surface from the app: the assistant panel and its corner button, Cmd+K query generation, the AI explain/fix actions, and all AI settings sections. For people who want a database client with no AI in it. (#222)
-- **Onboarding tour** — a skippable, non-intrusive 5-step tour introduces the Data Viewer, SQL Console, Schema view, and Settings on first launch. It offers itself for the first three launches and never again once completed or skipped. (#222)
-- **macOS-style window controls** — *Settings → Interface → Window Controls* switches the desktop window buttons between the custom style and macOS traffic lights. (#222)
-- **Drizzle operator intellisense** — the Drizzle runner now shows signature help with live parameter tracking inside `eq()`, `between()`, `inArray()` and friends, plus hover documentation for all condition operators. (#222)
-- **UI zoom** — Ctrl/Cmd + mouse wheel zooms the whole interface, with smooth delta accumulation.
+- **Hide AI completely:** a new *Settings → Safety → Hide AI* toggle removes every AI surface from the app: the assistant panel and its corner button, Cmd+K query generation, the AI explain/fix actions, and all AI settings sections. For people who want a database client with no AI in it. (#222)
+- **Onboarding tour:** a skippable, non-intrusive 5-step tour introduces the Data Viewer, SQL Console, Schema view, and Settings on first launch. It offers itself for the first three launches and never again once completed or skipped. (#222)
+- **macOS-style window controls:** *Settings → Interface → Window Controls* switches the desktop window buttons between the custom style and macOS traffic lights. (#222)
+- **Drizzle operator intellisense:** the Drizzle runner now shows signature help with live parameter tracking inside `eq()`, `between()`, `inArray()` and friends, plus hover documentation for all condition operators. (#222)
+- **UI zoom:** Ctrl/Cmd + mouse wheel zooms the whole interface, with smooth delta accumulation.
 
 ### Editing safety
 
-- SQL-console cell edits and row deletes no longer guess the primary key from any column merely named `id` — a heuristic that could silently update or delete *every* matching row on tables without a real primary key. The key is now resolved strictly from declared metadata (result or schema), which also means mutations finally work on tables whose primary key isn't named `id`. (#218)
-- Buffered dry-mode edits now survive table switches, page/sort/filter changes, and live-monitor reloads — the grid repaints your unsaved values instead of silently reverting to database state — and closing the window with unsaved edits warns first. (#219, completes #213's partial apply and undo-by-primary-key work)
+- SQL-console cell edits and row deletes no longer guess the primary key from any column merely named `id`, a heuristic that could silently update or delete *every* matching row on tables without a real primary key. The key is now resolved strictly from declared metadata (result or schema), which also means mutations finally work on tables whose primary key isn't named `id`. (#218)
+- Buffered dry-mode edits now survive table switches, page/sort/filter changes, and live-monitor reloads: the grid repaints your unsaved values instead of silently reverting to database state. Closing the window with unsaved edits warns first. (#219, completes #213's partial apply and undo-by-primary-key work)
 - Pasting into the grid is sanitized, cancelling a query in one SQL tab no longer aborts other tabs, and crashed views recover via a resettable error boundary. (#215)
 
 ### Reliability
 
 - Connection hygiene: secrets are redacted from logs and errors, all provider API calls share one HTTP client with hard connect/request timeouts, MySQL pools are sized sanely and disconnect deterministically, and the connection monitor no longer grows without bound. (#214)
-- Identifier quoting is canonical across every dialect's TRUNCATE/INSERT/UPDATE paths — tables and columns with spaces, quotes, or reserved-word names are safe everywhere. (#216)
+- Identifier quoting is canonical across every dialect's TRUNCATE/INSERT/UPDATE paths, so tables and columns with spaces, quotes, or reserved-word names are safe everywhere. (#216)
 - A boot smoke test now runs in CI on every PR, failing if the studio doesn't render. (#217)
 - Real dialect coverage: the grid mutation lifecycle (insert → update → delete → truncate) runs through the actual adapters against in-memory SQLite/DuckDB on every test run, and against live MySQL 8.4 + MariaDB 11.4 containers in a weekly CI job. (#221)
 
 ### Release pipeline
 
-- The AUR, Homebrew, APT, Winget, Snap, and Flatpak publishing workflows now run *inside* the release run and fail it if any channel fails — a green release means every channel actually published. (#220)
+- The AUR, Homebrew, APT, Winget, Snap, and Flatpak publishing workflows now run *inside* the release run and fail it if any channel fails, so a green release means every channel actually published. (#220)
 
 
 ## [v0.38.0] - 2026-07-26
@@ -248,12 +248,12 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- the SQL and ORM editors now load reliably in packaged builds — Monaco and its fonts are fully self-hosted instead of being fetched from a CDN that the app's content-security policy blocked, which previously left the editor stuck on a blank loading state with mis-spaced text in release builds
+- the SQL and ORM editors now load reliably in packaged builds: Monaco and its fonts are fully self-hosted instead of being fetched from a CDN that the app's content-security policy blocked, which previously left the editor stuck on a blank loading state with mis-spaced text in release builds
 - connection-refused errors now name the host that could not be reached instead of showing a generic message
 
 ### Performance
 
-- data-viewer edits now apply instantly — optimistic updates no longer flash back to the stale value before the save lands
+- data-viewer edits now apply instantly; optimistic updates no longer flash back to the stale value before the save lands
 
 ### Styling
 
@@ -278,7 +278,7 @@ All notable changes to this project will be documented in this file.
 
 ### Bug Fixes
 
-- fix(studio): UI quick wins — remove AI index button, lower AI panel, unified spinner (#181) (#181)
+- fix(studio): UI quick wins: remove AI index button, lower AI panel, unified spinner (#181) (#181)
 
 - fix(studio): pin Monaco loader to bundled core so editor loads in release builds
 
@@ -300,16 +300,16 @@ All notable changes to this project will be documented in this file.
 
 ### Features
 
-- spin up a local MySQL container straight from the Docker manager — MySQL joins PostgreSQL, MariaDB, and CockroachDB as a one-click provisionable engine, with version presets, auto-detected free port, connect-in-data-viewer, SQL seeding, and Compose export
-- the bundled `docker-compose.databases.yml` now covers every server engine Dora can talk to locally — PostgreSQL, MySQL, MariaDB, CockroachDB, and libSQL/sqld — for testing against a real database in one `docker compose up`
-- ORM cockpit — link a project folder, detect its Drizzle or Prisma schema, compare it against the live database, and preview a dialect-correct migration; drift is grouped per table and flagged safe/review/destructive, with destructive and review statements gated behind explicit opt-in before the SQL is handed to the console
-- connect a Cloudflare D1 database with an API token and pick it from your account — a native HTTP query engine, no local file required (#139, #150)
+- spin up a local MySQL container straight from the Docker manager. MySQL joins PostgreSQL, MariaDB, and CockroachDB as a one-click provisionable engine, with version presets, auto-detected free port, connect-in-data-viewer, SQL seeding, and Compose export
+- the bundled `docker-compose.databases.yml` now covers every server engine Dora can talk to locally (PostgreSQL, MySQL, MariaDB, CockroachDB, and libSQL/sqld) for testing against a real database in one `docker compose up`
+- ORM cockpit: link a project folder, detect its Drizzle or Prisma schema, compare it against the live database, and preview a dialect-correct migration; drift is grouped per table and flagged safe/review/destructive, with destructive and review statements gated behind explicit opt-in before the SQL is handed to the console
+- connect a Cloudflare D1 database with an API token and pick it from your account, a native HTTP query engine with no local file required (#139, #150)
 - connect a PlanetScale database with a service token and pick a branch (#141, #149)
 - connect a Vercel Postgres store with a token and pick it from your account (#147)
 - connect a Xata database with a key and pick it from your account (#140, #148)
-- Neon connections are now branch-aware — pick a branch when a project has more than one (#142, #156)
+- Neon connections are now branch-aware: pick a branch when a project has more than one (#142, #156)
 - keep multiple database connections open at once, each with its own isolated tab group; a connection tab bar above the table tabs switches between them (with status dots and per-connection close), and switching preserves each connection's open tabs, active tab, filters and scroll state. Cycle connections with `Ctrl+Shift+[` / `Ctrl+Shift+]` (#96)
-- hardened Turso, Supabase, and Neon connect flows with account visibility — Turso gains robust CLI detection and in-app sign-in, and each provider shows "Connected as", a refresh button, paginated project/organization lists, and clearer empty and error states
+- hardened Turso, Supabase, and Neon connect flows with account visibility: Turso gains robust CLI detection and in-app sign-in, and each provider shows "Connected as", a refresh button, paginated project/organization lists, and clearer empty and error states
 
 ### Bug Fixes
 
@@ -332,12 +332,12 @@ All notable changes to this project will be documented in this file.
 
 Issues completed since v0.29.0:
 
-- ORM & migration cockpit (Pillar 2) — tracking #143, Wave A schema IR + introspection #144, Wave B parsers + folder linking + diff engine #145, Wave C/D migration generation + cockpit UI #146
+- ORM & migration cockpit (Pillar 2): tracking #143, Wave A schema IR + introspection #144, Wave B parsers + folder linking + diff engine #145, Wave C/D migration generation + cockpit UI #146
 - Cloudflare D1 connector #139
 - Xata connector #140
 - PlanetScale connector #141
 - Branch-aware connects for PlanetScale and Neon #142
-- Documentation — docs site at doradb.app/docs #130, installation & distribution matrix #131, provider & dialect reference #132, serverless & hosted provider showcase #133, full feature showcase #134
+- Documentation: docs site at doradb.app/docs #130, installation & distribution matrix #131, provider & dialect reference #132, serverless & hosted provider showcase #133, full feature showcase #134
 
 ## [v0.29.0] - 2026-06-15
 
@@ -371,7 +371,7 @@ Issues completed since v0.29.0:
 
 - feat(connections): first-class presets for 10 hosted providers
 
-- feat(prisma-runner): Prisma ORM Runner — write & execute Prisma client queries natively (#137)
+- feat(prisma-runner): Prisma ORM Runner: write & execute Prisma client queries natively (#137)
 
 - feat(connections): hosted/serverless provider support + Supabase integration (#128)
 
@@ -389,8 +389,8 @@ Issues completed since v0.29.0:
 
 - add source metadata layer (`describeConnectionSource`, `getSourceCaps`, `isUiActionVisible`) so UI visibility follows connection capabilities instead of engine string checks
 - open CSV, JSON, Parquet, TSV, and NDJSON as readonly **data files** (DuckDB-backed sessions) with health indicators, recovery actions, and connection summaries
-- **Save as DuckDB** — materialize active data-file sessions into editable `.duckdb` files
-- **Import files** — import CSV/JSON/Parquet as physical tables in native DuckDB file connections
+- **Save as DuckDB:** materialize active data-file sessions into editable `.duckdb` files
+- **Import files:** import CSV/JSON/Parquet as physical tables in native DuckDB file connections
 - open SQLite and DuckDB files as editable embedded databases
 - drag tabs to reorder them (pinned tabs stay grouped first) (#105)
 - open tabs are persisted and restored across relaunch (#98)
@@ -412,13 +412,13 @@ Issues completed since v0.29.0:
 - SQL console loading shell and editor surfaces now use a themed `--editor` token, so they no longer render a black rectangle in light and non-dark themes (#114)
 - data-grid column headers show a tooltip with the full column name and type, but only when the label is actually truncated (#115)
 - database-studio empty states no longer re-fire their entrance animation on every tab switch, removing the zoom/flicker (#113)
-- AI provider status dot is no longer colour-only — it uses a filled vs hollow shape plus `aria-pressed`/`aria-label` for screen readers (#116)
-- SQLite `VACUUM`, `DETACH DATABASE`, and some `PRAGMA` forms no longer fail to run — they are classified via a keyword fallback when the AST parser rejects them (#94)
+- AI provider status dot is no longer colour-only; it uses a filled vs hollow shape plus `aria-pressed`/`aria-label` for screen readers (#116)
+- SQLite `VACUUM`, `DETACH DATABASE`, and some `PRAGMA` forms no longer fail to run; they are classified via a keyword fallback when the AST parser rejects them (#94)
 
 ### Documentation
 
 - README support matrix and **Local files** section explaining database files vs data files
-- add `docs/ai-providers.md` — per-provider setup, recommended models, key storage, and troubleshooting (#91)
+- add `docs/ai-providers.md`: per-provider setup, recommended models, key storage, and troubleshooting (#91)
 
 ### Tooling
 
@@ -652,7 +652,7 @@ Issues completed since v0.29.0:
 
 ### Documentation
 
-- add v0.25 PRD — tabs, FK drill-down, CSV import
+- add v0.25 PRD: tabs, FK drill-down, CSV import
 
 - add v0.25 implementation plan (9 tasks, tabs + FK + CSV)
 
@@ -677,7 +677,7 @@ Issues completed since v0.29.0:
 
 - add CSV import dialog with preview, column mapping, and progress
 
-- Dora v0.25.0 — Multi-Table Tabs, FK Drill-Down & CSV Import
+- Dora v0.25.0: Multi-Table Tabs, FK Drill-Down & CSV Import
 
 ## [v0.2.2]
 
@@ -854,14 +854,14 @@ Issues completed since v0.29.0:
 
 ### Features
 
-- self-hosted apt repository — sudo apt install dora
+- self-hosted apt repository: sudo apt install dora
 
 ## [v0.0.106]
 
 
 ### Features
 
-- v0.0.106 — global live monitor, SSH tunnels, file exports, AUR binary
+- v0.0.106: global live monitor, SSH tunnels, file exports, AUR binary
 
 ## [v0.0.104]
 

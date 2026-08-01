@@ -29,7 +29,7 @@ Rejected alternatives:
 - **CLI sidecar** (spawn the `duckdb` CLI): cannot do parameter binding, so the
   studio's parameter-bound write path (cell edits / row insert / delete /
   transactions in `adapter/write_duckdb.rs`) would become string-interpolated
-  SQL — a correctness + injection regression. Also loses affected-row counts and
+  SQL, a correctness + injection regression. Also loses affected-row counts and
   type fidelity. Rejected.
 - **Ship prebuilt `libduckdb` in the installer** (dynamic link, no download):
   zero code change and kills the C++ compile, but the download is *not* smaller
@@ -82,11 +82,11 @@ Existing serde types reused verbatim: `QueryExecEvent`, `Page`,
 
 ## Crate / binary layout
 
-- `dora-duckdb` — new crate. Holds the duckdb-using code (`execute`, `schema`,
+- `dora-duckdb` is a new crate. It holds the duckdb-using code (`execute`, `schema`,
   `row_writer`, `import_files`, `save_session`, `file_source`, the duckdb arms of
   the adapters/metadata/live-monitor), the `duckdb` dependency
   (`default-features = false`, dynamic link), and the helper `main()`.
-- `dora` (main app) — depends on `dora-duckdb` **only for the shared protocol
+- `dora` (main app) depends on `dora-duckdb` **only for the shared protocol
   types** (a `proto` module with no `duckdb` dep), never on the `duckdb` crate.
   Holds `Arc<dyn DuckDbBackend>` in the connection enums.
 
@@ -131,18 +131,18 @@ The protocol types live in a `dora-duckdb-proto` portion that does not pull the
 ## Phases
 
 1. **`DuckDbBackend` trait + serde protocol types** (additive, compiles).
-2. **In-process backend + migrate 19 call sites** — `InProcessDuckDbBackend`
+2. **In-process backend + migrate 19 call sites.** `InProcessDuckDbBackend`
    wraps current code; enums hold `Arc<dyn DuckDbBackend>`; behaviour-identical;
    still bundled; `cargo check` + tests green. (Atomic: the enum payload change
    touches all call sites at once.)
-3. **Helper binary + IPC** — move duckdb code into the helper crate; add IPC and
+3. **Helper binary + IPC.** Move duckdb code into the helper crate; add IPC and
    `IpcDuckDbBackend`; flip the backend to IPC; helper links duckdb non-bundled.
 4. **Downloader + packaging + CI**.
 
 Phases 1–2 of the plan correspond to design-phases 1–3 here; phase-3 download/CI
 follows.
 
-### Phase 4a — DONE (commit 5d2dd5d)
+### Phase 4a: DONE (commit 5d2dd5d)
 
 Full IPC transport landed additively, **in-process still the default**: the
 helper, framing, proto, `IpcDuckDbConn`, and `build_duckdb_backend` factory all
@@ -151,7 +151,7 @@ main binary. End-to-end test spawns the real helper and round-trips
 open/batch/query_raw/streaming. The remaining work splits the build graph so the
 main binary stops linking the engine.
 
-### Phase 4b — crate extraction (the size win), execution plan
+### Phase 4b: crate extraction (the size win), execution plan
 
 Grounded in an inventory of every live `duckdb`-crate reference in `app_lib`.
 The invariant: **`app_lib` must not reference the `duckdb` crate at all** (a
@@ -164,7 +164,7 @@ helper binary moves there. Direction is `dora-duckdb → app_lib` only (no cycle
 
 **Stays in `app_lib`** (no `duckdb` crate): the `DuckDbConn` trait, `proto`,
 `framing`, `client`/`IpcDuckDbConn`, `DuckDbConnAdapter`, the duckdb SQL
-`parser` (sqlparser only), and **all serde type *definitions*** —
+`parser` (sqlparser only), and **all serde type *definitions***:
 `DataFileSourceEntry`, `ImportFilesIntoDuckDbResult`, `SaveDataFileSessionResult`,
 `MutationResult`/`TruncateResult`/`DumpResult`/`SoftDeleteResult`, `DatabaseSchema`,
 `ParsedStatement`, `QueryExecEvent`. `build_duckdb_backend` becomes **IPC-only**.
@@ -173,7 +173,7 @@ helper binary moves there. Direction is `dora-duckdb → app_lib` only (no cycle
 `open_in_process`; `DuckDbAdapter` (`adapter/read.rs` duckdb arm) and its
 `WriteAdapter`/`WatchAdapter` impls (`write_duckdb.rs`, `watch.rs` arm);
 `metadata::get_duckdb_counts`; and the engine bodies of `duckdb/{execute,schema,
-row_writer,import_files,save_session,file_source}` — **split each file** so the
+row_writer,import_files,save_session,file_source}`. **Split each file** so the
 type *definition* stays in `app_lib` and the `duckdb`-using *functions* move.
 The helper `main` + `helper.rs` serving loop move too.
 
@@ -186,7 +186,7 @@ The helper `main` + `helper.rs` serving loop move too.
    `From<DErr> for app_lib::Error` at public boundaries. Moderate churn at the
    moved `?`-sites.
 2. **`test_connection` (`services/connection.rs:1283`)** opens `duckdb::Connection`
-   directly to validate. Reroute through the helper — either a tiny `Open`+`Close`
+   directly to validate. Reroute through the helper via either a tiny `Open`+`Close`
    round-trip or a dedicated `TestConnection` proto op.
 3. Once both default paths are IPC, drop the `DORA_DUCKDB_IPC` gate (always IPC)
    and remove `duckdb` from `app_lib/Cargo.toml`. The helper is found as a sibling
@@ -198,7 +198,7 @@ incrementally.
 
 ## Open questions / risks
 
-- libduckdb version pinning vs the `duckdb` crate's vendored bindings — may need
+- libduckdb version pinning vs the `duckdb` crate's vendored bindings may need
   `buildtime_bindgen` + shipping/downloading the matching `duckdb.h`.
 - macOS code-signing/notarization of the helper sidecar and the downloaded
   `.dylib` (Gatekeeper / hardened runtime; the downloaded lib is unsigned).

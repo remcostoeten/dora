@@ -8,7 +8,7 @@ import { OrmSwapper } from "@/components/format-swapper";
 import { usePrefersReducedMotion } from "@/shared/hooks/use-prefers-reduced-motion";
 
 /* ---------------------------------------------------------------------------
- * ORM Runner — a live LSP autocomplete demo that alternates between Drizzle and
+ * ORM Runner: a live LSP autocomplete demo that alternates between Drizzle and
  * Prisma on each loop. The query types itself out; a completion popup floats in
  * and the selection walks to its target (the Drizzle method / the Prisma model),
  * then a column popup lands on `plan` with type hints. Each accept inserts the
@@ -239,7 +239,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
   const activeLang: TLang = running ? lang : "drizzle";
   const langChars = CHARS[activeLang];
   // Reduced-motion users see the finished query statically. Motion users get a
-  // clean type-in from empty the moment the card scrolls into view — no flash
+  // clean type-in from empty the moment the card scrolls into view, no flash
   // of a completed query that then wipes itself, which is what made the entrance
   // feel janky on first load.
   const shownChars = running ? revealed : reduced ? langChars.length : 0;
@@ -260,7 +260,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
     <div ref={ref} className="relative h-full flex flex-col overflow-hidden">
       <CardAura active={running} />
       <div className="relative px-4 pt-5 pb-4">
-        {/* editor — relative anchor for the caret + floating popup */}
+        {/* editor: relative anchor for the caret + floating popup */}
         <div
           ref={editorRef}
           className="relative border border-line bg-surface-deeper/80 px-3 py-2.5"
@@ -413,7 +413,7 @@ export function DrizzleRunnerCard({ animate }: { animate: boolean }) {
         </h3>
         <p className="text-xs text-ink-500 leading-relaxed">
           Prefer an ORM over raw SQL? Run type-safe Drizzle or Prisma Client
-          queries — context-aware autocomplete and a live SQL preview, right in
+          queries: context-aware autocomplete and a live SQL preview, right in
           the query builder.
         </p>
       </div>
