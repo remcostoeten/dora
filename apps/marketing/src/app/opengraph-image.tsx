@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { readFile } from 'node:fs/promises'
 
 export const alt = 'Dora database explorer'
 export const size = {
@@ -8,21 +9,13 @@ export const size = {
 export const contentType = 'image/png'
 
 export default async function OgImage() {
-    const mascotImage = new URL(
-        './dora-backgroundless.png',
-        import.meta.url
-    ).toString()
-    const [monoRegular, monoMedium, monoBold] = await Promise.all([
-        fetch(
-            new URL('./fonts/NotoSansMono-Regular.ttf', import.meta.url)
-        ).then((response) => response.arrayBuffer()),
-        fetch(new URL('./fonts/NotoSansMono-Medium.ttf', import.meta.url)).then(
-            (response) => response.arrayBuffer()
-        ),
-        fetch(new URL('./fonts/NotoSansMono-Bold.ttf', import.meta.url)).then(
-            (response) => response.arrayBuffer()
-        )
+    const [mascot, monoRegular, monoMedium, monoBold] = await Promise.all([
+        readFile(new URL('./dora-backgroundless.png', import.meta.url)),
+        readFile(new URL('./fonts/NotoSansMono-Regular.ttf', import.meta.url)),
+        readFile(new URL('./fonts/NotoSansMono-Medium.ttf', import.meta.url)),
+        readFile(new URL('./fonts/NotoSansMono-Bold.ttf', import.meta.url))
     ])
+    const mascotImage = `data:image/png;base64,${mascot.toString('base64')}`
 
     return new ImageResponse(
         <div
@@ -497,17 +490,17 @@ export default async function OgImage() {
             fonts: [
                 {
                     name: 'Noto Sans Mono',
-                    data: monoRegular,
+                    data: Uint8Array.from(monoRegular).buffer,
                     weight: 400
                 },
                 {
                     name: 'Noto Sans Mono',
-                    data: monoMedium,
+                    data: Uint8Array.from(monoMedium).buffer,
                     weight: 500
                 },
                 {
                     name: 'Noto Sans Mono',
-                    data: monoBold,
+                    data: Uint8Array.from(monoBold).buffer,
                     weight: 700
                 }
             ]
