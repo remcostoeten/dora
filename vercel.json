@@ -1,7 +1,6 @@
 {
     "rootDirectory": "apps/marketing",
-    "bunVersion": "1.x",
     "installCommand": "bun install",
     "framework": "nextjs",
-    "buildCommand": "bun --bun run build:ci"
+    "buildCommand": "bunx bun@1.3.14 --bun next build"
 }
