@@ -1,4 +1,4 @@
-# Keyboard Shortcuts — Implementation Spec
+# Keyboard Shortcuts: Implementation Spec
 
 Built on [`@remcostoeten/use-shortcut`](https://www.npmjs.com/package/@remcostoeten/use-shortcut).
 
@@ -44,7 +44,7 @@ export const DORA_SHORTCUTS = {
     options: {
       description: 'Run query',
       scopes: ['sql-console'],
-      except: 'input',  // except Monaco — it handles mod+enter internally
+      except: 'input',  // except Monaco, which handles mod+enter internally
     },
   },
   'query.run-selection': {
@@ -119,7 +119,7 @@ export const DORA_SHORTCUTS = {
 
   // ── Vim-style navigation (sequences) ───────────────
   'goto.dashboard': {
-    keys: 'g d',       // G then D  — use-shortcut chord syntax
+    keys: 'g d',       // G then D, use-shortcut chord syntax
     handler: null!,
     options: { description: 'Go to dashboard', except: 'typing' },
   },
@@ -273,7 +273,7 @@ export function ShortcutProvider({ children }: { children: ReactNode }) {
     // Re-register with existing handler if bound
     const existing = results.current[id]
     if (existing) {
-      // Capture handler via triggerFn — use a forwarder pattern
+      // Capture handler via triggerFn, using a forwarder pattern
       existing.unbind()
     }
   }
@@ -344,7 +344,7 @@ function SqlConsole() {
 
 **File:** `src/core/shortcuts/shortcut-store.ts`
 
-Overrides stored in Tauri SQLite (`get_setting`/`set_setting` — already exist).  
+Overrides stored in Tauri SQLite (`get_setting`/`set_setting`, both of which already exist).  
 Falls back to `localStorage` on web.
 
 ```ts
@@ -356,7 +356,7 @@ type OverrideMap = Record<string, string>  // id → combo string
 
 export function loadShortcutOverrides(): OverrideMap {
   try {
-    // Tauri: loaded async, but we need sync at init — use cached value
+    // Tauri: loaded async, but we need sync at init, so use the cached value
     const cached = localStorage.getItem(STORAGE_KEY)
     return cached ? JSON.parse(cached) : {}
   } catch {
@@ -394,7 +394,7 @@ export async function resetAllShortcuts(): Promise<void> {
 
 ---
 
-## 6. Settings UI — Keyboard Shortcuts Panel
+## 6. Settings UI: Keyboard Shortcuts Panel
 
 **File:** `src/features/settings/components/keyboard-shortcuts-panel.tsx`
 
@@ -500,7 +500,7 @@ export function KeyboardShortcutsPanel() {
 
 ---
 
-## 7. Shortcut Row — Record & Rebind
+## 7. Shortcut Row: Record & Rebind
 
 **File:** `src/features/settings/components/shortcut-row.tsx`
 
@@ -590,7 +590,7 @@ export function ShortcutRow({ id, description, combo, display, isOverridden }: P
 
 ---
 
-## 8. KbdBadge — Display Component
+## 8. KbdBadge: Display Component
 
 **File:** `src/features/settings/components/kbd-badge.tsx`
 
@@ -639,7 +639,7 @@ export function KbdBadge({ display, isOverridden, onClick, title }: Props) {
 
 ## 9. Command Palette Integration
 
-Shortcut results expose `.display` — use it in the command palette so bindings stay in sync.
+Shortcut results expose `.display`; use it in the command palette so bindings stay in sync.
 
 ```tsx
 // command-palette: show shortcut next to each command
@@ -679,7 +679,7 @@ export function ShortcutConflictBadge({ reason, conflictsWith }: Props) {
 }
 ```
 
-Wire into `ShortcutProvider` — store conflicts in state, expose via context, render in `ShortcutRow`.
+Wire into `ShortcutProvider`: store conflicts in state, expose via context, render in `ShortcutRow`.
 
 ---
 
@@ -706,7 +706,7 @@ Settings panel mounts `<KeyboardShortcutsPanel />` inside existing settings moda
 ## 12. Backend Integration
 
 No new backend commands needed. Uses existing:
-- `get_setting(key)` / `set_setting(key, value)` — persisting overrides to SQLite
+- `get_setting(key)` / `set_setting(key, value)` for persisting overrides to SQLite
 - Key: `"shortcut_overrides"` → JSON string of `Record<DoraShortcutId, combo>`
 
 Tauri command already registered in `lib.rs`:

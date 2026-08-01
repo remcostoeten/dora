@@ -1,6 +1,6 @@
 # AI Implementation Guide (Desktop)
 
-How the AI-powered SQL assistant works in Dora desktop — from database introspection to streaming Groq responses. Adapted from `apps/db-tester/AI-IMPLEMENTATION.md` for the Tauri-native stack.
+How the AI-powered SQL assistant works in Dora desktop, from database introspection to streaming Groq responses. Adapted from `apps/db-tester/AI-IMPLEMENTATION.md` for the Tauri-native stack.
 
 ---
 
@@ -21,7 +21,7 @@ User types a question (right-side AI sidebar)
 
 Schema is fetched lazily via the existing `get_database_schema` command when the AI panel opens; it's injected into the system prompt server-side.
 
-Unlike `db-tester` (Next.js, Vercel AI SDK), the desktop app runs everything through Tauri commands. There is no client-side LLM provider library — the Rust process owns the HTTP call to Groq, key management, and abort semantics.
+Unlike `db-tester` (Next.js, Vercel AI SDK), the desktop app runs everything through Tauri commands. There is no client-side LLM provider library; the Rust process owns the HTTP call to Groq, key management, and abort semantics.
 
 ---
 
@@ -33,11 +33,11 @@ Unlike `db-tester` (Next.js, Vercel AI SDK), the desktop app runs everything thr
 - Tauri binding (TS): `commands.getDatabaseSchema(connectionId)` (`src/lib/bindings.ts`).
 - Cached in Rust `AppState::schemas: DashMap<Uuid, Arc<DatabaseSchema>>` on first fetch.
 
-The AI panel reads the schema once per opened connection (no client cache layer — the Rust side already caches it).
+The AI panel reads the schema once per opened connection (no client cache layer, since the Rust side already caches it).
 
 **Key files:**
 - `src-tauri/src/database/commands/schema.rs` (or wherever `get_database_schema` lives)
-- `src-tauri/src/database/contract.rs` — `DatabaseSchema`, `TableInfo`, `ColumnInfo` types
+- `src-tauri/src/database/contract.rs`: `DatabaseSchema`, `TableInfo`, `ColumnInfo` types
 
 ---
 
@@ -101,7 +101,7 @@ The schema dump (DDL-like listing with PK/FK/NOT NULL annotations) is shared bet
 
 **Key files:**
 - `src-tauri/src/database/services/ai/groq.rs`
-- `src-tauri/src/database/services/ai/mod.rs` — `AIService::complete_stream` dispatcher
+- `src-tauri/src/database/services/ai/mod.rs`: `AIService::complete_stream` dispatcher
 
 ---
 
@@ -114,7 +114,7 @@ The schema dump (DDL-like listing with PK/FK/NOT NULL annotations) is shared bet
 1. Append user message + placeholder assistant message to the Zustand thread
 2. Pack history into a single string via `buildChatPrompt`
 3. Open a `Channel<AiStreamEvent>` and call `commands.aiCompleteStream(..., 'chat', channel)`
-4. On each `{ type: 'token', text }` event, accumulate and call `updateMessage` — Zustand re-renders the bubble
+4. On each `{ type: 'token', text }` event, accumulate and call `updateMessage`; Zustand re-renders the bubble
 5. On `final` / completion, mark `streaming: false`
 6. `abort()` sets a local cancel flag and calls `commands.aiAbortStream(requestId)`
 
@@ -158,7 +158,7 @@ Plus 4 quick actions (always visible): **Seed data**, **Schema design**, **Debug
 | `threads` | `Record<connectionId-or-__none__, ChatMessage[]>` persisted to localStorage |
 | `pendingPrompt` | Cross-component prompt injection (e.g., from a context menu) |
 
-Schema and Groq-key state are not stored — they're refetched per-open. API keys themselves live in the OS keyring via Rust commands `aiKeysAdd` / `aiKeysList`.
+Schema and Groq-key state are not stored; they're refetched per-open. API keys themselves live in the OS keyring via Rust commands `aiKeysAdd` / `aiKeysList`.
 
 ---
 
@@ -171,7 +171,7 @@ Schema and Groq-key state are not stored — they're refetched per-open. API key
 | `@tauri-apps/api` | Channel-based streaming IPC (already in app) |
 | `lucide-react` | Icons (already in app) |
 
-The Vercel AI SDK is **not** used — Tauri handles streaming end-to-end.
+The Vercel AI SDK is **not** used. Tauri handles streaming end-to-end.
 
 ---
 
@@ -206,4 +206,4 @@ The Vercel AI SDK is **not** used — Tauri handles streaming end-to-end.
 | Abort | `req.signal` | Shared `AtomicBool` flag keyed by `request_id` |
 | Result rendering | `react-markdown` + custom renderers | Same (re-used) |
 
-The desktop port reuses the entire Rust AI stack that was already in place for the ⌘K SQL flow — only a new prompt mode and a chat UI were added.
+The desktop port reuses the entire Rust AI stack that was already in place for the ⌘K SQL flow. Only a new prompt mode and a chat UI were added.

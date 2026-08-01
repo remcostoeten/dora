@@ -1,6 +1,6 @@
 # Spec 01: DuckDB Provider
 
-Status: `[-]` — backend + frontend implemented and unit-tested; remaining: manual end-to-end run in the app and release binary-size measurement.
+Status: `[-]` backend + frontend implemented and unit-tested; remaining: manual end-to-end run in the app and release binary-size measurement.
 
 ## Why
 
@@ -16,7 +16,7 @@ First-class DuckDB support, modeled on the existing SQLite path:
 - inline edits / row mutations via the adapter write path
 - export (JSON, CSV, SQL INSERT) like other providers
 
-Out of scope: remote DuckDB (MotherDuck) — note it as a follow-up; extensions management UI; file-as-database UX (Spec 02).
+Out of scope: remote DuckDB (MotherDuck), noted as a follow-up; extensions management UI; file-as-database UX (Spec 02).
 
 ## Safe write scope
 
@@ -30,9 +30,9 @@ Out of scope: remote DuckDB (MotherDuck) — note it as a follow-up; extensions 
 
 1. Follow the workstream sequence in `docs/provider-support/00-overview.md`; SQLite is the reference implementation throughout (`database/sqlite/`, `adapter/write_sqlite.rs`). DuckDB's Rust crate API is rusqlite-shaped, so `sqlite/execute.rs` and `sqlite/row_writer.rs` translate almost mechanically.
 2. Schema introspection: use `information_schema.tables/columns` and `duckdb_indexes()` rather than sqlite_master.
-3. Type mapping: DuckDB has rich types (LIST, STRUCT, MAP, DECIMAL, HUGEINT, TIMESTAMP_TZ). Map unknowns to a JSON/text rendering in `row_writer` rather than erroring — first release must never panic on an exotic type.
+3. Type mapping: DuckDB has rich types (LIST, STRUCT, MAP, DECIMAL, HUGEINT, TIMESTAMP_TZ). Map unknowns to a JSON/text rendering in `row_writer` rather than erroring: the first release must never panic on an exotic type.
 4. Concurrency: DuckDB allows one writer process. Open the connection like SQLite (`Arc<Mutex<...>>`) and surface a clear error if the file is locked by another process.
-5. Live monitoring (`database/live_monitor.rs`): polling like SQLite, or explicitly stub it out — do not leave the watch path panicking.
+5. Live monitoring (`database/live_monitor.rs`): polling like SQLite, or explicitly stub it out. Do not leave the watch path panicking.
 6. Binary size: the bundled DuckDB lib adds tens of MB. Measure the release binary before/after; if the hit is unacceptable, gate behind a cargo feature + separate build artifact and flag this as `[!]` for a product decision.
 
 ## Done when

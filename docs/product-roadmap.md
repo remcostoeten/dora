@@ -4,32 +4,32 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 
 ---
 
-## Tier 0 — Must fix before next release
+## Tier 0: Must fix before next release
 
 ### 0-1. TypeScript build gate broken
 **File:** `bun x tsc --noEmit -p apps/desktop/tsconfig.app.json` → fails  
 **Why:** CI cannot enforce type safety. Any agent can silently introduce type regressions.  
 **Fixes needed:**
-- `src/components/ui/sonner.tsx:6` — `ToasterProps` not imported
-- `src/core/data-generation/schema-analyzer.ts:11` — `faker.internet.userName` invalid in current typings (use `faker.internet.username`)
-- `src/features/database-studio/database-studio.tsx:1490` — passes `pagination`/`onPaginationChange` props not in `StudioToolbar`
+- `src/components/ui/sonner.tsx:6`: `ToasterProps` not imported
+- `src/core/data-generation/schema-analyzer.ts:11`: `faker.internet.userName` invalid in current typings (use `faker.internet.username`)
+- `src/features/database-studio/database-studio.tsx:1490`: passes `pagination`/`onPaginationChange` props not in `StudioToolbar`
 - Remaining `result.error` access without narrowing across adapter types
 - After fix: add `tsc --noEmit` to CI so it stays green
 
 ### 0-2. Error shape breaking change needs frontend wire-up
 **Why:** Phase 3 backend refactor changed error serialization from `{ name, message }` to `{ kind, detail }`. Frontend error handling reads the old shape.  
 **Files to update:**
-- `src/core/data-provider/adapters/tauri.ts` — `getAdapterError()` and any `.message` / `.name` reads
-- `src/core/data-provider/types.ts` — `AdapterError` type
+- `src/core/data-provider/adapters/tauri.ts`: `getAdapterError()` and any `.message` / `.name` reads
+- `src/core/data-provider/types.ts`: `AdapterError` type
 - Any toast/error display that destructures `error.message`
 
 ### 0-3. SQL Console filter action is a stub
-**File:** `src/features/sql-console/sql-console.tsx:663` — shows "Coming Soon"  
-**Fix:** Wire up client-side row filtering on the result grid (filter by column value). Backend not needed — pure frontend. Use existing `result.rows` array.
+**File:** `src/features/sql-console/sql-console.tsx:663` shows "Coming Soon"  
+**Fix:** Wire up client-side row filtering on the result grid (filter by column value). Backend not needed; this is pure frontend. Use existing `result.rows` array.
 
 ---
 
-## Tier 1 — High value, relatively contained
+## Tier 1: High value, relatively contained
 
 ### 1-1. MySQL full parity
 **Status:** Backend connectivity landed (PR #43-45). Schema browsing works. Mutations still hit the `WriteAdapter::NotImplemented` stub.  
@@ -44,7 +44,7 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 **What it is:** ERD-style view of table relationships (FK arrows, column types).  
 **Implementation path:**
 - Use `get_database_schema` command (already exists, returns `DatabaseSchema`)
-- Render with `reactflow` or plain SVG — FK edges from `foreign_keys` field on `TableInfo`
+- Render with `reactflow` or plain SVG, taking FK edges from `foreign_keys` field on `TableInfo`
 - Entry point: sidebar table context menu → "Visualize Schema"
 - No backend changes needed
 
@@ -52,18 +52,18 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 **Current state:** History saved, displayed in a flat list. No search, no favorite pinning, no grouping by connection.  
 **Spec:**
 - Search/filter by query text
-- Pin queries to top (persist `favorite: bool` — field exists in `SavedQuery` struct but unused in UI)
+- Pin queries to top (persist `favorite: bool`, a field that exists in `SavedQuery` but is unused in the UI)
 - Group by connection ID with connection name label
 - Show execution time from history entry
 
-### 1-4. Drizzle runner — make it useful
+### 1-4. Drizzle runner: make it useful
 **Current state:** Drizzle runner exists as a feature but runs raw Drizzle ORM queries against the connection. Limited discovery.  
 **Spec:**
 - Add schema autocomplete in the editor (table/column names from current connection's schema)
 - Show generated SQL preview before execution
 - Export result as Drizzle insert statements
 
-### 1-5. Bundle size — lazy-load Monaco
+### 1-5. Bundle size: lazy-load Monaco
 **Current state:** Monaco editor loads eagerly in the main chunk. Build warns about chunk sizes >500KB.  
 **Fix:**
 - `React.lazy(() => import('./features/sql-console'))` and `./features/drizzle-runner`
@@ -73,10 +73,10 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 
 ---
 
-## Tier 2 — Medium value, requires planning
+## Tier 2: Medium value, requires planning
 
 ### 2-1. Table structure view
-**What:** Dedicated tab in Database Studio showing column definitions, types, constraints, indexes — not just data.  
+**What:** Dedicated tab in Database Studio showing column definitions, types, constraints, indexes, not just data.  
 **Backend:** `get_database_schema` already returns column metadata. Just a UI view.  
 **Spec:**
 - Columns tab: name | type | nullable | default | primary key | foreign key
@@ -106,12 +106,12 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 
 ### 2-5. Telemetry decision
 **Current state:** `@vercel/analytics/react` renders `<Analytics />` in `App.tsx`. Unclear if users are informed.  
-**Action needed:** Make a decision — opt-in with explicit consent dialog on first launch, or remove. Do not leave undisclosed.  
+**Action needed:** Make a decision. Either opt in with an explicit consent dialog on first launch, or remove it. Do not leave undisclosed.  
 **Files:** `src/App.tsx:14`, `src/App.tsx:32`
 
 ---
 
-## Tier 3 — Planned, no immediate action
+## Tier 3: Planned, no immediate action
 
 ### 3-1. MariaDB / CockroachDB support
 **After MySQL reaches Level 2 (full parity).**  
@@ -143,17 +143,17 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 
 ## Frontend quality checklist (any agent can pick these up)
 
-- [ ] Fix TypeScript build gate (`tsc --noEmit` green) — **Tier 0-1**
-- [ ] Wire new error shape `{ kind, detail }` in `tauri.ts` adapter — **Tier 0-2**
-- [ ] Implement SQL Console column filter (remove "Coming Soon") — **Tier 0-3**
-- [ ] Lazy-load Monaco / SQL Console / Drizzle Runner — **Tier 1-5**
-- [ ] Schema visualizer (branch: `feat/schema-visualizer`) — **Tier 1-2**
-- [ ] Query history: search + pin + group by connection — **Tier 1-3**
-- [ ] Table structure view tab in Database Studio — **Tier 2-1**
-- [ ] Todo list implementation — **Tier 2-2**
-- [ ] Keyboard shortcut UI in settings — **Tier 2-3**
-- [ ] Connection groups/folders — **Tier 2-4**
-- [ ] Telemetry opt-in dialog or removal — **Tier 2-5**
+- [ ] Fix TypeScript build gate (`tsc --noEmit` green) (**Tier 0-1**)
+- [ ] Wire new error shape `{ kind, detail }` in `tauri.ts` adapter (**Tier 0-2**)
+- [ ] Implement SQL Console column filter (remove "Coming Soon") (**Tier 0-3**)
+- [ ] Lazy-load Monaco / SQL Console / Drizzle Runner (**Tier 1-5**)
+- [ ] Schema visualizer (branch: `feat/schema-visualizer`) (**Tier 1-2**)
+- [ ] Query history: search + pin + group by connection (**Tier 1-3**)
+- [ ] Table structure view tab in Database Studio (**Tier 2-1**)
+- [ ] Todo list implementation (**Tier 2-2**)
+- [ ] Keyboard shortcut UI in settings (**Tier 2-3**)
+- [ ] Connection groups/folders (**Tier 2-4**)
+- [ ] Telemetry opt-in dialog or removal (**Tier 2-5**)
 
 ---
 
@@ -166,4 +166,4 @@ Bugs and debt first, then features. Items within each tier are ordered by impact
 | MySQL | Enabled in backend, disabled in UI | Re-enable after Phase 5b WriteAdapter ports |
 | Telemetry | Undecided | Must resolve before public release announcement |
 | MSSQL | Planned | After MySQL reaches full parity |
-| File-as-database (CSV/Parquet/JSON) | Shipped | Spec 02 — flat files open as read-only DuckDB views; drag-and-drop or "Open data file". Follow-up: dedicated "Materialize to database" action |
+| File-as-database (CSV/Parquet/JSON) | Shipped | Spec 02. Flat files open as read-only DuckDB views; drag-and-drop or "Open data file". Follow-up: dedicated "Materialize to database" action |

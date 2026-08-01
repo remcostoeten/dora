@@ -23,7 +23,7 @@ const POINTS: { head: string; body: ReactNode }[] = [
         body: (
             <>
                 Point Dora at a repo. It detects <Token>Drizzle</Token> or{' '}
-                <Token>Prisma</Token> and parses the schema in place — no
+                <Token>Prisma</Token> and parses the schema in place, with no
                 codegen, no generated client, no Node runtime.
             </>
         )
@@ -34,10 +34,10 @@ const POINTS: { head: string; body: ReactNode }[] = [
     },
     {
         head: 'Every change, graded',
-        body: 'Each drift is tagged safe, review, or destructive — so a new nullable column reads differently from a dropped one.'
+        body: 'Each drift is tagged safe, review, or destructive, so a new nullable column reads differently from a dropped one.'
     },
     {
-        head: 'Preview the migration — gated',
+        head: 'Preview the migration, gated',
         body: (
             <>
                 Generate dialect-correct SQL with destructive operations

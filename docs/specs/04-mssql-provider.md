@@ -4,7 +4,7 @@ Status: `[ ]`
 
 ## Why
 
-Largest underserved market: SSMS is Windows-only and dated, Azure Data Studio is deprecated, DBeaver is heavy. A fast cross-platform native client for SQL Server is a real wedge into enterprise users. `docs/provider-support/00-overview.md` explicitly says MSSQL needs its own roadmap — this is it.
+Largest underserved market: SSMS is Windows-only and dated, Azure Data Studio is deprecated, DBeaver is heavy. A fast cross-platform native client for SQL Server is a real wedge into enterprise users. `docs/provider-support/00-overview.md` explicitly says MSSQL needs its own roadmap. This is it.
 
 ## Scope
 
@@ -17,7 +17,7 @@ MSSQL at "beta" level per the scope-level model in `docs/provider-support-roadma
 - SSH tunneling reusing `database/ssh_tunnel.rs`
 - export (JSON/CSV/INSERT)
 
-Out of scope v1: Windows/Entra ID authentication (`[!]` flag it — decide after beta feedback), live monitoring (stub politely), T-SQL-specific tooling (sp_ browsing, execution plans).
+Out of scope v1: Windows/Entra ID authentication (`[!]` flag it and decide after beta feedback), live monitoring (stub politely), T-SQL-specific tooling (sp_ browsing, execution plans).
 
 ## Safe write scope
 
@@ -29,10 +29,10 @@ Out of scope v1: Windows/Entra ID authentication (`[!]` flag it — decide after
 
 ## Implementation notes
 
-1. Driver: `tiberius` (pure-Rust TDS). Wrap a connection like the Postgres path (`database/postgres/` is the structural reference — MySQL's pool model does not fit tiberius v1; a single client + reconnect is fine for beta).
-2. Dialect differences the shared code will trip on — audit for hardcoded assumptions:
+1. Driver: `tiberius` (pure-Rust TDS). Wrap a connection like the Postgres path (`database/postgres/` is the structural reference; MySQL's pool model does not fit tiberius v1, a single client + reconnect is fine for beta).
+2. Dialect differences the shared code will trip on; audit for hardcoded assumptions:
    - identifier quoting is `[bracket]` not `"quote"`; parameters are `@P1` not `$1`/`?`
-   - pagination is `OFFSET … ROWS FETCH NEXT … ROWS ONLY` (requires ORDER BY) — check the data viewer's pagination SQL builder in the adapter read path
+   - pagination is `OFFSET … ROWS FETCH NEXT … ROWS ONLY` (requires ORDER BY), so check the data viewer's pagination SQL builder in the adapter read path
    - no `RETURNING`; use `OUTPUT INSERTED.*` in `write_mssql.rs`
    - booleans are `BIT`; `LIMIT` does not exist
 3. Schema introspection: `sys.tables`, `sys.columns`, `sys.indexes`, `sys.foreign_keys`, `INFORMATION_SCHEMA` as fallback. The data viewer must namespace tables by schema (`dbo.users`) the way the Postgres path handles non-public schemas.

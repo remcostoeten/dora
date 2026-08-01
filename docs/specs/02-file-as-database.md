@@ -1,6 +1,6 @@
 # Spec 02: File-as-Database (CSV / Parquet / JSON)
 
-Status: `[x]` — shipped. Open `.csv/.tsv/.parquet/.json/.ndjson` via drag-and-drop or the connection dialog; files register as read-only DuckDB views in an in-memory connection, appear as tables, support cross-file JOINs, refuse mutations cleanly, and recover gracefully from missing files on reopen. Follow-up deferred: a dedicated "Materialize to database" action (results are already exportable via the existing export machinery).
+Status: `[x]` shipped. Open `.csv/.tsv/.parquet/.json/.ndjson` via drag-and-drop or the connection dialog; files register as read-only DuckDB views in an in-memory connection, appear as tables, support cross-file JOINs, refuse mutations cleanly, and recover gracefully from missing files on reopen. Follow-up deferred: a dedicated "Materialize to database" action (results are already exportable via the existing export machinery).
 
 ## Why
 
@@ -13,7 +13,7 @@ Status: `[x]` — shipped. Open `.csv/.tsv/.parquet/.json/.ndjson` via drag-and-
 - The file appears as a table in the data viewer and schema sidebar; full SQL console support including joins across multiple opened files in one session.
 - "Materialize to database" action: copy the file's contents into a table on any other open connection (uses the existing export/insert machinery).
 
-Out of scope: editing the underlying file in place (views are read-only — surface a friendly "read-only source" error on mutation attempts); Excel files (follow-up); remote URLs.
+Out of scope: editing the underlying file in place (views are read-only, so surface a friendly "read-only source" error on mutation attempts); Excel files (follow-up); remote URLs.
 
 ## Safe write scope
 
@@ -25,9 +25,9 @@ Out of scope: editing the underlying file in place (views are read-only — surf
 ## Implementation notes
 
 1. Connection model: represent as a `DatabaseInfo::DuckDB` variant with `path = :memory:` plus a list of registered file sources, persisted so reopening the app reopens the files. Validate the files still exist on reconnect and report missing ones without failing the whole connection.
-2. Schema inference: `read_csv_auto` sniffs types; expose DuckDB's inference errors verbatim — they are good. For malformed CSVs offer `ignore_errors=true` retry in the error toast.
+2. Schema inference: `read_csv_auto` sniffs types; expose DuckDB's inference errors verbatim, since they are good. For malformed CSVs offer `ignore_errors=true` retry in the error toast.
 3. Mutations: the adapter write path must refuse cleanly. Mark these connections read-only at the `DatabaseClient` level so the UI hides edit affordances rather than erroring after the fact.
-4. Large files: Parquet is lazy; CSV is scanned. Test with a >1 GB CSV — first query may be slow, so show the existing query-running state, never freeze the UI thread.
+4. Large files: Parquet is lazy; CSV is scanned. Test with a >1 GB CSV: the first query may be slow, so show the existing query-running state, never freeze the UI thread.
 5. Drag-and-drop: Tauri `onDragDropEvent`. Files with DB extensions (`.sqlite`, `.db`, `.duckdb`) should route to the normal provider flow, not the file-source flow.
 
 ## Done when

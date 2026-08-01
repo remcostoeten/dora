@@ -78,7 +78,7 @@ const PROVIDERS: TProvider[] = [
 
 /**
  * Hosted services Dora reaches over the standard Postgres / libSQL paths.
- * These are not separate engines — they're connection-string compatibility,
+ * These are not separate engines; they're connection-string compatibility,
  * surfaced here to match how people search ("Supabase GUI", "Neon client").
  */
 const HOSTED_PROVIDERS = [
@@ -191,7 +191,7 @@ export function ProvidersSection() {
         // Map the fill to the scroll range that's actually reachable. Filling
         // starts as the row enters from the bottom of the viewport, and the
         // "full" point (line at CockroachDB, the last node) is capped at the
-        // document's max scroll — so it always lands full at the end of the
+        // document's max scroll, so it always lands full at the end of the
         // page even when the section can't scroll any higher.
         const compute = () => {
             raf = 0
@@ -206,7 +206,7 @@ export function ProvidersSection() {
             const rowCenterDoc = rect.top + scrollY + rect.height / 2
             // begin when the row's top reaches the bottom of the viewport
             const startScroll = rowCenterDoc - rect.height / 2 - vh
-            // natural completion: the row's center reaches the top — but never
+            // natural completion: the row's center reaches the top, but never
             // ask for more scroll than the page actually has
             const endScroll = Math.min(rowCenterDoc, maxScroll)
             const span = Math.max(1, endScroll - startScroll)
@@ -467,7 +467,7 @@ export function ProvidersSection() {
                             </span>
                         </span>
                     ))}
-                    {/* Cloudflare D1 — a genuinely new query engine, not a Postgres
+                    {/* Cloudflare D1: a genuinely new query engine, not a Postgres
                         shim, so it gets a callout rather than a grayscaled logo. */}
                     <span
                         className="flex items-center gap-2"
@@ -484,7 +484,7 @@ export function ProvidersSection() {
                             native engine
                         </span>
                     </span>
-                    {/* PostHog — reached over the HogQL Query API, another new
+                    {/* PostHog: reached over the HogQL Query API, another new
                         engine (not a Postgres shim), so it earns the same badge. */}
                     <span
                         className="flex items-center gap-2"
@@ -510,7 +510,7 @@ export function ProvidersSection() {
                             (HOSTED_PROVIDERS.length + 2) * STAGGER_MS
                     )}
                 >
-                    Connect with OAuth, an API token, or a branch picker — not
+                    Connect with OAuth, an API token, or a branch picker, not
                     just a pasted string. Supabase authorizes in one click; Neon
                     and PlanetScale connect branch-aware; Cloudflare D1 speaks
                     its own HTTP engine, and PostHog turns HogQL events into a

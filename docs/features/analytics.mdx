@@ -1,10 +1,10 @@
 ---
 title: Analytics
-description: Connect a PostHog project and query events, persons, and sessions with HogQL — no separate analytics tool required.
+description: Connect a PostHog project and query events, persons, and sessions with HogQL, with no separate analytics tool required.
 ---
 
 Dora connects to a PostHog project over the read-only [HogQL Query
-API](https://posthog.com/docs/hogql) — there's no wire protocol to
+API](https://posthog.com/docs/hogql). There's no wire protocol to
 implement, so the connector works the same way against PostHog Cloud (US or
 EU) as it does against a self-hosted instance.
 
@@ -41,7 +41,7 @@ are:
 - `cohort_people`
 - `raw_sessions`
 
-Row counts shown next to each table are a live `SELECT count()` — they're
+Row counts shown next to each table are a live `SELECT count()`. They're
 hidden rather than shown as zero if the count can't be read.
 
 ## The built-in dashboard
@@ -65,8 +65,8 @@ dashboard:
 ### Ranges, filters, and drill-downs
 
 The range selector in the header switches every panel between **7, 14, 30,
-and 90 days** at once — the tiles re-compare against the matching previous
-period as you go.
+and 90 days** at once, and the tiles re-compare against the matching
+previous period as you go.
 
 Clicking a slice of any breakdown panel **drills down**: the value becomes a
 filter chip, and every other panel re-queries within it. Drills are additive,
