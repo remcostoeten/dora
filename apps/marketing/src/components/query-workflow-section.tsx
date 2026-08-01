@@ -42,7 +42,7 @@ export function QueryWorkflowSection() {
                         </h3>
                         <p className="text-xs text-ink-500 leading-relaxed">
                             Describe it in English, or stay type-safe in Drizzle
-                            or Prisma — each path compiles to plain SQL you can
+                            or Prisma. Each path compiles to plain SQL you can
                             read, edit, and run on the same engine.
                         </p>
                     </div>

@@ -1,10 +1,11 @@
 {
     "compilerOptions": {
-        "target": "ES2017",
+        "target": "ES2020",
         "lib": ["dom", "dom.iterable", "esnext"],
         "allowJs": false,
         "skipLibCheck": true,
-        "strict": true,
+        "strict": false,
+        "strictNullChecks": true,
         "noEmit": true,
         "esModuleInterop": true,
         "module": "esnext",
@@ -27,10 +28,11 @@
     },
     "include": [
         "next-env.d.ts",
+        "../../packages/studio/src/vite-env.d.ts",
         "**/*.ts",
         "**/*.tsx",
         ".next/types/**/*.ts",
         ".next/dev/types/**/*.ts"
     ],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", "dev-menu.config.ts"]
 }

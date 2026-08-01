@@ -11,29 +11,29 @@ to the live database, and a batch of serverless and edge database connectors.
 
 ## Changes
 
-- **ORM Cockpit** — link a Drizzle or Prisma project folder, diff its schema
+- **ORM Cockpit:** link a Drizzle or Prisma project folder, diff its schema
   against the live database, and preview a dialect-correct migration. Drift is
   grouped per table and flagged safe / review / destructive, with review and
   destructive statements gated behind explicit opt-in before any SQL reaches the
   console (#151–#155).
-- **Cloudflare D1 connector** — connect with an API token and pick a database
+- **Cloudflare D1 connector:** connect with an API token and pick a database
   from your account. A native HTTP query engine, no local file required
   (#139, #150).
-- **PlanetScale connector** — connect with a service token and pick a branch
+- **PlanetScale connector:** connect with a service token and pick a branch
   (#141, #149).
-- **Vercel Postgres connector** — connect with a token and pick a store from your
+- **Vercel Postgres connector:** connect with a token and pick a store from your
   account (#147).
-- **Xata connector** — connect with a key and pick a database from your account
+- **Xata connector:** connect with a key and pick a database from your account
   (#140, #148).
-- **Neon branch-aware connects** — pick a branch when a project has more than one
+- **Neon branch-aware connects:** pick a branch when a project has more than one
   (#142, #156).
-- **Multiple open connections** — keep several databases connected at once, each
+- **Multiple open connections:** keep several databases connected at once, each
   with its own isolated tab group, switchable from a connection bar. Cycle with
   `Ctrl+Shift+[` / `Ctrl+Shift+]` (#96).
-- **Hardened Turso / Supabase / Neon connects with account visibility** — robust
+- **Hardened Turso / Supabase / Neon connects with account visibility:** robust
   Turso CLI detection and in-app sign-in, plus "Connected as", a refresh button,
   paginated project lists, and clearer empty and error states for each.
-- **MySQL in the Docker manager** — spin up a local MySQL container in one click
+- **MySQL in the Docker manager:** spin up a local MySQL container in one click
   alongside PostgreSQL, MariaDB, and CockroachDB, with version presets, an
   auto-detected free port, connect-in-data-viewer, SQL seeding, and Compose
   export. The bundled `docker-compose.databases.yml` now also covers PostgreSQL,

@@ -1,5 +1,7 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 
+import { IntentLink } from '@/components/intent-prefetch-link'
 import { ResourcesPageShell } from '@/components/resources-page-shell'
 import { GUIDES, getGuidePath, type TGuideConfig } from '@/core/config/guides'
 import {
@@ -39,13 +41,15 @@ export default function GuideDetailView({ guide }: { guide: TGuideConfig }) {
                             <li>
                                 <Link
                                     className="transition-colors hover:text-foreground"
-                                    href="/docs"
+                                    href={'/docs' as Route}
                                 >
                                     Docs
                                 </Link>
                             </li>
                             <li aria-hidden="true">/</li>
-                            <li className="text-foreground">{guide.provider}</li>
+                            <li className="text-foreground">
+                                {guide.provider}
+                            </li>
                         </ol>
                     </nav>
 
@@ -137,7 +141,7 @@ export default function GuideDetailView({ guide }: { guide: TGuideConfig }) {
                             </Link>
                             <Link
                                 className="inline-flex min-h-10 items-center border border-line px-4 text-[13px] text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
-                                href="/docs"
+                                href={'/docs' as Route}
                             >
                                 All connection guides
                             </Link>
@@ -158,13 +162,13 @@ export default function GuideDetailView({ guide }: { guide: TGuideConfig }) {
                             <div className="grid gap-3 sm:grid-cols-3">
                                 {related.map(function (item) {
                                     return (
-                                        <Link
+                                        <IntentLink
                                             key={item.slug}
                                             className="border border-line px-4 py-3 text-sm text-muted-foreground transition-colors hover:border-line-strong hover:text-foreground"
                                             href={getGuidePath(item.slug)}
                                         >
                                             Connect {item.provider}
-                                        </Link>
+                                        </IntentLink>
                                     )
                                 })}
                             </div>

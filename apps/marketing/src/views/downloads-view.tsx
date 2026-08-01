@@ -35,15 +35,9 @@ function renderDownload(
 }
 
 function renderDownloads(group: TGroup, assets: TAsset[], releaseUrl: string) {
-    const downloads = []
-
-    for (const download of group.downloads) {
-        downloads.push(
-            renderDownload(download, assets, releaseUrl, group.title)
-        )
-    }
-
-    return downloads
+    return group.downloads.map((download) =>
+        renderDownload(download, assets, releaseUrl, group.title)
+    )
 }
 
 function renderGroup(group: TGroup, assets: TAsset[], releaseUrl: string) {
@@ -66,13 +60,7 @@ function renderGroup(group: TGroup, assets: TAsset[], releaseUrl: string) {
 }
 
 function renderGroups(assets: TAsset[], releaseUrl: string) {
-    const groups = []
-
-    for (const group of RELEASE_GROUPS) {
-        groups.push(renderGroup(group, assets, releaseUrl))
-    }
-
-    return groups
+    return RELEASE_GROUPS.map((group) => renderGroup(group, assets, releaseUrl))
 }
 
 export default async function DownloadsView() {

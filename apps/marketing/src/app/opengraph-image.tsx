@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { readFile } from 'node:fs/promises'
 
 export const alt = 'Dora database explorer'
 export const size = {
@@ -8,21 +9,13 @@ export const size = {
 export const contentType = 'image/png'
 
 export default async function OgImage() {
-    const [mascotImage, monoRegular, monoMedium, monoBold] =
-        await Promise.all([
-            fetch(new URL('./dora-backgroundless.png', import.meta.url)).then(
-                (response) => response.arrayBuffer()
-            ),
-            fetch(
-                new URL('./fonts/NotoSansMono-Regular.ttf', import.meta.url)
-            ).then((response) => response.arrayBuffer()),
-            fetch(
-                new URL('./fonts/NotoSansMono-Medium.ttf', import.meta.url)
-            ).then((response) => response.arrayBuffer()),
-            fetch(
-                new URL('./fonts/NotoSansMono-Bold.ttf', import.meta.url)
-            ).then((response) => response.arrayBuffer())
-        ])
+    const [mascot, monoRegular, monoMedium, monoBold] = await Promise.all([
+        readFile(new URL('./dora-backgroundless.png', import.meta.url)),
+        readFile(new URL('./fonts/NotoSansMono-Regular.ttf', import.meta.url)),
+        readFile(new URL('./fonts/NotoSansMono-Medium.ttf', import.meta.url)),
+        readFile(new URL('./fonts/NotoSansMono-Bold.ttf', import.meta.url))
+    ])
+    const mascotImage = `data:image/png;base64,${mascot.toString('base64')}`
 
     return new ImageResponse(
         <div
@@ -38,7 +31,8 @@ export default async function OgImage() {
                 backgroundImage:
                     'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(rgba(255,146,190,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,146,190,0.045) 1px, transparent 1px)',
                 backgroundPosition: '0 0, 0 0, 0 0, 0 0',
-                backgroundSize: '22px 22px, 22px 22px, 110px 110px, 110px 110px',
+                backgroundSize:
+                    '22px 22px, 22px 22px, 110px 110px, 110px 110px',
                 color: '#f8f8f8',
                 fontFamily: 'Noto Sans Mono'
             }}
@@ -346,8 +340,7 @@ export default async function OgImage() {
                                     </div>
                                     <div
                                         style={{
-                                            border:
-                                                '1px solid rgba(99,255,216,0.22)',
+                                            border: '1px solid rgba(99,255,216,0.22)',
                                             borderRadius: 999,
                                             color: '#9dffeb',
                                             fontSize: 12,
@@ -363,8 +356,7 @@ export default async function OgImage() {
                                         display: 'flex',
                                         flexDirection: 'column',
                                         overflow: 'hidden',
-                                        border:
-                                            '1px solid rgba(255,255,255,0.08)',
+                                        border: '1px solid rgba(255,255,255,0.08)',
                                         borderRadius: 13
                                     }}
                                 >
@@ -378,7 +370,8 @@ export default async function OgImage() {
                                         <div
                                             key={row.join('-')}
                                             style={{
-                                                height: rowIndex === 0 ? 34 : 38,
+                                                height:
+                                                    rowIndex === 0 ? 34 : 38,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 borderTop:
@@ -404,7 +397,8 @@ export default async function OgImage() {
                                                         color:
                                                             rowIndex === 0
                                                                 ? 'rgba(255,255,255,0.46)'
-                                                                : cellIndex === 2
+                                                                : cellIndex ===
+                                                                    2
                                                                   ? '#9dffeb'
                                                                   : 'rgba(255,255,255,0.72)',
                                                         fontSize:
@@ -435,11 +429,9 @@ export default async function OgImage() {
                                             <span
                                                 key={label}
                                                 style={{
-                                                    border:
-                                                        '1px solid rgba(255,255,255,0.09)',
+                                                    border: '1px solid rgba(255,255,255,0.09)',
                                                     borderRadius: 9,
-                                                    color:
-                                                        'rgba(255,255,255,0.54)',
+                                                    color: 'rgba(255,255,255,0.54)',
                                                     fontSize: 12,
                                                     fontWeight: 500,
                                                     padding: '7px 9px'
@@ -498,17 +490,17 @@ export default async function OgImage() {
             fonts: [
                 {
                     name: 'Noto Sans Mono',
-                    data: monoRegular,
+                    data: Uint8Array.from(monoRegular).buffer,
                     weight: 400
                 },
                 {
                     name: 'Noto Sans Mono',
-                    data: monoMedium,
+                    data: Uint8Array.from(monoMedium).buffer,
                     weight: 500
                 },
                 {
                     name: 'Noto Sans Mono',
-                    data: monoBold,
+                    data: Uint8Array.from(monoBold).buffer,
                     weight: 700
                 }
             ]

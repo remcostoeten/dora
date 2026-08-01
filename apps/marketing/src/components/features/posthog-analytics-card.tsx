@@ -7,7 +7,7 @@ import { useGate } from './use-scroll-motion'
 /* ---------------------------------------------------------------------------
  * PostHog analytics, built in. Dora connects to a PostHog project over the
  * HogQL Query API (no wire protocol) and turns raw events into a dashboard:
- * KPI tiles, an activity chart, and the list of sites actually sending data —
+ * KPI tiles, an activity chart, and the list of sites actually sending data,
  * with a one-click "exclude localhost" toggle. This card mirrors that surface
  * in miniature and animates its bars in when scrolled into view.
  * ------------------------------------------------------------------------- */
@@ -15,7 +15,7 @@ import { useGate } from './use-scroll-motion'
 const ACCENT = 'var(--color-brand-200)'
 const MAUVE = 'var(--color-brand-600)'
 
-// Two weeks of event volume — the shape the real Activity chart draws.
+// Two weeks of event volume, the shape the real Activity chart draws.
 const BARS = [34, 41, 38, 52, 61, 47, 55, 68, 72, 63, 81, 77, 92, 86]
 
 type TKpi = { label: string; value: string }
@@ -140,7 +140,7 @@ export function PosthogAnalyticsCard({ animate }: { animate: boolean }) {
                 </h3>
                 <p className="text-xs leading-relaxed text-ink-500">
                     Point Dora at a PostHog project and explore events, top
-                    pages, and live traffic in HogQL — KPI tiles, activity
+                    pages, and live traffic in HogQL: KPI tiles, activity
                     charts, and the sites actually sending data, no SQL
                     required.
                 </p>

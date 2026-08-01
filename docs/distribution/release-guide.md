@@ -95,11 +95,11 @@ flowchart TD
 
 Platform builds in phase 2 run **in parallel** after preflight passes. Package-manager jobs in phase 5 also run **in parallel** after the GitHub release is published.
 
-The phase-5 jobs call `aur.yml`, `brew.yml`, `apt.yml`, `winget.yml`, `snap.yml`, and `flatpak.yml` via `workflow_call`, so each channel's real outcome is part of the `Release` run itself: **if the Release run for a tag is green, every channel published; if any channel fails, the run goes red on that job.** There is no need to separately check each channel workflow's history under Actions — that was only necessary when these were fire-and-forget `gh workflow run` dispatches. The channel workflows all keep their `workflow_dispatch` triggers for manual re-runs of a single channel (e.g. re-publishing Homebrew after fixing a tap secret).
+The phase-5 jobs call `aur.yml`, `brew.yml`, `apt.yml`, `winget.yml`, `snap.yml`, and `flatpak.yml` via `workflow_call`, so each channel's real outcome is part of the `Release` run itself: **if the Release run for a tag is green, every channel published; if any channel fails, the run goes red on that job.** There is no need to separately check each channel workflow's history under Actions; that was only necessary when these were fire-and-forget `gh workflow run` dispatches. The channel workflows all keep their `workflow_dispatch` triggers for manual re-runs of a single channel (e.g. re-publishing Homebrew after fixing a tap secret).
 
 ---
 
-## Phase 0 — Dispatch the release
+## Phase 0: Dispatch the release
 
 1. Ensure `master` contains everything you want to ship.
 2. Working tree is clean locally (CI enforces this too).
@@ -111,11 +111,11 @@ Tags must match `vMAJOR.MINOR.PATCH` (plain semver, no suffix). Pushing the tag 
 
 Do **not** create or publish the GitHub release by hand. Manual publication before CI finishes is the main failure mode for APT, AUR, Homebrew, and Winget (they expect release assets to exist).
 
-**Emergency re-tag only:** `tag-create.yml` tags an existing SHA without version bumps — use only when recovering a broken release, not for normal shipping.
+**Emergency re-tag only:** `tag-create.yml` tags an existing SHA without version bumps. Use it only when recovering a broken release, not for normal shipping.
 
 ---
 
-## Phase 1 — `preflight`
+## Phase 1: `preflight`
 
 Fails fast before any expensive build starts.
 
@@ -142,7 +142,7 @@ Preflight also verifies:
 
 ---
 
-## Phase 2 — Platform builds
+## Phase 2: Platform builds
 
 Three jobs run in parallel. Each job:
 
@@ -186,7 +186,7 @@ Three jobs run in parallel. Each job:
 
 ---
 
-## Phase 3 — `publish-release`
+## Phase 3: `publish-release`
 
 Waits for all three platform jobs, then:
 
@@ -215,7 +215,7 @@ If an empty pre-created release exists for the tag, CI deletes it and recreates.
 
 ---
 
-## Phase 4 — `post-release`
+## Phase 4: `post-release`
 
 Runs on `master` after the release is published.
 
@@ -233,7 +233,7 @@ chore(release): update README for v0.27.0
 
 ---
 
-## Phase 5 — Package manager channels
+## Phase 5: Package manager channels
 
 These jobs run in parallel after `publish-release` succeeds. Each calls a dedicated channel workflow as a reusable workflow (`workflow_call`) with the release tag, so the channel's success or failure is the job's own status inside the `Release` run:
 
@@ -272,7 +272,7 @@ artifacts and points each platform at its download URL + signature:
 Config lives in [`tauri.conf.json`](../../apps/desktop/src-tauri/tauri.conf.json)
 under `plugins.updater` (endpoint + public key) and `bundle.createUpdaterArtifacts: true`.
 
-> **Intel macOS** is not in the manifest — only an Apple-Silicon build is produced,
+> **Intel macOS** is not in the manifest; only an Apple-Silicon build is produced,
 > so Intel users update by reinstalling. Add a `darwin-x86_64` build + map it in
 > `generate-latest-json.ts` to cover them.
 
@@ -284,17 +284,17 @@ committed in `tauri.conf.json`, the **private** key must be added as a secret:
 
 1. Generate (if rotating): `cd apps/desktop && bun x tauri signer generate -w ~/.tauri/dora-updater.key`
 2. Add GitHub repository secrets:
-   - `TAURI_SIGNING_PRIVATE_KEY` — full contents of `~/.tauri/dora-updater.key`
-   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` — the key password (empty string if none)
+   - `TAURI_SIGNING_PRIVATE_KEY`: full contents of `~/.tauri/dora-updater.key`
+   - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: the key password (empty string if none)
 3. If you regenerated the key, replace `plugins.updater.pubkey` in `tauri.conf.json`
    with the new `*.key.pub` contents and commit.
 
 Without these secrets the platform builds still succeed but produce **no `.sig`
-files**, and `generate-latest-json.ts` fails the publish job (by design — a
+files**, and `generate-latest-json.ts` fails the publish job (by design, since a
 release with no updater manifest would silently break auto-update).
 
 > **Key custody:** losing the private key means no installed app can verify a
-> future update — you'd have to ship a new pubkey and every existing user would
+> future update. You'd have to ship a new pubkey and every existing user would
 > be stranded on their current version. Back it up in a password manager.
 
 ---
@@ -303,7 +303,7 @@ release with no updater manifest would silently break auto-update).
 
 Not everything is a separate “package manager workflow.” A tagged release produces **GitHub release assets** first; six **store/registry workflows** fan out from there.
 
-### GitHub Releases (automatic — no extra workflow)
+### GitHub Releases (automatic, no extra workflow)
 
 Built by `release.yml` and attached to every release. Users install directly from the release page:
 
@@ -312,12 +312,12 @@ Built by `release.yml` and attached to every release. Users install directly fro
 | `.dmg` (Apple Silicon) | macOS | Also feeds Homebrew |
 | `.exe` | Windows | Also feeds Winget |
 | `.deb` | Debian/Ubuntu | Also feeds APT repo |
-| `.rpm` | Fedora/RHEL/openSUSE | **Direct download only** — no COPR/RPM-repo workflow |
+| `.rpm` | Fedora/RHEL/openSUSE | **Direct download only**, no COPR/RPM-repo workflow |
 | `.AppImage` | Linux portable | Direct download only |
 | `dora-x86_64-unknown-linux-gnu.tar.gz` | Arch tarball | Also feeds AUR |
 | `checksums-linux.txt`, `checksums-windows.txt` | All | Used by Winget manifest generation |
 
-### Store / registry (automatic — run as part of the Release workflow after publish)
+### Store / registry (automatic, run as part of the Release workflow after publish)
 
 | Channel | Workflow | Install example |
 | --- | --- | --- |
@@ -332,10 +332,10 @@ Built by `release.yml` and attached to every release. Users install directly fro
 
 | Channel | Status |
 | --- | --- |
-| **Flathub** (`flatpak install flathub …`) | Separate submission/review — not the same as the GitHub-release `.flatpak` from `flatpak.yml` |
-| **Scoop** | Not implemented — no workflow or manifest in repo |
-| **Chocolatey** | Not implemented — no workflow or manifest in repo |
-| **Fedora COPR / RPM repository** | Not implemented — `.rpm` is on GitHub Releases only |
+| **Flathub** (`flatpak install flathub …`) | Separate submission/review, not the same as the GitHub-release `.flatpak` from `flatpak.yml` |
+| **Scoop** | Not implemented; no workflow or manifest in repo |
+| **Chocolatey** | Not implemented; no workflow or manifest in repo |
+| **Fedora COPR / RPM repository** | Not implemented; `.rpm` is on GitHub Releases only |
 
 The appendix below covers recovery for the six automated store workflows only. GitHub release assets are rebuilt automatically whenever `release.yml` succeeds; you only need to re-bootstrap a store if its listing or secrets are lost.
 
@@ -452,7 +452,7 @@ README version strings already matched, so nothing changed. Check the `post-rele
    - `AUR_SSH_PRIVATE_KEY`
    - `AUR_KNOWN_HOSTS` (pinned `aur.archlinux.org` entry)
 5. Helper script: `bash packaging/aur/setup-aur-publishing.sh`
-6. Tag a release — `aur.yml` updates `packaging/aur/PKGBUILD`, commits to this repo, and pushes to AUR.
+6. Tag a release. `aur.yml` updates `packaging/aur/PKGBUILD`, commits to this repo, and pushes to AUR.
 
 Local validation: `cd packaging/aur && makepkg -si`, or `bash tools/scripts/test-aur-docker.sh`.
 
@@ -463,7 +463,7 @@ Local validation: `cd packaging/aur && makepkg -si`, or `bash tools/scripts/test
 
 1. Create the tap repo if it does not exist.
 2. Set GitHub secret `HOMEBREW_SSH_PRIVATE_KEY` (deploy key with push access to the tap).
-3. Tag a release — `brew.yml` generates the Cask from release DMGs and pushes to the tap when `publish=true`.
+3. Tag a release. `brew.yml` generates the Cask from release DMGs and pushes to the tap when `publish=true`.
 
 ### APT
 
@@ -471,7 +471,7 @@ Local validation: `cd packaging/aur && makepkg -si`, or `bash tools/scripts/test
 
 1. Enable GitHub Pages on the repository.
 2. Set GitHub secret `GPG_PRIVATE_KEY` for signing the repo metadata.
-3. Tag a release — `apt.yml` builds the repo from the release `.deb` and deploys to Pages when `publish=true`.
+3. Tag a release. `apt.yml` builds the repo from the release `.deb` and deploys to Pages when `publish=true`.
 
 ### Winget
 
@@ -489,7 +489,7 @@ After the `microsoft/winget-pkgs` PR merges:
 
 1. Set GitHub secret `WINGET_CREATE_GITHUB_TOKEN` (classic PAT, `public_repo` scope).
 2. Set repository variable `WINGET_PACKAGE_READY=true`.
-3. Tag a release — `winget.yml` generates manifests and submits update PRs automatically.
+3. Tag a release. `winget.yml` generates manifests and submits update PRs automatically.
 
 ### Snap
 
@@ -506,7 +506,7 @@ snapcraft export-login --snaps=dora \
 ```
 
 3. Set GitHub secret `SNAPCRAFT_STORE_CREDENTIALS` to the contents of `exported.txt`.
-4. Tag a release — CI builds with `bash scripts/snapcraft.sh --sudo --destructive-mode` on `ubuntu-22.04` and publishes to the stable channel.
+4. Tag a release. CI builds with `bash scripts/snapcraft.sh --sudo --destructive-mode` on `ubuntu-22.04` and publishes to the stable channel.
 
 ### Flatpak (GitHub release bundle)
 

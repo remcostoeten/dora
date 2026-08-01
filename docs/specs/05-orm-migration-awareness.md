@@ -1,6 +1,6 @@
 # Spec 05: ORM Migration Awareness + Prisma Runner
 
-Status: `[-]` — Track B shipped; Track A delivered via a different approach.
+Status: `[-]` Track B shipped; Track A delivered via a different approach.
 
 > **Update (2026-06-20).**
 > - **Track B (Prisma runner): `[x]` shipped (#137).** Write and execute Prisma Client queries natively with schema-aware completions and a SQL preview, alongside the Drizzle runner.
@@ -28,7 +28,7 @@ Applying/rolling back migrations, generating migrations from GUI schema edits (l
 ### Scope
 
 - Mirror the Drizzle runner UX in `packages/studio/src/features/drizzle-runner/` for Prisma Client queries: editor with schema-aware completions, "preview SQL" before execution, results in the standard table view.
-- Schema awareness comes from parsing `schema.prisma` (models → completions), execution by translating the Prisma query AST to SQL the way the Drizzle runner does — study how `drizzle-runner` executes today and follow the same strategy rather than embedding a Node runtime, if the current strategy is translation-based. If the Drizzle runner instead shells out to a JS runtime, reuse that mechanism.
+- Schema awareness comes from parsing `schema.prisma` (models → completions), execution by translating the Prisma query AST to SQL the way the Drizzle runner does. Study how `drizzle-runner` executes today and follow the same strategy rather than embedding a Node runtime, if the current strategy is translation-based. If the Drizzle runner instead shells out to a JS runtime, reuse that mechanism.
 
 ## Safe write scope
 
@@ -41,10 +41,10 @@ Do not touch provider modules or the adapter.
 ## Implementation notes
 
 1. Project directory linkage: a connection optionally points at a local project path; file access goes through the Rust side (Tauri fs scope), not the webview.
-2. Drizzle bookkeeping table name/location is configurable in `drizzle.config.*` (`migrations.table` / `schema`) — parse the config rather than assuming defaults. Prisma's `_prisma_migrations` schema is stable; handle `rolled_back_at` and failed rows.
-3. Both bookkeeping tables may simply not exist (fresh DB) — that's "all pending", not an error.
+2. Drizzle bookkeeping table name/location is configurable in `drizzle.config.*` (`migrations.table` / `schema`), so parse the config rather than assuming defaults. Prisma's `_prisma_migrations` schema is stable; handle `rolled_back_at` and failed rows.
+3. Both bookkeeping tables may simply not exist (fresh DB). That's "all pending", not an error.
 4. Watch the migrations folder (notify/fs events) so the panel updates when the user generates a migration in their terminal.
-5. Drift detection v1 = bookkeeping comparison only (checksum/name matching), not full schema introspection diff — that's Spec 06's territory.
+5. Drift detection v1 = bookkeeping comparison only (checksum/name matching), not full schema introspection diff. That's Spec 06's territory.
 
 ## Done when
 

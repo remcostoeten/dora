@@ -1,8 +1,10 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { RootProvider } from 'fumadocs-ui/provider/next'
 import { DocsLayout as FumadocsLayout } from 'fumadocs-ui/layouts/docs'
 
 import { source } from '@/lib/source'
+
+type DocsTree = ComponentProps<typeof FumadocsLayout>['tree']
 
 export default function DocsLayout({ children }: { children: ReactNode }) {
     return (
@@ -24,7 +26,7 @@ export default function DocsLayout({ children }: { children: ReactNode }) {
                     themeSwitch={{
                         enabled: false
                     }}
-                    tree={source.pageTree}
+                    tree={source.pageTree as DocsTree}
                 >
                     {children}
                 </FumadocsLayout>

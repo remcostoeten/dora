@@ -50,8 +50,14 @@ const nextConfig: NextConfig = {
     typedRoutes: true,
     reactCompiler: true,
     cacheComponents: true,
+    partialPrefetching: true,
     experimental: {
-        inlineCss: true
+        inlineCss: true,
+        exposeTestingApiInProductionBuild:
+            process.env.NEXT_INSTANT_NAVIGATION_TEST === '1',
+        instantInsights: {
+            validationLevel: 'warning'
+        }
     },
     skipTrailingSlashRedirect: true,
     async rewrites() {

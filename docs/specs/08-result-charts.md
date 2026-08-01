@@ -4,7 +4,7 @@ Status: `[ ]`
 
 ## Why
 
-A chart toggle next to the existing table/JSON result views is cheap, demo-friendly, and the single feature most often cited for choosing Outerbase. Frontend-only — no Rust changes.
+A chart toggle next to the existing table/JSON result views is cheap, demo-friendly, and the single feature most often cited for choosing Outerbase. Frontend-only, with no Rust changes.
 
 ## Scope
 
@@ -24,7 +24,7 @@ Out of scope: dashboards/pinned charts, auto-refresh, server-side aggregation, d
 
 ## Implementation notes
 
-1. Library: pick something tree-shakeable and canvas/SVG-light — `recharts` fits the existing React/Radix stack; avoid heavyweight options (echarts) unless recharts proves insufficient, and note bundle-size delta in the PR.
+1. Library: pick something tree-shakeable and canvas/SVG-light. `recharts` fits the existing React/Radix stack; avoid heavyweight options (echarts) unless recharts proves insufficient, and note bundle-size delta in the PR.
 2. Data volume: charts over >10k points should downsample (LTTB or simple bucketing) with an indicator, never lock the UI. The table view remains the source of truth; charting never re-runs the query.
 3. Type detection: reuse whatever column-type metadata the result payload already carries from the backend (`bindings.ts` result types) instead of re-sniffing values; fall back to value sniffing only for providers that return untyped columns.
 4. Empty/degenerate states matter: zero rows, all-NULL columns, single row, non-numeric-only results should each show a friendly "can't chart this, here's why" state, not a blank canvas.

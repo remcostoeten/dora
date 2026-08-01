@@ -1,6 +1,6 @@
 # Spec 09: Redis / Valkey Browser
 
-Status: `[!]` needs product decision before implementation — see "Open decision" below.
+Status: `[!]` needs product decision before implementation. See "Open decision" below.
 
 ## Why
 
@@ -17,9 +17,9 @@ If (1) is accepted, flip status to `[ ]` and proceed with the scope below.
 
 ## Scope (v1, deliberately small)
 
-- Connect: host/port/password/TLS, plus `redis://` / `rediss://` URL paste; Valkey is wire-compatible — one implementation, both names in the picker.
+- Connect: host/port/password/TLS, plus `redis://` / `rediss://` URL paste; Valkey is wire-compatible, so one implementation covers both names in the picker.
 - Key browser: SCAN-based incremental listing (never `KEYS *`), pattern filter, namespace tree grouping on `:` separators, type + TTL badges.
-- Value inspector per type: string (raw/JSON-pretty), hash, list, set, zset — read and edit values, set/clear TTL, delete keys (with confirm).
+- Value inspector per type: string (raw/JSON-pretty), hash, list, set, zset. Read and edit values, set/clear TTL, delete keys (with confirm).
 - A simple command bar for raw commands with response rendering (RESP → readable), command history reusing the query-history pattern.
 - Docker manager: add Redis/Valkey images to the existing container templates in `packages/studio/src/features/docker-manager/`.
 
@@ -27,7 +27,7 @@ Out of scope v1: pub/sub viewer, streams UI, cluster mode, memory analysis, Lua 
 
 ## Safe write scope
 
-- Backend: new `apps/desktop/src-tauri/src/kv/` module (deliberately **outside** `database/` — do not force Redis through `DatabaseType`/the adapter); new command file(s) + registration in `lib.rs`
+- Backend: new `apps/desktop/src-tauri/src/kv/` module (deliberately **outside** `database/`; do not force Redis through `DatabaseType`/the adapter); new command file(s) + registration in `lib.rs`
 - Connection storage: a parallel KV-connection record in `storage/` (additive, backward-compatible)
 - Frontend: new `packages/studio/src/features/kv-studio/` feature; connection picker entry in `packages/studio/src/features/connections/`; routing in the studio shell so KV connections open the KV surface
 - `apps/desktop/src-tauri/Cargo.toml` (`redis` crate, tokio + TLS features)
