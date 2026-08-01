@@ -1,5 +1,6 @@
-import Link from 'next/link'
+import type { Route } from 'next'
 
+import { IntentLink } from '@/components/intent-prefetch-link'
 import { ResourcesPageShell } from '@/components/resources-page-shell'
 import { FEATURES, FEATURES_INDEX } from '@/core/config/features'
 import { featureIndexSchema } from '@/core/config/feature-structured-data'
@@ -33,12 +34,14 @@ export default function FeaturesIndexView() {
                                     </span>
                                     <div>
                                         <h2 className="font-pixel text-lg font-medium text-foreground">
-                                            <Link
+                                            <IntentLink
                                                 className="transition-colors hover:text-brand-200"
-                                                href={`/features/${feature.slug}`}
+                                                href={
+                                                    `/features/${feature.slug}` as Route
+                                                }
                                             >
                                                 {feature.menuLabel}
-                                            </Link>
+                                            </IntentLink>
                                         </h2>
                                         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                                             {feature.menuDescription}
@@ -48,12 +51,12 @@ export default function FeaturesIndexView() {
                                 <p className="text-sm leading-relaxed text-muted-foreground">
                                     {feature.lead}
                                 </p>
-                                <Link
+                                <IntentLink
                                     className="mt-4 inline-flex text-sm text-brand-600 transition-colors hover:text-brand-200"
-                                    href={`/features/${feature.slug}`}
+                                    href={`/features/${feature.slug}` as Route}
                                 >
                                     Read more →
-                                </Link>
+                                </IntentLink>
                             </article>
                         )
                     })}
