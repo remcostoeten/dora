@@ -49,6 +49,7 @@ export function ContainerCard({
 	const primaryPort = container.ports[0]
 	const createdTimeAgo = formatDistanceToNow(new Date(container.createdAt), { addSuffix: true })
 	const isRunning = container.state === 'running'
+	const isKeyValue = container.provider === 'redis' || container.provider === 'valkey'
 	const [copied, setCopied] = useState(false)
 
 	function handleClick() {
@@ -259,7 +260,7 @@ export function ContainerCard({
 					onClick={handleOpenInDataViewer}
 				>
 					<Database />
-					Open in Data Viewer
+					{isKeyValue ? 'Open in KV Studio' : 'Open in Data Viewer'}
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>

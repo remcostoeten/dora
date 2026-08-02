@@ -4,7 +4,13 @@ import { detectDatabaseProvider } from './container-connection'
 export function generateDockerCompose(container: DockerContainer): string {
 	const serviceName = container.name || 'postgres'
 	const image = `${container.image}:${container.imageTag}`
-	const provider = detectDatabaseProvider(container)
+	const normalizedImage = image.toLowerCase()
+	const keyValueProvider = normalizedImage.includes('valkey')
+		? 'valkey'
+		: normalizedImage.includes('redis')
+			? 'redis'
+			: null
+	const provider = keyValueProvider ?? detectDatabaseProvider(container)
 
 	// Filter out internal env vars if any (e.g. self-managed ones)
 	// For now we include all, but formatted as object or list
@@ -51,11 +57,13 @@ services:
 	}
 
 	const volumePath =
-		provider === 'mariadb' || provider === 'mysql'
-			? '/var/lib/mysql'
-			: provider === 'cockroach'
-				? '/cockroach-data'
-				: '/var/lib/postgresql/data'
+		provider === 'redis' || provider === 'valkey'
+			? '/data'
+			: provider === 'mariadb' || provider === 'mysql'
+				? '/var/lib/mysql'
+				: provider === 'cockroach'
+					? '/cockroach-data'
+					: '/var/lib/postgresql/data'
 
 	if (container.volumes.length > 0 || provider !== 'cockroach') {
 		yaml += `\n    volumes:`
@@ -69,6 +77,11 @@ services:
 		yaml += `\n      - --listen-addr=0.0.0.0:26257`
 		yaml += `\n      - --http-addr=0.0.0.0:8080`
 		yaml += `\n      - --store=/cockroach-data`
+	} else if (provider === 'redis' || provider === 'valkey') {
+		yaml += `\n    command:`
+		yaml += `\n      - ${provider}-server`
+		yaml += `\n      - --appendonly`
+		yaml += `\n      - "yes"`
 	}
 
 	if (container.volumes.length > 0 || provider !== 'cockroach') {

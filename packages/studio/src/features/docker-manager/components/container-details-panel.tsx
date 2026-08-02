@@ -35,6 +35,7 @@ export function ContainerDetailsPanel({
 }: Props) {
 	const [showExportDialog, setShowExportDialog] = useState(false)
 	const [showRemoveDialog, setShowRemoveDialog] = useState(false)
+	const isKeyValue = container?.provider === 'redis' || container?.provider === 'valkey'
 
 	const containerActions = useContainerActions()
 	const removeContainer = useRemoveContainer({
@@ -207,7 +208,7 @@ export function ContainerDetailsPanel({
 					disabled={!isRunning}
 				>
 					<ExternalLink className='h-3.5 w-3.5' />
-					Open in Data Viewer
+					{isKeyValue ? 'Open in KV Studio' : 'Open in Data Viewer'}
 				</Button>
 			</div>
 

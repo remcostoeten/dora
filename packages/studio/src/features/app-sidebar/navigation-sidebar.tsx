@@ -5,7 +5,8 @@ import {
 	Network,
 	Settings,
 	GitCompare,
-	ChartLine
+	ChartLine,
+	KeyRound
 } from 'lucide-react'
 import { useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
 import { DoraLogo } from '@studio/components/dora-logo'
@@ -53,6 +54,12 @@ function SidebarContent({
 			label: 'Data Viewer',
 			icon: Table2,
 			onClick: () => onNavSelect?.('database-studio')
+		},
+		{
+			id: 'kv-studio',
+			label: 'Redis / Valkey',
+			icon: KeyRound,
+			onClick: () => onNavSelect?.('kv-studio')
 		},
 		...(analyticsAvailable
 			? [

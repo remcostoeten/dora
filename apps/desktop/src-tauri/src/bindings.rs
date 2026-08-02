@@ -7,6 +7,30 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
     use crate::window::commands as window_commands;
 
     Builder::<tauri::Wry>::new().commands(collect_commands![
+        // Redis / Valkey commands
+        crate::commands::kv::kv_add_connection,
+        crate::commands::kv::kv_update_connection,
+        crate::commands::kv::kv_test_connection,
+        crate::commands::kv::kv_connect,
+        crate::commands::kv::kv_disconnect,
+        crate::commands::kv::kv_get_connections,
+        crate::commands::kv::kv_remove_connection,
+        crate::commands::kv::kv_scan,
+        crate::commands::kv::kv_read,
+        crate::commands::kv::kv_delete_key,
+        crate::commands::kv::kv_set_ttl,
+        crate::commands::kv::kv_set_string,
+        crate::commands::kv::kv_hash_set,
+        crate::commands::kv::kv_hash_delete,
+        crate::commands::kv::kv_list_set,
+        crate::commands::kv::kv_list_push,
+        crate::commands::kv::kv_list_remove_at,
+        crate::commands::kv::kv_set_add,
+        crate::commands::kv::kv_set_remove,
+        crate::commands::kv::kv_sorted_set_add,
+        crate::commands::kv::kv_sorted_set_remove,
+        crate::commands::kv::kv_execute_raw,
+        crate::commands::kv::kv_get_command_history,
         // Window commands
         window_commands::minimize_window,
         window_commands::maximize_window,

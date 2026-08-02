@@ -15,6 +15,7 @@ mod error;
 pub mod http;
 mod init;
 mod integrations;
+pub mod kv;
 mod observability;
 mod ollama_installer;
 mod storage;
@@ -42,6 +43,7 @@ pub use error::{Error, Result};
 #[derive(Debug)]
 pub struct AppState {
     pub connections: DashMap<Uuid, DatabaseConnection>,
+    pub kv_connections: DashMap<Uuid, kv::KvConnection>,
     pub schemas: DashMap<Uuid, Arc<DatabaseSchema>>,
     /// Per-connection introspection locks: two concurrent schema reads for the
     /// same connection must run one introspection, not two.
@@ -74,6 +76,7 @@ impl AppState {
 
         let state = Self {
             connections: DashMap::new(),
+            kv_connections: DashMap::new(),
             schemas: DashMap::new(),
             schema_locks: DashMap::new(),
             storage,
@@ -169,6 +172,30 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Redis / Valkey commands
+            commands::kv::kv_add_connection,
+            commands::kv::kv_update_connection,
+            commands::kv::kv_test_connection,
+            commands::kv::kv_connect,
+            commands::kv::kv_disconnect,
+            commands::kv::kv_get_connections,
+            commands::kv::kv_remove_connection,
+            commands::kv::kv_scan,
+            commands::kv::kv_read,
+            commands::kv::kv_delete_key,
+            commands::kv::kv_set_ttl,
+            commands::kv::kv_set_string,
+            commands::kv::kv_hash_set,
+            commands::kv::kv_hash_delete,
+            commands::kv::kv_list_set,
+            commands::kv::kv_list_push,
+            commands::kv::kv_list_remove_at,
+            commands::kv::kv_set_add,
+            commands::kv::kv_set_remove,
+            commands::kv::kv_sorted_set_add,
+            commands::kv::kv_sorted_set_remove,
+            commands::kv::kv_execute_raw,
+            commands::kv::kv_get_command_history,
             // Database commands
             database::commands::bootstrap,
             database::commands::test_connection,

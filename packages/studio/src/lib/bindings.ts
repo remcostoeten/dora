@@ -8,6 +8,190 @@
 
 
 export const commands = {
+async kvAddConnection(name: string, config: KvConnectionConfig) : Promise<Result<KvConnectionInfo, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_add_connection", { name, config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvUpdateConnection(connectionId: string, name: string, config: KvConnectionConfig) : Promise<Result<KvConnectionInfo, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_update_connection", { connectionId, name, config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvTestConnection(config: KvConnectionConfig) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_test_connection", { config }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvConnect(connectionId: string) : Promise<Result<KvConnectionInfo, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_connect", { connectionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvDisconnect(connectionId: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_disconnect", { connectionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvGetConnections() : Promise<Result<KvConnectionInfo[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_get_connections") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvRemoveConnection(connectionId: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_remove_connection", { connectionId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvScan(connectionId: string, request: KvScanRequest) : Promise<Result<KvScanPage, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_scan", { connectionId, request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvRead(connectionId: string, request: KvReadRequest) : Promise<Result<KvReadResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_read", { connectionId, request }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvDeleteKey(connectionId: string, key: KvBytes) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_delete_key", { connectionId, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvSetTtl(connectionId: string, key: KvBytes, ttlMs: number | null) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_set_ttl", { connectionId, key, ttlMs }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvSetString(connectionId: string, key: KvBytes, value: KvBytes, keepTtl: boolean) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_set_string", { connectionId, key, value, keepTtl }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvHashSet(connectionId: string, key: KvBytes, field: KvBytes, value: KvBytes) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_hash_set", { connectionId, key, field, value }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvHashDelete(connectionId: string, key: KvBytes, field: KvBytes) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_hash_delete", { connectionId, key, field }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvListSet(connectionId: string, key: KvBytes, index: number, value: KvBytes) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_list_set", { connectionId, key, index, value }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvListPush(connectionId: string, key: KvBytes, value: KvBytes, left: boolean) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_list_push", { connectionId, key, value, left }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvListRemoveAt(connectionId: string, key: KvBytes, index: number) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_list_remove_at", { connectionId, key, index }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvSetAdd(connectionId: string, key: KvBytes, member: KvBytes) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_set_add", { connectionId, key, member }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvSetRemove(connectionId: string, key: KvBytes, member: KvBytes) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_set_remove", { connectionId, key, member }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvSortedSetAdd(connectionId: string, key: KvBytes, member: KvBytes, score: number) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_sorted_set_add", { connectionId, key, member, score }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvSortedSetRemove(connectionId: string, key: KvBytes, member: KvBytes) : Promise<Result<KvMutationResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_sorted_set_remove", { connectionId, key, member }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvExecuteRaw(connectionId: string, command: string, confirmation: string | null) : Promise<Result<RawCommandResult, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_execute_raw", { connectionId, command, confirmation }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async kvGetCommandHistory(connectionId: string, limit: number) : Promise<Result<KvCommandHistoryEntry[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("kv_get_command_history", { connectionId, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async minimizeWindow() : Promise<Result<null, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("minimize_window") };
@@ -1714,6 +1898,23 @@ command: string;
  */
 can_auto_install: boolean }
 export type KeyringInstallResult = { ok: boolean; message: string }
+/**
+ * A lossless Redis byte string suitable for JSON and Specta bindings.
+ */
+export type KvBytes = { encoding: "utf_8"; value: string } | { encoding: "base_64"; value: string }
+export type KvCommandHistoryEntry = { id: number; connection_id: string; command_text: string; executed_at: number; duration_ms: number | null; status: string; error_message: string | null }
+export type KvConnectionConfig = { url: string }
+export type KvConnectionInfo = { id: string; name: string; config: KvConnectionConfig; connected: boolean; last_connected_at: number | null; favorite: boolean; color: string | null; sort_order: number }
+export type KvDataType = "string" | "hash" | "list" | "set" | "sorted_set" | "stream" | "unknown"
+export type KvHashEntry = { field: KvBytes; value: KvBytes }
+export type KvKeySummary = { key: KvBytes; dataType: KvDataType; ttlMs: number | null }
+export type KvMutationResult = { changed: number }
+export type KvReadRequest = { key: KvBytes; cursor: number | null; offset: number | null; limit: number | null }
+export type KvReadResult = { key: KvBytes; ttlMs: number | null; value: KvValue }
+export type KvScanPage = { cursor: number; keys: KvKeySummary[] }
+export type KvScanRequest = { cursor: number | null; pattern: string | null; limit: number | null }
+export type KvScoredMember = { member: KvBytes; score: number }
+export type KvValue = { type: "string"; value: KvBytes; total_bytes: number; truncated: boolean } | { type: "hash"; entries: KvHashEntry[]; cursor: number } | { type: "list"; items: KvBytes[]; offset: number; total_items: number; has_more: boolean } | { type: "set"; members: KvBytes[]; cursor: number } | { type: "sorted_set"; members: KvScoredMember[]; cursor: number }
 export type LiveMonitorChangeType = "insert" | "update" | "delete"
 export type LiveMonitorSession = { monitorId: string; eventName: string }
 /**
@@ -1777,6 +1978,7 @@ export type PosthogRegion = "us" | "eu"
 export type QueryEvent = { type: "columns"; query_id: number; columns: JsonValue } | { type: "row_batch"; query_id: number; page_index: number; rows: JsonValue } | { type: "progress"; query_id: number; rows_received: number } | { type: "done"; query_id: number; affected_rows: number; elapsed_ms: number } | { type: "error"; query_id: number; message: string }
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
+export type RawCommandResult = { type: "null" } | { type: "integer"; value: number } | { type: "double"; value: number } | { type: "boolean"; value: boolean } | { type: "text"; value: string } | { type: "bytes"; value: KvBytes } | { type: "array"; value: RawCommandResult[] } | { type: "map"; value: ([RawCommandResult, RawCommandResult])[] } | { type: "set"; value: RawCommandResult[] }
 export type RegisteredDatabase = { name: string; path: string; active: boolean }
 export type SaveDataFileSessionResult = { path: string; tables: SavedDataFileTable[]; skipped: SkippedDataFileSource[]; warnings: string[] }
 export type SavedDataFileTable = { name: string; sourcePath: string; rowCount: number | null }

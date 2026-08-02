@@ -2,6 +2,7 @@ mod ai_keys;
 mod ai_usage;
 mod connection_history;
 mod connections;
+mod kv_connections;
 mod migrator;
 mod queries;
 mod schema_snapshots;
@@ -12,6 +13,7 @@ mod types;
 
 pub use ai_keys::AiApiKeyRecord;
 pub use ai_usage::{AiUsageInsert, AiUsageRow};
+pub use kv_connections::{KvCommandHistoryEntry, KvConnectionInfo};
 pub use types::{ConnectionHistoryEntry, QueryHistoryEntry, SavedQuery, SnippetFolder};
 
 use std::path::PathBuf;

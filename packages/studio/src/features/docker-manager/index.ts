@@ -37,6 +37,8 @@ export {
 	POSTGRES_VERSIONS,
 	MARIADB_VERSIONS,
 	COCKROACH_VERSIONS,
+	REDIS_VERSIONS,
+	VALKEY_VERSIONS,
 	GENERATOR_PROFILES,
 	GENERATOR_SCALES
 } from './constants'
@@ -48,6 +50,8 @@ export type {
 	PostgresContainerConfig,
 	MariaDBContainerConfig,
 	CockroachContainerConfig,
+	RedisContainerConfig,
+	ValkeyContainerConfig,
 	ContainerState,
 	ContainerHealth,
 	ContainerOrigin,
