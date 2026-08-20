@@ -5,6 +5,7 @@ import { CornerTick } from '@/components/corner-tick'
 import { connections } from '@/components/hero-app-demo-connections'
 import { DemoMain } from '@/components/hero-app-demo-main'
 import { DemoSidebar } from '@/components/hero-app-demo-sidebar'
+import type { TDemoView } from '@/components/hero-app-demo-views'
 
 const INITIAL_OPEN_CONNECTIONS = ['demo', 'prod', 'local']
 const INITIAL_OPEN_TABLES = ['customers', 'orders', 'transactions']
@@ -17,12 +18,14 @@ export function AppDemo() {
         INITIAL_OPEN_CONNECTIONS
     )
     const [activeConnectionId, setActiveConnectionId] = useState('demo')
+    const [activeView, setActiveView] = useState<TDemoView>('data')
 
     function selectTable(name: string) {
         setOpenTables(function open(names) {
             return names.includes(name) ? names : [...names, name]
         })
         setActiveTable(name)
+        setActiveView('data')
     }
 
     function closeTable(name: string) {
@@ -79,6 +82,8 @@ export function AppDemo() {
                             activeTable={activeTable}
                             tableQuery={tableQuery}
                             activeConnectionId={activeConnectionId}
+                            activeView={activeView}
+                            onSelectView={setActiveView}
                             onTableQueryChange={setTableQuery}
                             onTableSelect={selectTable}
                             onSelectConnection={selectConnection}
@@ -88,6 +93,8 @@ export function AppDemo() {
                             openTables={openTables}
                             openConnectionIds={openConnectionIds}
                             activeConnectionId={activeConnectionId}
+                            activeView={activeView}
+                            onSelectView={setActiveView}
                             onSelectTable={setActiveTable}
                             onCloseTable={closeTable}
                             onSelectConnection={setActiveConnectionId}

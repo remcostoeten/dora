@@ -5,7 +5,7 @@ export const siteConfig = {
     description:
         'Dora is a desktop database explorer for browsing data, inspecting schemas, and querying PostHog product analytics with HogQL, all in one keyboard-first workbench.',
     author: {
-        name: 'remco stoeten',
+        name: 'remco_stoeten',
         url: 'https://remcostoeten.com'
     },
     repository: 'https://github.com/remcostoeten',

@@ -37,12 +37,7 @@ export const FEATURE_SHOWCASE_LABELS: Record<TFeatureDemo, string> = {
 export const FEATURE_CAPTURE_SEEK_SEC = 0
 
 /** Feature pages that use the animated mock only — no captured WebM. */
-export const FEATURE_SLUGS_WITHOUT_VIDEO: TFeatureSlug[] = [
-    'ssh-tunneling',
-    'prisma-runner',
-    'orm-cockpit',
-    'analytics'
-]
+export const FEATURE_SLUGS_WITHOUT_VIDEO: TFeatureSlug[] = []
 
 export function featureUsesCaptureVideo(slug: TFeatureSlug) {
     return !FEATURE_SLUGS_WITHOUT_VIDEO.includes(slug)

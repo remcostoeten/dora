@@ -2,13 +2,12 @@
 
 import { m } from 'framer-motion'
 import { Download, Terminal } from 'lucide-react'
-import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import posthog from 'posthog-js'
 import { AnimatedFrame } from '@/components/animated-frame'
 import { AppDemo } from '@/components/hero-app-demo'
+import { InteractiveCube } from '@/components/interactive-cube-lite'
 import { ScrollReveal } from '@/components/scroll-reveal'
-import { useInView } from '@/shared/hooks/use-in-view'
 import {
     findAsset,
     LATEST_RELEASE_URL,
@@ -16,12 +15,6 @@ import {
     type TDownload,
     type TLatest
 } from '@/core/github/release-downloads'
-
-const InteractiveCube = dynamic(
-    () =>
-        import('@/components/interactive-cube').then((m) => m.InteractiveCube),
-    { ssr: false }
-)
 
 // The hero frame is static (present from first paint), so the content no longer
 // waits on a border draw-in — it eases in almost immediately, lightly staggered.
@@ -340,49 +333,10 @@ function HeroText({ release }: { release: TLatest | null }) {
 }
 
 function HeroInteractive() {
-    const [stageRef, stageInView] = useInView<HTMLDivElement>({
-        threshold: 0.01
-    })
-    const [mountCube, setMountCube] = useState(false)
-
-    useEffect(() => {
-        if (!stageInView || mountCube) return
-
-        const isMobile = window.matchMedia('(max-width: 767px)').matches
-        const delay = isMobile ? 5200 : 900
-        let idleId = 0
-        const timer = window.setTimeout(() => {
-            if ('requestIdleCallback' in window) {
-                idleId = window.requestIdleCallback(() => setMountCube(true), {
-                    timeout: 1600
-                })
-                return
-            }
-            setMountCube(true)
-        }, delay)
-
-        return () => {
-            window.clearTimeout(timer)
-            if (idleId) window.cancelIdleCallback(idleId)
-        }
-    }, [mountCube, stageInView])
-
-    function loadCube() {
-        setMountCube(true)
-    }
-
     return (
-        <div
-            ref={stageRef}
-            className="hero-cube-stage relative z-[1] flex min-h-[430px] items-center justify-center overflow-visible border-0 outline-none sm:min-h-[520px] lg:min-h-[580px] [&_*]:outline-none"
-            onFocus={loadCube}
-            onPointerEnter={loadCube}
-            onTouchStart={loadCube}
-        >
+        <div className="hero-cube-stage relative z-[1] flex min-h-[430px] items-center justify-center overflow-visible border-0 outline-none sm:min-h-[520px] lg:min-h-[580px] [&_*]:outline-none">
             <div className="hero-cube-stage relative h-[430px] w-full overflow-visible border-0 outline-none sm:h-[520px] lg:h-[580px]">
-                {stageInView && mountCube ? (
-                    <InteractiveCube className="absolute left-1/2 top-1/2 size-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 sm:size-[720px] lg:size-[clamp(760px,48vw,920px)]" />
-                ) : null}
+                <InteractiveCube className="absolute left-1/2 top-1/2 size-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 sm:size-[720px] lg:size-[clamp(760px,48vw,920px)]" />
             </div>
         </div>
     )

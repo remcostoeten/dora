@@ -566,7 +566,7 @@ export function GitHubStats({
                             {/* Platform tabs with gooey indicator */}
                             <div
                                 ref={tabsContainerRef}
-                                className="install-tabs-scroll relative -mx-1 flex w-full min-w-0 items-center gap-1 overflow-x-auto px-1 py-1 sm:mx-0 sm:px-0 sm:py-0"
+                                className="install-tabs-scroll relative -mx-1 flex w-full min-w-0 items-center gap-1 overflow-x-auto px-1 py-2 sm:mx-0 sm:px-0 sm:py-1"
                             >
                                 <TabIndicator activeRect={indicatorRect} />
                                 {packages.map((pkg) => (

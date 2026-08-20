@@ -905,16 +905,14 @@
     transition: opacity 420ms ease;
 }
 
-.feature-showcase__capture--hidden {
+.feature-showcase__capture--overlay {
     position: absolute;
     inset: 0;
-    opacity: 0;
-    pointer-events: none;
+    height: 100%;
 }
 
-.feature-showcase__capture--visible {
-    position: relative;
-    opacity: 1;
+.feature-showcase__capture--waiting {
+    opacity: 0;
 }
 
 .feature-showcase__motion {
@@ -1062,6 +1060,10 @@
 .marketing-container {
     width: min(100% - 32px, 1100px);
     margin-inline: auto;
+}
+
+.marketing-container:has(.feature-detail) {
+    width: min(100% - 32px, 1320px);
 }
 
 .marketing-container:has(.dora-docs) {

@@ -20,11 +20,7 @@ type Props = {
     children: ReactNode
 }
 
-export function FeatureShowcaseShell({
-    slug,
-    label,
-    children
-}: Props) {
+export function FeatureShowcaseShell({ slug, label, children }: Props) {
     const reducedMotion = usePrefersReducedMotion()
     const frame = useFrameDrawIn<HTMLDivElement>()
     const videoRef = useRef<HTMLVideoElement>(null)
@@ -33,13 +29,30 @@ export function FeatureShowcaseShell({
     const [captureReady, setCaptureReady] = useState(false)
     const [captureFailed, setCaptureFailed] = useState(false)
 
-    useEffect(function resetCaptureState() {
-        setCaptureReady(false)
-        setCaptureFailed(false)
-    }, [slug])
+    useEffect(
+        function resetCaptureState() {
+            setCaptureReady(false)
+            setCaptureFailed(false)
+        },
+        [slug]
+    )
+
+    useEffect(
+        function primeAlreadyLoadedCapture() {
+            const node = videoRef.current
+            if (!node || !canUseVideo || node.readyState < 1) return
+            if (FEATURE_CAPTURE_SEEK_SEC > 0) {
+                primeCapture()
+            } else {
+                void node.play().catch(function () {
+                    setCaptureFailed(true)
+                })
+            }
+        },
+        [slug, canUseVideo]
+    )
 
     const showCapture = captureReady && !captureFailed && canUseVideo
-    const showMotion = !showCapture
 
     function primeCapture() {
         const node = videoRef.current
@@ -52,7 +65,11 @@ export function FeatureShowcaseShell({
                       Math.max(0, node.duration - 0.15)
                   )
                 : 0
-        if (node.readyState >= 1 && Number.isFinite(node.duration) && seekTo > 0) {
+        if (
+            node.readyState >= 1 &&
+            Number.isFinite(node.duration) &&
+            seekTo > 0
+        ) {
             node.currentTime = seekTo
         }
 
@@ -97,69 +114,71 @@ export function FeatureShowcaseShell({
                     style={frame.tickStyle(3)}
                 />
                 {canUseVideo && !captureFailed ? (
-                    <video
-                        ref={videoRef}
-                        key={video}
-                        loop
-                        muted
-                        playsInline
-                        preload="auto"
-                        poster={poster}
-                        aria-label={label}
-                        className={
-                            'feature-showcase__capture ' +
-                            (showCapture
-                                ? 'feature-showcase__capture--visible'
-                                : 'feature-showcase__capture--hidden')
-                        }
-                        onLoadedMetadata={function () {
-                            if (FEATURE_CAPTURE_SEEK_SEC > 0) {
-                                primeCapture()
-                            } else {
-                                void videoRef.current?.play().catch(function () {
-                                    setCaptureFailed(true)
-                                })
+                    <>
+                        <img
+                            src={poster}
+                            alt=""
+                            aria-hidden
+                            decoding="async"
+                            fetchPriority="high"
+                            className="feature-showcase__capture"
+                        />
+                        <video
+                            ref={videoRef}
+                            key={video}
+                            loop
+                            muted
+                            playsInline
+                            preload="auto"
+                            aria-label={label}
+                            className={
+                                'feature-showcase__capture feature-showcase__capture--overlay' +
+                                (showCapture
+                                    ? ''
+                                    : ' feature-showcase__capture--waiting')
                             }
-                        }}
-                        onSeeked={function () {
-                            if (FEATURE_CAPTURE_SEEK_SEC > 0 && !captureReady) {
+                            onLoadedMetadata={function () {
+                                if (FEATURE_CAPTURE_SEEK_SEC > 0) {
+                                    primeCapture()
+                                } else {
+                                    void videoRef.current
+                                        ?.play()
+                                        .catch(function () {
+                                            setCaptureFailed(true)
+                                        })
+                                }
+                            }}
+                            onSeeked={function () {
+                                if (
+                                    FEATURE_CAPTURE_SEEK_SEC > 0 &&
+                                    !captureReady
+                                ) {
+                                    setCaptureReady(true)
+                                }
+                            }}
+                            onPlaying={function () {
                                 setCaptureReady(true)
-                            }
-                        }}
-                        onPlaying={function () {
-                            setCaptureReady(true)
-                        }}
-                        onError={function () {
-                            setCaptureFailed(true)
-                        }}
-                    >
-                        <source src={video} type="video/webm" />
-                    </video>
-                ) : null}
-                <div
-                    className={
-                        'feature-showcase__motion ' +
-                        (showMotion
-                            ? 'feature-showcase__motion--visible'
-                            : 'feature-showcase__motion--hidden')
-                    }
-                    aria-hidden={showCapture}
-                >
-                    <div
-                        className="feature-showcase__fade feature-showcase__fade--bottom"
-                        aria-hidden="true"
-                    />
-                    <div
-                        className={
-                            'feature-showcase__camera ' +
-                            (showMotion ? 'feature-showcase__camera--live' : '')
-                        }
-                    >
-                        <div className="feature-showcase__window">
-                            {children}
+                            }}
+                            onError={function () {
+                                setCaptureFailed(true)
+                            }}
+                        >
+                            <source src={video} type="video/webm" />
+                        </video>
+                    </>
+                ) : (
+                    <div className="feature-showcase__motion feature-showcase__motion--visible">
+                        <div
+                            className="feature-showcase__fade feature-showcase__fade--bottom"
+                            aria-hidden="true"
+                        />
+                        <div className="feature-showcase__camera feature-showcase__camera--live">
+                            <div className="feature-showcase__window">
+                                {children}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
             <figcaption className="feature-showcase__caption">
                 {label}

@@ -141,8 +141,8 @@ function NavItem({ label, href, chevron }: TNavItem) {
 
 /**
  * Desktop nav item with an animated dropdown panel. Opens on hover/focus,
- * scales in from the trigger (origin-aware, ease-out ~200ms) and staggers its
- * rows. Exit is faster than enter. Honors prefers-reduced-motion by dropping
+ * scales in from the trigger (origin-aware, ease-out ~200ms).
+ * Exit is faster than enter. Honors prefers-reduced-motion by dropping
  * the transform offsets and keeping only a quick fade.
  */
 function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
@@ -168,7 +168,6 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
     const panelClosedTransform = reduced
         ? 'none'
         : 'translateY(-6px) scale(0.96)'
-    const rowClosedTransform = reduced ? 'none' : 'translateY(4px)'
     const ease = 'cubic-bezier(0.23, 1, 0.32, 1)'
 
     return (
@@ -232,7 +231,7 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
                         aria-hidden
                         className="pointer-events-none absolute inset-x-0 top-0 h-px bg-brand-200/17"
                     />
-                    {menu.map((link, index) => {
+                    {menu.map((link) => {
                         const Icon = link.icon
                         return (
                             <NavLink
@@ -241,36 +240,10 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
                                 href={link.href}
                                 onClick={() => setOpen(false)}
                             >
-                                <span
-                                    className="mt-px flex size-8 shrink-0 items-center justify-center border border-line bg-surface text-brand-300 transition-colors group-hover/item:border-brand-200/40 group-hover/item:text-brand-200"
-                                    style={{
-                                        opacity: open ? 1 : 0,
-                                        transform: open
-                                            ? 'translateY(0)'
-                                            : rowClosedTransform,
-                                        transition:
-                                            'opacity 220ms ease-out, transform 220ms ease-out',
-                                        transitionDelay: open
-                                            ? `${60 + index * 35}ms`
-                                            : '0ms'
-                                    }}
-                                >
+                                <span className="mt-px flex size-8 shrink-0 items-center justify-center border border-line bg-surface text-brand-300 transition-colors group-hover/item:border-brand-200/40 group-hover/item:text-brand-200">
                                     <Icon className="h-4 w-4" />
                                 </span>
-                                <span
-                                    className="flex min-w-0 flex-1 flex-col gap-1"
-                                    style={{
-                                        opacity: open ? 1 : 0,
-                                        transform: open
-                                            ? 'translateY(0)'
-                                            : rowClosedTransform,
-                                        transition:
-                                            'opacity 220ms ease-out, transform 220ms ease-out',
-                                        transitionDelay: open
-                                            ? `${60 + index * 35}ms`
-                                            : '0ms'
-                                    }}
-                                >
+                                <span className="flex min-w-0 flex-1 flex-col gap-1">
                                     <span className="flex items-center gap-1.5 text-[13px] leading-none text-white/90 transition-colors group-hover/item:text-brand-200">
                                         {link.label}
                                         <ArrowRight
@@ -431,9 +404,7 @@ export function DoraHeader() {
     }, [menuOpen])
 
     return (
-        <header
-            className="sticky top-0 z-50 w-full bg-background px-3 pt-3"
-        >
+        <header className="sticky top-0 z-50 w-full bg-background px-3 pt-3">
             {/* Sidebar border lines that align with the marketing-container edges */}
             <span
                 aria-hidden

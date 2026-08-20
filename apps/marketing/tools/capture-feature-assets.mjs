@@ -134,7 +134,10 @@ async function curveTo(page, locator, duration = 420) {
     const bend = Math.min(110, Math.max(28, distance * 0.16))
     const direction = end.x >= start.x ? 1 : -1
     const length = distance || 1
-    const normal = { x: (-dy / length) * bend * direction, y: (dx / length) * bend * direction }
+    const normal = {
+        x: (-dy / length) * bend * direction,
+        y: (dx / length) * bend * direction
+    }
     const controlA = {
         x: start.x + dx * 0.32 + normal.x,
         y: start.y + dy * 0.32 + normal.y
@@ -196,11 +199,31 @@ function captureUrl(view, extra = '') {
 async function armCaptureClock(context) {
     await context.addInitScript(function () {
         localStorage.setItem('dora_demo_notice_dismissed', 'true')
+        sessionStorage.setItem('dora_demo_notice_dismissed', 'true')
         localStorage.setItem('dora_onboarding_tour_completed', '1')
         window.__DORA_CAPTURE_T0 = performance.now()
         window.__DORA_CAPTURE_READY_AT = 0
     })
     await context.addInitScript(CURSOR_SCRIPT)
+    await context.addInitScript(function () {
+        function scrub() {
+            document.querySelector('nextjs-portal')?.remove()
+            const tuner = document.querySelector(
+                '[aria-label="Open brand tuner"]'
+            )
+            tuner?.parentElement?.remove()
+        }
+        const observer = new MutationObserver(scrub)
+        function arm() {
+            scrub()
+            observer.observe(document.documentElement, {
+                childList: true,
+                subtree: true
+            })
+        }
+        if (document.documentElement) arm()
+        else document.addEventListener('DOMContentLoaded', arm)
+    })
 }
 
 /**
@@ -233,6 +256,9 @@ async function waitForCaptureReady(page) {
             button.parentElement?.remove()
         })
         .catch(function () {})
+    await page.evaluate(function () {
+        document.querySelector('nextjs-portal')?.remove()
+    })
     await pause(700)
 }
 
@@ -242,8 +268,7 @@ async function waitForCaptureReady(page) {
 async function measureBootTrim(page) {
     const bootSec = await page.evaluate(function () {
         const t0 = window.__DORA_CAPTURE_T0 ?? 0
-        const ready = window.__DORA_CAPTURE_READY_AT ?? performance.now()
-        return Math.max(0, (ready - t0) / 1000)
+        return Math.max(0, (performance.now() - t0) / 1000)
     })
     return bootSec + TRIM_PAD_SEC
 }
@@ -296,7 +321,8 @@ async function waitForSqlConsole(page) {
                 const text = document.body.innerText
                 return (
                     text.includes('Demo E-Commerce') ||
-                    (text.includes('PostgreSQL') && !text.includes('No connection'))
+                    (text.includes('PostgreSQL') &&
+                        !text.includes('No connection'))
                 )
             },
             undefined,
@@ -377,7 +403,11 @@ async function runSqlQuery(page, sql) {
     }, sql)
 
     if (!usedHook) {
-        await page.locator('.monaco-editor').first().click({ timeout: 3000 }).catch(function () {})
+        await page
+            .locator('.monaco-editor')
+            .first()
+            .click({ timeout: 3000 })
+            .catch(function () {})
         await pause(150)
         await page.keyboard.press('Control+Enter')
     }
@@ -420,13 +450,25 @@ async function prepareHistoryCaptureFrame(page) {
     }
 
     const databaseSidebar = page.getByText('Tables', { exact: true }).first()
-    if (await databaseSidebar.isVisible().catch(function () { return false })) {
+    if (
+        await databaseSidebar.isVisible().catch(function () {
+            return false
+        })
+    ) {
         await page.keyboard.press('Control+b').catch(function () {})
         await pause(450)
-        if (await databaseSidebar.isVisible().catch(function () { return false })) {
-            await page.locator('[title="Toggle sidebar (Ctrl+B)"]').first().click({
-                timeout: 3000
-            }).catch(function () {})
+        if (
+            await databaseSidebar.isVisible().catch(function () {
+                return false
+            })
+        ) {
+            await page
+                .locator('[title="Toggle sidebar (Ctrl+B)"]')
+                .first()
+                .click({
+                    timeout: 3000
+                })
+                .catch(function () {})
             await pause(450)
         }
     }
@@ -464,10 +506,10 @@ async function waitForQueryResult(page, timeout = 15000) {
                 return (
                     /\d+\s+rows?/i.test(text) ||
                     /backend\s*•/i.test(text) ||
-                    /No connection selected/i.test(text) === false &&
+                    (/No connection selected/i.test(text) === false &&
                         document.querySelectorAll(
                             '[data-slot="table"] [role="row"], table tbody tr'
-                        ).length > 1
+                        ).length > 1)
                 )
             },
             undefined,
@@ -665,7 +707,10 @@ async function performHistoryTour(page) {
 
     const count = await items.count()
     for (let i = 0; i < Math.min(count, 4); i++) {
-        await items.nth(i).hover({ timeout: 3000 }).catch(function () {})
+        await items
+            .nth(i)
+            .hover({ timeout: 3000 })
+            .catch(function () {})
         await pause(900)
     }
 
@@ -680,9 +725,15 @@ async function performHistoryTour(page) {
     }
 
     if (count > 2) {
-        await items.nth(2).click({ timeout: 4000 }).catch(function () {})
+        await items
+            .nth(2)
+            .click({ timeout: 4000 })
+            .catch(function () {})
         await pause(1400)
-        await items.first().click({ timeout: 4000 }).catch(function () {})
+        await items
+            .first()
+            .click({ timeout: 4000 })
+            .catch(function () {})
         await pause(2200)
     }
 
@@ -767,7 +818,9 @@ async function performDockerTour(page) {
  * @param {Page} page
  */
 async function performGridTour(page) {
-    const grid = page.locator('[data-slot="table"], table, [role="grid"]').first()
+    const grid = page
+        .locator('[data-slot="table"], table, [role="grid"]')
+        .first()
     await grid.hover({ timeout: 5000 }).catch(function () {})
 
     for (let i = 0; i < 4; i++) {
@@ -775,21 +828,34 @@ async function performGridTour(page) {
         await pause(900)
     }
 
-    const headers = page.locator('[data-slot="table"] [role="columnheader"] button, th button')
+    const headers = page.locator(
+        '[data-slot="table"] [role="columnheader"] button, th button'
+    )
     const headerCount = await headers.count()
     if (headerCount > 0) {
-        await headers.nth(0).click().catch(function () {})
+        await headers
+            .nth(0)
+            .click()
+            .catch(function () {})
         await pause(1200)
         if (headerCount > 1) {
-            await headers.nth(1).click().catch(function () {})
+            await headers
+                .nth(1)
+                .click()
+                .catch(function () {})
             await pause(1200)
         }
     }
 
-    const rows = page.locator('[data-slot="table"] [role="row"], table tbody tr')
+    const rows = page.locator(
+        '[data-slot="table"] [role="row"], table tbody tr'
+    )
     const count = await rows.count()
     for (let i = 1; i < count; i++) {
-        await rows.nth(i).click({ timeout: 4000 }).catch(function () {})
+        await rows
+            .nth(i)
+            .click({ timeout: 4000 })
+            .catch(function () {})
         await pause(1100)
     }
 
@@ -820,7 +886,9 @@ async function waitForAiResponse(page, timeout = 22000) {
     await page
         .waitForFunction(
             function () {
-                return !document.body.innerText.toLowerCase().includes('streaming')
+                return !document.body.innerText
+                    .toLowerCase()
+                    .includes('streaming')
             },
             undefined,
             { timeout: 10000 }
@@ -857,13 +925,19 @@ async function performAiTour(page) {
     await pause(1000)
 
     const suggestion = page
-        .getByRole('button', { name: /write a join between customers and products/i })
+        .getByRole('button', {
+            name: /write a join between customers and products/i
+        })
         .first()
     if (await suggestion.count()) {
-        await curveClick(page, suggestion, { timeout: 5000 }).catch(function () {})
+        await curveClick(page, suggestion, { timeout: 5000 }).catch(
+            function () {}
+        )
         await pause(500)
     } else {
-        const prompt = page.getByPlaceholder(/ask anything about your database/i)
+        const prompt = page.getByPlaceholder(
+            /ask anything about your database/i
+        )
         await prompt.click({ timeout: 5000 }).catch(function () {})
         await prompt.fill(
             'Write a JOIN between customers and orders to show top spenders'
@@ -896,9 +970,13 @@ async function setDrizzleEditorContent(page, code) {
     }, code)
 
     if (!usedHook) {
-        await curveClick(page, page.getByRole('button', { name: /^drizzle$/i }), {
-            timeout: 8000
-        })
+        await curveClick(
+            page,
+            page.getByRole('button', { name: /^drizzle$/i }),
+            {
+                timeout: 8000
+            }
+        )
         await pause(700)
         const editor = page.locator('.monaco-editor').first()
         await editor.click({ timeout: 5000 }).catch(function () {})
@@ -965,11 +1043,294 @@ async function performDrizzleTour(page) {
     await pause(500)
     await runDrizzleQuery(page, drizzleCode)
     await waitForQueryResult(page, 15000)
-    await curveTo(page, page.getByRole('button', { name: /^run$/i }), 460).catch(
-        function () {}
-    )
+    await curveTo(
+        page,
+        page.getByRole('button', { name: /^run$/i }),
+        460
+    ).catch(function () {})
     await page.keyboard.press('Escape').catch(function () {})
     await pause(1800)
+}
+
+/**
+ * @param {Page} page
+ */
+async function waitForSettings(page) {
+    await waitForCaptureReady(page)
+    await page
+        .getByText('Appearance', { exact: true })
+        .first()
+        .waitFor({ state: 'visible', timeout: 25000 })
+    await pause(500)
+}
+
+/**
+ * @param {Page} page
+ */
+async function performThemingTour(page) {
+    await curveClick(
+        page,
+        page.getByText('Appearance', { exact: true }).first()
+    ).catch(function () {})
+    await pause(1400)
+
+    const themes = [
+        'Light',
+        'Midnight',
+        'Forest',
+        'Bloom',
+        'Claude Light',
+        'Classic Dark'
+    ]
+    for (const theme of themes) {
+        const card = page.getByText(theme, { exact: true }).last()
+        if (await card.count()) {
+            await curveClick(page, card).catch(function () {})
+            await pause(2100)
+        }
+    }
+
+    await page.mouse.wheel(0, 480)
+    await pause(1400)
+    await page.mouse.wheel(0, 420)
+    await pause(1400)
+    await page.mouse.wheel(0, -700)
+    await pause(1200)
+}
+
+/**
+ * @param {Page} page
+ */
+async function waitForOrmCockpit(page) {
+    await waitForCaptureReady(page)
+    await page
+        .getByText(/tables differ/i)
+        .first()
+        .waitFor({ state: 'visible', timeout: 30000 })
+    await pause(600)
+}
+
+/**
+ * @param {Page} page
+ */
+async function performOrmCockpitTour(page) {
+    for (const table of ['customers', 'order_items', 'reviews']) {
+        await curveClick(
+            page,
+            page.getByText(table, { exact: true }).first()
+        ).catch(function () {})
+        await pause(1700)
+    }
+
+    await page.mouse.wheel(0, 360)
+    await pause(1100)
+    await page.mouse.wheel(0, -360)
+    await pause(900)
+
+    await curveClick(
+        page,
+        page.getByRole('button', { name: /generate migration/i })
+    ).catch(function () {})
+    await page
+        .waitForFunction(
+            function () {
+                return !document.body.innerText.includes(
+                    'No migration generated yet'
+                )
+            },
+            undefined,
+            { timeout: 20000 }
+        )
+        .catch(function () {})
+    await pause(2400)
+
+    await page.mouse.wheel(0, 320)
+    await pause(1300)
+    await page.mouse.wheel(0, 320)
+    await pause(1300)
+
+    await curveClick(
+        page,
+        page.getByText('Converter', { exact: true }).first()
+    ).catch(function () {})
+    await pause(1400)
+
+    const converterEditor = page.locator('.monaco-editor').first()
+    const editorMounted = await converterEditor
+        .waitFor({ state: 'visible', timeout: 8000 })
+        .then(function () {
+            return true
+        })
+        .catch(function () {
+            return false
+        })
+    const editorFocused =
+        editorMounted &&
+        (await (async function () {
+            await curveClick(page, converterEditor).catch(function () {})
+            await page
+                .locator('.monaco-editor textarea')
+                .first()
+                .focus()
+                .catch(function () {})
+            await pause(300)
+            return page.evaluate(function () {
+                return (
+                    document.activeElement?.classList.contains('inputarea') ??
+                    false
+                )
+            })
+        })())
+    if (editorFocused) {
+        await pause(400)
+        await page.keyboard.type(
+            "export const reviews = pgTable('reviews', { id: serial('id').primaryKey(), rating: integer('rating'), title: varchar('title', { length: 200 }) })",
+            { delay: 18 }
+        )
+        await page.keyboard.press('Home').catch(function () {})
+        await pause(2600)
+    }
+
+    await curveClick(
+        page,
+        page.getByText('Differences', { exact: true }).first()
+    ).catch(function () {})
+    await pause(1800)
+}
+
+/**
+ * @param {Page} page
+ */
+async function switchToPrismaMode(page) {
+    const button = page.getByRole('button', { name: /prisma/i }).first()
+    if (await button.count()) {
+        await curveClick(page, button).catch(function () {})
+    } else {
+        await page
+            .locator('.monaco-editor')
+            .first()
+            .click()
+            .catch(function () {})
+        await page.keyboard.press('Alt+p').catch(function () {})
+    }
+    await pause(1200)
+}
+
+/**
+ * @param {Page} page
+ */
+async function performPrismaTour(page) {
+    const snippetsToggle = page.locator('[title="Toggle snippets"]')
+    if (await snippetsToggle.count()) {
+        const snippetsOpen = await page
+            .locator('text=SNIPPETS')
+            .first()
+            .isVisible()
+            .catch(function () {
+                return false
+            })
+        if (snippetsOpen) {
+            await snippetsToggle.click({ timeout: 3000 }).catch(function () {})
+            await pause(400)
+        }
+    }
+
+    await switchToPrismaMode(page)
+
+    await page
+        .waitForFunction(
+            function () {
+                return document.body.innerText.includes('prisma.')
+            },
+            undefined,
+            { timeout: 15000 }
+        )
+        .catch(function () {})
+    await pause(1400)
+
+    const runButton = page.getByRole('button', { name: /^run/i }).first()
+    await curveClick(page, runButton).catch(function () {})
+    await waitForQueryResult(page, 15000)
+    await pause(1600)
+
+    const editor = page.locator('.monaco-editor').first()
+    await curveClick(page, editor).catch(function () {})
+    await page.keyboard.press('Control+A').catch(function () {})
+    await page.keyboard.press('Backspace').catch(function () {})
+    await pause(400)
+    await page.keyboard.type(
+        "prisma.order.findMany({ where: { status: 'delivered' }, orderBy: { total: 'desc' }, take: 15 })",
+        { delay: 26 }
+    )
+    await page.keyboard.press('Home').catch(function () {})
+    await pause(1100)
+    await curveClick(page, runButton).catch(function () {})
+    await waitForQueryResult(page, 15000)
+    await pause(2200)
+}
+
+/**
+ * @param {Page} page
+ * @param {import('playwright').Locator} field
+ * @param {string} value
+ */
+async function typeIntoField(page, field, value) {
+    await curveClick(page, field).catch(function () {})
+    await field.fill('').catch(function () {})
+    await field.pressSequentially(value, { delay: 46 }).catch(function () {})
+    await pause(500)
+}
+
+/**
+ * @param {Page} page
+ */
+async function performSshTour(page) {
+    await dismissOverlays(page)
+    await openConnectionSwitcher(page)
+
+    await curveClick(
+        page,
+        page.getByText('Add connection', { exact: false }).first()
+    ).catch(function () {})
+    await pause(1400)
+
+    const dialog = page.locator('[role="dialog"]').first()
+    await dialog.waitFor({ state: 'visible', timeout: 10000 })
+
+    await typeIntoField(
+        page,
+        page.getByPlaceholder(/production database/i),
+        'Staging via bastion'
+    )
+
+    const hostField = page.getByPlaceholder('localhost').first()
+    if (await hostField.count()) {
+        await hostField.scrollIntoViewIfNeeded().catch(function () {})
+        await typeIntoField(page, hostField, 'db.internal.staging')
+    }
+
+    const sshToggle = page.locator('#ssh-tunnel')
+    await sshToggle.scrollIntoViewIfNeeded().catch(function () {})
+    await pause(900)
+    await curveClick(page, page.locator('label[for="ssh-tunnel"]')).catch(
+        function () {}
+    )
+    await pause(1300)
+
+    const sshHost = page.locator('#ssh-host')
+    if (await sshHost.count()) {
+        await sshHost.scrollIntoViewIfNeeded().catch(function () {})
+        await typeIntoField(page, sshHost, 'bastion.staging.example.com')
+        await typeIntoField(page, page.locator('#ssh-username'), 'deploy')
+    }
+
+    await page
+        .locator('#ssh-host-key-fingerprint')
+        .scrollIntoViewIfNeeded()
+        .catch(function () {})
+    await pause(1600)
+    await sshToggle.scrollIntoViewIfNeeded().catch(function () {})
+    await pause(2200)
 }
 
 /**
@@ -1064,6 +1425,30 @@ const CAPTURES = [
         url: captureUrl('sql-console'),
         wait: waitForSqlConsole,
         perform: performDrizzleTour
+    },
+    {
+        slug: 'theming',
+        url: captureUrl('settings'),
+        wait: waitForSettings,
+        perform: performThemingTour
+    },
+    {
+        slug: 'orm-cockpit',
+        url: captureUrl('orm-cockpit'),
+        wait: waitForOrmCockpit,
+        perform: performOrmCockpitTour
+    },
+    {
+        slug: 'prisma-runner',
+        url: captureUrl('sql-console'),
+        wait: waitForSqlConsole,
+        perform: performPrismaTour
+    },
+    {
+        slug: 'ssh-tunneling',
+        url: captureUrl('database-studio'),
+        wait: waitForDataGrid,
+        perform: performSshTour
     }
 ]
 
@@ -1110,6 +1495,9 @@ async function captureOne(browser, capture) {
         await page.goto(capture.url, { waitUntil: 'domcontentloaded' })
         await capture.wait(page)
         bootTrimSec = await measureBootTrim(page)
+        // poster must match the trimmed video's first frame — the feature page
+        // shows it as the instant loading state and crossfades into playback
+        await page.screenshot({ path: pngPath, fullPage: false })
 
         const tourStart = Date.now()
         try {
@@ -1122,8 +1510,6 @@ async function captureOne(browser, capture) {
             await pause(MIN_TOUR_MS - tourElapsed)
         }
         await pause(HOLD_AFTER_MS)
-
-        await page.screenshot({ path: pngPath, fullPage: false })
 
         await page.close()
         const video = page.video()
