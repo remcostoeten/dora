@@ -429,8 +429,8 @@ README version strings already matched, so nothing changed. Check the `post-rele
 ## Related
 
 - Interactive preflight: `bun run release:guide`
-- AI-assisted release notes draft: `.agent/workflows/release.md`
-- Agent guidelines for labels and changelog tone: `.agent/AGENTS.md`
+- AI-assisted release notes draft: `docs/distribution/ai-release-notes.md`
+- Agent guidelines for labels and changelog tone: `AGENTS.md`
 
 ---
 

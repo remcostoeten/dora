@@ -33,21 +33,20 @@ yarn-error.log*
 .vercel
 
 # Local agent/tool state
-.agents/
 .cache/
 .tauri-logs/
+.claude/
+.codex/
 
-# Agent skill roots: ignore locally installed third-party skills, but track the
-# `dora-*` skills this repo generates from .agent-skills/ (see .agent-skills/README.md).
+# Agent skills: `.agents/skills/` is the canonical root (read directly by Codex
+# and other tools following the agents standard). Track only the repo's own
+# `dora-*` skills; locally installed third-party skills stay ignored.
 # A parent directory must not be excluded outright or git will not descend into it.
-.claude/*
-!.claude/skills/
-.claude/skills/*
-!.claude/skills/dora-*/
-.codex/*
-!.codex/skills/
-.codex/skills/*
-!.codex/skills/dora-*/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/dora-*/
+!.agents/skills/FINDINGS.md
 
 # TypeScript
 *.tsbuildinfo

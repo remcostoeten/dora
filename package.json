@@ -26,8 +26,6 @@
 		"test:coverage": "vitest run --coverage",
 		"test:desktop": "bun run --cwd apps/desktop test",
 		"verify:providers": "bun tools/scripts/verify-providers.ts",
-		"skills:sync": "bun tools/scripts/skills-sync.ts",
-		"skills:check": "bun tools/scripts/skills-check.ts",
 		"web:dev": "bun --cwd apps/desktop run dev",
 		"desktop:dev": "bun run --cwd apps/desktop tauri dev",
 		"desktop:build": "bun run --cwd apps/desktop tauri build",

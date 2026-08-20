@@ -1,5 +1,16 @@
 # Dora project-wide agent instructions
 
+## Agent skills
+
+Project skills live at `.agents/skills/<name>/SKILL.md` — the single canonical root, read directly by Codex and other tools following the agents standard. Only the repo's own `dora-*` skills are tracked; everything else under `.agents/` is local state and stays gitignored.
+
+## Release notes, changelogs and pull requests
+
+- Release notes drafts go to `docs/RELEASE_NOTES.md`, in plain Markdown. No emojis, no marketing fluff. Structure them as Highlights (critical changes only), Features, Fixes, Technical.
+- Never invent version numbers. Use the one provided, or increment the logical patch/minor.
+- Always label a PR before merging — the label drives GitHub's auto-generated release notes (`.github/release.yml`). Unlabelled PRs fall into "Other Changes". Valid labels: `feat`, `fix`, `perf`, `refactor`, `deps`, `ci`, `docs`. One label per PR, the one that best describes user-visible impact.
+- Keep `README.md` professional: no decorative emojis, text labels (Done/WIP) instead of status icons.
+
 ## TypeScript conventions
 
 - When a component or function has a single props/args type that is not exported, name it `type Props` (or inline it) instead of `ComponentNameProps`.
