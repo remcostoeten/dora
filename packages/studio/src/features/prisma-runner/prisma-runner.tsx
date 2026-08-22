@@ -254,7 +254,9 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 							setIsSidebarCollapsed(!isSidebarCollapsed)
 						}}
 						aria-expanded={!isSidebarCollapsed}
-						aria-label={isSidebarCollapsed ? 'Show schema sidebar' : 'Hide schema sidebar'}
+						aria-label={
+							isSidebarCollapsed ? 'Show schema sidebar' : 'Hide schema sidebar'
+						}
 					>
 						{isSidebarCollapsed ? 'Show Schema' : 'Hide Schema'}
 					</Button>
@@ -312,6 +314,7 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 						<Panel defaultSize={60} minSize={20}>
 							<div className='flex flex-col h-full relative'>
 								<CodeEditor
+									tabId={`prisma:${activeConnectionId}`}
 									value={query}
 									onChange={setQuery}
 									onExecute={handleExecute}
@@ -358,7 +361,11 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 				</Panel>
 			</PanelGroup>
 
-			<PrismaSchemaDialog open={showSchema} onOpenChange={setShowSchema} code={prismaSchema} />
+			<PrismaSchemaDialog
+				open={showSchema}
+				onOpenChange={setShowSchema}
+				code={prismaSchema}
+			/>
 		</div>
 	)
 }

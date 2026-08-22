@@ -69,10 +69,7 @@ export function DrizzleRunner({ connectionId }: Props) {
 
 			try {
 				const sqlToRun = drizzleQueryToSql(codeToRun || queryCode)
-				const queryResult = await adapter.executeQuery(
-					activeConnectionId,
-					sqlToRun
-				)
+				const queryResult = await adapter.executeQuery(activeConnectionId, sqlToRun)
 				if (queryResult.ok) {
 					setResult(queryResult.data)
 				} else {
@@ -203,7 +200,9 @@ export function DrizzleRunner({ connectionId }: Props) {
 						className={cn('h-7 text-xs', isSidebarCollapsed && 'bg-sidebar-accent')}
 						onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
 						aria-expanded={!isSidebarCollapsed}
-						aria-label={isSidebarCollapsed ? 'Show schema sidebar' : 'Hide schema sidebar'}
+						aria-label={
+							isSidebarCollapsed ? 'Show schema sidebar' : 'Hide schema sidebar'
+						}
 					>
 						{isSidebarCollapsed ? 'Show Schema' : 'Hide Schema'}
 					</Button>
@@ -244,6 +243,7 @@ export function DrizzleRunner({ connectionId }: Props) {
 						<Panel defaultSize={60} minSize={20}>
 							<div className='flex flex-col h-full relative'>
 								<CodeEditor
+									tabId={`drizzle-runner:${activeConnectionId}`}
 									value={queryCode}
 									onChange={setQueryCode}
 									onExecute={handleExecute}
@@ -265,7 +265,6 @@ export function DrizzleRunner({ connectionId }: Props) {
 						</Panel>
 					</PanelGroup>
 				</Panel>
-
 			</PanelGroup>
 		</div>
 	)

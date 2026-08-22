@@ -22,10 +22,7 @@ import {
 	type ShortcutScope,
 	type UseShortcutOptions
 } from '@remcostoeten/use-shortcut/react'
-import {
-	formatShortcut,
-	getModifierSymbols
-} from '@remcostoeten/use-shortcut/formatter'
+import { formatShortcut, getModifierSymbols } from '@remcostoeten/use-shortcut/formatter'
 
 export type ShortcutDefinition = {
 	combo: string | string[]
@@ -84,8 +81,16 @@ export const APP_SHORTCUTS = {
 	switchConnection7: { combo: 'mod+7', description: 'Switch to connection 7', scope: 'global' },
 	switchConnection8: { combo: 'mod+8', description: 'Switch to connection 8', scope: 'global' },
 	switchConnection9: { combo: 'mod+9', description: 'Switch to connection 9', scope: 'global' },
-	prevConnection: { combo: 'ctrl+shift+bracketleft', description: 'Previous open connection', scope: 'global' },
-	nextConnection: { combo: 'ctrl+shift+bracketright', description: 'Next open connection', scope: 'global' },
+	prevConnection: {
+		combo: 'ctrl+shift+bracketleft',
+		description: 'Previous open connection',
+		scope: 'global'
+	},
+	nextConnection: {
+		combo: 'ctrl+shift+bracketright',
+		description: 'Next open connection',
+		scope: 'global'
+	},
 	quitApp: {
 		combo: 'ctrl+q',
 		description: 'Quit application',
@@ -115,11 +120,11 @@ export const APP_SHORTCUTS = {
 	},
 
 	// ── Go-To chords (G → key) ───────────────────────────────────────────────
-	gotoDashboard:   { combo: 'g d', description: 'Go to dashboard',   scope: 'global' },
-	gotoSettings:    { combo: 'g s', description: 'Go to settings',    scope: 'global' },
+	gotoDashboard: { combo: 'g d', description: 'Go to dashboard', scope: 'global' },
+	gotoSettings: { combo: 'g s', description: 'Go to settings', scope: 'global' },
 	gotoConnections: { combo: 'g c', description: 'Go to connections', scope: 'global' },
-	gotoEditor:      { combo: 'g e', description: 'Go to SQL editor',  scope: 'global' },
-	gotoDocker:      { combo: 'g k', description: 'Go to Docker',      scope: 'global' },
+	gotoEditor: { combo: 'g e', description: 'Go to SQL editor', scope: 'global' },
+	gotoDocker: { combo: 'g k', description: 'Go to Docker', scope: 'global' },
 
 	// ── SQL Console ──────────────────────────────────────────────────────────
 	runQuery: {
@@ -265,39 +270,76 @@ export const APP_SHORTCUTS = {
 		combo: 'mod+shift+m',
 		description: 'Start live monitor',
 		scope: 'data-grid'
-	},
+	}
 } as const satisfies Record<string, ShortcutDefinition>
 
 export type ShortcutName = keyof typeof APP_SHORTCUTS
 
 export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
-	'Navigation': [
-		'openCommandPalette', 'newConnection', 'toggleSidebar', 'toggleAiAssistant', 'openSettings',
-		'closeTab', 'reconnect', 'quitApp',
-		'switchConnection1', 'switchConnection2', 'switchConnection3',
-		'switchConnection4', 'switchConnection5', 'switchConnection6',
-		'switchConnection7', 'switchConnection8', 'switchConnection9',
-		'prevConnection', 'nextConnection',
+	Navigation: [
+		'openCommandPalette',
+		'newConnection',
+		'toggleSidebar',
+		'toggleAiAssistant',
+		'openSettings',
+		'closeTab',
+		'reconnect',
+		'quitApp',
+		'switchConnection1',
+		'switchConnection2',
+		'switchConnection3',
+		'switchConnection4',
+		'switchConnection5',
+		'switchConnection6',
+		'switchConnection7',
+		'switchConnection8',
+		'switchConnection9',
+		'prevConnection',
+		'nextConnection'
 	],
 	'Go To (G → key)': [
-		'gotoDashboard', 'gotoSettings', 'gotoConnections', 'gotoEditor', 'gotoDocker',
+		'gotoDashboard',
+		'gotoSettings',
+		'gotoConnections',
+		'gotoEditor',
+		'gotoDocker'
 	],
-	'View': [
-		'zoomIn', 'zoomOut', 'zoomReset', 'toggleFullscreen',
-	],
+	View: ['zoomIn', 'zoomOut', 'zoomReset', 'toggleFullscreen'],
 	'SQL Console': [
-		'runQuery', 'runSelection', 'formatQuery', 'saveScript', 'openQueryHistory', 'newTab', 'aiCmdK',
-		'switchToSql', 'switchToDrizzle', 'switchToPrisma',
+		'runQuery',
+		'runSelection',
+		'formatQuery',
+		'saveScript',
+		'openQueryHistory',
+		'newTab',
+		'aiCmdK',
+		'switchToSql',
+		'switchToDrizzle',
+		'switchToPrisma'
 	],
-	'Editor': [
-		'find', 'replace', 'toggleComment', 'selectNextOccurrence',
-		'moveLineUp', 'moveLineDown', 'deleteLine', 'goToLine',
+	Editor: [
+		'find',
+		'replace',
+		'toggleComment',
+		'selectNextOccurrence',
+		'moveLineUp',
+		'moveLineDown',
+		'deleteLine',
+		'goToLine'
 	],
 	'Database Studio': [
-		'selectAll', 'deselect', 'editCell', 'deleteRows', 'focusToolbar',
-		'refreshTable', 'filterRows', 'insertRow', 'exportTable', 'startLiveMonitor',
+		'selectAll',
+		'deselect',
+		'editCell',
+		'deleteRows',
+		'focusToolbar',
+		'refreshTable',
+		'filterRows',
+		'insertRow',
+		'exportTable',
+		'startLiveMonitor'
 	],
-	'Global': ['save'],
+	Global: ['save']
 }
 
 export function getShortcutsByScope(
@@ -552,13 +594,7 @@ function registerBoundShortcut(
 		scopes: mergeScopes(state.scopes, options?.scopes)
 	}
 
-	return registerShortcutMap(builder, {
-		boundShortcut: {
-			keys: combo,
-			handler,
-			options: mergedOptions
-		}
-	}).boundShortcut
+	return builder.bind(combo).on(handler, mergedOptions)
 }
 
 function createBoundShortcutChain(
@@ -591,13 +627,14 @@ function createBoundShortcutChain(
 
 export function useActiveScope(
 	$: ShortcutBuilder,
-	scope: ShortcutDefinition['scope']
+	scope: ShortcutDefinition['scope'],
+	active = true
 ) {
 	useEffect(() => {
-		if (!scope || scope === 'global') return
+		if (!active || !scope || scope === 'global') return
 		$.enableScope(scope)
 		return () => $.disableScope(scope)
-	}, [scope])
+	}, [active, scope])
 }
 
 // Wraps a BoundShortcutChain so that calling .on() / .handle() first unbinds any
@@ -637,7 +674,9 @@ export function useShortcut(options?: UseShortcutOptions): ShortcutBuilder {
 	useEffect(() => {
 		const map = registrationsRef.current
 		return () => {
-			map.forEach(function (unbind) { unbind() })
+			map.forEach(function (unbind) {
+				unbind()
+			})
 			map.clear()
 		}
 	}, [])

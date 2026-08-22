@@ -23,7 +23,16 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle
 } from '@studio/shared/ui/alert-dialog'
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+	lazy,
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type ReactNode
+} from 'react'
 import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
@@ -56,7 +65,15 @@ import { useDatabaseStudioEdits } from './hooks/use-database-studio-edits'
 import { useDatabaseStudioCommands } from './hooks/use-database-studio-commands'
 import { buildDefaultTableCacheKey, buildTableCacheKey } from './utils/table-cache'
 import { appendRows, removeRowsByPrimaryKey } from './utils/studio-data'
-import { FilterConjunction, FilterDescriptor, FilterGroup, PaginationState, SortDescriptor, TableData, ViewMode } from './types'
+import {
+	FilterConjunction,
+	FilterDescriptor,
+	FilterGroup,
+	PaginationState,
+	SortDescriptor,
+	TableData,
+	ViewMode
+} from './types'
 import { flatFiltersToGroup, groupToFlatFilters } from '@studio/core/data-provider/filter-sql'
 const ResultChartPanel = lazy(function () {
 	return import('@studio/features/result-charts/result-chart-panel').then(function (m) {
@@ -68,8 +85,10 @@ import { commands } from '@studio/lib/bindings'
 import type { ColumnDefinition } from './types'
 import type { BlobAction } from './components/cell-context-menu'
 import { bytesToBase64, bytesToHex } from './components/cells/blob-utils'
+import { useWorkspaceState } from '@studio/core/workspace-state'
 
 type Props = {
+	isActive?: boolean
 	tableId: string | null
 	tableName: string | null
 	activeConnectionId?: string
@@ -82,6 +101,7 @@ type Props = {
 }
 
 export function DatabaseStudio({
+	isActive = true,
 	tableId,
 	tableName,
 	activeConnectionId,
@@ -120,10 +140,12 @@ export function DatabaseStudio({
 	// edits, copies, or exports — only the structure (tables, columns) is shown.
 	const { settings } = useSettings()
 	const privacyMaskData = settings.privacyMaskData
-	const canEditRows = (sourceCaps ? isUiActionVisible('edit-rows', sourceCaps) : false) && !privacyMaskData
+	const canEditRows =
+		(sourceCaps ? isUiActionVisible('edit-rows', sourceCaps) : false) && !privacyMaskData
 	const canImportFile = sourceCaps ? isUiActionVisible('import-csv', sourceCaps) : false
 	const canAttachFiles = sourceCaps ? isUiActionVisible('attach-file', sourceCaps) : false
-	const canExportFile = (sourceCaps ? isUiActionVisible('export-data', sourceCaps) : true) && !privacyMaskData
+	const canExportFile =
+		(sourceCaps ? isUiActionVisible('export-data', sourceCaps) : true) && !privacyMaskData
 	const showLiveMonitor = sourceCaps ? isUiActionVisible('live-monitor', sourceCaps) : false
 	const existingTableNames = useMemo(
 		function () {
@@ -187,10 +209,12 @@ export function DatabaseStudio({
 		getEditCount,
 		clearEdits,
 		hasEdits
-	} = usePendingEdits()
+	} = usePendingEdits(activeConnectionId)
+	const workspaceStateKey = `${activeConnectionId ?? 'no-connection'}:${tableId ?? 'no-table'}`
 	const [isApplyingEdits, setIsApplyingEdits] = useState(false)
-	const [tableData, setTableData] = useState<TableData | null>(
-		initialCacheEntry ? initialCacheEntry.data : null
+	const [tableData, setTableData] = useWorkspaceState<TableData | null>(
+		`${workspaceStateKey}:table-data`,
+		() => (initialCacheEntry ? initialCacheEntry.data : null)
 	)
 	const [showAddDialog, setShowAddDialog] = useState(false)
 	const [addDialogMode, setAddDialogMode] = useState<'add' | 'duplicate' | 'edit'>('add')
@@ -220,7 +244,6 @@ export function DatabaseStudio({
 	// the data fetch. The flat `filters`/`filterConjunction` above are kept in sync
 	// as the root-level projection, for cache keys and tab persistence (#98).
 	const [filterGroup, setFilterGroup] = useState<FilterGroup>({ logic: 'AND', conditions: [] })
-	const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
 	const [showAddColumnDialog, setShowAddColumnDialog] = useState(false)
 	const [showDropTableDialog, setShowDropTableDialog] = useState(false)
 	const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false)
@@ -239,13 +262,37 @@ export function DatabaseStudio({
 	const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null)
 	const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null)
 
-	const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
-		new Set(initialCacheEntry?.visibleColumns || [])
+	const [visibleColumns, setVisibleColumns] = useWorkspaceState(
+		`${workspaceStateKey}:visible-columns`,
+		() => {
+			return new Set(initialCacheEntry?.visibleColumns || [])
+		}
 	)
 
-	const [selectedCells, setSelectedCells] = useState<Set<string>>(new Set())
-	const [focusedCell, setFocusedCell] = useState<{ row: number; col: number } | null>(null)
-	const [contextMenuState, setContextMenuState] = useState<ContextMenuState>(null)
+	const [selectedRows, setSelectedRows] = useWorkspaceState(
+		`${workspaceStateKey}:selected-rows`,
+		() => {
+			return new Set<number>()
+		}
+	)
+	const [selectedCells, setSelectedCells] = useWorkspaceState(
+		`${workspaceStateKey}:selected-cells`,
+		() => {
+			return new Set<string>()
+		}
+	)
+	const [focusedCell, setFocusedCell] = useWorkspaceState<{
+		row: number
+		col: number
+	} | null>(`${workspaceStateKey}:focused-cell`, () => {
+		return null
+	})
+	const [contextMenuState, setContextMenuState] = useWorkspaceState<ContextMenuState>(
+		`${workspaceStateKey}:context-menu`,
+		() => {
+			return null
+		}
+	)
 	const toolbarRef = useRef<HTMLDivElement>(null)
 	const gridContainerRef = useRef<HTMLDivElement>(null)
 	// Applies an edited filter tree from the FilterBar: stores the group and keeps
@@ -286,13 +333,18 @@ export function DatabaseStudio({
 				filterGroup
 			)
 		},
-		[activeConnectionId, tableId, pagination.limit, pagination.offset, sort, filters, filterConjunction, filterGroup]
+		[
+			activeConnectionId,
+			tableId,
+			pagination.limit,
+			pagination.offset,
+			sort,
+			filters,
+			filterConjunction,
+			filterGroup
+		]
 	)
-	const {
-		liveMonitor,
-		stableUrlState,
-		loadTableData
-	} = useDatabaseStudioSync({
+	const { liveMonitor, stableUrlState, loadTableData } = useDatabaseStudioSync({
 		adapter,
 		activeConnectionId,
 		tableId,
@@ -380,41 +432,44 @@ export function DatabaseStudio({
 		return new Set<number>()
 	}, [selectedRows, focusedCell])
 
-	const applyUndoOptimistically = useCallback(function applyUndoOptimistically(mutation: Mutation) {
-		setTableData(function (prev) {
-			if (!prev) return prev
-			if (mutation.type === 'cell') {
-				return {
-					...prev,
-					rows: prev.rows.map(function (row) {
-						return row[mutation.primaryKeyColumn] === mutation.primaryKeyValue
-							? { ...row, [mutation.columnName]: mutation.previousValue }
-							: row
-					})
-				}
-			}
-			if (mutation.type === 'batch-cell') {
-				return {
-					...prev,
-					rows: prev.rows.map(function (row) {
-						const matching = mutation.cells.filter(function (cell) {
-							return cell.primaryKeyValue === row[mutation.primaryKeyColumn]
+	const applyUndoOptimistically = useCallback(
+		function applyUndoOptimistically(mutation: Mutation) {
+			setTableData(function (prev) {
+				if (!prev) return prev
+				if (mutation.type === 'cell') {
+					return {
+						...prev,
+						rows: prev.rows.map(function (row) {
+							return row[mutation.primaryKeyColumn] === mutation.primaryKeyValue
+								? { ...row, [mutation.columnName]: mutation.previousValue }
+								: row
 						})
-						if (matching.length === 0) return row
-						const patched = { ...row }
-						for (const cell of matching) {
-							patched[cell.columnName] = cell.previousValue
-						}
-						return patched
-					})
+					}
 				}
-			}
-			if (mutation.type === 'row-delete') {
-				return appendRows(prev, mutation.rows)
-			}
-			return prev
-		})
-	}, [setTableData])
+				if (mutation.type === 'batch-cell') {
+					return {
+						...prev,
+						rows: prev.rows.map(function (row) {
+							const matching = mutation.cells.filter(function (cell) {
+								return cell.primaryKeyValue === row[mutation.primaryKeyColumn]
+							})
+							if (matching.length === 0) return row
+							const patched = { ...row }
+							for (const cell of matching) {
+								patched[cell.columnName] = cell.previousValue
+							}
+							return patched
+						})
+					}
+				}
+				if (mutation.type === 'row-delete') {
+					return appendRows(prev, mutation.rows)
+				}
+				return prev
+			})
+		},
+		[setTableData]
+	)
 
 	const { trackCellMutation, trackBatchCellMutation, trackRowDeletion } = useUndo({
 		onUndoComplete: loadTableData,
@@ -572,35 +627,46 @@ export function DatabaseStudio({
 
 	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
-	useActiveScope($, 'data-grid')
+	useActiveScope($, 'data-grid', isActive)
 
-	$.bind(shortcuts.refreshTable.combo).on(
-		function () { loadTableData() },
-		{ description: shortcuts.refreshTable.description }
-	)
+	$.bind(shortcuts.refreshTable.combo)
+		.in('data-grid')
+		.on(
+			function () {
+				loadTableData()
+			},
+			{ description: shortcuts.refreshTable.description }
+		)
 
-	$.bind(shortcuts.exportTable.combo).on(
-		function () { requestExport('json') },
-		{ description: shortcuts.exportTable.description }
-	)
+	$.bind(shortcuts.exportTable.combo)
+		.in('data-grid')
+		.on(
+			function () {
+				requestExport('json')
+			},
+			{ description: shortcuts.exportTable.description }
+		)
 
-	$.bind(shortcuts.focusToolbar.combo).on(
-		function () {
-			if (rowsForActions.size > 0 && toolbarRef.current) {
-				toolbarRef.current.focus()
-				// Optionally find the first button and focus it?
-				// For now, focusing the container (which has accessible children) is a good start,
-				// but usually we want to focus the first interactive element.
-				const firstButton = toolbarRef.current.querySelector('button')
-				if (firstButton) {
-					;(firstButton as HTMLElement).focus()
+	$.bind(shortcuts.focusToolbar.combo)
+		.in('data-grid')
+		.on(
+			function () {
+				if (rowsForActions.size > 0 && toolbarRef.current) {
+					toolbarRef.current.focus()
+					// Optionally find the first button and focus it?
+					// For now, focusing the container (which has accessible children) is a good start,
+					// but usually we want to focus the first interactive element.
+					const firstButton = toolbarRef.current.querySelector('button')
+					if (firstButton) {
+						;(firstButton as HTMLElement).focus()
+					}
 				}
-			}
-		},
-		{ description: shortcuts.focusToolbar.description }
-	)
+			},
+			{ description: shortcuts.focusToolbar.description }
+		)
 
 	$.bind(shortcuts.deleteRows.combo)
+		.in('data-grid')
 		.except('typing')
 		.on(
 			function () {
@@ -611,25 +677,34 @@ export function DatabaseStudio({
 			{ description: shortcuts.deleteRows.description }
 		)
 
-	$.bind(shortcuts.deselect.combo).on(
-		function () {
-			setSelectedRows(new Set())
-			setFocusedCell(null)
-			setSelectedCells(new Set())
-		},
-		{ description: shortcuts.deselect.description }
-	)
+	$.bind(shortcuts.deselect.combo)
+		.in('data-grid')
+		.on(
+			function () {
+				setSelectedRows(new Set())
+				setFocusedCell(null)
+				setSelectedCells(new Set())
+			},
+			{ description: shortcuts.deselect.description }
+		)
 
 	const { openTab } = useTabs()
 
-	function handleFKNavigate(referencedTable: string, _referencedColumn: string, _value: unknown, referencedSchema?: string) {
+	function handleFKNavigate(
+		referencedTable: string,
+		_referencedColumn: string,
+		_value: unknown,
+		referencedSchema?: string
+	) {
 		if (!activeConnectionId) return
-		const tableRef = referencedSchema ? `${referencedSchema}.${referencedTable}` : referencedTable
+		const tableRef = referencedSchema
+			? `${referencedSchema}.${referencedTable}`
+			: referencedTable
 		openTab({
 			connectionId: activeConnectionId,
 			tableId: tableRef,
 			tableName: tableRef,
-			label: referencedTable,
+			label: referencedTable
 		})
 	}
 
@@ -805,12 +880,9 @@ export function DatabaseStudio({
 		[hasActiveFilters, runExport]
 	)
 
-
 	// No connection selected
 	if (!activeConnectionId) {
-		return (
-			<DatabaseStudioNoConnection onAddConnection={onAddConnection} />
-		)
+		return <DatabaseStudioNoConnection onAddConnection={onAddConnection} />
 	}
 
 	// No table selected
@@ -861,9 +933,27 @@ export function DatabaseStudio({
 				viewMode={viewMode}
 				onViewModeChange={setViewMode}
 				onRefresh={loadTableData}
-				onExport={canExportFile ? function () { requestExport('json') } : function () {}}
-				onExportCsv={canExportFile ? function () { requestExport('csv') } : undefined}
-				onExportSql={canExportFile ? function () { requestExport('sql') } : undefined}
+				onExport={
+					canExportFile
+						? function () {
+								requestExport('json')
+							}
+						: function () {}
+				}
+				onExportCsv={
+					canExportFile
+						? function () {
+								requestExport('csv')
+							}
+						: undefined
+				}
+				onExportSql={
+					canExportFile
+						? function () {
+								requestExport('sql')
+							}
+						: undefined
+				}
 				onBackup={handleBackupDatabase}
 				onRestore={handleRestoreDatabase}
 				isLoading={isLoading}
@@ -901,13 +991,37 @@ export function DatabaseStudio({
 					viewMode={viewMode}
 					onViewModeChange={setViewMode}
 					onRefresh={loadTableData}
-					onExport={canExportFile ? function () { requestExport('json') } : function () {}}
-					onExportCsv={canExportFile ? function () { requestExport('csv') } : undefined}
-					onExportSql={canExportFile ? function () { requestExport('sql') } : undefined}
+					onExport={
+						canExportFile
+							? function () {
+									requestExport('json')
+								}
+							: function () {}
+					}
+					onExportCsv={
+						canExportFile
+							? function () {
+									requestExport('csv')
+								}
+							: undefined
+					}
+					onExportSql={
+						canExportFile
+							? function () {
+									requestExport('sql')
+								}
+							: undefined
+					}
 					onBackup={handleBackupDatabase}
 					onRestore={handleRestoreDatabase}
 					onAddRecord={canEditRows ? handleAddRecord : undefined}
-					onImportCsv={canImportFile ? function () { setShowImportDialog(true) } : undefined}
+					onImportCsv={
+						canImportFile
+							? function () {
+									setShowImportDialog(true)
+								}
+							: undefined
+					}
 					importFilesAction={importFilesAction}
 					isLoading={isLoading}
 					filterGroup={filterGroup}
@@ -953,13 +1067,37 @@ export function DatabaseStudio({
 				viewMode={viewMode}
 				onViewModeChange={setViewMode}
 				onRefresh={loadTableData}
-				onExport={canExportFile ? function () { requestExport('json') } : function () {}}
-				onExportCsv={canExportFile ? function () { requestExport('csv') } : undefined}
-				onExportSql={canExportFile ? function () { requestExport('sql') } : undefined}
+				onExport={
+					canExportFile
+						? function () {
+								requestExport('json')
+							}
+						: function () {}
+				}
+				onExportCsv={
+					canExportFile
+						? function () {
+								requestExport('csv')
+							}
+						: undefined
+				}
+				onExportSql={
+					canExportFile
+						? function () {
+								requestExport('sql')
+							}
+						: undefined
+				}
 				onBackup={handleBackupDatabase}
 				onRestore={handleRestoreDatabase}
 				onAddRecord={canEditRows ? handleAddRecord : undefined}
-				onImportCsv={canImportFile ? function () { setShowImportDialog(true) } : undefined}
+				onImportCsv={
+					canImportFile
+						? function () {
+								setShowImportDialog(true)
+							}
+						: undefined
+				}
 				importFilesAction={importFilesAction}
 				isLoading={isLoading}
 				filterGroup={filterGroup}
@@ -1020,6 +1158,7 @@ export function DatabaseStudio({
 							pendingEdits={pendingEditsSet}
 							draftInsertIndex={draftInsertIndex}
 							onFKNavigate={handleFKNavigate}
+							workspaceStateKey={workspaceStateKey}
 						/>
 					</div>
 				)}
@@ -1050,24 +1189,26 @@ export function DatabaseStudio({
 				)}
 			</div>
 
-			{tableData && (settings.selectionBarStyle === 'static' || !settings.selectionBarStyle) && rowsForActions.size > 0 && (
-				<SelectionActionBar
-					ref={toolbarRef}
-					selectedCount={rowsForActions.size}
-					onDelete={canEditRows ? handleBulkDelete : undefined}
-					onCopy={privacyMaskData ? undefined : handleBulkCopy}
-					onSetNull={canEditRows ? handleOpenSetNull : undefined}
-					onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
-					onExportJson={canExportFile ? handleExportJson : undefined}
-					onExportCsv={canExportFile ? handleExportCsv : undefined}
-					onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
-					onSave={canEditRows ? handleApplyPendingEdits : undefined}
-					pendingEditCount={tableId ? getEditCount(tableId) : 0}
-					onClearSelection={handleClearSelection}
-					onEscapeToGrid={handleEscapeToGrid}
-					mode='static'
-				/>
-			)}
+			{tableData &&
+				(settings.selectionBarStyle === 'static' || !settings.selectionBarStyle) &&
+				rowsForActions.size > 0 && (
+					<SelectionActionBar
+						ref={toolbarRef}
+						selectedCount={rowsForActions.size}
+						onDelete={canEditRows ? handleBulkDelete : undefined}
+						onCopy={privacyMaskData ? undefined : handleBulkCopy}
+						onSetNull={canEditRows ? handleOpenSetNull : undefined}
+						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
+						onExportJson={canExportFile ? handleExportJson : undefined}
+						onExportCsv={canExportFile ? handleExportCsv : undefined}
+						onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
+						onSave={canEditRows ? handleApplyPendingEdits : undefined}
+						pendingEditCount={tableId ? getEditCount(tableId) : 0}
+						onClearSelection={handleClearSelection}
+						onEscapeToGrid={handleEscapeToGrid}
+						mode='static'
+					/>
+				)}
 
 			{tableData && (
 				<BottomStatusBar
@@ -1085,26 +1226,24 @@ export function DatabaseStudio({
 			)}
 
 			{/* Render floating bar if mode is floating */}
-			{tableData &&
-				settings.selectionBarStyle === 'floating' &&
-				rowsForActions.size > 0 && (
-					<SelectionActionBar
-						ref={toolbarRef}
-						selectedCount={rowsForActions.size}
-						onDelete={canEditRows ? handleBulkDelete : undefined}
-						onCopy={privacyMaskData ? undefined : handleBulkCopy}
-						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
-						onExportJson={canExportFile ? handleExportJson : undefined}
-						onExportCsv={canExportFile ? handleExportCsv : undefined}
-						onSetNull={canEditRows ? handleOpenSetNull : undefined}
-						onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
-						onSave={canEditRows ? handleApplyPendingEdits : undefined}
-						pendingEditCount={tableId ? getEditCount(tableId) : 0}
-						onClearSelection={handleClearSelection}
-						onEscapeToGrid={handleEscapeToGrid}
-						mode='floating'
-					/>
-				)}
+			{tableData && settings.selectionBarStyle === 'floating' && rowsForActions.size > 0 && (
+				<SelectionActionBar
+					ref={toolbarRef}
+					selectedCount={rowsForActions.size}
+					onDelete={canEditRows ? handleBulkDelete : undefined}
+					onCopy={privacyMaskData ? undefined : handleBulkCopy}
+					onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
+					onExportJson={canExportFile ? handleExportJson : undefined}
+					onExportCsv={canExportFile ? handleExportCsv : undefined}
+					onSetNull={canEditRows ? handleOpenSetNull : undefined}
+					onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
+					onSave={canEditRows ? handleApplyPendingEdits : undefined}
+					pendingEditCount={tableId ? getEditCount(tableId) : 0}
+					onClearSelection={handleClearSelection}
+					onEscapeToGrid={handleEscapeToGrid}
+					mode='floating'
+				/>
+			)}
 
 			{tableId && canEditRows && hasEdits(tableId) && (
 				<PendingChangesBar
