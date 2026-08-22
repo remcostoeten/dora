@@ -17,8 +17,15 @@ export type UiChromeAction =
 			highlight?: SettingsSectionId | null
 	  }
 
+const DEFAULT_NAV_ID = 'database-studio'
+
+function readInitialNavId(): string {
+	if (typeof window === 'undefined') return DEFAULT_NAV_ID
+	return new URLSearchParams(window.location.search).get('view') || DEFAULT_NAV_ID
+}
+
 export const initialUiChromeSlice: UiChromeSlice = {
-	activeNavId: 'database-studio',
+	activeNavId: readInitialNavId(),
 	isDatabasePanelOpen: true,
 	connectionDialog: {
 		open: false,
