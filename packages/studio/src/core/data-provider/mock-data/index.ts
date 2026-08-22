@@ -16,9 +16,45 @@ import { POSTS } from './tables/posts'
 import { PRODUCTS } from './tables/products'
 import { USERS } from './tables/users'
 
-export { MOCK_CONNECTIONS } from './connections'
-export { MOCK_SCHEMAS } from './schemas'
-export { MOCK_SCRIPTS } from './scripts'
+import { MOCK_CONNECTIONS as DEMO_CONNECTIONS } from './connections'
+import {
+	buildPerfConnections,
+	buildPerfSchemas,
+	buildPerfScripts,
+	buildPerfTableData
+} from './perf-fixtures'
+import { MOCK_SCHEMAS as DEMO_SCHEMAS } from './schemas'
+import { MOCK_SCRIPTS as DEMO_SCRIPTS } from './scripts'
+
+/**
+ * The performance harness (`src/test/performance/`) needs a much larger dataset
+ * than the demo: 200 tables, 100k rows, 10 connections. Loading it is opt-in so
+ * the shipped demo is untouched — the harness sets `dora_perf_fixtures` before
+ * the app boots, and `?perf=1` does the same by hand.
+ */
+function perfFixturesRequested(): boolean {
+	if (typeof window === 'undefined') return false
+	try {
+		if (new URLSearchParams(window.location.search).get('perf') === '1') return true
+		return window.localStorage.getItem('dora_perf_fixtures') === '1'
+	} catch {
+		return false
+	}
+}
+
+const PERF_FIXTURES = perfFixturesRequested()
+
+export const MOCK_CONNECTIONS = PERF_FIXTURES
+	? [...DEMO_CONNECTIONS, ...buildPerfConnections()]
+	: DEMO_CONNECTIONS
+
+export const MOCK_SCHEMAS = PERF_FIXTURES
+	? { ...DEMO_SCHEMAS, ...buildPerfSchemas() }
+	: DEMO_SCHEMAS
+
+export const MOCK_SCRIPTS = PERF_FIXTURES
+	? [...DEMO_SCRIPTS, ...buildPerfScripts()]
+	: DEMO_SCRIPTS
 const TAGS: Record<string, unknown>[] = [
 	{ id: 1, name: 'JavaScript', slug: 'javascript' },
 	{ id: 2, name: 'TypeScript', slug: 'typescript' },
@@ -37,7 +73,7 @@ const TAGS: Record<string, unknown>[] = [
 	{ id: 15, name: 'API', slug: 'api' }
 ]
 
-export const MOCK_TABLE_DATA: Record<string, Record<string, unknown>[]> = {
+const DEMO_TABLE_DATA: Record<string, Record<string, unknown>[]> = {
 	'demo-ecommerce-001:customers': CUSTOMERS,
 	'demo-ecommerce-001:products': PRODUCTS,
 	'demo-ecommerce-001:orders': ORDERS,
@@ -57,3 +93,7 @@ export const MOCK_TABLE_DATA: Record<string, Record<string, unknown>[]> = {
 	'demo-hr-004:audit_logs': AUDIT_LOGS,
 	'demo-hr-004:support_tickets': SUPPORT_TICKETS
 }
+
+export const MOCK_TABLE_DATA: Record<string, Record<string, unknown>[]> = PERF_FIXTURES
+	? { ...DEMO_TABLE_DATA, ...buildPerfTableData() }
+	: DEMO_TABLE_DATA

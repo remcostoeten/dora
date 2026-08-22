@@ -21,6 +21,8 @@
 		"format:fix": "bun run --cwd packages/style format:fix",
 		"fix": "bun run --cwd packages/style fix",
 		"test": "turbo test",
+		"perf": "bunx playwright test -c packages/studio/src/test/performance/playwright.config.ts",
+		"perf:invariants": "bunx playwright test -c packages/studio/src/test/performance/playwright.config.ts --grep @invariant",
 		"test:watch": "vitest",
 		"test:ui": "vitest --ui",
 		"test:coverage": "vitest run --coverage",
