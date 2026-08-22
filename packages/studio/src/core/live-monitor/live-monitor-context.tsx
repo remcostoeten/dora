@@ -64,7 +64,6 @@ type LiveMonitorContextValue = {
 	clearEvents: () => void
 	/** Set which table is currently visible — used to track unread counts per table */
 	setActiveTable: (tableName: string | null) => void
-	activeTable: string | null
 }
 
 const LiveMonitorContext = createContext<LiveMonitorContextValue | null>(null)
@@ -304,20 +303,10 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 				unreadCount,
 				markRead,
 				clearEvents,
-				setActiveTable,
-				activeTable
+				setActiveTable
 			}
 		},
-		[
-			config,
-			isPolling,
-			monitorError,
-			recentEvents,
-			unreadCount,
-			markRead,
-			clearEvents,
-			activeTable
-		]
+		[config, isPolling, monitorError, recentEvents, unreadCount, markRead, clearEvents]
 	)
 
 	return <LiveMonitorContext.Provider value={value}>{children}</LiveMonitorContext.Provider>

@@ -13,7 +13,11 @@ bun perf:invariants         # what CI runs — structure only, no timings
 bun perf -- --grep @timing  # just the baseline run
 ```
 
-`PERF_ITERATIONS=40 bun perf` takes more samples. `PERF_BASE_URL` points the run
+`PERF_PROFILE=1 bun perf -- --grep @profile` CPU-profiles a cached table switch
+(CDP sampling profiler plus a Chrome trace) and prints self/total time by
+function and trace time by event; the `.cpuprofile` lands in `perf-artifacts/`
+and opens in DevTools → Performance. Opt-in because the profiler distorts
+timings. `PERF_ITERATIONS=40 bun perf` takes more samples. `PERF_BASE_URL` points the run
 at an already-running dev server; otherwise Playwright starts one and reuses an
 existing one if the port is taken.
 
@@ -27,6 +31,7 @@ into `docs/benchmarks/`.
 | --- | --- |
 | `invariants.spec.ts` | Render invariants — the CI half. Several are red by design |
 | `timings.spec.ts` | Records the baseline. Asserts nothing about durations |
+| `profile.spec.ts` | Opt-in CPU profile + trace of one scenario, for attributing a long frame |
 | `lib/instrument.ts` | Browser-side probes, injected before app code |
 | `lib/app.ts` | Boot, selectors, and the small state readers |
 | `lib/measure.ts` | Scenario runners returning raw samples |

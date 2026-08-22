@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import { useIsTauri } from '@studio/core/data-provider'
 import { useConnections } from '@studio/core/data-provider/hooks'
 import { ENV_MODE, getEnv } from '@studio/core/env'
@@ -12,8 +11,6 @@ import {
 	setConnectionDialogDragActive,
 	setConnectionDialogDroppedPaths,
 	useActiveConnectionId,
-	useActiveNavId,
-	useActiveTab,
 	useConnectionList
 } from '@studio/core/workspace-store'
 import { attachWheelZoom, initZoom } from '@studio/shared/lib/ui-zoom'
@@ -26,19 +23,16 @@ type Args = {
 
 /**
  * Everything the shell does once rather than on every render: restoring the
- * session, picking a startup connection, keeping the URL in step, and the
- * window-level subscriptions.
+ * session, picking a startup connection, and the window-level subscriptions.
+ * Deliberately subscribes to nothing that changes on a table switch or a view
+ * switch; `WorkspaceUrlSync` owns those.
  */
 export function useWorkspaceStartup({ onFileDrop }: Args) {
-	const [searchParams, setSearchParams] = useSearchParams()
 	const isTauri = useIsTauri()
-	const { settings, persistSetting, isLoading: isSettingsLoading } = useSettings()
+	const { settings, isLoading: isSettingsLoading } = useSettings()
 	const { isLoading: isConnectionsLoading, refetch: refetchConnections } = useConnections()
 	const connections = useConnectionList()
 	const activeConnectionId = useActiveConnectionId()
-	const activeNavId = useActiveNavId()
-	const activeTab = useActiveTab()
-	const selectedTableId = activeTab?.tableId ?? ''
 
 	const isLoading = isSettingsLoading || isConnectionsLoading
 
@@ -93,34 +87,10 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 		[isSettingsLoading, isConnectionsLoading, settings.restoreTabsOnLaunch, connections]
 	)
 
-	const isUpdatingUrlRef = useRef(false)
-	useEffect(
-		function syncUrlParams() {
-			if (isUpdatingUrlRef.current) return
-
-			const viewChanged = activeNavId && searchParams.get('view') !== activeNavId
-			const tableChanged = selectedTableId && searchParams.get('table') !== selectedTableId
-			const connectionChanged =
-				activeConnectionId && searchParams.get('connection') !== activeConnectionId
-
-			if (!viewChanged && !tableChanged && !connectionChanged) return
-
-			const params = new URLSearchParams()
-			if (activeNavId) params.set('view', activeNavId)
-			if (selectedTableId) params.set('table', selectedTableId)
-			if (activeConnectionId) params.set('connection', activeConnectionId)
-
-			isUpdatingUrlRef.current = true
-			setSearchParams(params, { replace: true })
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
-		},
-		[activeNavId, selectedTableId, activeConnectionId, searchParams, setSearchParams]
-	)
-
 	const connectionInitializedRef = useRef(false)
-	const urlConnection = searchParams.get('connection')
+	const urlConnection = useRef(
+		new URLSearchParams(window.location.search).get('connection')
+	).current
 	const startupConnectionMode =
 		settings.startupConnectionMode ?? (settings.restoreLastConnection ? 'auto' : 'empty')
 
@@ -201,40 +171,6 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 			settings.lastConnectionId,
 			settings.lastTableId
 		]
-	)
-
-	useEffect(
-		function saveLastConnection() {
-			if (!activeConnectionId || isSettingsLoading) return
-			persistSetting('lastConnectionId', activeConnectionId)
-			if (selectedTableId) persistSetting('lastTableId', selectedTableId)
-		},
-		[activeConnectionId, selectedTableId, isSettingsLoading, persistSetting]
-	)
-
-	useEffect(
-		function syncCaptureReady() {
-			const params = new URLSearchParams(window.location.search)
-			if (params.get('capture') !== '1') return
-
-			window.__DORA_CAPTURE_MODE = true
-
-			if (isLoading) {
-				document.documentElement.removeAttribute('data-dora-capture-ready')
-				return
-			}
-
-			const timer = window.setTimeout(function () {
-				document.documentElement.dataset.doraCaptureReady = 'true'
-				window.__DORA_CAPTURE_READY_AT = performance.now()
-			}, 500)
-
-			return function () {
-				window.clearTimeout(timer)
-				document.documentElement.removeAttribute('data-dora-capture-ready')
-			}
-		},
-		[isLoading, activeNavId]
 	)
 
 	useEffect(function applyPersistedZoom() {

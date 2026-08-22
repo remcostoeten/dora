@@ -20,6 +20,7 @@ import { useConnectionActions } from './use-connection-actions'
 import { useWorkspaceShortcuts } from './use-workspace-shortcuts'
 import { useWorkspaceStartup } from './use-workspace-startup'
 import { WorkspaceDialogs } from './workspace-dialogs'
+import { WorkspaceUrlSync } from './workspace-url-sync'
 import { WorkspaceViewsHost } from './workspace-views-host'
 
 /** Views that render the database panel alongside them. */
@@ -37,6 +38,7 @@ export function WorkspaceShell() {
 
 	return (
 		<LiveMonitorProvider activeConnectionId={activeConnectionId || undefined}>
+			<WorkspaceUrlSync isLoading={isLoading} />
 			<SidebarProvider>
 				<div className='flex flex-col h-full w-full bg-background overflow-hidden'>
 					<div className='flex flex-1 overflow-hidden'>

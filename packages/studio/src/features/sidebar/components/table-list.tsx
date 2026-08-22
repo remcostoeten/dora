@@ -15,7 +15,9 @@ import {
 	Info,
 	Terminal
 } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import type React from 'react'
+import { useStableCallback } from '@studio/shared/hooks/use-stable-callback'
 import { Button } from '@studio/shared/ui/button'
 import { Checkbox } from '@studio/shared/ui/checkbox'
 import {
@@ -71,17 +73,23 @@ type TableItemRowProps = {
 	isMultiSelectMode?: boolean
 	hasSorting?: boolean
 	isEditing?: boolean
-	onEditStart?: (tableId: string) => void
-	onEditSave?: (tableId: string, newName: string) => void
-	onEditCancel?: () => void
-	onSelect?: () => void
-	onPrefetch?: () => void
-	onMultiSelect?: (checked: boolean) => void
-	onContextAction?: (action: string) => void
-	onRightClickAction?: (action: TableRightClickAction, tableId: string) => void
+	onEditStart: (tableId: string) => void
+	onEditSave: (tableId: string, newName: string) => void
+	onEditCancel: () => void
+	onSelect: (tableId: string) => void
+	onPrefetch: (tableId: string) => void
+	onMultiSelect: (tableId: string, checked: boolean) => void
+	onContextAction: (tableId: string, action: string) => void
+	onArmContextMenu: (tableId: string) => void
 }
 
-function TableItemRow({
+/**
+ * One sidebar row. Memoized: with 200 tables the list re-renders on every
+ * navigation, and the rows whose props did not change must not. The row does
+ * not own a context menu — it arms the list's shared one from `onContextMenu`
+ * — and only mounts the "more actions" dropdown while it is open.
+ */
+const TableItemRow = memo(function TableItemRow({
 	item,
 	isSelected,
 	isActive,
@@ -95,7 +103,7 @@ function TableItemRow({
 	onPrefetch,
 	onMultiSelect,
 	onContextAction,
-	onRightClickAction
+	onArmContextMenu
 }: TableItemRowProps) {
 	const [showContextMenu, setShowContextMenu] = useState(false)
 	const [isMenuClosing, setIsMenuClosing] = useState(false)
@@ -154,41 +162,28 @@ function TableItemRow({
 		if (e.key === 'Enter') {
 			e.preventDefault()
 			if (editValue.trim() && editValue !== item.name) {
-				onEditSave?.(item.id, editValue.trim())
+				onEditSave(item.id, editValue.trim())
 			} else {
-				onEditCancel?.()
+				onEditCancel()
 			}
 		} else if (e.key === 'Escape') {
 			e.preventDefault()
-			onEditCancel?.()
+			onEditCancel()
 		}
 	}
 
 	function handleEditBlur() {
 		if (editValue.trim() && editValue !== item.name) {
-			onEditSave?.(item.id, editValue.trim())
+			onEditSave(item.id, editValue.trim())
 		} else {
-			onEditCancel?.()
+			onEditCancel()
 		}
 	}
 
 	function startEditing() {
 		requestAnimationFrame(function () {
-			onEditStart?.(item.id)
+			onEditStart(item.id)
 		})
-	}
-
-	function handleRightClickAction(action: TableRightClickAction) {
-		if (action === 'edit-name') {
-			startEditing()
-			setShowContextMenu(false)
-		} else {
-			onRightClickAction?.(action, item.id)
-		}
-	}
-
-	function handleCopyName() {
-		handleRightClickAction('copy-name')
 	}
 
 	function handleRowKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -198,7 +193,7 @@ function TableItemRow({
 
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault()
-			onSelect?.()
+			onSelect(item.id)
 			return
 		}
 
@@ -208,179 +203,129 @@ function TableItemRow({
 		}
 	}
 
-	return (
-		<ContextMenu>
-			<ContextMenuTrigger asChild>
-				<div>
-					<div
-						className={cn(
-							'group flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors outline-hidden focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-sidebar-ring',
-							isActive && 'bg-sidebar-accent',
-							!isActive && 'hover:bg-sidebar-accent/60'
-						)}
-						role='treeitem'
-						tabIndex={0}
-						aria-current={isActive ? 'page' : undefined}
-						aria-selected={isMultiSelectMode ? isSelected : undefined}
-						aria-label={`${item.name}, ${item.type}, ${formatRowCount(item.rowCount)} rows`}
-						onClick={onSelect}
-						onMouseEnter={onPrefetch}
-						onFocus={onPrefetch}
-						onKeyDown={handleRowKeyDown}
-					>
-						{isMultiSelectMode && (
-							<Checkbox
-								checked={isSelected}
-								onCheckedChange={onMultiSelect}
-								onClick={(e) => e.stopPropagation()}
-								className='shrink-0'
-							/>
-						)}
-
-						<Icon className='h-4 w-4 text-muted-foreground shrink-0' />
-
-						{isEditing ? (
-							<div className='flex-1 flex items-center gap-1'>
-								<input
-									ref={inputRef}
-									type='text'
-									value={editValue}
-									onChange={(e) => setEditValue(e.target.value)}
-									onKeyDown={handleEditKeyDown}
-									onBlur={handleEditBlur}
-									data-no-shortcuts='true'
-									className='flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden'
-									onClick={(e) => e.stopPropagation()}
-								/>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-5 w-5 shrink-0'
-									aria-label={`Save table name for ${item.name}`}
-									onClick={(e) => {
-										e.stopPropagation()
-										if (editValue.trim() && editValue !== item.name) {
-											onEditSave?.(item.id, editValue.trim())
-										}
-									}}
-								>
-									<Check className='h-3 w-3' />
-								</Button>
-								<Button
-									variant='ghost'
-									size='icon'
-									className='h-5 w-5 shrink-0'
-									aria-label={`Cancel renaming ${item.name}`}
-									onClick={(e) => {
-										e.stopPropagation()
-										onEditCancel?.()
-									}}
-								>
-									<X className='h-3 w-3' />
-								</Button>
-							</div>
-						) : (
-							<span className='flex-1 text-sm text-sidebar-foreground truncate'>
-								{item.name}
-							</span>
-						)}
-
-						{!showContextMenu && !isMenuClosing && (
-							<span className='text-xs text-muted-foreground tabular-nums shrink-0 group-hover:hidden'>
-								{formatRowCount(item.rowCount)}
-							</span>
-						)}
-
-						<TableContextMenu
-							open={showContextMenu}
-							onOpenChange={handleContextMenuOpenChange}
-							onAction={(action) => onContextAction?.(action)}
-						>
-							<Button
-								variant='ghost'
-								size='icon'
-								className={cn(
-									'h-5 w-5 shrink-0 hidden group-hover:flex group-focus-within:flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent',
-									(showContextMenu || isMenuClosing) && 'opacity-100 flex'
-								)}
-								aria-label={`Open actions for ${item.name}`}
-								onClick={(e) => {
-									e.stopPropagation()
-									setShowContextMenu(true)
-								}}
-							>
-								<MoreHorizontal className='h-3.5 w-3.5' />
-							</Button>
-						</TableContextMenu>
-					</div>
-
-					{hasSortedColumns && (
-						<div className='ml-4'>
-							{item.sortedColumns?.map((col) => (
-								<SortedColumnRow key={col.id} column={col} />
-							))}
-						</div>
-					)}
-				</div>
-			</ContextMenuTrigger>
-			<ContextMenuContent className='w-[200px]'>
-				<ContextMenuItem onClick={() => handleRightClickAction('view-table')}>
-					<Eye />
-					<span>View table</span>
-				</ContextMenuItem>
-				<ContextMenuItem onClick={() => handleRightClickAction('open-in-sql-console')}>
-					<Terminal />
-					<span>Open in SQL console</span>
-				</ContextMenuItem>
-				<ContextMenuItem onClick={startEditing}>
-					<Pencil />
-					<span>Edit name</span>
-				</ContextMenuItem>
-				<ContextMenuItem onClick={() => handleRightClickAction('duplicate-table')}>
-					<CopyPlus />
-					<span>Duplicate table</span>
-				</ContextMenuItem>
-				<ContextMenuItem onClick={() => handleRightClickAction('view-info')}>
-					<Info />
-					<span>View info</span>
-				</ContextMenuItem>
-				<ContextMenuSeparator />
-				<ContextMenuItem onClick={handleCopyName}>
-					<Copy />
-					<span>Copy table name</span>
-				</ContextMenuItem>
-				<ContextMenuSub>
-					<ContextMenuSubTrigger>
-						<Download />
-						<span>Export</span>
-					</ContextMenuSubTrigger>
-					<ContextMenuSubContent className='w-[160px]'>
-						<ContextMenuItem onClick={() => handleRightClickAction('export-schema')}>
-							<FileCode />
-							<span>Copy schema</span>
-						</ContextMenuItem>
-						<ContextMenuItem onClick={() => handleRightClickAction('export-json')}>
-							<FileJson />
-							<span>Copy as JSON</span>
-						</ContextMenuItem>
-						<ContextMenuItem onClick={() => handleRightClickAction('export-sql')}>
-							<FileCode />
-							<span>Copy as SQL</span>
-						</ContextMenuItem>
-					</ContextMenuSubContent>
-				</ContextMenuSub>
-				<ContextMenuSeparator />
-				<ContextMenuItem
-					onClick={() => handleRightClickAction('delete-table')}
-					variant='destructive'
-				>
-					<Trash2 />
-					<span>Delete table</span>
-				</ContextMenuItem>
-			</ContextMenuContent>
-		</ContextMenu>
+	const actionsButton = (
+		<Button
+			variant='ghost'
+			size='icon'
+			className={cn(
+				'h-5 w-5 shrink-0 hidden group-hover:flex group-focus-within:flex items-center justify-center opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-muted-foreground hover:text-sidebar-foreground hover:bg-transparent',
+				(showContextMenu || isMenuClosing) && 'opacity-100 flex'
+			)}
+			aria-label={`Open actions for ${item.name}`}
+			onClick={(e) => {
+				e.stopPropagation()
+				setShowContextMenu(true)
+			}}
+		>
+			<MoreHorizontal className='h-3.5 w-3.5' />
+		</Button>
 	)
-}
+
+	return (
+		<div>
+			<div
+				className={cn(
+					'group flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors outline-hidden focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-sidebar-ring',
+					isActive && 'bg-sidebar-accent',
+					!isActive && 'hover:bg-sidebar-accent/60'
+				)}
+				role='treeitem'
+				tabIndex={0}
+				aria-current={isActive ? 'page' : undefined}
+				aria-selected={isMultiSelectMode ? isSelected : undefined}
+				aria-label={`${item.name}, ${item.type}, ${formatRowCount(item.rowCount)} rows`}
+				onClick={() => onSelect(item.id)}
+				onMouseEnter={() => onPrefetch(item.id)}
+				onFocus={() => onPrefetch(item.id)}
+				onKeyDown={handleRowKeyDown}
+				onContextMenu={() => onArmContextMenu(item.id)}
+			>
+				{isMultiSelectMode && (
+					<Checkbox
+						checked={isSelected}
+						onCheckedChange={(checked) => onMultiSelect(item.id, checked === true)}
+						onClick={(e) => e.stopPropagation()}
+						className='shrink-0'
+					/>
+				)}
+
+				<Icon className='h-4 w-4 text-muted-foreground shrink-0' />
+
+				{isEditing ? (
+					<div className='flex-1 flex items-center gap-1'>
+						<input
+							ref={inputRef}
+							type='text'
+							value={editValue}
+							onChange={(e) => setEditValue(e.target.value)}
+							onKeyDown={handleEditKeyDown}
+							onBlur={handleEditBlur}
+							data-no-shortcuts='true'
+							className='flex-1 h-5 px-1 text-sm bg-transparent border-none outline-hidden'
+							onClick={(e) => e.stopPropagation()}
+						/>
+						<Button
+							variant='ghost'
+							size='icon'
+							className='h-5 w-5 shrink-0'
+							aria-label={`Save table name for ${item.name}`}
+							onClick={(e) => {
+								e.stopPropagation()
+								if (editValue.trim() && editValue !== item.name) {
+									onEditSave(item.id, editValue.trim())
+								}
+							}}
+						>
+							<Check className='h-3 w-3' />
+						</Button>
+						<Button
+							variant='ghost'
+							size='icon'
+							className='h-5 w-5 shrink-0'
+							aria-label={`Cancel renaming ${item.name}`}
+							onClick={(e) => {
+								e.stopPropagation()
+								onEditCancel()
+							}}
+						>
+							<X className='h-3 w-3' />
+						</Button>
+					</div>
+				) : (
+					<span className='flex-1 text-sm text-sidebar-foreground truncate'>
+						{item.name}
+					</span>
+				)}
+
+				{!showContextMenu && !isMenuClosing && (
+					<span className='text-xs text-muted-foreground tabular-nums shrink-0 group-hover:hidden'>
+						{formatRowCount(item.rowCount)}
+					</span>
+				)}
+
+				{showContextMenu || isMenuClosing ? (
+					<TableContextMenu
+						open={showContextMenu}
+						onOpenChange={handleContextMenuOpenChange}
+						onAction={(action) => onContextAction(item.id, action)}
+					>
+						{actionsButton}
+					</TableContextMenu>
+				) : (
+					actionsButton
+				)}
+			</div>
+
+			{hasSortedColumns && (
+				<div className='ml-4'>
+					{item.sortedColumns?.map((col) => (
+						<SortedColumnRow key={col.id} column={col} />
+					))}
+				</div>
+			)}
+		</div>
+	)
+})
 
 type SortedColumnRowProps = {
 	column: SortedColumn
@@ -392,6 +337,67 @@ function SortedColumnRow({ column }: SortedColumnRowProps) {
 			<CornerDownRight className='h-3 w-3 shrink-0' />
 			<span className='truncate'>{column.name}</span>
 		</div>
+	)
+}
+
+type TableRightClickMenuItemsProps = {
+	onAction: (action: TableRightClickAction) => void
+}
+
+function TableRightClickMenuItems({ onAction }: TableRightClickMenuItemsProps) {
+	return (
+		<>
+			<ContextMenuItem onClick={() => onAction('view-table')}>
+				<Eye />
+				<span>View table</span>
+			</ContextMenuItem>
+			<ContextMenuItem onClick={() => onAction('open-in-sql-console')}>
+				<Terminal />
+				<span>Open in SQL console</span>
+			</ContextMenuItem>
+			<ContextMenuItem onClick={() => onAction('edit-name')}>
+				<Pencil />
+				<span>Edit name</span>
+			</ContextMenuItem>
+			<ContextMenuItem onClick={() => onAction('duplicate-table')}>
+				<CopyPlus />
+				<span>Duplicate table</span>
+			</ContextMenuItem>
+			<ContextMenuItem onClick={() => onAction('view-info')}>
+				<Info />
+				<span>View info</span>
+			</ContextMenuItem>
+			<ContextMenuSeparator />
+			<ContextMenuItem onClick={() => onAction('copy-name')}>
+				<Copy />
+				<span>Copy table name</span>
+			</ContextMenuItem>
+			<ContextMenuSub>
+				<ContextMenuSubTrigger>
+					<Download />
+					<span>Export</span>
+				</ContextMenuSubTrigger>
+				<ContextMenuSubContent className='w-[160px]'>
+					<ContextMenuItem onClick={() => onAction('export-schema')}>
+						<FileCode />
+						<span>Copy schema</span>
+					</ContextMenuItem>
+					<ContextMenuItem onClick={() => onAction('export-json')}>
+						<FileJson />
+						<span>Copy as JSON</span>
+					</ContextMenuItem>
+					<ContextMenuItem onClick={() => onAction('export-sql')}>
+						<FileCode />
+						<span>Copy as SQL</span>
+					</ContextMenuItem>
+				</ContextMenuSubContent>
+			</ContextMenuSub>
+			<ContextMenuSeparator />
+			<ContextMenuItem onClick={() => onAction('delete-table')} variant='destructive'>
+				<Trash2 />
+				<span>Delete table</span>
+			</ContextMenuItem>
+		</>
 	)
 }
 
@@ -410,12 +416,14 @@ type Props = {
 	onTableRename?: (tableId: string, newName: string) => void
 }
 
+const NO_IDS: string[] = []
+
 export function TableList({
 	tables,
 	activeTableId,
-	selectedTableIds = [],
+	selectedTableIds = NO_IDS,
 	isMultiSelectMode = false,
-	activeSortingTableIds = [],
+	activeSortingTableIds = NO_IDS,
 	editingTableId,
 	onTableSelect,
 	onTablePrefetch,
@@ -427,39 +435,100 @@ export function TableList({
 	const [internalEditingId, setInternalEditingId] = useState<string | undefined>()
 	const effectiveEditingId = editingTableId ?? internalEditingId
 
-	function handleEditStart(tableId: string) {
-		setInternalEditingId(tableId)
-	}
+	const [menuTableId, setMenuTableId] = useState<string | null>(null)
+	const armedTableIdRef = useRef<string | null>(null)
 
-	function handleEditSave(tableId: string, newName: string) {
+	const handleEditStart = useCallback(function handleEditStart(tableId: string) {
+		setInternalEditingId(tableId)
+	}, [])
+
+	const handleEditSave = useStableCallback(function handleEditSave(
+		tableId: string,
+		newName: string
+	) {
 		onTableRename?.(tableId, newName)
 		setInternalEditingId(undefined)
+	})
+
+	const handleEditCancel = useCallback(function handleEditCancel() {
+		setInternalEditingId(undefined)
+	}, [])
+
+	const handleSelect = useStableCallback(function handleSelect(tableId: string) {
+		onTableSelect?.(tableId)
+	})
+	const handlePrefetch = useStableCallback(function handlePrefetch(tableId: string) {
+		onTablePrefetch?.(tableId)
+	})
+	const handleMultiSelect = useStableCallback(function handleMultiSelect(
+		tableId: string,
+		checked: boolean
+	) {
+		onTableMultiSelect?.(tableId, checked)
+	})
+	const handleContextAction = useStableCallback(function handleContextAction(
+		tableId: string,
+		action: string
+	) {
+		onContextAction?.(tableId, action)
+	})
+
+	const armContextMenu = useCallback(function armContextMenu(tableId: string) {
+		armedTableIdRef.current = tableId
+	}, [])
+
+	function handleTriggerContextMenu(event: React.MouseEvent) {
+		const armed = armedTableIdRef.current
+		armedTableIdRef.current = null
+		if (!armed) {
+			event.preventDefault()
+			return
+		}
+		setMenuTableId(armed)
 	}
 
-	function handleEditCancel() {
-		setInternalEditingId(undefined)
+	function handleRightClickAction(action: TableRightClickAction) {
+		if (!menuTableId) return
+		if (action === 'edit-name') {
+			const tableId = menuTableId
+			requestAnimationFrame(function () {
+				handleEditStart(tableId)
+			})
+			return
+		}
+		onRightClickAction?.(action, menuTableId)
 	}
+
 	return (
-		<div className='flex flex-col py-1' role='tree' aria-label='Database tables'>
-			{tables.map((table) => (
-				<TableItemRow
-					key={table.id}
-					item={table}
-					isActive={activeTableId === table.id}
-					isSelected={selectedTableIds.includes(table.id)}
-					isMultiSelectMode={isMultiSelectMode}
-					hasSorting={activeSortingTableIds.includes(table.id)}
-					isEditing={effectiveEditingId === table.id}
-					onEditStart={handleEditStart}
-					onEditSave={handleEditSave}
-					onEditCancel={handleEditCancel}
-					onSelect={() => onTableSelect?.(table.id)}
-					onPrefetch={() => onTablePrefetch?.(table.id)}
-					onMultiSelect={(checked) => onTableMultiSelect?.(table.id, checked)}
-					onContextAction={(action) => onContextAction?.(table.id, action)}
-					onRightClickAction={onRightClickAction}
-				/>
-			))}
-		</div>
+		<ContextMenu>
+			<ContextMenuTrigger asChild onContextMenu={handleTriggerContextMenu}>
+				<div className='flex flex-col py-1' role='tree' aria-label='Database tables'>
+					{tables.map((table) => (
+						<TableItemRow
+							key={table.id}
+							item={table}
+							isActive={activeTableId === table.id}
+							isSelected={selectedTableIds.includes(table.id)}
+							isMultiSelectMode={isMultiSelectMode}
+							hasSorting={activeSortingTableIds.includes(table.id)}
+							isEditing={effectiveEditingId === table.id}
+							onEditStart={handleEditStart}
+							onEditSave={handleEditSave}
+							onEditCancel={handleEditCancel}
+							onSelect={handleSelect}
+							onPrefetch={handlePrefetch}
+							onMultiSelect={handleMultiSelect}
+							onContextAction={handleContextAction}
+							onArmContextMenu={armContextMenu}
+						/>
+					))}
+				</div>
+			</ContextMenuTrigger>
+			<ContextMenuContent className='w-[200px]'>
+				{menuTableId ? (
+					<TableRightClickMenuItems onAction={handleRightClickAction} />
+				) : null}
+			</ContextMenuContent>
+		</ContextMenu>
 	)
 }

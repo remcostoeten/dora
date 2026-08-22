@@ -44,13 +44,13 @@ type ConnectionEditState = {
 const connectionEditStates = new Map<string, ConnectionEditState>()
 const connectionEditListeners = new Map<string, Set<() => void>>()
 
+const EMPTY_EDIT_STATE: ConnectionEditState = {
+	isDryEditMode: false,
+	pendingEdits: new Map()
+}
+
 function getConnectionEditState(connectionId: string): ConnectionEditState {
-	return (
-		connectionEditStates.get(connectionId) ?? {
-			isDryEditMode: false,
-			pendingEdits: new Map()
-		}
-	)
+	return connectionEditStates.get(connectionId) ?? EMPTY_EDIT_STATE
 }
 
 function updateConnectionEditState(

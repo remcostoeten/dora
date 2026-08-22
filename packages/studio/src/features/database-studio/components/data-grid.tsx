@@ -1,10 +1,15 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
 import { useShortcut, useEffectiveShortcuts } from '@studio/core/shortcuts'
 import { useSettings } from '@studio/core/settings'
+import {
+	useStableCallback,
+	useStableOptionalCallback
+} from '@studio/shared/hooks/use-stable-callback'
 import { cn } from '@studio/shared/utils/cn'
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
 import { NoColumnsState } from './data-grid/empty-states'
 import { GridBody } from './data-grid/grid-body'
+import { GridContextMenu, useGridContextMenu } from './data-grid/grid-context-menu'
 import { GridHeader } from './data-grid/grid-header'
 import { getCellsInRectangle } from './data-grid/selection'
 import { CellPosition, ContextMenuState } from './data-grid/types'
@@ -77,14 +82,14 @@ export function DataGrid({
 	columns,
 	rows,
 	selectedRows,
-	onRowSelect,
-	onRowsSelect,
-	onSelectAll,
+	onRowSelect: onRowSelectProp,
+	onRowsSelect: onRowsSelectProp,
+	onSelectAll: onSelectAllProp,
 	sort,
 	onSortChange,
 	onFilterAdd,
 	onBlobAction,
-	onCellEdit,
+	onCellEdit: onCellEditProp,
 	onDeleteSelectedRows,
 	onBatchCellEdit,
 	onRowAction,
@@ -100,10 +105,18 @@ export function DataGrid({
 	onDraftCancel,
 	pendingEdits,
 	draftInsertIndex,
-	onFKNavigate,
+	onFKNavigate: onFKNavigateProp,
 	workspaceStateKey = 'data-grid'
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
+
+	// The studio recreates these handlers on every render; pinning them here is
+	// what lets the memoized rows skip re-rendering when only the shell moved.
+	const onRowSelect = useStableCallback(onRowSelectProp)
+	const onRowsSelect = useStableOptionalCallback(onRowsSelectProp)
+	const onSelectAll = useStableCallback(onSelectAllProp)
+	const onCellEdit = useStableOptionalCallback(onCellEditProp)
+	const onFKNavigate = useStableOptionalCallback(onFKNavigateProp)
 
 	const { settings } = useSettings()
 	const masked = settings.privacyMaskData
@@ -199,6 +212,12 @@ export function DataGrid({
 		onRowsSelect,
 		onSelectAll,
 		selectedRows
+	})
+
+	const contextMenu = useGridContextMenu({
+		onCellOpenChange: handleCellContextMenuChange,
+		onRowOpenChange: handleRowContextMenuChange,
+		ensureRowSelection: ensureRowSelectionForContextMenu
 	})
 
 	useEffect(
@@ -354,86 +373,97 @@ export function DataGrid({
 					})
 				}}
 			>
-				<table
-					ref={gridRef}
-					className='text-sm border-collapse select-none'
-					style={{ tableLayout: 'auto', minWidth: '100%' }}
-					role='grid'
-					aria-label={tableName ? `Data grid for ${tableName}` : 'Data grid'}
-					aria-rowcount={rows.length}
-					aria-colcount={columns.length + 1}
-					tabIndex={0}
-					onKeyDown={handleGridKeyDown}
+				<GridContextMenu
+					target={contextMenu.target}
+					disabled={masked}
+					rows={rows}
+					columns={columns}
+					tableName={tableName}
+					selectedRows={selectedRows}
+					focusedCell={focusedCell}
+					onTriggerContextMenu={contextMenu.handleTriggerContextMenu}
+					onOpenChange={contextMenu.handleOpenChange}
+					onFilterAdd={onFilterAdd}
+					onCellEdit={onCellEdit}
+					onBatchCellEdit={onBatchCellEdit}
+					startCellEdit={handleCellDoubleClick}
+					onBlobAction={onBlobAction}
+					onRowAction={onRowAction}
 				>
-					<colgroup>
-						<col style={{ width: 30, minWidth: 30 }} />
-						{columns.map(function (col) {
-							const width = getColumnWidth(col.name)
-							return (
-								<col
-									key={col.name}
-									style={{
-										width: width || DEFAULT_COLUMN_WIDTH,
-										minWidth: MIN_COLUMN_WIDTH
-									}}
-								/>
-							)
-						})}
-					</colgroup>
-					<GridHeader
-						allSelected={allSelected}
-						columns={columns}
-						getColumnWidth={getColumnWidth}
-						onResizeDoubleClick={handleResizeDoubleClick}
-						onResizeStart={handleResizeStart}
-						onSelectAll={onSelectAll}
-						onSort={handleSort}
-						resizingColumn={resizingColumn}
-						someSelected={someSelected}
-						sort={sort}
-					/>
-					<GridBody
-						columns={columns}
-						draftInsertIndex={draftInsertIndex}
-						draftRow={draftRow}
-						editInputRef={editInputRef}
-						editingCell={editingCell}
-						editValue={editValue}
-						focusedCell={focusedCell}
-						getColumnWidth={getColumnWidth}
-						handleCellContextMenuChange={handleCellContextMenuChange}
-						handleCellDoubleClick={handleCellDoubleClick}
-						handleCellMouseDown={handleCellMouseDown}
-						handleCellMouseEnter={handleCellMouseEnter}
-						handleEditKeyDown={handleEditKeyDown}
-						handleRowClick={handleRowClick}
-						handleRowContextMenuChange={handleRowContextMenuChange}
-						handleEditBlur={handleEditBlur}
-						handleSelectCommit={handleSelectCommit}
-						onBatchCellEdit={onBatchCellEdit}
-						onCellEdit={onCellEdit}
-						onDraftCancel={onDraftCancel}
-						onDraftChange={onDraftChange}
-						onDraftSave={onDraftSave}
-						onFilterAdd={onFilterAdd}
-						onBlobAction={onBlobAction}
-						onFKNavigate={onFKNavigate}
-						onRowAction={onRowAction}
-						onRowSelect={onRowSelect}
-						pendingEdits={pendingEdits}
-						primaryKeyColumnName={primaryKeyColumnName}
-						rows={rows}
-						selectedCellsByRow={selectedCellsByRow}
-						selectedRows={selectedRows}
-						tableName={tableName}
-						masked={masked}
-						ensureRowSelectionForContextMenu={ensureRowSelectionForContextMenu}
-						setEditValue={setEditValue}
-						virtualRows={virtualRows}
-						totalVirtualSize={totalSize}
-						measureRow={virtualRows ? measureElement : undefined}
-					/>
-				</table>
+					<table
+						ref={gridRef}
+						className='text-sm border-collapse select-none'
+						style={{ tableLayout: 'auto', minWidth: '100%' }}
+						role='grid'
+						aria-label={tableName ? `Data grid for ${tableName}` : 'Data grid'}
+						aria-rowcount={rows.length}
+						aria-colcount={columns.length + 1}
+						tabIndex={0}
+						onKeyDown={handleGridKeyDown}
+					>
+						<colgroup>
+							<col style={{ width: 30, minWidth: 30 }} />
+							{columns.map(function (col) {
+								const width = getColumnWidth(col.name)
+								return (
+									<col
+										key={col.name}
+										style={{
+											width: width || DEFAULT_COLUMN_WIDTH,
+											minWidth: MIN_COLUMN_WIDTH
+										}}
+									/>
+								)
+							})}
+						</colgroup>
+						<GridHeader
+							allSelected={allSelected}
+							columns={columns}
+							getColumnWidth={getColumnWidth}
+							onResizeDoubleClick={handleResizeDoubleClick}
+							onResizeStart={handleResizeStart}
+							onSelectAll={onSelectAll}
+							onSort={handleSort}
+							resizingColumn={resizingColumn}
+							someSelected={someSelected}
+							sort={sort}
+						/>
+						<GridBody
+							columns={columns}
+							draftInsertIndex={draftInsertIndex}
+							draftRow={draftRow}
+							editInputRef={editInputRef}
+							editingCell={editingCell}
+							editValue={editValue}
+							focusedCell={focusedCell}
+							getColumnWidth={getColumnWidth}
+							onCellContextMenu={contextMenu.armCell}
+							onRowContextMenu={contextMenu.armRow}
+							handleCellDoubleClick={handleCellDoubleClick}
+							handleCellMouseDown={handleCellMouseDown}
+							handleCellMouseEnter={handleCellMouseEnter}
+							handleEditKeyDown={handleEditKeyDown}
+							handleRowClick={handleRowClick}
+							handleEditBlur={handleEditBlur}
+							handleSelectCommit={handleSelectCommit}
+							onDraftCancel={onDraftCancel}
+							onDraftChange={onDraftChange}
+							onDraftSave={onDraftSave}
+							onFKNavigate={onFKNavigate}
+							onRowSelect={onRowSelect}
+							pendingEdits={pendingEdits}
+							primaryKeyColumnName={primaryKeyColumnName}
+							rows={rows}
+							selectedCellsByRow={selectedCellsByRow}
+							selectedRows={selectedRows}
+							masked={masked}
+							setEditValue={setEditValue}
+							virtualRows={virtualRows}
+							totalVirtualSize={totalSize}
+							measureRow={virtualRows ? measureElement : undefined}
+						/>
+					</table>
+				</GridContextMenu>
 			</div>
 			<ScrollHint containerRef={scrollContainerRef} />
 		</div>

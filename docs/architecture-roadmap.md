@@ -1,7 +1,8 @@
 # Architecture and performance roadmap
 
-Status: living document, 2026-08-22. Tracks 0–3 are landed on
-`perf/track-2-workspace-store` (see `docs/benchmarks/`). High-level plan with independent sub-paths. Each track
+Status: living document, 2026-08-22. Tracks 0–3 and the Data Viewer
+navigation-frame follow-up are landed on `perf/track-2-workspace-store` (see
+`docs/benchmarks/`, latest `2026-08-22-navigation-frame.md`). High-level plan with independent sub-paths. Each track
 lists the evidence in today's code, the steps, the first PR, and the exit
 criterion that proves it landed. Tracks are ordered by leverage; the dependency
 graph at the end shows what can run in parallel.
@@ -48,7 +49,7 @@ state.
 | View switching | Conditional render chain on `activeNavId`; the inactive view unmounts | Keep-alive `core/workspace-views`; zero remounts (Track 1) | `core/workspace-views/` |
 | Connection switching | `<DatabaseStudio key={studioConnectionId}>` forces full teardown | No remount; per-connection state in the store (Track 1) | `core/workspace-store/` |
 | Editors | Monaco is `lazy()`-loaded per feature, destroyed on view switch | One Monaco per session via `core/editor-host` (Track 1) | `core/editor-host/` |
-| Table data | React Query key per page/sort/filter, `staleTime` 10 s, plus a second ad-hoc `tableDataCache` Map | Snapshot store paints synchronously, zero IPC on a cached switch (Track 2) | `core/workspace-store/` |
+| Table data | React Query key per page/sort/filter, `staleTime` 10 s, plus a second ad-hoc `tableDataCache` Map | Snapshot store paints synchronously, zero IPC on a cached switch (Track 2); one commit per switch, one context menu per grid, shell does not re-render (navigation follow-up) | `core/workspace-store/`, `data-grid/grid-context-menu.tsx`, `pages/workspace/workspace-url-sync.tsx` |
 | Query transport | Frontend polls `fetchQuery` on an interval, then `collectAllRows` walks every 50-row page and concatenates | `start_query_stream` pushes `QueryEvent`s over a Tauri channel; 500-row pages; `BufferedQueryRowSource` serves row windows; 100k-row first paint P95 87.6 ms (Track 3) | `core/data-provider/query-row-source.ts`, `src-tauri/.../stmt_manager.rs` |
 | Row encoding | `serde_json::Value` per row over IPC | Arrays per row, columns sent once; binary/columnar still open | `src-tauri/src/database/types.rs` |
 | Shell state | One 1,447-line component, 36 hook calls, eight `useState` dialogs | `Index.tsx` is 15 lines; shell split under `pages/workspace/` (Track 2) | `pages/workspace/` |
@@ -143,7 +144,7 @@ reading them through selectors; no behaviour change.
 Exit: keystroke and cached-navigation render budgets green; `Index.tsx` under
 300 lines.
 
-### Track 3 — Streaming query transport and windowed grid — DONE (SQL console); profiling and fixing the Data Viewer navigation frame is the follow-up
+### Track 3 — Streaming query transport and windowed grid — DONE (SQL console); the Data Viewer navigation frame is profiled and fixed (see below)
 
 Steps
 
@@ -164,6 +165,16 @@ First PR: Rust channel + frontend consumer behind a flag, grid unchanged.
 
 Exit: 100k-row budget green; memory for a 1M-row result bounded by the window
 and page cache.
+
+Navigation-frame follow-up (landed): `PERF_PROFILE=1 bun perf -- --grep
+@profile` CPU-profiles a cached table switch. It showed one Radix context menu
+per grid cell and per sidebar row, and four full-tree renders per switch (shell
+subscribed to the active tab, table-change effect resetting equal values,
+router re-rendering the shell on the URL write, unstable grid handlers). Fixed
+by one shared menu per grid and per list, a `WorkspaceUrlSync` leaf, guarded
+resets and pinned handlers. Navigation P95s went from 350–480 ms to 53–148 ms
+in the dev build; budgets still open, to be judged against a production build
+(`docs/benchmarks/2026-08-22-navigation-frame.md`).
 
 ### Track 4 — Adapter seam as the only door (ports)
 

@@ -158,6 +158,11 @@ export function useDatabaseStudioSync(args: Args) {
 		]
 	)
 
+	// The latest query state, readable from effects without subscribing to it:
+	// the table-change and load paths only need it to skip no-op resets.
+	const queryStateRef = useRef({ pagination, sort, filters, tableData })
+	queryStateRef.current = { pagination, sort, filters, tableData }
+
 	const loadTableData = useCallback(async () => {
 		const requestId = loadRequestIdRef.current + 1
 		loadRequestIdRef.current = requestId
@@ -185,9 +190,14 @@ export function useDatabaseStudioSync(args: Args) {
 		// relative to the mutation, so painting it here is the "flash back to the
 		// old state". Keep the current rows visible and swap in fresh data.
 		if (cached && currentView !== displayedViewRef.current) {
-			setTableData(withPendingEdits(snapshotToTableData(cached), tableId))
+			const next = withPendingEdits(snapshotToTableData(cached), tableId)
+			if (!isSameTableData(queryStateRef.current.tableData, next)) setTableData(next)
 			if (cached.visibleColumns.length > 0) {
-				setVisibleColumns(new Set(cached.visibleColumns))
+				setVisibleColumns(function keepIfEqual(previous) {
+					return isSameStringSet(previous, cached.visibleColumns)
+						? previous
+						: new Set(cached.visibleColumns)
+				})
 			}
 			setIsTableTransitioning(false)
 			displayedViewRef.current = currentView
@@ -359,21 +369,34 @@ export function useDatabaseStudioSync(args: Args) {
 	useEffect(
 		function handleTableChange() {
 			if (!tableId || !activeConnectionId) return
-			setPagination({ limit: 50, offset: 0 })
-			setSort(undefined)
-			setFilters([])
+			// Every set below is guarded: the per-table workspace state usually
+			// already holds these values, and an unconditional reset would cost a
+			// second full render on every cached switch.
+			const current = queryStateRef.current
+			if (current.pagination.limit !== 50 || current.pagination.offset !== 0) {
+				setPagination({ limit: 50, offset: 0 })
+			}
+			if (current.sort !== undefined) setSort(undefined)
+			if (current.filters.length > 0) setFilters([])
 			initializedFromUrlRef.current = false
 
 			const snapshot = readTableSnapshot(activeConnectionId, tableId)
 
 			if (snapshot && snapshotQuerySignature(snapshot) === DEFAULT_QUERY_SIGNATURE) {
-				setTableData(withPendingEdits(snapshotToTableData(snapshot), tableId))
-				setVisibleColumns(new Set(snapshot.visibleColumns))
+				const next = withPendingEdits(snapshotToTableData(snapshot), tableId)
+				if (!isSameTableData(current.tableData, next)) setTableData(next)
+				setVisibleColumns(function keepIfEqual(previous) {
+					return isSameStringSet(previous, snapshot.visibleColumns)
+						? previous
+						: new Set(snapshot.visibleColumns)
+				})
 				setIsTableTransitioning(false)
 				return
 			}
 
-			setVisibleColumns(new Set())
+			setVisibleColumns(function keepIfEmpty(previous) {
+				return previous.size === 0 ? previous : new Set()
+			})
 			setIsTableTransitioning(true)
 		},
 		[
@@ -637,3 +660,20 @@ export function useDatabaseStudioSync(args: Args) {
 	}
 }
 type MinimalSchema = Pick<DatabaseSchema, 'tables'>
+
+function isSameTableData(current: TableData | null, next: TableData): boolean {
+	return (
+		current !== null &&
+		current.rows === next.rows &&
+		current.columns === next.columns &&
+		current.totalCount === next.totalCount
+	)
+}
+
+function isSameStringSet(current: Set<string>, next: readonly string[]): boolean {
+	if (current.size !== next.length) return false
+	for (const value of next) {
+		if (!current.has(value)) return false
+	}
+	return true
+}
