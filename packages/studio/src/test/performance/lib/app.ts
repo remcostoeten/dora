@@ -97,6 +97,19 @@ export async function monacoCreations(page: Page): Promise<number> {
 	})
 }
 
+/**
+ * How many times the mock adapter has been called, by method. The mock adapter
+ * installs this counter; it is how "zero IPC" is asserted literally rather than
+ * inferred from a timing.
+ */
+export async function adapterCalls(page: Page, method: string): Promise<number> {
+	return page.evaluate(function readCalls(name) {
+		const counts = (window as unknown as { __doraAdapterCalls?: Record<string, number> })
+			.__doraAdapterCalls
+		return counts ? (counts[name] ?? 0) : -1
+	}, method)
+}
+
 /** Parks a node on `window` so a later step can ask whether it survived. */
 export async function trackNode(page: Page, selector: string): Promise<boolean> {
 	return page.evaluate(function park(sel) {

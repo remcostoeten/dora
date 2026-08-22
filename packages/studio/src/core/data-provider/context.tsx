@@ -1,13 +1,6 @@
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
-import { createTauriAdapter } from './adapters/tauri'
+import { detectTauri, peekAdapter, resolveAdapter } from './resolve-adapter'
 import type { DataAdapter, DataProviderContextValue } from './types'
-
-function detectTauri(): boolean {
-	return (
-		typeof window !== 'undefined' &&
-		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
-	)
-}
 
 const DataProviderContext = createContext<DataProviderContextValue | null>(null)
 
@@ -17,47 +10,43 @@ type Props = {
 }
 
 export function DataProvider({ children, forceMock = false }: Props) {
-	const [isReady, setIsReady] = useState(false)
-	const [adapter, setAdapter] = useState<DataAdapter | null>(null)
+	// The boot path resolves the adapter before the first render, so in the app
+	// this is already available and the provider never renders an empty frame.
+	const [adapter, setAdapter] = useState<DataAdapter | null>(() => peekAdapter())
 	const [initError, setInitError] = useState<Error | null>(null)
 
 	// Lazy initialization for isTauri to ensure it runs once and persists
 	const [isTauri] = useState(() => !forceMock && detectTauri())
 
 	useEffect(
-		function () {
-			if (isTauri) {
-				setAdapter(createTauriAdapter())
-				setIsReady(true)
-				return
-			}
-
-			// The mock adapter (and its bundled demo dataset) is only for the web
-			// demo — load it on demand so desktop startup never pays for it.
+		function resolveAdapterOnce() {
+			if (adapter) return
 			let cancelled = false
-			import('./adapters/mock')
-				.then(function (m) {
-					if (cancelled) return
-					setAdapter(m.createMockAdapter())
-					setIsReady(true)
+
+			resolveAdapter(forceMock)
+				.then(function (resolved) {
+					if (!cancelled) setAdapter(resolved)
 				})
 				.catch(function (error) {
 					if (cancelled) return
-					console.error('Failed to load the mock data adapter:', error)
+					console.error('Failed to load the data adapter:', error)
 					setInitError(
-						error instanceof Error ? error : new Error('Failed to initialize data adapter')
+						error instanceof Error
+							? error
+							: new Error('Failed to initialize data adapter')
 					)
 				})
+
 			return function () {
 				cancelled = true
 			}
 		},
-		[isTauri]
+		[adapter, forceMock]
 	)
 
 	const value: DataProviderContextValue | null = useMemo(
-		() => (adapter ? { adapter, isTauri, isReady } : null),
-		[adapter, isTauri, isReady]
+		() => (adapter ? { adapter, isTauri, isReady: true } : null),
+		[adapter, isTauri]
 	)
 
 	// A rejected adapter load renders an inline message instead of hanging
@@ -83,7 +72,7 @@ export function DataProvider({ children, forceMock = false }: Props) {
 		)
 	}
 
-	if (!value || !isReady) {
+	if (!value) {
 		return null
 	}
 

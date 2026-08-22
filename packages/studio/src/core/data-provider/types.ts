@@ -18,7 +18,7 @@ import {
 	DatabaseConnectResult,
 	DataFileSourceEntry,
 	ImportFilesIntoDuckDbResult,
-	SaveDataFileSessionResult,
+	SaveDataFileSessionResult
 } from '@studio/lib/bindings'
 
 export type AdapterResult<T> =
@@ -50,12 +50,25 @@ export type ExecuteQueryOptions = {
 	onStarted?: (queryIds: number[]) => void
 }
 
+/**
+ * Everything the shell needs before it can paint, in one round-trip. Mirrors
+ * the Rust `bootstrap` command; the mock adapter answers the same shape so
+ * browser mode and the perf harness exercise the same path.
+ */
+export type BootstrapSnapshot = {
+	connections: Connection[]
+	/** The raw settings document, or null when the user has never saved one. */
+	settings: string | null
+	savedQueries: SavedQuery[]
+	snippets: SavedQuery[]
+	snippetFolders: SnippetFolder[]
+	schemas: Array<{ connectionId: string; schema: DatabaseSchema }>
+}
+
 export type DataAdapter = {
+	bootstrap(): Promise<AdapterResult<BootstrapSnapshot>>
 	getConnections(): Promise<AdapterResult<Connection[]>>
-	addConnection(
-		name: string,
-		databaseType: DatabaseInfo
-	): Promise<AdapterResult<Connection>>
+	addConnection(name: string, databaseType: DatabaseInfo): Promise<AdapterResult<Connection>>
 	updateConnection(
 		id: string,
 		name: string,
@@ -68,12 +81,8 @@ export type DataAdapter = {
 	disconnectFromDatabase(connectionId: string): Promise<AdapterResult<void>>
 	testConnection(connectionId: string): Promise<AdapterResult<boolean>>
 
-	getDataFileSourceStatus(
-		connectionId: string
-	): Promise<AdapterResult<DataFileSourceEntry[]>>
-	retryDataFileRegistration(
-		connectionId: string
-	): Promise<AdapterResult<DatabaseConnectResult>>
+	getDataFileSourceStatus(connectionId: string): Promise<AdapterResult<DataFileSourceEntry[]>>
+	retryDataFileRegistration(connectionId: string): Promise<AdapterResult<DatabaseConnectResult>>
 	saveDataFileSessionAsDuckdb(
 		connectionId: string,
 		destinationPath: string,

@@ -12,6 +12,9 @@ import {
 	dataFileSourcesQueryKey
 } from '@studio/features/database-studio/hooks/use-data-file-sources'
 import {
+	dropTableSnapshot,
+	patchTableSnapshotRows,
+	readTableSnapshot,
 	setConnections,
 	setConnectionsError,
 	setConnectionsLoading
@@ -234,38 +237,6 @@ export function useSchema(connectionId: string | undefined) {
 	})
 }
 
-export function useTableData(
-	connectionId: string | undefined,
-	tableName: string | undefined,
-	page: number,
-	pageSize: number,
-	sort?: SortDescriptor,
-	filters?: FilterDescriptor[]
-) {
-	const adapter = useAdapter()
-
-	return useQuery({
-		queryKey: ['tableData', connectionId, tableName, page, pageSize, sort, filters],
-		queryFn: async function () {
-			if (!connectionId || !tableName) throw new Error('Missing params')
-			const res = await adapter.fetchTableData(
-				connectionId,
-				tableName,
-				page,
-				pageSize,
-				sort,
-				filters
-			)
-			if (!res.ok) throw new Error(getAdapterError(res))
-			return res.data
-		},
-		enabled: !!connectionId && !!tableName,
-		placeholderData: keepPreviousData,
-		staleTime: 10000, // 10 seconds
-		gcTime: 5 * 60 * 1000 // 5 minutes
-	})
-}
-
 export function useExecuteQuery() {
 	const adapter = useAdapter()
 
@@ -302,53 +273,32 @@ export function useDataMutation() {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		onMutate: async function (newEdit) {
-			// Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-			await queryClient.cancelQueries({
-				queryKey: ['tableData', newEdit.connectionId, newEdit.tableName]
-			})
+		onMutate: function (newEdit) {
+			// Paint the new value into the stored snapshot so a table the user
+			// navigates back to shows the edit rather than the pre-edit row.
+			const snapshot = readTableSnapshot(newEdit.connectionId, newEdit.tableName)
+			if (!snapshot) return { previousRows: null }
 
-			// Snapshot the previous value
-			const previousTableData = queryClient.getQueriesData({
-				queryKey: ['tableData', newEdit.connectionId, newEdit.tableName]
-			})
-
-			// Optimistically update to the new value
-			queryClient.setQueriesData(
-				{ queryKey: ['tableData', newEdit.connectionId, newEdit.tableName] },
-				function (old: TableData | undefined) {
-					if (!old) return old
-					return {
-						...old,
-						rows: old.rows.map(function (row) {
-							if (row[newEdit.primaryKeyColumn] === newEdit.primaryKeyValue) {
-								return {
-									...row,
-									[newEdit.columnName]: newEdit.newValue
-								}
-							}
-							return row
-						})
+			patchTableSnapshotRows(
+				newEdit.connectionId,
+				newEdit.tableName,
+				snapshot.rows.map(function (row) {
+					if (row[newEdit.primaryKeyColumn] === newEdit.primaryKeyValue) {
+						return { ...row, [newEdit.columnName]: newEdit.newValue }
 					}
-				}
-			)
-
-			// Return a context object with the snapshotted value
-			return { previousTableData }
-		},
-		onError: function (_err, _newEdit, context) {
-			// If the mutation fails, use the context returned from onMutate to roll back
-			if (context?.previousTableData) {
-				context.previousTableData.forEach(function ([key, data]) {
-					queryClient.setQueryData(key, data)
+					return row
 				})
-			}
+			)
+			return { previousRows: snapshot.rows }
 		},
-		onSettled: function (_data, _error, variables) {
-			// Always refetch after error or success:
-			queryClient.invalidateQueries({
-				queryKey: ['tableData', variables.connectionId, variables.tableName]
-			})
+		onError: function (_err, newEdit, context) {
+			if (context?.previousRows) {
+				patchTableSnapshotRows(
+					newEdit.connectionId,
+					newEdit.tableName,
+					context.previousRows
+				)
+			}
 		}
 	})
 
@@ -369,9 +319,9 @@ export function useDataMutation() {
 			return res.data
 		},
 		onSuccess: function (_data, variables) {
-			queryClient.invalidateQueries({
-				queryKey: ['tableData', variables.connectionId, variables.tableName]
-			})
+			// Row counts and positions moved; drop the snapshot so the next open
+			// refetches rather than painting a page that no longer exists.
+			dropTableSnapshot(variables.connectionId, variables.tableName)
 			scheduleSchemaRefresh(variables.connectionId)
 		}
 	})
@@ -391,9 +341,7 @@ export function useDataMutation() {
 			return res.data
 		},
 		onSuccess: function (_data, variables) {
-			queryClient.invalidateQueries({
-				queryKey: ['tableData', variables.connectionId, variables.tableName]
-			})
+			dropTableSnapshot(variables.connectionId, variables.tableName)
 			scheduleSchemaRefresh(variables.connectionId)
 		}
 	})

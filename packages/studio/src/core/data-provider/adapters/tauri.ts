@@ -18,8 +18,19 @@ import type {
 } from '@studio/lib/bindings'
 import { commands } from '@studio/lib/bindings'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
-import { buildDropColumnSql, getTableRefParts, getTableSqlIdentifier, type TableDialect } from '@studio/shared/utils/table-ref'
-import type { DataAdapter, AdapterResult, ExecuteQueryOptions, QueryResult } from '../types'
+import {
+	buildDropColumnSql,
+	getTableRefParts,
+	getTableSqlIdentifier,
+	type TableDialect
+} from '@studio/shared/utils/table-ref'
+import type {
+	AdapterResult,
+	BootstrapSnapshot,
+	DataAdapter,
+	ExecuteQueryOptions,
+	QueryResult
+} from '../types'
 
 import { backendToFrontendConnection } from '@studio/features/connections/utils/mapping'
 import type { Connection } from '@studio/features/connections/types'
@@ -39,11 +50,16 @@ function createConnectionDialectResolver() {
 
 	function rememberConnections(connections: ConnectionInfo[]) {
 		for (const connection of connections) {
-			dialectByConnectionId.set(connection.id, databaseInfoToDialect(connection.database_type))
+			dialectByConnectionId.set(
+				connection.id,
+				databaseInfoToDialect(connection.database_type)
+			)
 		}
 	}
 
-	async function resolveConnectionDialect(connectionId: string): Promise<TableDialect | undefined> {
+	async function resolveConnectionDialect(
+		connectionId: string
+	): Promise<TableDialect | undefined> {
 		const cached = dialectByConnectionId.get(connectionId)
 		if (cached) return cached
 
@@ -97,7 +113,11 @@ async function pollQueryToCompletion(queryId: number): Promise<QueryPollResult> 
 	while (performance.now() < deadline) {
 		const fetchResult = await commands.fetchQuery(queryId)
 		if (fetchResult.status !== 'ok') {
-			console.error('[TauriAdapter] Failed to fetch query status for ID:', queryId, fetchResult)
+			console.error(
+				'[TauriAdapter] Failed to fetch query status for ID:',
+				queryId,
+				fetchResult
+			)
 			return { kind: 'fetch-failed' }
 		}
 		const pageInfo = fetchResult.data
@@ -120,6 +140,23 @@ export function createTauriAdapter(): DataAdapter {
 	const { rememberConnections, resolveConnectionDialect } = createConnectionDialectResolver()
 
 	return {
+		async bootstrap(): Promise<AdapterResult<BootstrapSnapshot>> {
+			const result = await commands.bootstrap()
+			if (result.status !== 'ok') return err(formatError(result.error))
+
+			rememberConnections(result.data.connections)
+			return ok({
+				connections: result.data.connections.map(backendToFrontendConnection),
+				settings: result.data.settings,
+				savedQueries: result.data.savedQueries,
+				snippets: result.data.snippets,
+				snippetFolders: result.data.snippetFolders,
+				schemas: result.data.schemas.map(function (entry) {
+					return { connectionId: entry.connectionId, schema: entry.schema }
+				})
+			})
+		},
+
 		async getConnections(): Promise<AdapterResult<Connection[]>> {
 			const result = await commands.getConnections()
 			if (result.status === 'ok') {
@@ -146,7 +183,13 @@ export function createTauriAdapter(): DataAdapter {
 			databaseType: DatabaseInfo,
 			clearPassword = false
 		): Promise<AdapterResult<Connection>> {
-			const result = await commands.updateConnection(id, name, databaseType, clearPassword, null)
+			const result = await commands.updateConnection(
+				id,
+				name,
+				databaseType,
+				clearPassword,
+				null
+			)
 			if (result.status === 'ok') {
 				return ok(backendToFrontendConnection(result.data))
 			}
@@ -641,10 +684,14 @@ function parseColumns(data: JsonValue): ColumnDefinition[] {
 		if (isRecord(fk) && typeof fk.referenced_table === 'string') {
 			foreignKey = {
 				referencedTable: fk.referenced_table as string,
-				referencedColumn: typeof fk.referenced_column === 'string' ? fk.referenced_column as string : '',
-				referencedSchema: typeof fk.referenced_schema === 'string' && fk.referenced_schema
-					? fk.referenced_schema as string
-					: undefined,
+				referencedColumn:
+					typeof fk.referenced_column === 'string'
+						? (fk.referenced_column as string)
+						: '',
+				referencedSchema:
+					typeof fk.referenced_schema === 'string' && fk.referenced_schema
+						? (fk.referenced_schema as string)
+						: undefined
 			}
 		}
 		return {

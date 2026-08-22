@@ -164,6 +164,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             // Database commands
+            database::commands::bootstrap,
             database::commands::test_connection,
             database::commands::add_connection,
             database::commands::update_connection,

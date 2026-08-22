@@ -1,6 +1,12 @@
 export * from './actions'
 export * from './selectors'
 export {
+	hasBootstrapped,
+	hydrateWorkspaceFromBootstrap,
+	readBootstrappedSettings,
+	resetBootstrapForTests
+} from './bootstrap'
+export {
 	createWorkspaceStore,
 	dispatchWorkspace,
 	readWorkspace,

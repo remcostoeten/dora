@@ -1,7 +1,6 @@
 import { TableSkeleton } from '@studio/shared/ui/skeleton'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { useAdapter, useDataMutation, useConnections, useSchema } from '@studio/core/data-provider'
-import { tableDataCache } from '@studio/core/table-cache'
 import { usePendingEdits } from '@studio/core/pending-edits'
 import { openTab } from '@studio/core/workspace-store'
 import { useSettings } from '@studio/core/settings'
@@ -63,7 +62,11 @@ import { useDatabaseStudioSync } from './hooks/use-database-studio-sync'
 import { useDatabaseStudioActions } from './hooks/use-database-studio-actions'
 import { useDatabaseStudioEdits } from './hooks/use-database-studio-edits'
 import { useDatabaseStudioCommands } from './hooks/use-database-studio-commands'
-import { buildDefaultTableCacheKey, buildTableCacheKey } from './utils/table-cache'
+import {
+	buildQuerySignature,
+	readDefaultPageSnapshot,
+	snapshotToTableData
+} from './utils/table-snapshot'
 import { appendRows, removeRowsByPrimaryKey } from './utils/studio-data'
 import {
 	FilterConjunction,
@@ -114,9 +117,10 @@ export function DatabaseStudio({
 }: Props) {
 	const tableRefName = tableId || tableName
 	const displayTableName = tableName || getTableRefParts(tableId ?? '').tableName
-	const initialCacheEntry = tableDataCache.get(
-		buildDefaultTableCacheKey(activeConnectionId, tableId)
-	)
+	// Read once at mount: the last view of this table, when it is the default
+	// page the studio is about to request. Painting from it is what makes a
+	// return to an already-seen table instant instead of a skeleton.
+	const initialSnapshot = readDefaultPageSnapshot(activeConnectionId, tableId)
 	const adapter = useAdapter()
 	const { toast } = useToast()
 	const { data: connections = [] } = useConnections()
@@ -214,7 +218,7 @@ export function DatabaseStudio({
 	const [isApplyingEdits, setIsApplyingEdits] = useState(false)
 	const [tableData, setTableData] = useWorkspaceState<TableData | null>(
 		`${workspaceStateKey}:table-data`,
-		() => (initialCacheEntry ? initialCacheEntry.data : null)
+		() => (initialSnapshot ? snapshotToTableData(initialSnapshot) : null)
 	)
 	const [showAddDialog, setShowAddDialog] = useState(false)
 	const [addDialogMode, setAddDialogMode] = useState<'add' | 'duplicate' | 'edit'>('add')
@@ -232,7 +236,7 @@ export function DatabaseStudio({
 		unknown
 	> | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-	const [isTableTransitioning, setIsTableTransitioning] = useState(!initialCacheEntry)
+	const [isTableTransitioning, setIsTableTransitioning] = useState(!initialSnapshot)
 	const [viewMode, setViewMode] = useState<ViewMode>('content')
 	const [chartConfig, setChartConfig] = useState<ResultChartConfig | null>(null)
 	const previousTableRef = useRef<{ columns: number; rows: number } | null>(null)
@@ -265,7 +269,7 @@ export function DatabaseStudio({
 	const [visibleColumns, setVisibleColumns] = useWorkspaceState(
 		`${workspaceStateKey}:visible-columns`,
 		() => {
-			return new Set(initialCacheEntry?.visibleColumns || [])
+			return new Set(initialSnapshot?.visibleColumns || [])
 		}
 	)
 
@@ -320,11 +324,9 @@ export function DatabaseStudio({
 		})
 	}, [])
 
-	const currentCacheKey = useMemo(
+	const currentQuerySignature = useMemo(
 		function () {
-			return buildTableCacheKey(
-				activeConnectionId,
-				tableId,
+			return buildQuerySignature(
 				pagination.limit,
 				pagination.offset,
 				sort,
@@ -333,16 +335,7 @@ export function DatabaseStudio({
 				filterGroup
 			)
 		},
-		[
-			activeConnectionId,
-			tableId,
-			pagination.limit,
-			pagination.offset,
-			sort,
-			filters,
-			filterConjunction,
-			filterGroup
-		]
+		[pagination.limit, pagination.offset, sort, filters, filterConjunction, filterGroup]
 	)
 	const { liveMonitor, stableUrlState, loadTableData } = useDatabaseStudioSync({
 		adapter,
@@ -350,7 +343,7 @@ export function DatabaseStudio({
 		tableId,
 		tableName,
 		tableRefName,
-		currentCacheKey,
+		currentQuerySignature,
 		pagination,
 		sort,
 		filters,
@@ -803,7 +796,6 @@ export function DatabaseStudio({
 		tableId,
 		tableRefName,
 		tableData,
-		currentCacheKey,
 		isDryEditMode,
 		pendingEdits,
 		getEditsForTable,

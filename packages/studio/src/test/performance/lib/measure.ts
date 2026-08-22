@@ -98,10 +98,7 @@ export async function measureViewSwitch(
  * is complete when the first data cell shows the other table's content, which
  * is a stronger settle condition than "a grid exists".
  */
-export async function measureTableSwitch(
-	page: Page,
-	iterations: number
-): Promise<ScenarioSamples> {
+export async function measureTableSwitch(page: Page, iterations: number): Promise<ScenarioSamples> {
 	// Prime both tables so the run measures a cached switch, not a first read.
 	for (const table of PERF.smallTables) {
 		await page.click(SELECTORS.tableItem(table))
@@ -140,6 +137,25 @@ export async function measureTableSwitch(
 }
 
 /**
+ * The connection menu plays a 200 ms exit animation, and Radix keeps its
+ * dismiss layer mounted for the whole of it. Re-opening the menu inside that
+ * window makes the still-live layer treat the trigger press as an outside
+ * interaction and dismiss the menu it just opened. A user is unlikely to click
+ * that fast; a harness measuring an 8 ms interaction always does.
+ *
+ * This is a precondition of the scenario, not part of it — no measured span
+ * covers the wait.
+ */
+async function waitForConnectionMenuToClose(page: Page): Promise<void> {
+	await page.waitForSelector('[role="menu"]', { state: 'detached', timeout: 5_000 })
+}
+
+async function openConnectionMenu(page: Page): Promise<void> {
+	await waitForConnectionMenuToClose(page)
+	await page.click(SELECTORS.connectionTrigger)
+}
+
+/**
  * Alternates between two connections whose schemas have both already been read.
  * Each is visited once first, so the measured switches never include a connect.
  */
@@ -148,7 +164,7 @@ export async function measureConnectionSwitch(
 	iterations: number
 ): Promise<ScenarioSamples> {
 	for (const connection of [PERF.secondaryConnection, PERF.primaryConnection]) {
-		await page.click(SELECTORS.connectionTrigger)
+		await openConnectionMenu(page)
 		await page.click(SELECTORS.connectionItem(connection))
 		await page.waitForSelector(SELECTORS.cell, { timeout: 60_000 })
 		await settle(page)
@@ -158,11 +174,10 @@ export async function measureConnectionSwitch(
 	const commits: number[] = []
 
 	for (let index = 0; index < iterations; index += 1) {
-		const connection =
-			index % 2 === 0 ? PERF.secondaryConnection : PERF.primaryConnection
+		const connection = index % 2 === 0 ? PERF.secondaryConnection : PERF.primaryConnection
 
 		// Opening the dropdown is not part of the switch; only the selection is.
-		await page.click(SELECTORS.connectionTrigger)
+		await openConnectionMenu(page)
 		await page.waitForSelector(SELECTORS.connectionItem(connection), { timeout: 10_000 })
 
 		const result = await page.evaluate(
@@ -203,10 +218,7 @@ export type KeystrokeResult = {
  * The budget is zero; anything above it means shell state is mirroring editor
  * text. Typing goes through Playwright so Monaco sees real key events.
  */
-export async function measureKeystrokeCommits(
-	page: Page,
-	text: string
-): Promise<KeystrokeResult> {
+export async function measureKeystrokeCommits(page: Page, text: string): Promise<KeystrokeResult> {
 	await page.click(SELECTORS.navItem(NAV.sqlConsole))
 	await page.waitForSelector(SELECTORS.editor, { timeout: 30_000 })
 	await page.click(SELECTORS.editor)

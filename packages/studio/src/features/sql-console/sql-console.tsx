@@ -10,7 +10,7 @@ import {
 	SQL_CONSOLE_PALETTE_EVENT,
 	type SqlConsolePaletteCommand
 } from '@studio/features/command-palette/events'
-import type { AiAssistantEditorContext } from '@studio/features/ai-assistant/types'
+import { setAiEditorContext } from '@studio/features/ai-assistant/editor-context'
 import { ResizablePanels } from '@studio/features/drizzle-runner/components/resizable-panels'
 import { PrismaRunner } from '@studio/features/prisma-runner'
 import type { SavedQuery } from '@studio/lib/bindings'
@@ -37,7 +37,7 @@ import {
 } from './sidebar-state'
 import { useQueryHistory } from './stores/query-history-store'
 import { QueryTabProvider, useQueryTabs } from './stores/tab-store'
-import { clearTableDataCache } from '@studio/core/table-cache'
+import { clearTableSnapshots } from '@studio/core/workspace-store'
 import { Skeleton } from '@studio/shared/ui/skeleton'
 import { toast } from '@studio/shared/ui/notifier'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
@@ -79,7 +79,6 @@ type Props = {
 	isActive?: boolean
 	activeConnectionId?: string
 	getConnectionName?: (id: string) => string
-	onEditorContextChange?: (context: AiAssistantEditorContext | null) => void
 }
 
 export function SqlConsole(props: Props) {
@@ -90,12 +89,7 @@ export function SqlConsole(props: Props) {
 	)
 }
 
-function SqlConsoleInner({
-	isActive = true,
-	activeConnectionId,
-	getConnectionName,
-	onEditorContextChange
-}: Props) {
+function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionName }: Props) {
 	const adapter = useAdapter()
 	const isTauri = useIsTauri()
 	const { settings: appSettings } = useSettings()
@@ -180,23 +174,25 @@ function SqlConsoleInner({
 		[activeTab.id, historyEntryId, tabStore, updateChartConfig]
 	)
 
+	// Published to a store the assistant panel subscribes to, not up through the
+	// shell: this runs on every keystroke, and a shell prop would commit the
+	// whole shell with it.
 	useEffect(
 		function syncAiEditorContext() {
-			if (!onEditorContextChange) return
 			if (mode === 'prisma') {
-				onEditorContextChange(null)
+				setAiEditorContext(null)
 				return
 			}
-			onEditorContextChange({
+			setAiEditorContext({
 				mode,
 				content: mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
 			})
 
 			return function clearAiEditorContext() {
-				onEditorContextChange(null)
+				setAiEditorContext(null)
 			}
 		},
-		[mode, currentSqlQuery, currentDrizzleQuery, onEditorContextChange]
+		[mode, currentSqlQuery, currentDrizzleQuery]
 	)
 
 	const refreshSchema = useCallback(async () => {
@@ -481,7 +477,7 @@ function SqlConsoleInner({
 
 						// Clear table viewer cache so it refetches when user switches to it.
 						if (queryType !== 'SELECT') {
-							clearTableDataCache()
+							clearTableSnapshots()
 						}
 
 						// Schema + row-count metadata must refresh after DDL and row-changing SQL.
@@ -542,7 +538,7 @@ function SqlConsoleInner({
 							lowerQuery.includes('.update') ||
 							lowerQuery.includes('.delete')
 						if (mutatesData) {
-							clearTableDataCache()
+							clearTableSnapshots()
 						}
 
 						const changesRowCount =

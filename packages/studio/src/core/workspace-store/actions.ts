@@ -1,8 +1,9 @@
 import type { Connection } from '@studio/features/connections/types'
 import type { SettingsSectionId } from '@studio/features/sidebar/components/settings-panel'
+import type { DatabaseSchema, SavedQuery, SnippetFolder } from '@studio/lib/bindings'
 import type { HydrateSessionArgs } from './slices/tabs'
 import { workspaceStore } from './store'
-import type { Tab, TabsSlice } from './types'
+import { tableSnapshotKey, type Tab, type TableSnapshot, type TabsSlice } from './types'
 
 /**
  * Module-level action functions rather than hook-returned closures: every one
@@ -127,4 +128,64 @@ export function openSettingsView(
 	highlight?: SettingsSectionId | null
 ): void {
 	workspaceStore.dispatch({ type: 'uiChrome/openSettings', section, highlight })
+}
+
+export function setSchema(connectionId: string, schema: DatabaseSchema, fetchedAt = 0): void {
+	workspaceStore.dispatch({ type: 'schemas/set', connectionId, schema, fetchedAt })
+}
+
+export function invalidateSchema(connectionId: string): void {
+	workspaceStore.dispatch({ type: 'schemas/invalidate', connectionId })
+}
+
+export function clearSchema(connectionId: string): void {
+	workspaceStore.dispatch({ type: 'schemas/clear', connectionId })
+}
+
+export function setSavedQueries(savedQueries: SavedQuery[], snippets: SavedQuery[] = []): void {
+	workspaceStore.dispatch({
+		type: 'savedQueries/set',
+		savedQueries: [...savedQueries, ...snippets]
+	})
+}
+
+export function setSnippetFolders(folders: SnippetFolder[]): void {
+	workspaceStore.dispatch({ type: 'snippets/setFolders', folders })
+}
+
+export function putTableSnapshot(snapshot: TableSnapshot): void {
+	workspaceStore.dispatch({ type: 'tableSnapshots/put', snapshot })
+}
+
+export function patchTableSnapshotRows(
+	connectionId: string,
+	tableId: string,
+	rows: Record<string, unknown>[]
+): void {
+	workspaceStore.dispatch({ type: 'tableSnapshots/patchRows', connectionId, tableId, rows })
+}
+
+export function dropTableSnapshot(connectionId: string, tableId: string): void {
+	workspaceStore.dispatch({ type: 'tableSnapshots/drop', connectionId, tableId })
+}
+
+export function dropTableSnapshotsForConnection(connectionId: string): void {
+	workspaceStore.dispatch({ type: 'tableSnapshots/dropForConnection', connectionId })
+}
+
+export function clearTableSnapshots(): void {
+	workspaceStore.dispatch({ type: 'tableSnapshots/clear' })
+}
+
+/**
+ * The last known contents of a table, read synchronously. This is the call that
+ * makes a cached table switch paint in the same frame instead of after an IPC
+ * round-trip.
+ */
+export function readTableSnapshot(
+	connectionId: string | undefined,
+	tableId: string | null
+): TableSnapshot | undefined {
+	if (!connectionId || !tableId) return undefined
+	return workspaceStore.getState().tableSnapshots.byKey[tableSnapshotKey(connectionId, tableId)]
 }

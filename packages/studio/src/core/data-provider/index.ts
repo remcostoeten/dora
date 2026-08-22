@@ -5,7 +5,6 @@ export {
 	useConnections,
 	useConnectionMutations,
 	useSchema,
-	useTableData,
 	useExecuteQuery,
 	useDataMutation,
 	useQueryHistory,

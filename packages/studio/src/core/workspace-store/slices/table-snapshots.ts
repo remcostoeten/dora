@@ -8,6 +8,7 @@ export type TableSnapshotsAction =
 			tableId: string
 			rows: Record<string, unknown>[]
 	  }
+	| { type: 'tableSnapshots/drop'; connectionId: string; tableId: string }
 	| { type: 'tableSnapshots/dropForConnection'; connectionId: string }
 	| { type: 'tableSnapshots/clear' }
 
@@ -30,6 +31,13 @@ export function reduceTableSnapshots(
 			const previous = state.byKey[key]
 			if (!previous) return state
 			return { byKey: { ...state.byKey, [key]: { ...previous, rows: action.rows } } }
+		}
+		case 'tableSnapshots/drop': {
+			const key = tableSnapshotKey(action.connectionId, action.tableId)
+			if (!(key in state.byKey)) return state
+			const byKey = { ...state.byKey }
+			delete byKey[key]
+			return { byKey }
 		}
 		case 'tableSnapshots/dropForConnection': {
 			const prefix = `${action.connectionId}::`

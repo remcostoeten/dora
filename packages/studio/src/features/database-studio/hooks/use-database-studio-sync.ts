@@ -1,593 +1,639 @@
-import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from "react";
-import { useLiveMonitor } from "@studio/core/live-monitor";
-import { overlayPendingEditsOnRows, type PendingEdit } from "@studio/core/pending-edits";
-import { useNuqsState } from "@studio/core/url-state/use-nuqs-state";
-import { tableDataCache } from "@studio/core/table-cache";
-import { getAdapterError } from "@studio/core/data-provider/types";
-import { toast } from "@studio/shared/ui/notifier";
-import type { AdapterResult, DataAdapter } from "@studio/core/data-provider/types";
-import type { DatabaseSchema } from "@studio/lib/bindings";
-import { enrichColumnsWithFKs } from "../utils/fk-enrichment";
-import { buildDefaultTableCacheKey, schemaHasTable } from "../utils/table-cache";
-import { createDefaultValues } from "../utils/studio-data";
-import { getTableRefParts } from "@studio/shared/utils/table-ref";
-import type { FilterConjunction, FilterDescriptor, FilterGroup, PaginationState, SortDescriptor, TableData } from "../types";
+import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useLiveMonitor } from '@studio/core/live-monitor'
+import { overlayPendingEditsOnRows, type PendingEdit } from '@studio/core/pending-edits'
+import { useNuqsState } from '@studio/core/url-state/use-nuqs-state'
+import {
+	putTableSnapshot,
+	readTableSnapshot,
+	type TableSnapshot
+} from '@studio/core/workspace-store'
+import { getAdapterError } from '@studio/core/data-provider/types'
+import { toast } from '@studio/shared/ui/notifier'
+import type { AdapterResult, DataAdapter } from '@studio/core/data-provider/types'
+import type { DatabaseSchema } from '@studio/lib/bindings'
+import { enrichColumnsWithFKs } from '../utils/fk-enrichment'
+import {
+	DEFAULT_QUERY_SIGNATURE,
+	schemaHasTable,
+	snapshotQuerySignature,
+	snapshotToTableData
+} from '../utils/table-snapshot'
+import { createDefaultValues } from '../utils/studio-data'
+import { getTableRefParts } from '@studio/shared/utils/table-ref'
+import type {
+	FilterConjunction,
+	FilterDescriptor,
+	FilterGroup,
+	PaginationState,
+	SortDescriptor,
+	TableData
+} from '../types'
 
 type Args = {
-  adapter: DataAdapter;
-  activeConnectionId?: string;
-  tableId: string | null;
-  tableName: string | null;
-  tableRefName: string | null;
-  currentCacheKey: string;
-  pagination: PaginationState;
-  sort: SortDescriptor | undefined;
-  filters: FilterDescriptor[];
-  filterConjunction: FilterConjunction;
-  filterGroup: FilterGroup;
-  tableData: TableData | null;
-  draftRow: Record<string, unknown> | null;
-  draftInsertIndex: number | null;
-  isApplyingEdits: boolean;
-  hasPendingEdits: boolean;
-  getEditsForTable: (tableId: string) => PendingEdit[];
-  selectedRows: Set<number>;
-  selectedCells: Set<string>;
-  focusedCell: { row: number; col: number } | null;
-  contextMenuState: import("../components/data-grid").ContextMenuState;
-  initialRowPK?: string | number | null;
-  onRowSelectionChange?: (pk: string | number | null) => void;
-  setTableData: (value: TableData | null) => void;
-  setVisibleColumns: Dispatch<SetStateAction<Set<string>>>;
-  setIsLoading: (value: boolean) => void;
-  setIsTableTransitioning: (value: boolean) => void;
-  setPagination: (value: PaginationState) => void;
-  setSort: (value: SortDescriptor | undefined) => void;
-  setFilters: (value: FilterDescriptor[]) => void;
-  setSelectedRows: Dispatch<SetStateAction<Set<number>>>;
-  setSelectedCells: Dispatch<SetStateAction<Set<string>>>;
-  setFocusedCell: Dispatch<SetStateAction<{ row: number; col: number } | null>>;
-  setContextMenuState: Dispatch<SetStateAction<import("../components/data-grid").ContextMenuState>>;
-  setDraftRow: Dispatch<SetStateAction<Record<string, unknown> | null>>;
-  setDraftInsertIndex: Dispatch<SetStateAction<number | null>>;
-};
+	adapter: DataAdapter
+	activeConnectionId?: string
+	tableId: string | null
+	tableName: string | null
+	tableRefName: string | null
+	currentQuerySignature: string
+	pagination: PaginationState
+	sort: SortDescriptor | undefined
+	filters: FilterDescriptor[]
+	filterConjunction: FilterConjunction
+	filterGroup: FilterGroup
+	tableData: TableData | null
+	draftRow: Record<string, unknown> | null
+	draftInsertIndex: number | null
+	isApplyingEdits: boolean
+	hasPendingEdits: boolean
+	getEditsForTable: (tableId: string) => PendingEdit[]
+	selectedRows: Set<number>
+	selectedCells: Set<string>
+	focusedCell: { row: number; col: number } | null
+	contextMenuState: import('../components/data-grid').ContextMenuState
+	initialRowPK?: string | number | null
+	onRowSelectionChange?: (pk: string | number | null) => void
+	setTableData: (value: TableData | null) => void
+	setVisibleColumns: Dispatch<SetStateAction<Set<string>>>
+	setIsLoading: (value: boolean) => void
+	setIsTableTransitioning: (value: boolean) => void
+	setPagination: (value: PaginationState) => void
+	setSort: (value: SortDescriptor | undefined) => void
+	setFilters: (value: FilterDescriptor[]) => void
+	setSelectedRows: Dispatch<SetStateAction<Set<number>>>
+	setSelectedCells: Dispatch<SetStateAction<Set<string>>>
+	setFocusedCell: Dispatch<SetStateAction<{ row: number; col: number } | null>>
+	setContextMenuState: Dispatch<
+		SetStateAction<import('../components/data-grid').ContextMenuState>
+	>
+	setDraftRow: Dispatch<SetStateAction<Record<string, unknown> | null>>
+	setDraftInsertIndex: Dispatch<SetStateAction<number | null>>
+}
 
 export function useDatabaseStudioSync(args: Args) {
-  const {
-    adapter,
-    activeConnectionId,
-    tableId,
-    tableName,
-    tableRefName,
-    currentCacheKey,
-    pagination,
-    sort,
-    filters,
-    filterConjunction,
-    filterGroup,
-    tableData,
-    draftRow,
-    draftInsertIndex,
-    isApplyingEdits,
-    hasPendingEdits,
-    getEditsForTable,
-    selectedRows,
-    selectedCells,
-    focusedCell,
-    contextMenuState,
-    initialRowPK,
-    onRowSelectionChange,
-    setTableData,
-    setVisibleColumns,
-    setIsLoading,
-    setIsTableTransitioning,
-    setPagination,
-    setSort,
-    setFilters,
-    setSelectedRows,
-    setSelectedCells: setUrlSelectedCells,
-    setFocusedCell: setUrlFocusedCell,
-    setContextMenuState,
-    setDraftRow,
-    setDraftInsertIndex,
-  } = args;
+	const {
+		adapter,
+		activeConnectionId,
+		tableId,
+		tableName,
+		tableRefName,
+		currentQuerySignature,
+		pagination,
+		sort,
+		filters,
+		filterConjunction,
+		filterGroup,
+		tableData,
+		draftRow,
+		draftInsertIndex,
+		isApplyingEdits,
+		hasPendingEdits,
+		getEditsForTable,
+		selectedRows,
+		selectedCells,
+		focusedCell,
+		contextMenuState,
+		initialRowPK,
+		onRowSelectionChange,
+		setTableData,
+		setVisibleColumns,
+		setIsLoading,
+		setIsTableTransitioning,
+		setPagination,
+		setSort,
+		setFilters,
+		setSelectedRows,
+		setSelectedCells: setUrlSelectedCells,
+		setFocusedCell: setUrlFocusedCell,
+		setContextMenuState,
+		setDraftRow,
+		setDraftInsertIndex
+	} = args
 
-  const liveMonitor = useLiveMonitor();
-  const {
-    urlState,
-    setSelectedRow,
-    setSelectedCells,
-    setFocusedCell,
-    setContextMenu,
-    setAddRecordMode,
-  } = useNuqsState();
-  const initializedFromUrlRef = useRef(false);
-  const isUpdatingUrlRef = useRef(false);
-  const loadRequestIdRef = useRef(0);
-  const restoredFromPKRef = useRef(false);
-  // The cache key whose data is currently painted on screen. Used to tell a
-  // genuine view switch (paint the cache for an instant result) apart from an
-  // in-place refresh of the view already shown (don't paint the now-stale
-  // cache — it flashes the pre-mutation rows before the fetch returns).
-  const displayedCacheKeyRef = useRef<string | null>(null);
-  // Read through a ref so loadTableData's identity doesn't change on every
-  // buffered edit — its identity drives the loadWhenQueryChanges effect, and
-  // reloading on each keystroke of a dry edit would defeat the buffer.
-  const getEditsForTableRef = useRef(getEditsForTable);
-  getEditsForTableRef.current = getEditsForTable;
+	const liveMonitor = useLiveMonitor()
+	const {
+		urlState,
+		setSelectedRow,
+		setSelectedCells,
+		setFocusedCell,
+		setContextMenu,
+		setAddRecordMode
+	} = useNuqsState()
+	const initializedFromUrlRef = useRef(false)
+	const isUpdatingUrlRef = useRef(false)
+	const loadRequestIdRef = useRef(0)
+	const restoredFromPKRef = useRef(false)
+	// The snapshot currently painted on screen, as `conn::table` plus the query
+	// signature. Used to tell a genuine view switch (paint the snapshot for an
+	// instant result) apart from an in-place refresh of the view already shown
+	// (don't repaint the now-stale snapshot — it flashes the pre-mutation rows
+	// before the fetch returns).
+	const displayedViewRef = useRef<string | null>(null)
+	// Read through a ref so loadTableData's identity doesn't change on every
+	// buffered edit — its identity drives the loadWhenQueryChanges effect, and
+	// reloading on each keystroke of a dry edit would defeat the buffer.
+	const getEditsForTableRef = useRef(getEditsForTable)
+	getEditsForTableRef.current = getEditsForTable
 
-  const withPendingEdits = useCallback(
-    function (data: TableData, forTableId: string | null): TableData {
-      if (!forTableId) return data;
-      const edits = getEditsForTableRef.current(forTableId);
-      if (edits.length === 0) return data;
-      return { ...data, rows: overlayPendingEditsOnRows(data.rows, edits) };
-    },
-    [],
-  );
+	const withPendingEdits = useCallback(function (
+		data: TableData,
+		forTableId: string | null
+	): TableData {
+		if (!forTableId) return data
+		const edits = getEditsForTableRef.current(forTableId)
+		if (edits.length === 0) return data
+		return { ...data, rows: overlayPendingEditsOnRows(data.rows, edits) }
+	}, [])
 
-  const stableUrlState = useMemo(
-    function () {
-      return urlState;
-    },
-    [
-      urlState.selectedRow,
-      urlState.focusedCell?.row,
-      urlState.focusedCell?.col,
-      urlState.addRecordMode,
-      urlState.addRecordIndex,
-    ],
-  );
+	const stableUrlState = useMemo(
+		function () {
+			return urlState
+		},
+		[
+			urlState.selectedRow,
+			urlState.focusedCell?.row,
+			urlState.focusedCell?.col,
+			urlState.addRecordMode,
+			urlState.addRecordIndex
+		]
+	)
 
-  const loadTableData = useCallback(async () => {
-    const requestId = loadRequestIdRef.current + 1;
-    loadRequestIdRef.current = requestId;
-    const isCurrentRequest = function () {
-      return loadRequestIdRef.current === requestId;
-    };
+	const loadTableData = useCallback(async () => {
+		const requestId = loadRequestIdRef.current + 1
+		loadRequestIdRef.current = requestId
+		const isCurrentRequest = function () {
+			return loadRequestIdRef.current === requestId
+		}
 
-    if (!tableId || !tableRefName || !activeConnectionId) {
-      setIsLoading(false);
-      return;
-    }
+		if (!tableId || !tableRefName || !activeConnectionId) {
+			setIsLoading(false)
+			return
+		}
 
-    setIsLoading(true);
+		setIsLoading(true)
 
-    let schemaForTable: AdapterResult<DatabaseSchema> | null = null;
-    const cached = tableDataCache.get(currentCacheKey);
+		let schemaForTable: AdapterResult<DatabaseSchema> | null = null
+		const currentView = `${activeConnectionId}::${tableId}::${currentQuerySignature}`
+		const snapshot = readTableSnapshot(activeConnectionId, tableRefName)
+		const cached =
+			snapshot && snapshotQuerySignature(snapshot) === currentQuerySignature
+				? snapshot
+				: undefined
 
-    // Skip the instant cache-paint when we're refreshing the view already on
-    // screen (same key) — e.g. after a delete/insert/column change. The cache
-    // is stale relative to the mutation, so painting it here is the "flash back
-    // to the old state". Keep the current rows visible and swap in fresh data.
-    if (cached && currentCacheKey !== displayedCacheKeyRef.current) {
-      setTableData(withPendingEdits(cached.data, tableId));
-      if (cached.visibleColumns.length > 0) {
-        setVisibleColumns(new Set(cached.visibleColumns));
-      }
-      setIsTableTransitioning(false);
-      displayedCacheKeyRef.current = currentCacheKey;
-    }
+		// Skip the instant snapshot-paint when we're refreshing the view already on
+		// screen — e.g. after a delete/insert/column change. The snapshot is stale
+		// relative to the mutation, so painting it here is the "flash back to the
+		// old state". Keep the current rows visible and swap in fresh data.
+		if (cached && currentView !== displayedViewRef.current) {
+			setTableData(withPendingEdits(snapshotToTableData(cached), tableId))
+			if (cached.visibleColumns.length > 0) {
+				setVisibleColumns(new Set(cached.visibleColumns))
+			}
+			setIsTableTransitioning(false)
+			displayedViewRef.current = currentView
+		}
 
-    try {
-      schemaForTable = await adapter.getSchema(activeConnectionId);
-      if (!isCurrentRequest()) return;
-      if (schemaForTable.ok && !schemaHasTable(schemaForTable.data, tableRefName)) {
-        console.warn("[DatabaseStudio] Skipping stale table selection:", {
-          connectionId: activeConnectionId,
-          tableRefName,
-        });
-        setTableData(null);
-        setIsTableTransitioning(false);
-        setIsLoading(false);
-        return;
-      }
-    } catch (error) {
-      if (!isCurrentRequest()) return;
-      console.error("[DatabaseStudio] Failed to validate selected table:", error);
-      toast.error("Failed to validate selected table", {
-        description: error instanceof Error ? error.message : String(error),
-      });
-    }
+		try {
+			schemaForTable = await adapter.getSchema(activeConnectionId)
+			if (!isCurrentRequest()) return
+			if (schemaForTable.ok && !schemaHasTable(schemaForTable.data, tableRefName)) {
+				console.warn('[DatabaseStudio] Skipping stale table selection:', {
+					connectionId: activeConnectionId,
+					tableRefName
+				})
+				setTableData(null)
+				setIsTableTransitioning(false)
+				setIsLoading(false)
+				return
+			}
+		} catch (error) {
+			if (!isCurrentRequest()) return
+			console.error('[DatabaseStudio] Failed to validate selected table:', error)
+			toast.error('Failed to validate selected table', {
+				description: error instanceof Error ? error.message : String(error)
+			})
+		}
 
-    try {
-      const result = await adapter.fetchTableData(
-        activeConnectionId,
-        tableRefName,
-        Math.floor(pagination.offset / pagination.limit),
-        pagination.limit,
-        sort,
-        filters,
-        filterConjunction,
-        filterGroup,
-      );
-      if (!isCurrentRequest()) return;
+		try {
+			const result = await adapter.fetchTableData(
+				activeConnectionId,
+				tableRefName,
+				Math.floor(pagination.offset / pagination.limit),
+				pagination.limit,
+				sort,
+				filters,
+				filterConjunction,
+				filterGroup
+			)
+			if (!isCurrentRequest()) return
 
-      if (result.ok) {
-        const data = result.data;
-        const schemaResult = schemaForTable ?? (await adapter.getSchema(activeConnectionId));
-        if (!isCurrentRequest()) return;
-        if (schemaResult.ok) {
-          const { tableName: tableNamePart, schemaName } = getTableRefParts(tableRefName ?? "");
-          data.columns = enrichColumnsWithFKs(
-            data.columns,
-            schemaResult.data,
-            tableNamePart,
-            schemaName ?? undefined,
-          );
-        }
+			if (result.ok) {
+				const data = result.data
+				const schemaResult = schemaForTable ?? (await adapter.getSchema(activeConnectionId))
+				if (!isCurrentRequest()) return
+				if (schemaResult.ok) {
+					const { tableName: tableNamePart, schemaName } = getTableRefParts(
+						tableRefName ?? ''
+					)
+					data.columns = enrichColumnsWithFKs(
+						data.columns,
+						schemaResult.data,
+						tableNamePart,
+						schemaName ?? undefined
+					)
+				}
 
-        setTableData(withPendingEdits(data, tableId));
-        displayedCacheKeyRef.current = currentCacheKey;
-        let nextVisibleColumns: string[] = [];
-        if (data.columns.length > 0) {
-          setVisibleColumns((prev) => {
-            if (prev.size === 0) {
-              nextVisibleColumns = data.columns.map((c) => c.name);
-              return new Set(nextVisibleColumns);
-            }
-            nextVisibleColumns = Array.from(prev);
-            return prev;
-          });
-        }
+				setTableData(withPendingEdits(data, tableId))
+				displayedViewRef.current = currentView
+				let nextVisibleColumns: string[] = []
+				if (data.columns.length > 0) {
+					setVisibleColumns((prev) => {
+						if (prev.size === 0) {
+							nextVisibleColumns = data.columns.map((c) => c.name)
+							return new Set(nextVisibleColumns)
+						}
+						nextVisibleColumns = Array.from(prev)
+						return prev
+					})
+				}
 
-        tableDataCache.set(currentCacheKey, {
-          data,
-          visibleColumns: nextVisibleColumns,
-        });
-      } else {
-        const errorMessage = getAdapterError(result);
-        console.error("[DatabaseStudio] Failed to load table data:", errorMessage);
-        toast.error("Failed to load table data", {
-          description: errorMessage,
-        });
-        if (!cached) {
-          setTableData(null);
-        }
-      }
-    } catch (error) {
-      if (!isCurrentRequest()) return;
-      console.error("[DatabaseStudio] Unexpected error loading table data:", error);
-      toast.error("Failed to load table data", {
-        description: error instanceof Error ? error.message : String(error),
-      });
-      if (!cached) {
-        setTableData(null);
-      }
-    } finally {
-      if (isCurrentRequest()) {
-        setIsLoading(false);
-      }
-    }
-  }, [
-    adapter,
-    activeConnectionId,
-    currentCacheKey,
-    filters,
-    filterConjunction,
-    filterGroup,
-    pagination.limit,
-    pagination.offset,
-    setIsLoading,
-    setIsTableTransitioning,
-    setTableData,
-    setVisibleColumns,
-    sort,
-    tableId,
-    tableRefName,
-    withPendingEdits,
-  ]);
+				putTableSnapshot({
+					connectionId: activeConnectionId,
+					tableId: tableRefName,
+					columns: data.columns,
+					rows: data.rows,
+					totalCount: data.totalCount,
+					visibleColumns: nextVisibleColumns,
+					offset: pagination.offset,
+					limit: pagination.limit,
+					sort,
+					filters,
+					conjunction: filterConjunction,
+					filterGroup,
+					fetchedAt: Date.now()
+				})
+			} else {
+				const errorMessage = getAdapterError(result)
+				console.error('[DatabaseStudio] Failed to load table data:', errorMessage)
+				toast.error('Failed to load table data', {
+					description: errorMessage
+				})
+				if (!cached) {
+					setTableData(null)
+				}
+			}
+		} catch (error) {
+			if (!isCurrentRequest()) return
+			console.error('[DatabaseStudio] Unexpected error loading table data:', error)
+			toast.error('Failed to load table data', {
+				description: error instanceof Error ? error.message : String(error)
+			})
+			if (!cached) {
+				setTableData(null)
+			}
+		} finally {
+			if (isCurrentRequest()) {
+				setIsLoading(false)
+			}
+		}
+	}, [
+		adapter,
+		activeConnectionId,
+		currentQuerySignature,
+		filters,
+		filterConjunction,
+		filterGroup,
+		pagination.limit,
+		pagination.offset,
+		setIsLoading,
+		setIsTableTransitioning,
+		setTableData,
+		setVisibleColumns,
+		sort,
+		tableId,
+		tableRefName,
+		withPendingEdits
+	])
 
-  useEffect(
-    function loadWhenQueryChanges() {
-      loadTableData();
-    },
-    [loadTableData],
-  );
+	useEffect(
+		function loadWhenQueryChanges() {
+			loadTableData()
+		},
+		[loadTableData]
+	)
 
-  useEffect(
-    function syncActiveTable() {
-      liveMonitor.setActiveTable(tableRefName ?? null);
-      return function () {
-        liveMonitor.setActiveTable(null);
-      };
-    },
-    [tableRefName],
-  );
+	useEffect(
+		function syncActiveTable() {
+			liveMonitor.setActiveTable(tableRefName ?? null)
+			return function () {
+				liveMonitor.setActiveTable(null)
+			}
+		},
+		[tableRefName]
+	)
 
-  useEffect(
-    function reloadOnExternalChange() {
-      if (!liveMonitor.recentEvents.length) return;
-      const hasChangeForThisTable = liveMonitor.recentEvents.some(function (e) {
-        return e.tableName === tableRefName || e.tableName === tableName;
-      });
-      // Reloading while dry edits are buffered would repaint database values
-      // over them, leaving the pending-changes count describing writes the user
-      // can no longer see.
-      if (hasChangeForThisTable && !draftRow && !isApplyingEdits && !hasPendingEdits) {
-        loadTableData();
-      }
-    },
-    [
-      liveMonitor.recentEvents,
-      draftRow,
-      isApplyingEdits,
-      hasPendingEdits,
-      loadTableData,
-      tableName,
-      tableRefName,
-    ],
-  );
+	useEffect(
+		function reloadOnExternalChange() {
+			if (!liveMonitor.recentEvents.length) return
+			const hasChangeForThisTable = liveMonitor.recentEvents.some(function (e) {
+				return e.tableName === tableRefName || e.tableName === tableName
+			})
+			// Reloading while dry edits are buffered would repaint database values
+			// over them, leaving the pending-changes count describing writes the user
+			// can no longer see.
+			if (hasChangeForThisTable && !draftRow && !isApplyingEdits && !hasPendingEdits) {
+				loadTableData()
+			}
+		},
+		[
+			liveMonitor.recentEvents,
+			draftRow,
+			isApplyingEdits,
+			hasPendingEdits,
+			loadTableData,
+			tableName,
+			tableRefName
+		]
+	)
 
-  useEffect(
-    function handleTableChange() {
-      if (!tableId || !activeConnectionId) return;
-      setPagination({ limit: 50, offset: 0 });
-      setSort(undefined);
-      setFilters([]);
-      initializedFromUrlRef.current = false;
+	useEffect(
+		function handleTableChange() {
+			if (!tableId || !activeConnectionId) return
+			setPagination({ limit: 50, offset: 0 })
+			setSort(undefined)
+			setFilters([])
+			initializedFromUrlRef.current = false
 
-      const defaultCacheKey = buildDefaultTableCacheKey(activeConnectionId, tableId);
-      const cached = tableDataCache.get(defaultCacheKey);
+			const snapshot = readTableSnapshot(activeConnectionId, tableId)
 
-      if (cached) {
-        setTableData(withPendingEdits(cached.data, tableId));
-        setVisibleColumns(new Set(cached.visibleColumns));
-        setIsTableTransitioning(false);
-        return;
-      }
+			if (snapshot && snapshotQuerySignature(snapshot) === DEFAULT_QUERY_SIGNATURE) {
+				setTableData(withPendingEdits(snapshotToTableData(snapshot), tableId))
+				setVisibleColumns(new Set(snapshot.visibleColumns))
+				setIsTableTransitioning(false)
+				return
+			}
 
-      setVisibleColumns(new Set());
-      setIsTableTransitioning(true);
-    },
-    [
-      activeConnectionId,
-      setFilters,
-      setIsTableTransitioning,
-      setPagination,
-      setSort,
-      setTableData,
-      setVisibleColumns,
-      tableId,
-      withPendingEdits,
-    ],
-  );
+			setVisibleColumns(new Set())
+			setIsTableTransitioning(true)
+		},
+		[
+			activeConnectionId,
+			setFilters,
+			setIsTableTransitioning,
+			setPagination,
+			setSort,
+			setTableData,
+			setVisibleColumns,
+			tableId,
+			withPendingEdits
+		]
+	)
 
-  useEffect(
-    function clearTransitionOnLoad() {
-      if (!tableData) return;
-      const timer = setTimeout(function () {
-        setIsTableTransitioning(false);
-      }, 50);
-      return function () {
-        clearTimeout(timer);
-      };
-    },
-    [setIsTableTransitioning, tableData],
-  );
+	useEffect(
+		function clearTransitionOnLoad() {
+			if (!tableData) return
+			const timer = setTimeout(function () {
+				setIsTableTransitioning(false)
+			}, 50)
+			return function () {
+				clearTimeout(timer)
+			}
+		},
+		[setIsTableTransitioning, tableData]
+	)
 
-  useEffect(
-    function initializeFromUrl() {
-      if (initializedFromUrlRef.current || !tableData) return;
-      initializedFromUrlRef.current = true;
+	useEffect(
+		function initializeFromUrl() {
+			if (initializedFromUrlRef.current || !tableData) return
+			initializedFromUrlRef.current = true
 
-      if (stableUrlState.selectedRow !== null) {
-        if (stableUrlState.selectedRow >= 0 && stableUrlState.selectedRow < tableData.rows.length) {
-          setSelectedRows(new Set([stableUrlState.selectedRow]));
-        }
-      }
-      if (stableUrlState.selectedCells.size > 0) {
-        const validCells = new Set<string>();
-        for (const cellKey of stableUrlState.selectedCells) {
-          const parts = cellKey.split(":");
-          if (parts.length === 2) {
-            const r = parseInt(parts[0], 10);
-            const c = parseInt(parts[1], 10);
-            if (
-              !isNaN(r) &&
-              !isNaN(c) &&
-              r >= 0 &&
-              r < tableData.rows.length &&
-              c >= 0 &&
-              c < tableData.columns.length
-            ) {
-              validCells.add(cellKey);
-            }
-          }
-        }
-        if (validCells.size > 0) {
-          setSelectedCells(validCells);
-        }
-      }
-      if (stableUrlState.focusedCell) {
-        const { row, col } = stableUrlState.focusedCell;
-        if (row >= 0 && row < tableData.rows.length && col >= 0 && col < tableData.columns.length) {
-          setFocusedCell(stableUrlState.focusedCell);
-        }
-      }
-      if (stableUrlState.contextMenu) {
-        const { cell } = stableUrlState.contextMenu;
-        if (cell.row >= 0 && cell.row < tableData.rows.length) {
-          setContextMenuState(stableUrlState.contextMenu);
-        }
-      }
-      if (stableUrlState.addRecordMode && tableData) {
-        if (
-          stableUrlState.addRecordIndex === null ||
-          (stableUrlState.addRecordIndex >= -1 &&
-            stableUrlState.addRecordIndex <= tableData.rows.length)
-        ) {
-          setDraftRow(createDefaultValues(tableData.columns));
-          setDraftInsertIndex(stableUrlState.addRecordIndex ?? -1);
-        }
-      }
-    },
-    [
-      setContextMenuState,
-      setDraftInsertIndex,
-      setDraftRow,
-      setFocusedCell,
-      setSelectedCells,
-      setSelectedRows,
-      stableUrlState,
-      tableData,
-    ],
-  );
+			if (stableUrlState.selectedRow !== null) {
+				if (
+					stableUrlState.selectedRow >= 0 &&
+					stableUrlState.selectedRow < tableData.rows.length
+				) {
+					setSelectedRows(new Set([stableUrlState.selectedRow]))
+				}
+			}
+			if (stableUrlState.selectedCells.size > 0) {
+				const validCells = new Set<string>()
+				for (const cellKey of stableUrlState.selectedCells) {
+					const parts = cellKey.split(':')
+					if (parts.length === 2) {
+						const r = parseInt(parts[0], 10)
+						const c = parseInt(parts[1], 10)
+						if (
+							!isNaN(r) &&
+							!isNaN(c) &&
+							r >= 0 &&
+							r < tableData.rows.length &&
+							c >= 0 &&
+							c < tableData.columns.length
+						) {
+							validCells.add(cellKey)
+						}
+					}
+				}
+				if (validCells.size > 0) {
+					setSelectedCells(validCells)
+				}
+			}
+			if (stableUrlState.focusedCell) {
+				const { row, col } = stableUrlState.focusedCell
+				if (
+					row >= 0 &&
+					row < tableData.rows.length &&
+					col >= 0 &&
+					col < tableData.columns.length
+				) {
+					setFocusedCell(stableUrlState.focusedCell)
+				}
+			}
+			if (stableUrlState.contextMenu) {
+				const { cell } = stableUrlState.contextMenu
+				if (cell.row >= 0 && cell.row < tableData.rows.length) {
+					setContextMenuState(stableUrlState.contextMenu)
+				}
+			}
+			if (stableUrlState.addRecordMode && tableData) {
+				if (
+					stableUrlState.addRecordIndex === null ||
+					(stableUrlState.addRecordIndex >= -1 &&
+						stableUrlState.addRecordIndex <= tableData.rows.length)
+				) {
+					setDraftRow(createDefaultValues(tableData.columns))
+					setDraftInsertIndex(stableUrlState.addRecordIndex ?? -1)
+				}
+			}
+		},
+		[
+			setContextMenuState,
+			setDraftInsertIndex,
+			setDraftRow,
+			setFocusedCell,
+			setSelectedCells,
+			setSelectedRows,
+			stableUrlState,
+			tableData
+		]
+	)
 
-  useEffect(
-    function syncSelectedRowToUrl() {
-      if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return;
-      const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null;
-      if (firstSelected === stableUrlState.selectedRow) return;
+	useEffect(
+		function syncSelectedRowToUrl() {
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
+			const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null
+			if (firstSelected === stableUrlState.selectedRow) return
 
-      isUpdatingUrlRef.current = true;
-      setSelectedRow(firstSelected);
-      requestAnimationFrame(function () {
-        isUpdatingUrlRef.current = false;
-      });
+			isUpdatingUrlRef.current = true
+			setSelectedRow(firstSelected)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
 
-      if (onRowSelectionChange && tableData) {
-        if (firstSelected !== null && tableData.rows[firstSelected]) {
-          const primaryKeyColumn = tableData.columns.find(function (c) {
-            return c.primaryKey;
-          });
-          if (primaryKeyColumn) {
-            const pkValue = tableData.rows[firstSelected][primaryKeyColumn.name] as string | number;
-            onRowSelectionChange(pkValue);
-          }
-        } else if (selectedRows.size === 0) {
-          onRowSelectionChange(null);
-        }
-      }
-    },
-    [selectedRows, onRowSelectionChange, setSelectedRow, stableUrlState.selectedRow, tableData],
-  );
+			if (onRowSelectionChange && tableData) {
+				if (firstSelected !== null && tableData.rows[firstSelected]) {
+					const primaryKeyColumn = tableData.columns.find(function (c) {
+						return c.primaryKey
+					})
+					if (primaryKeyColumn) {
+						const pkValue = tableData.rows[firstSelected][primaryKeyColumn.name] as
+							| string
+							| number
+						onRowSelectionChange(pkValue)
+					}
+				} else if (selectedRows.size === 0) {
+					onRowSelectionChange(null)
+				}
+			}
+		},
+		[selectedRows, onRowSelectionChange, setSelectedRow, stableUrlState.selectedRow, tableData]
+	)
 
-  useEffect(
-    function restoreSelectionFromPK() {
-      if (restoredFromPKRef.current) return;
-      if (!tableData) return;
+	useEffect(
+		function restoreSelectionFromPK() {
+			if (restoredFromPKRef.current) return
+			if (!tableData) return
 
-      // Consume the one-shot the moment data is available — this is our single
-      // restore opportunity. `initialRowPK` no longer changes during the session
-      // (it's persisted without React state), so without consuming the ref here
-      // a later selection-clear would re-run this and resurrect the launch row.
-      restoredFromPKRef.current = true;
+			// Consume the one-shot the moment data is available — this is our single
+			// restore opportunity. `initialRowPK` no longer changes during the session
+			// (it's persisted without React state), so without consuming the ref here
+			// a later selection-clear would re-run this and resurrect the launch row.
+			restoredFromPKRef.current = true
 
-      if (!initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current) return;
+			if (!initialRowPK || selectedRows.size > 0 || initializedFromUrlRef.current) return
 
-      const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey);
-      if (!primaryKeyColumn) return;
+			const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
+			if (!primaryKeyColumn) return
 
-      const rowIndex = tableData.rows.findIndex(
-        (row) => String(row[primaryKeyColumn.name]) === String(initialRowPK),
-      );
+			const rowIndex = tableData.rows.findIndex(
+				(row) => String(row[primaryKeyColumn.name]) === String(initialRowPK)
+			)
 
-      if (rowIndex !== -1) {
-        setSelectedRows(new Set([rowIndex]));
-      }
-    },
-    [initialRowPK, selectedRows.size, tableData, setSelectedRows],
-  );
+			if (rowIndex !== -1) {
+				setSelectedRows(new Set([rowIndex]))
+			}
+		},
+		[initialRowPK, selectedRows.size, tableData, setSelectedRows]
+	)
 
-  useEffect(
-    function syncCellsToUrl() {
-      if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return;
+	useEffect(
+		function syncCellsToUrl() {
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 
-      const currentCellsStr = Array.from(stableUrlState.selectedCells).sort().join(",");
-      const newCellsStr = Array.from(selectedCells).sort().join(",");
-      if (currentCellsStr === newCellsStr) return;
+			const currentCellsStr = Array.from(stableUrlState.selectedCells).sort().join(',')
+			const newCellsStr = Array.from(selectedCells).sort().join(',')
+			if (currentCellsStr === newCellsStr) return
 
-      isUpdatingUrlRef.current = true;
-      setUrlSelectedCells(selectedCells);
-      requestAnimationFrame(function () {
-        isUpdatingUrlRef.current = false;
-      });
-    },
-    [selectedCells, setUrlSelectedCells, stableUrlState.selectedCells],
-  );
+			isUpdatingUrlRef.current = true
+			setUrlSelectedCells(selectedCells)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
+		},
+		[selectedCells, setUrlSelectedCells, stableUrlState.selectedCells]
+	)
 
-  useEffect(
-    function syncFocusedCellToUrl() {
-      if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return;
+	useEffect(
+		function syncFocusedCellToUrl() {
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 
-      const urlCell = stableUrlState.focusedCell;
-      const isSame =
-        (urlCell === null && focusedCell === null) ||
-        (urlCell !== null &&
-          focusedCell !== null &&
-          urlCell.row === focusedCell.row &&
-          urlCell.col === focusedCell.col);
-      if (isSame) return;
+			const urlCell = stableUrlState.focusedCell
+			const isSame =
+				(urlCell === null && focusedCell === null) ||
+				(urlCell !== null &&
+					focusedCell !== null &&
+					urlCell.row === focusedCell.row &&
+					urlCell.col === focusedCell.col)
+			if (isSame) return
 
-      isUpdatingUrlRef.current = true;
-      setUrlFocusedCell(focusedCell);
-      requestAnimationFrame(function () {
-        isUpdatingUrlRef.current = false;
-      });
-    },
-    [focusedCell, setUrlFocusedCell, stableUrlState.focusedCell],
-  );
+			isUpdatingUrlRef.current = true
+			setUrlFocusedCell(focusedCell)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
+		},
+		[focusedCell, setUrlFocusedCell, stableUrlState.focusedCell]
+	)
 
-  useEffect(
-    function syncContextMenuToUrl() {
-      if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return;
+	useEffect(
+		function syncContextMenuToUrl() {
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 
-      const urlCtx = stableUrlState.contextMenu;
-      const isSame =
-        (urlCtx === null && contextMenuState === null) ||
-        (urlCtx !== null &&
-          contextMenuState !== null &&
-          urlCtx.kind === contextMenuState.kind &&
-          urlCtx.cell.row === contextMenuState.cell.row &&
-          urlCtx.cell.col === contextMenuState.cell.col);
-      if (isSame) return;
+			const urlCtx = stableUrlState.contextMenu
+			const isSame =
+				(urlCtx === null && contextMenuState === null) ||
+				(urlCtx !== null &&
+					contextMenuState !== null &&
+					urlCtx.kind === contextMenuState.kind &&
+					urlCtx.cell.row === contextMenuState.cell.row &&
+					urlCtx.cell.col === contextMenuState.cell.col)
+			if (isSame) return
 
-      isUpdatingUrlRef.current = true;
-      setContextMenu(contextMenuState);
-      requestAnimationFrame(function () {
-        isUpdatingUrlRef.current = false;
-      });
-    },
-    [contextMenuState, setContextMenu, stableUrlState.contextMenu],
-  );
+			isUpdatingUrlRef.current = true
+			setContextMenu(contextMenuState)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
+		},
+		[contextMenuState, setContextMenu, stableUrlState.contextMenu]
+	)
 
-  useEffect(
-    function syncAddRecordToUrl() {
-      if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return;
+	useEffect(
+		function syncAddRecordToUrl() {
+			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
 
-      const isAddRecordActive = draftRow !== null;
-      const isSame =
-        stableUrlState.addRecordMode === isAddRecordActive &&
-        stableUrlState.addRecordIndex === draftInsertIndex;
-      if (isSame) return;
+			const isAddRecordActive = draftRow !== null
+			const isSame =
+				stableUrlState.addRecordMode === isAddRecordActive &&
+				stableUrlState.addRecordIndex === draftInsertIndex
+			if (isSame) return
 
-      isUpdatingUrlRef.current = true;
-      setAddRecordMode(isAddRecordActive, draftInsertIndex);
-      requestAnimationFrame(function () {
-        isUpdatingUrlRef.current = false;
-      });
-    },
-    [
-      draftInsertIndex,
-      draftRow,
-      setAddRecordMode,
-      stableUrlState.addRecordIndex,
-      stableUrlState.addRecordMode,
-    ],
-  );
+			isUpdatingUrlRef.current = true
+			setAddRecordMode(isAddRecordActive, draftInsertIndex)
+			requestAnimationFrame(function () {
+				isUpdatingUrlRef.current = false
+			})
+		},
+		[
+			draftInsertIndex,
+			draftRow,
+			setAddRecordMode,
+			stableUrlState.addRecordIndex,
+			stableUrlState.addRecordMode
+		]
+	)
 
-  return {
-    liveMonitor,
-    stableUrlState,
-    setSelectedRow,
-    setSelectedCells,
-    setFocusedCell,
-    setContextMenu,
-    setAddRecordMode,
-    initializedFromUrlRef,
-    isUpdatingUrlRef,
-    loadTableData,
-  };
+	return {
+		liveMonitor,
+		stableUrlState,
+		setSelectedRow,
+		setSelectedCells,
+		setFocusedCell,
+		setContextMenu,
+		setAddRecordMode,
+		initializedFromUrlRef,
+		isUpdatingUrlRef,
+		loadTableData
+	}
 }
-type MinimalSchema = Pick<DatabaseSchema, "tables">;
+type MinimalSchema = Pick<DatabaseSchema, 'tables'>

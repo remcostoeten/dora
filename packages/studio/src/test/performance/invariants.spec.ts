@@ -3,6 +3,7 @@ import {
 	NAV,
 	PERF,
 	SELECTORS,
+	adapterCalls,
 	bootPerfApp,
 	monacoCreations,
 	settle,
@@ -10,6 +11,12 @@ import {
 	trackedNodeSurvives
 } from './lib/app'
 import { measureKeystrokeCommits } from './lib/measure'
+
+type PerfKit = {
+	waitFor(test: () => boolean, timeoutMs: number): Promise<boolean>
+	click(selector: string): boolean
+	text(selector: string): string
+}
 
 /**
  * The half of the performance contract CI can enforce.
@@ -100,10 +107,44 @@ test.describe('render invariants @invariant', () => {
 		).toBe(0)
 	})
 
+	test('a cached table switch paints without touching the adapter', async ({ page }) => {
+		// Visit both tables so each has a snapshot, then switch back to the first
+		// and watch for an adapter call before the rows change.
+		for (const table of PERF.smallTables) {
+			await page.click(SELECTORS.tableItem(table))
+			await page.waitForSelector(SELECTORS.cell, { timeout: 30_000 })
+			await settle(page)
+		}
+
+		const before = await adapterCalls(page, 'fetchTableData')
+		expect(before, 'the adapter call counter is not installed').toBeGreaterThan(0)
+
+		const paint = await page.evaluate(
+			async function run({ target, cell }) {
+				const kit = (window as unknown as { __doraPerfKit: PerfKit }).__doraPerfKit
+				const counts = (window as unknown as { __doraAdapterCalls: Record<string, number> })
+					.__doraAdapterCalls
+				const previous = kit.text(cell)
+				const start = counts.fetchTableData ?? 0
+				kit.click(target)
+				const painted = await kit.waitFor(() => kit.text(cell) !== previous, 10_000)
+				return { painted, calls: (counts.fetchTableData ?? 0) - start }
+			},
+			{
+				target: SELECTORS.tableItem(PERF.smallTables[0]),
+				cell: SELECTORS.cell
+			}
+		)
+
+		expect(paint.painted, 'the rows never changed — the switch did not happen').toBe(true)
+		expect(
+			paint.calls,
+			`${paint.calls} adapter fetches before first paint — budget 2 requires zero`
+		).toBe(0)
+	})
+
 	test('the connection switcher lists the generated perf fixtures', async ({ page }) => {
 		await page.click(SELECTORS.connectionTrigger)
-		await expect(
-			page.locator(SELECTORS.connectionItem(PERF.secondaryConnection))
-		).toBeVisible()
+		await expect(page.locator(SELECTORS.connectionItem(PERF.secondaryConnection))).toBeVisible()
 	})
 })

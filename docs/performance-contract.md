@@ -58,6 +58,10 @@ mode the mock adapter is instrumented by call count, so "zero IPC" is literal:
 `fetchTableData` is not called before the paint. A cache miss is not a
 violation of this budget — it is simply not this scenario.
 
+The snapshot is per connection and table, holding the last view of it. A
+request whose paging, sort or filters differ from the stored view is a miss and
+fetches; only the view the user last had is instant.
+
 ### 3. Connection switch with cached schema — P95 < 16 ms, zero remounts
 
 Switching to a connection whose schema is already cached repoints selectors; it
@@ -106,7 +110,7 @@ this contract CI can enforce on a shared runner.
 | --- | --- |
 | Zero view remounts | Switching away and back leaves the previous view's DOM node connected |
 | Zero shell commits on keystroke | Typing in Monaco produces no `onCommitFiberRoot` on the app root |
-| Zero IPC on cached table switch | No adapter call precedes first paint |
+| Zero IPC on cached table switch | No adapter call precedes first paint — counted, not inferred: the mock adapter wraps itself in a per-method call counter |
 | One Monaco instance per language family | The editor is created once per session, not once per view entry |
 
 CI runs the invariants. It does not run timing assertions: a shared GitHub
