@@ -1,12 +1,21 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
-import type { SortDescriptor, FilterDescriptor, TableData } from '@studio/features/database-studio/types'
+import type {
+	SortDescriptor,
+	FilterDescriptor,
+	TableData
+} from '@studio/features/database-studio/types'
 import type { Connection } from '@studio/features/connections/types'
 import type { DatabaseInfo, JsonValue } from '@studio/lib/bindings'
 import {
 	applyConnectResult,
-	dataFileSourcesQueryKey,
+	dataFileSourcesQueryKey
 } from '@studio/features/database-studio/hooks/use-data-file-sources'
+import {
+	setConnections,
+	setConnectionsError,
+	setConnectionsLoading
+} from '@studio/core/workspace-store'
 import { useAdapter } from './context'
 import { getAdapterError } from './types'
 
@@ -35,7 +44,7 @@ function scheduleSchemaRefresh(connectionId: string) {
 export function useConnections() {
 	const adapter = useAdapter()
 
-	return useQuery({
+	const query = useQuery({
 		queryKey: ['connections'],
 		queryFn: async function () {
 			const res = await adapter.getConnections()
@@ -43,6 +52,30 @@ export function useConnections() {
 			return res.data
 		}
 	})
+
+	// Mirror the result into the workspace store so the shell can read
+	// connections through a narrow selector instead of a query subscription.
+	// Normalizing is idempotent, so every caller of this hook writing the same
+	// list costs nothing. Track 2 PR B replaces the query with `bootstrap`.
+	const { data, isLoading, error } = query
+
+	useEffect(
+		function syncConnectionsToWorkspaceStore() {
+			if (data) setConnections(data)
+		},
+		[data]
+	)
+
+	useEffect(
+		function syncConnectionsStatusToWorkspaceStore() {
+			if (isLoading) setConnectionsLoading()
+			else if (error)
+				setConnectionsError(error instanceof Error ? error.message : String(error))
+		},
+		[isLoading, error]
+	)
+
+	return query
 }
 
 export function useConnectionMutations() {
@@ -50,10 +83,7 @@ export function useConnectionMutations() {
 	const queryClient = useQueryClient()
 
 	const addConnection = useMutation({
-		mutationFn: async (params: {
-			name: string
-			databaseType: DatabaseInfo
-		}) => {
+		mutationFn: async (params: { name: string; databaseType: DatabaseInfo }) => {
 			const res = await adapter.addConnection(params.name, params.databaseType)
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
@@ -120,7 +150,7 @@ export function useConnectionMutations() {
 			if (result.fileSources) {
 				queryClient.setQueryData(dataFileSourcesQueryKey(connectionId), result.fileSources)
 			}
-		},
+		}
 	})
 
 	const disconnectFromDatabase = useMutation({

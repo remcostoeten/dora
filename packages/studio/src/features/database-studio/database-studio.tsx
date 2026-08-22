@@ -3,7 +3,7 @@ import { useToast } from '@studio/shared/ui/use-toast'
 import { useAdapter, useDataMutation, useConnections, useSchema } from '@studio/core/data-provider'
 import { tableDataCache } from '@studio/core/table-cache'
 import { usePendingEdits } from '@studio/core/pending-edits'
-import { useTabs } from '@studio/core/tabs'
+import { openTab } from '@studio/core/workspace-store'
 import { useSettings } from '@studio/core/settings'
 import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@studio/core/shortcuts'
 import { useUndo } from '@studio/core/undo'
@@ -687,8 +687,6 @@ export function DatabaseStudio({
 			},
 			{ description: shortcuts.deselect.description }
 		)
-
-	const { openTab } = useTabs()
 
 	function handleFKNavigate(
 		referencedTable: string,

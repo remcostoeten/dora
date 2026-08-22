@@ -47,7 +47,28 @@ import { useAiAssistantStore } from '@studio/features/ai-assistant/store'
 import type { AiAssistantEditorContext } from '@studio/features/ai-assistant/types'
 import { Sparkles } from 'lucide-react'
 import { Button } from '@studio/shared/ui/button'
-import { TabsProvider, useTabs } from '@studio/core/tabs'
+import { TabsProvider } from '@studio/core/tabs'
+import {
+	closeConnection,
+	closeOtherTabs,
+	closeTab,
+	closeTabsForConnection,
+	closeTabsToLeft,
+	closeTabsToRight,
+	hydrateTabSession,
+	openTab,
+	reorderTab,
+	setActiveConnection,
+	setActiveTab,
+	togglePinTab,
+	useActiveConnectionId,
+	useActiveTab,
+	useActiveTabId,
+	useConnectionList,
+	useOpenConnectionIds,
+	useVisibleTabs,
+	useWorkspaceSelector
+} from '@studio/core/workspace-store'
 import { TabBar } from '@studio/features/tab-bar'
 import { ConnectionTabBar } from '@studio/features/connection-tab-bar'
 const DatabaseStudio = lazy(function () {
@@ -108,11 +129,8 @@ function IndexInner() {
 	}, [])
 	const { settings, persistSetting, isLoading: isSettingsLoading } = useSettings()
 
-	const {
-		data: connections = [],
-		isLoading: isConnectionsLoading,
-		refetch: refetchConnections
-	} = useConnections()
+	const { isLoading: isConnectionsLoading, refetch: refetchConnections } = useConnections()
+	const connections = useConnectionList()
 	const isLoading = isSettingsLoading || isConnectionsLoading
 	const { addConnection, updateConnection, removeConnection, disconnectFromDatabase } =
 		useConnectionMutations()
@@ -160,26 +178,13 @@ function IndexInner() {
 		SettingsSectionId | undefined
 	>()
 
-	const {
-		tabs,
-		visibleTabs,
-		activeTabId,
-		activeConnectionId,
-		openConnectionIds,
-		openTab,
-		closeTab,
-		closeOtherTabs,
-		closeTabsToLeft,
-		closeTabsToRight,
-		setActiveTab,
-		togglePinTab,
-		reorderTab,
-		closeTabsForConnection,
-		hydrateSession,
-		setActiveConnection,
-		openConnection,
-		closeConnection
-	} = useTabs()
+	const tabs = useWorkspaceSelector(function (state) {
+		return state.tabs.tabs
+	})
+	const visibleTabs = useVisibleTabs()
+	const activeTabId = useActiveTabId()
+	const activeConnectionId = useActiveConnectionId()
+	const openConnectionIds = useOpenConnectionIds()
 	const sessionHydratedRef = useRef(false)
 
 	// Restore tabs persisted from the last session (issue #98). Tabs render
@@ -192,20 +197,14 @@ function IndexInner() {
 			if (sessionHydratedRef.current) return
 			if (isSettingsLoading || isConnectionsLoading) return
 			sessionHydratedRef.current = true
-			hydrateSession({
+			hydrateTabSession({
 				restoreUnpinned: settings.restoreTabsOnLaunch,
 				knownConnectionIds: new Set(connections.map((c) => c.id))
 			})
 		},
-		[
-			isSettingsLoading,
-			isConnectionsLoading,
-			settings.restoreTabsOnLaunch,
-			connections,
-			hydrateSession
-		]
+		[isSettingsLoading, isConnectionsLoading, settings.restoreTabsOnLaunch, connections]
 	)
-	const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+	const activeTab = useActiveTab()
 	const activeTabConnectionId = activeTab?.connectionId ?? ''
 
 	const autoSelectFirstTableRef = useRef(false)
