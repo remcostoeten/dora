@@ -1018,6 +1018,21 @@ export const commands = {
 			else return { status: 'error', error: e as any }
 		}
 	},
+	async startQueryStream(
+		connectionId: string,
+		query: string,
+		onEvent: TAURI_CHANNEL<QueryEvent>
+	): Promise<Result<number[], { kind: string; detail: string }>> {
+		try {
+			return {
+				status: 'ok',
+				data: await TAURI_INVOKE('start_query_stream', { connectionId, query, onEvent })
+			}
+		} catch (e) {
+			if (e instanceof Error) throw e
+			else return { status: 'error', error: e as any }
+		}
+	},
 	async fetchQuery(
 		queryId: number
 	): Promise<Result<StatementInfo, { kind: string; detail: string }>> {
@@ -2618,6 +2633,12 @@ export type PosthogQueryResult = {
  * not supported by this path (they'd need a direct ClickHouse connection).
  */
 export type PosthogRegion = 'us' | 'eu'
+export type QueryEvent =
+	| { type: 'columns'; query_id: number; columns: JsonValue }
+	| { type: 'row_batch'; query_id: number; page_index: number; rows: JsonValue }
+	| { type: 'progress'; query_id: number; rows_received: number }
+	| { type: 'done'; query_id: number; affected_rows: number; elapsed_ms: number }
+	| { type: 'error'; query_id: number; message: string }
 export type QueryHistoryEntry = {
 	id: number
 	connection_id: string

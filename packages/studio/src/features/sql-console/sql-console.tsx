@@ -5,6 +5,8 @@ import { useSettings } from '@studio/core/settings'
 import { useConnections } from '@studio/core/data-provider'
 import { askAi, buildExplainQueryPrompt } from '@studio/features/ai-assistant/ai-actions'
 import { getAdapterError } from '@studio/core/data-provider/types'
+import type { QueryResult } from '@studio/core/data-provider/types'
+import { collectQueryRows } from '@studio/core/data-provider/query-row-source'
 import { useShortcut, useActiveScope, useEffectiveShortcuts } from '@studio/core/shortcuts'
 import {
 	SQL_CONSOLE_PALETTE_EVENT,
@@ -415,8 +417,15 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			const executingTabId = activeTab.id
 			cancelledTabsRef.current.delete(executingTabId)
 			const trackQueryIds = {
-				onStarted: function (queryIds: number[]) {
+				onStarted: (queryIds: number[]) => {
 					inFlightQueryIdsRef.current.set(executingTabId, queryIds)
+				},
+				onRows: (preview: QueryResult) => {
+					tabStore.setTabResult(executingTabId, {
+						...preview,
+						executionTime: preview.executionTime ?? 0,
+						queryType: 'SELECT'
+					})
 				}
 			}
 			setIsExecuting(true)
@@ -465,6 +474,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 						setResult({
 							columns,
 							rows,
+							rowSource: res.data.rowSource,
 							rowCount: res.data.rowCount,
 							executionTime: res.data.executionTime || 0,
 							queryType,
@@ -522,6 +532,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 						setResult({
 							columns: res.data.columns,
 							rows: res.data.rows,
+							rowSource: res.data.rowSource,
 							rowCount: res.data.rowCount,
 							executionTime: res.data.executionTime || 0,
 							error: res.data.error,
@@ -792,58 +803,54 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		}
 	}
 
-	const handleExport = useCallback(
-		function () {
-			if (!result || result.rows.length === 0) return
+	const handleExport = useCallback(async () => {
+		if (!result || result.rows.length === 0) return
 
-			const jsonString = JSON.stringify(result.rows, null, 2)
-			const blob = new Blob([jsonString], { type: 'application/json' })
-			const url = URL.createObjectURL(blob)
-			const a = document.createElement('a')
-			a.href = url
-			a.download = 'query-results.json'
-			a.click()
-			URL.revokeObjectURL(url)
-		},
-		[result]
-	)
+		const rows = await collectQueryRows(result)
+		const jsonString = JSON.stringify(rows, null, 2)
+		const blob = new Blob([jsonString], { type: 'application/json' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = 'query-results.json'
+		a.click()
+		URL.revokeObjectURL(url)
+	}, [result])
 
-	const handleExportCsv = useCallback(
-		function () {
-			if (!result || result.rows.length === 0) return
+	const handleExportCsv = useCallback(async () => {
+		if (!result || result.rows.length === 0) return
 
-			const headers = result.columns.join(',')
-			const rows = result.rows
-				.map(function (row) {
-					return result.columns
-						.map(function (col) {
-							const value = row[col]
-							if (value === null || value === undefined) return ''
-							const stringValue = String(value)
-							if (
-								stringValue.includes(',') ||
-								stringValue.includes('"') ||
-								stringValue.includes('\n')
-							) {
-								return '"' + stringValue.replace(/"/g, '""') + '"'
-							}
-							return stringValue
-						})
-						.join(',')
-				})
-				.join('\n')
+		const headers = result.columns.join(',')
+		const allRows = await collectQueryRows(result)
+		const rows = allRows
+			.map(function (row) {
+				return result.columns
+					.map(function (col) {
+						const value = row[col]
+						if (value === null || value === undefined) return ''
+						const stringValue = String(value)
+						if (
+							stringValue.includes(',') ||
+							stringValue.includes('"') ||
+							stringValue.includes('\n')
+						) {
+							return '"' + stringValue.replace(/"/g, '""') + '"'
+						}
+						return stringValue
+					})
+					.join(',')
+			})
+			.join('\n')
 
-			const csvContent = headers + '\n' + rows
-			const blob = new Blob([csvContent], { type: 'text/csv' })
-			const url = URL.createObjectURL(blob)
-			const a = document.createElement('a')
-			a.href = url
-			a.download = 'query-results.csv'
-			a.click()
-			URL.revokeObjectURL(url)
-		},
-		[result]
-	)
+		const csvContent = headers + '\n' + rows
+		const blob = new Blob([csvContent], { type: 'text/csv' })
+		const url = URL.createObjectURL(blob)
+		const a = document.createElement('a')
+		a.href = url
+		a.download = 'query-results.csv'
+		a.click()
+		URL.revokeObjectURL(url)
+	}, [result])
 
 	const toggleRightSidebar = useCallback(
 		function () {

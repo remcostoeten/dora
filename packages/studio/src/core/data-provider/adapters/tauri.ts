@@ -14,9 +14,11 @@ import type {
 	QueryHistoryEntry,
 	JsonValue,
 	DatabaseInfo,
-	SavedQuery
+	SavedQuery,
+	QueryEvent
 } from '@studio/lib/bindings'
 import { commands } from '@studio/lib/bindings'
+import { Channel } from '@tauri-apps/api/core'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import {
 	buildDropColumnSql,
@@ -31,6 +33,7 @@ import type {
 	ExecuteQueryOptions,
 	QueryResult
 } from '../types'
+import { BufferedQueryRowSource, QUERY_PAGE_SIZE, parseQueryRows } from '../query-row-source'
 
 import { backendToFrontendConnection } from '@studio/features/connections/utils/mapping'
 import type { Connection } from '@studio/features/connections/types'
@@ -93,6 +96,12 @@ const formatError = formatBackendError
  */
 const QUERY_POLL_TIMEOUT_MS = 30_000
 const QUERY_POLL_INTERVAL_MS = 100
+const QUERY_STREAMING_ENABLED =
+	(
+		import.meta as unknown as {
+			env?: { VITE_QUERY_STREAMING?: string }
+		}
+	).env?.VITE_QUERY_STREAMING !== '0'
 
 type QueryPage = Extract<Awaited<ReturnType<typeof commands.fetchQuery>>, { status: 'ok' }>['data']
 
@@ -101,6 +110,20 @@ type QueryPollResult =
 	| { kind: 'error'; message: string }
 	| { kind: 'timeout' }
 	| { kind: 'fetch-failed' }
+
+type StreamStatement = {
+	columns: JsonValue
+	pages: Map<number, JsonValue>
+	pageCount: number
+	rowsReceived: number
+	affectedRows: number
+	executionTime: number
+	error?: string
+	resolve?: () => void
+	terminal: boolean
+}
+
+const STREAM_PAGE_CACHE_LIMIT = 8
 
 /**
  * Poll a started query to a terminal state. Distinguishes a real timeout (still
@@ -130,6 +153,80 @@ async function pollQueryToCompletion(queryId: number): Promise<QueryPollResult> 
 		await delay(QUERY_POLL_INTERVAL_MS)
 	}
 	return { kind: 'timeout' }
+}
+
+function createStreamStatement(): StreamStatement {
+	return {
+		columns: [],
+		pages: new Map(),
+		pageCount: 0,
+		rowsReceived: 0,
+		affectedRows: 0,
+		executionTime: 0,
+		terminal: false
+	}
+}
+
+function getStreamStatement(
+	statements: Map<number, StreamStatement>,
+	queryId: number
+): StreamStatement {
+	let statement = statements.get(queryId)
+	if (!statement) {
+		statement = createStreamStatement()
+		statements.set(queryId, statement)
+	}
+	return statement
+}
+
+function waitForStreamStatement(statement: StreamStatement): Promise<void> {
+	if (statement.terminal) return Promise.resolve()
+
+	return new Promise((resolve, reject) => {
+		const timeout = window.setTimeout(() => {
+			reject(
+				new Error(
+					`Query is still running after ${QUERY_POLL_TIMEOUT_MS / 1000}s. Try again or reconnect.`
+				)
+			)
+		}, QUERY_POLL_TIMEOUT_MS)
+		statement.resolve = () => {
+			window.clearTimeout(timeout)
+			resolve()
+		}
+	})
+}
+
+function applyQueryEvent(statements: Map<number, StreamStatement>, event: QueryEvent): void {
+	const statement = getStreamStatement(statements, event.query_id)
+
+	switch (event.type) {
+		case 'columns':
+			statement.columns = event.columns
+			break
+		case 'row_batch':
+			statement.pages.set(event.page_index, event.rows)
+			while (statement.pages.size > STREAM_PAGE_CACHE_LIMIT) {
+				const oldestPage = statement.pages.keys().next().value
+				if (oldestPage === undefined) break
+				statement.pages.delete(oldestPage)
+			}
+			statement.pageCount = Math.max(statement.pageCount, event.page_index + 1)
+			break
+		case 'progress':
+			statement.rowsReceived = event.rows_received
+			break
+		case 'done':
+			statement.affectedRows = event.affected_rows
+			statement.executionTime = event.elapsed_ms
+			statement.terminal = true
+			statement.resolve?.()
+			break
+		case 'error':
+			statement.error = event.message
+			statement.terminal = true
+			statement.resolve?.()
+	}
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -410,7 +507,7 @@ export function createTauriAdapter(): DataAdapter {
 			}
 
 			const columns = parseColumns(columnsResult.data ?? [])
-			const rows = await collectAllRows(queryId, pageInfo, columns)
+			const rows = await readAllQueryRows(queryId, pageInfo, columns)
 
 			return ok({
 				columns,
@@ -426,6 +523,9 @@ export function createTauriAdapter(): DataAdapter {
 			options?: ExecuteQueryOptions
 		): Promise<AdapterResult<QueryResult>> {
 			const startTime = performance.now()
+			if (QUERY_STREAMING_ENABLED) {
+				return executeStreamingQuery(connectionId, query, options, startTime)
+			}
 
 			const startResult = await commands.startQuery(connectionId, query)
 
@@ -465,7 +565,7 @@ export function createTauriAdapter(): DataAdapter {
 				const columnsResult = await commands.getColumns(queryId)
 				const columnDefs =
 					columnsResult.status === 'ok' ? parseColumns(columnsResult.data ?? []) : []
-				const rows = await collectAllRows(queryId, pageInfo, columnDefs)
+				const rows = await readAllQueryRows(queryId, pageInfo, columnDefs)
 
 				finalRows = rows
 				finalColumnDefs = columnDefs
@@ -719,24 +819,6 @@ function parseColumns(data: JsonValue): ColumnDefinition[] {
 	})
 }
 
-function parseRows(data: JsonValue, columns: ColumnDefinition[]): Record<string, unknown>[] {
-	if (!Array.isArray(data)) return []
-
-	return data.map(function (row: JsonValue) {
-		if (isRecord(row) && !Array.isArray(row)) {
-			return row
-		}
-		if (Array.isArray(row)) {
-			const obj: Record<string, unknown> = {}
-			columns.forEach(function (col, i) {
-				obj[col.name] = row[i] !== undefined ? row[i] : null
-			})
-			return obj
-		}
-		return {}
-	})
-}
-
 /**
  * Collect every row of a completed query. The backend buffers results in pages
  * of `DEFAULT_QUERY_PAGE_SIZE` (50) rows; `first_page` is only page 0. Reading
@@ -746,12 +828,12 @@ function parseRows(data: JsonValue, columns: ColumnDefinition[]): Record<string,
  * pages 1..page_count and concatenates them. Must only be called once the query
  * has reached `Completed`, so `page_count` reflects the full result.
  */
-async function collectAllRows(
+async function readAllQueryRows(
 	queryId: number,
 	pageInfo: QueryPage,
 	columns: ColumnDefinition[]
 ): Promise<Record<string, unknown>[]> {
-	const rows = parseRows(pageInfo.first_page, columns)
+	const rows = parseQueryRows(pageInfo.first_page, columns)
 
 	for (let pageIndex = 1; pageIndex < pageInfo.page_count; pageIndex++) {
 		const pageResult = await commands.fetchPage(queryId, pageIndex)
@@ -766,9 +848,72 @@ async function collectAllRows(
 			)
 			break
 		}
-		const pageRows = parseRows(pageResult.data, columns)
+		const pageRows = parseQueryRows(pageResult.data, columns)
 		for (const row of pageRows) rows.push(row)
 	}
 
 	return rows
+}
+
+async function executeStreamingQuery(
+	connectionId: string,
+	query: string,
+	options: ExecuteQueryOptions | undefined,
+	startTime: number
+): Promise<AdapterResult<QueryResult>> {
+	const statements = new Map<number, StreamStatement>()
+	const channel = new Channel<QueryEvent>()
+	channel.onmessage = (event) => {
+		applyQueryEvent(statements, event)
+		if (event.type !== 'row_batch' || event.page_index !== 0) return
+
+		const statement = getStreamStatement(statements, event.query_id)
+		const columnDefinitions = parseColumns(statement.columns)
+		const rows = parseQueryRows(event.rows, columnDefinitions)
+		options?.onRows?.({
+			rows,
+			columns: columnDefinitions.map((column) => column.name),
+			columnDefinitions,
+			rowCount: rows.length,
+			executionTime: Math.round(performance.now() - startTime)
+		})
+	}
+
+	const startResult = await commands.startQueryStream(connectionId, query, channel)
+	if (startResult.status !== 'ok') {
+		return err(formatError(startResult.error) || 'Failed to start query')
+	}
+	if (startResult.data.length === 0) return err('Backend returned no query ID')
+
+	options?.onStarted?.(startResult.data)
+	for (const queryId of startResult.data) {
+		await waitForStreamStatement(getStreamStatement(statements, queryId))
+	}
+
+	const queryId = startResult.data[startResult.data.length - 1]
+	const statement = getStreamStatement(statements, queryId)
+	if (statement.error) return err(statement.error)
+
+	const columnDefinitions = parseColumns(statement.columns)
+	const rowSource = new BufferedQueryRowSource(
+		columnDefinitions,
+		statement.pageCount,
+		async (pageIndex) => {
+			const pageResult = await commands.fetchPage(queryId, pageIndex)
+			return pageResult.status === 'ok' ? pageResult.data : null
+		}
+	)
+	for (const [pageIndex, page] of statement.pages) rowSource.push(pageIndex, page)
+
+	const rowCount = statement.affectedRows || statement.rowsReceived
+	const rows = await rowSource.rows({ start: 0, end: Math.min(rowCount, QUERY_PAGE_SIZE) })
+
+	return ok({
+		rows,
+		rowSource,
+		columns: columnDefinitions.map((column) => column.name),
+		columnDefinitions,
+		rowCount,
+		executionTime: statement.executionTime || Math.round(performance.now() - startTime)
+	})
 }

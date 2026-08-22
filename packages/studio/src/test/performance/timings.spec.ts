@@ -69,9 +69,9 @@ test('records the performance baseline @timing', async ({ page }) => {
 		budget: 'P95 < 16 ms'
 	}
 
-	const firstPaint = await measureLargeTableFirstPaint(page)
+	const firstPaint = await measureLargeTableFirstPaint(page, ITERATIONS)
 	scenarios['large-table-first-paint'] = {
-		...summarize([firstPaint]),
+		...summarize(dropWarmup(firstPaint)),
 		budget: 'first rows < 100 ms'
 	}
 

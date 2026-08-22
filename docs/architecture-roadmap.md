@@ -1,6 +1,7 @@
 # Architecture and performance roadmap
 
-Status: draft, 2026-08-22. High-level plan with independent sub-paths. Each track
+Status: living document, 2026-08-22. Tracks 0–3 are landed on
+`perf/track-2-workspace-store` (see `docs/benchmarks/`). High-level plan with independent sub-paths. Each track
 lists the evidence in today's code, the steps, the first PR, and the exit
 criterion that proves it landed. Tracks are ordered by leverage; the dependency
 graph at the end shows what can run in parallel.
@@ -38,23 +39,27 @@ lives in remote databases.
 
 ## Current state (evidence)
 
-| Area | Today | Where |
-| --- | --- | --- |
-| View switching | Conditional render chain on `activeNavId`; the inactive view unmounts | `packages/studio/src/pages/Index.tsx:1085-1180` |
-| Connection switching | `<DatabaseStudio key={studioConnectionId}>` forces full teardown | `pages/Index.tsx:1137` |
-| Editors | Monaco is `lazy()`-loaded per feature, destroyed on view switch | `features/sql-console/sql-console.tsx:46-54`, drizzle and prisma `code-editor.tsx` |
-| Table data | React Query key per page/sort/filter, `staleTime` 10 s, plus a second ad-hoc `tableDataCache` Map | `core/data-provider/hooks.ts:213`, `core/table-cache.ts` |
-| Query transport | Frontend polls `fetchQuery` on an interval, then `collectAllRows` walks every 50-row page and concatenates | `core/data-provider/adapters/tauri.ts:94,702`; `src-tauri/.../sqlite/execute.rs:13` |
-| Row encoding | `serde_json::Value` per row over IPC | `src-tauri/src/database/types.rs:80` |
-| Shell state | One 1,447-line component, 36 hook calls, eight `useState` dialogs | `pages/Index.tsx` |
-| Adapter seam | `DataAdapter` exists with mock and Tauri impls, but 65 feature files import `lib/bindings` directly | `core/data-provider/`, `grep -rl lib/bindings features/` |
-| Persistence | 14 independent `localStorage` writers | settings-store, appearance-store, ui-zoom, sidebar width, frecency, onboarding, tab session |
-| Rust layout | Single `app_lib` crate, 81 deps; `tauri::` referenced in 25 files under `database/` | `apps/desktop/src-tauri/` |
-| Measurement | None. No budgets, no render-count tests, no perf harness | — |
+The first four rows describe the state before Tracks 0–2 and are kept as the
+baseline the benchmarks compare against; the "Now" column is the post-Track-2
+state.
+
+| Area | Before Track 0 | Now | Where |
+| --- | --- | --- | --- |
+| View switching | Conditional render chain on `activeNavId`; the inactive view unmounts | Keep-alive `core/workspace-views`; zero remounts (Track 1) | `core/workspace-views/` |
+| Connection switching | `<DatabaseStudio key={studioConnectionId}>` forces full teardown | No remount; per-connection state in the store (Track 1) | `core/workspace-store/` |
+| Editors | Monaco is `lazy()`-loaded per feature, destroyed on view switch | One Monaco per session via `core/editor-host` (Track 1) | `core/editor-host/` |
+| Table data | React Query key per page/sort/filter, `staleTime` 10 s, plus a second ad-hoc `tableDataCache` Map | Snapshot store paints synchronously, zero IPC on a cached switch (Track 2) | `core/workspace-store/` |
+| Query transport | Frontend polls `fetchQuery` on an interval, then `collectAllRows` walks every 50-row page and concatenates | `start_query_stream` pushes `QueryEvent`s over a Tauri channel; 500-row pages; `BufferedQueryRowSource` serves row windows; 100k-row first paint P95 87.6 ms (Track 3) | `core/data-provider/query-row-source.ts`, `src-tauri/.../stmt_manager.rs` |
+| Row encoding | `serde_json::Value` per row over IPC | Arrays per row, columns sent once; binary/columnar still open | `src-tauri/src/database/types.rs` |
+| Shell state | One 1,447-line component, 36 hook calls, eight `useState` dialogs | `Index.tsx` is 15 lines; shell split under `pages/workspace/` (Track 2) | `pages/workspace/` |
+| Adapter seam | `DataAdapter` exists with mock and Tauri impls, but 65 feature files import `lib/bindings` directly | Unchanged (Track 4) | `core/data-provider/` |
+| Persistence | 14 independent `localStorage` writers | Unchanged (Track 8) | settings-store, appearance-store, ui-zoom, sidebar width, frecency, onboarding, tab session |
+| Rust layout | Single `app_lib` crate, 81 deps; `tauri::` referenced in 25 files under `database/` | Unchanged (Track 7) | `apps/desktop/src-tauri/` |
+| Measurement | None. No budgets, no render-count tests, no perf harness | `docs/performance-contract.md`, `bun perf`, CI invariants, dated files in `docs/benchmarks/` (Track 0) | `packages/studio/src/test/performance/` |
 
 ## Tracks
 
-### Track 0 — Performance contract and harness (do first)
+### Track 0 — Performance contract and harness — DONE
 
 Why first: every other track is unprovable without it, and the harness is
 cheap because browser-mode Studio (`localhost:1420`, mock adapter) and
@@ -86,7 +91,7 @@ First PR: contract doc + fixtures + harness measuring the current state.
 Exit: baseline numbers committed; "zero remount" and "zero shell commits on
 keystroke" tests exist and are currently red.
 
-### Track 1 — Keep-alive views and persistent editor host
+### Track 1 — Keep-alive views and persistent editor host — DONE
 
 Steps
 
@@ -112,7 +117,7 @@ flip the Track 0 "zero remount" test green.
 Exit: Track 0 view-switch and connection-switch budgets green; Monaco created
 once per language family per session.
 
-### Track 2 — Normalized workspace store
+### Track 2 — Normalized workspace store — DONE
 
 Steps
 
@@ -138,7 +143,7 @@ reading them through selectors; no behaviour change.
 Exit: keystroke and cached-navigation render budgets green; `Index.tsx` under
 300 lines.
 
-### Track 3 — Streaming query transport and windowed grid
+### Track 3 — Streaming query transport and windowed grid — DONE (SQL console); profiling and fixing the Data Viewer navigation frame is the follow-up
 
 Steps
 

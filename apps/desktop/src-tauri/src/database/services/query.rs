@@ -145,6 +145,21 @@ impl<'a> QueryService<'a> {
         Ok(query_ids)
     }
 
+    pub async fn start_query_stream(
+        &self,
+        connection_id: Uuid,
+        query: &str,
+        on_event: tauri::ipc::Channel<crate::database::types::QueryEvent>,
+    ) -> Result<Vec<usize>, Error> {
+        let client = self.connection_repo.get_client(connection_id)?;
+        self.stmt_manager.submit_query_for_connection_with_channel(
+            connection_id,
+            client,
+            query,
+            Some(on_event),
+        )
+    }
+
     pub async fn fetch_query(
         &self,
         query_id: usize,

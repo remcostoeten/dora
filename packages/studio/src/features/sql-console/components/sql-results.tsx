@@ -1,5 +1,15 @@
 import Editor from '@monaco-editor/react'
-import { Table2, Braces, Download, Copy, Trash2, CircleCheck, Database, BarChart3, Sparkles } from 'lucide-react'
+import {
+	Table2,
+	Braces,
+	Download,
+	Copy,
+	Trash2,
+	CircleCheck,
+	Database,
+	BarChart3,
+	Sparkles
+} from 'lucide-react'
 import { askAi, buildFixErrorPrompt } from '@studio/features/ai-assistant/ai-actions'
 import { QueryPlanPanel, isExplainQuery } from './query-plan-panel'
 import { useAsyncRowCount } from '../hooks/use-async-row-count'
@@ -93,6 +103,7 @@ export function SqlResults({
 	const [editingCell, setEditingCell] = useState<EditingCell | null>(null)
 	const [filterText, setFilterText] = useState('')
 	const [rowToDelete, setRowToDelete] = useState<Record<string, unknown> | null>(null)
+	const [loadedRows, setLoadedRows] = useState<Map<number, Record<string, unknown>>>(new Map())
 	const inputRef = useRef<HTMLInputElement>(null)
 	const isSavingEditRef = useRef(false)
 
@@ -101,6 +112,17 @@ export function SqlResults({
 			inputRef.current.focus()
 		}
 	}, [editingCell])
+
+	useEffect(() => {
+		if (!result) {
+			setLoadedRows(new Map())
+			return
+		}
+
+		const rows = new Map<number, Record<string, unknown>>()
+		for (let index = 0; index < result.rows.length; index++) rows.set(index, result.rows[index])
+		setLoadedRows(rows)
+	}, [result])
 
 	const successMessage = useMemo(() => {
 		if (!result || result.error) return null
@@ -126,6 +148,19 @@ export function SqlResults({
 		const rows = masked ? maskRowsForJson(result.rows) : result.rows
 		return JSON.stringify(rows, null, 2)
 	}, [result, masked, viewMode])
+
+	async function copyResultJson(): Promise<void> {
+		if (!result) return
+		const rows: Record<string, unknown>[] = []
+		if (result.rowSource) {
+			for await (const page of result.rowSource.pages()) rows.push(...page)
+		} else {
+			rows.push(...result.rows)
+		}
+		await navigator.clipboard.writeText(
+			JSON.stringify(masked ? maskRowsForJson(rows) : rows, null, 2)
+		)
+	}
 
 	const cellColumns = useMemo(() => {
 		if (!result) return new Map<string, ColumnDefinition>()
@@ -340,14 +375,14 @@ export function SqlResults({
 	const { filteredRows, filterTime } = useMemo(() => {
 		if (!result) return { filteredRows: [], filterTime: 0 }
 		const start = performance.now()
-		const rows = result.rows.filter((row) => {
+		const rows = Array.from(loadedRows.values()).filter((row) => {
 			if (!filterText) return true
 			const lowerFilter = filterText.toLowerCase()
 			return Object.values(row).some((val) => String(val).toLowerCase().includes(lowerFilter))
 		})
 		const end = performance.now()
 		return { filteredRows: rows, filterTime: (end - start).toFixed(2) }
-	}, [result, filterText])
+	}, [result, loadedRows, filterText])
 
 	// The scroll element lives inside the Radix ScrollArea; hold it in state so
 	// the virtualizer re-measures once the viewport mounts.
@@ -361,9 +396,10 @@ export function SqlResults({
 	// Virtualize large result sets — rendering thousands of rows (each wrapped
 	// in a context menu) makes big SELECTs unusable.
 	const VIRTUALIZE_THRESHOLD = 100
-	const shouldVirtualize = viewMode === 'table' && filteredRows.length > VIRTUALIZE_THRESHOLD
+	const visibleRowCount = result?.rowSource && !filterText ? result.rowCount : filteredRows.length
+	const shouldVirtualize = viewMode === 'table' && visibleRowCount > VIRTUALIZE_THRESHOLD
 	const rowVirtualizer = useVirtualizer({
-		count: shouldVirtualize ? filteredRows.length : 0,
+		count: shouldVirtualize ? visibleRowCount : 0,
 		getScrollElement: () => scrollViewport,
 		estimateSize: () => 34,
 		overscan: 12,
@@ -379,6 +415,47 @@ export function SqlResults({
 	const rowIndexesToRender = virtualRows
 		? virtualRows.map((vr) => vr.index)
 		: filteredRows.map((_, i) => i)
+	const windowStart = virtualRows?.[0]?.index ?? 0
+	const windowEnd = virtualRows?.[virtualRows.length - 1]?.index ?? -1
+
+	const requestedWindowRef = useRef<string | null>(null)
+
+	useEffect(() => {
+		requestedWindowRef.current = null
+	}, [result])
+
+	useEffect(() => {
+		if (!result?.rowSource || filterText || windowEnd < windowStart) return
+		let hasWindow = true
+		for (let index = windowStart; index <= windowEnd; index++) {
+			if (!loadedRows.has(index)) {
+				hasWindow = false
+				break
+			}
+		}
+		if (hasWindow) return
+
+		const start = windowStart
+		const end = windowEnd + 1
+		const windowKey = `${start}:${end}`
+		if (requestedWindowRef.current === windowKey) return
+		requestedWindowRef.current = windowKey
+
+		let active = true
+		result.rowSource.rows({ start, end }).then((rows) => {
+			if (!active) return
+			setLoadedRows(() => {
+				const next = new Map<number, Record<string, unknown>>()
+				for (let index = 0; index < rows.length; index++)
+					next.set(start + index, rows[index])
+				return next
+			})
+		})
+
+		return () => {
+			active = false
+		}
+	}, [result, filterText, loadedRows, windowStart, windowEnd])
 
 	// Reset filter if hidden
 	useEffect(() => {
@@ -550,7 +627,11 @@ export function SqlResults({
 							variant='ghost'
 							size='icon'
 							className='absolute top-2 right-2 h-7 w-7 bg-background/80 backdrop-blur-xs border border-border hover:bg-background'
-							onClick={() => navigator.clipboard.writeText(resultJsonText)}
+							onClick={() => {
+								copyResultJson().catch((error) => {
+									console.error('Failed to copy query results:', error)
+								})
+							}}
 							title='Copy JSON'
 						>
 							<Copy className='h-3.5 w-3.5' />
@@ -570,7 +651,7 @@ export function SqlResults({
 							</div>
 						)}
 						<ScrollArea ref={scrollAreaRef} className='flex-1'>
-							<table className='w-full text-sm'>
+							<table data-query-results className='w-full text-sm'>
 								<thead className='sticky top-0 bg-sidebar-accent z-10'>
 									<tr>
 										<th className='w-8 px-2 py-1.5 text-center text-muted-foreground border-b border-r border-sidebar-border'>
@@ -593,119 +674,145 @@ export function SqlResults({
 										</tr>
 									)}
 									{rowIndexesToRender.map((rowIndex) => {
-										const row = filteredRows[rowIndex]
-										return (
-										<ContextMenu key={rowIndex}>
-											<ContextMenuTrigger asChild>
-												<tr className='hover:bg-sidebar-accent/50 transition-colors group'>
-													<td className='px-2 py-1.5 text-center text-xs text-muted-foreground border-b border-r border-sidebar-border group-hover:bg-sidebar-accent'>
-														{rowIndex + 1}
-													</td>
-													{result.columns.map((col) => {
-														const isEditing =
-															editingCell?.rowData === row &&
-															editingCell?.column === col
-														const cellValue = row[col]
-
-														return (
-															<td
-																key={col}
-																className={cn(
-																	'px-3 py-1.5 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono whitespace-nowrap relative min-h-[30px]',
-																	mutationContext && !masked
-																		? 'cursor-cell'
-																		: 'cursor-default'
-																)}
-																onDoubleClick={() => {
-																	if (!mutationContext || masked) return
-																	handleCellDoubleClick(
-																		row,
-																		col,
-																		cellValue
-																	)
-																}}
-															>
-																{isEditing ? (
-																	<Input
-																		ref={inputRef}
-																		className='h-6 w-full min-w-[100px] px-1 py-0 text-sm font-mono bg-background border-primary absolute inset-0 rounded-none z-20'
-																		value={editingCell.value}
-																		onChange={(e) =>
-																			setEditingCell({
-																				...editingCell,
-																				value: e.target
-																					.value
-																			})
-																		}
-																		onBlur={async () => {
-																			await handleSaveCell()
-																		}}
-																		onKeyDown={async (e) => {
-																			if (e.key === 'Enter') {
-																				e.preventDefault()
-																				e.stopPropagation()
-																				await handleSaveCell()
-																			} else if (
-																				e.key === 'Escape'
-																			) {
-																				isSavingEditRef.current = false
-																				setEditingCell(null)
-																			}
-																		}}
-																	/>
-																) : masked ? (
-																	<div className='truncate max-w-[300px]'>
-																		<span className='select-none tracking-widest text-muted-foreground'>
-																			{MASK_TOKEN}
-																		</span>
-																	</div>
-																) : (
-																	<div
-																		className='truncate max-w-[300px]'
-																		title={formatCellValue(
-																			cellValue
-																		)}
-																	>
-																		{renderCellValue(
-																			cellValue,
-																			cellColumns.get(col) ?? {
-																				name: col,
-																				type: 'text',
-																				nullable: true,
-																				primaryKey: false
-																			}
-																		)}
-																	</div>
-																)}
-															</td>
-														)
-													})}
+										const row =
+											result.rowSource && !filterText
+												? loadedRows.get(rowIndex)
+												: filteredRows[rowIndex]
+										if (!row) {
+											return (
+												<tr key={rowIndex} className='h-[34px]'>
+													<td colSpan={result.columns.length + 1} />
 												</tr>
-											</ContextMenuTrigger>
-											<ContextMenuContent>
-												<ContextMenuItem
-													disabled={masked}
-													onClick={() => {
-														if (masked) return
-														navigator.clipboard.writeText(
-															JSON.stringify(row, null, 2)
-														)
-													}}
-												>
-													<Copy />
-													Copy Row JSON
-												</ContextMenuItem>
-												<ContextMenuSeparator />
-												<ContextMenuItem
-													disabled={!mutationContext || masked}
-													variant='destructive'
-													onClick={() => handleDeleteRow(row)}
-												>
-													<Trash2 />
-													Delete Row
-												</ContextMenuItem>
-											</ContextMenuContent>
-										</ContextMenu>
+											)
+										}
+										return (
+											<ContextMenu key={rowIndex}>
+												<ContextMenuTrigger asChild>
+													<tr className='hover:bg-sidebar-accent/50 transition-colors group'>
+														<td className='px-2 py-1.5 text-center text-xs text-muted-foreground border-b border-r border-sidebar-border group-hover:bg-sidebar-accent'>
+															{rowIndex + 1}
+														</td>
+														{result.columns.map((col) => {
+															const isEditing =
+																editingCell?.rowData === row &&
+																editingCell?.column === col
+															const cellValue = row[col]
+
+															return (
+																<td
+																	key={col}
+																	className={cn(
+																		'px-3 py-1.5 text-sidebar-foreground border-b border-r border-sidebar-border last:border-r-0 font-mono whitespace-nowrap relative min-h-[30px]',
+																		mutationContext && !masked
+																			? 'cursor-cell'
+																			: 'cursor-default'
+																	)}
+																	onDoubleClick={() => {
+																		if (
+																			!mutationContext ||
+																			masked
+																		)
+																			return
+																		handleCellDoubleClick(
+																			row,
+																			col,
+																			cellValue
+																		)
+																	}}
+																>
+																	{isEditing ? (
+																		<Input
+																			ref={inputRef}
+																			className='h-6 w-full min-w-[100px] px-1 py-0 text-sm font-mono bg-background border-primary absolute inset-0 rounded-none z-20'
+																			value={
+																				editingCell.value
+																			}
+																			onChange={(e) =>
+																				setEditingCell({
+																					...editingCell,
+																					value: e.target
+																						.value
+																				})
+																			}
+																			onBlur={async () => {
+																				await handleSaveCell()
+																			}}
+																			onKeyDown={async (
+																				e
+																			) => {
+																				if (
+																					e.key ===
+																					'Enter'
+																				) {
+																					e.preventDefault()
+																					e.stopPropagation()
+																					await handleSaveCell()
+																				} else if (
+																					e.key ===
+																					'Escape'
+																				) {
+																					isSavingEditRef.current = false
+																					setEditingCell(
+																						null
+																					)
+																				}
+																			}}
+																		/>
+																	) : masked ? (
+																		<div className='truncate max-w-[300px]'>
+																			<span className='select-none tracking-widest text-muted-foreground'>
+																				{MASK_TOKEN}
+																			</span>
+																		</div>
+																	) : (
+																		<div
+																			className='truncate max-w-[300px]'
+																			title={formatCellValue(
+																				cellValue
+																			)}
+																		>
+																			{renderCellValue(
+																				cellValue,
+																				cellColumns.get(
+																					col
+																				) ?? {
+																					name: col,
+																					type: 'text',
+																					nullable: true,
+																					primaryKey: false
+																				}
+																			)}
+																		</div>
+																	)}
+																</td>
+															)
+														})}
+													</tr>
+												</ContextMenuTrigger>
+												<ContextMenuContent>
+													<ContextMenuItem
+														disabled={masked}
+														onClick={() => {
+															if (masked) return
+															navigator.clipboard.writeText(
+																JSON.stringify(row, null, 2)
+															)
+														}}
+													>
+														<Copy />
+														Copy Row JSON
+													</ContextMenuItem>
+													<ContextMenuSeparator />
+													<ContextMenuItem
+														disabled={!mutationContext || masked}
+														variant='destructive'
+														onClick={() => handleDeleteRow(row)}
+													>
+														<Trash2 />
+														Delete Row
+													</ContextMenuItem>
+												</ContextMenuContent>
+											</ContextMenu>
 										)
 									})}
 									{bottomPad > 0 && (
@@ -725,7 +832,9 @@ export function SqlResults({
 					<div className='flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground'>
 						<span>
 							{successMessage}{' '}
-							{filteredRows.length !== result.rowCount ? `${filteredRows.length} / ` : ''}
+							{filteredRows.length !== result.rowCount
+								? `${filteredRows.length} / `
+								: ''}
 							{result.rowCount} row{result.rowCount !== 1 ? 's' : ''} •{' '}
 							{result.executionTime}ms backend • {filterTime}ms filtering
 						</span>

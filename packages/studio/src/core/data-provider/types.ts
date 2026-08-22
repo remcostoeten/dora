@@ -20,6 +20,7 @@ import {
 	ImportFilesIntoDuckDbResult,
 	SaveDataFileSessionResult
 } from '@studio/lib/bindings'
+import type { QueryRowSource } from './query-row-source'
 
 export type AdapterResult<T> =
 	| {
@@ -37,6 +38,7 @@ export function getAdapterError<T>(result: AdapterResult<T>): string {
 
 export type QueryResult = {
 	rows: Record<string, unknown>[]
+	rowSource?: QueryRowSource
 	columns: string[]
 	columnDefinitions?: ColumnDefinition[]
 	rowCount: number
@@ -48,6 +50,7 @@ import type { Connection } from '@studio/features/connections/types'
 export type ExecuteQueryOptions = {
 	/** Called with the backend statement ids as soon as the query starts, so the caller can cancel just those statements. */
 	onStarted?: (queryIds: number[]) => void
+	onRows?: (result: QueryResult) => void
 }
 
 /**

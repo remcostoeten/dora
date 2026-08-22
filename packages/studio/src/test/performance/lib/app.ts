@@ -50,6 +50,7 @@ export async function bootPerfApp(page: Page): Promise<void> {
 	await page.addInitScript(installPerfInstrumentation)
 	await page.addInitScript(function seedFlags() {
 		try {
+			;(window as Window & { __DORA_CAPTURE_MODE?: boolean }).__DORA_CAPTURE_MODE = true
 			localStorage.setItem('dora_perf_fixtures', '1')
 			localStorage.setItem('dora_has_seen_scroll_hint', 'true')
 			// The first-run tour renders a modal over the app and would eat the
@@ -127,4 +128,36 @@ export async function trackedNodeSurvives(page: Page): Promise<boolean> {
 		const state = (window as unknown as Record<string, { tracked: Element | null }>).__doraPerf
 		return Boolean(state && state.tracked && state.tracked.isConnected)
 	})
+}
+
+/**
+ * Wait until React has stopped committing for `quietMs`. Used after a scenario
+ * whose trailing work (a delayed final result, an async row count) would
+ * otherwise leak into the next measurement window.
+ */
+export async function waitForQuiet(page: Page, quietMs = 400, timeoutMs = 15_000): Promise<void> {
+	await page.evaluate(
+		function waitUntilQuiet({ quietMs, timeoutMs }) {
+			const state = (window as unknown as { __doraPerf: { commits: unknown[] } }).__doraPerf
+			return new Promise<void>(function resolver(resolve) {
+				const deadline = performance.now() + timeoutMs
+				let lastCount = state.commits.length
+				let quietSince = performance.now()
+				function tick() {
+					const now = performance.now()
+					if (state.commits.length !== lastCount) {
+						lastCount = state.commits.length
+						quietSince = now
+					}
+					if (now - quietSince >= quietMs || now >= deadline) {
+						resolve()
+						return
+					}
+					setTimeout(tick, 50)
+				}
+				tick()
+			})
+		},
+		{ quietMs, timeoutMs }
+	)
 }

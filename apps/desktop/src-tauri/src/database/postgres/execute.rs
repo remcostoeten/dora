@@ -55,7 +55,7 @@ async fn execute_simple_query(
     };
     pin_mut!(stream);
 
-    let batch_size = 50;
+    let batch_size = 500;
     let mut writer = RowWriter::new(dialect);
     let mut affected_rows = 0;
     let mut sent_columns = !returns_values;
@@ -161,7 +161,7 @@ async fn execute_query_with_results(
         Ok(stream) => {
             pin_mut!(stream);
 
-            let batch_size = 50;
+            let batch_size = 500;
             let mut total_rows = 0;
 
             let mut writer = RowWriter::new(dialect);

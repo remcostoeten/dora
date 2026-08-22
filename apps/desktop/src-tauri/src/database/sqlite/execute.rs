@@ -10,7 +10,7 @@ use crate::{
     Error,
 };
 
-pub const DEFAULT_QUERY_PAGE_SIZE: usize = 50;
+pub const DEFAULT_QUERY_PAGE_SIZE: usize = 500;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SqliteExecuteConfig {
@@ -450,44 +450,10 @@ mod tests {
         let page_1 = events.next().unwrap();
         match page_1 {
             QueryExecEvent::Page { page_amount, page } => {
-                assert_eq!(page_amount, 50);
+                assert_eq!(page_amount, 155);
                 let page = serde_json::to_string(&page).unwrap();
                 assert!(page.starts_with("[[1],[2]"));
-                assert!(page.ends_with("49],[50]]"));
-            }
-            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
-        }
-
-        let page_2 = events.next().unwrap();
-        match page_2 {
-            QueryExecEvent::Page { page_amount, page } => {
-                assert_eq!(page_amount, 50);
-                let page = serde_json::to_string(&page).unwrap();
-                assert!(page.starts_with("[[51],[52]"));
-                assert!(page.ends_with("99],[100]]"));
-            }
-            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
-        }
-
-        let page_3 = events.next().unwrap();
-        match page_3 {
-            QueryExecEvent::Page { page_amount, page } => {
-                assert_eq!(page_amount, 50);
-                let page = serde_json::to_string(&page).unwrap();
-                assert!(page.starts_with("[[101],[102]"));
-                assert!(page.ends_with("149],[150]]"));
-            }
-            other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
-        }
-
-        let page_4 = events.next().unwrap();
-        match page_4 {
-            QueryExecEvent::Page { page_amount, page } => {
-                assert_eq!(page_amount, 5);
-                assert_eq!(
-                    serde_json::to_string(&page).unwrap(),
-                    "[[151],[152],[153],[154],[155]]"
-                );
+                assert!(page.ends_with("[154],[155]]"));
             }
             other => return Err(anyhow::anyhow!("Expected Page event, got {:?}", other)),
         }

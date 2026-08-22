@@ -178,6 +178,7 @@ pub fn run() {
             database::commands::cancel_query,
             database::commands::cancel_queries,
             database::commands::start_query,
+            database::commands::start_query_stream,
             database::commands::fetch_query,
             database::commands::fetch_page,
             database::commands::get_query_status,

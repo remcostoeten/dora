@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { NAV, PERF, SELECTORS, settle } from './app'
+import { NAV, PERF, SELECTORS, settle, waitForQuiet } from './app'
 import type { LoafEntry } from './instrument'
 
 /**
@@ -250,27 +250,47 @@ export async function measureKeystrokeCommits(page: Page, text: string): Promise
 }
 
 /**
- * Time from selecting the 100k-row table to the first painted cell. The mock
- * adapter delays 50-150 ms artificially, so this number is a first-paint
- * measurement of the render path plus that floor, not a claim about IPC.
+ * Time from submitting a 100k-row SELECT in the SQL console to the first painted
+ * data cell. Each iteration shifts the query by `OFFSET i` so the first cell's
+ * text provably changes, and waits for the app to go quiet afterwards so the
+ * delayed final result and async row count cannot leak into the next scenario.
  */
-export async function measureLargeTableFirstPaint(page: Page): Promise<number> {
-	await page.click(SELECTORS.tableItem(PERF.smallTables[0]))
-	await page.waitForSelector(SELECTORS.cell, { timeout: 30_000 })
+export async function measureLargeTableFirstPaint(
+	page: Page,
+	iterations: number
+): Promise<number[]> {
+	await page.click(SELECTORS.navItem(NAV.sqlConsole))
+	await page.waitForFunction(() => typeof window.__DORA_CAPTURE_RUN_SQL === 'function')
 	await settle(page)
 
-	return page.evaluate(
-		async function run({ table, cell }) {
-			const { __doraPerfKit: kit } = window as unknown as PerfWindow
-			const previous = kit.text(cell)
-			const start = performance.now()
-			kit.click(table)
-			await kit.waitFor(() => kit.text(cell) !== previous, 60_000)
-			await kit.settle()
-			return performance.now() - start
-		},
-		{ table: SELECTORS.tableItem(PERF.largeTable), cell: SELECTORS.cell }
-	)
+	const samples: number[] = []
+	for (let iteration = 0; iteration < iterations; iteration++) {
+		const sample = await page.evaluate(
+			async function run({ table, offset, firstCell }) {
+				const { __doraPerfKit: kit } = window as unknown as PerfWindow
+				const previous = kit.text(firstCell)
+				const start = performance.now()
+				window.__DORA_CAPTURE_RUN_SQL?.(
+					`SELECT * FROM ${table} LIMIT 100000 OFFSET ${offset}`
+				)
+				await kit.waitFor(() => {
+					const text = kit.text(firstCell)
+					return text !== '' && text !== previous
+				}, 60_000)
+				await kit.settle()
+				return performance.now() - start
+			},
+			{
+				table: PERF.largeTable,
+				offset: iteration,
+				firstCell: '[data-query-results] tbody td:nth-child(2)'
+			}
+		)
+		samples.push(sample)
+		await waitForQuiet(page)
+	}
+
+	return samples
 }
 
 /** Long frames recorded since a `performance.now()` timestamp. */

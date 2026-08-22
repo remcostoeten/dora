@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useConnections } from '@studio/core/data-provider'
 import { getAdapterError } from '@studio/core/data-provider/types'
+import { collectQueryRows } from '@studio/core/data-provider/query-row-source'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
@@ -110,7 +111,10 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 				// into the SQL by the translator with placeholders, so we send the SQL as-is.
 				const queryResult = await adapter.executeQuery(activeConnectionId, translation.sql)
 				if (queryResult.ok) {
-					setResult(queryResult.data)
+					setResult({
+						...queryResult.data,
+						rows: await collectQueryRows(queryResult.data)
+					})
 					setTranslationError(null)
 				} else {
 					setResult({
