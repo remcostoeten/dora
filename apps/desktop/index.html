@@ -201,7 +201,15 @@
 			}
 
 			@media (prefers-reduced-motion: reduce) {
+				#boot-screen,
 				#boot-screen * {
+					animation: none !important;
+					transition: none !important;
+				}
+				.boot-progress {
+					opacity: 1 !important;
+				}
+				.boot-progress::after {
 					animation: none !important;
 				}
 			}
