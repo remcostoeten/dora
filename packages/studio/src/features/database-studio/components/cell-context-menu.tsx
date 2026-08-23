@@ -1,10 +1,4 @@
-import {
-	ContextMenu,
-	ContextMenuContent,
-	ContextMenuItem,
-	ContextMenuSeparator,
-	ContextMenuTrigger
-} from '@studio/shared/ui/context-menu'
+import { ContextMenuItem, ContextMenuSeparator } from '@studio/shared/ui/context-menu'
 import { Binary, Copy, FileDown, FileJson, Filter, Pencil, Trash2 } from 'lucide-react'
 import { ColumnDefinition } from '../types'
 import { detectBlob } from './cells/blob-utils'
@@ -24,7 +18,6 @@ type Props = {
 	value: unknown
 	column: ColumnDefinition
 	rowIndex: number
-	colIndex?: number
 	row?: Record<string, unknown>
 	selectedRows?: Set<number>
 	hasFilter?: boolean
@@ -40,30 +33,23 @@ type Props = {
 		column: ColumnDefinition,
 		row: Record<string, unknown>
 	) => void
-	onOpenChange?: (open: boolean, rowIndex: number, colIndex: number) => void
-	/** Privacy mode: render the cell without any context menu (no copy/edit/export). */
-	disabled?: boolean
-	children: React.ReactNode
 }
 
-export function CellContextMenu({
+/**
+ * The items of the cell context menu. Rendered inside the grid's single shared
+ * `ContextMenuContent` for whichever cell was right-clicked, so the grid pays
+ * for one menu instead of one per cell.
+ */
+export function CellContextMenuItems({
 	value,
 	column,
 	rowIndex,
-	colIndex = 0,
 	row,
 	selectedRows,
 	hasFilter = false,
 	onAction,
-	onBlobAction,
-	onOpenChange,
-	disabled = false,
-	children
+	onBlobAction
 }: Props) {
-	if (disabled) {
-		return <>{children}</>
-	}
-
 	function handleCopy() {
 		const text = value === null || value === undefined ? '' : String(value)
 		navigator.clipboard.writeText(text)
@@ -99,10 +85,6 @@ export function CellContextMenu({
 		}
 	}
 
-	function handleOpenChange(open: boolean) {
-		onOpenChange?.(open, rowIndex, colIndex)
-	}
-
 	function handleBlobAction(action: BlobAction) {
 		if (row && onBlobAction) onBlobAction(action, column, row)
 	}
@@ -113,65 +95,64 @@ export function CellContextMenu({
 	const showBlobActions = !!blobInfo && !!row && !!onBlobAction
 
 	return (
-		<ContextMenu onOpenChange={handleOpenChange}>
-			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-			<ContextMenuContent
-				className='w-[180px]'
-				onCloseAutoFocus={function (e) {
-					// Don't restore focus to the trigger cell on close. "Edit cell"
-					// opens an inline <input>; letting Radix refocus the cell would
-					// blur that input the instant it mounts and close the editor.
-					e.preventDefault()
-				}}
-			>
-				<ContextMenuItem onClick={handleEdit}>
-					<Pencil />
-					<span>Edit cell</span>
+		<>
+			<ContextMenuItem onClick={handleEdit}>
+				<Pencil />
+				<span>Edit cell</span>
+			</ContextMenuItem>
+			<ContextMenuSeparator />
+			<ContextMenuItem onClick={handleCopy}>
+				<Copy />
+				<span>Copy value</span>
+			</ContextMenuItem>
+			{isComplexType && (
+				<ContextMenuItem onClick={handleCopyJson}>
+					<FileJson />
+					<span>Copy as JSON</span>
 				</ContextMenuItem>
-				<ContextMenuSeparator />
-				<ContextMenuItem onClick={handleCopy}>
-					<Copy />
-					<span>Copy value</span>
-				</ContextMenuItem>
-				{isComplexType && (
-					<ContextMenuItem onClick={handleCopyJson}>
-						<FileJson />
-						<span>Copy as JSON</span>
+			)}
+			{showBlobActions && (
+				<>
+					<ContextMenuSeparator />
+					<ContextMenuItem
+						onClick={function () {
+							handleBlobAction('copy-hex')
+						}}
+					>
+						<Binary />
+						<span>Copy as hex</span>
 					</ContextMenuItem>
-				)}
-				{showBlobActions && (
-					<>
-						<ContextMenuSeparator />
-						<ContextMenuItem onClick={function () { handleBlobAction('copy-hex') }}>
-							<Binary />
-							<span>Copy as hex</span>
-						</ContextMenuItem>
-						<ContextMenuItem onClick={function () { handleBlobAction('copy-base64') }}>
-							<Copy />
-							<span>Copy as base64</span>
-						</ContextMenuItem>
-						<ContextMenuItem onClick={function () { handleBlobAction('save-file') }}>
-							<FileDown />
-							<span>Save to file…</span>
-						</ContextMenuItem>
-					</>
-				)}
-				<ContextMenuSeparator />
-				<ContextMenuItem onClick={handleFilterByValue} disabled={!hasFilter}>
-					<Filter />
-					<span>Filter by this value</span>
-				</ContextMenuItem>
-				<ContextMenuSeparator />
-				<ContextMenuItem onClick={handleSetNull} variant='destructive'>
-					<Trash2 />
-					<span>
-						{hasSelectedRows
-							? `Set to NULL (${selectedRows!.size} rows)`
-							: 'Set to NULL'}
-					</span>
-				</ContextMenuItem>
-			</ContextMenuContent>
-		</ContextMenu>
+					<ContextMenuItem
+						onClick={function () {
+							handleBlobAction('copy-base64')
+						}}
+					>
+						<Copy />
+						<span>Copy as base64</span>
+					</ContextMenuItem>
+					<ContextMenuItem
+						onClick={function () {
+							handleBlobAction('save-file')
+						}}
+					>
+						<FileDown />
+						<span>Save to file…</span>
+					</ContextMenuItem>
+				</>
+			)}
+			<ContextMenuSeparator />
+			<ContextMenuItem onClick={handleFilterByValue} disabled={!hasFilter}>
+				<Filter />
+				<span>Filter by this value</span>
+			</ContextMenuItem>
+			<ContextMenuSeparator />
+			<ContextMenuItem onClick={handleSetNull} variant='destructive'>
+				<Trash2 />
+				<span>
+					{hasSelectedRows ? `Set to NULL (${selectedRows!.size} rows)` : 'Set to NULL'}
+				</span>
+			</ContextMenuItem>
+		</>
 	)
 }
 

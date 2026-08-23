@@ -85,6 +85,35 @@ pub struct StatementInfo {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Type)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum QueryEvent {
+    Columns {
+        query_id: QueryId,
+        #[specta(type = serde_json::Value)]
+        columns: Box<RawValue>,
+    },
+    RowBatch {
+        query_id: QueryId,
+        page_index: usize,
+        #[specta(type = serde_json::Value)]
+        rows: Page,
+    },
+    Progress {
+        query_id: QueryId,
+        rows_received: usize,
+    },
+    Done {
+        query_id: QueryId,
+        affected_rows: usize,
+        elapsed_ms: u64,
+    },
+    Error {
+        query_id: QueryId,
+        message: String,
+    },
+}
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Type)]
 pub enum QueryStatus {

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useConnections } from '@studio/core/data-provider'
 import { getAdapterError } from '@studio/core/data-provider/types'
+import { collectQueryRows } from '@studio/core/data-provider/query-row-source'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
@@ -110,7 +111,10 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 				// into the SQL by the translator with placeholders, so we send the SQL as-is.
 				const queryResult = await adapter.executeQuery(activeConnectionId, translation.sql)
 				if (queryResult.ok) {
-					setResult(queryResult.data)
+					setResult({
+						...queryResult.data,
+						rows: await collectQueryRows(queryResult.data)
+					})
 					setTranslationError(null)
 				} else {
 					setResult({
@@ -254,7 +258,9 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 							setIsSidebarCollapsed(!isSidebarCollapsed)
 						}}
 						aria-expanded={!isSidebarCollapsed}
-						aria-label={isSidebarCollapsed ? 'Show schema sidebar' : 'Hide schema sidebar'}
+						aria-label={
+							isSidebarCollapsed ? 'Show schema sidebar' : 'Hide schema sidebar'
+						}
 					>
 						{isSidebarCollapsed ? 'Show Schema' : 'Hide Schema'}
 					</Button>
@@ -312,6 +318,7 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 						<Panel defaultSize={60} minSize={20}>
 							<div className='flex flex-col h-full relative'>
 								<CodeEditor
+									tabId={`prisma:${activeConnectionId}`}
 									value={query}
 									onChange={setQuery}
 									onExecute={handleExecute}
@@ -358,7 +365,11 @@ export function PrismaRunner({ connectionId }: PrismaRunnerProps) {
 				</Panel>
 			</PanelGroup>
 
-			<PrismaSchemaDialog open={showSchema} onOpenChange={setShowSchema} code={prismaSchema} />
+			<PrismaSchemaDialog
+				open={showSchema}
+				onOpenChange={setShowSchema}
+				code={prismaSchema}
+			/>
 		</div>
 	)
 }

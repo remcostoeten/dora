@@ -78,7 +78,7 @@ fn execute_query_with_results(
     sender.send(QueryExecEvent::TypesResolved { columns })?;
 
     let mut total_rows = 0;
-    let batch_size = 50;
+    let batch_size = 500;
     let mut writer = RowWriter::new(column_count);
 
     loop {
@@ -305,7 +305,7 @@ mod tests {
             .iter()
             .filter(|e| matches!(e, QueryExecEvent::Page { .. }))
             .collect();
-        assert_eq!(pages.len(), 4, "155 rows should arrive in 4 pages of <=50");
+        assert_eq!(pages.len(), 1, "155 rows should arrive in one page of <=500");
 
         Ok(())
     }

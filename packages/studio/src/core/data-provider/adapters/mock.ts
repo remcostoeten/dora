@@ -20,7 +20,14 @@ import type {
 	SavedQuery
 } from '@studio/lib/bindings'
 import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA, MOCK_SCRIPTS } from '../mock-data'
-import type { DataAdapter, AdapterResult, QueryResult } from '../types'
+import type {
+	AdapterResult,
+	BootstrapSnapshot,
+	DataAdapter,
+	ExecuteQueryOptions,
+	QueryResult
+} from '../types'
+import { BufferedQueryRowSource, QUERY_PAGE_SIZE } from '../query-row-source'
 import { getTableRefParts } from '@studio/shared/utils/table-ref'
 import { extractMutationSourceTable } from '@studio/features/sql-console/query-target'
 
@@ -37,6 +44,7 @@ let store: InMemoryStore = {
 	connections: [],
 	scripts: []
 }
+let nextMockQueryId = 1
 
 const STORAGE_KEY = 'dora_demo_store'
 
@@ -62,7 +70,9 @@ function normalizeStoredStore(saved: unknown): InMemoryStore | null {
 	if (totalRows === 0) return null
 
 	const nextIdRaw =
-		maybe.nextId && typeof maybe.nextId === 'object' ? (maybe.nextId as Record<string, unknown>) : {}
+		maybe.nextId && typeof maybe.nextId === 'object'
+			? (maybe.nextId as Record<string, unknown>)
+			: {}
 	const nextId: Record<string, number> = {}
 
 	for (const key of Object.keys(tables)) {
@@ -198,10 +208,9 @@ function evalCondition(row: Record<string, unknown>, f: FilterCondition): boolea
 
 /** Recursively evaluates a structured filter group against a row. */
 function evalGroup(row: Record<string, unknown>, group: FilterGroup): boolean {
-	const results = group.conditions
-		.map(function (node) {
-			return isFilterGroup(node) ? evalGroup(row, node) : evalCondition(row, node)
-		})
+	const results = group.conditions.map(function (node) {
+		return isFilterGroup(node) ? evalGroup(row, node) : evalCondition(row, node)
+	})
 	if (results.length === 0) return true
 	return group.logic === 'OR' ? results.some(Boolean) : results.every(Boolean)
 }
@@ -270,8 +279,64 @@ function findTableInfo(connectionId: string, tableName: string): TableInfo | und
 import type { Connection } from '@studio/features/connections/types'
 import { backendToFrontendConnection } from '@studio/features/connections/utils/mapping'
 
+/**
+ * Counts adapter calls by method name on `window`, so the performance harness
+ * can assert the contract's "zero IPC on a cached table switch" literally
+ * rather than inferring it from a timing. Mock-only: the demo adapter is the
+ * harness's target, and nothing ships this counter to the desktop app.
+ */
+function withCallCounter(adapter: DataAdapter): DataAdapter {
+	if (typeof window === 'undefined') return adapter
+
+	const counts: Record<string, number> = {}
+	;(window as unknown as { __doraAdapterCalls: Record<string, number> }).__doraAdapterCalls =
+		counts
+
+	return new Proxy(adapter, {
+		get(target, property: string, receiver) {
+			const value = Reflect.get(target, property, receiver)
+			if (typeof value !== 'function') return value
+			return function counted(...args: unknown[]) {
+				counts[property] = (counts[property] ?? 0) + 1
+				return (value as (...callArgs: unknown[]) => unknown).apply(target, args)
+			}
+		}
+	})
+}
+
 export function createMockAdapter(): DataAdapter {
-	return {
+	return withCallCounter({
+		async bootstrap(): Promise<AdapterResult<BootstrapSnapshot>> {
+			await randomDelay()
+			if (store.connections.length === 0 && MOCK_CONNECTIONS.length > 0) {
+				store.connections = [...MOCK_CONNECTIONS]
+			}
+
+			// Mock mode has every schema in hand, so it can seed the schema slice
+			// the way a warm backend cache would.
+			const schemas = store.connections.map(function (connection) {
+				return {
+					connectionId: connection.id,
+					schema: MOCK_SCHEMAS[resolveSchemaConnectionId(connection.id)]
+				}
+			})
+
+			return ok({
+				connections: store.connections.map(backendToFrontendConnection),
+				settings: window.localStorage.getItem('ui_settings'),
+				savedQueries: store.scripts.filter(function (script) {
+					return !script.is_snippet
+				}),
+				snippets: store.scripts.filter(function (script) {
+					return script.is_snippet
+				}),
+				snippetFolders: [],
+				schemas: schemas.filter(function (entry) {
+					return Boolean(entry.schema)
+				})
+			})
+		},
+
 		async getConnections(): Promise<AdapterResult<Connection[]>> {
 			await randomDelay()
 			// Use stored connections which might include added ones
@@ -367,7 +432,7 @@ export function createMockAdapter(): DataAdapter {
 						viewName: `mock_view_${index + 1}`,
 						fileType: 'CSV',
 						status: 'active' as const,
-						error: null,
+						error: null
 					}
 				})
 			)
@@ -387,7 +452,7 @@ export function createMockAdapter(): DataAdapter {
 					viewName: `mock_view_${index + 1}`,
 					fileType: 'CSV',
 					status: 'active' as const,
-					error: null,
+					error: null
 				}
 			})
 			return ok({ connected: true, fileSources: entries })
@@ -412,11 +477,11 @@ export function createMockAdapter(): DataAdapter {
 					return {
 						name: `mock_view_${index + 1}`,
 						sourcePath: path,
-						rowCount: 1,
+						rowCount: 1
 					}
 				}),
 				skipped: [],
-				warnings: overwrite ? ['Mock save replaced an existing file'] : [],
+				warnings: overwrite ? ['Mock save replaced an existing file'] : []
 			})
 		},
 
@@ -438,11 +503,11 @@ export function createMockAdapter(): DataAdapter {
 						name: `imported_${index + 1}`,
 						sourcePath: path,
 						fileType: 'CSV',
-						rowCount: 1,
+						rowCount: 1
 					}
 				}),
 				failed: [],
-				warnings: [],
+				warnings: []
 			})
 		},
 
@@ -627,10 +692,11 @@ CREATE TABLE posts (
 
 		async executeQuery(
 			connectionId: string,
-			query: string
+			query: string,
+			options?: ExecuteQueryOptions
 		): Promise<AdapterResult<QueryResult>> {
 			const startTime = Date.now()
-			await delay(100 + Math.random() * 200)
+			options?.onStarted?.([nextMockQueryId++])
 
 			const tableName = extractMutationSourceTable(query)
 
@@ -686,10 +752,38 @@ CREATE TABLE posts (
 
 			const slicedRows = rows.slice(offset, offset + limit)
 			const columns = Object.keys(slicedRows[0] || rows[0] || {})
+			const columnDefinitions = columns.map((name) => ({
+				name,
+				type: 'unknown',
+				nullable: true,
+				primaryKey: name === 'id'
+			}))
+			const pageCount = Math.ceil(slicedRows.length / QUERY_PAGE_SIZE)
+			const rowSource = new BufferedQueryRowSource(
+				columnDefinitions,
+				pageCount,
+				async (pageIndex) =>
+					slicedRows.slice(
+						pageIndex * QUERY_PAGE_SIZE,
+						(pageIndex + 1) * QUERY_PAGE_SIZE
+					) as JsonValue
+			)
+			if (pageCount > 0) rowSource.push(0, slicedRows.slice(0, QUERY_PAGE_SIZE) as JsonValue)
+			options?.onRows?.({
+				rows: slicedRows.slice(0, QUERY_PAGE_SIZE),
+				rowSource,
+				columns,
+				columnDefinitions,
+				rowCount: slicedRows.length,
+				executionTime: Date.now() - startTime
+			})
+			await delay(100 + Math.random() * 200)
 
 			return ok({
-				rows: slicedRows,
-				columns: columns,
+				rows: slicedRows.slice(0, QUERY_PAGE_SIZE),
+				rowSource,
+				columns,
+				columnDefinitions,
 				rowCount: rows.length,
 				executionTime: Date.now() - startTime
 			})
@@ -925,7 +1019,7 @@ CREATE TABLE posts (
 			await randomDelay()
 			return ok(undefined)
 		}
-	}
+	})
 }
 
 export function resetMockStore() {

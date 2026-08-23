@@ -3,13 +3,20 @@ import { readTextFile } from '@tauri-apps/plugin-fs'
 import { convertSchemaToDrizzle } from '@studio/core/data-generation/sql-to-drizzle'
 import { useIsTauri } from '@studio/core/data-provider'
 import { getAdapterError, type DataAdapter } from '@studio/core/data-provider/types'
-import { tableDataCache } from '@studio/core/table-cache'
+import { clearTableSnapshots } from '@studio/core/workspace-store'
 import { commands } from '@studio/lib/bindings'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { getTableRefParts } from '@studio/shared/utils/table-ref'
 import type { ColumnFormData } from '../components/add-column-dialog'
 import { rowsToCsv, rowsToSqlInsert, splitSqlStatements } from '../utils/studio-data'
-import type { ColumnDefinition, FilterConjunction, FilterDescriptor, FilterGroup, SortDescriptor, TableData } from '../types'
+import type {
+	ColumnDefinition,
+	FilterConjunction,
+	FilterDescriptor,
+	FilterGroup,
+	SortDescriptor,
+	TableData
+} from '../types'
 
 type Args = {
 	adapter: DataAdapter
@@ -69,8 +76,7 @@ export function useDatabaseStudioCommands(args: Args) {
 
 	// True when any filter is active (flat list or structured group). Drives the
 	// "Export N matching rows" vs "Export all rows" choice in the export dialog.
-	const hasActiveFilters =
-		(filters?.length ?? 0) > 0 || (filterGroup?.conditions.length ?? 0) > 0
+	const hasActiveFilters = (filters?.length ?? 0) > 0 || (filterGroup?.conditions.length ?? 0) > 0
 
 	// Fetches every row matching the active filters/sort (up to a cap) so an
 	// export reflects what the user is looking at, not the whole table or just
@@ -195,7 +201,10 @@ export function useDatabaseStudioCommands(args: Args) {
 			const sql = await readTextFile(selected)
 			const statements = splitSqlStatements(sql)
 			if (statements.length === 0) {
-				toast({ title: 'Nothing to restore', description: 'The file has no SQL statements.' })
+				toast({
+					title: 'Nothing to restore',
+					description: 'The file has no SQL statements.'
+				})
 				return
 			}
 			const result = await commands.executeBatch(activeConnectionId, statements)
@@ -283,9 +292,11 @@ export function useDatabaseStudioCommands(args: Args) {
 		try {
 			const result = await commands.executeBatch(activeConnectionId, [sql])
 			if (result.status === 'ok') {
-				tableDataCache.clear()
+				clearTableSnapshots()
 				window.dispatchEvent(
-					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
+					new CustomEvent('dora-schema-refresh', {
+						detail: { connectionId: activeConnectionId }
+					})
 				)
 				loadTableData()
 			} else {
@@ -305,9 +316,11 @@ export function useDatabaseStudioCommands(args: Args) {
 		try {
 			const result = await adapter.dropTable(activeConnectionId, tableName)
 			if (result.ok) {
-				tableDataCache.clear()
+				clearTableSnapshots()
 				window.dispatchEvent(
-					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
+					new CustomEvent('dora-schema-refresh', {
+						detail: { connectionId: activeConnectionId }
+					})
 				)
 				toast({
 					title: 'Table dropped',
@@ -336,9 +349,11 @@ export function useDatabaseStudioCommands(args: Args) {
 		try {
 			const result = await adapter.dropColumn(activeConnectionId, tableRefName, columnName)
 			if (result.ok) {
-				tableDataCache.clear()
+				clearTableSnapshots()
 				window.dispatchEvent(
-					new CustomEvent('dora-schema-refresh', { detail: { connectionId: activeConnectionId } })
+					new CustomEvent('dora-schema-refresh', {
+						detail: { connectionId: activeConnectionId }
+					})
 				)
 				toast({
 					title: 'Column dropped',

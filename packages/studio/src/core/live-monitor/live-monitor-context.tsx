@@ -10,7 +10,7 @@ import {
 } from 'react'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { commands } from '@studio/lib/bindings'
-import { clearTableDataCache } from '@studio/core/table-cache'
+import { clearTableSnapshots } from '@studio/core/workspace-store'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import { type ChangeEvent, type ChangeType, type LiveMonitorConfig, DEFAULT_CONFIG } from './types'
 
@@ -40,20 +40,22 @@ const MAX_EVENTS = 100
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function isTauri(): boolean {
-	return typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+	return (
+		typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+	)
 }
 
 function dispatchSchemaRefresh(connectionId: string) {
-	window.dispatchEvent(
-		new CustomEvent('dora-schema-refresh', { detail: { connectionId } })
-	)
+	window.dispatchEvent(new CustomEvent('dora-schema-refresh', { detail: { connectionId } }))
 }
 
 // ── Context shape ────────────────────────────────────────────────────────────
 
 type LiveMonitorContextValue = {
 	config: LiveMonitorConfig
-	setConfig: (config: LiveMonitorConfig | ((prev: LiveMonitorConfig) => LiveMonitorConfig)) => void
+	setConfig: (
+		config: LiveMonitorConfig | ((prev: LiveMonitorConfig) => LiveMonitorConfig)
+	) => void
 	isPolling: boolean
 	monitorError: string | null
 	recentEvents: ChangeEvent[]
@@ -62,7 +64,6 @@ type LiveMonitorContextValue = {
 	clearEvents: () => void
 	/** Set which table is currently visible — used to track unread counts per table */
 	setActiveTable: (tableName: string | null) => void
-	activeTable: string | null
 }
 
 const LiveMonitorContext = createContext<LiveMonitorContextValue | null>(null)
@@ -87,17 +88,14 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 	const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	// ── Debounced refresh: busts cache + fires schema-refresh event ──────────
-	const scheduleRefresh = useCallback(
-		function scheduleRefresh(connectionId: string) {
-			if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current)
-			refreshDebounceRef.current = setTimeout(function () {
-				refreshDebounceRef.current = null
-				clearTableDataCache()
-				dispatchSchemaRefresh(connectionId)
-			}, 150)
-		},
-		[]
-	)
+	const scheduleRefresh = useCallback(function scheduleRefresh(connectionId: string) {
+		if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current)
+		refreshDebounceRef.current = setTimeout(function () {
+			refreshDebounceRef.current = null
+			clearTableSnapshots()
+			dispatchSchemaRefresh(connectionId)
+		}, 150)
+	}, [])
 
 	// ── Stop current monitor ─────────────────────────────────────────────────
 	const stopMonitor = useCallback(async function stopMonitor() {
@@ -146,11 +144,16 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 				setRecentEvents(function (prev) {
 					return [...incoming, ...prev].slice(0, MAX_EVENTS)
 				})
-				setUnreadCount(function (prev) { return prev + incoming.length })
+				setUnreadCount(function (prev) {
+					return prev + incoming.length
+				})
 
 				scheduleRefresh(payload.connectionId)
 			}).then(function (fn) {
-				if (disposed) { fn(); return }
+				if (disposed) {
+					fn()
+					return
+				}
 				unlisten = fn
 			})
 
@@ -237,10 +240,16 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 		function manageFallbackPolling() {
 			if (runtimeAvailable) return
 
-			if (fallbackRef.current) { clearInterval(fallbackRef.current); fallbackRef.current = null }
+			if (fallbackRef.current) {
+				clearInterval(fallbackRef.current)
+				fallbackRef.current = null
+			}
 
 			const shouldPoll = config.enabled && Boolean(activeConnectionId) && Boolean(activeTable)
-			if (!shouldPoll) { setIsPolling(false); return }
+			if (!shouldPoll) {
+				setIsPolling(false)
+				return
+			}
 
 			setIsPolling(true)
 			fallbackRef.current = setInterval(function () {
@@ -248,11 +257,21 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 			}, config.intervalMs)
 
 			return function cleanup() {
-				if (fallbackRef.current) { clearInterval(fallbackRef.current); fallbackRef.current = null }
+				if (fallbackRef.current) {
+					clearInterval(fallbackRef.current)
+					fallbackRef.current = null
+				}
 				setIsPolling(false)
 			}
 		},
-		[runtimeAvailable, config.enabled, config.intervalMs, activeConnectionId, activeTable, scheduleRefresh]
+		[
+			runtimeAvailable,
+			config.enabled,
+			config.intervalMs,
+			activeConnectionId,
+			activeTable,
+			scheduleRefresh
+		]
 	)
 
 	// ── Reset state when connection changes ──────────────────────────────────
@@ -265,8 +284,13 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 		[activeConnectionId]
 	)
 
-	const markRead = useCallback(function () { setUnreadCount(0) }, [])
-	const clearEvents = useCallback(function () { setRecentEvents([]); setUnreadCount(0) }, [])
+	const markRead = useCallback(function () {
+		setUnreadCount(0)
+	}, [])
+	const clearEvents = useCallback(function () {
+		setRecentEvents([])
+		setUnreadCount(0)
+	}, [])
 
 	const value = useMemo<LiveMonitorContextValue>(
 		function () {
@@ -279,11 +303,10 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 				unreadCount,
 				markRead,
 				clearEvents,
-				setActiveTable,
-				activeTable
+				setActiveTable
 			}
 		},
-		[config, isPolling, monitorError, recentEvents, unreadCount, markRead, clearEvents, activeTable]
+		[config, isPolling, monitorError, recentEvents, unreadCount, markRead, clearEvents]
 	)
 
 	return <LiveMonitorContext.Provider value={value}>{children}</LiveMonitorContext.Provider>

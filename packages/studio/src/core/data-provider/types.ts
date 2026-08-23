@@ -18,8 +18,9 @@ import {
 	DatabaseConnectResult,
 	DataFileSourceEntry,
 	ImportFilesIntoDuckDbResult,
-	SaveDataFileSessionResult,
+	SaveDataFileSessionResult
 } from '@studio/lib/bindings'
+import type { QueryRowSource } from './query-row-source'
 
 export type AdapterResult<T> =
 	| {
@@ -37,6 +38,7 @@ export function getAdapterError<T>(result: AdapterResult<T>): string {
 
 export type QueryResult = {
 	rows: Record<string, unknown>[]
+	rowSource?: QueryRowSource
 	columns: string[]
 	columnDefinitions?: ColumnDefinition[]
 	rowCount: number
@@ -48,14 +50,28 @@ import type { Connection } from '@studio/features/connections/types'
 export type ExecuteQueryOptions = {
 	/** Called with the backend statement ids as soon as the query starts, so the caller can cancel just those statements. */
 	onStarted?: (queryIds: number[]) => void
+	onRows?: (result: QueryResult) => void
+}
+
+/**
+ * Everything the shell needs before it can paint, in one round-trip. Mirrors
+ * the Rust `bootstrap` command; the mock adapter answers the same shape so
+ * browser mode and the perf harness exercise the same path.
+ */
+export type BootstrapSnapshot = {
+	connections: Connection[]
+	/** The raw settings document, or null when the user has never saved one. */
+	settings: string | null
+	savedQueries: SavedQuery[]
+	snippets: SavedQuery[]
+	snippetFolders: SnippetFolder[]
+	schemas: Array<{ connectionId: string; schema: DatabaseSchema }>
 }
 
 export type DataAdapter = {
+	bootstrap(): Promise<AdapterResult<BootstrapSnapshot>>
 	getConnections(): Promise<AdapterResult<Connection[]>>
-	addConnection(
-		name: string,
-		databaseType: DatabaseInfo
-	): Promise<AdapterResult<Connection>>
+	addConnection(name: string, databaseType: DatabaseInfo): Promise<AdapterResult<Connection>>
 	updateConnection(
 		id: string,
 		name: string,
@@ -68,12 +84,8 @@ export type DataAdapter = {
 	disconnectFromDatabase(connectionId: string): Promise<AdapterResult<void>>
 	testConnection(connectionId: string): Promise<AdapterResult<boolean>>
 
-	getDataFileSourceStatus(
-		connectionId: string
-	): Promise<AdapterResult<DataFileSourceEntry[]>>
-	retryDataFileRegistration(
-		connectionId: string
-	): Promise<AdapterResult<DatabaseConnectResult>>
+	getDataFileSourceStatus(connectionId: string): Promise<AdapterResult<DataFileSourceEntry[]>>
+	retryDataFileRegistration(connectionId: string): Promise<AdapterResult<DatabaseConnectResult>>
 	saveDataFileSessionAsDuckdb(
 		connectionId: string,
 		destinationPath: string,

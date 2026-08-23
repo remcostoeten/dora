@@ -9,4 +9,4 @@
  * On the web, `@monaco-editor/react`'s default loader fetches Monaco (and its
  * workers) from a CDN, so no local worker setup is required.
  */
-export {}
+export function preloadMonacoWorkers(): void {}

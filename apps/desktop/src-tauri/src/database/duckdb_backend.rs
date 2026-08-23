@@ -47,7 +47,7 @@ pub trait DuckDbConn: Send + Sync + std::fmt::Debug {
     // ---- read / query ----
 
     /// Run a parsed statement, streaming `QueryExecEvent`s (TypesResolved →
-    /// Page(s of 50) → Finished) through `sender`. Mirrors
+    /// Page(s of 500) → Finished) through `sender`. Mirrors
     /// `DatabaseAdapter::execute_query`.
     async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender)
         -> Result<(), Error>;

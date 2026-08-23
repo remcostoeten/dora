@@ -185,10 +185,7 @@ export function readSession(): SerializedSession {
 export function writeSession(input: SessionInput): void {
 	if (typeof window === 'undefined') return
 	try {
-		window.localStorage.setItem(
-			SESSION_STORAGE_KEY,
-			JSON.stringify(serializeTabs(input))
-		)
+		window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(serializeTabs(input)))
 	} catch {
 		// Best-effort: ignore quota/serialization errors.
 	}

@@ -29,3 +29,14 @@ self.MonacoEnvironment = {
 		return new editorWorker()
 	}
 }
+
+let workersPreloaded = false
+
+export function preloadMonacoWorkers(): void {
+	if (workersPreloaded) return
+	workersPreloaded = true
+	const workers = [new editorWorker(), new tsWorker()]
+	window.setTimeout(() => {
+		workers.forEach((worker) => worker.terminate())
+	}, 1000)
+}

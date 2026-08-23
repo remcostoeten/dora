@@ -1,6 +1,7 @@
 // Types for the SQL Console feature
 import type { ColumnDefinition } from '@studio/features/database-studio/types'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
+import type { QueryRowSource } from '@studio/core/data-provider/query-row-source'
 
 export type SqlSnippet = {
 	id: string
@@ -15,6 +16,7 @@ export type SqlSnippet = {
 export type SqlQueryResult = {
 	columns: string[]
 	rows: Record<string, unknown>[]
+	rowSource?: QueryRowSource
 	rowCount: number
 	executionTime: number
 	error?: string

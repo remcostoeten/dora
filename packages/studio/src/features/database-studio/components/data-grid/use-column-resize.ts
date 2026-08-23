@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
+import { useWorkspaceState } from '@studio/core/workspace-state'
 
 export const MIN_COLUMN_WIDTH = 100
 export const DEFAULT_COLUMN_WIDTH = 150
 
-export function useColumnResize() {
-	const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+export function useColumnResize(workspaceStateKey: string) {
+	const [columnWidths, setColumnWidths] = useWorkspaceState(
+		`${workspaceStateKey}:column-widths`,
+		() => {
+			return {} as Record<string, number>
+		}
+	)
 	const [resizingColumn, setResizingColumn] = useState<string | null>(null)
 	const startXRef = useRef(0)
 	const startWidthRef = useRef(0)

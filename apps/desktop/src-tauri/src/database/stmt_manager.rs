@@ -19,7 +19,7 @@ use crate::{
         mysql,
         parser::ParsedStatement,
         postgres, sqlite,
-        types::{channel, DatabaseClient, Page, QueryId, QueryStatus, StatementInfo},
+        types::{channel, DatabaseClient, Page, QueryEvent, QueryId, QueryStatus, StatementInfo},
         QueryExecEvent,
     },
     Error,
@@ -77,6 +77,7 @@ struct ExecState {
     rows_affected: RwLock<Option<usize>>,
     sqlite_interrupt_handle: RwLock<Option<rusqlite::InterruptHandle>>,
     pg_cancel: RwLock<Option<PgCancel>>,
+    event_channel: Option<tauri::ipc::Channel<QueryEvent>>,
 }
 
 /// Signals the database engine itself to stop a running statement: interrupts
@@ -185,6 +186,12 @@ impl StatementManager {
             }
 
             *entry.error.write().expect("RwLock poisoned") = Some("Query cancelled".to_string());
+            if let Some(channel) = &entry.event_channel {
+                let _ = channel.send(QueryEvent::Error {
+                    query_id: *query_id,
+                    message: "Query cancelled".to_string(),
+                });
+            }
             entry
                 .status
                 .store(QueryStatus::Error as u8, Ordering::Relaxed);
@@ -222,6 +229,16 @@ impl StatementManager {
         client: DatabaseClient,
         query: &str,
     ) -> Result<Vec<QueryId>, Error> {
+        self.submit_query_for_connection_with_channel(connection_id, client, query, None)
+    }
+
+    pub fn submit_query_for_connection_with_channel(
+        &self,
+        connection_id: Uuid,
+        client: DatabaseClient,
+        query: &str,
+        event_channel: Option<tauri::ipc::Channel<QueryEvent>>,
+    ) -> Result<Vec<QueryId>, Error> {
         let parse_statements: fn(&str) -> Result<Vec<ParsedStatement>, anyhow::Error> =
             match &client {
                 DatabaseClient::Postgres { .. } => postgres::parser::parse_statements,
@@ -250,6 +267,7 @@ impl StatementManager {
                 statement,
                 start_gate,
                 Some(finished_tx),
+                event_channel.clone(),
             );
             start_gate = Some(finished_rx);
             query_ids.push(id);
@@ -368,6 +386,7 @@ impl StatementManager {
         stmt: ParsedStatement,
         start_gate: Option<oneshot::Receiver<bool>>,
         finished_gate: Option<oneshot::Sender<bool>>,
+        event_channel: Option<tauri::ipc::Channel<QueryEvent>>,
     ) {
         let result = if stmt.returns_values {
             ExecResult::Rows {
@@ -387,6 +406,7 @@ impl StatementManager {
             rows_affected: RwLock::new(None),
             sqlite_interrupt_handle: RwLock::new(None),
             pg_cancel: RwLock::new(None),
+            event_channel,
         };
 
         let exec_storage = Arc::new(exec_storage);
@@ -518,6 +538,12 @@ impl StatementManager {
             while let Some(event) = recv.recv().await {
                 match event {
                     QueryExecEvent::TypesResolved { columns } => {
+                        if let Some(channel) = &exec_storage.event_channel {
+                            let _ = channel.send(QueryEvent::Columns {
+                                query_id: id,
+                                columns: columns.clone(),
+                            });
+                        }
                         if let ExecResult::Rows { columns: slot, .. } = &exec_storage.result {
                             *slot.write().expect("RwLock poisoned") = Some(columns);
                         } else {
@@ -527,6 +553,19 @@ impl StatementManager {
                         }
                     }
                     QueryExecEvent::Page { page_amount, page } => {
+                        let page_index = match &exec_storage.result {
+                            ExecResult::Rows { pages, .. } => {
+                                pages.read().expect("RwLock poisoned").len()
+                            }
+                            ExecResult::NoRows => 0,
+                        };
+                        if let Some(channel) = &exec_storage.event_channel {
+                            let _ = channel.send(QueryEvent::RowBatch {
+                                query_id: id,
+                                page_index,
+                                rows: page.clone(),
+                            });
+                        }
                         if let ExecResult::Rows {
                             pages,
                             rows_received,
@@ -535,21 +574,40 @@ impl StatementManager {
                         {
                             pages.write().expect("RwLock poisoned").push(page);
                             *rows_received.write().expect("RwLock poisoned") += page_amount;
+                            if let Some(channel) = &exec_storage.event_channel {
+                                let _ = channel.send(QueryEvent::Progress {
+                                    query_id: id,
+                                    rows_received: *rows_received.read().expect("RwLock poisoned"),
+                                });
+                            }
                         } else {
                             log::warn!("Received a result page for a non-row-returning query; ignoring");
                         }
                     }
                     QueryExecEvent::Finished {
-                        elapsed_ms: _,
+                        elapsed_ms,
                         affected_rows,
                         error,
                     } => {
                         if let Some(err) = error {
+                            if let Some(channel) = &exec_storage.event_channel {
+                                let _ = channel.send(QueryEvent::Error {
+                                    query_id: id,
+                                    message: err.clone(),
+                                });
+                            }
                             *exec_storage.error.write().expect("RwLock poisoned") = Some(err);
                             exec_storage
                                 .status
                                 .store(QueryStatus::Error as u8, Ordering::Relaxed);
                         } else {
+                            if let Some(channel) = &exec_storage.event_channel {
+                                let _ = channel.send(QueryEvent::Done {
+                                    query_id: id,
+                                    affected_rows,
+                                    elapsed_ms,
+                                });
+                            }
                             succeeded = true;
                             exec_storage
                                 .status
@@ -665,6 +723,46 @@ mod tests {
         let info = stmt_manager.fetch_query(0).unwrap();
         assert_eq!(info.page_count, 1);
         assert_eq!(info.rows_received, 1);
+    }
+
+    #[tokio::test]
+    async fn streams_columns_batches_progress_and_completion() {
+        let stmt_manager = StatementManager::new();
+        let client = DatabaseClient::SQLite {
+            connection: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
+        };
+        let events = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let captured_events = events.clone();
+        let channel = tauri::ipc::Channel::new(move |body| {
+            captured_events
+                .lock()
+                .unwrap()
+                .push(body.deserialize::<serde_json::Value>().unwrap());
+            Ok(())
+        });
+
+        let query_ids = stmt_manager
+            .submit_query_for_connection_with_channel(
+                Uuid::nil(),
+                client,
+                "SELECT 1 UNION ALL SELECT 2",
+                Some(channel),
+            )
+            .unwrap();
+
+        assert_eq!(
+            wait_for_terminal_status(&stmt_manager, query_ids[0]).await,
+            QueryStatus::Completed
+        );
+
+        let events = events.lock().unwrap();
+        let event_types = events
+            .iter()
+            .filter_map(|event| event.get("type").and_then(serde_json::Value::as_str))
+            .collect::<Vec<_>>();
+        assert_eq!(event_types, ["columns", "row_batch", "progress", "done"]);
+        assert_eq!(events[1]["rows"], serde_json::json!([[1], [2]]));
+        assert_eq!(events[2]["rows_received"], 2);
     }
 
     /// The analytics dashboard submits several queries at once. Statement ids

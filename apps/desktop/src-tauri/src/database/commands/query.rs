@@ -5,7 +5,7 @@ use crate::{
     database::{
         connection_repository::ConnectionRepository,
         services::query::QueryService,
-        types::{QueryStatus, StatementInfo},
+        types::{QueryEvent, QueryStatus, StatementInfo},
     },
     error::Error,
     storage::QueryHistoryEntry,
@@ -38,22 +38,7 @@ pub async fn start_query(
 ) -> Result<Vec<usize>, Error> {
     // SQL Console uses `start_query`; invalidate cached schema when query includes
     // non-read-only statements so schema fetches reflect DDL changes immediately.
-    let invalidates_schema = {
-        let parsed = state.parse_statements(connection_id, query).ok();
-
-        if let Some(statements) = parsed {
-            statements.iter().any(|stmt| !stmt.is_read_only)
-        } else {
-            // Fallback for parser edge-cases: prefer cache invalidation over stale schema.
-            let upper = query.to_ascii_uppercase();
-            [
-                "CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "ATTACH", "DETACH",
-            ]
-            .iter()
-            .any(|keyword| upper.contains(keyword))
-        }
-    };
-
+    let invalidates_schema = query_invalidates_schema(state.inner(), connection_id, query);
     let svc = QueryService {
         connection_repo: state.inner(),
         storage: &state.storage,
@@ -66,6 +51,40 @@ pub async fn start_query(
     }
 
     Ok(query_ids)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn start_query_stream(
+    connection_id: Uuid,
+    query: &str,
+    on_event: tauri::ipc::Channel<QueryEvent>,
+    state: State<'_, AppState>,
+) -> Result<Vec<usize>, Error> {
+    let invalidates_schema = query_invalidates_schema(state.inner(), connection_id, query);
+    let svc = QueryService {
+        connection_repo: state.inner(),
+        storage: &state.storage,
+        stmt_manager: &state.stmt_manager,
+    };
+    let query_ids = svc.start_query_stream(connection_id, query, on_event).await?;
+    if invalidates_schema {
+        state.schemas.remove(&connection_id);
+    }
+    Ok(query_ids)
+}
+
+fn query_invalidates_schema(state: &AppState, connection_id: Uuid, query: &str) -> bool {
+    if let Ok(statements) = state.parse_statements(connection_id, query) {
+        return statements.iter().any(|statement| !statement.is_read_only);
+    }
+
+    let upper = query.to_ascii_uppercase();
+    [
+        "CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "ATTACH", "DETACH",
+    ]
+    .iter()
+    .any(|keyword| upper.contains(keyword))
 }
 
 #[tauri::command]

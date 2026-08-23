@@ -9,6 +9,7 @@ import {
 	useRef
 } from 'react'
 import { commands } from '@studio/lib/bindings'
+import { readBootstrappedSettings } from '@studio/core/workspace-store'
 import { MonacoTheme } from './editor-themes'
 
 export type EditorTheme = 'auto' | MonacoTheme
@@ -71,8 +72,7 @@ const STARTUP_CONNECTION_MODES: ReadonlySet<SettingsState['startupConnectionMode
 
 function isTauriRuntime(): boolean {
 	return (
-		typeof window !== 'undefined' &&
-		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
+		typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 	)
 }
 
@@ -168,6 +168,15 @@ type SettingsContextValue = {
 
 const SettingsContext = createContext<SettingsContextValue | null>(null)
 
+function safeParse(document: string): unknown {
+	try {
+		return JSON.parse(document)
+	} catch (error) {
+		console.warn('Failed to parse the bootstrapped settings document:', error)
+		return null
+	}
+}
+
 async function loadSettingsFromBackend(): Promise<SettingsState> {
 	if (!isTauriRuntime()) {
 		try {
@@ -223,15 +232,23 @@ type SettingsProviderProps = {
 }
 
 export function SettingsProvider({ children }: SettingsProviderProps) {
-	const [settings, setSettings] = useState<SettingsState>(DEFAULT_SETTINGS)
-	const [isLoading, setIsLoading] = useState(true)
+	// Bootstrap already carried the settings document, so settings resolve on the
+	// first render and the shell never paints a loading state for them. Without
+	// bootstrap (a failure, or a test rendering the provider directly) this falls
+	// back to the async load below.
+	const [bootstrapped] = useState(readBootstrappedSettings)
+	const [settings, setSettings] = useState<SettingsState>(function () {
+		return bootstrapped ? sanitizeSettings(safeParse(bootstrapped)) : DEFAULT_SETTINGS
+	})
+	const [isLoading, setIsLoading] = useState(bootstrapped === null)
 	const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	const initialLoadDone = useRef(false)
+	const initialLoadDone = useRef(bootstrapped !== null)
 	// Source of truth for persistence. Holds reactive state PLUS keys written
 	// through `persistSetting` (which bypass React state on purpose).
 	const latestSettingsRef = useRef(settings)
 
 	useEffect(() => {
+		if (initialLoadDone.current) return
 		async function load() {
 			const loaded = await loadSettingsFromBackend()
 			latestSettingsRef.current = loaded

@@ -20,6 +20,7 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         window_commands::read_project_file,
         window_commands::list_dir,
         // Database commands
+        db_commands::bootstrap,
         db_commands::add_connection,
         db_commands::update_connection,
         db_commands::update_connection_color,
@@ -96,6 +97,7 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::cancel_query,
         db_commands::cancel_queries,
         db_commands::start_query,
+        db_commands::start_query_stream,
         db_commands::fetch_query,
         db_commands::fetch_page,
         db_commands::get_query_status,

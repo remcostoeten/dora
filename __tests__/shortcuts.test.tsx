@@ -1,13 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import {
 	APP_SHORTCUTS,
 	findShortcutConflict,
 	formatShortcutList,
 	getEffectiveShortcuts,
 	normalizeShortcut,
+	useShortcut,
 	useShortcutStore,
 	type ShortcutDefinition
 } from '@studio/core/shortcuts'
+
+function NewConnectionShortcut({ onToggle }: { onToggle: () => void }) {
+	const $ = useShortcut({ ignoreInputs: false })
+	$.bind(APP_SHORTCUTS.newConnection.combo).on(onToggle)
+
+	return <input aria-label="Connection name" />
+}
 
 describe('shortcuts', function () {
 	beforeEach(function () {
@@ -67,5 +76,16 @@ describe('shortcuts', function () {
 			'x',
 			'mod+d'
 		])
+	})
+
+	it('toggles a new connection while an input is focused', function () {
+		const onToggle = vi.fn()
+		render(<NewConnectionShortcut onToggle={onToggle} />)
+
+		const input = screen.getByRole('textbox', { name: 'Connection name' })
+		input.focus()
+		fireEvent.keyDown(input, { key: 'n', ctrlKey: true })
+
+		expect(onToggle).toHaveBeenCalledTimes(1)
 	})
 })

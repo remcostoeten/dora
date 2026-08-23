@@ -90,3 +90,9 @@ dev-menu.config.ts
 # promo recorder output
 promo-out/
 smoke-artifacts/
+
+# performance harness output — raw runs stay local, baselines worth keeping are
+# summarized into docs/benchmarks/
+perf-artifacts/
+test-results/
+playwright-report/

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAdapter } from '@studio/core/data-provider/context'
 import { getAdapterError } from '@studio/core/data-provider/types'
+import { collectQueryRows } from '@studio/core/data-provider/query-row-source'
 
 type HogqlQueryState = {
 	rows: Record<string, unknown>[]
@@ -43,11 +44,13 @@ export function useHogqlQuery(
 
 			adapter
 				.executeQuery(connectionId, query)
-				.then(function (result) {
+				.then(async function (result) {
 					if (runId !== runIdRef.current) return
 					if (result.ok) {
+						const rows = await collectQueryRows(result.data)
+						if (runId !== runIdRef.current) return
 						setState({
-							rows: result.data.rows,
+							rows,
 							columns: result.data.columns,
 							isLoading: false,
 							error: null
