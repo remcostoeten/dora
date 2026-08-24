@@ -484,6 +484,7 @@ export function DatabaseStudio({
 		handleDraftSave,
 		handleDraftCancel,
 		handleAddRecordSubmit,
+		highlightedRowIndexes,
 		notifyMissingPrimaryKey,
 		notifyActionFailure
 	} = useDatabaseStudioActions({
@@ -875,26 +876,29 @@ export function DatabaseStudio({
 		return <DatabaseStudioNoConnection onAddConnection={onAddConnection} />
 	}
 
+	// A dead connection is checked before the table branches: a table restored
+	// from the previous session would otherwise render a grid whose every fetch
+	// fails, leaving a skeleton that never resolves behind a stack of toasts.
+	if (schemaQuery.isError) {
+		return withDataFileChrome(
+			<DatabaseStudioConnectionFailed
+				connectionName={activeConnection?.name}
+				errorMessage={
+					schemaQuery.error instanceof Error ? schemaQuery.error.message : undefined
+				}
+				onRetry={function () {
+					void schemaQuery.refetch()
+				}}
+				onEditConnection={onEditConnection}
+			/>
+		)
+	}
+
 	// No table selected
 	if (!tableId) {
 		if (schemaQuery.isLoading && !schemaQuery.data) {
 			return withDataFileChrome(
 				<DatabaseStudioConnectionLoading connectionName={activeConnection?.name} />
-			)
-		}
-
-		if (schemaQuery.isError) {
-			return withDataFileChrome(
-				<DatabaseStudioConnectionFailed
-					connectionName={activeConnection?.name}
-					errorMessage={
-						schemaQuery.error instanceof Error ? schemaQuery.error.message : undefined
-					}
-					onRetry={function () {
-						void schemaQuery.refetch()
-					}}
-					onEditConnection={onEditConnection}
-				/>
 			)
 		}
 
@@ -1146,6 +1150,7 @@ export function DatabaseStudio({
 							onDraftSave={handleDraftSave}
 							onDraftCancel={handleDraftCancel}
 							pendingEdits={pendingEditsSet}
+							highlightedRows={highlightedRowIndexes}
 							draftInsertIndex={draftInsertIndex}
 							onFKNavigate={handleFKNavigate}
 							workspaceStateKey={workspaceStateKey}

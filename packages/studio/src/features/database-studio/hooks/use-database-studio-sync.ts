@@ -8,6 +8,7 @@ import {
 	type TableSnapshot
 } from '@studio/core/workspace-store'
 import { getAdapterError } from '@studio/core/data-provider/types'
+import { isConnectionUnavailableError } from '@studio/shared/utils/error-messages'
 import { toast } from '@studio/shared/ui/notifier'
 import type { AdapterResult, DataAdapter } from '@studio/core/data-provider/types'
 import type { DatabaseSchema } from '@studio/lib/bindings'
@@ -219,9 +220,11 @@ export function useDatabaseStudioSync(args: Args) {
 		} catch (error) {
 			if (!isCurrentRequest()) return
 			console.error('[DatabaseStudio] Failed to validate selected table:', error)
-			toast.error('Failed to validate selected table', {
-				description: error instanceof Error ? error.message : String(error)
-			})
+			if (!isConnectionUnavailableError(error)) {
+				toast.error('Failed to validate selected table', {
+					description: error instanceof Error ? error.message : String(error)
+				})
+			}
 		}
 
 		try {
@@ -285,22 +288,28 @@ export function useDatabaseStudioSync(args: Args) {
 			} else {
 				const errorMessage = getAdapterError(result)
 				console.error('[DatabaseStudio] Failed to load table data:', errorMessage)
-				toast.error('Failed to load table data', {
-					description: errorMessage
-				})
+				if (!isConnectionUnavailableError(errorMessage)) {
+					toast.error('Failed to load table data', {
+						description: errorMessage
+					})
+				}
 				if (!cached) {
 					setTableData(null)
 				}
+				setIsTableTransitioning(false)
 			}
 		} catch (error) {
 			if (!isCurrentRequest()) return
 			console.error('[DatabaseStudio] Unexpected error loading table data:', error)
-			toast.error('Failed to load table data', {
-				description: error instanceof Error ? error.message : String(error)
-			})
+			if (!isConnectionUnavailableError(error)) {
+				toast.error('Failed to load table data', {
+					description: error instanceof Error ? error.message : String(error)
+				})
+			}
 			if (!cached) {
 				setTableData(null)
 			}
+			setIsTableTransitioning(false)
 		} finally {
 			if (isCurrentRequest()) {
 				setIsLoading(false)

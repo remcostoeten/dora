@@ -68,6 +68,8 @@ type Props = {
 	onDraftSave?: () => void
 	onDraftCancel?: () => void
 	pendingEdits?: Set<string>
+	/** Row indexes inserted moments ago, tinted until the highlight times out. */
+	highlightedRows?: ReadonlySet<number>
 	draftInsertIndex?: number | null
 	onFKNavigate?: (
 		referencedTable: string,
@@ -104,6 +106,7 @@ export function DataGrid({
 	onDraftSave,
 	onDraftCancel,
 	pendingEdits,
+	highlightedRows,
 	draftInsertIndex,
 	onFKNavigate: onFKNavigateProp,
 	workspaceStateKey = 'data-grid'
@@ -456,6 +459,7 @@ export function DataGrid({
 							rows={rows}
 							selectedCellsByRow={selectedCellsByRow}
 							selectedRows={selectedRows}
+							highlightedRows={highlightedRows}
 							masked={masked}
 							setEditValue={setEditValue}
 							virtualRows={virtualRows}

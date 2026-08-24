@@ -2,6 +2,11 @@ import { Check, X } from 'lucide-react'
 import type React from 'react'
 import { matchesShortcut, parseShortcut } from '@studio/core/shortcuts'
 import { ColumnDefinition } from '../../types'
+import { isGeneratedPrimaryKey } from '../../utils/studio-data'
+
+function isEditableDraftColumn(column: ColumnDefinition): boolean {
+	return !isGeneratedPrimaryKey(column)
+}
 
 const enterShortcut = parseShortcut('enter')
 const escapeShortcut = parseShortcut('escape')
@@ -61,7 +66,7 @@ export function DraftRow({
 						className='border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm px-0 py-0'
 						style={width ? { maxWidth: width } : undefined}
 					>
-						{col.primaryKey ? (
+						{isGeneratedPrimaryKey(col) ? (
 							<div className='px-3 py-1.5 text-muted-foreground italic text-xs'>
 								auto
 							</div>
@@ -110,7 +115,7 @@ function DraftInput({
 	return (
 		<input
 			type='text'
-			autoFocus={colIndex === 0 || (colIndex === 1 && columns[0]?.primaryKey)}
+			autoFocus={columns.findIndex(isEditableDraftColumn) === colIndex}
 			value={draftRow[col.name] === null ? '' : String(draftRow[col.name] ?? '')}
 			onChange={function (e) {
 				onDraftChange?.(col.name, e.target.value)
@@ -152,9 +157,7 @@ function handleDraftKeyDown(
 
 	if (!isShiftTab && !isTab) return
 
-	const editableCols = columns.filter(function (c) {
-		return !c.primaryKey
-	})
+	const editableCols = columns.filter(isEditableDraftColumn)
 	const curIdx = editableCols.findIndex(function (c) {
 		return c.name === columnName
 	})

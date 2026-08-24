@@ -40,6 +40,7 @@ import {
 import { useQueryHistory } from './stores/query-history-store'
 import { QueryTabProvider, useQueryTabs } from './stores/tab-store'
 import { clearTableSnapshots } from '@studio/core/workspace-store'
+import { isConnectionUnavailableError } from '@studio/shared/utils/error-messages'
 import { Skeleton } from '@studio/shared/ui/skeleton'
 import { toast } from '@studio/shared/ui/notifier'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
@@ -51,6 +52,16 @@ function notifyFailure(title: string, error: unknown) {
 	toast.error(title, {
 		description: error instanceof Error ? error.message : String(error)
 	})
+}
+
+/**
+ * Reports a background failure, staying silent when the cause is an unreachable
+ * database — that is surfaced once by the studio's connection state rather than
+ * once per request the dead connection sinks.
+ */
+function notifyBackgroundFailure(title: string, error: unknown) {
+	if (isConnectionUnavailableError(error)) return
+	notifyFailure(title, error)
 }
 
 /**
@@ -227,7 +238,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			}
 		} catch (error) {
 			console.error('Failed to fetch schema:', error)
-			notifyFailure('Failed to fetch schema', error)
+			notifyBackgroundFailure('Failed to fetch schema', error)
 		}
 	}, [activeConnectionId, adapter])
 
@@ -334,7 +345,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 				} catch (error) {
 					if (!cancelled) {
 						console.error('Failed to fetch schema:', error)
-						notifyFailure('Failed to fetch schema', error)
+						notifyBackgroundFailure('Failed to fetch schema', error)
 					}
 				}
 			}
@@ -356,7 +367,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 				if (!targetConnectionId || targetConnectionId === activeConnectionId) {
 					refreshSchema().catch(function (error) {
 						console.error('Failed to refresh schema:', error)
-						notifyFailure('Failed to refresh schema', error)
+						notifyBackgroundFailure('Failed to refresh schema', error)
 					})
 				}
 			}
