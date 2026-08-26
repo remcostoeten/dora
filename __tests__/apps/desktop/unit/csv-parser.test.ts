@@ -39,4 +39,41 @@ describe('parseCSV', () => {
     expect(result.rows).toHaveLength(0)
     expect(result.error).toBeUndefined()
   })
+
+  it('strips a leading UTF-8 BOM from the first header', () => {
+    const result = parseCSV('\uFEFFname,age\nAlice,30')
+    expect(result.headers).toEqual(['name', 'age'])
+  })
+
+  it('detects semicolon delimiter and keeps commas inside fields', () => {
+    const result = parseCSV(
+      '\uFEFFTitel;URL;Robots;Inleidende inhoud;Inhoud\r\n' +
+        'Abarth 595;/aanbod/abarth/595;Index, follow;<p>compact, sportief</p>;"<h2>Kenmerken</h2><p>zegt ""hallo"", met komma</p>"'
+    )
+    expect(result.headers).toEqual(['Titel', 'URL', 'Robots', 'Inleidende inhoud', 'Inhoud'])
+    expect(result.rows[0]).toEqual([
+      'Abarth 595',
+      '/aanbod/abarth/595',
+      'Index, follow',
+      '<p>compact, sportief</p>',
+      '<h2>Kenmerken</h2><p>zegt "hallo", met komma</p>'
+    ])
+  })
+
+  it('detects tab delimiter', () => {
+    const result = parseCSV('name\tage\nAlice\t30')
+    expect(result.headers).toEqual(['name', 'age'])
+    expect(result.rows[0]).toEqual(['Alice', '30'])
+  })
+
+  it('ignores delimiter candidates inside quoted headers', () => {
+    const result = parseCSV('"a;b",c,d\n1,2,3')
+    expect(result.headers).toEqual(['a;b', 'c', 'd'])
+    expect(result.rows[0]).toEqual(['1', '2', '3'])
+  })
+
+  it('prefers comma when delimiter counts tie', () => {
+    const result = parseCSV('a,b;c\n1,2')
+    expect(result.headers).toEqual(['a', 'b;c'])
+  })
 })

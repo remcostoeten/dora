@@ -5,21 +5,56 @@ export type ParseCSVResult = {
 }
 
 export function parseCSV(text: string): ParseCSVResult {
-  if (!text.trim()) return { headers: [], rows: [], error: 'File is empty' }
+  const content = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
+  if (!content.trim()) return { headers: [], rows: [], error: 'File is empty' }
 
-  const lines = splitLines(text)
+  const lines = splitLines(content)
   if (lines.length === 0) return { headers: [], rows: [], error: 'File is empty' }
 
-  const headers = parseRow(lines[0])
+  const delimiter = detectDelimiter(lines[0])
+  const headers = parseRow(lines[0], delimiter)
   const rows: string[][] = []
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i]
     if (line.trim() === '') continue
-    rows.push(parseRow(line))
+    rows.push(parseRow(line, delimiter))
   }
 
   return { headers, rows }
+}
+
+const DELIMITER_CANDIDATES = [',', ';', '\t']
+
+function detectDelimiter(headerLine: string): string {
+  let best = ','
+  let bestCount = 0
+
+  for (const candidate of DELIMITER_CANDIDATES) {
+    const count = countOutsideQuotes(headerLine, candidate)
+    if (count > bestCount) {
+      best = candidate
+      bestCount = count
+    }
+  }
+
+  return best
+}
+
+function countOutsideQuotes(line: string, delimiter: string): number {
+  let count = 0
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i]
+    if (ch === '"') {
+      inQuotes = !inQuotes
+    } else if (ch === delimiter && !inQuotes) {
+      count++
+    }
+  }
+
+  return count
 }
 
 function splitLines(text: string): string[] {
@@ -54,7 +89,7 @@ function splitLines(text: string): string[] {
   return lines
 }
 
-function parseRow(line: string): string[] {
+function parseRow(line: string, delimiter: string): string[] {
   const fields: string[] = []
   let current = ''
   let inQuotes = false
@@ -85,7 +120,7 @@ function parseRow(line: string): string[] {
         }
       }
     }
-    if (ch === ',' && !inQuotes) {
+    if (ch === delimiter && !inQuotes) {
       fields.push(current)
       current = ''
       i++
