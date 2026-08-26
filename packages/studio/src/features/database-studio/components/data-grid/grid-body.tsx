@@ -15,6 +15,8 @@ type GridRowProps = {
 	columns: ColumnDefinition[]
 	masked?: boolean
 	isRowSelected: boolean
+	/** Inserted moments ago; tinted until the highlight times out. */
+	isRowRecentlyAdded: boolean
 	rowSelectedCols: Set<number> | undefined
 	focusedCol: number | null
 	/** Column being edited in THIS row, null when this row has no active editor. */
@@ -52,6 +54,7 @@ const GridRow = memo(function GridRow({
 	columns,
 	masked,
 	isRowSelected,
+	isRowRecentlyAdded,
 	rowSelectedCols,
 	focusedCol,
 	editingColumnName,
@@ -76,9 +79,11 @@ const GridRow = memo(function GridRow({
 }: GridRowProps) {
 	const rowBackgroundClasses = isRowSelected
 		? 'bg-primary/10'
-		: rowIndex % 2 === 1
-			? 'bg-muted/35 hover:bg-sidebar-accent/30'
-			: 'hover:bg-sidebar-accent/30'
+		: isRowRecentlyAdded
+			? 'bg-emerald-500/10 hover:bg-emerald-500/20'
+			: rowIndex % 2 === 1
+				? 'bg-muted/35 hover:bg-sidebar-accent/30'
+				: 'hover:bg-sidebar-accent/30'
 	const rowClasses = cn('group transition-colors cursor-pointer', rowBackgroundClasses)
 	// The checkbox column is sticky, so it floats over other cells during
 	// horizontal scroll — it needs an OPAQUE background (the translucent row
@@ -89,6 +94,11 @@ const GridRow = memo(function GridRow({
 		: rowIndex % 2 === 1
 			? 'bg-table-header group-hover:bg-table-row-hover'
 			: 'bg-background group-hover:bg-table-row-hover'
+	// The row tint can't reach the opaque sticky cell, so a new row is marked
+	// there with a solid gutter bar that stays visible during horizontal scroll.
+	const stickyCellAccentClasses = isRowRecentlyAdded
+		? 'shadow-[inset_3px_0_0_0_var(--color-emerald-500)]'
+		: undefined
 
 	return (
 		<tr
@@ -105,7 +115,8 @@ const GridRow = memo(function GridRow({
 			<td
 				className={cn(
 					'w-[30px] min-w-[30px] p-0 text-center align-middle border-b border-l border-r border-sidebar-border sticky left-0 z-20 transition-colors',
-					stickyCellBackgroundClasses
+					stickyCellBackgroundClasses,
+					stickyCellAccentClasses
 				)}
 				role='gridcell'
 				onContextMenu={function () {
@@ -251,6 +262,8 @@ type GridBodyProps = {
 	rows: Record<string, unknown>[]
 	selectedCellsByRow: Map<number, Set<number>>
 	selectedRows: Set<number>
+	/** Row indexes inserted moments ago, tinted until the highlight times out. */
+	highlightedRows?: ReadonlySet<number>
 	/** Privacy mode: mask every cell value and disable editing. */
 	masked?: boolean
 	setEditValue: (value: string) => void
@@ -289,6 +302,7 @@ export function GridBody({
 	rows,
 	selectedCellsByRow,
 	selectedRows,
+	highlightedRows,
 	masked,
 	setEditValue,
 	onFKNavigate,
@@ -345,6 +359,7 @@ export function GridBody({
 							columns={columns}
 							masked={masked}
 							isRowSelected={selectedRows.has(rowIndex)}
+							isRowRecentlyAdded={highlightedRows?.has(rowIndex) ?? false}
 							rowSelectedCols={selectedCellsByRow.get(rowIndex)}
 							focusedCol={focusedCell?.row === rowIndex ? focusedCell.col : null}
 							editingColumnName={isEditingRow ? editingCell.columnName : null}

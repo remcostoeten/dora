@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useToast } from '@studio/shared/ui/use-toast'
+import { useRecentlyAddedRows } from './use-recently-added-rows'
 import { useDatabaseStudioBulkActions } from './use-database-studio-bulk-actions'
 import { useDatabaseStudioDraftRow } from './use-database-studio-draft-row'
 import { useDatabaseStudioRowActions } from './use-database-studio-row-actions'
@@ -105,6 +106,21 @@ export function useDatabaseStudioActions(args: Args) {
 		})
 	}, [displayTableName, tableRefName, toast])
 
+	const notifyPrimaryKeyNotGenerated = useCallback(function (actionLabel: string) {
+		toast({
+			title: `Cannot ${actionLabel}`,
+			description: `Table "${displayTableName ?? tableRefName}" has a primary key the database does not generate. Duplicate one row at a time and enter a new key.`,
+			variant: 'destructive'
+		})
+	}, [displayTableName, tableRefName, toast])
+
+	const { highlightedRowIndexes, markRowsAdded } = useRecentlyAddedRows(
+		tableData,
+		tableData?.columns.find(function (column) {
+			return column.primaryKey
+		})?.name
+	)
+
 	const bulkActions = useDatabaseStudioBulkActions({
 		activeConnectionId,
 		tableId,
@@ -124,7 +140,9 @@ export function useDatabaseStudioActions(args: Args) {
 		setFocusedCell,
 		setShowDeleteConfirmDialog,
 		setFilters,
-		notifyActionFailure
+		notifyPrimaryKeyNotGenerated,
+		notifyActionFailure,
+		onRowsAdded: markRowsAdded
 	})
 
 	const rowActions = useDatabaseStudioRowActions({
@@ -150,7 +168,9 @@ export function useDatabaseStudioActions(args: Args) {
 		setSelectedRowForDetail,
 		setShowRowDetail,
 		notifyMissingPrimaryKey,
-		notifyActionFailure
+		notifyPrimaryKeyNotGenerated,
+		notifyActionFailure,
+		onRowsAdded: markRowsAdded
 	})
 
 	const draftRowActions = useDatabaseStudioDraftRow({
@@ -171,13 +191,15 @@ export function useDatabaseStudioActions(args: Args) {
 		setDuplicateInitialData,
 		setAddDialogMode,
 		setShowAddDialog,
-		notifyActionFailure
+		notifyActionFailure,
+		onRowsAdded: markRowsAdded
 	})
 
 	return {
 		...bulkActions,
 		...rowActions,
 		...draftRowActions,
+		highlightedRowIndexes,
 		notifyMissingPrimaryKey,
 		notifyActionFailure
 	}

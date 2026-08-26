@@ -26,6 +26,8 @@ type Args = {
 	setAddDialogMode: React.Dispatch<React.SetStateAction<'add' | 'duplicate' | 'edit'>>
 	setShowAddDialog: React.Dispatch<React.SetStateAction<boolean>>
 	notifyActionFailure: (title: string, error: unknown) => void
+	/** Snapshots the current rows so the inserted ones can be highlighted. */
+	onRowsAdded: () => void
 }
 
 export function useDatabaseStudioDraftRow(args: Args) {
@@ -47,7 +49,8 @@ export function useDatabaseStudioDraftRow(args: Args) {
 		setDuplicateInitialData,
 		setAddDialogMode,
 		setShowAddDialog,
-		notifyActionFailure
+		notifyActionFailure,
+		onRowsAdded
 	} = args
 
 	function handleAddRecord() {
@@ -71,6 +74,7 @@ export function useDatabaseStudioDraftRow(args: Args) {
 		const normalizedDraftRow = normalizeRowForInsert(draftRow, tableData.columns)
 
 		const snapshot = tableData
+		onRowsAdded()
 		setTableData(appendRows(tableData, [normalizedDraftRow]))
 		setDraftRow(null)
 		setDraftInsertIndex(null)
@@ -162,6 +166,7 @@ export function useDatabaseStudioDraftRow(args: Args) {
 
 		const normalizedRowData = normalizeRowForInsert(rowData, tableData.columns)
 		const snapshot = tableData
+		onRowsAdded()
 		setTableData(appendRows(tableData, [normalizedRowData]))
 		setShowAddDialog(false)
 		setDuplicateInitialData(undefined)

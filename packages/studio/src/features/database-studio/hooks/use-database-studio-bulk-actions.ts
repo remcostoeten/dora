@@ -1,5 +1,10 @@
 import { useCallback } from 'react'
-import { appendRows, removeRowsByPrimaryKey } from '../utils/studio-data'
+import {
+	appendRows,
+	buildDuplicateRow,
+	canDuplicateWithoutInput,
+	removeRowsByPrimaryKey
+} from '../utils/studio-data'
 import type { FilterDescriptor, TableData } from '../types'
 
 type Args = {
@@ -21,7 +26,10 @@ type Args = {
 	setFocusedCell: React.Dispatch<React.SetStateAction<{ row: number; col: number } | null>>
 	setShowDeleteConfirmDialog: React.Dispatch<React.SetStateAction<boolean>>
 	setFilters: React.Dispatch<React.SetStateAction<FilterDescriptor[]>>
+	notifyPrimaryKeyNotGenerated: (actionLabel: string) => void
 	notifyActionFailure: (title: string, error: unknown) => void
+	/** Snapshots the current rows so the inserted ones can be highlighted. */
+	onRowsAdded: () => void
 }
 
 export function useDatabaseStudioBulkActions(args: Args) {
@@ -44,7 +52,9 @@ export function useDatabaseStudioBulkActions(args: Args) {
 		setFocusedCell,
 		setShowDeleteConfirmDialog,
 		setFilters,
-		notifyActionFailure
+		notifyPrimaryKeyNotGenerated,
+		notifyActionFailure,
+		onRowsAdded
 	} = args
 
 	const handleBulkDelete = useCallback(function () {
@@ -82,18 +92,20 @@ export function useDatabaseStudioBulkActions(args: Args) {
 	}, [rowsForActions, tableData])
 
 	const handleBulkDuplicate = useCallback(function () {
-		const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
 		if (!activeConnectionId || !tableId || !tableData) return
-		const rowsToDuplicate = Array.from(rowsForActions).map((rowIndex) => {
-			const row = { ...tableData.rows[rowIndex] }
-			if (primaryKeyColumn) delete row[primaryKeyColumn.name]
-			return row
-		})
+		if (!canDuplicateWithoutInput(tableData.columns)) {
+			notifyPrimaryKeyNotGenerated('duplicate rows')
+			return
+		}
+		const rowsToDuplicate = Array.from(rowsForActions).map((rowIndex) =>
+			buildDuplicateRow(tableData.rows[rowIndex], tableData.columns)
+		)
 		if (rowsToDuplicate.length === 0) return
 
 		// Show the copies immediately; reconcile with authoritative rows on reload,
 		// roll back on failure (mirrors handleBulkDelete).
 		const snapshot = tableData
+		onRowsAdded()
 		setTableData(appendRows(tableData, rowsToDuplicate))
 		setSelectedRows(new Set())
 		Promise.all(rowsToDuplicate.map((rowData) => insertRow.mutateAsync({ connectionId: activeConnectionId, tableName: tableRefName, rowData })))
@@ -104,7 +116,7 @@ export function useDatabaseStudioBulkActions(args: Args) {
 				setTableData(snapshot)
 				notifyActionFailure('Failed to duplicate rows', error)
 			})
-	}, [activeConnectionId, insertRow, notifyActionFailure, onLoadTableData, rowsForActions, setSelectedRows, setTableData, tableData, tableId, tableRefName])
+	}, [activeConnectionId, insertRow, notifyActionFailure, notifyPrimaryKeyNotGenerated, onLoadTableData, onRowsAdded, rowsForActions, setSelectedRows, setTableData, tableData, tableId, tableRefName])
 
 	const handleExportJson = useCallback(function () {
 		if (!tableData) return

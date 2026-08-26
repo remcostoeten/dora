@@ -1,0 +1,233 @@
+openapi: 3.1.0
+info:
+  title: Dora marketing API
+  description: >
+    HTTP endpoints served by the Dora marketing site (apps/marketing).
+    The Supabase OAuth routes form a stateless confidential-client proxy for
+    the desktop app; the remaining routes power the site itself.
+  version: 0.1.0
+security: []
+servers:
+  - url: https://dora-db.vercel.app
+  - url: http://localhost:3000
+    description: Local dev
+paths:
+  /api/oauth/supabase/start:
+    get:
+      operationId: supabaseOauthStart
+      summary: Begin the Supabase Management-API OAuth flow
+      description: >
+        Opened in the system browser by the desktop app. Mints a PKCE
+        verifier/challenge, encrypts the verifier and the desktop loopback URL
+        into the `state` blob, and redirects to Supabase's consent screen.
+        Nothing is persisted server-side.
+      parameters:
+        - name: redirect_uri
+          in: query
+          required: true
+          description: >
+            Desktop loopback listener that will receive the tokens, e.g.
+            `http://127.0.0.1:PORT/callback`. Must be http on 127.0.0.1,
+            localhost or [::1].
+          schema:
+            type: string
+            format: uri
+      responses:
+        "307":
+          description: Redirect to `https://api.supabase.com/v1/oauth/authorize`.
+        "400":
+          description: Missing or non-loopback `redirect_uri`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Proxy not configured (missing OAuth env vars).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/oauth/supabase/callback:
+    get:
+      operationId: supabaseOauthCallback
+      summary: OAuth redirect target for Supabase
+      description: >
+        Supabase redirects here after user consent. Decrypts `state` to recover
+        the PKCE verifier and loopback URL, exchanges the code for tokens using
+        the client secret, then redirects the browser to the desktop loopback
+        URL with `access_token`, `refresh_token` and `expires_at` query
+        parameters. Errors render a human-readable HTML page.
+      parameters:
+        - name: code
+          in: query
+          schema:
+            type: string
+          description: Authorization code from Supabase.
+        - name: state
+          in: query
+          schema:
+            type: string
+          description: Encrypted state blob minted by /start (10-minute TTL).
+        - name: error
+          in: query
+          schema:
+            type: string
+          description: Set by Supabase when the user denies authorization.
+        - name: error_description
+          in: query
+          schema:
+            type: string
+      responses:
+        "307":
+          description: Redirect to the desktop loopback URL carrying the tokens.
+        "400":
+          description: >
+            Denied authorization, missing code/state, or invalid/expired state.
+          content:
+            text/html:
+              schema:
+                type: string
+        "502":
+          description: Token exchange with Supabase failed.
+          content:
+            text/html:
+              schema:
+                type: string
+        "503":
+          description: Proxy not configured.
+          content:
+            text/html:
+              schema:
+                type: string
+  /api/oauth/supabase/refresh:
+    post:
+      operationId: supabaseOauthRefresh
+      summary: Refresh a Supabase Management-API access token
+      description: >
+        Called by the desktop app near token expiry. Refresh requires the
+        client secret, so it runs on the proxy rather than on-device.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: Fresh token pair.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DesktopTokens"
+        "400":
+          description: Non-JSON body or missing `refreshToken`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Supabase token endpoint rejected the refresh.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: Proxy not configured.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/posthog/stats:
+    get:
+      operationId: posthogStats
+      summary: Live visitor/event counts for the analytics showcase
+      description: >
+        Queries the site's own PostHog project (HogQL) for 7-day event and
+        unique-visitor counts. Returns `{ "unavailable": true }` when PostHog
+        isn't configured or traffic is below the display threshold, so the
+        client falls back to static copy.
+      responses:
+        "200":
+          description: Counts, or an unavailable marker.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [unavailable, events, visitors]
+                    properties:
+                      unavailable:
+                        const: false
+                      events:
+                        type: integer
+                      visitors:
+                        type: integer
+                  - type: object
+                    required: [unavailable]
+                    properties:
+                      unavailable:
+                        const: true
+  /api/search:
+    get:
+      operationId: docsSearch
+      summary: Full-text search over the docs
+      description: >
+        Fumadocs search endpoint (`createFromSource`) over the documentation
+        content.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: locale
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Matching pages and headings.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, type, content, url]
+                  properties:
+                    id:
+                      type: string
+                    type:
+                      type: string
+                      enum: [page, heading, text]
+                    content:
+                      type: string
+                    url:
+                      type: string
+components:
+  schemas:
+    DesktopTokens:
+      type: object
+      required: [accessToken, refreshToken, expiresAt]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresAt:
+          type: integer
+          description: Absolute expiry, epoch seconds.
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

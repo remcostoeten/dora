@@ -1,5 +1,11 @@
 import { useCallback } from 'react'
-import { appendRows, createDefaultValues, removeRowsByPrimaryKey } from '../utils/studio-data'
+import {
+	appendRows,
+	buildDuplicateRow,
+	canDuplicateWithoutInput,
+	createDefaultValues,
+	removeRowsByPrimaryKey
+} from '../utils/studio-data'
 import type { TableData } from '../types'
 
 type EditingRowState = {
@@ -37,7 +43,10 @@ type Args = {
 	setSelectedRowForDetail: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
 	setShowRowDetail: React.Dispatch<React.SetStateAction<boolean>>
 	notifyMissingPrimaryKey: (actionLabel: string) => void
+	notifyPrimaryKeyNotGenerated: (actionLabel: string) => void
 	notifyActionFailure: (title: string, error: unknown) => void
+	/** Snapshots the current rows so the inserted ones can be highlighted. */
+	onRowsAdded: () => void
 }
 
 export function useDatabaseStudioRowActions(args: Args) {
@@ -64,7 +73,9 @@ export function useDatabaseStudioRowActions(args: Args) {
 		setSelectedRowForDetail,
 		setShowRowDetail,
 		notifyMissingPrimaryKey,
-		notifyActionFailure
+		notifyPrimaryKeyNotGenerated,
+		notifyActionFailure,
+		onRowsAdded
 	} = args
 
 	const deleteRowIndexes = useCallback(
@@ -107,15 +118,14 @@ export function useDatabaseStudioRowActions(args: Args) {
 
 	const duplicateRowIndexes = useCallback(
 		function duplicateRowIndexes(rowIndexes: number[]) {
-			const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
 			if (!activeConnectionId || !tableId || !tableData) return
+			if (!canDuplicateWithoutInput(tableData.columns)) {
+				notifyPrimaryKeyNotGenerated('duplicate rows')
+				return
+			}
 
 			const rowsToDuplicate = rowIndexes.map(function (targetRowIndex) {
-				const row = { ...tableData.rows[targetRowIndex] }
-				if (primaryKeyColumn) {
-					delete row[primaryKeyColumn.name]
-				}
-				return row
+				return buildDuplicateRow(tableData.rows[targetRowIndex], tableData.columns)
 			})
 			if (rowsToDuplicate.length === 0) return
 
@@ -123,6 +133,7 @@ export function useDatabaseStudioRowActions(args: Args) {
 			// the reload after the inserts resolve swaps in the authoritative rows
 			// with their server-generated primary keys. Roll back on failure.
 			const snapshot = tableData
+			onRowsAdded()
 			setTableData(appendRows(tableData, rowsToDuplicate))
 			setSelectedRows(new Set())
 
@@ -143,7 +154,7 @@ export function useDatabaseStudioRowActions(args: Args) {
 					notifyActionFailure('Failed to duplicate rows', error)
 				})
 		},
-		[activeConnectionId, insertRow, notifyActionFailure, onLoadTableData, setSelectedRows, setTableData, tableData, tableId, tableRefName]
+		[activeConnectionId, insertRow, notifyActionFailure, notifyPrimaryKeyNotGenerated, onLoadTableData, onRowsAdded, setSelectedRows, setTableData, tableData, tableId, tableRefName]
 	)
 
 	async function handleRowAction(
@@ -199,15 +210,20 @@ export function useDatabaseStudioRowActions(args: Args) {
 				setShowAddDialog(true)
 				break
 			case 'duplicate': {
-				if (isBatchAction) {
+				if (canDuplicateWithoutInput(tableData.columns)) {
 					duplicateRowIndexes(effectiveRowIndexes)
 					break
 				}
 
-				const duplicateData = { ...row }
-				delete duplicateData[primaryKeyColumn.name]
+				if (isBatchAction) {
+					notifyPrimaryKeyNotGenerated('duplicate rows')
+					break
+				}
+
+				// The key is the user's to supply, so the copy goes into a draft row
+				// they complete instead of an insert that would collide.
 				const defaults = createDefaultValues(tableData.columns)
-				setDraftRow({ ...defaults, ...duplicateData })
+				setDraftRow({ ...defaults, ...buildDuplicateRow(row, tableData.columns) })
 				setDraftInsertIndex(rowIndex + 1)
 				break
 			}

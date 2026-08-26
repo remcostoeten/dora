@@ -11,6 +11,7 @@ import { commands } from '@studio/lib/bindings'
 import { getAppearanceSettings, applyAppearanceToDOM } from '@studio/shared/lib/appearance-store'
 import { loadFontPair } from '@studio/shared/lib/font-loader'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
+import { isConnectionUnavailableError } from '@studio/shared/utils/error-messages'
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -159,6 +160,9 @@ export function DatabaseSidebar({
 			if (!schemaQuery.isError) return
 			const error = schemaQuery.error
 			console.error('Failed to fetch schema:', error)
+			// The tree already renders a "Connection failed" panel with a retry, so a
+			// toast on top of it is the same failure told twice.
+			if (isConnectionUnavailableError(error)) return
 			appToast.error('Failed to fetch schema', {
 				description: error instanceof Error ? error.message : String(error)
 			})
