@@ -114,6 +114,8 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 		},
 		ref
 	) {
+		const [isHolding, setIsHolding] = useState(false)
+
 		return (
 			<div
 				ref={ref}
@@ -209,29 +211,77 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 								data-connection-action
 								type='button'
 								className={cn(
-									'flex h-6 w-6 items-center justify-center rounded-sm',
+									'relative overflow-hidden flex h-6 w-6 items-center justify-center rounded-sm',
 									'text-muted-foreground',
 									'opacity-0 -translate-x-1 pointer-events-none',
 									'group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto',
 									'group-data-[highlighted]/row:opacity-100 group-data-[highlighted]/row:translate-x-0 group-data-[highlighted]/row:pointer-events-auto',
 									'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
 									'hover:text-destructive hover:bg-background/60',
+									isHolding && 'text-destructive-foreground',
 									'focus-visible:outline-hidden focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-destructive/40'
 								)}
 								onPointerDown={function (e) {
 									onKeepOpenAfterDelete()
 									e.preventDefault()
 									e.stopPropagation()
+									/*
+									 * jsdom's synthetic pointer events fall back to MouseEvent with
+									 * no pointerId, and its setPointerCapture throws on it — capture
+									 * only when the event carries a real pointer.
+									 */
+									if (
+										e.pointerId != null &&
+										typeof e.currentTarget.setPointerCapture === 'function'
+									) {
+										e.currentTarget.setPointerCapture(e.pointerId)
+									}
+									setIsHolding(true)
+								}}
+								onPointerUp={function () {
+									setIsHolding(false)
+								}}
+								onPointerCancel={function () {
+									setIsHolding(false)
+								}}
+								onKeyDown={function (e) {
+									if (e.key !== 'Enter' && e.key !== ' ') return
+									e.preventDefault()
+									e.stopPropagation()
+									if (!isHolding) {
+										onKeepOpenAfterDelete()
+										setIsHolding(true)
+									}
+								}}
+								onKeyUp={function (e) {
+									if (e.key === 'Enter' || e.key === ' ') setIsHolding(false)
+								}}
+								onBlur={function () {
+									setIsHolding(false)
 								}}
 								onClick={function (e) {
 									e.preventDefault()
 									e.stopPropagation()
-									onConfirmDelete(connection.id)
 								}}
-								title={`Delete ${connection.name}`}
-								aria-label={`Delete ${connection.name}`}
+								title={`Hold to delete ${connection.name}`}
+								aria-label={`Hold to delete ${connection.name}`}
 							>
-								<Trash2 className='h-3 w-3' />
+								<span
+									aria-hidden='true'
+									className={cn(
+										'pointer-events-none absolute inset-0 bg-destructive',
+										isHolding
+											? '[clip-path:inset(0_0_0_0)] transition-[clip-path] duration-[2000ms] ease-linear'
+											: '[clip-path:inset(0_100%_0_0)] transition-[clip-path] duration-200 ease-[var(--ease-out)]'
+									)}
+									onTransitionEnd={function (e) {
+										if (e.propertyName !== 'clip-path') return
+										if (!isHolding) return
+										setIsHolding(false)
+										onConfirmDelete(connection.id)
+									}}
+								/>
+								<Trash2 className='relative h-3 w-3' />
 							</button>
 						)}
 					</div>

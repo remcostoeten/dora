@@ -46,6 +46,7 @@ import {
 	DatabaseStudioNoTablesFound
 } from './components/database-studio-empty-states'
 import { DatabaseStudioStructureView } from './components/database-studio-structure-view'
+import { AnimatePresence } from 'framer-motion'
 import { PendingChangesBar } from './components/pending-changes-bar'
 import { RowDetailPanel } from './components/row-detail-panel'
 import { SelectionActionBar } from './components/selection-action-bar'
@@ -1184,26 +1185,28 @@ export function DatabaseStudio({
 				)}
 			</div>
 
-			{tableData &&
-				(settings.selectionBarStyle === 'static' || !settings.selectionBarStyle) &&
-				rowsForActions.size > 0 && (
-					<SelectionActionBar
-						ref={toolbarRef}
-						selectedCount={rowsForActions.size}
-						onDelete={canEditRows ? handleBulkDelete : undefined}
-						onCopy={privacyMaskData ? undefined : handleBulkCopy}
-						onSetNull={canEditRows ? handleOpenSetNull : undefined}
-						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
-						onExportJson={canExportFile ? handleExportJson : undefined}
-						onExportCsv={canExportFile ? handleExportCsv : undefined}
-						onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
-						onSave={canEditRows ? handleApplyPendingEdits : undefined}
-						pendingEditCount={tableId ? getEditCount(tableId) : 0}
-						onClearSelection={handleClearSelection}
-						onEscapeToGrid={handleEscapeToGrid}
-						mode='static'
-					/>
-				)}
+			<AnimatePresence>
+				{tableData &&
+					(settings.selectionBarStyle === 'static' || !settings.selectionBarStyle) &&
+					rowsForActions.size > 0 && (
+						<SelectionActionBar
+							ref={toolbarRef}
+							selectedCount={rowsForActions.size}
+							onDelete={canEditRows ? handleBulkDelete : undefined}
+							onCopy={privacyMaskData ? undefined : handleBulkCopy}
+							onSetNull={canEditRows ? handleOpenSetNull : undefined}
+							onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
+							onExportJson={canExportFile ? handleExportJson : undefined}
+							onExportCsv={canExportFile ? handleExportCsv : undefined}
+							onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
+							onSave={canEditRows ? handleApplyPendingEdits : undefined}
+							pendingEditCount={tableId ? getEditCount(tableId) : 0}
+							onClearSelection={handleClearSelection}
+							onEscapeToGrid={handleEscapeToGrid}
+							mode='static'
+						/>
+					)}
+			</AnimatePresence>
 
 			{tableData && (
 				<BottomStatusBar
@@ -1221,26 +1224,28 @@ export function DatabaseStudio({
 			)}
 
 			{/* Render floating bar if mode is floating */}
-			{tableData && settings.selectionBarStyle === 'floating' && rowsForActions.size > 0 && (
-				<SelectionActionBar
-					ref={toolbarRef}
-					selectedCount={rowsForActions.size}
-					onDelete={canEditRows ? handleBulkDelete : undefined}
-					onCopy={privacyMaskData ? undefined : handleBulkCopy}
-					onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
-					onExportJson={canExportFile ? handleExportJson : undefined}
-					onExportCsv={canExportFile ? handleExportCsv : undefined}
-					onSetNull={canEditRows ? handleOpenSetNull : undefined}
-					onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
-					onSave={canEditRows ? handleApplyPendingEdits : undefined}
-					pendingEditCount={tableId ? getEditCount(tableId) : 0}
-					onClearSelection={handleClearSelection}
-					onEscapeToGrid={handleEscapeToGrid}
-					mode='floating'
-				/>
-			)}
+			<AnimatePresence>
+				{tableData && settings.selectionBarStyle === 'floating' && rowsForActions.size > 0 && (
+					<SelectionActionBar
+						ref={toolbarRef}
+						selectedCount={rowsForActions.size}
+						onDelete={canEditRows ? handleBulkDelete : undefined}
+						onCopy={privacyMaskData ? undefined : handleBulkCopy}
+						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
+						onExportJson={canExportFile ? handleExportJson : undefined}
+						onExportCsv={canExportFile ? handleExportCsv : undefined}
+						onSetNull={canEditRows ? handleOpenSetNull : undefined}
+						onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
+						onSave={canEditRows ? handleApplyPendingEdits : undefined}
+						pendingEditCount={tableId ? getEditCount(tableId) : 0}
+						onClearSelection={handleClearSelection}
+						onEscapeToGrid={handleEscapeToGrid}
+						mode='floating'
+					/>
+				)}
+			</AnimatePresence>
 
-			{tableId && canEditRows && hasEdits(tableId) && (
+			{tableId && canEditRows && (
 				<PendingChangesBar
 					editCount={getEditCount(tableId)}
 					isApplying={isApplyingEdits}

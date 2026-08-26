@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAdapter, useIsTauri } from '@studio/core/data-provider'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
+import { usePresence } from '@studio/shared/hooks/use-presence'
 import { cn } from '@studio/shared/utils/cn'
 import { getTableRefId } from '@studio/shared/utils/table-ref'
 import { formatAiStatusBadge, useAiStatus } from './use-ai-status'
@@ -190,7 +191,9 @@ export function AiAssistantPanel({
 		[handleSend, isStreaming, abort, setOpen]
 	)
 
-	if (!open) return null
+	const { present, state } = usePresence(open, 200)
+
+	if (!present) return null
 
 	const keysAvailable = aiStatus?.ready ?? false
 	const keyLabel = formatAiStatusBadge(aiStatus, isMock)
@@ -207,8 +210,10 @@ export function AiAssistantPanel({
 
 	return (
 		<aside
+			data-state={state}
 			className={cn(
-				'fixed right-0 top-9 z-40 flex h-[calc(100%-2.25rem)] w-[420px] max-w-[90vw] flex-col border-l border-sidebar-border bg-sidebar shadow-2xl'
+				'fixed right-0 top-9 z-40 flex h-[calc(100%-2.25rem)] w-[420px] max-w-[90vw] flex-col border-l border-sidebar-border bg-sidebar shadow-2xl',
+				'transition-[transform,opacity] duration-200 data-[state=open]:duration-[240ms] ease-[var(--ease-out)] data-[state=closed]:translate-x-full motion-reduce:data-[state=closed]:translate-x-0 motion-reduce:data-[state=closed]:opacity-0 motion-reduce:duration-150'
 			)}
 		>
 			<header className='flex items-center gap-2 border-b border-sidebar-border px-3 py-2'>

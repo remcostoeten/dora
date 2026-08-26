@@ -100,22 +100,22 @@
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-sm: calc(var(--radius) - 4px);
 
-	--animate-accordion-down: accordion-down 0.2s ease-out;
-	--animate-accordion-up: accordion-up 0.2s ease-out;
+	--animate-collapsible-down: collapsible-down 0.2s ease-out;
+	--animate-collapsible-up: collapsible-up 0.2s ease-out;
 
-	@keyframes accordion-down {
+	@keyframes collapsible-down {
 		from {
 			height: 0;
 		}
 
 		to {
-			height: var(--radix-accordion-content-height);
+			height: var(--radix-collapsible-content-height);
 		}
 	}
 
-	@keyframes accordion-up {
+	@keyframes collapsible-up {
 		from {
-			height: var(--radix-accordion-content-height);
+			height: var(--radix-collapsible-content-height);
 		}
 
 		to {
@@ -2074,5 +2074,33 @@
 		max-width: 40%;
 		overflow-wrap: anywhere;
 		text-align: right;
+	}
+}
+
+/*
+ * Reduced-motion baseline. Movement and infinite decorative animation is
+ * suppressed; opacity/color feedback (shimmers, pulses, fades) is kept on
+ * purpose — reduced motion means gentler, not zero.
+ */
+@media (prefers-reduced-motion: reduce) {
+	.db-type-icon-glint {
+		animation: none;
+		-webkit-mask-position: 150% center;
+		mask-position: 150% center;
+	}
+
+	.desktop-only-notice__shimmer::after,
+	.cockpit-skeleton::after {
+		animation: none;
+	}
+
+	.sv-edge-flow,
+	.sv-edge-flow--match,
+	.sv-edge-flow--active {
+		animation: none;
+	}
+
+	.connection-status-error {
+		animation: none;
 	}
 }

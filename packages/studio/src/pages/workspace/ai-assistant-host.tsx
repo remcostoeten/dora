@@ -10,6 +10,7 @@ import { useAiEditorContext } from '@studio/features/ai-assistant/editor-context
 import { scheduleSqlConsoleCommand } from '@studio/features/command-palette/events'
 import { Button } from '@studio/shared/ui/button'
 import { Skeleton } from '@studio/shared/ui/skeleton'
+import { usePresence } from '@studio/shared/hooks/use-presence'
 import { Sparkles } from 'lucide-react'
 
 const AiAssistantPanel = lazy(function () {
@@ -32,7 +33,7 @@ export function AiAssistantToggle() {
 			size='icon'
 			onClick={toggleOpen}
 			title='Open AI assistant'
-			className='fixed bottom-4 right-4 z-[70] h-10 w-10 rounded-full shadow-lg'
+			className='fixed bottom-4 right-4 z-[70] h-10 w-10 rounded-full shadow-lg animate-in fade-in duration-150'
 		>
 			<Sparkles className='h-4 w-4' />
 		</Button>
@@ -49,6 +50,7 @@ export function AiAssistantPanelHost() {
 	const open = useAiAssistantStore(function (s) {
 		return s.open
 	})
+	const { present } = usePresence(open, 200)
 	const activeConnectionId = useActiveConnectionId()
 	const activeNavId = useActiveNavId()
 	const activeTab = useActiveTab()
@@ -72,7 +74,7 @@ export function AiAssistantPanelHost() {
 		)
 	}, [])
 
-	if (!open) return null
+	if (!present) return null
 
 	return (
 		<Suspense

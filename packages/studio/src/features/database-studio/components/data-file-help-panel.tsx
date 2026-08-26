@@ -35,8 +35,8 @@ export function DataFileHelpPanel({ className, defaultOpen = false }: Props) {
 					aria-hidden
 				/>
 			</CollapsibleTrigger>
-			<CollapsibleContent className='pt-2'>
-				<ul className='space-y-1.5 text-xs leading-relaxed text-muted-foreground'>
+			<CollapsibleContent>
+				<ul className='pt-2 space-y-1.5 text-xs leading-relaxed text-muted-foreground'>
 					{DATA_FILE_HELP_ITEMS.map(function (item) {
 						return (
 							<li key={item} className='flex gap-2'>

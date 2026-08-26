@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Eye, Pencil, Plus, X, Trash2 } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 import type { Connection } from '@studio/features/connections/types'
@@ -54,6 +54,37 @@ function statusLabel(status: Connection['status']): string {
   }
 }
 
+function StatusDot({ status }: { status: Connection['status'] }) {
+  const prevStatusRef = useRef(status)
+  const [flash, setFlash] = useState<'success' | 'error' | null>(null)
+
+  useEffect(
+    function flashOnTransition() {
+      if (prevStatusRef.current === status) return
+      prevStatusRef.current = status
+      if (status === 'connected') setFlash('success')
+      else if (status === 'error') setFlash('error')
+      else setFlash(null)
+    },
+    [status]
+  )
+
+  return (
+    <span
+      aria-hidden="true"
+      onAnimationEnd={function clearFlash() {
+        setFlash(null)
+      }}
+      className={cn(
+        'h-2 w-2 shrink-0 rounded-full transition-colors duration-300 ease-[var(--ease-out)]',
+        statusColor(status),
+        flash === 'success' && 'connection-status-success',
+        flash === 'error' && 'connection-status-error'
+      )}
+    />
+  )
+}
+
 export function ConnectionTabBar({
   connections,
   activeConnectionId,
@@ -99,10 +130,7 @@ export function ConnectionTabBar({
                     aria-current={isActive ? 'page' : undefined}
                     aria-label={`${connection.name}, ${statusLabel(connection.status)}`}
                   >
-                    <span
-                      aria-hidden="true"
-                      className={cn('h-2 w-2 shrink-0 rounded-full', statusColor(connection.status))}
-                    />
+                    <StatusDot status={connection.status} />
                     <span className="max-w-[140px] truncate">{connection.name}</span>
                   </button>
                   <button
