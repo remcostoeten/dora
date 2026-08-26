@@ -4,6 +4,10 @@ export function getCellKey(row: number, col: number): string {
 	return `${row}:${col}`
 }
 
+export function getCellId(gridId: string, row: number, col: number): string {
+	return `${gridId}-cell-${row}-${col}`
+}
+
 export function getCellsInRectangle(start: CellPosition, end: CellPosition): Set<string> {
 	const minRow = Math.min(start.row, end.row)
 	const maxRow = Math.max(start.row, end.row)

@@ -120,9 +120,10 @@ a second normalization between the editor and the mutation.
 **"Default" in the grid is never the database's declared DEFAULT.** The grid has
 no access to it. `getColumnDefault` infers one from column type and name — a
 timestamp for date-ish and audit columns, null when nullable, the empty string
-otherwise — and that inferred value is what Backspace writes into the focused
-cell, skipping primary keys. Do not label it as the column default in UI copy,
-and do not use it to decide whether a column was set.
+otherwise — and that inferred value is what Backspace writes into the selected
+cells, falling back to the focused cell and skipping primary keys. Do not label
+it as the column default in UI copy, and do not use it to decide whether a
+column was set.
 
 **The draft row is a separate editor with its own rules.** It shows `auto` in
 every primary-key cell and never edits one, uses `NULL` as the placeholder for a
@@ -165,11 +166,11 @@ A new teardown path sets those flags rather than tearing the editor down on the
 first blur it sees.
 
 **Bare printable keys are commands, not text.** With a cell focused, `e` and
-`F2` and `Enter` open the editor, `d` deletes, `c` copies, `v` pastes, Space
-toggles the row, Backspace clears to the inferred default, and the default branch
-swallows every other lone printable key so it neither types nor escapes to a
-document-level shortcut. Editing is only ever entered explicitly. Adding a new
-bare-letter command means checking it against that list first.
+`F2` and `Enter` open the editor, `d` deletes, `c` copies, `v` pastes, `s` sorts,
+Space toggles the row, Backspace clears to the inferred default, and the default
+branch swallows every other lone printable key so it neither types nor escapes
+to a document-level shortcut. Editing is only ever entered explicitly. Adding a
+new bare-letter command means checking it against that list first.
 
 **The grid is one tab stop with roving focus.** The `<table>` is the only
 tabbable node; the row checkboxes and the FK icon carry `tabIndex={-1}`, and

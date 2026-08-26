@@ -7,9 +7,11 @@ import { formatCellValue } from './cell-value'
 import { DraftRow } from './draft-row'
 import { NoRowsState } from './empty-states'
 import { FKNavigateIcon } from './fk-icon'
+import { getCellId } from './selection'
 import { EditingCell } from './types'
 
 type GridRowProps = {
+	gridId: string
 	row: Record<string, unknown>
 	rowIndex: number
 	columns: ColumnDefinition[]
@@ -49,6 +51,7 @@ type GridRowProps = {
  * grid's shared menu from `onContextMenu`.
  */
 const GridRow = memo(function GridRow({
+	gridId,
 	row,
 	rowIndex,
 	columns,
@@ -119,6 +122,7 @@ const GridRow = memo(function GridRow({
 					stickyCellAccentClasses
 				)}
 				role='gridcell'
+				aria-colindex={1}
 				onContextMenu={function () {
 					onRowContextMenu(rowIndex)
 				}}
@@ -148,6 +152,7 @@ const GridRow = memo(function GridRow({
 
 				return (
 					<td
+						id={getCellId(gridId, rowIndex, colIndex)}
 						key={col.name}
 						className={cn(
 							'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px] group/cell',
@@ -159,6 +164,9 @@ const GridRow = memo(function GridRow({
 						)}
 						style={width ? { maxWidth: width } : undefined}
 						data-cell-key={`${rowIndex}:${colIndex}`}
+						role='gridcell'
+						aria-colindex={colIndex + 2}
+						aria-selected={isSelected}
 						onContextMenu={function () {
 							onCellContextMenu(rowIndex, colIndex)
 						}}
@@ -183,6 +191,7 @@ const GridRow = memo(function GridRow({
 								onBlur={handleEditBlur}
 								onKeyDown={handleEditKeyDown}
 								data-no-shortcuts='true'
+								aria-label={`Edit ${col.name} in row ${rowIndex + 1}`}
 								className='w-full h-full bg-focus-strong font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
 							>
 								{!col.allowedValues.includes(editValue) && (
@@ -209,6 +218,7 @@ const GridRow = memo(function GridRow({
 								onBlur={handleEditBlur}
 								onKeyDown={handleEditKeyDown}
 								data-no-shortcuts='true'
+								aria-label={`Edit ${col.name} in row ${rowIndex + 1}`}
 								className='w-full h-full bg-focus-strong font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
 							/>
 						) : (
@@ -236,6 +246,7 @@ const GridRow = memo(function GridRow({
 })
 
 type GridBodyProps = {
+	gridId: string
 	columns: ColumnDefinition[]
 	draftInsertIndex?: number | null
 	draftRow?: Record<string, unknown> | null
@@ -276,6 +287,7 @@ type GridBodyProps = {
 }
 
 export function GridBody({
+	gridId,
 	columns,
 	draftInsertIndex,
 	draftRow,
@@ -343,8 +355,8 @@ export function GridBody({
 				)}
 
 			{topPad > 0 && (
-				<tr style={{ height: topPad }}>
-					<td colSpan={columns.length + 1} />
+				<tr style={{ height: topPad }} role='presentation' aria-hidden='true'>
+					<td colSpan={columns.length + 1} role='presentation' />
 				</tr>
 			)}
 
@@ -354,6 +366,7 @@ export function GridBody({
 				return (
 					<React.Fragment key={rowIndex}>
 						<GridRow
+							gridId={gridId}
 							row={rows[rowIndex]}
 							rowIndex={rowIndex}
 							columns={columns}
@@ -397,8 +410,8 @@ export function GridBody({
 				)
 			})}
 			{bottomPad > 0 && (
-				<tr style={{ height: bottomPad }}>
-					<td colSpan={columns.length + 1} />
+				<tr style={{ height: bottomPad }} role='presentation' aria-hidden='true'>
+					<td colSpan={columns.length + 1} role='presentation' />
 				</tr>
 			)}
 

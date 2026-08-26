@@ -84,10 +84,11 @@ export function GridHeader({
 }: GridHeaderProps) {
 	return (
 		<thead className='sticky top-0 bg-sidebar z-10' role='rowgroup'>
-			<tr role='row'>
+			<tr role='row' aria-rowindex={1}>
 				<th
 					className='w-[30px] min-w-[30px] p-0 text-center align-middle border-b border-l border-r border-sidebar-border bg-background sticky left-0 z-30'
 					role='columnheader'
+					aria-colindex={1}
 					aria-label='Select all rows'
 				>
 					<Checkbox
@@ -102,7 +103,7 @@ export function GridHeader({
 						tabIndex={-1}
 					/>
 				</th>
-				{columns.map(function (col) {
+				{columns.map(function (col, colIndex) {
 					const isSorted = sort?.column === col.name
 					const width = getColumnWidth(col.name)
 
@@ -115,6 +116,15 @@ export function GridHeader({
 								resizingColumn === col.name && 'bg-sidebar-accent'
 							)}
 							style={width ? { width } : undefined}
+							role='columnheader'
+							aria-colindex={colIndex + 2}
+							aria-sort={
+								isSorted
+									? sort?.direction === 'asc'
+										? 'ascending'
+										: 'descending'
+									: 'none'
+							}
 							onClick={function () {
 								onSort(col.name)
 							}}

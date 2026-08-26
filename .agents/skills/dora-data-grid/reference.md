@@ -97,13 +97,15 @@ With a cell focused, from `use-grid-keyboard.ts`:
 | --- | --- |
 | First arrow, Tab or Enter with no focus | Focus lands on the top-left cell |
 | Arrows | Move one cell; with ctrl or cmd, jump to the edge |
-| Shift plus arrows | Left and right extend the cell rectangle from the anchor; up and down extend the *row* selection instead and clear the cell selection |
+| Shift plus arrows | Extend a rectangular cell selection from the anchor |
 | Tab and shift+Tab | Move one cell, wrapping across rows; Tab escapes the grid at the last cell |
 | Enter, F2, `e` | Open the editor on the focused cell |
 | Delete, `d` | Delete the selected rows, falling back to the focused row |
-| Backspace | Write `getColumnDefault` into the focused cell; skipped on a primary key |
+| Backspace | Write `getColumnDefault` into every selected cell, falling back to the focused cell; primary keys are skipped |
 | Escape | Progressive: collapse a multi-cell selection, then drop the row selection, then clear focus |
 | Space | Toggle the focused row; with shift, select the range from the last clicked row |
+| `s` | Cycle the focused column's sort state |
+| Shift+F10 or Context Menu | Open the focused cell's action menu |
 | `c`, mod+c | Copy the selection, or the focused cell, as TSV |
 | `v`, mod+v | Paste TSV from the focused cell, clipped to the existing row and column count |
 | mod+a | Toggle select all |

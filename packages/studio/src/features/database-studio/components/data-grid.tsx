@@ -1,4 +1,12 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react'
+import React, {
+	useState,
+	useRef,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useMemo,
+	useCallback
+} from 'react'
 import { useShortcut, useEffectiveShortcuts } from '@studio/core/shortcuts'
 import { useSettings } from '@studio/core/settings'
 import {
@@ -11,7 +19,7 @@ import { NoColumnsState } from './data-grid/empty-states'
 import { GridBody } from './data-grid/grid-body'
 import { GridContextMenu, useGridContextMenu } from './data-grid/grid-context-menu'
 import { GridHeader } from './data-grid/grid-header'
-import { getCellsInRectangle } from './data-grid/selection'
+import { getCellId, getCellsInRectangle } from './data-grid/selection'
 import { CellPosition, ContextMenuState } from './data-grid/types'
 import { useCellEditing } from './data-grid/use-cell-editing'
 import { useCellSelection } from './data-grid/use-cell-selection'
@@ -115,6 +123,8 @@ export function DataGrid({
 	workspaceStateKey = 'data-grid'
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
+	const gridId = `data-grid-${useId().replace(/:/g, '')}`
+	const instructionsId = `${gridId}-instructions`
 
 	// The studio recreates these handlers on every render; pinning them here is
 	// what lets the memoized rows skip re-rendering when only the shell moved.
@@ -330,6 +340,8 @@ export function DataGrid({
 		masked,
 		onCellEdit,
 		onDeleteSelectedRows,
+		onOpenCellMenu: contextMenu.armCell,
+		onSortColumn: handleSort,
 		onRowsSelect,
 		onRowSelect,
 		onSelectAll,
@@ -346,8 +358,19 @@ export function DataGrid({
 		return <NoColumnsState />
 	}
 
+	const activeCellId =
+		focusedCell && rows[focusedCell.row] && columns[focusedCell.col]
+			? getCellId(gridId, focusedCell.row, focusedCell.col)
+			: undefined
+
 	return (
 		<div className='relative h-full min-h-0 w-full overflow-hidden'>
+			<div id={instructionsId} className='sr-only'>
+				Use arrow keys to move between cells. Hold Shift with an arrow key to select a
+				rectangle. Press Enter, F2, or E to edit, Backspace to clear selected cells, Delete
+				to delete selected rows, Space to select a row, S to sort the focused column, and
+				Shift+F10 to open cell actions.
+			</div>
 			<div
 				ref={scrollContainerRef}
 				className={cn(
@@ -403,8 +426,12 @@ export function DataGrid({
 						style={{ tableLayout: 'auto', minWidth: '100%' }}
 						role='grid'
 						aria-label={tableName ? `Data grid for ${tableName}` : 'Data grid'}
-						aria-rowcount={rows.length}
+						aria-describedby={instructionsId}
+						aria-activedescendant={activeCellId}
+						aria-rowcount={rows.length + 1}
 						aria-colcount={columns.length + 1}
+						aria-multiselectable='true'
+						aria-readonly={masked || !onCellEdit}
 						tabIndex={0}
 						onKeyDown={handleGridKeyDown}
 					>
@@ -436,6 +463,7 @@ export function DataGrid({
 							sort={sort}
 						/>
 						<GridBody
+							gridId={gridId}
 							columns={columns}
 							draftInsertIndex={draftInsertIndex}
 							draftRow={draftRow}
