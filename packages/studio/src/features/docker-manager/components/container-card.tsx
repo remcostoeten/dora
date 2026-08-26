@@ -111,10 +111,9 @@ export function ContainerCard({
 					onContextMenu={handleContextMenu}
 					className={cn(
 						'group relative p-3 rounded-lg border transition-all cursor-pointer',
-						'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
 						isSelected
-							? 'border-emerald-500/50 bg-emerald-500/5'
-							: 'border-border/50 hover:border-border hover:bg-accent/50'
+							? 'border-emerald-500/50 bg-emerald-500/5 focus-visible:bg-emerald-500/15'
+							: 'border-border/50 hover:border-border hover:bg-accent/50 focus-visible:bg-focus'
 					)}
 				>
 					<div className='flex items-start justify-between gap-2'>
@@ -290,7 +289,7 @@ function QuickActionButton({
 			className={cn(
 				'inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground transition-colors',
 				'hover:text-foreground hover:bg-muted',
-				'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+				'focus-visible:text-foreground focus-visible:bg-focus-strong',
 				'disabled:opacity-30 disabled:pointer-events-none',
 				className
 			)}

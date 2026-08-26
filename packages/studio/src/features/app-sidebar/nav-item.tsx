@@ -6,8 +6,7 @@ import type { NavItem } from './types'
 
 const navItemVariants = cva(
 	[
-		'relative flex items-center justify-center transition-colors',
-		'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring/30 focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar',
+		'relative flex items-center justify-center transition-colors duration-150',
 		'disabled:pointer-events-none disabled:opacity-40'
 	],
 	{
@@ -23,9 +22,8 @@ const navItemVariants = cva(
 			},
 			state: {
 				default:
-					'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-				active:
-					'bg-sidebar-accent/80 text-sidebar-accent-foreground ring-1 ring-sidebar-border/70 shadow-sm',
+					'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:bg-focus focus-visible:text-sidebar-accent-foreground',
+				active: 'bg-sidebar-accent text-sidebar-accent-foreground focus-visible:bg-focus-strong',
 				disabled: 'cursor-not-allowed opacity-40'
 			}
 		},

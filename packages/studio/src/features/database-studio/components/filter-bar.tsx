@@ -67,7 +67,7 @@ function OperatorSelect({
 	return (
 		<div className='relative'>
 			<select
-				className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[120px] appearance-none focus:ring-1 focus:ring-secondary focus:border-primary outline-none cursor-pointer'
+				className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 w-[120px] appearance-none transition-colors duration-150 focus-visible:bg-focus cursor-pointer'
 				value={value}
 				onChange={(e) => onChange(e.target.value as FilterOperator)}
 			>
@@ -96,7 +96,7 @@ function ColumnSelect({
 	return (
 		<div className='relative'>
 			<select
-				className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 min-w-[120px] appearance-none focus:ring-1 focus:ring-secondary focus:border-primary outline-none cursor-pointer'
+				className='h-6 text-xs bg-background border border-sidebar-border rounded px-2 min-w-[120px] appearance-none transition-colors duration-150 focus-visible:bg-focus cursor-pointer'
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 			>

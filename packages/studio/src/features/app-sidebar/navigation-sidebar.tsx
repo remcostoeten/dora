@@ -136,7 +136,7 @@ function SidebarContent({
 						<button
 							type='button'
 							onClick={() => onNavSelect?.('database-studio')}
-							className='cursor-pointer hover:opacity-80 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar rounded-md'
+							className='cursor-pointer hover:opacity-80 transition-opacity focus-visible:opacity-80 focus-visible:bg-focus rounded-md'
 							aria-label='Go to home'
 							title='Dora AI Home'
 						>

@@ -540,7 +540,7 @@ function SettingsSearchField({
 					onKeyDown={onKeyDown}
 					placeholder='Search settings'
 					aria-label='Search settings'
-					className='relative z-10 h-8 border-sidebar-border/60 bg-sidebar/90 pl-9 pr-16 text-sm text-sidebar-foreground placeholder:text-muted-foreground/70 focus-visible:border-sidebar-border focus-visible:ring-1 focus-visible:ring-sidebar-ring'
+					className='relative z-10 h-8 border-sidebar-border/60 bg-sidebar/90 pl-9 pr-16 text-sm text-sidebar-foreground placeholder:text-muted-foreground/70 focus-visible:bg-focus'
 				/>
 				{hasQuery ? (
 					<div className='absolute inset-y-0 right-1 flex items-center gap-0.5'>
@@ -1305,7 +1305,7 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 																	className={cn(
 																		'flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 transition-colors',
 																		isActive
-																			? 'bg-sidebar-accent/60 ring-1 ring-sidebar-primary/30'
+																			? 'bg-sidebar-accent'
 																			: 'hover:bg-sidebar-accent/30'
 																	)}
 																>

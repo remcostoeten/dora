@@ -696,10 +696,9 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
                 }}
                 className={cn(
                   "inline-flex h-7 items-center rounded px-2.5 text-xs font-medium transition-colors",
-                  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    ? "bg-primary text-primary-foreground shadow-sm focus-visible:bg-primary/78"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-focus focus-visible:text-foreground",
                 )}
               >
                 {option.label}

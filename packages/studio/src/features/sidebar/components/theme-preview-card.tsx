@@ -25,7 +25,7 @@ export function ThemePreviewCard({ name, isSelected, onClick, variant, accentCol
 			onClick={onClick}
 			className={cn(
 				'flex-shrink-0 flex flex-col rounded-lg transition-all cursor-pointer overflow-hidden w-full',
-				'hover:opacity-90',
+				'hover:opacity-90 focus-visible:opacity-75',
 				isSelected && 'ring-1 ring-border/60 ring-offset-1 ring-offset-sidebar  relative '
 			)}
 		>

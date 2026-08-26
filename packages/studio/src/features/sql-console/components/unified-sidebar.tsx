@@ -180,7 +180,7 @@ export function UnifiedSidebar({
 										if (e.key === 'Enter') handleRenameSubmit()
 										if (e.key === 'Escape') setEditingId(null)
 									}}
-									className='h-6 py-0 px-1 text-xs bg-sidebar-accent border-sidebar-border/60 focus-visible:ring-0 focus-visible:border-muted-foreground/40'
+									className='h-6 py-0 px-1 text-xs bg-sidebar-accent border-sidebar-border/60 focus-visible:bg-focus-strong'
 								/>
 							</div>
 						) : (

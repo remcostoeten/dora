@@ -189,7 +189,7 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 									'group-data-[highlighted]/row:opacity-100 group-data-[highlighted]/row:translate-x-0 group-data-[highlighted]/row:pointer-events-auto',
 									'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
 									'hover:text-foreground hover:bg-background/60',
-									'focus-visible:outline-hidden focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/40'
+									'focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:pointer-events-auto focus-visible:text-foreground focus-visible:bg-focus-strong'
 								)}
 								onPointerDown={function (e) {
 									e.preventDefault()
@@ -219,7 +219,7 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 									'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
 									'hover:text-destructive hover:bg-background/60',
 									isHolding && 'text-destructive-foreground',
-									'focus-visible:outline-hidden focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-destructive/40'
+									'focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:pointer-events-auto focus-visible:text-destructive focus-visible:bg-destructive/20'
 								)}
 								onPointerDown={function (e) {
 									onKeepOpenAfterDelete()
@@ -507,7 +507,7 @@ export function ConnectionSwitcher({
 							'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
 							'hover:bg-sidebar-accent',
 							'data-[state=open]:bg-sidebar-accent',
-							'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/40'
+							'focus-visible:bg-focus-strong'
 						)}
 					>
 						<div

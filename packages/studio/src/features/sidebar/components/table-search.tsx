@@ -39,7 +39,7 @@ export function TableSearch({
 					placeholder='Search...'
 					value={searchValue}
 					onChange={(e) => onSearchChange(e.target.value)}
-					className='h-8 bg-transparent border-sidebar-border/60 text-sm pl-3 pr-3 text-sidebar-foreground placeholder:text-muted-foreground/70 focus-visible:ring-1 focus-visible:ring-sidebar-ring focus-visible:border-sidebar-border'
+					className='h-8 bg-transparent border-sidebar-border/60 text-sm pl-3 pr-3 text-sidebar-foreground placeholder:text-muted-foreground/70 focus-visible:bg-focus'
 				/>
 			</div>
 

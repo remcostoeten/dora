@@ -183,7 +183,7 @@ const GridRow = memo(function GridRow({
 								onBlur={handleEditBlur}
 								onKeyDown={handleEditKeyDown}
 								data-no-shortcuts='true'
-								className='w-full h-full bg-sidebar-accent/35 outline outline-1 outline-offset-[-1px] outline-sidebar-foreground/25 font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
+								className='w-full h-full bg-focus-strong font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
 							>
 								{!col.allowedValues.includes(editValue) && (
 									<option value={editValue}>
@@ -209,7 +209,7 @@ const GridRow = memo(function GridRow({
 								onBlur={handleEditBlur}
 								onKeyDown={handleEditKeyDown}
 								data-no-shortcuts='true'
-								className='w-full h-full bg-sidebar-accent/35 outline outline-1 outline-offset-[-1px] outline-sidebar-foreground/25 font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
+								className='w-full h-full bg-focus-strong font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
 							/>
 						) : (
 							<div className='flex items-center min-w-0 relative'>
