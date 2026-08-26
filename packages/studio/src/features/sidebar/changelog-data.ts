@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.39.0"
+export const CURRENT_VERSION = "0.40.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -164,6 +164,30 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"Reapply \"chore(skills): add project-local agent skill system\"",
 			"chore(aur): update dora to 0.38.1",
 			"chore(skills): add project-local agent skill system",
+		]
+	},
+	{
+		version: "0.40.0",
+		date: "2026-08-26",
+		commit: "v0.40.0",
+		title: "Feat(marketing): rebuild the hero demo and re-capture every feature asset",
+		description: "Feat(marketing): rebuild the hero demo and re-capture every feature asset. Feat: CSV delimiter auto-detection and BOM handling (#232) (#232).",
+		type: "feature",
+		details: [
+			"feat(marketing): rebuild the hero demo and re-capture every feature asset",
+			"feat(desktop): redesign boot splash screen (#227) (#227)",
+			"feat: CSV delimiter auto-detection and BOM handling (#232) (#232)",
+			"feat: motion polish across the Studio (eight animation improvements) (#231) (#231)",
+			"feat: focus and press states as a background tint across the Studio (#234) (#234)",
+			"feat(grid): keyboard sort, context-menu key, rectangle-only shift selection (#235) (#235)",
+			"fix: restore clean TypeScript validation (#228) (#228)",
+			"fix: duplicate rows with natural primary keys, new-row highlight, dead-connection toast silencing (#233) (#233)",
+			"perf: performance contract, keep-alive views, normalized workspace store and windowed results (Tracks 0-3) (#230) (#230)",
+			"docs(release): curated notes for v0.40.0",
+			"polish repository and add instant marketing navigation (#229) (#229)",
+			"chore(aur): update dora to 0.39.0",
+			"chore: polish repository docs and promo captures (#226) (#226)",
+			"chore(agents): consolidate skills under .agents/skills as the single root",
 		]
 	},
 	{

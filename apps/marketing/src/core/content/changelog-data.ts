@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.39.0"
+export const CURRENT_VERSION = "0.40.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -301,6 +301,57 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				items: [
 				"Revert \"chore(skills): add project-local agent skill system\"",
 				"Reapply \"chore(skills): add project-local agent skill system\"",
+				]
+			}
+		]
+	},
+	{
+		version: "0.40.0",
+		date: "2026-08-26",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.40.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix: restore clean TypeScript validation (#228) (#228)",
+				"fix: duplicate rows with natural primary keys, new-row highlight, dead-connection toast silencing (#233) (#233)",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.39.0",
+				"chore: polish repository docs and promo captures (#226) (#226)",
+				"chore(agents): consolidate skills under .agents/skills as the single root",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(release): curated notes for v0.40.0",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(marketing): rebuild the hero demo and re-capture every feature asset",
+				"feat(desktop): redesign boot splash screen (#227) (#227)",
+				"feat: CSV delimiter auto-detection and BOM handling (#232) (#232)",
+				"feat: motion polish across the Studio (eight animation improvements) (#231) (#231)",
+				"feat: focus and press states as a background tint across the Studio (#234) (#234)",
+				"feat(grid): keyboard sort, context-menu key, rectangle-only shift selection (#235) (#235)",
+				]
+			},
+			{
+				name: "Other",
+				items: [
+				"polish repository and add instant marketing navigation (#229) (#229)",
+				]
+			},
+			{
+				name: "Performance",
+				items: [
+				"perf: performance contract, keep-alive views, normalized workspace store and windowed results (Tracks 0-3) (#230) (#230)",
 				]
 			}
 		]

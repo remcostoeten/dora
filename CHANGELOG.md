@@ -238,6 +238,59 @@ All notable changes to this project will be documented in this file.
 
 - Reapply "chore(skills): add project-local agent skill system"
 
+
+## [v0.40.0] - 2026-08-26
+
+### Bug Fixes
+
+- fix: restore clean TypeScript validation (#228) (#228)
+
+- fix: duplicate rows with natural primary keys, new-row highlight, dead-connection toast silencing (#233) (#233)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.39.0
+
+- chore: polish repository docs and promo captures (#226) (#226)
+
+- chore(agents): consolidate skills under .agents/skills as the single root
+
+
+
+### Documentation
+
+- docs(release): curated notes for v0.40.0
+
+
+
+### Features
+
+- feat(marketing): rebuild the hero demo and re-capture every feature asset
+
+- feat(desktop): redesign boot splash screen (#227) (#227)
+
+- feat: CSV delimiter auto-detection and BOM handling (#232) (#232)
+
+- feat: motion polish across the Studio (eight animation improvements) (#231) (#231)
+
+- feat: focus and press states as a background tint across the Studio (#234) (#234)
+
+- feat(grid): keyboard sort, context-menu key, rectangle-only shift selection (#235) (#235)
+
+
+
+### Other
+
+- polish repository and add instant marketing navigation (#229) (#229)
+
+
+
+### Performance
+
+- perf: performance contract, keep-alive views, normalized workspace store and windowed results (Tracks 0-3) (#230) (#230)
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29
