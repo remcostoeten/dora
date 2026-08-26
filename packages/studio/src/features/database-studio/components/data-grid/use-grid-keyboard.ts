@@ -16,6 +16,8 @@ type UseGridKeyboardArgs = {
 	masked?: boolean
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
 	onDeleteSelectedRows?: () => void
+	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
+	onSortColumn?: (columnName: string) => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
 	onRowSelect: (rowIndex: number, checked: boolean) => void
 	onSelectAll: (checked: boolean) => void
@@ -38,6 +40,8 @@ export function useGridKeyboard({
 	masked,
 	onCellEdit,
 	onDeleteSelectedRows,
+	onOpenCellMenu,
+	onSortColumn,
 	onRowsSelect,
 	onRowSelect,
 	onSelectAll,
@@ -89,30 +93,6 @@ export function useGridKeyboard({
 			const { row, col } = focusedCell
 			const maxRow = rows.length - 1
 			const maxCol = columns.length - 1
-			const rowShiftSelectionKey =
-				e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')
-
-			function getShiftRowAnchor() {
-				return lastClickedRowRef.current ?? row
-			}
-
-			function applyRowSelection(newRow: number) {
-				if (!onRowsSelect) return false
-
-				const anchorRow = getShiftRowAnchor()
-				const start = Math.min(anchorRow, newRow)
-				const end = Math.max(anchorRow, newRow)
-				const range: number[] = []
-				for (let i = start; i <= end; i++) {
-					range.push(i)
-				}
-
-				onSelectAll(false)
-				onRowsSelect(range, true)
-				lastClickedRowRef.current = anchorRow
-				return true
-			}
-
 			function moveAndMaybeSelect(newRow: number, newCol: number) {
 				const newPos: CellPosition = { row: newRow, col: newCol }
 				if (pendingNavFrameRef.current !== null) {
@@ -120,10 +100,7 @@ export function useGridKeyboard({
 				}
 				pendingNavFrameRef.current = requestAnimationFrame(function () {
 					setFocusedCell(newPos)
-					if (rowShiftSelectionKey && applyRowSelection(newRow)) {
-						setAnchorCell({ row: newRow, col: newCol })
-						updateCellSelection(new Set())
-					} else if (e.shiftKey && anchorCell) {
+					if (e.shiftKey && anchorCell) {
 						updateCellSelection(getCellsInRectangle(anchorCell, newPos))
 					} else if (!e.shiftKey) {
 						setAnchorCell(newPos)
@@ -191,6 +168,12 @@ export function useGridKeyboard({
 						startCellEdit(row, columns[col].name, rows[row][columns[col].name])
 					}
 					break
+				case 'F10':
+				case 'ContextMenu':
+					if (e.key === 'ContextMenu' || e.shiftKey) {
+						onOpenCellMenu?.(row, col)
+					}
+					break
 				// Delete removes the active row(s). onDeleteSelectedRows resolves
 				// the target via rowsForActions, which falls back to the focused
 				// row when nothing is explicitly selected — matching the "Del"
@@ -211,8 +194,12 @@ export function useGridKeyboard({
 					if (e.ctrlKey || e.metaKey || e.shiftKey) break
 					e.preventDefault()
 					if (masked) break
-					if (onCellEdit && !columns[col].primaryKey) {
-						onCellEdit(row, columns[col].name, getColumnDefault(columns[col]))
+					if (onCellEdit) {
+						for (const cell of getCellsToClear(selectedCellsSet, focusedCell)) {
+							const column = columns[cell.col]
+							if (!column || column.primaryKey || !rows[cell.row]) continue
+							onCellEdit(cell.row, column.name, getColumnDefault(column))
+						}
 					}
 					break
 				case 'Escape':
@@ -268,6 +255,12 @@ export function useGridKeyboard({
 						}
 					}
 					break
+				case 's':
+					if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+						e.preventDefault()
+						onSortColumn?.(columns[col].name)
+					}
+					break
 				case 'a':
 					if (e.ctrlKey || e.metaKey) {
 						e.preventDefault()
@@ -316,6 +309,8 @@ export function useGridKeyboard({
 			masked,
 			onCellEdit,
 			onDeleteSelectedRows,
+			onOpenCellMenu,
+			onSortColumn,
 			onRowsSelect,
 			onRowSelect,
 			onSelectAll,
@@ -328,6 +323,20 @@ export function useGridKeyboard({
 			updateCellSelection
 		]
 	)
+}
+
+export function getCellsToClear(
+	selectedCellsSet: Set<string>,
+	focusedCell: CellPosition
+): CellPosition[] {
+	const keys =
+		selectedCellsSet.size > 0
+			? selectedCellsSet
+			: new Set([getCellKey(focusedCell.row, focusedCell.col)])
+	return Array.from(keys, function (key) {
+		const [row, col] = key.split(':').map(Number)
+		return { row, col }
+	})
 }
 
 function copySelectionToClipboard(

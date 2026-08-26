@@ -1,7 +1,10 @@
 import { renderHook, act } from '@testing-library/react'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { useGridKeyboard } from '@/features/database-studio/components/data-grid/use-grid-keyboard'
-import type { CellPosition, EditingCell } from '@/features/database-studio/components/data-grid/types'
+import type {
+	CellPosition,
+	EditingCell
+} from '@/features/database-studio/components/data-grid/types'
 import type { ColumnDefinition } from '@/features/database-studio/types'
 
 function createColumns(): ColumnDefinition[] {
@@ -24,7 +27,7 @@ describe('useGridKeyboard', function () {
 		vi.unstubAllGlobals()
 	})
 
-	it('extends the selected row range with shift plus arrow up', function () {
+	it('extends the selected cell rectangle with shift plus arrow up', function () {
 		const focusedCell: CellPosition = { row: 2, col: 1 }
 		const anchorCell: CellPosition = { row: 2, col: 1 }
 		const lastClickedRowRef = { current: null as number | null }
@@ -75,9 +78,9 @@ describe('useGridKeyboard', function () {
 		})
 
 		expect(setFocusedCell).toHaveBeenCalledWith({ row: 1, col: 1 })
-		expect(onSelectAll).toHaveBeenCalledWith(false)
-		expect(onRowsSelect).toHaveBeenCalledWith([1, 2], true)
-		expect(updateCellSelection).toHaveBeenCalledWith(new Set())
-		expect(lastClickedRowRef.current).toBe(2)
+		expect(onSelectAll).not.toHaveBeenCalled()
+		expect(onRowsSelect).not.toHaveBeenCalled()
+		expect(updateCellSelection).toHaveBeenCalledWith(new Set(['1:1', '2:1']))
+		expect(lastClickedRowRef.current).toBeNull()
 	})
 })
