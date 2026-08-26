@@ -337,7 +337,7 @@ export function AiAssistantPanel({
 						disabled={isStreaming || !keysAvailable}
 						placeholder='Ask anything about your database…'
 						rows={3}
-						className='w-full resize-none rounded-md border border-sidebar-border bg-background px-3 py-2 pr-10 text-sm outline-none focus:border-primary disabled:opacity-50'
+						className='w-full resize-none rounded-md border border-sidebar-border bg-background px-3 py-2 pr-10 text-sm transition-colors duration-150 focus-visible:bg-focus disabled:opacity-50'
 					/>
 					<div className='absolute bottom-1.5 right-1.5'>
 						{isStreaming ? (

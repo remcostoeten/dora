@@ -160,7 +160,7 @@ export function AddRecordDialog({
 										}}
 										placeholder={col.nullable ? 'NULL' : `Enter ${col.type}`}
 										required={!col.nullable}
-										className='w-full h-9 px-3 rounded-md border border-sidebar-border bg-sidebar text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-secondary/50'
+										className='w-full h-9 px-3 rounded-md border border-sidebar-border bg-sidebar text-sm text-foreground placeholder:text-muted-foreground transition-colors duration-150 focus-visible:bg-focus'
 									/>
 									<span className='text-xs text-muted-foreground mt-1'>
 										{col.type}

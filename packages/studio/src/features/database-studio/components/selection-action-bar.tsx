@@ -386,7 +386,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 			tabIndex={-1}
 			className={cn(
 				mode === 'floating' ? floatingClasses : staticClasses,
-				'outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+				'transition-colors duration-150 focus-visible:bg-focus'
 			)}
 			onKeyDown={createToolbarKeyHandler(onEscapeToGrid)}
 		>

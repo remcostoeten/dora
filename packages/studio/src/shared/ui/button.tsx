@@ -4,21 +4,24 @@ import * as React from 'react'
 import { cn } from '@studio/shared/utils/cn'
 
 const buttonVariants = cva(
-	'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-[color,background-color,border-color,transform] duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+	'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,border-color,transform] duration-150 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.97] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
 	{
 		variants: {
 			variant: {
-				default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-				destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+				default:
+					'bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:bg-primary/78 active:bg-primary/70',
+				destructive:
+					'bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:bg-destructive/78 active:bg-destructive/70',
 				outline:
-					'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
-				secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-				ghost: 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-				link: 'text-primary underline-offset-4 hover:underline',
+					'border border-input bg-background hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground active:bg-focus-strong',
+				secondary:
+					'bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:bg-secondary/60 active:bg-secondary/50',
+				ghost: 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:bg-focus focus-visible:text-sidebar-accent-foreground active:bg-focus-strong',
+				link: 'text-primary underline-offset-4 hover:underline focus-visible:bg-focus focus-visible:underline',
 				sidebar:
-					'bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 justify-start',
+					'bg-sidebar-accent text-sidebar-foreground hover:bg-sidebar-accent/80 focus-visible:bg-focus-strong justify-start',
 				'sidebar-ghost':
-					'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground justify-start'
+					'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:bg-focus focus-visible:text-sidebar-accent-foreground active:bg-focus-strong justify-start'
 			},
 			size: {
 				default: 'h-10 px-4 py-2',

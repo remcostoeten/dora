@@ -96,7 +96,7 @@ const AlertDialogAction = React.forwardRef<
 		<AlertDialogPrimitive.Action
 			ref={ref}
 			className={cn(
-				'inline-flex h-10 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-[background-color,color,box-shadow] duration-150 ease-[var(--ease-out)] hover:bg-destructive/90 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-destructive-foreground/40 disabled:pointer-events-none disabled:opacity-50',
+				'inline-flex h-10 items-center justify-center rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-[background-color,color] duration-150 ease-[var(--ease-out)] hover:bg-destructive/90 focus-visible:bg-destructive/78 active:bg-destructive/70 disabled:pointer-events-none disabled:opacity-50',
 				className
 			)}
 			{...props}
@@ -112,7 +112,7 @@ const AlertDialogCancel = React.forwardRef<
 		<AlertDialogPrimitive.Cancel
 			ref={ref}
 			className={cn(
-				'inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-[background-color,color,box-shadow] duration-150 ease-[var(--ease-out)] hover:bg-accent hover:text-accent-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 sm:mt-0',
+				'inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-[background-color,color] duration-150 ease-[var(--ease-out)] hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground active:bg-focus-strong disabled:pointer-events-none disabled:opacity-50 sm:mt-0',
 				className
 			)}
 			{...props}

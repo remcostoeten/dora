@@ -225,7 +225,7 @@ const TableItemRow = memo(function TableItemRow({
 		<div>
 			<div
 				className={cn(
-					'group flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors outline-hidden focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-sidebar-ring',
+					'group flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors focus-visible:bg-focus-strong',
 					isActive && 'bg-sidebar-accent',
 					!isActive && 'hover:bg-sidebar-accent/60'
 				)}

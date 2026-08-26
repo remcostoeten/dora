@@ -96,6 +96,9 @@
 
 	--color-editor: hsl(var(--editor));
 
+	--color-focus: var(--focus-surface);
+	--color-focus-strong: var(--focus-surface-strong);
+
 	--radius-lg: var(--radius);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-sm: calc(var(--radius) - 4px);
@@ -142,6 +145,60 @@
 	}
 }
 
+/*
+  App-wide focus contract.
+
+  1. Nothing ever draws a focus outline or ring. The UA's default outline and
+     any inherited `outline` are cleared unconditionally.
+  2. Keyboard focus and press states read as a background wash instead
+     (`bg-focus` / `bg-focus-strong`, or the tokens directly in plain CSS).
+
+  The fallback below is wrapped in `:where()` so it carries zero specificity:
+  any element that paints its own background (`bg-primary`, `bg-transparent`, a
+  `focus-visible:bg-*` utility, …) overrides it and owns its own focus look.
+  It exists so that a focusable element nobody styled still shows *something*
+  rather than disappearing from the keyboard-navigation story entirely.
+*/
+@layer base {
+	:focus,
+	:focus-visible {
+		outline: none;
+	}
+
+	:where(
+		a[href],
+		button,
+		summary,
+		input,
+		textarea,
+		select,
+		[contenteditable='true'],
+		[role='button'],
+		[role='link'],
+		[role='menuitem'],
+		[role='menuitemcheckbox'],
+		[role='menuitemradio'],
+		[role='option'],
+		[role='tab']
+	):focus-visible {
+		background-color: var(--focus-surface);
+	}
+
+	:where(
+		a[href],
+		button,
+		summary,
+		[role='button'],
+		[role='menuitem'],
+		[role='menuitemcheckbox'],
+		[role='menuitemradio'],
+		[role='option'],
+		[role='tab']
+	):not(:disabled, [data-disabled], [aria-disabled='true']):active {
+		background-color: var(--focus-surface-strong);
+	}
+}
+
 @utility scrollbar-thin {
 	scrollbar-width: thin;
 	scrollbar-color: hsl(var(--muted)) transparent;
@@ -181,6 +238,18 @@
 
 		--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 		--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+		/*
+		 * Focus and press feedback is a translucent wash of the theme's own
+		 * foreground — never an outline, ring, glow or shadow. Because these are
+		 * alpha values they composite over whatever surface the element sits on,
+		 * and because `--foreground` is redefined by every theme class (applied to
+		 * the same <html> element as `:root`) they re-tune themselves per theme:
+		 * dark themes lighten, light themes darken.
+		 */
+		--focus-surface: hsl(var(--foreground) / 0.1);
+		--focus-surface-strong: hsl(var(--foreground) / 0.16);
+		--focus-duration: 130ms;
 
 		--background: 0 0% 6.7%;
 		--editor: 240 9% 6%;
@@ -1055,8 +1124,6 @@
 	--sv-accent-bg: hsl(var(--sidebar-foreground) / 0.08);
 	--sv-accent-bg-muted: hsl(var(--sidebar-foreground) / 0.05);
 	--sv-accent-text: hsl(var(--sidebar-foreground) / 0.86);
-	--sv-focus-border: hsl(var(--sidebar-foreground) / 0.18);
-	--sv-focus-ring: hsl(var(--sidebar-foreground) / 0.1);
 	--sv-canvas-base: hsl(var(--background));
 	--sv-canvas-panel: hsl(var(--card) / 0.18);
 	--sv-grid-line: hsl(var(--border) / 0.34);
@@ -1581,9 +1648,8 @@
 	border-color: hsl(var(--sidebar-foreground) / 0.12);
 }
 
-.sv-toolbar__search-input:focus {
-	border-color: var(--sv-focus-border);
-	box-shadow: 0 0 0 3px var(--sv-focus-ring);
+.sv-toolbar__search-input:focus-visible {
+	background: var(--focus-surface);
 }
 
 .sv-toolbar__toggle--active {

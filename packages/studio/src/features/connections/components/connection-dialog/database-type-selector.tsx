@@ -286,20 +286,18 @@ export function DatabaseTypeSelector({
 						style={
 							{
 								'--db-accent': theme.accent,
-								background: isActive ? theme.wash : undefined,
-								borderColor: isActive ? theme.accent : undefined,
-								boxShadow: isActive
-									? `0 14px 34px -28px ${theme.accent}`
-									: undefined
+								'--db-wash': theme.wash,
+								borderColor: isActive ? theme.accent : undefined
 							} as React.CSSProperties
 						}
 						className={cn(
 							'db-type-btn group relative overflow-hidden border p-3 text-left',
-							'bg-card/55 transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out',
+							'bg-card/55 transition-[border-color,background-color,transform] duration-200 ease-out',
 							'hover:border-border/90 hover:bg-card active:scale-[0.985]',
-							'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35',
 							compact && 'p-2',
-							isActive ? 'ring-1 ring-inset ring-white/10' : 'border-border/55',
+							isActive
+								? 'bg-[var(--db-wash)] hover:bg-[var(--db-wash)] focus-visible:bg-focus-strong'
+								: 'border-border/55 focus-visible:bg-focus',
 							disabled && 'opacity-50 cursor-not-allowed'
 						)}
 					>

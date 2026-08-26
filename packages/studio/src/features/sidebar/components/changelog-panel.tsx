@@ -107,7 +107,7 @@ export function ChangelogPanel({
 											toggleVersion(entry.version)
 										}
 									}}
-									className='p-3 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 rounded-md transition-all'
+									className='p-3 cursor-pointer focus-visible:bg-focus rounded-md transition-all'
 									aria-expanded={isExpanded}
 									aria-controls={`changelog-details-${entry.version}`}
 								>
@@ -169,7 +169,7 @@ export function ChangelogPanel({
 													rel='noopener noreferrer'
 													onClick={(e) => e.stopPropagation()}
 													onKeyDown={(e) => e.stopPropagation()}
-													className='font-mono bg-muted/50 px-1.5 py-0.5 rounded focus-visible:ring-1 focus-visible:ring-ring hover:bg-muted hover:text-primary transition-colors inline-flex items-center gap-1 group/link'
+													className='font-mono bg-muted/50 px-1.5 py-0.5 rounded focus-visible:bg-focus-strong hover:bg-muted hover:text-primary transition-colors inline-flex items-center gap-1 group/link'
 												>
 													{entry.commit}
 													<ExternalLink

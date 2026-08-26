@@ -77,7 +77,7 @@ export function NumberInput({
 				disabled={disabled}
 				title={title}
 				className={cn(
-					'flex h-full w-full rounded-md border border-input bg-background py-1 pl-2 pr-7 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+					'flex h-full w-full rounded-md border border-input bg-background py-1 pl-2 pr-7 text-sm transition-colors duration-150 placeholder:text-muted-foreground focus-visible:bg-focus disabled:cursor-not-allowed disabled:opacity-50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
 				)}
 			/>
 			<div className='absolute right-0 top-0 flex flex-col h-full border-l border-input'>

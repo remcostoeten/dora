@@ -144,8 +144,8 @@ export function AppearanceControls({ className }: { className?: string }) {
 								className={cn(
 									'flex flex-col items-start p-3 rounded-lg border transition-all text-left',
 									isSelected
-										? 'border-primary bg-primary/10 ring-1 ring-secondary/30'
-										: 'border-border hover:border-muted-foreground/50 hover:bg-muted/50'
+										? 'border-primary bg-primary/10 focus-visible:bg-primary/20'
+										: 'border-border hover:border-muted-foreground/50 hover:bg-muted/50 focus-visible:bg-focus'
 								)}
 							>
 								<span className='text-sm font-medium text-foreground'>{option.name}</span>

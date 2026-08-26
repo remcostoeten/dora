@@ -220,7 +220,7 @@ export function StudioToolbar({
 							<div className='px-2 py-1.5 border-b border-sidebar-border/50 sticky top-0 bg-popover z-10'>
 								<Input
 									placeholder='Search columns...'
-									className='h-7 text-xs bg-transparent border-none shadow-none focus-visible:ring-0 px-0'
+									className='h-7 text-xs bg-transparent border-none shadow-none px-0'
 								/>
 							</div>
 							{columns.map((col) => (
