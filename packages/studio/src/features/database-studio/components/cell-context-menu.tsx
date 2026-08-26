@@ -21,6 +21,8 @@ type Props = {
 	row?: Record<string, unknown>
 	selectedRows?: Set<number>
 	hasFilter?: boolean
+	/** Hides the mutating items (edit cell, set to NULL) for readonly sources. */
+	canEdit?: boolean
 	onAction?: (
 		action: CellAction,
 		value: unknown,
@@ -47,6 +49,7 @@ export function CellContextMenuItems({
 	row,
 	selectedRows,
 	hasFilter = false,
+	canEdit = true,
 	onAction,
 	onBlobAction
 }: Props) {
@@ -96,11 +99,15 @@ export function CellContextMenuItems({
 
 	return (
 		<>
-			<ContextMenuItem onClick={handleEdit}>
-				<Pencil />
-				<span>Edit cell</span>
-			</ContextMenuItem>
-			<ContextMenuSeparator />
+			{canEdit && (
+				<>
+					<ContextMenuItem onClick={handleEdit}>
+						<Pencil />
+						<span>Edit cell</span>
+					</ContextMenuItem>
+					<ContextMenuSeparator />
+				</>
+			)}
 			<ContextMenuItem onClick={handleCopy}>
 				<Copy />
 				<span>Copy value</span>
@@ -145,13 +152,19 @@ export function CellContextMenuItems({
 				<Filter />
 				<span>Filter by this value</span>
 			</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={handleSetNull} variant='destructive'>
-				<Trash2 />
-				<span>
-					{hasSelectedRows ? `Set to NULL (${selectedRows!.size} rows)` : 'Set to NULL'}
-				</span>
-			</ContextMenuItem>
+			{canEdit && (
+				<>
+					<ContextMenuSeparator />
+					<ContextMenuItem onClick={handleSetNull} variant='destructive'>
+						<Trash2 />
+						<span>
+							{hasSelectedRows
+								? `Set to NULL (${selectedRows!.size} rows)`
+								: 'Set to NULL'}
+						</span>
+					</ContextMenuItem>
+				</>
+			)}
 		</>
 	)
 }

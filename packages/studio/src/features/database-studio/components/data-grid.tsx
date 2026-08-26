@@ -57,6 +57,8 @@ type Props = {
 		rowIndex: number,
 		batchIndexes?: number[]
 	) => void
+	/** Whether the source allows mutating rows; hides edit/delete menu items when false. */
+	canEditRows?: boolean
 	tableName?: string
 	selectedCells?: Set<string>
 	onCellSelectionChange?: (cells: Set<string>) => void
@@ -95,6 +97,7 @@ export function DataGrid({
 	onDeleteSelectedRows,
 	onBatchCellEdit,
 	onRowAction,
+	canEditRows = true,
 	tableName,
 	selectedCells: externalSelectedCells,
 	onCellSelectionChange,
@@ -392,6 +395,7 @@ export function DataGrid({
 					startCellEdit={handleCellDoubleClick}
 					onBlobAction={onBlobAction}
 					onRowAction={onRowAction}
+					canEditRows={canEditRows}
 				>
 					<table
 						ref={gridRef}

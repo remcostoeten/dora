@@ -165,6 +165,12 @@ export function useDatabaseStudioRowActions(args: Args) {
 	) {
 		if (!tableId || !activeConnectionId || !tableData) return
 
+		if (action === 'view') {
+			setSelectedRowForDetail(row)
+			setShowRowDetail(true)
+			return
+		}
+
 		const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
 		if (!primaryKeyColumn) {
 			notifyMissingPrimaryKey('perform this row action')
@@ -194,10 +200,6 @@ export function useDatabaseStudioRowActions(args: Args) {
 				}
 
 				deleteRowIndexes(effectiveRowIndexes)
-				break
-			case 'view':
-				setSelectedRowForDetail(row)
-				setShowRowDetail(true)
 				break
 			case 'edit':
 				setDuplicateInitialData(row)

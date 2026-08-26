@@ -23,6 +23,8 @@ type Props = {
 		batchIndexes?: number[]
 	) => void
 	selectedRows?: Set<number>
+	/** Hides the mutating items (edit, duplicate, delete) for readonly sources. */
+	canEdit?: boolean
 }
 
 /**
@@ -36,7 +38,8 @@ export function RowContextMenuItems({
 	tableName,
 	allRows,
 	onAction,
-	selectedRows
+	selectedRows,
+	canEdit = true
 }: Props) {
 	const isSelected = selectedRows?.has(rowIndex)
 	const batchCount = isSelected && selectedRows ? selectedRows.size : 0
@@ -109,22 +112,26 @@ export function RowContextMenuItems({
 				<Eye />
 				<span>View details</span>
 			</ContextMenuItem>
-			<ContextMenuItem
-				onClick={function () {
-					handleAction('edit')
-				}}
-			>
-				<Pencil />
-				<span>Edit row</span>
-			</ContextMenuItem>
-			<ContextMenuItem
-				onClick={function () {
-					handleAction('duplicate')
-				}}
-			>
-				<CopyPlus />
-				<span>{isBatch ? `Duplicate ${batchCount} rows` : 'Duplicate below'}</span>
-			</ContextMenuItem>
+			{canEdit && (
+				<>
+					<ContextMenuItem
+						onClick={function () {
+							handleAction('edit')
+						}}
+					>
+						<Pencil />
+						<span>Edit row</span>
+					</ContextMenuItem>
+					<ContextMenuItem
+						onClick={function () {
+							handleAction('duplicate')
+						}}
+					>
+						<CopyPlus />
+						<span>{isBatch ? `Duplicate ${batchCount} rows` : 'Duplicate below'}</span>
+					</ContextMenuItem>
+				</>
+			)}
 
 			<ContextMenuSeparator />
 
@@ -147,17 +154,21 @@ export function RowContextMenuItems({
 				</ContextMenuSubContent>
 			</ContextMenuSub>
 
-			<ContextMenuSeparator />
+			{canEdit && (
+				<>
+					<ContextMenuSeparator />
 
-			<ContextMenuItem
-				onClick={function () {
-					handleAction('delete')
-				}}
-				variant='destructive'
-			>
-				<Trash2 />
-				<span>{isBatch ? `Delete ${batchCount} rows` : 'Delete row'}</span>
-			</ContextMenuItem>
+					<ContextMenuItem
+						onClick={function () {
+							handleAction('delete')
+						}}
+						variant='destructive'
+					>
+						<Trash2 />
+						<span>{isBatch ? `Delete ${batchCount} rows` : 'Delete row'}</span>
+					</ContextMenuItem>
+				</>
+			)}
 		</>
 	)
 }

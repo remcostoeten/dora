@@ -59,36 +59,35 @@ export function useCellEditing({
 		[gridRef]
 	)
 
-	const handleCellDoubleClick = useCallback(function (
-		rowIndex: number,
-		columnName: string,
-		currentValue: unknown
-	) {
-		const nextEditingCell = { rowIndex, columnName }
-		editingCellRef.current = nextEditingCell
-		editSelectModeRef.current = 'all'
-		setEditingCell(nextEditingCell)
-		const originalValue = valueToEditString(currentValue)
-		originalEditValueRef.current = originalValue
-		setEditValue(originalValue)
-	}, [])
+	const handleCellDoubleClick = useCallback(
+		function (rowIndex: number, columnName: string, currentValue: unknown) {
+			if (!onCellEdit) return
+			const nextEditingCell = { rowIndex, columnName }
+			editingCellRef.current = nextEditingCell
+			editSelectModeRef.current = 'all'
+			setEditingCell(nextEditingCell)
+			const originalValue = valueToEditString(currentValue)
+			originalEditValueRef.current = originalValue
+			setEditValue(originalValue)
+		},
+		[onCellEdit]
+	)
 
 	// Start editing by typing a character into a focused cell. The typed char
 	// seeds the editor and the caret sits after it, so nothing is dropped and
 	// further typing appends (vs. select-all which would overwrite the seed).
-	const startTypeEdit = useCallback(function (
-		rowIndex: number,
-		columnName: string,
-		currentValue: unknown,
-		char: string
-	) {
-		const nextEditingCell = { rowIndex, columnName }
-		editingCellRef.current = nextEditingCell
-		editSelectModeRef.current = 'end'
-		originalEditValueRef.current = valueToEditString(currentValue)
-		setEditingCell(nextEditingCell)
-		setEditValue(char)
-	}, [])
+	const startTypeEdit = useCallback(
+		function (rowIndex: number, columnName: string, currentValue: unknown, char: string) {
+			if (!onCellEdit) return
+			const nextEditingCell = { rowIndex, columnName }
+			editingCellRef.current = nextEditingCell
+			editSelectModeRef.current = 'end'
+			originalEditValueRef.current = valueToEditString(currentValue)
+			setEditingCell(nextEditingCell)
+			setEditValue(char)
+		},
+		[onCellEdit]
+	)
 
 	const commitEdit = useCallback(
 		function ({ clear, refocus }: { clear: boolean; refocus: boolean }) {

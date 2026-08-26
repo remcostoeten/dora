@@ -8,7 +8,10 @@ import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@studio/core
 import { useUndo } from '@studio/core/undo'
 import type { Mutation } from '@studio/core/undo'
 import { getTableRefParts } from '@studio/shared/utils/table-ref'
-import { getSourceCaps } from '@studio/features/connections/source-caps'
+import {
+	getSourceCaps,
+	isDataFileSessionConnection
+} from '@studio/features/connections/source-caps'
 import { isUiActionVisible } from '@studio/features/connections/ui-actions'
 import { DataFileSessionChrome } from './components/data-file-session-chrome'
 import { ImportFilesIntoDuckDbButton } from './components/import-files-into-duckdb-button'
@@ -520,7 +523,8 @@ export function DatabaseStudio({
 		setSelectedRowForDetail,
 		setShowRowDetail,
 		setFilters: handleSetFiltersFromSync,
-		displayTableName
+		isReadonlySource: sourceCaps?.isReadonly ?? false,
+		isDataFileSession: activeConnection ? isDataFileSessionConnection(activeConnection) : false
 	})
 
 	// Re-fetch the original bytes of a blob cell (the grid only has the rendered
@@ -1139,7 +1143,8 @@ export function DatabaseStudio({
 							onCellEdit={canEditRows ? handleCellEdit : undefined}
 							onDeleteSelectedRows={canEditRows ? handleBulkDelete : undefined}
 							onBatchCellEdit={canEditRows ? handleBatchCellEdit : undefined}
-							onRowAction={canEditRows ? handleRowAction : undefined}
+							onRowAction={handleRowAction}
+							canEditRows={canEditRows}
 							tableName={displayTableName}
 							selectedCells={selectedCells}
 							onCellSelectionChange={setSelectedCells}
