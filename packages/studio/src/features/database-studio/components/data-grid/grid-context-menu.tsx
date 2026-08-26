@@ -106,6 +106,7 @@ type Props = {
 		rowIndex: number,
 		batchIndexes?: number[]
 	) => void
+	canEditRows?: boolean
 	children: React.ReactNode
 }
 
@@ -129,6 +130,7 @@ export function GridContextMenu({
 	startCellEdit,
 	onBlobAction,
 	onRowAction,
+	canEditRows = true,
 	children
 }: Props) {
 	const targetRow = target ? rows[target.rowIndex] : undefined
@@ -157,6 +159,7 @@ export function GridContextMenu({
 						row={targetRow}
 						selectedRows={menuSelectedRows}
 						hasFilter={!!onFilterAdd}
+						canEdit={canEditRows}
 						onBlobAction={onBlobAction}
 						onAction={function (action, value, column, batchAction) {
 							if (action === 'filter-by-value' && onFilterAdd) {
@@ -183,6 +186,7 @@ export function GridContextMenu({
 						tableName={tableName}
 						allRows={rows}
 						selectedRows={menuSelectedRows}
+						canEdit={canEditRows}
 						onAction={onRowAction}
 					/>
 				) : null}

@@ -1,3 +1,4 @@
+import { usePresence } from '@studio/shared/hooks/use-presence'
 import type { ColumnDefinition } from '../types'
 
 type Props = {
@@ -9,10 +10,14 @@ type Props = {
 }
 
 export function RowDetailPanel({ open, onClose, row, columns, tableName }: Props) {
-	if (!open) return null
+	const { present, state } = usePresence(open, 200)
+	if (!present) return null
 
 	return (
-		<div className='fixed inset-y-0 right-0 w-96 bg-card border-l border-sidebar-border shadow-xl z-50 flex flex-col'>
+		<div
+			data-state={state}
+			className='fixed inset-y-0 right-0 w-96 bg-card border-l border-sidebar-border shadow-xl z-50 flex flex-col transition-[transform,opacity] duration-200 data-[state=open]:duration-[240ms] ease-[var(--ease-out)] data-[state=closed]:translate-x-full motion-reduce:data-[state=closed]:translate-x-0 motion-reduce:data-[state=closed]:opacity-0 motion-reduce:duration-150'
+		>
 			<div className='flex items-center justify-between h-12 px-4 border-b border-sidebar-border shrink-0'>
 				<h2 className='text-sm font-semibold text-foreground'>Row Details</h2>
 				<button

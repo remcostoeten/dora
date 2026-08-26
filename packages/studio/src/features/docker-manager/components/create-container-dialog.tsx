@@ -486,8 +486,8 @@ export function CreateContainerDialog({
                 Advanced Options
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-4 pt-2">
-              <div className="grid grid-cols-2 gap-4">
+            <CollapsibleContent>
+              <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="space-y-2">
                   <Label htmlFor="cpu">CPU Limit (cores)</Label>
                   <Input

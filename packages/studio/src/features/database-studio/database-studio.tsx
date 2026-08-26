@@ -8,7 +8,10 @@ import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@studio/core
 import { useUndo } from '@studio/core/undo'
 import type { Mutation } from '@studio/core/undo'
 import { getTableRefParts } from '@studio/shared/utils/table-ref'
-import { getSourceCaps } from '@studio/features/connections/source-caps'
+import {
+	getSourceCaps,
+	isDataFileSessionConnection
+} from '@studio/features/connections/source-caps'
 import { isUiActionVisible } from '@studio/features/connections/ui-actions'
 import { DataFileSessionChrome } from './components/data-file-session-chrome'
 import { ImportFilesIntoDuckDbButton } from './components/import-files-into-duckdb-button'
@@ -46,6 +49,7 @@ import {
 	DatabaseStudioNoTablesFound
 } from './components/database-studio-empty-states'
 import { DatabaseStudioStructureView } from './components/database-studio-structure-view'
+import { AnimatePresence } from 'framer-motion'
 import { PendingChangesBar } from './components/pending-changes-bar'
 import { RowDetailPanel } from './components/row-detail-panel'
 import { SelectionActionBar } from './components/selection-action-bar'
@@ -519,7 +523,8 @@ export function DatabaseStudio({
 		setSelectedRowForDetail,
 		setShowRowDetail,
 		setFilters: handleSetFiltersFromSync,
-		displayTableName
+		isReadonlySource: sourceCaps?.isReadonly ?? false,
+		isDataFileSession: activeConnection ? isDataFileSessionConnection(activeConnection) : false
 	})
 
 	// Re-fetch the original bytes of a blob cell (the grid only has the rendered
@@ -1138,7 +1143,8 @@ export function DatabaseStudio({
 							onCellEdit={canEditRows ? handleCellEdit : undefined}
 							onDeleteSelectedRows={canEditRows ? handleBulkDelete : undefined}
 							onBatchCellEdit={canEditRows ? handleBatchCellEdit : undefined}
-							onRowAction={canEditRows ? handleRowAction : undefined}
+							onRowAction={handleRowAction}
+							canEditRows={canEditRows}
 							tableName={displayTableName}
 							selectedCells={selectedCells}
 							onCellSelectionChange={setSelectedCells}
@@ -1184,26 +1190,28 @@ export function DatabaseStudio({
 				)}
 			</div>
 
-			{tableData &&
-				(settings.selectionBarStyle === 'static' || !settings.selectionBarStyle) &&
-				rowsForActions.size > 0 && (
-					<SelectionActionBar
-						ref={toolbarRef}
-						selectedCount={rowsForActions.size}
-						onDelete={canEditRows ? handleBulkDelete : undefined}
-						onCopy={privacyMaskData ? undefined : handleBulkCopy}
-						onSetNull={canEditRows ? handleOpenSetNull : undefined}
-						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
-						onExportJson={canExportFile ? handleExportJson : undefined}
-						onExportCsv={canExportFile ? handleExportCsv : undefined}
-						onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
-						onSave={canEditRows ? handleApplyPendingEdits : undefined}
-						pendingEditCount={tableId ? getEditCount(tableId) : 0}
-						onClearSelection={handleClearSelection}
-						onEscapeToGrid={handleEscapeToGrid}
-						mode='static'
-					/>
-				)}
+			<AnimatePresence>
+				{tableData &&
+					(settings.selectionBarStyle === 'static' || !settings.selectionBarStyle) &&
+					rowsForActions.size > 0 && (
+						<SelectionActionBar
+							ref={toolbarRef}
+							selectedCount={rowsForActions.size}
+							onDelete={canEditRows ? handleBulkDelete : undefined}
+							onCopy={privacyMaskData ? undefined : handleBulkCopy}
+							onSetNull={canEditRows ? handleOpenSetNull : undefined}
+							onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
+							onExportJson={canExportFile ? handleExportJson : undefined}
+							onExportCsv={canExportFile ? handleExportCsv : undefined}
+							onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
+							onSave={canEditRows ? handleApplyPendingEdits : undefined}
+							pendingEditCount={tableId ? getEditCount(tableId) : 0}
+							onClearSelection={handleClearSelection}
+							onEscapeToGrid={handleEscapeToGrid}
+							mode='static'
+						/>
+					)}
+			</AnimatePresence>
 
 			{tableData && (
 				<BottomStatusBar
@@ -1221,26 +1229,28 @@ export function DatabaseStudio({
 			)}
 
 			{/* Render floating bar if mode is floating */}
-			{tableData && settings.selectionBarStyle === 'floating' && rowsForActions.size > 0 && (
-				<SelectionActionBar
-					ref={toolbarRef}
-					selectedCount={rowsForActions.size}
-					onDelete={canEditRows ? handleBulkDelete : undefined}
-					onCopy={privacyMaskData ? undefined : handleBulkCopy}
-					onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
-					onExportJson={canExportFile ? handleExportJson : undefined}
-					onExportCsv={canExportFile ? handleExportCsv : undefined}
-					onSetNull={canEditRows ? handleOpenSetNull : undefined}
-					onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
-					onSave={canEditRows ? handleApplyPendingEdits : undefined}
-					pendingEditCount={tableId ? getEditCount(tableId) : 0}
-					onClearSelection={handleClearSelection}
-					onEscapeToGrid={handleEscapeToGrid}
-					mode='floating'
-				/>
-			)}
+			<AnimatePresence>
+				{tableData && settings.selectionBarStyle === 'floating' && rowsForActions.size > 0 && (
+					<SelectionActionBar
+						ref={toolbarRef}
+						selectedCount={rowsForActions.size}
+						onDelete={canEditRows ? handleBulkDelete : undefined}
+						onCopy={privacyMaskData ? undefined : handleBulkCopy}
+						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
+						onExportJson={canExportFile ? handleExportJson : undefined}
+						onExportCsv={canExportFile ? handleExportCsv : undefined}
+						onSetNull={canEditRows ? handleOpenSetNull : undefined}
+						onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
+						onSave={canEditRows ? handleApplyPendingEdits : undefined}
+						pendingEditCount={tableId ? getEditCount(tableId) : 0}
+						onClearSelection={handleClearSelection}
+						onEscapeToGrid={handleEscapeToGrid}
+						mode='floating'
+					/>
+				)}
+			</AnimatePresence>
 
-			{tableId && canEditRows && hasEdits(tableId) && (
+			{tableId && canEditRows && (
 				<PendingChangesBar
 					editCount={getEditCount(tableId)}
 					isApplying={isApplyingEdits}

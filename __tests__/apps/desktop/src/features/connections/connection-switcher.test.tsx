@@ -95,13 +95,51 @@ describe('ConnectionSwitcher', function () {
 			expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
 		})
 
-		fireEvent.click(screen.getByRole('button', { name: /delete local postgres/i }))
+		completeHold(screen.getByRole('button', { name: /hold to delete local postgres/i }))
 		expect(onDeleteConnection).toHaveBeenCalledWith('local-postgres')
 
 		expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
 
-		fireEvent.click(screen.getByRole('button', { name: /delete analytics/i }))
+		completeHold(screen.getByRole('button', { name: /hold to delete analytics/i }))
 		expect(onDeleteConnection).toHaveBeenCalledWith('analytics')
 		expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
 	})
+
+	it('never deletes on a plain click — only a completed hold confirms', async function () {
+		const user = userEvent.setup()
+		const onDeleteConnection = vi.fn()
+		renderSwitcher({ onDeleteConnection })
+
+		const trigger = await screen.findByRole('button', {
+			name: /change database connection/i
+		})
+		trigger.focus()
+		await user.keyboard('{Enter}')
+
+		await waitFor(function () {
+			expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
+		})
+
+		const deleteButton = screen.getByRole('button', { name: /hold to delete local postgres/i })
+		fireEvent.click(deleteButton)
+		expect(onDeleteConnection).not.toHaveBeenCalled()
+
+		fireEvent.pointerDown(deleteButton)
+		fireEvent.pointerUp(deleteButton)
+		fireCompletedFillTransition(deleteButton)
+		expect(onDeleteConnection).not.toHaveBeenCalled()
+	})
 })
+
+function completeHold(button: HTMLElement) {
+	fireEvent.pointerDown(button)
+	fireCompletedFillTransition(button)
+}
+
+function fireCompletedFillTransition(button: HTMLElement) {
+	const fill = button.querySelector('span')
+	if (!fill) throw new Error('hold-to-confirm fill overlay not found')
+	const transitionEnd = new Event('transitionend', { bubbles: true })
+	Object.assign(transitionEnd, { propertyName: 'clip-path' })
+	fireEvent(fill, transitionEnd)
+}

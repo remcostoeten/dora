@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
+import { usePresence } from '@studio/shared/hooks/use-presence'
 import { cn } from '@studio/shared/utils/cn'
 import { markTourCompleted, recordLaunch, shouldShowTour } from './launch-state'
 
@@ -102,14 +103,17 @@ export function OnboardingTour() {
 		setOpen(false)
 	}
 
-	if (!open || !step) return null
+	const { present, state } = usePresence(open, 150)
+
+	if (!present || !step) return null
 
 	return (
 		<>
 			{spotlight && (
 				<div
 					aria-hidden='true'
-					className='pointer-events-none fixed z-[90] rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background transition-all duration-200'
+					data-state={state}
+					className='pointer-events-none fixed z-[90] rounded-lg ring-2 ring-primary ring-offset-2 ring-offset-background transition-all duration-200 opacity-100 data-[state=closed]:opacity-0'
 					style={{
 						top: spotlight.top,
 						left: spotlight.left,
@@ -119,19 +123,29 @@ export function OnboardingTour() {
 				/>
 			)}
 			<div
-				role='dialog'
-				aria-label='Onboarding tour'
-				className={cn(
-					'fixed bottom-6 left-1/2 z-[91] w-[min(380px,calc(100vw-2rem))] -translate-x-1/2',
-					'rounded-lg border border-border bg-popover p-4 shadow-xl'
-				)}
+				data-state={state}
+				className='fixed bottom-6 left-1/2 z-[91] w-[min(380px,calc(100vw-2rem))] -translate-x-1/2 transition-opacity duration-150 ease-[var(--ease-out)] data-[state=closed]:opacity-0'
 			>
-				<div className='mb-1 flex items-center justify-between'>
-					<div className='text-sm font-medium text-popover-foreground'>{step.title}</div>
-					<div className='text-xs text-muted-foreground'>{progressLabel}</div>
-				</div>
-				<p className='mb-3 text-xs leading-relaxed text-muted-foreground'>{step.description}</p>
-				<div className='flex items-center justify-between'>
+				<div
+					role='dialog'
+					aria-label='Onboarding tour'
+					className={cn(
+						'rounded-lg border border-border bg-popover p-4 shadow-xl',
+						'animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200',
+						'motion-reduce:zoom-in-100 motion-reduce:slide-in-from-bottom-0'
+					)}
+				>
+					<div
+						key={stepIndex}
+						className='animate-in fade-in slide-in-from-bottom-1 duration-150 motion-reduce:slide-in-from-bottom-0'
+					>
+						<div className='mb-1 flex items-center justify-between'>
+							<div className='text-sm font-medium text-popover-foreground'>{step.title}</div>
+							<div className='text-xs text-muted-foreground'>{progressLabel}</div>
+						</div>
+						<p className='mb-3 text-xs leading-relaxed text-muted-foreground'>{step.description}</p>
+					</div>
+					<div className='flex items-center justify-between'>
 					<Button variant='ghost' size='sm' className='h-7 text-xs' onClick={finish}>
 						Skip tour
 					</Button>
@@ -162,6 +176,7 @@ export function OnboardingTour() {
 							{isLastStep ? 'Done' : 'Next'}
 						</Button>
 					</div>
+				</div>
 				</div>
 			</div>
 		</>

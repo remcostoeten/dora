@@ -50,7 +50,8 @@ type Args = {
 	setSelectedRowForDetail: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
 	setShowRowDetail: React.Dispatch<React.SetStateAction<boolean>>
 	setFilters: React.Dispatch<React.SetStateAction<FilterDescriptor[]>>
-	displayTableName: string | null
+	isReadonlySource?: boolean
+	isDataFileSession?: boolean
 }
 
 export function useDatabaseStudioActions(args: Args) {
@@ -87,7 +88,8 @@ export function useDatabaseStudioActions(args: Args) {
 		setSelectedRowForDetail,
 		setShowRowDetail,
 		setFilters,
-		displayTableName
+		isReadonlySource = false,
+		isDataFileSession = false
 	} = args
 
 	const notifyActionFailure = useCallback(function (title: string, error: unknown) {
@@ -99,20 +101,31 @@ export function useDatabaseStudioActions(args: Args) {
 	}, [toast])
 
 	const notifyMissingPrimaryKey = useCallback(function (actionLabel: string) {
+		if (isReadonlySource) {
+			toast({
+				title: `Cannot ${actionLabel}`,
+				description: isDataFileSession
+					? 'Data files open as readonly views. Save as DuckDB to edit rows.'
+					: 'This connection is read-only.',
+				variant: 'destructive'
+			})
+			return
+		}
+
 		toast({
 			title: `Cannot ${actionLabel}`,
-			description: `Table "${displayTableName ?? tableRefName}" has no primary key, so this action cannot be saved safely.`,
+			description: 'This table has no primary key, so changes cannot be saved safely.',
 			variant: 'destructive'
 		})
-	}, [displayTableName, tableRefName, toast])
+	}, [isDataFileSession, isReadonlySource, toast])
 
 	const notifyPrimaryKeyNotGenerated = useCallback(function (actionLabel: string) {
 		toast({
 			title: `Cannot ${actionLabel}`,
-			description: `Table "${displayTableName ?? tableRefName}" has a primary key the database does not generate. Duplicate one row at a time and enter a new key.`,
+			description: 'This table has a primary key the database does not generate. Duplicate one row at a time and enter a new key.',
 			variant: 'destructive'
 		})
-	}, [displayTableName, tableRefName, toast])
+	}, [toast])
 
 	const { highlightedRowIndexes, markRowsAdded } = useRecentlyAddedRows(
 		tableData,

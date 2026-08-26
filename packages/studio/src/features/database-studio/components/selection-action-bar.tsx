@@ -12,7 +12,7 @@ import {
 	ChevronRight,
 	Save
 } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Button } from '@studio/shared/ui/button'
 import {
 	DropdownMenu,
@@ -63,6 +63,8 @@ const LAYOUT_SPRING = {
 	damping: 36,
 	mass: 0.7
 } as const
+
+const EASE_OUT = [0.23, 1, 0.32, 1] as const
 
 function createToolbarKeyHandler(onEscapeToGrid?: () => void) {
 	return function handleToolbarKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
@@ -274,17 +276,17 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 		})
 	}
 
+	const reduceMotion = useReducedMotion()
+
 	const floatingClasses = [
 		'absolute bottom-10 inset-x-0 mx-auto w-fit max-w-[calc(100%-2rem)] z-[100]',
 		'flex items-center gap-1 pl-3 pr-2 py-1.5',
 		'bg-popover/90 backdrop-blur-xl border border-border/60 rounded-2xl',
-		'shadow-[0_8px_30px_rgba(0,0,0,0.12)]',
-		'animate-in slide-in-from-bottom-4 fade-in duration-300 ease-out'
+		'shadow-[0_8px_30px_rgba(0,0,0,0.12)]'
 	]
 
 	const staticClasses = [
-		'flex items-center gap-2 h-11 px-3 bg-sidebar/80 backdrop-blur-sm border-t border-sidebar-border shrink-0',
-		'animate-in slide-in-from-bottom-2 duration-200'
+		'flex items-center gap-2 h-11 px-3 bg-sidebar/80 backdrop-blur-sm border-t border-sidebar-border shrink-0'
 	]
 
 	const isFloating = mode === 'floating'
@@ -359,7 +361,18 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 	return (
 		<motion.div
 			layout
-			transition={LAYOUT_SPRING}
+			initial={{ opacity: 0, y: reduceMotion ? 0 : isFloating ? 16 : 8 }}
+			animate={{ opacity: 1, y: 0 }}
+			exit={{
+				opacity: 0,
+				y: reduceMotion ? 0 : 8,
+				transition: { duration: 0.15, ease: EASE_OUT }
+			}}
+			transition={{
+				duration: isFloating ? 0.3 : 0.2,
+				ease: EASE_OUT,
+				layout: LAYOUT_SPRING
+			}}
 			ref={function mergeRefs(node: HTMLDivElement | null) {
 				; (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node
 				if (typeof ref === 'function') {
