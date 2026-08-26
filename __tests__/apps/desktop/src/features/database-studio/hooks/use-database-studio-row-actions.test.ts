@@ -28,7 +28,10 @@ describe('useDatabaseStudioRowActions', function () {
 		setDraftRow = vi.fn()
 	})
 
-	it('prepares duplicate rows without the primary key field', function () {
+	it('duplicates a single row straight into the grid when the key is generated', async function () {
+		const setTableData = vi.fn()
+		const onRowsAdded = vi.fn()
+
 		const { result } = renderHook(function () {
 			return useDatabaseStudioRowActions({
 				activeConnectionId: 'conn-1',
@@ -39,6 +42,7 @@ describe('useDatabaseStudioRowActions', function () {
 				deleteRows,
 				insertRow,
 				onLoadTableData: vi.fn(),
+				setTableData,
 				setSelectedRows: vi.fn(),
 				setShowDeleteConfirmDialog: vi.fn(),
 				setPendingSingleDeleteRow: vi.fn(),
@@ -51,18 +55,25 @@ describe('useDatabaseStudioRowActions', function () {
 				setSelectedRowForDetail: vi.fn(),
 				setShowRowDetail: vi.fn(),
 				notifyMissingPrimaryKey: vi.fn(),
-				notifyActionFailure: vi.fn()
+				notifyPrimaryKeyNotGenerated: vi.fn(),
+				notifyActionFailure: vi.fn(),
+				onRowsAdded
 			})
 		})
 
-		act(function () {
+		await act(async function () {
 			result.current.handleRowAction('duplicate', tableData.rows[0], 0)
 		})
 
-		expect(setDraftRow).toHaveBeenCalledTimes(1)
-		const draft = setDraftRow.mock.calls[0][0] as Record<string, unknown>
-		expect(draft.id).toBeUndefined()
-		expect(draft.name).toBe('Alpha')
+		expect(setDraftRow).not.toHaveBeenCalled()
+		expect(onRowsAdded).toHaveBeenCalledTimes(1)
+
+		const optimistic = setTableData.mock.calls[0][0] as TableData
+		expect(optimistic.rows).toHaveLength(2)
+		expect(optimistic.rows[1]).toEqual({ name: 'Alpha' })
+		expect(optimistic.totalCount).toBe(2)
+		expect(insertRow.mutateAsync).toHaveBeenCalledTimes(1)
+		expect(insertRow.mutateAsync.mock.calls[0][0].rowData).toEqual({ name: 'Alpha' })
 	})
 
 	it('optimistically appends duplicated rows before the inserts resolve', async function () {
@@ -112,7 +123,9 @@ describe('useDatabaseStudioRowActions', function () {
 				setSelectedRowForDetail: vi.fn(),
 				setShowRowDetail: vi.fn(),
 				notifyMissingPrimaryKey: vi.fn(),
-				notifyActionFailure: vi.fn()
+				notifyPrimaryKeyNotGenerated: vi.fn(),
+				notifyActionFailure: vi.fn(),
+				onRowsAdded: vi.fn()
 			})
 		})
 
@@ -133,5 +146,109 @@ describe('useDatabaseStudioRowActions', function () {
 			resolveInsert()
 			await Promise.resolve()
 		})
+	})
+
+	it('keeps a natural primary key in the draft, blanked, instead of dropping it', function () {
+		// Regression: `dashboard_users (github_login text PRIMARY KEY, added_at)` —
+		// stripping the key made the insert fail with a not-null violation.
+		const naturalKey: TableData = {
+			columns: [
+				{ name: 'github_login', type: 'text', nullable: false, primaryKey: true },
+				{ name: 'added_at', type: 'timestamptz', nullable: false, primaryKey: false }
+			],
+			rows: [{ github_login: 'octocat', added_at: '2026-07-28T21:06:37Z' }],
+			totalCount: 1,
+			executionTime: 5
+		}
+
+		const { result } = renderHook(function () {
+			return useDatabaseStudioRowActions({
+				activeConnectionId: 'conn-1',
+				tableId: 'dashboard_users',
+				tableRefName: 'dashboard_users',
+				tableData: naturalKey,
+				settingsConfirmBeforeDelete: false,
+				deleteRows,
+				insertRow,
+				onLoadTableData: vi.fn(),
+				setSelectedRows: vi.fn(),
+				setShowDeleteConfirmDialog: vi.fn(),
+				setPendingSingleDeleteRow: vi.fn(),
+				setDraftRow,
+				setDraftInsertIndex: vi.fn(),
+				setEditingRowState: vi.fn(),
+				setDuplicateInitialData: vi.fn(),
+				setAddDialogMode: vi.fn(),
+				setShowAddDialog: vi.fn(),
+				setSelectedRowForDetail: vi.fn(),
+				setShowRowDetail: vi.fn(),
+				notifyMissingPrimaryKey: vi.fn(),
+				notifyPrimaryKeyNotGenerated: vi.fn(),
+				notifyActionFailure: vi.fn(),
+				onRowsAdded: vi.fn()
+			})
+		})
+
+		act(function () {
+			result.current.handleRowAction('duplicate', naturalKey.rows[0], 0)
+		})
+
+		const draft = setDraftRow.mock.calls[0][0] as Record<string, unknown>
+		expect(draft.github_login).toBe('')
+		expect(draft.added_at).toBe('2026-07-28T21:06:37Z')
+	})
+
+	it('refuses a batch duplicate when the primary key is not database-generated', function () {
+		const naturalKey: TableData = {
+			columns: [
+				{ name: 'slug', type: 'varchar', nullable: false, primaryKey: true },
+				{ name: 'title', type: 'text', nullable: false, primaryKey: false }
+			],
+			rows: [
+				{ slug: 'a', title: 'A' },
+				{ slug: 'b', title: 'B' }
+			],
+			totalCount: 2,
+			executionTime: 5
+		}
+		const setTableData = vi.fn()
+		const notifyPrimaryKeyNotGenerated = vi.fn()
+
+		const { result } = renderHook(function () {
+			return useDatabaseStudioRowActions({
+				activeConnectionId: 'conn-1',
+				tableId: 'posts',
+				tableRefName: 'posts',
+				tableData: naturalKey,
+				settingsConfirmBeforeDelete: false,
+				deleteRows,
+				insertRow,
+				onLoadTableData: vi.fn(),
+				setTableData,
+				setSelectedRows: vi.fn(),
+				setShowDeleteConfirmDialog: vi.fn(),
+				setPendingSingleDeleteRow: vi.fn(),
+				setDraftRow,
+				setDraftInsertIndex: vi.fn(),
+				setEditingRowState: vi.fn(),
+				setDuplicateInitialData: vi.fn(),
+				setAddDialogMode: vi.fn(),
+				setShowAddDialog: vi.fn(),
+				setSelectedRowForDetail: vi.fn(),
+				setShowRowDetail: vi.fn(),
+				notifyMissingPrimaryKey: vi.fn(),
+				notifyPrimaryKeyNotGenerated,
+				notifyActionFailure: vi.fn(),
+				onRowsAdded: vi.fn()
+			})
+		})
+
+		act(function () {
+			result.current.handleRowAction('duplicate', naturalKey.rows[0], 0, [0, 1])
+		})
+
+		expect(notifyPrimaryKeyNotGenerated).toHaveBeenCalledWith('duplicate rows')
+		expect(insertRow.mutateAsync).not.toHaveBeenCalled()
+		expect(setTableData).not.toHaveBeenCalled()
 	})
 })

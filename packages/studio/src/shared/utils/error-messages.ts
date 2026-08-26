@@ -95,6 +95,33 @@ export function mapConnectionError(error: Error | string): string {
 	return originalMsg || 'An unexpected error occurred. Please try again.'
 }
 
+const CONNECTION_UNAVAILABLE_PATTERNS = [
+	'connection not active',
+	'could not connect',
+	'connection refused',
+	'econnrefused',
+	'connection closed',
+	'connection reset',
+	'no active connection',
+	'not connected',
+	'connection timed out'
+]
+
+/**
+ * True when an error means the database itself is unreachable rather than the
+ * individual operation failing. Callers use it to fall back to an inline
+ * "connection unavailable" surface instead of raising one toast per request
+ * that a dead connection sinks.
+ */
+export function isConnectionUnavailableError(error: unknown): boolean {
+	const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
+	if (!raw) return false
+	const msg = raw.toLowerCase()
+	return CONNECTION_UNAVAILABLE_PATTERNS.some(function (pattern) {
+		return msg.includes(pattern)
+	})
+}
+
 /**
  * Maps query execution errors to user-friendly messages
  */
