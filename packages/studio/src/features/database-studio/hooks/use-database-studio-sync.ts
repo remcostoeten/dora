@@ -194,7 +194,9 @@ export function useDatabaseStudioSync(args: Args) {
 		// screen — e.g. after a delete/insert/column change. The snapshot is stale
 		// relative to the mutation, so painting it here is the "flash back to the
 		// old state". Keep the current rows visible and swap in fresh data.
+		let paintedFromSnapshot = false
 		if (cached && currentView !== displayedViewRef.current) {
+			paintedFromSnapshot = true
 			const next = withPendingEdits(snapshotToTableData(cached), tableId)
 			if (!isSameTableData(queryStateRef.current.tableData, next)) setTableData(next)
 			if (cached.visibleColumns.length > 0) {
@@ -245,6 +247,17 @@ export function useDatabaseStudioSync(args: Args) {
 		}
 
 		try {
+			// A snapshot paint must reach the screen before the refresh fetch is
+			// issued (the cached-switch render invariant): yield one macrotask so
+			// React commits the painted rows, then fire the fetch. Non-cached
+			// loads fetch immediately — there is nothing on screen to protect.
+			if (paintedFromSnapshot) {
+				await new Promise(function (resolve) {
+					setTimeout(resolve, 0)
+				})
+				if (!isCurrentRequest()) return
+			}
+
 			let result = await fetchRows()
 			if (!isCurrentRequest()) return
 
