@@ -3,7 +3,13 @@ import type { SettingsSectionId } from '@studio/features/sidebar/components/sett
 import type { DatabaseSchema, SavedQuery, SnippetFolder } from '@studio/lib/bindings'
 import type { HydrateSessionArgs } from './slices/tabs'
 import { workspaceStore } from './store'
-import { tableSnapshotKey, type Tab, type TableSnapshot, type TabsSlice } from './types'
+import {
+	tableSnapshotKey,
+	type SchemaEntry,
+	type Tab,
+	type TableSnapshot,
+	type TabsSlice
+} from './types'
 
 /**
  * Module-level action functions rather than hook-returned closures: every one
@@ -132,6 +138,16 @@ export function openSettingsView(
 
 export function setSchema(connectionId: string, schema: DatabaseSchema, fetchedAt = 0): void {
 	workspaceStore.dispatch({ type: 'schemas/set', connectionId, schema, fetchedAt })
+}
+
+/**
+ * The last schema this session (or the bootstrap payload) saw for a
+ * connection, read synchronously. Bootstrap entries carry `fetchedAt: 0`, so
+ * consumers can seed instantly while still treating the data as stale.
+ */
+export function readSchemaEntry(connectionId: string | undefined): SchemaEntry | undefined {
+	if (!connectionId) return undefined
+	return workspaceStore.getState().schemas.byConnectionId[connectionId]
 }
 
 export function invalidateSchema(connectionId: string): void {

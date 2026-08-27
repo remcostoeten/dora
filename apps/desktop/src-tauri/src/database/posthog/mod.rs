@@ -43,7 +43,7 @@ pub struct PosthogHttp {
 impl PosthogHttp {
     pub fn new(region: &str, project_id: String, api_key: String) -> Self {
         Self {
-            client: crate::http::query_client(),
+            client: crate::http::query_client().clone(),
             api_base: region_api_base(region).to_string(),
             project_id,
             api_key,
@@ -343,7 +343,10 @@ mod tests {
         }"#;
         let set = parse_result_set(body).expect("should decode");
         assert_eq!(set.columns, vec!["event", "count"]);
-        assert_eq!(set.types, vec![Some("String".into()), Some("UInt64".into())]);
+        assert_eq!(
+            set.types,
+            vec![Some("String".into()), Some("UInt64".into())]
+        );
         assert_eq!(set.rows.len(), 2);
         assert_eq!(set.rows[0][0], Value::from("$pageview"));
     }

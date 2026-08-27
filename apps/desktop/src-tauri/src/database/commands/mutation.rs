@@ -236,7 +236,10 @@ pub async fn execute_batch(
     connection_id: Uuid,
     statements: Vec<String>,
     state: State<'_, AppState>,
+    refresher: State<'_, crate::database::RowCountRefresher>,
 ) -> Result<MutationResult, Error> {
     let svc = mutation_service(state.inner());
-    svc.execute_batch(connection_id, statements).await
+    let result = svc.execute_batch(connection_id, statements).await;
+    refresher.cancel(connection_id);
+    result
 }

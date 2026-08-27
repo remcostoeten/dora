@@ -38,13 +38,20 @@ pub async fn update_connection(
     clear_password: bool,
     color: Option<i32>,
     state: State<'_, AppState>,
+    refresher: State<'_, crate::database::RowCountRefresher>,
 ) -> Result<ConnectionInfo, Error> {
     let svc = ConnectionService {
         connections: &state.connections,
         storage: &state.storage,
     };
-    svc.update_connection(conn_id, name, database_info, clear_password, color)
-        .await
+    let info = svc
+        .update_connection(conn_id, name, database_info, clear_password, color)
+        .await?;
+    // A config change may point at a different database entirely; a cached
+    // schema from the old target must not survive the reconnect.
+    state.schemas.remove(&conn_id);
+    refresher.cancel(conn_id);
+    Ok(info)
 }
 
 #[tauri::command]
@@ -144,9 +151,11 @@ pub async fn disconnect_from_database(
     state: State<'_, AppState>,
     live_monitor: State<'_, crate::database::LiveMonitorManager>,
     monitor: State<'_, crate::database::ConnectionMonitor>,
+    refresher: State<'_, crate::database::RowCountRefresher>,
 ) -> Result<(), Error> {
     live_monitor.stop_monitors_for_connection(connection_id);
     state.stmt_manager.cancel_connection_queries(connection_id);
+    refresher.cancel(connection_id);
 
     let svc = ConnectionService {
         connections: &state.connections,
@@ -171,8 +180,11 @@ pub async fn remove_connection(
     connection_id: Uuid,
     state: State<'_, AppState>,
     monitor: State<'_, crate::database::ConnectionMonitor>,
+    refresher: State<'_, crate::database::RowCountRefresher>,
 ) -> Result<(), Error> {
     state.stmt_manager.cancel_connection_queries(connection_id);
+    refresher.cancel(connection_id);
+    state.schemas.remove(&connection_id);
     let svc = ConnectionService {
         connections: &state.connections,
         storage: &state.storage,

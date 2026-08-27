@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useIsTauri } from '@studio/core/data-provider'
-import { useConnections } from '@studio/core/data-provider/hooks'
+import { useConnections, useSchemaRowCountListener } from '@studio/core/data-provider/hooks'
 import { ENV_MODE, getEnv } from '@studio/core/env'
 import { useSettings } from '@studio/core/settings'
 import {
@@ -35,6 +35,8 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 	const activeConnectionId = useActiveConnectionId()
 
 	const isLoading = isSettingsLoading || isConnectionsLoading
+
+	useSchemaRowCountListener()
 
 	useEffect(
 		function listenForServerSideDisconnects() {

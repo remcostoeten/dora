@@ -551,12 +551,14 @@ impl<'a> ConnectionService<'a> {
                         // failures are non-fatal and leave the existing (vanilla)
                         // dialect in place.
                         let detected_pg = match pg_client.query_one("SELECT version()", &[]).await {
-                            Ok(row) => row
-                                .try_get::<usize, String>(0)
-                                .ok()
-                                .map(|version| crate::database::dialect::detect_pg_dialect(&version)),
+                            Ok(row) => row.try_get::<usize, String>(0).ok().map(|version| {
+                                crate::database::dialect::detect_pg_dialect(&version)
+                            }),
                             Err(e) => {
-                                log::warn!("Failed to detect Postgres dialect via version(): {}", e);
+                                log::warn!(
+                                    "Failed to detect Postgres dialect via version(): {}",
+                                    e
+                                );
                                 None
                             }
                         };
@@ -641,7 +643,9 @@ impl<'a> ConnectionService<'a> {
 
                 match conn_attempt {
                     Ok(Ok(mut conn)) => {
-                        conn.ping().await?;
+                        // No ping: `get_conn` completed the handshake, and the
+                        // VERSION() probe below proves liveness — a ping would
+                        // just add one more round trip to every connect.
 
                         // Detect the real engine (MySQL vs MariaDB). The
                         // per-engine `dialect` field is the source of truth.
@@ -727,11 +731,9 @@ impl<'a> ConnectionService<'a> {
                 // File-source connections live entirely in memory; a real
                 // `.duckdb` file connection opens the file directly. Either path
                 // (in-process or helper) is selected inside `build_duckdb_backend`.
-                let built = crate::database::duckdb_backend::build_duckdb_backend(
-                    db_path,
-                    file_sources,
-                )
-                .await;
+                let built =
+                    crate::database::duckdb_backend::build_duckdb_backend(db_path, file_sources)
+                        .await;
 
                 match built {
                     Ok((conn_handle, registration)) => {
@@ -1027,9 +1029,7 @@ impl<'a> ConnectionService<'a> {
                     file_source_entries,
                     connection: Some(duckdb_conn),
                     ..
-                } if !file_sources.is_empty() => {
-                    (duckdb_conn.clone(), file_source_entries.clone())
-                }
+                } if !file_sources.is_empty() => (duckdb_conn.clone(), file_source_entries.clone()),
                 Database::DuckDB { file_sources, .. } if !file_sources.is_empty() => {
                     return Err(Error::InvalidInput(
                         "Connect the data-file session before saving".to_string(),
@@ -1108,7 +1108,8 @@ impl<'a> ConnectionService<'a> {
                 }
                 _ => {
                     return Err(Error::InvalidInput(
-                        "Import files is only available for DuckDB database connections".to_string(),
+                        "Import files is only available for DuckDB database connections"
+                            .to_string(),
                     ));
                 }
             }
@@ -1294,7 +1295,9 @@ impl<'a> ConnectionService<'a> {
                 .map_err(|e| Error::Any(anyhow::anyhow!("Failed to verify PIN: {}", e)))?;
 
             if !valid {
-                return Err(Error::PermissionDenied("Invalid connection PIN".to_string()));
+                return Err(Error::PermissionDenied(
+                    "Invalid connection PIN".to_string(),
+                ));
             }
 
             // PIN matches, retrieve password

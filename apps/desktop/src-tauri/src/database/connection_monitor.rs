@@ -119,6 +119,9 @@ impl ConnectionMonitor {
 
     fn notify_disconnect(&self, connection_id: Uuid) {
         self.persist_disconnect(connection_id);
+        if let Some(refresher) = self.app.try_state::<crate::database::RowCountRefresher>() {
+            refresher.cancel(connection_id);
+        }
         match self
             .app
             .emit_to(EventTarget::App, "end-of-connection", connection_id)

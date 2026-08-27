@@ -28,12 +28,17 @@ pub fn client() -> &'static reqwest::Client {
     })
 }
 
-/// Client for HTTP query engines (D1, PostHog): same connect timeout, longer
-/// request budget.
-pub fn query_client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .connect_timeout(CONNECT_TIMEOUT)
-        .timeout(QUERY_TIMEOUT)
-        .build()
-        .expect("default reqwest client with timeouts")
+/// Shared client for HTTP query engines (D1, PostHog): same connect timeout,
+/// longer request budget. One process-wide client means TLS sessions and
+/// keep-alives are reused across connect, introspection and queries; cloning a
+/// `reqwest::Client` shares its pool.
+pub fn query_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .connect_timeout(CONNECT_TIMEOUT)
+            .timeout(QUERY_TIMEOUT)
+            .build()
+            .expect("default reqwest client with timeouts")
+    })
 }

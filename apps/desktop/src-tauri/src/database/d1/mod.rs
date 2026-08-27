@@ -47,7 +47,7 @@ pub struct D1Http {
 impl D1Http {
     pub fn new(account_id: String, database_id: String, token: String) -> Self {
         Self {
-            client: crate::http::query_client(),
+            client: crate::http::query_client().clone(),
             account_id,
             database_id,
             token,
@@ -82,7 +82,9 @@ impl D1Http {
             .json(&body)
             .send()
             .await
-            .map_err(|error| Error::Any(anyhow::anyhow!("Cloudflare D1 request failed: {error}")))?;
+            .map_err(|error| {
+                Error::Any(anyhow::anyhow!("Cloudflare D1 request failed: {error}"))
+            })?;
 
         let status = response.status();
         let text = read_body(response).await;
@@ -439,10 +441,7 @@ mod tests {
         assert_eq!(columns, vec!["id", "name", "note"]);
         let page = rows_to_page(&set.results, &columns);
         // NULL renders as the literal string "NULL", matching the SQLite writer.
-        assert_eq!(
-            page.get(),
-            r#"[[1,"Alice","NULL"],[2,"NULL","hi"]]"#
-        );
+        assert_eq!(page.get(), r#"[[1,"Alice","NULL"],[2,"NULL","hi"]]"#);
     }
 
     #[test]

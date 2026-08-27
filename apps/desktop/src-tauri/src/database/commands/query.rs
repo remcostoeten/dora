@@ -35,6 +35,7 @@ pub async fn start_query(
     connection_id: Uuid,
     query: &str,
     state: State<'_, AppState>,
+    refresher: State<'_, crate::database::RowCountRefresher>,
 ) -> Result<Vec<usize>, Error> {
     // SQL Console uses `start_query`; invalidate cached schema when query includes
     // non-read-only statements so schema fetches reflect DDL changes immediately.
@@ -48,6 +49,7 @@ pub async fn start_query(
 
     if invalidates_schema {
         state.schemas.remove(&connection_id);
+        refresher.cancel(connection_id);
     }
 
     Ok(query_ids)
@@ -60,6 +62,7 @@ pub async fn start_query_stream(
     query: &str,
     on_event: tauri::ipc::Channel<QueryEvent>,
     state: State<'_, AppState>,
+    refresher: State<'_, crate::database::RowCountRefresher>,
 ) -> Result<Vec<usize>, Error> {
     let invalidates_schema = query_invalidates_schema(state.inner(), connection_id, query);
     let svc = QueryService {
@@ -67,9 +70,12 @@ pub async fn start_query_stream(
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    let query_ids = svc.start_query_stream(connection_id, query, on_event).await?;
+    let query_ids = svc
+        .start_query_stream(connection_id, query, on_event)
+        .await?;
     if invalidates_schema {
         state.schemas.remove(&connection_id);
+        refresher.cancel(connection_id);
     }
     Ok(query_ids)
 }

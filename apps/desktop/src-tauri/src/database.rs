@@ -8,8 +8,8 @@ pub mod duckdb_ipc;
 pub mod ident;
 pub mod libsql;
 pub mod mysql;
-pub mod posthog;
 pub mod postgres;
+pub mod posthog;
 pub mod sqlite;
 
 pub use postgres::tls::Certificates;
@@ -22,7 +22,10 @@ mod live_monitor;
 pub mod maintenance;
 pub mod metadata;
 pub mod parser;
+pub mod row_count_refresher;
+pub mod schema_cache;
 pub mod services;
+pub mod sqlite_introspection;
 pub mod ssh_tunnel;
 pub mod stmt_manager;
 pub mod types;
@@ -32,5 +35,6 @@ pub use live_monitor::{
     LiveMonitorChangeType, LiveMonitorManager, LiveMonitorSession, LiveMonitorUpdateEvent,
     LIVE_MONITOR_EVENT_NAME,
 };
+pub use row_count_refresher::RowCountRefresher;
 
 use crate::database::types::QueryExecEvent;

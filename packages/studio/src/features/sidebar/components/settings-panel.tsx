@@ -1531,6 +1531,32 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 										<div
 											className='flex items-start justify-between gap-4'
 											tabIndex={-1}
+											data-settings-focus='safety-persist-snapshots'
+										>
+											<div className='flex-1'>
+												<div className='text-sm text-sidebar-foreground'>
+													Remember table contents
+												</div>
+												<div className='text-xs leading-tight text-muted-foreground'>
+													Cache the last viewed page of each table on this device
+													so tables reappear instantly after a restart. Row values
+													are stored in plain text; turning this off (or enabling
+													Privacy mode) removes the cache.
+												</div>
+											</div>
+											<div className='flex-shrink-0 pt-0.5'>
+												<Switch
+													checked={settings.persistTableSnapshots}
+													onCheckedChange={function (checked) {
+														updateSetting('persistTableSnapshots', checked)
+													}}
+												/>
+											</div>
+										</div>
+
+										<div
+											className='flex items-start justify-between gap-4'
+											tabIndex={-1}
 											data-settings-focus='safety-hide-ai'
 										>
 											<div className='flex-1'>

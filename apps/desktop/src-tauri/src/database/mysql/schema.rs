@@ -23,32 +23,61 @@ pub async fn get_database_schema(
 ) -> Result<DatabaseSchema, Error> {
     let queries = dialect.introspection();
 
-    let mut conn = pool
-        .get_conn()
-        .await
-        .map_err(|e| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e)))?;
+    // The four catalog queries scope themselves to the connection's default
+    // schema via `DATABASE()` (see dialect.rs), so no `SELECT DATABASE()`
+    // round trip precedes them. mysql_async cannot multiplex one connection,
+    // so two pooled connections run two serial chains concurrently:
+    // columns → row counts on one, foreign keys → indexes on the other. The
+    // second handshake overlaps the first chain's queries.
+    let (columns_chain, fk_chain) =
+        tokio::join!(
+            async {
+                let mut conn = pool
+                    .get_conn()
+                    .await
+                    .map_err(|e| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e)))?;
+                let column_rows: Vec<Row> = conn
+                    .query(queries.columns)
+                    .await
+                    .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query columns: {}", e)))?;
+                let count_rows: Vec<Row> = conn.query(queries.row_counts).await.map_err(|e| {
+                    Error::Any(anyhow::anyhow!("Failed to query row counts: {}", e))
+                })?;
+                Ok::<_, Error>((column_rows, count_rows))
+            },
+            async {
+                let mut conn = pool
+                    .get_conn()
+                    .await
+                    .map_err(|e| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e)))?;
+                let fk_rows: Vec<Row> = conn.query(queries.foreign_keys).await.map_err(|e| {
+                    Error::Any(anyhow::anyhow!("Failed to query foreign keys: {}", e))
+                })?;
+                let index_rows: Vec<Row> = conn
+                    .query(queries.indexes)
+                    .await
+                    .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query indexes: {}", e)))?;
+                Ok::<_, Error>((fk_rows, index_rows))
+            },
+        );
+    let (column_rows, count_rows) = columns_chain?;
+    let (fk_rows, index_rows) = fk_chain?;
 
-    let current_db: String = conn
-        .query_first("SELECT DATABASE()")
-        .await
-        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to get current database: {}", e)))?
-        .unwrap_or_default();
-
-    if current_db.is_empty() {
-        return Err(Error::Any(anyhow::anyhow!("No database selected")));
+    // An empty catalog usually means no default schema was selected in the
+    // connection string; surface that instead of a silently empty sidebar.
+    if column_rows.is_empty() {
+        let mut conn = pool
+            .get_conn()
+            .await
+            .map_err(|e| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e)))?;
+        let current_db: Option<String> = conn
+            .query_first("SELECT DATABASE()")
+            .await
+            .map_err(|e| Error::Any(anyhow::anyhow!("Failed to get current database: {}", e)))?;
+        if current_db.unwrap_or_default().is_empty() {
+            return Err(Error::Any(anyhow::anyhow!("No database selected")));
+        }
     }
-
-    // -- columns + primary-key flag -----------------------------------------
-    let column_rows: Vec<Row> = conn
-        .exec(queries.columns, (&current_db,))
-        .await
-        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query columns: {}", e)))?;
-
-    // -- foreign keys -------------------------------------------------------
-    let fk_rows: Vec<Row> = conn
-        .exec(queries.foreign_keys, (&current_db,))
-        .await
-        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query foreign keys: {}", e)))?;
 
     let mut fk_map: HashMap<(String, String, String), ForeignKeyInfo> = HashMap::new();
     for row in &fk_rows {
@@ -68,12 +97,6 @@ pub async fn get_database_schema(
             },
         );
     }
-
-    // -- indexes ------------------------------------------------------------
-    let index_rows: Vec<Row> = conn
-        .exec(queries.indexes, (&current_db,))
-        .await
-        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query indexes: {}", e)))?;
 
     // Group columns per index
     let mut index_builder: HashMap<(String, String, String), (bool, Vec<String>)> = HashMap::new();
@@ -105,11 +128,6 @@ pub async fn get_database_schema(
     }
 
     // -- row count estimates ------------------------------------------------
-    let count_rows: Vec<Row> = conn
-        .exec(queries.row_counts, (&current_db,))
-        .await
-        .map_err(|e| Error::Any(anyhow::anyhow!("Failed to query row counts: {}", e)))?;
-
     let mut count_map: HashMap<(String, String), u64> = HashMap::new();
     for row in &count_rows {
         let schema: String = mysql_get_string(row, 0);

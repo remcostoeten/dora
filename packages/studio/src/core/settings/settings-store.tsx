@@ -9,7 +9,10 @@ import {
 	useRef
 } from 'react'
 import { commands } from '@studio/lib/bindings'
-import { readBootstrappedSettings } from '@studio/core/workspace-store'
+import {
+	configureTableSnapshotPersistence,
+	readBootstrappedSettings
+} from '@studio/core/workspace-store'
 import { MonacoTheme } from './editor-themes'
 
 export type EditorTheme = 'auto' | MonacoTheme
@@ -20,6 +23,7 @@ export type SettingsState = {
 	editorTheme: EditorTheme
 	enableVimMode: boolean
 	hideAi: boolean
+	persistTableSnapshots: boolean
 	privacyMaskData: boolean
 	restoreLastConnection: boolean
 	restoreTabsOnLaunch: boolean
@@ -38,6 +42,7 @@ export const DEFAULT_SETTINGS: SettingsState = {
 	editorTheme: 'auto',
 	enableVimMode: false,
 	hideAi: false,
+	persistTableSnapshots: true,
 	privacyMaskData: false,
 	restoreLastConnection: true,
 	restoreTabsOnLaunch: true,
@@ -121,6 +126,10 @@ export function sanitizeSettings(value: unknown): SettingsState {
 				? value.enableVimMode
 				: DEFAULT_SETTINGS.enableVimMode,
 		hideAi: typeof value.hideAi === 'boolean' ? value.hideAi : DEFAULT_SETTINGS.hideAi,
+		persistTableSnapshots:
+			typeof value.persistTableSnapshots === 'boolean'
+				? value.persistTableSnapshots
+				: DEFAULT_SETTINGS.persistTableSnapshots,
 		privacyMaskData:
 			typeof value.privacyMaskData === 'boolean'
 				? value.privacyMaskData
@@ -281,6 +290,15 @@ export function SettingsProvider({ children }: SettingsProviderProps) {
 			}
 		}
 	}, [settings, scheduleSave])
+
+	useEffect(
+		function syncSnapshotPersistence() {
+			configureTableSnapshotPersistence(
+				settings.persistTableSnapshots && !settings.privacyMaskData
+			)
+		},
+		[settings.persistTableSnapshots, settings.privacyMaskData]
+	)
 
 	useEffect(function flushSettingsBeforeExit() {
 		function flush() {

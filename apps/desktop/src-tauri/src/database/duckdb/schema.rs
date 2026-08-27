@@ -43,6 +43,12 @@ pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<Databas
             })?
             .collect::<Result<Vec<_>, _>>()?;
 
+        // One pass each over duckdb_constraints()/duckdb_indexes(), grouped in
+        // Rust — a per-table WHERE-filtered query would rescan the catalog for
+        // every table.
+        let mut fk_by_table = all_foreign_keys(&conn).unwrap_or_default();
+        let mut indexes_by_table = all_indexes(&conn).unwrap_or_default();
+
         let mut tables = Vec::new();
         let mut unique_columns_set = HashSet::new();
 
@@ -70,10 +76,13 @@ pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<Databas
                 })?
                 .collect::<Result<Vec<_>, _>>()?;
 
-            let fk_map =
-                foreign_keys_for_table(&conn, &schema_name, &table_name).unwrap_or_default();
+            let fk_map = fk_by_table
+                .remove(&(schema_name.clone(), table_name.clone()))
+                .unwrap_or_default();
 
-            let indexes = indexes_for_table(&conn, &schema_name, &table_name).unwrap_or_default();
+            let indexes = indexes_by_table
+                .remove(&(schema_name.clone(), table_name.clone()))
+                .unwrap_or_default();
 
             let mut columns = Vec::new();
             let mut primary_key_columns = Vec::new();
@@ -187,25 +196,26 @@ pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<Databas
 /// DuckDB only exposes foreign-key details through `duckdb_constraints()`'s
 /// `constraint_text` (e.g. `FOREIGN KEY (a) REFERENCES other(b)`), so we parse
 /// the text. Composite keys map column-by-column.
-fn foreign_keys_for_table(
+fn all_foreign_keys(
     conn: &Connection,
-    schema_name: &str,
-    table_name: &str,
-) -> Result<HashMap<String, ForeignKeyInfo>, Error> {
+) -> Result<HashMap<(String, String), HashMap<String, ForeignKeyInfo>>, Error> {
     let mut stmt = conn.prepare(
-        "SELECT constraint_text FROM duckdb_constraints() \
-         WHERE schema_name = ? AND table_name = ? AND constraint_type = 'FOREIGN KEY'",
+        "SELECT schema_name, table_name, constraint_text FROM duckdb_constraints() \
+         WHERE constraint_type = 'FOREIGN KEY'",
     )?;
 
-    let texts: Vec<String> = stmt
-        .query_map([schema_name, table_name], |row| row.get::<_, String>(0))?
+    let rows: Vec<(String, String, String)> = stmt
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get::<_, String>(2)?))
+        })?
         .collect::<Result<Vec<_>, _>>()?;
 
-    let mut map = HashMap::new();
-    for text in texts {
+    let mut map: HashMap<(String, String), HashMap<String, ForeignKeyInfo>> = HashMap::new();
+    for (schema_name, table_name, text) in rows {
         if let Some((from_columns, referenced_table, to_columns)) = parse_fk_constraint(&text) {
+            let table_map = map.entry((schema_name, table_name)).or_default();
             for (from, to) in from_columns.into_iter().zip(to_columns) {
-                map.insert(
+                table_map.insert(
                     from,
                     ForeignKeyInfo {
                         referenced_table: referenced_table.clone(),
@@ -246,44 +256,46 @@ fn read_parenthesized(s: &str) -> Option<(String, &str)> {
     Some((s[..close].to_string(), &s[close + 1..]))
 }
 
-fn indexes_for_table(
-    conn: &Connection,
-    schema_name: &str,
-    table_name: &str,
-) -> Result<Vec<IndexInfo>, Error> {
+fn all_indexes(conn: &Connection) -> Result<HashMap<(String, String), Vec<IndexInfo>>, Error> {
     let mut stmt = conn.prepare(
-        "SELECT index_name, is_unique, is_primary, expressions FROM duckdb_indexes() \
-         WHERE schema_name = ? AND table_name = ?",
+        "SELECT schema_name, table_name, index_name, is_unique, is_primary, expressions \
+         FROM duckdb_indexes()",
     )?;
 
-    let rows: Vec<(String, bool, bool, Option<String>)> = stmt
-        .query_map([schema_name, table_name], |row| {
+    let rows: Vec<(String, String, String, bool, bool, Option<String>)> = stmt
+        .query_map([], |row| {
             Ok((
                 row.get(0)?,
                 row.get(1)?,
                 row.get(2)?,
-                row.get::<_, Option<String>>(3)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(rows
-        .into_iter()
-        .map(|(name, is_unique, is_primary, expressions)| IndexInfo {
-            name,
-            column_names: expressions
-                .map(|e| {
-                    e.trim_matches(['[', ']'])
-                        .split(',')
-                        .map(|c| c.trim().trim_matches(['\'', '"']).to_string())
-                        .filter(|c| !c.is_empty())
-                        .collect()
-                })
-                .unwrap_or_default(),
-            is_unique,
-            is_primary,
-        })
-        .collect())
+    let mut map: HashMap<(String, String), Vec<IndexInfo>> = HashMap::new();
+    for (schema_name, table_name, name, is_unique, is_primary, expressions) in rows {
+        map.entry((schema_name, table_name))
+            .or_default()
+            .push(IndexInfo {
+                name,
+                column_names: expressions
+                    .map(|e| {
+                        e.trim_matches(['[', ']'])
+                            .split(',')
+                            .map(|c| c.trim().trim_matches(['\'', '"']).to_string())
+                            .filter(|c| !c.is_empty())
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                is_unique,
+                is_primary,
+            });
+    }
+
+    Ok(map)
 }
 
 #[cfg(test)]

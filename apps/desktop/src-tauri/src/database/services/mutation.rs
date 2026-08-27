@@ -62,7 +62,7 @@ impl<'a> MutationService<'a> {
         column_name: String,
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let (adapter, _) = self.write_adapter(connection_id)?;
         let result = adapter
             .update_cell(
                 table_name,
@@ -73,7 +73,6 @@ impl<'a> MutationService<'a> {
                 new_value,
             )
             .await?;
-        self.schemas.remove(&cid);
         Ok(result)
     }
 
@@ -114,13 +113,19 @@ impl<'a> MutationService<'a> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter
             .delete_rows(
-                table_name,
-                schema_name,
+                table_name.clone(),
+                schema_name.clone(),
                 primary_key_column,
                 primary_key_values,
             )
             .await?;
-        self.schemas.remove(&cid);
+        crate::database::schema_cache::patch_row_count(
+            self.schemas,
+            cid,
+            &table_name,
+            schema_name.as_deref(),
+            crate::database::schema_cache::RowCountDelta::Add(-(result.affected_rows as i64)),
+        );
         Ok(result)
     }
 
@@ -134,9 +139,15 @@ impl<'a> MutationService<'a> {
     ) -> Result<MutationResult, Error> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter
-            .insert_row(table_name, schema_name, row_data)
+            .insert_row(table_name.clone(), schema_name.clone(), row_data)
             .await?;
-        self.schemas.remove(&cid);
+        crate::database::schema_cache::patch_row_count(
+            self.schemas,
+            cid,
+            &table_name,
+            schema_name.as_deref(),
+            crate::database::schema_cache::RowCountDelta::Add(1),
+        );
         Ok(result)
     }
 
@@ -151,13 +162,19 @@ impl<'a> MutationService<'a> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter
             .duplicate_row(
-                table_name,
-                schema_name,
+                table_name.clone(),
+                schema_name.clone(),
                 primary_key_column,
                 primary_key_value,
             )
             .await?;
-        self.schemas.remove(&cid);
+        crate::database::schema_cache::patch_row_count(
+            self.schemas,
+            cid,
+            &table_name,
+            schema_name.as_deref(),
+            crate::database::schema_cache::RowCountDelta::Add(1),
+        );
         Ok(result)
     }
 
@@ -458,9 +475,15 @@ impl<'a> MutationService<'a> {
     ) -> Result<TruncateResult, Error> {
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter
-            .truncate_table(table_name, schema_name, cascade)
+            .truncate_table(table_name.clone(), schema_name.clone(), cascade)
             .await?;
-        self.schemas.remove(&cid);
+        crate::database::schema_cache::patch_row_count(
+            self.schemas,
+            cid,
+            &table_name,
+            schema_name.as_deref(),
+            crate::database::schema_cache::RowCountDelta::Zero,
+        );
         Ok(result)
     }
 
@@ -477,7 +500,7 @@ impl<'a> MutationService<'a> {
         }
         let (adapter, cid) = self.write_adapter(connection_id)?;
         let result = adapter.truncate_database(schema_name, confirm).await?;
-        self.schemas.remove(&cid);
+        crate::database::schema_cache::zero_all_row_counts(self.schemas, cid);
         Ok(result)
     }
 
