@@ -1,17 +1,16 @@
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-use futures_util::StreamExt;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::{AIRequest, AIResponse, AiStreamEvent};
+use super::client::{self, AiClient, SseOutcome};
+use super::{AIProvider, AIRequest, AIResponse, AiStreamEvent, KeyPool};
 use crate::error::Error;
 use crate::storage::Storage;
 
 const GEMINI_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
-const GEMINI_MODELS_URL: &str = "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_MODEL: &str = "gemini-2.5-flash";
 
 #[derive(Debug, Serialize)]
 struct GeminiRequest {
@@ -64,71 +63,39 @@ struct UsageMetadata {
     total_token_count: Option<u32>,
 }
 
+fn candidate_text(response: GeminiResponse) -> (String, Option<u32>) {
+    let tokens = response
+        .usage_metadata
+        .and_then(|usage| usage.total_token_count);
+    let text = response
+        .candidates
+        .and_then(|candidates| candidates.into_iter().next())
+        .map(|candidate| {
+            candidate
+                .content
+                .parts
+                .into_iter()
+                .map(|part| part.text)
+                .collect::<Vec<_>>()
+                .join("")
+        })
+        .unwrap_or_default();
+    (text, tokens)
+}
+
 pub struct GeminiClient {
-    keys: Vec<String>,
-    counter: AtomicUsize,
+    pool: KeyPool,
     model: String,
     client: reqwest::Client,
 }
 
 impl GeminiClient {
-    pub fn from_env_and_storage(storage: &Storage) -> Result<Self, Error> {
-        let mut keys = Self::collect_env_keys();
-        let db_keys = storage
-            .ai_keys_active_decrypted("gemini")
-            .unwrap_or_default();
-        keys.extend(db_keys);
-        let model = storage
-            .get_setting("ai_model")?
-            .filter(|value| !value.trim().is_empty())
-            .or_else(|| std::env::var("GEMINI_MODEL").ok())
-            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
-        Self::from_sources(keys, model)
-    }
-
-    fn collect_env_keys() -> Vec<String> {
-        let mut keys = Vec::new();
-        if let Ok(key) = std::env::var("GEMINI_API_KEY") {
-            if !key.trim().is_empty() {
-                keys.push(key.trim().to_string());
-            }
-        }
-        keys
-    }
-
-    fn from_sources(keys: Vec<String>, model: String) -> Result<Self, Error> {
-        if keys.is_empty() {
-            return Err(Error::Any(anyhow::anyhow!("Gemini API key not configured")));
-        }
+    pub fn from_env_and_storage(storage: &Storage, model: String) -> Result<Self, Error> {
         Ok(Self {
-            keys,
-            counter: AtomicUsize::new(0),
+            pool: KeyPool::from_env_and_storage(AIProvider::Gemini, storage)?,
             model,
-            client: reqwest::Client::new(),
+            client: client::http_client(60),
         })
-    }
-
-    pub fn new(api_key: String, model: String) -> Result<Self, Error> {
-        Self::from_sources(vec![api_key], model)
-    }
-
-    pub fn key_count(&self) -> usize {
-        self.keys.len()
-    }
-
-    pub async fn test_configured_key(
-        storage: &Storage,
-        model: Option<&str>,
-        prompt: Option<&str>,
-    ) -> Result<String, Error> {
-        let client = Self::from_env_and_storage(storage)?;
-        let key = client.next_key().to_string();
-        Self::test_key(&key, model, prompt).await
-    }
-
-    fn next_key(&self) -> &str {
-        let index = self.counter.fetch_add(1, Ordering::Relaxed);
-        &self.keys[index % self.keys.len()]
     }
 
     fn build_prompt(&self, request: &AIRequest) -> String {
@@ -145,7 +112,7 @@ impl GeminiClient {
         format!("{GEMINI_BASE_URL}/{}:{action}", self.model)
     }
 
-    fn build_request(&self, prompt: String, max_tokens: Option<u32>) -> GeminiRequest {
+    fn build_request(prompt: String, max_tokens: Option<u32>) -> GeminiRequest {
         GeminiRequest {
             contents: vec![GeminiContent {
                 parts: vec![GeminiPart { text: prompt }],
@@ -156,19 +123,12 @@ impl GeminiClient {
         }
     }
 
-    fn should_rotate(status: reqwest::StatusCode) -> bool {
-        status == reqwest::StatusCode::TOO_MANY_REQUESTS
-            || status == reqwest::StatusCode::UNAUTHORIZED
-            || status == reqwest::StatusCode::FORBIDDEN
-            || status.is_server_error()
-    }
-
     pub async fn test_key(
         api_key: &str,
         model: Option<&str>,
         prompt: Option<&str>,
     ) -> Result<String, Error> {
-        let model = model.unwrap_or(DEFAULT_MODEL);
+        let model = model.unwrap_or(AIProvider::Gemini.default_model());
         let user_prompt = prompt.filter(|value| !value.trim().is_empty());
         let (system, user, max_tokens) = match user_prompt {
             Some(text) => (
@@ -183,20 +143,11 @@ impl GeminiClient {
             ),
         };
 
-        let body = Self::from_sources(vec![api_key.to_string()], model.to_string())?
-            .build_request(format!("{system}\n\n{user}"), Some(max_tokens));
-
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(if user_prompt.is_some() {
-                30
-            } else {
-                15
-            }))
-            .build()
-            .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
+        let body = Self::build_request(format!("{system}\n\n{user}"), Some(max_tokens));
+        let http = client::http_client(if user_prompt.is_some() { 30 } else { 15 });
 
         let url = format!("{GEMINI_BASE_URL}/{model}:generateContent?key={api_key}");
-        let response = client
+        let response = http
             .post(&url)
             .json(&body)
             .send()
@@ -215,21 +166,8 @@ impl GeminiClient {
             .json()
             .await
             .map_err(|error| Error::Any(anyhow::anyhow!("invalid response: {error}")))?;
-        let content = parsed
-            .candidates
-            .and_then(|candidates| candidates.into_iter().next())
-            .map(|candidate| {
-                candidate
-                    .content
-                    .parts
-                    .into_iter()
-                    .map(|part| part.text)
-                    .collect::<Vec<_>>()
-                    .join("")
-            })
-            .unwrap_or_default()
-            .trim()
-            .to_string();
+        let (content, _) = candidate_text(parsed);
+        let content = content.trim().to_string();
 
         if content.is_empty() {
             Ok(format!("ok ({})", status.as_u16()))
@@ -238,189 +176,11 @@ impl GeminiClient {
         }
     }
 
-    pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
-        let prompt = self.build_prompt(&request);
-        let body = self.build_request(prompt, request.max_tokens);
-        let max_retries = self.keys.len().max(1);
-        let mut last_err: Option<Error> = None;
-
-        for _ in 0..max_retries {
-            let key = self.next_key().to_string();
-            let url = format!("{}?key={key}", self.generate_url(false));
-            let response = match self.client.post(&url).json(&body).send().await {
-                Ok(response) => response,
-                Err(error) => {
-                    last_err = Some(super::errors::request_error("Gemini", &error));
-                    continue;
-                }
-            };
-
-            let status = response.status();
-            if Self::should_rotate(status) {
-                let body_text = response.text().await.unwrap_or_default();
-                last_err = Some(super::errors::http_error(
-                    "Gemini", &self.model, status, &body_text,
-                ));
-                continue;
-            }
-
-            if !status.is_success() {
-                let body_text = response.text().await.unwrap_or_default();
-                return Err(super::errors::http_error(
-                    "Gemini", &self.model, status, &body_text,
-                ));
-            }
-
-            let gemini_response: GeminiResponse = response.json().await.map_err(|error| {
-                Error::Any(anyhow::anyhow!("Failed to parse Gemini response: {error}"))
-            })?;
-
-            let content = gemini_response
-                .candidates
-                .and_then(|candidates| candidates.into_iter().next())
-                .map(|candidate| {
-                    candidate
-                        .content
-                        .parts
-                        .into_iter()
-                        .map(|part| part.text)
-                        .collect::<Vec<_>>()
-                        .join("")
-                })
-                .unwrap_or_default();
-
-            let tokens_used = gemini_response
-                .usage_metadata
-                .and_then(|usage| usage.total_token_count);
-
-            return Ok(AIResponse {
-                content,
-                suggested_queries: None,
-                tokens_used,
-                provider: "gemini".to_string(),
-            });
-        }
-
-        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Gemini keys exhausted"))))
-    }
-
-    pub async fn complete_stream(
-        &self,
-        request: AIRequest,
-        sender: UnboundedSender<AiStreamEvent>,
-        cancel: Arc<AtomicBool>,
-    ) -> Result<(), Error> {
-        let prompt = self.build_prompt(&request);
-        let body = self.build_request(prompt, request.max_tokens);
-        let max_retries = self.keys.len().max(1);
-        let mut last_err: Option<Error> = None;
-
-        for _ in 0..max_retries {
-            if cancel.load(Ordering::Relaxed) {
-                return Ok(());
-            }
-
-            let key = self.next_key().to_string();
-            let url = format!("{}?alt=sse&key={key}", self.generate_url(true));
-            let response = match self.client.post(&url).json(&body).send().await {
-                Ok(response) => response,
-                Err(error) => {
-                    last_err = Some(super::errors::request_error("Gemini", &error));
-                    continue;
-                }
-            };
-
-            let status = response.status();
-            if Self::should_rotate(status) {
-                let body_text = response.text().await.unwrap_or_default();
-                last_err = Some(super::errors::http_error(
-                    "Gemini", &self.model, status, &body_text,
-                ));
-                continue;
-            }
-
-            if !status.is_success() {
-                let body_text = response.text().await.unwrap_or_default();
-                return Err(super::errors::http_error(
-                    "Gemini", &self.model, status, &body_text,
-                ));
-            }
-
-            let mut stream = response.bytes_stream();
-            let mut buffer = String::new();
-            let mut full_content = String::new();
-
-            while let Some(chunk_result) = stream.next().await {
-                if cancel.load(Ordering::Relaxed) {
-                    return Ok(());
-                }
-
-                let chunk = chunk_result
-                    .map_err(|error| Error::Any(anyhow::anyhow!("Gemini stream error: {error}")))?;
-                buffer.push_str(&String::from_utf8_lossy(&chunk));
-
-                while let Some(newline_idx) = buffer.find('\n') {
-                    let line = buffer[..newline_idx].trim().to_string();
-                    buffer = buffer[newline_idx + 1..].to_string();
-
-                    if line.is_empty() {
-                        continue;
-                    }
-
-                    let data = if let Some(rest) = line.strip_prefix("data: ") {
-                        rest
-                    } else {
-                        continue;
-                    };
-
-                    if data == "[DONE]" {
-                        let _ = sender.send(AiStreamEvent::Final {
-                            content: full_content.clone(),
-                        });
-                        return Ok(());
-                    }
-
-                    match serde_json::from_str::<GeminiResponse>(data) {
-                        Ok(parsed) => {
-                            if let Some(text) = parsed
-                                .candidates
-                                .and_then(|candidates| candidates.into_iter().next())
-                                .map(|candidate| {
-                                    candidate
-                                        .content
-                                        .parts
-                                        .into_iter()
-                                        .map(|part| part.text)
-                                        .collect::<Vec<_>>()
-                                        .join("")
-                                })
-                                .filter(|text| !text.is_empty())
-                            {
-                                full_content.push_str(&text);
-                                let _ = sender.send(AiStreamEvent::Token { text });
-                            }
-                        }
-                        Err(error) => {
-                            tracing::debug!("Gemini stream chunk parse error: {error}");
-                        }
-                    }
-                }
-            }
-
-            let _ = sender.send(AiStreamEvent::Final {
-                content: full_content.clone(),
-            });
-            return Ok(());
-        }
-
-        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Gemini keys exhausted"))))
-    }
-
     pub async fn fetch_model_ids(storage: &Storage) -> Result<Vec<String>, Error> {
-        let client = Self::from_env_and_storage(storage)?;
-        let key = client.next_key();
-        let url = format!("{GEMINI_MODELS_URL}?key={key}");
-        let response = client.client.get(&url).send().await.map_err(|error| {
+        let pool = KeyPool::from_env_and_storage(AIProvider::Gemini, storage)?;
+        let http = client::http_client(15);
+        let url = format!("{GEMINI_BASE_URL}?key={}", pool.first());
+        let response = http.get(&url).send().await.map_err(|error| {
             Error::Any(anyhow::anyhow!("Gemini models request failed: {error}"))
         })?;
 
@@ -459,5 +219,81 @@ impl GeminiClient {
             })
             .filter_map(|entry| entry.name.strip_prefix("models/").map(str::to_string))
             .collect())
+    }
+}
+
+#[async_trait]
+impl AiClient for GeminiClient {
+    async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
+        let body = Self::build_request(self.build_prompt(&request), request.max_tokens);
+        let url = self.generate_url(false);
+
+        let response = client::send_with_rotation(&self.pool, "Gemini", &self.model, None, |key| {
+            self.client.post(format!("{url}?key={key}")).json(&body)
+        })
+        .await?
+        .ok_or(Error::Cancelled)?;
+
+        let parsed: GeminiResponse = response.json().await.map_err(|error| {
+            Error::Any(anyhow::anyhow!("Failed to parse Gemini response: {error}"))
+        })?;
+
+        let (content, tokens_used) = candidate_text(parsed);
+
+        Ok(AIResponse {
+            content,
+            suggested_queries: None,
+            tokens_used,
+            provider: "gemini".to_string(),
+        })
+    }
+
+    async fn complete_stream(
+        &self,
+        request: AIRequest,
+        sender: UnboundedSender<AiStreamEvent>,
+        cancel: Arc<AtomicBool>,
+    ) -> Result<(), Error> {
+        let body = Self::build_request(self.build_prompt(&request), request.max_tokens);
+        let url = self.generate_url(true);
+
+        let Some(response) =
+            client::send_with_rotation(&self.pool, "Gemini", &self.model, Some(&cancel), |key| {
+                self.client
+                    .post(format!("{url}?alt=sse&key={key}"))
+                    .json(&body)
+            })
+            .await?
+        else {
+            return Ok(());
+        };
+
+        let mut full_content = String::new();
+        let outcome = client::read_sse("Gemini", response, &cancel, |data| {
+            if data == "[DONE]" {
+                return false;
+            }
+            match serde_json::from_str::<GeminiResponse>(data) {
+                Ok(parsed) => {
+                    let (text, _) = candidate_text(parsed);
+                    if !text.is_empty() {
+                        full_content.push_str(&text);
+                        let _ = sender.send(AiStreamEvent::Token { text });
+                    }
+                }
+                Err(error) => {
+                    tracing::debug!("Gemini stream chunk parse error: {error}");
+                }
+            }
+            true
+        })
+        .await?;
+
+        if matches!(outcome, SseOutcome::Finished) {
+            let _ = sender.send(AiStreamEvent::Final {
+                content: full_content,
+            });
+        }
+        Ok(())
     }
 }

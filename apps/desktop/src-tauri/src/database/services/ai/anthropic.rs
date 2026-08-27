@@ -1,19 +1,18 @@
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
-use std::time::Duration;
 
-use futures_util::StreamExt;
+use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::{AIRequest, AIResponse, AiStreamEvent};
+use super::client::{self, AiClient, SseOutcome};
+use super::{AIProvider, AIRequest, AIResponse, AiStreamEvent, KeyPool};
 use crate::error::Error;
 use crate::storage::Storage;
 
 const ANTHROPIC_API_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_MODELS_URL: &str = "https://api.anthropic.com/v1/models";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
-const DEFAULT_MODEL: &str = "claude-sonnet-4-20250514";
 
 #[derive(Debug, Serialize)]
 struct AnthropicRequest {
@@ -63,65 +62,23 @@ struct AnthropicStreamDelta {
 }
 
 pub struct AnthropicClient {
-    keys: Vec<String>,
-    counter: AtomicUsize,
+    pool: KeyPool,
     model: String,
     client: reqwest::Client,
 }
 
+fn auth_headers(builder: reqwest::RequestBuilder, key: &str) -> reqwest::RequestBuilder {
+    builder
+        .header("x-api-key", key)
+        .header("anthropic-version", ANTHROPIC_VERSION)
+}
+
 impl AnthropicClient {
-    pub fn from_env_and_storage(storage: &Storage) -> Result<Self, Error> {
-        let mut keys = Self::collect_env_keys();
-        let db_keys = storage
-            .ai_keys_active_decrypted("anthropic")
-            .unwrap_or_default();
-        keys.extend(db_keys);
-        let model = storage
-            .get_setting("ai_model")?
-            .filter(|value| !value.trim().is_empty())
-            .or_else(|| std::env::var("ANTHROPIC_MODEL").ok())
-            .unwrap_or_else(|| DEFAULT_MODEL.to_string());
-        Self::from_sources(keys, model)
-    }
-
-    fn collect_env_keys() -> Vec<String> {
-        let mut keys = Vec::new();
-        if let Ok(key) = std::env::var("ANTHROPIC_API_KEY") {
-            if !key.is_empty() {
-                keys.push(key);
-            }
-        }
-        for index in 1..=10 {
-            if let Ok(key) = std::env::var(format!("ANTHROPIC_API_KEY_{index}")) {
-                if !key.is_empty() {
-                    keys.push(key);
-                }
-            }
-        }
-        keys
-    }
-
-    fn from_sources(keys: Vec<String>, model: String) -> Result<Self, Error> {
-        let mut seen = std::collections::HashSet::new();
-        let keys: Vec<String> = keys
-            .into_iter()
-            .filter(|key| !key.is_empty() && seen.insert(key.clone()))
-            .collect();
-
-        if keys.is_empty() {
-            return Err(Error::InvalidInput(
-                "No Anthropic API keys configured. Add one in Settings → AI Keys, or set ANTHROPIC_API_KEY in your environment.".into(),
-            ));
-        }
-
+    pub fn from_env_and_storage(storage: &Storage, model: String) -> Result<Self, Error> {
         Ok(Self {
-            keys,
-            counter: AtomicUsize::new(0),
+            pool: KeyPool::from_env_and_storage(AIProvider::Anthropic, storage)?,
             model,
-            client: reqwest::Client::builder()
-                .timeout(Duration::from_secs(60))
-                .build()
-                .unwrap_or_else(|_| reqwest::Client::new()),
+            client: client::http_client(60),
         })
     }
 
@@ -130,10 +87,7 @@ impl AnthropicClient {
         model: Option<&str>,
         prompt: Option<&str>,
     ) -> Result<String, Error> {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(if prompt.is_some() { 30 } else { 15 }))
-            .build()
-            .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
+        let http = client::http_client(if prompt.is_some() { 30 } else { 15 });
 
         let user_prompt = prompt.filter(|value| !value.trim().is_empty());
         let (system, user, max_tokens) = match user_prompt {
@@ -150,7 +104,9 @@ impl AnthropicClient {
         };
 
         let body = AnthropicRequest {
-            model: model.unwrap_or(DEFAULT_MODEL).to_string(),
+            model: model
+                .unwrap_or(AIProvider::Anthropic.default_model())
+                .to_string(),
             max_tokens,
             system,
             messages: vec![AnthropicMessage {
@@ -161,11 +117,7 @@ impl AnthropicClient {
             temperature: Some(0.0),
         };
 
-        let response = client
-            .post(ANTHROPIC_API_URL)
-            .header("x-api-key", api_key)
-            .header("anthropic-version", ANTHROPIC_VERSION)
-            .json(&body)
+        let response = auth_headers(http.post(ANTHROPIC_API_URL).json(&body), api_key)
             .send()
             .await
             .map_err(|error| Error::Any(anyhow::anyhow!("request failed: {error}")))?;
@@ -177,16 +129,7 @@ impl AnthropicClient {
         }
 
         if user_prompt.is_some() {
-            #[derive(Deserialize)]
-            struct AnthropicTestResponse {
-                content: Vec<AnthropicContentBlock>,
-            }
-            #[derive(Deserialize)]
-            struct AnthropicContentBlock {
-                text: Option<String>,
-            }
-
-            let payload: AnthropicTestResponse = response
+            let payload: AnthropicResponse = response
                 .json()
                 .await
                 .map_err(|error| Error::Any(anyhow::anyhow!("invalid response: {error}")))?;
@@ -203,228 +146,11 @@ impl AnthropicClient {
         Ok(format!("ok ({})", status.as_u16()))
     }
 
-    pub fn key_count(&self) -> usize {
-        self.keys.len()
-    }
-
-    pub async fn test_configured_key(
-        storage: &Storage,
-        model: Option<&str>,
-        prompt: Option<&str>,
-    ) -> Result<String, Error> {
-        let client = Self::from_env_and_storage(storage)?;
-        let key = client.next_key().to_string();
-        Self::test_key(&key, model, prompt).await
-    }
-
-    fn next_key(&self) -> &str {
-        let index = self.counter.fetch_add(1, Ordering::Relaxed);
-        &self.keys[index % self.keys.len()]
-    }
-
-    fn build_request(
-        &self,
-        system: String,
-        user: String,
-        max_tokens: Option<u32>,
-        stream: bool,
-    ) -> AnthropicRequest {
-        AnthropicRequest {
-            model: self.model.clone(),
-            max_tokens: max_tokens.unwrap_or(2048),
-            system,
-            messages: vec![AnthropicMessage {
-                role: "user".into(),
-                content: user,
-            }],
-            stream: stream.then_some(true),
-            temperature: Some(0.2),
-        }
-    }
-
-    fn should_rotate(status: reqwest::StatusCode) -> bool {
-        status == reqwest::StatusCode::TOO_MANY_REQUESTS
-            || status == reqwest::StatusCode::UNAUTHORIZED
-            || status == reqwest::StatusCode::FORBIDDEN
-            || status.is_server_error()
-    }
-
-    fn auth_headers(builder: reqwest::RequestBuilder, key: &str) -> reqwest::RequestBuilder {
-        builder
-            .header("x-api-key", key)
-            .header("anthropic-version", ANTHROPIC_VERSION)
-    }
-
-    pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
-        let (system, user) = super::prompts::build(&request);
-        let body = self.build_request(system, user, request.max_tokens, false);
-
-        let max_retries = self.keys.len().max(1);
-        let mut last_err: Option<Error> = None;
-
-        for _ in 0..max_retries {
-            let key = self.next_key().to_string();
-            let response =
-                match Self::auth_headers(self.client.post(ANTHROPIC_API_URL).json(&body), &key)
-                    .send()
-                    .await
-                {
-                    Ok(response) => response,
-                    Err(error) => {
-                        last_err = Some(super::errors::request_error("Anthropic", &error));
-                        continue;
-                    }
-                };
-
-            let status = response.status();
-            if Self::should_rotate(status) {
-                let body_text = response.text().await.unwrap_or_default();
-                last_err = Some(super::errors::http_error(
-                    "Anthropic", &self.model, status, &body_text,
-                ));
-                continue;
-            }
-
-            if !status.is_success() {
-                let body_text = response.text().await.unwrap_or_default();
-                return Err(super::errors::http_error(
-                    "Anthropic", &self.model, status, &body_text,
-                ));
-            }
-
-            let parsed: AnthropicResponse = response.json().await.map_err(|error| {
-                Error::Any(anyhow::anyhow!(
-                    "Failed to parse Anthropic response: {error}"
-                ))
-            })?;
-
-            let content = parsed
-                .content
-                .into_iter()
-                .filter_map(|block| block.text)
-                .collect::<Vec<_>>()
-                .join("");
-
-            let tokens_used = parsed
-                .usage
-                .map(|usage| usage.input_tokens.unwrap_or(0) + usage.output_tokens.unwrap_or(0));
-
-            return Ok(AIResponse {
-                content,
-                suggested_queries: None,
-                tokens_used,
-                provider: "anthropic".to_string(),
-            });
-        }
-
-        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Anthropic keys exhausted"))))
-    }
-
-    pub async fn complete_stream(
-        &self,
-        request: AIRequest,
-        sender: UnboundedSender<AiStreamEvent>,
-        cancel: Arc<AtomicBool>,
-    ) -> Result<(), Error> {
-        let (system, user) = super::prompts::build(&request);
-        let body = self.build_request(system, user, request.max_tokens, true);
-
-        let max_retries = self.keys.len().max(1);
-        let mut last_err: Option<Error> = None;
-
-        for _ in 0..max_retries {
-            if cancel.load(Ordering::Relaxed) {
-                return Ok(());
-            }
-
-            let key = self.next_key().to_string();
-            let response =
-                match Self::auth_headers(self.client.post(ANTHROPIC_API_URL).json(&body), &key)
-                    .send()
-                    .await
-                {
-                    Ok(response) => response,
-                    Err(error) => {
-                        last_err = Some(super::errors::request_error("Anthropic", &error));
-                        continue;
-                    }
-                };
-
-            let status = response.status();
-            if Self::should_rotate(status) {
-                let body_text = response.text().await.unwrap_or_default();
-                last_err = Some(super::errors::http_error(
-                    "Anthropic", &self.model, status, &body_text,
-                ));
-                continue;
-            }
-
-            if !status.is_success() {
-                let body_text = response.text().await.unwrap_or_default();
-                return Err(super::errors::http_error(
-                    "Anthropic", &self.model, status, &body_text,
-                ));
-            }
-
-            let mut stream = response.bytes_stream();
-            let mut buffer = String::new();
-            let mut full_content = String::new();
-
-            while let Some(chunk_result) = stream.next().await {
-                if cancel.load(Ordering::Relaxed) {
-                    return Ok(());
-                }
-                let chunk = chunk_result.map_err(|error| {
-                    Error::Any(anyhow::anyhow!("Anthropic stream error: {error}"))
-                })?;
-                buffer.push_str(&String::from_utf8_lossy(&chunk));
-
-                while let Some(newline_idx) = buffer.find('\n') {
-                    let line = buffer[..newline_idx].trim().to_string();
-                    buffer = buffer[newline_idx + 1..].to_string();
-
-                    if !line.starts_with("data: ") {
-                        continue;
-                    }
-
-                    let data = &line[6..];
-                    if data.is_empty() {
-                        continue;
-                    }
-
-                    if let Ok(parsed) = serde_json::from_str::<AnthropicStreamPayload>(data) {
-                        if parsed.event_type == "content_block_delta" {
-                            if let Some(text) = parsed.delta.and_then(|delta| delta.text) {
-                                full_content.push_str(&text);
-                                let _ = sender.send(AiStreamEvent::Token { text });
-                            }
-                        }
-                    }
-                }
-            }
-
-            let _ = sender.send(AiStreamEvent::Final {
-                content: full_content,
-            });
-            return Ok(());
-        }
-
-        Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All Anthropic keys exhausted"))))
-    }
-
     pub async fn fetch_model_ids(storage: &Storage) -> Result<Vec<String>, Error> {
-        let client = Self::from_env_and_storage(storage)?;
-        let api_key = client
-            .keys
-            .first()
-            .ok_or_else(|| Error::InvalidInput("No Anthropic API keys configured".into()))?;
+        let pool = KeyPool::from_env_and_storage(AIProvider::Anthropic, storage)?;
+        let http = client::http_client(15);
 
-        let http = reqwest::Client::builder()
-            .timeout(Duration::from_secs(15))
-            .build()
-            .map_err(|error| Error::Any(anyhow::anyhow!("client build failed: {error}")))?;
-
-        let response = Self::auth_headers(http.get(ANTHROPIC_MODELS_URL), api_key)
+        let response = auth_headers(http.get(ANTHROPIC_MODELS_URL), pool.first())
             .send()
             .await
             .map_err(|error| {
@@ -453,5 +179,100 @@ impl AnthropicClient {
         })?;
 
         Ok(parsed.data.into_iter().map(|entry| entry.id).collect())
+    }
+
+    fn build_request(&self, request: &AIRequest, stream: bool) -> AnthropicRequest {
+        let (system, user) = super::prompts::build(request);
+        AnthropicRequest {
+            model: self.model.clone(),
+            max_tokens: request.max_tokens.unwrap_or(2048),
+            system,
+            messages: vec![AnthropicMessage {
+                role: "user".into(),
+                content: user,
+            }],
+            stream: stream.then_some(true),
+            temperature: Some(0.2),
+        }
+    }
+}
+
+#[async_trait]
+impl AiClient for AnthropicClient {
+    async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
+        let body = self.build_request(&request, false);
+
+        let response =
+            client::send_with_rotation(&self.pool, "Anthropic", &self.model, None, |key| {
+                auth_headers(self.client.post(ANTHROPIC_API_URL).json(&body), key)
+            })
+            .await?
+            .ok_or(Error::Cancelled)?;
+
+        let parsed: AnthropicResponse = response.json().await.map_err(|error| {
+            Error::Any(anyhow::anyhow!(
+                "Failed to parse Anthropic response: {error}"
+            ))
+        })?;
+
+        let content = parsed
+            .content
+            .into_iter()
+            .filter_map(|block| block.text)
+            .collect::<Vec<_>>()
+            .join("");
+
+        let tokens_used = parsed
+            .usage
+            .map(|usage| usage.input_tokens.unwrap_or(0) + usage.output_tokens.unwrap_or(0));
+
+        Ok(AIResponse {
+            content,
+            suggested_queries: None,
+            tokens_used,
+            provider: "anthropic".to_string(),
+        })
+    }
+
+    async fn complete_stream(
+        &self,
+        request: AIRequest,
+        sender: UnboundedSender<AiStreamEvent>,
+        cancel: Arc<AtomicBool>,
+    ) -> Result<(), Error> {
+        let body = self.build_request(&request, true);
+
+        let Some(response) = client::send_with_rotation(
+            &self.pool,
+            "Anthropic",
+            &self.model,
+            Some(&cancel),
+            |key| auth_headers(self.client.post(ANTHROPIC_API_URL).json(&body), key),
+        )
+        .await?
+        else {
+            return Ok(());
+        };
+
+        let mut full_content = String::new();
+        let outcome = client::read_sse("Anthropic", response, &cancel, |data| {
+            if let Ok(parsed) = serde_json::from_str::<AnthropicStreamPayload>(data) {
+                if parsed.event_type == "content_block_delta" {
+                    if let Some(text) = parsed.delta.and_then(|delta| delta.text) {
+                        full_content.push_str(&text);
+                        let _ = sender.send(AiStreamEvent::Token { text });
+                    }
+                }
+            }
+            true
+        })
+        .await?;
+
+        if matches!(outcome, SseOutcome::Finished) {
+            let _ = sender.send(AiStreamEvent::Final {
+                content: full_content,
+            });
+        }
+        Ok(())
     }
 }

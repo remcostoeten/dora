@@ -1,10 +1,11 @@
 mod anthropic;
+mod client;
+mod compat;
 mod errors;
 mod gemini;
-mod groq;
+mod key_pool;
 mod models;
 mod ollama;
-mod openai;
 mod prompts;
 mod usage;
 
@@ -14,11 +15,9 @@ use uuid::Uuid;
 use crate::error::Error;
 use crate::storage::Storage;
 
-pub use anthropic::AnthropicClient;
-pub use gemini::GeminiClient;
-pub use groq::GroqClient;
+pub use client::{test_configured_key, test_key, AiClient};
+pub use key_pool::KeyPool;
 pub use ollama::{OllamaCatalogEntry, OllamaClient, OllamaPullEvent, OllamaStatus};
-pub use openai::OpenAiClient;
 pub use usage::{record_usage, usage_source, AiUsageCapture};
 
 pub(crate) fn truncate_test_reply(text: &str) -> String {
@@ -66,23 +65,37 @@ pub struct AiUsageSummary {
     pub recent: Vec<AiUsageEntry>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub enum AIProvider {
+    #[default]
     Groq,
     Gemini,
     Ollama,
     Openai,
     Anthropic,
+    Deepseek,
+    Kimi,
+    Glm,
+    Qwen,
+    Openrouter,
     Mock,
 }
 
-impl Default for AIProvider {
-    fn default() -> Self {
-        Self::Groq
-    }
-}
-
 impl AIProvider {
+    pub const ALL: [AIProvider; 11] = [
+        Self::Groq,
+        Self::Gemini,
+        Self::Ollama,
+        Self::Openai,
+        Self::Anthropic,
+        Self::Deepseek,
+        Self::Kimi,
+        Self::Glm,
+        Self::Qwen,
+        Self::Openrouter,
+        Self::Mock,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Groq => "groq",
@@ -90,6 +103,11 @@ impl AIProvider {
             Self::Ollama => "ollama",
             Self::Openai => "openai",
             Self::Anthropic => "anthropic",
+            Self::Deepseek => "deepseek",
+            Self::Kimi => "kimi",
+            Self::Glm => "glm",
+            Self::Qwen => "qwen",
+            Self::Openrouter => "openrouter",
             Self::Mock => "mock",
         }
     }
@@ -101,6 +119,11 @@ impl AIProvider {
             "ollama" => Ok(Self::Ollama),
             "openai" => Ok(Self::Openai),
             "anthropic" => Ok(Self::Anthropic),
+            "deepseek" => Ok(Self::Deepseek),
+            "kimi" => Ok(Self::Kimi),
+            "glm" => Ok(Self::Glm),
+            "qwen" => Ok(Self::Qwen),
+            "openrouter" => Ok(Self::Openrouter),
             "mock" => Ok(Self::Mock),
             _ => Err(Error::InvalidInput(format!("Invalid AI provider: {value}"))),
         }
@@ -113,6 +136,11 @@ impl AIProvider {
             Self::Ollama => "llama3.2",
             Self::Openai => "gpt-5.5",
             Self::Anthropic => "claude-sonnet-4-6",
+            Self::Deepseek => "deepseek-chat",
+            Self::Kimi => "kimi-latest",
+            Self::Glm => "glm-5.3-flash",
+            Self::Qwen => "qwen-plus",
+            Self::Openrouter => "openrouter/auto",
             Self::Mock => "mock",
         }
     }
@@ -124,9 +152,68 @@ impl AIProvider {
             Self::Ollama => "Ollama",
             Self::Openai => "OpenAI",
             Self::Anthropic => "Anthropic",
+            Self::Deepseek => "DeepSeek",
+            Self::Kimi => "Kimi",
+            Self::Glm => "GLM",
+            Self::Qwen => "Qwen",
+            Self::Openrouter => "OpenRouter",
             Self::Mock => "Mock",
         }
     }
+
+    pub fn env_key_prefix(self) -> Option<&'static str> {
+        match self {
+            Self::Groq => Some("GROQ"),
+            Self::Gemini => Some("GEMINI"),
+            Self::Openai => Some("OPENAI"),
+            Self::Anthropic => Some("ANTHROPIC"),
+            Self::Deepseek => Some("DEEPSEEK"),
+            Self::Kimi => Some("KIMI"),
+            Self::Glm => Some("GLM"),
+            Self::Qwen => Some("QWEN"),
+            Self::Openrouter => Some("OPENROUTER"),
+            Self::Ollama | Self::Mock => None,
+        }
+    }
+
+    pub fn model_setting_key(self) -> String {
+        match self {
+            Self::Ollama => "ollama_model".to_string(),
+            _ => format!("ai_model.{}", self.as_str()),
+        }
+    }
+}
+
+/// Resolve the model to use for a provider: its own saved setting, then the
+/// provider's `{PREFIX}_MODEL` env var, then the built-in default.
+pub fn resolve_model(provider: AIProvider, storage: &Storage) -> Result<String, Error> {
+    fn non_empty(value: Option<String>) -> Option<String> {
+        value
+            .map(|entry| entry.trim().to_string())
+            .filter(|entry| !entry.is_empty())
+    }
+
+    if let Some(saved) = non_empty(storage.get_setting(&provider.model_setting_key())?) {
+        return Ok(saved);
+    }
+
+    if let Some(prefix) = provider.env_key_prefix() {
+        if let Some(value) = non_empty(std::env::var(format!("{prefix}_MODEL")).ok()) {
+            return Ok(value);
+        }
+    }
+
+    Ok(provider.default_model().to_string())
+}
+
+pub fn ollama_endpoint(storage: &Storage) -> String {
+    storage
+        .get_setting("ollama_endpoint")
+        .ok()
+        .flatten()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "http://127.0.0.1:11434".to_string())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -254,28 +341,10 @@ impl<'a> AIService<'a> {
 
     pub fn get_config(&self) -> Result<AiServiceConfig, Error> {
         let provider = self.get_provider()?;
-        let ollama_endpoint = self
-            .storage
-            .get_setting("ollama_endpoint")?
-            .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
-
-        let model = match provider {
-            AIProvider::Ollama => self
-                .storage
-                .get_setting("ollama_model")?
-                .filter(|m| !m.trim().is_empty())
-                .unwrap_or_else(|| AIProvider::Ollama.default_model().to_string()),
-            _ => self
-                .storage
-                .get_setting("ai_model")?
-                .filter(|m| !m.trim().is_empty())
-                .unwrap_or_else(|| provider.default_model().to_string()),
-        };
-
         Ok(AiServiceConfig {
             provider: provider.as_str().to_string(),
-            model,
-            ollama_endpoint,
+            model: resolve_model(provider, self.storage)?,
+            ollama_endpoint: ollama_endpoint(self.storage),
         })
     }
 
@@ -288,15 +357,11 @@ impl<'a> AIService<'a> {
             return Err(Error::InvalidInput("Model cannot be empty".into()));
         }
 
-        match provider {
-            AIProvider::Ollama => {
-                self.storage.set_setting("ollama_model", model)?;
-                self.storage
-                    .set_setting("ollama_endpoint", config.ollama_endpoint.trim())?;
-            }
-            _ => {
-                self.storage.set_setting("ai_model", model)?;
-            }
+        self.storage
+            .set_setting(&provider.model_setting_key(), model)?;
+        if provider == AIProvider::Ollama {
+            self.storage
+                .set_setting("ollama_endpoint", config.ollama_endpoint.trim())?;
         }
 
         Ok(())
@@ -311,13 +376,12 @@ impl<'a> AIService<'a> {
             AIProvider::Anthropic => models::list_anthropic_models(self.storage).await,
             AIProvider::Groq => models::list_groq_models(self.storage).await,
             AIProvider::Gemini => models::list_gemini_models(self.storage).await,
-            AIProvider::Ollama => {
-                let endpoint = self
-                    .storage
-                    .get_setting("ollama_endpoint")?
-                    .unwrap_or_else(|| "http://127.0.0.1:11434".to_string());
-                models::list_ollama_models(&endpoint).await
-            }
+            AIProvider::Deepseek => models::list_deepseek_models(self.storage).await,
+            AIProvider::Kimi => models::list_kimi_models(self.storage).await,
+            AIProvider::Glm => models::list_glm_models(self.storage).await,
+            AIProvider::Qwen => models::list_qwen_models(self.storage).await,
+            AIProvider::Openrouter => models::list_openrouter_models(self.storage).await,
+            AIProvider::Ollama => models::list_ollama_models(&ollama_endpoint(self.storage)).await,
             AIProvider::Mock => Ok(models::curated_only(&[(
                 "demo-assistant",
                 "Demo assistant",
@@ -326,52 +390,43 @@ impl<'a> AIService<'a> {
         }
     }
 
-    pub async fn get_status(&self) -> Result<AiStatus, Error> {
-        let config = self.get_config()?;
-        let mut providers = Vec::with_capacity(6);
-
-        providers.push(match GroqClient::from_env_and_storage(self.storage) {
-            Ok(client) => AiProviderReadiness {
-                provider: AIProvider::Groq.as_str().to_string(),
+    fn key_provider_readiness(&self, provider: AIProvider) -> AiProviderReadiness {
+        match KeyPool::from_env_and_storage(provider, self.storage) {
+            Ok(pool) => AiProviderReadiness {
+                provider: provider.as_str().to_string(),
                 ready: true,
                 detail: None,
-                key_count: Some(client.key_count()),
-            },
-            Err(_) => AiProviderReadiness {
-                provider: AIProvider::Groq.as_str().to_string(),
-                ready: false,
-                detail: Some("Add a Groq API key in Settings → AI Keys".into()),
-                key_count: Some(0),
-            },
-        });
-
-        providers.push(match GeminiClient::from_env_and_storage(self.storage) {
-            Ok(client) => AiProviderReadiness {
-                provider: AIProvider::Gemini.as_str().to_string(),
-                ready: true,
-                detail: None,
-                key_count: Some(client.key_count()),
+                key_count: Some(pool.key_count()),
             },
             Err(_) => {
-                let keys = self.storage.ai_keys_list(AIProvider::Gemini.as_str())?;
+                let keys = self
+                    .storage
+                    .ai_keys_list(provider.as_str())
+                    .unwrap_or_default();
                 let active_count = keys.iter().filter(|key| key.is_active).count();
+                let label = provider.label();
                 AiProviderReadiness {
-                    provider: AIProvider::Gemini.as_str().to_string(),
+                    provider: provider.as_str().to_string(),
                     ready: active_count > 0,
                     detail: if active_count > 0 {
                         None
                     } else if keys.is_empty() {
-                        Some("Add a Gemini API key in Settings → AI Keys".into())
+                        Some(format!(
+                            "Add {} {label} API key in Settings → AI Keys",
+                            article(label)
+                        ))
                     } else {
                         Some("Enable an API key in Settings".into())
                     },
                     key_count: Some(keys.len()),
                 }
             }
-        });
+        }
+    }
 
-        let ollama_client = OllamaClient::new(config.ollama_endpoint.clone(), String::new());
-        providers.push(match ollama_client.list_models().await {
+    async fn ollama_readiness(&self, endpoint: &str) -> AiProviderReadiness {
+        let client = OllamaClient::new(endpoint.to_string(), String::new());
+        match client.list_models().await {
             Ok(models) => {
                 let ready = !models.is_empty();
                 AiProviderReadiness {
@@ -388,83 +443,28 @@ impl<'a> AIService<'a> {
             Err(error) => AiProviderReadiness {
                 provider: AIProvider::Ollama.as_str().to_string(),
                 ready: false,
-                detail: Some(format!(
-                    "Ollama unreachable at {} ({error})",
-                    config.ollama_endpoint
-                )),
+                detail: Some(format!("Ollama unreachable at {endpoint} ({error})")),
                 key_count: None,
             },
-        });
-
-        for provider in [AIProvider::Openai, AIProvider::Anthropic] {
-            let readiness = match provider {
-                AIProvider::Openai => match OpenAiClient::from_env_and_storage(self.storage) {
-                    Ok(client) => AiProviderReadiness {
-                        provider: provider.as_str().to_string(),
-                        ready: true,
-                        detail: None,
-                        key_count: Some(client.key_count()),
-                    },
-                    Err(_) => {
-                        let keys = self.storage.ai_keys_list(provider.as_str())?;
-                        let active_count = keys.iter().filter(|key| key.is_active).count();
-                        AiProviderReadiness {
-                            provider: provider.as_str().to_string(),
-                            ready: active_count > 0,
-                            detail: if active_count > 0 {
-                                None
-                            } else if keys.is_empty() {
-                                Some(format!(
-                                    "Add an {} API key in Settings → AI Keys",
-                                    provider.label()
-                                ))
-                            } else {
-                                Some("Enable an API key in Settings".into())
-                            },
-                            key_count: Some(keys.len()),
-                        }
-                    }
-                },
-                AIProvider::Anthropic => {
-                    match AnthropicClient::from_env_and_storage(self.storage) {
-                        Ok(client) => AiProviderReadiness {
-                            provider: provider.as_str().to_string(),
-                            ready: true,
-                            detail: None,
-                            key_count: Some(client.key_count()),
-                        },
-                        Err(_) => {
-                            let keys = self.storage.ai_keys_list(provider.as_str())?;
-                            let active_count = keys.iter().filter(|key| key.is_active).count();
-                            AiProviderReadiness {
-                                provider: provider.as_str().to_string(),
-                                ready: active_count > 0,
-                                detail: if active_count > 0 {
-                                    None
-                                } else if keys.is_empty() {
-                                    Some(format!(
-                                        "Add an {} API key in Settings → AI Keys",
-                                        provider.label()
-                                    ))
-                                } else {
-                                    Some("Enable an API key in Settings".into())
-                                },
-                                key_count: Some(keys.len()),
-                            }
-                        }
-                    }
-                }
-                _ => unreachable!(),
-            };
-            providers.push(readiness);
         }
+    }
 
-        providers.push(AiProviderReadiness {
-            provider: AIProvider::Mock.as_str().to_string(),
-            ready: false,
-            detail: Some("Web demo only".into()),
-            key_count: None,
-        });
+    pub async fn get_status(&self) -> Result<AiStatus, Error> {
+        let config = self.get_config()?;
+        let mut providers = Vec::with_capacity(AIProvider::ALL.len());
+
+        for provider in AIProvider::ALL {
+            providers.push(match provider {
+                AIProvider::Ollama => self.ollama_readiness(&config.ollama_endpoint).await,
+                AIProvider::Mock => AiProviderReadiness {
+                    provider: provider.as_str().to_string(),
+                    ready: false,
+                    detail: Some("Web demo only".into()),
+                    key_count: None,
+                },
+                _ => self.key_provider_readiness(provider),
+            });
+        }
 
         let ready = providers
             .iter()
@@ -480,34 +480,9 @@ impl<'a> AIService<'a> {
     }
 
     pub async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
-        let provider = self.get_provider()?;
-
-        match provider {
-            AIProvider::Groq => {
-                let client = GroqClient::from_env_and_storage(self.storage)?;
-                client.complete(request).await
-            }
-            AIProvider::Gemini => {
-                let client = GeminiClient::from_env_and_storage(self.storage)?;
-                client.complete(request).await
-            }
-            AIProvider::Ollama => {
-                let config = self.get_config()?;
-                let client = OllamaClient::new(config.ollama_endpoint, config.model);
-                client.complete(request).await
-            }
-            AIProvider::Openai => {
-                let client = OpenAiClient::from_env_and_storage(self.storage)?;
-                client.complete(request).await
-            }
-            AIProvider::Anthropic => {
-                let client = AnthropicClient::from_env_and_storage(self.storage)?;
-                client.complete(request).await
-            }
-            AIProvider::Mock => Err(Error::Any(anyhow::anyhow!(
-                "Mock provider is only available in the web demo."
-            ))),
-        }
+        client::build_client(self.get_provider()?, self.storage)?
+            .complete(request)
+            .await
     }
 
     /// Streaming completion for cloud and local providers.
@@ -517,43 +492,49 @@ impl<'a> AIService<'a> {
         sender: tokio::sync::mpsc::UnboundedSender<AiStreamEvent>,
         cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), Error> {
-        let provider = self.get_provider()?;
+        client::build_client(self.get_provider()?, self.storage)?
+            .complete_stream(request, sender, cancel)
+            .await
+    }
+}
 
-        match provider {
-            AIProvider::Groq => {
-                let client = GroqClient::from_env_and_storage(self.storage)?;
-                client.complete_stream(request, sender, cancel).await
-            }
-            AIProvider::Openai => {
-                let client = OpenAiClient::from_env_and_storage(self.storage)?;
-                client.complete_stream(request, sender, cancel).await
-            }
-            AIProvider::Anthropic => {
-                let client = AnthropicClient::from_env_and_storage(self.storage)?;
-                client.complete_stream(request, sender, cancel).await
-            }
-            AIProvider::Gemini => {
-                let client = GeminiClient::from_env_and_storage(self.storage)?;
-                client.complete_stream(request, sender, cancel).await
-            }
-            AIProvider::Mock => {
-                let message = match self.complete(request).await {
-                    Ok(response) => response.content,
-                    Err(error) => {
-                        let _ = sender.send(AiStreamEvent::Error {
-                            message: error.to_string(),
-                        });
-                        return Ok(());
-                    }
-                };
-                let _ = sender.send(AiStreamEvent::Final { content: message });
-                Ok(())
-            }
-            AIProvider::Ollama => {
-                let config = self.get_config()?;
-                let client = OllamaClient::new(config.ollama_endpoint, config.model);
-                client.complete_stream(request, sender, cancel).await
-            }
+fn article(label: &str) -> &'static str {
+    match label.chars().next().map(|c| c.to_ascii_lowercase()) {
+        Some('a' | 'e' | 'i' | 'o' | 'u') => "an",
+        _ => "a",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn article_picks_an_for_vowel_labels() {
+        assert_eq!(article("OpenAI"), "an");
+        assert_eq!(article("Anthropic"), "an");
+        assert_eq!(article("Groq"), "a");
+        assert_eq!(article("Gemini"), "a");
+    }
+
+    #[test]
+    fn model_setting_keys_are_per_provider() {
+        assert_eq!(AIProvider::Groq.model_setting_key(), "ai_model.groq");
+        assert_eq!(AIProvider::Openai.model_setting_key(), "ai_model.openai");
+        assert_eq!(AIProvider::Ollama.model_setting_key(), "ollama_model");
+    }
+
+    #[test]
+    fn all_covers_every_provider_once() {
+        for provider in AIProvider::ALL {
+            assert_eq!(
+                AIProvider::parse(provider.as_str()).expect("round-trip"),
+                provider
+            );
         }
+        let mut ids: Vec<&str> = AIProvider::ALL.iter().map(|p| p.as_str()).collect();
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), AIProvider::ALL.len());
     }
 }

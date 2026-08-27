@@ -19,7 +19,16 @@ import {
 import { cn } from '@studio/shared/utils/cn'
 import { SidebarSection } from './sidebar-panel'
 
-type KeyProvider = 'groq' | 'openai' | 'anthropic' | 'gemini'
+type KeyProvider =
+	| 'groq'
+	| 'openai'
+	| 'anthropic'
+	| 'gemini'
+	| 'deepseek'
+	| 'kimi'
+	| 'glm'
+	| 'qwen'
+	| 'openrouter'
 
 type ProviderConfig = {
 	id: KeyProvider
@@ -62,6 +71,46 @@ const PROVIDERS: ProviderConfig[] = [
 		placeholder: 'AIza...',
 		hint: 'Gemini 2.5 Pro, Flash, and other Google models.',
 		defaultModel: 'gemini-2.5-flash'
+	},
+	{
+		id: 'deepseek',
+		label: 'DeepSeek',
+		envVar: 'DEEPSEEK_API_KEY',
+		placeholder: 'sk-...',
+		hint: 'DeepSeek Chat and Reasoner via the DeepSeek platform.',
+		defaultModel: 'deepseek-chat'
+	},
+	{
+		id: 'kimi',
+		label: 'Kimi',
+		envVar: 'KIMI_API_KEY',
+		placeholder: 'sk-...',
+		hint: 'Kimi K2 models via the Moonshot AI platform.',
+		defaultModel: 'kimi-latest'
+	},
+	{
+		id: 'glm',
+		label: 'GLM',
+		envVar: 'GLM_API_KEY',
+		placeholder: 'key...',
+		hint: 'GLM-5.3 Flash (Ox Alpha), GLM-4.6, and other Z.ai models.',
+		defaultModel: 'glm-5.3-flash'
+	},
+	{
+		id: 'qwen',
+		label: 'Qwen',
+		envVar: 'QWEN_API_KEY',
+		placeholder: 'sk-...',
+		hint: 'Qwen models via Alibaba DashScope (international).',
+		defaultModel: 'qwen-plus'
+	},
+	{
+		id: 'openrouter',
+		label: 'OpenRouter',
+		envVar: 'OPENROUTER_API_KEY',
+		placeholder: 'sk-or-...',
+		hint: 'Hundreds of models behind one key, including stealth previews.',
+		defaultModel: 'openrouter/auto'
 	}
 ]
 
@@ -77,6 +126,16 @@ const TIER_LABELS: Record<string, string> = {
 const CUSTOM_MODEL_VALUE = '__custom__'
 
 type TestState = { id: number; ok?: boolean; message?: string; testing: boolean }
+
+type Props = {
+	activeProvider?: string | null
+}
+
+function isKeyProvider(value: string | null | undefined): value is KeyProvider {
+	return PROVIDERS.some(function (entry) {
+		return entry.id === value
+	})
+}
 
 function formatStatus(rec: AiApiKeyRecord): string {
 	if (!rec.last_status) return 'untested'
@@ -108,9 +167,13 @@ function groupModels(options: AiModelOption[]) {
 	})
 }
 
-export function AiKeysSection() {
+export function AiKeysSection({ activeProvider: assistantProvider }: Props) {
 	const isTauri = useIsTauri()
-	const [provider, setProvider] = useState<KeyProvider>('groq')
+	const assistantUsesApiKey = isKeyProvider(assistantProvider)
+	const [expanded, setExpanded] = useState(false)
+	const [provider, setProvider] = useState<KeyProvider>(
+		isKeyProvider(assistantProvider) ? assistantProvider : 'groq'
+	)
 	const [keys, setKeys] = useState<AiApiKeyRecord[]>([])
 	const [loading, setLoading] = useState(false)
 	const [showAdd, setShowAdd] = useState(false)
@@ -134,6 +197,13 @@ export function AiKeysSection() {
 	const activeProvider = PROVIDERS.find(function (entry) {
 		return entry.id === provider
 	})!
+
+	useEffect(
+		function followAssistantProvider() {
+			if (isKeyProvider(assistantProvider)) setProvider(assistantProvider)
+		},
+		[assistantProvider]
+	)
 
 	const groupedModels = useMemo(function () {
 		return groupModels(modelOptions)
@@ -325,6 +395,31 @@ export function AiKeysSection() {
 		if (res.status === 'ok') await load()
 	}
 
+	if (!assistantUsesApiKey && !expanded) {
+		return (
+			<SidebarSection title='AI Keys'>
+				<div className='space-y-2'>
+					<p className='text-xs leading-tight text-muted-foreground'>
+						{assistantProvider === 'ollama'
+							? 'Ollama runs on this machine, so no API key is needed.'
+							: 'The active provider needs no API key.'}{' '}
+						Keys only matter for cloud providers.
+					</p>
+					<Button
+						variant='outline'
+						size='sm'
+						className='h-7 text-xs'
+						onClick={() => {
+							setExpanded(true)
+						}}
+					>
+						Manage cloud provider keys
+					</Button>
+				</div>
+			</SidebarSection>
+		)
+	}
+
 	return (
 		<SidebarSection title='AI Keys'>
 			<div className='space-y-2'>
@@ -343,23 +438,23 @@ export function AiKeysSection() {
 										? 'border-primary bg-primary/10 text-primary'
 										: 'border-sidebar-border text-muted-foreground hover:bg-sidebar-accent/40'
 								)}
+								title={
+									entry.id === assistantProvider
+										? `${entry.label} is the provider the assistant uses`
+										: undefined
+								}
 							>
 								{entry.label}
+								{entry.id === assistantProvider ? ' · active' : ''}
 							</button>
 						)
 					})}
 				</div>
 
-				<div className='text-xs text-muted-foreground leading-tight'>
-					{activeProvider.hint} Keys are encrypted with AES-256-GCM. Environment variables like{' '}
-					<code className='font-mono'>{activeProvider.envVar}</code> are merged automatically.
-				</div>
-
-				<div className='text-[10px] leading-snug text-muted-foreground/80'>
-					Groq, OpenAI, Anthropic, and Gemini are cloud providers and need an API key.
-					Ollama runs locally — it needs no key and is configured under the AI provider
-					settings instead. See{' '}
-					<code className='font-mono'>docs/ai-providers.md</code> for per-provider setup.
+				<div className='text-xs leading-tight text-muted-foreground'>
+					{activeProvider.hint} Keys are encrypted with AES-256-GCM;{' '}
+					<code className='font-mono'>{activeProvider.envVar}</code> from the environment is
+					merged automatically.
 				</div>
 
 				<div className='space-y-2 rounded-sm border border-sidebar-border bg-background p-2'>

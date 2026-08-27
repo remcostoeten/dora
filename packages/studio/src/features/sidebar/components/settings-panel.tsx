@@ -35,6 +35,7 @@ import { cn } from '@studio/shared/utils/cn'
 import { AiProviderSection } from '@studio/features/ai-assistant/ai-provider-section'
 import { AiUsageSection } from '@studio/features/ai-assistant/ai-usage-section'
 import { OllamaModelsSection } from '@studio/features/ai-assistant/ollama-models-section'
+import { useAiSelection } from '@studio/features/ai-assistant/ai-selection-store'
 import { AppearanceControls } from './appearance-panel'
 import { UpdateSection } from '@studio/features/updater/update-section'
 
@@ -116,7 +117,19 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 		id: 'ai-provider',
 		title: 'AI Provider',
 		description: 'Active model provider and defaults',
-		keywords: ['openai', 'anthropic', 'gemini', 'groq', 'ollama', 'model']
+		keywords: [
+			'openai',
+			'anthropic',
+			'gemini',
+			'groq',
+			'deepseek',
+			'kimi',
+			'glm',
+			'qwen',
+			'openrouter',
+			'ollama',
+			'model'
+		]
 	},
 	{
 		id: 'ollama-models',
@@ -698,14 +711,24 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 	const shortcutInputRef = useRef<HTMLInputElement>(null)
 	const sectionRefs = useRef<Partial<Record<SettingsSectionId, HTMLElement | null>>>({})
 
-	const sectionCount = useMemo(() => SETTINGS_SECTIONS.length, [])
+	const hideAi = settings.hideAi
+	const aiSelection = useAiSelection()
+	const searching = searchQuery.trim().length > 0
+	const showOllamaSection = searching || aiSelection.provider === 'ollama'
+	const sectionCount = useMemo(
+		() => SETTINGS_SECTIONS.length - (showOllamaSection ? 0 : 1),
+		[showOllamaSection]
+	)
 	const totalSearchResultCount = useMemo(function () {
 		return getSettingsSearchResults(effectiveShortcuts).length
 	}, [effectiveShortcuts])
 	const searchResults = useMemo(function () {
-		return filterSettingsSearchResults(searchQuery, effectiveShortcuts)
-	}, [searchQuery, effectiveShortcuts])
-	const hideAi = settings.hideAi
+		const results = filterSettingsSearchResults(searchQuery, effectiveShortcuts)
+		if (showOllamaSection) return results
+		return results.filter(function (result) {
+			return result.sectionId !== 'ollama-models'
+		})
+	}, [searchQuery, effectiveShortcuts, showOllamaSection])
 	const visibleSections = useMemo(function () {
 		const visibleSectionIds = new Set(searchResults.map(function (result) {
 			return result.sectionId
@@ -1367,7 +1390,7 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 									id='ollama-models'
 									title='Local models'
 									description={renderHighlightedText(
-										'Install and manage Ollama models on this machine.',
+										'Ollama runs on this machine. Start it, then pull the models you want.',
 										searchQuery
 									)}
 									sectionRef={registerSectionRef('ollama-models')}
@@ -1390,7 +1413,7 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 									onFocusReturn={focusSearchInput}
 									query={searchQuery}
 								>
-									<AiKeysSection />
+									<AiKeysSection activeProvider={aiSelection.provider} />
 								</SectionCard>
 							) : null}
 

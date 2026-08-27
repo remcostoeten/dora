@@ -7,12 +7,11 @@ use uuid::Uuid;
 use crate::{
     database::{
         services::ai::{
-            record_usage, usage_source, AIProvider, AIRequest, AIResponse, AIService,
-            AiModelOption, AiServiceConfig, AiStatus, AiStreamEvent, AiUsageCapture, AiUsageEntry,
-            AiUsageProviderSummary, AiUsageSummary, AnthropicClient, ColumnContext,
-            ForeignKeyContext, GeminiClient, GroqClient, GroqStatus, IndexContext,
-            OllamaCatalogEntry, OllamaClient, OllamaPullEvent, OllamaStatus, OpenAiClient,
-            SchemaContext, TableContext,
+            record_usage, resolve_model, usage_source, AIProvider, AIRequest, AIResponse,
+            AIService, AiModelOption, AiServiceConfig, AiStatus, AiStreamEvent, AiUsageCapture,
+            AiUsageEntry, AiUsageProviderSummary, AiUsageSummary, ColumnContext, ForeignKeyContext,
+            GroqStatus, IndexContext, KeyPool, OllamaCatalogEntry, OllamaClient, OllamaPullEvent,
+            OllamaStatus, SchemaContext, TableContext,
         },
         types::DatabaseSchema,
     },
@@ -301,6 +300,18 @@ pub async fn ai_list_provider_models(
     svc.list_provider_models(ai_provider).await
 }
 
+/// Resolve the model a provider would use if activated now: its saved
+/// per-provider choice, else env override, else the built-in default.
+#[tauri::command]
+#[specta::specta]
+pub async fn ai_resolve_provider_model(
+    provider: String,
+    state: State<'_, AppState>,
+) -> Result<String, Error> {
+    let provider = AIProvider::parse(&provider)?;
+    resolve_model(provider, &state.storage)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_get_usage_summary(
@@ -543,10 +554,10 @@ pub async fn ai_start_ollama(state: State<'_, AppState>) -> Result<OllamaStatus,
 #[tauri::command]
 #[specta::specta]
 pub async fn ai_groq_status(state: State<'_, AppState>) -> Result<GroqStatus, Error> {
-    match GroqClient::from_env_and_storage(&state.storage) {
-        Ok(client) => Ok(GroqStatus {
+    match KeyPool::from_env_and_storage(AIProvider::Groq, &state.storage) {
+        Ok(pool) => Ok(GroqStatus {
             available: true,
-            key_count: client.key_count(),
+            key_count: pool.key_count(),
         }),
         Err(_) => Ok(GroqStatus {
             available: false,
@@ -606,17 +617,9 @@ async fn test_ai_key_for_provider(
     model: Option<String>,
     prompt: Option<String>,
 ) -> Result<String, Error> {
-    let model_ref = model.as_deref();
-    let prompt_ref = prompt.as_deref();
-    match provider {
-        "groq" => GroqClient::test_key(api_key, model_ref, prompt_ref).await,
-        "openai" => OpenAiClient::test_key(api_key, model_ref, prompt_ref).await,
-        "anthropic" => AnthropicClient::test_key(api_key, model_ref, prompt_ref).await,
-        "gemini" => GeminiClient::test_key(api_key, model_ref, prompt_ref).await,
-        other => Err(Error::InvalidInput(format!(
-            "Key testing is not supported for provider: {other}"
-        ))),
-    }
+    let provider = AIProvider::parse(provider)?;
+    crate::database::services::ai::test_key(provider, api_key, model.as_deref(), prompt.as_deref())
+        .await
 }
 
 async fn test_configured_ai_key_for_provider(
@@ -625,17 +628,14 @@ async fn test_configured_ai_key_for_provider(
     prompt: Option<String>,
     storage: &crate::storage::Storage,
 ) -> Result<String, Error> {
-    let model_ref = model.as_deref();
-    let prompt_ref = prompt.as_deref();
-    match provider {
-        "groq" => GroqClient::test_configured_key(storage, model_ref, prompt_ref).await,
-        "openai" => OpenAiClient::test_configured_key(storage, model_ref, prompt_ref).await,
-        "anthropic" => AnthropicClient::test_configured_key(storage, model_ref, prompt_ref).await,
-        "gemini" => GeminiClient::test_configured_key(storage, model_ref, prompt_ref).await,
-        other => Err(Error::InvalidInput(format!(
-            "Key testing is not supported for provider: {other}"
-        ))),
-    }
+    let provider = AIProvider::parse(provider)?;
+    crate::database::services::ai::test_configured_key(
+        provider,
+        storage,
+        model.as_deref(),
+        prompt.as_deref(),
+    )
+    .await
 }
 
 fn resolve_test_model(
@@ -647,15 +647,10 @@ fn resolve_test_model(
         return Ok(Some(value));
     }
 
-    if let Some(saved) = storage.get_setting("ai_model")? {
-        if !saved.trim().is_empty() {
-            return Ok(Some(saved));
-        }
+    match AIProvider::parse(provider) {
+        Ok(parsed) => Ok(Some(resolve_model(parsed, storage)?)),
+        Err(_) => Ok(None),
     }
-
-    Ok(AIProvider::parse(provider)
-        .ok()
-        .map(|entry| entry.default_model().to_string()))
 }
 
 #[tauri::command]

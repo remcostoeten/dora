@@ -54,6 +54,40 @@ pub const GEMINI_CURATED: &[(&str, &str, &str)] = &[
     ("gemini-2.0-flash", "Gemini 2.0 Flash", "fast"),
 ];
 
+pub const DEEPSEEK_CURATED: &[(&str, &str, &str)] = &[
+    ("deepseek-reasoner", "DeepSeek Reasoner", "flagship"),
+    ("deepseek-chat", "DeepSeek Chat", "balanced"),
+];
+
+pub const KIMI_CURATED: &[(&str, &str, &str)] = &[
+    ("kimi-k2-thinking", "Kimi K2 Thinking", "flagship"),
+    ("kimi-latest", "Kimi (latest)", "balanced"),
+    ("kimi-k2-0905-preview", "Kimi K2", "balanced"),
+    ("kimi-k2-turbo-preview", "Kimi K2 Turbo", "fast"),
+];
+
+pub const GLM_CURATED: &[(&str, &str, &str)] = &[
+    ("glm-5.3-flash", "GLM-5.3 Flash (Ox Alpha)", "flagship"),
+    ("glm-4.6", "GLM-4.6", "flagship"),
+    ("glm-4.5", "GLM-4.5", "balanced"),
+    ("glm-4.5-air", "GLM-4.5 Air", "fast"),
+    ("glm-4.5-flash", "GLM-4.5 Flash", "fast"),
+];
+
+pub const OPENROUTER_CURATED: &[(&str, &str, &str)] = &[
+    ("z-ai/glm-5.3-flash", "GLM-5.3 Flash (Ox Alpha)", "flagship"),
+    ("openrouter/auto", "Auto (best available)", "balanced"),
+];
+
+pub const QWEN_CURATED: &[(&str, &str, &str)] = &[
+    ("qwen3-max", "Qwen3 Max", "flagship"),
+    ("qwen-max", "Qwen Max", "flagship"),
+    ("qwen-plus", "Qwen Plus", "balanced"),
+    ("qwen3-coder-plus", "Qwen3 Coder", "balanced"),
+    ("qwen-turbo", "Qwen Turbo", "fast"),
+    ("qwen-flash", "Qwen Flash", "fast"),
+];
+
 pub fn curated_only(entries: &[(&str, &str, &str)]) -> Vec<AiModelOption> {
     entries
         .iter()
@@ -194,10 +228,72 @@ pub fn classify_gemini(id: &str) -> (&'static str, String) {
     )
 }
 
-pub async fn list_openai_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
-    use super::OpenAiClient;
+pub fn classify_deepseek(id: &str) -> (&'static str, String) {
+    let lower = id.to_lowercase();
+    let tier = if lower.contains("reasoner") || lower.contains("r1") {
+        "flagship"
+    } else {
+        "balanced"
+    };
+    (tier, id.to_string())
+}
 
-    match OpenAiClient::fetch_model_ids(storage).await {
+pub fn classify_kimi(id: &str) -> (&'static str, String) {
+    let lower = id.to_lowercase();
+    let tier = if lower.contains("thinking") {
+        "flagship"
+    } else if lower.contains("turbo") || lower.contains("8k") {
+        "fast"
+    } else {
+        "balanced"
+    };
+    (tier, id.to_string())
+}
+
+pub fn classify_glm(id: &str) -> (&'static str, String) {
+    let lower = id.to_lowercase();
+    let tier = if lower.contains("air") || lower.contains("flash") || lower.contains("lite") {
+        "fast"
+    } else if lower.contains("4.6") {
+        "flagship"
+    } else {
+        "balanced"
+    };
+    (tier, id.to_string())
+}
+
+pub fn classify_qwen(id: &str) -> (&'static str, String) {
+    let lower = id.to_lowercase();
+    let tier = if lower.contains("max") {
+        "flagship"
+    } else if lower.contains("turbo") || lower.contains("flash") || lower.contains("lite") {
+        "fast"
+    } else {
+        "balanced"
+    };
+    (tier, id.to_string())
+}
+
+pub fn classify_openrouter(id: &str) -> (&'static str, String) {
+    let lower = id.to_lowercase();
+    let tier = if lower.contains("mini")
+        || lower.contains("nano")
+        || lower.contains("lite")
+        || lower.contains("flash")
+        || lower.contains("air")
+        || lower.ends_with(":free")
+    {
+        "fast"
+    } else {
+        "balanced"
+    };
+    (tier, id.to_string())
+}
+
+pub async fn list_openai_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
+    use super::compat::{OpenAiCompatClient, OPENAI_COMPAT};
+
+    match OpenAiCompatClient::fetch_model_ids(&OPENAI_COMPAT, storage).await {
         Ok(ids) => Ok(merge_models(
             OPENAI_CURATED,
             ids.into_iter()
@@ -213,7 +309,7 @@ pub async fn list_openai_models(storage: &Storage) -> Result<Vec<AiModelOption>,
 }
 
 pub async fn list_anthropic_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
-    use super::AnthropicClient;
+    use super::anthropic::AnthropicClient;
 
     match AnthropicClient::fetch_model_ids(storage).await {
         Ok(ids) => Ok(merge_models(ANTHROPIC_CURATED, ids, classify_anthropic)),
@@ -225,19 +321,12 @@ pub async fn list_anthropic_models(storage: &Storage) -> Result<Vec<AiModelOptio
 }
 
 pub async fn list_groq_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
-    use super::GroqClient;
-
-    match GroqClient::fetch_model_ids(storage).await {
-        Ok(ids) => Ok(merge_models(GROQ_CURATED, ids, classify_groq)),
-        Err(error) => {
-            tracing::debug!("Groq model list unavailable: {error}");
-            Ok(curated_only(GROQ_CURATED))
-        }
-    }
+    use super::compat::GROQ_COMPAT;
+    list_compat_models(storage, &GROQ_COMPAT, GROQ_CURATED, classify_groq).await
 }
 
 pub async fn list_gemini_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
-    use super::GeminiClient;
+    use super::gemini::GeminiClient;
 
     match GeminiClient::fetch_model_ids(storage).await {
         Ok(ids) => Ok(merge_models(GEMINI_CURATED, ids, classify_gemini)),
@@ -246,6 +335,60 @@ pub async fn list_gemini_models(storage: &Storage) -> Result<Vec<AiModelOption>,
             Ok(curated_only(GEMINI_CURATED))
         }
     }
+}
+
+async fn list_compat_models(
+    storage: &Storage,
+    spec: &'static super::compat::CompatSpec,
+    curated: &[(&str, &str, &str)],
+    classify: fn(&str) -> (&'static str, String),
+) -> Result<Vec<AiModelOption>, Error> {
+    use super::compat::OpenAiCompatClient;
+
+    match OpenAiCompatClient::fetch_model_ids(spec, storage).await {
+        Ok(ids) => Ok(merge_models(curated, ids, classify)),
+        Err(error) => {
+            tracing::debug!("{} model list unavailable: {error}", spec.provider.label());
+            Ok(curated_only(curated))
+        }
+    }
+}
+
+pub async fn list_deepseek_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
+    use super::compat::DEEPSEEK_COMPAT;
+    list_compat_models(
+        storage,
+        &DEEPSEEK_COMPAT,
+        DEEPSEEK_CURATED,
+        classify_deepseek,
+    )
+    .await
+}
+
+pub async fn list_kimi_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
+    use super::compat::KIMI_COMPAT;
+    list_compat_models(storage, &KIMI_COMPAT, KIMI_CURATED, classify_kimi).await
+}
+
+pub async fn list_glm_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
+    use super::compat::GLM_COMPAT;
+    list_compat_models(storage, &GLM_COMPAT, GLM_CURATED, classify_glm).await
+}
+
+pub async fn list_qwen_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
+    use super::compat::QWEN_COMPAT;
+    list_compat_models(storage, &QWEN_COMPAT, QWEN_CURATED, classify_qwen).await
+}
+
+pub async fn list_openrouter_models(storage: &Storage) -> Result<Vec<AiModelOption>, Error> {
+    use super::compat::OPENROUTER_COMPAT;
+    list_compat_models(
+        storage,
+        &OPENROUTER_COMPAT,
+        OPENROUTER_CURATED,
+        classify_openrouter,
+    )
+    .await
 }
 
 pub async fn list_ollama_models(endpoint: &str) -> Result<Vec<AiModelOption>, Error> {

@@ -141,6 +141,36 @@ export function buildMockAiStatus(): import('@studio/lib/bindings').AiStatus {
 				key_count: 1
 			},
 			{
+				provider: 'deepseek',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
+				provider: 'kimi',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
+				provider: 'glm',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
+				provider: 'qwen',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
+				provider: 'openrouter',
+				ready: true,
+				detail: 'Simulated in browser demo',
+				key_count: 1
+			},
+			{
 				provider: 'ollama',
 				ready: true,
 				detail: 'Simulated local model catalog',
@@ -183,6 +213,35 @@ const MOCK_GROQ: MockModelEntry[] = [
 	['llama-3.1-8b-instant', 'Llama 3.1 8B', 'fast']
 ]
 
+const MOCK_DEEPSEEK: MockModelEntry[] = [
+	['deepseek-reasoner', 'DeepSeek Reasoner', 'flagship'],
+	['deepseek-chat', 'DeepSeek Chat', 'balanced']
+]
+
+const MOCK_KIMI: MockModelEntry[] = [
+	['kimi-k2-thinking', 'Kimi K2 Thinking', 'flagship'],
+	['kimi-latest', 'Kimi (latest)', 'balanced'],
+	['kimi-k2-turbo-preview', 'Kimi K2 Turbo', 'fast']
+]
+
+const MOCK_GLM: MockModelEntry[] = [
+	['glm-5.3-flash', 'GLM-5.3 Flash (Ox Alpha)', 'flagship'],
+	['glm-4.6', 'GLM-4.6', 'flagship'],
+	['glm-4.5', 'GLM-4.5', 'balanced'],
+	['glm-4.5-air', 'GLM-4.5 Air', 'fast']
+]
+
+const MOCK_OPENROUTER: MockModelEntry[] = [
+	['z-ai/glm-5.3-flash', 'GLM-5.3 Flash (Ox Alpha)', 'flagship'],
+	['openrouter/auto', 'Auto (best available)', 'balanced']
+]
+
+const MOCK_QWEN: MockModelEntry[] = [
+	['qwen3-max', 'Qwen3 Max', 'flagship'],
+	['qwen-plus', 'Qwen Plus', 'balanced'],
+	['qwen-turbo', 'Qwen Turbo', 'fast']
+]
+
 const MOCK_GEMINI: MockModelEntry[] = [
 	['gemini-2.5-pro', 'Gemini 2.5 Pro', 'flagship'],
 	['gemini-2.5-flash', 'Gemini 2.5 Flash', 'balanced'],
@@ -207,6 +266,16 @@ export function buildMockProviderModels(
 			return entriesToOptions(MOCK_GROQ)
 		case 'gemini':
 			return entriesToOptions(MOCK_GEMINI)
+		case 'deepseek':
+			return entriesToOptions(MOCK_DEEPSEEK)
+		case 'kimi':
+			return entriesToOptions(MOCK_KIMI)
+		case 'glm':
+			return entriesToOptions(MOCK_GLM)
+		case 'qwen':
+			return entriesToOptions(MOCK_QWEN)
+		case 'openrouter':
+			return entriesToOptions(MOCK_OPENROUTER)
 		case 'ollama':
 			return buildMockOllamaCatalog().map(function (entry) {
 				return {
