@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useLiveMonitor } from '@studio/core/live-monitor'
 import { overlayPendingEditsOnRows, type PendingEdit } from '@studio/core/pending-edits'
 import { useNuqsState } from '@studio/core/url-state/use-nuqs-state'
 import {
+	dropTableSnapshot,
 	putTableSnapshot,
 	readTableSnapshot,
 	type TableSnapshot
 } from '@studio/core/workspace-store'
 import { getAdapterError } from '@studio/core/data-provider/types'
+import { schemaQueryOptions } from '@studio/core/data-provider/schema-query'
 import { isConnectionUnavailableError } from '@studio/shared/utils/error-messages'
+import { noop } from '@studio/shared/utils/noop'
 import { toast } from '@studio/shared/ui/notifier'
-import type { AdapterResult, DataAdapter } from '@studio/core/data-provider/types'
+import type { DataAdapter } from '@studio/core/data-provider/types'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { enrichColumnsWithFKs } from '../utils/fk-enrichment'
 import {
@@ -112,6 +116,7 @@ export function useDatabaseStudioSync(args: Args) {
 	} = args
 
 	const liveMonitor = useLiveMonitor()
+	const queryClient = useQueryClient()
 	const {
 		urlState,
 		setSelectedRow,
@@ -178,7 +183,6 @@ export function useDatabaseStudioSync(args: Args) {
 
 		setIsLoading(true)
 
-		let schemaForTable: AdapterResult<DatabaseSchema> | null = null
 		const currentView = `${activeConnectionId}::${tableId}::${currentQuerySignature}`
 		const snapshot = readTableSnapshot(activeConnectionId, tableRefName)
 		const cached =
@@ -204,31 +208,31 @@ export function useDatabaseStudioSync(args: Args) {
 			displayedViewRef.current = currentView
 		}
 
-		try {
-			schemaForTable = await adapter.getSchema(activeConnectionId)
-			if (!isCurrentRequest()) return
-			if (schemaForTable.ok && !schemaHasTable(schemaForTable.data, tableRefName)) {
-				console.warn('[DatabaseStudio] Skipping stale table selection:', {
-					connectionId: activeConnectionId,
-					tableRefName
-				})
-				setTableData(null)
-				setIsTableTransitioning(false)
-				setIsLoading(false)
-				return
-			}
-		} catch (error) {
-			if (!isCurrentRequest()) return
-			console.error('[DatabaseStudio] Failed to validate selected table:', error)
-			if (!isConnectionUnavailableError(error)) {
-				toast.error('Failed to validate selected table', {
-					description: error instanceof Error ? error.message : String(error)
-				})
-			}
+		// The schema fetch races the row fetch instead of gating it: it goes
+		// through the shared react-query entry (single-flight with useSchema)
+		// and is only needed for the stale-table guard and FK enrichment, both
+		// of which can apply after rows are on screen.
+		let resolvedSchema: DatabaseSchema | null = null
+		const schemaPromise = queryClient
+			.fetchQuery(schemaQueryOptions(adapter, queryClient, activeConnectionId))
+			.then(function (schema: DatabaseSchema) {
+				resolvedSchema = schema
+				return schema
+			})
+		schemaPromise.catch(noop)
+
+		const handleStaleTable = function () {
+			console.warn('[DatabaseStudio] Skipping stale table selection:', {
+				connectionId: activeConnectionId,
+				tableRefName
+			})
+			setTableData(null)
+			dropTableSnapshot(activeConnectionId, tableRefName)
+			setIsTableTransitioning(false)
 		}
 
-		try {
-			const result = await adapter.fetchTableData(
+		const fetchRows = function () {
+			return adapter.fetchTableData(
 				activeConnectionId,
 				tableRefName,
 				Math.floor(pagination.offset / pagination.limit),
@@ -238,19 +242,40 @@ export function useDatabaseStudioSync(args: Args) {
 				filterConjunction,
 				filterGroup
 			)
+		}
+
+		try {
+			let result = await fetchRows()
 			if (!isCurrentRequest()) return
+
+			// Cold boot: the connection opens inside the schema queryFn, so a
+			// connection-unavailable fetch means it raced ahead of connect.
+			// Wait for the schema query to settle and retry exactly once.
+			if (!result.ok && isConnectionUnavailableError(getAdapterError(result))) {
+				try {
+					await schemaPromise
+				} catch {
+					noop()
+				}
+				if (!isCurrentRequest()) return
+				result = await fetchRows()
+				if (!isCurrentRequest()) return
+			}
 
 			if (result.ok) {
 				const data = result.data
-				const schemaResult = schemaForTable ?? (await adapter.getSchema(activeConnectionId))
-				if (!isCurrentRequest()) return
-				if (schemaResult.ok) {
-					const { tableName: tableNamePart, schemaName } = getTableRefParts(
-						tableRefName ?? ''
-					)
+				const { tableName: tableNamePart, schemaName } = getTableRefParts(tableRefName)
+
+				if (resolvedSchema) {
+					// Warm path (cached schema): guard and enrich before the
+					// single paint, exactly like the old serial ordering.
+					if (!schemaHasTable(resolvedSchema, tableRefName)) {
+						handleStaleTable()
+						return
+					}
 					data.columns = enrichColumnsWithFKs(
 						data.columns,
-						schemaResult.data,
+						resolvedSchema,
 						tableNamePart,
 						schemaName ?? undefined
 					)
@@ -270,23 +295,69 @@ export function useDatabaseStudioSync(args: Args) {
 					})
 				}
 
-				putTableSnapshot({
-					connectionId: activeConnectionId,
-					tableId: tableRefName,
-					columns: data.columns,
-					rows: data.rows,
-					totalCount: data.totalCount,
-					visibleColumns: nextVisibleColumns,
-					offset: pagination.offset,
-					limit: pagination.limit,
-					sort,
-					filters,
-					conjunction: filterConjunction,
-					filterGroup,
-					fetchedAt: Date.now()
-				})
+				const snapshotOf = function (columns: TableData['columns']) {
+					return {
+						connectionId: activeConnectionId,
+						tableId: tableRefName,
+						columns,
+						rows: data.rows,
+						totalCount: data.totalCount,
+						visibleColumns: nextVisibleColumns,
+						offset: pagination.offset,
+						limit: pagination.limit,
+						sort,
+						filters,
+						conjunction: filterConjunction,
+						filterGroup,
+						fetchedAt: Date.now()
+					}
+				}
+				putTableSnapshot(snapshotOf(data.columns))
+
+				if (!resolvedSchema) {
+					// Cold path: rows are painted; apply the schema verdict and
+					// enrichment when it lands. A schema failure surfaces via
+					// the shared ['schema', id] query state, not a toast here.
+					setIsLoading(false)
+					let schema: DatabaseSchema | null = null
+					try {
+						schema = await schemaPromise
+					} catch (error) {
+						console.error('[DatabaseStudio] Failed to validate selected table:', error)
+					}
+					if (!isCurrentRequest() || !schema) return
+					if (!schemaHasTable(schema, tableRefName)) {
+						handleStaleTable()
+						return
+					}
+					const enriched = enrichColumnsWithFKs(
+						data.columns,
+						schema,
+						tableNamePart,
+						schemaName ?? undefined
+					)
+					if (enriched !== data.columns) {
+						setTableData(withPendingEdits({ ...data, columns: enriched }, tableId))
+						putTableSnapshot(snapshotOf(enriched))
+					}
+				}
 			} else {
+				// Buffer the error until the schema verdict: a dropped table's
+				// failing fetch should resolve to the silent stale-table clear,
+				// not an error toast for a table that no longer exists.
 				const errorMessage = getAdapterError(result)
+				let tableMissing = false
+				try {
+					const schema = await schemaPromise
+					tableMissing = !schemaHasTable(schema, tableRefName)
+				} catch {
+					noop()
+				}
+				if (!isCurrentRequest()) return
+				if (tableMissing) {
+					handleStaleTable()
+					return
+				}
 				console.error('[DatabaseStudio] Failed to load table data:', errorMessage)
 				if (!isConnectionUnavailableError(errorMessage)) {
 					toast.error('Failed to load table data', {
@@ -324,6 +395,7 @@ export function useDatabaseStudioSync(args: Args) {
 		filterGroup,
 		pagination.limit,
 		pagination.offset,
+		queryClient,
 		setIsLoading,
 		setIsTableTransitioning,
 		setTableData,

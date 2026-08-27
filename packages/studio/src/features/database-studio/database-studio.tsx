@@ -1,6 +1,7 @@
 import { TableSkeleton } from '@studio/shared/ui/skeleton'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { useAdapter, useDataMutation, useConnections, useSchema } from '@studio/core/data-provider'
+import { useConnectionPhase } from '@studio/core/data-provider/connection-phase'
 import { usePendingEdits } from '@studio/core/pending-edits'
 import { openTab } from '@studio/core/workspace-store'
 import { useSettings } from '@studio/core/settings'
@@ -129,6 +130,7 @@ export function DatabaseStudio({
 	const { toast } = useToast()
 	const { data: connections = [] } = useConnections()
 	const schemaQuery = useSchema(activeConnectionId)
+	const connectionPhase = useConnectionPhase(activeConnectionId)
 	const activeConnection = useMemo(
 		function () {
 			return connections.find(function (connection) {
@@ -903,7 +905,10 @@ export function DatabaseStudio({
 	if (!tableId) {
 		if (schemaQuery.isLoading && !schemaQuery.data) {
 			return withDataFileChrome(
-				<DatabaseStudioConnectionLoading connectionName={activeConnection?.name} />
+				<DatabaseStudioConnectionLoading
+					connectionName={activeConnection?.name}
+					phase={connectionPhase}
+				/>
 			)
 		}
 

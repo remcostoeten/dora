@@ -7,6 +7,10 @@ export {
 	resetBootstrapForTests
 } from './bootstrap'
 export {
+	configureTableSnapshotPersistence,
+	initTableSnapshotPersistence
+} from './snapshot-persistence'
+export {
 	createWorkspaceStore,
 	dispatchWorkspace,
 	readWorkspace,

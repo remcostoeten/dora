@@ -7,6 +7,7 @@ import type {
 	ColumnDefinition
 } from '@studio/features/database-studio/types'
 import { buildWhereClauseFrom } from '../filter-sql'
+import { nextPollDelay, QUERY_POLL_INITIAL_MS } from '../poll-delay'
 import type {
 	ConnectionInfo,
 	DatabaseSchema,
@@ -95,7 +96,6 @@ const formatError = formatBackendError
  * tables, and the timeout fell through to a misleading "Failed to get columns".
  */
 const QUERY_POLL_TIMEOUT_MS = 30_000
-const QUERY_POLL_INTERVAL_MS = 100
 const QUERY_STREAMING_ENABLED =
 	(
 		import.meta as unknown as {
@@ -132,6 +132,7 @@ const STREAM_PAGE_CACHE_LIMIT = 8
  */
 async function pollQueryToCompletion(queryId: number): Promise<QueryPollResult> {
 	const deadline = performance.now() + QUERY_POLL_TIMEOUT_MS
+	let interval = QUERY_POLL_INITIAL_MS
 
 	while (performance.now() < deadline) {
 		const fetchResult = await commands.fetchQuery(queryId)
@@ -150,7 +151,8 @@ async function pollQueryToCompletion(queryId: number): Promise<QueryPollResult> 
 		if (pageInfo.status === 'Error') {
 			return { kind: 'error', message: pageInfo.error || 'Query failed' }
 		}
-		await delay(QUERY_POLL_INTERVAL_MS)
+		await delay(interval)
+		interval = nextPollDelay(interval)
 	}
 	return { kind: 'timeout' }
 }

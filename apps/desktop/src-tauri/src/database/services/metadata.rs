@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use crate::{
     database::{
+        dialect::{MySqlDialect, PgDialect},
         metadata::{self, DatabaseMetadata},
         postgres, sqlite,
         types::{Database, DatabaseConnection, DatabaseSchema},
@@ -15,25 +16,36 @@ use crate::{
 pub struct MetadataService<'a> {
     pub connections: &'a DashMap<Uuid, DatabaseConnection>,
     pub schemas: &'a DashMap<Uuid, Arc<DatabaseSchema>>,
+    pub schema_locks: &'a DashMap<Uuid, Arc<tokio::sync::Mutex<()>>>,
+}
+
+/// A cloned engine handle for one introspection run. Cloning out of the
+/// connections map lets the `DashMap` `Ref` drop before any await, so a slow
+/// introspection can never block writers to the connections map.
+enum IntrospectTarget {
+    Postgres {
+        client: Arc<tokio_postgres::Client>,
+        dialect: PgDialect,
+    },
+    Sqlite(Arc<std::sync::Mutex<rusqlite::Connection>>),
+    DuckDb(Arc<dyn crate::database::duckdb_backend::DuckDbConn>),
+    LibSql(Arc<libsql::Connection>),
+    D1(Arc<crate::database::d1::D1Http>),
+    Posthog(Arc<crate::database::posthog::PosthogHttp>),
+    MySql {
+        pool: Arc<mysql_async::Pool>,
+        dialect: MySqlDialect,
+    },
 }
 
 impl<'a> MetadataService<'a> {
-    pub async fn get_database_schema(
-        &self,
-        connection_id: Uuid,
-    ) -> Result<Arc<DatabaseSchema>, Error> {
-        if let Some(schema) = self.schemas.get(&connection_id) {
-            return Ok(schema.clone());
-        }
-
+    fn introspect_target(&self, connection_id: Uuid) -> Result<IntrospectTarget, Error> {
         let connection_entry = self
             .connections
             .get(&connection_id)
             .with_context(|| format!("Connection not found: {}", connection_id))?;
 
-        let connection = connection_entry.value();
-
-        let schema = match &connection.database {
+        match &connection_entry.value().database {
             // TODO(dialect-parity, #89): CockroachDB shares the Postgres
             // introspection path. Some Postgres catalog queries differ on
             // CockroachDB; the `dialect` field is now threaded into
@@ -43,45 +55,48 @@ impl<'a> MetadataService<'a> {
                 client: Some(client),
                 dialect,
                 ..
-            } => postgres::schema::get_database_schema(client, *dialect).await?,
+            } => Ok(IntrospectTarget::Postgres {
+                client: Arc::clone(client),
+                dialect: *dialect,
+            }),
             Database::Postgres { client: None, .. } => {
-                return Err(Error::Any(anyhow!("Postgres connection not active")))
+                Err(Error::Any(anyhow!("Postgres connection not active")))
             }
             Database::SQLite {
                 connection: Some(conn),
                 ..
-            } => sqlite::schema::get_database_schema(Arc::clone(conn)).await?,
+            } => Ok(IntrospectTarget::Sqlite(Arc::clone(conn))),
             Database::SQLite {
                 connection: None, ..
-            } => return Err(Error::Any(anyhow!("SQLite connection not active"))),
+            } => Err(Error::Any(anyhow!("SQLite connection not active"))),
             Database::DuckDB {
                 connection: Some(conn),
                 ..
-            } => conn.get_schema().await?,
+            } => Ok(IntrospectTarget::DuckDb(Arc::clone(conn))),
             Database::DuckDB {
                 connection: None, ..
-            } => return Err(Error::Any(anyhow!("DuckDB connection not active"))),
+            } => Err(Error::Any(anyhow!("DuckDB connection not active"))),
             Database::LibSQL {
                 connection: Some(conn),
                 ..
-            } => crate::database::libsql::schema::get_database_schema(Arc::clone(conn)).await?,
+            } => Ok(IntrospectTarget::LibSql(Arc::clone(conn))),
             Database::LibSQL {
                 connection: None, ..
-            } => return Err(Error::Any(anyhow!("LibSQL connection not active"))),
+            } => Err(Error::Any(anyhow!("LibSQL connection not active"))),
             Database::D1 {
                 connection: Some(http),
                 ..
-            } => crate::database::d1::schema::get_database_schema(http).await?,
+            } => Ok(IntrospectTarget::D1(Arc::clone(http))),
             Database::D1 {
                 connection: None, ..
-            } => return Err(Error::Any(anyhow!("Cloudflare D1 connection not active"))),
+            } => Err(Error::Any(anyhow!("Cloudflare D1 connection not active"))),
             Database::Posthog {
                 connection: Some(http),
                 ..
-            } => crate::database::posthog::schema::get_database_schema(http).await?,
+            } => Ok(IntrospectTarget::Posthog(Arc::clone(http))),
             Database::Posthog {
                 connection: None, ..
-            } => return Err(Error::Any(anyhow!("PostHog connection not active"))),
+            } => Err(Error::Any(anyhow!("PostHog connection not active"))),
             // TODO(dialect-parity, #88): MariaDB shares the MySQL introspection
             // path. MariaDB-specific types (UUID, INET4/INET6) and some
             // information_schema differences need a dialect branch; the
@@ -92,9 +107,53 @@ impl<'a> MetadataService<'a> {
                 pool: Some(pool),
                 dialect,
                 ..
-            } => crate::database::mysql::schema::get_database_schema(pool.clone(), *dialect).await?,
+            } => Ok(IntrospectTarget::MySql {
+                pool: Arc::clone(pool),
+                dialect: *dialect,
+            }),
             Database::MySQL { pool: None, .. } => {
-                return Err(Error::Any(anyhow!("MySQL connection not active")))
+                Err(Error::Any(anyhow!("MySQL connection not active")))
+            }
+        }
+    }
+
+    pub async fn get_database_schema(
+        &self,
+        connection_id: Uuid,
+    ) -> Result<Arc<DatabaseSchema>, Error> {
+        if let Some(schema) = self.schemas.get(&connection_id) {
+            return Ok(schema.clone());
+        }
+
+        // Serialize introspections per connection: the loser of a concurrent
+        // race waits here and then returns the winner's cached schema instead
+        // of running the whole introspection a second time.
+        let lock = self.schema_locks.entry(connection_id).or_default().clone();
+        let _guard = lock.lock().await;
+
+        if let Some(schema) = self.schemas.get(&connection_id) {
+            return Ok(schema.clone());
+        }
+
+        let target = self.introspect_target(connection_id)?;
+
+        let schema = match target {
+            IntrospectTarget::Postgres { client, dialect } => {
+                postgres::schema::get_database_schema(&client, dialect).await?
+            }
+            IntrospectTarget::Sqlite(conn) => sqlite::schema::get_database_schema(conn).await?,
+            IntrospectTarget::DuckDb(conn) => conn.get_schema().await?,
+            IntrospectTarget::LibSql(conn) => {
+                crate::database::libsql::schema::get_database_schema(conn).await?
+            }
+            IntrospectTarget::D1(http) => {
+                crate::database::d1::schema::get_database_schema(&http).await?
+            }
+            IntrospectTarget::Posthog(http) => {
+                crate::database::posthog::schema::get_database_schema(&http).await?
+            }
+            IntrospectTarget::MySql { pool, dialect } => {
+                crate::database::mysql::schema::get_database_schema(pool, dialect).await?
             }
         };
 

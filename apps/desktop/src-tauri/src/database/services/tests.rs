@@ -43,11 +43,13 @@ mod tests {
         // Create minimal dependencies - no Tauri, no AppState
         let connections: DashMap<Uuid, DatabaseConnection> = DashMap::new();
         let schemas: DashMap<Uuid, Arc<DatabaseSchema>> = DashMap::new();
+        let schema_locks: DashMap<Uuid, Arc<tokio::sync::Mutex<()>>> = DashMap::new();
 
         // Construct the service with explicit dependencies
         let _svc = MetadataService {
             connections: &connections,
             schemas: &schemas,
+            schema_locks: &schema_locks,
         };
 
         // Service constructed successfully without Tauri runtime

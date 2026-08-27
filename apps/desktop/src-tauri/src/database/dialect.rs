@@ -109,13 +109,13 @@ impl PgIntrospection {
         // only emits a direction for non-default ordering), but that is stripped
         // in the shared parser, so the query itself needs no override.
         indexes: VANILLA_INDEXES,
-        // Row counts: CockroachDB's `pg_stat_user_tables` is a stub that returns
-        // ZERO rows, so the vanilla query yields no estimates at all. Pull the
-        // estimate from `crdb_internal.table_row_statistics` instead, joined to
+        // Row counts: CockroachDB's `pg_class.reltuples` is a stub, so the
+        // vanilla query yields no usable estimates. Pull the estimate from
+        // `crdb_internal.table_row_statistics` instead, joined to
         // pg_class/pg_namespace for schema+table names (table_id == pg_class.oid
         // on CockroachDB). When the estimate is stale/0 (stats collection lags),
-        // postgres/schema.rs already falls back to an exact COUNT(*) per table —
-        // the same safety net vanilla relies on — so correctness is guaranteed.
+        // the background row-count refresher fills in an exact COUNT(*) — the
+        // same safety net vanilla relies on — so correctness is guaranteed.
         row_counts: COCKROACH_ROW_COUNTS,
         // Enum labels and CHECK constraint expressions live in the same
         // pg_catalog views CockroachDB implements (`pg_enum`, `pg_constraint`),
@@ -219,14 +219,24 @@ const VANILLA_INDEXES: &str = r#"
             schemaname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
     "#;
 
-/// Vanilla: row-count estimates via `pg_stat_user_tables`.
+/// Vanilla: row-count estimates via `pg_class.reltuples`.
+///
+/// `pg_stat_user_tables.n_live_tup` is runtime statistics-collector state and
+/// is wiped whenever the server restarts — which on scale-to-zero providers
+/// (Neon) happens on every compute wake, turning every estimate into 0.
+/// `reltuples` is on-disk catalog data from the last VACUUM/ANALYZE and
+/// survives restarts. It is `-1` for never-analyzed tables (PG >= 14), which
+/// the shared parser maps to "unknown" so the background exact count fills it
+/// in.
 const VANILLA_ROW_COUNTS: &str = r#"
-        SELECT 
-            schemaname,
-            relname,
-            n_live_tup
-        FROM 
-            pg_stat_user_tables
+        SELECT
+            n.nspname AS schemaname,
+            c.relname AS relname,
+            c.reltuples::bigint AS n_live_tup
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relkind IN ('r', 'p', 'm')
+          AND n.nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
     "#;
 
 /// Vanilla: closed value sets per column.
@@ -356,8 +366,9 @@ impl MySqlDialect {
 /// fields whose vanilla query fails or returns wrong/empty results against that
 /// engine. Same shape as [`PgIntrospection`].
 ///
-/// Every query is parameterised by the current database name (`?`), matching
-/// the `conn.exec(query, (&current_db,))` call sites in `mysql/schema.rs`.
+/// Every query scopes itself to the connection's default schema via
+/// `DATABASE()`, so no bind parameter (and no prior `SELECT DATABASE()` round
+/// trip) is needed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MySqlIntrospection {
     /// Columns + primary-key flag + auto-increment detection per table.
@@ -411,8 +422,8 @@ impl MySqlIntrospection {
 //
 // The `VANILLA_MYSQL_*` constants are the EXACT queries that previously lived
 // inline in `mysql/schema.rs`. They are the single source of truth for the
-// vanilla path; moving them here is byte-for-byte behaviour-preserving. Each
-// query takes the current database name as its single `?` bind parameter.
+// vanilla path. Each query scopes itself to the connection's default schema
+// inline via `DATABASE()` instead of a bind parameter.
 // ---------------------------------------------------------------------------
 
 /// Vanilla: columns + primary-key flag + auto-increment detection.
@@ -434,7 +445,7 @@ const VANILLA_MYSQL_COLUMNS: &str = r#"
             AND c.TABLE_SCHEMA = t.TABLE_SCHEMA
         WHERE
             t.TABLE_TYPE = 'BASE TABLE'
-            AND c.TABLE_SCHEMA = ?
+            AND c.TABLE_SCHEMA = DATABASE()
         ORDER BY
             c.TABLE_SCHEMA, c.TABLE_NAME, c.ORDINAL_POSITION
     "#;
@@ -452,7 +463,7 @@ const VANILLA_MYSQL_FOREIGN_KEYS: &str = r#"
             information_schema.KEY_COLUMN_USAGE kcu
         WHERE
             kcu.REFERENCED_TABLE_NAME IS NOT NULL
-            AND kcu.TABLE_SCHEMA = ?
+            AND kcu.TABLE_SCHEMA = DATABASE()
     "#;
 
 /// Vanilla: index columns via `information_schema.STATISTICS`.
@@ -466,7 +477,7 @@ const VANILLA_MYSQL_INDEXES: &str = r#"
         FROM
             information_schema.STATISTICS
         WHERE
-            TABLE_SCHEMA = ?
+            TABLE_SCHEMA = DATABASE()
         ORDER BY
             TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX
     "#;
@@ -481,7 +492,7 @@ const VANILLA_MYSQL_ROW_COUNTS: &str = r#"
             information_schema.TABLES
         WHERE
             TABLE_TYPE = 'BASE TABLE'
-            AND TABLE_SCHEMA = ?
+            AND TABLE_SCHEMA = DATABASE()
     "#;
 
 /// A unified, runtime-detected dialect tag stored on a connection.
@@ -618,7 +629,10 @@ mod tests {
 
     #[test]
     fn detects_cockroachdb_case_insensitively() {
-        assert_eq!(detect_pg_dialect("cockroachdb v22.2"), PgDialect::CockroachDb);
+        assert_eq!(
+            detect_pg_dialect("cockroachdb v22.2"),
+            PgDialect::CockroachDb
+        );
     }
 
     #[test]
@@ -634,7 +648,32 @@ mod tests {
 
     #[test]
     fn detects_mariadb_case_insensitively() {
-        assert_eq!(detect_mysql_dialect("10.11.8-mariadb"), MySqlDialect::MariaDb);
+        assert_eq!(
+            detect_mysql_dialect("10.11.8-mariadb"),
+            MySqlDialect::MariaDb
+        );
+    }
+
+    #[test]
+    fn mysql_introspection_queries_are_self_scoped() {
+        for queries in [MySqlIntrospection::VANILLA, MySqlIntrospection::MARIADB] {
+            for query in [
+                queries.columns,
+                queries.foreign_keys,
+                queries.indexes,
+                queries.row_counts,
+            ] {
+                assert!(query.contains("DATABASE()"));
+                assert!(!query.contains('?'));
+            }
+        }
+    }
+
+    #[test]
+    fn vanilla_pg_row_counts_survive_restarts() {
+        let queries = PgDialect::Postgres.introspection();
+        assert!(queries.row_counts.contains("reltuples"));
+        assert!(!queries.row_counts.contains("pg_stat_user_tables"));
     }
 
     #[test]

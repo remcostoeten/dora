@@ -43,6 +43,9 @@ pub use error::{Error, Result};
 pub struct AppState {
     pub connections: DashMap<Uuid, DatabaseConnection>,
     pub schemas: DashMap<Uuid, Arc<DatabaseSchema>>,
+    /// Per-connection introspection locks: two concurrent schema reads for the
+    /// same connection must run one introspection, not two.
+    pub schema_locks: DashMap<Uuid, Arc<tokio::sync::Mutex<()>>>,
     /// SQLite database for application data
     pub storage: Storage,
     pub stmt_manager: StatementManager,
@@ -72,6 +75,7 @@ impl AppState {
         let state = Self {
             connections: DashMap::new(),
             schemas: DashMap::new(),
+            schema_locks: DashMap::new(),
             storage,
             stmt_manager: StatementManager::new(),
             command_registry: RwLock::new(command_registry),
@@ -158,8 +162,10 @@ pub fn run() {
             let handle = app.handle();
             let monitor = ConnectionMonitor::new(handle.clone());
             let live_monitor = crate::database::LiveMonitorManager::new(handle.clone());
+            let row_count_refresher = crate::database::RowCountRefresher::new(handle.clone());
             handle.manage(monitor);
             handle.manage(live_monitor);
+            handle.manage(row_count_refresher);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

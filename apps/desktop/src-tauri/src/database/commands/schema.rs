@@ -3,7 +3,10 @@ use uuid::Uuid;
 
 use crate::{
     database::{
-        metadata::DatabaseMetadata, services::metadata::MetadataService, types::DatabaseSchema,
+        metadata::DatabaseMetadata,
+        row_count_refresher::{pending_counts, RowCountRefresher},
+        services::metadata::MetadataService,
+        types::DatabaseSchema,
     },
     error::Error,
     AppState,
@@ -14,14 +17,16 @@ use crate::{
 pub async fn get_database_schema(
     connection_id: Uuid,
     state: State<'_, AppState>,
+    refresher: State<'_, RowCountRefresher>,
 ) -> Result<DatabaseSchema, Error> {
     let svc = MetadataService {
         connections: &state.connections,
         schemas: &state.schemas,
+        schema_locks: &state.schema_locks,
     };
-    svc.get_database_schema(connection_id)
-        .await
-        .map(|s| (*s).clone())
+    let schema = svc.get_database_schema(connection_id).await?;
+    refresher.schedule(connection_id, pending_counts(&schema));
+    Ok((*schema).clone())
 }
 
 #[tauri::command]
@@ -33,6 +38,7 @@ pub async fn get_database_metadata(
     let svc = MetadataService {
         connections: &state.connections,
         schemas: &state.schemas,
+        schema_locks: &state.schema_locks,
     };
     svc.get_database_metadata(connection_id).await
 }

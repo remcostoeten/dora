@@ -3,6 +3,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { useAdapter, useIsTauri } from '@studio/core/data-provider/context'
 import { useSettings } from '@studio/core/settings'
 import { useConnections } from '@studio/core/data-provider'
+import { useSchema } from '@studio/core/data-provider/hooks'
 import { askAi, buildExplainQueryPrompt } from '@studio/features/ai-assistant/ai-actions'
 import { getAdapterError } from '@studio/core/data-provider/types'
 import type { QueryResult } from '@studio/core/data-provider/types'
@@ -173,7 +174,34 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 	const [showFilter, setShowFilter] = useState(false)
 	const [showHistory, setShowHistory] = useState(false)
 	const [showAiCmdK, setShowAiCmdK] = useState(false)
-	const [tables, setTables] = useState<TableInfo[]>([])
+
+	// The shared schema query (single-flight with the sidebar and the grid);
+	// 'dora-schema-refresh' invalidations flow through it, so the console no
+	// longer runs its own connect + introspection.
+	const schemaQuery = useSchema(activeConnectionId || undefined)
+	const tables = useMemo(
+		function mapSchemaTables(): TableInfo[] {
+			const schemaTables = schemaQuery.data?.tables
+			if (!schemaTables) return []
+			return schemaTables.map(function (t) {
+				return {
+					name: t.name,
+					schema: t.schema,
+					type: 'table' as const,
+					rowCount: t.row_count_estimate ?? 0,
+					columns: t.columns.map(function (c) {
+						return {
+							name: c.name,
+							type: c.data_type,
+							nullable: c.is_nullable,
+							primaryKey: c.is_primary_key
+						}
+					})
+				}
+			})
+		},
+		[schemaQuery.data]
+	)
 
 	const { addToHistory, updateChartConfig } = useQueryHistory()
 
@@ -207,40 +235,6 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		},
 		[mode, currentSqlQuery, currentDrizzleQuery]
 	)
-
-	const refreshSchema = useCallback(async () => {
-		if (!activeConnectionId) {
-			setTables([])
-			return
-		}
-
-		try {
-			await adapter.connectToDatabase(activeConnectionId)
-			const res = await adapter.getSchema(activeConnectionId)
-			if (res.ok && res.data.tables) {
-				const mapped: TableInfo[] = res.data.tables.map(function (t) {
-					return {
-						name: t.name,
-						schema: t.schema,
-						type: 'table' as const,
-						rowCount: t.row_count_estimate ?? 0,
-						columns: t.columns.map(function (c) {
-							return {
-								name: c.name,
-								type: c.data_type,
-								nullable: c.is_nullable,
-								primaryKey: c.is_primary_key
-							}
-						})
-					}
-				})
-				setTables(mapped)
-			}
-		} catch (error) {
-			console.error('Failed to fetch schema:', error)
-			notifyBackgroundFailure('Failed to fetch schema', error)
-		}
-	}, [activeConnectionId, adapter])
 
 	const loadSnippets = useCallback(async () => {
 		const [scriptsRes, foldersRes] = await Promise.all([
@@ -293,91 +287,42 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		[activeConnectionId, loadSnippets]
 	)
 
+	// One-shot per connection: seed the editors with a sensible default query
+	// once the schema first arrives. The ref guard keeps later schema
+	// invalidations (DDL, count updates) from clobbering the user's edits.
+	const defaultQueryConnectionRef = useRef<string | null>(null)
 	useEffect(
-		function () {
+		function seedDefaultQueryForConnection() {
 			if (!activeConnectionId) {
-				setTables([])
+				defaultQueryConnectionRef.current = null
 				setCurrentSqlQuery(DEFAULT_SQL)
 				setCurrentDrizzleQuery(DEFAULT_QUERY)
 				return
 			}
+			if (defaultQueryConnectionRef.current === activeConnectionId) return
+			if (!schemaQuery.data) return
+			defaultQueryConnectionRef.current = activeConnectionId
 
-			let cancelled = false
-
-			async function fetchSchema() {
-				try {
-					await adapter.connectToDatabase(activeConnectionId!)
-					const res = await adapter.getSchema(activeConnectionId!)
-					if (cancelled) return
-					if (res.ok && res.data.tables) {
-						const mapped: TableInfo[] = res.data.tables.map(function (t) {
-							return {
-								name: t.name,
-								schema: t.schema,
-								type: 'table' as const,
-								rowCount: t.row_count_estimate ?? 0,
-								columns: t.columns.map(function (c) {
-									return {
-										name: c.name,
-										type: c.data_type,
-										nullable: c.is_nullable,
-										primaryKey: c.is_primary_key
-									}
-								})
-							}
-						})
-						setTables(mapped)
-
-						if (mapped.length > 0) {
-							const defaultTable = pickDefaultQueryTable(mapped)
-							if (defaultTable) {
-								setCurrentSqlQuery(buildDefaultSqlQuery(defaultTable.name))
-								setCurrentDrizzleQuery(buildDefaultDrizzleQuery(defaultTable.name))
-							} else {
-								setCurrentSqlQuery(DEFAULT_SQL)
-								setCurrentDrizzleQuery(DEFAULT_QUERY)
-							}
-						} else {
-							setCurrentSqlQuery(DEFAULT_SQL)
-							setCurrentDrizzleQuery(DEFAULT_QUERY)
-						}
-					}
-				} catch (error) {
-					if (!cancelled) {
-						console.error('Failed to fetch schema:', error)
-						notifyBackgroundFailure('Failed to fetch schema', error)
-					}
-				}
-			}
-
-			fetchSchema()
-
-			return function () {
-				cancelled = true
+			const defaultTable = pickDefaultQueryTable(tables)
+			if (defaultTable) {
+				setCurrentSqlQuery(buildDefaultSqlQuery(defaultTable.name))
+				setCurrentDrizzleQuery(buildDefaultDrizzleQuery(defaultTable.name))
+			} else {
+				setCurrentSqlQuery(DEFAULT_SQL)
+				setCurrentDrizzleQuery(DEFAULT_QUERY)
 			}
 		},
-		[activeConnectionId, adapter]
+		[activeConnectionId, schemaQuery.data, tables]
 	)
 
 	useEffect(
-		function listenForSchemaRefresh() {
-			function onSchemaRefresh(event: Event) {
-				const customEvent = event as CustomEvent<{ connectionId?: string }>
-				const targetConnectionId = customEvent.detail?.connectionId
-				if (!targetConnectionId || targetConnectionId === activeConnectionId) {
-					refreshSchema().catch(function (error) {
-						console.error('Failed to refresh schema:', error)
-						notifyBackgroundFailure('Failed to refresh schema', error)
-					})
-				}
-			}
-
-			window.addEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
-			return function () {
-				window.removeEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
+		function reportSchemaFailure() {
+			if (schemaQuery.error) {
+				console.error('Failed to fetch schema:', schemaQuery.error)
+				notifyBackgroundFailure('Failed to fetch schema', schemaQuery.error)
 			}
 		},
-		[activeConnectionId, refreshSchema]
+		[schemaQuery.error]
 	)
 
 	useEffect(

@@ -4,6 +4,7 @@ import { SidebarTableSkeleton } from '@studio/shared/ui/skeleton'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { toast as appToast } from '@studio/shared/ui/notifier'
 import { useAdapter, useSchema } from '@studio/core/data-provider'
+import { useConnectionPhase } from '@studio/core/data-provider/connection-phase'
 import { useIsTauri } from '@studio/core/data-provider/context'
 import { getAdapterError } from '@studio/core/data-provider/types'
 import type { DatabaseSchema, TableInfo } from '@studio/lib/bindings'
@@ -116,6 +117,7 @@ export function DatabaseSidebar({
 	// Shares the ['schema', connectionId] query with DatabaseStudio — a private
 	// fetch here meant every connect ran connect + introspection twice.
 	const schemaQuery = useSchema(activeConnectionId)
+	const connectionPhase = useConnectionPhase(activeConnectionId)
 	const schema: DatabaseSchema | null = schemaQuery.data ?? null
 	const isLoadingSchema = schemaQuery.isFetching
 	const schemaError = schemaQuery.isError
@@ -817,7 +819,16 @@ export function DatabaseSidebar({
 			<div className='flex min-h-0 flex-1 flex-col'>
 				<ScrollArea className='min-h-0 flex-1' style={{ flex: 1 }}>
 					{isLoadingSchema && !schema ? (
-						<SidebarTableSkeleton rows={8} />
+						<div>
+							{connectionPhase && (
+								<p className='px-4 pt-3 text-xs text-muted-foreground'>
+									{connectionPhase === 'introspecting'
+										? 'Reading schema…'
+										: 'Connecting…'}
+								</p>
+							)}
+							<SidebarTableSkeleton rows={8} />
+						</div>
 					) : schemaError ? (
 						<div className='flex flex-col items-center justify-center h-40 px-4 py-6 gap-3'>
 							<div className='flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10'>

@@ -1,176 +1,163 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
-use anyhow::Context;
 use rusqlite::Connection;
 
 use crate::{
-    database::types::{ColumnInfo, DatabaseSchema, ForeignKeyInfo, IndexInfo, TableInfo},
+    database::sqlite_introspection::{
+        assemble, CollapsedQueries, RawColumn, RawForeignKey, RawIndexColumn, RawTable,
+    },
+    database::types::DatabaseSchema,
     Error,
 };
 
+/// Introspects the schema in four constant queries via the pragma table-valued
+/// functions, instead of a 5-queries-per-table PRAGMA loop. Row counts are
+/// filled in by the background row-count refresher, so a large file never
+/// blocks the first paint behind full-table `COUNT(*)` scans. The whole read
+/// runs in one `spawn_blocking` holding the connection mutex once.
 pub async fn get_database_schema(conn: Arc<Mutex<Connection>>) -> Result<DatabaseSchema, Error> {
     tauri::async_runtime::spawn_blocking(move || {
         let conn = conn
             .lock()
             .map_err(|_| Error::Internal("SQLite connection mutex poisoned".into()))?;
-
-        // Get all table names
-        let mut tables_stmt = conn.prepare(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-        )?;
-        let table_names: Vec<String> = tables_stmt
-            .query_map([], |row| row.get::<_, String>(0))?
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let mut tables = Vec::new();
-        let mut unique_columns_set = HashSet::new();
-
-        for table_name in table_names {
-            // Get column info including primary key status
-            // PRAGMA table_info returns: cid, name, type, notnull, dflt_value, pk
-            let pragma_query = format!("PRAGMA table_info('{}')", table_name);
-            let mut col_stmt = conn
-                .prepare(&pragma_query)
-                .context("Failed to prepare PRAGMA table_info query")?;
-
-            let col_rows = col_stmt.query_map([], |row| {
-                let column_name: String = row.get(1)?;
-                let data_type: String = row.get(2)?;
-                let not_null: bool = row.get::<_, i32>(3)? != 0;
-                let default_value: Option<String> = row.get(4)?;
-                let pk: i32 = row.get(5)?; // pk > 0 means it's part of the primary key
-
-                Ok((column_name, data_type, !not_null, default_value, pk > 0))
-            })?;
-
-            // Get foreign keys for this table
-            let fk_query = format!("PRAGMA foreign_key_list('{}')", table_name);
-            let mut fk_stmt = conn
-                .prepare(&fk_query)
-                .context("Failed to prepare PRAGMA foreign_key_list query")?;
-
-            // foreign_key_list returns: id, seq, table, from, to, on_update, on_delete, match
-            let fk_map: HashMap<String, ForeignKeyInfo> = fk_stmt
-                .query_map([], |row| {
-                    let from_column: String = row.get(3)?;
-                    let ref_table: String = row.get(2)?;
-                    let ref_column: String = row.get(4)?;
-                    Ok((from_column, ref_table, ref_column))
-                })?
-                .filter_map(|r| r.ok())
-                .map(|(from, ref_table, ref_column)| {
-                    (
-                        from,
-                        ForeignKeyInfo {
-                            referenced_table: ref_table,
-                            referenced_column: ref_column,
-                            referenced_schema: String::new(), // SQLite doesn't have schemas
-                        },
-                    )
-                })
-                .collect();
-
-            // Get row count estimate
-            let count_query = format!("SELECT COUNT(*) FROM \"{}\"", table_name);
-            let row_count: Option<u64> = conn
-                .query_row(&count_query, [], |row| row.get::<_, i64>(0))
-                .ok()
-                .map(|c| c as u64);
-
-            // Get Indexes
-            let index_list_query = format!("PRAGMA index_list('{}')", table_name);
-            let mut index_stmt = conn.prepare(&index_list_query)?;
-
-            // index_list returns: seq, name, unique, origin, partial
-            let mut indexes = Vec::new();
-            let index_info_rows = index_stmt.query_map([], |row| {
-                let name: String = row.get(1)?;
-                let is_unique: bool = row.get::<_, i32>(2)? != 0;
-                Ok((name, is_unique))
-            })?;
-
-            for idx in index_info_rows {
-                if let Ok((name, is_unique)) = idx {
-                    // Get columns for this index
-                    let index_info_query = format!("PRAGMA index_info('{}')", name);
-                    let mut info_stmt = conn.prepare(&index_info_query)?;
-
-                    let column_names: Vec<String> = info_stmt
-                        .query_map([], |row| row.get(2))?
-                        .collect::<Result<Vec<_>, _>>()?;
-
-                    indexes.push(IndexInfo {
-                        name,
-                        column_names,
-                        is_unique,
-                        is_primary: false, // SQLite PKs are handled separately usually, but explicit indexes are listed here
-                    });
-                }
-            }
-
-            // Check if this table has AUTOINCREMENT by examining sqlite_master
-            // AUTOINCREMENT only works with INTEGER PRIMARY KEY
-            let autoincrement_query = format!(
-                "SELECT sql FROM sqlite_master WHERE type='table' AND name='{}'",
-                table_name
-            );
-            let table_sql: String = conn
-                .query_row(&autoincrement_query, [], |row| row.get(0))
-                .unwrap_or_default();
-            let has_autoincrement = table_sql.to_uppercase().contains("AUTOINCREMENT");
-
-            let mut columns = Vec::new();
-            let mut primary_key_columns = Vec::new();
-
-            for col_result in col_rows {
-                let (column_name, data_type, is_nullable, default_value, is_primary_key) =
-                    col_result?;
-
-                unique_columns_set.insert(column_name.clone());
-
-                if is_primary_key {
-                    primary_key_columns.push(column_name.clone());
-                }
-
-                // Detect auto-increment: INTEGER PRIMARY KEY with AUTOINCREMENT or ROWID alias
-                let is_auto_increment = is_primary_key
-                    && data_type.to_uppercase() == "INTEGER"
-                    && (has_autoincrement || primary_key_columns.len() == 1);
-
-                let foreign_key = fk_map.get(&column_name).cloned();
-
-                columns.push(ColumnInfo {
-                    name: column_name,
-                    data_type,
-                    is_nullable,
-                    default_value,
-                    is_primary_key,
-                    is_auto_increment,
-                    foreign_key,
-                    allowed_values: None,
-                });
-            }
-
-            tables.push(TableInfo {
-                name: table_name,
-                schema: String::new(), // SQLite doesn't have schemas
-                columns,
-                primary_key_columns,
-                row_count_estimate: row_count,
-                indexes,
-            });
-        }
-
-        let unique_columns = unique_columns_set.into_iter().collect();
-
-        Ok(DatabaseSchema {
-            tables,
-            schemas: vec![],
-            unique_columns,
-        }) as Result<_, Error>
+        introspect(&conn)
     })
     .await?
+}
+
+fn introspect(conn: &Connection) -> Result<DatabaseSchema, Error> {
+    let mut tables_stmt = conn.prepare(CollapsedQueries::TABLES)?;
+    let raw_tables: Vec<RawTable> = tables_stmt
+        .query_map([], |row| {
+            Ok(RawTable {
+                name: row.get(0)?,
+                create_sql: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut columns_stmt = conn.prepare(CollapsedQueries::COLUMNS)?;
+    let raw_columns: Vec<RawColumn> = columns_stmt
+        .query_map([], |row| {
+            Ok(RawColumn {
+                table: row.get(0)?,
+                name: row.get(1)?,
+                data_type: row.get(2)?,
+                not_null: row.get::<_, i32>(3)? != 0,
+                default_value: row.get(4)?,
+                is_primary_key: row.get::<_, i32>(5)? > 0,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut fk_stmt = conn.prepare(CollapsedQueries::FOREIGN_KEYS)?;
+    let raw_foreign_keys: Vec<RawForeignKey> = fk_stmt
+        .query_map([], |row| {
+            Ok(RawForeignKey {
+                table: row.get(0)?,
+                referenced_table: row.get(1)?,
+                from_column: row.get(2)?,
+                referenced_column: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut index_stmt = conn.prepare(CollapsedQueries::INDEXES)?;
+    let raw_index_columns: Vec<RawIndexColumn> = index_stmt
+        .query_map([], |row| {
+            Ok(RawIndexColumn {
+                table: row.get(0)?,
+                index: row.get(1)?,
+                is_unique: row.get::<_, i32>(2)? != 0,
+                column: row.get(3)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(assemble(
+        raw_tables,
+        raw_columns,
+        raw_foreign_keys,
+        raw_index_columns,
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory sqlite");
+        conn.execute_batch(
+            "CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL DEFAULT 'x@y.z',
+                nickname TEXT
+            );
+            CREATE UNIQUE INDEX users_email ON users (email);
+            CREATE TABLE posts (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                title TEXT
+            );
+            CREATE INDEX posts_user_title ON posts (user_id, title);
+            INSERT INTO users (email) VALUES ('a@b.c');",
+        )
+        .expect("fixture schema");
+        conn
+    }
+
+    #[test]
+    fn introspects_fixture_in_constant_queries() {
+        let conn = fixture();
+        let schema = introspect(&conn).expect("introspection");
+
+        assert_eq!(schema.tables.len(), 2);
+        let users = schema.tables.iter().find(|t| t.name == "users").unwrap();
+        assert_eq!(users.primary_key_columns, vec!["id"]);
+        assert!(users.columns[0].is_auto_increment);
+        let email = users.columns.iter().find(|c| c.name == "email").unwrap();
+        assert!(!email.is_nullable);
+        assert_eq!(email.default_value.as_deref(), Some("'x@y.z'"));
+        let email_index = users
+            .indexes
+            .iter()
+            .find(|i| i.name == "users_email")
+            .unwrap();
+        assert!(email_index.is_unique);
+        assert_eq!(email_index.column_names, vec!["email"]);
+
+        let posts = schema.tables.iter().find(|t| t.name == "posts").unwrap();
+        let user_id = posts.columns.iter().find(|c| c.name == "user_id").unwrap();
+        let fk = user_id.foreign_key.as_ref().expect("fk detected");
+        assert_eq!(fk.referenced_table, "users");
+        assert_eq!(fk.referenced_column, "id");
+        let composite = posts
+            .indexes
+            .iter()
+            .find(|i| i.name == "posts_user_title")
+            .unwrap();
+        assert_eq!(composite.column_names, vec!["user_id", "title"]);
+
+        // Counts are deferred to the background refresher.
+        assert!(schema.tables.iter().all(|t| t.row_count_estimate.is_none()));
+    }
+
+    #[test]
+    fn empty_database_yields_empty_schema() {
+        let conn = Connection::open_in_memory().expect("in-memory sqlite");
+        let schema = introspect(&conn).expect("introspection");
+        assert!(schema.tables.is_empty());
+        assert!(schema.unique_columns.is_empty());
+    }
+
+    #[test]
+    fn weird_table_names_survive() {
+        let conn = Connection::open_in_memory().expect("in-memory sqlite");
+        conn.execute_batch("CREATE TABLE \"we ird\" (id INTEGER PRIMARY KEY, note TEXT);")
+            .expect("weird table");
+        let schema = introspect(&conn).expect("introspection");
+        assert_eq!(schema.tables[0].name, "we ird");
+        assert_eq!(schema.tables[0].columns.len(), 2);
+    }
 }

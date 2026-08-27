@@ -35,14 +35,15 @@ export function DatabaseStudioNoConnection({ onAddConnection }: NoConnectionProp
 
 type ConnectionLoadingProps = {
 	connectionName?: string
+	phase?: 'connecting' | 'introspecting' | null
 }
 
-export function DatabaseStudioConnectionLoading({ connectionName }: ConnectionLoadingProps) {
+export function DatabaseStudioConnectionLoading({ connectionName, phase }: ConnectionLoadingProps) {
 	return (
 		<div className='flex flex-1 flex-col items-center justify-center p-6 text-center'>
 			<Spinner className='h-8 w-8 text-muted-foreground/70 mb-4' />
 			<h2 className='text-lg font-semibold text-foreground mb-1 tracking-tight'>
-				Connecting…
+				{phase === 'introspecting' ? 'Reading schema…' : 'Connecting…'}
 			</h2>
 			<p className='text-muted-foreground text-sm max-w-sm'>
 				{connectionName

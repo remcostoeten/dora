@@ -24,17 +24,20 @@ pub async fn get_database_schema(
 ) -> Result<DatabaseSchema, Error> {
     let queries = dialect.introspection();
 
-    // Main columns query with primary key detection
-    let rows = client
-        .query(queries.tables_columns, &[])
-        .await
-        .context("Failed to query database schema")?;
-
-    // Query for foreign keys
-    let fk_rows = client
-        .query(queries.foreign_keys, &[])
-        .await
-        .context("Failed to query foreign keys")?;
+    // All five catalog queries are dispatched concurrently: tokio-postgres
+    // pipelines statements on one connection when their futures are polled
+    // together, so a remote database pays roughly one round trip instead of
+    // five. `value_constraints` stays best-effort (restricted catalog access
+    // must not sink the whole introspection), so its error is captured rather
+    // than propagated.
+    let (rows, fk_rows, index_rows, count_rows, constraint_result) = tokio::try_join!(
+        client.query(queries.tables_columns, &[]),
+        client.query(queries.foreign_keys, &[]),
+        client.query(queries.indexes, &[]),
+        client.query(queries.row_counts, &[]),
+        async { Ok(client.query(queries.value_constraints, &[]).await) },
+    )
+    .context("Failed to query database schema")?;
 
     // Build foreign key lookup: (schema, table, column) -> ForeignKeyInfo
     let mut fk_map: HashMap<(String, String, String), ForeignKeyInfo> = HashMap::new();
@@ -55,12 +58,6 @@ pub async fn get_database_schema(
             },
         );
     }
-
-    // Query for indexes
-    let index_rows = client
-        .query(queries.indexes, &[])
-        .await
-        .context("Failed to query indexes")?;
 
     let mut index_map: HashMap<(String, String), Vec<IndexInfo>> = HashMap::new();
     for row in &index_rows {
@@ -104,27 +101,24 @@ pub async fn get_database_schema(
             .push(index_info);
     }
 
-    // Query for row count estimates (fast; vanilla uses pg_stat_user_tables,
-    // CockroachDB uses crdb_internal.table_row_statistics — see PgIntrospection).
-    let count_rows = client
-        .query(queries.row_counts, &[])
-        .await
-        .context("Failed to query row counts")?;
-
-    // Build row count lookup
+    // Build row count lookup. A negative estimate (`reltuples = -1`, never
+    // analyzed) means "unknown": leave the table out so it surfaces as `None`
+    // and the background exact count fills it in.
     let mut count_map: HashMap<(String, String), u64> = HashMap::new();
     for row in &count_rows {
         let schema: &str = row.get(0);
         let table: &str = row.get(1);
         let count: i64 = row.get(2);
-        count_map.insert((schema.to_owned(), table.to_owned()), count as u64);
+        if count >= 0 {
+            count_map.insert((schema.to_owned(), table.to_owned()), count as u64);
+        }
     }
 
     // Query for closed value sets (enum labels + single-column CHECK lists).
     // Best-effort: a failure here (e.g. restricted catalog access) must not sink
     // the whole introspection, so we log and continue with an empty map.
     let mut allowed_map: HashMap<(String, String, String), Vec<String>> = HashMap::new();
-    match client.query(queries.value_constraints, &[]).await {
+    match constraint_result {
         Ok(constraint_rows) => {
             for row in &constraint_rows {
                 let schema: &str = row.get(0);
@@ -231,26 +225,6 @@ pub async fn get_database_schema(
         });
     }
 
-    let mut pending_counts: Vec<&mut TableInfo> = tables_map
-        .values_mut()
-        .filter(|table| table.row_count_estimate.unwrap_or(0) == 0)
-        .collect();
-
-    if !pending_counts.is_empty() {
-        match exact_row_counts(client, &pending_counts).await {
-            Ok(counts) => {
-                for (table, count) in pending_counts.iter_mut().zip(counts) {
-                    if let Some(count) = count {
-                        table.row_count_estimate = Some(count);
-                    }
-                }
-            }
-            Err(err) => {
-                log::debug!("Failed to get exact row counts: {}", err);
-            }
-        }
-    }
-
     let tables = tables_map.into_values().collect();
     let schemas = schemas_set.into_iter().map(ToOwned::to_owned).collect();
     let unique_columns = unique_columns_set
@@ -264,93 +238,6 @@ pub async fn get_database_schema(
         unique_columns,
     })
 }
-
-/// Batch size for the UNION ALL count query. Keeps a single statement from
-/// growing unbounded on schemas with hundreds of never-analyzed tables.
-const ROW_COUNT_BATCH_SIZE: usize = 50;
-
-/// Exact `COUNT(*)` for every table, batched into as few round-trips as
-/// possible. Issuing one query per table serializes a network RTT per table,
-/// which costs seconds against a remote database (Neon, Supabase, RDS).
-/// Returns counts positionally, `None` where the count could not be read.
-async fn exact_row_counts(
-    client: &Client,
-    tables: &[&mut TableInfo],
-) -> Result<Vec<Option<u64>>, Error> {
-    let mut counts: Vec<Option<u64>> = Vec::with_capacity(tables.len());
-
-    for batch in tables.chunks(ROW_COUNT_BATCH_SIZE) {
-        let selects: Vec<String> = batch
-            .iter()
-            .enumerate()
-            .map(|(index, table)| {
-                format!(
-                    "SELECT {} AS idx, COUNT(*)::text AS count FROM {}.{}",
-                    index,
-                    quote_identifier(&table.schema),
-                    quote_identifier(&table.name)
-                )
-            })
-            .collect();
-
-        let query = selects.join(" UNION ALL ");
-        let messages = match client.simple_query(&query).await {
-            Ok(messages) => messages,
-            // One unreadable relation fails the whole batch, so fall back to
-            // counting this batch table-by-table and keep what we can get.
-            Err(err) => {
-                log::debug!("Batched row count failed, falling back per table: {}", err);
-                for table in batch {
-                    counts.push(exact_row_count(client, &table.schema, &table.name).await.ok());
-                }
-                continue;
-            }
-        };
-
-        let mut batch_counts: Vec<Option<u64>> = vec![None; batch.len()];
-        for message in messages {
-            if let tokio_postgres::SimpleQueryMessage::Row(row) = message {
-                let index = match row.try_get("idx")?.and_then(|v| v.parse::<usize>().ok()) {
-                    Some(index) if index < batch_counts.len() => index,
-                    _ => continue,
-                };
-                batch_counts[index] = row.try_get("count")?.and_then(|v| v.parse::<u64>().ok());
-            }
-        }
-
-        counts.extend(batch_counts);
-    }
-
-    Ok(counts)
-}
-
-async fn exact_row_count(client: &Client, schema: &str, table: &str) -> Result<u64, Error> {
-    let query = format!(
-        "SELECT COUNT(*)::text AS count FROM {}.{}",
-        quote_identifier(schema),
-        quote_identifier(table)
-    );
-
-    let rows = client
-        .simple_query(&query)
-        .await
-        .context("Failed to query exact row count")?;
-
-    for message in rows {
-        if let tokio_postgres::SimpleQueryMessage::Row(row) = message {
-            let count = row
-                .try_get("count")?
-                .unwrap_or("0")
-                .parse::<u64>()
-                .context("Failed to parse exact row count")?;
-            return Ok(count);
-        }
-    }
-
-    Ok(0)
-}
-
-use crate::database::ident::quote_ansi as quote_identifier;
 
 /// Extract the allowed-value list from a single-column `CHECK` constraint
 /// definition as returned by `pg_get_constraintdef`.
@@ -512,8 +399,11 @@ mod tests {
         assert_eq!(v.tables_columns, c.tables_columns);
         assert_eq!(v.foreign_keys, c.foreign_keys);
         assert_eq!(v.indexes, c.indexes);
-        // Only row counts diverge.
+        // Only row counts diverge: vanilla reads the restart-surviving
+        // pg_class.reltuples, CockroachDB its own statistics table.
         assert_ne!(v.row_counts, c.row_counts);
+        assert!(v.row_counts.contains("reltuples"));
+        assert!(!v.row_counts.contains("pg_stat_user_tables"));
         assert!(c.row_counts.contains("crdb_internal.table_row_statistics"));
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
 	SortDescriptor,
 	FilterDescriptor,
@@ -7,19 +7,18 @@ import type {
 } from '@studio/features/database-studio/types'
 import type { Connection } from '@studio/features/connections/types'
 import type { DatabaseInfo, JsonValue } from '@studio/lib/bindings'
-import {
-	applyConnectResult,
-	dataFileSourcesQueryKey
-} from '@studio/features/database-studio/hooks/use-data-file-sources'
+import { dataFileSourcesQueryKey } from '@studio/features/database-studio/hooks/use-data-file-sources'
 import {
 	dropTableSnapshot,
 	patchTableSnapshotRows,
+	readSchemaEntry,
 	readTableSnapshot,
 	setConnections,
 	setConnectionsError,
 	setConnectionsLoading
 } from '@studio/core/workspace-store'
-import { useAdapter } from './context'
+import { useAdapter, useIsTauri } from './context'
+import { schemaQueryOptions } from './schema-query'
 import { getAdapterError } from './types'
 
 const schemaRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>()
@@ -206,35 +205,72 @@ export function useSchema(connectionId: string | undefined) {
 	)
 
 	return useQuery({
-		queryKey: ['schema', connectionId],
-		queryFn: async function () {
-			if (!connectionId) throw new Error('No connection ID')
-
-			const connectResult = await adapter.connectToDatabase(connectionId)
-			if (!connectResult.ok) {
-				throw new Error(getAdapterError(connectResult))
-			}
-			applyConnectResult(queryClient, connectionId, connectResult.data)
-
-			if (!connectResult.data.connected) {
-				throw new Error('Could not connect to this database')
-			}
-
-			const res = await adapter.getSchema(connectionId)
-			if (!res.ok) throw new Error(getAdapterError(res))
-			return res.data
-		},
+		...schemaQueryOptions(adapter, queryClient, connectionId ?? ''),
 		enabled: !!connectionId,
-		retry: false,
+		// Seed from the workspace-store mirror: a bootstrap entry carries
+		// `fetchedAt: 0`, so the sidebar paints synchronously after a webview
+		// reload while react-query still refetches in the background; an
+		// in-session mirror carries a real timestamp and skips the refetch
+		// within staleTime.
+		initialData: function () {
+			return connectionId ? readSchemaEntry(connectionId)?.schema : undefined
+		},
+		initialDataUpdatedAt: function () {
+			return connectionId ? readSchemaEntry(connectionId)?.fetchedAt : undefined
+		},
 		// Schema freshness is driven explicitly by `dora-schema-refresh` events
 		// (DDL, imports, data mutations), so we don't auto-refetch on focus or
 		// reconnect. Without this, closing a focus-trapping modal like the
 		// connection dialog re-runs connect + getSchema and reloads everything,
 		// even when nothing was edited.
-		staleTime: 5 * 60 * 1000,
 		refetchOnWindowFocus: false,
 		refetchOnReconnect: false
 	})
+}
+
+/**
+ * Invalidates the schema query when the backend's background exact-count task
+ * patches its cached schema. Mounted exactly once (workspace startup); the
+ * refetch this triggers hits the already-patched backend cache, so it is one
+ * cheap IPC, not a re-introspection. Deliberately not a `dora-schema-refresh`
+ * dispatch — that event's other listeners treat it as "structure changed".
+ */
+export function useSchemaRowCountListener() {
+	const isTauri = useIsTauri()
+	const queryClient = useQueryClient()
+
+	useEffect(
+		function listenForRowCountUpdates() {
+			if (!isTauri) return
+			let disposed = false
+			let unlisten: (() => void) | undefined
+
+			void import('@tauri-apps/api/event')
+				.then(function ({ listen }) {
+					return listen<{ connectionId: string }>(
+						'schema-row-counts-updated',
+						function (event) {
+							void queryClient.invalidateQueries({
+								queryKey: ['schema', event.payload.connectionId]
+							})
+						}
+					)
+				})
+				.then(function (cleanup) {
+					if (disposed) cleanup()
+					else unlisten = cleanup
+				})
+				.catch(function (error) {
+					console.warn('Failed to listen for row count updates:', error)
+				})
+
+			return function cleanup() {
+				disposed = true
+				unlisten?.()
+			}
+		},
+		[isTauri, queryClient]
+	)
 }
 
 export function useExecuteQuery() {
