@@ -152,6 +152,7 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::ai_set_config,
         db_commands::ai_get_status,
         db_commands::ai_list_provider_models,
+        db_commands::ai_resolve_provider_model,
         db_commands::ai_get_usage_summary,
         db_commands::ai_set_gemini_key,
         db_commands::ai_configure_ollama,

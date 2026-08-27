@@ -34,6 +34,16 @@ function formatProvider(provider: string): string {
 			return 'Groq'
 		case 'gemini':
 			return 'Gemini'
+		case 'deepseek':
+			return 'DeepSeek'
+		case 'kimi':
+			return 'Kimi'
+		case 'glm':
+			return 'GLM'
+		case 'qwen':
+			return 'Qwen'
+		case 'openrouter':
+			return 'OpenRouter'
 		case 'ollama':
 			return 'Ollama'
 		default:

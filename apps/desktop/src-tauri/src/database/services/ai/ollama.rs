@@ -458,7 +458,12 @@ impl OllamaClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(super::errors::http_error("Ollama", &self.model, status, &body));
+            return Err(super::errors::http_error(
+                "Ollama",
+                &self.model,
+                status,
+                &body,
+            ));
         }
 
         let parsed: OllamaChatResponse = response.json().await.map_err(|error| {
@@ -500,7 +505,12 @@ impl OllamaClient {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(super::errors::http_error("Ollama", &self.model, status, &body));
+            return Err(super::errors::http_error(
+                "Ollama",
+                &self.model,
+                status,
+                &body,
+            ));
         }
 
         let mut stream = response.bytes_stream();
@@ -554,5 +564,21 @@ impl OllamaClient {
 
     pub fn with_endpoint(endpoint: String) -> Self {
         Self::new(Self::normalize_endpoint(&endpoint), String::new())
+    }
+}
+
+#[async_trait::async_trait]
+impl super::client::AiClient for OllamaClient {
+    async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
+        OllamaClient::complete(self, request).await
+    }
+
+    async fn complete_stream(
+        &self,
+        request: AIRequest,
+        sender: UnboundedSender<AiStreamEvent>,
+        cancel: Arc<AtomicBool>,
+    ) -> Result<(), Error> {
+        OllamaClient::complete_stream(self, request, sender, cancel).await
     }
 }

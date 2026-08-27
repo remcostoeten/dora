@@ -45,12 +45,7 @@ pub fn http_error_message(
 }
 
 /// Build a friendly message for an HTTP error as an [`Error`].
-pub fn http_error(
-    provider: &str,
-    model: &str,
-    status: reqwest::StatusCode,
-    body: &str,
-) -> Error {
+pub fn http_error(provider: &str, model: &str, status: reqwest::StatusCode, body: &str) -> Error {
     Error::Any(anyhow::anyhow!(http_error_message(
         provider, model, status, body
     )))

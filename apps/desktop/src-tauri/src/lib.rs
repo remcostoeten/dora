@@ -308,6 +308,7 @@ pub fn run() {
             database::commands::ai_set_config,
             database::commands::ai_get_status,
             database::commands::ai_list_provider_models,
+            database::commands::ai_resolve_provider_model,
             database::commands::ai_get_usage_summary,
             database::commands::ai_set_gemini_key,
             database::commands::ai_configure_ollama,

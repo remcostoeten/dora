@@ -138,6 +138,36 @@ fn pricing_for_model(model: &str) -> ModelPricing {
             output_per_million: 0.2,
         };
     }
+    if lower.contains("deepseek") {
+        return ModelPricing {
+            input_per_million: 0.3,
+            output_per_million: 1.1,
+        };
+    }
+    if lower.contains("kimi") || lower.contains("moonshot") {
+        return ModelPricing {
+            input_per_million: 0.6,
+            output_per_million: 2.5,
+        };
+    }
+    if lower.contains("glm-5.3-flash") {
+        return ModelPricing {
+            input_per_million: 0.15,
+            output_per_million: 0.6,
+        };
+    }
+    if lower.contains("glm") {
+        return ModelPricing {
+            input_per_million: 0.6,
+            output_per_million: 2.2,
+        };
+    }
+    if lower.contains("qwen") {
+        return ModelPricing {
+            input_per_million: 0.4,
+            output_per_million: 1.2,
+        };
+    }
 
     ModelPricing {
         input_per_million: 1.0,

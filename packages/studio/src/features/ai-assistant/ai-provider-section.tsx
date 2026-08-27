@@ -17,6 +17,7 @@ import {
 import { cn } from '@studio/shared/utils/cn'
 import { buildMockAiStatus, buildMockProviderModels } from './mock-ai'
 import { ModelIdInput } from './components/model-id-input'
+import { KEYLESS_PROVIDERS, publishAiSelection } from './ai-selection-store'
 
 const CUSTOM_MODEL_VALUE = '__custom__'
 
@@ -25,6 +26,11 @@ const PROVIDER_OPTIONS = [
 	{ id: 'openai', label: 'OpenAI', defaultModel: 'gpt-5.5' },
 	{ id: 'anthropic', label: 'Anthropic', defaultModel: 'claude-sonnet-4-6' },
 	{ id: 'gemini', label: 'Gemini', defaultModel: 'gemini-2.5-flash' },
+	{ id: 'deepseek', label: 'DeepSeek', defaultModel: 'deepseek-chat' },
+	{ id: 'kimi', label: 'Kimi (Moonshot)', defaultModel: 'kimi-latest' },
+	{ id: 'glm', label: 'GLM (Z.ai)', defaultModel: 'glm-5.3-flash' },
+	{ id: 'qwen', label: 'Qwen (DashScope)', defaultModel: 'qwen-plus' },
+	{ id: 'openrouter', label: 'OpenRouter', defaultModel: 'openrouter/auto' },
 	{ id: 'ollama', label: 'Ollama (local)', defaultModel: 'llama3.2' },
 	{ id: 'mock', label: 'Mock (web demo)', defaultModel: 'demo-assistant' }
 ] as const
@@ -44,6 +50,16 @@ const DEFAULT_CONFIG: AiServiceConfig = {
 	provider: 'groq',
 	model: 'llama-3.3-70b-versatile',
 	ollama_endpoint: 'http://127.0.0.1:11434'
+}
+
+function providerHint(provider: string): string {
+	if (provider === 'ollama') {
+		return 'Runs on this machine. No API key needed — manage the runtime and installed models under Local models below.'
+	}
+	if (provider === 'mock') {
+		return 'Canned responses for the browser demo. Nothing leaves your machine.'
+	}
+	return 'Cloud provider — requests are sent to the provider and need an API key. Add one under AI Keys below.'
 }
 
 function groupModels(options: AiModelOption[]) {
@@ -125,6 +141,10 @@ export function AiProviderSection() {
 					model: mock.active_model,
 					ollama_endpoint: DEFAULT_CONFIG.ollama_endpoint
 				})
+				publishAiSelection({
+					provider: mock.active_provider,
+					ollamaEndpoint: DEFAULT_CONFIG.ollama_endpoint
+				})
 				setModelOptions(buildMockProviderModels(mock.active_provider))
 				return
 			}
@@ -132,6 +152,10 @@ export function AiProviderSection() {
 			const result = await commands.aiGetConfig()
 			if (result.status === 'ok') {
 				setConfig(result.data)
+				publishAiSelection({
+					provider: result.data.provider,
+					ollamaEndpoint: result.data.ollama_endpoint || DEFAULT_CONFIG.ollama_endpoint
+				})
 				await loadModels(result.data.provider)
 			}
 		} finally {
@@ -178,7 +202,15 @@ export function AiProviderSection() {
 				model: option?.defaultModel ?? current.model
 			}
 		})
+		publishAiSelection({ provider })
 		void loadModels(provider)
+		if (!isTauri || provider === 'mock') return
+		void commands.aiResolveProviderModel(provider).then((result) => {
+			if (result.status !== 'ok' || !result.data) return
+			setConfig((current) =>
+				current.provider === provider ? { ...current, model: result.data } : current
+			)
+		})
 	}
 
 	async function refreshModels() {
@@ -223,6 +255,17 @@ export function AiProviderSection() {
 							</SelectContent>
 						</Select>
 					</label>
+
+					<p
+						className={cn(
+							'text-[10px] leading-snug',
+							KEYLESS_PROVIDERS.has(config.provider)
+								? 'text-emerald-500/80'
+								: 'text-muted-foreground'
+						)}
+					>
+						{providerHint(config.provider)}
+					</p>
 
 					<div className='space-y-1'>
 						<div className='flex items-center justify-between gap-2'>
@@ -334,6 +377,10 @@ export function AiProviderSection() {
 								placeholder='http://127.0.0.1:11434'
 								className='h-8 font-mono text-xs'
 							/>
+							<span className='block text-[10px] text-muted-foreground'>
+								Where Dora reaches the Ollama server. Leave this alone unless you run
+								Ollama on another host or port.
+							</span>
 						</label>
 					)}
 
