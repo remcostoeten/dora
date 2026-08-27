@@ -11,7 +11,7 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.40.0"
+export const CURRENT_VERSION = "0.41.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
 	{
@@ -188,6 +188,22 @@ export const CHANGELOG: ChangelogEntry[] = [
 			"chore(aur): update dora to 0.39.0",
 			"chore: polish repository docs and promo captures (#226) (#226)",
 			"chore(agents): consolidate skills under .agents/skills as the single root",
+		]
+	},
+	{
+		version: "0.41.0",
+		date: "2026-08-27",
+		commit: "v0.41.0",
+		title: "Fix(grid): commit the snapshot paint before issuing the refresh fetch (#238) (#238)",
+		description: "Fix(grid): commit the snapshot paint before issuing the refresh fetch (#238) (#238). Refactor(ai): unify providers behind an AiClient trait with per-provider model memory (#236) (#236).",
+		type: "fix",
+		details: [
+			"fix(grid): commit the snapshot paint before issuing the refresh fetch (#238) (#238)",
+			"fix(studio): self-host Inter and JetBrains Mono and rework the view loading shell (#239) (#239)",
+			"refactor(ai): unify providers behind an AiClient trait with per-provider model memory (#236) (#236)",
+			"perf: overhaul the connection-open path on every engine (#237) (#237)",
+			"docs(release): curated notes for v0.41.0",
+			"chore(aur): update dora to 0.40.0",
 		]
 	},
 	{

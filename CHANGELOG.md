@@ -291,6 +291,39 @@ All notable changes to this project will be documented in this file.
 
 - perf: performance contract, keep-alive views, normalized workspace store and windowed results (Tracks 0-3) (#230) (#230)
 
+
+## [v0.41.0] - 2026-08-27
+
+### Bug Fixes
+
+- fix(grid): commit the snapshot paint before issuing the refresh fetch (#238) (#238)
+
+- fix(studio): self-host Inter and JetBrains Mono and rework the view loading shell (#239) (#239)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.40.0
+
+
+
+### Documentation
+
+- docs(release): curated notes for v0.41.0
+
+
+
+### Performance
+
+- perf: overhaul the connection-open path on every engine (#237) (#237)
+
+
+
+### Refactoring
+
+- refactor(ai): unify providers behind an AiClient trait with per-provider model memory (#236) (#236)
+
 ## [Unreleased]
 
 ## [v0.30.3] - 2026-06-29

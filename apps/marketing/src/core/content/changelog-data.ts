@@ -13,7 +13,7 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.40.0"
+export const CURRENT_VERSION = "0.41.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
@@ -352,6 +352,44 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				name: "Performance",
 				items: [
 				"perf: performance contract, keep-alive views, normalized workspace store and windowed results (Tracks 0-3) (#230) (#230)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.41.0",
+		date: "2026-08-27",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.41.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(grid): commit the snapshot paint before issuing the refresh fetch (#238) (#238)",
+				"fix(studio): self-host Inter and JetBrains Mono and rework the view loading shell (#239) (#239)",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.40.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(release): curated notes for v0.41.0",
+				]
+			},
+			{
+				name: "Performance",
+				items: [
+				"perf: overhaul the connection-open path on every engine (#237) (#237)",
+				]
+			},
+			{
+				name: "Refactoring",
+				items: [
+				"refactor(ai): unify providers behind an AiClient trait with per-provider model memory (#236) (#236)",
 				]
 			}
 		]
