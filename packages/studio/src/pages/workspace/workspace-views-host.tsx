@@ -101,7 +101,8 @@ export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 					view={
 						activeNavId === 'sql-console' ||
 						activeNavId === 'schema-visualizer' ||
-						activeNavId === 'docker'
+						activeNavId === 'docker' ||
+						activeNavId === 'orm-cockpit'
 							? activeNavId
 							: 'database-studio'
 					}

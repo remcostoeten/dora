@@ -1,10 +1,10 @@
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
-@import '@fontsource/jetbrains-mono/400.css';
-@import '@fontsource/jetbrains-mono/500.css';
-@import '@fontsource/jetbrains-mono/600.css';
-
+/*
+ * Font CSS is imported from JS entry points (apps/desktop/src/main.tsx,
+ * apps/marketing app/page.tsx), not here: Tailwind v4's postcss inlines any
+ * @import into this file without rebasing url(./files/…), so the woff2 assets
+ * are never emitted and every font request 404s — which wedges the boot
+ * screen's document.fonts.load() on WebKitGTK.
+ */
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
