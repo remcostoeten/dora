@@ -35,6 +35,7 @@ import {
 	DropdownMenuTrigger
 } from '@studio/shared/ui/dropdown-menu'
 import { EmptyState } from '@studio/shared/ui/empty-state'
+import { SchemaDiffBodySkeleton } from '@studio/shared/ui/view-loading-shell'
 import { CockpitEmptySkeleton } from './cockpit-empty-skeleton'
 import { cn } from '@studio/shared/utils/cn'
 import { useConnections } from '@studio/core/data-provider'
@@ -369,16 +370,7 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 		}
 
 		if (busy && !cockpit.diff) {
-			return (
-				<div className='flex h-full flex-col items-center justify-center gap-3 text-muted-foreground'>
-					<Spinner className='h-6 w-6' />
-					<span className='text-sm'>
-						{cockpit.phase === 'linking'
-							? 'Detecting project…'
-							: 'Comparing your code to the database…'}
-					</span>
-				</div>
-			)
+			return <SchemaDiffBodySkeleton />
 		}
 
 		if (cockpit.phase === 'choice' && cockpit.choices) {

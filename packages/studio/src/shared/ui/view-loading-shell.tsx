@@ -1,9 +1,26 @@
 import type { ReactNode } from 'react'
-import { Database, Network, PanelLeft, Search, SquareTerminal, Table2 } from 'lucide-react'
+import {
+	ArrowLeftRight,
+	ChevronRight,
+	Database,
+	GitCompareArrows,
+	ListChecks,
+	Network,
+	PanelLeft,
+	Search,
+	SquareTerminal,
+	Table2,
+	Wand2
+} from 'lucide-react'
 import { Skeleton, TableSkeleton } from '@studio/shared/ui/skeleton'
 import { cn } from '@studio/shared/utils/cn'
 
-type ViewId = 'database-studio' | 'sql-console' | 'schema-visualizer' | 'docker'
+type ViewId =
+	| 'database-studio'
+	| 'sql-console'
+	| 'schema-visualizer'
+	| 'docker'
+	| 'orm-cockpit'
 
 function LoadingFrame({
 	children,
@@ -324,9 +341,165 @@ export function DockerLoadingShell() {
 	)
 }
 
+/** One collapsed table card in the drift list — mirrors `TableCard` in drift-view. */
+function DriftTableCardSkeleton({ nameWidth }: { nameWidth: string }) {
+	return (
+		<div className='overflow-hidden rounded-md border border-border/60 bg-card/40'>
+			<div className='flex w-full items-center gap-2 px-3 py-2'>
+				<ChevronRight className='h-4 w-4 shrink-0 text-muted-foreground/40' />
+				<Skeleton className='h-3.5 w-3.5 rounded-sm' />
+				<Skeleton className={cn('h-4', nameWidth)} />
+				<Skeleton className='h-3 w-20' />
+				<Skeleton className='ml-auto h-5 w-14 rounded-full' />
+			</div>
+		</div>
+	)
+}
+
+/** A labelled group of table diffs — mirrors `DriftGroup` in drift-view. */
+function DriftGroupSkeleton({
+	titleWidth,
+	hintWidth,
+	cardWidths
+}: {
+	titleWidth: string
+	hintWidth: string
+	cardWidths: string[]
+}) {
+	return (
+		<div className='space-y-2'>
+			<div className='flex items-baseline gap-2'>
+				<Skeleton className={cn('h-3.5', titleWidth)} />
+				<Skeleton className={cn('h-3', hintWidth)} />
+				<Skeleton className='ml-auto h-3 w-4' />
+			</div>
+			<div className='space-y-2'>
+				{cardWidths.map(function (width, index) {
+					return <DriftTableCardSkeleton key={index} nameWidth={width} />
+				})}
+			</div>
+		</div>
+	)
+}
+
+/**
+ * The Differences tab body while the code schema is parsed, the live schema is
+ * introspected and the two are diffed. Deliberately 1:1 with the split the panel
+ * renders on `ready` — same two resizable halves, same left toolbar, same drift
+ * list — so nothing shifts when the real diff lands. Shown for exactly as long
+ * as the work takes; nothing here is on a timer.
+ */
+export function SchemaDiffBodySkeleton() {
+	return (
+		<div className='flex h-full min-h-0 flex-1' aria-hidden='true'>
+			<div className='flex min-w-0 flex-1 flex-col'>
+				<div className='flex items-center justify-between border-b border-border/60 px-3 py-2'>
+					<Skeleton className='h-3.5 w-28' />
+					<Skeleton className='h-7 w-40 rounded-md' />
+				</div>
+				<div className='min-h-0 flex-1 overflow-hidden p-3'>
+					<div className='space-y-4'>
+						<div className='flex items-center gap-2'>
+							<Skeleton className='h-3.5 w-28' />
+						</div>
+						<DriftGroupSkeleton
+							titleWidth='w-56'
+							hintWidth='w-44'
+							cardWidths={['w-28', 'w-20', 'w-32']}
+						/>
+						<DriftGroupSkeleton
+							titleWidth='w-48'
+							hintWidth='w-40'
+							cardWidths={['w-24']}
+						/>
+					</div>
+				</div>
+			</div>
+			<div className='w-1 shrink-0 bg-sidebar-border' />
+			<div className='flex min-w-0 flex-1 flex-col items-center justify-center p-8 text-center'>
+				<div className='mb-4 text-muted-foreground opacity-50'>
+					<Wand2 className='h-8 w-8' />
+				</div>
+				<Skeleton className='h-5 w-52' />
+				<Skeleton className='mt-2 h-3.5 w-72' />
+			</div>
+		</div>
+	)
+}
+
+/** The Migrations tab body while the journal and the applied set are read. */
+export function SchemaDiffMigrationsSkeleton() {
+	return (
+		<div className='flex h-full flex-col' aria-hidden='true'>
+			<div className='flex items-center gap-3 border-b border-border/60 px-3 py-2'>
+				<Skeleton className='h-3.5 w-20' />
+				<Skeleton className='h-3.5 w-20' />
+				<Skeleton className='ml-auto h-3.5 w-14' />
+			</div>
+			<div className='min-h-0 flex-1 overflow-hidden'>
+				{['w-48', 'w-56', 'w-40', 'w-52', 'w-44', 'w-36'].map(function (width, index) {
+					return (
+						<div
+							key={index}
+							className='flex items-center gap-2 border-b border-border/40 px-3 py-2'
+						>
+							<Skeleton className='h-3.5 w-3.5 rounded-full' />
+							<Skeleton className={cn('h-4', width)} />
+							<Skeleton className='ml-auto h-3 w-16' />
+						</div>
+					)
+				})}
+			</div>
+		</div>
+	)
+}
+
+/**
+ * Suspense fallback for the lazily-loaded Schema Diff view. Reproduces the
+ * panel's own chrome (header, tab bar) so the chunk landing is invisible.
+ */
+export function SchemaDiffLoadingShell() {
+	return (
+		<LoadingFrame>
+			<div className='flex h-10 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-2'>
+				<div className='flex items-center gap-2 px-2'>
+					<GitCompareArrows className='h-4 w-4 text-muted-foreground' />
+					<Skeleton className='h-4 w-24' />
+				</div>
+				<div className='flex items-center gap-1'>
+					<Skeleton className='h-7 w-36 rounded-md' />
+					<Skeleton className='h-7 w-28 rounded-md' />
+				</div>
+			</div>
+
+			<div className='flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-1'>
+				<div className='flex items-center gap-1.5 rounded px-2.5 py-1'>
+					<GitCompareArrows className='h-3.5 w-3.5 text-muted-foreground/50' />
+					<Skeleton className='h-3 w-16' />
+				</div>
+				<div className='flex items-center gap-1.5 rounded px-2.5 py-1'>
+					<ListChecks className='h-3.5 w-3.5 text-muted-foreground/50' />
+					<Skeleton className='h-3 w-16' />
+				</div>
+				<div className='flex items-center gap-1.5 rounded px-2.5 py-1'>
+					<ArrowLeftRight className='h-3.5 w-3.5 text-muted-foreground/50' />
+					<Skeleton className='h-3 w-14' />
+				</div>
+			</div>
+
+			<div className='min-h-0 flex-1'>
+				<SchemaDiffBodySkeleton />
+			</div>
+		</LoadingFrame>
+	)
+}
+
 export function ViewLoadingShell({ view }: { view: ViewId }) {
 	if (view === 'sql-console') {
 		return <SqlConsoleLoadingShell />
+	}
+	if (view === 'orm-cockpit') {
+		return <SchemaDiffLoadingShell />
 	}
 	if (view === 'schema-visualizer') {
 		return <SchemaVisualizerLoadingShell />

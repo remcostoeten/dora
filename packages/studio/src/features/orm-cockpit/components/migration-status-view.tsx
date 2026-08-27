@@ -5,19 +5,14 @@
  */
 
 import { CheckCircle2, Clock, Info } from 'lucide-react'
-import { Spinner } from '@studio/shared/ui/spinner'
 import { cn } from '@studio/shared/utils/cn'
 import { EmptyState } from '@studio/shared/ui/empty-state'
+import { SchemaDiffMigrationsSkeleton } from '@studio/shared/ui/view-loading-shell'
 import type { MigrationStatusState } from '@studio/features/orm-cockpit/components/use-migration-status'
 
 export function MigrationStatusView({ state }: { state: MigrationStatusState }) {
 	if (state.loading && !state.status) {
-		return (
-			<div className='flex h-full items-center justify-center gap-2 text-muted-foreground'>
-				<Spinner className='h-5 w-5' />
-				<span className='text-sm'>Reading migrations…</span>
-			</div>
-		)
+		return <SchemaDiffMigrationsSkeleton />
 	}
 
 	if (!state.status) {
