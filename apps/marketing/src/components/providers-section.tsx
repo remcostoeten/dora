@@ -11,8 +11,6 @@ import {
 } from '@/components/provider-logo'
 import { ProviderInfoPopover } from '@/components/provider-info-popover'
 
-import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
-
 /* -------------------------------------------------------------------------- */
 
 type TProvider = {
@@ -100,13 +98,7 @@ const STAGGER_MS = 52
 const PANEL_GRID =
     'grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] sm:grid-cols-[5.5rem_repeat(7,minmax(0,1fr))]'
 
-function ConnectionStringMarquee({
-    activeId,
-    reducedMotion
-}: {
-    activeId: string
-    reducedMotion: boolean
-}) {
+function ConnectionStringMarquee({ activeId }: { activeId: string }) {
     const active = PROVIDERS.find((p) => p.id === activeId) ?? PROVIDERS[0]
     const [displayed, setDisplayed] = useState(PROVIDERS[0].connectionString)
     const [typedLen, setTypedLen] = useState(
@@ -119,10 +111,6 @@ function ConnectionStringMarquee({
         prevIdRef.current = active.id
         const str = active.connectionString
         setDisplayed(str)
-        if (reducedMotion) {
-            setTypedLen(str.length)
-            return
-        }
         setTypedLen(0)
         let i = 0
         const id = setInterval(() => {
@@ -131,7 +119,7 @@ function ConnectionStringMarquee({
             if (i >= str.length) clearInterval(id)
         }, 18)
         return () => clearInterval(id)
-    }, [active, reducedMotion])
+    }, [active])
 
     const scheme = displayed.split('://')[0]
     const rest = displayed.slice(scheme.length + 3)
@@ -154,7 +142,7 @@ function ConnectionStringMarquee({
                 <span style={{ color: ACCENT }}>{schemeShown}</span>
                 <span className="text-ink-700">{sepShown}</span>
                 <span className="text-ink-400">{restShown}</span>
-                {isTyping && !reducedMotion ? (
+                {isTyping ? (
                     <span
                         className="ml-px inline-block h-3 w-px animate-pulse align-middle"
                         style={{ backgroundColor: ACCENT }}
@@ -176,16 +164,8 @@ export function ProvidersSection() {
     const [canHover, setCanHover] = useState(false)
     const [scrollProgress, setScrollProgress] = useState(0)
     const scrollProgressRef = useRef(0)
-    const reducedMotion = usePrefersReducedMotion()
-    const running = !reducedMotion
 
     useEffect(() => {
-        if (reducedMotion) {
-            scrollProgressRef.current = 1
-            setScrollProgress(1)
-            return
-        }
-
         let raf = 0
 
         // Map the fill to the scroll range that's actually reachable. Filling
@@ -233,7 +213,7 @@ export function ProvidersSection() {
             window.removeEventListener('resize', onScroll)
             if (raf) cancelAnimationFrame(raf)
         }
-    }, [reducedMotion])
+    }, [])
 
     const scrollIndex = Math.min(
         PROVIDERS.length - 1,
@@ -278,13 +258,11 @@ export function ProvidersSection() {
     function revealStyle(delay: number): CSSProperties {
         return {
             opacity: revealed ? 1 : 0,
-            transform: reducedMotion
-                ? 'none'
-                : revealed
-                  ? 'translate3d(0, 0, 0)'
-                  : 'translate3d(0, 12px, 0)',
-            transitionDelay: reducedMotion ? '0ms' : `${delay}ms`,
-            transitionDuration: reducedMotion ? '180ms' : '420ms',
+            transform: revealed
+                ? 'translate3d(0, 0, 0)'
+                : 'translate3d(0, 12px, 0)',
+            transitionDelay: `${delay}ms`,
+            transitionDuration: '420ms',
             transitionProperty: 'opacity, transform',
             transitionTimingFunction: REVEAL_EASE
         }
@@ -334,12 +312,10 @@ export function ProvidersSection() {
                         providers={PROVIDERS}
                         fillProgressRef={scrollProgressRef}
                         fillOverride={fillOverride}
-                        running={running}
                         revealed={revealed}
                         hubDelay={hubDelay}
                         providerStart={providerStart}
                         staggerMs={STAGGER_MS}
-                        reducedMotion={reducedMotion}
                     />
 
                     <div className={PANEL_GRID}>
@@ -351,7 +327,7 @@ export function ProvidersSection() {
                             <CornerTick className="-left-px -bottom-px -translate-x-1/2 translate-y-1/2" />
                             <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2" />
                             <CornerTick className="-right-px -bottom-px translate-x-1/2 translate-y-1/2" />
-                            <HubSphere running={running} />
+                            <HubSphere />
                             <div
                                 ref={hubRef}
                                 aria-hidden
@@ -429,10 +405,7 @@ export function ProvidersSection() {
             />
 
             <div style={revealStyle(marqueeDelay)}>
-                <ConnectionStringMarquee
-                    activeId={activeId}
-                    reducedMotion={reducedMotion}
-                />
+                <ConnectionStringMarquee activeId={activeId} />
             </div>
 
             <div className="border-t border-r border-line px-6 py-8 sm:px-8">

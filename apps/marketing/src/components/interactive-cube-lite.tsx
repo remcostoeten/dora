@@ -144,9 +144,6 @@ export function InteractiveCube({ className = '' }: Props) {
         const canvas: HTMLCanvasElement = canvasElement
         const ctx: CanvasRenderingContext2D = context
 
-        const reducedMotion = window.matchMedia(
-            '(prefers-reduced-motion: reduce)'
-        ).matches
         const foreground = readThemeRgb('--color-foreground', canvas)
         const brand = readThemeRgb('--color-brand-300', canvas)
         const line = readThemeRgb('--color-line-strong', canvas)
@@ -216,7 +213,7 @@ export function InteractiveCube({ className = '' }: Props) {
             const rotation = rotationRef.current
             const pointer = pointerRef.current
 
-            if (!reducedMotion && active) {
+            if (active) {
                 rotation.y += delta * (pointer.active ? 0.55 : 0.24)
                 rotation.x += delta * 0.07
             }
@@ -499,7 +496,7 @@ export function InteractiveCube({ className = '' }: Props) {
                 )
             })
 
-            if (!reducedMotion && active) {
+            if (active) {
                 frameRef.current = requestAnimationFrame(draw)
             }
         }

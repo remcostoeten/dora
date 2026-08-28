@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react'
 
 import { CardAura } from './card-aura'
 import { useGate } from './use-scroll-motion'
-import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 
 /* ---------------------------------------------------------------------------
  * Query switchboard — three input dialects (English, Drizzle, Prisma) wired
@@ -243,8 +242,7 @@ export function QuerySwitchboard({ animate }: { animate: boolean }) {
     const railRef = useRef<HTMLDivElement>(null)
     const caretRef = useRef<HTMLSpanElement>(null)
     const gate = useGate(ref)
-    const reduced = usePrefersReducedMotion()
-    const running = animate && gate.active && !reduced
+    const running = animate && gate.active
 
     const [modeIndex, setModeIndex] = useState(0)
     const [phase, setPhase] = useState<TPhase>('input')
@@ -364,7 +362,7 @@ export function QuerySwitchboard({ animate }: { animate: boolean }) {
         }
     }, [running])
 
-    // At rest (reduced motion, or before the loop starts) the board shows the
+    // At rest (before the loop starts) the board shows the
     // English run finished: prompt written, SQL compiled, rows landed.
     const activeIndex = running ? modeIndex : 0
     const mode = MODES[activeIndex]

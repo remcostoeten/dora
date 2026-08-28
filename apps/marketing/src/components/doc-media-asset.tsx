@@ -1,12 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-
 export type TDocMediaAssetProps = {
     src: string
     /** Defaults to 'video'. Pass 'image' for static screenshots. */
     type?: 'video' | 'image'
-    /** Poster shown while the video loads and when prefers-reduced-motion is set. */
+    /** Poster shown while the video loads. */
     poster?: string
     alt?: string
     caption?: string
@@ -21,31 +19,14 @@ export function DocMediaAsset({
     caption,
     className = ''
 }: TDocMediaAssetProps) {
-    const [reducedMotion, setReducedMotion] = useState(false)
-
-    useEffect(() => {
-        const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-        setReducedMotion(mq.matches)
-        function handler(e: MediaQueryListEvent) {
-            setReducedMotion(e.matches)
-        }
-        mq.addEventListener('change', handler)
-        return () => mq.removeEventListener('change', handler)
-    }, [])
-
-    const showStatic = type === 'image' || reducedMotion
+    const showStatic = type === 'image'
 
     return (
         <figure
             className={`overflow-hidden border border-line bg-background/30 ${className}`}
         >
             {showStatic ? (
-                <img
-                    src={reducedMotion && poster ? poster : src}
-                    alt={alt}
-                    className="w-full"
-                    draggable={false}
-                />
+                <img src={src} alt={alt} className="w-full" draggable={false} />
             ) : (
                 <video
                     src={src}

@@ -18,7 +18,6 @@ import { useEffect, useRef, useState } from 'react'
 
 import { CornerTick } from '@/components/corner-tick'
 import { getFeaturePath, getNavFeatures } from '@/core/config/features'
-import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 
 /**
  * Marketing top bar — recreated from the hex.tech-style Figma design.
@@ -142,10 +141,9 @@ function NavItem({ label, href, chevron }: TNavItem) {
 /**
  * Desktop nav item with an animated dropdown panel. Opens on hover/focus,
  * scales in from the trigger (origin-aware, ease-out ~200ms).
- * Exit is faster than enter. Honors prefers-reduced-motion by dropping
- * the transform offsets and keeping only a quick fade.
+ * Exit is faster than enter.
  */
-function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
+function NavDropdown({ item }: { item: TNavItem }) {
     const menu = item.menu ?? []
     const [open, setOpen] = useState(false)
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -165,9 +163,7 @@ function NavDropdown({ item, reduced }: { item: TNavItem; reduced: boolean }) {
 
     useEffect(() => cancelClose, [])
 
-    const panelClosedTransform = reduced
-        ? 'none'
-        : 'translateY(-6px) scale(0.96)'
+    const panelClosedTransform = 'translateY(-6px) scale(0.96)'
     const ease = 'cubic-bezier(0.23, 1, 0.32, 1)'
 
     return (
@@ -373,12 +369,11 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
 export function DoraHeader() {
     const [menuOpen, setMenuOpen] = useState(false)
     const scrolled = useScrolled()
-    const reduced = usePrefersReducedMotion()
     const $ = useShortcut()
 
     function renderNavItem(item: TNavItem) {
         return item.menu ? (
-            <NavDropdown key={item.label} item={item} reduced={reduced} />
+            <NavDropdown key={item.label} item={item} />
         ) : (
             <NavItem key={item.label} {...item} />
         )
@@ -442,9 +437,7 @@ export function DoraHeader() {
                     className="marketing-container relative flex items-center px-4"
                     style={{
                         height: scrolled ? 54 : 62,
-                        transition: reduced
-                            ? 'none'
-                            : 'height 420ms cubic-bezier(0.32,0.72,0,1)'
+                        transition: 'height 420ms cubic-bezier(0.32,0.72,0,1)'
                     }}
                 >
                     {/* Frame borders */}
@@ -486,13 +479,11 @@ export function DoraHeader() {
                         <span
                             className="inline-block origin-center"
                             style={{
-                                transform:
-                                    scrolled && !reduced
-                                        ? 'scale(0.92)'
-                                        : 'scale(1)',
-                                transition: reduced
-                                    ? 'none'
-                                    : 'transform 420ms cubic-bezier(0.32,0.72,0,1)'
+                                transform: scrolled
+                                    ? 'scale(0.92)'
+                                    : 'scale(1)',
+                                transition:
+                                    'transform 420ms cubic-bezier(0.32,0.72,0,1)'
                             }}
                         >
                             <Logo />
