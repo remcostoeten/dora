@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
 	CheckCircle2,
 	XCircle,
@@ -975,7 +975,6 @@ function TestConnectionButton({
 	disabled,
 	onClick
 }: TTestConnectionButtonProps) {
-	const reduceMotion = useReducedMotion()
 	const phase: TTestPhase = showDesktopOnlyHint ? 'desktop-only' : isTesting ? 'testing' : status
 
 	const phaseContent: Record<TTestPhase, React.ReactNode> = {
@@ -1029,15 +1028,9 @@ function TestConnectionButton({
 			<AnimatePresence mode='popLayout' initial={false}>
 				<motion.span
 					key={phase}
-					initial={
-						reduceMotion ? { opacity: 0 } : { opacity: 0, y: 6, filter: 'blur(4px)' }
-					}
-					animate={
-						reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: 'blur(0px)' }
-					}
-					exit={
-						reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: 'blur(4px)' }
-					}
+					initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }}
+					animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+					exit={{ opacity: 0, y: -6, filter: 'blur(4px)' }}
 					transition={{ duration: 0.18, ease: EASE_OUT }}
 					className='flex min-w-0 items-center gap-2'
 				>
