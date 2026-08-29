@@ -1,6 +1,7 @@
 import { Button } from '@studio/shared/ui/button'
-import { Database, PlugZap, Plus, Settings, Table2 } from 'lucide-react'
+import { Database, PlugZap, Plus, RotateCw, Settings, Table2 } from 'lucide-react'
 import { Spinner } from '@studio/shared/ui/spinner'
+import { motion } from 'framer-motion'
 
 type NoConnectionProps = {
 	onAddConnection?: () => void
@@ -68,32 +69,55 @@ export function DatabaseStudioConnectionFailed({
 	onEditConnection
 }: ConnectionFailedProps) {
 	return (
-		<div className='flex flex-1 flex-col items-center justify-center p-6 text-center'>
-			<div className='w-20 h-20 bg-destructive/10 rounded-full flex items-center justify-center mb-6 ring-1 ring-destructive/20'>
-				<PlugZap className='h-10 w-10 text-destructive/80' strokeWidth={1.5} />
-			</div>
-			<h1 className='text-xl font-semibold text-foreground mb-2 tracking-tight'>
-				Connection Unavailable
-			</h1>
-			<p className='text-muted-foreground text-sm max-w-md leading-relaxed'>
-				{connectionName
-					? `Could not connect to "${connectionName}".`
-					: 'Could not connect to this database.'}{' '}
-				Check that the database is running and your credentials are still valid.
-			</p>
-			{errorMessage ? (
-				<p className='mt-3 max-w-md text-xs leading-relaxed text-muted-foreground/80 border border-border/60 bg-muted/20 px-3 py-2'>
-					{errorMessage}
+		<div className='flex flex-1 items-center justify-center p-6'>
+			<motion.div
+				initial={{ opacity: 0, y: 4 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+				className='w-full max-w-sm text-center'
+			>
+				<PlugZap
+					className='mx-auto mb-4 h-7 w-7 text-muted-foreground/60'
+					strokeWidth={1.5}
+				/>
+
+				<h1 className='text-sm font-medium text-foreground'>Connection unavailable</h1>
+				<p className='mt-1.5 text-[13px] leading-relaxed text-muted-foreground'>
+					{connectionName ? (
+						<span className='text-foreground/80'>{connectionName}</span>
+					) : (
+						'This database'
+					)}{' '}
+					is not reachable. Check that it is running and that your credentials are still
+					valid.
 				</p>
-			) : null}
-			<div className='mt-6 flex flex-wrap items-center justify-center gap-2'>
-				{onRetry && (
-					<Button variant='outline' onClick={onRetry}>
-						Try Again
-					</Button>
-				)}
-				{onEditConnection && <Button onClick={onEditConnection}>Edit Connection</Button>}
-			</div>
+
+				{errorMessage ? (
+					<p className='mt-4 max-h-28 overflow-y-auto rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-left font-mono text-[11px] leading-relaxed text-muted-foreground/80'>
+						{errorMessage}
+					</p>
+				) : null}
+
+				<div className='mt-5 flex flex-wrap items-center justify-center gap-2'>
+					{onRetry && (
+						<Button size='sm' variant='outline' onClick={onRetry} className='gap-1.5'>
+							<RotateCw className='h-3.5 w-3.5' />
+							Try again
+						</Button>
+					)}
+					{onEditConnection && (
+						<Button
+							size='sm'
+							variant='ghost'
+							onClick={onEditConnection}
+							className='gap-1.5 text-muted-foreground'
+						>
+							<Settings className='h-3.5 w-3.5' />
+							Edit connection
+						</Button>
+					)}
+				</div>
+			</motion.div>
 		</div>
 	)
 }

@@ -9,7 +9,6 @@ import { useAiAssistantStore } from '@studio/features/ai-assistant/store'
 import { useAiEditorContext } from '@studio/features/ai-assistant/editor-context'
 import { scheduleSqlConsoleCommand } from '@studio/features/command-palette/events'
 import { Button } from '@studio/shared/ui/button'
-import { Skeleton } from '@studio/shared/ui/skeleton'
 import { usePresence } from '@studio/shared/hooks/use-presence'
 import { Sparkles } from 'lucide-react'
 
@@ -77,14 +76,7 @@ export function AiAssistantPanelHost() {
 	if (!present) return null
 
 	return (
-		<Suspense
-			fallback={
-				<div className='fixed bottom-4 right-4 z-[70] w-80 max-w-[calc(100vw-2rem)] rounded-md border border-border bg-background/95 p-3 shadow-lg'>
-					<Skeleton className='h-4 w-32' />
-					<Skeleton className='mt-3 h-9 w-full' />
-				</div>
-			}
-		>
+		<Suspense fallback={null}>
 			<AiAssistantPanel
 				activeConnectionId={activeConnectionId || null}
 				activeView={activeNavId}

@@ -1,6 +1,6 @@
 import {
 	buildConnectionFromDataFiles,
-	buildConnectionFromDatabaseFile,
+	buildConnectionFromDatabaseFile
 } from '@studio/features/connections/utils/data-files'
 import { describeConnectionSource } from '@studio/features/connections/resolve-source'
 import { getSourceCaps } from '@studio/features/connections/source-caps'
@@ -9,8 +9,7 @@ import {
 	resolveConnectionSubtitle,
 	resolveProviderLabel,
 	resolveSourceKindBadge,
-	shouldShowDataFileReadonlyMessage,
-	shouldShowSourceKindBadge,
+	shouldShowSourceKindBadge
 } from '@studio/features/connections/source-labels'
 import type { Connection } from '@studio/features/connections/types'
 import { describe, expect, it } from 'vitest'
@@ -20,7 +19,7 @@ function connection(overrides: Partial<Connection> & Pick<Connection, 'type'>): 
 		id: 'test-id',
 		name: 'Test',
 		createdAt: 0,
-		...overrides,
+		...overrides
 	}
 }
 
@@ -29,13 +28,13 @@ describe('source-labels', function () {
 		const neon = describeConnectionSource(
 			connection({
 				type: 'postgres',
-				url: 'postgresql://user:pass@ep-cool-name.us-east-2.aws.neon.tech/neondb',
+				url: 'postgresql://user:pass@ep-cool-name.us-east-2.aws.neon.tech/neondb'
 			})
 		)
 		const supabase = describeConnectionSource(
 			connection({
 				type: 'postgres',
-				url: 'postgresql://postgres:pass@db.abcdefghijklmnop.supabase.co:5432/postgres',
+				url: 'postgresql://postgres:pass@db.abcdefghijklmnop.supabase.co:5432/postgres'
 			})
 		)
 
@@ -58,22 +57,32 @@ describe('source-labels', function () {
 
 	it('resolves engine-specific provider labels', function () {
 		expect(
-			resolveProviderLabel(describeConnectionSource(connection({ type: 'mysql', host: 'localhost' })))
+			resolveProviderLabel(
+				describeConnectionSource(connection({ type: 'mysql', host: 'localhost' }))
+			)
 		).toBe('MySQL')
 		expect(
-			resolveProviderLabel(describeConnectionSource(connection({ type: 'mariadb', host: 'localhost' })))
+			resolveProviderLabel(
+				describeConnectionSource(connection({ type: 'mariadb', host: 'localhost' }))
+			)
 		).toBe('MariaDB')
 		expect(
-			resolveProviderLabel(describeConnectionSource(connection({ type: 'cockroach', host: 'localhost' })))
+			resolveProviderLabel(
+				describeConnectionSource(connection({ type: 'cockroach', host: 'localhost' }))
+			)
 		).toBe('CockroachDB')
 		expect(
 			resolveProviderLabel(
-				describeConnectionSource(connection({ type: 'libsql', url: 'libsql://db.turso.io' }))
+				describeConnectionSource(
+					connection({ type: 'libsql', url: 'libsql://db.turso.io' })
+				)
 			)
 		).toBe('Turso')
 		expect(
 			resolveProviderLabel(
-				describeConnectionSource(buildConnectionFromDatabaseFile('/tmp/app.sqlite3', 'sqlite'))
+				describeConnectionSource(
+					buildConnectionFromDatabaseFile('/tmp/app.sqlite3', 'sqlite')
+				)
 			)
 		).toBe('SQLite')
 	})
@@ -96,27 +105,20 @@ describe('source-labels', function () {
 	it('builds connection subtitles from provider and location', function () {
 		const neon = connection({
 			type: 'postgres',
-			url: 'postgresql://user:pass@ep-cool-name.us-east-2.aws.neon.tech/neondb',
+			url: 'postgresql://user:pass@ep-cool-name.us-east-2.aws.neon.tech/neondb'
 		})
-		const dataFiles = connection(buildConnectionFromDataFiles(['/tmp/sales.csv', '/tmp/events.json']))
+		const dataFiles = connection(
+			buildConnectionFromDataFiles(['/tmp/sales.csv', '/tmp/events.json'])
+		)
 
 		expect(resolveConnectionSubtitle(neon)).toBe('Neon · Cloud')
 		expect(resolveConnectionSubtitle(dataFiles)).toBe('Data files · 2 files')
 	})
 
-	it('shows the data-file readonly message only for data-file sessions', function () {
-		const dataFileMeta = describeConnectionSource(
-			connection(buildConnectionFromDataFiles(['/tmp/sales.csv']))
-		)
-		const duckdbMeta = describeConnectionSource(
-			connection(buildConnectionFromDatabaseFile('/tmp/analytics.duckdb', 'duckdb'))
-		)
-
-		expect(shouldShowDataFileReadonlyMessage(dataFileMeta)).toBe(true)
-		expect(shouldShowDataFileReadonlyMessage(duckdbMeta)).toBe(false)
+	it('marks data-file sessions readonly with an explanatory message', function () {
 		expect(DATA_FILE_READONLY_MESSAGE).toContain('readonly DuckDB views')
-		expect(getSourceCaps(connection(buildConnectionFromDataFiles(['/tmp/sales.csv']))).isReadonly).toBe(
-			true
-		)
+		expect(
+			getSourceCaps(connection(buildConnectionFromDataFiles(['/tmp/sales.csv']))).isReadonly
+		).toBe(true)
 	})
 })

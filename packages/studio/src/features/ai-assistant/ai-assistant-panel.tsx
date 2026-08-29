@@ -202,181 +202,182 @@ export function AiAssistantPanel({
 		return message.role === 'assistant' && message.streaming
 	})
 	const liveStreamContent =
-		streamingSnapshot != null &&
-		streamingSnapshot.messageId === streamingAssistant?.id
+		streamingSnapshot != null && streamingSnapshot.messageId === streamingAssistant?.id
 			? streamingSnapshot.content
-			: streamingAssistant?.content ?? ''
+			: (streamingAssistant?.content ?? '')
 	const isWaitingForFirstToken = isStreaming && liveStreamContent.trim().length === 0
 
 	return (
 		<aside
 			data-state={state}
 			className={cn(
-				'fixed right-0 top-9 z-40 flex h-[calc(100%-2.25rem)] w-[420px] max-w-[90vw] flex-col border-l border-sidebar-border bg-sidebar shadow-2xl',
-				'transition-[transform,opacity] duration-200 data-[state=open]:duration-[240ms] ease-[var(--ease-out)] data-[state=closed]:translate-x-full motion-reduce:data-[state=closed]:translate-x-0 motion-reduce:data-[state=closed]:opacity-0 motion-reduce:duration-150'
+				'flex h-full shrink-0 justify-end overflow-hidden border-l border-sidebar-border bg-sidebar',
+				'[--ai-panel-w:min(420px,45vw)]',
+				'transition-[width] duration-200 data-[state=open]:duration-[240ms] ease-[var(--ease-out)]',
+				'data-[state=closed]:w-0 data-[state=open]:w-[var(--ai-panel-w)]'
 			)}
 		>
-			<header className='flex items-center gap-2 border-b border-sidebar-border px-3 py-2'>
-				<Sparkles className='h-4 w-4 text-primary' />
-				<span className='text-xs font-semibold'>AI Assistant</span>
-				<span
-					className={cn(
-						'rounded px-1.5 py-0.5 text-[10px]',
-						keysAvailable
-							? 'bg-emerald-500/10 text-emerald-500'
-							: 'bg-amber-500/10 text-amber-500'
-					)}
-					title={`Active provider: ${activeProvider}`}
-				>
-					{keyLabel}
-				</span>
-				{activeView && (
+			<div className='flex h-full w-[var(--ai-panel-w)] shrink-0 flex-col'>
+				<header className='flex items-center gap-2 border-b border-sidebar-border px-3 py-2'>
+					<Sparkles className='h-4 w-4 text-primary' />
+					<span className='text-xs font-semibold'>AI Assistant</span>
 					<span
-						className='rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] text-muted-foreground'
-						title={
-							selectedTableName
-								? `Context: ${activeView}, ${selectedTableName}`
-								: `Context: ${activeView}`
-						}
+						className={cn(
+							'rounded px-1.5 py-0.5 text-[10px]',
+							keysAvailable
+								? 'bg-emerald-500/10 text-emerald-500'
+								: 'bg-amber-500/10 text-amber-500'
+						)}
+						title={`Active provider: ${activeProvider}`}
 					>
-						{selectedTableName ? selectedTableName : activeView}
+						{keyLabel}
 					</span>
-				)}
-				<div className='ml-auto flex items-center gap-1'>
-					{messages.length > 0 && (
+					{activeView && (
+						<span
+							className='rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] text-muted-foreground'
+							title={
+								selectedTableName
+									? `Context: ${activeView}, ${selectedTableName}`
+									: `Context: ${activeView}`
+							}
+						>
+							{selectedTableName ? selectedTableName : activeView}
+						</span>
+					)}
+					<div className='ml-auto flex items-center gap-1'>
+						{messages.length > 0 && (
+							<Button
+								variant='ghost'
+								size='icon'
+								className='h-7 w-7'
+								onClick={function () {
+									clear(activeConnectionId)
+								}}
+								title='Clear chat'
+								aria-label='Clear chat'
+							>
+								<Trash2 className='h-3.5 w-3.5' />
+							</Button>
+						)}
 						<Button
 							variant='ghost'
 							size='icon'
 							className='h-7 w-7'
 							onClick={function () {
-								clear(activeConnectionId)
+								setOpen(false)
 							}}
-							title='Clear chat'
-							aria-label='Clear chat'
+							aria-label='Close AI assistant'
 						>
-							<Trash2 className='h-3.5 w-3.5' />
+							<X className='h-3.5 w-3.5' />
 						</Button>
+					</div>
+				</header>
+
+				<div ref={scrollRef} className='flex-1 overflow-y-auto'>
+					{messages.length === 0 ? (
+						<EmptyState
+							suggestions={suggestions}
+							onPick={function (prompt) {
+								setInput(prompt)
+								inputRef.current?.focus()
+							}}
+							hasConnection={Boolean(activeConnectionId)}
+						/>
+					) : (
+						<div className='divide-y divide-sidebar-border/40'>
+							{messages.map(function (m) {
+								const liveContent =
+									streamingSnapshot != null &&
+									streamingSnapshot.messageId === m.id
+										? streamingSnapshot.content
+										: m.content
+								const message =
+									liveContent === m.content ? m : { ...m, content: liveContent }
+
+								return (
+									<MessageBubble
+										key={m.id}
+										message={message}
+										activeConnectionId={activeConnectionId}
+										onEditorInsert={onEditorInsert}
+										onRunInConsole={onRunInConsole}
+									/>
+								)
+							})}
+						</div>
 					)}
-					<Button
-						variant='ghost'
-						size='icon'
-						className='h-7 w-7'
-						onClick={function () {
-							setOpen(false)
-						}}
-						aria-label='Close AI assistant'
-					>
-						<X className='h-3.5 w-3.5' />
-					</Button>
 				</div>
-			</header>
 
-			<div ref={scrollRef} className='flex-1 overflow-y-auto'>
-				{messages.length === 0 ? (
-					<EmptyState
-						suggestions={suggestions}
-						onPick={function (prompt) {
-							setInput(prompt)
-							inputRef.current?.focus()
-						}}
-						hasConnection={Boolean(activeConnectionId)}
-					/>
-				) : (
-					<div className='divide-y divide-sidebar-border/40'>
-						{messages.map(function (m) {
-							const liveContent =
-								streamingSnapshot != null &&
-								streamingSnapshot.messageId === m.id
-									? streamingSnapshot.content
-									: m.content
-							const message =
-								liveContent === m.content
-									? m
-									: { ...m, content: liveContent }
-
-							return (
-								<MessageBubble
-									key={m.id}
-									message={message}
-									activeConnectionId={activeConnectionId}
-									onEditorInsert={onEditorInsert}
-									onRunInConsole={onRunInConsole}
-								/>
-							)
-						})}
+				{error && messages.length === 0 && (
+					<div className='border-t border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-400'>
+						{error}
 					</div>
 				)}
-			</div>
 
-			{error && messages.length === 0 && (
-				<div className='border-t border-red-500/40 bg-red-500/10 px-3 py-2 text-[11px] text-red-400'>
-					{error}
-				</div>
-			)}
-
-			<div className='border-t border-sidebar-border p-2'>
-				{!activeConnectionId && (
-					<div className='mb-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-500'>
-						No active connection — schema context disabled.
+				<div className='border-t border-sidebar-border p-2'>
+					{!activeConnectionId && (
+						<div className='mb-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-500'>
+							No active connection — schema context disabled.
+						</div>
+					)}
+					{isTauri && !keysAvailable && (
+						<div className='mb-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-500'>
+							Configure the active AI provider in Settings → AI Provider
+							{activeProvider ? ` (${activeProvider})` : ''}.
+						</div>
+					)}
+					<div className='relative'>
+						<textarea
+							ref={inputRef}
+							value={input}
+							onChange={function (e) {
+								setInput(e.target.value)
+							}}
+							onKeyDown={handleKeyDown}
+							disabled={isStreaming || !keysAvailable}
+							placeholder='Ask anything about your database…'
+							rows={3}
+							className='w-full resize-none rounded-md border border-sidebar-border bg-background px-3 py-2 pr-10 text-sm transition-colors duration-150 focus-visible:bg-focus disabled:opacity-50'
+						/>
+						<div className='absolute bottom-1.5 right-1.5'>
+							{isStreaming ? (
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-7 w-7'
+									onClick={abort}
+									title='Stop'
+									aria-label='Stop generating response'
+								>
+									<Square className='h-3.5 w-3.5 fill-current' />
+								</Button>
+							) : (
+								<Button
+									variant='ghost'
+									size='icon'
+									className='h-7 w-7'
+									onClick={handleSend}
+									disabled={!input.trim() || !keysAvailable}
+									aria-label='Send message'
+								>
+									<Send className='h-3.5 w-3.5' />
+								</Button>
+							)}
+						</div>
 					</div>
-				)}
-				{isTauri && !keysAvailable && (
-					<div className='mb-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-500'>
-						Configure the active AI provider in Settings → AI Provider
-						{activeProvider ? ` (${activeProvider})` : ''}.
-					</div>
-				)}
-				<div className='relative'>
-					<textarea
-						ref={inputRef}
-						value={input}
-						onChange={function (e) {
-							setInput(e.target.value)
-						}}
-						onKeyDown={handleKeyDown}
-						disabled={isStreaming || !keysAvailable}
-						placeholder='Ask anything about your database…'
-						rows={3}
-						className='w-full resize-none rounded-md border border-sidebar-border bg-background px-3 py-2 pr-10 text-sm transition-colors duration-150 focus-visible:bg-focus disabled:opacity-50'
-					/>
-					<div className='absolute bottom-1.5 right-1.5'>
-						{isStreaming ? (
-							<Button
-								variant='ghost'
-								size='icon'
-								className='h-7 w-7'
-								onClick={abort}
-								title='Stop'
-								aria-label='Stop generating response'
+					<div className='mt-1 flex items-center justify-between text-[10px] text-muted-foreground'>
+						<span>Enter to send · Shift+Enter newline · Esc to close</span>
+						{isStreaming && (
+							<span
+								className={cn(
+									'ai-thinking-label font-medium',
+									!isWaitingForFirstToken && 'opacity-80'
+								)}
 							>
-								<Square className='h-3.5 w-3.5 fill-current' />
-							</Button>
-						) : (
-							<Button
-								variant='ghost'
-								size='icon'
-								className='h-7 w-7'
-								onClick={handleSend}
-								disabled={!input.trim() || !keysAvailable}
-								aria-label='Send message'
-							>
-								<Send className='h-3.5 w-3.5' />
-							</Button>
+								{isWaitingForFirstToken ? 'Thinking…' : 'Writing…'}
+							</span>
 						)}
 					</div>
-				</div>
-				<div className='mt-1 flex items-center justify-between text-[10px] text-muted-foreground'>
-					<span>Enter to send · Shift+Enter newline · Esc to close</span>
-					{isStreaming && (
-						<span
-							className={cn(
-								'ai-thinking-label font-medium',
-								!isWaitingForFirstToken && 'opacity-80'
-							)}
-						>
-							{isWaitingForFirstToken ? 'Thinking…' : 'Writing…'}
-						</span>
-					)}
 				</div>
 			</div>
 		</aside>

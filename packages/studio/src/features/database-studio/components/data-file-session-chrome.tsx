@@ -2,16 +2,11 @@ import type { ReactNode } from 'react'
 import type { Connection } from '@studio/features/connections/types'
 import { describeConnectionSource } from '@studio/features/connections/resolve-source'
 import { getSourceCaps } from '@studio/features/connections/source-caps'
-import {
-	resolveDataFileHealth,
-	shouldShowDataFileHelpPanel,
-} from '@studio/features/connections/data-file-health'
-import { shouldShowDataFileReadonlyMessage } from '@studio/features/connections/source-labels'
+import { resolveDataFileHealth } from '@studio/features/connections/data-file-health'
 import { cn } from '@studio/shared/utils/cn'
 import { useToast } from '@studio/shared/ui/use-toast'
-import { DataFileHelpPanel } from './data-file-help-panel'
-import { DataFileReadonlyNotice } from './data-file-readonly-notice'
 import { DataFileSourcePanel } from './data-file-source-panel'
+import { FollowerDiffButton } from './follower-diff-button'
 import { SaveAsDuckDbButton } from './save-as-duckdb-button'
 import { useDataFileSources } from '../hooks/use-data-file-sources'
 
@@ -28,19 +23,13 @@ export function DataFileSessionChrome({
 	selectedTableName,
 	className,
 	onConnectionSelect,
-	children,
+	children
 }: Props) {
 	const { toast } = useToast()
 	const meta = describeConnectionSource(connection)
 	const caps = getSourceCaps(connection, meta)
-	const {
-		entries,
-		isLoading,
-		isRecovering,
-		retryRegistration,
-		removeSource,
-		relocateSource,
-	} = useDataFileSources(connection)
+	const { entries, isLoading, isRecovering, retryRegistration, removeSource, relocateSource } =
+		useDataFileSources(connection)
 
 	if (meta.kind !== 'data-file') {
 		return children
@@ -48,7 +37,7 @@ export function DataFileSessionChrome({
 
 	const health = resolveDataFileHealth({
 		entries,
-		connectionStatus: connection.status,
+		connectionStatus: connection.status
 	})
 
 	async function handleRetry() {
@@ -58,8 +47,9 @@ export function DataFileSessionChrome({
 		} catch (error) {
 			toast({
 				title: 'Retry failed',
-				description: error instanceof Error ? error.message : 'Could not retry registration',
-				variant: 'destructive',
+				description:
+					error instanceof Error ? error.message : 'Could not retry registration',
+				variant: 'destructive'
 			})
 		}
 	}
@@ -72,7 +62,7 @@ export function DataFileSessionChrome({
 			toast({
 				title: 'Could not remove source',
 				description: error instanceof Error ? error.message : 'Update failed',
-				variant: 'destructive',
+				variant: 'destructive'
 			})
 		}
 	}
@@ -87,15 +77,13 @@ export function DataFileSessionChrome({
 			toast({
 				title: 'Could not relocate file',
 				description: error instanceof Error ? error.message : 'Update failed',
-				variant: 'destructive',
+				variant: 'destructive'
 			})
 		}
 	}
 
 	return (
 		<div className={cn('flex h-full min-h-0 flex-col', className)}>
-			{shouldShowDataFileReadonlyMessage(meta) && <DataFileReadonlyNotice />}
-			{shouldShowDataFileHelpPanel(meta) && <DataFileHelpPanel />}
 			{!isLoading && (
 				<DataFileSourcePanel
 					entries={entries}
@@ -104,11 +92,14 @@ export function DataFileSessionChrome({
 					isRecovering={isRecovering}
 					health={health}
 					headerActions={
-						<SaveAsDuckDbButton
-							connection={connection}
-							entries={entries}
-							onConnectionSelect={onConnectionSelect}
-						/>
+						<>
+							<FollowerDiffButton connectionId={connection.id} entries={entries} />
+							<SaveAsDuckDbButton
+								connection={connection}
+								entries={entries}
+								onConnectionSelect={onConnectionSelect}
+							/>
+						</>
 					}
 					onRetry={handleRetry}
 					onRemove={handleRemove}

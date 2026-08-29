@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import {
 	ArrowLeftRight,
+	CheckCircle2,
 	ChevronRight,
+	Clock,
 	Database,
 	GitCompareArrows,
 	ListChecks,
@@ -427,25 +429,36 @@ export function SchemaDiffBodySkeleton() {
 	)
 }
 
-/** The Migrations tab body while the journal and the applied set are read. */
+/**
+ * The Migrations tab body while the journal and the applied set are read.
+ * Mirrors `MigrationStatusView`'s ready layout row for row — the applied /
+ * pending / total summary bar, then journal entries with a leading state icon,
+ * a mono tag and a trailing state chip — so the real list drops straight in.
+ */
 export function SchemaDiffMigrationsSkeleton() {
 	return (
 		<div className='flex h-full flex-col' aria-hidden='true'>
-			<div className='flex items-center gap-3 border-b border-border/60 px-3 py-2'>
-				<Skeleton className='h-3.5 w-20' />
-				<Skeleton className='h-3.5 w-20' />
-				<Skeleton className='ml-auto h-3.5 w-14' />
+			<div className='flex items-center gap-3 border-b border-border/60 px-3 py-2 text-xs'>
+				<span className='flex items-center gap-1.5'>
+					<CheckCircle2 className='h-3.5 w-3.5 text-muted-foreground/40' />
+					<Skeleton className='h-3 w-16' />
+				</span>
+				<span className='flex items-center gap-1.5'>
+					<Clock className='h-3.5 w-3.5 text-muted-foreground/40' />
+					<Skeleton className='h-3 w-16' />
+				</span>
+				<Skeleton className='ml-auto h-3 w-12' />
 			</div>
 			<div className='min-h-0 flex-1 overflow-hidden'>
-				{['w-48', 'w-56', 'w-40', 'w-52', 'w-44', 'w-36'].map(function (width, index) {
+				{['w-40', 'w-32', 'w-44', 'w-36', 'w-28', 'w-40', 'w-32'].map(function (width, index) {
 					return (
 						<div
 							key={index}
-							className='flex items-center gap-2 border-b border-border/40 px-3 py-2'
+							className='flex items-center gap-3 border-b border-border/40 px-3 py-2'
 						>
-							<Skeleton className='h-3.5 w-3.5 rounded-full' />
-							<Skeleton className={cn('h-4', width)} />
-							<Skeleton className='ml-auto h-3 w-16' />
+							<Skeleton className='h-4 w-4 shrink-0 rounded-full' />
+							<Skeleton className={cn('h-3.5', width)} />
+							<Skeleton className='ml-auto h-[18px] w-14 rounded' />
 						</div>
 					)
 				})}

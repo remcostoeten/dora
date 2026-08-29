@@ -25,6 +25,7 @@ import {
 	useWorkspaceSelector
 } from '@studio/core/workspace-store'
 import { WorkspaceView, WorkspaceViews } from '@studio/core/workspace-views'
+import { isDataFileSessionConnection } from '@studio/features/connections/source-caps'
 import type { Connection } from '@studio/features/connections/types'
 import { ConnectionTabBar } from '@studio/features/connection-tab-bar'
 import { getContainerConnectionDetails } from '@studio/features/docker-manager/utilities/container-connection'
@@ -295,10 +296,28 @@ function WorkspaceTabBar() {
 	const visibleTabs = useVisibleTabs()
 	const activeTabId = useActiveTabId()
 	const showsConnectionTabBar = useShowsConnectionTabBar()
+	const connections = useConnectionList()
+	const activeConnectionId = useActiveConnectionId()
 
 	const handleTabClick = useCallback(function (tabId: string) {
 		setActiveTab(tabId)
 	}, [])
+
+	// A single-file data-file session auto-opens its one view, whose label is
+	// just the connection name again — the row adds nothing the connection tab
+	// above doesn't already say. Only skip it when that bar is present, since
+	// this bar otherwise carries the drag region and window controls.
+	const activeConnection = connections.find(function (connection) {
+		return connection.id === activeConnectionId
+	})
+	if (
+		showsConnectionTabBar &&
+		visibleTabs.length <= 1 &&
+		activeConnection &&
+		isDataFileSessionConnection(activeConnection)
+	) {
+		return null
+	}
 
 	return (
 		<TabBar

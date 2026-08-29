@@ -1,6 +1,5 @@
 import type { DataFileSourceEntry } from '@studio/features/connections/types/data-file-source'
 import { describeConnectionSource, type ConnectionSourceInput } from './resolve-source'
-import type { SourceMeta } from './source-kinds'
 
 export type DataFileHealth = 'active' | 'connected-with-issues' | 'unavailable'
 
@@ -9,7 +8,7 @@ export const DATA_FILE_HELP_ITEMS = [
 	'CSV, JSON, and Parquet open as readonly data files (DuckDB views).',
 	'Use Save as DuckDB to materialize data files into an editable .duckdb file.',
 	'Use Import files on native DuckDB files to add CSV, JSON, or Parquet as tables.',
-	'Broken or moved files can be relocated from the source panel.',
+	'Broken or moved files can be relocated from the source panel.'
 ] as const
 
 export const SAVE_AS_DUCKDB_PLACEHOLDER_LABEL = 'Save as DuckDB'
@@ -97,10 +96,6 @@ export function formatDataFileSourceSummary(
 		return 'Data files · Local'
 	}
 	return count === 1 ? 'Data files · 1 file' : `Data files · ${count} files`
-}
-
-export function shouldShowDataFileHelpPanel(meta: SourceMeta): boolean {
-	return meta.kind === 'data-file'
 }
 
 export function isDataFileConnection(connection: ConnectionSourceInput): boolean {
