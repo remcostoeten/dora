@@ -96,8 +96,12 @@ parts:
       bun install
       (cd apps/desktop && node node_modules/vite/bin/vite.js build)
       cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
+      # DuckDB runs out of process; the app resolves `duckdb_helper` next to its
+      # own binary, so the sidecar must ship alongside it.
+      cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --bin duckdb_helper --features duckdb-engine
 
       install -Dm755 apps/desktop/src-tauri/target/release/dora "$CRAFT_PART_INSTALL/bin/dora"
+      install -Dm755 apps/desktop/src-tauri/target/release/duckdb_helper "$CRAFT_PART_INSTALL/bin/duckdb_helper"
       install -Dm755 packaging/snap/local/launch "$CRAFT_PART_INSTALL/bin/launch"
       install -Dm644 packaging/snap/gui/dora.desktop "$CRAFT_PART_INSTALL/meta/gui/dora.desktop"
       install -Dm644 apps/desktop/src-tauri/icons/icon.png "$CRAFT_PART_INSTALL/meta/gui/icon.png"
