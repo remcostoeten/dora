@@ -12,7 +12,7 @@ import {
 	ChevronRight,
 	Save
 } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Button } from '@studio/shared/ui/button'
 import {
 	DropdownMenu,
@@ -276,8 +276,6 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 		})
 	}
 
-	const reduceMotion = useReducedMotion()
-
 	const floatingClasses = [
 		'absolute bottom-10 inset-x-0 mx-auto w-fit max-w-[calc(100%-2rem)] z-[100]',
 		'flex items-center gap-1 pl-3 pr-2 py-1.5',
@@ -361,11 +359,11 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 	return (
 		<motion.div
 			layout
-			initial={{ opacity: 0, y: reduceMotion ? 0 : isFloating ? 16 : 8 }}
+			initial={{ opacity: 0, y: isFloating ? 16 : 8 }}
 			animate={{ opacity: 1, y: 0 }}
 			exit={{
 				opacity: 0,
-				y: reduceMotion ? 0 : 8,
+				y: 8,
 				transition: { duration: 0.15, ease: EASE_OUT }
 			}}
 			transition={{

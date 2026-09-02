@@ -5,7 +5,6 @@ import { FolderGit2 } from 'lucide-react'
 
 import { CardAura } from './card-aura'
 import { useGate } from './use-scroll-motion'
-import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 
 /* ---------------------------------------------------------------------------
  * ORM Cockpit: a four-beat loop that mirrors the real cockpit flow: link a
@@ -13,8 +12,7 @@ import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-moti
  * schema, then generate the migration. Drift rows land one by one, each tagged
  * safe / review / destructive; "Generate migration" presses itself and the SQL
  * types out into the preview, destructive operations commented out and gated.
- * Source flips between Drizzle and Prisma on each loop. Honors reduced motion
- * by snapping to the finished state.
+ * Source flips between Drizzle and Prisma on each loop.
  * ------------------------------------------------------------------------- */
 
 type TConf = 'safe' | 'review' | 'destructive'
@@ -155,7 +153,6 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
     const ref = useRef<HTMLDivElement>(null)
     const caretRef = useRef<HTMLSpanElement>(null)
     const gate = useGate(ref)
-    const reduced = usePrefersReducedMotion()
     const running = animate && gate.active
 
     const [stage, setStage] = useState<TStage>('link')
@@ -220,9 +217,8 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
 
     const activeLang: TLang = running ? lang : 'drizzle'
     const src = SOURCE[activeLang]
-    // Reduced-motion / pre-view: show the finished state, no self-wiping replay.
-    const shownDrift = running ? driftShown : reduced ? DRIFT.length : 0
-    const shownSql = running ? sqlChars : reduced ? SQL_CHARS.length : 0
+    const shownDrift = running ? driftShown : 0
+    const shownSql = running ? sqlChars : 0
     const isLinking = running && stage === 'link'
     const isTyping = running && stage === 'sql' && sqlChars < SQL_CHARS.length
     const spans = toSpans(SQL_CHARS.slice(0, shownSql))
@@ -235,14 +231,21 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
     ).length
 
     function status(): { color: string; label: string } {
-        if (isLinking) return { color: 'var(--color-ink-600)', label: 'detecting project…' }
+        if (isLinking)
+            return {
+                color: 'var(--color-ink-600)',
+                label: 'detecting project…'
+            }
         if (running && stage === 'drift')
             return {
                 color: 'var(--color-syntax-keyword)',
                 label: `${shownDrift} changes · diffing`
             }
         if (running && stage === 'generate')
-            return { color: 'var(--color-brand-300)', label: 'generating migration…' }
+            return {
+                color: 'var(--color-brand-300)',
+                label: 'generating migration…'
+            }
         return {
             color: 'var(--color-syntax-string)',
             label: `${safeCount} safe · ${reviewCount} review · ${destructiveCount} destructive`
@@ -321,9 +324,7 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                                     </span>
                                     <span className="shrink-0 text-ink-300">
                                         {row.table}
-                                        <span className="text-ink-700">
-                                            .
-                                        </span>
+                                        <span className="text-ink-700">.</span>
                                         <span className="text-brand-400">
                                             {row.col}
                                         </span>
@@ -353,7 +354,8 @@ export function OrmCockpitCard({ animate }: { animate: boolean }) {
                         className="inline-flex items-center gap-1.5 rounded-[2px] border px-2 py-1 font-mono text-[9.5px] uppercase tracking-[0.1em] transition-all duration-150 [font-family:var(--font-geist-mono),ui-monospace,monospace]"
                         style={{
                             color: 'var(--color-syntax-ident)',
-                            borderColor: 'color-mix(in srgb, var(--color-status-ok-dim) 40%, transparent)',
+                            borderColor:
+                                'color-mix(in srgb, var(--color-status-ok-dim) 40%, transparent)',
                             backgroundColor: pressed
                                 ? 'color-mix(in srgb, var(--color-status-ok-dim) 22%, transparent)'
                                 : 'color-mix(in srgb, var(--color-status-ok-dim) 10%, transparent)',

@@ -10,7 +10,6 @@ import {
 } from '@/core/config/feature-captures'
 import type { TFeatureSlug } from '@/core/config/features'
 import { useFrameDrawIn } from '@/shared/hooks/use-frame-draw-in'
-import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 
 const FRAME_LINE = 'pointer-events-none absolute z-[2] bg-line-strong'
 
@@ -21,11 +20,10 @@ type Props = {
 }
 
 export function FeatureShowcaseShell({ slug, label, children }: Props) {
-    const reducedMotion = usePrefersReducedMotion()
     const frame = useFrameDrawIn<HTMLDivElement>()
     const videoRef = useRef<HTMLVideoElement>(null)
     const { poster, video } = getFeatureCapturePaths(slug)
-    const canUseVideo = featureUsesCaptureVideo(slug) && !reducedMotion
+    const canUseVideo = featureUsesCaptureVideo(slug)
     const [captureReady, setCaptureReady] = useState(false)
     const [captureFailed, setCaptureFailed] = useState(false)
 

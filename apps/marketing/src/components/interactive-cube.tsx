@@ -28,8 +28,6 @@ const FACE_COORDS = FACE_ENGINES.map((e) => e.coord)
 
 const CYAN = '#ffffff'
 const MAGENTA = '#8a8a8a'
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
-
 // Shared per-face screen-space data updated each frame inside Canvas,
 // read by the SVG overlay rendered alongside.
 type LabelDatum = {
@@ -861,8 +859,6 @@ function useCubeMotionState(wrapRef: React.RefObject<HTMLDivElement | null>) {
         if (typeof document === 'undefined') return true
         return document.visibilityState === 'visible' && document.hasFocus()
     })
-    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
-
     useEffect(() => {
         const el = wrapRef.current
         if (!el) return
@@ -900,17 +896,7 @@ function useCubeMotionState(wrapRef: React.RefObject<HTMLDivElement | null>) {
         }
     }, [])
 
-    useEffect(() => {
-        const media = window.matchMedia(REDUCED_MOTION_QUERY)
-        const update = () => setPrefersReducedMotion(media.matches)
-
-        update()
-        media.addEventListener('change', update)
-
-        return () => media.removeEventListener('change', update)
-    }, [])
-
-    return inView && pageActive && !prefersReducedMotion
+    return inView && pageActive
 }
 
 export function InteractiveCube({ className = '' }: { className?: string }) {

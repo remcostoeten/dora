@@ -7,11 +7,8 @@ type TGate = {
     activeRef: RefObject<boolean>
 }
 
-function canAnimate(prefersReducedMotion: boolean) {
-    return (
-        !prefersReducedMotion &&
-        document.visibilityState === 'visible'
-    )
+function canAnimate() {
+    return document.visibilityState === 'visible'
 }
 
 export function useGate(ref: RefObject<HTMLElement | null>): TGate {
@@ -19,12 +16,10 @@ export function useGate(ref: RefObject<HTMLElement | null>): TGate {
     const [active, setActive] = useState(false)
 
     useEffect(() => {
-        const media = window.matchMedia('(prefers-reduced-motion: reduce)')
         let isIntersecting = false
 
         const update = () => {
-            const reduced = media.matches
-            const next = isIntersecting && canAnimate(reduced)
+            const next = isIntersecting && canAnimate()
             activeRef.current = next
             setActive(next)
         }
@@ -44,14 +39,12 @@ export function useGate(ref: RefObject<HTMLElement | null>): TGate {
         document.addEventListener('visibilitychange', update)
         window.addEventListener('focus', update)
         window.addEventListener('blur', update)
-        media.addEventListener('change', update)
 
         return () => {
             io.disconnect()
             document.removeEventListener('visibilitychange', update)
             window.removeEventListener('focus', update)
             window.removeEventListener('blur', update)
-            media.removeEventListener('change', update)
         }
     }, [ref])
 

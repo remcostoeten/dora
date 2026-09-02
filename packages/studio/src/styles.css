@@ -2142,31 +2142,3 @@
 		text-align: right;
 	}
 }
-
-/*
- * Reduced-motion baseline. Movement and infinite decorative animation is
- * suppressed; opacity/color feedback (shimmers, pulses, fades) is kept on
- * purpose — reduced motion means gentler, not zero.
- */
-@media (prefers-reduced-motion: reduce) {
-	.db-type-icon-glint {
-		animation: none;
-		-webkit-mask-position: 150% center;
-		mask-position: 150% center;
-	}
-
-	.desktop-only-notice__shimmer::after,
-	.cockpit-skeleton::after {
-		animation: none;
-	}
-
-	.sv-edge-flow,
-	.sv-edge-flow--match,
-	.sv-edge-flow--active {
-		animation: none;
-	}
-
-	.connection-status-error {
-		animation: none;
-	}
-}

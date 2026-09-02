@@ -1,5 +1,5 @@
 import { useReactFlow } from '@xyflow/react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
 	Download,
 	MousePointer2,
@@ -66,7 +66,6 @@ function ToolbarIconButton({
 	disabled,
 	onClick
 }: ToolbarIconButtonProps) {
-	const prefersReducedMotion = useReducedMotion()
 	const [open, setOpen] = useState(false)
 	const closeTimerRef = useRef<number | null>(null)
 	const openTimerRef = useRef<number | null>(null)
@@ -85,12 +84,7 @@ function ToolbarIconButton({
 	const scheduleOpen = useCallback(
 		function scheduleOpen(immediate: boolean) {
 			clearTimers()
-			const delay =
-				immediate || prefersReducedMotion
-					? 0
-					: Date.now() - lastTooltipOpenedAt < 1400
-						? 70
-						: 450
+			const delay = immediate ? 0 : Date.now() - lastTooltipOpenedAt < 1400 ? 70 : 450
 
 			openTimerRef.current = window.setTimeout(function () {
 				lastTooltipOpenedAt = Date.now()
@@ -98,7 +92,7 @@ function ToolbarIconButton({
 				openTimerRef.current = null
 			}, delay)
 		},
-		[clearTimers, prefersReducedMotion]
+		[clearTimers]
 	)
 
 	const scheduleClose = useCallback(
@@ -136,8 +130,8 @@ function ToolbarIconButton({
 					}}
 					onFocus={() => scheduleOpen(true)}
 					onBlur={() => scheduleClose()}
-					whileHover={disabled || prefersReducedMotion ? undefined : { y: -1 }}
-					whileTap={disabled || prefersReducedMotion ? undefined : { scale: 0.97 }}
+					whileHover={disabled ? undefined : { y: -1 }}
+					whileTap={disabled ? undefined : { scale: 0.97 }}
 					transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
 				>
 					<Button

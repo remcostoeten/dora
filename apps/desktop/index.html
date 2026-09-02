@@ -158,11 +158,13 @@
 			.boot-progress::after {
 				content: '';
 				position: absolute;
-				inset: 0;
+				top: 0;
+				bottom: 0;
+				left: 0;
 				width: 36%;
 				border-radius: inherit;
 				background: var(--boot-accent);
-				animation: boot-progress-slide 1.2s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+				animation: boot-progress-slide 1.2s linear 1.1s infinite;
 			}
 
 			@keyframes boot-enter {
@@ -193,26 +195,13 @@
 
 			@keyframes boot-progress-slide {
 				from {
-					transform: translateX(-120%);
+					transform: translateX(-100%);
 				}
 				to {
-					transform: translateX(400%);
+					transform: translateX(278%);
 				}
 			}
 
-			@media (prefers-reduced-motion: reduce) {
-				#boot-screen,
-				#boot-screen * {
-					animation: none !important;
-					transition: none !important;
-				}
-				.boot-progress {
-					opacity: 1 !important;
-				}
-				.boot-progress::after {
-					animation: none !important;
-				}
-			}
 		</style>
 	</head>
 

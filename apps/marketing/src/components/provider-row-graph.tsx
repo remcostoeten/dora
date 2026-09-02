@@ -14,38 +14,69 @@ type RowProvider = {
     id: string
 }
 
-export function HubSphere({ running }: { running: boolean }) {
+export function HubSphere() {
     return (
-        <svg viewBox="0 0 64 64" className="size-11 shrink-0 sm:size-12" aria-hidden>
+        <svg
+            viewBox="0 0 64 64"
+            className="size-11 shrink-0 sm:size-12"
+            aria-hidden
+        >
             <g transform="translate(32 32)">
                 <g>
-                    {running ? (
-                        <animateTransform
-                            attributeName="transform"
-                            type="rotate"
-                            from="0 0 0"
-                            to="360 0 0"
-                            dur="18s"
-                            repeatCount="indefinite"
-                        />
-                    ) : null}
-                    <ellipse cx="0" cy="0" rx="18" ry="7" fill="none" stroke="color-mix(in srgb, var(--color-brand-200) 40%, transparent)" strokeWidth="1" />
-                    <ellipse cx="0" cy="0" rx="18" ry="18" fill="none" stroke="color-mix(in srgb, var(--color-brand-200) 25%, transparent)" strokeWidth="0.9" />
+                    <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="0 0 0"
+                        to="360 0 0"
+                        dur="18s"
+                        repeatCount="indefinite"
+                    />
+                    <ellipse
+                        cx="0"
+                        cy="0"
+                        rx="18"
+                        ry="7"
+                        fill="none"
+                        stroke="color-mix(in srgb, var(--color-brand-200) 40%, transparent)"
+                        strokeWidth="1"
+                    />
+                    <ellipse
+                        cx="0"
+                        cy="0"
+                        rx="18"
+                        ry="18"
+                        fill="none"
+                        stroke="color-mix(in srgb, var(--color-brand-200) 25%, transparent)"
+                        strokeWidth="0.9"
+                    />
                 </g>
                 <g>
-                    {running ? (
-                        <animateTransform
-                            attributeName="transform"
-                            type="rotate"
-                            from="360 0 0"
-                            to="0 0 0"
-                            dur="24s"
-                            repeatCount="indefinite"
-                        />
-                    ) : null}
-                    <ellipse cx="0" cy="0" rx="7" ry="18" fill="none" stroke="color-mix(in srgb, var(--color-brand-300) 30%, transparent)" strokeWidth="0.9" />
+                    <animateTransform
+                        attributeName="transform"
+                        type="rotate"
+                        from="360 0 0"
+                        to="0 0 0"
+                        dur="24s"
+                        repeatCount="indefinite"
+                    />
+                    <ellipse
+                        cx="0"
+                        cy="0"
+                        rx="7"
+                        ry="18"
+                        fill="none"
+                        stroke="color-mix(in srgb, var(--color-brand-300) 30%, transparent)"
+                        strokeWidth="0.9"
+                    />
                 </g>
-                <circle cx="0" cy="0" r="5" fill="var(--color-surface)" stroke="color-mix(in srgb, var(--color-brand-200) 55%, transparent)" strokeWidth="1" />
+                <circle
+                    cx="0"
+                    cy="0"
+                    r="5"
+                    fill="var(--color-surface)"
+                    stroke="color-mix(in srgb, var(--color-brand-200) 55%, transparent)"
+                    strokeWidth="1"
+                />
                 <circle cx="0" cy="0" r="2.2" fill="var(--color-brand-200)" />
             </g>
         </svg>
@@ -56,7 +87,7 @@ function measureLayout(
     container: HTMLDivElement,
     hubRef: RefObject<HTMLDivElement | null>,
     nodeRefs: RefObject<(HTMLDivElement | null)[]>,
-    providers: RowProvider[],
+    providers: RowProvider[]
 ) {
     const hubEl = hubRef.current
     const cr = container.getBoundingClientRect()
@@ -65,7 +96,7 @@ function measureLayout(
     const hr = hubEl.getBoundingClientRect()
     const hub: Point = {
         x: hr.left + hr.width / 2 - cr.left,
-        y: hr.top + hr.height / 2 - cr.top,
+        y: hr.top + hr.height / 2 - cr.top
     }
 
     const nodes = providers.map((_, i) => {
@@ -74,7 +105,7 @@ function measureLayout(
         const r = el.getBoundingClientRect()
         return {
             x: r.left + r.width / 2 - cr.left,
-            y: r.top + r.height / 2 - cr.top,
+            y: r.top + r.height / 2 - cr.top
         }
     })
 
@@ -88,24 +119,18 @@ function measureLayout(
         h: cr.height,
         hub,
         nodes: nodes as Point[],
-        track: { x1: hub.x, y1: trackY, x2: last.x, y2: trackY },
+        track: { x1: hub.x, y1: trackY, x2: last.x, y2: trackY }
     }
 }
 
 const STEM_LENGTH = 14
 const REVEAL_EASE = 'cubic-bezier(0.23, 1, 0.32, 1)'
 
-function stemRevealStyle(
-    revealed: boolean,
-    delay: number,
-    reducedMotion: boolean
-) {
+function stemRevealStyle(revealed: boolean, delay: number) {
     return {
         strokeDasharray: STEM_LENGTH,
         strokeDashoffset: revealed ? 0 : STEM_LENGTH,
-        transition: reducedMotion
-            ? 'stroke-dashoffset 180ms ease'
-            : `stroke-dashoffset 420ms ${REVEAL_EASE} ${delay}ms`,
+        transition: `stroke-dashoffset 420ms ${REVEAL_EASE} ${delay}ms`
     }
 }
 
@@ -116,12 +141,10 @@ export function ProviderRowGraph({
     providers,
     fillProgressRef,
     fillOverride = null,
-    running,
     revealed = true,
     hubDelay = 0,
     providerStart = 0,
-    staggerMs = 52,
-    reducedMotion = false,
+    staggerMs = 52
 }: {
     containerRef: RefObject<HTMLDivElement | null>
     hubRef: RefObject<HTMLDivElement | null>
@@ -129,12 +152,10 @@ export function ProviderRowGraph({
     providers: RowProvider[]
     fillProgressRef: RefObject<number>
     fillOverride?: number | null
-    running: boolean
     revealed?: boolean
     hubDelay?: number
     providerStart?: number
     staggerMs?: number
-    reducedMotion?: boolean
 }) {
     const packetRef = useRef<SVGCircleElement>(null)
     const [layout, setLayout] = useState<ReturnType<typeof measureLayout>>(null)
@@ -190,12 +211,12 @@ export function ProviderRowGraph({
             // Ease the displayed fill toward its target so a hover glides the
             // line in (and back out on release) instead of snapping to the tile.
             const cur = displayFillRef.current
-            const eased = reducedMotion ? target : cur + (target - cur) * 0.12
+            const eased = cur + (target - cur) * 0.12
             const next = Math.abs(target - eased) < 0.0005 ? target : eased
             displayFillRef.current = next
             setFillProgress(next)
 
-            if (layout && running) {
+            if (layout) {
                 pulse += 0.04
                 const last = layout.nodes[layout.nodes.length - 1]
                 const fillX =
@@ -217,14 +238,13 @@ export function ProviderRowGraph({
 
         raf = requestAnimationFrame(tick)
         return () => cancelAnimationFrame(raf)
-    }, [fillOverride, fillProgressRef, layout, running, reducedMotion])
+    }, [fillOverride, fillProgressRef, layout])
 
     if (!layout || layout.w === 0) return null
 
     const lastNode = layout.nodes[layout.nodes.length - 1]
     const clampedFill = Math.max(0, Math.min(1, fillProgress))
-    const fillX =
-        layout.hub.x + (lastNode.x - layout.hub.x) * clampedFill
+    const fillX = layout.hub.x + (lastNode.x - layout.hub.x) * clampedFill
     const fillPoint = { x: fillX, y: layout.track.y1 }
     const reachedIndex = Math.min(
         providers.length - 1,
@@ -250,9 +270,7 @@ export function ProviderRowGraph({
                 strokeDasharray="1"
                 strokeDashoffset={revealed ? 0 : 1}
                 style={{
-                    transition: reducedMotion
-                        ? 'stroke-dashoffset 180ms ease'
-                        : `stroke-dashoffset 520ms ${REVEAL_EASE} ${hubDelay}ms`,
+                    transition: `stroke-dashoffset 520ms ${REVEAL_EASE} ${hubDelay}ms`
                 }}
             />
             <line
@@ -266,9 +284,7 @@ export function ProviderRowGraph({
                 strokeDasharray="1"
                 strokeDashoffset={revealed ? 0 : 1}
                 style={{
-                    transition: reducedMotion
-                        ? 'stroke-dashoffset 180ms ease'
-                        : `stroke-dashoffset 520ms ${REVEAL_EASE} ${hubDelay + 40}ms`,
+                    transition: `stroke-dashoffset 520ms ${REVEAL_EASE} ${hubDelay + 40}ms`
                 }}
             />
 
@@ -292,21 +308,31 @@ export function ProviderRowGraph({
                                       : 'var(--color-line-strong)'
                             }
                             strokeWidth="1"
-                            style={stemRevealStyle(revealed, stemDelay, reducedMotion)}
+                            style={stemRevealStyle(revealed, stemDelay)}
                         />
                         <rect
                             x={node.x - 2}
                             y={node.y - 2}
                             width="4"
                             height="4"
-                            fill={leading ? activeColor : lit ? 'var(--color-line)' : 'var(--color-surface)'}
-                            stroke={leading ? activeColor : lit ? 'color-mix(in srgb, var(--color-brand-200) 45%, transparent)' : 'var(--color-line-strong)'}
+                            fill={
+                                leading
+                                    ? activeColor
+                                    : lit
+                                      ? 'var(--color-line)'
+                                      : 'var(--color-surface)'
+                            }
+                            stroke={
+                                leading
+                                    ? activeColor
+                                    : lit
+                                      ? 'color-mix(in srgb, var(--color-brand-200) 45%, transparent)'
+                                      : 'var(--color-line-strong)'
+                            }
                             strokeWidth="0.75"
                             style={{
                                 opacity: revealed ? 1 : 0,
-                                transition: reducedMotion
-                                    ? 'opacity 180ms ease'
-                                    : `opacity 280ms ${REVEAL_EASE} ${stemDelay + 120}ms`,
+                                transition: `opacity 280ms ${REVEAL_EASE} ${stemDelay + 120}ms`
                             }}
                         />
                     </g>
@@ -325,15 +351,13 @@ export function ProviderRowGraph({
                     strokeLinecap="round"
                     opacity="0.75"
                 >
-                    {running ? (
-                        <animate
-                            attributeName="stroke-dashoffset"
-                            from="0"
-                            to="-6"
-                            dur="0.8s"
-                            repeatCount="indefinite"
-                        />
-                    ) : null}
+                    <animate
+                        attributeName="stroke-dashoffset"
+                        from="0"
+                        to="-6"
+                        dur="0.8s"
+                        repeatCount="indefinite"
+                    />
                 </line>
             ) : null}
 
@@ -353,7 +377,7 @@ export function ProviderRowGraph({
                 y2={layout.hub.y}
                 stroke="color-mix(in srgb, var(--color-brand-200) 35%, transparent)"
                 strokeWidth="1"
-                style={stemRevealStyle(revealed, hubDelay, reducedMotion)}
+                style={stemRevealStyle(revealed, hubDelay)}
             />
         </svg>
     )

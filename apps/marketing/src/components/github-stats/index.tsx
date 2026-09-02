@@ -23,7 +23,6 @@ import { GraphTooltip } from './graph-tooltip'
 import { CommitDetailsModal } from './commit-details-modal'
 import { AnimatedFrame } from '@/components/animated-frame'
 import { CornerTick } from '@/components/corner-tick'
-import { usePrefersReducedMotion } from '@/shared/hooks/use-prefers-reduced-motion'
 import { ACCENT_COLOR } from './constants'
 import { ScrollMotionNumber } from '@/shared/components/motion-number'
 import type { GitHubStatsData } from '@/core/github/get-github-stats'
@@ -141,7 +140,11 @@ function SyntaxHighlight({ command }: { command: string }) {
                                 <span key={j}>
                                     <span style={{ color }}>{part}</span>
                                     {j < parts.length - 1 && (
-                                        <span style={{ color: 'var(--color-ink-800)' }}>
+                                        <span
+                                            style={{
+                                                color: 'var(--color-ink-800)'
+                                            }}
+                                        >
                                             /
                                         </span>
                                     )}
@@ -198,7 +201,6 @@ function CyclingLabel({
     hold?: number
 }) {
     const [index, setIndex] = useState(0)
-    const reduced = usePrefersReducedMotion()
 
     useEffect(() => {
         const cycle = setInterval(() => {
@@ -208,22 +210,6 @@ function CyclingLabel({
     }, [words.length, hold])
 
     const widest = words.reduce((a, b) => (b.length > a.length ? b : a), '')
-
-    if (reduced) {
-        return (
-            <span className="relative inline-grid place-items-center">
-                <span aria-hidden className="invisible col-start-1 row-start-1">
-                    {widest}
-                </span>
-                <span
-                    key={words[index]}
-                    className="col-start-1 row-start-1 transition-opacity duration-200"
-                >
-                    {words[index]}
-                </span>
-            </span>
-        )
-    }
 
     return (
         <span className="relative inline-flex overflow-hidden align-bottom">
@@ -254,10 +240,8 @@ function CyclingLabel({
 
 // Fades the command string in with a brief blur whenever the active tab
 // changes, so the text morphs in step with the sliding indicator instead of
-// snapping. Mounts fresh on each switch via the parent's `key`. Reduced motion
-// keeps the fade but drops the blur.
+// snapping. Mounts fresh on each switch via the parent's `key`.
 function CommandSwap({ children }: { children: React.ReactNode }) {
-    const reduced = usePrefersReducedMotion()
     const [shown, setShown] = useState(false)
 
     useEffect(() => {
@@ -269,7 +253,7 @@ function CommandSwap({ children }: { children: React.ReactNode }) {
             className="block min-w-0 truncate transition-[opacity,filter]"
             style={{
                 opacity: shown ? 1 : 0,
-                filter: reduced || shown ? 'blur(0px)' : 'blur(3px)',
+                filter: shown ? 'blur(0px)' : 'blur(3px)',
                 transitionDuration: '240ms',
                 transitionTimingFunction: EASE_OUT
             }}
@@ -282,9 +266,8 @@ function CommandSwap({ children }: { children: React.ReactNode }) {
 // Tab indicator — the rose pill that tracks the active install tab. Position is
 // driven by a GPU `transform: translate()` (only transform/opacity hit the
 // compositor; animating left/top would thrash layout). Size still transitions,
-// but the box has no children so it stays cheap. Reduced motion snaps instantly.
+// but the box has no children so it stays cheap.
 function TabIndicator({ activeRect }: { activeRect: DOMRect | null }) {
-    const reduced = usePrefersReducedMotion()
     if (!activeRect) return null
 
     const move = `transform 300ms ${EASE_OUT}`
@@ -298,7 +281,7 @@ function TabIndicator({ activeRect }: { activeRect: DOMRect | null }) {
                 width: activeRect.width,
                 height: activeRect.height,
                 transform: `translate(${activeRect.left}px, ${activeRect.top}px)`,
-                transition: reduced ? 'none' : `${move}, ${resize}`,
+                transition: `${move}, ${resize}`,
                 zIndex: 0
             }}
         />
@@ -314,7 +297,6 @@ export function GitHubStats({
     data,
     accentColor = ACCENT_COLOR
 }: GitHubStatsProps) {
-    const reduced = usePrefersReducedMotion()
     const [contentVisible, setContentVisible] = useState(false)
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const [tooltipPosition, setTooltipPosition] = useState<{
@@ -329,29 +311,20 @@ export function GitHubStats({
     const commitsContainerRef = useRef<HTMLDivElement>(null)
     const tabsContainerRef = useRef<HTMLDivElement>(null)
     const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
-    const revealClass = reduced
-        ? 'opacity-100'
-        : contentVisible
-          ? 'opacity-100'
-          : 'opacity-0'
+    const revealClass = contentVisible ? 'opacity-100' : 'opacity-0'
     function revealStyle(delay: number): CSSProperties {
         return {
-            transitionDelay: reduced ? '0ms' : `${delay}ms`,
-            transitionDuration: reduced ? '180ms' : '420ms',
+            transitionDelay: `${delay}ms`,
+            transitionDuration: '420ms',
             transitionProperty: 'opacity',
             transitionTimingFunction: EASE_OUT
         }
     }
 
     useEffect(() => {
-        if (reduced) {
-            setContentVisible(true)
-            return
-        }
-
         const id = requestAnimationFrame(() => setContentVisible(true))
         return () => cancelAnimationFrame(id)
-    }, [reduced])
+    }, [])
 
     // Update indicator position when active tab changes
     useLayoutEffect(() => {
@@ -532,9 +505,7 @@ export function GitHubStats({
                                     </div>
                                     <div className="mt-1 hidden items-center gap-2 text-[10px] text-ink-500 sm:flex">
                                         <span>Scroll to pan</span>
-                                        <span className="text-line">
-                                            |
-                                        </span>
+                                        <span className="text-line">|</span>
                                         <span className="flex items-center gap-1">
                                             <kbd className="rounded border border-line bg-surface-elevated px-1 py-0.5 font-mono text-[8px] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                                                 shift
