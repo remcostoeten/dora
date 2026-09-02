@@ -16,7 +16,12 @@
 //! generation and aborts the running task. A task compares its spawn-time
 //! generation before patching, so a stale result is discarded rather than
 //! resurrecting a dropped schema entry.
+//!
+//! Counted tables are remembered per generation. An empty table counts to
+//! exactly zero, which still matches [`pending_counts`], so without that memory
+//! the emit → frontend refetch → `schedule` cycle would recount forever.
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use dashmap::DashMap;
@@ -59,14 +64,16 @@ pub fn pending_counts(schema: &DatabaseSchema) -> Vec<PendingCount> {
         .collect()
 }
 
-/// Applies positional counts onto a schema, returning the patched copy.
-/// `None` counts (unreadable tables) leave the existing estimate untouched.
+/// Applies positional counts onto a schema, returning the patched copy and
+/// whether any estimate actually changed. `None` counts (unreadable tables)
+/// leave the existing estimate untouched.
 pub fn apply_counts(
     schema: &DatabaseSchema,
     pending: &[PendingCount],
     counts: &[Option<u64>],
-) -> DatabaseSchema {
+) -> (DatabaseSchema, bool) {
     let mut patched = schema.clone();
+    let mut changed = false;
     for (entry, count) in pending.iter().zip(counts) {
         let Some(count) = count else { continue };
         if let Some(table) = patched
@@ -74,10 +81,13 @@ pub fn apply_counts(
             .iter_mut()
             .find(|table| table.name == entry.table && table.schema == entry.schema)
         {
-            table.row_count_estimate = Some(*count);
+            if table.row_count_estimate != Some(*count) {
+                table.row_count_estimate = Some(*count);
+                changed = true;
+            }
         }
     }
-    patched
+    (patched, changed)
 }
 
 #[derive(Clone, Serialize)]
@@ -91,10 +101,16 @@ struct RunningTask {
     handle: tauri::async_runtime::JoinHandle<()>,
 }
 
+struct CountedTables {
+    generation: u64,
+    done: HashSet<(String, String)>,
+}
+
 pub struct RowCountRefresher {
     app: AppHandle,
     generations: DashMap<Uuid, u64>,
     tasks: DashMap<Uuid, RunningTask>,
+    counted: DashMap<Uuid, CountedTables>,
 }
 
 impl RowCountRefresher {
@@ -103,6 +119,7 @@ impl RowCountRefresher {
             app,
             generations: DashMap::new(),
             tasks: DashMap::new(),
+            counted: DashMap::new(),
         }
     }
 
@@ -116,18 +133,22 @@ impl RowCountRefresher {
     /// alive past teardown.
     pub fn cancel(&self, connection_id: Uuid) {
         *self.generations.entry(connection_id).or_insert(0) += 1;
+        self.counted.remove(&connection_id);
         if let Some((_, task)) = self.tasks.remove(&connection_id) {
             task.handle.abort();
         }
     }
 
     /// Spawns a count run for the given pending tables unless one is already
-    /// running at the current generation. Safe to call on every schema read.
+    /// running at the current generation. Tables already counted at this
+    /// generation are dropped, so repeated schema reads do not recount.
+    /// Safe to call on every schema read.
     pub fn schedule(&self, connection_id: Uuid, pending: Vec<PendingCount>) {
+        let generation = self.generation(connection_id);
+        let pending = self.uncounted(connection_id, generation, pending);
         if pending.is_empty() {
             return;
         }
-        let generation = self.generation(connection_id);
         if let Some(task) = self.tasks.get(&connection_id) {
             if task.generation == generation {
                 return;
@@ -143,6 +164,46 @@ impl RowCountRefresher {
         });
         self.tasks
             .insert(connection_id, RunningTask { generation, handle });
+    }
+
+    fn uncounted(
+        &self,
+        connection_id: Uuid,
+        generation: u64,
+        pending: Vec<PendingCount>,
+    ) -> Vec<PendingCount> {
+        let Some(counted) = self.counted.get(&connection_id) else {
+            return pending;
+        };
+        if counted.generation != generation {
+            return pending;
+        }
+        pending
+            .into_iter()
+            .filter(|entry| {
+                !counted
+                    .done
+                    .contains(&(entry.schema.clone(), entry.table.clone()))
+            })
+            .collect()
+    }
+
+    /// Marks the tables a successful run covered so the next schema read does
+    /// not schedule them again. Tables whose count failed stay unmarked and are
+    /// retried on the next read.
+    fn mark_counted(&self, connection_id: Uuid, generation: u64, done: Vec<(String, String)>) {
+        let mut entry = self
+            .counted
+            .entry(connection_id)
+            .or_insert_with(|| CountedTables {
+                generation,
+                done: HashSet::new(),
+            });
+        if entry.generation != generation {
+            entry.generation = generation;
+            entry.done.clear();
+        }
+        entry.done.extend(done);
     }
 
     fn finish(&self, connection_id: Uuid, generation: u64) {
@@ -184,10 +245,21 @@ async fn run_count_task(
         return;
     }
 
+    refresher.mark_counted(
+        connection_id,
+        generation,
+        pending
+            .iter()
+            .zip(&counts)
+            .filter(|(_, count)| count.is_some())
+            .map(|(entry, _)| (entry.schema.clone(), entry.table.clone()))
+            .collect(),
+    );
+
     let mut patched_any = false;
     state.schemas.alter(&connection_id, |_, old| {
-        let patched = apply_counts(&old, &pending, &counts);
-        patched_any = true;
+        let (patched, changed) = apply_counts(&old, &pending, &counts);
+        patched_any = changed;
         Arc::new(patched)
     });
 
@@ -502,7 +574,8 @@ mod tests {
                 table: "b".into(),
             },
         ];
-        let patched = apply_counts(&schema, &pending, &[Some(7), None]);
+        let (patched, changed) = apply_counts(&schema, &pending, &[Some(7), None]);
+        assert!(changed);
         assert_eq!(patched.tables[0].row_count_estimate, Some(7));
         assert_eq!(patched.tables[1].row_count_estimate, Some(0));
     }
@@ -514,8 +587,20 @@ mod tests {
             schema: "public".into(),
             table: "dropped".into(),
         }];
-        let patched = apply_counts(&schema, &pending, &[Some(9)]);
+        let (patched, changed) = apply_counts(&schema, &pending, &[Some(9)]);
+        assert!(!changed);
         assert_eq!(patched.tables[0].row_count_estimate, None);
+    }
+
+    #[test]
+    fn apply_counts_reports_no_change_when_estimate_already_matches() {
+        let schema = schema_of(vec![table("a", "public", Some(0))]);
+        let pending = vec![PendingCount {
+            schema: "public".into(),
+            table: "a".into(),
+        }];
+        let (_, changed) = apply_counts(&schema, &pending, &[Some(0)]);
+        assert!(!changed);
     }
 
     #[test]

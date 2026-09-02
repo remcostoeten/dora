@@ -3,16 +3,12 @@ import type { SourceMeta } from './source-kinds'
 import type { DataFileSourceEntry } from '@studio/features/connections/types/data-file-source'
 import {
 	formatDataFileSourceSummary,
-	resolveDataFileSearchText,
+	resolveDataFileSearchText
 } from '@studio/features/connections/data-file-health'
 import { describeConnectionSource, type ConnectionSourceInput } from './resolve-source'
 
 export const DATA_FILE_READONLY_MESSAGE =
 	'Data files open as readonly DuckDB views. SQL queries and export work, but row editing is disabled until you Save as DuckDB or import into a native DuckDB file.'
-
-export function shouldShowDataFileReadonlyMessage(meta: SourceMeta): boolean {
-	return meta.kind === 'data-file'
-}
 
 export function resolveProviderLabel(meta: SourceMeta): string {
 	if (meta.kind === 'data-file') {
@@ -144,7 +140,7 @@ export function resolveConnectionSearchText(
 		connection.host,
 		meta.engine,
 		meta.preset,
-		meta.kind,
+		meta.kind
 	]
 
 	if (meta.kind === 'data-file') {

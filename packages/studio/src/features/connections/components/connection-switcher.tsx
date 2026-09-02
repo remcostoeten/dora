@@ -92,7 +92,6 @@ type ConnectionMenuRowProps = ComponentPropsWithoutRef<'div'> & {
 	onEditConnection?: (id: string) => void
 	onDeleteConnection?: (id: string) => void
 	onConfirmDelete: (id: string) => void
-	onKeepOpenAfterDelete: () => void
 }
 
 const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
@@ -105,7 +104,6 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 			onEditConnection,
 			onDeleteConnection,
 			onConfirmDelete,
-			onKeepOpenAfterDelete,
 			className,
 			onClick,
 			onKeyDown,
@@ -114,8 +112,6 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 		},
 		ref
 	) {
-		const [isHolding, setIsHolding] = useState(false)
-
 		return (
 			<div
 				ref={ref}
@@ -211,77 +207,28 @@ const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
 								data-connection-action
 								type='button'
 								className={cn(
-									'relative overflow-hidden flex h-6 w-6 items-center justify-center rounded-sm',
+									'flex h-6 w-6 items-center justify-center rounded-sm',
 									'text-muted-foreground',
 									'opacity-0 -translate-x-1 pointer-events-none',
 									'group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto',
 									'group-data-[highlighted]/row:opacity-100 group-data-[highlighted]/row:translate-x-0 group-data-[highlighted]/row:pointer-events-auto',
 									'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
 									'hover:text-destructive hover:bg-background/60',
-									isHolding && 'text-destructive-foreground',
 									'focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:pointer-events-auto focus-visible:text-destructive focus-visible:bg-destructive/20'
 								)}
 								onPointerDown={function (e) {
-									onKeepOpenAfterDelete()
 									e.preventDefault()
 									e.stopPropagation()
-									/*
-									 * jsdom's synthetic pointer events fall back to MouseEvent with
-									 * no pointerId, and its setPointerCapture throws on it — capture
-									 * only when the event carries a real pointer.
-									 */
-									if (
-										e.pointerId != null &&
-										typeof e.currentTarget.setPointerCapture === 'function'
-									) {
-										e.currentTarget.setPointerCapture(e.pointerId)
-									}
-									setIsHolding(true)
-								}}
-								onPointerUp={function () {
-									setIsHolding(false)
-								}}
-								onPointerCancel={function () {
-									setIsHolding(false)
-								}}
-								onKeyDown={function (e) {
-									if (e.key !== 'Enter' && e.key !== ' ') return
-									e.preventDefault()
-									e.stopPropagation()
-									if (!isHolding) {
-										onKeepOpenAfterDelete()
-										setIsHolding(true)
-									}
-								}}
-								onKeyUp={function (e) {
-									if (e.key === 'Enter' || e.key === ' ') setIsHolding(false)
-								}}
-								onBlur={function () {
-									setIsHolding(false)
 								}}
 								onClick={function (e) {
 									e.preventDefault()
 									e.stopPropagation()
+									onConfirmDelete(connection.id)
 								}}
-								title={`Hold to delete ${connection.name}`}
-								aria-label={`Hold to delete ${connection.name}`}
+								title={`Delete ${connection.name}`}
+								aria-label={`Delete ${connection.name}`}
 							>
-								<span
-									aria-hidden='true'
-									className={cn(
-										'pointer-events-none absolute inset-0 bg-destructive',
-										isHolding
-											? '[clip-path:inset(0_0_0_0)] transition-[clip-path] duration-[2000ms] ease-linear'
-											: '[clip-path:inset(0_100%_0_0)] transition-[clip-path] duration-200 ease-[var(--ease-out)]'
-									)}
-									onTransitionEnd={function (e) {
-										if (e.propertyName !== 'clip-path') return
-										if (!isHolding) return
-										setIsHolding(false)
-										onConfirmDelete(connection.id)
-									}}
-								/>
-								<Trash2 className='relative h-3 w-3' />
+								<Trash2 className='h-3 w-3' />
 							</button>
 						)}
 					</div>
@@ -305,7 +252,7 @@ export function ConnectionSwitcher({
 }: SwitcherProps) {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [dropdownOpen, setDropdownOpen] = useState(false)
-	const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null)
+	const [, setContextMenuConnectionId] = useState<string | null>(null)
 	const keepOpenUntilRef = useRef(0)
 	const connectionRowRefs = useRef(new Map<string, HTMLDivElement>())
 	const activeConnection = connections.find((c) => c.id === activeConnectionId)
@@ -629,61 +576,42 @@ export function ConnectionSwitcher({
 								return (
 									<div key={connection.id}>
 										<ContextMenu modal={false}>
-											<DropdownMenuItem
-												asChild
-												onSelect={function handleMenuItemSelect(e) {
-													const target = e.target
-													if (
-														target instanceof HTMLElement &&
-														target.closest('[data-connection-action]')
-													) {
-														e.preventDefault()
-													}
-												}}
-											>
-												<ContextMenuTrigger asChild>
-													<ConnectionMenuRow
-														ref={function setConnectionRowRef(node) {
-															if (node) {
-																connectionRowRefs.current.set(
-																	connection.id,
-																	node
-																)
-															} else {
-																connectionRowRefs.current.delete(
-																	connection.id
-																)
-															}
-														}}
-														connection={connection}
-														isActive={isActive}
-														rowSummary={rowSummary}
-														rowHealth={rowHealth}
-														onEditConnection={onEditConnection}
-														onDeleteConnection={onDeleteConnection}
-														onConfirmDelete={confirmDelete}
-														onKeepOpenAfterDelete={markKeepOpenAfterDelete}
-														onContextMenuCapture={function handleConnectionContextMenu() {
-															setContextMenuConnectionId(
+											<ContextMenuTrigger asChild>
+												<ConnectionMenuRow
+													ref={function setConnectionRowRef(node) {
+														if (node) {
+															connectionRowRefs.current.set(
+																connection.id,
+																node
+															)
+														} else {
+															connectionRowRefs.current.delete(
 																connection.id
 															)
-															setDropdownOpen(true)
-														}}
-														onClick={function handleConnectionClick() {
+														}
+													}}
+													connection={connection}
+													isActive={isActive}
+													rowSummary={rowSummary}
+													rowHealth={rowHealth}
+													onEditConnection={onEditConnection}
+													onDeleteConnection={onDeleteConnection}
+													onConfirmDelete={confirmDelete}
+													onContextMenuCapture={function handleConnectionContextMenu() {
+														setContextMenuConnectionId(connection.id)
+														setDropdownOpen(true)
+													}}
+													onClick={function handleConnectionClick() {
+														selectConnection(connection.id)
+													}}
+													onKeyDown={function handleRowKeyDown(e) {
+														if (e.key === 'Enter' || e.key === ' ') {
+															e.preventDefault()
 															selectConnection(connection.id)
-														}}
-														onKeyDown={function handleRowKeyDown(e) {
-															if (
-																e.key === 'Enter' ||
-																e.key === ' '
-															) {
-																e.preventDefault()
-																selectConnection(connection.id)
-															}
-														}}
-													/>
-												</ContextMenuTrigger>
-											</DropdownMenuItem>
+														}
+													}}
+												/>
+											</ContextMenuTrigger>
 											<ContextMenuContent
 												className='w-48'
 												onEscapeKeyDown={function handleContextEscape() {

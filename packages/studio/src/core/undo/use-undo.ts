@@ -132,6 +132,7 @@ export function useUndo(options: UndoOptions = {}) {
 				description: `Press Ctrl+Z within ${timeoutDuration / 1000}s to undo`,
 				action: {
 					label: 'Undo',
+					kbd: 'Ctrl+Z',
 					onClick: function () {
 						const action = useUndoStore.getState().getAction(actionId)
 						if (action) {
@@ -178,6 +179,7 @@ export function useUndo(options: UndoOptions = {}) {
 				description: `Press Ctrl+Z within ${timeoutDuration / 1000}s to undo`,
 				action: {
 					label: 'Undo',
+					kbd: 'Ctrl+Z',
 					onClick: function () {
 						const action = useUndoStore.getState().getAction(actionId)
 						if (action) {
@@ -225,6 +227,7 @@ export function useUndo(options: UndoOptions = {}) {
 				description: `Press Ctrl+Z within ${timeoutDuration / 1000}s to undo`,
 				action: {
 					label: 'Undo',
+					kbd: 'Ctrl+Z',
 					onClick: function () {
 						const action = useUndoStore.getState().getAction(actionId)
 						if (action) {

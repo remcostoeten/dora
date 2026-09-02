@@ -10,6 +10,15 @@ describe('isConnectionUnavailableError', () => {
 		expect(isConnectionUnavailableError('connection refused (os error 111)')).toBe(true)
 	})
 
+	it('recognises an unusable connection string', () => {
+		expect(
+			isConnectionUnavailableError(
+				'Failed to parse connection string: <unparseable connection string redacted>'
+			)
+		).toBe(true)
+		expect(isConnectionUnavailableError(new Error('invalid connection string'))).toBe(true)
+	})
+
 	it('leaves operation-level failures alone', () => {
 		expect(isConnectionUnavailableError('syntax error at or near "SELCT"')).toBe(false)
 		expect(isConnectionUnavailableError(new Error('permission denied for table users'))).toBe(

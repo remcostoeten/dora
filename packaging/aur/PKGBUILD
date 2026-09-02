@@ -18,6 +18,10 @@ package() {
 
   install -Dm755 dora "$pkgdir/usr/bin/dora"
 
+  # DuckDB runs in a helper process resolved next to the main binary; without it
+  # every DuckDB and data-file connection fails to open.
+  install -Dm755 duckdb_helper "$pkgdir/usr/bin/duckdb_helper"
+
   if [[ -f dora.desktop ]]; then
     install -Dm644 dora.desktop "$pkgdir/usr/share/applications/dora.desktop"
   fi

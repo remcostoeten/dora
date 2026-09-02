@@ -104,11 +104,15 @@ const CONNECTION_UNAVAILABLE_PATTERNS = [
 	'connection reset',
 	'no active connection',
 	'not connected',
-	'connection timed out'
+	'connection timed out',
+	'parse connection string',
+	'invalid connection string',
+	'unparseable connection string'
 ]
 
 /**
- * True when an error means the database itself is unreachable rather than the
+ * True when an error means the connection itself is unusable — unreachable, or
+ * configured with a connection string no driver can parse — rather than the
  * individual operation failing. Callers use it to fall back to an inline
  * "connection unavailable" surface instead of raising one toast per request
  * that a dead connection sinks.

@@ -162,7 +162,17 @@ jobs:
             exit 1
           fi
 
+          # The DuckDB engine runs out of process: without the `duckdb_helper`
+          # sidecar next to the binary, every DuckDB and data-file connection
+          # fails with "Could not connect to this database".
+          DEB_HELPER="$(find "${DEB_EXTRACT}" -type f -name duckdb_helper -path '*/bin/*' | head -1)"
+          if [[ -z "${DEB_HELPER}" ]]; then
+            echo "Could not find duckdb_helper sidecar inside ${DEB}" >&2
+            exit 1
+          fi
+
           install -Dm755 "${DEB_BIN}" "$STAGE/dora"
+          install -Dm755 "${DEB_HELPER}" "$STAGE/duckdb_helper"
           install -Dm644 packaging/linux/dora.desktop "$STAGE/dora.desktop"
           install -Dm644 apps/desktop/src-tauri/icons/32x32.png "$STAGE/icons/32x32.png"
           install -Dm644 apps/desktop/src-tauri/icons/128x128.png "$STAGE/icons/128x128.png"

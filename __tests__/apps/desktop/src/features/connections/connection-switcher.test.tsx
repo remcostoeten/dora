@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
@@ -95,17 +95,21 @@ describe('ConnectionSwitcher', function () {
 			expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
 		})
 
-		completeHold(screen.getByRole('button', { name: /hold to delete local postgres/i }))
+		await user.click(screen.getByRole('button', { name: /delete local postgres/i }))
 		expect(onDeleteConnection).toHaveBeenCalledWith('local-postgres')
 
-		expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
+		await waitFor(function () {
+			expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
+		})
 
-		completeHold(screen.getByRole('button', { name: /hold to delete analytics/i }))
+		await user.click(screen.getByRole('button', { name: /delete analytics/i }))
 		expect(onDeleteConnection).toHaveBeenCalledWith('analytics')
-		expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
+		await waitFor(function () {
+			expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
+		})
 	})
 
-	it('never deletes on a plain click — only a completed hold confirms', async function () {
+	it('deletes with a normal click', async function () {
 		const user = userEvent.setup()
 		const onDeleteConnection = vi.fn()
 		renderSwitcher({ onDeleteConnection })
@@ -120,26 +124,9 @@ describe('ConnectionSwitcher', function () {
 			expect(screen.getByPlaceholderText('Search connections...')).toBeInTheDocument()
 		})
 
-		const deleteButton = screen.getByRole('button', { name: /hold to delete local postgres/i })
-		fireEvent.click(deleteButton)
-		expect(onDeleteConnection).not.toHaveBeenCalled()
+		await user.click(screen.getByRole('button', { name: /delete local postgres/i }))
 
-		fireEvent.pointerDown(deleteButton)
-		fireEvent.pointerUp(deleteButton)
-		fireCompletedFillTransition(deleteButton)
-		expect(onDeleteConnection).not.toHaveBeenCalled()
+		expect(onDeleteConnection).toHaveBeenCalledOnce()
+		expect(onDeleteConnection).toHaveBeenCalledWith('local-postgres')
 	})
 })
-
-function completeHold(button: HTMLElement) {
-	fireEvent.pointerDown(button)
-	fireCompletedFillTransition(button)
-}
-
-function fireCompletedFillTransition(button: HTMLElement) {
-	const fill = button.querySelector('span')
-	if (!fill) throw new Error('hold-to-confirm fill overlay not found')
-	const transitionEnd = new Event('transitionend', { bubbles: true })
-	Object.assign(transitionEnd, { propertyName: 'clip-path' })
-	fireEvent(fill, transitionEnd)
-}

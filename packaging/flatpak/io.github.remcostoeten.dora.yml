@@ -48,7 +48,12 @@ modules:
       - bun-install install --frozen-lockfile
       - bun run --cwd apps/desktop build
       - cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
+      # DuckDB runs out of process; the app resolves `duckdb_helper` next to its
+      # own binary, so the sidecar must ship alongside it.
+      - cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --bin
+        duckdb_helper --features duckdb-engine
       - install -Dm755 apps/desktop/src-tauri/target/release/dora /app/bin/dora
+      - install -Dm755 apps/desktop/src-tauri/target/release/duckdb_helper /app/bin/duckdb_helper
       - install -Dm644 packaging/flatpak/io.github.remcostoeten.dora.desktop
         /app/share/applications/io.github.remcostoeten.dora.desktop
       - install -Dm644 apps/desktop/src-tauri/icons/128x128.png

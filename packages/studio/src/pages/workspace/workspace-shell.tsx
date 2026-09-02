@@ -53,11 +53,12 @@ export function WorkspaceShell() {
 							/>
 						</main>
 
+						{!settings.hideAi && <AiAssistantPanelHost />}
+
 						<WorkspaceDialogs actions={actions} />
 
 						<OnboardingTour />
 						{!settings.hideAi && <AiAssistantToggle />}
-						{!settings.hideAi && <AiAssistantPanelHost />}
 					</div>
 				</div>
 			</SidebarProvider>

@@ -784,10 +784,12 @@ impl<'a> ConnectionService<'a> {
                         if file_sources.is_empty() {
                             Ok(connect_result(false))
                         } else {
-                            Ok(duckdb_data_file_connect_result(
-                                false,
-                                file_source_entries.clone(),
-                            ))
+                            // The engine never opened, so no source has a status of
+                            // its own; report the open error against each one rather
+                            // than an empty panel next to a bare "connection failed".
+                            let entries = file_source::failed_entries(file_sources, &e.to_string());
+                            *file_source_entries = entries.clone();
+                            Ok(duckdb_data_file_connect_result(false, entries))
                         }
                     }
                 }

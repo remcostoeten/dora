@@ -137,6 +137,27 @@ pub fn view_name_for(path: &str, taken: &HashSet<String>) -> String {
     }
 }
 
+/// Entries for sources that never reached DuckDB because the connection itself
+/// could not be opened (a missing helper binary, a helper that died). Every
+/// source carries the same cause so the UI can show why nothing registered.
+pub fn failed_entries(sources: &[String], error: &str) -> Vec<DataFileSourceEntry> {
+    let mut taken: HashSet<String> = HashSet::new();
+    sources
+        .iter()
+        .map(|path| {
+            let view_name = view_name_for(path, &taken);
+            taken.insert(view_name.clone());
+            DataFileSourceEntry {
+                path: path.clone(),
+                view_name,
+                file_type: file_type_label(path),
+                status: DataFileSourceStatus::Failed,
+                error: Some(error.to_string()),
+            }
+        })
+        .collect()
+}
+
 /// Registers every file source as a view on `conn`. Missing/failed files are
 /// collected rather than propagated so a connection with one bad path still
 /// opens with the rest of its tables.
@@ -247,6 +268,21 @@ mod tests {
 
         taken.clear();
         assert_eq!(view_name_for("/x/123.csv", &taken), "t_123");
+    }
+
+    #[test]
+    fn failed_entries_report_the_open_error_per_source() {
+        let sources = vec!["/data/a.csv".to_string(), "/other/a.csv".to_string()];
+        let entries = failed_entries(&sources, "helper binary not found");
+
+        assert_eq!(entries.len(), 2);
+        assert_eq!(entries[0].view_name, "a");
+        assert_eq!(entries[1].view_name, "a_2");
+        assert!(!has_active_sources(&entries));
+        for entry in &entries {
+            assert_eq!(entry.status, DataFileSourceStatus::Failed);
+            assert_eq!(entry.error.as_deref(), Some("helper binary not found"));
+        }
     }
 
     #[test]
