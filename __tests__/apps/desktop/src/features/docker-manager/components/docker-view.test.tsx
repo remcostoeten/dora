@@ -13,41 +13,35 @@ vi.mock('@studio/shared/ui/use-toast', () => ({
 }))
 
 vi.mock('@/features/docker-manager/components/container-list', () => ({
-		ContainerList: ({ containers, isLoading }: any) => (
-			<div data-testid='container-list'>
-				{isLoading ? 'Loading containers...' : `Containers: ${containers?.length || 0}`}
-			</div>
-		)
-	})
-)
+	ContainerList: ({ containers, isLoading }: any) => (
+		<div data-testid='container-list'>
+			{isLoading ? 'Loading containers...' : `Containers: ${containers?.length || 0}`}
+		</div>
+	)
+}))
 
 vi.mock('@/features/docker-manager/components/container-details-panel', () => ({
-		ContainerDetailsPanel: () => <div data-testid='container-details' />
-	})
-)
+	ContainerDetailsPanel: () => <div data-testid='container-details' />
+}))
 
-vi.mock('@/features/docker-manager/components/create-container-dialog', () => ({
-		CreateContainerDialog: ({ open }: any) =>
-			open ? <div data-testid='create-dialog' /> : null
-	})
-)
+vi.mock('@/features/docker-manager/components/create-container-panel', () => ({
+	CreateContainerPanel: () => <div data-testid='create-panel' />
+}))
 
 vi.mock('@/features/docker-manager/components/sandbox-indicator', () => ({
-		SandboxIndicator: () => <div data-testid='sandbox-indicator' />
-	})
-)
+	SandboxIndicator: () => <div data-testid='sandbox-indicator' />
+}))
 
 vi.mock('@/features/docker-manager/api/mutations/use-container-actions', () => ({
-		useContainerActions: () => ({
-			mutate: vi.fn(),
-			isPending: false
-		}),
-		useRemoveContainer: () => ({
-			mutate: vi.fn(),
-			isPending: false
-		})
+	useContainerActions: () => ({
+		mutate: vi.fn(),
+		isPending: false
+	}),
+	useRemoveContainer: () => ({
+		mutate: vi.fn(),
+		isPending: false
 	})
-)
+}))
 
 describe('DockerView', () => {
 	const mockCreateContainer = {
@@ -141,7 +135,7 @@ describe('DockerView', () => {
 		expect(screen.getByText('Docker')).toBeInTheDocument()
 	})
 
-	it('opens create dialog when "New Container" is clicked', () => {
+	it('opens the create panel when "New" is clicked', () => {
 		vi.spyOn(useContainersModule, 'useDockerAvailability').mockReturnValue({
 			data: { available: true },
 			isLoading: false
@@ -159,6 +153,7 @@ describe('DockerView', () => {
 		const newButton = screen.getByText('New')
 		fireEvent.click(newButton)
 
-		expect(screen.getByTestId('create-dialog')).toBeInTheDocument()
+		expect(screen.getByTestId('create-panel')).toBeInTheDocument()
+		expect(screen.queryByTestId('container-details')).not.toBeInTheDocument()
 	})
 })

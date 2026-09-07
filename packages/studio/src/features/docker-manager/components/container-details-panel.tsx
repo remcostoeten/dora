@@ -94,8 +94,8 @@ export function ContainerDetailsPanel({
 	}
 
 	return (
-		<div className='w-80 min-h-0 flex flex-col border-l border-border bg-card overflow-y-auto'>
-			<div className='p-4 border-b border-border'>
+		<div className='w-80 min-h-0 flex flex-col border-l border-border bg-card overflow-hidden'>
+			<div className='shrink-0 p-4 border-b border-border'>
 				<div className='flex items-start justify-between gap-2'>
 					<div className='min-w-0'>
 						<h3 className='font-medium text-sm truncate'>{container.name}</h3>
@@ -105,71 +105,48 @@ export function ContainerDetailsPanel({
 					</div>
 					<StatusBadge state={container.state} health={container.health} />
 				</div>
-			</div>
 
-			<div className='p-4 border-b border-border'>
-				<ConnectionDetails container={container} />
-			</div>
-
-			<div className='p-4 border-b border-border'>
-				<ContainerMetrics container={container} />
-			</div>
-
-			<div className='p-4 border-b border-border space-y-2'>
-				<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3'>
-					Actions
-				</h4>
-
-				<div className='flex flex-wrap gap-2'>
+				<div className='mt-3 flex items-center gap-1'>
 					{!isRunning ? (
 						<Button
 							variant='outline'
-							size='sm'
-							className='h-8 gap-1.5'
+							size='icon-sm'
+							aria-label='Start container'
+							title='Start'
 							onClick={handleStart}
 							disabled={containerActions.isPending}
 						>
 							<Play className='h-3.5 w-3.5' />
-							Start
 						</Button>
 					) : (
 						<Button
 							variant='outline'
-							size='sm'
-							className='h-8 gap-1.5'
+							size='icon-sm'
+							aria-label='Stop container'
+							title='Stop'
 							onClick={handleStop}
 							disabled={containerActions.isPending}
 						>
 							<Square className='h-3.5 w-3.5' />
-							Stop
 						</Button>
 					)}
 
 					<Button
 						variant='outline'
-						size='sm'
-						className='h-8 gap-1.5'
+						size='icon-sm'
+						aria-label='Restart container'
+						title='Restart'
 						onClick={handleRestart}
 						disabled={containerActions.isPending || !isRunning}
 					>
 						<RotateCcw className='h-3.5 w-3.5' />
-						Restart
 					</Button>
 
 					<Button
 						variant='outline'
-						size='sm'
-						className='h-8 gap-1.5'
-						onClick={() => setShowExportDialog(true)}
-					>
-						<FileCode className='h-3.5 w-3.5' />
-						Export
-					</Button>
-
-					<Button
-						variant='outline'
-						size='sm'
-						className='h-8 gap-1.5'
+						size='icon-sm'
+						aria-label='Open terminal'
+						title='Terminal'
 						onClick={function () {
 							if (onOpenTerminal) {
 								onOpenTerminal(container)
@@ -178,38 +155,60 @@ export function ContainerDetailsPanel({
 						disabled={!isRunning}
 					>
 						<TerminalSquare className='h-3.5 w-3.5' />
-						Terminal
 					</Button>
 
 					<Button
 						variant='outline'
-						size='sm'
-						className='h-8 gap-1.5 text-destructive hover:text-destructive'
+						size='icon-sm'
+						aria-label='Export compose file'
+						title='Export'
+						onClick={() => setShowExportDialog(true)}
+					>
+						<FileCode className='h-3.5 w-3.5' />
+					</Button>
+
+					<Button
+						variant='outline'
+						size='icon-sm'
+						aria-label='Remove container'
+						title='Remove'
+						className='ml-auto text-destructive hover:text-destructive'
 						onClick={handleRemove}
 						disabled={removeContainer.isPending}
 					>
 						<Trash2 className='h-3.5 w-3.5' />
-						Remove
 					</Button>
 				</div>
+			</div>
 
+			<div className='flex-1 min-h-0 overflow-y-auto'>
+				<div className='p-4 border-b border-border'>
+					<ConnectionDetails container={container} />
+				</div>
+
+				<div className='p-4 border-b border-border'>
+					<ContainerMetrics container={container} />
+				</div>
+
+				<div className='p-4'>
+					<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3'>
+						Seed Data
+					</h4>
+					<SeedView container={container} />
+				</div>
+			</div>
+
+			<div className='shrink-0 border-t border-border p-3'>
 				<Button
 					variant='default'
 					size='sm'
-					className='w-full h-8 gap-1.5 mt-3'
+					className='w-full h-8 gap-1.5'
 					onClick={handleOpenInViewer}
 					disabled={!isRunning}
 				>
 					<ExternalLink className='h-3.5 w-3.5' />
 					Open in Data Viewer
 				</Button>
-			</div>
-
-			<div className='p-4 border-t border-border'>
-				<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3'>
-					Seed Data
-				</h4>
-				<SeedView container={container} />
 			</div>
 
 			<ComposeExportDialog
