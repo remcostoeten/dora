@@ -8,14 +8,16 @@
 
 import { useMemo, useState } from 'react'
 import { Copy, Check, TerminalSquare, AlertTriangle } from 'lucide-react'
+import { File } from '@pierre/diffs/react'
 import { Button } from '@studio/shared/ui/button'
+import { useColorScheme } from '@studio/shared/hooks/use-color-scheme'
 import { Checkbox } from '@studio/shared/ui/checkbox'
 import { toast } from '@studio/shared/ui/notifier'
 import { cn } from '@studio/shared/utils/cn'
 import type { MigrationResult } from '@studio/features/orm-cockpit/migration/generate-sql'
 import {
 	buildPreviewSql,
-	migrationHasGatedSections,
+	migrationHasGatedSections
 } from '@studio/features/orm-cockpit/components/migration-sections'
 
 type Props = {
@@ -23,6 +25,8 @@ type Props = {
 	/** Hand the generated SQL to the SQL console (preview → run there). */
 	onOpenInSqlConsole?: (sql: string) => void
 }
+
+const MIGRATION_THEMES = { light: 'pierre-light', dark: 'pierre-dark' } as const
 
 export function MigrationPreview({ migration, onOpenInSqlConsole }: Props) {
 	const [includeDestructive, setIncludeDestructive] = useState(false)
@@ -33,14 +37,32 @@ export function MigrationPreview({ migration, onOpenInSqlConsole }: Props) {
 		function () {
 			return migrationHasGatedSections(migration.sections)
 		},
-		[migration.sections],
+		[migration.sections]
 	)
 
 	const sql = useMemo(
 		function () {
 			return buildPreviewSql(migration.sections, { includeDestructive, includeReview })
 		},
-		[migration.sections, includeDestructive, includeReview],
+		[migration.sections, includeDestructive, includeReview]
+	)
+	const file = useMemo(
+		function () {
+			return { name: 'migration.sql', contents: sql, language: 'sql' as const }
+		},
+		[sql]
+	)
+	const colorScheme = useColorScheme()
+	const fileOptions = useMemo(
+		function () {
+			return {
+				disableFileHeader: true,
+				overflow: 'scroll',
+				theme: MIGRATION_THEMES,
+				themeType: colorScheme
+			} as const
+		},
+		[colorScheme]
 	)
 
 	async function handleCopy() {
@@ -117,7 +139,7 @@ export function MigrationPreview({ migration, onOpenInSqlConsole }: Props) {
 									'flex items-center gap-1 font-medium',
 									includeDestructive
 										? 'text-red-600 dark:text-red-400'
-										: 'text-muted-foreground',
+										: 'text-muted-foreground'
 								)}
 							>
 								<AlertTriangle className='h-3.5 w-3.5' />
@@ -128,9 +150,9 @@ export function MigrationPreview({ migration, onOpenInSqlConsole }: Props) {
 				</div>
 			)}
 
-			<pre className='flex-1 overflow-auto whitespace-pre bg-background p-3 font-mono text-xs leading-relaxed text-foreground'>
-				{sql}
-			</pre>
+			<div className='min-h-0 flex-1 overflow-auto bg-background'>
+				<File file={file} options={fileOptions} className='text-xs leading-relaxed' />
+			</div>
 		</div>
 	)
 }
