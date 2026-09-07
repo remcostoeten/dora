@@ -240,6 +240,7 @@ pub async fn execute_batch(
 ) -> Result<MutationResult, Error> {
     let svc = mutation_service(state.inner());
     let result = svc.execute_batch(connection_id, statements).await;
+    crate::database::schema_persistence::forget_schema(&state.storage, connection_id);
     refresher.cancel(connection_id);
     result
 }

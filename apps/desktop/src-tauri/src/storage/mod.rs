@@ -4,6 +4,7 @@ mod connection_history;
 mod connections;
 mod migrator;
 mod queries;
+mod schema_snapshots;
 mod serialize;
 mod settings;
 mod snippet_folders;

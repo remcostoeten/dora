@@ -264,6 +264,19 @@ async fn run_count_task(
     });
 
     if patched_any {
+        // Clone the Arc out so the DashMap shard is not held across the
+        // blocking SQLite write.
+        let patched_schema = state
+            .schemas
+            .get(&connection_id)
+            .map(|entry| entry.value().clone());
+        if let Some(schema) = patched_schema {
+            crate::database::schema_persistence::persist_schema(
+                &state.storage,
+                connection_id,
+                &schema,
+            );
+        }
         match app.emit_to(
             EventTarget::App,
             SCHEMA_ROW_COUNTS_EVENT,
