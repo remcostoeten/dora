@@ -208,8 +208,15 @@ export function LiveMonitorProvider({ children, activeConnectionId }: Props) {
 					monitorIdRef.current = result.data.monitorId
 					setIsPolling(true)
 				} catch (err) {
-					console.error('[LiveMonitor] start failed:', err)
-					setMonitorError(err instanceof Error ? err.message : String(err))
+					const message = err instanceof Error ? err.message : String(err)
+					// A connection that has been closed or replaced is an ordinary
+					// race on view switches and relaunch, not a fault worth a trace.
+					if (message.includes('connection not found')) {
+						console.warn('[LiveMonitor] Skipped: the connection is no longer open.')
+					} else {
+						console.error('[LiveMonitor] start failed:', err)
+					}
+					setMonitorError(message)
 					setIsPolling(false)
 				}
 			}
