@@ -5,7 +5,12 @@ import {
 	hydrateWorkspaceFromBootstrap,
 	initTableSnapshotPersistence
 } from '@studio/core/workspace-store'
-import { dismissBootScreen, preloadBootAssets, revealMainWindow } from './boot-screen'
+import {
+	dismissBootScreen,
+	preloadBootAssets,
+	revealMainWindow,
+	warmEditorHost
+} from './boot-screen'
 import App from './App.tsx'
 import '@studio/styles.css'
 import '@remcostoeten/notifier/styles'
@@ -30,6 +35,8 @@ async function boot() {
 	initTableSnapshotPersistence()
 
 	createRoot(document.getElementById('root')!).render(<App />)
+
+	warmEditorHost()
 
 	requestAnimationFrame(() => {
 		requestAnimationFrame(dismissBootScreen)
