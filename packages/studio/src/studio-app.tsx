@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { CredentialStorageNotice } from '@studio/components/credential-storage-notice'
 import { DemoBanner } from '@studio/components/demo-banner'
 import { DemoNoticeBar } from '@studio/components/demo-notice-bar'
+import { StorageQuotaNotice } from '@studio/components/storage-quota-notice'
 import { Toaster } from '@studio/shared/ui/notifier'
 import { useSettings } from '@studio/core/settings'
 import type { AnalyticsConfig } from '@studio/features/analytics'
@@ -57,6 +58,7 @@ export function StudioApp({ forceMock = false, analyticsConfig, basename }: Prop
 						<CredentialStorageNotice />
 						<div className='flex-1 overflow-hidden'>
 							<GlobalToaster />
+							<StorageQuotaNotice />
 							<NuqsAdapter>
 								<ThemeSync />
 								<Routes>

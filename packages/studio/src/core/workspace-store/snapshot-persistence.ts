@@ -2,6 +2,7 @@ import {
 	DEFAULT_QUERY_SIGNATURE,
 	snapshotQuerySignature
 } from '@studio/features/database-studio/utils/table-snapshot'
+import { writeStorageItem } from '@studio/shared/lib/safe-storage'
 import { noop } from '@studio/shared/utils/noop'
 import { putTableSnapshot } from './actions'
 import { workspaceStore } from './store'
@@ -64,11 +65,9 @@ function writeNow(): void {
 	if (!store) return
 	const serialized = serializeSnapshots()
 	if (serialized === null || serialized === lastWritten) return
-	try {
-		store.setItem(STORAGE_KEY, serialized)
+	const outcome = writeStorageItem(STORAGE_KEY, serialized, { label: 'table snapshots' })
+	if (outcome === 'ok') {
 		lastWritten = serialized
-	} catch {
-		noop()
 	}
 }
 
@@ -78,6 +77,36 @@ function scheduleWrite(): void {
 		writeTimer = null
 		writeNow()
 	}, WRITE_DEBOUNCE_MS)
+}
+
+/**
+ * The debounce loses the last view when the window closes within its 500ms
+ * window — which is exactly the "open a slow table, restart the app" case the
+ * mirror exists for. Flush synchronously whenever the page is hidden or
+ * unloading.
+ */
+function flushPendingWrite(): void {
+	if (writeTimer) {
+		clearTimeout(writeTimer)
+		writeTimer = null
+	}
+	writeNow()
+}
+
+function onVisibilityChange(): void {
+	if (document.visibilityState === 'hidden') flushPendingWrite()
+}
+
+function addFlushListeners(): void {
+	if (typeof window === 'undefined') return
+	window.addEventListener('pagehide', flushPendingWrite)
+	document.addEventListener('visibilitychange', onVisibilityChange)
+}
+
+function removeFlushListeners(): void {
+	if (typeof window === 'undefined') return
+	window.removeEventListener('pagehide', flushPendingWrite)
+	document.removeEventListener('visibilitychange', onVisibilityChange)
 }
 
 function isPersistedSnapshot(value: unknown): value is TableSnapshot {
@@ -141,6 +170,7 @@ export function configureTableSnapshotPersistence(nextEnabled: boolean): void {
 			clearTimeout(writeTimer)
 			writeTimer = null
 		}
+		removeFlushListeners()
 		clearStored()
 		return
 	}
@@ -149,6 +179,7 @@ export function configureTableSnapshotPersistence(nextEnabled: boolean): void {
 	// cannot clobber what the last session persisted.
 	hydrate()
 	unsubscribe = workspaceStore.subscribe(scheduleWrite)
+	addFlushListeners()
 }
 
 /**
