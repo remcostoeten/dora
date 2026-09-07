@@ -73,7 +73,7 @@ export function MessageContent({
 					const isBlock = typeof className === 'string' && className.includes('language-')
 					if (!isBlock) {
 						return (
-							<code className='rounded bg-zinc-800/70 px-1 py-0.5 font-mono text-[12px]'>
+							<code className='rounded bg-muted px-1 py-0.5 font-mono text-[12px] text-foreground'>
 								{children}
 							</code>
 						)
@@ -94,10 +94,18 @@ export function MessageContent({
 					return <p className='my-1.5 text-sm leading-relaxed'>{props.children}</p>
 				},
 				ul(props) {
-					return <ul className='my-1.5 list-disc space-y-1 pl-5 text-sm'>{props.children}</ul>
+					return (
+						<ul className='my-1.5 list-disc space-y-1 pl-5 text-sm'>
+							{props.children}
+						</ul>
+					)
 				},
 				ol(props) {
-					return <ol className='my-1.5 list-decimal space-y-1 pl-5 text-sm'>{props.children}</ol>
+					return (
+						<ol className='my-1.5 list-decimal space-y-1 pl-5 text-sm'>
+							{props.children}
+						</ol>
+					)
 				},
 				a(props) {
 					return (

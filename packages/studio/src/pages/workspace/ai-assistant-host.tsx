@@ -9,7 +9,8 @@ import { useAiAssistantStore } from '@studio/features/ai-assistant/store'
 import { useAiEditorContext } from '@studio/features/ai-assistant/editor-context'
 import { scheduleSqlConsoleCommand } from '@studio/features/command-palette/events'
 import { Button } from '@studio/shared/ui/button'
-import { usePresence } from '@studio/shared/hooks/use-presence'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
+import { cn } from '@studio/shared/utils/cn'
 import { Sparkles } from 'lucide-react'
 
 const AiAssistantPanel = lazy(function () {
@@ -25,17 +26,31 @@ export function AiAssistantToggle() {
 	const toggleOpen = useAiAssistantStore(function (s) {
 		return s.toggleOpen
 	})
-	if (open) return null
 	return (
-		<Button
-			variant='outline'
-			size='icon'
-			onClick={toggleOpen}
-			title='Open AI assistant'
-			className='fixed bottom-4 right-4 z-[70] h-10 w-10 rounded-full shadow-lg animate-in fade-in duration-150'
-		>
-			<Sparkles className='h-4 w-4' />
-		</Button>
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<Button
+					variant='ghost'
+					size='icon'
+					onClick={toggleOpen}
+					aria-label={open ? 'Close AI assistant' : 'Open AI assistant'}
+					aria-expanded={open}
+					aria-controls='ai-assistant-panel'
+					role='menuitem'
+					className={cn(
+						'h-10 w-10 rounded-md text-sidebar-foreground transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
+						open
+							? 'bg-sidebar-accent text-sidebar-accent-foreground'
+							: 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+					)}
+				>
+					<Sparkles className='h-5 w-5' />
+				</Button>
+			</TooltipTrigger>
+			<TooltipContent side='right'>
+				{open ? 'Close AI assistant' : 'Open AI assistant'}
+			</TooltipContent>
+		</Tooltip>
 	)
 }
 
@@ -49,7 +64,6 @@ export function AiAssistantPanelHost() {
 	const open = useAiAssistantStore(function (s) {
 		return s.open
 	})
-	const { present } = usePresence(open, 200)
 	const activeConnectionId = useActiveConnectionId()
 	const activeNavId = useActiveNavId()
 	const activeTab = useActiveTab()
@@ -73,7 +87,7 @@ export function AiAssistantPanelHost() {
 		)
 	}, [])
 
-	if (!present) return null
+	if (!open) return null
 
 	return (
 		<Suspense fallback={null}>
