@@ -28,7 +28,6 @@ export function dismissBootScreen(): void {
 
 export async function preloadBootAssets(): Promise<void> {
 	const results = await Promise.allSettled([
-		preloadEditorHost(),
 		document.fonts?.load("12px 'JetBrains Mono'") ?? Promise.resolve([]),
 		document.fonts?.load("12px 'Inter'") ?? Promise.resolve([])
 	])
@@ -36,5 +35,16 @@ export async function preloadBootAssets(): Promise<void> {
 		if (result.status === 'rejected') {
 			console.warn('Failed to preload a boot asset:', result.reason)
 		}
+	})
+}
+
+/**
+ * Warms the Monaco editor bundle without gating anything. Monaco is only
+ * needed once a SQL editor mounts, but it is by far the largest chunk — it
+ * must never sit between app launch and the first paint of the shell.
+ */
+export function warmEditorHost(): void {
+	preloadEditorHost().catch((error) => {
+		console.warn('Failed to warm the editor host:', error)
 	})
 }
