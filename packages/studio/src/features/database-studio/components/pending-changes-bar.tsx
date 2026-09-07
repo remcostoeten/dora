@@ -27,7 +27,7 @@ export function PendingChangesBar({ editCount, isApplying, onApply, onCancel, cl
 	return (
 		<div
 			data-state={state}
-			className='grid grid-rows-[0fr] opacity-0 data-[state=open]:grid-rows-[1fr] data-[state=open]:opacity-100 transition-[grid-template-rows,opacity] duration-200 ease-[var(--ease-out)] motion-reduce:transition-[opacity]'
+			className='grid grid-rows-[0fr] opacity-0 data-[state=open]:grid-rows-[1fr] data-[state=open]:opacity-100 transition-[grid-template-rows,opacity] duration-200 ease-[var(--ease-out)]'
 		>
 			<div className='overflow-hidden'>
 				<div
@@ -56,7 +56,12 @@ export function PendingChangesBar({ editCount, isApplying, onApply, onCancel, cl
 							<X className='h-4 w-4' />
 							Discard
 						</Button>
-						<Button size='sm' onClick={onApply} disabled={isApplying} className='gap-1.5'>
+						<Button
+							size='sm'
+							onClick={onApply}
+							disabled={isApplying}
+							className='gap-1.5'
+						>
 							{isApplying ? (
 								<Spinner className='h-4 w-4' />
 							) : (

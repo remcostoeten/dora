@@ -8,7 +8,7 @@ import { useSettings } from '@studio/core/settings'
 import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@studio/core/shortcuts'
 import { useUndo } from '@studio/core/undo'
 import type { Mutation } from '@studio/core/undo'
-import { getTableRefParts } from '@studio/shared/utils/table-ref'
+import { getTableRefId, getTableRefParts } from '@studio/shared/utils/table-ref'
 import {
 	getSourceCaps,
 	isDataFileSessionConnection
@@ -277,6 +277,32 @@ export function DatabaseStudio({
 		() => {
 			return new Set(initialSnapshot?.visibleColumns || [])
 		}
+	)
+
+	// Same key the grid's resize hook persists to (use-column-resize.ts), so the
+	// transition skeleton can render the incoming table's real column widths.
+	const [gridColumnWidths] = useWorkspaceState(`${workspaceStateKey}:column-widths`, () => {
+		return {} as Record<string, number>
+	})
+	const skeletonColumns = useMemo(
+		function () {
+			if (!tableId) return null
+			const schemaTable = schemaQuery.data?.tables.find(function (table) {
+				return getTableRefId(table) === tableId
+			})
+			if (!schemaTable) return null
+			const columnsForSkeleton =
+				visibleColumns.size > 0
+					? schemaTable.columns.filter(function (column) {
+							return visibleColumns.has(column.name)
+						})
+					: schemaTable.columns
+			if (columnsForSkeleton.length === 0) return null
+			return columnsForSkeleton.map(function (column) {
+				return { name: column.name, width: gridColumnWidths[column.name] }
+			})
+		},
+		[tableId, schemaQuery.data, visibleColumns, gridColumnWidths]
 	)
 
 	const [selectedRows, setSelectedRows] = useWorkspaceState(
@@ -1177,10 +1203,13 @@ export function DatabaseStudio({
 					>
 						<TableSkeleton
 							rows={previousTableRef.current?.rows || 12}
-							columns={Math.min(
-								previousTableRef.current?.columns || visibleColumns.size || 6,
-								8
-							)}
+							columns={
+								skeletonColumns ??
+								Math.min(
+									previousTableRef.current?.columns || visibleColumns.size || 6,
+									8
+								)
+							}
 						/>
 					</div>
 				)}
@@ -1235,24 +1264,26 @@ export function DatabaseStudio({
 
 			{/* Render floating bar if mode is floating */}
 			<AnimatePresence>
-				{tableData && settings.selectionBarStyle === 'floating' && rowsForActions.size > 0 && (
-					<SelectionActionBar
-						ref={toolbarRef}
-						selectedCount={rowsForActions.size}
-						onDelete={canEditRows ? handleBulkDelete : undefined}
-						onCopy={privacyMaskData ? undefined : handleBulkCopy}
-						onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
-						onExportJson={canExportFile ? handleExportJson : undefined}
-						onExportCsv={canExportFile ? handleExportCsv : undefined}
-						onSetNull={canEditRows ? handleOpenSetNull : undefined}
-						onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
-						onSave={canEditRows ? handleApplyPendingEdits : undefined}
-						pendingEditCount={tableId ? getEditCount(tableId) : 0}
-						onClearSelection={handleClearSelection}
-						onEscapeToGrid={handleEscapeToGrid}
-						mode='floating'
-					/>
-				)}
+				{tableData &&
+					settings.selectionBarStyle === 'floating' &&
+					rowsForActions.size > 0 && (
+						<SelectionActionBar
+							ref={toolbarRef}
+							selectedCount={rowsForActions.size}
+							onDelete={canEditRows ? handleBulkDelete : undefined}
+							onCopy={privacyMaskData ? undefined : handleBulkCopy}
+							onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
+							onExportJson={canExportFile ? handleExportJson : undefined}
+							onExportCsv={canExportFile ? handleExportCsv : undefined}
+							onSetNull={canEditRows ? handleOpenSetNull : undefined}
+							onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
+							onSave={canEditRows ? handleApplyPendingEdits : undefined}
+							pendingEditCount={tableId ? getEditCount(tableId) : 0}
+							onClearSelection={handleClearSelection}
+							onEscapeToGrid={handleEscapeToGrid}
+							mode='floating'
+						/>
+					)}
 			</AnimatePresence>
 
 			{tableId && canEditRows && (

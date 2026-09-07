@@ -19,7 +19,8 @@ const TOUR_STEPS: TourStep[] = [
 	},
 	{
 		title: 'Data Viewer',
-		description: 'Browse and edit tables in a spreadsheet-like grid, with filters, sorting, and undo.',
+		description:
+			'Browse and edit tables in a spreadsheet-like grid, with filters, sorting, and undo.',
 		anchor: '[data-nav-id="database-studio"]'
 	},
 	{
@@ -34,8 +35,7 @@ const TOUR_STEPS: TourStep[] = [
 	},
 	{
 		title: 'Settings',
-		description:
-			'Themes, keyboard shortcuts, privacy mode, and more live here. Enjoy Dora!',
+		description: 'Themes, keyboard shortcuts, privacy mode, and more live here. Enjoy Dora!',
 		anchor: '[data-nav-id="settings"]'
 	}
 ]
@@ -132,51 +132,55 @@ export function OnboardingTour() {
 					className={cn(
 						'rounded-lg border border-border bg-popover p-4 shadow-xl',
 						'animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200',
-						'motion-reduce:zoom-in-100 motion-reduce:slide-in-from-bottom-0'
+						''
 					)}
 				>
 					<div
 						key={stepIndex}
-						className='animate-in fade-in slide-in-from-bottom-1 duration-150 motion-reduce:slide-in-from-bottom-0'
+						className='animate-in fade-in slide-in-from-bottom-1 duration-150'
 					>
 						<div className='mb-1 flex items-center justify-between'>
-							<div className='text-sm font-medium text-popover-foreground'>{step.title}</div>
+							<div className='text-sm font-medium text-popover-foreground'>
+								{step.title}
+							</div>
 							<div className='text-xs text-muted-foreground'>{progressLabel}</div>
 						</div>
-						<p className='mb-3 text-xs leading-relaxed text-muted-foreground'>{step.description}</p>
+						<p className='mb-3 text-xs leading-relaxed text-muted-foreground'>
+							{step.description}
+						</p>
 					</div>
 					<div className='flex items-center justify-between'>
-					<Button variant='ghost' size='sm' className='h-7 text-xs' onClick={finish}>
-						Skip tour
-					</Button>
-					<div className='flex gap-2'>
-						{stepIndex > 0 && (
+						<Button variant='ghost' size='sm' className='h-7 text-xs' onClick={finish}>
+							Skip tour
+						</Button>
+						<div className='flex gap-2'>
+							{stepIndex > 0 && (
+								<Button
+									variant='outline'
+									size='sm'
+									className='h-7 text-xs'
+									onClick={function () {
+										setStepIndex(stepIndex - 1)
+									}}
+								>
+									Back
+								</Button>
+							)}
 							<Button
-								variant='outline'
 								size='sm'
 								className='h-7 text-xs'
 								onClick={function () {
-									setStepIndex(stepIndex - 1)
+									if (isLastStep) {
+										finish()
+									} else {
+										setStepIndex(stepIndex + 1)
+									}
 								}}
 							>
-								Back
+								{isLastStep ? 'Done' : 'Next'}
 							</Button>
-						)}
-						<Button
-							size='sm'
-							className='h-7 text-xs'
-							onClick={function () {
-								if (isLastStep) {
-									finish()
-								} else {
-									setStepIndex(stepIndex + 1)
-								}
-							}}
-						>
-							{isLastStep ? 'Done' : 'Next'}
-						</Button>
+						</div>
 					</div>
-				</div>
 				</div>
 			</div>
 		</>
