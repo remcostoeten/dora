@@ -1,3 +1,4 @@
+import { writeStorageItem } from '@studio/shared/lib/safe-storage'
 import type { Tab } from './tabs-store'
 
 // Tab session persistence (issue #98).
@@ -184,9 +185,12 @@ export function readSession(): SerializedSession {
 
 export function writeSession(input: SessionInput): void {
 	if (typeof window === 'undefined') return
+	let serialized: string
 	try {
-		window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(serializeTabs(input)))
-	} catch {
-		// Best-effort: ignore quota/serialization errors.
+		serialized = JSON.stringify(serializeTabs(input))
+	} catch (error) {
+		console.warn('[session] Could not serialize the tab session:', error)
+		return
 	}
+	writeStorageItem(SESSION_STORAGE_KEY, serialized, { label: 'open tabs' })
 }

@@ -1,4 +1,13 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react'
+import {
+	createContext,
+	useContext,
+	useState,
+	useEffect,
+	useCallback,
+	useMemo,
+	ReactNode
+} from 'react'
+import { readStorageItem, writeStorageItem } from '@studio/shared/lib/safe-storage'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 
 export type QueryHistoryItem = {
@@ -30,24 +39,37 @@ const MAX_HISTORY_ITEMS = 200
 const QueryHistoryContext = createContext<QueryHistoryContextValue | null>(null)
 
 function loadHistoryFromStorage(): QueryHistoryItem[] {
+	const stored = readStorageItem(STORAGE_KEY)
+	if (!stored) return []
 	try {
-		const stored = localStorage.getItem(STORAGE_KEY)
-		if (stored) {
-			const parsed = JSON.parse(stored)
-			return Array.isArray(parsed) ? parsed : []
-		}
+		const parsed = JSON.parse(stored)
+		return Array.isArray(parsed) ? parsed : []
 	} catch (e) {
-		console.warn('Failed to load query history:', e)
+		console.warn('[QueryHistory] Stored history was unreadable and has been ignored:', e)
+		return []
 	}
-	return []
 }
 
 function saveHistoryToStorage(items: QueryHistoryItem[]): void {
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-	} catch (e) {
-		console.warn('Failed to save query history:', e)
-	}
+	writeStorageItem(STORAGE_KEY, JSON.stringify(items), {
+		label: 'query history',
+		compact(attempt) {
+			const limit = Math.floor(MAX_HISTORY_ITEMS / 2 ** attempt)
+			if (limit < 1) return null
+			const pinned = items.filter(function (item) {
+				return item.pinned
+			})
+			const recent = items.slice(-limit)
+			const kept = [...pinned, ...recent].filter(function (item, index, all) {
+				return (
+					all.findIndex(function (other) {
+						return other.id === item.id
+					}) === index
+				)
+			})
+			return JSON.stringify(kept)
+		}
+	})
 }
 
 type Props = {
@@ -62,14 +84,16 @@ export function QueryHistoryProvider({ children }: Props) {
 		setHistory(loaded)
 	}, [])
 
-	const addToHistory = useCallback(function (entry: Omit<QueryHistoryItem, 'id' | 'timestamp' | 'pinned'>) {
+	const addToHistory = useCallback(function (
+		entry: Omit<QueryHistoryItem, 'id' | 'timestamp' | 'pinned'>
+	) {
 		const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 		setHistory(function (prev) {
 			const newItem: QueryHistoryItem = {
 				...entry,
 				id,
 				timestamp: Date.now(),
-				pinned: false,
+				pinned: false
 			}
 
 			const pinned = prev.filter((item) => item.pinned)
@@ -101,7 +125,7 @@ export function QueryHistoryProvider({ children }: Props) {
 
 	const pinItem = useCallback(function (id: string) {
 		setHistory(function (prev) {
-			const updated = prev.map((item) => item.id === id ? { ...item, pinned: true } : item)
+			const updated = prev.map((item) => (item.id === id ? { ...item, pinned: true } : item))
 			saveHistoryToStorage(updated)
 			return updated
 		})
@@ -109,7 +133,7 @@ export function QueryHistoryProvider({ children }: Props) {
 
 	const unpinItem = useCallback(function (id: string) {
 		setHistory(function (prev) {
-			const updated = prev.map((item) => item.id === id ? { ...item, pinned: false } : item)
+			const updated = prev.map((item) => (item.id === id ? { ...item, pinned: false } : item))
 			saveHistoryToStorage(updated)
 			return updated
 		})
@@ -139,7 +163,15 @@ export function QueryHistoryProvider({ children }: Props) {
 			unpinItem,
 			updateChartConfig
 		}),
-		[history, addToHistory, clearHistory, removeFromHistory, pinItem, unpinItem, updateChartConfig]
+		[
+			history,
+			addToHistory,
+			clearHistory,
+			removeFromHistory,
+			pinItem,
+			unpinItem,
+			updateChartConfig
+		]
 	)
 
 	return <QueryHistoryContext.Provider value={value}>{children}</QueryHistoryContext.Provider>
