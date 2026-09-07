@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde::Serialize;
 use specta::Type;
 use tauri::State;
@@ -5,6 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     database::{
+        schema_persistence,
         services::connection::ConnectionService,
         types::{ConnectionInfo, DatabaseSchema},
     },
@@ -65,7 +68,7 @@ pub async fn bootstrap(state: State<'_, AppState>) -> Result<BootstrapData, Erro
 
     let snippet_folders = state.storage.get_snippet_folders()?;
 
-    let schemas = state
+    let mut schemas: Vec<CachedSchema> = state
         .schemas
         .iter()
         .map(|entry| CachedSchema {
@@ -73,6 +76,41 @@ pub async fn bootstrap(state: State<'_, AppState>) -> Result<BootstrapData, Erro
             schema: (**entry.value()).clone(),
         })
         .collect();
+
+    // Cold start: the in-process cache is empty, so fill in from the disk
+    // mirror. The renderer treats bootstrap schemas as stale (paint, then
+    // refetch), so a snapshot from a previous session is safe to hand over.
+    // Snapshots whose connection no longer exists, or that no longer decrypt
+    // or parse after a key or schema-shape change, are dropped from the
+    // mirror here. A disabled mirror is also wiped here, in case the settings
+    // were flipped by an older build that did not clear on write.
+    if !schema_persistence::mirror_enabled(&state.storage) {
+        schema_persistence::clear_if_disabled(&state.storage);
+    } else {
+        let cached_ids: HashSet<Uuid> = schemas.iter().map(|entry| entry.connection_id).collect();
+        let known_ids: HashSet<Uuid> = connections.iter().map(|info| info.id).collect();
+        match state.storage.get_schema_snapshots() {
+            Ok(snapshots) => {
+                for (connection_id, encrypted) in snapshots {
+                    if !known_ids.contains(&connection_id) {
+                        schema_persistence::forget_schema(&state.storage, connection_id);
+                        continue;
+                    }
+                    if cached_ids.contains(&connection_id) {
+                        continue;
+                    }
+                    match schema_persistence::decode_schema(connection_id, &encrypted) {
+                        Some(schema) => schemas.push(CachedSchema {
+                            connection_id,
+                            schema,
+                        }),
+                        None => schema_persistence::forget_schema(&state.storage, connection_id),
+                    }
+                }
+            }
+            Err(error) => tracing::warn!("Failed to load persisted schema snapshots: {error}"),
+        }
+    }
 
     Ok(BootstrapData {
         connections,
