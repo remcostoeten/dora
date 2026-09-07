@@ -3,12 +3,26 @@
   <h1>Dora</h1>
   <p><em>The database explorah</em></p>
 
-[![Release](https://img.shields.io/github/v/release/remcostoeten/dora?display_name=tag&sort=semver)](https://github.com/remcostoeten/dora/releases)
-[![CI](https://github.com/remcostoeten/dora/actions/workflows/ci.yml/badge.svg)](https://github.com/remcostoeten/dora/actions/workflows/ci.yml)
-[![Downloads](https://img.shields.io/github/downloads/remcostoeten/dora/total)](https://github.com/remcostoeten/dora/releases)
-[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-8A63D2)](https://github.com/remcostoeten/dora/releases)
-[![Native binary](https://img.shields.io/badge/~20%20MB-native%20%C2%B7%20Rust-F74C00?logo=rust&logoColor=white)](https://github.com/remcostoeten/dora/releases)
+<p align="center">
+  <a href="https://github.com/remcostoeten/dora/releases">
+    <img src="https://shieldcn.dev/github/remcostoeten/dora/release.svg?font=jetbrains-mono" alt="release" />
+  </a>
+  <a href="https://github.com/remcostoeten/dora/actions/workflows/ci.yml">
+    <img src="https://shieldcn.dev/github/remcostoeten/dora/ci.svg?font=jetbrains-mono" alt="CI" />
+  </a>
+  <a href="https://github.com/remcostoeten/dora/releases">
+    <img src="https://shieldcn.dev/github/dt/remcostoeten/dora.svg?font=jetbrains-mono" alt="downloads" />
+  </a>
+  <a href="LICENSE">
+    <img src="https://shieldcn.dev/badge/license-GPLv3-black.svg?font=jetbrains-mono" alt="license GPLv3" />
+  </a>
+  <a href="https://github.com/remcostoeten/dora/releases">
+    <img src="https://shieldcn.dev/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-black.svg?font=jetbrains-mono" alt="platforms macOS Windows Linux" />
+  </a>
+  <a href="https://github.com/remcostoeten/dora/releases">
+    <img src="https://shieldcn.dev/badge/binary-~20%20MB%20native-black.svg?font=jetbrains-mono&logo=rust" alt="binary ~20 MB native" />
+  </a>
+</p>
 
 </div>
 
