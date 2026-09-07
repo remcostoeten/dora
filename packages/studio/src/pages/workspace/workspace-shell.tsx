@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, type ReactNode } from 'react'
 import { LiveMonitorProvider } from '@studio/core/live-monitor'
 import { useSettings } from '@studio/core/settings'
 import {
@@ -42,10 +42,12 @@ export function WorkspaceShell() {
 			<SidebarProvider>
 				<div className='flex flex-col h-full w-full bg-background overflow-hidden'>
 					<div className='flex flex-1 overflow-hidden'>
-						<WorkspaceNavigationSidebar />
+						<WorkspaceNavigationSidebar
+							aiAssistantToggle={!settings.hideAi ? <AiAssistantToggle /> : undefined}
+						/>
 						<WorkspaceDatabaseSidebar actions={actions} />
 
-						<main className='flex-1 flex flex-col h-full overflow-hidden relative px-0'>
+						<main className='relative flex h-full min-w-0 flex-1 flex-col overflow-hidden px-0'>
 							<WorkspaceViewsHost
 								actions={actions}
 								isLoading={isLoading}
@@ -58,7 +60,6 @@ export function WorkspaceShell() {
 						<WorkspaceDialogs actions={actions} />
 
 						<OnboardingTour />
-						{!settings.hideAi && <AiAssistantToggle />}
 					</div>
 				</div>
 			</SidebarProvider>
@@ -66,7 +67,7 @@ export function WorkspaceShell() {
 	)
 }
 
-function WorkspaceNavigationSidebar() {
+function WorkspaceNavigationSidebar({ aiAssistantToggle }: { aiAssistantToggle?: ReactNode }) {
 	const activeNavId = useActiveNavId()
 	const activeConnectionId = useActiveConnectionId()
 	const isPosthogConnection = useWorkspaceSelector(function (state) {
@@ -82,6 +83,7 @@ function WorkspaceNavigationSidebar() {
 			activeNavId={activeNavId}
 			onNavSelect={setActiveNav}
 			analyticsAvailable={isPosthogConnection}
+			aiAssistantToggle={aiAssistantToggle}
 			databasePanelToggle={
 				showsDatabasePanel
 					? { isOpen: isDatabasePanelOpen, onToggle: toggleDatabasePanel }

@@ -1,6 +1,6 @@
 import { cn } from '@studio/shared/utils/cn'
 
-const SHIMMER_LINES = ['w-[92%]', 'w-[78%]', 'w-[54%]'] as const
+const DOT_DELAYS = ['0ms', '160ms', '320ms'] as const
 
 type Props = {
 	label?: string
@@ -8,39 +8,29 @@ type Props = {
 	compact?: boolean
 }
 
-export function AiThinkingIndicator({
-	label = 'Thinking…',
-	className,
-	compact = false,
-}: Props) {
+export function AiThinkingIndicator({ label = 'Thinking…', className, compact = false }: Props) {
 	return (
 		<div
-			className={cn('py-0.5', className)}
+			className={cn('flex items-center gap-2 py-1', className)}
 			role='status'
 			aria-live='polite'
 			aria-label={label}
 		>
-			<div className={cn('space-y-1.5', compact && 'space-y-1')}>
-				{SHIMMER_LINES.map(function (widthClass, index) {
+			<div className='flex items-center gap-1' aria-hidden='true'>
+				{DOT_DELAYS.map(function (delay) {
 					return (
-						<div
-							key={index}
+						<span
+							key={delay}
 							className={cn(
-								'async-count-shimmer rounded-full',
-								compact ? 'h-2' : 'h-2.5',
-								widthClass
+								'h-1.5 w-1.5 animate-pulse rounded-full bg-primary/70',
+								compact && 'h-1 w-1'
 							)}
-							style={{ animationDelay: `${index * 120}ms` }}
+							style={{ animationDelay: delay }}
 						/>
 					)
 				})}
 			</div>
-			<p
-				className={cn(
-					'ai-thinking-label mt-2 text-[11px] font-medium tracking-wide',
-					compact && 'mt-1.5 text-[10px]'
-				)}
-			>
+			<p className={cn('text-[11px] text-muted-foreground', compact && 'text-[10px]')}>
 				{label}
 			</p>
 		</div>

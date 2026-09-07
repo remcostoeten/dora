@@ -12,6 +12,7 @@ import {
 	toggleDatabasePanel,
 	openConnectionDialog,
 	useActiveConnectionId,
+	useActiveNavId,
 	useConnectionList,
 	useOpenConnectionIds
 } from '@studio/core/workspace-store'
@@ -30,6 +31,7 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 	const { settings } = useSettings()
 	const connections = useConnectionList()
 	const activeConnectionId = useActiveConnectionId()
+	const activeNavId = useActiveNavId()
 	const openConnectionIds = useOpenConnectionIds()
 	const toggleAiAssistant = useAiAssistantStore(function (s) {
 		return s.toggleOpen
@@ -70,12 +72,12 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 		description: shortcuts.toggleSidebar.description
 	})
 
-	$.bind(shortcuts.toggleAiAssistant.combo).on(
+	$.bind(shortcuts.toggleRightSidebar.combo).on(
 		function () {
-			if (settings.hideAi) return
+			if (activeNavId === 'sql-console' || settings.hideAi) return
 			toggleAiAssistant()
 		},
-		{ description: shortcuts.toggleAiAssistant.description }
+		{ description: shortcuts.toggleRightSidebar.description }
 	)
 
 	$.bind(shortcuts.reconnect.combo).on(

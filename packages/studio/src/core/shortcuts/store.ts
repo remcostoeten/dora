@@ -9,6 +9,7 @@ import {
 } from './shortcuts'
 
 type UserShortcuts = Partial<Record<ShortcutName, string | string[]>>
+type LegacyUserShortcuts = UserShortcuts & { toggleAiAssistant?: string | string[] }
 
 export type ShortcutConflictEventDetail = {
 	name: ShortcutName
@@ -31,14 +32,18 @@ function dispatchShortcutConflict(detail: ShortcutConflictEventDetail) {
 	window.dispatchEvent(new CustomEvent('dora-shortcut-conflict', { detail }))
 }
 
-export function getEffectiveShortcuts(overrides: UserShortcuts = {}) {
+export function getEffectiveShortcuts(overrides: LegacyUserShortcuts = {}) {
 	const effective: Record<string, ShortcutDefinition> = {}
+	const legacyToggleRightSidebar = overrides.toggleAiAssistant
 
 	for (const [key, def] of Object.entries(APP_SHORTCUTS)) {
 		const name = key as ShortcutName
 		effective[name] = {
 			...def,
-			combo: overrides[name] ?? def.combo
+			combo:
+				overrides[name] ??
+				(name === 'toggleRightSidebar' ? legacyToggleRightSidebar : undefined) ??
+				def.combo
 		}
 	}
 

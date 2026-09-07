@@ -15,7 +15,7 @@ function NewConnectionShortcut({ onToggle }: { onToggle: () => void }) {
 	const $ = useShortcut({ ignoreInputs: false })
 	$.bind(APP_SHORTCUTS.newConnection.combo).on(onToggle)
 
-	return <input aria-label="Connection name" />
+	return <input aria-label='Connection name' />
 }
 
 describe('shortcuts', function () {
@@ -72,10 +72,22 @@ describe('shortcuts', function () {
 		useShortcutStore.getState().setShortcut('deselect', ['x', 'mod+d'])
 
 		expect(useShortcutStore.getState().overrides.deselect).toEqual(['x', 'mod+d'])
-		expect(getEffectiveShortcuts(useShortcutStore.getState().overrides).deselect.combo).toEqual([
-			'x',
-			'mod+d'
-		])
+		expect(getEffectiveShortcuts(useShortcutStore.getState().overrides).deselect.combo).toEqual(
+			['x', 'mod+d']
+		)
+	})
+
+	it('keeps the left and right sidebar shortcuts distinct', function () {
+		const shortcuts = getEffectiveShortcuts()
+
+		expect(shortcuts.toggleSidebar.combo).toBe('mod+b')
+		expect(shortcuts.toggleRightSidebar.combo).toBe('mod+shift+b')
+	})
+
+	it('preserves the legacy right-sidebar override', function () {
+		const shortcuts = getEffectiveShortcuts({ toggleAiAssistant: 'mod+shift+u' })
+
+		expect(shortcuts.toggleRightSidebar.combo).toBe('mod+shift+u')
 	})
 
 	it('toggles a new connection while an input is focused', function () {

@@ -20,22 +20,30 @@ export const MessageBubble = memo(function MessageBubble({
 	const isUser = message.role === 'user'
 
 	return (
-		<div className={cn('flex gap-2 px-3 py-2', isUser ? 'bg-sidebar-accent/30' : '')}>
-			<div className='mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sidebar-border'>
-				{isUser ? (
-					<User className='h-3 w-3 text-muted-foreground' />
-				) : (
-					<Sparkles className='h-3 w-3 text-primary' />
-				)}
-			</div>
+		<div className={cn('flex px-4 py-3.5', isUser ? 'justify-end' : 'gap-3')}>
+			{!isUser && (
+				<div className='mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+					<Sparkles className='h-3.5 w-3.5' />
+				</div>
+			)}
 
-			<div className='min-w-0 flex-1'>
+			<div
+				className={cn(
+					'min-w-0',
+					isUser
+						? 'max-w-[88%] rounded-lg border border-sidebar-border bg-sidebar-accent/60 px-3 py-2'
+						: 'flex-1'
+				)}
+			>
 				{isUser ? (
-					<div className='whitespace-pre-wrap text-sm leading-relaxed text-foreground'>
-						{message.content}
+					<div className='flex gap-2'>
+						<User className='mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground' />
+						<div className='whitespace-pre-wrap text-sm leading-relaxed text-foreground'>
+							{message.content}
+						</div>
 					</div>
 				) : (
-					<div className='prose prose-invert max-w-none text-sm'>
+					<div className='prose max-w-none text-sm dark:prose-invert'>
 						<MessageContent
 							content={message.content || (message.streaming ? '' : '')}
 							isStreaming={message.streaming}

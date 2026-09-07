@@ -52,9 +52,9 @@ export const APP_SHORTCUTS = {
 		description: 'Toggle sidebar',
 		scope: 'global'
 	},
-	toggleAiAssistant: {
+	toggleRightSidebar: {
 		combo: 'mod+shift+b',
-		description: 'Toggle AI assistant',
+		description: 'Toggle right sidebar',
 		scope: 'global'
 	},
 	openSettings: {
@@ -280,7 +280,7 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'openCommandPalette',
 		'newConnection',
 		'toggleSidebar',
-		'toggleAiAssistant',
+		'toggleRightSidebar',
 		'openSettings',
 		'closeTab',
 		'reconnect',

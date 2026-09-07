@@ -1,5 +1,13 @@
-import { SquareTerminal, Table2, Container, Network, Settings, GitCompare, ChartLine } from 'lucide-react'
-import { useCallback, useRef, KeyboardEvent } from 'react'
+import {
+	SquareTerminal,
+	Table2,
+	Container,
+	Network,
+	Settings,
+	GitCompare,
+	ChartLine
+} from 'lucide-react'
+import { useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
@@ -18,13 +26,15 @@ type ContentProps = {
 	onNavSelect?: (id: string) => void
 	databasePanelToggle?: DatabasePanelToggle
 	analyticsAvailable?: boolean
+	aiAssistantToggle?: ReactNode
 }
 
 function SidebarContent({
 	activeNavId,
 	onNavSelect,
 	databasePanelToggle,
-	analyticsAvailable
+	analyticsAvailable,
+	aiAssistantToggle
 }: ContentProps) {
 	const { variant } = useSidebar()
 	const isFloating = false
@@ -175,7 +185,12 @@ function SidebarContent({
 					))}
 				</div>
 
-				<div role='group' aria-label='Settings' className='mx-auto mt-auto flex flex-col items-center gap-1'>
+				<div
+					role='group'
+					aria-label='Workspace controls'
+					className='mx-auto mt-auto flex flex-col items-center gap-1'
+				>
+					{aiAssistantToggle}
 					{databasePanelToggle && (
 						<>
 							<SidebarPanelToggle
@@ -209,6 +224,7 @@ export type AppSidebarProps = {
 	onNavSelect?: (id: string) => void
 	databasePanelToggle?: DatabasePanelToggle
 	analyticsAvailable?: boolean
+	aiAssistantToggle?: ReactNode
 }
 
 export function NavigationSidebar({
@@ -216,7 +232,8 @@ export function NavigationSidebar({
 	activeNavId,
 	onNavSelect,
 	databasePanelToggle,
-	analyticsAvailable
+	analyticsAvailable,
+	aiAssistantToggle
 }: AppSidebarProps) {
 	return (
 		<SidebarProvider defaultVariant={variant}>
@@ -225,6 +242,7 @@ export function NavigationSidebar({
 				onNavSelect={onNavSelect}
 				databasePanelToggle={databasePanelToggle}
 				analyticsAvailable={analyticsAvailable}
+				aiAssistantToggle={aiAssistantToggle}
 			/>
 		</SidebarProvider>
 	)
