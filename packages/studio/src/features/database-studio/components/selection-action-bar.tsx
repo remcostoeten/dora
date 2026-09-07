@@ -145,128 +145,143 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 	const rowLabel = `${selectedCount} row${selectedCount !== 1 ? 's' : ''}`
 
 	// Build the list of collapsible action items
-	const collapsibleActions = useMemo(function buildActions() {
-		const items: TActionItem[] = []
+	const collapsibleActions = useMemo(
+		function buildActions() {
+			const items: TActionItem[] = []
 
-		if (onCopy) {
-			items.push({
-				id: 'copy',
-				label: 'Copy',
-				icon: <Copy className='h-3.5 w-3.5' aria-hidden='true' />,
-				onClick: onCopy,
-				ariaLabel: `Copy ${rowLabel} as JSON`,
-				shortcut: 'C'
-			})
-		}
+			if (onCopy) {
+				items.push({
+					id: 'copy',
+					label: 'Copy',
+					icon: <Copy className='h-3.5 w-3.5' aria-hidden='true' />,
+					onClick: onCopy,
+					ariaLabel: `Copy ${rowLabel} as JSON`,
+					shortcut: 'C'
+				})
+			}
 
-		if (onDuplicate) {
-			items.push({
-				id: 'duplicate',
-				label: 'Duplicate',
-				icon: <CopyPlus className='h-3.5 w-3.5' aria-hidden='true' />,
-				onClick: onDuplicate,
-				ariaLabel: `Duplicate ${rowLabel}`
-			})
-		}
+			if (onDuplicate) {
+				items.push({
+					id: 'duplicate',
+					label: 'Duplicate',
+					icon: <CopyPlus className='h-3.5 w-3.5' aria-hidden='true' />,
+					onClick: onDuplicate,
+					ariaLabel: `Duplicate ${rowLabel}`
+				})
+			}
 
-		if (hasExportOptions) {
-			items.push({
-				id: 'export',
-				label: 'Export',
-				icon: <Download className='h-3.5 w-3.5' aria-hidden='true' />,
-				onClick: undefined,
-				ariaLabel: `Export ${rowLabel}`
-			})
-		}
+			if (hasExportOptions) {
+				items.push({
+					id: 'export',
+					label: 'Export',
+					icon: <Download className='h-3.5 w-3.5' aria-hidden='true' />,
+					onClick: undefined,
+					ariaLabel: `Export ${rowLabel}`
+				})
+			}
 
-		if (onBulkEdit) {
-			items.push({
-				id: 'edit',
-				label: 'Edit',
-				icon: <Pencil className='h-3.5 w-3.5' aria-hidden='true' />,
-				onClick: onBulkEdit,
-				ariaLabel: `Bulk edit ${rowLabel}`
-			})
-		}
+			if (onBulkEdit) {
+				items.push({
+					id: 'edit',
+					label: 'Edit',
+					icon: <Pencil className='h-3.5 w-3.5' aria-hidden='true' />,
+					onClick: onBulkEdit,
+					ariaLabel: `Bulk edit ${rowLabel}`
+				})
+			}
 
-		if (onSetNull) {
-			items.push({
-				id: 'setnull',
-				label: 'Set NULL',
-				icon: <Ban className='h-3.5 w-3.5' aria-hidden='true' />,
-				onClick: onSetNull,
-				ariaLabel: `Set NULL for ${rowLabel}`
-			})
-		}
+			if (onSetNull) {
+				items.push({
+					id: 'setnull',
+					label: 'Set NULL',
+					icon: <Ban className='h-3.5 w-3.5' aria-hidden='true' />,
+					onClick: onSetNull,
+					ariaLabel: `Set NULL for ${rowLabel}`
+				})
+			}
 
-		return items
-	}, [onCopy, onDuplicate, hasExportOptions, onBulkEdit, onSetNull, rowLabel])
+			return items
+		},
+		[onCopy, onDuplicate, hasExportOptions, onBulkEdit, onSetNull, rowLabel]
+	)
 
 	// Responsive: measure parent container and decide how many items fit
-	const measure = useCallback(function measureToolbar() {
-		const el = containerRef.current
-		if (!el) return
+	const measure = useCallback(
+		function measureToolbar() {
+			const el = containerRef.current
+			if (!el) return
 
-		const parentWidth = el.parentElement?.offsetWidth || window.innerWidth
-		const budget = parentWidth - 40
+			const parentWidth = el.parentElement?.offsetWidth || window.innerWidth
+			const budget = parentWidth - 40
 
-		const availableForItems = budget - FIXED_SPACE
-		const totalActions = collapsibleActions.length
+			const availableForItems = budget - FIXED_SPACE
+			const totalActions = collapsibleActions.length
 
-		if (availableForItems >= totalActions * MIN_WIDTH_PER_ITEM) {
-			setMaxVisible(Infinity)
-			setExpanded(false)
-		} else {
-			const toggleWidth = 36
-			const fitCount = Math.max(0, Math.floor((availableForItems - toggleWidth) / MIN_WIDTH_PER_ITEM))
-			setMaxVisible(fitCount)
-		}
-	}, [collapsibleActions.length])
+			if (availableForItems >= totalActions * MIN_WIDTH_PER_ITEM) {
+				setMaxVisible(Infinity)
+				setExpanded(false)
+			} else {
+				const toggleWidth = 36
+				const fitCount = Math.max(
+					0,
+					Math.floor((availableForItems - toggleWidth) / MIN_WIDTH_PER_ITEM)
+				)
+				setMaxVisible(fitCount)
+			}
+		},
+		[collapsibleActions.length]
+	)
 
-	useEffect(function observeSize() {
-		const el = containerRef.current
-		if (!el) return
+	useEffect(
+		function observeSize() {
+			const el = containerRef.current
+			if (!el) return
 
-		measure()
-
-		const observer = new ResizeObserver(function handleResize() {
 			measure()
-		})
 
-		if (el.parentElement) {
-			observer.observe(el.parentElement)
-		}
-		observer.observe(el)
+			const observer = new ResizeObserver(function handleResize() {
+				measure()
+			})
 
-		return function cleanup() {
-			observer.disconnect()
-		}
-	}, [measure])
+			if (el.parentElement) {
+				observer.observe(el.parentElement)
+			}
+			observer.observe(el)
+
+			return function cleanup() {
+				observer.disconnect()
+			}
+		},
+		[measure]
+	)
 
 	// Measure the natural width of overflow content for smooth width animation
-	useEffect(function measureOverflow() {
-		if (!overflowRef.current) return
-		const el = overflowRef.current
-		// Temporarily make visible to measure
-		el.style.width = 'auto'
-		el.style.position = 'absolute'
-		el.style.visibility = 'hidden'
-		el.style.overflow = 'visible'
-		const w = el.scrollWidth
-		el.style.width = ''
-		el.style.position = ''
-		el.style.visibility = ''
-		el.style.overflow = ''
-		setOverflowWidth(w)
-	}, [collapsibleActions, maxVisible])
+	useEffect(
+		function measureOverflow() {
+			if (!overflowRef.current) return
+			const el = overflowRef.current
+			// Temporarily make visible to measure
+			el.style.width = 'auto'
+			el.style.position = 'absolute'
+			el.style.visibility = 'hidden'
+			el.style.overflow = 'visible'
+			const w = el.scrollWidth
+			el.style.width = ''
+			el.style.position = ''
+			el.style.visibility = ''
+			el.style.overflow = ''
+			setOverflowWidth(w)
+		},
+		[collapsibleActions, maxVisible]
+	)
 
-	const visibleActions = maxVisible >= collapsibleActions.length
-		? collapsibleActions
-		: collapsibleActions.slice(0, maxVisible)
+	const visibleActions =
+		maxVisible >= collapsibleActions.length
+			? collapsibleActions
+			: collapsibleActions.slice(0, maxVisible)
 
-	const overflowActions = maxVisible >= collapsibleActions.length
-		? []
-		: collapsibleActions.slice(maxVisible)
+	const overflowActions =
+		maxVisible >= collapsibleActions.length ? [] : collapsibleActions.slice(maxVisible)
 
 	const hasOverflow = overflowActions.length > 0
 
@@ -314,10 +329,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 							{action.label}
 						</Button>
 					</DropdownMenuTrigger>
-					<DropdownMenuContent
-						align={isFloating ? 'center' : 'start'}
-						className='w-40'
-					>
+					<DropdownMenuContent align={isFloating ? 'center' : 'start'} className='w-40'>
 						{onExportJson && (
 							<DropdownMenuItem onClick={onExportJson}>
 								<FileJson className='h-3.5 w-3.5 mr-2' aria-hidden='true' />
@@ -326,10 +338,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 						)}
 						{onExportCsv && (
 							<DropdownMenuItem onClick={onExportCsv}>
-								<FileSpreadsheet
-									className='h-3.5 w-3.5 mr-2'
-									aria-hidden='true'
-								/>
+								<FileSpreadsheet className='h-3.5 w-3.5 mr-2' aria-hidden='true' />
 								CSV
 							</DropdownMenuItem>
 						)}
@@ -345,7 +354,9 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 				size='sm'
 				className={getButtonClasses()}
 				onClick={action.onClick}
-				title={action.shortcut ? `${action.ariaLabel} (${action.shortcut})` : action.ariaLabel}
+				title={
+					action.shortcut ? `${action.ariaLabel} (${action.shortcut})` : action.ariaLabel
+				}
 				aria-label={action.ariaLabel}
 				aria-keyshortcuts={action.shortcut}
 			>
@@ -372,11 +383,11 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 				layout: LAYOUT_SPRING
 			}}
 			ref={function mergeRefs(node: HTMLDivElement | null) {
-				; (containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node
+				;(containerRef as React.MutableRefObject<HTMLDivElement | null>).current = node
 				if (typeof ref === 'function') {
 					ref(node)
 				} else if (ref) {
-					; (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+					;(ref as React.MutableRefObject<HTMLDivElement | null>).current = node
 				}
 			}}
 			role='toolbar'
@@ -492,8 +503,16 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 									? 'h-7 w-7 hover:bg-primary/10 text-muted-foreground hover:text-primary'
 									: 'h-6 w-6 hover:bg-muted text-muted-foreground hover:text-foreground'
 							)}
-							title={expanded ? 'Collapse actions' : `${overflowActions.length} more actions`}
-							aria-label={expanded ? 'Collapse actions' : `Show ${overflowActions.length} more actions`}
+							title={
+								expanded
+									? 'Collapse actions'
+									: `${overflowActions.length} more actions`
+							}
+							aria-label={
+								expanded
+									? 'Collapse actions'
+									: `Show ${overflowActions.length} more actions`
+							}
 							aria-expanded={expanded}
 						>
 							<ChevronRight
@@ -533,7 +552,9 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 
 							{overflowActions.map(function mapOverflow(action, i) {
 								const staggerDelay = expanded ? (i + 1) * 60 : 0
-								const exitDelay = expanded ? 0 : (overflowActions.length - 1 - i) * 30
+								const exitDelay = expanded
+									? 0
+									: (overflowActions.length - 1 - i) * 30
 
 								return (
 									<div
