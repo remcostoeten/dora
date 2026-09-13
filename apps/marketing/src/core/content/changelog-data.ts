@@ -17,290 +17,39 @@ export const CURRENT_VERSION = "0.41.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 	{
-		version: "0.31.0",
-		date: "2026-07-04",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.31.0",
-		groups: [
-			{
-				name: "Build",
-				items: [
-				"build(winget): use standalone wingetcreate.exe (Appx unsupported on PS7)",
-				"build(winget): submit generated manifests instead of wingetcreate update",
-				]
-			},
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.30.3",
-				]
-			},
-			{
-				name: "Features",
-				items: [
-				"feat(cli): add dora cli with various args for tests, deployment and debug (#184) (#184)",
-				"feat: add Ctrl+Q shortcut to quit application",
-				"feat(posthog): HogQL connector, built-in analytics dashboard, and browsing fixes",
-				"feat(marketing): promote PostHog and rework the multi-connection showcase",
-				]
-			}
-		]
-	},
-	{
-		version: "0.32.0",
-		date: "2026-07-08",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.32.0",
+		version: "0.41.0",
+		date: "2026-08-27",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.41.0",
 		groups: [
 			{
 				name: "Bug Fixes",
 				items: [
-				"fix(studio): fetch all result pages instead of only the first 50 rows",
-				"fix(backend): issue a real cancel request for Postgres/CockroachDB queries",
+				"fix(grid): commit the snapshot paint before issuing the refresh fetch (#238) (#238)",
+				"fix(studio): self-host Inter and JetBrains Mono and rework the view loading shell (#239) (#239)",
 				]
 			},
 			{
 				name: "Chores",
 				items: [
-				"chore(aur): update dora to 0.31.0",
-				"chore: docs polish, PostHog showcase, ORM cockpit link fixes, studio toolbar/ai-keys fixes (#186) (#186)",
-				]
-			}
-		]
-	},
-	{
-		version: "0.33.0",
-		date: "2026-07-11",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.33.0",
-		groups: [
-			{
-				name: "Bug Fixes",
-				items: [
-				"fix(release): ship arm64-only Homebrew cask, add tap docs",
-				"fix(studio): keep the connection dropdown open across repeated deletes",
-				"fix(backend): give every query a unique id so concurrent submissions don't clobber each other",
-				]
-			},
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.32.0",
-				"chore(marketing): drop the postbuild SEO audit",
-				]
-			},
-			{
-				name: "Features",
-				items: [
-				"feat(marketing): instrument PostHog and show live HogQL stats",
-				"feat(studio): build out the PostHog analytics dashboard",
-				"feat(studio): infer column types for metadata-less query results",
-				"feat: PostHog analytics dashboard, typed ad-hoc results, single-hue brand palette (#187) (#187)",
-				]
-			},
-			{
-				name: "Refactoring",
-				items: [
-				"refactor(studio): extract command palette internals, move palette to Ctrl+K",
-				"refactor(marketing): derive the whole palette from one brand hue",
-				]
-			}
-		]
-	},
-	{
-		version: "0.34.0",
-		date: "2026-07-15",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.34.0",
-		groups: [
-			{
-				name: "Bug Fixes",
-				items: [
-				"fix(docs): remove duplicate H1 from doc bodies",
-				]
-			},
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.33.0",
+				"chore(aur): update dora to 0.40.0",
 				]
 			},
 			{
 				name: "Documentation",
 				items: [
-				"docs(installation): document Winget and APT install channels",
-				]
-			},
-			{
-				name: "Features",
-				items: [
-				"feat: refresh Dora promo and analytics",
-				]
-			}
-		]
-	},
-	{
-		version: "0.35.0",
-		date: "2026-07-17",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.35.0",
-		groups: [
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.34.0",
+				"docs(release): curated notes for v0.41.0",
 				]
 			},
 			{
 				name: "Performance",
 				items: [
-				"perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)",
-				]
-			}
-		]
-	},
-	{
-		version: "0.35.1",
-		date: "2026-07-17",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.35.1",
-		groups: [
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.35.0",
+				"perf: overhaul the connection-open path on every engine (#237) (#237)",
 				]
 			},
 			{
-				name: "Documentation",
+				name: "Refactoring",
 				items: [
-				"docs(readme): lead with compressed demo tour, tighten intro",
-				]
-			}
-		]
-	},
-	{
-		version: "0.36.0",
-		date: "2026-07-20",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.36.0",
-		groups: [
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.35.1",
-				"chore(deps): upgrade @remcostoeten/analytics to 1.7.0 (#189) (#189)",
-				]
-			},
-			{
-				name: "Documentation",
-				items: [
-				"docs(readme): new hero clip (browse → edit cell → run SQL), drop stale hero.webp",
-				"docs(readme): refresh header + hero clip with command palette",
-				]
-			}
-		]
-	},
-	{
-		version: "0.37.0",
-		date: "2026-07-26",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.37.0",
-		groups: [
-			{
-				name: "Highlights",
-				items: [
-				"**Hide AI completely:** a new *Settings → Safety → Hide AI* toggle removes every AI surface from the app: the assistant panel and its corner button, Cmd+K query generation, the AI explain/fix actions, and all AI settings sections. For people who want a database client with no AI in it. (#222)",
-				"**Onboarding tour:** a skippable, non-intrusive 5-step tour introduces the Data Viewer, SQL Console, Schema view, and Settings on first launch. It offers itself for the first three launches and never again once completed or skipped. (#222)",
-				"**macOS-style window controls:** *Settings → Interface → Window Controls* switches the desktop window buttons between the custom style and macOS traffic lights. (#222)",
-				"**Drizzle operator intellisense:** the Drizzle runner now shows signature help with live parameter tracking inside `eq()`, `between()`, `inArray()` and friends, plus hover documentation for all condition operators. (#222)",
-				"**UI zoom:** Ctrl/Cmd + mouse wheel zooms the whole interface, with smooth delta accumulation.",
-				]
-			},
-			{
-				name: "Editing safety",
-				items: [
-				"SQL-console cell edits and row deletes no longer guess the primary key from any column merely named `id`, a heuristic that could silently update or delete *every* matching row on tables without a real primary key. The key is now resolved strictly from declared metadata (result or schema), which also means mutations finally work on tables whose primary key isn't named `id`. (#218)",
-				"Buffered dry-mode edits now survive table switches, page/sort/filter changes, and live-monitor reloads: the grid repaints your unsaved values instead of silently reverting to database state. Closing the window with unsaved edits warns first. (#219, completes #213's partial apply and undo-by-primary-key work)",
-				"Pasting into the grid is sanitized, cancelling a query in one SQL tab no longer aborts other tabs, and crashed views recover via a resettable error boundary. (#215)",
-				]
-			},
-			{
-				name: "Reliability",
-				items: [
-				"Connection hygiene: secrets are redacted from logs and errors, all provider API calls share one HTTP client with hard connect/request timeouts, MySQL pools are sized sanely and disconnect deterministically, and the connection monitor no longer grows without bound. (#214)",
-				"Identifier quoting is canonical across every dialect's TRUNCATE/INSERT/UPDATE paths, so tables and columns with spaces, quotes, or reserved-word names are safe everywhere. (#216)",
-				"A boot smoke test now runs in CI on every PR, failing if the studio doesn't render. (#217)",
-				"Real dialect coverage: the grid mutation lifecycle (insert → update → delete → truncate) runs through the actual adapters against in-memory SQLite/DuckDB on every test run, and against live MySQL 8.4 + MariaDB 11.4 containers in a weekly CI job. (#221)",
-				]
-			},
-			{
-				name: "Release pipeline",
-				items: [
-				"The AUR, Homebrew, APT, Winget, Snap, and Flatpak publishing workflows now run *inside* the release run and fail it if any channel fails, so a green release means every channel actually published. (#220)",
-				]
-			}
-		]
-	},
-	{
-		version: "0.38.0",
-		date: "2026-07-26",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.38.0",
-		groups: [
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.37.0",
-				]
-			},
-			{
-				name: "Documentation",
-				items: [
-				"docs(changelog): curate v0.37.0 notes and sync in-app changelog data",
-				]
-			},
-			{
-				name: "Features",
-				items: [
-				"feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)",
-				]
-			}
-		]
-	},
-	{
-		version: "0.38.1",
-		date: "2026-07-30",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.38.1",
-		groups: [
-			{
-				name: "Bug Fixes",
-				items: [
-				"fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)",
-				]
-			},
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.38.0",
-				]
-			}
-		]
-	},
-	{
-		version: "0.39.0",
-		date: "2026-07-31",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.39.0",
-		groups: [
-			{
-				name: "Chores",
-				items: [
-				"chore(aur): update dora to 0.38.1",
-				"chore(skills): add project-local agent skill system",
-				]
-			},
-			{
-				name: "Features",
-				items: [
-				"feat: harden database safety and query lifecycle",
-				]
-			},
-			{
-				name: "Other",
-				items: [
-				"Revert \"chore(skills): add project-local agent skill system\"",
-				"Reapply \"chore(skills): add project-local agent skill system\"",
+				"refactor(ai): unify providers behind an AiClient trait with per-provider model memory (#236) (#236)",
 				]
 			}
 		]
@@ -357,39 +106,290 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 		]
 	},
 	{
-		version: "0.41.0",
-		date: "2026-08-27",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.41.0",
+		version: "0.39.0",
+		date: "2026-07-31",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.39.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.38.1",
+				"chore(skills): add project-local agent skill system",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat: harden database safety and query lifecycle",
+				]
+			},
+			{
+				name: "Other",
+				items: [
+				"Revert \"chore(skills): add project-local agent skill system\"",
+				"Reapply \"chore(skills): add project-local agent skill system\"",
+				]
+			}
+		]
+	},
+	{
+		version: "0.38.1",
+		date: "2026-07-30",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.38.1",
 		groups: [
 			{
 				name: "Bug Fixes",
 				items: [
-				"fix(grid): commit the snapshot paint before issuing the refresh fetch (#238) (#238)",
-				"fix(studio): self-host Inter and JetBrains Mono and rework the view loading shell (#239) (#239)",
+				"fix(release): ship macOS updater artifacts (.app.tar.gz + .sig) and fail loudly on a missing platform (#224) (#224)",
 				]
 			},
 			{
 				name: "Chores",
 				items: [
-				"chore(aur): update dora to 0.40.0",
+				"chore(aur): update dora to 0.38.0",
+				]
+			}
+		]
+	},
+	{
+		version: "0.38.0",
+		date: "2026-07-26",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.38.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.37.0",
 				]
 			},
 			{
 				name: "Documentation",
 				items: [
-				"docs(release): curated notes for v0.41.0",
+				"docs(changelog): curate v0.37.0 notes and sync in-app changelog data",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(studio): deterministic Drizzle ↔ SQL converters (#162) (#225) (#225)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.37.0",
+		date: "2026-07-26",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.37.0",
+		groups: [
+			{
+				name: "Highlights",
+				items: [
+				"**Hide AI completely:** a new *Settings → Safety → Hide AI* toggle removes every AI surface from the app: the assistant panel and its corner button, Cmd+K query generation, the AI explain/fix actions, and all AI settings sections. For people who want a database client with no AI in it. (#222)",
+				"**Onboarding tour:** a skippable, non-intrusive 5-step tour introduces the Data Viewer, SQL Console, Schema view, and Settings on first launch. It offers itself for the first three launches and never again once completed or skipped. (#222)",
+				"**macOS-style window controls:** *Settings → Interface → Window Controls* switches the desktop window buttons between the custom style and macOS traffic lights. (#222)",
+				"**Drizzle operator intellisense:** the Drizzle runner now shows signature help with live parameter tracking inside `eq()`, `between()`, `inArray()` and friends, plus hover documentation for all condition operators. (#222)",
+				"**UI zoom:** Ctrl/Cmd + mouse wheel zooms the whole interface, with smooth delta accumulation.",
+				]
+			},
+			{
+				name: "Editing safety",
+				items: [
+				"SQL-console cell edits and row deletes no longer guess the primary key from any column merely named `id`, a heuristic that could silently update or delete *every* matching row on tables without a real primary key. The key is now resolved strictly from declared metadata (result or schema), which also means mutations finally work on tables whose primary key isn't named `id`. (#218)",
+				"Buffered dry-mode edits now survive table switches, page/sort/filter changes, and live-monitor reloads: the grid repaints your unsaved values instead of silently reverting to database state. Closing the window with unsaved edits warns first. (#219, completes #213's partial apply and undo-by-primary-key work)",
+				"Pasting into the grid is sanitized, cancelling a query in one SQL tab no longer aborts other tabs, and crashed views recover via a resettable error boundary. (#215)",
+				]
+			},
+			{
+				name: "Reliability",
+				items: [
+				"Connection hygiene: secrets are redacted from logs and errors, all provider API calls share one HTTP client with hard connect/request timeouts, MySQL pools are sized sanely and disconnect deterministically, and the connection monitor no longer grows without bound. (#214)",
+				"Identifier quoting is canonical across every dialect's TRUNCATE/INSERT/UPDATE paths, so tables and columns with spaces, quotes, or reserved-word names are safe everywhere. (#216)",
+				"A boot smoke test now runs in CI on every PR, failing if the studio doesn't render. (#217)",
+				"Real dialect coverage: the grid mutation lifecycle (insert → update → delete → truncate) runs through the actual adapters against in-memory SQLite/DuckDB on every test run, and against live MySQL 8.4 + MariaDB 11.4 containers in a weekly CI job. (#221)",
+				]
+			},
+			{
+				name: "Release pipeline",
+				items: [
+				"The AUR, Homebrew, APT, Winget, Snap, and Flatpak publishing workflows now run *inside* the release run and fail it if any channel fails, so a green release means every channel actually published. (#220)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.36.0",
+		date: "2026-07-20",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.36.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.35.1",
+				"chore(deps): upgrade @remcostoeten/analytics to 1.7.0 (#189) (#189)",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(readme): new hero clip (browse → edit cell → run SQL), drop stale hero.webp",
+				"docs(readme): refresh header + hero clip with command palette",
+				]
+			}
+		]
+	},
+	{
+		version: "0.35.1",
+		date: "2026-07-17",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.35.1",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.35.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(readme): lead with compressed demo tour, tighten intro",
+				]
+			}
+		]
+	},
+	{
+		version: "0.35.0",
+		date: "2026-07-17",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.35.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.34.0",
 				]
 			},
 			{
 				name: "Performance",
 				items: [
-				"perf: overhaul the connection-open path on every engine (#237) (#237)",
+				"perf(studio): cut re-renders, virtualize result tables, defer startup bundle (#188) (#188)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.34.0",
+		date: "2026-07-15",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.34.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(docs): remove duplicate H1 from doc bodies",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.33.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(installation): document Winget and APT install channels",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat: refresh Dora promo and analytics",
+				]
+			}
+		]
+	},
+	{
+		version: "0.33.0",
+		date: "2026-07-11",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.33.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(release): ship arm64-only Homebrew cask, add tap docs",
+				"fix(studio): keep the connection dropdown open across repeated deletes",
+				"fix(backend): give every query a unique id so concurrent submissions don't clobber each other",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.32.0",
+				"chore(marketing): drop the postbuild SEO audit",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(marketing): instrument PostHog and show live HogQL stats",
+				"feat(studio): build out the PostHog analytics dashboard",
+				"feat(studio): infer column types for metadata-less query results",
+				"feat: PostHog analytics dashboard, typed ad-hoc results, single-hue brand palette (#187) (#187)",
 				]
 			},
 			{
 				name: "Refactoring",
 				items: [
-				"refactor(ai): unify providers behind an AiClient trait with per-provider model memory (#236) (#236)",
+				"refactor(studio): extract command palette internals, move palette to Ctrl+K",
+				"refactor(marketing): derive the whole palette from one brand hue",
+				]
+			}
+		]
+	},
+	{
+		version: "0.32.0",
+		date: "2026-07-08",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.32.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(studio): fetch all result pages instead of only the first 50 rows",
+				"fix(backend): issue a real cancel request for Postgres/CockroachDB queries",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.31.0",
+				"chore: docs polish, PostHog showcase, ORM cockpit link fixes, studio toolbar/ai-keys fixes (#186) (#186)",
+				]
+			}
+		]
+	},
+	{
+		version: "0.31.0",
+		date: "2026-07-04",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.31.0",
+		groups: [
+			{
+				name: "Build",
+				items: [
+				"build(winget): use standalone wingetcreate.exe (Appx unsupported on PS7)",
+				"build(winget): submit generated manifests instead of wingetcreate update",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.30.3",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(cli): add dora cli with various args for tests, deployment and debug (#184) (#184)",
+				"feat: add Ctrl+Q shortcut to quit application",
+				"feat(posthog): HogQL connector, built-in analytics dashboard, and browsing fixes",
+				"feat(marketing): promote PostHog and rework the multi-connection showcase",
 				]
 			}
 		]
@@ -921,6 +921,170 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 		]
 	},
 	{
+		version: "0.1.0",
+		date: "2026-04-04",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.1.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"change build target to esnext to resolve CI esbuild transform error",
+				]
+			}
+		]
+	},
+	{
+		version: "0.0.925",
+		date: "2026-01-24",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.0.925",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"improve sidebar dragging physics and animations",
+				"sidebar resize now follows mouse in real-time instead of snapping",
+				"propagate connection errors in test_connection",
+				"Strip unsupported channel_binding parameter from PostgreSQL connection strings",
+				"resolve table data loading and sort crash",
+				"address CodeRabbit PR review comments",
+				"lsp build issues",
+				]
+			},
+			{
+				name: "CI/CD",
+				items: [
+				"upgrade runners to Blacksmith for 2x faster performance",
+				"revert to standard ubuntu-latest runners",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"cleanup dead/duplicate code files",
+				"restructure frontend core",
+				"save pending changes",
+				"finalize resize and cleanup docs",
+				"cleanup project structure (remove unused FE, rename docs, move test queries)",
+				"misc fixes and improvements across desktop and api-docs",
+				"prepare for release v0.0.9 - code style cleanup and fixes",
+				"remove redundant api-docs project and move docs to root",
+				"prepare release 0.0.92",
+				"bump version to 0.0.925",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"update readme with beta feature status",
+				"refine readme features and roadmap",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"add auto-fill, typo detection & validation for connection strings",
+				"add autocomplete input with keyboard navigation",
+				"refresh splash screen design",
+				"add database-backed settings with theme persistence",
+				"add sql-builder, resize-handle, UI improvements and border fixes",
+				"add sql-builder, autocomplete and settings persistance (#1)",
+				"implement accessible Label component and replace native labels",
+				"implement AES-GCM encryption for connection storage",
+				"implement get_connection method",
+				"add context menu to saved connections",
+				"add connection history tracking with filters",
+				"enhance connections UI and data table UX with favorites, timestamps, sorting, pagination",
+				"Implement command palette with global command system and persistent keyboard shortcuts.",
+				"enhance connection string parsing, improve shortcut management, and refine UI interactions",
+				"add command palette UI and refactor URL query string construction.",
+				"Implement command usage tracking and persistence, add new application commands, and enhance command palette sorting based on usage history.",
+				"Implement command palette with global command system  (#4)",
+				"add spreadsheet-like Table Browser with filtering, sorting, inline editing, and dry-run mode",
+				"Implement dedicated table exploration view with a new `table-view` tab type and `TableBrowser` component.",
+				"Implement schema visualization with React Flow and add back navigation to table browser.",
+				"Implement core application structure, introduce shared UI components, and integrate Tauri commands for database management.",
+				"Introduce unified header and logo components, refactor theme colors to hex/rgba, and add keyboard shortcuts for main view navigation.",
+				"Introduce unified header and logo components, refactor theme co… (#6)",
+				"Add Monaco Editor and Switchable SQL Editor components",
+				"add database adapter trait, mutation API, and enhanced schema introspection",
+				"add LibSQL database support for local and remote Turso connections",
+				"add LibSQL database parsing and execution support",
+				"Reorganize project structure and migrate existing components to a new `_old` directory layout.",
+				"major backend upgrade",
+				"update docs dependencies, add new desktop icons, and remove old Tauri database files.",
+				"integrate AI service types with Specta",
+				"expose and finalize SSH tunnel module",
+				"implement Specta integration and generate TypeScript client",
+				"add duplicate_row command for context menu actions",
+				"implement snippet library with pre-made and user-created snippets",
+				"introduce snippet categories for improved organization and filtering",
+				"Backend API V2 & Specta Integration (#8)",
+				"run queries via rust",
+				"implement data provider pattern and refactor sidebar",
+				"implement better web mock view",
+				"implement data provider pattern for web mock view (#10)",
+				"improve accessibillity for data viewer",
+				"implement rust binding in FE",
+				"implement missing desktop features",
+				"add user theme and setting persistance",
+				"add user theme and setting persistence (#11)",
+				"implement SSH tunnel configuration for database connections",
+				"SSH Tunnel configuration for database connections (#12)",
+				"Schema Management (DDL) feature (#13)",
+				"centralization keyboard shortcuts (#14)",
+				"Undo/redo functionality, editor themes,  DDL retrieval & dry mode (#15)",
+				"implement changelog panel and cell improvements",
+				"release version 0.0.9 by updating tauri config, adding release notes, and updating the README.",
+				"Implement bulk edit and set null functionalities, and refactor … (#16)",
+				"Redesign and reposition the DemoBanner as a fixed, floating component in the bottom-right corner.",
+				"add Midnight, Forest, Claude Light, and Claude Dark themes with… (#19)",
+				"Add new technical and vintage font options, remove density setting, and update Vercel deployment configurations.",
+				"custom drizzle DSL LSP for monaco covering 100% of spec",
+				"implement comprehensive test infrastructure\\n\\n- Add test scripts to package.json files\\n- Configure Turbo build to depend on tests\\n- Create GitHub Actions CI workflow with Postgres service\\n- Migrate Rust tests to proper integration tests structure\\n- Export Rust modules for testing access",
+				"implement testing infrastructure",
+				"implement testing suite and floating selecton bar  (#20)",
+				"sync monaco theme with ui switcher (#21)",
+				"typo detection algorithm and testing infrastructure (#22)",
+				"implement branding & LSP promotion helpers (#23)",
+				"Implement theme synchronization, URL state management, and enhance data grid context menu handling. (#24)",
+				"implement promotional LSP demo mode",
+				"Introduce recording mode with configurable UI elements, environment variable support, and a visual overlay.",
+				"update app logo, favicon, and sidebar branding",
+				"Implement theme synchronization, URL state management, and enhance data grid context menu handling.",
+				"Enhance table info dialog with PostgreSQL validation and SQL escaping, synchronize data grid focused cell, and simplify cell context menu API.",
+				"Distinguish context menu kind in URL state, truncate large selected cell sets, and validate URL-derived table states against current table dimensions.",
+				"introduce new application sidebar and integrate it with the database studio, including an animated toggle icon.",
+				"implement docker container manager mvp (#25)",
+				"enhance Docker container management with advanced creation options, connection snippets, compose export, and database seeding (#26)",
+				"add Tauri dialog plugin and Zustand, and ignore local environment files in gitignore",
+				"release 0.0.925 - docker manager, data seeder, build fixes",
+				]
+			},
+			{
+				name: "Other",
+				items: [
+				"restore security and label features while keeping sidebar animations",
+				"implement domain architecture (#5)",
+				]
+			},
+			{
+				name: "Refactoring",
+				items: [
+				"reorganize components and enhance tabs with context menu, dnd, and pin support",
+				"rename component-specific type aliases to Props and remove associated refactoring scripts.",
+				"update metadata structs, fix parser compatibility, and resolve types",
+				"Simplify web demo auto-connection logic to generically auto-select the first table.",
+				]
+			},
+			{
+				name: "Testing",
+				items: [
+				"add comprehensive encryption tests",
+				]
+			}
+		]
+	},
+	{
 		version: "0.0.117",
 		date: "2026-05-01",
 		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.0.117",
@@ -1227,19 +1391,6 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 		]
 	},
 	{
-		version: "0.1.0",
-		date: "2026-04-04",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.1.0",
-		groups: [
-			{
-				name: "Bug Fixes",
-				items: [
-				"change build target to esnext to resolve CI esbuild transform error",
-				]
-			}
-		]
-	},
-	{
 		version: "0.0.100",
 		date: "2026-04-04",
 		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.0.100",
@@ -1416,157 +1567,6 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
 				name: "Performance",
 				items: [
 				"efficient IPC layer, bundle split, monaco workers offload (#28)",
-				]
-			}
-		]
-	},
-	{
-		version: "0.0.925",
-		date: "2026-01-24",
-		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.0.925",
-		groups: [
-			{
-				name: "Bug Fixes",
-				items: [
-				"improve sidebar dragging physics and animations",
-				"sidebar resize now follows mouse in real-time instead of snapping",
-				"propagate connection errors in test_connection",
-				"Strip unsupported channel_binding parameter from PostgreSQL connection strings",
-				"resolve table data loading and sort crash",
-				"address CodeRabbit PR review comments",
-				"lsp build issues",
-				]
-			},
-			{
-				name: "CI/CD",
-				items: [
-				"upgrade runners to Blacksmith for 2x faster performance",
-				"revert to standard ubuntu-latest runners",
-				]
-			},
-			{
-				name: "Chores",
-				items: [
-				"cleanup dead/duplicate code files",
-				"restructure frontend core",
-				"save pending changes",
-				"finalize resize and cleanup docs",
-				"cleanup project structure (remove unused FE, rename docs, move test queries)",
-				"misc fixes and improvements across desktop and api-docs",
-				"prepare for release v0.0.9 - code style cleanup and fixes",
-				"remove redundant api-docs project and move docs to root",
-				"prepare release 0.0.92",
-				"bump version to 0.0.925",
-				]
-			},
-			{
-				name: "Documentation",
-				items: [
-				"update readme with beta feature status",
-				"refine readme features and roadmap",
-				]
-			},
-			{
-				name: "Features",
-				items: [
-				"add auto-fill, typo detection & validation for connection strings",
-				"add autocomplete input with keyboard navigation",
-				"refresh splash screen design",
-				"add database-backed settings with theme persistence",
-				"add sql-builder, resize-handle, UI improvements and border fixes",
-				"add sql-builder, autocomplete and settings persistance (#1)",
-				"implement accessible Label component and replace native labels",
-				"implement AES-GCM encryption for connection storage",
-				"implement get_connection method",
-				"add context menu to saved connections",
-				"add connection history tracking with filters",
-				"enhance connections UI and data table UX with favorites, timestamps, sorting, pagination",
-				"Implement command palette with global command system and persistent keyboard shortcuts.",
-				"enhance connection string parsing, improve shortcut management, and refine UI interactions",
-				"add command palette UI and refactor URL query string construction.",
-				"Implement command usage tracking and persistence, add new application commands, and enhance command palette sorting based on usage history.",
-				"Implement command palette with global command system  (#4)",
-				"add spreadsheet-like Table Browser with filtering, sorting, inline editing, and dry-run mode",
-				"Implement dedicated table exploration view with a new `table-view` tab type and `TableBrowser` component.",
-				"Implement schema visualization with React Flow and add back navigation to table browser.",
-				"Implement core application structure, introduce shared UI components, and integrate Tauri commands for database management.",
-				"Introduce unified header and logo components, refactor theme colors to hex/rgba, and add keyboard shortcuts for main view navigation.",
-				"Introduce unified header and logo components, refactor theme co… (#6)",
-				"Add Monaco Editor and Switchable SQL Editor components",
-				"add database adapter trait, mutation API, and enhanced schema introspection",
-				"add LibSQL database support for local and remote Turso connections",
-				"add LibSQL database parsing and execution support",
-				"Reorganize project structure and migrate existing components to a new `_old` directory layout.",
-				"major backend upgrade",
-				"update docs dependencies, add new desktop icons, and remove old Tauri database files.",
-				"integrate AI service types with Specta",
-				"expose and finalize SSH tunnel module",
-				"implement Specta integration and generate TypeScript client",
-				"add duplicate_row command for context menu actions",
-				"implement snippet library with pre-made and user-created snippets",
-				"introduce snippet categories for improved organization and filtering",
-				"Backend API V2 & Specta Integration (#8)",
-				"run queries via rust",
-				"implement data provider pattern and refactor sidebar",
-				"implement better web mock view",
-				"implement data provider pattern for web mock view (#10)",
-				"improve accessibillity for data viewer",
-				"implement rust binding in FE",
-				"implement missing desktop features",
-				"add user theme and setting persistance",
-				"add user theme and setting persistence (#11)",
-				"implement SSH tunnel configuration for database connections",
-				"SSH Tunnel configuration for database connections (#12)",
-				"Schema Management (DDL) feature (#13)",
-				"centralization keyboard shortcuts (#14)",
-				"Undo/redo functionality, editor themes,  DDL retrieval & dry mode (#15)",
-				"implement changelog panel and cell improvements",
-				"release version 0.0.9 by updating tauri config, adding release notes, and updating the README.",
-				"Implement bulk edit and set null functionalities, and refactor … (#16)",
-				"Redesign and reposition the DemoBanner as a fixed, floating component in the bottom-right corner.",
-				"add Midnight, Forest, Claude Light, and Claude Dark themes with… (#19)",
-				"Add new technical and vintage font options, remove density setting, and update Vercel deployment configurations.",
-				"custom drizzle DSL LSP for monaco covering 100% of spec",
-				"implement comprehensive test infrastructure\\n\\n- Add test scripts to package.json files\\n- Configure Turbo build to depend on tests\\n- Create GitHub Actions CI workflow with Postgres service\\n- Migrate Rust tests to proper integration tests structure\\n- Export Rust modules for testing access",
-				"implement testing infrastructure",
-				"implement testing suite and floating selecton bar  (#20)",
-				"sync monaco theme with ui switcher (#21)",
-				"typo detection algorithm and testing infrastructure (#22)",
-				"implement branding & LSP promotion helpers (#23)",
-				"Implement theme synchronization, URL state management, and enhance data grid context menu handling. (#24)",
-				"implement promotional LSP demo mode",
-				"Introduce recording mode with configurable UI elements, environment variable support, and a visual overlay.",
-				"update app logo, favicon, and sidebar branding",
-				"Implement theme synchronization, URL state management, and enhance data grid context menu handling.",
-				"Enhance table info dialog with PostgreSQL validation and SQL escaping, synchronize data grid focused cell, and simplify cell context menu API.",
-				"Distinguish context menu kind in URL state, truncate large selected cell sets, and validate URL-derived table states against current table dimensions.",
-				"introduce new application sidebar and integrate it with the database studio, including an animated toggle icon.",
-				"implement docker container manager mvp (#25)",
-				"enhance Docker container management with advanced creation options, connection snippets, compose export, and database seeding (#26)",
-				"add Tauri dialog plugin and Zustand, and ignore local environment files in gitignore",
-				"release 0.0.925 - docker manager, data seeder, build fixes",
-				]
-			},
-			{
-				name: "Other",
-				items: [
-				"restore security and label features while keeping sidebar animations",
-				"implement domain architecture (#5)",
-				]
-			},
-			{
-				name: "Refactoring",
-				items: [
-				"reorganize components and enhance tabs with context menu, dnd, and pin support",
-				"rename component-specific type aliases to Props and remove associated refactoring scripts.",
-				"update metadata structs, fix parser compatibility, and resolve types",
-				"Simplify web demo auto-connection logic to generically auto-select the first table.",
-				]
-			},
-			{
-				name: "Testing",
-				items: [
-				"add comprehensive encryption tests",
 				]
 			}
 		]
