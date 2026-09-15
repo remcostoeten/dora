@@ -44,7 +44,7 @@ export async function preloadBootAssets(): Promise<void> {
  * must never sit between app launch and the first paint of the shell.
  */
 export function warmEditorHost(): void {
-	preloadEditorHost().catch((error) => {
+	Promise.resolve().then(() => preloadEditorHost()).catch((error) => {
 		console.warn('Failed to warm the editor host:', error)
 	})
 }
