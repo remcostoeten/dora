@@ -69,6 +69,28 @@ const CONFIG = {
 	changelogPath: path.join(process.cwd(), 'CHANGELOG.md')
 }
 
+function prependChangelogEntry(
+	changelogPath: string,
+	version: string,
+	title: string,
+	description: string
+): void {
+	const date = new Date().toISOString().split('T')[0]
+	const entry = `## [v${version}] - ${date}\n\n### ${title}\n\n${description}\n\n`
+	const existing = fs.readFileSync(changelogPath, 'utf8')
+	const insertAt = existing.search(/^## \[(?!Unreleased)/m)
+
+	if (insertAt === -1) {
+		fs.writeFileSync(changelogPath, `${existing.trimEnd()}\n\n${entry}`)
+		return
+	}
+
+	fs.writeFileSync(
+		changelogPath,
+		existing.slice(0, insertAt) + entry + existing.slice(insertAt)
+	)
+}
+
 function bumpVersion(version: string, type: 'major' | 'minor' | 'patch'): string {
 	const parts = version.split('.').map(Number)
 	if (parts.length !== 3 || parts.some(isNaN)) {
@@ -519,9 +541,12 @@ ${colors.bold}Examples:${colors.reset}
 			fs.writeFileSync(CONFIG.releaseNotesPath, data.releaseNotes)
 			logLevel('success', `Updated ${CONFIG.releaseNotesPath}`)
 
-			// Append to CHANGELOG.md
-			const changelogEntryMD = `\n## ${currentVersion} - ${data.changelogEntry.title}\n${data.changelogEntry.description}\n`
-			fs.appendFileSync(CONFIG.changelogPath, changelogEntryMD)
+			prependChangelogEntry(
+				CONFIG.changelogPath,
+				currentVersion,
+				data.changelogEntry.title,
+				data.changelogEntry.description
+			)
 			logLevel('success', `Updated ${CONFIG.changelogPath}`)
 		} else {
 			logLevel('warning', 'Skipped saving files.')

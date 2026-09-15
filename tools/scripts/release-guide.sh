@@ -82,7 +82,9 @@ from pathlib import Path
 
 version = os.environ["VERSION"]
 text = Path("CHANGELOG.md").read_text(encoding="utf-8")
-pattern = re.compile(rf"^##\s+{re.escape(version)}\b.*?(?=^##\s+|\Z)", re.MULTILINE | re.DOTALL)
+pattern = re.compile(
+    rf"^##\s+\[?v?{re.escape(version)}\b\]?.*?(?=^##\s+|\Z)", re.MULTILINE | re.DOTALL
+)
 match = pattern.search(text)
 if not match:
     raise SystemExit(f"Could not find CHANGELOG section for version {version}")

@@ -207,6 +207,18 @@ function buildDescription(release: ParsedRelease, title: string): string {
 	return `${sentenceCase(uniqueItems[0])}. ${sentenceCase(summaryItems[1])}.`
 }
 
+function compareVersionsDesc(a: ParsedRelease, b: ParsedRelease): number {
+	const left = a.version.split('.').map(Number)
+	const right = b.version.split('.').map(Number)
+
+	for (let index = 0; index < Math.max(left.length, right.length); index++) {
+		const difference = (right[index] ?? 0) - (left[index] ?? 0)
+		if (difference !== 0) return difference
+	}
+
+	return 0
+}
+
 function getTagDate(version: string): string {
 	const tag = `v${version}`
 	try {
@@ -389,7 +401,7 @@ function main(): void {
 	const packageJson = JSON.parse(fs.readFileSync(PACKAGE_JSON_PATH, 'utf8')) as {
 		version: string
 	}
-	const releases = parseChangelog(markdown)
+	const releases = parseChangelog(markdown).sort(compareVersionsDesc)
 	const entries = releases.map(toEntry)
 	const marketingReleases = releases.map(toMarketingRelease)
 	const desktopOutput = generateChangelogData(packageJson.version, entries)
