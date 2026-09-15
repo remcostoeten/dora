@@ -111,7 +111,6 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 	const { data: connections } = useConnections()
 	const tabStore = useQueryTabs()
 	const { activeTab } = tabStore
-	const shortcuts = useEffectiveShortcuts()
 
 	// Derive per-tab state
 	const mode = activeTab.mode
@@ -1098,13 +1097,13 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			{ description: sqlShortcuts.aiCmdK.description }
 		)
 
-	$.bind(shortcuts.toggleSidebar.combo)
+	$.bind(sqlShortcuts.toggleRightSidebar.combo)
 		.in('sql-console')
 		.on(
 			function () {
 				toggleRightSidebar()
 			},
-			{ description: shortcuts.toggleSidebar.description }
+			{ description: sqlShortcuts.toggleRightSidebar.description }
 		)
 
 	$.bind(sqlShortcuts.switchToSql.combo)
@@ -1346,6 +1345,13 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 													setShowFilter(!showFilter)
 												}}
 												onSave={handleSaveSnippet}
+												onAskAi={
+													hideAi
+														? undefined
+														: function () {
+																setShowAiCmdK(true)
+															}
+												}
 												onExplainQuery={
 													hideAi ? undefined : handleExplainQuery
 												}

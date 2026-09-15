@@ -6,8 +6,20 @@ type Props = {
 	columns?: number
 }
 
-export function Skeleton({ className }: { className?: string }) {
-	return <div className={cn('animate-pulse rounded-md bg-muted', className)} />
+const ROW_STAGGER_MS = 60
+
+function rowStagger(index: number): React.CSSProperties {
+	return { '--skeleton-delay': `${index * ROW_STAGGER_MS}ms` } as React.CSSProperties
+}
+
+export function Skeleton({
+	className,
+	style
+}: {
+	className?: string
+	style?: React.CSSProperties
+}) {
+	return <div className={cn('skeleton rounded-md', className)} style={style} />
 }
 
 export function SkeletonList({ rows = 5, className }: { rows?: number; className?: string }) {
@@ -15,7 +27,11 @@ export function SkeletonList({ rows = 5, className }: { rows?: number; className
 		<div className={cn('space-y-2', className)}>
 			{Array.from({ length: rows }).map(function (_, i) {
 				return (
-					<div key={i} className='flex items-center gap-3 p-2'>
+					<div
+						key={i}
+						className='skeleton-row flex items-center gap-3 p-2'
+						style={rowStagger(i)}
+					>
 						<Skeleton className='h-8 w-8 rounded' />
 						<div className='flex-1 space-y-1'>
 							<Skeleton className='h-4 w-3/4' />
@@ -52,7 +68,11 @@ export function SkeletonTable({ rows = 5, columns = 4, className }: Props) {
 			</div>
 			{Array.from({ length: rows }).map(function (_, rowIndex) {
 				return (
-					<div key={rowIndex} className='flex gap-2'>
+					<div
+						key={rowIndex}
+						className='skeleton-row flex gap-2'
+						style={rowStagger(rowIndex)}
+					>
 						{Array.from({ length: columns }).map(function (_, colIndex) {
 							return <Skeleton key={colIndex} className='h-10 flex-1' />
 						})}
@@ -63,74 +83,148 @@ export function SkeletonTable({ rows = 5, columns = 4, className }: Props) {
 	)
 }
 
-export function TableSkeleton({ rows = 10, columns = 6 }: { rows?: number; columns?: number }) {
+export type TableSkeletonColumn = {
+	name?: string
+	width?: number
+}
+
+// Mirrors the data grid's geometry: the 30px select column and the
+// DEFAULT_COLUMN_WIDTH / MIN_COLUMN_WIDTH colgroup in
+// features/database-studio/components/data-grid (use-column-resize.ts), which
+// shared/ui cannot import from.
+const GRID_SELECT_COLUMN_WIDTH = 30
+const GRID_DEFAULT_COLUMN_WIDTH = 150
+const GRID_MIN_COLUMN_WIDTH = 100
+
+function headerBarWidth(name?: string): string {
+	if (!name) return '5rem'
+	return `${Math.min(Math.max(name.length, 3), 18)}ch`
+}
+
+function cellBarWidthClass(colIndex: number): string {
+	if (colIndex === 0) return 'w-12'
+	if (colIndex % 3 === 0) return 'w-24'
+	if (colIndex % 2 === 0) return 'w-16'
+	return 'w-32'
+}
+
+export function TableSkeleton({
+	rows = 10,
+	columns = 6
+}: {
+	rows?: number
+	columns?: number | TableSkeletonColumn[]
+}) {
+	const resolvedColumns: TableSkeletonColumn[] = Array.isArray(columns)
+		? columns
+		: Array.from({ length: columns }).map(function () {
+				return {}
+			})
+
 	return (
-		<div className='w-full'>
-			{/* Header skeleton */}
-			<div className='flex border-b border-sidebar-border bg-sidebar/30 px-4 py-3'>
-				<div className='w-10 shrink-0' />
-				{Array.from({ length: columns }).map(function (_, i) {
-					return (
-						<div key={`header-${i}`} className='flex-1 px-3'>
-							<Skeleton className='h-4 w-20' />
-						</div>
-					)
-				})}
-				<div className='w-10 shrink-0' />
-			</div>
-
-			{/* Row skeletons */}
-			{Array.from({ length: rows }).map(function (_, rowIndex) {
-				return (
-					<div
-						key={`row-${rowIndex}`}
-						className='flex border-b border-sidebar-border/50 px-4 py-3'
-					>
-						{/* Checkbox skeleton */}
-						<div className='w-10 shrink-0 flex items-center'>
-							<Skeleton className='h-4 w-4 rounded' />
-						</div>
-
-						{/* Cell skeletons */}
-						{Array.from({ length: columns }).map(function (_, colIndex) {
+		<div className='h-full w-full overflow-hidden'>
+			<table
+				className='border-collapse text-sm'
+				style={{ tableLayout: 'auto', minWidth: '100%' }}
+				aria-hidden='true'
+			>
+				<colgroup>
+					<col
+						style={{
+							width: GRID_SELECT_COLUMN_WIDTH,
+							minWidth: GRID_SELECT_COLUMN_WIDTH
+						}}
+					/>
+					{resolvedColumns.map(function (col, i) {
+						return (
+							<col
+								key={col.name || i}
+								style={{
+									width: col.width || GRID_DEFAULT_COLUMN_WIDTH,
+									minWidth: GRID_MIN_COLUMN_WIDTH
+								}}
+							/>
+						)
+					})}
+				</colgroup>
+				<thead>
+					<tr>
+						<th className='h-9 border-b border-r border-sidebar-border bg-sidebar-accent/50'>
+							<div className='flex items-center justify-center'>
+								<Skeleton className='h-4 w-4 rounded' />
+							</div>
+						</th>
+						{resolvedColumns.map(function (col, i) {
 							return (
-								<div key={`cell-${rowIndex}-${colIndex}`} className='flex-1 px-3'>
-									<Skeleton
-										className={cn(
-											'h-4',
-											// Vary widths for more natural look
-											colIndex === 0
-												? 'w-12'
-												: colIndex % 3 === 0
-													? 'w-24'
-													: colIndex % 2 === 0
-														? 'w-16'
-														: 'w-32'
-										)}
-									/>
-								</div>
+								<th
+									key={col.name || i}
+									className='h-9 border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0'
+								>
+									<div className='px-3 py-2'>
+										<Skeleton
+											className='h-4'
+											style={{
+												width: headerBarWidth(col.name),
+												maxWidth: '100%'
+											}}
+										/>
+									</div>
+								</th>
 							)
 						})}
-
-						{/* Action skeleton */}
-						<div className='w-10 shrink-0 flex items-center justify-center'>
-							<Skeleton className='h-6 w-6 rounded' />
-						</div>
-					</div>
-				)
-			})}
+					</tr>
+				</thead>
+				<tbody>
+					{Array.from({ length: rows }).map(function (_, rowIndex) {
+						return (
+							<tr
+								key={rowIndex}
+								className='skeleton-row'
+								style={rowStagger(rowIndex)}
+							>
+								<td className='border-b border-r border-sidebar-border py-1.5'>
+									<div className='flex items-center justify-center'>
+										<Skeleton className='h-4 w-4 rounded' />
+									</div>
+								</td>
+								{resolvedColumns.map(function (col, colIndex) {
+									return (
+										<td
+											key={col.name || colIndex}
+											className='border-b border-r border-sidebar-border px-3 py-1.5 last:border-r-0'
+										>
+											<Skeleton
+												className={cn('h-4', cellBarWidthClass(colIndex))}
+											/>
+										</td>
+									)
+								})}
+							</tr>
+						)
+					})}
+				</tbody>
+			</table>
 		</div>
 	)
 }
 
 export function SidebarTableSkeleton({ rows = 6 }: { rows?: number }) {
 	return (
-		<div className='space-y-1 px-2'>
+		<div className='space-y-1 px-2 pt-2'>
 			{Array.from({ length: rows }).map(function (_, i) {
 				return (
-					<div key={i} className='flex items-center gap-2 px-2 py-2 rounded-md'>
+					<div
+						key={i}
+						className='skeleton-row flex items-center gap-2 px-2 py-2 rounded-md'
+						style={rowStagger(i)}
+					>
 						<Skeleton className='h-4 w-4 rounded' />
-						<Skeleton className={cn('h-4', i % 2 === 0 ? 'w-20' : 'w-28')} />
+						<Skeleton
+							className={cn(
+								'h-4',
+								i % 3 === 0 ? 'w-24' : i % 2 === 0 ? 'w-16' : 'w-28'
+							)}
+						/>
 						<div className='ml-auto'>
 							<Skeleton className='h-4 w-6 rounded' />
 						</div>

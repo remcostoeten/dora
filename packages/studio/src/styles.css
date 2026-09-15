@@ -26,11 +26,11 @@
 	margin-inline: auto;
 	padding-inline: 2rem;
 
-	@media (width >=--theme(--breakpoint-sm)) {
+	@media (width >= --theme(--breakpoint-sm)) {
 		max-width: none;
 	}
 
-	@media (width >=1400px) {
+	@media (width >= 1400px) {
 		max-width: 1400px;
 	}
 }
@@ -185,16 +185,16 @@
 	}
 
 	:where(
-		a[href],
-		button,
-		summary,
-		[role='button'],
-		[role='menuitem'],
-		[role='menuitemcheckbox'],
-		[role='menuitemradio'],
-		[role='option'],
-		[role='tab']
-	):not(:disabled, [data-disabled], [aria-disabled='true']):active {
+			a[href],
+			button,
+			summary,
+			[role='button'],
+			[role='menuitem'],
+			[role='menuitemcheckbox'],
+			[role='menuitemradio'],
+			[role='option'],
+			[role='tab']
+		):not(:disabled, [data-disabled], [aria-disabled='true']):active {
 		background-color: var(--focus-surface-strong);
 	}
 }
@@ -231,15 +231,15 @@
  * producing invalid `hsl(oklch(...))` colors. Unlayered + imported last, these
  * win in the Studio subtree. Desktop has no competing tokens, so this is inert.
  */
-	:root {
-		--font-sans: 'Inter', system-ui, sans-serif;
-		--font-mono: 'JetBrains Mono', monospace;
-		--hue-shift: 0;
+:root {
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', monospace;
+	--hue-shift: 0;
 
-		--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-		--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+	--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+	--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 
-		/*
+	/*
 		 * Focus and press feedback is a translucent wash of the theme's own
 		 * foreground — never an outline, ring, glow or shadow. Because these are
 		 * alpha values they composite over whatever surface the element sits on,
@@ -247,409 +247,409 @@
 		 * the same <html> element as `:root`) they re-tune themselves per theme:
 		 * dark themes lighten, light themes darken.
 		 */
-		--focus-surface: hsl(var(--foreground) / 0.1);
-		--focus-surface-strong: hsl(var(--foreground) / 0.16);
-		--focus-duration: 130ms;
+	--focus-surface: hsl(var(--foreground) / 0.1);
+	--focus-surface-strong: hsl(var(--foreground) / 0.16);
+	--focus-duration: 130ms;
 
-		--background: 0 0% 6.7%;
-		--editor: 240 9% 6%;
-		--foreground: 0 0% 95%;
+	--background: 0 0% 6.7%;
+	--editor: 240 9% 6%;
+	--foreground: 0 0% 95%;
 
-		--card: 0 0% 8%;
-		--card-foreground: 0 0% 95%;
+	--card: 0 0% 8%;
+	--card-foreground: 0 0% 95%;
 
-		--popover: 0 0% 10%;
-		--popover-foreground: 0 0% 95%;
+	--popover: 0 0% 10%;
+	--popover-foreground: 0 0% 95%;
 
-		--primary: 0 0% 98%;
-		--primary-foreground: 0 0% 9%;
+	--primary: 0 0% 98%;
+	--primary-foreground: 0 0% 9%;
 
-		--secondary: 0 0% 16%;
-		--secondary-foreground: 0 0% 82%;
+	--secondary: 0 0% 16%;
+	--secondary-foreground: 0 0% 82%;
 
-		--muted: 0 0% 19%;
-		--muted-foreground: 0 0% 55%;
+	--muted: 0 0% 19%;
+	--muted-foreground: 0 0% 55%;
 
-		--accent: 0 0% 16%;
-		--accent-foreground: 0 0% 98%;
+	--accent: 0 0% 16%;
+	--accent-foreground: 0 0% 98%;
 
-		--destructive: 355 34% 40.5%;
-		--destructive-foreground: 355 98% 75%;
+	--destructive: 355 34% 40.5%;
+	--destructive-foreground: 355 98% 75%;
 
-		--border: 0 0% 19%;
-		--input: 0 0% 19%;
-		--ring: 0 0% 83%;
+	--border: 0 0% 19%;
+	--input: 0 0% 19%;
+	--ring: 0 0% 83%;
 
-		--radius: 0.375rem;
+	--radius: 0.375rem;
 
-		/* Drizzle-style sidebar colors - Mono override */
-		--sidebar-background: 0 0% 6.7%;
-		--sidebar-foreground: 0 0% 82%;
-		--sidebar-foreground-muted: 0 0% 55%;
-		--sidebar-primary: 0 0% 20%;
-		--sidebar-primary-foreground: 0 0% 98%;
-		--sidebar-accent: 0 0% 12%;
-		--sidebar-accent-foreground: 0 0% 95%;
-		--sidebar-border: 0 0% 19%;
-		--sidebar-ring: 0 0% 83%;
+	/* Drizzle-style sidebar colors - Mono override */
+	--sidebar-background: 0 0% 6.7%;
+	--sidebar-foreground: 0 0% 82%;
+	--sidebar-foreground-muted: 0 0% 55%;
+	--sidebar-primary: 0 0% 20%;
+	--sidebar-primary-foreground: 0 0% 98%;
+	--sidebar-accent: 0 0% 12%;
+	--sidebar-accent-foreground: 0 0% 95%;
+	--sidebar-border: 0 0% 19%;
+	--sidebar-ring: 0 0% 83%;
 
-		--table-header: 0 0% 8%;
-		--table-row-hover: 0 0% 12%;
-		--table-row-selected: 0 0% 16%;
-		--table-border: 0 0% 19%;
+	--table-header: 0 0% 8%;
+	--table-row-hover: 0 0% 12%;
+	--table-row-selected: 0 0% 16%;
+	--table-border: 0 0% 19%;
 
-		--warning: 45 100% 50%;
-		--warning-foreground: 0 0% 6.7%;
+	--warning: 45 100% 50%;
+	--warning-foreground: 0 0% 6.7%;
 
-		--success: 0 0% 83%;
-		--success-foreground: 0 0% 9%;
-	}
+	--success: 0 0% 83%;
+	--success-foreground: 0 0% 9%;
+}
 
-	.light {
-		--background: 0 0% 100%;
-		--editor: 0 0% 98%;
-		--foreground: 0 0% 3.9%;
+.light {
+	--background: 0 0% 100%;
+	--editor: 0 0% 98%;
+	--foreground: 0 0% 3.9%;
 
-		--card: 0 0% 100%;
-		--card-foreground: 0 0% 3.9%;
+	--card: 0 0% 100%;
+	--card-foreground: 0 0% 3.9%;
 
-		--popover: 0 0% 100%;
-		--popover-foreground: 0 0% 3.9%;
+	--popover: 0 0% 100%;
+	--popover-foreground: 0 0% 3.9%;
 
-		--primary: 0 0% 9%;
-		--primary-foreground: 0 0% 98%;
+	--primary: 0 0% 9%;
+	--primary-foreground: 0 0% 98%;
 
-		--secondary: 0 0% 96.1%;
-		--secondary-foreground: 0 0% 9%;
+	--secondary: 0 0% 96.1%;
+	--secondary-foreground: 0 0% 9%;
 
-		--muted: 0 0% 96.1%;
-		--muted-foreground: 0 0% 45.1%;
+	--muted: 0 0% 96.1%;
+	--muted-foreground: 0 0% 45.1%;
 
-		--accent: 0 0% 90%;
-		--accent-foreground: 0 0% 9%;
+	--accent: 0 0% 90%;
+	--accent-foreground: 0 0% 9%;
 
-		--destructive: 355 24% 21%;
-		--destructive-foreground: 355 98% 75%;
+	--destructive: 355 24% 21%;
+	--destructive-foreground: 355 98% 75%;
 
-		--border: 0 0% 89.8%;
-		--input: 0 0% 89.8%;
-		--ring: 0 0% 9%;
+	--border: 0 0% 89.8%;
+	--input: 0 0% 89.8%;
+	--ring: 0 0% 9%;
 
-		/* Drizzle-style sidebar colors - light override */
-		--sidebar-background: 0 0% 98%;
-		--sidebar-foreground: 0 0% 9%;
-		--sidebar-foreground-muted: 0 0% 45.1%;
-		--sidebar-primary: 0 0% 9%;
-		--sidebar-primary-foreground: 0 0% 98%;
-		--sidebar-accent: 0 0% 92%;
-		--sidebar-accent-foreground: 0 0% 9%;
-		--sidebar-border: 0 0% 89.8%;
-		--sidebar-ring: 0 0% 9%;
+	/* Drizzle-style sidebar colors - light override */
+	--sidebar-background: 0 0% 98%;
+	--sidebar-foreground: 0 0% 9%;
+	--sidebar-foreground-muted: 0 0% 45.1%;
+	--sidebar-primary: 0 0% 9%;
+	--sidebar-primary-foreground: 0 0% 98%;
+	--sidebar-accent: 0 0% 92%;
+	--sidebar-accent-foreground: 0 0% 9%;
+	--sidebar-border: 0 0% 89.8%;
+	--sidebar-ring: 0 0% 9%;
 
-		--table-header: 0 0% 96.1%;
-		--table-row-hover: 0 0% 94%;
-		--table-row-selected: 0 0% 90%;
-		--table-border: 0 0% 89.8%;
+	--table-header: 0 0% 96.1%;
+	--table-row-hover: 0 0% 94%;
+	--table-row-selected: 0 0% 90%;
+	--table-border: 0 0% 89.8%;
 
-		--warning: 45 100% 45%;
-		--warning-foreground: 0 0% 9%;
+	--warning: 45 100% 45%;
+	--warning-foreground: 0 0% 9%;
 
-		--success: 0 0% 9%;
-		--success-foreground: 0 0% 98%;
-	}
+	--success: 0 0% 9%;
+	--success-foreground: 0 0% 98%;
+}
 
-	.midnight {
-		--background: calc(226 + var(--hue-shift)) 25% 10%;
-		--editor: calc(226 + var(--hue-shift)) 28% 7%;
-		--foreground: calc(226 + var(--hue-shift)) 25% 98%;
+.midnight {
+	--background: calc(226 + var(--hue-shift)) 25% 10%;
+	--editor: calc(226 + var(--hue-shift)) 28% 7%;
+	--foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-		--card: calc(226 + var(--hue-shift)) 25% 12%;
-		--card-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+	--card: calc(226 + var(--hue-shift)) 25% 12%;
+	--card-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-		--popover: calc(226 + var(--hue-shift)) 25% 12%;
-		--popover-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+	--popover: calc(226 + var(--hue-shift)) 25% 12%;
+	--popover-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-		--primary: calc(244 + var(--hue-shift)) 75% 65%;
-		--primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
+	--primary: calc(244 + var(--hue-shift)) 75% 65%;
+	--primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
 
-		--secondary: calc(226 + var(--hue-shift)) 25% 20%;
-		--secondary-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+	--secondary: calc(226 + var(--hue-shift)) 25% 20%;
+	--secondary-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-		--muted: calc(226 + var(--hue-shift)) 25% 20%;
-		--muted-foreground: calc(226 + var(--hue-shift)) 15% 65%;
+	--muted: calc(226 + var(--hue-shift)) 25% 20%;
+	--muted-foreground: calc(226 + var(--hue-shift)) 15% 65%;
 
-		--accent: calc(226 + var(--hue-shift)) 25% 20%;
-		--accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+	--accent: calc(226 + var(--hue-shift)) 25% 20%;
+	--accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-		--destructive: 0 62% 30%;
-		--destructive-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+	--destructive: 0 62% 30%;
+	--destructive-foreground: calc(226 + var(--hue-shift)) 25% 98%;
 
-		--border: calc(226 + var(--hue-shift)) 25% 20%;
-		--input: calc(226 + var(--hue-shift)) 25% 20%;
-		--ring: calc(244 + var(--hue-shift)) 75% 65%;
+	--border: calc(226 + var(--hue-shift)) 25% 20%;
+	--input: calc(226 + var(--hue-shift)) 25% 20%;
+	--ring: calc(244 + var(--hue-shift)) 75% 65%;
 
-		--sidebar-background: calc(226 + var(--hue-shift)) 25% 9%;
-		--sidebar-foreground: calc(226 + var(--hue-shift)) 25% 98%;
-		--sidebar-foreground-muted: calc(226 + var(--hue-shift)) 15% 65%;
-		--sidebar-primary: calc(244 + var(--hue-shift)) 75% 65%;
-		--sidebar-primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
-		--sidebar-accent: calc(226 + var(--hue-shift)) 25% 20%;
-		--sidebar-accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
-		--sidebar-border: calc(226 + var(--hue-shift)) 25% 20%;
-		--sidebar-ring: calc(244 + var(--hue-shift)) 75% 65%;
+	--sidebar-background: calc(226 + var(--hue-shift)) 25% 9%;
+	--sidebar-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+	--sidebar-foreground-muted: calc(226 + var(--hue-shift)) 15% 65%;
+	--sidebar-primary: calc(244 + var(--hue-shift)) 75% 65%;
+	--sidebar-primary-foreground: calc(226 + var(--hue-shift)) 25% 10%;
+	--sidebar-accent: calc(226 + var(--hue-shift)) 25% 20%;
+	--sidebar-accent-foreground: calc(226 + var(--hue-shift)) 25% 98%;
+	--sidebar-border: calc(226 + var(--hue-shift)) 25% 20%;
+	--sidebar-ring: calc(244 + var(--hue-shift)) 75% 65%;
 
-		--table-header: calc(226 + var(--hue-shift)) 25% 13%;
-		--table-row-hover: calc(226 + var(--hue-shift)) 25% 16%;
-		--table-row-selected: calc(226 + var(--hue-shift)) 25% 20%;
-		--table-border: calc(226 + var(--hue-shift)) 25% 20%;
-	}
+	--table-header: calc(226 + var(--hue-shift)) 25% 13%;
+	--table-row-hover: calc(226 + var(--hue-shift)) 25% 16%;
+	--table-row-selected: calc(226 + var(--hue-shift)) 25% 20%;
+	--table-border: calc(226 + var(--hue-shift)) 25% 20%;
+}
 
-	.forest {
-		--background: calc(150 + var(--hue-shift)) 20% 8%;
-		--editor: calc(150 + var(--hue-shift)) 22% 6%;
-		--foreground: calc(150 + var(--hue-shift)) 20% 95%;
+.forest {
+	--background: calc(150 + var(--hue-shift)) 20% 8%;
+	--editor: calc(150 + var(--hue-shift)) 22% 6%;
+	--foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-		--card: calc(150 + var(--hue-shift)) 20% 10%;
-		--card-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+	--card: calc(150 + var(--hue-shift)) 20% 10%;
+	--card-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-		--popover: calc(150 + var(--hue-shift)) 20% 10%;
-		--popover-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+	--popover: calc(150 + var(--hue-shift)) 20% 10%;
+	--popover-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-		--primary: calc(142 + var(--hue-shift)) 70% 50%;
-		--primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
+	--primary: calc(142 + var(--hue-shift)) 70% 50%;
+	--primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
 
-		--secondary: calc(150 + var(--hue-shift)) 20% 16%;
-		--secondary-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+	--secondary: calc(150 + var(--hue-shift)) 20% 16%;
+	--secondary-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-		--muted: calc(150 + var(--hue-shift)) 20% 16%;
-		--muted-foreground: calc(150 + var(--hue-shift)) 10% 65%;
+	--muted: calc(150 + var(--hue-shift)) 20% 16%;
+	--muted-foreground: calc(150 + var(--hue-shift)) 10% 65%;
 
-		--accent: calc(150 + var(--hue-shift)) 20% 16%;
-		--accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+	--accent: calc(150 + var(--hue-shift)) 20% 16%;
+	--accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-		--destructive: 0 62% 30%;
-		--destructive-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+	--destructive: 0 62% 30%;
+	--destructive-foreground: calc(150 + var(--hue-shift)) 20% 95%;
 
-		--border: calc(150 + var(--hue-shift)) 20% 16%;
-		--input: calc(150 + var(--hue-shift)) 20% 16%;
-		--ring: calc(142 + var(--hue-shift)) 70% 50%;
+	--border: calc(150 + var(--hue-shift)) 20% 16%;
+	--input: calc(150 + var(--hue-shift)) 20% 16%;
+	--ring: calc(142 + var(--hue-shift)) 70% 50%;
 
-		--sidebar-background: calc(150 + var(--hue-shift)) 25% 7%;
-		--sidebar-foreground: calc(150 + var(--hue-shift)) 20% 95%;
-		--sidebar-foreground-muted: calc(150 + var(--hue-shift)) 10% 65%;
-		--sidebar-primary: calc(142 + var(--hue-shift)) 70% 50%;
-		--sidebar-primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
-		--sidebar-accent: calc(150 + var(--hue-shift)) 20% 16%;
-		--sidebar-accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
-		--sidebar-border: calc(150 + var(--hue-shift)) 20% 16%;
-		--sidebar-ring: calc(142 + var(--hue-shift)) 70% 50%;
+	--sidebar-background: calc(150 + var(--hue-shift)) 25% 7%;
+	--sidebar-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+	--sidebar-foreground-muted: calc(150 + var(--hue-shift)) 10% 65%;
+	--sidebar-primary: calc(142 + var(--hue-shift)) 70% 50%;
+	--sidebar-primary-foreground: calc(150 + var(--hue-shift)) 20% 5%;
+	--sidebar-accent: calc(150 + var(--hue-shift)) 20% 16%;
+	--sidebar-accent-foreground: calc(150 + var(--hue-shift)) 20% 95%;
+	--sidebar-border: calc(150 + var(--hue-shift)) 20% 16%;
+	--sidebar-ring: calc(142 + var(--hue-shift)) 70% 50%;
 
-		--table-header: calc(150 + var(--hue-shift)) 20% 11%;
-		--table-row-hover: calc(150 + var(--hue-shift)) 20% 14%;
-		--table-row-selected: calc(150 + var(--hue-shift)) 20% 18%;
-		--table-border: calc(150 + var(--hue-shift)) 20% 16%;
-	}
+	--table-header: calc(150 + var(--hue-shift)) 20% 11%;
+	--table-row-hover: calc(150 + var(--hue-shift)) 20% 14%;
+	--table-row-selected: calc(150 + var(--hue-shift)) 20% 18%;
+	--table-border: calc(150 + var(--hue-shift)) 20% 16%;
+}
 
-	/* Bloom — mirrors the marketing homepage: deep purple-black canvas,
+/* Bloom — mirrors the marketing homepage: deep purple-black canvas,
 	   warm purple-gray borders, lilac mids, and a rose-pink accent/glow. */
-	.bloom {
-		--background: calc(280 + var(--hue-shift)) 14% 8%;
-		--editor: calc(280 + var(--hue-shift)) 16% 6%;
-		--foreground: calc(300 + var(--hue-shift)) 15% 96%;
+.bloom {
+	--background: calc(280 + var(--hue-shift)) 14% 8%;
+	--editor: calc(280 + var(--hue-shift)) 16% 6%;
+	--foreground: calc(300 + var(--hue-shift)) 15% 96%;
 
-		--card: calc(280 + var(--hue-shift)) 12% 11%;
-		--card-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+	--card: calc(280 + var(--hue-shift)) 12% 11%;
+	--card-foreground: calc(300 + var(--hue-shift)) 15% 96%;
 
-		--popover: calc(280 + var(--hue-shift)) 12% 11%;
-		--popover-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+	--popover: calc(280 + var(--hue-shift)) 12% 11%;
+	--popover-foreground: calc(300 + var(--hue-shift)) 15% 96%;
 
-		--primary: calc(353 + var(--hue-shift)) 60% 78%;
-		--primary-foreground: calc(280 + var(--hue-shift)) 20% 10%;
+	--primary: calc(353 + var(--hue-shift)) 60% 78%;
+	--primary-foreground: calc(280 + var(--hue-shift)) 20% 10%;
 
-		--secondary: calc(286 + var(--hue-shift)) 14% 18%;
-		--secondary-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+	--secondary: calc(286 + var(--hue-shift)) 14% 18%;
+	--secondary-foreground: calc(300 + var(--hue-shift)) 15% 96%;
 
-		--muted: calc(286 + var(--hue-shift)) 12% 18%;
-		--muted-foreground: calc(290 + var(--hue-shift)) 8% 62%;
+	--muted: calc(286 + var(--hue-shift)) 12% 18%;
+	--muted-foreground: calc(290 + var(--hue-shift)) 8% 62%;
 
-		--accent: calc(286 + var(--hue-shift)) 20% 22%;
-		--accent-foreground: calc(300 + var(--hue-shift)) 30% 92%;
+	--accent: calc(286 + var(--hue-shift)) 20% 22%;
+	--accent-foreground: calc(300 + var(--hue-shift)) 30% 92%;
 
-		--destructive: 0 62% 45%;
-		--destructive-foreground: calc(300 + var(--hue-shift)) 15% 96%;
+	--destructive: 0 62% 45%;
+	--destructive-foreground: calc(300 + var(--hue-shift)) 15% 96%;
 
-		--border: calc(312 + var(--hue-shift)) 8% 21%;
-		--input: calc(312 + var(--hue-shift)) 8% 21%;
-		--ring: calc(353 + var(--hue-shift)) 60% 78%;
+	--border: calc(312 + var(--hue-shift)) 8% 21%;
+	--input: calc(312 + var(--hue-shift)) 8% 21%;
+	--ring: calc(353 + var(--hue-shift)) 60% 78%;
 
-		--sidebar-background: calc(280 + var(--hue-shift)) 16% 7%;
-		--sidebar-foreground: calc(300 + var(--hue-shift)) 12% 90%;
-		--sidebar-foreground-muted: calc(290 + var(--hue-shift)) 8% 60%;
-		--sidebar-primary: calc(353 + var(--hue-shift)) 60% 78%;
-		--sidebar-primary-foreground: calc(280 + var(--hue-shift)) 20% 10%;
-		--sidebar-accent: calc(286 + var(--hue-shift)) 16% 18%;
-		--sidebar-accent-foreground: calc(300 + var(--hue-shift)) 20% 92%;
-		--sidebar-border: calc(312 + var(--hue-shift)) 8% 20%;
-		--sidebar-ring: calc(353 + var(--hue-shift)) 60% 78%;
+	--sidebar-background: calc(280 + var(--hue-shift)) 16% 7%;
+	--sidebar-foreground: calc(300 + var(--hue-shift)) 12% 90%;
+	--sidebar-foreground-muted: calc(290 + var(--hue-shift)) 8% 60%;
+	--sidebar-primary: calc(353 + var(--hue-shift)) 60% 78%;
+	--sidebar-primary-foreground: calc(280 + var(--hue-shift)) 20% 10%;
+	--sidebar-accent: calc(286 + var(--hue-shift)) 16% 18%;
+	--sidebar-accent-foreground: calc(300 + var(--hue-shift)) 20% 92%;
+	--sidebar-border: calc(312 + var(--hue-shift)) 8% 20%;
+	--sidebar-ring: calc(353 + var(--hue-shift)) 60% 78%;
 
-		--table-header: calc(280 + var(--hue-shift)) 12% 12%;
-		--table-row-hover: calc(286 + var(--hue-shift)) 14% 15%;
-		--table-row-selected: calc(286 + var(--hue-shift)) 18% 20%;
-		--table-border: calc(312 + var(--hue-shift)) 8% 20%;
-	}
+	--table-header: calc(280 + var(--hue-shift)) 12% 12%;
+	--table-row-hover: calc(286 + var(--hue-shift)) 14% 15%;
+	--table-row-selected: calc(286 + var(--hue-shift)) 18% 20%;
+	--table-border: calc(312 + var(--hue-shift)) 8% 20%;
+}
 
-	.claude {
-		--background: calc(32 + var(--hue-shift)) 30% 96%;
-		--editor: calc(32 + var(--hue-shift)) 30% 93%;
-		/* Warm Bisque/Beige */
-		--foreground: calc(25 + var(--hue-shift)) 10% 15%;
-		/* Deep warm charcoal */
+.claude {
+	--background: calc(32 + var(--hue-shift)) 30% 96%;
+	--editor: calc(32 + var(--hue-shift)) 30% 93%;
+	/* Warm Bisque/Beige */
+	--foreground: calc(25 + var(--hue-shift)) 10% 15%;
+	/* Deep warm charcoal */
 
-		--card: calc(32 + var(--hue-shift)) 30% 97%;
-		--card-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+	--card: calc(32 + var(--hue-shift)) 30% 97%;
+	--card-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
-		--popover: calc(32 + var(--hue-shift)) 30% 98%;
-		--popover-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+	--popover: calc(32 + var(--hue-shift)) 30% 98%;
+	--popover-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
-		--primary: calc(25 + var(--hue-shift)) 70% 50%;
-		/* 25 is Burnt orange base */
-		/* Burnt Orange/Sienna */
-		--primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
+	--primary: calc(25 + var(--hue-shift)) 70% 50%;
+	/* 25 is Burnt orange base */
+	/* Burnt Orange/Sienna */
+	--primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
 
-		--secondary: calc(32 + var(--hue-shift)) 20% 90%;
-		--secondary-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+	--secondary: calc(32 + var(--hue-shift)) 20% 90%;
+	--secondary-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
-		--muted: calc(32 + var(--hue-shift)) 20% 92%;
-		--muted-foreground: calc(25 + var(--hue-shift)) 5% 45%;
+	--muted: calc(32 + var(--hue-shift)) 20% 92%;
+	--muted-foreground: calc(25 + var(--hue-shift)) 5% 45%;
 
-		--accent: calc(32 + var(--hue-shift)) 20% 90%;
-		--accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+	--accent: calc(32 + var(--hue-shift)) 20% 90%;
+	--accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
 
-		--destructive: 0 84% 60%;
-		--destructive-foreground: calc(32 + var(--hue-shift)) 30% 98%;
+	--destructive: 0 84% 60%;
+	--destructive-foreground: calc(32 + var(--hue-shift)) 30% 98%;
 
-		--border: calc(32 + var(--hue-shift)) 15% 85%;
-		--input: calc(32 + var(--hue-shift)) 15% 85%;
-		--ring: calc(25 + var(--hue-shift)) 70% 50%;
+	--border: calc(32 + var(--hue-shift)) 15% 85%;
+	--input: calc(32 + var(--hue-shift)) 15% 85%;
+	--ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-		--sidebar-background: calc(32 + var(--hue-shift)) 25% 94%;
-		--sidebar-foreground: calc(25 + var(--hue-shift)) 10% 15%;
-		--sidebar-foreground-muted: calc(25 + var(--hue-shift)) 5% 45%;
-		--sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
-		--sidebar-primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
-		--sidebar-accent: calc(32 + var(--hue-shift)) 15% 88%;
-		--sidebar-accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
-		--sidebar-border: calc(32 + var(--hue-shift)) 15% 85%;
-		--sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
+	--sidebar-background: calc(32 + var(--hue-shift)) 25% 94%;
+	--sidebar-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+	--sidebar-foreground-muted: calc(25 + var(--hue-shift)) 5% 45%;
+	--sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
+	--sidebar-primary-foreground: calc(32 + var(--hue-shift)) 30% 98%;
+	--sidebar-accent: calc(32 + var(--hue-shift)) 15% 88%;
+	--sidebar-accent-foreground: calc(25 + var(--hue-shift)) 10% 15%;
+	--sidebar-border: calc(32 + var(--hue-shift)) 15% 85%;
+	--sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-		--table-header: calc(32 + var(--hue-shift)) 30% 95%;
-		--table-row-hover: calc(32 + var(--hue-shift)) 30% 92%;
-		--table-row-selected: calc(32 + var(--hue-shift)) 30% 88%;
-		--table-border: calc(32 + var(--hue-shift)) 15% 85%;
-	}
+	--table-header: calc(32 + var(--hue-shift)) 30% 95%;
+	--table-row-hover: calc(32 + var(--hue-shift)) 30% 92%;
+	--table-row-selected: calc(32 + var(--hue-shift)) 30% 88%;
+	--table-border: calc(32 + var(--hue-shift)) 15% 85%;
+}
 
-	.night {
-		--background: 0 0% 0%;
-		--editor: 0 0% 1%;
-		/* #000000 */
-		--foreground: 0 0% 93%;
-		/* #ededed */
+.night {
+	--background: 0 0% 0%;
+	--editor: 0 0% 1%;
+	/* #000000 */
+	--foreground: 0 0% 93%;
+	/* #ededed */
 
-		--card: 0 0% 3%;
-		/* #0a0a0a */
-		--card-foreground: 0 0% 93%;
+	--card: 0 0% 3%;
+	/* #0a0a0a */
+	--card-foreground: 0 0% 93%;
 
-		--popover: 0 0% 3%;
-		/* #0a0a0a */
-		--popover-foreground: 0 0% 93%;
+	--popover: 0 0% 3%;
+	/* #0a0a0a */
+	--popover-foreground: 0 0% 93%;
 
-		--primary: 0 0% 98%;
-		/* #fafafa */
-		--primary-foreground: 0 0% 0%;
+	--primary: 0 0% 98%;
+	/* #fafafa */
+	--primary-foreground: 0 0% 0%;
 
-		--secondary: 0 0% 10%;
-		/* #1a1a1a */
-		--secondary-foreground: 0 0% 93%;
+	--secondary: 0 0% 10%;
+	/* #1a1a1a */
+	--secondary-foreground: 0 0% 93%;
 
-		--muted: 0 0% 10%;
-		/* #1a1a1a */
-		--muted-foreground: 0 0% 60%;
-		/* #999999 */
+	--muted: 0 0% 10%;
+	/* #1a1a1a */
+	--muted-foreground: 0 0% 60%;
+	/* #999999 */
 
-		--accent: 0 0% 10%;
-		/* #1a1a1a */
-		--accent-foreground: 0 0% 93%;
+	--accent: 0 0% 10%;
+	/* #1a1a1a */
+	--accent-foreground: 0 0% 93%;
 
-		--destructive: 0 62% 30%;
-		--destructive-foreground: 0 0% 93%;
+	--destructive: 0 62% 30%;
+	--destructive-foreground: 0 0% 93%;
 
-		--border: 0 0% 20%;
-		/* #333333 */
-		--input: 0 0% 20%;
-		--ring: 0 0% 83%;
+	--border: 0 0% 20%;
+	/* #333333 */
+	--input: 0 0% 20%;
+	--ring: 0 0% 83%;
 
-		--sidebar-background: 0 0% 0%;
-		/* #000000 */
-		--sidebar-foreground: 0 0% 93%;
-		--sidebar-foreground-muted: 0 0% 60%;
-		--sidebar-primary: 0 0% 98%;
-		--sidebar-primary-foreground: 0 0% 0%;
-		--sidebar-accent: 0 0% 10%;
-		--sidebar-accent-foreground: 0 0% 93%;
-		--sidebar-border: 0 0% 20%;
-		--sidebar-ring: 0 0% 83%;
+	--sidebar-background: 0 0% 0%;
+	/* #000000 */
+	--sidebar-foreground: 0 0% 93%;
+	--sidebar-foreground-muted: 0 0% 60%;
+	--sidebar-primary: 0 0% 98%;
+	--sidebar-primary-foreground: 0 0% 0%;
+	--sidebar-accent: 0 0% 10%;
+	--sidebar-accent-foreground: 0 0% 93%;
+	--sidebar-border: 0 0% 20%;
+	--sidebar-ring: 0 0% 83%;
 
-		--table-header: 0 0% 0%;
-		--table-row-hover: 0 0% 5%;
-		--table-row-selected: 0 0% 10%;
-		--table-border: 0 0% 20%;
-	}
+	--table-header: 0 0% 0%;
+	--table-row-hover: 0 0% 5%;
+	--table-row-selected: 0 0% 10%;
+	--table-border: 0 0% 20%;
+}
 
-	.claude-dark {
-		--background: calc(30 + var(--hue-shift)) 15% 12%;
-		--editor: calc(30 + var(--hue-shift)) 15% 9%;
-		--foreground: calc(30 + var(--hue-shift)) 30% 96%;
+.claude-dark {
+	--background: calc(30 + var(--hue-shift)) 15% 12%;
+	--editor: calc(30 + var(--hue-shift)) 15% 9%;
+	--foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-		--card: calc(30 + var(--hue-shift)) 15% 13%;
-		--card-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--card: calc(30 + var(--hue-shift)) 15% 13%;
+	--card-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-		--popover: calc(30 + var(--hue-shift)) 15% 13%;
-		--popover-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--popover: calc(30 + var(--hue-shift)) 15% 13%;
+	--popover-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-		--primary: calc(25 + var(--hue-shift)) 70% 50%;
-		--primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--primary: calc(25 + var(--hue-shift)) 70% 50%;
+	--primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-		--secondary: calc(30 + var(--hue-shift)) 20% 18%;
-		--secondary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--secondary: calc(30 + var(--hue-shift)) 20% 18%;
+	--secondary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-		--muted: calc(30 + var(--hue-shift)) 20% 18%;
-		--muted-foreground: calc(30 + var(--hue-shift)) 10% 65%;
+	--muted: calc(30 + var(--hue-shift)) 20% 18%;
+	--muted-foreground: calc(30 + var(--hue-shift)) 10% 65%;
 
-		--accent: calc(30 + var(--hue-shift)) 20% 18%;
-		--accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--accent: calc(30 + var(--hue-shift)) 20% 18%;
+	--accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-		--destructive: 0 62% 30%;
-		--destructive-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--destructive: 0 62% 30%;
+	--destructive-foreground: calc(30 + var(--hue-shift)) 30% 96%;
 
-		--border: calc(30 + var(--hue-shift)) 20% 18%;
-		--input: calc(30 + var(--hue-shift)) 20% 18%;
-		--ring: calc(25 + var(--hue-shift)) 70% 50%;
+	--border: calc(30 + var(--hue-shift)) 20% 18%;
+	--input: calc(30 + var(--hue-shift)) 20% 18%;
+	--ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-		--sidebar-background: calc(30 + var(--hue-shift)) 15% 10%;
-		--sidebar-foreground: calc(30 + var(--hue-shift)) 30% 96%;
-		--sidebar-foreground-muted: calc(30 + var(--hue-shift)) 10% 65%;
-		--sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
-		--sidebar-primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
-		--sidebar-accent: calc(30 + var(--hue-shift)) 20% 18%;
-		--sidebar-accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
-		--sidebar-border: calc(30 + var(--hue-shift)) 20% 18%;
-		--sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
+	--sidebar-background: calc(30 + var(--hue-shift)) 15% 10%;
+	--sidebar-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--sidebar-foreground-muted: calc(30 + var(--hue-shift)) 10% 65%;
+	--sidebar-primary: calc(25 + var(--hue-shift)) 70% 50%;
+	--sidebar-primary-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--sidebar-accent: calc(30 + var(--hue-shift)) 20% 18%;
+	--sidebar-accent-foreground: calc(30 + var(--hue-shift)) 30% 96%;
+	--sidebar-border: calc(30 + var(--hue-shift)) 20% 18%;
+	--sidebar-ring: calc(25 + var(--hue-shift)) 70% 50%;
 
-		--table-header: calc(30 + var(--hue-shift)) 15% 13%;
-		--table-row-hover: calc(30 + var(--hue-shift)) 20% 16%;
-		--table-row-selected: calc(30 + var(--hue-shift)) 20% 20%;
-		--table-border: calc(30 + var(--hue-shift)) 20% 18%;
-	}
+	--table-header: calc(30 + var(--hue-shift)) 15% 13%;
+	--table-row-hover: calc(30 + var(--hue-shift)) 20% 16%;
+	--table-row-selected: calc(30 + var(--hue-shift)) 20% 20%;
+	--table-border: calc(30 + var(--hue-shift)) 20% 18%;
+}
 
 @layer base {
 	* {
@@ -796,7 +796,9 @@
 @layer utilities {
 	.db-card {
 		@apply relative rounded-md border border-border/60 bg-background/40 p-3 cursor-pointer;
-		transition: background-color 150ms var(--ease-out), border-color 150ms var(--ease-out);
+		transition:
+			background-color 150ms var(--ease-out),
+			border-color 150ms var(--ease-out);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
@@ -917,19 +919,6 @@
 		animation: asyncReveal 0.3s ease-out forwards;
 	}
 
-	.ai-thinking-label {
-		background: linear-gradient(
-			90deg,
-			hsl(var(--muted-foreground) / 0.45) 0%,
-			hsl(var(--muted-foreground) / 0.95) 45%,
-			hsl(var(--muted-foreground) / 0.45) 90%
-		);
-		background-size: 200% 100%;
-		background-clip: text;
-		color: transparent;
-		animation: asyncShimmer 1.8s ease-in-out infinite;
-	}
-
 	/*
 	 * A bright sheen that sweeps across the selected provider's SVG glyph only.
 	 * A white copy of the icon is clipped by a moving diagonal gradient mask, so
@@ -961,20 +950,13 @@
 			#000 53%,
 			transparent 62%
 		);
-		mask-image: linear-gradient(
-			105deg,
-			transparent 38%,
-			#000 47%,
-			#000 53%,
-			transparent 62%
-		);
+		mask-image: linear-gradient(105deg, transparent 38%, #000 47%, #000 53%, transparent 62%);
 		-webkit-mask-size: 280% 100%;
 		mask-size: 280% 100%;
 		-webkit-mask-repeat: no-repeat;
 		mask-repeat: no-repeat;
 		animation: dbTypeIconGlint 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 	}
-
 
 	@keyframes desktopOnlyPulse {
 		0%,
@@ -993,12 +975,14 @@
 	@keyframes settingsSectionHighlight {
 		0%,
 		100% {
-			box-shadow: inset 0 0 0 0 color-mix(in srgb, hsl(var(--sidebar-primary)) 0%, transparent);
+			box-shadow: inset 0 0 0 0
+				color-mix(in srgb, hsl(var(--sidebar-primary)) 0%, transparent);
 			background-color: transparent;
 		}
 		20%,
 		55% {
-			box-shadow: inset 0 0 0 2px color-mix(in srgb, hsl(var(--sidebar-primary)) 55%, transparent);
+			box-shadow: inset 0 0 0 2px
+				color-mix(in srgb, hsl(var(--sidebar-primary)) 55%, transparent);
 			background-color: color-mix(in srgb, hsl(var(--sidebar-primary)) 9%, transparent);
 		}
 	}
@@ -1063,7 +1047,6 @@
 		transform: translateX(-130%);
 		animation: cockpitSkeletonSheen 3.6s var(--ease-out) infinite;
 	}
-
 }
 
 /* ===== Query Tab Bar ===== */
@@ -1096,8 +1079,13 @@
 }
 
 @keyframes tabExecutePulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.5; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
 }
 
 .query-tab--executing {
@@ -1319,7 +1307,9 @@
 }
 
 @keyframes sv-flow {
-	to { stroke-dashoffset: -16; }
+	to {
+		stroke-dashoffset: -16;
+	}
 }
 
 .sv-edge-flow {
@@ -1429,7 +1419,9 @@
 	border: 1px solid var(--sv-node-border);
 	background: var(--sv-node-bg);
 	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-	transition: opacity 0.2s ease, border-color 0.2s ease,
+	transition:
+		opacity 0.2s ease,
+		border-color 0.2s ease,
 		transform 0.2s cubic-bezier(0.23, 1, 0.32, 1),
 		box-shadow 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -1457,10 +1449,10 @@
 /* ── Live Monitor Pulse Animations ── */
 @keyframes sv-pulse-glow {
 	0% {
-		box-shadow: 0 0 0 0 var(--sv-pulse-color, rgba(255,255,255,0.4));
+		box-shadow: 0 0 0 0 var(--sv-pulse-color, rgba(255, 255, 255, 0.4));
 	}
 	30% {
-		box-shadow: 0 0 18px 4px var(--sv-pulse-color, rgba(255,255,255,0.4));
+		box-shadow: 0 0 18px 4px var(--sv-pulse-color, rgba(255, 255, 255, 0.4));
 	}
 	100% {
 		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
@@ -2141,4 +2133,62 @@
 		overflow-wrap: anywhere;
 		text-align: right;
 	}
+}
+
+/* ===== Skeletons ===== */
+
+/*
+ * One light sheen sweeps across each block, phase-shifted per row via
+ * --skeleton-delay so the shimmer cascades down the list. Only the overlay's
+ * transform animates, so it stays on the GPU.
+ */
+@keyframes skeletonSheen {
+	0% {
+		transform: translateX(-100%);
+	}
+	55%,
+	100% {
+		transform: translateX(100%);
+	}
+}
+
+@keyframes skeletonEnter {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@layer components {
+	.skeleton {
+		position: relative;
+		overflow: hidden;
+		background: color-mix(in srgb, hsl(var(--muted)) 72%, transparent);
+	}
+}
+
+.skeleton::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background: linear-gradient(
+		100deg,
+		transparent 32%,
+		color-mix(in srgb, hsl(var(--foreground)) 8%, transparent) 50%,
+		transparent 68%
+	);
+	transform: translateX(-100%);
+	animation: skeletonSheen 2s var(--ease-out) infinite;
+	animation-delay: var(--skeleton-delay, 0ms);
+}
+
+.skeleton-row {
+	opacity: 0;
+	animation: skeletonEnter 240ms var(--ease-out) forwards;
+	animation-delay: var(--skeleton-delay, 0ms);
 }

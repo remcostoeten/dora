@@ -1,9 +1,13 @@
 import { Container } from 'lucide-react'
 import { useRef } from 'react'
 import { Button } from '@studio/shared/ui/button'
-import { Spinner } from '@studio/shared/ui/spinner'
 import type { DockerContainer } from '../types'
 import { ContainerCard } from './container-card'
+import {
+	ContainerCardSkeleton,
+	PendingContainerCard,
+	type PendingContainer
+} from './container-card-skeleton'
 
 type Props = {
 	containers: DockerContainer[]
@@ -18,6 +22,7 @@ type Props = {
 	isLoading?: boolean
 	searchQuery?: string
 	onClearSearch?: () => void
+	pendingContainer?: PendingContainer | null
 }
 
 export function ContainerList({
@@ -32,7 +37,8 @@ export function ContainerList({
 	isActionPending = false,
 	isLoading = false,
 	searchQuery = '',
-	onClearSearch
+	onClearSearch,
+	pendingContainer = null
 }: Props) {
 	const listRef = useRef<HTMLDivElement>(null)
 
@@ -77,16 +83,21 @@ export function ContainerList({
 
 	if (isLoading) {
 		return (
-			<div className='flex-1 flex items-center justify-center'>
-				<div className='text-center'>
-					<Spinner className='mx-auto mb-3 h-8 w-8 text-muted-foreground' />
-					<p className='text-sm text-muted-foreground'>Loading containers...</p>
+			<div
+				aria-busy='true'
+				aria-label='Loading containers'
+				className='flex-1 overflow-y-auto'
+			>
+				<div className='p-3 space-y-2'>
+					<ContainerCardSkeleton />
+					<ContainerCardSkeleton />
+					<ContainerCardSkeleton />
 				</div>
 			</div>
 		)
 	}
 
-	if (containers.length === 0) {
+	if (containers.length === 0 && !pendingContainer) {
 		if (searchQuery.trim()) {
 			return (
 				<div className='flex-1 flex items-center justify-center p-8'>
@@ -135,6 +146,7 @@ export function ContainerList({
 			onKeyDown={handleArrowNavigation}
 		>
 			<div className='p-3 space-y-2'>
+				{pendingContainer && <PendingContainerCard container={pendingContainer} />}
 				{containers.map(function (container) {
 					return (
 						<ContainerCard
