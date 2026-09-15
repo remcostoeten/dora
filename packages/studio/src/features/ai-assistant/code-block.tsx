@@ -1,26 +1,14 @@
-import {
-	Check,
-	Copy,
-	FileInput,
-	Maximize2,
-	Minimize2,
-	Play,
-	ShieldCheck
-} from 'lucide-react'
+import { Check, Copy, FileInput, Maximize2, Minimize2, Play, ShieldCheck } from 'lucide-react'
+import { File } from '@pierre/diffs/react'
 import { Spinner } from '@studio/shared/ui/spinner'
+import { useColorScheme, type ColorScheme } from '@studio/shared/hooks/use-color-scheme'
 import { useCallback, useMemo, useState } from 'react'
 import { getEnv } from '@studio/core/env'
 import { notifySchemaChanged } from '@studio/core/schema-refresh'
 import { commands } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
-import {
-	buildDryRunSql,
-	getSqlStatementKind,
-	splitSqlStatements,
-	tokenizeSql,
-	type SqlTokenKind
-} from './sql-code-utils'
+import { buildDryRunSql, getSqlStatementKind, splitSqlStatements } from './sql-code-utils'
 
 const DEFAULT_QUERY_POLL_INTERVAL_MS = 100
 const DEFAULT_QUERY_POLL_ATTEMPTS = 50
@@ -30,8 +18,7 @@ const QUERY_POLL_INTERVAL_MS =
 	DEFAULT_QUERY_POLL_INTERVAL_MS
 
 const QUERY_POLL_ATTEMPTS =
-	Number.parseInt(getEnv('VITE_AI_QUERY_POLL_ATTEMPTS') ?? '', 10) ||
-	DEFAULT_QUERY_POLL_ATTEMPTS
+	Number.parseInt(getEnv('VITE_AI_QUERY_POLL_ATTEMPTS') ?? '', 10) || DEFAULT_QUERY_POLL_ATTEMPTS
 
 type Props = {
 	language: string | undefined
@@ -55,15 +42,15 @@ type RunState =
 	  }
 	| { kind: 'error'; mode: 'run' | 'dry-run'; message: string }
 
-const tokenClassName: Record<SqlTokenKind, string> = {
-	keyword: 'text-sky-300',
-	function: 'text-violet-300',
-	string: 'text-emerald-300',
-	number: 'text-amber-300',
-	comment: 'text-zinc-500',
-	operator: 'text-zinc-400',
-	identifier: 'text-zinc-100',
-	plain: 'text-zinc-100'
+const CODE_THEMES = { light: 'pierre-light', dark: 'pierre-dark' } as const
+
+function getFileOptions(scheme: ColorScheme) {
+	return {
+		disableFileHeader: true,
+		overflow: 'scroll',
+		theme: CODE_THEMES,
+		themeType: scheme
+	} as const
 }
 
 function formatError(error: unknown): string {
@@ -111,14 +98,21 @@ export function CodeBlock({
 		},
 		[code, isSql]
 	)
-	const highlightedTokens = useMemo(
+	const lineCount = code.split('\n').length
+	const shouldClamp = lineCount > 12 && !expanded
+	const file = useMemo(
 		function () {
-			return isSql ? tokenizeSql(code) : []
+			return { name: isSql ? 'query.sql' : 'snippet.txt', contents: code }
 		},
 		[code, isSql]
 	)
-	const lineCount = code.split('\n').length
-	const shouldClamp = lineCount > 12 && !expanded
+	const colorScheme = useColorScheme()
+	const fileOptions = useMemo(
+		function () {
+			return getFileOptions(colorScheme)
+		},
+		[colorScheme]
+	)
 
 	const handleCopy = useCallback(
 		async function handleCopy() {
@@ -256,13 +250,14 @@ export function CodeBlock({
 	)
 
 	return (
-		<div className='my-2 overflow-hidden rounded-md border border-sidebar-border bg-zinc-900/60'>
+		<div className='my-2 overflow-hidden rounded-md border border-sidebar-border bg-muted/40'>
 			<div className='flex items-center justify-between gap-2 border-b border-sidebar-border px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground'>
 				<div className='flex min-w-0 items-center gap-2'>
-					<span className='font-semibold text-zinc-300'>{language ?? 'code'}</span>
+					<span className='font-semibold text-foreground/80'>{language ?? 'code'}</span>
 					{isSql && (
 						<span className='truncate normal-case tracking-normal text-muted-foreground'>
-							{sqlKind} · {statementCount} stmt{statementCount === 1 ? '' : 's'} · {lineCount} line{lineCount === 1 ? '' : 's'}
+							{sqlKind} · {statementCount} stmt{statementCount === 1 ? '' : 's'} ·{' '}
+							{lineCount} line{lineCount === 1 ? '' : 's'}
 						</span>
 					)}
 				</div>
@@ -351,24 +346,9 @@ export function CodeBlock({
 					</Button>
 				</div>
 			</div>
-			<pre
-				className={cn(
-					'm-0 overflow-auto p-3 text-xs leading-relaxed text-zinc-100',
-					shouldClamp && 'max-h-64'
-				)}
-			>
-				<code>
-					{isSql
-						? highlightedTokens.map(function (token, index) {
-								return (
-									<span key={`${index}-${token.text}`} className={tokenClassName[token.kind]}>
-										{token.text}
-									</span>
-								)
-							})
-						: code}
-				</code>
-			</pre>
+			<div className={cn('min-h-0 overflow-auto', shouldClamp && 'max-h-64')}>
+				<File file={file} options={fileOptions} className='text-xs leading-relaxed' />
+			</div>
 			{runState.kind !== 'idle' && (
 				<div
 					className={cn(
