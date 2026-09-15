@@ -24,7 +24,13 @@ pub async fn get_database_schema(
         schemas: &state.schemas,
         schema_locks: &state.schema_locks,
     };
+    // A cache miss means an introspection just ran; mirror its result to disk
+    // so the next cold start can paint the sidebar before connecting.
+    let was_cached = state.schemas.contains_key(&connection_id);
     let schema = svc.get_database_schema(connection_id).await?;
+    if !was_cached {
+        crate::database::schema_persistence::persist_schema(&state.storage, connection_id, &schema);
+    }
     refresher.schedule(connection_id, pending_counts(&schema));
     Ok((*schema).clone())
 }

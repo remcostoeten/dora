@@ -24,6 +24,7 @@ pub mod metadata;
 pub mod parser;
 pub mod row_count_refresher;
 pub mod schema_cache;
+pub mod schema_persistence;
 pub mod services;
 pub mod sqlite_introspection;
 pub mod ssh_tunnel;

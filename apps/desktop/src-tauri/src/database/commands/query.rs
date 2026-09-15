@@ -49,6 +49,7 @@ pub async fn start_query(
 
     if invalidates_schema {
         state.schemas.remove(&connection_id);
+        crate::database::schema_persistence::forget_schema(&state.storage, connection_id);
         refresher.cancel(connection_id);
     }
 
@@ -75,6 +76,7 @@ pub async fn start_query_stream(
         .await?;
     if invalidates_schema {
         state.schemas.remove(&connection_id);
+        crate::database::schema_persistence::forget_schema(&state.storage, connection_id);
         refresher.cancel(connection_id);
     }
     Ok(query_ids)

@@ -50,6 +50,7 @@ pub async fn update_connection(
     // A config change may point at a different database entirely; a cached
     // schema from the old target must not survive the reconnect.
     state.schemas.remove(&conn_id);
+    crate::database::schema_persistence::forget_schema(&state.storage, conn_id);
     refresher.cancel(conn_id);
     Ok(info)
 }
@@ -185,6 +186,7 @@ pub async fn remove_connection(
     state.stmt_manager.cancel_connection_queries(connection_id);
     refresher.cancel(connection_id);
     state.schemas.remove(&connection_id);
+    crate::database::schema_persistence::forget_schema(&state.storage, connection_id);
     let svc = ConnectionService {
         connections: &state.connections,
         storage: &state.storage,

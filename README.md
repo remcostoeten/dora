@@ -1,74 +1,147 @@
-<div align="center">
-  <img src="docs/assets/dora-backgroundless.png" alt="Dora" width="120" />
-  <h1>Dora</h1>
-  <p><em>The database explorah</em></p>
-
-[![Release](https://img.shields.io/github/v/release/remcostoeten/dora?display_name=tag&sort=semver)](https://github.com/remcostoeten/dora/releases)
-[![CI](https://github.com/remcostoeten/dora/actions/workflows/ci.yml/badge.svg)](https://github.com/remcostoeten/dora/actions/workflows/ci.yml)
-[![Downloads](https://img.shields.io/github/downloads/remcostoeten/dora/total)](https://github.com/remcostoeten/dora/releases)
-[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)](LICENSE)
-[![Platforms](https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-8A63D2)](https://github.com/remcostoeten/dora/releases)
-[![Native binary](https://img.shields.io/badge/~20%20MB-native%20%C2%B7%20Rust-F74C00?logo=rust&logoColor=white)](https://github.com/remcostoeten/dora/releases)
-
-</div>
-
 <p align="center">
-  <img src="docs/assets/demo-tour.webp" alt="Dora in action: browsing a 1,200-row table, inline-editing a cell, opening the command palette, and running SQL in the query console" width="92%" />
+  <img src="docs/assets/dora-backgroundless.png" width="88" alt="Dora logo" />
 </p>
 
-Dora is a native, cross-platform database workbench built with Tauri and Rust. It is fully free and open source: there is no paid edition, subscription, or feature gate. The installer is a **20-30 MB download**, rather than the several-hundred-MB Chromium bundle used by Electron-based alternatives, and it covers the day-to-day database workflow in one app.
+<h1 align="center">Dora</h1>
 
-- **Connect anything** - PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB, plus CSV/JSON/Parquet/NDJSON as queryable data files.
-- **Skip the connection string** - sign in to Supabase, Neon, Turso, PlanetScale, Vercel Postgres, Xata, or Cloudflare D1 and pick a database, or paste a string for 15+ auto-recognized hosted providers.
-- **Query your way** - browse and inline-edit data, run SQL in a Monaco editor, generate SQL with AI, or write Drizzle/Prisma queries.
-- **Stay in sync** - diff a Drizzle/Prisma schema against the live database and preview the migration, inspect schemas as an ER diagram, and spin up local Docker databases.
-- **Product analytics built in** - point it at a PostHog project and query with HogQL, with a dashboard on top.
+<p align="center">
+  <em>the database explorah</em>
+</p>
 
-Everything is keyboard-first.
+<p align="center">
+  A native database workbench for PostgreSQL, MySQL, MariaDB, CockroachDB,<br />
+  SQLite, libSQL/Turso, Cloudflare D1, DuckDB, and CSV/JSON/Parquet files.<br />
+  Rust and Tauri, so the installer is tens of megabytes, not hundreds.<br />
+  Free and open source: no paid edition, no subscription, no feature gate.<br />
+  <a href="https://doradb.app/downloads"><strong>doradb.app/downloads</strong></a> · <a href="https://doradb.app/docs">docs</a>
+</p>
 
-## See it in action
+<p align="center">
+  <img src="https://shieldcn.dev/github/remcostoeten/dora/release.svg?font=jetbrains-mono" alt="release" />
+  <img src="https://shieldcn.dev/github/remcostoeten/dora/ci.svg?font=jetbrains-mono" alt="CI" />
+  <img src="https://shieldcn.dev/badge/license-GPLv3-black.svg?font=jetbrains-mono" alt="license GPLv3" />
+  <img src="https://shieldcn.dev/badge/core-Rust-black.svg?font=jetbrains-mono&logo=rust" alt="core Rust" />
+  <img src="https://shieldcn.dev/badge/shell-Tauri-black.svg?font=jetbrains-mono&logo=tauri" alt="shell Tauri" />
+  <img src="https://shieldcn.dev/badge/engines-8-black.svg?font=jetbrains-mono" alt="8 engines" />
+</p>
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="apps/marketing/public/features/ai-assistant.png" alt="Generating a schema-aware SQL query with Dora's AI assistant" />
-      <br /><strong>Schema-aware AI</strong>
-    </td>
-    <td width="50%">
-      <img src="apps/marketing/public/features/schema-visualization.png" alt="Exploring database relationships in Dora's interactive schema visualizer" />
-      <br /><strong>Interactive schema visualization</strong>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="apps/marketing/public/features/drizzle-runner.png" alt="Writing a typed Drizzle query with autocomplete and SQL preview in Dora" />
-      <br /><strong>Drizzle and Prisma runners</strong>
-    </td>
-    <td width="50%">
-      <img src="apps/marketing/public/features/docker-containers.png" alt="Managing local database containers from Dora" />
-      <br /><strong>Local database containers</strong>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <img src="docs/assets/demo-tour.webp" width="100%" alt="Browsing a table in Dora, editing a cell inline, opening the command palette, then running a query in the SQL console" />
+</p>
+<p align="center">
+  <sub>The studio, driven from the keyboard, captured in real time and uncut. The desktop app is the same interface on the Rust backend.</sub>
+</p>
+
+Dora talks to your database directly from your machine. Point it at a local
+SQLite file, a Postgres server behind an SSH tunnel, or a hosted database you
+never have to find a connection string for: sign in to Supabase, Neon, Turso,
+PlanetScale, Vercel, Xata, or Cloudflare and pick a database from the list, and
+the engine, dialect, and SSL settings are filled in for you. Everything is
+keyboard-first.
+
+- Browse, sort, filter, and **inline-edit** rows, with a dry-run mode that stages changes before they hit the database
+- A multi-tab SQL console on Monaco, with autocomplete, Vim keybindings, and tabs that survive a relaunch
+- **Schema-grounded AI SQL** on `⌘I` / `Ctrl+I`, through OpenAI, Anthropic, Gemini, Groq, or a fully offline Ollama
+- Write **Drizzle and Prisma queries** natively, with schema-aware autocomplete and a SQL preview
+- Diff a Drizzle or Prisma schema against the live database and generate the reconciling migration, destructive statements gated behind an explicit toggle
+- Query CSV, JSON, Parquet, TSV, and NDJSON as tables, join across files, and materialize a session into a real DuckDB file
+- Point it at a PostHog project and it becomes a desktop **HogQL client** with an analytics dashboard on top
+
+Every feature is documented in full at
+[doradb.app/docs](https://doradb.app/docs). The connection model is in
+[data-sources.md](docs/architecture/data-sources.md), the analytics client in
+[analytics.mdx](docs/features/analytics.mdx), and the AI setup in
+[ai-providers.md](docs/ai-providers.md).
+
+## Connect anything
+
+<p align="center">
+  <img src="https://shieldcn.dev/badge/db-PostgreSQL-black.svg?font=jetbrains-mono&logo=postgresql" alt="PostgreSQL" />
+  <img src="https://shieldcn.dev/badge/db-MySQL-black.svg?font=jetbrains-mono&logo=mysql" alt="MySQL" />
+  <img src="https://shieldcn.dev/badge/db-MariaDB-black.svg?font=jetbrains-mono&logo=mariadb" alt="MariaDB" />
+  <img src="https://shieldcn.dev/badge/db-CockroachDB-black.svg?font=jetbrains-mono&logo=cockroachlabs" alt="CockroachDB" />
+  <img src="https://shieldcn.dev/badge/db-SQLite-black.svg?font=jetbrains-mono&logo=sqlite" alt="SQLite" />
+  <img src="https://shieldcn.dev/badge/db-libSQL-black.svg?font=jetbrains-mono&logo=turso" alt="libSQL and Turso" />
+  <img src="https://shieldcn.dev/badge/db-D1-black.svg?font=jetbrains-mono&logo=cloudflare" alt="Cloudflare D1" />
+  <img src="https://shieldcn.dev/badge/db-DuckDB-black.svg?font=jetbrains-mono&logo=duckdb" alt="DuckDB" />
+</p>
+
+Every engine gets the same browse, edit, query, export, and dump flows, with
+the parts that differ handled per dialect rather than lowest-common-denominator.
+
+| Engine | What you get |
+|---|---|
+| PostgreSQL | SSH tunneling, live updates over `LISTEN`/`NOTIFY` |
+| MySQL | SSH tunneling, live updates by polling |
+| MariaDB | MariaDB-aware dialect, native `UUID` / `INET4` / `INET6` types |
+| CockroachDB | CockroachDB-aware introspection, live monitor auto-tuned |
+| SQLite | Native file picker, no server needed |
+| libSQL / Turso | Local files and remote databases alike |
+| Cloudflare D1 | Over Cloudflare's HTTP query API, no local file |
+| DuckDB | Local `.duckdb` files, import CSV/JSON/Parquet as real tables |
+| CSV · TSV · JSON · NDJSON · Parquet | DuckDB-backed sessions: query, cross-file joins, export, save as DuckDB to edit |
+
+### Sign in instead of hunting for a connection string
+
+<p align="center">
+  <img src="https://shieldcn.dev/badge/account-Supabase-black.svg?font=jetbrains-mono&logo=supabase" alt="Supabase" />
+  <img src="https://shieldcn.dev/badge/account-Neon-black.svg?font=jetbrains-mono&logo=neon" alt="Neon" />
+  <img src="https://shieldcn.dev/badge/account-Turso-black.svg?font=jetbrains-mono&logo=turso" alt="Turso" />
+  <img src="https://shieldcn.dev/badge/account-PlanetScale-black.svg?font=jetbrains-mono&logo=planetscale" alt="PlanetScale" />
+  <img src="https://shieldcn.dev/badge/account-Vercel-black.svg?font=jetbrains-mono&logo=vercel" alt="Vercel Postgres" />
+  <img src="https://shieldcn.dev/badge/account-Xata-black.svg?font=jetbrains-mono" alt="Xata" />
+  <img src="https://shieldcn.dev/badge/account-Cloudflare-black.svg?font=jetbrains-mono&logo=cloudflare" alt="Cloudflare D1" />
+</p>
+
+Connect the account once and Dora lists your databases, mints the credential,
+and applies the right engine, dialect, and SSL mode for you.
+
+| Provider | How you connect |
+|---|---|
+| Supabase | OAuth, then pick a project |
+| Neon | API key, then pick a project and a branch |
+| Turso | Token, or mint one with the Turso CLI, then pick a database |
+| PlanetScale | Service token, then pick a branch |
+| Vercel Postgres | Token, then pick a store |
+| Xata | API key, then pick a database |
+| Cloudflare D1 | API token, then pick a database |
+
+Anything else hosted is recognized from the connection string alone, engine,
+dialect, and SSL applied for you, no integration required:
+
+Fly.io · Railway · Render · Aiven · DigitalOcean · Crunchy Bridge · Timescale ·
+AWS RDS/Aurora · Azure Database · Google Cloud SQL · CockroachDB Cloud ·
+TiDB Cloud · Yugabyte
+
+Or skip the server entirely: spin up a local PostgreSQL, MySQL, MariaDB, or
+CockroachDB container from inside the app, seed it, and open it in the data
+viewer without touching a terminal.
 
 ## Install
 
-**macOS**
+Every build is at [doradb.app/downloads](https://doradb.app/downloads), or
+through the channel you already use:
+
+### macOS (Homebrew)
+
 ```bash
 brew install remcostoeten/tap/dora
 ```
 
-**Windows**
+### Windows (Winget)
+
 ```powershell
 winget install RemcoStoeten.Dora
 ```
 
-**Arch Linux**
+### Arch Linux (AUR)
+
 ```bash
 yay -S dora
 ```
 
-**Debian / Ubuntu**
+### Debian / Ubuntu (APT)
+
 ```bash
 curl -fsSL https://remco-stoeten.github.io/dora/KEY.gpg \
   | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg
@@ -78,192 +151,56 @@ echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/dora.gpg] \
 sudo apt update && sudo apt install dora
 ```
 
-**Linux (Snap)**
+### Linux (Snap)
+
 ```bash
 sudo snap install dora
 ```
 
-**Linux (Flatpak / AppImage / deb / rpm)**: download from the [releases page](https://github.com/remcostoeten/dora/releases).
+Flatpak, AppImage, `.deb`, `.rpm`, `.dmg`, and `.msi` builds are on the
+[releases page](https://github.com/remcostoeten/dora/releases/latest). macOS
+builds cover Apple Silicon and Intel; Windows and Linux are x64.
 
-## Database support
+## Privacy
 
-| Database | Status |
-|---|---|
-| PostgreSQL | Full support: SSH tunneling, live updates via LISTEN/NOTIFY |
-| MySQL | Full support: SSH tunneling, live updates via polling |
-| SQLite | Full support: native file picker |
-| DuckDB | Full support: local `.duckdb` files, import CSV/JSON/Parquet as tables |
-| libSQL / Turso | Full support: local and remote |
-| MariaDB | Full support: MariaDB-aware dialect; native `UUID` / `INET4` / `INET6` types |
-| CockroachDB | Full support: CockroachDB-aware schema introspection, live monitor auto-tuned |
-| Cloudflare D1 | Full support: connects over Cloudflare's HTTP query API, no local file needed |
-| Data files (CSV / TSV / Parquet / JSON / NDJSON) | DuckDB-backed sessions: query, export, cross-file JOINs; save as DuckDB to edit |
+**Your data never passes through a server of ours.** Queries run from your
+machine to your database, and results stay in the app. Connection passwords,
+provider tokens, SSH keys, and AI API keys are encrypted with AES-256-GCM under
+a master key held in the OS keychain, falling back to a local key file only when
+the platform has no keyring available.
 
-### Connect a provider account
+The AI features are inert until you add a key. Ollama runs entirely offline;
+the remote providers receive your prompt and the schema of the tables in scope,
+never row data. PostHog connections are read-only: Dora queries the HogQL API
+and never writes to it.
 
-Skip the connection string entirely. Sign in to a provider, and Dora lists your databases and mints the credential for you. The correct engine, dialect, and SSL are applied automatically.
-
-| Provider | How you connect |
-|---|---|
-| Supabase | Connect your account (OAuth), pick a project |
-| Neon | Add an API key, pick a project: branch-aware (choose a branch when a project has more than one) |
-| Turso | Add a token (or mint one with the Turso CLI), pick a database |
-| PlanetScale | Add a service token, pick a branch |
-| Vercel Postgres | Add a token, pick a store |
-| Xata | Add a key, pick a database |
-| Cloudflare D1 | Add an API token, pick a database |
-
-### Connection-string presets
-
-Any other **hosted or serverless provider** is auto-recognized from its connection string, with correct engine, dialect, and SSL applied for you, no native integration required:
-
-Fly.io · Railway · Render · Aiven · DigitalOcean · Crunchy Bridge · Timescale · AWS RDS/Aurora · Azure Database · Google Cloud SQL · CockroachDB Cloud · TiDB Cloud · Yugabyte
-
-They all speak standard Postgres/MySQL/libSQL, so just paste the string. See [docs/architecture/data-sources.md](docs/architecture/data-sources.md).
-
-## Features
-
-### Data viewer
-
-Browse schemas, tables, columns, indexes, and row data. Sort, filter (with AND/OR toggle), and paginate. Inline-edit cells, bulk-edit selections, set values to `NULL`, add/duplicate/delete rows, and stage changes in dry-run mode before committing. Export as JSON, CSV, or SQL `INSERT`, respecting your active filters and sort order. Back up a database to a `.sql` dump and restore from one.
-
-### SQL console
-
-Multi-tab workspace with isolated execution state. Monaco editor with autocomplete, syntax highlighting, and Vim keybindings. Run `SELECT`, `INSERT`, `UPDATE`, `DELETE`, and DDL. Filter result sets, switch between table and JSON view, export results. Tabs persist across relaunch and can be dragged to reorder.
-
-### AI SQL generation
-
-Press `⌘I` / `Ctrl+I`, describe what you want, get schema-grounded SQL back. Hit **Fix with AI** on a failed query to send the query and error to the assistant automatically. Supports **OpenAI, Anthropic, Gemini, Groq, and Ollama**. API keys are stored encrypted (AES-256-GCM) with the master key in the OS keychain. Ollama runs entirely offline, no key required. See [docs/ai-providers.md](docs/ai-providers.md).
-
-### ORM runners
-
-**Drizzle runner**: write and run Drizzle ORM queries with schema-aware autocomplete and a SQL preview before execution.
-
-**Prisma runner**: write and execute Prisma Client queries natively inside Dora, with schema-aware autocomplete. No separate script file or `ts-node` needed.
-
-### ORM cockpit
-
-Link a project folder, and Dora detects your Drizzle or Prisma schema, parses it, and compares it against the live database. The **drift view** groups every difference by table and flags each change as safe, review, or destructive. From there it generates a reconciling migration, dialect-correct `up`/`down` SQL, with destructive and review statements gated behind explicit opt-in toggles. The preview is read-only: hand the SQL off to the SQL console with one click, where the normal execution guardrails apply. Nothing is run behind your back.
-
-### Product analytics (PostHog)
-
-<p align="center">
-  <img src="docs/assets/posthog-analytics.webp" alt="Dora's PostHog analytics dashboard: switching the range, drilling into a site" width="92%" />
-</p>
-
-Connect a PostHog project with a personal API key and Dora becomes a desktop PostHog client. Query `events`, `persons`, and `sessions` with HogQL in the SQL console, right next to your databases, and get a built-in **Analytics** dashboard for free: KPI tiles compared against the previous period, an activity chart, and breakdowns of top events, pages, browsers, referrers, countries, and devices.
-
-Switch the whole dashboard between 7, 14, 30, and 90 days, click any slice of a breakdown to drill into it (drills stack, so you can narrow to one site, event, and browser at once), and toggle **exclude localhost** to drop development traffic. PostHog connections are read-only: Dora queries the HogQL API, it never writes. See [docs/features/analytics.mdx](docs/features/analytics.mdx).
-
-### Query history
-
-Every query you run is stored, searchable, and re-runnable. History is scoped per connection.
-
-### Schema visualizer
-
-Interactive ER diagram with pan, zoom, FK edges, and a search that dims unrelated tables. Export to SVG or PNG, following the active theme.
-
-### Docker manager
-
-Spin up a local PostgreSQL, MySQL, MariaDB, or CockroachDB container in one click, then start, stop, inspect, and remove it without leaving the app. Open a container directly in the data viewer, view logs, run seed scripts, or export a Docker Compose file.
-
-### Local files
-
-Dora distinguishes **database files** from **data files**:
-
-| Open this | What you get |
-|---|---|
-| `.sqlite` / `.db` | Editable SQLite database |
-| `.duckdb` | Editable DuckDB database: browse, edit rows, run SQL, import more files |
-| CSV, JSON, Parquet, TSV, NDJSON | Readonly DuckDB-backed session: SQL queries, export, cross-file JOINs |
-
-**Save as DuckDB** materializes a data-file session into a new `.duckdb` file on disk, then opens it as an editable connection. **Import files** pulls CSV/JSON/Parquet into physical tables on an existing DuckDB connection.
-
-If a data file moves or goes missing, Dora shows connection health and lets you relocate or remove sources from the source panel without losing the connection entry.
-
-### SSH tunneling
-
-Connect to databases behind firewalls through encrypted SSH tunnels. Tunnel config is stored per connection alongside its credentials.
-
-### Theming
-
-Dark and light themes, custom accent colours, and configurable font sizes. Live preview, no restart required.
+Release builds report anonymous page views to a first-party endpoint. No query
+text, schema, credential, or row data is sent, and `Do Not Track` turns it off
+with no action. There is no in-app toggle for it yet.
 
 ## Development
 
-Dora is a Bun + Turborepo monorepo:
-
-```
-apps/
-  desktop/   # Tauri app (Rust backend + React/TypeScript frontend)
-  marketing/ # Next.js marketing site
-packages/
-  studio/    # @dora/studio, shared Studio package used by desktop and marketing demo
-  style/     # Shared oxlint + oxfmt config
-```
-
-The React/TypeScript studio owns the user interface and application state. The
-Tauri boundary exposes typed commands to the Rust backend, where database
-connections, queries, schema inspection, exports, and credential handling live.
-Provider-specific behavior is kept behind shared database capabilities so the
-same browse, query, mutation, and export flows work consistently across
-engines. See the [data-source architecture](docs/architecture/data-sources.md)
-for the connection model.
-
-**Prerequisites:** [Bun](https://bun.sh), [Rust](https://rustup.rs), and the [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform.
+[Bun](https://bun.sh), [Rust](https://rustup.rs), and the
+[Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform.
+The repository is a Turborepo monorepo: `apps/desktop` is the Tauri app,
+`apps/marketing` the Next.js site, and `packages/studio` the React interface
+both share.
 
 ```bash
-# Install dependencies
 bun install
-
-# Start the desktop app in development mode
-bun run desktop:dev
-
-# Run the marketing site
-bun run --cwd apps/marketing dev
+bun run desktop:dev      # Tauri app against Vite on :1420
+bun run lint             # oxlint across the workspace
+bun run test             # Vitest via Turborepo
 ```
 
-**Build**
+Rust tests are `cargo test` inside `apps/desktop/src-tauri`. Use `bun run test`
+rather than a bare `bun test`, which picks up Vitest and Playwright specs its
+own runner cannot execute. CI runs lint, type checks, frontend and Rust tests, a
+production build, and a browser boot smoke test, with a separate workflow
+exercising the adapters against real MySQL and MariaDB servers.
 
-```bash
-bun run desktop:build                    # current platform
-bun run desktop:build:linux              # AppImage + deb + rpm
-bun run desktop:build:win                # nsis + msi
-bun run desktop:build:mac                # dmg
-```
+<br/>
 
-**Tests**
-
-```bash
-bun run lint                                      # TypeScript lint
-bun run --cwd packages/studio typecheck           # Studio typecheck
-bun run --cwd apps/desktop typecheck              # Desktop typecheck
-bun run test                                      # Vitest suite via Turborepo
-bun run --cwd apps/desktop test                   # Desktop frontend tests
-(cd apps/desktop/src-tauri && cargo test)          # Rust tests
-```
-
-> [!NOTE]
-> Use `bun run test`, not a bare `bun test`. The latter invokes Bun's own
-> runner, which picks up Vitest and Playwright specs it cannot execute.
-
-CI runs linting, TypeScript type checks, frontend and Rust tests, a production
-build, and a browser boot smoke test. A separate workflow exercises database
-adapters against real MySQL and MariaDB servers.
-
-> [!NOTE]
-> The desktop app uses Vite as its dev server (`http://localhost:1420`). Hot-reload works for the TypeScript frontend; Rust changes require a full rebuild.
-
-## Contributing
-
-Bug reports, feature requests, and pull requests are welcome. Open an issue to discuss anything non-trivial before sending a PR.
-
-For significant changes (new database support, new UI surfaces, changes to the Rust backend), please open an issue first so the approach can be agreed on.
-
-## Platforms
-
-macOS (Apple Silicon + Intel), Windows (x64), Linux (x64) via AppImage, deb, rpm, Snap, or Flatpak.
-
-## License
-
-GNU General Public License v3.0. See [LICENSE](LICENSE).
+xxx,<br/>
+[Remco Stoeten](https://remcostoeten.com)<br/>
+GPLv3
