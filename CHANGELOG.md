@@ -5,6 +5,53 @@ All notable changes to this project will be documented in this file.
 
 
 
+
+## [v0.41.1] - 2026-09-15
+
+### Bug Fixes
+
+- fix(studio): survive a full localStorage and stop logging closed connections as monitor failures (#249) (#249)
+
+- fix(release): keep CHANGELOG newest-first and match bracketed version headings (#253) (#253)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.41.0
+
+
+
+### Documentation
+
+- docs(readme): restructure around engines, providers and features (#252) (#252)
+
+
+
+### Features
+
+- feat: always enable animations in the desktop app and marketing site (#244) (#244)
+
+- feat: data-file session UX rework, follower CSV diff, and duckdb_helper packaging fix (#245) (#245)
+
+- feat(studio): render code and migration diffs with @pierre/diffs (#247) (#247)
+
+- feat(studio): dock the AI assistant toggle in the navigation sidebar (#248) (#248)
+
+- feat(desktop): mirror introspected schemas to disk for a cold-start sidebar (#246) (#246)
+
+
+
+### Performance
+
+- perf(desktop): warm the editor host during boot and drop the unused App.css (#251) (#251)
+
+
+
+### Refactoring
+
+- refactor(studio): inline create-container panel and grid/console/onboarding polish (#250) (#250)
+
 ## [Unreleased]
 
 ## [v0.41.0] - 2026-08-27

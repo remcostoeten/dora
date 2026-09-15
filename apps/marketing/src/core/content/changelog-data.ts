@@ -13,9 +13,57 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.41.0"
+export const CURRENT_VERSION = "0.41.1"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.41.1",
+		date: "2026-09-15",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.41.1",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(studio): survive a full localStorage and stop logging closed connections as monitor failures (#249) (#249)",
+				"fix(release): keep CHANGELOG newest-first and match bracketed version headings (#253) (#253)",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.41.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(readme): restructure around engines, providers and features (#252) (#252)",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat: always enable animations in the desktop app and marketing site (#244) (#244)",
+				"feat: data-file session UX rework, follower CSV diff, and duckdb_helper packaging fix (#245) (#245)",
+				"feat(studio): render code and migration diffs with @pierre/diffs (#247) (#247)",
+				"feat(studio): dock the AI assistant toggle in the navigation sidebar (#248) (#248)",
+				"feat(desktop): mirror introspected schemas to disk for a cold-start sidebar (#246) (#246)",
+				]
+			},
+			{
+				name: "Performance",
+				items: [
+				"perf(desktop): warm the editor host during boot and drop the unused App.css (#251) (#251)",
+				]
+			},
+			{
+				name: "Refactoring",
+				items: [
+				"refactor(studio): inline create-container panel and grid/console/onboarding polish (#250) (#250)",
+				]
+			}
+		]
+	},
 	{
 		version: "0.41.0",
 		date: "2026-08-27",
