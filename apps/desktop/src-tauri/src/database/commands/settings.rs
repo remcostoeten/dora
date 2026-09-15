@@ -50,5 +50,11 @@ pub async fn set_setting(
         storage: &state.storage,
         stmt_manager: &state.stmt_manager,
     };
-    svc.set_setting(key, value).await
+    let is_ui_settings = key == "ui_settings";
+    svc.set_setting(key, value).await?;
+    // A privacy toggle must take effect immediately, not at the next boot.
+    if is_ui_settings {
+        crate::database::schema_persistence::clear_if_disabled(&state.storage);
+    }
+    Ok(())
 }
