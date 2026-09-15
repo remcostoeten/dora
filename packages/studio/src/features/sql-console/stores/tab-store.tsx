@@ -1,4 +1,14 @@
-import { createContext, useContext, useReducer, useCallback, useEffect, useMemo, useRef, ReactNode } from 'react'
+import {
+	createContext,
+	useContext,
+	useReducer,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	ReactNode
+} from 'react'
+import { readStorageItem, writeStorageItem } from '@studio/shared/lib/safe-storage'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { QueryTab, SqlQueryResult, ResultViewMode } from '../types'
 import { DEFAULT_SQL } from '../data'
@@ -66,7 +76,10 @@ function inferTitleFromQuery(query: string): string {
 	}
 
 	// Fallback: first 30 chars
-	const firstLine = trimmed.split('\n')[0].replace(/^--\s*/, '').trim()
+	const firstLine = trimmed
+		.split('\n')[0]
+		.replace(/^--\s*/, '')
+		.trim()
 	if (firstLine.length > 30) return firstLine.substring(0, 27) + '...'
 	return firstLine || 'Untitled'
 }
@@ -83,7 +96,12 @@ type TabAction =
 	| { type: 'CLOSE_TAB'; tabId: string }
 	| { type: 'SET_ACTIVE_TAB'; tabId: string }
 	| { type: 'RENAME_TAB'; tabId: string; title: string }
-	| { type: 'UPDATE_TAB_CONTENT'; tabId: string; field: 'sqlContent' | 'drizzleContent'; value: string }
+	| {
+			type: 'UPDATE_TAB_CONTENT'
+			tabId: string
+			field: 'sqlContent' | 'drizzleContent'
+			value: string
+	  }
 	| { type: 'SET_TAB_MODE'; tabId: string; mode: 'sql' | 'drizzle' | 'prisma' }
 	| { type: 'SET_TAB_RESULT'; tabId: string; result: SqlQueryResult | null }
 	| { type: 'SET_TAB_EXECUTING'; tabId: string; isExecuting: boolean }
@@ -109,8 +127,12 @@ function tabReducer(state: TabState, action: TabAction): TabState {
 
 		case 'CLOSE_TAB': {
 			if (state.tabs.length <= 1) return state
-			const idx = state.tabs.findIndex(function (t) { return t.id === action.tabId })
-			const newTabs = state.tabs.filter(function (t) { return t.id !== action.tabId })
+			const idx = state.tabs.findIndex(function (t) {
+				return t.id === action.tabId
+			})
+			const newTabs = state.tabs.filter(function (t) {
+				return t.id !== action.tabId
+			})
 			let newActiveId = state.activeTabId
 
 			if (state.activeTabId === action.tabId) {
@@ -225,7 +247,9 @@ function tabReducer(state: TabState, action: TabAction): TabState {
 
 		case 'DUPLICATE_TAB': {
 			if (state.tabs.length >= MAX_TABS) return state
-			const source = state.tabs.find(function (t) { return t.id === action.tabId })
+			const source = state.tabs.find(function (t) {
+				return t.id === action.tabId
+			})
 			if (!source) return state
 
 			const dup: QueryTab = {
@@ -239,7 +263,9 @@ function tabReducer(state: TabState, action: TabAction): TabState {
 				lastExecutedAt: null
 			}
 
-			const srcIdx = state.tabs.findIndex(function (t) { return t.id === action.tabId })
+			const srcIdx = state.tabs.findIndex(function (t) {
+				return t.id === action.tabId
+			})
 			const newTabs = [...state.tabs]
 			newTabs.splice(srcIdx + 1, 0, dup)
 
@@ -289,7 +315,7 @@ function getStorageKey(connectionId: string | null): string {
 
 function loadTabsFromStorage(connectionId: string | null): TabState | null {
 	try {
-		const raw = localStorage.getItem(getStorageKey(connectionId))
+		const raw = readStorageItem(getStorageKey(connectionId))
 		if (!raw) return null
 		const parsed = JSON.parse(raw)
 		if (parsed && Array.isArray(parsed.tabs) && parsed.tabs.length > 0 && parsed.activeTabId) {
@@ -299,7 +325,8 @@ function loadTabsFromStorage(connectionId: string | null): TabState | null {
 					...t,
 					result: null,
 					isExecuting: false,
-					viewMode: t.viewMode === 'json' || t.viewMode === 'chart' ? t.viewMode : 'table',
+					viewMode:
+						t.viewMode === 'json' || t.viewMode === 'chart' ? t.viewMode : 'table',
 					chartConfig: t.chartConfig ?? null,
 					historyEntryId: t.historyEntryId ?? null
 				}
@@ -325,9 +352,11 @@ function saveTabsToStorage(connectionId: string | null, state: TabState): void {
 			}),
 			activeTabId: state.activeTabId
 		}
-		localStorage.setItem(getStorageKey(connectionId), JSON.stringify(toSave))
+		writeStorageItem(getStorageKey(connectionId), JSON.stringify(toSave), {
+			label: 'open query tabs'
+		})
 	} catch (e) {
-		console.warn('[TabStore] Failed to save tabs:', e)
+		console.warn('[TabStore] Could not serialize tabs:', e)
 	}
 }
 
@@ -356,28 +385,40 @@ export function QueryTabProvider({ children, connectionId }: TProps) {
 	const loadedConnectionIdRef = useRef(connectionId)
 
 	// Persist whenever state changes
-	useEffect(function () {
-		if (loadedConnectionIdRef.current !== connectionId) return
-		saveTabsToStorage(connectionId, state)
-	}, [state, connectionId])
+	useEffect(
+		function () {
+			if (loadedConnectionIdRef.current !== connectionId) return
+			saveTabsToStorage(connectionId, state)
+		},
+		[state, connectionId]
+	)
 
 	// When connectionId changes, load or create fresh tabs
-	useEffect(function () {
-		const loaded = loadTabsFromStorage(connectionId)
-		if (loaded) {
-			dispatch({ type: 'LOAD_TABS', tabs: loaded.tabs, activeTabId: loaded.activeTabId })
-		} else {
-			const defaultTab = createDefaultTab(connectionId)
-			dispatch({ type: 'LOAD_TABS', tabs: [defaultTab], activeTabId: defaultTab.id })
-		}
-		loadedConnectionIdRef.current = connectionId
-	}, [connectionId])
+	useEffect(
+		function () {
+			const loaded = loadTabsFromStorage(connectionId)
+			if (loaded) {
+				dispatch({ type: 'LOAD_TABS', tabs: loaded.tabs, activeTabId: loaded.activeTabId })
+			} else {
+				const defaultTab = createDefaultTab(connectionId)
+				dispatch({ type: 'LOAD_TABS', tabs: [defaultTab], activeTabId: defaultTab.id })
+			}
+			loadedConnectionIdRef.current = connectionId
+		},
+		[connectionId]
+	)
 
-	const activeTab = state.tabs.find(function (t) { return t.id === state.activeTabId }) || state.tabs[0]
+	const activeTab =
+		state.tabs.find(function (t) {
+			return t.id === state.activeTabId
+		}) || state.tabs[0]
 
-	const addTab = useCallback(function () {
-		dispatch({ type: 'ADD_TAB', connectionId })
-	}, [connectionId])
+	const addTab = useCallback(
+		function () {
+			dispatch({ type: 'ADD_TAB', connectionId })
+		},
+		[connectionId]
+	)
 
 	const closeTab = useCallback(function (tabId: string) {
 		dispatch({ type: 'CLOSE_TAB', tabId })
@@ -391,7 +432,11 @@ export function QueryTabProvider({ children, connectionId }: TProps) {
 		dispatch({ type: 'RENAME_TAB', tabId, title })
 	}, [])
 
-	const updateTabContent = useCallback(function (tabId: string, field: 'sqlContent' | 'drizzleContent', value: string) {
+	const updateTabContent = useCallback(function (
+		tabId: string,
+		field: 'sqlContent' | 'drizzleContent',
+		value: string
+	) {
 		dispatch({ type: 'UPDATE_TAB_CONTENT', tabId, field, value })
 	}, [])
 
@@ -434,23 +479,36 @@ export function QueryTabProvider({ children, connectionId }: TProps) {
 		dispatch({ type: 'DUPLICATE_TAB', tabId })
 	}, [])
 
-	const nextTab = useCallback(function () {
-		const idx = state.tabs.findIndex(function (t) { return t.id === state.activeTabId })
-		const nextIdx = (idx + 1) % state.tabs.length
-		dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[nextIdx].id })
-	}, [state.tabs, state.activeTabId])
+	const nextTab = useCallback(
+		function () {
+			const idx = state.tabs.findIndex(function (t) {
+				return t.id === state.activeTabId
+			})
+			const nextIdx = (idx + 1) % state.tabs.length
+			dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[nextIdx].id })
+		},
+		[state.tabs, state.activeTabId]
+	)
 
-	const prevTab = useCallback(function () {
-		const idx = state.tabs.findIndex(function (t) { return t.id === state.activeTabId })
-		const prevIdx = (idx - 1 + state.tabs.length) % state.tabs.length
-		dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[prevIdx].id })
-	}, [state.tabs, state.activeTabId])
+	const prevTab = useCallback(
+		function () {
+			const idx = state.tabs.findIndex(function (t) {
+				return t.id === state.activeTabId
+			})
+			const prevIdx = (idx - 1 + state.tabs.length) % state.tabs.length
+			dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[prevIdx].id })
+		},
+		[state.tabs, state.activeTabId]
+	)
 
-	const goToTab = useCallback(function (index: number) {
-		if (index >= 0 && index < state.tabs.length) {
-			dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[index].id })
-		}
-	}, [state.tabs])
+	const goToTab = useCallback(
+		function (index: number) {
+			if (index >= 0 && index < state.tabs.length) {
+				dispatch({ type: 'SET_ACTIVE_TAB', tabId: state.tabs[index].id })
+			}
+		},
+		[state.tabs]
+	)
 
 	const value: TabContextValue = useMemo(
 		() => ({
@@ -499,11 +557,7 @@ export function QueryTabProvider({ children, connectionId }: TProps) {
 		]
 	)
 
-	return (
-		<TabContext.Provider value={value}>
-			{children}
-		</TabContext.Provider>
-	)
+	return <TabContext.Provider value={value}>{children}</TabContext.Provider>
 }
 
 export function useQueryTabs(): TabContextValue {
