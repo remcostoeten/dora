@@ -1,10 +1,11 @@
 import { Send, Sparkles, Square, Trash2, X } from 'lucide-react'
+import { notify } from '@remcostoeten/notifier'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAdapter, useIsTauri } from '@studio/core/data-provider'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { Button } from '@studio/shared/ui/button'
-import { usePresence } from '@studio/shared/hooks/use-presence'
 import { cn } from '@studio/shared/utils/cn'
+import { noop } from '@studio/shared/utils/noop'
 import { getTableRefId } from '@studio/shared/utils/table-ref'
 import { formatAiStatusBadge, useAiStatus } from './use-ai-status'
 import { MessageBubble } from './message-bubble'
@@ -21,6 +22,20 @@ type Props = {
 	editorContext?: AiAssistantEditorContext | null
 	onEditorInsert?: (sql: string) => void
 	onRunInConsole?: (sql: string) => void
+}
+
+const VIEW_LABELS: Record<string, string> = {
+	'sql-console': 'SQL console',
+	'database-studio': 'Data viewer',
+	'schema-visualizer': 'Schema',
+	'orm-cockpit': 'Schema Diff',
+	docker: 'Docker Manager',
+	analytics: 'Analytics',
+	settings: 'Settings'
+}
+
+function formatActiveView(activeView: string): string {
+	return VIEW_LABELS[activeView] ?? activeView
 }
 
 export function AiAssistantPanel({
@@ -67,7 +82,9 @@ export function AiAssistantPanel({
 				.then(function (res) {
 					if (res.ok) setSchema(res.data)
 				})
-				.catch(function () {})
+				.catch(function () {
+					noop()
+				})
 		},
 		[open, activeConnectionId, adapter]
 	)
@@ -170,7 +187,14 @@ export function AiAssistantPanel({
 			if (!input.trim() || isStreaming) return
 			const text = input
 			setInput('')
-			await send({ prompt: text, activeConnectionId, context: assistantContext })
+			try {
+				await send({ prompt: text, activeConnectionId, context: assistantContext })
+			} catch (e) {
+				setInput(text)
+				notify.error(
+					`Could not send the message: ${e instanceof Error ? e.message : String(e)}`
+				)
+			}
 		},
 		[input, isStreaming, send, activeConnectionId, assistantContext]
 	)
@@ -191,10 +215,6 @@ export function AiAssistantPanel({
 		[handleSend, isStreaming, abort, setOpen]
 	)
 
-	const { present, state } = usePresence(open, 200)
-
-	if (!present) return null
-
 	const keysAvailable = aiStatus?.ready ?? false
 	const keyLabel = formatAiStatusBadge(aiStatus, isMock)
 	const activeProvider = aiStatus?.active_provider ?? 'groq'
@@ -209,41 +229,37 @@ export function AiAssistantPanel({
 
 	return (
 		<aside
-			data-state={state}
-			className={cn(
-				'flex h-full shrink-0 justify-end overflow-hidden border-l border-sidebar-border bg-sidebar',
-				'[--ai-panel-w:min(420px,45vw)]',
-				'transition-[width] duration-200 data-[state=open]:duration-[240ms] ease-[var(--ease-out)]',
-				'data-[state=closed]:w-0 data-[state=open]:w-[var(--ai-panel-w)]'
-			)}
+			id='ai-assistant-panel'
+			aria-label='AI assistant'
+			className='flex h-full w-[clamp(360px,30vw,460px)] shrink-0 border-l border-sidebar-border bg-sidebar'
 		>
-			<div className='flex h-full w-[var(--ai-panel-w)] shrink-0 flex-col'>
-				<header className='flex items-center gap-2 border-b border-sidebar-border px-3 py-2'>
-					<Sparkles className='h-4 w-4 text-primary' />
-					<span className='text-xs font-semibold'>AI Assistant</span>
-					<span
-						className={cn(
-							'rounded px-1.5 py-0.5 text-[10px]',
-							keysAvailable
-								? 'bg-emerald-500/10 text-emerald-500'
-								: 'bg-amber-500/10 text-amber-500'
-						)}
-						title={`Active provider: ${activeProvider}`}
-					>
-						{keyLabel}
-					</span>
-					{activeView && (
-						<span
-							className='rounded bg-sidebar-accent px-1.5 py-0.5 text-[10px] text-muted-foreground'
-							title={
-								selectedTableName
-									? `Context: ${activeView}, ${selectedTableName}`
-									: `Context: ${activeView}`
-							}
+			<div className='flex h-full min-w-0 flex-1 flex-col'>
+				<header className='flex min-h-14 items-center gap-3 border-b border-sidebar-border px-4 py-2.5'>
+					<div className='flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'>
+						<Sparkles className='h-4 w-4' />
+					</div>
+					<div className='min-w-0 flex-1'>
+						<div className='flex items-center gap-2'>
+							<span className='text-sm font-semibold'>AI assistant</span>
+							<span
+								className={cn(
+									'h-1.5 w-1.5 rounded-full',
+									keysAvailable ? 'bg-emerald-500' : 'bg-amber-500'
+								)}
+								aria-hidden='true'
+							/>
+						</div>
+						<p
+							className='truncate text-[11px] text-muted-foreground'
+							title={`Active provider: ${activeProvider}. ${keyLabel}`}
 						>
-							{selectedTableName ? selectedTableName : activeView}
-						</span>
-					)}
+							{selectedTableName
+								? `Using ${selectedTableName}`
+								: activeView
+									? `Using ${formatActiveView(activeView)}`
+									: keyLabel}
+						</p>
+					</div>
 					<div className='ml-auto flex items-center gap-1'>
 						{messages.length > 0 && (
 							<Button
@@ -273,7 +289,7 @@ export function AiAssistantPanel({
 					</div>
 				</header>
 
-				<div ref={scrollRef} className='flex-1 overflow-y-auto'>
+				<div ref={scrollRef} className='min-h-0 flex-1 overflow-y-auto bg-background/20'>
 					{messages.length === 0 ? (
 						<EmptyState
 							suggestions={suggestions}
@@ -284,7 +300,7 @@ export function AiAssistantPanel({
 							hasConnection={Boolean(activeConnectionId)}
 						/>
 					) : (
-						<div className='divide-y divide-sidebar-border/40'>
+						<div>
 							{messages.map(function (m) {
 								const liveContent =
 									streamingSnapshot != null &&
@@ -314,7 +330,7 @@ export function AiAssistantPanel({
 					</div>
 				)}
 
-				<div className='border-t border-sidebar-border p-2'>
+				<div className='border-t border-sidebar-border bg-sidebar/95 p-3'>
 					{!activeConnectionId && (
 						<div className='mb-2 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-500'>
 							No active connection — schema context disabled.
@@ -326,7 +342,7 @@ export function AiAssistantPanel({
 							{activeProvider ? ` (${activeProvider})` : ''}.
 						</div>
 					)}
-					<div className='relative'>
+					<div className='relative rounded-lg border border-sidebar-border bg-background shadow-xs transition-[border-color,box-shadow] duration-150 ease-[var(--ease-out)] focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/15'>
 						<textarea
 							ref={inputRef}
 							value={input}
@@ -335,9 +351,9 @@ export function AiAssistantPanel({
 							}}
 							onKeyDown={handleKeyDown}
 							disabled={isStreaming || !keysAvailable}
-							placeholder='Ask anything about your database…'
-							rows={3}
-							className='w-full resize-none rounded-md border border-sidebar-border bg-background px-3 py-2 pr-10 text-sm transition-colors duration-150 focus-visible:bg-focus disabled:opacity-50'
+							placeholder='Ask about your schema or query…'
+							rows={2}
+							className='max-h-32 min-h-16 w-full resize-none border-0 bg-transparent px-3 py-2.5 pr-11 text-sm leading-relaxed outline-none disabled:opacity-50'
 						/>
 						<div className='absolute bottom-1.5 right-1.5'>
 							{isStreaming ? (
@@ -365,12 +381,12 @@ export function AiAssistantPanel({
 							)}
 						</div>
 					</div>
-					<div className='mt-1 flex items-center justify-between text-[10px] text-muted-foreground'>
-						<span>Enter to send · Shift+Enter newline · Esc to close</span>
+					<div className='mt-1.5 flex items-center justify-between px-0.5 text-[10px] text-muted-foreground'>
+						<span>Enter sends · Shift+Enter adds a line</span>
 						{isStreaming && (
 							<span
 								className={cn(
-									'ai-thinking-label font-medium',
+									'font-medium text-primary/80',
 									!isWaitingForFirstToken && 'opacity-80'
 								)}
 							>
@@ -394,20 +410,29 @@ function EmptyState({ suggestions, onPick, hasConnection }: EmptyStateProps) {
 	const quickActions = getQuickActions()
 
 	return (
-		<div className='p-3'>
-			<div className='mb-3'>
-				<div className='mb-2 text-[10px] uppercase tracking-wider text-muted-foreground'>
+		<div className='mx-auto flex w-full max-w-md flex-col px-4 py-6'>
+			<div className='mb-6'>
+				<h2 className='text-base font-semibold text-foreground'>Work with your database</h2>
+				<p className='mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground'>
+					{hasConnection
+						? 'Ask for SQL, inspect your schema, or turn an idea into a query.'
+						: 'Connect a database to include schema context in your questions.'}
+				</p>
+			</div>
+			<div className='mb-6'>
+				<div className='mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
 					Quick actions
 				</div>
-				<div className='grid grid-cols-2 gap-1.5'>
+				<div className='grid grid-cols-2 gap-2'>
 					{quickActions.map(function (action) {
 						return (
 							<button
+								type='button'
 								key={action.label}
 								onClick={function () {
 									onPick(action.prompt)
 								}}
-								className='rounded border border-sidebar-border bg-sidebar-accent/30 px-2 py-1.5 text-left text-[11px] hover:bg-sidebar-accent'
+								className='min-h-12 rounded-md border border-sidebar-border bg-sidebar-accent/25 px-3 py-2 text-left text-xs font-medium text-foreground transition-[background-color,border-color] duration-150 ease-[var(--ease-out)] hover:border-sidebar-foreground/20 hover:bg-sidebar-accent focus-visible:bg-focus'
 							>
 								{action.label}
 							</button>
@@ -416,18 +441,19 @@ function EmptyState({ suggestions, onPick, hasConnection }: EmptyStateProps) {
 				</div>
 			</div>
 			<div>
-				<div className='mb-2 text-[10px] uppercase tracking-wider text-muted-foreground'>
+				<div className='mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
 					{hasConnection ? 'Suggestions from your schema' : 'Suggestions'}
 				</div>
-				<div className='space-y-1'>
-					{suggestions.map(function (s) {
+				<div className='space-y-1.5'>
+					{suggestions.slice(0, 4).map(function (s) {
 						return (
 							<button
+								type='button'
 								key={s}
 								onClick={function () {
 									onPick(s)
 								}}
-								className='block w-full rounded border border-sidebar-border bg-sidebar-accent/20 px-2 py-1.5 text-left text-[11px] hover:bg-sidebar-accent'
+								className='block w-full rounded-md border border-transparent px-3 py-2 text-left text-xs leading-relaxed text-muted-foreground transition-[background-color,color] duration-150 ease-[var(--ease-out)] hover:bg-sidebar-accent/70 hover:text-foreground focus-visible:bg-focus focus-visible:text-foreground'
 							>
 								{s}
 							</button>
