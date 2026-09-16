@@ -13,9 +13,34 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.41.1"
+export const CURRENT_VERSION = "0.42.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.42.0",
+		date: "2026-09-16",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.42.0",
+		groups: [
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.41.1",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(release): curated notes for v0.42.0",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(studio): dump a database to the filesystem from the connection context menu (#255) (#255)",
+				]
+			}
+		]
+	},
 	{
 		version: "0.41.1",
 		date: "2026-09-15",

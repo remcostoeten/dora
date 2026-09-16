@@ -11,9 +11,22 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.41.1"
+export const CURRENT_VERSION = "0.42.0"
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: "0.42.0",
+		date: "2026-09-16",
+		commit: "v0.42.0",
+		title: "Feat(studio): dump a database to the filesystem from the connection context menu (#255) (#255)",
+		description: "Feat(studio): dump a database to the filesystem from the connection context menu (#255) (#255). Docs(release): curated notes for v0.42.0.",
+		type: "feature",
+		details: [
+			"feat(studio): dump a database to the filesystem from the connection context menu (#255) (#255)",
+			"docs(release): curated notes for v0.42.0",
+			"chore(aur): update dora to 0.41.1",
+		]
+	},
 	{
 		version: "0.41.1",
 		date: "2026-09-15",

@@ -52,6 +52,25 @@ All notable changes to this project will be documented in this file.
 
 - refactor(studio): inline create-container panel and grid/console/onboarding polish (#250) (#250)
 
+
+## [v0.42.0] - 2026-09-16
+
+### Chores
+
+- chore(aur): update dora to 0.41.1
+
+
+
+### Documentation
+
+- docs(release): curated notes for v0.42.0
+
+
+
+### Features
+
+- feat(studio): dump a database to the filesystem from the connection context menu (#255) (#255)
+
 ## [Unreleased]
 
 ## [v0.41.0] - 2026-08-27
