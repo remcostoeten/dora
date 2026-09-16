@@ -6,6 +6,7 @@
 	"permissions": [
 		"core:default",
 		"dialog:allow-save",
+		"dialog:allow-open",
 		{
 			"identifier": "fs:allow-exists",
 			"allow": [{ "path": "**" }]

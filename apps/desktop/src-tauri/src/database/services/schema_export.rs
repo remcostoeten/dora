@@ -73,6 +73,27 @@ impl<'a> SchemaExportService<'a> {
     }
 }
 
+/// DDL split into `CREATE TABLE` statements and the trailing
+/// `ALTER TABLE ... FOREIGN KEY` statements, so a dump can load every row
+/// before any referential constraint is enforced.
+///
+/// The SQLite dialect inlines its foreign keys, so the second vector is empty
+/// there.
+pub fn generate_ddl_parts(
+    schema: &DatabaseSchema,
+    dialect: ExportDialect,
+) -> (Vec<String>, Vec<String>) {
+    let generator = SqlGenerator::new(dialect);
+    let mut foreign_keys: Vec<String> = Vec::new();
+    let creates = schema
+        .tables
+        .iter()
+        .map(|table| generator.generate_create_table(table, &mut foreign_keys))
+        .collect();
+
+    (creates, foreign_keys)
+}
+
 // =============================================================================
 // SQL DDL Generator
 // =============================================================================
@@ -256,11 +277,11 @@ impl SqlGenerator {
             ExportDialect::PostgreSQL => {
                 // Handle SERIAL types for auto-increment
                 if column.is_auto_increment && column.is_primary_key {
-                    if dt_lower.contains("int") {
-                        return "SERIAL".to_string();
-                    }
                     if dt_lower.contains("bigint") {
                         return "BIGSERIAL".to_string();
+                    }
+                    if dt_lower.contains("int") {
+                        return "SERIAL".to_string();
                     }
                 }
                 // Return as-is for PostgreSQL

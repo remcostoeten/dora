@@ -445,3 +445,303 @@ async fn libsql_collapsed_introspection_against_sqld() {
         .await
         .unwrap();
 }
+
+/// The dump's contract: what it writes back into an empty database must be the
+/// database it read. Fixture types are the ones a naive value formatter loses —
+/// timestamps, uuid, jsonb, arrays, bytea, numeric — plus text carrying the
+/// quote and backslash characters that break naive escaping.
+#[tokio::test]
+async fn postgres_dump_restores_into_an_empty_database() {
+    if !live_enabled() {
+        eprintln!(
+            "skipping postgres_dump_restores_into_an_empty_database: DORA_LIVE_DB_TESTS != 1"
+        );
+        return;
+    }
+    let url = std::env::var("DORA_POSTGRES_URL")
+        .unwrap_or_else(|_| "postgres://postgres:rootpass@127.0.0.1:5432/dora".into());
+    let client = pg_client(&url).await;
+
+    client
+        .batch_execute(
+            "DROP TABLE IF EXISTS live_dump_child; DROP TABLE IF EXISTS live_dump_parent;
+             DROP TYPE IF EXISTS live_dump_mood;
+             CREATE TYPE live_dump_mood AS ENUM ('calm', 'loud');
+             CREATE TABLE live_dump_parent (
+                 id BIGSERIAL PRIMARY KEY,
+                 label TEXT NOT NULL,
+                 amount NUMERIC(12, 4),
+                 active BOOLEAN NOT NULL,
+                 tags INT[],
+                 payload JSONB,
+                 external_id UUID,
+                 blob BYTEA,
+                 seen_at TIMESTAMPTZ,
+                 mood live_dump_mood,
+                 title VARCHAR(64)
+             );
+             CREATE TABLE live_dump_child (
+                 id SERIAL PRIMARY KEY,
+                 parent_id INT REFERENCES live_dump_parent(id),
+                 note TEXT
+             );
+             INSERT INTO live_dump_parent
+                 (label, amount, active, tags, payload, external_id, blob, seen_at, mood, title)
+             VALUES
+                 ('o''reilly\\path', 1234.5678, true, '{1,2,3}', '{\"k\": [1, \"v\"]}',
+                  '11111111-2222-3333-4444-555555555555', '\\x00ff10',
+                  '2026-09-16 10:11:12+00', 'loud', 'a title'),
+                 ('plain', NULL, false, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+             INSERT INTO live_dump_child (parent_id, note) VALUES (1, 'first'), (2, NULL);",
+        )
+        .await
+        .expect("fixture setup failed");
+
+    let mut schema = app_lib::database::postgres::schema::get_database_schema(
+        &client,
+        app_lib::database::dialect::PgDialect::Postgres,
+    )
+    .await
+    .expect("introspection failed");
+    // The dump covers the whole database, so narrow it to this test's fixtures:
+    // sibling tests create and drop their own tables in the same schema.
+    schema
+        .tables
+        .retain(|table| table.name.starts_with("live_dump_"));
+    assert_eq!(schema.tables.len(), 2, "fixture tables not introspected");
+
+    let dump_path = std::env::temp_dir().join("dora-live-dump.sql");
+    let dump_path = dump_path.to_str().expect("temp path is utf-8");
+    app_lib::database::maintenance::dump_database_postgres(&client, &schema, dump_path)
+        .await
+        .expect("dump failed");
+    let dump = std::fs::read_to_string(dump_path).expect("dump file readable");
+
+    let before = client
+        .query(
+            "SELECT label, amount::text, active, tags, payload, external_id, blob, seen_at,
+                    mood::text, title
+             FROM live_dump_parent ORDER BY id",
+            &[],
+        )
+        .await
+        .expect("read fixture rows");
+
+    client
+        .batch_execute(
+            "DROP TABLE live_dump_child; DROP TABLE live_dump_parent; DROP TYPE live_dump_mood;",
+        )
+        .await
+        .expect("fixture drop failed");
+
+    client
+        .batch_execute(&dump)
+        .await
+        .expect("dump did not restore");
+
+    let after = client
+        .query(
+            "SELECT label, amount::text, active, tags, payload, external_id, blob, seen_at,
+                    mood::text, title
+             FROM live_dump_parent ORDER BY id",
+            &[],
+        )
+        .await
+        .expect("read restored rows");
+
+    assert_eq!(before.len(), after.len());
+    for (before_row, after_row) in before.iter().zip(after.iter()) {
+        assert_eq!(
+            before_row.get::<_, String>(0),
+            after_row.get::<_, String>(0)
+        );
+        assert_eq!(
+            before_row.get::<_, Option<String>>(1),
+            after_row.get::<_, Option<String>>(1)
+        );
+        assert_eq!(before_row.get::<_, bool>(2), after_row.get::<_, bool>(2));
+        assert_eq!(
+            before_row.get::<_, Option<Vec<i32>>>(3),
+            after_row.get::<_, Option<Vec<i32>>>(3)
+        );
+        assert_eq!(
+            before_row.get::<_, Option<serde_json::Value>>(4),
+            after_row.get::<_, Option<serde_json::Value>>(4)
+        );
+        assert_eq!(
+            before_row.get::<_, Option<uuid::Uuid>>(5),
+            after_row.get::<_, Option<uuid::Uuid>>(5)
+        );
+        assert_eq!(
+            before_row.get::<_, Option<Vec<u8>>>(6),
+            after_row.get::<_, Option<Vec<u8>>>(6)
+        );
+        assert_eq!(
+            before_row.get::<_, Option<chrono::DateTime<chrono::Utc>>>(7),
+            after_row.get::<_, Option<chrono::DateTime<chrono::Utc>>>(7)
+        );
+        assert_eq!(
+            before_row.get::<_, Option<String>>(8),
+            after_row.get::<_, Option<String>>(8)
+        );
+        assert_eq!(
+            before_row.get::<_, Option<String>>(9),
+            after_row.get::<_, Option<String>>(9)
+        );
+    }
+
+    // The restored foreign key and sequence must work, not just exist.
+    client
+        .execute(
+            "INSERT INTO live_dump_child (parent_id, note) VALUES (1, 'after restore')",
+            &[],
+        )
+        .await
+        .expect("restored foreign key rejected a valid row");
+    let next_parent: i64 = client
+        .query_one(
+            "INSERT INTO live_dump_parent (label, active) VALUES ('next', true) RETURNING id",
+            &[],
+        )
+        .await
+        .expect("restored sequence rejected an insert")
+        .get(0);
+    assert!(
+        next_parent > 2,
+        "sequence was not moved past the dumped rows: got {next_parent}"
+    );
+
+    client
+        .batch_execute(
+            "DROP TABLE live_dump_child; DROP TABLE live_dump_parent; DROP TYPE live_dump_mood;",
+        )
+        .await
+        .expect("fixture teardown failed");
+    let _ = std::fs::remove_file(dump_path);
+    assert!(dump.contains("CREATE TABLE"), "dump carried no DDL");
+}
+
+/// Same contract for MySQL: dump, drop, restore, compare. The DDL here comes
+/// from `SHOW CREATE TABLE`, so the test is mostly about the data — binary
+/// columns, quotes and backslashes, dates — and about the statements around it
+/// letting a table load before the table it references exists.
+#[tokio::test]
+async fn mysql_dump_restores_into_an_empty_database() {
+    if !live_enabled() {
+        eprintln!("skipping mysql_dump_restores_into_an_empty_database: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    let url = std::env::var("DORA_MYSQL_URL")
+        .unwrap_or_else(|_| "mysql://root:rootpass@127.0.0.1:3307/dora".into());
+    let pool = mysql_async::Pool::new(url.as_str());
+    let mut conn = pool.get_conn().await.expect("mysql connect failed");
+
+    for statement in [
+        "DROP TABLE IF EXISTS live_dump_my_child",
+        "DROP TABLE IF EXISTS live_dump_my_parent",
+        "CREATE TABLE live_dump_my_parent (
+             id INT AUTO_INCREMENT PRIMARY KEY,
+             label VARCHAR(64) NOT NULL,
+             amount DECIMAL(12, 4),
+             active TINYINT(1) NOT NULL,
+             payload JSON,
+             blob_col VARBINARY(16),
+             seen_at DATETIME
+         )",
+        "CREATE TABLE live_dump_my_child (
+             id INT AUTO_INCREMENT PRIMARY KEY,
+             parent_id INT,
+             note TEXT,
+             CONSTRAINT live_dump_my_fk FOREIGN KEY (parent_id)
+                 REFERENCES live_dump_my_parent (id)
+         )",
+        "INSERT INTO live_dump_my_parent (label, amount, active, payload, blob_col, seen_at)
+         VALUES ('o\\'reilly\\\\path', 1234.5678, 1, '{\"k\": 1}', UNHEX('00FF10'),
+                 '2026-09-16 10:11:12'),
+                ('plain', NULL, 0, NULL, NULL, NULL)",
+        "INSERT INTO live_dump_my_child (parent_id, note) VALUES (1, 'first'), (2, NULL)",
+    ] {
+        conn.query_drop(statement)
+            .await
+            .expect("fixture setup failed");
+    }
+
+    let mut schema = app_lib::database::mysql::schema::get_database_schema(
+        Arc::new(pool.clone()),
+        MySqlDialect::MySql,
+    )
+    .await
+    .expect("introspection failed");
+    schema
+        .tables
+        .retain(|table| table.name.starts_with("live_dump_my_"));
+    assert_eq!(schema.tables.len(), 2, "fixture tables not introspected");
+
+    let dump_path = std::env::temp_dir().join("dora-live-dump-mysql.sql");
+    let dump_path = dump_path.to_str().expect("temp path is utf-8");
+    app_lib::database::maintenance::dump_database_mysql(&pool, &schema, dump_path)
+        .await
+        .expect("dump failed");
+    let dump = std::fs::read_to_string(dump_path).expect("dump file readable");
+
+    let before: Vec<mysql_async::Row> = conn
+        .query(
+            "SELECT label, amount, active, payload, HEX(blob_col), seen_at
+             FROM live_dump_my_parent ORDER BY id",
+        )
+        .await
+        .expect("read fixture rows");
+
+    conn.query_drop("DROP TABLE live_dump_my_child")
+        .await
+        .expect("fixture drop failed");
+    conn.query_drop("DROP TABLE live_dump_my_parent")
+        .await
+        .expect("fixture drop failed");
+
+    for parsed in app_lib::database::mysql::parser::parse_statements(&dump)
+        .expect("dump did not parse as MySQL")
+    {
+        conn.query_drop(&parsed.statement)
+            .await
+            .unwrap_or_else(|e| panic!("restore failed on `{}`: {e}", parsed.statement));
+    }
+
+    let after: Vec<mysql_async::Row> = conn
+        .query(
+            "SELECT label, amount, active, payload, HEX(blob_col), seen_at
+             FROM live_dump_my_parent ORDER BY id",
+        )
+        .await
+        .expect("read restored rows");
+
+    assert_eq!(before.len(), after.len());
+    for (before_row, after_row) in before.iter().zip(after.iter()) {
+        assert_eq!(
+            format!("{:?}", before_row.as_ref(0)),
+            format!("{:?}", after_row.as_ref(0))
+        );
+        for index in 1..6 {
+            assert_eq!(
+                format!("{:?}", before_row.as_ref(index)),
+                format!("{:?}", after_row.as_ref(index)),
+                "column {index} differs after restore"
+            );
+        }
+    }
+
+    conn.query_drop("INSERT INTO live_dump_my_child (parent_id, note) VALUES (1, 'after restore')")
+        .await
+        .expect("restored foreign key rejected a valid row");
+
+    conn.query_drop("DROP TABLE live_dump_my_child")
+        .await
+        .expect("fixture teardown failed");
+    conn.query_drop("DROP TABLE live_dump_my_parent")
+        .await
+        .expect("fixture teardown failed");
+    drop(conn);
+    pool.disconnect().await.ok();
+    let _ = std::fs::remove_file(dump_path);
+    assert!(dump.contains("CREATE TABLE"), "dump carried no DDL");
+}

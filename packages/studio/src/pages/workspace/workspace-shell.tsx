@@ -140,6 +140,7 @@ function WorkspaceDatabaseSidebar({
 				}}
 				onViewConnection={actions.handleEditConnection}
 				onEditConnection={actions.handleEditConnection}
+				onDumpConnection={actions.handleDumpConnection}
 				onDeleteConnection={actions.handleDeleteConnection}
 			/>
 		</div>

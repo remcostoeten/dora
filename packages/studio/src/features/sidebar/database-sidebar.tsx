@@ -66,6 +66,7 @@ type Props = {
 	onManageConnections?: () => void
 	onViewConnection?: (id: string) => void
 	onEditConnection?: (id: string) => void
+	onDumpConnection?: (id: string) => void
 	onDeleteConnection?: (id: string) => void
 	onToggleSidebar?: () => void
 	isSidebarOpen?: boolean
@@ -85,6 +86,7 @@ export function DatabaseSidebar({
 	onManageConnections = function () {},
 	onViewConnection,
 	onEditConnection,
+	onDumpConnection,
 	onDeleteConnection,
 	onToggleSidebar,
 	isSidebarOpen = true
@@ -784,6 +786,7 @@ export function DatabaseSidebar({
 						onManageConnections={onManageConnections}
 						onViewConnection={onViewConnection}
 						onEditConnection={onEditConnection}
+						onDumpConnection={onDumpConnection}
 						onDeleteConnection={onDeleteConnection}
 					/>
 				</div>

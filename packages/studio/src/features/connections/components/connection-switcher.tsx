@@ -4,6 +4,7 @@ import {
 	Settings,
 	Database,
 	Eye,
+	HardDriveDownload,
 	Pencil,
 	Trash2,
 	AlertCircle,
@@ -81,6 +82,7 @@ type Props = {
 	onManageConnections: () => void
 	onViewConnection?: (id: string) => void
 	onEditConnection?: (id: string) => void
+	onDumpConnection?: (id: string) => void
 	onDeleteConnection?: (id: string) => void
 }
 
@@ -248,6 +250,7 @@ export function ConnectionSwitcher({
 	onManageConnections,
 	onViewConnection,
 	onEditConnection,
+	onDumpConnection,
 	onDeleteConnection
 }: SwitcherProps) {
 	const [searchQuery, setSearchQuery] = useState('')
@@ -641,6 +644,18 @@ export function ConnectionSwitcher({
 													>
 														<Pencil />
 														Edit Connection
+													</ContextMenuItem>
+												)}
+												{onDumpConnection && (
+													<ContextMenuItem
+														disabled={connection.status !== 'connected'}
+														onSelect={function dumpConnection() {
+															onDumpConnection(connection.id)
+															closeMenus()
+														}}
+													>
+														<HardDriveDownload />
+														Dump to File
 													</ContextMenuItem>
 												)}
 												{onDeleteConnection && (

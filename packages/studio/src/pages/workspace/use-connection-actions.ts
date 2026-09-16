@@ -28,6 +28,29 @@ import { requestAutoSelectFirstTable } from './auto-select'
 
 export type ConnectionActions = ReturnType<typeof useConnectionActions>
 
+type DumpTarget = { kind: 'file'; extension: string; label: string } | { kind: 'directory' }
+
+/**
+ * Where a dump of this engine lands: a single re-importable file, or — for
+ * DuckDB, whose `EXPORT DATABASE` writes schema and Parquet/CSV side by side —
+ * a folder.
+ */
+function resolveDumpTarget(connection: Connection): DumpTarget {
+	switch (connection.type) {
+		case 'duckdb':
+			return { kind: 'directory' }
+		case 'sqlite':
+			return { kind: 'file', extension: 'sqlite', label: 'SQLite database' }
+		default:
+			return { kind: 'file', extension: 'sql', label: 'SQL dump' }
+	}
+}
+
+function sanitizeFileName(name: string): string {
+	const cleaned = name.replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/^-+|-+$/g, '')
+	return cleaned || 'dump'
+}
+
 export function useConnectionActions() {
 	const { toast } = useToast()
 	const isTauri = useIsTauri()
@@ -157,6 +180,61 @@ export function useConnectionActions() {
 		[connections, removeConnection, toast]
 	)
 
+	const handleDumpConnection = useCallback(
+		async function (connectionId: string) {
+			const connection = connections.find(function (candidate) {
+				return candidate.id === connectionId
+			})
+			if (!connection) return
+
+			if (!isTauri) {
+				toast({
+					title: 'Dump unavailable',
+					description: 'Dumping a database requires the desktop app.',
+					variant: 'destructive'
+				})
+				return
+			}
+
+			const target = resolveDumpTarget(connection)
+			const { open, save } = await import('@tauri-apps/plugin-dialog')
+			const outputPath =
+				target.kind === 'directory'
+					? await open({ directory: true, title: `Dump ${connection.name} into folder` })
+					: await save({
+							title: `Dump ${connection.name}`,
+							defaultPath: `${sanitizeFileName(connection.name)}.${target.extension}`,
+							filters: [{ name: target.label, extensions: [target.extension] }]
+						})
+			if (!outputPath || typeof outputPath !== 'string') return
+
+			toast({
+				title: 'Dumping database',
+				description: `Writing ${connection.name} to ${outputPath}…`
+			})
+
+			try {
+				const result = await commands.dumpDatabase(connectionId, outputPath)
+				if (result.status !== 'ok') throw new Error(result.error.detail)
+
+				const sizeKb = (result.data.size_bytes / 1024).toFixed(1)
+				const rows = result.data.rows_dumped > 0 ? `, ${result.data.rows_dumped} rows` : ''
+				toast({
+					title: 'Dump complete',
+					description: `${result.data.tables_dumped} tables${rows} (${sizeKb} KB) → ${result.data.file_path}`,
+					variant: 'success'
+				})
+			} catch (error) {
+				toast({
+					title: 'Dump failed',
+					description: error instanceof Error ? error.message : 'Unknown error',
+					variant: 'destructive'
+				})
+			}
+		},
+		[connections, isTauri, toast]
+	)
+
 	const handleConnectionSelect = useCallback(
 		function (connectionId: string) {
 			setActiveConnection(connectionId)
@@ -284,6 +362,7 @@ export function useConnectionActions() {
 		handleConnectionSelect,
 		handleDeleteConnection,
 		handleDialogSave,
+		handleDumpConnection,
 		handleEditConnection,
 		handleOpenDataFiles,
 		handleOpenNewConnection,
