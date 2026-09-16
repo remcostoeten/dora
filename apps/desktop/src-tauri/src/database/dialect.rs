@@ -133,6 +133,12 @@ impl PgIntrospection {
 // ---------------------------------------------------------------------------
 
 /// Vanilla: tables + columns + primary-key + auto-increment detection.
+///
+/// Primary keys come from `pg_index` rather than joining
+/// `information_schema.table_constraints` to `key_column_usage`: the planner
+/// turns that join into a nested loop over the views that took 63 seconds on
+/// a 43-table Ecto schema with one ~230-column table, versus ~150ms here.
+/// Verified to return identical rows on Postgres 17 and CockroachDB v25.1.
 const VANILLA_TABLES_COLUMNS: &str = r#"
         SELECT 
             c.table_schema,
@@ -159,19 +165,22 @@ const VANILLA_TABLES_COLUMNS: &str = r#"
             ON c.table_name = t.table_name 
             AND c.table_schema = t.table_schema
         LEFT JOIN (
-            -- Get primary key columns
-            SELECT 
-                kcu.table_schema,
-                kcu.table_name, 
-                kcu.column_name
-            FROM 
-                information_schema.table_constraints tc
-            JOIN 
-                information_schema.key_column_usage kcu 
-                ON tc.constraint_name = kcu.constraint_name 
-                AND tc.table_schema = kcu.table_schema
-            WHERE 
-                tc.constraint_type = 'PRIMARY KEY'
+            SELECT
+                n.nspname AS table_schema,
+                r.relname AS table_name,
+                a.attname AS column_name
+            FROM
+                pg_catalog.pg_index i
+            JOIN
+                pg_catalog.pg_class r ON r.oid = i.indrelid
+            JOIN
+                pg_catalog.pg_namespace n ON n.oid = r.relnamespace
+            JOIN
+                pg_catalog.pg_attribute a
+                ON a.attrelid = r.oid
+                AND a.attnum = ANY(i.indkey)
+            WHERE
+                i.indisprimary
         ) pk 
             ON c.table_schema = pk.table_schema 
             AND c.table_name = pk.table_name 
