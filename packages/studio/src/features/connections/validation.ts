@@ -32,15 +32,18 @@ export const libsqlConnectionSchema = baseConnectionSchema.extend({
 	authToken: z.string().optional()
 })
 
+const POSTGRES_URL_SCHEMES = ['postgres://', 'postgresql://', 'ecto://']
+
+function isPostgresUrl(value: string): boolean {
+	return POSTGRES_URL_SCHEMES.some((scheme) => value.startsWith(scheme))
+}
+
 export const postgresConnectionStringSchema = baseConnectionSchema.extend({
 	type: z.literal('postgres'),
 	url: z
 		.string()
 		.min(1, 'Connection string is required')
-		.refine(
-			(val) => val.startsWith('postgres://') || val.startsWith('postgresql://'),
-			'Invalid connection string format'
-		)
+		.refine(isPostgresUrl, 'Invalid connection string format')
 })
 
 export const cockroachConnectionStringSchema = baseConnectionSchema.extend({

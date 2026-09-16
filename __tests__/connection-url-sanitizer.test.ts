@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
 	buildConnectionString,
+	isValidConnectionUrl,
+	parseConnectionUrl,
 	sanitizeConnectionUrl
 } from '@/features/connections/utils/providers'
 
@@ -51,5 +53,52 @@ describe('sanitizeConnectionUrl', () => {
 				database: 'auth_drawer  # Better Auth secret note'
 			})
 		).toBe('postgresql://auth_drawer:secret@localhost:5433/auth_drawer')
+	})
+})
+
+describe('ecto:// scheme', () => {
+	const ECTO_URL = 'ecto://postgres:postgres@127.0.0.1:5433/phoenix_app'
+
+	it('accepts an ecto URL as a connection URL', () => {
+		expect(isValidConnectionUrl(ECTO_URL)).toBe(true)
+		expect(isValidConnectionUrl('ECTO://user@host/db')).toBe(true)
+	})
+
+	it('survives an env-var assignment through the sanitizer', () => {
+		expect(sanitizeConnectionUrl(`DATABASE_URL="${ECTO_URL}"`)).toBe(ECTO_URL)
+		expect(sanitizeConnectionUrl(`DATABASE_URL=${ECTO_URL}`)).toBe(ECTO_URL)
+	})
+
+	it('parses as a postgres connection', () => {
+		expect(parseConnectionUrl(ECTO_URL)).toMatchObject({
+			type: 'postgres',
+			host: '127.0.0.1',
+			port: 5433,
+			user: 'postgres',
+			password: 'postgres',
+			database: 'phoenix_app'
+		})
+	})
+
+	it('still resolves cockroach hosts/ports to cockroach', () => {
+		expect(parseConnectionUrl('ecto://root@127.0.0.1:26257/defaultdb')?.type).toBe('cockroach')
+	})
+
+	it('never becomes the scheme postgres URLs are built with', () => {
+		expect(
+			buildConnectionString({
+				type: 'postgres',
+				host: 'localhost',
+				port: 5432,
+				user: 'postgres',
+				database: 'app'
+			})
+		).toBe('postgresql://postgres@localhost:5432/app')
+	})
+
+	it('leaves protocol typo detection intact', () => {
+		expect(parseConnectionUrl('postgre://user@host:5432/db')?.type).toBe('postgres')
+		expect(parseConnectionUrl('postgesql://user@host:5432/db')?.type).toBe('postgres')
+		expect(parseConnectionUrl('mysq://root@host:3306/db')?.type).toBe('mysql')
 	})
 })

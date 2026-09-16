@@ -233,11 +233,6 @@ impl RowWriter {
                 self.write_json_string(&value.to_string());
             }
 
-            Type::INET => {
-                let value: std::net::IpAddr = row.try_get(column_index)?;
-                self.write_json_string(&value.to_string());
-            }
-
             Type::RECORD => {
                 let value: PgRecord = row.try_get(column_index)?;
                 self.buf.push_str(&value.json);
@@ -259,45 +254,46 @@ impl RowWriter {
 
             _ => {
                 let bytes = row.try_get::<_, PgBytes>(column_index)?;
-                // pgvector `vector` type: 2-byte dim count + 2-byte flags + N×4-byte f32 BE
                 if pg_type.name() == "vector" {
-                    let b = bytes.bytes;
-                    if b.len() >= 4 {
-                        let dims = u16::from_be_bytes([b[0], b[1]]) as usize;
-                        if b.len() == 4 + dims * 4 {
-                            self.buf.push('[');
-                            for i in 0..dims {
-                                if i > 0 {
-                                    self.buf.push(',');
-                                }
-                                let offset = 4 + i * 4;
-                                let f = f32::from_be_bytes([
-                                    b[offset],
-                                    b[offset + 1],
-                                    b[offset + 2],
-                                    b[offset + 3],
-                                ]);
-                                if f.is_finite() {
-                                    write!(&mut self.buf, "{}", f)?;
-                                } else {
-                                    write!(&mut self.buf, "\"{}\"", f)?;
-                                }
-                            }
-                            self.buf.push(']');
-                            return Ok(());
-                        }
-                    }
-                    self.write_json_string(&format!("\\x{}", hex::encode(b)));
-                } else if let Ok(value) = std::str::from_utf8(bytes.bytes) {
-                    self.write_json_string(value);
+                    self.write_pgvector(bytes.bytes);
                 } else {
-                    log::error!("Unknown type `{:?}`, kind: {:?}", pg_type, pg_type.kind());
-                    self.write_json_string(&format!("\\x{}", hex::encode(bytes.bytes)));
+                    record::write_pg_binary_as_json(&mut self.buf, pg_type, bytes.bytes)
+                        .map_err(|e| anyhow::anyhow!("{}", e))?;
                 }
             }
         }
 
         Ok(())
+    }
+
+    /// pgvector `vector` wire format: 2-byte dim count + 2-byte flags + N x 4-byte f32 BE.
+    fn write_pgvector(&mut self, b: &[u8]) {
+        if b.len() >= 4 {
+            let dims = u16::from_be_bytes([b[0], b[1]]) as usize;
+            if b.len() == 4 + dims * 4 {
+                self.buf.push('[');
+                for i in 0..dims {
+                    if i > 0 {
+                        self.buf.push(',');
+                    }
+                    let offset = 4 + i * 4;
+                    let f = f32::from_be_bytes([
+                        b[offset],
+                        b[offset + 1],
+                        b[offset + 2],
+                        b[offset + 3],
+                    ]);
+                    if f.is_finite() {
+                        write!(&mut self.buf, "{}", f).expect("write to String buf");
+                    } else {
+                        write!(&mut self.buf, "\"{}\"", f).expect("write to String buf");
+                    }
+                }
+                self.buf.push(']');
+                return;
+            }
+        }
+        self.write_json_string(&format!("\\x{}", hex::encode(b)));
     }
 
     fn write_json_string(&mut self, s: &str) {
@@ -327,6 +323,169 @@ mod tests {
     use serde_json::Value;
 
     use crate::database::postgres::row_writer::RowWriter;
+
+    #[tokio::test]
+    async fn decodes_ecto_and_oban_column_types() {
+        let db = PgTempDB::async_new().await;
+        let (client, conn) = tokio_postgres::connect(&db.connection_uri(), tokio_postgres::NoTls)
+            .await
+            .unwrap();
+        tokio::task::spawn(async move {
+            let _ = conn.await;
+        });
+        client
+            .batch_execute(
+                "CREATE EXTENSION IF NOT EXISTS citext; \
+                 CREATE TYPE pg_temp.job_state AS ENUM ('available','scheduled','completed'); \
+                 CREATE DOMAIN pg_temp.positive_int AS integer CHECK (VALUE > 0);",
+            )
+            .await
+            .unwrap();
+        let sql = r#"
+            SELECT
+                '(4.9,52.37)'::point AS point_col,
+                '2026-09-16'::date AS date_col,
+                '1999-12-31'::date AS date_before_epoch,
+                '13:45:00'::time AS time_col,
+                '13:45:00.25'::time AS time_fraction_col,
+                '13:45:00+02'::timetz AS timetz_col,
+                ARRAY['a','b']::varchar[] AS varchar_array,
+                ARRAY['550e8400-e29b-41d4-a716-446655440000']::uuid[] AS uuid_array,
+                ARRAY[true,false] AS bool_array,
+                ARRAY[1.5,NULL]::float8[] AS float_array,
+                ARRAY['{"a":1}'::jsonb] AS jsonb_array,
+                ARRAY['2026-09-16'::date] AS date_array,
+                'Hello'::citext AS citext_col,
+                'available'::pg_temp.job_state AS enum_col,
+                ARRAY['available'::pg_temp.job_state] AS enum_array,
+                7::pg_temp.positive_int AS domain_col,
+                '2026-09-16 10:00:00'::timestamp(0) AS ts0_col
+        "#;
+        let rows = client.query(sql, &[]).await.unwrap();
+        let mut writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
+        writer.add_row(&rows[0]).unwrap();
+        let result: Value = serde_json::from_str(writer.finish().get()).unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!([[
+                "(4.9,52.37)",
+                "2026-09-16",
+                "1999-12-31",
+                "13:45:00",
+                "13:45:00.25",
+                "13:45:00+02:00",
+                ["a", "b"],
+                ["550e8400-e29b-41d4-a716-446655440000"],
+                [true, false],
+                [1.5, null],
+                [{"a": 1}],
+                ["2026-09-16"],
+                "Hello",
+                "available",
+                ["available"],
+                7,
+                "2026-09-16 10:00:00"
+            ]])
+        );
+    }
+
+    #[tokio::test]
+    async fn decodes_text_search_range_and_composite_column_types() {
+        let db = PgTempDB::async_new().await;
+        let (client, conn) = tokio_postgres::connect(&db.connection_uri(), tokio_postgres::NoTls)
+            .await
+            .unwrap();
+        tokio::task::spawn(async move {
+            let _ = conn.await;
+        });
+        client
+            .batch_execute(
+                "CREATE TYPE pg_temp.geo_point AS (label text, lat float8, tags text[]);",
+            )
+            .await
+            .unwrap();
+        let sql = r#"
+            SELECT
+                to_tsvector('english', 'The quick brown fox jumps') AS tsvector_col,
+                setweight(to_tsvector('english', 'quick fox'), 'A') AS tsvector_weighted,
+                ''::tsvector AS tsvector_empty,
+                to_tsquery('english', 'quick & (fox | dog)') AS tsquery_col,
+                '!cat <-> dog:*'::tsquery AS tsquery_not_phrase,
+                '(a | b) <2> c & !d'::tsquery AS tsquery_nested,
+                '[1,5)'::int4range AS int4range_col,
+                int8range(10, NULL) AS int8range_col,
+                numrange(1.5, 3.5, '[]') AS numrange_col,
+                '[2026-09-16 10:00:00,2026-09-17 00:00:00)'::tsrange AS tsrange_col,
+                tstzrange('2026-09-16 10:00:00+02', '2026-09-17 00:00:00+02') AS tstzrange_col,
+                daterange('2026-09-16', '2026-09-18') AS daterange_col,
+                'empty'::int4range AS empty_range,
+                '(,)'::int4range AS unbounded_range,
+                int4multirange(int4range(1, 5), int4range(10, 20)) AS multirange_col,
+                ARRAY[
+                    tstzrange('2026-09-16 10:00:00+02', '2026-09-17 00:00:00+02'),
+                    tstzrange(NULL, '2026-09-17 00:00:00+02')
+                ] AS tstzrange_array,
+                ROW('a b', 1.5, ARRAY['x','y'])::pg_temp.geo_point AS composite_col,
+                ARRAY[
+                    ROW('a b', 1.5, ARRAY['x','y'])::pg_temp.geo_point,
+                    ROW('c', NULL, NULL)::pg_temp.geo_point
+                ] AS composite_array,
+                '12.34'::money AS money_col,
+                '-1.05'::money AS negative_money_col,
+                '08:00:2b:01:02:03'::macaddr AS macaddr_col,
+                '08:00:2b:01:02:03:04:05'::macaddr8 AS macaddr8_col,
+                '192.168.0.0/24'::cidr AS cidr_col,
+                '2001:db8::/64'::cidr AS cidr6_col,
+                '192.168.0.1/24'::inet AS inet_masked_col,
+                '192.168.0.1'::inet AS inet_col,
+                B'1011'::bit(4) AS bit_col,
+                B'10110011101'::varbit AS varbit_col,
+                '<a>x</a>'::xml AS xml_col,
+                1234::oid AS oid_col
+        "#;
+        let rows = client.query(sql, &[]).await.unwrap();
+        let mut writer = RowWriter::new(crate::database::dialect::PgDialect::Postgres);
+        writer.add_row(&rows[0]).unwrap();
+        let result: Value = serde_json::from_str(writer.finish().get()).unwrap();
+        assert_eq!(
+            result,
+            serde_json::json!([[
+                "'brown':3 'fox':4 'jump':5 'quick':2",
+                "'fox':2A 'quick':1A",
+                "",
+                "'quick' & ( 'fox' | 'dog' )",
+                "!'cat' <-> 'dog':*",
+                "( 'a' | 'b' ) <2> 'c' & !'d'",
+                "[1,5)",
+                "[10,)",
+                "[1.5,3.5]",
+                "[\"2026-09-16 10:00:00\",\"2026-09-17 00:00:00\")",
+                "[\"2026-09-16 08:00:00 UTC\",\"2026-09-16 22:00:00 UTC\")",
+                "[2026-09-16,2026-09-18)",
+                "empty",
+                "(,)",
+                "{[1,5),[10,20)}",
+                [
+                    "[\"2026-09-16 08:00:00 UTC\",\"2026-09-16 22:00:00 UTC\")",
+                    "(,\"2026-09-16 22:00:00 UTC\")"
+                ],
+                ["a b", 1.5, ["x", "y"]],
+                [["a b", 1.5, ["x", "y"]], ["c", null, null]],
+                "12.34",
+                "-1.05",
+                "08:00:2b:01:02:03",
+                "08:00:2b:01:02:03:04:05",
+                "192.168.0.0/24",
+                "2001:db8::/64",
+                "192.168.0.1/24",
+                "192.168.0.1",
+                "1011",
+                "10110011101",
+                "<a>x</a>",
+                1234
+            ]])
+        );
+    }
 
     #[allow(clippy::approx_constant)]
     #[tokio::test]
