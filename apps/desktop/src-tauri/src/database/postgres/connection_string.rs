@@ -1,12 +1,26 @@
 use crate::database::types::is_postgres_pooler_url;
 
+/// Ecto (Elixir) writes `DATABASE_URL` as `ecto://user:pass@host/db`; it is a
+/// plain Postgres URL with a different scheme label.
+const ECTO_SCHEME: &str = "ecto://";
+
 pub fn is_postgres_connection_url(connection_string: &str) -> bool {
     let connection_string = strip_trailing_shell_comment(connection_string);
-    connection_string.starts_with("postgres://") || connection_string.starts_with("postgresql://")
+    connection_string.starts_with("postgres://")
+        || connection_string.starts_with("postgresql://")
+        || connection_string.starts_with(ECTO_SCHEME)
+}
+
+fn normalize_ecto_scheme(connection_string: &str) -> std::borrow::Cow<'_, str> {
+    match connection_string.strip_prefix(ECTO_SCHEME) {
+        Some(rest) => std::borrow::Cow::Owned(format!("postgres://{rest}")),
+        None => std::borrow::Cow::Borrowed(connection_string),
+    }
 }
 
 pub fn clean_postgres_connection_string(connection_string: &str) -> (String, bool, bool) {
-    let connection_string = strip_trailing_shell_comment(connection_string);
+    let connection_string = normalize_ecto_scheme(strip_trailing_shell_comment(connection_string));
+    let connection_string = connection_string.as_ref();
     let Ok(mut url) = url::Url::parse(connection_string) else {
         return (connection_string.to_string(), false, false);
     };
@@ -92,7 +106,18 @@ fn is_dora_postgres_option(key: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::clean_postgres_connection_string;
+    use super::{clean_postgres_connection_string, is_postgres_connection_url};
+
+    #[test]
+    fn accepts_and_normalizes_ecto_scheme() {
+        let url = "ecto://postgres:postgres@127.0.0.1:5433/phoenix_app";
+        assert!(is_postgres_connection_url(url));
+        let (cleaned, _, _) = clean_postgres_connection_string(url);
+        assert_eq!(
+            cleaned,
+            "postgres://postgres:postgres@127.0.0.1:5433/phoenix_app"
+        );
+    }
 
     #[test]
     fn strips_dora_postgres_options() {

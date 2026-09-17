@@ -56,7 +56,10 @@ export function targetFromUrl(raw: string): DbTarget | null {
 	}
 
 	const scheme = url.protocol.replace(/:$/, '').toLowerCase()
-	if (scheme.startsWith('postgres') || scheme === 'cockroachdb') {
+	// `ecto://` (Elixir/Ecto's DATABASE_URL scheme) resolves to postgres: Ecto's MyXQL
+	// adapter writes the same scheme for MySQL, but returning null here silently disables
+	// the schema-diff mismatch warning, which is worse than a coarse engine default.
+	if (scheme.startsWith('postgres') || scheme === 'cockroachdb' || scheme === 'ecto') {
 		return networkTarget('postgres', url)
 	}
 	if (scheme === 'mysql' || scheme === 'mariadb') {

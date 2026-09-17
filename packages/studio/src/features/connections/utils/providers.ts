@@ -44,7 +44,12 @@ export const PROVIDER_CONFIGS: Record<DatabaseType, ProviderConfig> = {
 		defaultPort: 5432,
 		defaultUser: 'postgres',
 		defaultDatabase: 'postgres',
-		protocols: ['postgresql', 'postgres'],
+		// `ecto://` is what Elixir/Ecto writes into DATABASE_URL. Ecto's MyXQL adapter
+		// reuses the same scheme for MySQL, so the scheme alone doesn't prove the engine;
+		// postgres is the deliberate default because Postgrex is the dominant adapter and
+		// a wrong guess only fails to connect. Keep it after `postgresql`: protocols[0] is
+		// what buildConnectionString emits.
+		protocols: ['postgresql', 'postgres', 'ecto'],
 		supportsSSL: true
 	},
 	cockroach: {
@@ -516,7 +521,7 @@ export function hasPostgresPoolerMode(url: string): boolean {
 export function setPostgresPoolerMode(url: string, enabled: boolean): string {
 	try {
 		const parsed = new URL(url)
-		if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+		if (!['postgres:', 'postgresql:', 'ecto:'].includes(parsed.protocol)) {
 			return url
 		}
 
