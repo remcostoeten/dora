@@ -42,10 +42,14 @@ pub const ANTHROPIC_CURATED: &[(&str, &str, &str)] = &[
 ];
 
 pub const GROQ_CURATED: &[(&str, &str, &str)] = &[
-    ("llama-3.3-70b-versatile", "Llama 3.3 70B", "flagship"),
-    ("llama-3.1-70b-versatile", "Llama 3.1 70B", "balanced"),
-    ("llama-3.1-8b-instant", "Llama 3.1 8B", "fast"),
-    ("mixtral-8x7b-32768", "Mixtral 8x7B", "balanced"),
+    ("openai/gpt-oss-120b", "GPT-OSS 120B", "flagship"),
+    (
+        "minimaxai/minimax-m2.7",
+        "MiniMax M2.7 (preview)",
+        "flagship",
+    ),
+    ("qwen/qwen3.8-27b", "Qwen3.8 27B (preview)", "balanced"),
+    ("openai/gpt-oss-20b", "GPT-OSS 20B", "fast"),
 ];
 
 pub const GEMINI_CURATED: &[(&str, &str, &str)] = &[
@@ -200,9 +204,18 @@ pub fn classify_anthropic(id: &str) -> (&'static str, String) {
 
 pub fn classify_groq(id: &str) -> (&'static str, String) {
     let lower = id.to_lowercase();
-    let tier = if lower.contains("70b") || lower.contains("405b") || lower.contains("90b") {
+    let tier = if lower.contains("120b")
+        || lower.contains("405b")
+        || lower.contains("90b")
+        || lower.contains("70b")
+        || lower.contains("minimax")
+    {
         "flagship"
-    } else if lower.contains("8b") || lower.contains("instant") || lower.contains("mini") {
+    } else if lower.contains("20b")
+        || lower.contains("8b")
+        || lower.contains("instant")
+        || lower.contains("mini")
+    {
         "fast"
     } else {
         "balanced"

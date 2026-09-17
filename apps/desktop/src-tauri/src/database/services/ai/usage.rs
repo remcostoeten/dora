@@ -132,6 +132,18 @@ fn pricing_for_model(model: &str) -> ModelPricing {
             output_per_million: 1.05,
         };
     }
+    if lower.contains("gpt-oss-120b") {
+        return ModelPricing {
+            input_per_million: 0.15,
+            output_per_million: 0.6,
+        };
+    }
+    if lower.contains("gpt-oss") {
+        return ModelPricing {
+            input_per_million: 0.075,
+            output_per_million: 0.3,
+        };
+    }
     if lower.contains("llama") || lower.contains("mixtral") || lower.contains("groq") {
         return ModelPricing {
             input_per_million: 0.2,
