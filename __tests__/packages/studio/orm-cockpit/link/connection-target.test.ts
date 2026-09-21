@@ -41,6 +41,15 @@ describe('targetFromUrl', function () {
 		expect(targetFromUrl('file:./local.db')?.engine).toBe('sqlite')
 	})
 
+	it('parses an ecto url as a postgres target', function () {
+		expect(targetFromUrl('ecto://postgres:postgres@127.0.0.1:5433/phoenix_app')).toEqual({
+			engine: 'postgres',
+			host: '127.0.0.1',
+			port: 5433,
+			database: 'phoenix_app',
+		})
+	})
+
 	it('returns null for garbage', function () {
 		expect(targetFromUrl('not a url')).toBeNull()
 	})

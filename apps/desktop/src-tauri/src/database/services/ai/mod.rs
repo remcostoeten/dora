@@ -131,7 +131,7 @@ impl AIProvider {
 
     pub fn default_model(self) -> &'static str {
         match self {
-            Self::Groq => "llama-3.3-70b-versatile",
+            Self::Groq => "openai/gpt-oss-120b",
             Self::Gemini => "gemini-2.5-flash",
             Self::Ollama => "llama3.2",
             Self::Openai => "gpt-5.5",
