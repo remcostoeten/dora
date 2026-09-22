@@ -1,7 +1,7 @@
 {
 	"$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
 	"productName": "Dora",
-	"version": "0.42.0",
+	"version": "0.42.1",
 	"identifier": "com.Dora.dev",
 	"build": {
 		"frontendDist": "../dist",
@@ -26,7 +26,9 @@
 			}
 		],
 		"security": {
-			"dangerousDisableAssetCspModification": ["style-src"],
+			"dangerousDisableAssetCspModification": [
+				"style-src"
+			],
 			"csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://ingestion.remcostoeten.nl; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
 		},
 		"macOSPrivateApi": true

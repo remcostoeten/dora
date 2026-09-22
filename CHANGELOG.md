@@ -71,6 +71,21 @@ All notable changes to this project will be documented in this file.
 
 - feat(studio): dump a database to the filesystem from the connection context menu (#255) (#255)
 
+
+## [v0.42.1] - 2026-09-22
+
+### Bug Fixes
+
+- fix(desktop): accept ecto:// URLs, decode Ecto-typical Postgres types, speed up PK introspection (#256) (#256)
+
+- fix(desktop): restore Monaco rendering in packaged Linux builds (#257) (#257)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.42.0
+
 ## [Unreleased]
 
 ## [v0.41.0] - 2026-08-27

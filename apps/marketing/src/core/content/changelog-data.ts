@@ -13,9 +13,29 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.42.0"
+export const CURRENT_VERSION = "0.42.1"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.42.1",
+		date: "2026-09-22",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.42.1",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(desktop): accept ecto:// URLs, decode Ecto-typical Postgres types, speed up PK introspection (#256) (#256)",
+				"fix(desktop): restore Monaco rendering in packaged Linux builds (#257) (#257)",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.42.0",
+				]
+			}
+		]
+	},
 	{
 		version: "0.42.0",
 		date: "2026-09-16",

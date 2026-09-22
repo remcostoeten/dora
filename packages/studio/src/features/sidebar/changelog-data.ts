@@ -11,9 +11,22 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.42.0"
+export const CURRENT_VERSION = "0.42.1"
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: "0.42.1",
+		date: "2026-09-22",
+		commit: "v0.42.1",
+		title: "Fix(desktop): accept ecto:// URLs, decode Ecto-typical Postgres types, speed up PK introspection (#256) (#256)",
+		description: "Fix(desktop): accept ecto:// URLs, decode Ecto-typical Postgres types, speed up PK introspection (#256) (#256). Fix(desktop): restore Monaco rendering in packaged Linux builds (#257) (#257).",
+		type: "fix",
+		details: [
+			"fix(desktop): accept ecto:// URLs, decode Ecto-typical Postgres types, speed up PK introspection (#256) (#256)",
+			"fix(desktop): restore Monaco rendering in packaged Linux builds (#257) (#257)",
+			"chore(aur): update dora to 0.42.0",
+		]
+	},
 	{
 		version: "0.42.0",
 		date: "2026-09-16",
