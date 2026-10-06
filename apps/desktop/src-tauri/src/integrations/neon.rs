@@ -370,7 +370,9 @@ pub async fn create_connection_uri(
 ) -> Result<String> {
     let token = require_token(storage)?;
     let response = crate::http::client()
-        .get(format!("{API_BASE_URL}/projects/{project_id}/connection_uri"))
+        .get(format!(
+            "{API_BASE_URL}/projects/{project_id}/connection_uri"
+        ))
         .query(&[
             ("branch_id", branch_id),
             ("database_name", database_name),
@@ -381,7 +383,9 @@ pub async fn create_connection_uri(
         .send()
         .await
         .map_err(|error| {
-            Error::Any(anyhow::anyhow!("Neon connection URI request failed: {error}"))
+            Error::Any(anyhow::anyhow!(
+                "Neon connection URI request failed: {error}"
+            ))
         })?;
 
     let status = response.status();
@@ -424,7 +428,11 @@ mod tests {
             ] }"#,
         )
         .expect("branches json should deserialize");
-        let chosen = parsed.branches.iter().find(|b| b.is_default()).map(|b| &b.id);
+        let chosen = parsed
+            .branches
+            .iter()
+            .find(|b| b.is_default())
+            .map(|b| &b.id);
         assert_eq!(chosen, Some(&"br-2".to_string()));
     }
 

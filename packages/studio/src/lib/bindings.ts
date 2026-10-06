@@ -1593,7 +1593,7 @@ export type CredentialStorageBackend = "os_keyring" | "local_encrypted_file"
 export type CredentialStorageStatus = { backend: CredentialStorageBackend; message: string; storage_path: string | null; install_hint: string | null }
 export type DataFileSourceEntry = { path: string; viewName: string; fileType: string; status: DataFileSourceStatus; error: string | null }
 export type DataFileSourceStatus = "active" | "missing" | "failed"
-export type DatabaseConnectResult = { connected: boolean; fileSources: DataFileSourceEntry[] | null }
+export type DatabaseConnectResult = { connected: boolean; fileSources: DataFileSourceEntry[] | null; error: string | null }
 export type DatabaseFileKind = "sqlite" | "duckdb" | "unknown"
 export type DatabaseInfo = { Postgres: { connection_string: string; ssh_config: SshConfig | null } } | { CockroachDB: { connection_string: string; ssh_config: SshConfig | null } } | { MySQL: { connection_string: string; ssh_config: SshConfig | null } } | { MariaDB: { connection_string: string; ssh_config: SshConfig | null } } | { SQLite: { db_path: string } } | 
 /**

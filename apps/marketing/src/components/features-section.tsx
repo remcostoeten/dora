@@ -66,9 +66,8 @@ export function FeaturesSection() {
                 </FeatureCell>
             </div>
 
-            <div className="relative grid grid-cols-1 md:grid-cols-3">
-                <CornerTick className="hidden md:block left-1/3 top-1/2 -translate-x-1/2 -translate-y-1/2" />
-                <CornerTick className="hidden md:block left-2/3 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <div className="relative grid grid-cols-1 md:grid-cols-2">
+                <CornerTick className="hidden md:block left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
                 <div
                     id="feature-multi-connection"
                     className="relative min-h-[300px] scroll-mt-28 border-b border-r border-line overflow-hidden transition-colors duration-[450ms] ease-out hover:bg-brand-200/6"

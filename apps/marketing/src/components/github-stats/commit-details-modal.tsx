@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
     X,
@@ -31,6 +31,20 @@ export function CommitDetailsModal({
     repoUrl = 'https://github.com/remcostoeten/dora'
 }: CommitDetailsModalProps) {
     const modalRef = useRef<HTMLDivElement>(null)
+    const [rendered, setRendered] = useState(false)
+    const [visible, setVisible] = useState(false)
+    const [lastData, setLastData] = useState<CommitDataPoint | null>(null)
+
+    useEffect(() => {
+        if (!isOpen || !data) {
+            setVisible(false)
+            return
+        }
+        setLastData(data)
+        setRendered(true)
+        const frame = requestAnimationFrame(() => setVisible(true))
+        return () => cancelAnimationFrame(frame)
+    }, [isOpen, data])
 
     // Close on escape
     useEffect(() => {
@@ -64,22 +78,38 @@ export function CommitDetailsModal({
             document.removeEventListener('mousedown', handleClickOutside)
     }, [isOpen, onClose])
 
-    if (!isOpen || !data) return null
+    const activeData = data ?? lastData
 
-    const commits = data.details || []
+    if (!rendered || !activeData) return null
+
+    const commits = activeData.details || []
 
     return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+        <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center"
+            style={{ pointerEvents: visible ? undefined : 'none' }}
+        >
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+                className="overlay-backdrop absolute inset-0 bg-black/70 backdrop-blur-sm"
+                data-visible={visible}
                 aria-hidden="true"
             />
 
             {/* Modal */}
             <div
                 ref={modalRef}
-                className="relative z-10 w-full max-w-lg max-h-[80vh] bg-surface-base border border-surface-elevated rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+                className="overlay-panel relative z-10 w-full max-w-lg max-h-[80vh] bg-surface-base border border-surface-elevated rounded-lg shadow-2xl overflow-hidden"
+                data-visible={visible}
+                onTransitionEnd={(event) => {
+                    if (
+                        !visible &&
+                        event.propertyName === 'opacity' &&
+                        event.target === event.currentTarget
+                    ) {
+                        setRendered(false)
+                    }
+                }}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="modal-title"
@@ -91,13 +121,14 @@ export function CommitDetailsModal({
                             id="modal-title"
                             className="text-ink-400 font-medium"
                         >
-                            {data.date}
+                            {activeData.date}
                         </h2>
                         <p
                             className="text-xs mt-0.5"
                             style={{ color: accentColor }}
                         >
-                            {data.commits} commit{data.commits !== 1 ? 's' : ''}
+                            {activeData.commits} commit
+                            {activeData.commits !== 1 ? 's' : ''}
                         </p>
                     </div>
                     <button
@@ -203,7 +234,7 @@ export function CommitDetailsModal({
                         </a>
                     ))}
 
-                    {data.commits === 0 && (
+                    {activeData.commits === 0 && (
                         <div className="text-center py-8 text-line-strong text-sm">
                             No commits on this day
                         </div>

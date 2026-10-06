@@ -703,7 +703,7 @@ export const GUIDES: TGuideConfig[] = [
             'd1 database viewer'
         ],
         connectionString:
-            'Account ID:   [CLOUDFLARE_ACCOUNT_ID]\nAPI token:    [D1_API_TOKEN]   (D1 read/write)\nDatabase:     picked from your account inside Dora',
+            'Account ID:   [CLOUDFLARE_ACCOUNT_ID]\nAPI token:    [D1_API_TOKEN]   (D1 Edit + Account Settings Read)\nDatabase:     picked from your account inside Dora',
         connectionLabel: 'Cloudflare D1 credentials',
         intro: [
             "Cloudflare D1 is SQLite running on Cloudflare's edge. There is no local database file and no libpq connection string; D1 is reached over an HTTP API. Dora ships a native HTTP query engine that speaks that API directly, so you connect with an account ID and a scoped API token instead of a URL.",
@@ -716,7 +716,7 @@ export const GUIDES: TGuideConfig[] = [
             },
             {
                 title: 'Create a scoped API token',
-                body: 'Go to My Profile → API Tokens → Create Token. Use a custom token with the "D1" permission set to Read and Write for the account that owns your databases.'
+                body: 'Go to My Profile → API Tokens → Create Token. Use a custom token with "D1" set to Edit and "Account Settings" set to Read for the account that owns your databases. Dora needs Account Settings to list your accounts.'
             },
             {
                 title: 'Choose Cloudflare D1 in Dora',
@@ -729,7 +729,7 @@ export const GUIDES: TGuideConfig[] = [
         ],
         notes: [
             "D1 has no connection string and no SSL toggle. All traffic goes over HTTPS to Cloudflare's API automatically.",
-            'The API token only needs the D1 permission. Scope it to read-only if you want a safe, browse-only connection.',
+            'The API token needs the D1 and Account Settings permissions. Set D1 to Read if you want a safe, browse-only connection.',
             'Because D1 is SQLite, expect SQLite types and SQL dialect rather than Postgres or MySQL behavior.'
         ]
     },

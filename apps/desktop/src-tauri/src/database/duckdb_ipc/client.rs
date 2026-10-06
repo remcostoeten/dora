@@ -202,10 +202,7 @@ pub async fn open(
         .await?;
     match payload {
         RespPayload::Opened { conn_id, entries } => {
-            let conn: BoxedDuckDbConn = Arc::new(IpcDuckDbConn {
-                proc,
-                conn_id,
-            });
+            let conn: BoxedDuckDbConn = Arc::new(IpcDuckDbConn { proc, conn_id });
             Ok((conn, entries))
         }
         other => Err(unexpected(other)),
@@ -251,11 +248,7 @@ impl Drop for IpcDuckDbConn {
 
 #[async_trait]
 impl DuckDbConn for IpcDuckDbConn {
-    async fn execute_query(
-        &self,
-        stmt: ParsedStatement,
-        sender: &ExecSender,
-    ) -> Result<(), Error> {
+    async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error> {
         let mut rx = self
             .proc
             .send(Request::ExecuteQuery {
@@ -267,9 +260,7 @@ impl DuckDbConn for IpcDuckDbConn {
             match rx.recv().await {
                 Some(ResponseMsg::Event(ev)) => {
                     if sender.send(ev.into()).is_err() {
-                        return Err(Error::Internal(
-                            "query event receiver dropped".into(),
-                        ));
+                        return Err(Error::Internal("query event receiver dropped".into()));
                     }
                 }
                 Some(ResponseMsg::Done(Ok(_))) => return Ok(()),
@@ -528,11 +519,7 @@ impl DuckDbConn for IpcDuckDbConn {
         }
     }
 
-    async fn poll_table_hash(
-        &self,
-        table: String,
-        schema: Option<String>,
-    ) -> Result<u64, Error> {
+    async fn poll_table_hash(&self, table: String, schema: Option<String>) -> Result<u64, Error> {
         match self
             .proc
             .request(Request::PollTableHash {

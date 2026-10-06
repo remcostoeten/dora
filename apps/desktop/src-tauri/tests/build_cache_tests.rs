@@ -7,7 +7,10 @@ use app_lib::commands::build_cache::{
 
 fn temp_root(name: &str) -> PathBuf {
     let mut path = std::env::temp_dir();
-    path.push(format!("dora-build-cache-test-{name}-{}", std::process::id()));
+    path.push(format!(
+        "dora-build-cache-test-{name}-{}",
+        std::process::id()
+    ));
     let _ = fs::remove_dir_all(&path);
     fs::create_dir_all(&path).unwrap();
     path

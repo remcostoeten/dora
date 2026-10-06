@@ -70,7 +70,9 @@ struct HogqlResponse {
 
 fn store_config(storage: &Storage, config: &StoredConfig) -> Result<()> {
     let json = serde_json::to_string(config).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to serialize PostHog config: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to serialize PostHog config: {error}"
+        ))
     })?;
     let encrypted = security::encrypt(&json).map_err(|error| {
         Error::Any(anyhow::anyhow!("Failed to encrypt PostHog config: {error}"))
@@ -85,9 +87,8 @@ fn load_config(storage: &Storage) -> Result<Option<StoredConfig>> {
     let json = security::decrypt(&encrypted).map_err(|error| {
         Error::Any(anyhow::anyhow!("Failed to decrypt PostHog config: {error}"))
     })?;
-    let config = serde_json::from_str(&json).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to parse PostHog config: {error}"))
-    })?;
+    let config = serde_json::from_str(&json)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to parse PostHog config: {error}")))?;
     Ok(Some(config))
 }
 
@@ -172,11 +173,7 @@ fn parse_response(text: &str) -> Result<PosthogQueryResult> {
         ))
     })?;
 
-    let types = parsed
-        .types
-        .into_iter()
-        .map(type_label)
-        .collect::<Vec<_>>();
+    let types = parsed.types.into_iter().map(type_label).collect::<Vec<_>>();
 
     // Fall back to positional column names when the API omits `columns`, so the
     // grid always has a header for every cell.
@@ -269,7 +266,10 @@ mod tests {
         }"#;
         let result = parse_response(body).expect("should decode");
         assert_eq!(result.columns, vec!["event", "count"]);
-        assert_eq!(result.types, vec![Some("String".into()), Some("UInt64".into())]);
+        assert_eq!(
+            result.types,
+            vec![Some("String".into()), Some("UInt64".into())]
+        );
         assert_eq!(result.rows.len(), 2);
         assert_eq!(result.rows[0][0], serde_json::json!("$pageview"));
         assert_eq!(result.rows[0][1], serde_json::json!(42));
@@ -292,7 +292,10 @@ mod tests {
 
     #[test]
     fn type_label_handles_bare_string_and_pair() {
-        assert_eq!(type_label(serde_json::json!("UInt64")), Some("UInt64".into()));
+        assert_eq!(
+            type_label(serde_json::json!("UInt64")),
+            Some("UInt64".into())
+        );
         assert_eq!(
             type_label(serde_json::json!(["count", "UInt64"])),
             Some("UInt64".into())

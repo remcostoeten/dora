@@ -187,7 +187,9 @@ async fn authed_get(token: &str, url: &str, query: &[(&str, &str)], what: &str) 
         .send()
         .await
         .map_err(|error| {
-            Error::Any(anyhow::anyhow!("PlanetScale {what} request failed: {error}"))
+            Error::Any(anyhow::anyhow!(
+                "PlanetScale {what} request failed: {error}"
+            ))
         })?;
 
     let status = response.status();
@@ -453,10 +455,9 @@ mod tests {
 
     #[test]
     fn detects_next_page_number() {
-        let parsed: OrganizationsResponse = serde_json::from_str(
-            r#"{ "data": [ { "name": "acme" } ], "next_page": 2 }"#,
-        )
-        .expect("organizations json should deserialize");
+        let parsed: OrganizationsResponse =
+            serde_json::from_str(r#"{ "data": [ { "name": "acme" } ], "next_page": 2 }"#)
+                .expect("organizations json should deserialize");
         assert!(has_next_page(&parsed.next_page));
     }
 

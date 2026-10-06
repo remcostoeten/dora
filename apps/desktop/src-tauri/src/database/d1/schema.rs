@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde_json::Value;
 
-use crate::database::d1::{D1Http, D1ResultSet, D1Row};
+use crate::database::d1::{D1Http, D1ResultSet, D1Row, USER_TABLES_SQL};
 use crate::database::sqlite_introspection::{
     assemble, RawColumn, RawForeignKey, RawIndexColumn, RawTable,
 };
@@ -75,11 +75,7 @@ pub async fn get_database_schema(http: &D1Http) -> Result<DatabaseSchema, Error>
 }
 
 async fn batched_introspect(http: &D1Http) -> Result<DatabaseSchema, Error> {
-    let table_rows = rows(
-        http,
-        "SELECT name, sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
-    )
-    .await?;
+    let table_rows = rows(http, USER_TABLES_SQL).await?;
     let raw_tables: Vec<RawTable> = table_rows
         .iter()
         .filter_map(|row| {
@@ -227,11 +223,7 @@ fn collect_table_sets(
 /// The pre-batching per-table introspection, kept as the fallback when the
 /// multi-statement response shape is unexpected.
 async fn legacy_introspect(http: &D1Http) -> Result<DatabaseSchema, Error> {
-    let table_rows = rows(
-        http,
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
-    )
-    .await?;
+    let table_rows = rows(http, USER_TABLES_SQL).await?;
     let table_names: Vec<String> = table_rows
         .iter()
         .filter_map(|row| cell_string(row, "name"))

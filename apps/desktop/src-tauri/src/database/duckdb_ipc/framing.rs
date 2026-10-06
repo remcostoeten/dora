@@ -17,7 +17,8 @@ where
     W: AsyncWrite + Unpin,
     T: Serialize,
 {
-    let bytes = serde_json::to_vec(value).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let bytes =
+        serde_json::to_vec(value).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     let len = u32::try_from(bytes.len())
         .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "frame exceeds u32 length"))?;
     w.write_all(&len.to_be_bytes()).await?;
@@ -47,8 +48,8 @@ where
     }
     let mut payload = vec![0u8; len as usize];
     r.read_exact(&mut payload).await?;
-    let value =
-        serde_json::from_slice(&payload).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+    let value = serde_json::from_slice(&payload)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     Ok(Some(value))
 }
 

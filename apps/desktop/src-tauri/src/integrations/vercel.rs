@@ -385,10 +385,9 @@ mod tests {
 
     #[test]
     fn decodes_projects() {
-        let parsed: ProjectsResponse = serde_json::from_str(
-            r#"{ "projects": [ { "id": "prj_123", "name": "my-app" } ] }"#,
-        )
-        .expect("projects json should deserialize");
+        let parsed: ProjectsResponse =
+            serde_json::from_str(r#"{ "projects": [ { "id": "prj_123", "name": "my-app" } ] }"#)
+                .expect("projects json should deserialize");
         assert_eq!(parsed.projects.len(), 1);
         assert_eq!(parsed.projects[0].id, "prj_123");
         assert_eq!(parsed.projects[0].name, "my-app");
@@ -403,7 +402,9 @@ mod tests {
         )
         .expect("paginated projects json should deserialize");
         assert_eq!(
-            parsed.pagination.and_then(|pagination| pagination.next_token()),
+            parsed
+                .pagination
+                .and_then(|pagination| pagination.next_token()),
             Some("1717171717171".to_string())
         );
     }
@@ -415,7 +416,9 @@ mod tests {
         )
         .expect("end-of-list projects json should deserialize");
         assert_eq!(
-            parsed.pagination.and_then(|pagination| pagination.next_token()),
+            parsed
+                .pagination
+                .and_then(|pagination| pagination.next_token()),
             None
         );
     }

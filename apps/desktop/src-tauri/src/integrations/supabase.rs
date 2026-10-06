@@ -119,10 +119,14 @@ fn load_pat(storage: &Storage) -> Result<Option<String>> {
 
 fn store_oauth(storage: &Storage, tokens: &OAuthTokens) -> Result<()> {
     let json = serde_json::to_string(tokens).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to serialize Supabase tokens: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to serialize Supabase tokens: {error}"
+        ))
     })?;
     let encrypted = security::encrypt(&json).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to encrypt Supabase tokens: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to encrypt Supabase tokens: {error}"
+        ))
     })?;
     storage.set_setting(OAUTH_SETTING_KEY, &encrypted)
 }
@@ -132,11 +136,12 @@ fn load_oauth(storage: &Storage) -> Result<Option<OAuthTokens>> {
         return Ok(None);
     };
     let decrypted = security::decrypt(&encrypted).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to decrypt Supabase tokens: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to decrypt Supabase tokens: {error}"
+        ))
     })?;
-    let tokens = serde_json::from_str(&decrypted).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to parse Supabase tokens: {error}"))
-    })?;
+    let tokens = serde_json::from_str(&decrypted)
+        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to parse Supabase tokens: {error}")))?;
     Ok(Some(tokens))
 }
 
@@ -227,7 +232,10 @@ async fn authed_get(storage: &Storage, path: &str) -> Result<(reqwest::StatusCod
     Ok((status, body))
 }
 
-fn decode_projects_response(status: reqwest::StatusCode, body: &str) -> Result<Vec<SupabaseProject>> {
+fn decode_projects_response(
+    status: reqwest::StatusCode,
+    body: &str,
+) -> Result<Vec<SupabaseProject>> {
     if status == reqwest::StatusCode::UNAUTHORIZED {
         return Err(Error::Any(anyhow::anyhow!(
             "Supabase rejected this access token. Reconnect your Supabase account and try again."
@@ -319,8 +327,11 @@ pub async fn current_account(storage: &Storage) -> Result<Vec<SupabaseOrganizati
 /// pooler config and pull the host out of whatever field carries it. Requires
 /// the OAuth app's Database:Read scope.
 pub async fn pooler_host(storage: &Storage, project_ref: &str) -> Result<String> {
-    let (status, body) =
-        authed_get(storage, &format!("/projects/{project_ref}/config/database/pooler")).await?;
+    let (status, body) = authed_get(
+        storage,
+        &format!("/projects/{project_ref}/config/database/pooler"),
+    )
+    .await?;
     if !status.is_success() {
         return Err(Error::Any(anyhow::anyhow!(
             "Couldn't load Supabase pooler details (HTTP {status}). The project may be paused, or the connection lacks the Database scope."
@@ -328,7 +339,9 @@ pub async fn pooler_host(storage: &Storage, project_ref: &str) -> Result<String>
     }
 
     let value: serde_json::Value = serde_json::from_str(&body).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to parse Supabase pooler response: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to parse Supabase pooler response: {error}"
+        ))
     })?;
 
     find_pooler_host(&value).ok_or_else(|| {
@@ -403,7 +416,9 @@ async fn refresh_oauth(refresh_token: &str) -> Result<OAuthTokens> {
     }
 
     let tokens: ProxyTokens = response.json().await.map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to decode refreshed Supabase tokens: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to decode refreshed Supabase tokens: {error}"
+        ))
     })?;
     Ok(tokens.into())
 }
@@ -416,8 +431,11 @@ pub async fn oauth_connect<F>(storage: &Storage, open_url: F) -> Result<()>
 where
     F: FnOnce(String) -> Result<()>,
 {
-    let listener = TcpListener::bind("127.0.0.1:0")
-        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to start local OAuth listener: {error}")))?;
+    let listener = TcpListener::bind("127.0.0.1:0").map_err(|error| {
+        Error::Any(anyhow::anyhow!(
+            "Failed to start local OAuth listener: {error}"
+        ))
+    })?;
     let port = listener
         .local_addr()
         .map_err(|error| Error::Any(anyhow::anyhow!("Failed to read local OAuth port: {error}")))?
@@ -461,9 +479,11 @@ fn urlencoding(value: &str) -> String {
 /// Accepts connections until the proxy hits `/callback` with tokens (or an
 /// error), then returns. Times out so a closed browser tab can't hang forever.
 fn await_callback(listener: TcpListener) -> Result<OAuthTokens> {
-    listener
-        .set_nonblocking(true)
-        .map_err(|error| Error::Any(anyhow::anyhow!("Failed to configure OAuth listener: {error}")))?;
+    listener.set_nonblocking(true).map_err(|error| {
+        Error::Any(anyhow::anyhow!(
+            "Failed to configure OAuth listener: {error}"
+        ))
+    })?;
     let deadline = Instant::now() + OAUTH_TIMEOUT;
 
     loop {

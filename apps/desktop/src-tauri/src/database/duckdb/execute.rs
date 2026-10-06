@@ -305,7 +305,11 @@ mod tests {
             .iter()
             .filter(|e| matches!(e, QueryExecEvent::Page { .. }))
             .collect();
-        assert_eq!(pages.len(), 1, "155 rows should arrive in one page of <=500");
+        assert_eq!(
+            pages.len(),
+            1,
+            "155 rows should arrive in one page of <=500"
+        );
 
         Ok(())
     }

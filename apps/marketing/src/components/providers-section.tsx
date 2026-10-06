@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useInView } from 'framer-motion'
 import posthog from 'posthog-js'
 import { CornerTick } from '@/components/corner-tick'
 import { SectionFrame } from '@/components/section-frame'
@@ -10,6 +11,7 @@ import {
     type ProviderLogoId
 } from '@/components/provider-logo'
 import { ProviderInfoPopover } from '@/components/provider-info-popover'
+import { HostedProviderQueue } from '@/components/hosted-provider-queue'
 
 /* -------------------------------------------------------------------------- */
 
@@ -74,26 +76,10 @@ const PROVIDERS: TProvider[] = [
     }
 ]
 
-/**
- * Hosted services Dora reaches over the standard Postgres / libSQL paths.
- * These are not separate engines; they're connection-string compatibility,
- * surfaced here to match how people search ("Supabase GUI", "Neon client").
- */
-const HOSTED_PROVIDERS = [
-    { name: 'Supabase', src: '/providers/supabase.svg' },
-    { name: 'Neon', src: '/providers/neon.svg' },
-    { name: 'Turso', src: '/providers/libsql.svg' },
-    { name: 'PlanetScale', src: '/providers/planetscale.svg' },
-    { name: 'Vercel', src: '/providers/vercel.svg' },
-    { name: 'Xata', src: '/providers/xata.svg' }
-] as const
-
-const HOSTED_EXTRA =
-    'Railway, Render, Fly.io, Aiven, DigitalOcean, Crunchy Bridge, Timescale, AWS RDS, Azure, Google Cloud SQL, CockroachDB Cloud, TiDB Cloud'
-
 const ACCENT = 'var(--color-brand-200)'
 const REVEAL_EASE = 'cubic-bezier(0.23, 1, 0.32, 1)'
 const STAGGER_MS = 52
+const CYCLE_INTERVAL_MS = 2400
 
 const PANEL_GRID =
     'grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] sm:grid-cols-[5.5rem_repeat(7,minmax(0,1fr))]'
@@ -104,11 +90,8 @@ function ConnectionStringMarquee({ activeId }: { activeId: string }) {
     const [typedLen, setTypedLen] = useState(
         PROVIDERS[0].connectionString.length
     )
-    const prevIdRef = useRef<string | null>(null)
 
     useEffect(() => {
-        if (active.id === prevIdRef.current) return
-        prevIdRef.current = active.id
         const str = active.connectionString
         setDisplayed(str)
         setTypedLen(0)
@@ -162,69 +145,25 @@ export function ProvidersSection() {
 
     const [hoveredId, setHoveredId] = useState<ProviderLogoId | null>(null)
     const [canHover, setCanHover] = useState(false)
-    const [scrollProgress, setScrollProgress] = useState(0)
-    const scrollProgressRef = useRef(0)
+    const [cycleIndex, setCycleIndex] = useState(0)
+    const fillProgressRef = useRef(0)
+    const inView = useInView(rowRef, { amount: 0.4 })
 
     useEffect(() => {
-        let raf = 0
+        if (!inView || hoveredId) return
+        const id = setInterval(() => {
+            if (document.hidden) return
+            setCycleIndex((prev) => (prev + 1) % PROVIDERS.length)
+        }, CYCLE_INTERVAL_MS)
+        return () => clearInterval(id)
+    }, [inView, hoveredId])
 
-        // Map the fill to the scroll range that's actually reachable. Filling
-        // starts as the row enters from the bottom of the viewport, and the
-        // "full" point (line at CockroachDB, the last node) is capped at the
-        // document's max scroll, so it always lands full at the end of the
-        // page even when the section can't scroll any higher.
-        const compute = () => {
-            raf = 0
-            const el = rowRef.current
-            if (!el) return
-            const rect = el.getBoundingClientRect()
-            const vh = window.innerHeight || 1
-            const scrollY = window.scrollY
-            const doc = document.documentElement
-            const maxScroll = Math.max(0, doc.scrollHeight - vh)
-
-            const rowCenterDoc = rect.top + scrollY + rect.height / 2
-            // begin when the row's top reaches the bottom of the viewport
-            const startScroll = rowCenterDoc - rect.height / 2 - vh
-            // natural completion: the row's center reaches the top, but never
-            // ask for more scroll than the page actually has
-            const endScroll = Math.min(rowCenterDoc, maxScroll)
-            const span = Math.max(1, endScroll - startScroll)
-
-            const progress = Math.max(
-                0,
-                Math.min(1, (scrollY - startScroll) / span)
-            )
-            scrollProgressRef.current = progress
-            setScrollProgress((prev) =>
-                Math.abs(prev - progress) > 0.001 ? progress : prev
-            )
-        }
-
-        const onScroll = () => {
-            if (!raf) raf = requestAnimationFrame(compute)
-        }
-
-        compute()
-        window.addEventListener('scroll', onScroll, { passive: true })
-        window.addEventListener('resize', onScroll)
-        return () => {
-            window.removeEventListener('scroll', onScroll)
-            window.removeEventListener('resize', onScroll)
-            if (raf) cancelAnimationFrame(raf)
-        }
-    }, [])
-
-    const scrollIndex = Math.min(
-        PROVIDERS.length - 1,
-        Math.round(scrollProgress * (PROVIDERS.length - 1))
-    )
-    const activeId = hoveredId ?? PROVIDERS[scrollIndex].id
+    const activeId = hoveredId ?? PROVIDERS[cycleIndex].id
     const activeIndex = Math.max(
         0,
         PROVIDERS.findIndex((p) => p.id === activeId)
     )
-    const fillOverride = hoveredId ? activeIndex / (PROVIDERS.length - 1) : null
+    const fillOverride = activeIndex / (PROVIDERS.length - 1)
 
     useEffect(() => {
         const mq = window.matchMedia('(hover: hover) and (pointer: fine)')
@@ -310,7 +249,7 @@ export function ProvidersSection() {
                         hubRef={hubRef}
                         nodeRefs={nodeRefs}
                         providers={PROVIDERS}
-                        fillProgressRef={scrollProgressRef}
+                        fillProgressRef={fillProgressRef}
                         fillOverride={fillOverride}
                         revealed={revealed}
                         hubDelay={hubDelay}
@@ -413,82 +352,21 @@ export function ProvidersSection() {
                     className="mb-5 font-[family-name:var(--font-pixel)] text-[11px] font-medium uppercase tracking-[0.12em] text-ink-600"
                     style={revealStyle(footerDelay)}
                 >
-                    First-class native connectors
+                    Native connectors and hosted databases
                 </p>
-                <div className="flex flex-wrap items-center gap-x-7 gap-y-4">
-                    {HOSTED_PROVIDERS.map((provider, i) => (
-                        <span
-                            key={provider.name}
-                            className="flex items-center gap-2"
-                            style={revealStyle(
-                                footerDelay + STAGGER_MS + i * STAGGER_MS
-                            )}
-                        >
-                            <img
-                                src={provider.src}
-                                alt={`${provider.name} logo`}
-                                width={20}
-                                height={20}
-                                className="size-5 opacity-75"
-                                style={{
-                                    filter: 'grayscale(1) brightness(1.7)'
-                                }}
-                                draggable={false}
-                            />
-                            <span className="text-[13px] font-medium text-ink-350">
-                                {provider.name}
-                            </span>
-                        </span>
-                    ))}
-                    {/* Cloudflare D1: a genuinely new query engine, not a Postgres
-                        shim, so it gets a callout rather than a grayscaled logo. */}
-                    <span
-                        className="flex items-center gap-2"
-                        style={revealStyle(
-                            footerDelay +
-                                STAGGER_MS +
-                                HOSTED_PROVIDERS.length * STAGGER_MS
-                        )}
-                    >
-                        <span className="text-[13px] font-medium text-ink-350">
-                            Cloudflare D1
-                        </span>
-                        <span className="rounded-[2px] border border-brand-300/40 bg-brand-300/10 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-brand-300">
-                            native engine
-                        </span>
-                    </span>
-                    {/* PostHog: reached over the HogQL Query API, another new
-                        engine (not a Postgres shim), so it earns the same badge. */}
-                    <span
-                        className="flex items-center gap-2"
-                        style={revealStyle(
-                            footerDelay +
-                                STAGGER_MS +
-                                (HOSTED_PROVIDERS.length + 1) * STAGGER_MS
-                        )}
-                    >
-                        <span className="text-[13px] font-medium text-ink-350">
-                            PostHog
-                        </span>
-                        <span className="rounded-[2px] border border-brand-300/40 bg-brand-300/10 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-brand-300">
-                            native engine
-                        </span>
-                    </span>
+                <div style={revealStyle(footerDelay + STAGGER_MS)}>
+                    <HostedProviderQueue />
                 </div>
                 <p
                     className="mt-5 max-w-2xl text-[13px] leading-relaxed text-ink-700"
-                    style={revealStyle(
-                        footerDelay +
-                            STAGGER_MS +
-                            (HOSTED_PROVIDERS.length + 2) * STAGGER_MS
-                    )}
+                    style={revealStyle(footerDelay + STAGGER_MS * 2)}
                 >
                     Connect with OAuth, an API token, or a branch picker, not
                     just a pasted string. Supabase authorizes in one click; Neon
                     and PlanetScale connect branch-aware; Cloudflare D1 speaks
                     its own HTTP engine, and PostHog turns HogQL events into a
-                    built-in analytics dashboard. Plus {HOSTED_EXTRA}, and any
-                    Postgres, MySQL, or libSQL connection string.
+                    built-in analytics dashboard. Every other host works with
+                    any Postgres, MySQL, or libSQL connection string.
                 </p>
             </div>
         </section>

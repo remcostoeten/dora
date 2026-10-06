@@ -94,11 +94,15 @@ function NavLink({
     href,
     className,
     onClick,
+    onFocus,
+    onMouseEnter,
     children
 }: {
     href: string
     className?: string
     onClick?: () => void
+    onFocus?: () => void
+    onMouseEnter?: () => void
     children: React.ReactNode
 }) {
     if (href.startsWith('http')) {
@@ -107,6 +111,8 @@ function NavLink({
                 className={className}
                 href={href}
                 onClick={onClick}
+                onFocus={onFocus}
+                onMouseEnter={onMouseEnter}
                 rel="noreferrer"
                 target="_blank"
             >
@@ -115,7 +121,13 @@ function NavLink({
         )
     }
     return (
-        <Link className={className} href={href as Route} onClick={onClick}>
+        <Link
+            className={className}
+            href={href as Route}
+            onClick={onClick}
+            onFocus={onFocus}
+            onMouseEnter={onMouseEnter}
+        >
             {children}
         </Link>
     )
@@ -138,14 +150,14 @@ function NavItem({ label, href, chevron }: TNavItem) {
     )
 }
 
-/**
- * Desktop nav item with an animated dropdown panel. Opens on hover/focus,
- * scales in from the trigger (origin-aware, ease-out ~200ms).
- * Exit is faster than enter.
- */
+const DROPDOWN_COLUMNS = 2
+
 function NavDropdown({ item }: { item: TNavItem }) {
     const menu = item.menu ?? []
+    const rows = Math.ceil(menu.length / DROPDOWN_COLUMNS)
     const [open, setOpen] = useState(false)
+    const [active, setActive] = useState<number | null>(null)
+    const [instant, setInstant] = useState(true)
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     function cancelClose() {
@@ -155,105 +167,150 @@ function NavDropdown({ item }: { item: TNavItem }) {
         }
     }
 
+    function show() {
+        cancelClose()
+        setOpen(true)
+    }
+
+    function hide() {
+        cancelClose()
+        setOpen(false)
+        setActive(null)
+        setInstant(true)
+    }
+
     function scheduleClose() {
         cancelClose()
-        // small grace period so crossing the trigger→panel gap doesn't flicker
-        closeTimer.current = setTimeout(() => setOpen(false), 120)
+        // grace period so crossing the trigger to panel gap does not flicker
+        closeTimer.current = setTimeout(hide, 120)
+    }
+
+    function activate(index: number) {
+        setInstant(active === null)
+        setActive(index)
     }
 
     useEffect(() => cancelClose, [])
 
-    const panelClosedTransform = 'translateY(-6px) scale(0.96)'
-    const ease = 'cubic-bezier(0.23, 1, 0.32, 1)'
+    const activeColumn = (active ?? 0) % DROPDOWN_COLUMNS
+    const activeRow = Math.floor((active ?? 0) / DROPDOWN_COLUMNS)
 
     return (
         <div
             className="relative"
-            onFocus={() => {
-                cancelClose()
-                setOpen(true)
-            }}
             onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node))
-                    scheduleClose()
+                    hide()
             }}
-            onMouseEnter={() => {
-                cancelClose()
-                setOpen(true)
-            }}
-            onMouseLeave={scheduleClose}
+            onFocus={show}
             onKeyDown={(event) => {
-                if (event.key === 'Escape') setOpen(false)
+                if (event.key === 'Escape') hide()
             }}
+            onMouseEnter={show}
+            onMouseLeave={scheduleClose}
         >
             <NavLink
                 className={`group inline-flex items-center gap-1 rounded-[1px] px-[13px] py-[9px] text-[14px] leading-none transition-colors hover:text-brand-200 ${
                     open ? 'text-brand-200' : 'text-white/90'
                 }`}
                 href={item.href}
-                onClick={() => setOpen(false)}
+                onClick={hide}
             >
                 {item.label}
                 <ChevronDown
                     aria-hidden
-                    className={`h-3.5 w-3.5 transition-[transform,color] duration-200 group-hover:text-brand-200 ${
-                        open ? 'text-brand-200' : 'text-white/40'
+                    className={`h-3.5 w-3.5 transition-[transform,color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:text-brand-200 ${
+                        open ? 'rotate-180 text-brand-200' : 'text-white/40'
                     }`}
-                    style={{
-                        transform: open ? 'rotate(180deg)' : 'rotate(0deg)'
-                    }}
                 />
             </NavLink>
 
-            {/* pt-3 is the invisible bridge between trigger and panel */}
             <div
-                className="absolute left-1/2 top-full z-50 -translate-x-1/2 pt-3"
+                className="absolute left-0 top-full z-50 pt-3"
+                inert={!open}
                 style={{ pointerEvents: open ? 'auto' : 'none' }}
             >
                 <div
-                    className="relative w-[340px] overflow-hidden border border-line bg-surface-deep/90 p-1.5 shadow-[0_24px_70px_-24px_rgba(0,0,0,0.85)] backdrop-blur-xl"
-                    style={{
-                        transformOrigin: 'top center',
-                        opacity: open ? 1 : 0,
-                        transform: open
-                            ? 'translateY(0) scale(1)'
-                            : panelClosedTransform,
-                        transition: open
-                            ? `opacity 200ms ${ease}, transform 200ms ${ease}`
-                            : 'opacity 140ms ease-out, transform 140ms ease-out'
-                    }}
+                    className="nav-dropdown relative w-[min(560px,calc(100vw-48px))] border border-line-strong bg-surface-deep shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_24px_60px_-20px_rgba(0,0,0,0.9),0_8px_20px_-12px_rgba(0,0,0,0.6)]"
+                    data-open={open}
                 >
-                    <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-brand-200/17"
-                    />
-                    {menu.map((link) => {
-                        const Icon = link.icon
-                        return (
-                            <NavLink
-                                key={link.label}
-                                className="group/item flex items-start gap-3 rounded-[2px] px-3 py-2.5 transition-colors hover:bg-brand-200/6"
-                                href={link.href}
-                                onClick={() => setOpen(false)}
-                            >
-                                <span className="mt-px flex size-8 shrink-0 items-center justify-center border border-line bg-surface text-brand-300 transition-colors group-hover/item:border-brand-200/40 group-hover/item:text-brand-200">
-                                    <Icon className="h-4 w-4" />
-                                </span>
-                                <span className="flex min-w-0 flex-1 flex-col gap-1">
-                                    <span className="flex items-center gap-1.5 text-[13px] leading-none text-white/90 transition-colors group-hover/item:text-brand-200">
-                                        {link.label}
-                                        <ArrowRight
-                                            aria-hidden
-                                            className="h-3 w-3 shrink-0 text-brand-200 opacity-0 transition-[opacity,transform] duration-200 group-hover/item:translate-x-0.5 group-hover/item:opacity-100"
-                                        />
+                    <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2" />
+                    <CornerTick className="-right-px -top-px translate-x-1/2 -translate-y-1/2" />
+                    <CornerTick className="-bottom-px -left-px -translate-x-1/2 translate-y-1/2" />
+                    <CornerTick className="-bottom-px -right-px translate-x-1/2 translate-y-1/2" />
+
+                    <div
+                        className="relative grid p-1.5"
+                        onMouseLeave={() => setActive(null)}
+                        style={{
+                            gridTemplateColumns: `repeat(${DROPDOWN_COLUMNS}, minmax(0, 1fr))`,
+                            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`
+                        }}
+                    >
+                        <span
+                            aria-hidden
+                            className="nav-dropdown-highlight pointer-events-none absolute left-1.5 top-1.5 border border-brand-200/15 bg-brand-200/[0.06]"
+                            data-active={active !== null}
+                            data-instant={instant}
+                            style={{
+                                width: `calc((100% - 12px) / ${DROPDOWN_COLUMNS})`,
+                                height: `calc((100% - 12px) / ${rows})`,
+                                transform: `translate(${activeColumn * 100}%, ${activeRow * 100}%)`
+                            }}
+                        />
+                        {menu.map((link, index) => {
+                            const Icon = link.icon
+                            const isActive = active === index
+                            return (
+                                <NavLink
+                                    key={link.label}
+                                    className="relative flex items-start gap-3 px-3 py-3 outline-none"
+                                    href={link.href}
+                                    onClick={hide}
+                                    onFocus={() => activate(index)}
+                                    onMouseEnter={() => activate(index)}
+                                >
+                                    <span
+                                        className={`mt-px flex size-8 shrink-0 items-center justify-center border transition-colors duration-150 ${
+                                            isActive
+                                                ? 'border-brand-200/40 bg-surface-elevated text-brand-200'
+                                                : 'border-line bg-surface text-brand-300'
+                                        }`}
+                                    >
+                                        <Icon className="h-4 w-4" />
                                     </span>
-                                    <span className="text-[11px] leading-snug text-white/40">
-                                        {link.description}
+                                    <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                                        <span
+                                            className={`text-[13px] leading-none transition-colors duration-150 ${
+                                                isActive
+                                                    ? 'text-brand-200'
+                                                    : 'text-white/90'
+                                            }`}
+                                        >
+                                            {link.label}
+                                        </span>
+                                        <span className="text-[11px] leading-snug text-white/45">
+                                            {link.description}
+                                        </span>
                                     </span>
-                                </span>
-                            </NavLink>
-                        )
-                    })}
+                                </NavLink>
+                            )
+                        })}
+                    </div>
+
+                    <div className="flex items-center justify-end border-t border-line px-4 py-2.5">
+                        <NavLink
+                            className="group/all inline-flex items-center gap-1.5 text-[12px] text-white/70 transition-colors hover:text-brand-200"
+                            href={item.href}
+                            onClick={hide}
+                        >
+                            All features
+                            <ArrowRight
+                                aria-hidden
+                                className="h-3 w-3 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/all:translate-x-0.5"
+                            />
+                        </NavLink>
+                    </div>
                 </div>
             </div>
         </div>
@@ -332,9 +389,29 @@ function MobileMenuRow({
     )
 }
 
-function MobileMenu({ onClose }: { onClose: () => void }) {
+function MobileMenu({
+    onClose,
+    visible,
+    onExited
+}: {
+    onClose: () => void
+    visible: boolean
+    onExited: () => void
+}) {
     return (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-background animate-in fade-in-0 duration-200 md:hidden">
+        <div
+            className="overlay-sheet fixed inset-0 z-[60] flex flex-col bg-background md:hidden"
+            data-visible={visible}
+            onTransitionEnd={(event) => {
+                if (
+                    !visible &&
+                    event.propertyName === 'opacity' &&
+                    event.target === event.currentTarget
+                ) {
+                    onExited()
+                }
+            }}
+        >
             {/* Top frame: logo + circular close button, with rose corner brackets */}
             <div className="relative m-3 flex items-center justify-between border border-line-strong px-4 py-5">
                 <CornerTick className="-left-px -top-px -translate-x-1/2 -translate-y-1/2" />
@@ -368,6 +445,8 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
 
 export function DoraHeader() {
     const [menuOpen, setMenuOpen] = useState(false)
+    const [menuMounted, setMenuMounted] = useState(false)
+    const [menuVisible, setMenuVisible] = useState(false)
     const scrolled = useScrolled()
     const $ = useShortcut()
 
@@ -389,6 +468,16 @@ export function DoraHeader() {
 
     useEffect(() => {
         if (!menuOpen) {
+            setMenuVisible(false)
+            return
+        }
+        setMenuMounted(true)
+        const frame = requestAnimationFrame(() => setMenuVisible(true))
+        return () => cancelAnimationFrame(frame)
+    }, [menuOpen])
+
+    useEffect(() => {
+        if (!menuMounted) {
             return
         }
         const previous = document.body.style.overflow
@@ -396,7 +485,7 @@ export function DoraHeader() {
         return () => {
             document.body.style.overflow = previous
         }
-    }, [menuOpen])
+    }, [menuMounted])
 
     return (
         <header className="sticky top-0 z-50 w-full bg-background px-3 pt-3">
@@ -494,8 +583,12 @@ export function DoraHeader() {
                 </div>
             </nav>
 
-            {menuOpen ? (
-                <MobileMenu onClose={() => setMenuOpen(false)} />
+            {menuMounted ? (
+                <MobileMenu
+                    onClose={() => setMenuOpen(false)}
+                    onExited={() => setMenuMounted(false)}
+                    visible={menuVisible}
+                />
             ) : null}
         </header>
     )

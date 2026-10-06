@@ -302,9 +302,10 @@ pub async fn build_connection_string(
 /// escaping the sub-delimiters and reserved characters that would otherwise be
 /// misparsed (`:` `@` `/` `?` `#` etc.). Unreserved chars pass through.
 fn encode_userinfo(value: &str) -> String {
-    encode_with(value, |byte| {
-        matches!(byte, b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~')
-    })
+    encode_with(
+        value,
+        |byte| matches!(byte, b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~'),
+    )
 }
 
 /// Percent-encodes a single path segment. Same unreserved set as userinfo — the

@@ -403,16 +403,18 @@ async fn mysql_counts(
         .await
         .map_err(|e| crate::Error::Any(anyhow::anyhow!("MySQL count connection failed: {e}")))?;
 
+    fn target(entry: &PendingCount) -> String {
+        let schema = if entry.schema.is_empty() {
+            None
+        } else {
+            Some(entry.schema.as_str())
+        };
+        qualified_mysql(schema, &entry.table)
+    }
+
     let mut counts: Vec<Option<u64>> = Vec::with_capacity(pending.len());
     for batch in pending.chunks(COUNT_BATCH_SIZE) {
-        let sql = union_all_counts(batch, |entry| {
-            let schema = if entry.schema.is_empty() {
-                None
-            } else {
-                Some(entry.schema.as_str())
-            };
-            qualified_mysql(schema, &entry.table)
-        });
+        let sql = union_all_counts(batch, target);
         let mut batch_counts: Vec<Option<u64>> = vec![None; batch.len()];
         match conn.query::<(u64, u64), _>(sql).await {
             Ok(rows) => {
@@ -422,8 +424,13 @@ async fn mysql_counts(
                     }
                 }
             }
+            // One unreadable table fails the whole batch, so count it table by table.
             Err(err) => {
-                log::debug!("MySQL batched count failed: {err}");
+                log::warn!("MySQL batched count failed, falling back per table: {err}");
+                for (slot, entry) in batch_counts.iter_mut().zip(batch) {
+                    let sql = format!("SELECT COUNT(*) FROM {}", target(entry));
+                    *slot = conn.query_first::<u64, _>(sql).await.ok().flatten();
+                }
             }
         }
         counts.extend(batch_counts);
@@ -493,13 +500,24 @@ async fn libsql_counts(
                     }
                 }
             }
+            // One unreadable table fails the whole batch, so count it table by table.
             Err(err) => {
-                log::debug!("libSQL batched count failed: {err}");
+                log::warn!("libSQL batched count failed, falling back per table: {err}");
+                for (slot, entry) in batch_counts.iter_mut().zip(batch) {
+                    *slot = libsql_single_count(conn, entry).await;
+                }
             }
         }
         counts.extend(batch_counts);
     }
     Ok(counts)
+}
+
+async fn libsql_single_count(conn: &libsql::Connection, entry: &PendingCount) -> Option<u64> {
+    let sql = format!("SELECT COUNT(*) FROM {}", ansi_target(entry));
+    let mut rows = conn.query(&sql, ()).await.ok()?;
+    let row = rows.next().await.ok()??;
+    u64::try_from(row.get::<i64>(0).ok()?).ok()
 }
 
 async fn d1_counts(
@@ -508,24 +526,36 @@ async fn d1_counts(
 ) -> Result<Vec<Option<u64>>, crate::Error> {
     let mut counts: Vec<Option<u64>> = Vec::with_capacity(pending.len());
     for batch in pending.chunks(COUNT_BATCH_SIZE) {
-        let sql = union_all_counts(batch, ansi_target);
+        let sql = d1_count_script(batch);
         let mut batch_counts: Vec<Option<u64>> = vec![None; batch.len()];
         match http.query(&sql, Vec::new()).await {
-            Ok(result_sets) => {
-                for set in result_sets {
-                    for row in &set.results {
-                        let index = row.get("idx").and_then(|v| v.as_i64()).unwrap_or(-1);
-                        let count = row.get("cnt").and_then(|v| v.as_i64()).unwrap_or(-1);
-                        if index >= 0 && count >= 0 {
-                            if let Some(slot) = batch_counts.get_mut(index as usize) {
-                                *slot = Some(count as u64);
-                            }
-                        }
-                    }
+            Ok(result_sets) if result_sets.len() == batch.len() => {
+                for (slot, set) in batch_counts.iter_mut().zip(&result_sets) {
+                    *slot = set
+                        .results
+                        .first()
+                        .and_then(|row| row.get("cnt"))
+                        .and_then(|v| v.as_u64());
                 }
             }
+            Ok(result_sets) => {
+                log::warn!(
+                    "D1 count returned {} result sets for {} tables",
+                    result_sets.len(),
+                    batch.len()
+                );
+            }
+            // One unreadable table fails the whole script, so count it table by table.
             Err(err) => {
-                log::debug!("D1 batched count failed: {err}");
+                log::warn!("D1 batched count failed, falling back per table: {err}");
+                for (slot, entry) in batch_counts.iter_mut().zip(batch) {
+                    let sql = format!("SELECT COUNT(*) AS cnt FROM {}", ansi_target(entry));
+                    *slot = http
+                        .query(&sql, Vec::new())
+                        .await
+                        .ok()
+                        .and_then(|sets| sets.first()?.results.first()?.get("cnt")?.as_u64());
+                }
             }
         }
         counts.extend(batch_counts);
@@ -533,10 +563,37 @@ async fn d1_counts(
     Ok(counts)
 }
 
+/// D1 caps compound SELECTs at 5 terms, so counts go out as one statement per
+/// table in a single script and come back as one result set each.
+fn d1_count_script(batch: &[PendingCount]) -> String {
+    batch
+        .iter()
+        .map(|entry| format!("SELECT COUNT(*) AS cnt FROM {}", ansi_target(entry)))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::database::types::TableInfo;
+
+    #[test]
+    fn d1_count_script_uses_one_statement_per_table() {
+        let batch: Vec<PendingCount> = ["users", "sessions"]
+            .iter()
+            .map(|name| PendingCount {
+                schema: String::new(),
+                table: name.to_string(),
+            })
+            .collect();
+        let script = d1_count_script(&batch);
+        assert_eq!(
+            script,
+            "SELECT COUNT(*) AS cnt FROM \"users\"; SELECT COUNT(*) AS cnt FROM \"sessions\""
+        );
+        assert!(!script.contains("UNION"));
+    }
 
     fn table(name: &str, schema: &str, estimate: Option<u64>) -> TableInfo {
         TableInfo {

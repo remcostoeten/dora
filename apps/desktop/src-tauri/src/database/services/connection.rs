@@ -33,6 +33,7 @@ fn mysql_opts_with_pool_constraints(
     mysql_url: &url::Url,
     max_connections: usize,
 ) -> Result<mysql_async::Opts, Error> {
+    let mysql_url = normalize_mysql_ssl_params(mysql_url);
     let opts = mysql_async::Opts::from_url(mysql_url.as_str())
         .map_err(|e| Error::Any(anyhow::anyhow!("Invalid MySQL URL: {}", e)))?;
     let constraints = mysql_async::PoolConstraints::new(MYSQL_POOL_MIN, max_connections)
@@ -40,6 +41,46 @@ fn mysql_opts_with_pool_constraints(
     Ok(mysql_async::OptsBuilder::from_opts(opts)
         .pool_opts(mysql_async::PoolOpts::default().with_constraints(constraints))
         .into())
+}
+
+/// Maps the SSL spellings other clients use (`sslmode`, `ssl-mode`, `sslaccept`,
+/// `ssl`) onto `require_ssl`, the only SSL parameter mysql_async accepts.
+fn normalize_mysql_ssl_params(mysql_url: &url::Url) -> url::Url {
+    const SSL_KEYS: [&str; 4] = ["sslmode", "ssl-mode", "sslaccept", "ssl"];
+    const DISABLED: [&str; 5] = ["disable", "disabled", "false", "0", "off"];
+
+    let mut require_ssl = false;
+    let mut kept: Vec<(String, String)> = Vec::new();
+    for (key, value) in mysql_url.query_pairs() {
+        if SSL_KEYS.contains(&key.to_ascii_lowercase().as_str()) {
+            if !DISABLED.contains(&value.to_ascii_lowercase().as_str()) {
+                require_ssl = true;
+            }
+            continue;
+        }
+        if key == "require_ssl" {
+            require_ssl = require_ssl || value == "true";
+            continue;
+        }
+        kept.push((key.into_owned(), value.into_owned()));
+    }
+
+    let mut normalized = mysql_url.clone();
+    if kept.is_empty() && !require_ssl {
+        normalized.set_query(None);
+        return normalized;
+    }
+    {
+        let mut pairs = normalized.query_pairs_mut();
+        pairs.clear();
+        for (key, value) in &kept {
+            pairs.append_pair(key, value);
+        }
+        if require_ssl {
+            pairs.append_pair("require_ssl", "true");
+        }
+    }
+    normalized
 }
 
 /// `Pool::disconnect()` is mysql_async's deterministic teardown; plain `Drop`
@@ -57,6 +98,28 @@ fn connect_result(connected: bool) -> DatabaseConnectResult {
     DatabaseConnectResult {
         connected,
         file_sources: None,
+        error: None,
+    }
+}
+
+/// `Builder::new_remote` and `connect` are lazy, so a remote libSQL handle only
+/// proves the URL and token work once a statement round-trips.
+async fn probe_libsql(conn: &libsql::Connection) -> Result<(), String> {
+    match tokio::time::timeout(crate::http::CONNECT_TIMEOUT, conn.query("SELECT 1", ())).await {
+        Ok(Ok(_)) => Ok(()),
+        Ok(Err(e)) => Err(e.to_string()),
+        Err(_) => Err(format!(
+            "Connection timed out after {:?}",
+            crate::http::CONNECT_TIMEOUT
+        )),
+    }
+}
+
+fn connect_failed(error: impl std::fmt::Display) -> DatabaseConnectResult {
+    DatabaseConnectResult {
+        connected: false,
+        file_sources: None,
+        error: Some(error.to_string()),
     }
 }
 
@@ -67,6 +130,7 @@ fn duckdb_data_file_connect_result(
     DatabaseConnectResult {
         connected,
         file_sources: Some(file_source_entries),
+        error: None,
     }
 }
 
@@ -452,6 +516,7 @@ impl<'a> ConnectionService<'a> {
                 return Ok(DatabaseConnectResult {
                     connected: true,
                     file_sources,
+                    error: None,
                 });
             }
         }
@@ -583,7 +648,7 @@ impl<'a> ConnectionService<'a> {
                         log::error!("Failed to connect to Postgres: {}", e);
                         *tunnel = None; // Drop tunnel if DB connection fails
                         connection.connected = false;
-                        Ok(connect_result(false))
+                        Ok(connect_failed(&e))
                     }
                 }
             }
@@ -686,7 +751,7 @@ impl<'a> ConnectionService<'a> {
                         *tunnel = None;
                         *pool = None;
                         connection.connected = false;
-                        Ok(connect_result(false))
+                        Ok(connect_failed(&e))
                     }
                     Err(_) => {
                         log::error!(
@@ -697,7 +762,10 @@ impl<'a> ConnectionService<'a> {
                         *tunnel = None;
                         *pool = None;
                         connection.connected = false;
-                        Ok(connect_result(false))
+                        Ok(connect_failed(format!(
+                            "Connection timed out after {:?}",
+                            crate::http::CONNECT_TIMEOUT
+                        )))
                     }
                 }
             }
@@ -719,7 +787,7 @@ impl<'a> ConnectionService<'a> {
                 Err(e) => {
                     log::error!("Failed to connect to SQLite database {}: {}", db_path, e);
                     connection.connected = false;
-                    Ok(connect_result(false))
+                    Ok(connect_failed(&e))
                 }
             },
             Database::DuckDB {
@@ -782,7 +850,7 @@ impl<'a> ConnectionService<'a> {
                         log::error!("Failed to connect to DuckDB database {}: {}", db_path, e);
                         connection.connected = false;
                         if file_sources.is_empty() {
-                            Ok(connect_result(false))
+                            Ok(connect_failed(&e))
                         } else {
                             // The engine never opened, so no source has a status of
                             // its own; report the open error against each one rather
@@ -818,6 +886,11 @@ impl<'a> ConnectionService<'a> {
                 match result {
                     Ok(db) => match db.connect() {
                         Ok(conn) => {
+                            if let Err(e) = probe_libsql(&conn).await {
+                                log::error!("Failed to reach LibSQL database {}: {}", url_str, e);
+                                connection.connected = false;
+                                return Ok(connect_failed(e));
+                            }
                             *libsql_conn = Some(Arc::new(conn));
                             connection.connected = true;
 
@@ -831,13 +904,13 @@ impl<'a> ConnectionService<'a> {
                         Err(e) => {
                             log::error!("Failed to connect to LibSQL database {}: {}", url_str, e);
                             connection.connected = false;
-                            Ok(connect_result(false))
+                            Ok(connect_failed(&e))
                         }
                     },
                     Err(e) => {
                         log::error!("Failed to build LibSQL database {}: {}", url_str, e);
                         connection.connected = false;
-                        Ok(connect_result(false))
+                        Ok(connect_failed(&e))
                     }
                 }
             }
@@ -855,7 +928,7 @@ impl<'a> ConnectionService<'a> {
                     Err(e) => {
                         log::error!("Cloudflare D1 connect failed for {}: {}", url_str, e);
                         connection.connected = false;
-                        return Ok(connect_result(false));
+                        return Ok(connect_failed(&e));
                     }
                 };
 
@@ -864,7 +937,7 @@ impl<'a> ConnectionService<'a> {
                     Err(e) => {
                         log::error!("Malformed D1 URL {}: {}", url_str, e);
                         connection.connected = false;
-                        return Ok(connect_result(false));
+                        return Ok(connect_failed(&e));
                     }
                 };
 
@@ -883,7 +956,7 @@ impl<'a> ConnectionService<'a> {
                     Err(e) => {
                         log::error!("Failed to reach Cloudflare D1 {}: {}", url_str, e);
                         connection.connected = false;
-                        Ok(connect_result(false))
+                        Ok(connect_failed(&e))
                     }
                 }
             }
@@ -901,7 +974,7 @@ impl<'a> ConnectionService<'a> {
                     Err(e) => {
                         log::error!("PostHog connect failed for {}: {}", url_str, e);
                         connection.connected = false;
-                        return Ok(connect_result(false));
+                        return Ok(connect_failed(&e));
                     }
                 };
 
@@ -910,7 +983,7 @@ impl<'a> ConnectionService<'a> {
                     Err(e) => {
                         log::error!("Malformed PostHog URL {}: {}", url_str, e);
                         connection.connected = false;
-                        return Ok(connect_result(false));
+                        return Ok(connect_failed(&e));
                     }
                 };
 
@@ -929,7 +1002,7 @@ impl<'a> ConnectionService<'a> {
                     Err(e) => {
                         log::error!("Failed to reach PostHog {}: {}", url_str, e);
                         connection.connected = false;
-                        Ok(connect_result(false))
+                        Ok(connect_failed(&e))
                     }
                 }
             }
@@ -1464,7 +1537,16 @@ impl ConnectionService<'_> {
 
                 match result {
                     Ok(db) => match db.connect() {
-                        Ok(_) => Ok(true),
+                        Ok(conn) => match probe_libsql(&conn).await {
+                            Ok(()) => Ok(true),
+                            Err(e) => {
+                                log::error!("LibSQL connection test failed: {}", e);
+                                Err(Error::Any(anyhow::anyhow!(
+                                    "LibSQL connection failed: {}",
+                                    e
+                                )))
+                            }
+                        },
                         Err(e) => {
                             log::error!("LibSQL connection test failed: {}", e);
                             Err(Error::Any(anyhow::anyhow!(
@@ -1588,6 +1670,43 @@ mod tests {
     use crate::database::{
         postgres::connection_string::clean_postgres_connection_string, types::detect_pgbouncer_flag,
     };
+
+    use super::normalize_mysql_ssl_params;
+
+    fn normalized(raw: &str) -> String {
+        normalize_mysql_ssl_params(&url::Url::parse(raw).unwrap()).to_string()
+    }
+
+    #[test]
+    fn mysql_ssl_spellings_become_require_ssl() {
+        for raw in [
+            "mysql://u:p@aws.connect.psdb.cloud:3306/db?sslmode=require",
+            "mysql://u:p@aws.connect.psdb.cloud:3306/db?sslaccept=strict",
+            "mysql://u:p@aws.connect.psdb.cloud:3306/db?ssl-mode=REQUIRED",
+            "mysql://u:p@aws.connect.psdb.cloud:3306/db?ssl={\"rejectUnauthorized\":true}",
+            "mysql://u:p@aws.connect.psdb.cloud:3306/db?require_ssl=true",
+        ] {
+            assert_eq!(
+                normalized(raw),
+                "mysql://u:p@aws.connect.psdb.cloud:3306/db?require_ssl=true",
+                "{raw}"
+            );
+            let url = normalize_mysql_ssl_params(&url::Url::parse(raw).unwrap());
+            assert!(mysql_async::Opts::from_url(url.as_str()).is_ok(), "{raw}");
+        }
+    }
+
+    #[test]
+    fn mysql_ssl_disabled_is_dropped_and_other_params_kept() {
+        assert_eq!(
+            normalized("mysql://u:p@localhost:3306/db?sslmode=disable&pool_min=1"),
+            "mysql://u:p@localhost:3306/db?pool_min=1"
+        );
+        assert_eq!(
+            normalized("mysql://u:p@localhost:3306/db"),
+            "mysql://u:p@localhost:3306/db"
+        );
+    }
 
     #[test]
     fn pooler_host_enables_simple_query_mode_without_provider_specific_flag() {

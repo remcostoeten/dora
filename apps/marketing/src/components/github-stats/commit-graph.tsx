@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 
 import { ACCENT_COLOR } from './constants'
 
@@ -13,6 +13,32 @@ export interface CommitDetail {
     additions?: number
     deletions?: number
     files?: string[]
+}
+
+const SMOOTHING_SIGMA = 1.6
+const SMOOTHING_RADIUS = 4
+
+function smoothCommitCurve(data: CommitDataPoint[]) {
+    const smoothed = data.map((_, index) => {
+        let weighted = 0
+        let weightSum = 0
+        for (
+            let offset = -SMOOTHING_RADIUS;
+            offset <= SMOOTHING_RADIUS;
+            offset++
+        ) {
+            const point = data[index + offset]
+            if (!point) continue
+            const weight = Math.exp(
+                -(offset * offset) / (2 * SMOOTHING_SIGMA * SMOOTHING_SIGMA)
+            )
+            weighted += point.commits * weight
+            weightSum += weight
+        }
+        return weighted / weightSum
+    })
+    const peak = Math.max(...smoothed, 1e-6)
+    return smoothed.map((value) => Math.sqrt(value / peak))
 }
 
 export interface CommitDataPoint {
@@ -30,6 +56,7 @@ interface Props {
     ) => void
     onClick: (index: number) => void
     accentColor?: string
+    release?: { date: string; version: string } | null
 }
 
 export function CommitGraph({
@@ -37,7 +64,8 @@ export function CommitGraph({
     hoveredIndex,
     onHoverChange,
     onClick,
-    accentColor = ACCENT_COLOR
+    accentColor = ACCENT_COLOR,
+    release = null
 }: Props) {
     const [animationProgress, setAnimationProgress] = useState(0)
     const [isInView, setIsInView] = useState(false)
@@ -48,8 +76,20 @@ export function CommitGraph({
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const animationRef = useRef<number | null>(null)
     const startTimeRef = useRef<number | null>(null)
+    const [size, setSize] = useState({ width: 0, height: 0 })
 
-    const maxCommits = Math.max(...data.map((d) => d.commits), 1)
+    useEffect(() => {
+        const element = scrollContainerRef.current
+        if (!element) return
+        const observer = new ResizeObserver(([entry]) => {
+            const { width, height } = entry.contentRect
+            setSize({ width, height })
+        })
+        observer.observe(element)
+        return () => observer.disconnect()
+    }, [])
+
+    const curve = useMemo(() => smoothCommitCurve(data), [data])
     const animationDuration = 1900
 
     const minZoom = 1
@@ -63,6 +103,7 @@ export function CommitGraph({
         data.length
     )
     const visibleData = data.slice(startIndex, endIndex)
+    const visibleCurve = curve.slice(startIndex, endIndex)
 
     const easeOutCubic = (t: number): number => {
         return 1 - Math.pow(1 - t, 3)
@@ -191,31 +232,35 @@ export function CommitGraph({
         }
     }
 
-    const getGraphPoints = (heightMultiplier = 1) => {
-        return visibleData.map((d, i) => ({
-            x: i * 3 + 1.5,
-            y:
-                60 -
-                (d.commits / maxCommits) *
-                    45 *
-                    heightMultiplier *
-                    animationProgress
+    const width = size.width || visibleData.length * 3
+    const height = size.height || 60
+    const step = width / Math.max(visibleData.length, 1)
+    const controlOffset = step / 3
+
+    const curveX = (index: number) => index * step + step / 2
+
+    const curveY = (index: number) =>
+        height - (visibleCurve[index] ?? 0) * height * 0.75 * animationProgress
+
+    const getGraphPoints = () => {
+        return visibleData.map((_, i) => ({
+            x: curveX(i),
+            y: curveY(i)
         }))
     }
 
-    const generateSmoothPath = (heightMultiplier = 1) => {
-        const width = visibleData.length * 3
-        const points = getGraphPoints(heightMultiplier)
+    const generateSmoothPath = () => {
+        const points = getGraphPoints()
 
         if (animationProgress === 0) {
-            return `M 0 60 L ${width} 60`
+            return `M 0 ${height} L ${width} ${height}`
         }
 
         let path = `M ${points[0].x} ${points[0].y}`
         for (let i = 0; i < points.length - 1; i++) {
-            const cp1x = points[i].x + 1
+            const cp1x = points[i].x + controlOffset
             const cp1y = points[i].y
-            const cp2x = points[i + 1].x - 1
+            const cp2x = points[i + 1].x - controlOffset
             const cp2y = points[i + 1].y
             path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${points[i + 1].x} ${points[i + 1].y}`
         }
@@ -229,8 +274,8 @@ export function CommitGraph({
 
         if (!current || !next) return ''
 
-        const cp1x = current.x + 1
-        const cp2x = next.x - 1
+        const cp1x = current.x + controlOffset
+        const cp2x = next.x - controlOffset
         return `M ${current.x} ${current.y} C ${cp1x} ${current.y}, ${cp2x} ${next.y}, ${next.x} ${next.y}`
     }
 
@@ -262,6 +307,17 @@ export function CommitGraph({
     // Find hovered index in visible range
     const hoveredVisibleIndex =
         hoveredIndex !== null ? hoveredIndex - startIndex : null
+    const releaseIndex = release
+        ? data.findIndex((d) => d.date === release.date)
+        : -1
+    const releaseVisibleIndex = releaseIndex - startIndex
+    const isReleaseVisible =
+        releaseIndex >= 0 &&
+        releaseVisibleIndex >= 0 &&
+        releaseVisibleIndex < visibleData.length
+    const releaseLeft =
+        ((releaseVisibleIndex + 0.5) / Math.max(visibleData.length, 1)) * 100
+
     const isHoveredVisible =
         hoveredVisibleIndex !== null &&
         hoveredVisibleIndex >= 0 &&
@@ -280,14 +336,13 @@ export function CommitGraph({
             {/* Scrollable graph container */}
             <div
                 ref={scrollContainerRef}
-                className="absolute inset-0 opacity-25 group-hover:opacity-45 transition-opacity duration-700"
+                className="absolute inset-0 opacity-40 group-hover:opacity-60 transition-opacity duration-700"
                 onWheel={handleWheel}
                 style={{ minHeight: '100%' }}
             >
                 <svg
-                    viewBox={`0 0 ${visibleData.length * 3} 60`}
+                    viewBox={`0 0 ${width} ${height}`}
                     className="w-full h-full"
-                    preserveAspectRatio="none"
                     style={{ display: 'block' }}
                 >
                     <defs>
@@ -319,17 +374,27 @@ export function CommitGraph({
                             <stop
                                 offset="0%"
                                 stopColor={accentColor}
-                                stopOpacity="0.1"
+                                stopOpacity="0"
+                            />
+                            <stop
+                                offset="30%"
+                                stopColor={accentColor}
+                                stopOpacity="0.32"
                             />
                             <stop
                                 offset="50%"
                                 stopColor={accentColor}
-                                stopOpacity="0.7"
+                                stopOpacity="0.45"
+                            />
+                            <stop
+                                offset="70%"
+                                stopColor={accentColor}
+                                stopOpacity="0.32"
                             />
                             <stop
                                 offset="100%"
                                 stopColor={accentColor}
-                                stopOpacity="0.1"
+                                stopOpacity="0"
                             />
                         </linearGradient>
                         <linearGradient
@@ -357,15 +422,16 @@ export function CommitGraph({
                         </linearGradient>
                     </defs>
 
-                    {[15, 30, 45].map((y, index) => (
+                    {[0.25, 0.5, 0.75].map((fraction, index) => (
                         <line
-                            key={y}
+                            key={fraction}
                             x1="0"
-                            x2={visibleData.length * 3}
-                            y1={y}
-                            y2={y}
+                            x2={width}
+                            y1={Math.round(height * fraction) + 0.5}
+                            y2={Math.round(height * fraction) + 0.5}
                             stroke="url(#gridGradient)"
-                            strokeWidth="0.35"
+                            strokeWidth="1"
+                            shapeRendering="crispEdges"
                             style={{
                                 opacity: Math.max(
                                     0,
@@ -381,7 +447,7 @@ export function CommitGraph({
                     ))}
 
                     <path
-                        d={`${generateSmoothPath()} L ${visibleData.length * 3} 60 L 0 60 Z`}
+                        d={`${generateSmoothPath()} L ${width} ${height} L 0 ${height} Z`}
                         fill="url(#waveGradient)"
                         style={{
                             opacity: Math.min(1, animationProgress * 1.4)
@@ -391,26 +457,8 @@ export function CommitGraph({
                     <path
                         d={generateSmoothPath()}
                         fill="none"
-                        stroke={accentColor}
-                        strokeLinecap="round"
-                        strokeWidth="2.4"
-                        pathLength="1"
-                        style={{
-                            opacity: Math.min(
-                                0.28,
-                                Math.max(0, (animationProgress - 0.12) * 0.5)
-                            ),
-                            strokeDasharray: 1,
-                            strokeDashoffset: 1 - animationProgress,
-                            filter: `drop-shadow(0 0 10px ${accentColor}55)`
-                        }}
-                    />
-
-                    <path
-                        d={generateSmoothPath()}
-                        fill="none"
                         stroke="url(#lineGradient)"
-                        strokeWidth="1"
+                        strokeWidth="1.25"
                         strokeLinecap="round"
                         pathLength="1"
                         style={{
@@ -419,13 +467,25 @@ export function CommitGraph({
                         }}
                     />
 
+                    {hasAnimated ? (
+                        <path
+                            d={generateSmoothPath()}
+                            fill="none"
+                            stroke="var(--color-brand-200)"
+                            strokeLinecap="round"
+                            strokeWidth="1.6"
+                            pathLength="1"
+                            className="commit-graph-glint"
+                        />
+                    ) : null}
+
                     {visibleData.slice(0, -1).map((d, i) => {
                         const { reveal, wave } = staggerStrength(
                             i,
                             visibleData.length - 1
                         )
 
-                        if (reveal <= 0) return null
+                        if (reveal <= 0 || hasAnimated) return null
 
                         return (
                             <path
@@ -438,7 +498,7 @@ export function CommitGraph({
                                         : accentColor
                                 }
                                 strokeLinecap="round"
-                                strokeWidth={0.75 + wave * 1.7}
+                                strokeWidth={1 + wave * 1.5}
                                 pathLength="1"
                                 style={{
                                     opacity: reveal * (0.16 + wave * 0.74),
@@ -466,14 +526,9 @@ export function CommitGraph({
                         return (
                             <circle
                                 key={`${d.date}-point`}
-                                cx={i * 3 + 1.5}
-                                cy={
-                                    60 -
-                                    (d.commits / maxCommits) *
-                                        45 *
-                                        animationProgress
-                                }
-                                r={0.65 + wave * 1.35}
+                                cx={curveX(i)}
+                                cy={curveY(i)}
+                                r={1.75 + wave * 1.75}
                                 fill={
                                     wave > 0.35
                                         ? 'var(--color-brand-200)'
@@ -481,27 +536,35 @@ export function CommitGraph({
                                 }
                                 style={{
                                     opacity,
-                                    filter: `drop-shadow(0 0 ${3 + wave * 7}px ${
-                                        wave > 0.35
-                                            ? 'var(--color-brand-200)'
-                                            : accentColor
-                                    })`
+                                    filter:
+                                        wave > 0.08
+                                            ? `drop-shadow(0 0 ${2 + wave * 6}px ${
+                                                  wave > 0.35
+                                                      ? 'var(--color-brand-200)'
+                                                      : accentColor
+                                              })`
+                                            : undefined
                                 }}
                             />
                         )
                     })}
 
+                    {isReleaseVisible && animationProgress > 0 ? (
+                        <circle
+                            cx={curveX(releaseVisibleIndex)}
+                            cy={curveY(releaseVisibleIndex)}
+                            r="3"
+                            fill="var(--color-surface-base)"
+                            stroke="var(--color-brand-200)"
+                            strokeWidth="1.5"
+                        />
+                    ) : null}
+
                     {isHoveredVisible && animationProgress > 0 && (
                         <circle
-                            cx={hoveredVisibleIndex * 3 + 1.5}
-                            cy={
-                                60 -
-                                (visibleData[hoveredVisibleIndex].commits /
-                                    maxCommits) *
-                                    45 *
-                                    animationProgress
-                            }
-                            r="2.5"
+                            cx={curveX(hoveredVisibleIndex)}
+                            cy={curveY(hoveredVisibleIndex)}
+                            r="3.5"
                             fill={accentColor}
                             className="transition-all duration-150"
                         />
@@ -530,15 +593,44 @@ export function CommitGraph({
                 <div
                     className="absolute top-0 bottom-0 w-px pointer-events-none z-10 transition-opacity duration-200"
                     style={{
-                        left: `${(hoveredVisibleIndex / visibleData.length) * 100}%`,
+                        left: `${((hoveredVisibleIndex + 0.5) / visibleData.length) * 100}%`,
                         background: `linear-gradient(to bottom, transparent, ${accentColor}40, transparent)`
                     }}
                 />
             )}
 
+            {isReleaseVisible && release ? (
+                <div
+                    className="pointer-events-none absolute inset-y-0 z-10 transition-opacity duration-500 ease-out"
+                    style={{
+                        left: `${releaseLeft}%`,
+                        opacity: hasAnimated ? 1 : 0
+                    }}
+                >
+                    <div
+                        className="absolute inset-y-0 w-px -translate-x-1/2"
+                        style={{
+                            background:
+                                'linear-gradient(to bottom, color-mix(in srgb, var(--color-brand-200) 50%, transparent), transparent 80%)'
+                        }}
+                    />
+                    <span
+                        className="absolute top-3 whitespace-nowrap rounded-[2px] border border-brand-300/40 bg-surface-base/80 px-1.5 py-0.5 font-[family-name:var(--font-pixel)] text-[9px] uppercase tracking-[0.1em] text-brand-200"
+                        style={{
+                            transform:
+                                releaseLeft > 70
+                                    ? 'translateX(calc(-100% - 6px))'
+                                    : 'translateX(6px)'
+                        }}
+                    >
+                        {release.version}
+                    </span>
+                </div>
+            ) : null}
+
             {/* Zoom indicator */}
             {zoom > 1 && (
-                <div className="absolute bottom-1 right-1 text-[9px] text-line-strong pointer-events-none z-20 font-mono">
+                <div className="absolute top-1 right-1 text-[9px] text-line-strong pointer-events-none z-20 font-mono">
                     {zoom.toFixed(1)}x
                 </div>
             )}

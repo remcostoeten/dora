@@ -13,7 +13,7 @@ import {
 import { getRelease } from '@/core/github/get-release'
 
 const DOWNLOAD_LINK_CLASS =
-    'inline-flex min-h-9 items-center justify-center border border-line-strong px-3.5 text-[13px] text-foreground transition-colors hover:border-brand-600/50 hover:bg-brand-600/6'
+    'inline-flex min-h-9 items-center justify-center border border-line-strong px-3.5 text-[13px] text-foreground transition-[color,background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-brand-600/50 hover:bg-brand-600/6 active:scale-[0.985] motion-reduce:active:scale-100'
 
 function renderDownload(
     download: TDownload,

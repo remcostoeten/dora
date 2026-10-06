@@ -414,7 +414,7 @@ export function createMockAdapter(): DataAdapter {
 			if (!conn) {
 				return err('Connection not found')
 			}
-			return ok({ connected: true, fileSources: null })
+			return ok({ connected: true, fileSources: null, error: null })
 		},
 
 		async getDataFileSourceStatus(connectionId: string) {
@@ -444,7 +444,7 @@ export function createMockAdapter(): DataAdapter {
 				return c.id === connectionId
 			})
 			if (!conn?.fileSources?.length) {
-				return ok({ connected: true, fileSources: [] })
+				return ok({ connected: true, fileSources: [], error: null })
 			}
 			const entries = conn.fileSources.map(function (path, index) {
 				return {
@@ -455,7 +455,7 @@ export function createMockAdapter(): DataAdapter {
 					error: null
 				}
 			})
-			return ok({ connected: true, fileSources: entries })
+			return ok({ connected: true, fileSources: entries, error: null })
 		},
 
 		async saveDataFileSessionAsDuckdb(

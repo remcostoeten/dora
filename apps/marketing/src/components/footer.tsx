@@ -101,7 +101,7 @@ export default async function Footer() {
     return (
         <section className="marketing-container marketing-footer relative">
             <FooterFrame />
-            <footer className="flex flex-col gap-6 px-5 py-6">
+            <footer className="flex flex-col gap-6 px-6 py-6 sm:px-8">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-xs text-muted-foreground">
                         Engineered by{' '}

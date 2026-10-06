@@ -28,7 +28,7 @@ const AppClient = dynamic(() => import('./app-client').then((m) => m.AppClient),
         }
 
         return (
-            <div className="flex h-screen w-full items-center justify-center bg-background text-sm text-muted-foreground">
+            <div className="deferred-label flex h-screen w-full items-center justify-center bg-background text-sm text-muted-foreground">
                 Loading Dora…
             </div>
         )

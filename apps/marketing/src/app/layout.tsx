@@ -6,7 +6,6 @@ import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
 import { Analytics } from '@remcostoeten/analytics'
 
-import { BrandTuner } from '@/components/dev/brand-tuner'
 import { siteConfig } from '@/core/config/site'
 import {
     organizationSchema,
@@ -110,7 +109,6 @@ export default function RootLayout({ children }: Props) {
                 <main className="min-h-screen bg-background text-foreground">
                     {children}
                 </main>
-                {process.env.NODE_ENV === 'development' ? <BrandTuner /> : null}
                 <Analytics
                     projectId={process.env.NEXT_PUBLIC_ANALYTICS_PROJECT_ID}
                     ingestUrl={process.env.NEXT_PUBLIC_ANALYTICS_INGEST_URL}

@@ -148,7 +148,7 @@ export function BottomToolbar({ onAction, onToggleSidebar, isSidebarOpen = true 
         if (item.id === "theme") {
           return (
             <Popover key={item.id}>
-              <div className="group/theme relative flex items-center">
+              <div className="group/theme relative flex items-center max-md:ml-3">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -170,7 +170,7 @@ export function BottomToolbar({ onAction, onToggleSidebar, isSidebarOpen = true 
                 </Tooltip>
                 <PopoverTrigger asChild>
                   <button
-                    className="absolute -left-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-4 h-4 rounded-full bg-sidebar-accent border border-sidebar-border text-muted-foreground opacity-0 scale-75 group-hover/theme:opacity-100 group-hover/theme:scale-100 transition-all duration-150 hover:text-sidebar-foreground hover:bg-muted z-10"
+                    className="absolute -left-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center w-4 h-4 rounded-full bg-sidebar-accent border border-sidebar-border text-muted-foreground opacity-0 scale-75 max-md:opacity-100 max-md:scale-100 group-hover/theme:opacity-100 group-hover/theme:scale-100 transition-all duration-150 hover:text-sidebar-foreground hover:bg-muted z-10"
                     aria-label="All themes"
                   >
                     <ChevronRight className="h-2.5 w-2.5 rotate-180" />

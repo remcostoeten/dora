@@ -86,7 +86,9 @@ struct D1DatabaseResult {
 
 fn store_token(storage: &Storage, token: &str) -> Result<()> {
     let encrypted = security::encrypt(token).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to encrypt Cloudflare token: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to encrypt Cloudflare token: {error}"
+        ))
     })?;
     storage.set_setting(TOKEN_SETTING_KEY, &encrypted)
 }
@@ -96,7 +98,9 @@ fn load_token(storage: &Storage) -> Result<Option<String>> {
         return Ok(None);
     };
     let decrypted = security::decrypt(&encrypted).map_err(|error| {
-        Error::Any(anyhow::anyhow!("Failed to decrypt Cloudflare token: {error}"))
+        Error::Any(anyhow::anyhow!(
+            "Failed to decrypt Cloudflare token: {error}"
+        ))
     })?;
     Ok(Some(decrypted))
 }
@@ -145,7 +149,7 @@ fn envelope_error<T>(envelope: &ApiEnvelope<T>) -> String {
     // missing the D1 permission.
     if envelope.errors.iter().any(|error| error.code == Some(9109)) {
         return "This Cloudflare API token can't access D1. Create a token with the \
-                'D1 - Edit' (or read) permission for this account."
+                'D1 - Edit' and 'Account Settings - Read' permissions for this account."
             .to_string();
     }
     envelope
@@ -178,7 +182,9 @@ where
             .send()
             .await
             .map_err(|error| {
-                Error::Any(anyhow::anyhow!("Cloudflare {context} request failed: {error}"))
+                Error::Any(anyhow::anyhow!(
+                    "Cloudflare {context} request failed: {error}"
+                ))
             })?;
 
         let status = response.status();
@@ -260,8 +266,8 @@ pub async fn current_account(storage: &Storage) -> Result<Vec<CloudflareAccount>
 
 /// Validates a pasted API token by listing accounts, then persists it encrypted.
 /// Validating up front means a bad paste fails immediately rather than on first
-/// use. (Listing accounts also exercises the token's account read scope, which
-/// D1 access requires.)
+/// use. Cloudflare returns an empty account list unless the token also has the
+/// Account Settings read permission, so an empty list means that scope is missing.
 pub async fn save_token(storage: &Storage, token: String) -> Result<()> {
     let token = token.trim().to_string();
     if token.is_empty() {
@@ -270,8 +276,8 @@ pub async fn save_token(storage: &Storage, token: String) -> Result<()> {
     let accounts: Vec<AccountResult> = get_paginated(&token, "/accounts", "accounts").await?;
     if accounts.is_empty() {
         return Err(Error::Any(anyhow::anyhow!(
-            "This Cloudflare token has no accessible accounts. Check the token's \
-             account scope."
+            "This Cloudflare token can't list any accounts. Add the 'Account Settings - \
+             Read' permission next to 'D1 - Edit'."
         )));
     }
     store_token(storage, &token)
@@ -325,7 +331,10 @@ mod tests {
         .expect("error envelope should deserialize");
         assert!(!envelope.success);
         let message = envelope_error(&envelope);
-        assert!(message.contains("D1"), "expected D1 scope hint, got: {message}");
+        assert!(
+            message.contains("D1"),
+            "expected D1 scope hint, got: {message}"
+        );
     }
 
     #[test]
@@ -345,9 +354,10 @@ mod tests {
     fn tolerates_missing_result_info() {
         // D1 list responses may omit result_info; pagination then stops after the
         // first page.
-        let envelope: ApiEnvelope<D1DatabaseResult> =
-            serde_json::from_str(r#"{ "success": true, "result": [ { "uuid": "x", "name": "x" } ] }"#)
-                .expect("envelope without result_info should deserialize");
+        let envelope: ApiEnvelope<D1DatabaseResult> = serde_json::from_str(
+            r#"{ "success": true, "result": [ { "uuid": "x", "name": "x" } ] }"#,
+        )
+        .expect("envelope without result_info should deserialize");
         assert!(envelope.result_info.is_none());
         assert_eq!(envelope.result.len(), 1);
     }

@@ -27,13 +27,13 @@ export default async function OgImage() {
                 overflow: 'hidden',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: '#060507',
+                backgroundColor: '#0f0c0c',
                 backgroundImage:
-                    'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(rgba(255,146,190,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,146,190,0.045) 1px, transparent 1px)',
+                    'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(rgba(237,164,165,0.045) 1px, transparent 1px), linear-gradient(90deg, rgba(237,164,165,0.045) 1px, transparent 1px)',
                 backgroundPosition: '0 0, 0 0, 0 0, 0 0',
                 backgroundSize:
                     '22px 22px, 22px 22px, 110px 110px, 110px 110px',
-                color: '#f8f8f8',
+                color: '#f0f0f0',
                 fontFamily: 'Noto Sans Mono'
             }}
         >
@@ -50,7 +50,7 @@ export default async function OgImage() {
                     position: 'absolute',
                     inset: 0,
                     background:
-                        'radial-gradient(circle at 78% 42%, rgba(255,108,170,0.44), transparent 28%), radial-gradient(circle at 56% 67%, rgba(99,255,216,0.16), transparent 24%), radial-gradient(circle at 16% 20%, rgba(255,255,255,0.12), transparent 24%), linear-gradient(135deg, rgba(255,255,255,0.08), transparent 32%, transparent 70%, rgba(255,118,175,0.1))'
+                        'radial-gradient(circle at 78% 42%, rgba(237,164,165,0.44), transparent 28%), radial-gradient(circle at 56% 67%, rgba(255,162,124,0.16), transparent 24%), radial-gradient(circle at 16% 20%, rgba(255,255,255,0.12), transparent 24%), linear-gradient(135deg, rgba(255,255,255,0.08), transparent 32%, transparent 70%, rgba(237,164,165,0.1))'
                 }}
             />
             <div
@@ -92,8 +92,8 @@ export default async function OgImage() {
                                 width: 16,
                                 height: 16,
                                 borderRadius: 999,
-                                background: '#ff7bb6',
-                                boxShadow: '0 0 32px rgba(255,123,182,0.8)'
+                                background: '#eda4a5',
+                                boxShadow: '0 0 32px rgba(237,164,165,0.8)'
                             }}
                         />
                         <div
@@ -173,14 +173,14 @@ export default async function OgImage() {
                             border: '1px solid rgba(255,255,255,0.12)',
                             borderRadius: 16,
                             background:
-                                'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,123,182,0.08))',
+                                'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(237,164,165,0.08))',
                             color: 'rgba(255,255,255,0.82)',
                             fontSize: 17,
                             fontWeight: 500,
                             padding: '14px 17px'
                         }}
                     >
-                        <span style={{ color: '#ff7bb6' }}>{'>'}</span>
+                        <span style={{ color: '#eda4a5' }}>{'>'}</span>
                         <span>select * from products limit 100</span>
                     </div>
                 </div>
@@ -209,7 +209,7 @@ export default async function OgImage() {
                             background:
                                 'linear-gradient(180deg, rgba(25,20,27,0.95), rgba(10,8,12,0.96))',
                             boxShadow:
-                                '0 30px 90px rgba(0,0,0,0.58), 0 0 80px rgba(255,123,182,0.13)'
+                                '0 30px 90px rgba(0,0,0,0.58), 0 0 80px rgba(237,164,165,0.13)'
                         }}
                     >
                         <div
@@ -230,7 +230,7 @@ export default async function OgImage() {
                                     gap: 8
                                 }}
                             >
-                                {['#ff7bb6', '#ffd166', '#63ffd8'].map(
+                                {['#ef4445', '#f59e0a', '#1ec55f'].map(
                                     (color) => (
                                         <span
                                             key={color}
@@ -281,16 +281,16 @@ export default async function OgImage() {
                                                 gap: 8,
                                                 border:
                                                     index === 2
-                                                        ? '1px solid rgba(255,123,182,0.32)'
+                                                        ? '1px solid rgba(237,164,165,0.32)'
                                                         : '1px solid transparent',
                                                 borderRadius: 10,
                                                 background:
                                                     index === 2
-                                                        ? 'rgba(255,123,182,0.12)'
+                                                        ? 'rgba(237,164,165,0.12)'
                                                         : 'rgba(255,255,255,0.035)',
                                                 color:
                                                     index === 2
-                                                        ? '#ffd5e6'
+                                                        ? '#ffd0d0'
                                                         : 'rgba(255,255,255,0.56)',
                                                 fontSize: 13,
                                                 fontWeight: 500,
@@ -304,7 +304,7 @@ export default async function OgImage() {
                                                     borderRadius: 999,
                                                     background:
                                                         index === 2
-                                                            ? '#ff7bb6'
+                                                            ? '#eda4a5'
                                                             : 'rgba(255,255,255,0.26)'
                                                 }}
                                             />
@@ -340,9 +340,9 @@ export default async function OgImage() {
                                     </div>
                                     <div
                                         style={{
-                                            border: '1px solid rgba(99,255,216,0.22)',
+                                            border: '1px solid rgba(203,148,149,0.22)',
                                             borderRadius: 999,
-                                            color: '#9dffeb',
+                                            color: '#ffa27c',
                                             fontSize: 12,
                                             fontWeight: 500,
                                             padding: '5px 9px'
@@ -382,7 +382,7 @@ export default async function OgImage() {
                                                     rowIndex === 0
                                                         ? 'rgba(255,255,255,0.06)'
                                                         : rowIndex === 2
-                                                          ? 'rgba(255,123,182,0.08)'
+                                                          ? 'rgba(237,164,165,0.08)'
                                                           : 'rgba(255,255,255,0.02)'
                                             }}
                                         >
@@ -399,7 +399,7 @@ export default async function OgImage() {
                                                                 ? 'rgba(255,255,255,0.46)'
                                                                 : cellIndex ===
                                                                     2
-                                                                  ? '#9dffeb'
+                                                                  ? '#ffa27c'
                                                                   : 'rgba(255,255,255,0.72)',
                                                         fontSize:
                                                             rowIndex === 0
@@ -454,7 +454,7 @@ export default async function OgImage() {
                             height: 220,
                             borderRadius: 999,
                             background:
-                                'radial-gradient(circle, rgba(255,123,182,0.44), rgba(255,123,182,0.14) 48%, transparent 72%)'
+                                'radial-gradient(circle, rgba(237,164,165,0.44), rgba(237,164,165,0.14) 48%, transparent 72%)'
                         }}
                     />
                     <img

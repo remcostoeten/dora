@@ -118,7 +118,7 @@ pub fn write_adapter_from_client(
     client: &crate::database::types::DatabaseClient,
 ) -> BoxedWriteAdapter {
     use super::read::{
-        D1Adapter, LibSqlAdapter, MySqlAdapter, PosthogAdapter, PostgresAdapter, SqliteAdapter,
+        D1Adapter, LibSqlAdapter, MySqlAdapter, PostgresAdapter, PosthogAdapter, SqliteAdapter,
     };
 
     match client {
@@ -127,18 +127,20 @@ pub fn write_adapter_from_client(
             use_simple_query,
             dialect,
             ..
-        } => Box::new(PostgresAdapter::new(client.clone(), *use_simple_query, *dialect)),
+        } => Box::new(PostgresAdapter::new(
+            client.clone(),
+            *use_simple_query,
+            *dialect,
+        )),
         crate::database::types::DatabaseClient::MySQL { pool, dialect } => {
             Box::new(MySqlAdapter::new(pool.clone(), *dialect))
         }
         crate::database::types::DatabaseClient::SQLite { connection } => {
             Box::new(SqliteAdapter::new(connection.clone()))
         }
-        crate::database::types::DatabaseClient::DuckDB { connection, .. } => {
-            Box::new(crate::database::adapter::DuckDbConnAdapter::new(
-                connection.clone(),
-            ))
-        }
+        crate::database::types::DatabaseClient::DuckDB { connection, .. } => Box::new(
+            crate::database::adapter::DuckDbConnAdapter::new(connection.clone()),
+        ),
         crate::database::types::DatabaseClient::LibSQL { connection } => {
             Box::new(LibSqlAdapter::new(connection.clone()))
         }

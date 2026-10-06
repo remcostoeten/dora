@@ -5,26 +5,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ── The one knob ────────────────────────────────────────────────────────────
- * Every color on this site that expresses the Dora brand is derived from this
- * single hue angle. Rotate it and the accents, the near-black chassis, the
- * borders, every glow and every hover tint rotate with it, in step.
+/* ── Brand identity ──────────────────────────────────────────────────────────
+ * Dora is blush on near-black. The mark is a stack of rose discs (#fcddDC →
+ * #e79898 → #b35c5f), which is hue 18 in oklch, so hue 18 is the site: the
+ * accents, the near-black chassis, the borders, every glow and every hover
+ * tint are derived from it and none of them is set by hand. The desktop app
+ * ships the same identity as its `bloom` theme; its default `mono` theme is
+ * the same chassis with the accent drained out.
  *
- *   --brand-hue: 75    amber/gold
- *   --brand-hue: 18    the warm blush the site launched with
- *   --brand-hue: 265   indigo
- *   --brand-hue: 150   green
+ * This is the brand, not a preference. Do not rotate the hue to restyle a
+ * page — a component that wants a different color wants a different token.
  *
- * --brand-chroma scales how much of that hue actually shows. 1 is the fully
- * saturated site. Lower it and the accents desaturate toward paper-and-ink
- * while the hue still governs which way the near-neutrals lean.
+ * --brand-chroma scales how much of the hue actually shows, and exists for one
+ * reason: 0 collapses the whole site to the app's mono theme (grayscale
+ * chassis, white-on-near-black buttons), which is the only other sanctioned
+ * look. Values between the two are for previewing, not for shipping.
  *
- *   --brand-chroma: 1     the saturated site
- *   --brand-chroma: 0.22  a warm chassis with the accent drained out
- *   --brand-chroma: 0     grayscale, what midday.ai's dark theme ships
+ * Non-CSS color sinks (the OG image, canvas/WebGL) cannot read these tokens
+ * and carry literals instead. The ones that matter, at hue 18 / chroma 1:
  *
- * At --brand-chroma: 0 the hue angle stops mattering and the brand ramp stops
- * being an accent: it is the white-on-near-black ramp the buttons ride on.
+ *   brand-200  #ffdfdf   brand-300  #ffd0d0   brand-500  #eda4a5
+ *   brand-600  #cb9495   surface-base #0f0c0c   ink-100  #f0f0f0
  *
  * Deliberately NOT downstream of the hue, because they must not rotate:
  *   --color-status-*   connected / connecting / error. A "connected" dot that
@@ -37,7 +38,7 @@
  * literal hexes in the component, and that is correct.
  * ─────────────────────────────────────────────────────────────────────────── */
 :root {
-    --brand-hue: 265;
+    --brand-hue: 18;
     --brand-chroma: 1;
 
     --background: oklch(1 0 0);
@@ -329,9 +330,8 @@
         var(--color-brand-200) 48%,
         transparent
     );
-    --fd-sidebar-width: 286px;
-    --fd-layout-width: 1600px;
     min-height: 100vh;
+    border-inline: 1px solid var(--color-line-strong);
     background:
         radial-gradient(
             circle at 50% 0%,
@@ -345,6 +345,23 @@
 .dora-docs [data-docs-layout],
 .dora-docs #nd-page {
     background: transparent;
+}
+
+.dora-docs #nd-docs-layout {
+    --fd-layout-width: 100%;
+    --fd-docs-row-1: 75px !important;
+}
+
+@media (min-width: 768px) {
+    .dora-docs #nd-docs-layout {
+        --fd-sidebar-width: 232px !important;
+    }
+}
+
+@media (min-width: 1280px) {
+    .dora-docs #nd-docs-layout:has(#nd-toc) {
+        --fd-toc-width: 200px !important;
+    }
 }
 
 .dora-docs #nd-sidebar {
@@ -1046,17 +1063,6 @@
     margin-inline: auto;
 }
 
-.marketing-container:has(.feature-detail) {
-    width: min(100% - 32px, 1320px);
-}
-
-.marketing-container:has(.dora-docs) {
-    width: 100%;
-    max-width: none;
-    margin-inline: 0;
-    padding-inline: 0;
-}
-
 @keyframes dockerBootSpin {
     to {
         transform: rotate(360deg);
@@ -1217,5 +1223,195 @@
 @media (max-width: 640px) {
     .marketing-container {
         width: calc(100% - 24px);
+    }
+}
+
+.studio-mount {
+    opacity: 0;
+    transition: opacity 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.studio-mount[data-visible='true'] {
+    opacity: 1;
+}
+
+.deferred-label {
+    opacity: 0;
+    animation: deferredLabelIn 160ms cubic-bezier(0.23, 1, 0.32, 1) 300ms
+        forwards;
+}
+
+@keyframes deferredLabelIn {
+    to {
+        opacity: 1;
+    }
+}
+
+.overlay-backdrop {
+    opacity: 0;
+    transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.overlay-backdrop[data-visible='true'] {
+    opacity: 1;
+}
+
+.overlay-panel {
+    opacity: 0;
+    transform: scale(0.97);
+    transition:
+        opacity 160ms cubic-bezier(0.23, 1, 0.32, 1),
+        transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.overlay-panel[data-visible='true'] {
+    opacity: 1;
+    transform: scale(1);
+    transition-duration: 200ms;
+}
+
+.overlay-sheet {
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+        opacity 200ms cubic-bezier(0.32, 0.72, 0, 1),
+        transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.overlay-sheet[data-visible='true'] {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.nav-dropdown {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+    transform-origin: top left;
+    filter: blur(2px);
+    transition:
+        opacity 140ms cubic-bezier(0.23, 1, 0.32, 1),
+        transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
+        filter 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.nav-dropdown[data-open='true'] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    transition-duration: 220ms;
+}
+
+.nav-dropdown-highlight {
+    opacity: 0;
+    transition:
+        opacity 120ms ease,
+        transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.nav-dropdown-highlight[data-active='true'] {
+    opacity: 1;
+}
+
+.nav-dropdown-highlight[data-instant='true'] {
+    transition-property: opacity;
+}
+
+.graph-tooltip {
+    opacity: 0;
+    transition: opacity 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.graph-tooltip[data-visible='true'] {
+    opacity: 1;
+    transition-duration: 140ms;
+}
+
+.commit-graph-glint {
+    opacity: 0.55;
+    stroke-dasharray: 0.08 1.92;
+    stroke-dashoffset: 0.08;
+    animation: commitGraphGlint 7s linear infinite;
+}
+
+@keyframes commitGraphGlint {
+    70%,
+    100% {
+        stroke-dashoffset: -1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .commit-graph-glint {
+        display: none;
+    }
+}
+
+.hosted-provider-logo {
+    background-color: var(--color-ink-400);
+    mask: var(--logo) center / contain no-repeat;
+    transition: background-color 200ms ease;
+}
+
+.hosted-provider-name {
+    transition: color 200ms ease;
+}
+
+.hosted-provider-tooltip {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+    transform-origin: bottom center;
+    transition:
+        opacity 120ms cubic-bezier(0.23, 1, 0.32, 1),
+        transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.hosted-provider-tooltip[data-visible='true'] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition-duration: 180ms;
+}
+
+.hosted-provider-tooltip[data-instant='true'] {
+    transition-duration: 0ms;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .hosted-provider:hover .hosted-provider-logo {
+        background-color: var(--brand);
+    }
+
+    .hosted-provider:hover .hosted-provider-name {
+        color: var(--color-ink-100);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .studio-mount,
+    .overlay-backdrop,
+    .overlay-panel,
+    .overlay-panel[data-visible='true'],
+    .overlay-sheet,
+    .overlay-sheet[data-visible='true'],
+    .nav-dropdown,
+    .nav-dropdown[data-open='true'],
+    .nav-dropdown-highlight,
+    .hosted-provider-tooltip,
+    .hosted-provider-tooltip[data-visible='true'],
+    .graph-tooltip,
+    .graph-tooltip[data-visible='true'] {
+        transition-property: opacity;
+        transition-duration: 100ms;
+    }
+
+    .overlay-panel,
+    .overlay-sheet,
+    .nav-dropdown,
+    .hosted-provider-tooltip {
+        transform: none;
+        filter: none;
+    }
+
+    .deferred-label {
+        animation-duration: 100ms;
     }
 }

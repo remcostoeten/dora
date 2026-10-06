@@ -458,7 +458,10 @@ mod tests {
             assert_eq!(remaining, 0);
         }
 
-        let truncated = adapter.truncate_table("t".into(), None, None).await.unwrap();
+        let truncated = adapter
+            .truncate_table("t".into(), None, None)
+            .await
+            .unwrap();
         assert!(truncated.success);
         let conn = shared.lock().unwrap();
         let count: i64 = conn

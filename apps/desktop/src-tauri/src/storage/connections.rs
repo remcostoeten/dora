@@ -246,8 +246,7 @@ mod tests {
 
     #[test]
     fn pin_hash_survives_save_update_and_reload() {
-        let path =
-            std::env::temp_dir().join(format!("dora-pin-storage-{}.sqlite", Uuid::new_v4()));
+        let path = std::env::temp_dir().join(format!("dora-pin-storage-{}.sqlite", Uuid::new_v4()));
         let storage = Storage::new(path.clone()).expect("storage should initialize");
         let id = Uuid::new_v4();
         let mut connection = ConnectionInfo {
