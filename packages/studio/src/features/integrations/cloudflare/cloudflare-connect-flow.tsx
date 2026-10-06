@@ -25,7 +25,12 @@ type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
 }
 
-const TOKENS_URL = 'https://dash.cloudflare.com/profile/api-tokens'
+const TOKEN_PERMISSIONS = [
+	{ key: 'd1', type: 'edit' },
+	{ key: 'account_settings', type: 'read' }
+]
+
+const TOKENS_URL = `https://dash.cloudflare.com/profile/api-tokens?permissionGroupKeys=${encodeURIComponent(JSON.stringify(TOKEN_PERMISSIONS))}&name=Dora`
 
 export function CloudflareConnectFlow({ onComplete }: Props) {
 	const isTauri = useIsTauri()
@@ -44,11 +49,6 @@ export function CloudflareConnectFlow({ onComplete }: Props) {
 
 function CloudflareConnectFlowInner({ onComplete }: Props) {
 	const [isConnected, setIsConnected] = useState(false)
-	// The token the user pasted this session. D1 queries run over the REST API and
-	// need this token on every call, so it's carried onto the connection's
-	// `authToken`. It is empty when the user returns in a later session (the
-	// stored token isn't exposed to JS); completing then asks them to reconnect.
-	const [token, setToken] = useState('')
 	const [accounts, setAccounts] = useState<CloudflareAccount[]>([])
 	const [accountsLoading, setAccountsLoading] = useState(false)
 	const [selectedAccount, setSelectedAccount] = useState<CloudflareAccount | null>(null)
@@ -143,7 +143,6 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 		setAuthError(null)
 		try {
 			await saveCloudflareToken(pasted)
-			setToken(pasted)
 			setTokenInput('')
 			setIsConnected(true)
 		} catch (error) {
@@ -157,7 +156,7 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 		try {
 			await disconnectCloudflare()
 			setIsConnected(false)
-			setToken('')
+			setAuthError(null)
 			setAccounts([])
 			setSelectedAccount(null)
 			setSelected(null)
@@ -213,17 +212,10 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 
 	function handleCreateConnection() {
 		if (!selected || !selectedAccount) return
-		if (!token) {
-			setAuthError(
-				'Reconnect your Cloudflare token to create this connection (the stored token is not exposed to the UI).'
-			)
-			return
-		}
 		onComplete({
 			name: selected.name || selected.uuid,
 			type: 'd1',
 			url: `d1://${selectedAccount.id}/${selected.uuid}`,
-			authToken: token,
 			status: 'idle'
 		})
 	}
@@ -345,8 +337,9 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 						</Button>
 					</div>
 					<p className='text-xs text-muted-foreground/70'>
-						Use a token with the <span className='font-medium'>D1 - Edit</span>{' '}
-						permission. It is validated, then encrypted and stored on this device only.
+						Use a token with the <span className='font-medium'>D1 - Edit</span> and{' '}
+						<span className='font-medium'>Account Settings - Read</span> permissions. It is
+						validated, then encrypted and stored on this device only.
 					</p>
 				</div>
 			) : !selectedAccount ? (

@@ -33,6 +33,11 @@ use crate::Error;
 
 const API_BASE_URL: &str = "https://api.cloudflare.com/client/v4";
 
+/// D1's internal `_cf_*` tables (e.g. `_cf_KV`) reject every read with `SQLITE_AUTH`.
+pub const USER_TABLES_SQL: &str = "SELECT name, sql FROM sqlite_master WHERE type = 'table' \
+     AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE '\\_cf\\_%' ESCAPE '\\' \
+     ORDER BY name";
+
 /// Holds the coordinates and credential needed to talk to one D1 database over
 /// the Cloudflare REST API. Cheap to clone (`reqwest::Client` is an `Arc`
 /// internally), so it lives behind an `Arc` on the `DatabaseClient::D1` variant.
@@ -388,6 +393,24 @@ impl D1Adapter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_tables_sql_skips_internal_tables() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT); \
+             CREATE TABLE _cf_KV (key TEXT); \
+             CREATE TABLE xcfyz (id INTEGER);",
+        )
+        .unwrap();
+        let mut stmt = conn.prepare(USER_TABLES_SQL).unwrap();
+        let names: Vec<String> = stmt
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .map(|name| name.unwrap())
+            .collect();
+        assert_eq!(names, vec!["users", "xcfyz"]);
+    }
 
     fn decode(json: &str) -> D1QueryResponse {
         serde_json::from_str(json).expect("d1 response should deserialize")

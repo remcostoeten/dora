@@ -11,7 +11,11 @@ fn ensure_duckdb_helper_placeholder() {
             std::env::consts::OS
         )
     });
-    let exe = if target.contains("windows") { ".exe" } else { "" };
+    let exe = if target.contains("windows") {
+        ".exe"
+    } else {
+        ""
+    };
     let path = std::path::PathBuf::from("binaries").join(format!("duckdb_helper-{target}{exe}"));
     if path.exists() {
         return;

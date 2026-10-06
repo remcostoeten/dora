@@ -27,7 +27,13 @@ export default async function HomeView() {
         }}
         type="application/ld+json"
       />
-      <Hero release={release} />
+      <Hero
+        release={release}
+        downloads={
+          stats?.packages.find((pkg) => pkg.platform === "github")?.downloads ??
+          null
+        }
+      />
       <FeaturesSection />
       <FileQuerySection />
       <QueryWorkflowSection />

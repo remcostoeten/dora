@@ -221,13 +221,13 @@ export function PasteConnectCard({ animate }: { animate: boolean }) {
                     <span className="mt-px shrink-0 text-ink-700">
                         <ClipboardIcon />
                     </span>
-                    <code className="min-w-0 flex-1 font-mono text-[10.5px] leading-[1.5] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                    <code className="min-w-0 flex-1 font-mono text-[10.5px] leading-[1.5] [overflow-wrap:anywhere] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
                         {current.tokens.map((token, i) => {
                             if (!token.key) {
                                 return (
                                     <span
                                         key={i}
-                                        className="whitespace-nowrap text-ink-800"
+                                        className="text-ink-800"
                                     >
                                         {token.str}
                                     </span>
@@ -245,7 +245,7 @@ export function PasteConnectCard({ animate }: { animate: boolean }) {
                             return (
                                 <span
                                     key={i}
-                                    className="whitespace-nowrap rounded-[2px] px-px transition-all duration-300"
+                                    className="rounded-[2px] px-px transition-all duration-300"
                                     style={{
                                         color: isLit ? color : 'var(--color-ink-700)',
                                         opacity: isLit ? (isActive ? 1 : 0.82) : 1,

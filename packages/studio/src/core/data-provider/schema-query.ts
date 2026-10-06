@@ -38,7 +38,12 @@ export function schemaQueryOptions(
 				applyConnectResult(queryClient, connectionId, connectResult.data)
 
 				if (!connectResult.data.connected) {
-					throw new Error('Could not connect to this database')
+					const reason = connectResult.data.error
+					throw new Error(
+						reason
+							? `Could not connect to this database: ${reason}`
+							: 'Could not connect to this database'
+					)
 				}
 
 				setConnectionPhase(connectionId, 'introspecting')

@@ -49,8 +49,7 @@ pub trait DuckDbConn: Send + Sync + std::fmt::Debug {
     /// Run a parsed statement, streaming `QueryExecEvent`s (TypesResolved →
     /// Page(s of 500) → Finished) through `sender`. Mirrors
     /// `DatabaseAdapter::execute_query`.
-    async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender)
-        -> Result<(), Error>;
+    async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error>;
 
     /// Full schema introspection (tables, columns, indexes, foreign keys,
     /// views). Mirrors `DatabaseAdapter::get_schema`.
@@ -153,11 +152,7 @@ pub trait DuckDbConn: Send + Sync + std::fmt::Debug {
 
     /// Stable hash of a table's rows for live-monitor change detection. Mirrors
     /// `WatchAdapter::poll_table_hash` with owned args (pipe-friendly).
-    async fn poll_table_hash(
-        &self,
-        table: String,
-        schema: Option<String>,
-    ) -> Result<u64, Error>;
+    async fn poll_table_hash(&self, table: String, schema: Option<String>) -> Result<u64, Error>;
 
     // ---- metadata ----
 
@@ -230,11 +225,7 @@ impl InProcessDuckDbConn {
 #[cfg(feature = "duckdb-engine")]
 #[async_trait]
 impl DuckDbConn for InProcessDuckDbConn {
-    async fn execute_query(
-        &self,
-        stmt: ParsedStatement,
-        sender: &ExecSender,
-    ) -> Result<(), Error> {
+    async fn execute_query(&self, stmt: ParsedStatement, sender: &ExecSender) -> Result<(), Error> {
         self.adapter().execute_query(stmt, sender).await
     }
 
@@ -384,11 +375,7 @@ impl DuckDbConn for InProcessDuckDbConn {
             .await
     }
 
-    async fn poll_table_hash(
-        &self,
-        table: String,
-        schema: Option<String>,
-    ) -> Result<u64, Error> {
+    async fn poll_table_hash(&self, table: String, schema: Option<String>) -> Result<u64, Error> {
         self.adapter()
             .poll_table_hash(&table, schema.as_deref())
             .await

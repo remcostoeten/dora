@@ -90,7 +90,9 @@ async fn fetch_organizations(token: &str) -> Result<Vec<TursoOrganization>> {
         .send()
         .await
         .map_err(|error| {
-            Error::Any(anyhow::anyhow!("Turso organizations request failed: {error}"))
+            Error::Any(anyhow::anyhow!(
+                "Turso organizations request failed: {error}"
+            ))
         })?;
 
     let status = response.status();
@@ -395,9 +397,7 @@ fn run_mint(bin: &std::path::Path, token_name: &str) -> Result<std::process::Out
         .args(["auth", "api-tokens", "mint", token_name])
         .stdin(std::process::Stdio::null())
         .output()
-        .map_err(|error| {
-            Error::Any(anyhow::anyhow!("Couldn't run the Turso CLI: {error}."))
-        })
+        .map_err(|error| Error::Any(anyhow::anyhow!("Couldn't run the Turso CLI: {error}.")))
 }
 
 fn run_login(bin: &std::path::Path) -> Result<()> {
@@ -478,7 +478,11 @@ fn mint_token_blocking() -> Result<String> {
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
         let detail = stderr.trim();
-        let detail = if detail.is_empty() { "unknown error" } else { detail };
+        let detail = if detail.is_empty() {
+            "unknown error"
+        } else {
+            detail
+        };
         return Err(Error::Any(anyhow::anyhow!(
             "Turso CLI couldn't mint a token: {detail}"
         )));
@@ -539,7 +543,11 @@ pub async fn install_cli() -> Result<()> {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let detail = format!("{}{}", stdout.trim(), stderr.trim());
-                let detail = if detail.is_empty() { "unknown error".to_string() } else { detail };
+                let detail = if detail.is_empty() {
+                    "unknown error".to_string()
+                } else {
+                    detail
+                };
                 return Err(Error::Any(anyhow::anyhow!(
                     "Turso CLI install failed: {detail}"
                 )));
@@ -591,7 +599,8 @@ mod tests {
 
     #[test]
     fn extracts_jwt_from_labelled_cli_output() {
-        let out = "Created token dora-1700000000: eyJhbGciOiJFZERTQSJ9.eyJpZCI6Im9rIn0.sig_value_here\n";
+        let out =
+            "Created token dora-1700000000: eyJhbGciOiJFZERTQSJ9.eyJpZCI6Im9rIn0.sig_value_here\n";
         assert_eq!(
             extract_minted_token(out).as_deref(),
             Some("eyJhbGciOiJFZERTQSJ9.eyJpZCI6Im9rIn0.sig_value_here")

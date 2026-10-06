@@ -209,13 +209,17 @@ function CyclingLabel({
         return () => clearInterval(cycle)
     }, [words.length, hold])
 
-    const widest = words.reduce((a, b) => (b.length > a.length ? b : a), '')
-
     return (
         <span className="relative inline-flex overflow-hidden align-bottom">
-            {/* sizer fixes the one-line window's width + height */}
-            <span aria-hidden className="invisible">
-                {widest}
+            {/* sizer fixes the one-line window's width + height: every word is
+                stacked in a single grid cell, so the window is as wide as the
+                widest rendered word (character count is not a proxy for it) */}
+            <span aria-hidden className="invisible grid">
+                {words.map((word) => (
+                    <span key={word} className="col-start-1 row-start-1 block">
+                        {word}
+                    </span>
+                ))}
             </span>
             {/* stacked reel, slid up one line per step; subtle overshoot on settle */}
             <span
@@ -365,6 +369,7 @@ export function GitHubStats({
     const {
         version,
         versionUrl,
+        latestReleaseDate,
         startedAt,
         latestCommitAt,
         latestCommitSha,
@@ -477,6 +482,14 @@ export function GitHubStats({
                                             onHoverChange={handleHoverChange}
                                             onClick={handleDayClick}
                                             accentColor={accentColor}
+                                            release={
+                                                latestReleaseDate
+                                                    ? {
+                                                          date: latestReleaseDate,
+                                                          version
+                                                      }
+                                                    : null
+                                            }
                                         />
 
                                         <GraphTooltip
@@ -503,16 +516,16 @@ export function GitHubStats({
                                             value={totalCommits}
                                         />
                                     </div>
-                                    <div className="mt-1 hidden items-center gap-2 text-[10px] text-ink-500 sm:flex">
-                                        <span>Scroll to pan</span>
-                                        <span className="text-line">|</span>
-                                        <span className="flex items-center gap-1">
-                                            <kbd className="rounded border border-line bg-surface-elevated px-1 py-0.5 font-mono text-[8px] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
-                                                shift
-                                            </kbd>
-                                            scroll to zoom
-                                        </span>
-                                    </div>
+                                </div>
+                                <div className="pointer-events-none absolute bottom-3 right-5 z-20 hidden items-center gap-2 text-[10px] text-ink-600 opacity-60 transition-opacity duration-200 ease-out group-hover:opacity-100 sm:flex sm:right-6">
+                                    <span>Scroll to pan</span>
+                                    <span className="text-line">|</span>
+                                    <span className="flex items-center gap-1">
+                                        <kbd className="rounded border border-line bg-surface-elevated px-1 py-0.5 font-mono text-[8px] [font-family:var(--font-geist-mono),ui-monospace,monospace]">
+                                            shift
+                                        </kbd>
+                                        scroll to zoom
+                                    </span>
                                 </div>
                             </div>
                         </div>

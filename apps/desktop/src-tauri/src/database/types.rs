@@ -17,6 +17,7 @@ use crate::Error;
 pub struct DatabaseConnectResult {
     pub connected: bool,
     pub file_sources: Option<Vec<DataFileSourceEntry>>,
+    pub error: Option<String>,
 }
 
 pub type QueryId = usize;

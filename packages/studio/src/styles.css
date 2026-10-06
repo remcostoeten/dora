@@ -159,6 +159,14 @@
   It exists so that a focusable element nobody styled still shows *something*
   rather than disappearing from the keyboard-navigation story entirely.
 */
+/* Webview zoom scales stroke with the icon, so Ctrl-zoom makes Lucide icons
+   look bold. Divide the default stroke by the zoom to keep its visual weight. */
+@layer base {
+	svg.lucide[stroke-width='2'] {
+		stroke-width: calc(2 / var(--ui-zoom, 1));
+	}
+}
+
 @layer base {
 	:focus,
 	:focus-visible {

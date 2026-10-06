@@ -475,10 +475,8 @@ mod tests {
 
     #[test]
     fn test_attach_and_detach_database() {
-        let results = parse_statements(
-            "ATTACH DATABASE 'aux.db' AS aux; DETACH DATABASE aux;",
-        )
-        .unwrap();
+        let results =
+            parse_statements("ATTACH DATABASE 'aux.db' AS aux; DETACH DATABASE aux;").unwrap();
         assert_eq!(results.len(), 2);
 
         // ATTACH/DETACH produce no result set and mutate connection state, so
@@ -505,7 +503,10 @@ mod tests {
     fn test_vacuum() {
         let results = parse_statements("VACUUM;").unwrap();
         assert_eq!(results.len(), 1);
-        assert!(!results[0].returns_values, "VACUUM should not return values");
+        assert!(
+            !results[0].returns_values,
+            "VACUUM should not return values"
+        );
         assert!(
             !results[0].is_read_only,
             "VACUUM rewrites the database file — not read-only"

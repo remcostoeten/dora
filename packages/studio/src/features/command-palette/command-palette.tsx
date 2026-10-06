@@ -42,7 +42,7 @@ import {
 import { formatShortcut } from './format-shortcut'
 import { triggerNativeFeedback } from './native-feedback'
 import { dialogContentMotion, overlayFadeMotion } from './overlay-motion'
-import { useIsMobile } from './use-mobile'
+import { useIsMobile } from '@studio/shared/hooks/use-mobile'
 
 export type { CommandPaletteItem } from './command-palette-model'
 

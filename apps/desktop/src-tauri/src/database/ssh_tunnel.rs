@@ -174,7 +174,13 @@ async fn run_tunnel(
         .await
         .context("Failed to connect to SSH server")?;
 
-    authenticate(&mut session, &username, key_path.as_deref(), password.as_deref()).await?;
+    authenticate(
+        &mut session,
+        &username,
+        key_path.as_deref(),
+        password.as_deref(),
+    )
+    .await?;
 
     log::info!(
         "SSH Tunnel established. Listening on 127.0.0.1:{}",
@@ -186,15 +192,15 @@ async fn run_tunnel(
             break;
         }
 
-        let accepted = match tokio::time::timeout(Duration::from_millis(200), listener.accept()).await
-        {
-            Ok(Ok(pair)) => pair,
-            Ok(Err(e)) => {
-                log::error!("Tunnel accept error: {}", e);
-                break;
-            }
-            Err(_) => continue,
-        };
+        let accepted =
+            match tokio::time::timeout(Duration::from_millis(200), listener.accept()).await {
+                Ok(Ok(pair)) => pair,
+                Ok(Err(e)) => {
+                    log::error!("Tunnel accept error: {}", e);
+                    break;
+                }
+                Err(_) => continue,
+            };
 
         let (socket, origin) = accepted;
         let channel = session

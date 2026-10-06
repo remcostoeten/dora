@@ -4,23 +4,20 @@ use tauri_plugin_opener::OpenerExt;
 use crate::{
     integrations::cloudflare::{self, CloudflareAccount, CloudflareD1Database},
     integrations::neon::{self, NeonAccount, NeonBranch, NeonDatabase},
-    integrations::supabase::{self, SupabaseOrganization, SupabaseProject},
     integrations::planetscale::{
         self, PlanetscaleBranch, PlanetscaleDatabase, PlanetscaleOrganization, PlanetscalePassword,
     },
     integrations::posthog::{self, PosthogConfig, PosthogQueryResult, PosthogRegion},
+    integrations::supabase::{self, SupabaseOrganization, SupabaseProject},
     integrations::turso::{self, TursoDatabase, TursoOrganization},
-    integrations::xata::{self, XataAccount, XataDatabase},
     integrations::vercel::{self, VercelAccount, VercelStore},
+    integrations::xata::{self, XataAccount, XataDatabase},
     AppState, Error,
 };
 
 #[tauri::command]
 #[specta::specta]
-pub async fn supabase_save_token(
-    token: String,
-    state: State<'_, AppState>,
-) -> Result<(), Error> {
+pub async fn supabase_save_token(token: String, state: State<'_, AppState>) -> Result<(), Error> {
     supabase::save_token(&state.storage, token).await
 }
 
@@ -116,9 +113,7 @@ pub async fn turso_save_token(token: String, state: State<'_, AppState>) -> Resu
 
 #[tauri::command]
 #[specta::specta]
-pub async fn turso_list_databases(
-    state: State<'_, AppState>,
-) -> Result<Vec<TursoDatabase>, Error> {
+pub async fn turso_list_databases(state: State<'_, AppState>) -> Result<Vec<TursoDatabase>, Error> {
     turso::list_databases(&state.storage).await
 }
 
@@ -207,9 +202,7 @@ pub async fn neon_save_token(token: String, state: State<'_, AppState>) -> Resul
 
 #[tauri::command]
 #[specta::specta]
-pub async fn neon_list_databases(
-    state: State<'_, AppState>,
-) -> Result<Vec<NeonDatabase>, Error> {
+pub async fn neon_list_databases(state: State<'_, AppState>) -> Result<Vec<NeonDatabase>, Error> {
     neon::list_databases(&state.storage).await
 }
 
@@ -272,10 +265,7 @@ pub fn neon_is_connected(state: State<'_, AppState>) -> bool {
 /// Validates and stores a Cloudflare API token (encrypted on-device).
 #[tauri::command]
 #[specta::specta]
-pub async fn cloudflare_save_token(
-    token: String,
-    state: State<'_, AppState>,
-) -> Result<(), Error> {
+pub async fn cloudflare_save_token(token: String, state: State<'_, AppState>) -> Result<(), Error> {
     cloudflare::save_token(&state.storage, token).await
 }
 

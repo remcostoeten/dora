@@ -315,7 +315,11 @@ async fn create_postgres_notification_receiver(
     // Postgres wire protocol but does not implement LISTEN/NOTIFY, so attempting
     // to install the notify trigger/LISTEN would fail. When the engine does not
     // support it we return None and the monitor loop falls back to polling.
-    if !connection_entry.value().source_caps().supports_listen_notify {
+    if !connection_entry
+        .value()
+        .source_caps()
+        .supports_listen_notify
+    {
         log::debug!(
             "Live monitor: LISTEN/NOTIFY unsupported for connection {} (dialect {:?}); using polling",
             connection_id,
@@ -672,9 +676,7 @@ async fn fetch_table_snapshot(
         DatabaseClient::D1 { .. } => {
             Err(Error::NotImplemented("live monitoring for Cloudflare D1"))
         }
-        DatabaseClient::Posthog { .. } => {
-            Err(Error::NotImplemented("live monitoring for PostHog"))
-        }
+        DatabaseClient::Posthog { .. } => Err(Error::NotImplemented("live monitoring for PostHog")),
     }
 }
 

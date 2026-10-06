@@ -32,7 +32,10 @@ use crate::{
 fn log_query_exec_outcome(engine: &str, result: Result<(), Error>) {
     if let Err(err) = result {
         if matches!(err, Error::Cancelled) {
-            log::debug!("{} query stopped: results consumer dropped (cancelled)", engine);
+            log::debug!(
+                "{} query stopped: results consumer dropped (cancelled)",
+                engine
+            );
         } else {
             log::error!("Error executing {} query: {}", engine, err);
         }
@@ -344,9 +347,11 @@ impl StatementManager {
     pub fn fetch_page(&self, query_id: QueryId, page_idx: usize) -> Result<Option<Page>, Error> {
         let exec_state = self.get(query_id)?;
         match &exec_state.result {
-            ExecResult::Rows { pages, .. } => {
-                Ok(pages.read().expect("RwLock poisoned").get(page_idx).cloned())
-            }
+            ExecResult::Rows { pages, .. } => Ok(pages
+                .read()
+                .expect("RwLock poisoned")
+                .get(page_idx)
+                .cloned()),
             ExecResult::NoRows => Ok(None),
         }
     }
@@ -474,10 +479,7 @@ impl StatementManager {
                     if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
                         return;
                     }
-                    log_query_exec_outcome(
-                        "DuckDB",
-                        connection.execute_query(stmt, &sender).await,
-                    );
+                    log_query_exec_outcome("DuckDB", connection.execute_query(stmt, &sender).await);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -581,7 +583,9 @@ impl StatementManager {
                                 });
                             }
                         } else {
-                            log::warn!("Received a result page for a non-row-returning query; ignoring");
+                            log::warn!(
+                                "Received a result page for a non-row-returning query; ignoring"
+                            );
                         }
                     }
                     QueryExecEvent::Finished {
@@ -809,7 +813,9 @@ mod tests {
             connection: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
         };
 
-        let first = stmt_manager.submit_query(client.clone(), "SELECT 1").unwrap();
+        let first = stmt_manager
+            .submit_query(client.clone(), "SELECT 1")
+            .unwrap();
         for _ in 0..10 {
             if stmt_manager.get_query_status(first[0]).unwrap() == QueryStatus::Completed {
                 break;
@@ -817,7 +823,9 @@ mod tests {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
 
-        stmt_manager.submit_query(client.clone(), "SELECT 2").unwrap();
+        stmt_manager
+            .submit_query(client.clone(), "SELECT 2")
+            .unwrap();
 
         let earlier = stmt_manager.fetch_query(first[0]).unwrap();
         assert_eq!(earlier.status, QueryStatus::Completed);

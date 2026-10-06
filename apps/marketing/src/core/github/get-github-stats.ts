@@ -62,6 +62,7 @@ export interface PackageInfo {
 export interface GitHubStatsData {
     version: string
     versionUrl: string
+    latestReleaseDate: string | null
     startedAt: string
     latestCommitAt: string
     latestCommitDateTime: string
@@ -111,7 +112,7 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
                     }
                 ),
                 fetch(
-                    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=10`,
+                    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=100`,
                     {
                         headers
                     }
@@ -288,6 +289,16 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
         const versionUrl =
             latestRelease?.html_url ||
             `https://github.com/${REPO_OWNER}/${REPO_NAME}`
+        const latestReleaseDate = latestRelease?.published_at
+            ? new Date(latestRelease.published_at).toLocaleDateString(
+                  'en-US',
+                  {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                  }
+              )
+            : null
 
         const latestCommit = allCommits[0]
         const latestCommitDateTime = latestCommit?.commit.author.date || ''
@@ -313,6 +324,7 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
         return {
             version,
             versionUrl,
+            latestReleaseDate,
             startedAt,
             latestCommitAt: latestCommitDate,
             latestCommitDateTime,

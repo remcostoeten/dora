@@ -37,6 +37,7 @@ export function getZoom(): number {
 }
 
 async function applyZoom(factor: number): Promise<void> {
+	document.documentElement.style.setProperty('--ui-zoom', String(factor))
 	if (isTauriRuntime()) {
 		try {
 			const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow')

@@ -112,7 +112,9 @@ async fn handle(frame: RequestFrame, state: Arc<HelperState>, out: SharedOut) {
             }
         };
         let (res, ()) = tokio::join!(exec, drain);
-        let done = res.map(|_| RespPayload::Unit).map_err(|e| WireError::from(&e));
+        let done = res
+            .map(|_| RespPayload::Unit)
+            .map_err(|e| WireError::from(&e));
         send_done(&out, id, done).await;
         return;
     }
@@ -141,10 +143,17 @@ async fn dispatch(req: Request, state: &HelperState) -> Result<RespPayload, Wire
         Request::ExecuteQuery { .. } => unreachable!("streaming handled in handle()"),
         Request::GetSchema { conn_id } => {
             let conn = lookup(state, conn_id)?;
-            conn.get_schema().await.map(RespPayload::Schema).map_err(wire)
+            conn.get_schema()
+                .await
+                .map(RespPayload::Schema)
+                .map_err(wire)
         }
         Request::IsConnected { conn_id } => {
-            let connected = state.conns.get(&conn_id).map(|c| c.is_connected()).unwrap_or(false);
+            let connected = state
+                .conns
+                .get(&conn_id)
+                .map(|c| c.is_connected())
+                .unwrap_or(false);
             Ok(RespPayload::Bool(connected))
         }
         Request::QueryRaw { conn_id, sql } => {

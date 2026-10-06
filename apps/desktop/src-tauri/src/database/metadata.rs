@@ -56,12 +56,13 @@ pub async fn get_postgres_metadata(
         .map_err(|e| Error::Any(anyhow::anyhow!("Failed to get database name: {}", e)))?;
     let database_name: String = name_row.get(0);
 
-    // Get total row count and table count from pg_stat
+    // n_live_tup resets on restart (every Neon wake) and reltuples is -1 before ANALYZE.
     let stats_query = r#"
-        SELECT 
+        SELECT
             COUNT(*)::int as table_count,
-            COALESCE(SUM(n_live_tup), 0)::bigint as row_count
-        FROM pg_stat_user_tables
+            COALESCE(SUM(GREATEST(s.n_live_tup, c.reltuples::bigint, 0)), 0)::bigint as row_count
+        FROM pg_stat_user_tables s
+        JOIN pg_class c ON c.oid = s.relid
     "#;
     let stats_row = client
         .query_one(stats_query, &[])
@@ -261,18 +262,16 @@ pub async fn get_posthog_metadata(
 /// Table and row counts for a D1 database over HTTP, mirroring
 /// [`get_libsql_counts`] but issuing each query as a REST call.
 async fn get_d1_counts(http: &crate::database::d1::D1Http) -> Result<(u32, u64), Error> {
-    fn first_rows(
-        sets: Vec<crate::database::d1::D1ResultSet>,
-    ) -> Vec<crate::database::d1::D1Row> {
-        sets.into_iter().next().map(|set| set.results).unwrap_or_default()
+    fn first_rows(sets: Vec<crate::database::d1::D1ResultSet>) -> Vec<crate::database::d1::D1Row> {
+        sets.into_iter()
+            .next()
+            .map(|set| set.results)
+            .unwrap_or_default()
     }
 
     let table_rows = first_rows(
-        http.query(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
-            Vec::new(),
-        )
-        .await?,
+        http.query(crate::database::d1::USER_TABLES_SQL, Vec::new())
+            .await?,
     );
 
     let tables: Vec<String> = table_rows
@@ -398,8 +397,11 @@ pub async fn get_mysql_metadata(
         }
     };
 
-    let schema_name = match conn.query_first::<String, _>("SELECT DATABASE()").await {
-        Ok(Some(name)) if !name.is_empty() => {
+    let schema_name = match conn
+        .query_first::<Option<String>, _>("SELECT DATABASE()")
+        .await
+    {
+        Ok(Some(Some(name))) if !name.is_empty() => {
             metadata.database_name = Some(name.clone());
             name
         }

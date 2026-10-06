@@ -1,7 +1,7 @@
 'use client'
 
 import { m } from 'framer-motion'
-import { Download, Terminal } from 'lucide-react'
+import { ArrowRight, Download, Terminal } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import posthog from 'posthog-js'
 import { AnimatedFrame } from '@/components/animated-frame'
@@ -179,44 +179,37 @@ function HeroDownload({ release }: { release: TLatest | null }) {
     const iconPlatform = ICON_FOR_OS[activeOs]
 
     return (
-        <div className="flex flex-col gap-5">
-            <a
-                href={primaryUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="group relative flex items-center gap-4 border border-brand-600/45 px-6 py-5 transition-colors duration-200 hover:border-brand-600/75 hover:bg-brand-600/5"
-                onClick={() =>
-                    posthog.capture('download_clicked', {
-                        platform: primary.os,
-                        format: primary.label,
-                        version: release?.tagName ?? null
-                    })
-                }
-            >
-                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-sm bg-brand-600/10 text-brand-600 transition-colors group-hover:bg-brand-600/16">
-                    <OsIcon platform={iconPlatform} className="h-6 w-6" />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[15px] font-medium uppercase tracking-[0.1em] text-foreground">
-                        Download for {primary.os}
-                    </div>
-                    <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-muted-foreground/60">
-                        <span>{primary.label}</span>
-                        {release && (
-                            <>
-                                <span className="text-muted-foreground/30">
-                                    ·
-                                </span>
-                                <span>{release.tagName}</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-                <Download className="h-5 w-5 shrink-0 text-brand-600/50 transition-all duration-300 group-hover:translate-y-0.5 group-hover:text-brand-600" />
-            </a>
+        <div className="flex flex-col gap-6">
+            <div className="flex flex-wrap items-center gap-3">
+                <a
+                    href={primaryUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group inline-flex h-11 items-center gap-2.5 bg-brand-200 px-5 text-[14px] font-medium text-background transition-[background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:bg-brand-100 active:scale-[0.97] motion-reduce:active:scale-100"
+                    onClick={() =>
+                        posthog.capture('download_clicked', {
+                            platform: primary.os,
+                            format: primary.label,
+                            version: release?.tagName ?? null
+                        })
+                    }
+                >
+                    <OsIcon platform={iconPlatform} className="h-4 w-4" />
+                    Download for {primary.os}
+                    <Download className="h-4 w-4 opacity-60 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-y-px" />
+                </a>
+                <a
+                    href="/app"
+                    className="group inline-flex h-11 items-center gap-2 border border-line-strong px-5 text-[14px] text-white/80 transition-[color,border-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-brand-200/50 hover:text-brand-200 active:scale-[0.97] motion-reduce:active:scale-100"
+                    onClick={() => posthog.capture('hero_web_app_clicked')}
+                >
+                    Try it in the browser
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-0.5" />
+                </a>
+            </div>
 
-            <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col items-start gap-2 text-[12px]">
+                <div className="-ml-2 flex items-center gap-0.5">
                     {PLATFORM_GROUPS.map((g) => {
                         const isActive = g.os === activeOs
                         const isDetected =
@@ -233,32 +226,31 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                                         { os: g.os }
                                     )
                                 }}
-                                className={`group/tab relative flex items-center gap-1.5 border border-line px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider transition-colors duration-300 ${
+                                className={`relative flex items-center gap-1.5 px-2 py-1 transition-colors duration-200 ${
                                     isActive
-                                        ? 'text-brand-600'
-                                        : 'text-muted-foreground/45 hover:text-muted-foreground/80'
+                                        ? 'text-foreground'
+                                        : 'text-muted-foreground/55 hover:text-muted-foreground'
                                 }`}
                             >
                                 {isActive && (
                                     <m.span
                                         layoutId="os-tab-pill"
-                                        className="absolute inset-0 border border-brand-600/50 bg-brand-600/10"
+                                        className="absolute inset-0 bg-white/[0.06]"
                                         transition={{
                                             type: 'spring',
-                                            stiffness: 320,
-                                            damping: 26,
-                                            mass: 0.9
+                                            duration: 0.35,
+                                            bounce: 0.15
                                         }}
                                     />
                                 )}
                                 <OsIcon
                                     platform={ICON_FOR_OS[g.os]}
-                                    className="relative z-10 h-3.5 w-3.5"
+                                    className="relative z-10 h-3 w-3"
                                 />
                                 <span className="relative z-10">{g.os}</span>
                                 {isDetected && (
                                     <span
-                                        className="relative z-10 ml-0.5 h-1.5 w-1.5 rounded-full bg-brand-200 [box-shadow:0_0_8px_color-mix(in srgb, var(--color-brand-200) 70%, transparent)]"
+                                        className="relative z-10 h-1 w-1 rounded-full bg-brand-200"
                                         title="Detected on your system"
                                     />
                                 )}
@@ -267,42 +259,36 @@ function HeroDownload({ release }: { release: TLatest | null }) {
                     })}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-2">
-                    {group.downloads.map((d, i) => {
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {group.downloads.map((d) => {
                         const isPrimary =
                             d.suffix === primary.suffix &&
                             (d.archPattern?.source ?? '') ===
                                 (primary.archPattern?.source ?? '')
                         return (
-                            <span key={d.label} className="flex items-center">
-                                {i > 0 && (
-                                    <span className="px-2 text-muted-foreground/20">
-                                        /
-                                    </span>
-                                )}
-                                <a
-                                    href={assetUrl(assets, d, releaseUrl)}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className={`font-mono text-[12px] transition-colors hover:text-brand-600 ${
-                                        isPrimary
-                                            ? 'text-brand-600/70'
-                                            : 'text-muted-foreground/50'
-                                    }`}
-                                >
-                                    {d.label}
-                                </a>
-                            </span>
+                            <a
+                                key={d.label}
+                                href={assetUrl(assets, d, releaseUrl)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`transition-colors duration-150 hover:text-brand-200 ${
+                                    isPrimary
+                                        ? 'text-muted-foreground'
+                                        : 'text-muted-foreground/45'
+                                }`}
+                            >
+                                {d.label}
+                            </a>
                         )
                     })}
                     <a
                         href="/downloads"
-                        className="ml-auto font-mono text-[11px] text-muted-foreground/40 transition-colors hover:text-brand-600"
+                        className="text-muted-foreground/45 transition-colors duration-150 hover:text-brand-200"
                         onClick={() =>
                             posthog.capture('all_downloads_link_clicked')
                         }
                     >
-                        All downloads →
+                        All downloads
                     </a>
                 </div>
             </div>
@@ -310,9 +296,42 @@ function HeroDownload({ release }: { release: TLatest | null }) {
     )
 }
 
-function HeroText({ release }: { release: TLatest | null }) {
+const compactNumber = new Intl.NumberFormat('en', {
+    notation: 'compact',
+    maximumFractionDigits: 1
+})
+
+function HeroText({
+    release,
+    downloads
+}: {
+    release: TLatest | null
+    downloads: number | null
+}) {
     return (
         <div className="relative z-[3] min-w-0 max-w-[560px]">
+            <a
+                href="/changelog"
+                className="group mb-7 inline-flex items-center gap-2 text-[12px] text-muted-foreground/70 transition-colors duration-150 hover:text-brand-200"
+            >
+                <span className="h-1.5 w-1.5 rounded-full bg-brand-200" />
+                Open source
+                {release ? (
+                    <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span>{release.tagName}</span>
+                    </>
+                ) : null}
+                {downloads ? (
+                    <>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="tabular-nums">
+                            {compactNumber.format(downloads)} downloads
+                        </span>
+                    </>
+                ) : null}
+                <ArrowRight className="h-3 w-3 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:translate-x-0.5" />
+            </a>
             <h1 className="max-w-[560px] font-pixel text-[clamp(2.2rem,4.6vw,3.6rem)] font-[500] leading-[1.05] tracking-[0] text-foreground">
                 The database
                 <br />
@@ -320,12 +339,12 @@ function HeroText({ release }: { release: TLatest | null }) {
                     explorah.
                 </span>
             </h1>
-            <p className="mt-6 max-w-[440px] [font-family:system-ui,sans-serif] text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-6 max-w-[440px] [font-family:system-ui,sans-serif] text-[15px] leading-relaxed text-muted-foreground">
                 A native, keyboard-first database workbench. Connect Postgres,
                 MySQL, SQLite, or Turso, or just drop in a CSV. Then query it in
                 SQL, type-safe Drizzle/Prisma, or plain English.
             </p>
-            <div className="mt-10">
+            <div className="mt-9">
                 <HeroDownload release={release} />
             </div>
         </div>
@@ -344,10 +363,12 @@ function HeroInteractive() {
 
 export function Hero({
     className = '',
-    release
+    release,
+    downloads = null
 }: {
     className?: string
     release: TLatest | null
+    downloads?: number | null
 }) {
     return (
         <section
@@ -364,7 +385,7 @@ export function Hero({
                         rootMargin="0px 0px"
                         delay={HERO_CONTENT_START}
                     >
-                        <HeroText release={release} />
+                        <HeroText release={release} downloads={downloads} />
                     </ScrollReveal>
                     <ScrollReveal
                         className="relative z-0"

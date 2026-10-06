@@ -70,11 +70,11 @@ pub async fn get_database_schema(
             .get_conn()
             .await
             .map_err(|e| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e)))?;
-        let current_db: Option<String> = conn
+        let current_db: Option<Option<String>> = conn
             .query_first("SELECT DATABASE()")
             .await
             .map_err(|e| Error::Any(anyhow::anyhow!("Failed to get current database: {}", e)))?;
-        if current_db.unwrap_or_default().is_empty() {
+        if current_db.flatten().unwrap_or_default().is_empty() {
             return Err(Error::Any(anyhow::anyhow!("No database selected")));
         }
     }

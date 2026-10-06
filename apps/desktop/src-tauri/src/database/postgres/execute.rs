@@ -18,8 +18,14 @@ pub async fn execute_query(
     dialect: PgDialect,
 ) -> Result<(), Error> {
     if use_simple_query {
-        return execute_simple_query(client, &stmt.statement, stmt.returns_values, sender, dialect)
-            .await;
+        return execute_simple_query(
+            client,
+            &stmt.statement,
+            stmt.returns_values,
+            sender,
+            dialect,
+        )
+        .await;
     }
 
     if stmt.returns_values {
@@ -315,7 +321,15 @@ mod tests {
         let (sender, mut recv) = channel();
 
         tokio::task::spawn(async move {
-            execute_query(&conn, stmt, &sender, false, crate::database::dialect::PgDialect::Postgres).await.unwrap();
+            execute_query(
+                &conn,
+                stmt,
+                &sender,
+                false,
+                crate::database::dialect::PgDialect::Postgres,
+            )
+            .await
+            .unwrap();
         });
 
         let mut events = Vec::new();
@@ -340,7 +354,15 @@ mod tests {
         let (sender, mut recv) = channel();
 
         tokio::task::spawn(async move {
-            execute_query(&conn, stmt, &sender, false, crate::database::dialect::PgDialect::Postgres).await.unwrap();
+            execute_query(
+                &conn,
+                stmt,
+                &sender,
+                false,
+                crate::database::dialect::PgDialect::Postgres,
+            )
+            .await
+            .unwrap();
         });
 
         let event = recv

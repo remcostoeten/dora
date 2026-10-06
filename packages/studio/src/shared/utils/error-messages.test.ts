@@ -8,6 +8,11 @@ describe('isConnectionUnavailableError', () => {
 			true
 		)
 		expect(isConnectionUnavailableError('connection refused (os error 111)')).toBe(true)
+		expect(
+			isConnectionUnavailableError(
+				new Error('Could not connect to this database: Access denied for user')
+			)
+		).toBe(true)
 	})
 
 	it('recognises an unusable connection string', () => {
