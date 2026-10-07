@@ -6,6 +6,7 @@ import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
 import { Analytics } from '@remcostoeten/analytics'
 
+import { SpoarAnalytics } from '@/core/analytics/spoar-analytics'
 import { siteConfig } from '@/core/config/site'
 import {
     organizationSchema,
@@ -119,6 +120,7 @@ export default function RootLayout({ children }: Props) {
                     trackOutbound
                     trackErrors
                 />
+                <SpoarAnalytics />
             </body>
         </html>
     )
