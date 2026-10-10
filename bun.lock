@@ -113,9 +113,8 @@
         "@dora/studio": "workspace:*",
         "@react-three/drei": "^10.7.7",
         "@react-three/fiber": "^9.6.1",
-        "@remcostoeten/analytics": "^1.7.0",
         "@remcostoeten/use-shortcut": "^2.3.0",
-        "@spoar/sdk": "^2.0.0-next.1",
+        "@spoar/sdk": "^2.0.0-next.2",
         "@types/mdx": "^2.0.14",
         "framer-motion": "^12.29.0",
         "fumadocs-core": "^16.10.4",
@@ -798,7 +797,7 @@
 
     "@shikijs/vscode-textmate": ["@shikijs/vscode-textmate@10.0.2", "", {}, "sha512-83yeghZ2xxin3Nj8z1NMd/NCuca+gsYXswywDy5bHvwlWL8tpTQmzGeUuHd9FC3E/SBEMvzJRwWEOz5gGes9Qg=="],
 
-    "@spoar/sdk": ["@spoar/sdk@2.0.0-next.1", "", { "dependencies": { "web-vitals": "6.2.2" }, "peerDependencies": { "next": ">=15", "react": ">=19" }, "optionalPeers": ["next", "react"] }, "sha512-JV8EYyjWrnyL13SWXA+8T8rtS5jVk1603utIA/xn72qsC86M1iGrLbIWa/fjNFBnWNItGzI5ijLcvy1d8Zt1og=="],
+    "@spoar/sdk": ["@spoar/sdk@2.0.0-next.2", "", { "dependencies": { "web-vitals": "6.2.2" }, "peerDependencies": { "next": ">=15", "react": ">=19" }, "optionalPeers": ["next", "react"] }, "sha512-HdedfFYqUepIVMOvV4tWg/uES+dtGWjWTuztP3MhA/DkkQyeonXOzbDgoLI7QThICms32+S18Majk4G4Lac6XA=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.0.0", "", {}, "sha512-m2bOd0f2RT9k8QJx1JN85cZYyH1RqFBdlwtkSlf4tBDYLCiiZnv1fIIwacK6cqwXavOydf0NPToMQgpKq+dVlA=="],
 

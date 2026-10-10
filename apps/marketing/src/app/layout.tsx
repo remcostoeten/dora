@@ -4,7 +4,6 @@ import localFont from 'next/font/local'
 import type { ReactNode } from 'react'
 import { GeistMono } from 'geist/font/mono'
 import { GeistSans } from 'geist/font/sans'
-import { Analytics } from '@remcostoeten/analytics'
 
 import { SpoarAnalytics } from '@/core/analytics/spoar-analytics'
 import { siteConfig } from '@/core/config/site'
@@ -110,16 +109,6 @@ export default function RootLayout({ children }: Props) {
                 <main className="min-h-screen bg-background text-foreground">
                     {children}
                 </main>
-                <Analytics
-                    projectId={process.env.NEXT_PUBLIC_ANALYTICS_PROJECT_ID}
-                    ingestUrl={process.env.NEXT_PUBLIC_ANALYTICS_INGEST_URL}
-                    disabled={
-                        process.env.NODE_ENV !== 'production' ||
-                        process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'false'
-                    }
-                    trackOutbound
-                    trackErrors
-                />
                 <SpoarAnalytics />
             </body>
         </html>
