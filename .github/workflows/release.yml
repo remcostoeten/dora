@@ -291,12 +291,54 @@ jobs:
         run: bun run build
         working-directory: ./apps/desktop
 
+      - name: stage Apple signing and notarization credentials
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "::warning::APPLE_CERTIFICATE is not set; the macOS bundle will ship unsigned and Gatekeeper will block it on first launch"
+            exit 0
+          fi
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then
+              echo "$name must be set alongside APPLE_CERTIFICATE" >&2
+              exit 1
+            fi
+            {
+              echo "$name<<DORA_SECRET_EOF"
+              echo "${!name}"
+              echo "DORA_SECRET_EOF"
+            } >> "$GITHUB_ENV"
+          done
+          echo "MACOS_SIGNING=1" >> "$GITHUB_ENV"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: ./apps/desktop
+
+      - name: verify macOS signature and notarization
+        if: env.MACOS_SIGNING == '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="$(find ./apps/desktop/src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' | head -1)"
+          if [ -z "$APP" ]; then
+            echo "No .app bundle found to verify" >&2
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          spctl --assess --type execute --verbose=2 "$APP"
+          xcrun stapler validate "$APP"
 
       - name: verify macOS updater artifacts exist
         shell: bash

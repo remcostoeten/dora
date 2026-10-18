@@ -63,6 +63,13 @@ The app polls the endpoint in `plugins.updater.endpoints` of
 repository's latest release. The public key sits next to it in `pubkey`; the
 private half is the `TAURI_SIGNING_PRIVATE_KEY` secret.
 
+macOS signing and notarization use the `APPLE_CERTIFICATE`,
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
+`APPLE_PASSWORD` and `APPLE_TEAM_ID` secrets, staged into the job environment
+by the "stage Apple signing and notarization credentials" step. All six or
+none: a missing certificate only warns, a partial set fails the job. See
+`docs/distribution/release-guide.md`.
+
 ## Per channel
 
 ### AUR — `.github/workflows/aur.yml`
