@@ -11,9 +11,27 @@ export type ChangelogEntry = {
 	details?: string[]
 }
 
-export const CURRENT_VERSION = "0.42.1"
+export const CURRENT_VERSION = "0.42.2"
 
 export const CHANGELOG: ChangelogEntry[] = [
+	{
+		version: "0.42.2",
+		date: "2026-10-18",
+		commit: "v0.42.2",
+		title: "Feat(marketing): send analytics to Spoar v2 alongside v1 (#259) (#259)",
+		description: "Feat(marketing): send analytics to Spoar v2 alongside v1 (#259) (#259). Refactor(marketing): send analytics to Spoar v2 only (#261) (#261).",
+		type: "feature",
+		details: [
+			"feat(marketing): send analytics to Spoar v2 alongside v1 (#259) (#259)",
+			"fix(desktop): harden connections and land the marketing refresh (#258) (#258)",
+			"refactor(marketing): send analytics to Spoar v2 only (#261) (#261)",
+			"perf(studio): cut overlay, animation and storage cost behind laggy modals",
+			"docs(metadata): refresh the product description across stores and the site",
+			"ci(release): sign and notarize the macOS bundle when Apple credentials are set",
+			"chore(aur): update dora to 0.42.1",
+			"chore(marketing): add a vinext Cloudflare build alongside the Next build",
+		]
+	},
 	{
 		version: "0.42.1",
 		date: "2026-09-22",
