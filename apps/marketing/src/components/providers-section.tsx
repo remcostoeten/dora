@@ -82,7 +82,7 @@ const STAGGER_MS = 52
 const CYCLE_INTERVAL_MS = 2400
 
 const PANEL_GRID =
-    'grid grid-cols-[4rem_repeat(7,minmax(0,1fr))] sm:grid-cols-[5.5rem_repeat(7,minmax(0,1fr))]'
+    'grid grid-cols-[3.5rem_repeat(7,minmax(0,1fr))] sm:grid-cols-[5.5rem_repeat(7,minmax(0,1fr))]'
 
 function ConnectionStringMarquee({ activeId }: { activeId: string }) {
     const active = PROVIDERS.find((p) => p.id === activeId) ?? PROVIDERS[0]
@@ -319,7 +319,7 @@ export function ProvidersSection() {
                                         className="h-px w-px shrink-0"
                                     />
                                     <span
-                                        className="max-w-[4.75rem] truncate text-center font-[family-name:var(--font-pixel)] text-[10px] font-medium leading-tight transition-colors duration-300 sm:max-w-none sm:text-[11px]"
+                                        className="sr-only max-w-[4.75rem] truncate text-center sm:not-sr-only font-[family-name:var(--font-pixel)] text-[10px] font-medium leading-tight transition-colors duration-300 sm:max-w-none sm:text-[11px]"
                                         style={{
                                             color: isActive
                                                 ? 'var(--color-ink-100)'

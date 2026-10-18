@@ -690,7 +690,7 @@
         var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, monospace;
     position: relative;
     z-index: 2;
-    margin: clamp(32px, 5vw, 56px) clamp(32px, 5vw, 56px) 0;
+    margin: clamp(32px, 5vw, 56px) -1.5rem 0;
     width: calc(100% + 3rem);
     height: clamp(420px, 50vw, 590px);
     font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
@@ -767,7 +767,7 @@
 .hero-app-demo__camera {
     height: 100%;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     box-sizing: border-box;
     transform-origin: 50% 0;
     will-change: transform;
@@ -854,10 +854,6 @@
 @media (max-width: 640px) {
     .hero-app-demo {
         height: 390px;
-    }
-
-    .hero-app-demo__camera {
-        justify-content: flex-start;
     }
 }
 
