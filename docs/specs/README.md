@@ -21,7 +21,7 @@ One spec per initiative, written so an individual agent can pick a file up and e
 | 06 | [Schema + data diff](06-schema-data-diff.md) | `[-]` | none |
 | 07 | [Serverless Postgres integrations (Neon/Supabase)](07-serverless-postgres-integrations.md) | `[x]` | none |
 | 08 | [Result set charts](08-result-charts.md) | `[ ]` | none |
-| 09 | [Redis / Valkey browser](09-redis-valkey.md) | `[ ]` | `[!]` needs product decision |
+| 09 | [Redis / Valkey browser](09-redis-valkey.md) | `[x]` | none |
 | 10 | [ClickHouse provider](10-clickhouse.md) | `[ ]` | none |
 
 ## Parallelization Rules

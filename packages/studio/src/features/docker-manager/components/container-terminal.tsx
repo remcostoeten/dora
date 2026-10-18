@@ -5,6 +5,7 @@ import { Input } from '@studio/shared/ui/input'
 import { cn } from '@studio/shared/utils/cn'
 import { openContainerTerminal } from '../api/container-service'
 import type { ContainerTerminalSession, DockerContainer } from '../types'
+import { detectKeyValueProvider } from '../utilities/container-connection'
 
 type Props = {
 	container: DockerContainer
@@ -51,6 +52,7 @@ export function ContainerTerminal({ container, enabled }: Props) {
 	const previousContainerIdRef = useRef(container.id)
 
 	const isRunning = container.state === 'running'
+	const keyValueProvider = detectKeyValueProvider(container)
 
 	const appendOutput = useCallback(function (chunk: string) {
 		setOutput(function (previous) {
@@ -380,7 +382,11 @@ export function ContainerTerminal({ container, enabled }: Props) {
 					value={command}
 					name='terminal_command'
 					autoComplete='off'
-					placeholder='Type command (example: psql -U postgres -d postgres, mysql -u root)...'
+					placeholder={
+						keyValueProvider
+							? `Type command (example: ${keyValueProvider}-cli ping)...`
+							: 'Type command (example: psql -U postgres -d postgres, mysql -u root)...'
+					}
 					onChange={function (event) {
 						setCommand(event.target.value)
 					}}

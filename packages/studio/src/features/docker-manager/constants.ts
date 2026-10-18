@@ -31,6 +31,8 @@ export const POSTGRES_IMAGE = 'postgres'
 export const MARIADB_IMAGE = 'mariadb'
 export const MYSQL_IMAGE = 'mysql'
 export const COCKROACH_IMAGE = 'cockroachdb/cockroach'
+export const REDIS_IMAGE = 'redis'
+export const VALKEY_IMAGE = 'valkey/valkey'
 
 export const POSTGRES_VERSIONS = [
 	{ value: '17', label: 'PostgreSQL 17 (Latest)' },
@@ -50,6 +52,8 @@ export const POSTGRES_CONTAINER_PORT = 5432
 export const MARIADB_CONTAINER_PORT = 3306
 export const MYSQL_CONTAINER_PORT = 3306
 export const COCKROACH_CONTAINER_PORT = 26257
+export const REDIS_CONTAINER_PORT = 6379
+export const VALKEY_CONTAINER_PORT = 6379
 
 export const DATABASE_PROVIDERS: Array<{
 	value: DatabaseProvider
@@ -75,6 +79,16 @@ export const DATABASE_PROVIDERS: Array<{
 		value: 'cockroach',
 		label: 'CockroachDB',
 		description: 'Distributed SQL with PostgreSQL wire compatibility'
+	},
+	{
+		value: 'redis',
+		label: 'Redis',
+		description: 'In-memory data store and cache'
+	},
+	{
+		value: 'valkey',
+		label: 'Valkey',
+		description: 'Open-source Redis-compatible data store'
 	}
 ]
 
@@ -108,6 +122,22 @@ export const COCKROACH_VERSIONS = [
 export const DEFAULT_COCKROACH_VERSION = '25.1.1'
 export const DEFAULT_COCKROACH_USER = 'root'
 export const DEFAULT_COCKROACH_DATABASE = 'defaultdb'
+
+export const REDIS_VERSIONS = [
+	{ value: '7-alpine', label: 'Redis 7 (Alpine)' },
+	{ value: '7.4-alpine', label: 'Redis 7.4 (Alpine)' },
+	{ value: '7.2-alpine', label: 'Redis 7.2 (Alpine)' }
+] as const
+
+export const DEFAULT_REDIS_VERSION = '7-alpine'
+
+export const VALKEY_VERSIONS = [
+	{ value: '8-alpine', label: 'Valkey 8 (Alpine)' },
+	{ value: '8.1-alpine', label: 'Valkey 8.1 (Alpine)' },
+	{ value: '8.0-alpine', label: 'Valkey 8.0 (Alpine)' }
+] as const
+
+export const DEFAULT_VALKEY_VERSION = '8-alpine'
 
 export const DEFAULT_HOST_PORT_START = 5433
 export const DEFAULT_HOST_PORT_END = 5500

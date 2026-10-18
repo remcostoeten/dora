@@ -13,12 +13,15 @@ import { Button } from '@studio/shared/ui/button'
 import { useContainerActions, useRemoveContainer } from '../api/mutations/use-container-actions'
 import type { DockerContainer } from '../types'
 import { ConnectionDetails } from './connection-details'
+import { KeyValueConnectionDetails } from './key-value-connection-details'
 import { ContainerMetrics } from './container-metrics'
 import { SeedView } from './seed-view'
 import { StatusBadge } from './status-badge'
 import { ComposeExportDialog } from './compose-export-dialog'
 import { RemoveContainerDialog } from './remove-container-dialog'
 import { RemoveContainerOptions } from '../types'
+import { isKeyValueContainer } from '../utilities/container-connection'
+import { cn } from '@studio/shared/utils/cn'
 
 type Props = {
 	container: DockerContainer | null
@@ -62,6 +65,7 @@ export function ContainerDetailsPanel({
 
 	const activeContainer = container
 	const isRunning = activeContainer.state === 'running'
+	const isKeyValue = isKeyValueContainer(activeContainer)
 
 	function handleStart() {
 		containerActions.mutate({ containerId: activeContainer.id, action: 'start' })
@@ -183,19 +187,25 @@ export function ContainerDetailsPanel({
 
 			<div className='flex-1 min-h-0 overflow-y-auto'>
 				<div className='p-4 border-b border-border'>
-					<ConnectionDetails container={container} />
+					{isKeyValue ? (
+						<KeyValueConnectionDetails container={container} />
+					) : (
+						<ConnectionDetails container={container} />
+					)}
 				</div>
 
-				<div className='p-4 border-b border-border'>
+				<div className={cn('p-4', !isKeyValue && 'border-b border-border')}>
 					<ContainerMetrics container={container} />
 				</div>
 
-				<div className='p-4'>
-					<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3'>
-						Seed Data
-					</h4>
-					<SeedView container={container} />
-				</div>
+				{!isKeyValue && (
+					<div className='p-4'>
+						<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3'>
+							Seed Data
+						</h4>
+						<SeedView container={container} />
+					</div>
+				)}
 			</div>
 
 			<div className='shrink-0 border-t border-border p-3'>
@@ -207,7 +217,7 @@ export function ContainerDetailsPanel({
 					disabled={!isRunning}
 				>
 					<ExternalLink className='h-3.5 w-3.5' />
-					Open in Data Viewer
+					{isKeyValue ? 'Open in KV Studio' : 'Open in Data Viewer'}
 				</Button>
 			</div>
 

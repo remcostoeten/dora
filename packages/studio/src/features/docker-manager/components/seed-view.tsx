@@ -81,6 +81,7 @@ export function SeedView({ container }: Props) {
 
 	async function handleSeed() {
 		if (!file) return
+		if (connection.provider === 'redis' || connection.provider === 'valkey') return
 
 		// In a real browser app, we can't get the full path.
 		// But in Tauri, we might need the path or upload the file contents.

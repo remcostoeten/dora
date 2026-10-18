@@ -19,6 +19,8 @@ import {
 	MARIADB_VERSIONS,
 	MYSQL_VERSIONS,
 	COCKROACH_VERSIONS,
+	REDIS_VERSIONS,
+	VALKEY_VERSIONS,
 	DEFAULT_POSTGRES_VERSION,
 	DEFAULT_POSTGRES_USER,
 	DEFAULT_POSTGRES_PASSWORD,
@@ -33,9 +35,16 @@ import {
 	DEFAULT_MYSQL_DATABASE,
 	DEFAULT_COCKROACH_VERSION,
 	DEFAULT_COCKROACH_USER,
-	DEFAULT_COCKROACH_DATABASE
+	DEFAULT_COCKROACH_DATABASE,
+	DEFAULT_REDIS_VERSION,
+	DEFAULT_VALKEY_VERSION
 } from '../constants'
-import type { DatabaseContainerConfig, DatabaseProvider, DockerContainer } from '../types'
+import type {
+	DatabaseContainerBaseConfig,
+	DatabaseContainerConfig,
+	DatabaseProvider,
+	DockerContainer
+} from '../types'
 import {
 	suggestContainerName,
 	validateContainerName,
@@ -44,8 +53,46 @@ import {
 import { findFreePort } from '../utilities/port-utils'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@studio/shared/ui/collapsible'
 
+const VERSION_LABELS: Record<DatabaseProvider, string> = {
+	postgres: 'PostgreSQL Version',
+	mariadb: 'MariaDB Version',
+	mysql: 'MySQL Version',
+	cockroach: 'CockroachDB Version',
+	redis: 'Redis Version',
+	valkey: 'Valkey Version'
+}
+
+const PROVIDER_HINTS: Record<DatabaseProvider, string> = {
+	postgres: 'PostgreSQL uses the selected credentials for the main database role.',
+	mariadb: 'MariaDB uses the selected credentials for both the root and app user.',
+	mysql: 'MySQL uses the selected credentials for the root and app user.',
+	cockroach: 'CockroachDB is started as a local single-node cluster for quick testing.',
+	redis: 'Redis uses append-only persistence for local development.',
+	valkey: 'Valkey uses append-only persistence and supports Redis clients.'
+}
+
+function isKeyValueProvider(provider: DatabaseProvider) {
+	return provider === 'redis' || provider === 'valkey'
+}
+
 function getProviderDefaults(provider: DatabaseProvider) {
 	switch (provider) {
+		case 'redis':
+			return {
+				version: DEFAULT_REDIS_VERSION,
+				user: '',
+				password: '',
+				database: '',
+				port: 6379
+			}
+		case 'valkey':
+			return {
+				version: DEFAULT_VALKEY_VERSION,
+				user: '',
+				password: '',
+				database: '',
+				port: 6379
+			}
 		case 'mariadb':
 			return {
 				version: DEFAULT_MARIADB_VERSION,
@@ -84,6 +131,10 @@ function getProviderDefaults(provider: DatabaseProvider) {
 
 function getVersionOptions(provider: DatabaseProvider) {
 	switch (provider) {
+		case 'redis':
+			return REDIS_VERSIONS
+		case 'valkey':
+			return VALKEY_VERSIONS
 		case 'mariadb':
 			return MARIADB_VERSIONS
 		case 'mysql':
@@ -125,7 +176,7 @@ export function CreateContainerPanel({
 	const [user, setUser] = useState(initialDefaults.user)
 	const [password, setPassword] = useState(initialDefaults.password)
 	const [database, setDatabase] = useState(initialDefaults.database)
-	const [ephemeral, setEphemeral] = useState(true)
+	const [ephemeral, setEphemeral] = useState(!isKeyValueProvider(initialProvider))
 	const [showPassword, setShowPassword] = useState(false)
 	const [isFindingPort, setIsFindingPort] = useState(false)
 	const [nameError, setNameError] = useState<string | null>(null)
@@ -172,6 +223,7 @@ export function CreateContainerPanel({
 		setUser(defaults.user)
 		setPassword(defaults.password)
 		setDatabase(defaults.database)
+		setEphemeral(!isKeyValueProvider(nextProvider))
 		void initFreePort(defaults.port)
 	}
 
@@ -197,6 +249,46 @@ export function CreateContainerPanel({
 		setNameError(validation.valid ? null : validation.error || null)
 	}
 
+	function buildConfig(
+		baseConfig: Omit<DatabaseContainerBaseConfig, 'provider'>
+	): DatabaseContainerConfig {
+		switch (provider) {
+			case 'redis':
+				return { ...baseConfig, provider, redisVersion: version }
+			case 'valkey':
+				return { ...baseConfig, provider, valkeyVersion: version }
+			case 'mariadb':
+				return {
+					...baseConfig,
+					provider,
+					mariadbVersion: version,
+					user,
+					password,
+					database
+				}
+			case 'mysql':
+				return { ...baseConfig, provider, mysqlVersion: version, user, password, database }
+			case 'cockroach':
+				return {
+					...baseConfig,
+					provider,
+					cockroachVersion: version,
+					user,
+					password: '',
+					database
+				}
+			case 'postgres':
+				return {
+					...baseConfig,
+					provider,
+					postgresVersion: version,
+					user,
+					password,
+					database
+				}
+		}
+	}
+
 	function handleSubmit(event: React.FormEvent) {
 		event.preventDefault()
 
@@ -206,54 +298,16 @@ export function CreateContainerPanel({
 			return
 		}
 
-		const baseConfig = {
-			provider,
-			name,
-			hostPort,
-			ephemeral,
-			volumeName: ephemeral ? undefined : generateVolumeName(name),
-			cpuLimit,
-			memoryLimitMb: memoryLimit
-		}
-
-		const config: DatabaseContainerConfig =
-			provider === 'mariadb'
-				? {
-						...baseConfig,
-						provider,
-						mariadbVersion: version,
-						user,
-						password,
-						database
-					}
-				: provider === 'mysql'
-					? {
-							...baseConfig,
-							provider,
-							mysqlVersion: version,
-							user,
-							password,
-							database
-						}
-					: provider === 'cockroach'
-						? {
-								...baseConfig,
-								provider,
-								cockroachVersion: version,
-								user,
-								password: '',
-								database
-							}
-						: {
-								...baseConfig,
-								provider,
-								postgresVersion: version,
-								user,
-								password,
-								database
-							}
-
-		onSubmit(config)
+		onSubmit(
+			buildConfig({
+				name,
+				hostPort,
+				ephemeral,
+				volumeName: ephemeral ? undefined : generateVolumeName(name),
+				cpuLimit,
+				memoryLimitMb: memoryLimit
+			})
+		)
 	}
 
 	return (
@@ -316,15 +370,7 @@ export function CreateContainerPanel({
 					</div>
 
 					<div className='space-y-2'>
-						<Label htmlFor='version'>
-							{provider === 'mariadb'
-								? 'MariaDB Version'
-								: provider === 'mysql'
-									? 'MySQL Version'
-									: provider === 'cockroach'
-										? 'CockroachDB Version'
-										: 'PostgreSQL Version'}
-						</Label>
+						<Label htmlFor='version'>{VERSION_LABELS[provider]}</Label>
 						<Select value={version} onValueChange={setVersion}>
 							<SelectTrigger id='version'>
 								<SelectValue />
@@ -374,81 +420,79 @@ export function CreateContainerPanel({
 						<p className='text-xs text-muted-foreground'>Auto-detected free port</p>
 					</div>
 
-					<div className='grid grid-cols-2 gap-4'>
-						<div className='space-y-2'>
-							<Label htmlFor='user'>Username</Label>
-							<Input
-								id='user'
-								value={user}
-								onChange={function (e) {
-									setUser(e.target.value)
-								}}
-							/>
-						</div>
-
-						<div className='space-y-2'>
-							<Label htmlFor='password'>
-								{provider === 'cockroach' ? 'Password (unused)' : 'Password'}
-							</Label>
-							{provider === 'cockroach' ? (
-								<div className='rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground'>
-									CockroachDB runs in insecure mode for local development, so a
-									password is not required.
-								</div>
-							) : (
-								<div className='relative'>
+					{!isKeyValueProvider(provider) && (
+						<>
+							<div className='grid grid-cols-2 gap-4'>
+								<div className='space-y-2'>
+									<Label htmlFor='user'>Username</Label>
 									<Input
-										id='password'
-										type={showPassword ? 'text' : 'password'}
-										value={password}
+										id='user'
+										value={user}
 										onChange={function (e) {
-											setPassword(e.target.value)
+											setUser(e.target.value)
 										}}
-										className='pr-9'
 									/>
-									<button
-										type='button'
-										aria-label={
-											showPassword ? 'Hide password' : 'Show password'
-										}
-										onClick={function () {
-											setShowPassword(function (p) {
-												return !p
-											})
-										}}
-										className='absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
-									>
-										{showPassword ? (
-											<EyeOff className='h-4 w-4' />
-										) : (
-											<Eye className='h-4 w-4' />
-										)}
-									</button>
 								</div>
-							)}
-						</div>
-					</div>
 
-					<div className='space-y-2'>
-						<Label htmlFor='database'>Database Name</Label>
-						<Input
-							id='database'
-							value={database}
-							onChange={function (e) {
-								setDatabase(e.target.value)
-							}}
-						/>
-					</div>
+								<div className='space-y-2'>
+									<Label htmlFor='password'>
+										{provider === 'cockroach'
+											? 'Password (unused)'
+											: 'Password'}
+									</Label>
+									{provider === 'cockroach' ? (
+										<div className='rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground'>
+											CockroachDB runs in insecure mode for local development,
+											so a password is not required.
+										</div>
+									) : (
+										<div className='relative'>
+											<Input
+												id='password'
+												type={showPassword ? 'text' : 'password'}
+												value={password}
+												onChange={function (e) {
+													setPassword(e.target.value)
+												}}
+												className='pr-9'
+											/>
+											<button
+												type='button'
+												aria-label={
+													showPassword ? 'Hide password' : 'Show password'
+												}
+												onClick={function () {
+													setShowPassword(function (p) {
+														return !p
+													})
+												}}
+												className='absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
+											>
+												{showPassword ? (
+													<EyeOff className='h-4 w-4' />
+												) : (
+													<Eye className='h-4 w-4' />
+												)}
+											</button>
+										</div>
+									)}
+								</div>
+							</div>
 
-					<p className='text-xs text-muted-foreground'>
-						{provider === 'mariadb'
-							? 'MariaDB uses the selected credentials for both the root and app user.'
-							: provider === 'mysql'
-								? 'MySQL uses the selected credentials for the root and app user.'
-								: provider === 'cockroach'
-									? 'CockroachDB is started as a local single-node cluster for quick testing.'
-									: 'PostgreSQL uses the selected credentials for the main database role.'}
-					</p>
+							<div className='space-y-2'>
+								<Label htmlFor='database'>Database Name</Label>
+								<Input
+									id='database'
+									value={database}
+									onChange={function (e) {
+										setDatabase(e.target.value)
+									}}
+								/>
+							</div>
+						</>
+					)}
+
+					<p className='text-xs text-muted-foreground'>{PROVIDER_HINTS[provider]}</p>
 
 					<div className='flex items-center justify-between py-2'>
 						<div>

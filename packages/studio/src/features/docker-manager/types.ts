@@ -10,7 +10,7 @@ export type PortMapping = {
 	protocol: 'tcp' | 'udp'
 }
 
-export type DatabaseProvider = 'postgres' | 'mariadb' | 'mysql' | 'cockroach'
+export type DatabaseProvider = 'postgres' | 'mariadb' | 'mysql' | 'cockroach' | 'redis' | 'valkey'
 
 export type VolumeMount = {
 	name: string
@@ -78,11 +78,23 @@ export type CockroachContainerConfig = DatabaseContainerBaseConfig & {
 	password?: string
 }
 
+export type RedisContainerConfig = DatabaseContainerBaseConfig & {
+	provider: 'redis'
+	redisVersion: string
+}
+
+export type ValkeyContainerConfig = DatabaseContainerBaseConfig & {
+	provider: 'valkey'
+	valkeyVersion: string
+}
+
 export type DatabaseContainerConfig =
 	| PostgresContainerConfig
 	| MariaDBContainerConfig
 	| MySQLContainerConfig
 	| CockroachContainerConfig
+	| RedisContainerConfig
+	| ValkeyContainerConfig
 
 export type SeedStrategy =
 	| { type: 'sql_file'; paths: string[] }

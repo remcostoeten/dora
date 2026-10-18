@@ -1,9 +1,10 @@
 name: Live DB Tests
 
-# Opt-in dialect integration tests: boots real MySQL/MariaDB servers from
-# docker-compose.databases.yml and runs the env-gated adapter lifecycle tests
-# in apps/desktop/src-tauri/tests/live_db_tests.rs. Kept off the PR path so
-# regular CI stays fast; run manually or let the weekly cron catch drift.
+# Opt-in dialect integration tests: boots real MySQL, MariaDB, Redis and Valkey
+# servers from docker-compose.databases.yml and runs the env-gated adapter and
+# key-value service tests in apps/desktop/src-tauri/tests/live_db_tests.rs.
+# Kept off the PR path so regular CI stays fast; run manually or let the weekly
+# cron catch drift.
 
 on:
   workflow_dispatch:
@@ -49,7 +50,7 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Start database containers
-        run: docker compose -f docker-compose.databases.yml up -d --wait mysql mariadb
+        run: docker compose -f docker-compose.databases.yml up -d --wait mysql mariadb redis valkey
 
       - name: Run live adapter tests
         working-directory: apps/desktop/src-tauri
