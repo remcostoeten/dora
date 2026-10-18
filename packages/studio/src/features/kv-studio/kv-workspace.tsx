@@ -1,6 +1,6 @@
 import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, KeyRound, Loader2, Plus, Server, Trash2 } from 'lucide-react'
-import { commands } from '@studio/lib/bindings'
+import { commands, type KvConnectionInfo } from '@studio/lib/bindings'
 import { useIsTauri } from '@studio/core/data-provider'
 import { Button } from '@studio/shared/ui/button'
 import {
@@ -16,20 +16,11 @@ import { Label } from '@studio/shared/ui/label'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import { cn } from '@studio/shared/utils/cn'
 import { KvStudio } from './kv-studio'
+import { takeRequestedKvConnection } from './kv-launch'
 import { createTauriKvAdapter } from './tauri-adapter'
 
-type KvConnection = {
-	id: string
-	name: string
-	config: { url: string }
-	connected: boolean
-	last_connected_at: number | null
-	favorite: boolean
-	color: string | null
-	sort_order: number
-}
-
 type Props = {
+	isActive?: boolean
 	windowControls?: ReactNode
 }
 
@@ -37,9 +28,34 @@ function commandError(error: unknown): string {
 	return formatBackendError(error)
 }
 
-export function KvWorkspace({ windowControls }: Props) {
+function KvDesktopOnly({ windowControls }: Props) {
+	return (
+		<div className='flex h-full min-h-0 flex-col bg-background'>
+			<div className='flex h-11 shrink-0 items-center gap-2 border-b px-3'>
+				<div className='flex items-center gap-2 text-sm font-medium'>
+					<KeyRound className='size-4 text-[#d82c20]' /> Redis / Valkey
+				</div>
+				<div className='ml-auto'>{windowControls}</div>
+			</div>
+			<div className='grid min-h-0 flex-1 place-items-center px-6 text-center'>
+				<div className='max-w-sm'>
+					<div className='mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-[#d82c20]/10 text-[#d82c20]'>
+						<Server />
+					</div>
+					<h2 className='font-medium'>Available in the desktop app</h2>
+					<p className='mt-1 text-sm text-muted-foreground'>
+						Redis and Valkey connections open TCP sockets, which a browser cannot do.
+						Open Dora on your desktop to browse and edit keys.
+					</p>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+export function KvWorkspace({ isActive = true, windowControls }: Props) {
 	const isTauri = useIsTauri()
-	const [connections, setConnections] = useState<KvConnection[]>([])
+	const [connections, setConnections] = useState<KvConnectionInfo[]>([])
 	const [selectedId, setSelectedId] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isConnecting, setIsConnecting] = useState(false)
@@ -48,34 +64,32 @@ export function KvWorkspace({ windowControls }: Props) {
 	const [url, setUrl] = useState('redis://127.0.0.1:6379/0')
 	const [error, setError] = useState<string | null>(null)
 
-	const loadConnections = useCallback(
-		async function () {
-			if (!isTauri) {
-				setIsLoading(false)
-				return
-			}
-			const result = await commands.kvGetConnections()
-			if (result.status === 'error') {
-				setError(commandError(result.error))
-				setIsLoading(false)
-				return
-			}
-			setConnections(result.data)
-			setSelectedId(function (current) {
-				return current && result.data.some((connection) => connection.id === current)
-					? current
-					: (result.data[0]?.id ?? null)
-			})
+	const loadConnections = useCallback(async function () {
+		const result = await commands.kvGetConnections()
+		if (result.status === 'error') {
+			setError(commandError(result.error))
 			setIsLoading(false)
-		},
-		[isTauri]
-	)
+			return
+		}
+		const requestedId = takeRequestedKvConnection()
+		setConnections(result.data)
+		setSelectedId(function (current) {
+			if (requestedId && result.data.some((connection) => connection.id === requestedId)) {
+				return requestedId
+			}
+			return current && result.data.some((connection) => connection.id === current)
+				? current
+				: (result.data[0]?.id ?? null)
+		})
+		setIsLoading(false)
+	}, [])
 
 	useEffect(
 		function loadSavedConnections() {
+			if (!isTauri || !isActive) return
 			void loadConnections()
 		},
-		[loadConnections]
+		[isTauri, isActive, loadConnections]
 	)
 
 	const selected = connections.find((connection) => connection.id === selectedId) ?? null
@@ -86,7 +100,7 @@ export function KvWorkspace({ windowControls }: Props) {
 		[selected?.connected, selected?.id]
 	)
 
-	async function connect(connection: KvConnection) {
+	async function connect(connection: KvConnectionInfo) {
 		setIsConnecting(true)
 		setError(null)
 		const result = await commands.kvConnect(connection.id)
@@ -118,7 +132,7 @@ export function KvWorkspace({ windowControls }: Props) {
 		setIsConnecting(false)
 	}
 
-	async function removeConnection(connection: KvConnection) {
+	async function removeConnection(connection: KvConnectionInfo) {
 		if (
 			!window.confirm(
 				`Remove “${connection.name}”? The Redis database itself is not changed.`
@@ -132,6 +146,8 @@ export function KvWorkspace({ windowControls }: Props) {
 		}
 		await loadConnections()
 	}
+
+	if (!isTauri) return <KvDesktopOnly windowControls={windowControls} />
 
 	return (
 		<div className='flex h-full min-h-0 flex-col bg-background'>
@@ -184,10 +200,6 @@ export function KvWorkspace({ windowControls }: Props) {
 				{isLoading ? (
 					<div className='grid h-full place-items-center text-sm text-muted-foreground'>
 						<Loader2 className='animate-spin' /> Loading connections…
-					</div>
-				) : !isTauri ? (
-					<div className='grid h-full place-items-center px-6 text-center text-sm text-muted-foreground'>
-						Redis / Valkey connections are available in the Dora desktop app.
 					</div>
 				) : !selected ? (
 					<div className='grid h-full place-items-center px-6 text-center'>

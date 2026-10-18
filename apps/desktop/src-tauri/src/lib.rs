@@ -172,7 +172,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // Redis / Valkey commands
             commands::kv::kv_add_connection,
             commands::kv::kv_update_connection,
             commands::kv::kv_test_connection,

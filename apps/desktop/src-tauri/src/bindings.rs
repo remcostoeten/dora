@@ -7,7 +7,6 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
     use crate::window::commands as window_commands;
 
     Builder::<tauri::Wry>::new().commands(collect_commands![
-        // Redis / Valkey commands
         crate::commands::kv::kv_add_connection,
         crate::commands::kv::kv_update_connection,
         crate::commands::kv::kv_test_connection,

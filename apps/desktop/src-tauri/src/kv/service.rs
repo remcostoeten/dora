@@ -21,8 +21,6 @@ pub struct KvService {
 }
 
 impl KvService {
-    /// Opens and probes a standalone Redis/Valkey connection. Both `redis://`
-    /// and TLS-backed `rediss://` URLs are accepted by the driver.
     pub async fn connect(config: &KvConnectionConfig) -> Result<Self> {
         validate_url(&config.url)?;
         let client = redis::Client::open(config.url.as_str())
@@ -66,8 +64,7 @@ impl KvService {
             .await
             .map_err(map_driver_error)?;
 
-        // Fetch badges in one round-trip. Doing TYPE/PTTL per key makes even a
-        // small SCAN page painfully slow over a hosted Redis connection.
+        // TYPE/PTTL per key is too slow over a hosted connection, so pipeline them
         let metadata = self.metadata_many(&keys).await?;
         let mut summaries = Vec::with_capacity(keys.len());
         for (key, (data_type, ttl_ms)) in keys.into_iter().zip(metadata) {
@@ -293,8 +290,7 @@ impl KvService {
     }
 
     pub async fn list_remove_at(&mut self, key: KvBytes, index: i64) -> Result<KvMutationResult> {
-        // Redis has no remove-by-index command. A transaction replaces the
-        // selected element with a collision-resistant marker and removes it.
+        // Redis has no remove-by-index command, so LSET a unique marker and LREM it
         let marker = format!("__dora_deleted_{}__", uuid::Uuid::new_v4());
         let key = key.into_bytes()?;
         let results: Vec<Value> = redis::pipe()
@@ -462,8 +458,6 @@ fn classify_args(args: &[Vec<u8>]) -> RawCommandSafety {
     }
 }
 
-/// Parses a Redis CLI-like command line, supporting whitespace, single and
-/// double quotes, and backslash escapes without invoking a shell.
 pub fn parse_raw_command(input: &str) -> Result<Vec<Vec<u8>>> {
     let mut args = Vec::new();
     let mut current = Vec::new();

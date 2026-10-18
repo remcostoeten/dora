@@ -4,13 +4,7 @@ import { detectDatabaseProvider } from './container-connection'
 export function generateDockerCompose(container: DockerContainer): string {
 	const serviceName = container.name || 'postgres'
 	const image = `${container.image}:${container.imageTag}`
-	const normalizedImage = image.toLowerCase()
-	const keyValueProvider = normalizedImage.includes('valkey')
-		? 'valkey'
-		: normalizedImage.includes('redis')
-			? 'redis'
-			: null
-	const provider = keyValueProvider ?? detectDatabaseProvider(container)
+	const provider = detectDatabaseProvider(container)
 
 	// Filter out internal env vars if any (e.g. self-managed ones)
 	// For now we include all, but formatted as object or list

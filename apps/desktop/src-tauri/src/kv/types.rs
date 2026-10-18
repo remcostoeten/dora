@@ -39,7 +39,6 @@ impl KvDataType {
     }
 }
 
-/// A lossless Redis byte string suitable for JSON and Specta bindings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(tag = "encoding", content = "value", rename_all = "snake_case")]
 pub enum KvBytes {

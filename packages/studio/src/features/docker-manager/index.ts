@@ -27,7 +27,9 @@ export {
 	getContainerConnectionDetails,
 	detectConnectionType,
 	detectDatabaseProvider,
-	getPrimaryDatabasePort
+	getKeyValueConnectionUrl,
+	getPrimaryDatabasePort,
+	isKeyValueContainer
 } from './utilities/container-connection'
 export type { ContainerConnectionDetails } from './utilities/container-connection'
 

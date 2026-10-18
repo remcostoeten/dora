@@ -1898,9 +1898,6 @@ command: string;
  */
 can_auto_install: boolean }
 export type KeyringInstallResult = { ok: boolean; message: string }
-/**
- * A lossless Redis byte string suitable for JSON and Specta bindings.
- */
 export type KvBytes = { encoding: "utf_8"; value: string } | { encoding: "base_64"; value: string }
 export type KvCommandHistoryEntry = { id: number; connection_id: string; command_text: string; executed_at: number; duration_ms: number | null; status: string; error_message: string | null }
 export type KvConnectionConfig = { url: string }
