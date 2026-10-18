@@ -616,7 +616,7 @@ export function ConnectionDialog({
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
-				className='flex max-h-[min(calc(100vh-2rem),880px)] flex-col gap-0 overflow-hidden rounded-none border-border/70 bg-background p-0 shadow-2xl sm:max-w-[640px] [&_input]:rounded-none [&_button]:rounded-none'
+				className='flex max-h-[min(calc(100vh-2rem),880px)] flex-col gap-0 overflow-hidden rounded-none border-border/70 bg-background p-0 shadow-lg sm:max-w-[640px] [&_input]:rounded-none [&_button]:rounded-none'
 				onDragEnter={function (e) {
 					if (!onOpenDataFiles && !resolveDatabaseType) return
 					e.preventDefault()
@@ -728,7 +728,7 @@ export function ConnectionDialog({
 
 				<div className='flex-1 space-y-5 overflow-y-auto px-6 py-5'>
 					{!integrationSelected ? (
-						<div className='border border-border/60 bg-card/45 p-4 shadow-sm'>
+						<div className='border border-border/60 bg-card/45 p-4'>
 							<Label
 								htmlFor='name'
 								className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'
@@ -753,7 +753,7 @@ export function ConnectionDialog({
 						data-integration-selected={integrationSelected ? 'true' : 'false'}
 						data-collapsible-provider-selector={integrationSelected ? 'true' : 'false'}
 						className={cn(
-							'space-y-3 overflow-hidden border border-border/60 bg-card/35 p-4 shadow-sm',
+							'space-y-3 overflow-hidden border border-border/60 bg-card/35 p-4',
 							'transition-[max-height,opacity,background-color,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
 							integrationSelected
 								? 'max-h-[118px] opacity-80 hover:max-h-[420px] hover:opacity-100 focus-within:max-h-[420px] focus-within:opacity-100'

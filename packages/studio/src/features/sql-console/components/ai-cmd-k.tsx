@@ -239,7 +239,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 
 	return (
 		<div
-			className='fixed inset-0 z-[60] flex items-start justify-center bg-black/40 backdrop-blur-sm'
+			className='fixed inset-0 z-[60] flex items-start justify-center bg-black/40'
 			onClick={handleClose}
 		>
 			<div
