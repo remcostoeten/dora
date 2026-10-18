@@ -4,15 +4,21 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
   <name>Dora</name>
-  <summary>Clean, fast desktop database studio</summary>
+  <summary>Free, open source database client for PostgreSQL, MySQL, SQLite and more</summary>
   <developer id="io.github.remcostoeten">
     <name>Remco Stoeten</name>
   </developer>
   <description>
     <p>
-      Dora is a cross-platform desktop database studio built with Tauri, Rust,
-      and React. It supports PostgreSQL, MySQL, SQLite, and LibSQL/Turso in a
-      native desktop workflow with a clean, intuitive interface.
+      Dora is a free, open source desktop database client built with Tauri and
+      Rust. It connects to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite,
+      libSQL/Turso, Cloudflare D1 and DuckDB, and opens CSV, JSON and Parquet
+      files as tables.
+    </p>
+    <p>
+      Browse and inline-edit data, run SQL in a multi-tab console, write Drizzle
+      and Prisma queries against the live schema, and sign in to Supabase, Neon
+      or Turso instead of pasting a connection string.
     </p>
   </description>
   <categories>

@@ -6,10 +6,14 @@ base: core22
 version: '0.0.111'
 adopt-info: dora
 title: Dora
-summary: Clean, fast desktop database studio
+summary: Free, open source database client for PostgreSQL, MySQL, SQLite and more
 description: |
-  Dora is a cross-platform desktop database studio built with Tauri, Rust, and React.
-  It supports PostgreSQL, MySQL, SQLite, and LibSQL/Turso in a native desktop workflow.
+  Dora is a free, open source desktop database client built with Tauri and Rust.
+  It connects to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso,
+  Cloudflare D1 and DuckDB, and opens CSV, JSON and Parquet files as tables.
+  Browse and inline-edit data, run SQL in a multi-tab console, write Drizzle and
+  Prisma queries against the live schema, and sign in to Supabase, Neon or Turso
+  instead of pasting a connection string.
 license: GPL-3.0-only
 contact: https://github.com/remcostoeten/dora
 issues: https://github.com/remcostoeten/dora/issues
