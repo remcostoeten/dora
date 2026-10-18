@@ -29,5 +29,9 @@ Port map (note the swap: **MySQL is NOT on its default port**):
 | mariadb (11.4) | 3306 | `mysql://root:rootpass@127.0.0.1:3306/dora` |
 | cockroach (v25.1) | 26257 | `postgres://root@127.0.0.1:26257/defaultdb?sslmode=disable` |
 | libsql (sqld) | 8081 | `http://127.0.0.1:8081` |
+| redis (7) | 6379 | `redis://127.0.0.1:6379` |
+| valkey (8) | **6380** | `redis://127.0.0.1:6380` |
+
+Valkey is mapped to 6380 so it can run beside Redis. Redis and Valkey bind to 127.0.0.1 only. The KV live tests read `DORA_REDIS_URL` and `DORA_VALKEY_URL` to override those URLs.
 
 Start what you need: `docker compose -f docker-compose.databases.yml up -d --wait mysql mariadb`. If a container has a stale/broken port binding from an old compose run, `up -d --force-recreate --wait <service>` fixes it.
