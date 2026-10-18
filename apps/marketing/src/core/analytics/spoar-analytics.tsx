@@ -11,6 +11,11 @@ import { useEffect } from 'react'
 
 export function SpoarAnalytics() {
     useEffect(() => {
+        if (
+            process.env.NODE_ENV !== 'production' ||
+            process.env.NEXT_PUBLIC_ANALYTICS_ENABLED === 'false'
+        )
+            return
         const analytics = createAnalytics({
             project: 'doradb.app',
             key: 'pk_live_a1722bdf0e888978',
