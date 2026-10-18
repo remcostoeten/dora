@@ -18,7 +18,7 @@ export function HubSphere() {
     return (
         <svg
             viewBox="0 0 64 64"
-            className="size-11 shrink-0 sm:size-12"
+            className="size-9 shrink-0 sm:size-12"
             aria-hidden
         >
             <g transform="translate(32 32)">

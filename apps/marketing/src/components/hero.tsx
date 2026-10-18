@@ -355,7 +355,7 @@ function HeroInteractive() {
     return (
         <div className="hero-cube-stage relative z-[1] flex min-h-[430px] items-center justify-center overflow-visible border-0 outline-none sm:min-h-[520px] lg:min-h-[580px] [&_*]:outline-none">
             <div className="hero-cube-stage relative h-[430px] w-full overflow-visible border-0 outline-none sm:h-[520px] lg:h-[580px]">
-                <InteractiveCube className="absolute left-1/2 top-1/2 size-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 sm:size-[720px] lg:size-[clamp(760px,48vw,920px)]" />
+                <InteractiveCube className="absolute left-1/2 top-1/2 size-[min(92vw,640px)] -translate-x-1/2 -translate-y-1/2 sm:size-[min(88vw,720px)] lg:size-[clamp(580px,60vw,760px)] xl:size-[clamp(760px,48vw,920px)]" />
             </div>
         </div>
     )
@@ -373,7 +373,7 @@ export function Hero({
     return (
         <section
             id="hero"
-            className={`hero-frame relative z-10 overflow-visible ${className}`}
+            className={`hero-frame relative z-10 overflow-x-clip ${className}`}
         >
             <AnimatedFrame
                 delay={HERO_FRAME_DELAY}

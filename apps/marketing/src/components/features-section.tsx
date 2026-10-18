@@ -41,7 +41,7 @@ export function FeaturesSection() {
                 </h3>
             </div>
 
-            <div className="relative grid grid-cols-2 md:grid-cols-3 md:grid-rows-2">
+            <div className="relative grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-rows-2">
                 <CornerTick className="hidden md:block left-0 top-1/2 -translate-x-1/2 -translate-y-1/2" />
                 <CornerTick className="hidden md:block left-1/3 top-1/2 -translate-x-1/2 -translate-y-1/2" />
                 <CornerTick className="hidden md:block left-2/3 top-1/2 -translate-x-1/2 -translate-y-1/2" />
