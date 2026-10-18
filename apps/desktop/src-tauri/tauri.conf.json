@@ -1,7 +1,7 @@
 {
 	"$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
 	"productName": "Dora",
-	"version": "0.42.1",
+	"version": "0.42.2",
 	"identifier": "com.Dora.dev",
 	"build": {
 		"frontendDist": "../dist",
@@ -55,8 +55,8 @@
 			"nsis",
 			"dmg"
 		],
-		"shortDescription": "A modern database client",
-		"longDescription": "Dora is a modern, fast, and efficient database client for PostgreSQL, SQLite, and more.",
+		"shortDescription": "Free, open source database client",
+		"longDescription": "Dora is a free, open source database client for PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB, with inline editing, a SQL console, and Drizzle and Prisma query runners.",
 		"category": "Development",
 		"icon": [
 			"icons/32x32.png",

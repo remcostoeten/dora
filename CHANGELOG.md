@@ -86,6 +86,51 @@ All notable changes to this project will be documented in this file.
 
 - chore(aur): update dora to 0.42.0
 
+
+## [v0.42.2] - 2026-10-18
+
+### Bug Fixes
+
+- fix(desktop): harden connections and land the marketing refresh (#258) (#258)
+
+
+
+### CI/CD
+
+- ci(release): sign and notarize the macOS bundle when Apple credentials are set
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.42.1
+
+- chore(marketing): add a vinext Cloudflare build alongside the Next build
+
+
+
+### Documentation
+
+- docs(metadata): refresh the product description across stores and the site
+
+
+
+### Features
+
+- feat(marketing): send analytics to Spoar v2 alongside v1 (#259) (#259)
+
+
+
+### Performance
+
+- perf(studio): cut overlay, animation and storage cost behind laggy modals
+
+
+
+### Refactoring
+
+- refactor(marketing): send analytics to Spoar v2 only (#261) (#261)
+
 ## [Unreleased]
 
 ## [v0.41.0] - 2026-08-27

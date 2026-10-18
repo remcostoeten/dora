@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { getAppearanceSettings, applyAppearanceToDOM } from '@studio/shared/lib/appearance-store'
 import { loadFontPair } from '@studio/shared/lib/font-loader'
+import { purgeLegacyDemoStore } from '@studio/shared/lib/legacy-storage'
 import {
 	hydrateWorkspaceFromBootstrap,
 	initTableSnapshotPersistence
@@ -17,6 +18,7 @@ import '@remcostoeten/notifier/styles'
 
 async function boot() {
 	void revealMainWindow()
+	purgeLegacyDemoStore()
 
 	const settings = getAppearanceSettings()
 	applyAppearanceToDOM(settings)

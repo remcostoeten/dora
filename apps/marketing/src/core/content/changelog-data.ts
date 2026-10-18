@@ -13,9 +13,59 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.42.1"
+export const CURRENT_VERSION = "0.42.2"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.42.2",
+		date: "2026-10-18",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.42.2",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(desktop): harden connections and land the marketing refresh (#258) (#258)",
+				]
+			},
+			{
+				name: "CI/CD",
+				items: [
+				"ci(release): sign and notarize the macOS bundle when Apple credentials are set",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.42.1",
+				"chore(marketing): add a vinext Cloudflare build alongside the Next build",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(metadata): refresh the product description across stores and the site",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(marketing): send analytics to Spoar v2 alongside v1 (#259) (#259)",
+				]
+			},
+			{
+				name: "Performance",
+				items: [
+				"perf(studio): cut overlay, animation and storage cost behind laggy modals",
+				]
+			},
+			{
+				name: "Refactoring",
+				items: [
+				"refactor(marketing): send analytics to Spoar v2 only (#261) (#261)",
+				]
+			}
+		]
+	},
 	{
 		version: "0.42.1",
 		date: "2026-09-22",

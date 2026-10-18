@@ -1,4 +1,5 @@
 import { TableSkeleton } from '@studio/shared/ui/skeleton'
+import { useDelayedFlag } from '@studio/shared/hooks/use-delayed-flag'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { useAdapter, useDataMutation, useConnections, useSchema } from '@studio/core/data-provider'
 import { useConnectionPhase } from '@studio/core/data-provider/connection-phase'
@@ -94,6 +95,8 @@ import type { ColumnDefinition } from './types'
 import type { BlobAction } from './components/cell-context-menu'
 import { bytesToBase64, bytesToHex } from './components/cells/blob-utils'
 import { useWorkspaceState } from '@studio/core/workspace-state'
+
+const TABLE_SKELETON_DELAY_MS = 150
 
 type Props = {
 	isActive?: boolean
@@ -243,6 +246,7 @@ export function DatabaseStudio({
 	> | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
 	const [isTableTransitioning, setIsTableTransitioning] = useState(!initialSnapshot)
+	const showTableSkeleton = useDelayedFlag(isTableTransitioning, TABLE_SKELETON_DELAY_MS)
 	const [viewMode, setViewMode] = useState<ViewMode>('content')
 	const [chartConfig, setChartConfig] = useState<ResultChartConfig | null>(null)
 	const previousTableRef = useRef<{ columns: number; rows: number } | null>(null)
@@ -1157,7 +1161,7 @@ export function DatabaseStudio({
 			>
 				{tableData && (
 					<div
-						className='h-full min-h-0 transition-opacity duration-150'
+						className='h-full min-h-0'
 						style={{ opacity: isTableTransitioning ? 0 : 1 }}
 					>
 						<DataGrid
@@ -1194,9 +1198,9 @@ export function DatabaseStudio({
 						/>
 					</div>
 				)}
-				{isTableTransitioning && (
+				{showTableSkeleton && (
 					<div
-						className='absolute inset-0 bg-background z-10 animate-in fade-in duration-100'
+						className='absolute inset-0 bg-background z-10'
 						role='status'
 						aria-live='polite'
 						aria-label='Loading table data'

@@ -554,10 +554,7 @@ function CommandPaletteState({
 		<DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
 			<DialogPrimitive.Portal>
 				<DialogPrimitive.Overlay
-					className={cn(
-						'fixed inset-0 z-50 bg-black/55 backdrop-blur-[1px]',
-						overlayFadeMotion
-					)}
+					className={cn('fixed inset-0 z-50 bg-black/55', overlayFadeMotion)}
 				/>
 				<DialogPrimitive.Content
 					onOpenAutoFocus={(event) => {

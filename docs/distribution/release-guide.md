@@ -297,6 +297,31 @@ release with no updater manifest would silently break auto-update).
 > future update. You'd have to ship a new pubkey and every existing user would
 > be stranded on their current version. Back it up in a password manager.
 
+### macOS code signing and notarization
+
+The macOS job signs and notarizes the `.app` when these repository secrets are
+set. Without them it prints a workflow warning and ships an unsigned bundle,
+which Gatekeeper blocks on first launch.
+
+1. Enroll in the Apple Developer Program and create a **Developer ID
+   Application** certificate in Xcode or at developer.apple.com.
+2. Export the certificate as a `.p12` with a password, then base64-encode it:
+   `base64 -i DeveloperID.p12 | pbcopy`.
+3. Create an app-specific password for your Apple ID at appleid.apple.com.
+4. Add GitHub repository secrets:
+   - `APPLE_CERTIFICATE`: the base64 `.p12`
+   - `APPLE_CERTIFICATE_PASSWORD`: the `.p12` export password
+   - `APPLE_SIGNING_IDENTITY`: the certificate name, e.g.
+     `Developer ID Application: Remco Stoeten (TEAMID)`
+   - `APPLE_ID`: the Apple ID email
+   - `APPLE_PASSWORD`: the app-specific password
+   - `APPLE_TEAM_ID`: the 10-character team ID
+
+When `APPLE_CERTIFICATE` is set, all six are required and the job fails fast if
+one is missing. After the build, `codesign --verify`, `spctl --assess` and
+`xcrun stapler validate` run against the `.app`, so a release cannot publish a
+bundle that claims to be signed but is not.
+
 ---
 
 ## All distribution channels

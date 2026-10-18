@@ -10,11 +10,19 @@ PackageName: Dora
 PackageUrl: https://github.com/remcostoeten/dora
 License: GPL-3.0-only
 LicenseUrl: https://github.com/remcostoeten/dora/blob/master/LICENSE
-ShortDescription: Dora is a desktop database studio for PostgreSQL, SQLite, and LibSQL.
+ShortDescription: Free, open source database client for PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1 and DuckDB.
 Tags:
 - database
+- database-client
 - postgres
+- postgresql
+- mysql
+- mariadb
 - sqlite
+- duckdb
+- sql
+- drizzle
+- prisma
 - tauri
 ReleaseNotesUrl: https://github.com/remcostoeten/dora/releases/tag/v0.0.102
 ManifestType: defaultLocale

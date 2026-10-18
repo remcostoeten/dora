@@ -2,8 +2,10 @@ export const siteConfig = {
     name: 'Dora',
     tagline: 'The database explorah',
     footerTagline: 'Engineered for developers. Built for production.',
+    seoTitle:
+        'Dora: free, open source database client for PostgreSQL, MySQL, SQLite and more',
     description:
-        'Dora is a desktop database explorer for browsing data, inspecting schemas, and querying PostHog product analytics with HogQL, all in one keyboard-first workbench.',
+        'Free, open source desktop database client for PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1 and DuckDB on macOS, Windows and Linux. Browse and edit data, run SQL, and write Drizzle and Prisma queries against the live schema.',
     author: {
         name: 'remco_stoeten',
         url: 'https://remcostoeten.com'
@@ -14,7 +16,19 @@ export const siteConfig = {
     themeColor: '#0f0c0c',
     keywords: [
         'Dora',
+        'DoraDB',
+        'database client',
+        'open source database client',
         'database explorer',
+        'Postgres GUI',
+        'MySQL GUI',
+        'SQLite GUI',
+        'DuckDB GUI',
+        'Cloudflare D1 client',
+        'Drizzle query runner',
+        'Prisma query runner',
+        'TablePlus alternative',
+        'DBeaver alternative',
         'desktop database app',
         'database GUI',
         'SQL client',
@@ -45,7 +59,7 @@ export const siteConfig = {
         icon: '/icons/icon.png',
         favicon: '/icons/logo.svg',
         logo: '/icons/logo.svg',
-        ogImage: '/opengraph-image'
+        ogImage: '/opengraph-image.png'
     }
 } as const
 
