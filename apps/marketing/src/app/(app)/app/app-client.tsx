@@ -15,7 +15,7 @@ const analyticsConfig = createAnalyticsConfig({
             'https://ingestion.remcostoeten.nl'
     },
     vercel: {
-        enabled: process.env.NODE_ENV === 'production',
+        enabled: false,
         trackCustomEvents: false
     }
 })

@@ -1,0 +1,48 @@
+name: Deploy marketing
+
+on:
+    push:
+        branches: [master]
+        paths:
+            - 'apps/marketing/**'
+            - 'packages/studio/**'
+            - 'bun.lock'
+            - '.github/workflows/deploy-marketing.yml'
+    workflow_dispatch:
+
+concurrency:
+    group: deploy-marketing
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        name: Deploy to Cloudflare Workers
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: apps/marketing
+        env:
+            CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+            NEXT_PUBLIC_POSTHOG_HOST: ${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
+            NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN: ${{ vars.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN }}
+            DORA_OAUTH_PROXY_BASE: ${{ vars.DORA_OAUTH_PROXY_BASE }}
+            NODE_OPTIONS: --max-old-space-size=6144
+        steps:
+            - name: Checkout
+              uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+              with:
+                  bun-version: '1.3.14'
+
+            - name: Install dependencies
+              working-directory: .
+              run: bun install --frozen-lockfile
+
+            - name: Build
+              run: bun run build:vinext
+
+            - name: Deploy
+              run: bunx cf deploy --prebuilt --message "${{ github.sha }}"
