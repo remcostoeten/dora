@@ -146,7 +146,7 @@ function CommandPaletteState({
 	const inputRef = useRef<HTMLInputElement>(null)
 	const listRef = useRef<HTMLDivElement>(null)
 	const listboxId = useId()
-	const frecency = getCommandFrecency()
+	const frecency = useMemo(() => (open ? getCommandFrecency() : {}), [open])
 
 	const { history } = useQueryHistory()
 	const { data: dockerStatus } = useDockerAvailability()
