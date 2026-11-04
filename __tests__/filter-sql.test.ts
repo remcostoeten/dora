@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { buildWhereClause, buildFilterCondition } from '@/core/data-provider/filter-sql'
+import {
+	buildWhereClause,
+	buildFilterCondition,
+	buildWhereClauseFromGroup
+} from '@/core/data-provider/filter-sql'
 import type { FilterDescriptor } from '@/features/database-studio/types'
 
 describe('buildWhereClause', () => {
@@ -42,5 +46,19 @@ describe('buildWhereClause', () => {
 		expect(buildFilterCondition({ column: 'age', operator: 'gte', value: 18 })).toBe(
 			`"age" >= '18'`
 		)
+	})
+})
+
+describe('buildWhereClauseFromGroup', () => {
+	it('skips conditions that have no value yet', () => {
+		expect(
+			buildWhereClauseFromGroup({
+				logic: 'AND',
+				conditions: [
+					{ column: 'id', operator: 'eq', value: '' },
+					{ column: 'status', operator: 'eq', value: 'active' }
+				]
+			})
+		).toBe(`"status" = 'active'`)
 	})
 })
