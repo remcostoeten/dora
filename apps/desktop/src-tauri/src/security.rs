@@ -6,13 +6,20 @@ use aes_gcm::{
 use anyhow::{Context, Result};
 use keyring::Entry;
 use std::fs;
+use std::sync::Mutex;
 
 use crate::credential_storage;
 
 const SERVICE_NAME: &str = "dora_db_client";
 const KEY_NAME: &str = "dora_encryption_key";
 
+static KEY_CREATION: Mutex<()> = Mutex::new(());
+
 fn get_or_create_key() -> Result<[u8; 32]> {
+    // Without this, concurrent first calls each generate and store a different key.
+    let _guard = KEY_CREATION
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     if !credential_storage::uses_os_keyring() {
         return get_or_create_fallback_key();
     }
