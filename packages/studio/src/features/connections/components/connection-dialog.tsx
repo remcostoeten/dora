@@ -143,6 +143,7 @@ export function ConnectionDialog({
 	const posthogSelected = selectedIntegration === 'posthog'
 	const integrationSelected = selectedIntegration !== null
 	const [showDesktopOnlyHint, setShowDesktopOnlyHint] = useState(false)
+	const [providersExpanded, setProvidersExpanded] = useState(false)
 	const isTauri = useIsTauri()
 	const showDropOverlay = isDropTargetActive || externalDropActive
 	const formDataRef = useRef(formData)
@@ -374,6 +375,7 @@ export function ConnectionDialog({
 				key === 'posthog'
 			) {
 				setSelectedIntegration(key)
+				setProvidersExpanded(false)
 				setTestStatus('idle')
 				return
 			}
@@ -768,13 +770,12 @@ export function ConnectionDialog({
 						data-collapsible-provider-selector={integrationSelected ? 'true' : 'false'}
 						className={cn(
 							'space-y-3 overflow-hidden border border-border/60 bg-card/35 p-4',
-							'transition-[max-height,opacity,background-color,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
-							integrationSelected
-								? 'max-h-[118px] opacity-80 hover:max-h-[420px] hover:opacity-100 focus-within:max-h-[420px] focus-within:opacity-100'
-								: 'max-h-[520px]'
+							integrationSelected &&
+								!providersExpanded &&
+								'max-h-[118px] focus-within:max-h-none'
 						)}
 					>
-						<div className='flex items-center justify-between gap-3'>
+						<div className='flex items-start justify-between gap-3'>
 							<div>
 								<Label
 									id='database-type-label'
@@ -786,6 +787,18 @@ export function ConnectionDialog({
 									Choose the engine Dora should use for validation and queries.
 								</p>
 							</div>
+							{integrationSelected ? (
+								<Button
+									type='button'
+									variant='ghost'
+									size='sm'
+									aria-expanded={providersExpanded}
+									onClick={() => setProvidersExpanded((expanded) => !expanded)}
+									className='h-7 shrink-0 px-2 text-xs text-muted-foreground'
+								>
+									{providersExpanded ? 'Show less' : 'Show all'}
+								</Button>
+							) : null}
 						</div>
 						<DatabaseTypeSelector
 							selectedType={selectedIntegration ?? formData.type ?? 'postgres'}
