@@ -46,19 +46,31 @@ export function useColumnResize(workspaceStateKey: string) {
 		function resizeColumnWhileDragging() {
 			if (!resizingColumn) return
 
-			const handleMouseMove = function (e: MouseEvent) {
-				const delta = e.clientX - startXRef.current
-				const newWidth = Math.max(MIN_COLUMN_WIDTH, startWidthRef.current + delta)
+			let latestWidth = startWidthRef.current
+			let frame = 0
 
+			const commitWidth = function () {
+				frame = 0
 				setColumnWidths(function (prev) {
+					if (prev[resizingColumn] === latestWidth) return prev
 					return {
 						...prev,
-						[resizingColumn]: newWidth
+						[resizingColumn]: latestWidth
 					}
 				})
 			}
 
+			const handleMouseMove = function (e: MouseEvent) {
+				const delta = e.clientX - startXRef.current
+				latestWidth = Math.max(MIN_COLUMN_WIDTH, startWidthRef.current + delta)
+				if (!frame) frame = requestAnimationFrame(commitWidth)
+			}
+
 			const handleMouseUp = function () {
+				if (frame) {
+					cancelAnimationFrame(frame)
+					commitWidth()
+				}
 				setResizingColumn(null)
 			}
 
@@ -66,6 +78,7 @@ export function useColumnResize(workspaceStateKey: string) {
 			document.addEventListener('mouseup', handleMouseUp)
 
 			return function () {
+				cancelAnimationFrame(frame)
 				document.removeEventListener('mousemove', handleMouseMove)
 				document.removeEventListener('mouseup', handleMouseUp)
 			}
