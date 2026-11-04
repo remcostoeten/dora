@@ -18,6 +18,8 @@ type Props = {
   setFormData: React.Dispatch<React.SetStateAction<Partial<Connection>>>;
   useConnectionString: boolean;
   setUseConnectionString: (use: boolean) => void;
+  invalidField?: string;
+  errorId: string;
 };
 
 function capsFromForm(formData: Partial<Connection>) {
@@ -34,9 +36,16 @@ export function ConnectionForm({
   setFormData,
   useConnectionString,
   setUseConnectionString,
+  invalidField,
+  errorId,
 }: Props) {
   const caps = capsFromForm(formData);
   const engine = formData.type ?? "postgres";
+
+  function invalidProps(field: keyof Connection) {
+    if (invalidField !== field) return {};
+    return { "aria-invalid": true, "aria-describedby": errorId };
+  }
 
   async function handleBrowseFile() {
     try {
@@ -67,6 +76,7 @@ export function ConnectionForm({
           </Label>
           <Input
             id="libsql-url"
+            {...invalidProps("url")}
             placeholder="libsql://your-database.turso.io"
             value={formData.url || ""}
             onChange={function (e) {
@@ -111,6 +121,7 @@ export function ConnectionForm({
         <div className="flex gap-2">
           <Input
             id="sqlite-path"
+            {...invalidProps("url")}
             placeholder={isDuckDb ? "/path/to/database.duckdb" : "/path/to/database.db"}
             value={formData.url || ""}
             onChange={function (e) {
@@ -119,6 +130,7 @@ export function ConnectionForm({
             className="flex-1 input-glow font-mono text-sm"
           />
           <DesktopOnlyButton
+            type="button"
             variant="outline"
             size="icon"
             onClick={handleBrowseFile}
@@ -173,6 +185,7 @@ export function ConnectionForm({
               </Label>
               <Input
                 id="connection-string"
+            {...invalidProps("url")}
                 placeholder={`${formData.type}://user:password@host:port/database`}
                 value={formData.url || ""}
                 onChange={function (e) {
@@ -213,6 +226,7 @@ export function ConnectionForm({
                 </Label>
                 <Input
                   id="host"
+            {...invalidProps("host")}
                   placeholder="localhost"
                   value={formData.host || ""}
                   onChange={function (e) {
@@ -230,10 +244,12 @@ export function ConnectionForm({
                 </Label>
                 <Input
                   id="port"
+            {...invalidProps("port")}
                   type="number"
                   value={formData.port || ""}
                   onChange={function (e) {
-                    updateField("port", parseInt(e.target.value));
+                    const port = Number.parseInt(e.target.value, 10);
+                    updateField("port", Number.isNaN(port) ? undefined : port);
                   }}
                   className="input-glow"
                 />
@@ -250,6 +266,7 @@ export function ConnectionForm({
                 </Label>
                 <Input
                   id="user"
+            {...invalidProps("user")}
                   placeholder="postgres"
                   value={formData.user || ""}
                   onChange={function (e) {
@@ -287,6 +304,7 @@ export function ConnectionForm({
               </Label>
               <Input
                 id="database"
+            {...invalidProps("database")}
                 placeholder="postgres"
                 value={formData.database || ""}
                 onChange={function (e) {
@@ -361,6 +379,8 @@ export function ConnectionForm({
               {formData.sshConfig?.enabled && (
                 <SshTunnelConfigForm
                   config={formData.sshConfig}
+                  invalidField={invalidField?.startsWith("ssh.") ? invalidField.slice(4) : undefined}
+                  errorId={errorId}
                   onChange={function (sshConfig) {
                     updateField("sshConfig", sshConfig);
                   }}

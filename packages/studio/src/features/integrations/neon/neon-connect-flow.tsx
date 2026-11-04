@@ -293,7 +293,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 			</div>
 
 			{authError ? (
-				<p className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+				<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
 					{authError}
 				</p>
 			) : null}
@@ -383,6 +383,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 								onChange={function (event) {
 									setQuery(event.target.value)
 								}}
+								aria-label='Search Neon databases'
 								placeholder='Search Neon databases'
 								className='h-9 bg-background/70 pl-9'
 							/>
@@ -410,7 +411,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							</div>
 						) : null}
 						{error ? (
-							<p className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+							<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
 								{error}
 							</p>
 						) : null}
@@ -499,7 +500,7 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 					{selected ? (
 						<div
 							data-neon-action-bar
-							className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'
+							className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)]'
 						>
 							<Button
 								type='button'

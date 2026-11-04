@@ -29,7 +29,9 @@ describe('ConnectionDialog provider layout', function () {
 		expect(typeSection).toHaveAttribute('data-integration-selected', 'true')
 		expect(typeSection).toHaveAttribute('data-collapsible-provider-selector', 'true')
 
-		const providerButtons = within(typeSection).getAllByRole('button')
+		const providerButtons = within(
+			within(typeSection).getByRole('group', { name: /database type/i })
+		).getAllByRole('button')
 		expect(providerButtons[0]).toHaveAccessibleName(/^Neon\b/i)
 
 		expect(screen.getByTestId('provider-flow-region')).toHaveAttribute(

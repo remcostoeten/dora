@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CloudflareD1Database } from "@studio/lib/bindings";
 import { formatBackendError } from "@studio/shared/utils/backend-error";
 import { listCloudflareDatabases } from "./cloudflare-api";
@@ -9,18 +9,24 @@ export function useCloudflareDatabases(accountId: string | null) {
   const [databases, setDatabases] = useState<CloudflareD1Database[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
   const refresh = useCallback(
     async function refresh() {
-      if (!accountId) return;
+      const requestId = ++requestIdRef.current;
+      if (!accountId) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       setError(null);
       try {
-        setDatabases(await listCloudflareDatabases(accountId));
+        const resolved = await listCloudflareDatabases(accountId);
+        if (requestId === requestIdRef.current) setDatabases(resolved);
       } catch (error) {
-        setError(formatBackendError(error));
+        if (requestId === requestIdRef.current) setError(formatBackendError(error));
       } finally {
-        setIsLoading(false);
+        if (requestId === requestIdRef.current) setIsLoading(false);
       }
     },
     [accountId],
@@ -28,6 +34,8 @@ export function useCloudflareDatabases(accountId: string | null) {
 
   useEffect(
     function loadDatabases() {
+      setDatabases([]);
+      setError(null);
       void refresh();
     },
     [refresh],

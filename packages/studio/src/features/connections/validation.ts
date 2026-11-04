@@ -62,10 +62,7 @@ export const mysqlConnectionStringSchema = baseConnectionSchema.extend({
 	url: z
 		.string()
 		.min(1, 'Connection string is required')
-		.refine(
-			(val) => val.startsWith('mysql://'),
-			'Invalid connection string format'
-		)
+		.refine((val) => val.startsWith('mysql://'), 'Invalid connection string format')
 })
 
 export const mariadbConnectionStringSchema = baseConnectionSchema.extend({
@@ -155,7 +152,12 @@ export function validateConnection(
 			duckdbConnectionSchema.parse(formData)
 		} else if (type === 'libsql') {
 			libsqlConnectionSchema.parse(formData)
-		} else if (type === 'postgres' || type === 'cockroach' || type === 'mysql' || type === 'mariadb') {
+		} else if (
+			type === 'postgres' ||
+			type === 'cockroach' ||
+			type === 'mysql' ||
+			type === 'mariadb'
+		) {
 			if (useConnectionString) {
 				if (type === 'postgres') {
 					postgresConnectionStringSchema.parse(formData)
@@ -175,7 +177,15 @@ export function validateConnection(
 			if (supportsSshTunnel && formData.sshConfig && typeof formData.sshConfig === 'object') {
 				const sshConfig = formData.sshConfig as Record<string, unknown>
 				if (sshConfig.enabled === true) {
-					sshTunnelSchema.parse(sshConfig)
+					const ssh = sshTunnelSchema.safeParse(sshConfig)
+					if (!ssh.success) {
+						const issue = ssh.error.issues[0]
+						return {
+							success: false,
+							error: issue.message,
+							field: `ssh.${String(issue.path[0] ?? 'host')}`
+						}
+					}
 				}
 			}
 		}

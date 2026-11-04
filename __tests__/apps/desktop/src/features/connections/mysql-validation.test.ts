@@ -63,7 +63,7 @@ describe('connections validation (mysql)', function () {
 		)
 
 		expect(result.success).toBe(false)
-		expect(result.field).toBe('password')
+		expect(result.field).toBe('ssh.password')
 	})
 
 	it('rejects invalid MySQL connection string formats', function () {

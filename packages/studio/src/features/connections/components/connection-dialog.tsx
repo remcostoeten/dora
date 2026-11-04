@@ -1,14 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import {
-	CheckCircle2,
-	XCircle,
-	DatabaseZap,
-	FileSpreadsheet,
-	Info,
-	X,
-	Monitor
-} from 'lucide-react'
+import { memo, useState, useEffect, useCallback, useRef } from 'react'
+import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
+import { CheckCircle2, XCircle, DatabaseZap, FileSpreadsheet, Info, X, Monitor } from 'lucide-react'
 import { Spinner } from '@studio/shared/ui/spinner'
 import { commands, DatabaseInfo } from '@studio/lib/bindings'
 import { useIsTauri } from '@studio/core/data-provider'
@@ -35,7 +27,7 @@ import { XataConnectFlow } from '@studio/features/integrations/xata/xata-connect
 import { PlanetscaleConnectFlow } from '@studio/features/integrations/planetscale/planetscale-connect-flow'
 import { VercelConnectFlow } from '@studio/features/integrations/vercel/vercel-connect-flow'
 import { PosthogConnectFlow } from '@studio/features/integrations/posthog/posthog-connect-flow'
-import { Connection, DatabaseType, SshAuthMethod, SshTunnelConfig } from '../types'
+import { Connection, DatabaseType, SshAuthMethod } from '../types'
 import { getSourceCaps } from '../source-caps'
 import {
 	sanitizeConnectionUrl,
@@ -57,7 +49,7 @@ import { classifyDroppedPaths, connectionNameFromPath } from '../utils/data-file
 type Props = {
 	open: boolean
 	onOpenChange: (open: boolean) => void
-	onSave: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
+	onSave: (connection: Omit<Connection, 'id' | 'createdAt'>) => void | Promise<void>
 	/** Opens data files — with paths from a drop, or opens the picker when omitted. */
 	onOpenDataFiles?: (paths?: string[]) => void | Promise<void>
 	/** Resolve `.db` and other ambiguous database files via header probing. */
@@ -66,6 +58,23 @@ type Props = {
 	externalDropActive?: boolean
 	onDroppedFilePathsHandled?: () => void
 	initialValues?: Connection
+}
+
+const FORM_ID = 'connection-form'
+const FORM_ERROR_ID = 'connection-form-error'
+
+function fieldElementId(field: string, formData: Partial<Connection>) {
+	if (field === 'url') {
+		if (formData.type === 'libsql') return 'libsql-url'
+		if (formData.type === 'sqlite' || formData.type === 'duckdb') return 'sqlite-path'
+		return 'connection-string'
+	}
+	if (field === 'ssh.password') {
+		return formData.sshConfig?.authMethod === 'keyfile' ? 'ssh-keyfile' : 'ssh-password'
+	}
+	if (field === 'ssh.hostKeyFingerprint') return 'ssh-host-key-fingerprint'
+	if (field.startsWith('ssh.')) return `ssh-${field.slice(4)}`
+	return field
 }
 
 export function ConnectionDialog({
@@ -134,8 +143,16 @@ export function ConnectionDialog({
 	const posthogSelected = selectedIntegration === 'posthog'
 	const integrationSelected = selectedIntegration !== null
 	const [showDesktopOnlyHint, setShowDesktopOnlyHint] = useState(false)
+	const [providersExpanded, setProvidersExpanded] = useState(false)
 	const isTauri = useIsTauri()
 	const showDropOverlay = isDropTargetActive || externalDropActive
+	const formDataRef = useRef(formData)
+	const initialValuesRef = useRef(initialValues)
+
+	useEffect(() => {
+		formDataRef.current = formData
+		initialValuesRef.current = initialValues
+	})
 
 	const applyDatabaseFile = useCallback(
 		async function applyDatabaseFile(path: string) {
@@ -220,6 +237,7 @@ export function ConnectionDialog({
 	useEffect(
 		function resetFormOnOpen() {
 			if (open) {
+				const initialValues = initialValuesRef.current
 				const initialCaps = initialValues
 					? getSourceCaps({
 							type: initialValues.type ?? 'postgres',
@@ -243,9 +261,11 @@ export function ConnectionDialog({
 				setSelectedIntegration(null)
 				setTestStatus('idle')
 				setTestMessage('')
+				setValidationError(null)
+				setIsSaving(false)
 			}
 		},
-		[open, initialValues]
+		[open, initialValues?.id]
 	)
 
 	useEffect(
@@ -316,7 +336,7 @@ export function ConnectionDialog({
 		[open]
 	)
 
-	function updateField(field: keyof Connection, value: unknown) {
+	const updateField = useCallback(function updateField(field: keyof Connection, value: unknown) {
 		setFormData(function (prev) {
 			const newData = { ...prev, [field]: value }
 
@@ -333,48 +353,47 @@ export function ConnectionDialog({
 			return newData
 		})
 		setTestStatus('idle')
-		// Clear validation error for this field
-		if (validationError?.field === field) {
-			setValidationError(null)
-		}
-	}
+		setValidationError((prev) => (prev?.field === field ? null : prev))
+	}, [])
 
-	function handleProviderSelect(key: ProviderKey) {
-		if (key === 'files') {
-			// Not a real engine — opens flat files as a read-only DuckDB
-			// connection via the native picker. Leaves formData.type untouched.
-			void onOpenDataFiles?.()
-			return
-		}
-		if (
-			key === 'supabase' ||
-			key === 'turso' ||
-			key === 'neon' ||
-			key === 'cloudflare' ||
-			key === 'xata' ||
-			key === 'planetscale' ||
-			key === 'vercel' ||
-			key === 'posthog'
-		) {
-			setSelectedIntegration(key)
-			setTestStatus('idle')
-			return
-		}
-		setSelectedIntegration(null)
-		updateField('type', key)
-		const caps = getSourceCaps({
-			type: key,
-			fileSources: formData.fileSources,
-			url: formData.url
-		})
-		if (!caps.supportsSshTunnel) {
-			setUseConnectionString(false)
-		}
-	}
+	const handleProviderSelect = useCallback(
+		function handleProviderSelect(key: ProviderKey) {
+			if (key === 'files') {
+				// Not a real engine — opens flat files as a read-only DuckDB
+				// connection via the native picker. Leaves formData.type untouched.
+				void onOpenDataFiles?.()
+				return
+			}
+			if (
+				key === 'supabase' ||
+				key === 'turso' ||
+				key === 'neon' ||
+				key === 'cloudflare' ||
+				key === 'xata' ||
+				key === 'planetscale' ||
+				key === 'vercel' ||
+				key === 'posthog'
+			) {
+				setSelectedIntegration(key)
+				setProvidersExpanded(false)
+				setTestStatus('idle')
+				return
+			}
+			setSelectedIntegration(null)
+			updateField('type', key)
+			const caps = getSourceCaps({
+				type: key,
+				fileSources: formDataRef.current.fileSources,
+				url: formDataRef.current.url
+			})
+			if (!caps.supportsSshTunnel) {
+				setUseConnectionString(false)
+			}
+		},
+		[onOpenDataFiles, updateField]
+	)
 
-	async function handleTestConnection(e: React.MouseEvent) {
-		e.preventDefault()
-
+	async function handleTestConnection() {
 		if (!isTauri) {
 			setShowDesktopOnlyHint(true)
 			setTestStatus('idle')
@@ -569,7 +588,10 @@ export function ConnectionDialog({
 		}
 	}
 
-	function handleSave() {
+	async function handleSave(event: React.FormEvent<HTMLFormElement>) {
+		event.preventDefault()
+		if (isSaving) return
+
 		const validation = validateConnection(
 			formData as Record<string, unknown>,
 			useConnectionString
@@ -577,39 +599,28 @@ export function ConnectionDialog({
 
 		if (!validation.success) {
 			setValidationError({ field: validation.field, message: validation.error })
+			if (validation.field) {
+				document.getElementById(fieldElementId(validation.field, formData))?.focus()
+			}
 			return
 		}
 
 		setValidationError(null)
 		setIsSaving(true)
-		setTimeout(function () {
-			setIsSaving(false)
-			onSave(formData as Omit<Connection, 'id' | 'createdAt'>)
-			onOpenChange(false)
-		}, 400)
-	}
-
-	async function handleBrowseFile() {
-		if (!isTauri) {
-			setShowDesktopOnlyHint(true)
-			window.setTimeout(function resetDesktopHint() {
-				setShowDesktopOnlyHint(false)
-			}, 2600)
-			return
-		}
-
 		try {
-			const result = await commands.openSqliteDb()
-			if (result.status === 'ok' && result.data) {
-				updateField('url', result.data)
-			}
-		} catch (error) {
-			console.error('Failed to open file picker:', error)
-			toast.error('Failed to open file picker', {
-				description: error instanceof Error ? error.message : String(error)
-			})
+			await onSave(formData as Omit<Connection, 'id' | 'createdAt'>)
+		} finally {
+			setIsSaving(false)
 		}
 	}
+
+	const testConnectionRef = useRef(handleTestConnection)
+	useEffect(() => {
+		testConnectionRef.current = handleTestConnection
+	})
+	const handleTestClick = useCallback(() => {
+		void testConnectionRef.current()
+	}, [])
 
 	const selectedProvider = DATABASE_META[formData.type || 'postgres']
 
@@ -739,6 +750,11 @@ export function ConnectionDialog({
 								id='name'
 								placeholder='e.g. Production Database'
 								value={formData.name || ''}
+								form={FORM_ID}
+								aria-invalid={validationError?.field === 'name' || undefined}
+								aria-describedby={
+									validationError?.field === 'name' ? FORM_ERROR_ID : undefined
+								}
 								onChange={function (e) {
 									updateField('name', e.target.value)
 								}}
@@ -754,21 +770,35 @@ export function ConnectionDialog({
 						data-collapsible-provider-selector={integrationSelected ? 'true' : 'false'}
 						className={cn(
 							'space-y-3 overflow-hidden border border-border/60 bg-card/35 p-4',
-							'transition-[max-height,opacity,background-color,border-color] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]',
-							integrationSelected
-								? 'max-h-[118px] opacity-80 hover:max-h-[420px] hover:opacity-100 focus-within:max-h-[420px] focus-within:opacity-100'
-								: 'max-h-[520px]'
+							integrationSelected &&
+								!providersExpanded &&
+								'max-h-[118px] focus-within:max-h-none'
 						)}
 					>
-						<div className='flex items-center justify-between gap-3'>
+						<div className='flex items-start justify-between gap-3'>
 							<div>
-								<Label className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'>
+								<Label
+									id='database-type-label'
+									className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'
+								>
 									Database Type
 								</Label>
 								<p className='mt-1 text-xs text-muted-foreground/75'>
 									Choose the engine Dora should use for validation and queries.
 								</p>
 							</div>
+							{integrationSelected ? (
+								<Button
+									type='button'
+									variant='ghost'
+									size='sm'
+									aria-expanded={providersExpanded}
+									onClick={() => setProvidersExpanded((expanded) => !expanded)}
+									className='h-7 shrink-0 px-2 text-xs text-muted-foreground'
+								>
+									{providersExpanded ? 'Show less' : 'Show all'}
+								</Button>
+							) : null}
 						</div>
 						<DatabaseTypeSelector
 							selectedType={selectedIntegration ?? formData.type ?? 'postgres'}
@@ -783,6 +813,7 @@ export function ConnectionDialog({
 							showPosthog={!initialValues}
 							showFiles={!!onOpenDataFiles}
 							compact={integrationSelected}
+							labelledBy='database-type-label'
 						/>
 					</div>
 
@@ -851,14 +882,29 @@ export function ConnectionDialog({
 							)}
 						</div>
 					) : (
-						<ConnectionForm
-							formData={formData}
-							updateField={updateField}
-							setFormData={setFormData}
-							useConnectionString={useConnectionString}
-							setUseConnectionString={setUseConnectionString}
-						/>
+						<form id={FORM_ID} noValidate onSubmit={handleSave}>
+							<ConnectionForm
+								formData={formData}
+								updateField={updateField}
+								setFormData={setFormData}
+								useConnectionString={useConnectionString}
+								setUseConnectionString={setUseConnectionString}
+								invalidField={validationError?.field}
+								errorId={FORM_ERROR_ID}
+							/>
+						</form>
 					)}
+
+					{!integrationSelected && validationError?.message ? (
+						<p
+							id={FORM_ERROR_ID}
+							role='alert'
+							className='flex items-start gap-2 border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-700 dark:text-red-300'
+						>
+							<XCircle className='mt-0.5 h-3.5 w-3.5 shrink-0' strokeWidth={2.25} />
+							{validationError.message}
+						</p>
+					) : null}
 
 					{!integrationSelected &&
 						!flyHintDismissed &&
@@ -912,7 +958,7 @@ export function ConnectionDialog({
 								message={testMessage}
 								showDesktopOnlyHint={showDesktopOnlyHint}
 								disabled={isTesting || !formData.type}
-								onClick={handleTestConnection}
+								onClick={handleTestClick}
 							/>
 						)}
 						<div className='flex items-center gap-2'>
@@ -928,9 +974,9 @@ export function ConnectionDialog({
 							</Button>
 							{!integrationSelected && (
 								<Button
-									type='button'
-									onClick={handleSave}
-									disabled={isSaving || !formData.name}
+									type='submit'
+									form={FORM_ID}
+									disabled={isSaving}
 									className='gap-2'
 								>
 									{isSaving ? (
@@ -964,10 +1010,10 @@ type TTestConnectionButtonProps = {
 	message: string
 	showDesktopOnlyHint?: boolean
 	disabled: boolean
-	onClick: (e: React.MouseEvent) => void
+	onClick: () => void
 }
 
-function TestConnectionButton({
+const TestConnectionButton = memo(function TestConnectionButton({
 	isTesting,
 	status,
 	message,
@@ -1005,38 +1051,54 @@ function TestConnectionButton({
 		)
 	}
 
+	const announcement =
+		phase === 'testing'
+			? 'Testing connection'
+			: phase === 'success'
+				? message || 'Connection successful'
+				: phase === 'error'
+					? message || 'Connection failed'
+					: phase === 'desktop-only'
+						? 'Testing connections is only available in the desktop app'
+						: ''
+
 	return (
-		<MotionButton
-			layout
-			type='button'
-			variant='outline'
-			onClick={onClick}
-			disabled={disabled}
-			title={phase === 'error' ? message : undefined}
-			whileTap={disabled ? undefined : { scale: 0.97 }}
-			transition={{ layout: { duration: 0.32, ease: EASE_OUT } }}
-			className={cn(
-				'max-w-full gap-2 self-start overflow-hidden border-border/70 bg-background/65',
-				phase === 'desktop-only' &&
-					'desktop-only-hint border-primary/30 bg-primary/5 text-primary',
-				phase === 'success' &&
-					'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300',
-				phase === 'error' &&
-					'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300'
-			)}
-		>
-			<AnimatePresence mode='popLayout' initial={false}>
-				<motion.span
-					key={phase}
-					initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }}
-					animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-					exit={{ opacity: 0, y: -6, filter: 'blur(4px)' }}
-					transition={{ duration: 0.18, ease: EASE_OUT }}
-					className='flex min-w-0 items-center gap-2'
-				>
-					{phaseContent[phase]}
-				</motion.span>
-			</AnimatePresence>
-		</MotionButton>
+		<MotionConfig reducedMotion='user'>
+			<span className='sr-only' role='status' aria-live='polite'>
+				{announcement}
+			</span>
+			<MotionButton
+				layout
+				type='button'
+				variant='outline'
+				onClick={onClick}
+				disabled={disabled}
+				title={phase === 'error' ? message : undefined}
+				whileTap={disabled ? undefined : { scale: 0.97 }}
+				transition={{ layout: { duration: 0.32, ease: EASE_OUT } }}
+				className={cn(
+					'max-w-full gap-2 self-start overflow-hidden border-border/70 bg-background/65',
+					phase === 'desktop-only' &&
+						'desktop-only-hint border-primary/30 bg-primary/5 text-primary',
+					phase === 'success' &&
+						'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300',
+					phase === 'error' &&
+						'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300'
+				)}
+			>
+				<AnimatePresence mode='popLayout' initial={false}>
+					<motion.span
+						key={phase}
+						initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }}
+						animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+						exit={{ opacity: 0, y: -6, filter: 'blur(4px)' }}
+						transition={{ duration: 0.18, ease: EASE_OUT }}
+						className='flex min-w-0 items-center gap-2'
+					>
+						{phaseContent[phase]}
+					</motion.span>
+				</AnimatePresence>
+			</MotionButton>
+		</MotionConfig>
 	)
-}
+})

@@ -11,9 +11,16 @@ import { SshTunnelConfig } from "../../types";
 type Props = {
   config: SshTunnelConfig;
   onChange: (config: SshTunnelConfig) => void;
+  invalidField?: string;
+  errorId: string;
 };
 
-export function SshTunnelConfigForm({ config, onChange }: Props) {
+export function SshTunnelConfigForm({ config, onChange, invalidField, errorId }: Props) {
+  function invalidProps(field: keyof SshTunnelConfig) {
+    if (invalidField !== field) return {};
+    return { "aria-invalid": true, "aria-describedby": errorId };
+  }
+
   function updateConfig(updates: Partial<SshTunnelConfig>) {
     onChange({ ...config, ...updates });
   }
@@ -36,6 +43,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
           </Label>
           <Input
             id="ssh-host"
+            {...invalidProps("host")}
             placeholder="ssh.example.com"
             value={config.host || ""}
             onChange={function (e) {
@@ -53,6 +61,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
           </Label>
           <Input
             id="ssh-port"
+            {...invalidProps("port")}
             type="number"
             value={config.port || 22}
             onChange={function (e) {
@@ -72,6 +81,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
         </Label>
         <Input
           id="ssh-username"
+            {...invalidProps("username")}
           placeholder="root"
           value={config.username || ""}
           onChange={function (e) {
@@ -90,6 +100,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
         </Label>
         <Input
           id="ssh-host-key-fingerprint"
+            {...invalidProps("hostKeyFingerprint")}
           placeholder="SHA256:… (optional when present in ~/.ssh/known_hosts)"
           value={config.hostKeyFingerprint || ""}
           onChange={function (e) {
@@ -104,12 +115,16 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
       </div>
 
       <div className="space-y-3">
-        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        <Label
+          id="ssh-auth-method-label"
+          className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
+        >
           Authentication Method
         </Label>
-        <div className="grid grid-cols-2 gap-2">
+        <div role="group" aria-labelledby="ssh-auth-method-label" className="grid grid-cols-2 gap-2">
           <button
             type="button"
+            aria-pressed={config.authMethod === "password"}
             onClick={function () {
               updateConfig({ authMethod: "password" });
             }}
@@ -125,6 +140,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
           </button>
           <button
             type="button"
+            aria-pressed={config.authMethod === "keyfile"}
             onClick={function () {
               updateConfig({ authMethod: "keyfile" });
             }}
@@ -151,6 +167,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
           </Label>
           <Input
             id="ssh-password"
+            {...invalidProps("password")}
             type="password"
             placeholder="••••••••"
             value={config.password || ""}
@@ -173,6 +190,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
           <div className="flex gap-2">
             <Input
               id="ssh-keyfile"
+            {...invalidProps("password")}
               placeholder="~/.ssh/id_rsa"
               value={config.privateKeyPath || ""}
               onChange={function (e) {
@@ -181,6 +199,7 @@ export function SshTunnelConfigForm({ config, onChange }: Props) {
               className="flex-1 input-glow font-mono text-sm"
             />
             <DesktopOnlyButton
+              type="button"
               variant="outline"
               size="icon"
               onClick={async function () {
@@ -212,6 +231,7 @@ function FolderOpenIcon({ className }: { className?: string }) {
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
+      aria-hidden="true"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
