@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest'
 import {
 	detectConnectionType,
 	detectDatabaseProvider,
+	detectKeyValueProvider,
 	getPrimaryDatabasePort,
-	getContainerConnectionDetails
+	getContainerConnectionDetails,
+	getKeyValueConnectionUrl,
+	isKeyValueContainer
 } from '@/features/docker-manager/utilities/container-connection'
 import type { DockerContainer, PortMapping } from '@/features/docker-manager/types'
 
@@ -44,19 +47,25 @@ describe('detectConnectionType', () => {
 
 	it('detects plain mysql images as mysql (not postgres)', () => {
 		expect(detectConnectionType(makeContainer({ image: 'mysql', imageTag: '8' }))).toBe('mysql')
-		expect(detectConnectionType(makeContainer({ image: 'percona', imageTag: '8' }))).toBe('mysql')
+		expect(detectConnectionType(makeContainer({ image: 'percona', imageTag: '8' }))).toBe(
+			'mysql'
+		)
 	})
 
 	it('detects cockroach images', () => {
 		expect(
-			detectConnectionType(makeContainer({ image: 'cockroachdb/cockroach', imageTag: 'latest' }))
+			detectConnectionType(
+				makeContainer({ image: 'cockroachdb/cockroach', imageTag: 'latest' })
+			)
 		).toBe('cockroach')
 	})
 })
 
 describe('detectDatabaseProvider', () => {
 	it('maps mysql images onto the mysql provider', () => {
-		expect(detectDatabaseProvider(makeContainer({ image: 'mysql', imageTag: '8' }))).toBe('mysql')
+		expect(detectDatabaseProvider(makeContainer({ image: 'mysql', imageTag: '8' }))).toBe(
+			'mysql'
+		)
 	})
 
 	it('maps mariadb images onto the mariadb provider', () => {
@@ -147,5 +156,52 @@ describe('getContainerConnectionDetails', () => {
 		expect(details.password).toBe('pw')
 		expect(details.database).toBe('mydb')
 		expect(details.connectionUrl).toBe('postgresql://admin:pw@localhost:5432/mydb')
+	})
+})
+
+describe('key-value container detection', () => {
+	it.each([
+		['redis', 'redis'],
+		['library/redis', 'redis'],
+		['bitnami/redis', 'redis'],
+		['redis/redis-stack', 'redis'],
+		['valkey/valkey', 'valkey'],
+		['ghcr.io/valkey-io/valkey', 'valkey'],
+		['localhost:5000/Valkey', 'valkey']
+	])('detects %s as %s from the image repository', (image, expected) => {
+		const container = makeContainer({ image, imageTag: '8-alpine' })
+
+		expect(detectKeyValueProvider(container)).toBe(expected)
+		expect(detectDatabaseProvider(container)).toBe(expected)
+		expect(isKeyValueContainer(container)).toBe(true)
+	})
+
+	it('trusts the provider field over the image', () => {
+		const container = makeContainer({ image: 'custom/cache', provider: 'valkey' })
+
+		expect(detectKeyValueProvider(container)).toBe('valkey')
+	})
+
+	it.each(['postgres', 'mysql', 'mariadb', 'cockroachdb/cockroach', 'redis/redisinsight'])(
+		'does not treat %s as a key-value server',
+		(image) => {
+			const container = makeContainer({ image })
+
+			expect(detectKeyValueProvider(container)).toBeNull()
+			expect(isKeyValueContainer(container)).toBe(false)
+		}
+	)
+
+	it('uses the host port mapped to 6379 for the primary port and the URL', () => {
+		const container = makeContainer({ image: 'redis', ports: [port(6379, 6390)] })
+
+		expect(getPrimaryDatabasePort(container)).toBe(6390)
+		expect(getKeyValueConnectionUrl(container)).toBe('redis://127.0.0.1:6390/0')
+	})
+
+	it('falls back to 6379 when no port mapping is listed', () => {
+		const container = makeContainer({ image: 'valkey/valkey', ports: [] })
+
+		expect(getKeyValueConnectionUrl(container)).toBe('redis://127.0.0.1:6379/0')
 	})
 })

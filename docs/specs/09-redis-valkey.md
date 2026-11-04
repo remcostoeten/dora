@@ -1,25 +1,22 @@
 # Spec 09: Redis / Valkey Browser
 
-Status: `[!]` needs product decision before implementation. See "Open decision" below.
+Status: `[x]` shipped — dedicated key-value studio.
 
 ## Why
 
 Nearly every developer runs Redis or Valkey locally; RedisInsight is a heavy Electron app and Medis is macOS-only. A fast native key browser strengthens the "10 MB binary" pitch. But Redis is not relational: it cannot ride the existing table-centric pipeline, so it needs an honest scoping decision first.
 
-## Open decision
+## Product decision
 
-Redis support means a parallel UI mode, not a new provider branch. Confirm before starting:
-
-1. Accept a dedicated "key-value studio" surface (sidebar lists keys, not tables; no SQL console, no schema visualizer, no Drizzle runner for these connections), or
-2. Defer Redis entirely.
-
-If (1) is accepted, flip status to `[ ]` and proceed with the scope below.
+Redis support is a parallel key-value studio surface: the sidebar lists keys,
+not tables, and Redis connections do not expose the SQL console, schema
+visualizer, or ORM runners.
 
 ## Scope (v1, deliberately small)
 
-- Connect: host/port/password/TLS, plus `redis://` / `rediss://` URL paste; Valkey is wire-compatible, so one implementation covers both names in the picker.
+- Connect: host/port/password/TLS, plus `redis://` / `rediss://` URL paste; Valkey is wire-compatible — one implementation, both names in the picker.
 - Key browser: SCAN-based incremental listing (never `KEYS *`), pattern filter, namespace tree grouping on `:` separators, type + TTL badges.
-- Value inspector per type: string (raw/JSON-pretty), hash, list, set, zset. Read and edit values, set/clear TTL, delete keys (with confirm).
+- Value inspector per type: string (raw/JSON-pretty), hash, list, set, zset — read and edit values, set/clear TTL, delete keys (with confirm).
 - A simple command bar for raw commands with response rendering (RESP → readable), command history reusing the query-history pattern.
 - Docker manager: add Redis/Valkey images to the existing container templates in `packages/studio/src/features/docker-manager/`.
 
@@ -27,7 +24,7 @@ Out of scope v1: pub/sub viewer, streams UI, cluster mode, memory analysis, Lua 
 
 ## Safe write scope
 
-- Backend: new `apps/desktop/src-tauri/src/kv/` module (deliberately **outside** `database/`; do not force Redis through `DatabaseType`/the adapter); new command file(s) + registration in `lib.rs`
+- Backend: new `apps/desktop/src-tauri/src/kv/` module (deliberately **outside** `database/` — do not force Redis through `DatabaseType`/the adapter); new command file(s) + registration in `lib.rs`
 - Connection storage: a parallel KV-connection record in `storage/` (additive, backward-compatible)
 - Frontend: new `packages/studio/src/features/kv-studio/` feature; connection picker entry in `packages/studio/src/features/connections/`; routing in the studio shell so KV connections open the KV surface
 - `apps/desktop/src-tauri/Cargo.toml` (`redis` crate, tokio + TLS features)

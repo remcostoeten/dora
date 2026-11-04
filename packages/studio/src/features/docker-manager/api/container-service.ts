@@ -7,6 +7,10 @@ import {
 	MYSQL_CONTAINER_PORT,
 	COCKROACH_IMAGE,
 	COCKROACH_CONTAINER_PORT,
+	REDIS_IMAGE,
+	REDIS_CONTAINER_PORT,
+	VALKEY_IMAGE,
+	VALKEY_CONTAINER_PORT,
 	MANAGED_LABEL_KEY,
 	MANAGED_LABEL_VALUE,
 	PROJECT_LABEL_KEY,
@@ -132,7 +136,7 @@ function normalizeCockroachTag(tag: string): string {
 	return /^\d/.test(tag) ? `v${tag}` : tag
 }
 
-function getDatabaseImageConfig(config: DatabaseContainerConfig): DatabaseImageConfig {
+export function getDatabaseImageConfig(config: DatabaseContainerConfig): DatabaseImageConfig {
 	switch (config.provider) {
 		case 'mariadb':
 			return {
@@ -233,6 +237,44 @@ function getDatabaseImageConfig(config: DatabaseContainerConfig): DatabaseImageC
 					'--store=/cockroach-data'
 				]
 			}
+		case 'redis':
+			return {
+				image: REDIS_IMAGE,
+				imageTag: config.redisVersion || '7-alpine',
+				displayName: 'Redis',
+				buildArgs: [
+					'-p',
+					`127.0.0.1:${config.hostPort}:${REDIS_CONTAINER_PORT}`,
+					'--health-cmd',
+					'redis-cli ping',
+					'--health-interval',
+					'5s',
+					'--health-timeout',
+					'3s',
+					'--health-retries',
+					'5'
+				],
+				command: ['redis-server', '--appendonly', 'yes']
+			}
+		case 'valkey':
+			return {
+				image: VALKEY_IMAGE,
+				imageTag: config.valkeyVersion || '8-alpine',
+				displayName: 'Valkey',
+				buildArgs: [
+					'-p',
+					`127.0.0.1:${config.hostPort}:${VALKEY_CONTAINER_PORT}`,
+					'--health-cmd',
+					'valkey-cli ping',
+					'--health-interval',
+					'5s',
+					'--health-timeout',
+					'3s',
+					'--health-retries',
+					'5'
+				],
+				command: ['valkey-server', '--appendonly', 'yes']
+			}
 		case 'postgres':
 		default:
 			return {
@@ -263,7 +305,7 @@ function getDatabaseImageConfig(config: DatabaseContainerConfig): DatabaseImageC
 	}
 }
 
-function buildCreateContainerArgs(
+export function buildCreateContainerArgs(
 	config: DatabaseContainerConfig,
 	imageTag: string,
 	databaseConfig: DatabaseImageConfig
@@ -307,13 +349,16 @@ function buildCreateContainerArgs(
 	return args
 }
 
-function getDatabaseVolumePath(provider: DatabaseContainerConfig['provider']): string {
+export function getDatabaseVolumePath(provider: DatabaseContainerConfig['provider']): string {
 	switch (provider) {
 		case 'mariadb':
 		case 'mysql':
 			return '/var/lib/mysql'
 		case 'cockroach':
 			return '/cockroach-data'
+		case 'redis':
+		case 'valkey':
+			return '/data'
 		case 'postgres':
 		default:
 			return '/var/lib/postgresql/data'

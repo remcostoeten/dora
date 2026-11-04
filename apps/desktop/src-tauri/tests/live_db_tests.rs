@@ -11,12 +11,25 @@
 //! Override with `DORA_MYSQL_URL` / `DORA_MARIADB_URL`. Without
 //! `DORA_LIVE_DB_TESTS=1` every test here is a silent pass so plain
 //! `cargo test` stays fast and offline.
+//!
+//! The `*_kv_*` tests drive the Redis/Valkey key-value service the way the
+//! Tauri `kv_*` commands do. Redis is on 6379 and Valkey on 6380 (override with
+//! `DORA_REDIS_URL` / `DORA_VALKEY_URL`); each test works under its own key
+//! prefix and removes it afterwards with SCAN, never KEYS.
 
 use app_lib::database::adapter::{MySqlAdapter, WriteAdapter};
 use app_lib::database::dialect::MySqlDialect;
+use app_lib::kv::{
+    classify_raw_command, KvBytes, KvConnection, KvConnectionConfig, KvDataType, KvKeySummary,
+    KvReadRequest, KvReadResult, KvScanRequest, KvValue, RawCommandResult, RawCommandSafety,
+};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use mysql_async::prelude::Queryable;
 use serde_json::json;
+use std::collections::{BTreeMap, BTreeSet};
+use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 
 fn live_enabled() -> bool {
     std::env::var("DORA_LIVE_DB_TESTS").ok().as_deref() == Some("1")
@@ -745,3 +758,987 @@ async fn mysql_dump_restores_into_an_empty_database() {
     let _ = std::fs::remove_file(dump_path);
     assert!(dump.contains("CREATE TABLE"), "dump carried no DDL");
 }
+
+struct KvTarget {
+    url_env: &'static str,
+    default_url: &'static str,
+    version_marker: &'static str,
+}
+
+const REDIS_TARGET: KvTarget = KvTarget {
+    url_env: "DORA_REDIS_URL",
+    default_url: "redis://127.0.0.1:6379",
+    version_marker: "redis_version:",
+};
+
+const VALKEY_TARGET: KvTarget = KvTarget {
+    url_env: "DORA_VALKEY_URL",
+    default_url: "redis://127.0.0.1:6380",
+    version_marker: "valkey_version:",
+};
+
+#[derive(Clone)]
+struct KvContext {
+    prefix: String,
+    version_marker: &'static str,
+}
+
+impl KvContext {
+    fn name(&self, suffix: &str) -> String {
+        format!("{}{suffix}", self.prefix)
+    }
+
+    fn key(&self, suffix: &str) -> KvBytes {
+        kv_text(&self.name(suffix))
+    }
+}
+
+fn kv_text(value: &str) -> KvBytes {
+    KvBytes::Utf8(value.to_string())
+}
+
+fn kv_utf8(value: &KvBytes) -> String {
+    match value {
+        KvBytes::Utf8(text) => text.clone(),
+        KvBytes::Base64(_) => panic!("expected utf8 bytes, got {value:?}"),
+    }
+}
+
+fn kv_utf8_all(values: &[KvBytes]) -> Vec<String> {
+    values.iter().map(kv_utf8).collect()
+}
+
+fn raw_text(result: RawCommandResult) -> String {
+    match result {
+        RawCommandResult::Text(text) => text,
+        RawCommandResult::Bytes(bytes) => kv_utf8(&bytes),
+        other => panic!("expected a text reply, got {other:?}"),
+    }
+}
+
+fn raw_integer(result: RawCommandResult) -> i64 {
+    match result {
+        RawCommandResult::Integer(value) => value,
+        other => panic!("expected an integer reply, got {other:?}"),
+    }
+}
+
+fn expect_string(result: KvReadResult) -> (KvBytes, u64, bool) {
+    match result.value {
+        KvValue::String {
+            value,
+            total_bytes,
+            truncated,
+        } => (value, total_bytes, truncated),
+        other => panic!("expected a string value, got {other:?}"),
+    }
+}
+
+fn expect_hash(result: KvReadResult) -> (BTreeMap<String, String>, u64) {
+    match result.value {
+        KvValue::Hash { entries, cursor } => (
+            entries
+                .iter()
+                .map(|entry| (kv_utf8(&entry.field), kv_utf8(&entry.value)))
+                .collect(),
+            cursor,
+        ),
+        other => panic!("expected a hash value, got {other:?}"),
+    }
+}
+
+fn expect_list(result: KvReadResult) -> (Vec<String>, u64, u64, bool) {
+    match result.value {
+        KvValue::List {
+            items,
+            offset,
+            total_items,
+            has_more,
+        } => (kv_utf8_all(&items), offset, total_items, has_more),
+        other => panic!("expected a list value, got {other:?}"),
+    }
+}
+
+fn expect_set(result: KvReadResult) -> (BTreeSet<String>, u64) {
+    match result.value {
+        KvValue::Set { members, cursor } => (kv_utf8_all(&members).into_iter().collect(), cursor),
+        other => panic!("expected a set value, got {other:?}"),
+    }
+}
+
+fn expect_sorted_set(result: KvReadResult) -> (BTreeMap<String, f64>, u64) {
+    match result.value {
+        KvValue::SortedSet { members, cursor } => (
+            members
+                .iter()
+                .map(|entry| (kv_utf8(&entry.member), entry.score))
+                .collect(),
+            cursor,
+        ),
+        other => panic!("expected a sorted set value, got {other:?}"),
+    }
+}
+
+async fn kv_read_page(
+    service: &mut KvConnection,
+    key: &KvBytes,
+    cursor: Option<u64>,
+    offset: Option<u64>,
+    limit: Option<u32>,
+) -> KvReadResult {
+    service
+        .read(KvReadRequest {
+            key: key.clone(),
+            cursor,
+            offset,
+            limit,
+        })
+        .await
+        .expect("read failed")
+}
+
+async fn kv_read(service: &mut KvConnection, key: &KvBytes) -> KvReadResult {
+    kv_read_page(service, key, None, None, None).await
+}
+
+async fn kv_scan_all(
+    service: &mut KvConnection,
+    pattern: &str,
+    limit: u32,
+) -> (Vec<KvKeySummary>, usize) {
+    let mut cursor = None;
+    let mut summaries = Vec::new();
+    let mut pages = 0;
+    for _ in 0..100_000 {
+        let page = service
+            .scan(KvScanRequest {
+                cursor,
+                pattern: Some(pattern.to_string()),
+                limit: Some(limit),
+            })
+            .await
+            .expect("scan failed");
+        pages += 1;
+        summaries.extend(page.keys);
+        if page.cursor == 0 {
+            return (summaries, pages);
+        }
+        cursor = Some(page.cursor);
+    }
+    panic!("SCAN for {pattern} never returned cursor 0");
+}
+
+async fn kv_cleanup(service: &mut KvConnection, prefix: &str) {
+    let (summaries, _) = kv_scan_all(service, &format!("{prefix}*"), 500).await;
+    for summary in summaries {
+        service
+            .delete_key(summary.key)
+            .await
+            .expect("cleanup delete failed");
+    }
+}
+
+async fn kv_collect_pages(
+    service: &mut KvConnection,
+    key: &KvBytes,
+    limit: u32,
+    extract: impl Fn(KvReadResult) -> (Vec<String>, u64),
+) -> (BTreeSet<String>, usize) {
+    let mut cursor = None;
+    let mut collected = BTreeSet::new();
+    let mut pages = 0;
+    for _ in 0..10_000 {
+        let (page, next) = extract(kv_read_page(service, key, cursor, None, Some(limit)).await);
+        pages += 1;
+        collected.extend(page);
+        if next == 0 {
+            return (collected, pages);
+        }
+        cursor = Some(next);
+    }
+    panic!("cursor paging never finished");
+}
+
+async fn run_kv_scenario<Scenario, Outcome>(test: &str, target: &KvTarget, scenario: Scenario)
+where
+    Scenario: FnOnce(KvConnection, KvContext) -> Outcome,
+    Outcome: Future<Output = ()> + Send + 'static,
+{
+    if !live_enabled() {
+        eprintln!("skipping {test}: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    let url = std::env::var(target.url_env).unwrap_or_else(|_| target.default_url.into());
+    let mut service = KvConnection::connect(&KvConnectionConfig { url: url.clone() })
+        .await
+        .unwrap_or_else(|error| panic!("failed to connect to {url}: {error}"));
+    let context = KvContext {
+        prefix: format!("dora-live:{test}:{}:", uuid::Uuid::new_v4().simple()),
+        version_marker: target.version_marker,
+    };
+    kv_cleanup(&mut service, &context.prefix).await;
+    let outcome = tokio::spawn(scenario(service.clone(), context.clone())).await;
+    kv_cleanup(&mut service, &context.prefix).await;
+    if let Err(error) = outcome {
+        std::panic::resume_unwind(error.into_panic());
+    }
+}
+
+async fn kv_connect_and_ping(mut service: KvConnection, context: KvContext) {
+    service.probe().await.expect("PING probe failed");
+
+    let pong = service
+        .execute_raw("PING", None)
+        .await
+        .expect("raw PING failed");
+    assert_eq!(raw_text(pong), "PONG");
+
+    let info = service
+        .execute_raw("INFO server", None)
+        .await
+        .expect("raw INFO failed");
+    assert!(
+        raw_text(info).contains(context.version_marker),
+        "server did not identify itself with {}",
+        context.version_marker
+    );
+
+    let wrong_scheme = KvConnection::connect(&KvConnectionConfig {
+        url: "postgres://127.0.0.1:5432".into(),
+    })
+    .await;
+    assert!(wrong_scheme.is_err(), "non-redis scheme was accepted");
+
+    let refused = KvConnection::connect(&KvConnectionConfig {
+        url: "redis://127.0.0.1:1".into(),
+    })
+    .await;
+    assert!(refused.is_err(), "closed port was reported as connected");
+}
+
+async fn kv_string_set_get_and_ttl(mut service: KvConnection, context: KvContext) {
+    let key = context.key("greeting");
+
+    let created = service
+        .set_string(key.clone(), kv_text("hello"), false)
+        .await
+        .unwrap();
+    assert_eq!(created.changed, 1);
+
+    let read = kv_read(&mut service, &key).await;
+    assert_eq!(read.key, key);
+    assert_eq!(read.ttl_ms, None);
+    let (value, total_bytes, truncated) = expect_string(read);
+    assert_eq!(value, kv_text("hello"));
+    assert_eq!(total_bytes, 5);
+    assert!(!truncated);
+
+    let ttl_set = service.set_ttl_ms(key.clone(), 60_000).await.unwrap();
+    assert_eq!(ttl_set.changed, 1);
+    let ttl = kv_read(&mut service, &key)
+        .await
+        .ttl_ms
+        .expect("TTL missing after PEXPIRE");
+    assert!(ttl > 0 && ttl <= 60_000, "unexpected TTL {ttl}");
+
+    service
+        .set_string(key.clone(), kv_text("world"), true)
+        .await
+        .unwrap();
+    let kept = kv_read(&mut service, &key).await;
+    assert!(kept.ttl_ms.is_some(), "KEEPTTL dropped the TTL");
+    assert_eq!(expect_string(kept).0, kv_text("world"));
+
+    service
+        .set_string(key.clone(), kv_text("again"), false)
+        .await
+        .unwrap();
+    assert_eq!(
+        kv_read(&mut service, &key).await.ttl_ms,
+        None,
+        "plain SET should drop the TTL"
+    );
+
+    service.set_ttl_ms(key.clone(), 60_000).await.unwrap();
+    let cleared = service.clear_ttl(key.clone()).await.unwrap();
+    assert_eq!(cleared.changed, 1);
+    assert_eq!(kv_read(&mut service, &key).await.ttl_ms, None);
+    let cleared_again = service.clear_ttl(key.clone()).await.unwrap();
+    assert_eq!(cleared_again.changed, 0);
+
+    assert!(service.set_ttl_ms(key.clone(), 0).await.is_err());
+    let missing = service
+        .set_ttl_ms(context.key("missing"), 1_000)
+        .await
+        .unwrap();
+    assert_eq!(missing.changed, 0);
+
+    service.set_ttl_ms(key.clone(), 150).await.unwrap();
+    tokio::time::sleep(Duration::from_millis(400)).await;
+    let expired = service
+        .read(KvReadRequest {
+            key: key.clone(),
+            cursor: None,
+            offset: None,
+            limit: None,
+        })
+        .await
+        .unwrap_err();
+    assert!(
+        expired.to_string().contains("does not exist"),
+        "unexpected error for an expired key: {expired}"
+    );
+}
+
+async fn kv_string_binary_and_paging(mut service: KvConnection, context: KvContext) {
+    let mut key_bytes = context.name("binary-key-").into_bytes();
+    key_bytes.extend([0xff, 0x00, 0x01]);
+    let binary_key = KvBytes::Base64(STANDARD.encode(&key_bytes));
+    let binary_value = KvBytes::Base64(STANDARD.encode([0x00, 0xff, 0xfe, b'z']));
+
+    service
+        .set_string(binary_key.clone(), binary_value.clone(), false)
+        .await
+        .unwrap();
+    let read = kv_read(&mut service, &binary_key).await;
+    assert_eq!(read.key, binary_key);
+    assert_eq!(expect_string(read).0, binary_value);
+
+    let (found, _) = kv_scan_all(&mut service, &context.name("binary-key-*"), 100).await;
+    assert!(
+        found.iter().any(|summary| summary.key == binary_key),
+        "scan lost the non-utf8 key"
+    );
+
+    let long_key = context.key("long");
+    let long_value = "abcdefghij".repeat(250);
+    service
+        .set_string(long_key.clone(), kv_text(&long_value), false)
+        .await
+        .unwrap();
+
+    let first = kv_read_page(&mut service, &long_key, None, None, Some(1_000)).await;
+    let (head, total_bytes, truncated) = expect_string(first);
+    assert_eq!(kv_utf8(&head), long_value[..1_000]);
+    assert_eq!(total_bytes, 2_500);
+    assert!(truncated);
+
+    let middle = kv_read_page(&mut service, &long_key, None, Some(1_000), Some(1_000)).await;
+    let (middle_value, _, middle_truncated) = expect_string(middle);
+    assert_eq!(kv_utf8(&middle_value), long_value[1_000..2_000]);
+    assert!(middle_truncated);
+
+    let last = kv_read_page(&mut service, &long_key, None, Some(2_000), Some(1_000)).await;
+    let (tail, _, tail_truncated) = expect_string(last);
+    assert_eq!(kv_utf8(&tail), long_value[2_000..]);
+    assert!(!tail_truncated);
+
+    let missing = service
+        .read(KvReadRequest {
+            key: context.key("never-written"),
+            cursor: None,
+            offset: None,
+            limit: None,
+        })
+        .await
+        .unwrap_err();
+    assert!(missing.to_string().contains("does not exist"));
+}
+
+async fn kv_hash_read_and_write(mut service: KvConnection, context: KvContext) {
+    let key = context.key("profile");
+
+    let added = service
+        .hash_set(key.clone(), kv_text("name"), kv_text("Ada"))
+        .await
+        .unwrap();
+    assert_eq!(added.changed, 1);
+    let updated = service
+        .hash_set(key.clone(), kv_text("name"), kv_text("Lovelace"))
+        .await
+        .unwrap();
+    assert_eq!(updated.changed, 0);
+    service
+        .hash_set(key.clone(), kv_text("role"), kv_text("analyst"))
+        .await
+        .unwrap();
+
+    let read = kv_read(&mut service, &key).await;
+    assert_eq!(read.ttl_ms, None);
+    let (entries, cursor) = expect_hash(read);
+    assert_eq!(cursor, 0);
+    assert_eq!(
+        entries,
+        BTreeMap::from([
+            ("name".to_string(), "Lovelace".to_string()),
+            ("role".to_string(), "analyst".to_string()),
+        ])
+    );
+
+    let removed = service
+        .hash_delete(key.clone(), kv_text("name"))
+        .await
+        .unwrap();
+    assert_eq!(removed.changed, 1);
+    let removed_again = service
+        .hash_delete(key.clone(), kv_text("name"))
+        .await
+        .unwrap();
+    assert_eq!(removed_again.changed, 0);
+    let (remaining, _) = expect_hash(kv_read(&mut service, &key).await);
+    assert_eq!(
+        remaining,
+        BTreeMap::from([("role".to_string(), "analyst".to_string())])
+    );
+
+    service
+        .hash_delete(key.clone(), kv_text("role"))
+        .await
+        .unwrap();
+    let gone = service
+        .read(KvReadRequest {
+            key,
+            cursor: None,
+            offset: None,
+            limit: None,
+        })
+        .await;
+    assert!(gone.is_err(), "empty hash should vanish");
+}
+
+async fn kv_list_read_and_write(mut service: KvConnection, context: KvContext) {
+    let key = context.key("queue");
+
+    assert!(
+        service
+            .list_push(key.clone(), kv_text("a"), false)
+            .await
+            .unwrap()
+            .changed
+            > 0
+    );
+    service
+        .list_push(key.clone(), kv_text("b"), false)
+        .await
+        .unwrap();
+    service
+        .list_push(key.clone(), kv_text("z"), true)
+        .await
+        .unwrap();
+
+    let (items, offset, total, has_more) = expect_list(kv_read(&mut service, &key).await);
+    assert_eq!(items, ["z", "a", "b"]);
+    assert_eq!((offset, total, has_more), (0, 3, false));
+
+    let first = kv_read_page(&mut service, &key, None, Some(0), Some(2)).await;
+    let (items, offset, total, has_more) = expect_list(first);
+    assert_eq!(items, ["z", "a"]);
+    assert_eq!((offset, total, has_more), (0, 3, true));
+
+    let second = kv_read_page(&mut service, &key, None, Some(2), Some(2)).await;
+    let (items, offset, total, has_more) = expect_list(second);
+    assert_eq!(items, ["b"]);
+    assert_eq!((offset, total, has_more), (2, 3, false));
+
+    let replaced = service
+        .list_set(key.clone(), 1, kv_text("A"))
+        .await
+        .unwrap();
+    assert_eq!(replaced.changed, 1);
+    assert_eq!(
+        expect_list(kv_read(&mut service, &key).await).0,
+        ["z", "A", "b"]
+    );
+
+    let removed = service.list_remove_at(key.clone(), 1).await.unwrap();
+    assert_eq!(removed.changed, 1);
+    let (items, _, total, _) = expect_list(kv_read(&mut service, &key).await);
+    assert_eq!(items, ["z", "b"]);
+    assert_eq!(total, 2);
+
+    assert!(service.list_remove_at(key.clone(), 9).await.is_err());
+    assert!(service
+        .list_set(key.clone(), 9, kv_text("nope"))
+        .await
+        .is_err());
+    assert_eq!(
+        expect_list(kv_read(&mut service, &key).await).0,
+        ["z", "b"],
+        "failed edits must not change the list"
+    );
+
+    service.list_remove_at(key.clone(), -1).await.unwrap();
+    assert_eq!(expect_list(kv_read(&mut service, &key).await).0, ["z"]);
+}
+
+async fn kv_set_read_and_write(mut service: KvConnection, context: KvContext) {
+    let key = context.key("tags");
+
+    assert_eq!(
+        service
+            .set_add(key.clone(), kv_text("a"))
+            .await
+            .unwrap()
+            .changed,
+        1
+    );
+    assert_eq!(
+        service
+            .set_add(key.clone(), kv_text("a"))
+            .await
+            .unwrap()
+            .changed,
+        0
+    );
+    service.set_add(key.clone(), kv_text("b")).await.unwrap();
+
+    let (members, cursor) = expect_set(kv_read(&mut service, &key).await);
+    assert_eq!(cursor, 0);
+    assert_eq!(members, BTreeSet::from(["a".to_string(), "b".to_string()]));
+
+    assert_eq!(
+        service
+            .set_remove(key.clone(), kv_text("a"))
+            .await
+            .unwrap()
+            .changed,
+        1
+    );
+    assert_eq!(
+        service
+            .set_remove(key.clone(), kv_text("a"))
+            .await
+            .unwrap()
+            .changed,
+        0
+    );
+    let (members, _) = expect_set(kv_read(&mut service, &key).await);
+    assert_eq!(members, BTreeSet::from(["b".to_string()]));
+}
+
+async fn kv_sorted_set_read_and_write(mut service: KvConnection, context: KvContext) {
+    let key = context.key("leaders");
+
+    assert_eq!(
+        service
+            .sorted_set_add(key.clone(), kv_text("a"), 1.5)
+            .await
+            .unwrap()
+            .changed,
+        1
+    );
+    service
+        .sorted_set_add(key.clone(), kv_text("b"), 2.0)
+        .await
+        .unwrap();
+    let rescored = service
+        .sorted_set_add(key.clone(), kv_text("a"), 3.0)
+        .await
+        .unwrap();
+    assert_eq!(rescored.changed, 0);
+
+    let (members, cursor) = expect_sorted_set(kv_read(&mut service, &key).await);
+    assert_eq!(cursor, 0);
+    assert_eq!(
+        members,
+        BTreeMap::from([("a".to_string(), 3.0), ("b".to_string(), 2.0)])
+    );
+
+    for score in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let rejected = service
+            .sorted_set_add(key.clone(), kv_text("bad"), score)
+            .await
+            .unwrap_err();
+        assert!(
+            rejected.to_string().contains("finite"),
+            "unexpected error for score {score}: {rejected}"
+        );
+    }
+
+    assert_eq!(
+        service
+            .sorted_set_remove(key.clone(), kv_text("a"))
+            .await
+            .unwrap()
+            .changed,
+        1
+    );
+    assert_eq!(
+        service
+            .sorted_set_remove(key.clone(), kv_text("a"))
+            .await
+            .unwrap()
+            .changed,
+        0
+    );
+    let (members, _) = expect_sorted_set(kv_read(&mut service, &key).await);
+    assert_eq!(members, BTreeMap::from([("b".to_string(), 2.0)]));
+}
+
+async fn kv_large_collection_cursors(mut service: KvConnection, context: KvContext) {
+    let count = 1_000;
+    let hash_key = context.key("big-hash");
+    let set_key = context.key("big-set");
+    let zset_key = context.key("big-zset");
+
+    let hash_args = (0..count)
+        .map(|index| format!("field{index:03} value{index:03}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let set_args = (0..count)
+        .map(|index| format!("member{index:03}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let zset_args = (0..count)
+        .map(|index| format!("{index} member{index:03}"))
+        .collect::<Vec<_>>()
+        .join(" ");
+    for command in [
+        format!("HSET {} {hash_args}", context.name("big-hash")),
+        format!("SADD {} {set_args}", context.name("big-set")),
+        format!("ZADD {} {zset_args}", context.name("big-zset")),
+    ] {
+        let reply = service.execute_raw(&command, None).await.unwrap();
+        assert_eq!(raw_integer(reply), count);
+    }
+
+    let (fields, hash_pages) = kv_collect_pages(&mut service, &hash_key, 40, |result| {
+        let (entries, cursor) = expect_hash(result);
+        (entries.into_keys().collect(), cursor)
+    })
+    .await;
+    assert_eq!(fields.len(), count as usize);
+    assert!(hash_pages > 1, "hash was not paged by cursor");
+
+    let (members, set_pages) = kv_collect_pages(&mut service, &set_key, 40, |result| {
+        let (members, cursor) = expect_set(result);
+        (members.into_iter().collect(), cursor)
+    })
+    .await;
+    assert_eq!(members.len(), count as usize);
+    assert!(set_pages > 1, "set was not paged by cursor");
+
+    let (ranked, zset_pages) = kv_collect_pages(&mut service, &zset_key, 40, |result| {
+        let (members, cursor) = expect_sorted_set(result);
+        (members.into_keys().collect(), cursor)
+    })
+    .await;
+    assert_eq!(ranked.len(), count as usize);
+    assert!(zset_pages > 1, "sorted set was not paged by cursor");
+}
+
+async fn kv_scan_pagination(mut service: KvConnection, context: KvContext) {
+    let mut expected = BTreeSet::new();
+    for index in 0..25 {
+        let name = context.name(&format!("item:{index:02}"));
+        service
+            .set_string(kv_text(&name), kv_text("x"), false)
+            .await
+            .unwrap();
+        expected.insert(name);
+    }
+
+    let (summaries, pages) = kv_scan_all(&mut service, &context.name("item:*"), 5).await;
+    let found: BTreeSet<String> = summaries.iter().map(|s| kv_utf8(&s.key)).collect();
+    assert_eq!(found, expected);
+    assert!(pages > 1, "SCAN COUNT 5 returned everything in one page");
+    assert!(summaries
+        .iter()
+        .all(|summary| summary.data_type == KvDataType::String && summary.ttl_ms.is_none()));
+
+    service
+        .set_string(context.key("kind:ttl"), kv_text("x"), false)
+        .await
+        .unwrap();
+    service
+        .set_ttl_ms(context.key("kind:ttl"), 60_000)
+        .await
+        .unwrap();
+    service
+        .hash_set(context.key("kind:hash"), kv_text("f"), kv_text("v"))
+        .await
+        .unwrap();
+    service
+        .list_push(context.key("kind:list"), kv_text("v"), false)
+        .await
+        .unwrap();
+    service
+        .set_add(context.key("kind:set"), kv_text("v"))
+        .await
+        .unwrap();
+    service
+        .sorted_set_add(context.key("kind:zset"), kv_text("v"), 1.0)
+        .await
+        .unwrap();
+
+    let (kinds, _) = kv_scan_all(&mut service, &context.name("kind:*"), 100).await;
+    let by_name: BTreeMap<String, (KvDataType, Option<i64>)> = kinds
+        .iter()
+        .map(|s| (kv_utf8(&s.key), (s.data_type.clone(), s.ttl_ms)))
+        .collect();
+    assert_eq!(by_name.len(), 5);
+    assert_eq!(
+        by_name[&context.name("kind:hash")],
+        (KvDataType::Hash, None)
+    );
+    assert_eq!(
+        by_name[&context.name("kind:list")],
+        (KvDataType::List, None)
+    );
+    assert_eq!(by_name[&context.name("kind:set")], (KvDataType::Set, None));
+    assert_eq!(
+        by_name[&context.name("kind:zset")],
+        (KvDataType::SortedSet, None)
+    );
+    let (ttl_type, ttl) = by_name[&context.name("kind:ttl")].clone();
+    assert_eq!(ttl_type, KvDataType::String);
+    assert!(ttl.is_some_and(|ms| ms > 0 && ms <= 60_000));
+
+    let (nothing, _) = kv_scan_all(&mut service, &context.name("no-such-prefix:*"), 100).await;
+    assert!(nothing.is_empty());
+
+    let clamped = service
+        .scan(KvScanRequest {
+            cursor: None,
+            pattern: Some(context.name("*")),
+            limit: Some(0),
+        })
+        .await;
+    assert!(clamped.is_ok(), "a zero page size should be clamped");
+}
+
+async fn kv_delete_keys(mut service: KvConnection, context: KvContext) {
+    let string_key = context.key("string");
+    let hash_key = context.key("hash");
+    let list_key = context.key("list");
+    let set_key = context.key("set");
+    let zset_key = context.key("zset");
+
+    service
+        .set_string(string_key.clone(), kv_text("v"), false)
+        .await
+        .unwrap();
+    service
+        .hash_set(hash_key.clone(), kv_text("f"), kv_text("v"))
+        .await
+        .unwrap();
+    service
+        .list_push(list_key.clone(), kv_text("v"), false)
+        .await
+        .unwrap();
+    service
+        .set_add(set_key.clone(), kv_text("v"))
+        .await
+        .unwrap();
+    service
+        .sorted_set_add(zset_key.clone(), kv_text("v"), 1.0)
+        .await
+        .unwrap();
+
+    for key in [string_key, hash_key, list_key, set_key, zset_key] {
+        let deleted = service.delete_key(key.clone()).await.unwrap();
+        assert_eq!(deleted.changed, 1, "first delete of {key:?}");
+        let gone = service
+            .read(KvReadRequest {
+                key: key.clone(),
+                cursor: None,
+                offset: None,
+                limit: None,
+            })
+            .await;
+        assert!(gone.is_err(), "{key:?} survived DEL");
+        let again = service.delete_key(key.clone()).await.unwrap();
+        assert_eq!(again.changed, 0, "second delete of {key:?}");
+    }
+}
+
+async fn kv_raw_commands(mut service: KvConnection, context: KvContext) {
+    let name = context.name("raw");
+
+    let set = service
+        .execute_raw(&format!("SET {name} \"hello world\""), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_text(set), "OK");
+    let get = service
+        .execute_raw(&format!("get {name}"), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_text(get), "hello world");
+
+    let missing = service
+        .execute_raw(&format!("GET {name}-missing"), None)
+        .await
+        .unwrap();
+    assert!(matches!(missing, RawCommandResult::Null));
+
+    let escaped = service
+        .execute_raw(&format!(r#"SET {name} 'a b\nc'"#), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_text(escaped), "OK");
+    let escaped_back = service
+        .execute_raw(&format!("GET {name}"), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_text(escaped_back), "a b\nc");
+
+    let kind = service
+        .execute_raw(&format!("TYPE {name}"), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_text(kind), "string");
+    let ttl = service
+        .execute_raw(&format!("TTL {name}"), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_integer(ttl), -1);
+    let incremented = service
+        .execute_raw(&format!("INCR {name}-counter"), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_integer(incremented), 1);
+
+    let pushed = service
+        .execute_raw(&format!("RPUSH {name}-list a b c"), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_integer(pushed), 3);
+    let range = service
+        .execute_raw(&format!("LRANGE {name}-list 0 -1"), None)
+        .await
+        .unwrap();
+    match range {
+        RawCommandResult::Array(items) => {
+            let texts: Vec<String> = items.into_iter().map(raw_text).collect();
+            assert_eq!(texts, ["a", "b", "c"]);
+        }
+        other => panic!("expected an array reply, got {other:?}"),
+    }
+
+    service
+        .execute_raw(&format!("HSET {name}-hash f v"), None)
+        .await
+        .unwrap();
+    let field = service
+        .execute_raw(&format!("HGET {name}-hash f"), None)
+        .await
+        .unwrap();
+    assert_eq!(raw_text(field), "v");
+
+    let wrong_type = service.execute_raw(&format!("LPUSH {name} x"), None).await;
+    assert!(wrong_type.is_err(), "WRONGTYPE should surface as an error");
+    assert!(service
+        .execute_raw("DORA_NOT_A_COMMAND x", None)
+        .await
+        .is_err());
+    assert!(service.execute_raw("   ", None).await.is_err());
+    assert!(service
+        .execute_raw(&format!("SET {name} 'unterminated"), None)
+        .await
+        .is_err());
+
+    let deleted = service
+        .execute_raw(
+            &format!("DEL {name} {name}-counter {name}-list {name}-hash"),
+            None,
+        )
+        .await
+        .unwrap();
+    assert_eq!(raw_integer(deleted), 4);
+}
+
+async fn kv_dangerous_command_guard(mut service: KvConnection, context: KvContext) {
+    assert_eq!(
+        classify_raw_command("FLUSHALL").unwrap(),
+        RawCommandSafety::Destructive {
+            confirmation: "FLUSHALL".to_string()
+        }
+    );
+    assert_eq!(
+        classify_raw_command("  flushdb async").unwrap(),
+        RawCommandSafety::Destructive {
+            confirmation: "FLUSHDB".to_string()
+        }
+    );
+    assert_eq!(
+        classify_raw_command(&format!("DEL {}", context.name("x"))).unwrap(),
+        RawCommandSafety::Safe
+    );
+    assert_eq!(
+        classify_raw_command("ECHO FLUSHALL").unwrap(),
+        RawCommandSafety::Safe
+    );
+
+    let sentinel = context.key("sentinel");
+    service
+        .set_string(sentinel.clone(), kv_text("still here"), false)
+        .await
+        .unwrap();
+
+    let refused = service.execute_raw("FLUSHALL", None).await.unwrap_err();
+    assert!(
+        refused.to_string().contains("FLUSHALL"),
+        "guard should name the expected confirmation: {refused}"
+    );
+    assert!(service.execute_raw("flushdb", None).await.is_err());
+    assert!(service
+        .execute_raw("FLUSHDB", Some("FLUSHALL"))
+        .await
+        .is_err());
+    assert!(service
+        .execute_raw("FLUSHDB ASYNC", Some("flushdb"))
+        .await
+        .is_err());
+    assert!(service.execute_raw("FLUSHALL", Some("")).await.is_err());
+
+    let survivor = kv_read(&mut service, &sentinel).await;
+    assert_eq!(expect_string(survivor).0, kv_text("still here"));
+
+    let echoed = service
+        .execute_raw("ECHO FLUSHALL", None)
+        .await
+        .expect("a safe command that mentions FLUSHALL needs no confirmation");
+    assert_eq!(raw_text(echoed), "FLUSHALL");
+}
+
+macro_rules! kv_live_tests {
+    ($target:expr, { $($name:ident => $scenario:ident),+ $(,)? }) => {
+        $(
+            #[tokio::test]
+            async fn $name() {
+                run_kv_scenario(stringify!($name), &$target, $scenario).await;
+            }
+        )+
+    };
+}
+
+kv_live_tests!(REDIS_TARGET, {
+    redis_kv_connect_and_ping => kv_connect_and_ping,
+    redis_kv_string_set_get_and_ttl => kv_string_set_get_and_ttl,
+    redis_kv_string_binary_and_paging => kv_string_binary_and_paging,
+    redis_kv_hash_read_and_write => kv_hash_read_and_write,
+    redis_kv_list_read_and_write => kv_list_read_and_write,
+    redis_kv_set_read_and_write => kv_set_read_and_write,
+    redis_kv_sorted_set_read_and_write => kv_sorted_set_read_and_write,
+    redis_kv_large_collection_cursors => kv_large_collection_cursors,
+    redis_kv_scan_pagination => kv_scan_pagination,
+    redis_kv_delete_keys => kv_delete_keys,
+    redis_kv_raw_commands => kv_raw_commands,
+    redis_kv_dangerous_command_guard => kv_dangerous_command_guard,
+});
+
+kv_live_tests!(VALKEY_TARGET, {
+    valkey_kv_connect_and_ping => kv_connect_and_ping,
+    valkey_kv_string_set_get_and_ttl => kv_string_set_get_and_ttl,
+    valkey_kv_string_binary_and_paging => kv_string_binary_and_paging,
+    valkey_kv_hash_read_and_write => kv_hash_read_and_write,
+    valkey_kv_list_read_and_write => kv_list_read_and_write,
+    valkey_kv_set_read_and_write => kv_set_read_and_write,
+    valkey_kv_sorted_set_read_and_write => kv_sorted_set_read_and_write,
+    valkey_kv_large_collection_cursors => kv_large_collection_cursors,
+    valkey_kv_scan_pagination => kv_scan_pagination,
+    valkey_kv_delete_keys => kv_delete_keys,
+    valkey_kv_raw_commands => kv_raw_commands,
+    valkey_kv_dangerous_command_guard => kv_dangerous_command_guard,
+});
