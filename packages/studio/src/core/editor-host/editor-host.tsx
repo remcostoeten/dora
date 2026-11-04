@@ -96,11 +96,16 @@ export function PersistentEditor({
 	const mountRef = useRef<HTMLDivElement | null>(null)
 	const ownerIdRef = useRef(Symbol(`${family}:${tabId}`))
 	const onChangeRef = useRef(onChange)
+	const committedOnChangeRef = useRef(onChange)
 	const syncingValueRef = useRef(false)
 	const modelRef = useRef<Monaco.editor.ITextModel | null>(null)
 	const pendingChangeRef = useRef<number | null>(null)
 
 	onChangeRef.current = onChange
+
+	useLayoutEffect(() => {
+		committedOnChangeRef.current = onChange
+	})
 
 	useLayoutEffect(() => {
 		let disposed = false
@@ -141,6 +146,12 @@ export function PersistentEditor({
 		return () => {
 			disposed = true
 			contentListener?.dispose()
+			if (pendingChangeRef.current !== null) {
+				window.clearTimeout(pendingChangeRef.current)
+				pendingChangeRef.current = null
+				const model = modelRef.current
+				if (model && !model.isDisposed()) committedOnChangeRef.current(model.getValue())
+			}
 			const hostedEditor = editors.get(family)
 			if (hostedEditor?.ownerId === ownerId) hostedEditor.ownerId = null
 		}

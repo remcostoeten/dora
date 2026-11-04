@@ -1,5 +1,6 @@
 import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { getEditorModels } from '@studio/core/editor-host'
 import { useAdapter, useIsTauri } from '@studio/core/data-provider/context'
 import { useSettings } from '@studio/core/settings'
 import { useConnections } from '@studio/core/data-provider'
@@ -116,6 +117,16 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 	const mode = activeTab.mode
 	const currentSqlQuery = activeTab.sqlContent
 	const currentDrizzleQuery = activeTab.drizzleContent
+	const readLiveSql = useCallback(
+		() => getEditorModels('sql').get(`sql:${activeTab.id}`)?.getValue() ?? currentSqlQuery,
+		[activeTab.id, currentSqlQuery]
+	)
+	const readLiveDrizzle = useCallback(
+		() =>
+			getEditorModels('typescript').get(`drizzle:${activeTab.id}`)?.getValue() ??
+			currentDrizzleQuery,
+		[activeTab.id, currentDrizzleQuery]
+	)
 	const result = activeTab.result
 	const isExecuting = activeTab.isExecuting
 	const viewMode = activeTab.viewMode
@@ -387,11 +398,11 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			setResult(null)
 			const nextMode = modeOverride || mode
 			const historyQuery =
-				codeOverride || (nextMode === 'sql' ? currentSqlQuery : currentDrizzleQuery)
+				codeOverride || (nextMode === 'sql' ? readLiveSql() : readLiveDrizzle())
 
 			try {
 				if (nextMode === 'sql') {
-					const queryToRun = codeOverride || currentSqlQuery
+					const queryToRun = codeOverride || readLiveSql()
 					if (!activeConnectionId) {
 						throw new Error('No connection selected')
 					}
@@ -471,7 +482,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 						throw new Error(getAdapterError(res))
 					}
 				} else {
-					const queryToRun = codeOverride || currentDrizzleQuery
+					const queryToRun = codeOverride || readLiveDrizzle()
 					if (!activeConnectionId) {
 						throw new Error('No connection selected')
 					}
@@ -554,8 +565,8 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		},
 		[
 			mode,
-			currentSqlQuery,
-			currentDrizzleQuery,
+			readLiveSql,
+			readLiveDrizzle,
 			isExecuting,
 			activeConnectionId,
 			adapter,
@@ -618,13 +629,13 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 	}, [connections, activeConnectionId])
 
 	const handleExplainQuery = useCallback(() => {
-		const query = (mode === 'sql' ? currentSqlQuery : currentDrizzleQuery).trim()
+		const query = (mode === 'sql' ? readLiveSql() : readLiveDrizzle()).trim()
 		if (!query) return
 		askAi(buildExplainQueryPrompt(query))
-	}, [mode, currentSqlQuery, currentDrizzleQuery])
+	}, [mode, readLiveSql, readLiveDrizzle])
 
 	const handleExplainAnalyze = useCallback(() => {
-		const baseQuery = currentSqlQuery.trim().replace(/;\s*$/, '')
+		const baseQuery = readLiveSql().trim().replace(/;\s*$/, '')
 		if (!baseQuery) return
 
 		let explained: string
@@ -645,7 +656,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			console.error('Failed to run EXPLAIN ANALYZE:', error)
 			notifyFailure('Failed to run EXPLAIN ANALYZE', error)
 		})
-	}, [activeDialect, currentSqlQuery, mode, handleExecute])
+	}, [activeDialect, readLiveSql, mode, handleExecute])
 
 	useEffect(
 		function registerCaptureHelpers() {
@@ -742,14 +753,14 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 	}
 	function handlePrettify() {
 		if (mode === 'sql') {
-			const lines = currentSqlQuery.split('\n')
+			const lines = readLiveSql().split('\n')
 			const prettified = lines
 				.map((line) => line.trim())
 				.filter((line) => line.length > 0)
 				.join('\n')
 			setCurrentSqlQuery(prettified)
 		} else {
-			const lines = currentDrizzleQuery.split('\n')
+			const lines = readLiveDrizzle().split('\n')
 			const prettified = lines
 				.map((line) => line.trim())
 				.filter((line) => line.length > 0)
@@ -847,7 +858,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 				parentFolderId = parseInt(parentId.replace('folder-', ''), 10)
 			}
 
-			const currentContent = mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
+			const currentContent = mode === 'sql' ? readLiveSql() : readLiveDrizzle()
 			const name = `Snippet ${snippets.length + 1}`
 
 			try {
@@ -874,8 +885,8 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			activeConnectionId,
 			snippets.length,
 			mode,
-			currentSqlQuery,
-			currentDrizzleQuery,
+			readLiveSql,
+			readLiveDrizzle,
 			adapter,
 			loadSnippets
 		]
@@ -883,7 +894,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 
 	const handleSaveSnippet = useCallback(async () => {
 		if (!activeConnectionId) return
-		const currentContent = mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
+		const currentContent = mode === 'sql' ? readLiveSql() : readLiveDrizzle()
 
 		const active = activeSnippetId
 			? snippets.find((s) => s.id === activeSnippetId && !s.isFolder)
@@ -916,8 +927,8 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		activeSnippetId,
 		snippets,
 		mode,
-		currentSqlQuery,
-		currentDrizzleQuery,
+		readLiveSql,
+		readLiveDrizzle,
 		adapter,
 		loadSnippets,
 		handleNewSnippet
@@ -933,7 +944,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			folderId = parseInt(active.parentId.replace('folder-', ''), 10)
 		}
 
-		const currentContent = mode === 'sql' ? currentSqlQuery : currentDrizzleQuery
+		const currentContent = mode === 'sql' ? readLiveSql() : readLiveDrizzle()
 
 		try {
 			await adapter.updateScript(
@@ -953,8 +964,8 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		activeConnectionId,
 		activeSnippetId,
 		adapter,
-		currentDrizzleQuery,
-		currentSqlQuery,
+		readLiveDrizzle,
+		readLiveSql,
 		loadSnippets,
 		mode,
 		snippets
