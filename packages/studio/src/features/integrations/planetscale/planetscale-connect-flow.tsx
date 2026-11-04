@@ -78,6 +78,7 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 	const [authError, setAuthError] = useState<string | null>(null)
 	const [query, setQuery] = useState('')
 	const [selectedDatabase, setSelectedDatabase] = useState<PlanetscaleDatabase | null>(null)
+	const branchRequestIdRef = useRef(0)
 	const [branches, setBranches] = useState<PlanetscaleBranch[]>([])
 	const [isLoadingBranches, setIsLoadingBranches] = useState(false)
 	const [selectedBranch, setSelectedBranch] = useState<string | null>(null)
@@ -188,6 +189,7 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 
 	async function handleSelectDatabase(database: PlanetscaleDatabase) {
 		if (!organizationName) return
+		const requestId = ++branchRequestIdRef.current
 		setSelectedDatabase(database)
 		setSelectedBranch(null)
 		setBranches([])
@@ -199,6 +201,7 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 				database.name,
 				database.defaultBranch
 			)
+			if (requestId !== branchRequestIdRef.current) return
 			setBranches(list)
 			// Preselect the default branch so the common case is one click.
 			const preferred = list.find(function (branch) {
@@ -206,13 +209,15 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 			})
 			setSelectedBranch(preferred?.name ?? list[0]?.name ?? null)
 		} catch (error) {
-			setAuthError(formatBackendError(error))
+			if (requestId === branchRequestIdRef.current) setAuthError(formatBackendError(error))
 		} finally {
-			setIsLoadingBranches(false)
+			if (requestId === branchRequestIdRef.current) setIsLoadingBranches(false)
 		}
 	}
 
 	function handleBackToDatabases() {
+		branchRequestIdRef.current++
+		setIsLoadingBranches(false)
 		setSelectedDatabase(null)
 		setSelectedBranch(null)
 		setBranches([])
@@ -320,7 +325,7 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 			</div>
 
 			{authError ? (
-				<p className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+				<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
 					{authError}
 				</p>
 			) : null}
@@ -475,7 +480,7 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 					</div>
 
 					{selectedBranch ? (
-						<div className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)] backdrop-blur'>
+						<div className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)]'>
 							<Button
 								type='button'
 								onClick={handleCreateConnection}
@@ -502,6 +507,7 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 								onChange={function (event) {
 									setQuery(event.target.value)
 								}}
+								aria-label='Search PlanetScale databases'
 								placeholder='Search PlanetScale databases'
 								className='h-9 bg-background/70 pl-9'
 							/>
@@ -533,7 +539,7 @@ function PlanetscaleConnectFlowInner({ onComplete }: Props) {
 							</div>
 						) : null}
 						{error ? (
-							<p className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+							<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
 								{error}
 							</p>
 						) : null}

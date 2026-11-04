@@ -20,6 +20,7 @@ export function useNeonBranches(projectId: string | null) {
         return;
       }
       let cancelled = false;
+      setBranches([]);
       setIsLoading(true);
       setError(null);
       void listNeonBranches(projectId)

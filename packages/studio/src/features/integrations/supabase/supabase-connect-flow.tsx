@@ -90,6 +90,7 @@ function SupabaseConnectFlowInner({ onComplete }: Props) {
     const projectRef = selectedProject?.id;
     if (!projectRef) return;
     let cancelled = false;
+    setPassword("");
     // Reset to the per-project value: prefill if remembered, otherwise blank so
     // one project's password never carries over to another.
     void getSupabaseProjectPassword(projectRef).then(function (stored) {
@@ -257,7 +258,7 @@ function SupabaseConnectFlowInner({ onComplete }: Props) {
       </div>
 
       {authError ? (
-        <p className="border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+        <p role="alert" className="border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
           {authError}
         </p>
       ) : null}
@@ -356,6 +357,7 @@ function SupabaseConnectFlowInner({ onComplete }: Props) {
                 onChange={function (event) {
                   setQuery(event.target.value);
                 }}
+                aria-label="Search Supabase projects"
                 placeholder="Search Supabase projects"
                 className="h-9 bg-background/70 pl-9"
               />
@@ -383,7 +385,7 @@ function SupabaseConnectFlowInner({ onComplete }: Props) {
               </div>
             ) : null}
             {error ? (
-              <p className="border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+              <p role="alert" className="border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
                 {error}
               </p>
             ) : null}

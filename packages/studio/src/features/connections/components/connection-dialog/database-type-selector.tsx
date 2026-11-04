@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { memo, useMemo, type KeyboardEvent, type ReactNode } from 'react'
 import { Check, FileSpreadsheet, BarChart3 } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 import {
@@ -67,6 +67,7 @@ type Props = {
 	showFiles?: boolean
 	compact?: boolean
 	disabled?: boolean
+	labelledBy?: string
 }
 
 const DATABASE_TYPES: DatabaseType[] = [
@@ -222,7 +223,48 @@ const FILES_TILE: Tile = {
 	icon: <FileSpreadsheet className='h-[18px] w-[18px]' strokeWidth={1.8} />
 }
 
-export function DatabaseTypeSelector({
+const DATABASE_TILES: Tile[] = DATABASE_TYPES.map((type) => {
+	const meta = DATABASE_META[type]
+	return {
+		key: type,
+		name: meta.name,
+		description: meta.description,
+		icon: <DatabaseIcon type={type} className='h-[18px] w-[18px]' />
+	}
+})
+
+const GRID_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'])
+
+function moveGridFocus(event: KeyboardEvent<HTMLDivElement>) {
+	if (!GRID_KEYS.has(event.key)) return
+	const buttons = Array.from(
+		event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')
+	)
+	const current = buttons.findIndex((button) => button === document.activeElement)
+	if (current === -1) return
+
+	const columns = getComputedStyle(event.currentTarget)
+		.gridTemplateColumns.split(' ')
+		.filter(Boolean).length
+	const offsets: Record<string, number> = {
+		ArrowLeft: -1,
+		ArrowRight: 1,
+		ArrowUp: -columns,
+		ArrowDown: columns
+	}
+	const next =
+		event.key === 'Home'
+			? 0
+			: event.key === 'End'
+				? buttons.length - 1
+				: current + offsets[event.key]
+	const target = buttons[next]
+	if (!target) return
+	event.preventDefault()
+	target.focus()
+}
+
+export const DatabaseTypeSelector = memo(function DatabaseTypeSelector({
 	selectedType,
 	onSelect,
 	showSupabase,
@@ -235,29 +277,36 @@ export function DatabaseTypeSelector({
 	showPosthog,
 	showFiles,
 	compact,
-	disabled
+	disabled,
+	labelledBy
 }: Props) {
-	const tiles: Tile[] = DATABASE_TYPES.map(function (type) {
-		const meta = DATABASE_META[type]
-		return {
-			key: type,
-			name: meta.name,
-			description: meta.description,
-			icon: <DatabaseIcon type={type} className='h-[18px] w-[18px]' />
-		}
-	})
-
-	if (showSupabase) tiles.push(SUPABASE_TILE)
-	if (showTurso) tiles.push(TURSO_TILE)
-	if (showNeon) tiles.push(NEON_TILE)
-	if (showCloudflare) tiles.push(CLOUDFLARE_TILE)
-	if (showXata) tiles.push(XATA_TILE)
-	if (showPlanetscale) tiles.push(PLANETSCALE_TILE)
-	if (showVercel) tiles.push(VERCEL_TILE)
-	if (showPosthog) tiles.push(POSTHOG_TILE)
-	if (showFiles) tiles.push(FILES_TILE)
+	const tiles = useMemo(
+		() => [
+			...DATABASE_TILES,
+			...(showSupabase ? [SUPABASE_TILE] : []),
+			...(showTurso ? [TURSO_TILE] : []),
+			...(showNeon ? [NEON_TILE] : []),
+			...(showCloudflare ? [CLOUDFLARE_TILE] : []),
+			...(showXata ? [XATA_TILE] : []),
+			...(showPlanetscale ? [PLANETSCALE_TILE] : []),
+			...(showVercel ? [VERCEL_TILE] : []),
+			...(showPosthog ? [POSTHOG_TILE] : []),
+			...(showFiles ? [FILES_TILE] : [])
+		],
+		[
+			showSupabase,
+			showTurso,
+			showNeon,
+			showCloudflare,
+			showXata,
+			showPlanetscale,
+			showVercel,
+			showPosthog,
+			showFiles
+		]
+	)
 	const orderedTiles = compact
-		? [...tiles].sort(function (a, b) {
+		? [...tiles].sort((a, b) => {
 				if (a.key === selectedType) return -1
 				if (b.key === selectedType) return 1
 				return 0
@@ -266,6 +315,9 @@ export function DatabaseTypeSelector({
 
 	return (
 		<div
+			role='group'
+			aria-labelledby={labelledBy}
+			onKeyDown={moveGridFocus}
 			className={cn(
 				'grid grid-cols-2 gap-2 transition-[gap] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] sm:grid-cols-3',
 				compact && 'sm:grid-cols-5'
@@ -279,6 +331,8 @@ export function DatabaseTypeSelector({
 					<button
 						key={tile.key}
 						type='button'
+						aria-pressed={tile.key === 'files' ? undefined : isActive}
+						aria-label={`${tile.name}: ${tile.description}`}
 						onClick={function () {
 							onSelect(tile.key)
 						}}
@@ -371,4 +425,4 @@ export function DatabaseTypeSelector({
 			})}
 		</div>
 	)
-}
+})
