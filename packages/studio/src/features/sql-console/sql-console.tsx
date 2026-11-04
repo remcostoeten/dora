@@ -1,6 +1,6 @@
 import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { getEditorModels } from '@studio/core/editor-host'
+import { getEditorModels, getSelectedEditorText } from '@studio/core/editor-host'
 import { useAdapter, useIsTauri } from '@studio/core/data-provider/context'
 import { useSettings } from '@studio/core/settings'
 import { useConnections } from '@studio/core/data-provider'
@@ -48,7 +48,6 @@ import { toast } from '@studio/shared/ui/notifier'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { SqlEditor } from './components/sql-editor'
-import { getSelectedEditorText } from '@studio/core/editor-host'
 import { CodeEditor } from '@studio/features/drizzle-runner/components/code-editor'
 
 function notifyFailure(title: string, error: unknown) {
