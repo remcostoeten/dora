@@ -3,8 +3,10 @@ import { useIsTauri } from '@studio/core/data-provider'
 import { useSettings } from '@studio/core/settings'
 import { useEffectiveShortcuts, useShortcut } from '@studio/core/shortcuts'
 import {
+	closeTab,
 	openSettingsView,
 	readWorkspace,
+	selectActiveTabId,
 	setActiveConnection,
 	setActiveNav,
 	setConnectionDialogOpen,
@@ -198,21 +200,28 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 		.except('typing')
 		.on(
 			function () {
+				const activeTabId =
+					activeNavId === 'database-studio' ? selectActiveTabId(readWorkspace()) : null
+				if (activeTabId) {
+					closeTab(activeTabId)
+					return
+				}
 				if (activeConnectionId) actions.handleCloseConnection(activeConnectionId)
 			},
 			{ description: shortcuts.closeTab.description }
 		)
 
 	// Connection switching by index (1-9)
-	connections.slice(0, 9).forEach(function (connection, index) {
+	for (let index = 0; index < 9; index++) {
 		const key = `switchConnection${index + 1}` as keyof typeof shortcuts
 		const definition = shortcuts[key]
-		if (!definition) return
+		if (!definition) continue
 		$.bind(definition.combo).on(
 			function () {
-				actions.handleConnectionSelect(connection.id)
+				const connection = connections[index]
+				if (connection) actions.handleConnectionSelect(connection.id)
 			},
 			{ description: definition.description }
 		)
-	})
+	}
 }
