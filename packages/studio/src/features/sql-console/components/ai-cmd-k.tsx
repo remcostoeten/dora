@@ -6,6 +6,7 @@ import { commands } from '@studio/lib/bindings'
 import type { AiStreamEvent } from '@studio/lib/bindings'
 import { formatAiStatusBadge, useAiStatus } from '@studio/features/ai-assistant/use-ai-status'
 import { buildMockSqlJson, streamMockText } from '@studio/features/ai-assistant/mock-ai'
+import { createStreamBatcher } from '@studio/features/ai-assistant/stream-batch'
 import { Button } from '@studio/shared/ui/button'
 import { cn } from '@studio/shared/utils/cn'
 
@@ -145,15 +146,19 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 
 			const channel = new Channel<AiStreamEvent>()
 			let accumulated = ''
+			const batcher = createStreamBatcher(function (content) {
+				if (!abortRef.current.cancelled) setStreamedContent(content)
+			})
 
 			channel.onmessage = function onmessage(event) {
 				if (abortRef.current.cancelled) return
 				switch (event.type) {
 					case 'token':
 						accumulated += event.text
-						setStreamedContent(accumulated)
+						batcher.push(event.text)
 						break
 					case 'final':
+						batcher.flush()
 						if (event.content && event.content.length > accumulated.length) {
 							accumulated = event.content
 							setStreamedContent(accumulated)
@@ -285,9 +290,11 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 						value={prompt}
 						onChange={(e) => setPrompt(e.target.value)}
 						onKeyDown={handleKeyDown}
-						disabled={isGenerating}
+						readOnly={isGenerating}
+						aria-busy={isGenerating}
+						aria-label='Describe the query to generate'
 						placeholder="e.g. users who signed up last week but haven't logged in"
-						className='w-full resize-none rounded-md border border-sidebar-border bg-background px-3 py-2 text-sm transition-colors duration-150 focus-visible:bg-focus disabled:opacity-50'
+						className='w-full resize-none rounded-md border border-sidebar-border bg-background px-3 py-2 text-sm transition-colors duration-150 focus-visible:bg-focus read-only:opacity-50'
 						rows={2}
 					/>
 					<div className='mt-1 flex items-center justify-between text-[10px] text-muted-foreground'>

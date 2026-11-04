@@ -44,6 +44,21 @@ export function getEditorModels(family: EditorFamily) {
 	return modelsByFamily[family]
 }
 
+/**
+ * @name getSelectedEditorText
+ * @description Returns the text selected in the hosted editor when it is showing the given tab, or an empty string.
+ * @example getSelectedEditorText('sql', 'sql:tab-1')
+ */
+export function getSelectedEditorText(family: EditorFamily, tabId: string): string {
+	const editor = editors.get(family)?.editor
+	const model = modelsByFamily[family].get(tabId)
+	const selection = editor?.getSelection()
+	if (!editor || !model || !selection || editor.getModel() !== model || selection.isEmpty()) {
+		return ''
+	}
+	return model.getValueInRange(selection)
+}
+
 function getModelUri(monaco: MonacoApi, family: EditorFamily, tabId: string) {
 	const extension = family === 'sql' ? 'sql' : 'ts'
 	return monaco.Uri.parse(`inmemory://dora/${family}/${encodeURIComponent(tabId)}.${extension}`)

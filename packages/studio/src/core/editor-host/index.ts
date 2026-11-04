@@ -1,6 +1,7 @@
 export {
 	PersistentEditor,
 	getEditorModels,
+	getSelectedEditorText,
 	preloadEditorHost,
 	type EditorFamily,
 	type EditorMount
