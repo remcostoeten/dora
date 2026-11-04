@@ -17,9 +17,7 @@ export function StatusBadge({ state, health, size = 'md' }: Props) {
 
 	return (
 		<div
-			role='status'
-			aria-live='polite'
-			aria-label={label}
+			role={size === 'md' ? 'status' : undefined}
 			className='inline-flex items-center gap-1.5'
 		>
 			<span

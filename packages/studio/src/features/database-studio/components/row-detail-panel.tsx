@@ -1,3 +1,4 @@
+import { useEffect, useId, useRef } from 'react'
 import { usePresence } from '@studio/shared/hooks/use-presence'
 import type { ColumnDefinition } from '../types'
 
@@ -11,20 +12,53 @@ type Props = {
 
 export function RowDetailPanel({ open, onClose, row, columns, tableName }: Props) {
 	const { present, state } = usePresence(open, 200)
+	const titleId = useId()
+	const closeRef = useRef<HTMLButtonElement>(null)
+	const onCloseRef = useRef(onClose)
+	onCloseRef.current = onClose
+
+	useEffect(
+		function focusPanelWhileOpen() {
+			if (!open) return
+			const previous = document.activeElement as HTMLElement | null
+			closeRef.current?.focus()
+			function onKeyDown(event: KeyboardEvent) {
+				if (event.key === 'Escape' && !event.defaultPrevented) {
+					event.preventDefault()
+					onCloseRef.current()
+				}
+			}
+			document.addEventListener('keydown', onKeyDown)
+			return function () {
+				document.removeEventListener('keydown', onKeyDown)
+				if (previous?.isConnected) previous.focus()
+			}
+		},
+		[open]
+	)
+
 	if (!present) return null
 
 	return (
 		<div
+			role='dialog'
+			aria-labelledby={titleId}
 			data-state={state}
 			className='fixed inset-y-0 right-0 w-96 bg-card border-l border-sidebar-border shadow-xl z-50 flex flex-col transition-[transform,opacity] duration-200 data-[state=open]:duration-[240ms] ease-[var(--ease-out)] data-[state=closed]:translate-x-full'
 		>
 			<div className='flex items-center justify-between h-12 px-4 border-b border-sidebar-border shrink-0'>
-				<h2 className='text-sm font-semibold text-foreground'>Row Details</h2>
+				<h2 id={titleId} className='text-sm font-semibold text-foreground'>
+					Row Details
+				</h2>
 				<button
+					ref={closeRef}
+					type='button'
+					aria-label='Close row details'
 					onClick={onClose}
-					className='h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent rounded-md transition-colors'
+					className='h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-sidebar-accent focus-visible:bg-focus outline-none rounded-md transition-colors'
 				>
 					<svg
+						aria-hidden='true'
 						className='h-4 w-4'
 						viewBox='0 0 24 24'
 						fill='none'
