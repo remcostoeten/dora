@@ -980,6 +980,17 @@
 		animation: desktopOnlyPulse 1.1s ease-in-out 2;
 	}
 
+	@media (prefers-reduced-motion: reduce) {
+		.db-type-icon-glint {
+			display: none;
+		}
+
+		.form-section,
+		.desktop-only-hint {
+			animation: none;
+		}
+	}
+
 	@keyframes settingsSectionHighlight {
 		0%,
 		100% {

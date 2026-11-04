@@ -51,11 +51,13 @@ services:
 	}
 
 	const volumePath =
-		provider === 'mariadb' || provider === 'mysql'
-			? '/var/lib/mysql'
-			: provider === 'cockroach'
-				? '/cockroach-data'
-				: '/var/lib/postgresql/data'
+		provider === 'redis' || provider === 'valkey'
+			? '/data'
+			: provider === 'mariadb' || provider === 'mysql'
+				? '/var/lib/mysql'
+				: provider === 'cockroach'
+					? '/cockroach-data'
+					: '/var/lib/postgresql/data'
 
 	if (container.volumes.length > 0 || provider !== 'cockroach') {
 		yaml += `\n    volumes:`
@@ -69,6 +71,11 @@ services:
 		yaml += `\n      - --listen-addr=0.0.0.0:26257`
 		yaml += `\n      - --http-addr=0.0.0.0:8080`
 		yaml += `\n      - --store=/cockroach-data`
+	} else if (provider === 'redis' || provider === 'valkey') {
+		yaml += `\n    command:`
+		yaml += `\n      - ${provider}-server`
+		yaml += `\n      - --appendonly`
+		yaml += `\n      - "yes"`
 	}
 
 	if (container.volumes.length > 0 || provider !== 'cockroach') {

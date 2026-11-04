@@ -1,3 +1,4 @@
+import { useActiveNavId } from '@studio/core/workspace-store'
 import { Activity, Clock, Cpu, HardDrive, Network, Server, Layers } from 'lucide-react'
 import type { DockerContainer } from '../types'
 import { useContainerStats } from '../api/queries/use-container-stats'
@@ -77,8 +78,9 @@ function MiniBar({ percent, colorClass = 'bg-primary' }: MiniBarProps) {
 
 export function ContainerMetrics({ container }: Props) {
 	const isRunning = container.state === 'running'
+	const isViewActive = useActiveNavId() === 'docker'
 	const { data: stats, isFetching } = useContainerStats(container.id, {
-		enabled: isRunning
+		enabled: isRunning && isViewActive
 	})
 
 	const primaryPort = container.ports.find((p) => p.containerPort === 5432)

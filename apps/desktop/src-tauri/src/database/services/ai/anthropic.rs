@@ -114,7 +114,7 @@ impl AnthropicClient {
                 content: user,
             }],
             stream: None,
-            temperature: Some(0.0),
+            temperature: None,
         };
 
         let response = auth_headers(http.post(ANTHROPIC_API_URL).json(&body), api_key)
@@ -181,7 +181,7 @@ impl AnthropicClient {
         Ok(parsed.data.into_iter().map(|entry| entry.id).collect())
     }
 
-    fn build_request(&self, request: &AIRequest, stream: bool) -> AnthropicRequest {
+    fn build_request(&self, request: &AIRequest, stream: bool, legacy: bool) -> AnthropicRequest {
         let (system, user) = super::prompts::build(request);
         AnthropicRequest {
             model: self.model.clone(),
@@ -192,7 +192,7 @@ impl AnthropicClient {
                 content: user,
             }],
             stream: stream.then_some(true),
-            temperature: Some(0.2),
+            temperature: legacy.then_some(0.2),
         }
     }
 }
@@ -200,11 +200,13 @@ impl AnthropicClient {
 #[async_trait]
 impl AiClient for AnthropicClient {
     async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
-        let body = self.build_request(&request, false);
+        let legacy_body = self.build_request(&request, false, true);
+        let body = self.build_request(&request, false, false);
 
         let response =
-            client::send_with_rotation(&self.pool, "Anthropic", &self.model, None, |key| {
-                auth_headers(self.client.post(ANTHROPIC_API_URL).json(&body), key)
+            client::send_adaptive(&self.pool, "Anthropic", &self.model, None, |key, legacy| {
+                let body = if legacy { &legacy_body } else { &body };
+                auth_headers(self.client.post(ANTHROPIC_API_URL).json(body), key)
             })
             .await?
             .ok_or(Error::Cancelled)?;
@@ -240,14 +242,18 @@ impl AiClient for AnthropicClient {
         sender: UnboundedSender<AiStreamEvent>,
         cancel: Arc<AtomicBool>,
     ) -> Result<(), Error> {
-        let body = self.build_request(&request, true);
+        let legacy_body = self.build_request(&request, true, true);
+        let body = self.build_request(&request, true, false);
 
-        let Some(response) = client::send_with_rotation(
+        let Some(response) = client::send_adaptive(
             &self.pool,
             "Anthropic",
             &self.model,
             Some(&cancel),
-            |key| auth_headers(self.client.post(ANTHROPIC_API_URL).json(&body), key),
+            |key, legacy| {
+                let body = if legacy { &legacy_body } else { &body };
+                auth_headers(self.client.post(ANTHROPIC_API_URL).json(body), key)
+            },
         )
         .await?
         else {

@@ -1,3 +1,4 @@
+import { useActiveNavId } from '@studio/core/workspace-store'
 import {
 	Plus,
 	Search,
@@ -6,6 +7,7 @@ import {
 	ChevronDown,
 	ArrowDown,
 	ArrowUp,
+	KeyRound,
 	RefreshCw,
 	X
 } from 'lucide-react'
@@ -46,7 +48,9 @@ import {
 	POSTGRES_IMAGE,
 	MARIADB_IMAGE,
 	MYSQL_IMAGE,
-	COCKROACH_IMAGE
+	COCKROACH_IMAGE,
+	REDIS_IMAGE,
+	VALKEY_IMAGE
 } from '../constants'
 import { CreateContainerPanel } from './create-container-panel'
 import { type PendingContainer } from './container-card-skeleton'
@@ -89,6 +93,20 @@ const STATUS_FILTER_OPTIONS: ReadonlyArray<{
 
 function toPendingContainer(config: DatabaseContainerConfig): PendingContainer {
 	switch (config.provider) {
+		case 'redis':
+			return {
+				name: config.name,
+				image: REDIS_IMAGE,
+				imageTag: config.redisVersion,
+				hostPort: config.hostPort
+			}
+		case 'valkey':
+			return {
+				name: config.name,
+				image: VALKEY_IMAGE,
+				imageTag: config.valkeyVersion,
+				hostPort: config.hostPort
+			}
 		case 'mariadb':
 			return {
 				name: config.name,
@@ -151,6 +169,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 	} | null>(null)
 
 	const searchInputRef = useRef<HTMLInputElement>(null)
+	const isViewActive = useActiveNavId() === 'docker'
 	const { toast } = useToast()
 	const queryClient = useQueryClient()
 	const navigate = useNavigate()
@@ -175,12 +194,13 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 
 	useEffect(
 		function () {
+			if (!isViewActive) return
 			document.addEventListener('keydown', handleSearchFocus)
 			return function () {
 				document.removeEventListener('keydown', handleSearchFocus)
 			}
 		},
-		[handleSearchFocus]
+		[handleSearchFocus, isViewActive]
 	)
 
 	const {
@@ -195,7 +215,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 		refetch: refetchContainers
 	} = useContainers({
 		showExternal: true,
-		enabled: dockerStatus?.available ?? false
+		enabled: isViewActive && (dockerStatus?.available ?? false)
 	})
 
 	const visibleContainers = useMemo(
@@ -349,13 +369,17 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 				toast({
 					title: 'Container Created',
 					description: `${
-						config?.provider === 'mariadb'
-							? 'MariaDB'
-							: config?.provider === 'mysql'
-								? 'MySQL'
-								: config?.provider === 'cockroach'
-									? 'CockroachDB'
-									: 'PostgreSQL'
+						config?.provider === 'redis'
+							? 'Redis'
+							: config?.provider === 'valkey'
+								? 'Valkey'
+								: config?.provider === 'mariadb'
+									? 'MariaDB'
+									: config?.provider === 'mysql'
+										? 'MySQL'
+										: config?.provider === 'cockroach'
+											? 'CockroachDB'
+											: 'PostgreSQL'
 					} container is starting up...`,
 					variant: 'success'
 				})
@@ -688,6 +712,23 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 									}}
 								>
 									CockroachDB
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									onClick={function () {
+										handleOpenCreateDialog('redis')
+									}}
+								>
+									<KeyRound className='mr-2 h-3.5 w-3.5' aria-hidden='true' />
+									Redis
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={function () {
+										handleOpenCreateDialog('valkey')
+									}}
+								>
+									<KeyRound className='mr-2 h-3.5 w-3.5' aria-hidden='true' />
+									Valkey
 								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>

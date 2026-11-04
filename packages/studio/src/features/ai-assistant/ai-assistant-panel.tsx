@@ -123,10 +123,17 @@ export function AiAssistantPanel({
 	)
 
 	useEffect(
+		function stickToBottomWhenReplyStarts() {
+			if (isStreaming) stickToBottomRef.current = true
+		},
+		[isStreaming]
+	)
+
+	useEffect(
 		function autoScroll() {
 			const el = scrollRef.current
 			if (!el) return
-			if (!stickToBottomRef.current && !isStreaming) return
+			if (!stickToBottomRef.current) return
 
 			const frame = requestAnimationFrame(function () {
 				el.scrollTop = el.scrollHeight

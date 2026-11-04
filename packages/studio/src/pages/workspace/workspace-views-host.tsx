@@ -28,10 +28,16 @@ import { WorkspaceView, WorkspaceViews } from '@studio/core/workspace-views'
 import { isDataFileSessionConnection } from '@studio/features/connections/source-caps'
 import type { Connection } from '@studio/features/connections/types'
 import { ConnectionTabBar } from '@studio/features/connection-tab-bar'
-import { getContainerConnectionDetails } from '@studio/features/docker-manager/utilities/container-connection'
+import {
+	getContainerConnectionDetails,
+	isKeyValueContainer
+} from '@studio/features/docker-manager/utilities/container-connection'
+import { KvLoadingShell } from '@studio/features/kv-studio/kv-loading-shell'
+import { openContainerInKvStudio } from '@studio/features/kv-studio/kv-launch'
 import { SettingsView } from '@studio/features/sidebar/components/settings-panel'
 import { TabBar } from '@studio/features/tab-bar'
 import { ErrorBoundary } from '@studio/shared/ui/error-boundary'
+import { toast } from '@studio/shared/ui/use-toast'
 import { ViewLoadingShell } from '@studio/shared/ui/view-loading-shell'
 import { WorkspaceStartScreenWithTabs } from './start-screen'
 import type { ConnectionActions } from './use-connection-actions'
@@ -59,6 +65,11 @@ const SchemaVisualizer = lazy(function () {
 const OrmCockpitPanel = lazy(function () {
 	return import('@studio/features/orm-cockpit/components/orm-cockpit-panel').then(function (m) {
 		return { default: m.OrmCockpitPanel }
+	})
+})
+const KvWorkspace = lazy(function () {
+	return import('@studio/features/kv-studio/kv-workspace').then(function (m) {
+		return { default: m.KvWorkspace }
 	})
 })
 const PosthogAnalytics = lazy(function () {
@@ -98,16 +109,20 @@ export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 	return (
 		<Suspense
 			fallback={
-				<ViewLoadingShell
-					view={
-						activeNavId === 'sql-console' ||
-						activeNavId === 'schema-visualizer' ||
-						activeNavId === 'docker' ||
-						activeNavId === 'orm-cockpit'
-							? activeNavId
-							: 'database-studio'
-					}
-				/>
+				activeNavId === 'kv-studio' ? (
+					<KvLoadingShell />
+				) : (
+					<ViewLoadingShell
+						view={
+							activeNavId === 'sql-console' ||
+							activeNavId === 'schema-visualizer' ||
+							activeNavId === 'docker' ||
+							activeNavId === 'orm-cockpit'
+								? activeNavId
+								: 'database-studio'
+						}
+					/>
+				)
 			}
 		>
 			<WorkspaceViews activeViewId={activeNavId}>
@@ -175,6 +190,15 @@ export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 							</ErrorBoundary>
 						</div>
 					)}
+				</WorkspaceView>
+
+				<WorkspaceView id='kv-studio'>
+					<ErrorBoundary feature='Redis / Valkey'>
+						<KvWorkspace
+							isActive={activeNavId === 'kv-studio'}
+							windowControls={<WindowControls />}
+						/>
+					</ErrorBoundary>
 				</WorkspaceView>
 
 				<WorkspaceView id='analytics'>
@@ -248,6 +272,21 @@ export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 						<DockerView
 							windowControls={<WindowControls />}
 							onOpenInDataViewer={async function (container) {
+								if (isKeyValueContainer(container)) {
+									if (isTauri) {
+										const result = await openContainerInKvStudio(container)
+										if (result.status === 'error') {
+											toast({
+												title: 'Could not open Redis / Valkey',
+												description: result.message,
+												variant: 'destructive'
+											})
+											return
+										}
+									}
+									setActiveNav('kv-studio')
+									return
+								}
 								const details = getContainerConnectionDetails(container)
 								await actions.handleAddConnection({
 									name: container.name,

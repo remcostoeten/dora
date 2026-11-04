@@ -86,6 +86,8 @@ struct ChatRequest {
     messages: Vec<ChatMessage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    max_completion_tokens: Option<u32>,
     stream: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     temperature: Option<f32>,
@@ -183,29 +185,32 @@ impl OpenAiCompatClient {
             ),
         };
 
-        let body = serde_json::json!({
-            "model": model.unwrap_or(spec.provider.default_model()),
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user}
-            ],
+        let model = model.unwrap_or(spec.provider.default_model());
+        let messages = serde_json::json!([
+            {"role": "system", "content": system},
+            {"role": "user", "content": user}
+        ]);
+        let legacy_body = serde_json::json!({
+            "model": model,
+            "messages": messages,
             "max_tokens": max_tokens,
             "temperature": 0.0,
         });
+        let body = serde_json::json!({
+            "model": model,
+            "messages": messages,
+            "max_completion_tokens": max_tokens,
+        });
 
-        let response = http
-            .post(spec.chat_url)
-            .bearer_auth(api_key)
-            .json(&body)
-            .send()
-            .await
-            .map_err(|error| Error::Any(anyhow::anyhow!("request failed: {error}")))?;
-
+        let pool = KeyPool::from_keys(spec.provider, vec![api_key.to_string()])?;
+        let response =
+            client::send_adaptive(&pool, spec.provider.label(), model, None, |key, legacy| {
+                let body = if legacy { &legacy_body } else { &body };
+                http.post(spec.chat_url).bearer_auth(key).json(body)
+            })
+            .await?
+            .ok_or(Error::Cancelled)?;
         let status = response.status();
-        if !status.is_success() {
-            let text = response.text().await.unwrap_or_default();
-            return Err(Error::Any(anyhow::anyhow!("{status}: {text}")));
-        }
 
         if user_prompt.is_some() {
             let payload: ChatResponse = response
@@ -266,7 +271,7 @@ impl OpenAiCompatClient {
         Ok(parsed.data.into_iter().map(|entry| entry.id).collect())
     }
 
-    fn build_request(&self, request: &AIRequest, stream: bool) -> ChatRequest {
+    fn build_request(&self, request: &AIRequest, stream: bool, legacy: bool) -> ChatRequest {
         let (system, user) = super::prompts::build(request);
         let use_json_format = request.prompt_mode.as_deref() != Some("chat");
         let temperature = if use_json_format {
@@ -287,9 +292,10 @@ impl OpenAiCompatClient {
                     content: user,
                 },
             ],
-            max_tokens: request.max_tokens,
+            max_tokens: request.max_tokens.filter(|_| legacy),
+            max_completion_tokens: request.max_tokens.filter(|_| !legacy),
             stream,
-            temperature: Some(temperature),
+            temperature: legacy.then_some(temperature),
             response_format: use_json_format.then(|| ResponseFormat {
                 kind: "json_object".into(),
             }),
@@ -300,17 +306,24 @@ impl OpenAiCompatClient {
 #[async_trait]
 impl AiClient for OpenAiCompatClient {
     async fn complete(&self, request: AIRequest) -> Result<AIResponse, Error> {
-        let body = self.build_request(&request, false);
+        let legacy_body = self.build_request(&request, false, true);
+        let body = self.build_request(&request, false, false);
 
-        let response =
-            client::send_with_rotation(&self.pool, self.label(), &self.model, None, |key| {
+        let response = client::send_adaptive(
+            &self.pool,
+            self.label(),
+            &self.model,
+            None,
+            |key, legacy| {
+                let body = if legacy { &legacy_body } else { &body };
                 self.client
                     .post(self.spec.chat_url)
                     .bearer_auth(key)
-                    .json(&body)
-            })
-            .await?
-            .ok_or(Error::Cancelled)?;
+                    .json(body)
+            },
+        )
+        .await?
+        .ok_or(Error::Cancelled)?;
 
         let parsed: ChatResponse = response.json().await.map_err(|error| {
             Error::Any(anyhow::anyhow!(
@@ -340,18 +353,20 @@ impl AiClient for OpenAiCompatClient {
         sender: UnboundedSender<AiStreamEvent>,
         cancel: Arc<AtomicBool>,
     ) -> Result<(), Error> {
-        let body = self.build_request(&request, true);
+        let legacy_body = self.build_request(&request, true, true);
+        let body = self.build_request(&request, true, false);
 
-        let Some(response) = client::send_with_rotation(
+        let Some(response) = client::send_adaptive(
             &self.pool,
             self.label(),
             &self.model,
             Some(&cancel),
-            |key| {
+            |key, legacy| {
+                let body = if legacy { &legacy_body } else { &body };
                 self.client
                     .post(self.spec.chat_url)
                     .bearer_auth(key)
-                    .json(&body)
+                    .json(body)
             },
         )
         .await?

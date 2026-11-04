@@ -8,11 +8,13 @@ import {
 	Copy,
 	Check,
 	Database,
+	KeyRound,
 	MousePointerClick,
 	Trash2
 } from 'lucide-react'
 import { useState } from 'react'
 import type { DockerContainer } from '../types'
+import { isKeyValueContainer } from '../utilities/container-connection'
 import { StatusBadge } from './status-badge'
 import { cn } from '@studio/shared/utils/cn'
 import {
@@ -49,6 +51,7 @@ export function ContainerCard({
 	const primaryPort = container.ports[0]
 	const createdTimeAgo = formatDistanceToNow(new Date(container.createdAt), { addSuffix: true })
 	const isRunning = container.state === 'running'
+	const isKeyValue = isKeyValueContainer(container)
 	const [copied, setCopied] = useState(false)
 
 	function handleClick() {
@@ -258,8 +261,8 @@ export function ContainerCard({
 					disabled={!isRunning || !onOpenInDataViewer}
 					onClick={handleOpenInDataViewer}
 				>
-					<Database />
-					Open in Data Viewer
+					{isKeyValue ? <KeyRound /> : <Database />}
+					{isKeyValue ? 'Open in KV Studio' : 'Open in Data Viewer'}
 				</ContextMenuItem>
 			</ContextMenuContent>
 		</ContextMenu>
