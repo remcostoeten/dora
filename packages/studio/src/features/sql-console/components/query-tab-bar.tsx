@@ -76,6 +76,49 @@ export function QueryTabBar({ onCloseTab }: Props) {
 		}
 	}
 
+	useEffect(function scrollActiveTabIntoView() {
+		const container = scrollContainerRef.current
+		const activeTab = container?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+		activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+	}, [activeTabId])
+
+	function focusTab(tabId: string) {
+		requestAnimationFrame(function () {
+			scrollContainerRef.current
+				?.querySelector<HTMLElement>(`[data-tab-id="${CSS.escape(tabId)}"]`)
+				?.focus()
+		})
+	}
+
+	function handleTabKeyDown(e: React.KeyboardEvent, index: number) {
+		if (editingTabId) return
+		const tab = tabs[index]
+		const targets: Record<string, number> = {
+			ArrowLeft: (index - 1 + tabs.length) % tabs.length,
+			ArrowRight: (index + 1) % tabs.length,
+			Home: 0,
+			End: tabs.length - 1
+		}
+		if (e.key in targets) {
+			e.preventDefault()
+			const next = tabs[targets[e.key]]
+			setActiveTab(next.id)
+			focusTab(next.id)
+			return
+		}
+		if (e.key === 'F2') {
+			e.preventDefault()
+			handleDoubleClick(tab.id, tab.title)
+			return
+		}
+		if (e.key === 'Delete' && tabs.length > 1) {
+			e.preventDefault()
+			const neighbour = tabs[index + 1] ?? tabs[index - 1]
+			onCloseTab(tab.id)
+			focusTab(neighbour.id)
+		}
+	}
+
 	function scrollLeft() {
 		if (scrollContainerRef.current) {
 			scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' })
@@ -108,6 +151,9 @@ export function QueryTabBar({ onCloseTab }: Props) {
 			{/* Tab scroll container */}
 			<div
 				ref={scrollContainerRef}
+				role='tablist'
+				aria-label='Query tabs'
+				aria-orientation='horizontal'
 				className='flex items-end flex-1 overflow-x-auto scrollbar-hide h-full'
 			>
 				{tabs.map(function (tab, index) {
@@ -118,13 +164,19 @@ export function QueryTabBar({ onCloseTab }: Props) {
 						<ContextMenu key={tab.id}>
 							<ContextMenuTrigger asChild>
 								<button
+									role='tab'
+									aria-selected={isActive}
+									tabIndex={isActive ? 0 : -1}
+									data-tab-id={tab.id}
+									aria-keyshortcuts='Delete F2'
 									className={cn(
-										'query-tab group relative flex items-center gap-1.5 h-full px-3 text-xs font-medium transition-all duration-150 border-r border-sidebar-border whitespace-nowrap min-w-[70px] max-w-[160px]',
+										'query-tab group relative flex items-center gap-1.5 h-full px-3 text-xs font-medium transition-[color,background-color] duration-150 border-r border-sidebar-border whitespace-nowrap min-w-[70px] max-w-[160px] outline-none focus-visible:bg-focus',
 										isActive
 											? 'bg-background text-foreground query-tab--active'
 											: 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
 									)}
 									onClick={function () { setActiveTab(tab.id) }}
+									onKeyDown={function (e) { handleTabKeyDown(e, index) }}
 									onMouseDown={function (e) { handleMiddleClick(e, tab.id) }}
 									onDoubleClick={function () { handleDoubleClick(tab.id, tab.title) }}
 									title={tab.title}
@@ -178,8 +230,7 @@ export function QueryTabBar({ onCloseTab }: Props) {
 												e.stopPropagation()
 												onCloseTab(tab.id)
 											}}
-											role='button'
-											tabIndex={-1}
+											aria-hidden='true'
 											title='Close tab (Ctrl+W)'
 											data-tauri-drag-region='false'
 										>

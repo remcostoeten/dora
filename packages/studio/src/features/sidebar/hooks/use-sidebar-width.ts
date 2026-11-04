@@ -53,15 +53,25 @@ export function useSidebarWidth() {
     document.body.style.userSelect = "none";
     setIsResizing(true);
 
+    let latestWidth = startWidth;
+    let frame = 0;
+
     function onMove(moveEvent: MouseEvent) {
-      setWidth(clampWidth(startWidth + (moveEvent.clientX - startX)));
+      latestWidth = clampWidth(startWidth + (moveEvent.clientX - startX));
+      if (frame) return;
+      frame = requestAnimationFrame(function () {
+        frame = 0;
+        setWidth(latestWidth);
+      });
     }
 
     function onUp() {
+      cancelAnimationFrame(frame);
       document.body.style.cursor = previousCursor;
       document.body.style.userSelect = previousUserSelect;
+      setWidth(latestWidth);
       setIsResizing(false);
-      persistWidth(widthRef.current);
+      persistWidth(latestWidth);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     }

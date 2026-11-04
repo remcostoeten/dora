@@ -121,8 +121,18 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 		return (
 			<div
 				key={item.id}
-				className='group flex flex-col px-3 py-2 border-b border-sidebar-border/50 hover:bg-sidebar-accent/50 cursor-pointer transition-colors'
+				role='button'
+				tabIndex={0}
+				aria-label={`Load query: ${truncateQuery(item.query)}`}
+				className='group flex flex-col px-3 py-2 border-b border-sidebar-border/50 hover:bg-sidebar-accent/50 cursor-pointer transition-colors outline-none focus-visible:bg-focus'
 				onClick={function () { onSelectQuery(item) }}
+				onKeyDown={function (e) {
+					if (e.target !== e.currentTarget) return
+					if (e.key === 'Enter' || e.key === ' ') {
+						e.preventDefault()
+						onSelectQuery(item)
+					}
+				}}
 			>
 				<div className='flex items-start gap-2'>
 					{item.success ? (
@@ -133,12 +143,13 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 					<span className='text-xs font-mono text-sidebar-foreground flex-1 break-all'>
 						{truncateQuery(item.query)}
 					</span>
-					<div className='flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity'>
+					<div className='flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
 						<Button
 							variant='ghost'
 							size='sm'
 							className='h-5 w-5 p-0'
 							title={item.pinned ? 'Unpin' : 'Pin'}
+							aria-label={item.pinned ? 'Unpin query' : 'Pin query'}
 							onClick={function (e) {
 								e.stopPropagation()
 								item.pinned ? unpinItem(item.id) : pinItem(item.id)
@@ -154,6 +165,8 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 							variant='ghost'
 							size='sm'
 							className='h-5 w-5 p-0'
+							title='Remove from history'
+							aria-label='Remove from history'
 							onClick={function (e) {
 								e.stopPropagation()
 								removeFromHistory(item.id)
