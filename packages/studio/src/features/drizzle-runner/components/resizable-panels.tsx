@@ -24,6 +24,26 @@ export function ResizablePanels({
 		setIsDragging(true)
 	}, [])
 
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			const step = e.shiftKey ? 10 : 2
+			const height = containerRef.current?.getBoundingClientRect().height ?? 0
+			const minPercent = height > 0 ? (minSize / height) * 100 : 0
+			const clamp = (value: number) => Math.max(minPercent, Math.min(100 - minPercent, value))
+			const keys: Record<string, (value: number) => number> = {
+				ArrowUp: (value) => value - step,
+				ArrowDown: (value) => value + step,
+				Home: () => minPercent,
+				End: () => 100 - minPercent
+			}
+			const next = keys[e.key]
+			if (!next) return
+			e.preventDefault()
+			setSplitPercent((value) => clamp(next(value)))
+		},
+		[minSize]
+	)
+
 	useEffect(() => {
 		if (!isDragging) return
 
@@ -70,11 +90,19 @@ export function ResizablePanels({
 
 			{/* Resizable divider */}
 			<div
+				role='separator'
+				aria-orientation='horizontal'
+				aria-label='Resize editor and results'
+				aria-valuemin={0}
+				aria-valuemax={100}
+				aria-valuenow={Math.round(splitPercent)}
+				tabIndex={0}
 				className={cn(
-					'flex items-center justify-center h-2 border-y border-sidebar-border bg-sidebar-accent/50 cursor-row-resize group hover:bg-sidebar-accent transition-colors',
+					'flex items-center justify-center h-2 border-y border-sidebar-border bg-sidebar-accent/50 cursor-row-resize group hover:bg-sidebar-accent focus-visible:bg-focus outline-none transition-colors',
 					isDragging && 'bg-sidebar-primary/20'
 				)}
 				onMouseDown={handleMouseDown}
+				onKeyDown={handleKeyDown}
 			>
 				<GripHorizontal
 					className={cn(

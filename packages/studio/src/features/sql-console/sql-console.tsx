@@ -47,6 +47,7 @@ import { toast } from '@studio/shared/ui/notifier'
 import { SqlQueryResult, ResultViewMode, SqlSnippet, TableInfo } from './types'
 import type { ResultChartConfig } from '@studio/features/result-charts/types'
 import { SqlEditor } from './components/sql-editor'
+import { getSelectedEditorText } from '@studio/core/editor-host'
 import { CodeEditor } from '@studio/features/drizzle-runner/components/code-editor'
 
 function notifyFailure(title: string, error: unknown) {
@@ -164,6 +165,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 	const [showRightSidebar, setShowRightSidebar] = useState(true)
 	const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SQL_CONSOLE_SIDEBAR_WIDTH)
 	const sbwRef = useRef(DEFAULT_SQL_CONSOLE_SIDEBAR_WIDTH)
+	const sidebarRef = useRef<HTMLDivElement>(null)
 	// Cancellation is per tab: each tab tracks its own in-flight backend
 	// statement ids and cancelled flag, so cancelling one tab's query never
 	// cancels or silences a query running in another tab.
@@ -200,6 +202,19 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			})
 		},
 		[schemaQuery.data]
+	)
+	const drizzleTables = useMemo(
+		() =>
+			tables.map((t) => ({
+				name: t.name,
+				columns: (t.columns || []).map((c) => ({
+					name: c.name,
+					type: c.type,
+					nullable: c.nullable ?? false,
+					primaryKey: c.primaryKey ?? false
+				}))
+			})),
+		[tables]
 	)
 
 	const { addToHistory, updateChartConfig } = useQueryHistory()
@@ -1069,7 +1084,9 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		.on(
 			function () {
 				if (mode === 'prisma') return
-				handleExecute(undefined, mode)
+				const family = mode === 'sql' ? 'sql' : 'typescript'
+				const selected = getSelectedEditorText(family, `${mode}:${activeTab.id}`)
+				handleExecute(selected.trim() ? selected : undefined, mode)
 			},
 			{ description: sqlShortcuts.runSelection.description }
 		)
@@ -1305,25 +1322,7 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 															}
 															onModeChange={setMode}
 															isExecuting={isExecuting}
-															tables={tables.map(function (t) {
-																return {
-																	name: t.name,
-																	columns: (t.columns || []).map(
-																		function (c) {
-																			return {
-																				name: c.name,
-																				type: c.type,
-																				nullable:
-																					c.nullable ??
-																					false,
-																				primaryKey:
-																					c.primaryKey ??
-																					false
-																			}
-																		}
-																	)
-																}
-															})}
+															tables={drizzleTables}
 														/>
 													)}
 												</Suspense>
@@ -1390,7 +1389,8 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 			</PanelGroup>
 
 			<div
-				className='flex h-full shrink-0 transition-all duration-200'
+				ref={sidebarRef}
+				className='flex h-full shrink-0 transition-[width] duration-200 data-[resizing=true]:transition-none'
 				style={{
 					width: showRightSidebar ? sidebarWidth : 0,
 					overflow: 'hidden',
@@ -1402,25 +1402,34 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 					onMouseDown={(e) => {
 						const startX = e.clientX
 						const startW = sbwRef.current
+						const sidebar = sidebarRef.current
+						let frame = 0
 						document.body.style.cursor = 'col-resize'
 						document.body.style.userSelect = 'none'
+						if (sidebar) sidebar.dataset.resizing = 'true'
 						function onMove(ev: MouseEvent) {
 							sbwRef.current = Math.max(
 								0,
 								Math.min(500, startW - (ev.clientX - startX))
 							)
-							setSidebarWidth(sbwRef.current)
-							setShowRightSidebar(
-								getSqlConsoleSidebarStateForWidth(sbwRef.current).isOpen
-							)
+							if (frame) return
+							frame = requestAnimationFrame(() => {
+								frame = 0
+								if (sidebar) sidebar.style.width = `${sbwRef.current}px`
+							})
 						}
 						function onUp() {
+							cancelAnimationFrame(frame)
 							document.body.style.cursor = ''
 							document.body.style.userSelect = ''
+							if (sidebar) delete sidebar.dataset.resizing
 							const sidebarState = getSqlConsoleSidebarStateForWidth(sbwRef.current)
 							setShowRightSidebar(sidebarState.isOpen)
 							if (sidebarState.isOpen) {
 								setSidebarWidth(sidebarState.width)
+							}
+							if (sidebar) {
+								sidebar.style.width = `${sidebarState.isOpen ? sidebarState.width : 0}px`
 							}
 							window.removeEventListener('mousemove', onMove)
 							window.removeEventListener('mouseup', onUp)

@@ -350,10 +350,13 @@ export function AiAssistantPanel({
 								setInput(e.target.value)
 							}}
 							onKeyDown={handleKeyDown}
-							disabled={isStreaming || !keysAvailable}
+							disabled={!keysAvailable}
+							readOnly={isStreaming}
+							aria-busy={isStreaming}
+							aria-label='Message the AI assistant'
 							placeholder='Ask about your schema or query…'
 							rows={2}
-							className='max-h-32 min-h-16 w-full resize-none border-0 bg-transparent px-3 py-2.5 pr-11 text-sm leading-relaxed outline-none disabled:opacity-50'
+							className='max-h-32 min-h-16 w-full resize-none border-0 bg-transparent px-3 py-2.5 pr-11 text-sm leading-relaxed outline-none disabled:opacity-50 read-only:opacity-50'
 						/>
 						<div className='absolute bottom-1.5 right-1.5'>
 							{isStreaming ? (
