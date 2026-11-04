@@ -47,7 +47,7 @@ export function buildWhereClause(
 
 /** Returns true when a leaf condition is complete enough to emit SQL. */
 function isUsableCondition(node: FilterCondition): boolean {
-	return Boolean(node.column) && Boolean(node.operator)
+	return Boolean(node.column) && Boolean(node.operator) && String(node.value ?? '') !== ''
 }
 
 /**

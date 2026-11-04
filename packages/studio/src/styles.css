@@ -2211,3 +2211,9 @@
 	animation: skeletonEnter 240ms var(--ease-out) forwards;
 	animation-delay: var(--skeleton-delay, 0ms);
 }
+
+@media (prefers-reduced-motion: reduce) {
+	.sv-edge-flow {
+		animation: none;
+	}
+}

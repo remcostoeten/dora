@@ -93,6 +93,14 @@ export function useGridKeyboard({
 			const { row, col } = focusedCell
 			const maxRow = rows.length - 1
 			const maxCol = columns.length - 1
+			if (row > maxRow || col > maxCol) {
+				if (maxRow < 0 || maxCol < 0) return
+				e.preventDefault()
+				const clamped = { row: Math.min(row, maxRow), col: Math.min(col, maxCol) }
+				setFocusedCell(clamped)
+				setAnchorCell(clamped)
+				return
+			}
 			function moveAndMaybeSelect(newRow: number, newCol: number) {
 				const newPos: CellPosition = { row: newRow, col: newCol }
 				if (pendingNavFrameRef.current !== null) {
@@ -385,7 +393,8 @@ function copySelectionToClipboard(
 	}
 
 	if (focusedCell) {
-		const value = rows[focusedCell.row][columns[focusedCell.col].name]
+		const column = columns[focusedCell.col]
+		const value = column ? rows[focusedCell.row]?.[column.name] : undefined
 		navigator.clipboard.writeText(value === null || value === undefined ? '' : String(value))
 	}
 }

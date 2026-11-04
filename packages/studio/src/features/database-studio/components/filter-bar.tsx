@@ -146,12 +146,39 @@ function ConditionRow({
 	onChange: (next: FilterCondition) => void
 	onRemove: () => void
 }) {
+	const committedValue = String(condition.value ?? '')
+	const [draftValue, setDraftValue] = useState(committedValue)
+	const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	useEffect(() => {
+		setDraftValue(committedValue)
+	}, [committedValue])
+
+	useEffect(() => {
+		return () => {
+			if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
+		}
+	}, [])
+
+	function commitValue(value: string) {
+		if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
+		commitTimerRef.current = null
+		if (value !== committedValue) onChange({ ...condition, value })
+	}
+
+	function scheduleCommit(value: string) {
+		setDraftValue(value)
+		if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
+		commitTimerRef.current = setTimeout(() => commitValue(value), 300)
+	}
+
 	return (
 		<div className='flex items-center gap-2 px-2 h-9 group bg-sidebar-accent/5 hover:bg-sidebar-accent/20 transition-colors rounded'>
 			<Button
 				variant='ghost'
 				size='icon'
 				className='h-5 w-5 text-muted-foreground hover:text-destructive opacity-50 group-hover:opacity-100 transition-opacity'
+				aria-label='Remove condition'
 				onClick={onRemove}
 			>
 				<X className='h-3 w-3' />
@@ -172,8 +199,13 @@ function ConditionRow({
 				<Input
 					className='h-6 text-xs w-[200px]'
 					placeholder='Value...'
-					value={String(condition.value ?? '')}
-					onChange={(e) => onChange({ ...condition, value: e.target.value })}
+					aria-label='Filter value'
+					value={draftValue}
+					onChange={(e) => scheduleCommit(e.target.value)}
+					onBlur={() => commitValue(draftValue)}
+					onKeyDown={(e) => {
+						if (e.key === 'Enter') commitValue(draftValue)
+					}}
 				/>
 			</div>
 		</div>

@@ -127,6 +127,11 @@ export function StudioToolbar({
 }: Props) {
 	const filterCount = countConditions(filterGroup)
 	const [showFilters, setShowFilters] = useState(filterCount > 0)
+	const [columnQuery, setColumnQuery] = useState('')
+	const normalizedColumnQuery = columnQuery.trim().toLowerCase()
+	const matchingColumns = normalizedColumnQuery
+		? columns.filter((col) => col.name.toLowerCase().includes(normalizedColumnQuery))
+		: columns
 
 	useEffect(() => {
 		if (filterCount > 0) {
@@ -220,10 +225,16 @@ export function StudioToolbar({
 							<div className='px-2 py-1.5 border-b border-sidebar-border/50 sticky top-0 bg-popover z-10'>
 								<Input
 									placeholder='Search columns...'
+									aria-label='Search columns'
+									value={columnQuery}
+									onChange={(e) => setColumnQuery(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key !== 'ArrowDown' && e.key !== 'Escape') e.stopPropagation()
+									}}
 									className='h-7 text-xs bg-transparent border-none shadow-none px-0'
 								/>
 							</div>
-							{columns.map((col) => (
+							{matchingColumns.map((col) => (
 								<DropdownMenuCheckboxItem
 									key={col.name}
 									checked={visibleColumns ? visibleColumns.has(col.name) : true}

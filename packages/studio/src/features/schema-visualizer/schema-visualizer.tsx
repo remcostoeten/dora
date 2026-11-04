@@ -15,7 +15,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Network, AlertCircle } from 'lucide-react'
-import { useCallback, useDeferredValue, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { convertSchemaToDrizzle } from '@studio/core/data-generation/sql-to-drizzle'
 import { useAdapter } from '@studio/core/data-provider'
@@ -373,22 +373,31 @@ function SchemaVisualizerInner({
 	// ── Live Monitor Pulse ──────────────────────────────────────────────────
 	const pulseMap = useTablePulse()
 
+	const activeTableIdRef = useRef(activeTableId)
+	activeTableIdRef.current = activeTableId
+
 	useEffect(() => {
-		setNodes(decorateNodesForSelection(positionedGraphNodes, activeTableId))
-	}, [activeTableId, positionedGraphNodes, setNodes])
+		setNodes(decorateNodesForSelection(positionedGraphNodes, activeTableIdRef.current))
+	}, [positionedGraphNodes, setNodes])
+
+	useEffect(() => {
+		setNodes((currentNodes) => decorateNodesForSelection(currentNodes, activeTableId))
+	}, [activeTableId, setNodes])
 
 	// Merge pulse state into nodes whenever pulseMap changes
 	useEffect(function applyPulseToNodes() {
-		if (pulseMap.size === 0) return
 		setNodes(function (currentNodes) {
-			return currentNodes.map(function (node) {
+			let changed = false
+			const nextNodes = currentNodes.map(function (node) {
 				const pulse = pulseMap.get(node.data.tableName) || 'idle'
 				if (pulse === node.data.pulseState) return node
+				changed = true
 				return {
 					...node,
 					data: { ...node.data, pulseState: pulse },
 				}
 			})
+			return changed ? nextNodes : currentNodes
 		})
 	}, [pulseMap, setNodes])
 

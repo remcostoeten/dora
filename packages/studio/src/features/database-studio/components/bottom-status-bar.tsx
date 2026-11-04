@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Clock, Activity } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { NumberInput } from '@studio/shared/ui/number-input'
 import { cn } from '@studio/shared/utils/cn'
@@ -41,11 +41,24 @@ export function BottomStatusBar({
 		[pagination]
 	)
 
+	const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+	useEffect(function clearPendingCommit() {
+		return () => {
+			if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
+		}
+	}, [])
+
+	function scheduleCommit(next: PaginationState) {
+		if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
+		commitTimerRef.current = setTimeout(() => onPaginationChange(next), 350)
+	}
+
 	function handleLimitChange(value: string) {
 		setLimitInput(value)
 		const num = parseInt(value, 10)
 		if (!isNaN(num) && num > 0) {
-			onPaginationChange({ ...pagination, limit: num })
+			scheduleCommit({ ...pagination, limit: num })
 		}
 	}
 
@@ -53,15 +66,17 @@ export function BottomStatusBar({
 		setOffsetInput(value)
 		const num = parseInt(value, 10)
 		if (!isNaN(num) && num >= 0) {
-			onPaginationChange({ ...pagination, offset: num })
+			scheduleCommit({ ...pagination, offset: num })
 		}
 	}
 
 	function handleNextPage() {
+		if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
 		onPaginationChange({ ...pagination, offset: pagination.offset + pagination.limit })
 	}
 
 	function handlePrevPage() {
+		if (commitTimerRef.current) clearTimeout(commitTimerRef.current)
 		const newOffset = Math.max(0, pagination.offset - pagination.limit)
 		onPaginationChange({ ...pagination, offset: newOffset })
 	}
