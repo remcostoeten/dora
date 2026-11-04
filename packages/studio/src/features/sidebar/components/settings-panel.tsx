@@ -404,6 +404,14 @@ function renderHighlightedText(
 	return nodes.length === 1 ? nodes[0] : nodes
 }
 
+function isTypingTarget(target: EventTarget | null) {
+	if (!(target instanceof HTMLElement)) return false
+	return (
+		target.isContentEditable ||
+		target.closest('input, textarea, select, [role="textbox"], .monaco-editor') !== null
+	)
+}
+
 export function getAutocompleteSuffix(title: string, query: string) {
 	const normalizedQuery = normalizeSearchValue(query)
 	if (!normalizedQuery) {
@@ -973,6 +981,14 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 				!isRecordingShortcut
 
 			if (!isFindShortcut && !isSlashShortcut) {
+				return
+			}
+
+			const searchInput = searchInputRef.current
+			if (!searchInput || searchInput.closest('[hidden], [inert], [aria-hidden="true"]')) {
+				return
+			}
+			if (isSlashShortcut && isTypingTarget(event.target)) {
 				return
 			}
 

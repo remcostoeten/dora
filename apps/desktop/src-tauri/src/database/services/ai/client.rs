@@ -2,8 +2,9 @@
 //! provider needs: key rotation with retry, SSE line parsing, and the factory
 //! that turns an [`AIProvider`] into a ready-to-use client.
 
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -151,8 +152,27 @@ pub(super) async fn send_with_rotation<F>(
 where
     F: Fn(&str) -> reqwest::RequestBuilder,
 {
+    send_adaptive(pool, label, model, cancel, |key, _| build(key)).await
+}
+
+/// Like [`send_with_rotation`], but `build` also receives whether legacy
+/// sampling parameters (`temperature`, `max_tokens`) may be sent. Newer
+/// reasoning models reject them with a 400; the request is then retried
+/// without them and the model is remembered so later requests skip the
+/// failing round trip.
+pub(super) async fn send_adaptive<F>(
+    pool: &KeyPool,
+    label: &str,
+    model: &str,
+    cancel: Option<&Arc<AtomicBool>>,
+    build: F,
+) -> Result<Option<reqwest::Response>, Error>
+where
+    F: Fn(&str, bool) -> reqwest::RequestBuilder,
+{
     let attempts = pool.key_count().max(1);
     let mut last_err: Option<Error> = None;
+    let mut legacy = !rejects_legacy_sampling(label, model);
 
     for _ in 0..attempts {
         if let Some(flag) = cancel {
@@ -162,10 +182,28 @@ where
         }
 
         let key = pool.next().to_string();
-        let response = match build(&key).send().await {
+        let sent = loop {
+            let response = match build(&key, legacy).send().await {
+                Ok(response) => response,
+                Err(error) => break Err(super::errors::request_error(label, &error)),
+            };
+            let status = response.status();
+            if legacy && status == reqwest::StatusCode::BAD_REQUEST {
+                let body = response.text().await.unwrap_or_default();
+                if body_rejects_sampling(&body) {
+                    legacy = false;
+                    remember_rejects_legacy_sampling(label, model);
+                    continue;
+                }
+                return Err(super::errors::http_error(label, model, status, &body));
+            }
+            break Ok(response);
+        };
+
+        let response = match sent {
             Ok(response) => response,
             Err(error) => {
-                last_err = Some(super::errors::request_error(label, &error));
+                last_err = Some(error);
                 continue;
             }
         };
@@ -186,6 +224,29 @@ where
     }
 
     Err(last_err.unwrap_or_else(|| Error::Any(anyhow::anyhow!("All {label} keys exhausted"))))
+}
+
+fn body_rejects_sampling(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    lower.contains("temperature") || lower.contains("max_tokens")
+}
+
+fn legacy_sampling_rejections() -> &'static Mutex<HashSet<String>> {
+    static REJECTIONS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    REJECTIONS.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+fn rejects_legacy_sampling(label: &str, model: &str) -> bool {
+    legacy_sampling_rejections()
+        .lock()
+        .map(|set| set.contains(&format!("{label}/{model}")))
+        .unwrap_or(false)
+}
+
+fn remember_rejects_legacy_sampling(label: &str, model: &str) {
+    if let Ok(mut set) = legacy_sampling_rejections().lock() {
+        set.insert(format!("{label}/{model}"));
+    }
 }
 
 pub(super) enum SseOutcome {
@@ -232,4 +293,30 @@ where
     }
 
     Ok(SseOutcome::Finished)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn detects_rejected_sampling_params() {
+        assert!(body_rejects_sampling(
+            r#"{"error":{"message":"`temperature` is deprecated for this model."}}"#
+        ));
+        assert!(body_rejects_sampling(
+            r#"{"error":{"message":"Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead."}}"#
+        ));
+        assert!(!body_rejects_sampling(
+            r#"{"error":{"message":"messages: field required"}}"#
+        ));
+    }
+
+    #[test]
+    fn remembers_models_that_reject_sampling() {
+        assert!(!rejects_legacy_sampling("Test", "model-a"));
+        remember_rejects_legacy_sampling("Test", "model-a");
+        assert!(rejects_legacy_sampling("Test", "model-a"));
+        assert!(!rejects_legacy_sampling("Test", "model-b"));
+    }
 }

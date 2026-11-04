@@ -1,5 +1,8 @@
 import type { DatabaseType } from '@studio/features/connections/types'
+import { REDIS_CONTAINER_PORT, VALKEY_CONTAINER_PORT } from '../constants'
 import type { DatabaseProvider, DockerContainer } from '../types'
+
+type KeyValueProvider = Extract<DatabaseProvider, 'redis' | 'valkey'>
 
 export type ContainerConnectionDetails = {
 	provider: DatabaseProvider
@@ -31,7 +34,77 @@ export function detectConnectionType(container: DockerContainer): DatabaseType {
 	return 'postgres'
 }
 
+/**
+ * @name detectKeyValueProvider
+ * @description Returns 'redis' or 'valkey' when the container is a key-value
+ * server, using its provider field first and its image repository name second.
+ * Returns null for every other container, including Redis tooling images.
+ *
+ * @example
+ * detectKeyValueProvider({ ...container, image: 'valkey/valkey' }) // 'valkey'
+ */
+export function detectKeyValueProvider(container: DockerContainer): KeyValueProvider | null {
+	if (container.provider === 'redis' || container.provider === 'valkey') {
+		return container.provider
+	}
+
+	const repository = container.image.toLowerCase().split('/').pop() ?? ''
+
+	if (repository.startsWith('valkey')) return 'valkey'
+	if (repository === 'redis' || repository.startsWith('redis-stack')) return 'redis'
+	return null
+}
+
+/**
+ * @name isKeyValueContainer
+ * @description Tells whether a container is a Redis or Valkey server, which opens in
+ * KV Studio instead of the SQL data viewer and has no seed or table affordances.
+ *
+ * @example
+ * if (isKeyValueContainer(container)) {
+ *   openKvStudio(getKeyValueConnectionUrl(container))
+ * }
+ */
+export function isKeyValueContainer(container: DockerContainer): boolean {
+	return detectKeyValueProvider(container) !== null
+}
+
+/**
+ * @name getKeyValuePort
+ * @description Returns the host port mapped to the container's key-value port.
+ *
+ * @example
+ * getKeyValuePort(container) // 6380
+ */
+export function getKeyValuePort(container: DockerContainer): number {
+	const containerPort =
+		detectKeyValueProvider(container) === 'valkey'
+			? VALKEY_CONTAINER_PORT
+			: REDIS_CONTAINER_PORT
+
+	return (
+		container.ports.find((port) => port.containerPort === containerPort)?.hostPort ??
+		containerPort
+	)
+}
+
+/**
+ * @name getKeyValueConnectionUrl
+ * @description Builds the redis:// URL for the host port that maps to the
+ * container's 6379, falling back to 6379 when no mapping is listed.
+ *
+ * @example
+ * getKeyValueConnectionUrl(container) // 'redis://127.0.0.1:6380/0'
+ */
+export function getKeyValueConnectionUrl(container: DockerContainer): string {
+	return `redis://127.0.0.1:${getKeyValuePort(container)}/0`
+}
+
 export function detectDatabaseProvider(container: DockerContainer): DatabaseProvider {
+	const keyValueProvider = detectKeyValueProvider(container)
+
+	if (keyValueProvider) return keyValueProvider
+
 	const type = detectConnectionType(container)
 
 	if (type === 'mariadb') return 'mariadb'
@@ -48,6 +121,10 @@ function isMysqlFamily(provider: DatabaseProvider): boolean {
 
 export function getPrimaryDatabasePort(container: DockerContainer): number {
 	const provider = detectDatabaseProvider(container)
+
+	if (provider === 'redis' || provider === 'valkey') {
+		return getKeyValuePort(container)
+	}
 
 	if (isMysqlFamily(provider)) {
 		return container.ports.find((port) => port.containerPort === 3306)?.hostPort ?? 3306
