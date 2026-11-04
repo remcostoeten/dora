@@ -1,3 +1,4 @@
+import { useActiveNavId } from '@studio/core/workspace-store'
 import {
 	Plus,
 	Search,
@@ -151,6 +152,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 	} | null>(null)
 
 	const searchInputRef = useRef<HTMLInputElement>(null)
+	const isViewActive = useActiveNavId() === 'docker'
 	const { toast } = useToast()
 	const queryClient = useQueryClient()
 	const navigate = useNavigate()
@@ -175,12 +177,13 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 
 	useEffect(
 		function () {
+			if (!isViewActive) return
 			document.addEventListener('keydown', handleSearchFocus)
 			return function () {
 				document.removeEventListener('keydown', handleSearchFocus)
 			}
 		},
-		[handleSearchFocus]
+		[handleSearchFocus, isViewActive]
 	)
 
 	const {
@@ -195,7 +198,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 		refetch: refetchContainers
 	} = useContainers({
 		showExternal: true,
-		enabled: dockerStatus?.available ?? false
+		enabled: isViewActive && (dockerStatus?.available ?? false)
 	})
 
 	const visibleContainers = useMemo(
