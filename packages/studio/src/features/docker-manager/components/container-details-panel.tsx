@@ -22,6 +22,8 @@ import { RemoveContainerDialog } from './remove-container-dialog'
 import { RemoveContainerOptions } from '../types'
 import { isKeyValueContainer } from '../utilities/container-connection'
 import { cn } from '@studio/shared/utils/cn'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	container: DockerContainer | null
@@ -50,16 +52,16 @@ export function ContainerDetailsPanel({
 
 	if (!container) {
 		return (
-			<div className='flex-1 flex items-center justify-center p-8 border-l border-border'>
-				<div className='text-center'>
-					<Package className='h-12 w-12 mx-auto mb-4 text-muted-foreground/50' />
-					<h3 className='text-sm font-medium mb-1'>Select a container</h3>
-					<p className='text-xs text-muted-foreground max-w-[200px]'>
-						Click on a container from the list to view its details and available
-						actions.
-					</p>
-				</div>
-			</div>
+			<EmptyState
+				className='flex-1 border-l border-border'
+				size='sm'
+				headingLevel='h3'
+				loop
+				pointer
+				illustration={<IconStack icon={<Package />} />}
+				title='Select a container'
+				description='Click on a container from the list to view its details and available actions.'
+			/>
 		)
 	}
 

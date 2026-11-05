@@ -23,7 +23,8 @@ import {
 	ShieldCheck,
 	AlertTriangle,
 	Eye,
-	EyeOff
+	EyeOff,
+	CheckCircle2
 } from 'lucide-react'
 import { Spinner } from '@studio/shared/ui/spinner'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -35,6 +36,7 @@ import {
 	DropdownMenuTrigger
 } from '@studio/shared/ui/dropdown-menu'
 import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 import { SchemaDiffBodySkeleton } from '@studio/shared/ui/view-loading-shell'
 import { CockpitEmptySkeleton } from './cockpit-empty-skeleton'
 import { cn } from '@studio/shared/utils/cn'
@@ -362,7 +364,8 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 		if (!compareConnectionId) {
 			return (
 				<EmptyState
-					icon={<Database className='h-10 w-10' />}
+					loop
+					illustration={<IconStack icon={<Database />} />}
 					title='No database connection'
 					description='Pick a connection above, then link a project to compare your code schema against it.'
 				/>
@@ -421,10 +424,10 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 		if (cockpit.phase === 'error' && cockpit.error) {
 			return (
 				<EmptyState
-					icon={<AlertCircle className='h-10 w-10 text-red-500' />}
+					illustration={<IconStack icon={<AlertCircle className='text-red-500' />} />}
 					title='Could not analyze the project'
 					description={cockpit.error}
-					action={{ label: 'Link a project', onClick: cockpit.link }}
+					actions={[{ id: 'link', label: 'Link a project', onClick: cockpit.link }]}
 				/>
 			)
 		}
@@ -524,7 +527,9 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 		if (!cockpit.diff.hasChanges) {
 			return (
 				<EmptyState
-					icon={<Database className='h-10 w-10 text-emerald-500' />}
+					illustration={
+						<IconStack icon={<CheckCircle2 className='text-emerald-500' />} />
+					}
 					title='In sync'
 					description={`Your code schema matches ${connectionName}. No changes needed.`}
 				/>
@@ -582,7 +587,9 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 						/>
 					) : (
 						<EmptyState
-							icon={<Wand2 className='h-8 w-8' />}
+							size='sm'
+							loop
+							illustration={<IconStack icon={<Wand2 />} />}
 							title='No migration generated yet'
 							description='Generate a migration from the drift on the left to preview the SQL.'
 						/>

@@ -30,6 +30,11 @@ import { useNeonDatabases } from './use-neon-databases'
 import { useNeonBranches } from './use-neon-branches'
 import { useIsTauri } from '@studio/core/data-provider'
 import { DesktopOnlyNotice } from '@studio/core/platform'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import {
+	ProjectIllustration,
+	SearchIllustration
+} from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
@@ -431,11 +436,28 @@ function NeonConnectFlowInner({ onComplete }: Props) {
 							</p>
 						) : null}
 						{!isLoading && !error && filteredDatabases.length === 0 ? (
-							<p className='px-1 py-3 text-xs text-muted-foreground'>
-								{databases.length === 0
-									? 'No Neon databases found for this account. Create one in the Neon console, then Refresh.'
-									: 'No databases match your search.'}
-							</p>
+							<EmptyState
+								size='xs'
+								headingLevel='h4'
+								loop
+								illustration={
+									databases.length === 0 ? (
+										<ProjectIllustration />
+									) : (
+										<SearchIllustration />
+									)
+								}
+								title={
+									databases.length === 0
+										? 'No Neon databases found for this account'
+										: 'No matches'
+								}
+								description={
+									databases.length === 0
+										? 'Create one in the Neon console, then Refresh.'
+										: 'Try a different search term.'
+								}
+							/>
 						) : null}
 						{filteredDatabases.map(function (database) {
 							const isSelected =

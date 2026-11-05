@@ -1,6 +1,5 @@
 import { Container } from 'lucide-react'
 import { useRef } from 'react'
-import { Button } from '@studio/shared/ui/button'
 import type { DockerContainer } from '../types'
 import { ContainerCard } from './container-card'
 import {
@@ -8,6 +7,8 @@ import {
 	PendingContainerCard,
 	type PendingContainer
 } from './container-card-skeleton'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	containers: DockerContainer[]
@@ -100,40 +101,41 @@ export function ContainerList({
 	if (containers.length === 0 && !pendingContainer) {
 		if (searchQuery.trim()) {
 			return (
-				<div className='flex-1 flex items-center justify-center p-8'>
-					<div className='max-w-[280px] text-center space-y-2'>
-						<Container className='h-10 w-10 mx-auto text-muted-foreground/50' />
-						<h3 className='text-sm font-medium'>No containers match "{searchQuery}"</h3>
-						<p className='text-xs text-muted-foreground'>
-							Try another search term or clear the search to view all containers.
-						</p>
-						{onClearSearch && (
-							<Button
-								type='button'
-								variant='outline'
-								size='sm'
-								className='mt-2'
-								onClick={onClearSearch}
-							>
-								Clear Search
-							</Button>
-						)}
-					</div>
-				</div>
+				<EmptyState
+					className='flex-1'
+					size='sm'
+					headingLevel='h3'
+					loop
+					illustration={<SearchIllustration />}
+					title={`No containers match "${searchQuery}"`}
+					description='Try another search term or clear the search to view all containers.'
+					actions={
+						onClearSearch
+							? [
+									{
+										id: 'clear-search',
+										label: 'Clear search',
+										variant: 'secondary',
+										onClick: onClearSearch
+									}
+								]
+							: []
+					}
+				/>
 			)
 		}
 
 		return (
-			<div className='flex-1 flex items-center justify-center p-8'>
-				<div className='text-center'>
-					<Container className='h-12 w-12 mx-auto mb-4 text-muted-foreground/50' />
-					<h3 className='text-sm font-medium mb-1'>No containers yet</h3>
-					<p className='text-xs text-muted-foreground max-w-[200px]'>
-						Create your first database container to start working with local development
-						databases.
-					</p>
-				</div>
-			</div>
+			<EmptyState
+				className='flex-1'
+				size='sm'
+				headingLevel='h3'
+				loop
+				pointer
+				illustration={<IconStack icon={<Container />} />}
+				title='No containers yet'
+				description='Create your first database container to start working with local development databases.'
+			/>
 		)
 	}
 

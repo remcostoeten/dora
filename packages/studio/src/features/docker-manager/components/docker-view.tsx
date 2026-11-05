@@ -3,7 +3,7 @@ import {
 	Plus,
 	Search,
 	Container,
-	AlertTriangle,
+	RotateCw,
 	ChevronDown,
 	ArrowDown,
 	ArrowUp,
@@ -71,6 +71,8 @@ import {
 	DropdownMenuTrigger
 } from '@studio/shared/ui/dropdown-menu'
 import { cn } from '@studio/shared/utils/cn'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { OfflineIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	onOpenInDataViewer?: (container: DockerContainer) => void
@@ -594,32 +596,35 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 
 	if (!dockerStatus?.available) {
 		return (
-			<div className='flex-1 flex items-center justify-center p-8'>
-				<div className='text-center max-w-md'>
-					<AlertTriangle className='h-12 w-12 mx-auto mb-4 text-yellow-500' />
-					<h2 className='text-lg font-semibold mb-2'>Docker Not Available</h2>
-					<p className='text-sm text-muted-foreground mb-4'>
-						{dockerStatus?.error ||
-							'Unable to connect to Docker. Make sure Docker is installed and running on your system.'}
-					</p>
-					{(dockerStatus?.error?.toLowerCase().includes('permission') ||
-						dockerStatus?.error?.toLowerCase().includes('connect') ||
-						dockerStatus?.error?.toLowerCase().includes('socket') ||
-						!dockerStatus?.error) && (
-						<div className='text-left p-3 rounded bg-muted font-mono text-xs space-y-1'>
-							<p>$ sudo systemctl start docker</p>
-							<p>$ sudo usermod -aG docker $USER</p>
-						</div>
-					)}
-					<Button
-						variant='outline'
-						className='mt-4'
-						onClick={handleRetryDockerConnection}
-					>
-						Retry
-					</Button>
-				</div>
-			</div>
+			<EmptyState
+				className='flex-1'
+				loop
+				illustration={<OfflineIllustration />}
+				title='Docker not available'
+				description={
+					dockerStatus?.error ||
+					'Unable to connect to Docker. Make sure Docker is installed and running on your system.'
+				}
+				actions={[
+					{
+						id: 'retry',
+						label: 'Retry',
+						icon: <RotateCw />,
+						variant: 'secondary',
+						onClick: handleRetryDockerConnection
+					}
+				]}
+			>
+				{(dockerStatus?.error?.toLowerCase().includes('permission') ||
+					dockerStatus?.error?.toLowerCase().includes('connect') ||
+					dockerStatus?.error?.toLowerCase().includes('socket') ||
+					!dockerStatus?.error) && (
+					<div className='order-first w-full max-w-sm space-y-1 rounded-md border border-border/50 bg-muted/15 px-3 py-2 text-left font-mono text-xs text-muted-foreground'>
+						<p>$ sudo systemctl start docker</p>
+						<p>$ sudo usermod -aG docker $USER</p>
+					</div>
+				)}
+			</EmptyState>
 		)
 	}
 
@@ -987,9 +992,14 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 								/>
 							)}
 							{activeBottomTab === 'terminal' && !terminalContainer && (
-								<div className='flex h-full items-center justify-center text-sm text-muted-foreground'>
-									Container must be running to open a terminal.
-								</div>
+								<EmptyState
+									size='xs'
+									headingLevel='h3'
+									className='h-full'
+									illustration={<OfflineIllustration />}
+									title='Container is not running'
+									description='Start the container to open a terminal.'
+								/>
 							)}
 						</div>
 					</div>

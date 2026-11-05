@@ -54,6 +54,8 @@ import type { ColumnDefinition } from '@studio/features/database-studio/types'
 import { inferColumnDefinitions } from '../lib/infer-column-definitions'
 import { resolveMutationPrimaryKey } from '../mutation-primary-key'
 import { SqlQueryResult, ResultViewMode, TableInfo } from '../types'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { RecordIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	result: SqlQueryResult | null
@@ -550,9 +552,14 @@ export function SqlResults({
 
 			<div className='flex-1 overflow-hidden'>
 				{!result ? (
-					<div className='flex items-center justify-center h-full text-muted-foreground text-sm'>
-						Run a query to see results
-					</div>
+					<EmptyState
+						size='sm'
+						headingLevel='h3'
+						loop
+						illustration={<RecordIllustration />}
+						title='No results yet'
+						description='Run a query to see results here.'
+					/>
 				) : result.error ? (
 					<div className='flex items-center justify-center h-full p-4'>
 						<div className='flex flex-col gap-2 max-w-lg'>

@@ -21,6 +21,8 @@ import { Input } from '@studio/shared/ui/input'
 import { ScrollArea } from '@studio/shared/ui/scroll-area'
 import { cn } from '@studio/shared/utils/cn'
 import { SqlSnippet } from '../types'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { RecordIllustration, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	snippets: SqlSnippet[]
@@ -312,11 +314,20 @@ export function UnifiedSidebar({
 			<ScrollArea className='flex-1'>
 				<div className='py-2'>
 					{snippetTree.length === 0 ? (
-						<div className='px-3 py-6 text-center text-xs text-muted-foreground/60'>
-							{snippetSearch
-								? 'No snippets match'
-								: 'No snippets yet. Save a query to get started.'}
-						</div>
+						<EmptyState
+							size='xs'
+							headingLevel='h3'
+							loop
+							illustration={
+								snippetSearch ? <SearchIllustration /> : <RecordIllustration />
+							}
+							title={snippetSearch ? 'No snippets match' : 'No snippets yet'}
+							description={
+								snippetSearch
+									? 'Try a different search term.'
+									: 'Save a query to get started.'
+							}
+						/>
 					) : (
 						snippetTree.map(function (node) {
 							return renderSnippetNode(node, 0)

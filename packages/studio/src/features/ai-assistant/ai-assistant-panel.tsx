@@ -13,6 +13,8 @@ import { useAiAssistantStore } from './store'
 import { buildDynamicSuggestions, getQuickActions } from './suggestions'
 import type { AiAssistantContext, AiAssistantEditorContext } from './types'
 import { useAiChat } from './use-ai-chat'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	activeConnectionId: string | null
@@ -132,7 +134,7 @@ export function AiAssistantPanel({
 	useEffect(
 		function autoScroll() {
 			const el = scrollRef.current
-			if (!el) return
+			if (!el || messages.length === 0) return
 			if (!stickToBottomRef.current) return
 
 			const frame = requestAnimationFrame(function () {
@@ -298,7 +300,7 @@ export function AiAssistantPanel({
 
 				<div ref={scrollRef} className='min-h-0 flex-1 overflow-y-auto bg-background/20'>
 					{messages.length === 0 ? (
-						<EmptyState
+						<AssistantEmptyState
 							suggestions={suggestions}
 							onPick={function (prompt) {
 								setInput(prompt)
@@ -410,25 +412,29 @@ export function AiAssistantPanel({
 	)
 }
 
-type EmptyStateProps = {
+type AssistantEmptyStateProps = {
 	suggestions: string[]
 	onPick: (prompt: string) => void
 	hasConnection: boolean
 }
 
-function EmptyState({ suggestions, onPick, hasConnection }: EmptyStateProps) {
+function AssistantEmptyState({ suggestions, onPick, hasConnection }: AssistantEmptyStateProps) {
 	const quickActions = getQuickActions()
 
 	return (
-		<div className='mx-auto flex w-full max-w-md flex-col px-4 py-6'>
-			<div className='mb-6'>
-				<h2 className='text-base font-semibold text-foreground'>Work with your database</h2>
-				<p className='mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground'>
-					{hasConnection
+		<div className='mx-auto flex w-full max-w-md flex-col px-4 pb-6'>
+			<EmptyState
+				size='xs'
+				className='mb-2'
+				loop
+				illustration={<IconStack icon={<Sparkles />} />}
+				title='Work with your database'
+				description={
+					hasConnection
 						? 'Ask for SQL, inspect your schema, or turn an idea into a query.'
-						: 'Connect a database to include schema context in your questions.'}
-				</p>
-			</div>
+						: 'Connect a database to include schema context in your questions.'
+				}
+			/>
 			<div className='mb-6'>
 				<div className='mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground'>
 					Quick actions
