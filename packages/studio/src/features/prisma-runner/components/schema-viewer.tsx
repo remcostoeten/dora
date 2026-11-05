@@ -44,7 +44,9 @@ export function SchemaViewer({ schema, onInsert }: Props) {
 										: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
 								)}
 								onClick={function () {
-									setExpandedTable(expandedTable === table.name ? null : table.name)
+									setExpandedTable(
+										expandedTable === table.name ? null : table.name
+									)
 								}}
 								onDoubleClick={function () {
 									onInsert(`prisma.${modelKey}`)
@@ -80,7 +82,9 @@ export function SchemaViewer({ schema, onInsert }: Props) {
 												) : (
 													<span className='h-1 w-1 shrink-0 rounded-full bg-muted-foreground/30' />
 												)}
-												<span className='font-mono flex-1 truncate'>{col.name}</span>
+												<span className='font-mono flex-1 truncate'>
+													{col.name}
+												</span>
 												<span className='shrink-0 rounded bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/80'>
 													{tsType(col)}
 													{col.is_nullable ? '?' : ''}
@@ -94,8 +98,12 @@ export function SchemaViewer({ schema, onInsert }: Props) {
 											{relations.map(function (col) {
 												const fk = col.foreign_key
 												if (!fk) return null
-												const relatedKey = tableToModelKey(fk.referenced_table)
-												const relatedName = tableToModelName(fk.referenced_table)
+												const relatedKey = tableToModelKey(
+													fk.referenced_table
+												)
+												const relatedName = tableToModelName(
+													fk.referenced_table
+												)
 												return (
 													<button
 														key={`fk-${col.name}`}
@@ -105,7 +113,9 @@ export function SchemaViewer({ schema, onInsert }: Props) {
 														}}
 													>
 														<CornerDownRight className='h-3 w-3 shrink-0 opacity-50' />
-														<span className='font-mono truncate'>{relatedKey}</span>
+														<span className='font-mono truncate'>
+															{relatedKey}
+														</span>
 														<span className='font-mono text-[10px] text-muted-foreground/50'>
 															{relatedName}
 														</span>

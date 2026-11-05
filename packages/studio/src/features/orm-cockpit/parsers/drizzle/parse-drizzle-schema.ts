@@ -7,7 +7,7 @@ import type {
 	IndexIR,
 	NormalizedType,
 	SchemaIR,
-	TableIR,
+	TableIR
 } from '@studio/features/orm-cockpit/ir/types'
 
 /**
@@ -54,7 +54,7 @@ export function parseDrizzleSchema(
 const DIALECT_BUILDERS: Record<string, Dialect> = {
 	pgTable: 'postgres',
 	sqliteTable: 'sqlite',
-	mysqlTable: 'mysql',
+	mysqlTable: 'mysql'
 }
 
 function parseFile(
@@ -163,7 +163,9 @@ function parseTable(
 
 	const columnsArg = args[1]
 	if (!ts.isObjectLiteralExpression(columnsArg)) {
-		warnings.push(`${filePath}: table "${tableName}" columns argument was not an object literal; skipped`)
+		warnings.push(
+			`${filePath}: table "${tableName}" columns argument was not an object literal; skipped`
+		)
 		return null
 	}
 
@@ -176,12 +178,16 @@ function parseTable(
 
 	for (const prop of columnsArg.properties) {
 		if (!ts.isPropertyAssignment(prop)) {
-			warnings.push(`${filePath}: table "${tableName}" has a non-standard column property; skipped`)
+			warnings.push(
+				`${filePath}: table "${tableName}" has a non-standard column property; skipped`
+			)
 			continue
 		}
 		const propKey = propertyName(prop.name)
 		if (propKey === null) {
-			warnings.push(`${filePath}: table "${tableName}" has a column with a computed key; skipped`)
+			warnings.push(
+				`${filePath}: table "${tableName}" has a column with a computed key; skipped`
+			)
 			continue
 		}
 		if (!ts.isCallExpression(prop.initializer)) {
@@ -191,7 +197,14 @@ function parseTable(
 			continue
 		}
 
-		const parsed = parseColumn(prop.initializer, propKey, dialect, tableName, filePath, warnings)
+		const parsed = parseColumn(
+			prop.initializer,
+			propKey,
+			dialect,
+			tableName,
+			filePath,
+			warnings
+		)
 		columns.push(parsed.column)
 		propToDbName.set(propKey, parsed.column.name)
 		if (parsed.isPrimaryKey) {
@@ -208,11 +221,18 @@ function parseTable(
 	// Third argument: the table-level config callback `(t) => ({ ... })`.
 	if (args.length >= 3) {
 		const configArg = args[2]
-		parseTableConfig(configArg, propToDbName, tableName, filePath, {
-			primaryKey,
-			indexes,
-			foreignKeys,
-		}, warnings)
+		parseTableConfig(
+			configArg,
+			propToDbName,
+			tableName,
+			filePath,
+			{
+				primaryKey,
+				indexes,
+				foreignKeys
+			},
+			warnings
+		)
 	}
 
 	const table: TableIR = {
@@ -220,7 +240,7 @@ function parseTable(
 		columns: columns.sort(byName),
 		primaryKey,
 		indexes: indexes.sort(byName),
-		foreignKeys: foreignKeys.sort(byForeignKey),
+		foreignKeys: foreignKeys.sort(byForeignKey)
 	}
 	if (dialect === 'postgres') {
 		table.schema = 'public'
@@ -272,7 +292,7 @@ const BUILDER_TYPES: Record<string, NormalizedType> = {
 	blob: 'bytes',
 	binary: 'bytes',
 	varbinary: 'bytes',
-	vector: 'vector',
+	vector: 'vector'
 }
 
 // Builders that imply an auto-incrementing column.
@@ -361,7 +381,7 @@ function parseColumn(
 				uniqueIndex = {
 					name: uniqueIndexName(mod.args, tableName, dbName),
 					columns: [dbName],
-					unique: true,
+					unique: true
 				}
 				break
 			case 'references':
@@ -379,10 +399,18 @@ function parseColumn(
 	}
 
 	return {
-		column: { name: dbName, type, rawType, typeParams, nullable, default: defaultText, autoIncrement },
+		column: {
+			name: dbName,
+			type,
+			rawType,
+			typeParams,
+			nullable,
+			default: defaultText,
+			autoIncrement
+		},
 		isPrimaryKey,
 		uniqueIndex,
-		foreignKey,
+		foreignKey
 	}
 }
 
@@ -443,10 +471,7 @@ function unwindChain(call: ts.CallExpression): TChain {
 	const modifiers: TModifier[] = []
 	let current: ts.Expression = call
 
-	while (
-		ts.isCallExpression(current) &&
-		ts.isPropertyAccessExpression(current.expression)
-	) {
+	while (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression)) {
 		modifiers.unshift({ name: current.expression.name.text, args: current.arguments })
 		current = current.expression.expression
 	}
@@ -487,7 +512,7 @@ function parseReferences(
 	const fk: ForeignKeyIR = {
 		columns,
 		refTable: ref.tableVar,
-		refColumns: [ref.column],
+		refColumns: [ref.column]
 	}
 	applyFkActions(mod.args[1], fk)
 	return fk
@@ -499,9 +524,7 @@ function parseReferences(
  * referenced JS identifiers as a best-effort table/column name; the diff
  * engine compares conservatively when names differ from the DB.
  */
-function resolveColumnRef(
-	expr: ts.Expression
-): { tableVar: string; column: string } | null {
+function resolveColumnRef(expr: ts.Expression): { tableVar: string; column: string } | null {
 	let body: ts.Expression = expr
 	if (ts.isArrowFunction(expr)) {
 		if (ts.isBlock(expr.body)) {
@@ -593,12 +616,26 @@ function parseTableConfig(
 				)
 			}
 		} else if (head === 'index' || head === 'uniqueIndex') {
-			const idx = parseTableIndex(chain, head === 'uniqueIndex', propToDbName, tableName, filePath, warnings)
+			const idx = parseTableIndex(
+				chain,
+				head === 'uniqueIndex',
+				propToDbName,
+				tableName,
+				filePath,
+				warnings
+			)
 			if (idx) {
 				acc.indexes.push(idx)
 			}
 		} else if (head === 'foreignKey') {
-			const fk = parseCompositeForeignKey(chain.baseCall.arguments[0], chain.modifiers, propToDbName, tableName, filePath, warnings)
+			const fk = parseCompositeForeignKey(
+				chain.baseCall.arguments[0],
+				chain.modifiers,
+				propToDbName,
+				tableName,
+				filePath,
+				warnings
+			)
 			if (fk) {
 				acc.foreignKeys.push(fk)
 			}
@@ -665,7 +702,9 @@ function parseCompositeForeignKey(
 	warnings: string[]
 ): ForeignKeyIR | null {
 	if (!optsExpr || !ts.isObjectLiteralExpression(optsExpr)) {
-		warnings.push(`${filePath}: table "${tableName}" foreignKey() options could not be read; skipped`)
+		warnings.push(
+			`${filePath}: table "${tableName}" foreignKey() options could not be read; skipped`
+		)
 		return null
 	}
 	let columns: string[] = []
@@ -687,7 +726,9 @@ function parseCompositeForeignKey(
 	}
 
 	if (columns.length === 0 || refTable === null || refColumns.length === 0) {
-		warnings.push(`${filePath}: table "${tableName}" composite foreignKey could not be fully resolved; skipped`)
+		warnings.push(
+			`${filePath}: table "${tableName}" composite foreignKey could not be fully resolved; skipped`
+		)
 		return null
 	}
 
@@ -750,10 +791,7 @@ function resolveColumnArgs(
 	return out
 }
 
-function resolveColumnArrayLocal(
-	expr: ts.Expression,
-	propToDbName: Map<string, string>
-): string[] {
+function resolveColumnArrayLocal(expr: ts.Expression, propToDbName: Map<string, string>): string[] {
 	if (!ts.isArrayLiteralExpression(expr)) {
 		return []
 	}
@@ -768,10 +806,7 @@ function resolveColumnArrayLocal(
 }
 
 /** `t.colKey` (or `table.colKey`) → the column's DB name via the prop map. */
-function localColumnName(
-	expr: ts.Expression,
-	propToDbName: Map<string, string>
-): string | null {
+function localColumnName(expr: ts.Expression, propToDbName: Map<string, string>): string | null {
 	if (ts.isPropertyAccessExpression(expr)) {
 		const propKey = expr.name.text
 		return propToDbName.get(propKey) ?? propKey

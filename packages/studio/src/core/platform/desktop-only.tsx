@@ -36,7 +36,7 @@ export function DesktopOnlyButton({
 				setShowHint(false)
 			}, 2600)
 		},
-		[isTauri, onClick],
+		[isTauri, onClick]
 	)
 
 	return (
@@ -67,16 +67,19 @@ type DesktopOnlyNoticeProps = {
 export function DesktopOnlyNotice({
 	title = 'Desktop app required',
 	description = 'This integration needs the desktop app for secure credential storage, OAuth, and native system access.',
-	className,
+	className
 }: DesktopOnlyNoticeProps) {
 	return (
 		<div
 			className={cn(
 				'desktop-only-notice relative overflow-hidden border border-border/60 bg-card/35 p-4 shadow-sm',
-				className,
+				className
 			)}
 		>
-			<div className='desktop-only-notice__shimmer pointer-events-none absolute inset-0' aria-hidden />
+			<div
+				className='desktop-only-notice__shimmer pointer-events-none absolute inset-0'
+				aria-hidden
+			/>
 			<div className='relative flex items-start gap-3'>
 				<div className='flex h-9 w-9 shrink-0 items-center justify-center border border-primary/25 bg-primary/10 text-primary'>
 					<Monitor className='h-4 w-4' />
@@ -84,7 +87,9 @@ export function DesktopOnlyNotice({
 				<div className='min-w-0 flex-1 space-y-2'>
 					<div>
 						<p className='text-sm font-medium text-foreground'>{title}</p>
-						<p className='mt-1 text-xs leading-relaxed text-muted-foreground/80'>{description}</p>
+						<p className='mt-1 text-xs leading-relaxed text-muted-foreground/80'>
+							{description}
+						</p>
 					</div>
 					<a
 						href={siteConfig.links.releases}

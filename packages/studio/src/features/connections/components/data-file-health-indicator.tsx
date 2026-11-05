@@ -2,7 +2,7 @@ import { Badge } from '@studio/shared/ui/badge'
 import { cn } from '@studio/shared/utils/cn'
 import {
 	dataFileHealthLabel,
-	type DataFileHealth,
+	type DataFileHealth
 } from '@studio/features/connections/data-file-health'
 
 type Props = {
@@ -50,7 +50,10 @@ export function DataFileHealthIndicator({ health, className, compact = false }: 
 		>
 			<span
 				aria-hidden
-				className={cn('inline-block h-1.5 w-1.5 rounded-full shrink-0', healthDotClass(health))}
+				className={cn(
+					'inline-block h-1.5 w-1.5 rounded-full shrink-0',
+					healthDotClass(health)
+				)}
 			/>
 			<span>{label}</span>
 		</Badge>

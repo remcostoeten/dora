@@ -64,10 +64,10 @@ async function main() {
 	const version = requireFlag('version')
 	const tag = getFlagValue('tag') || `v${version}`
 
-	const baseUrl = getFlagValue('base-url') || 'https://github.com/remcostoeten/dora/releases/download'
+	const baseUrl =
+		getFlagValue('base-url') || 'https://github.com/remcostoeten/dora/releases/download'
 
-	const dmgUrlArm =
-		getFlagValue('dmg-url-arm') || `${baseUrl}/${tag}/Dora_${version}_aarch64.dmg`
+	const dmgUrlArm = getFlagValue('dmg-url-arm') || `${baseUrl}/${tag}/Dora_${version}_aarch64.dmg`
 
 	const explicitShaArm = getFlagValue('dmg-sha256-arm')
 
@@ -76,7 +76,9 @@ async function main() {
 		tag,
 		dmgUrlArm,
 		dmgSha256Arm: explicitShaArm || (await sha256FromUrl(dmgUrlArm)),
-		outDir: path.resolve(getFlagValue('out-dir') || path.join('packaging', 'homebrew', 'Casks')),
+		outDir: path.resolve(
+			getFlagValue('out-dir') || path.join('packaging', 'homebrew', 'Casks')
+		),
 		name: getFlagValue('name') || 'Dora',
 		desc:
 			getFlagValue('desc') ||

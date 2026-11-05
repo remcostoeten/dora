@@ -6,7 +6,7 @@ import {
 	Link2,
 	ListTree,
 	PanelRightClose,
-	Table2,
+	Table2
 } from 'lucide-react'
 import { type ReactNode, useMemo, useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
@@ -53,7 +53,7 @@ const SQL_KEYWORDS = new Set([
 	'unique',
 	'update',
 	'values',
-	'varchar',
+	'varchar'
 ])
 
 const TS_KEYWORDS = new Set([
@@ -80,7 +80,7 @@ const TS_KEYWORDS = new Set([
 	'text',
 	'timestamp',
 	'uuid',
-	'varchar',
+	'varchar'
 ])
 
 function renderHighlightedCode(source: string, keywords: Set<string>) {
@@ -88,10 +88,12 @@ function renderHighlightedCode(source: string, keywords: Set<string>) {
 	return lines.map((line, lineIndex) => {
 		const isComment = line.trimStart().startsWith('--') || line.trimStart().startsWith('//')
 		const parts: ReactNode[] = isComment
-			? [<span className='sv-code-token--comment' key='comment'>{line}</span>]
-			: line
-				.split(/(\b[\w]+\b|'[^']*'|"[^"]*"|`[^`]*`)/g)
-				.map((part, partIndex) => {
+			? [
+					<span className='sv-code-token--comment' key='comment'>
+						{line}
+					</span>
+				]
+			: line.split(/(\b[\w]+\b|'[^']*'|"[^"]*"|`[^`]*`)/g).map((part, partIndex) => {
 					if (!part) return null
 					if (/^(['"`]).*\1$/.test(part)) {
 						return (
@@ -135,16 +137,17 @@ export function SchemaDetailsPanel({
 	sqlSource,
 	drizzleSource,
 	onCopySql,
-	onCopyDrizzle,
+	onCopyDrizzle
 }: Props) {
 	const [selectedColumnName, setSelectedColumnName] = useState<string | null>(null)
-	const primaryKeys = table.columns.filter((column) =>
-		table.primaryKeyColumns.includes(column.name) || column.is_primary_key
+	const primaryKeys = table.columns.filter(
+		(column) => table.primaryKeyColumns.includes(column.name) || column.is_primary_key
 	)
 	const foreignKeys = table.columns.filter((column) => column.foreign_key)
-	const indexedColumnsCount = table.columns.filter((column) =>
-		table.primaryKeyColumns.includes(column.name) ||
-		table.indexes?.some((index) => index.column_names.includes(column.name)),
+	const indexedColumnsCount = table.columns.filter(
+		(column) =>
+			table.primaryKeyColumns.includes(column.name) ||
+			table.indexes?.some((index) => index.column_names.includes(column.name))
 	).length
 	const nullableColumnsCount = table.columns.filter((column) => column.is_nullable).length
 	const selectedColumn = useMemo(
@@ -152,11 +155,12 @@ export function SchemaDetailsPanel({
 			table.columns.find((column) => column.name === selectedColumnName) ??
 			table.columns[0] ??
 			null,
-		[table.columns, selectedColumnName],
+		[table.columns, selectedColumnName]
 	)
 	const selectedColumnTips = useMemo(() => {
 		if (!selectedColumn) return []
-		const indexed = table.primaryKeyColumns.includes(selectedColumn.name) ||
+		const indexed =
+			table.primaryKeyColumns.includes(selectedColumn.name) ||
 			table.indexes?.some((index) => index.column_names.includes(selectedColumn.name))
 		const tips: string[] = []
 		if (selectedColumn.foreign_key && !indexed) {
@@ -283,7 +287,8 @@ export function SchemaDetailsPanel({
 						<div className='sv-details-panel__columns'>
 							{table.columns.map((column) => {
 								const isPrimaryKey =
-									table.primaryKeyColumns.includes(column.name) || column.is_primary_key
+									table.primaryKeyColumns.includes(column.name) ||
+									column.is_primary_key
 								const isForeignKey = Boolean(column.foreign_key)
 								return (
 									<button
@@ -291,7 +296,7 @@ export function SchemaDetailsPanel({
 										className={cn(
 											'sv-details-panel__column',
 											selectedColumn?.name === column.name &&
-												'sv-details-panel__column--active',
+												'sv-details-panel__column--active'
 										)}
 										onClick={() => setSelectedColumnName(column.name)}
 									>
@@ -299,10 +304,11 @@ export function SchemaDetailsPanel({
 											<span
 												className={cn(
 													'sv-details-panel__column-badge',
-													isPrimaryKey && 'sv-details-panel__column-badge--pk',
+													isPrimaryKey &&
+														'sv-details-panel__column-badge--pk',
 													!isPrimaryKey &&
 														isForeignKey &&
-														'sv-details-panel__column-badge--fk',
+														'sv-details-panel__column-badge--fk'
 												)}
 											>
 												{isPrimaryKey ? 'PK' : isForeignKey ? 'FK' : 'COL'}
@@ -333,7 +339,8 @@ export function SchemaDetailsPanel({
 						<div className='sv-details-panel__columns'>
 							{table.columns.map((column) => {
 								const isPrimaryKey =
-									table.primaryKeyColumns.includes(column.name) || column.is_primary_key
+									table.primaryKeyColumns.includes(column.name) ||
+									column.is_primary_key
 								const isForeignKey = Boolean(column.foreign_key)
 								return (
 									<button
@@ -341,7 +348,7 @@ export function SchemaDetailsPanel({
 										className={cn(
 											'sv-details-panel__column',
 											selectedColumn?.name === column.name &&
-												'sv-details-panel__column--active',
+												'sv-details-panel__column--active'
 										)}
 										onClick={() => setSelectedColumnName(column.name)}
 									>
@@ -349,16 +356,19 @@ export function SchemaDetailsPanel({
 											<span
 												className={cn(
 													'sv-details-panel__column-badge',
-													isPrimaryKey && 'sv-details-panel__column-badge--pk',
+													isPrimaryKey &&
+														'sv-details-panel__column-badge--pk',
 													!isPrimaryKey &&
 														isForeignKey &&
-														'sv-details-panel__column-badge--fk',
+														'sv-details-panel__column-badge--fk'
 												)}
 											>
 												{isPrimaryKey ? 'PK' : isForeignKey ? 'FK' : 'COL'}
 											</span>
 											<div className='min-w-0'>
-												<div className='truncate text-sidebar-foreground'>{column.name}</div>
+												<div className='truncate text-sidebar-foreground'>
+													{column.name}
+												</div>
 												<div className='truncate text-[10px] text-muted-foreground'>
 													{column.is_nullable ? 'Nullable' : 'Required'}
 													{column.foreign_key
@@ -399,7 +409,12 @@ export function SchemaDetailsPanel({
 							</div>
 						</div>
 						<pre className='sv-details-panel__code sv-details-panel__code--sql'>
-							<code>{renderHighlightedCode(sqlSource || 'Loading schema...', SQL_KEYWORDS)}</code>
+							<code>
+								{renderHighlightedCode(
+									sqlSource || 'Loading schema...',
+									SQL_KEYWORDS
+								)}
+							</code>
 						</pre>
 					</div>
 					<div className='sv-details-panel__section'>

@@ -15,10 +15,10 @@ export const desktopAnalyticsConfig = createAnalyticsConfig({
 	remcostoeten: {
 		enabled: envFlag(getEnv('VITE_REMCO_ANALYTICS_ENABLED'), true),
 		projectId: getEnv('VITE_ANALYTICS_PROJECT_ID') ?? 'dora-desktop',
-		ingestUrl: getEnv('VITE_ANALYTICS_INGEST_URL') ?? 'https://ingestion.remcostoeten.nl',
+		ingestUrl: getEnv('VITE_ANALYTICS_INGEST_URL') ?? 'https://ingestion.remcostoeten.nl'
 	},
 	vercel: {
 		enabled: envFlag(getEnv('VITE_VERCEL_ANALYTICS_ENABLED'), ENV_PROD),
-		trackCustomEvents: envFlag(getEnv('VITE_VERCEL_ANALYTICS_EVENTS'), false),
-	},
+		trackCustomEvents: envFlag(getEnv('VITE_VERCEL_ANALYTICS_EVENTS'), false)
+	}
 })

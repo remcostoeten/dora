@@ -31,10 +31,7 @@ export function removeRowsByPrimaryKey(
  * (including server-generated primary keys). The original object is returned
  * unchanged when there's nothing to add.
  */
-export function appendRows(
-	tableData: TableData,
-	newRows: Record<string, unknown>[]
-): TableData {
+export function appendRows(tableData: TableData, newRows: Record<string, unknown>[]): TableData {
 	if (newRows.length === 0) return tableData
 	return {
 		...tableData,

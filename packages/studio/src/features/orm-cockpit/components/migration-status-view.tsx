@@ -43,8 +43,8 @@ export function MigrationStatusView({ state }: { state: MigrationStatusState }) 
 
 			{tableMissing ? (
 				<p className='border-b border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300'>
-					No <span className='font-mono'>__drizzle_migrations</span> table in this database —
-					nothing has been applied here yet.
+					No <span className='font-mono'>__drizzle_migrations</span> table in this
+					database — nothing has been applied here yet.
 				</p>
 			) : null}
 
@@ -67,7 +67,7 @@ export function MigrationStatusView({ state }: { state: MigrationStatusState }) 
 									'ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium uppercase',
 									applied
 										? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-										: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+										: 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
 								)}
 							>
 								{row.state}

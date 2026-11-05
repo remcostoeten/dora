@@ -114,13 +114,7 @@ function ColumnSelect({
 }
 
 /** AND/OR toggle for a group. */
-function LogicToggle({
-	logic,
-	onToggle
-}: {
-	logic: FilterConjunction
-	onToggle: () => void
-}) {
+function LogicToggle({ logic, onToggle }: { logic: FilterConjunction; onToggle: () => void }) {
 	return (
 		<button
 			type='button'
@@ -256,7 +250,10 @@ function GroupEditor({
 					<span className='text-[10px] uppercase text-muted-foreground font-bold tracking-wider'>
 						Group
 					</span>
-					<LogicToggle logic={group.logic} onToggle={() => setLogic(group.logic === 'AND' ? 'OR' : 'AND')} />
+					<LogicToggle
+						logic={group.logic}
+						onToggle={() => setLogic(group.logic === 'AND' ? 'OR' : 'AND')}
+					/>
 					{onRemove && (
 						<Button
 							variant='ghost'
@@ -360,7 +357,9 @@ export function FilterBar({ group, onGroupChange, columns, isVisible }: Props) {
 				<div className='flex-1 min-w-0'>
 					{hasConditions && (
 						<div className='text-[10px] font-mono text-muted-foreground truncate'>
-							<span className='uppercase tracking-wider text-primary/70 mr-1'>WHERE</span>
+							<span className='uppercase tracking-wider text-primary/70 mr-1'>
+								WHERE
+							</span>
 							<span className='text-foreground/80'>{wherePreview || '—'}</span>
 						</div>
 					)}

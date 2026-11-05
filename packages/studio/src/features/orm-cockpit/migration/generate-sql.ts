@@ -26,13 +26,13 @@ import type {
 	IndexIR,
 	NormalizedType,
 	SchemaIR,
-	TableIR,
+	TableIR
 } from '@studio/features/orm-cockpit/ir/types'
 import type {
 	Change,
 	ColumnDiff,
 	SchemaDiff,
-	TableDiff,
+	TableDiff
 } from '@studio/features/orm-cockpit/diff/types'
 
 export type MigrationContext = { from?: SchemaIR; to?: SchemaIR }
@@ -51,8 +51,7 @@ export type MigrationResult = {
 	sections: MigrationSections
 }
 
-export const DESTRUCTIVE_BANNER =
-	'-- ⚠ DESTRUCTIVE: drops or rewrites data — review before running'
+export const DESTRUCTIVE_BANNER = '-- ⚠ DESTRUCTIVE: drops or rewrites data — review before running'
 export const REVIEW_HEADER =
 	'-- The following changes need review and are commented out. Enable them deliberately.'
 
@@ -73,7 +72,7 @@ type Stmt = {
 export function generateMigrationSql(
 	diff: SchemaDiff,
 	dialect: Dialect,
-	context: MigrationContext = {},
+	context: MigrationContext = {}
 ): MigrationResult {
 	const warnings: string[] = []
 	const stmts: Stmt[] = []
@@ -103,7 +102,7 @@ function emitCreateTable(
 	dialect: Dialect,
 	target: TableIR | undefined,
 	stmts: Stmt[],
-	warnings: string[],
+	warnings: string[]
 ): void {
 	// Prefer the authoritative target IR (carries the primary key); otherwise
 	// synthesize from the diff's added columns and infer the PK.
@@ -147,7 +146,7 @@ function emitDropTable(
 	dialect: Dialect,
 	source: TableIR | undefined,
 	stmts: Stmt[],
-	warnings: string[],
+	warnings: string[]
 ): void {
 	// Best-effort recreate for `down`: prefer the source IR, else rebuild from
 	// the diff's `before` columns (loses PK fidelity → warn).
@@ -159,11 +158,11 @@ function emitDropTable(
 		section: 'destructive',
 		sql: `DROP TABLE ${quote(table.name, dialect)};`,
 		reverse: recreate,
-		reverseCaveat: 'data dropped with the table cannot be restored',
+		reverseCaveat: 'data dropped with the table cannot be restored'
 	})
 	if (source === undefined) {
 		warnings.push(
-			`down: recreate of dropped table "${table.name}" is best-effort (no source schema provided); primary key / constraints may be incomplete.`,
+			`down: recreate of dropped table "${table.name}" is best-effort (no source schema provided); primary key / constraints may be incomplete.`
 		)
 	}
 }
@@ -172,7 +171,7 @@ function emitAlterTable(
 	table: TableDiff,
 	dialect: Dialect,
 	stmts: Stmt[],
-	warnings: string[],
+	warnings: string[]
 ): void {
 	for (const col of table.columns) {
 		if (col.kind === 'added') {
@@ -207,7 +206,7 @@ function emitAddColumn(tableName: string, col: ColumnDiff, dialect: Dialect, stm
 			section: 'destructive',
 			sql,
 			reverse,
-			reverseCaveat: 'adding NOT NULL without default fails on a non-empty table',
+			reverseCaveat: 'adding NOT NULL without default fails on a non-empty table'
 		})
 	} else {
 		stmts.push({ section: 'additive', sql, reverse })
@@ -220,7 +219,7 @@ function emitDropColumn(tableName: string, col: ColumnDiff, dialect: Dialect, st
 		section: 'destructive',
 		sql: `ALTER TABLE ${quote(tableName, dialect)} DROP COLUMN ${quote(before.name, dialect)};`,
 		reverse: `ALTER TABLE ${quote(tableName, dialect)} ADD COLUMN ${columnDefinition(before, dialect, [], [])};`,
-		reverseCaveat: 'column data is lost on drop and cannot be restored',
+		reverseCaveat: 'column data is lost on drop and cannot be restored'
 	})
 }
 
@@ -229,7 +228,7 @@ function emitAlterColumn(
 	col: ColumnDiff,
 	dialect: Dialect,
 	stmts: Stmt[],
-	warnings: string[],
+	warnings: string[]
 ): void {
 	const before = col.before as ColumnIR
 	const after = col.after as ColumnIR
@@ -240,10 +239,10 @@ function emitAlterColumn(
 		stmts.push({
 			section: 'additive',
 			sql: `ALTER TABLE ${quote(tableName, dialect)} /* ALTER COLUMN ${quote(after.name, dialect)} */`,
-			review: `SQLite cannot ALTER a column in place — rebuild the table (create new, copy, drop, rename). Change: ${reason}`,
+			review: `SQLite cannot ALTER a column in place — rebuild the table (create new, copy, drop, rename). Change: ${reason}`
 		})
 		warnings.push(
-			`"${tableName}.${after.name}": SQLite column change requires a table rebuild; emitted as REVIEW.`,
+			`"${tableName}.${after.name}": SQLite column change requires a table rebuild; emitted as REVIEW.`
 		)
 		return
 	}
@@ -264,7 +263,7 @@ function emitAlterColumn(
 		const stmt: Stmt = {
 			section: col.confidence === 'destructive' ? 'destructive' : 'additive',
 			sql: typeSql,
-			reverse: reverseTypeSql,
+			reverse: reverseTypeSql
 		}
 		// Uncertain type changes are emitted for review rather than run blindly.
 		if (col.confidence === 'review') {
@@ -284,7 +283,9 @@ function emitAlterColumn(
 				section: after.nullable ? 'additive' : 'destructive',
 				sql: `ALTER TABLE ${t} ALTER COLUMN ${c} ${after.nullable ? 'DROP NOT NULL' : 'SET NOT NULL'};`,
 				reverse: `ALTER TABLE ${t} ALTER COLUMN ${c} ${after.nullable ? 'SET NOT NULL' : 'DROP NOT NULL'};`,
-				reverseCaveat: after.nullable ? undefined : 'SET NOT NULL fails if existing rows are NULL',
+				reverseCaveat: after.nullable
+					? undefined
+					: 'SET NOT NULL fails if existing rows are NULL'
 			})
 		}
 		if (fields.includes('default')) {
@@ -311,7 +312,7 @@ function emitCreateIndex(tableName: string, idx: IndexIR, dialect: Dialect, stmt
 	stmts.push({
 		section: 'additive',
 		sql: `CREATE ${unique}INDEX ${quote(idx.name, dialect)} ON ${quote(tableName, dialect)} (${cols});`,
-		reverse: dropIndexSql(tableName, idx.name, dialect),
+		reverse: dropIndexSql(tableName, idx.name, dialect)
 	})
 }
 
@@ -319,7 +320,7 @@ function emitIndexChange(
 	tableName: string,
 	change: Change<IndexIR>,
 	dialect: Dialect,
-	stmts: Stmt[],
+	stmts: Stmt[]
 ): void {
 	if (change.kind === 'added') {
 		emitCreateIndex(tableName, change.after as IndexIR, dialect, stmts)
@@ -330,7 +331,7 @@ function emitIndexChange(
 		stmts.push({
 			section: 'additive',
 			sql: dropIndexSql(tableName, before.name, dialect),
-			reverse: createIndexSql(tableName, before, dialect),
+			reverse: createIndexSql(tableName, before, dialect)
 		})
 		return
 	}
@@ -340,7 +341,7 @@ function emitIndexChange(
 	stmts.push({
 		section: 'additive',
 		sql: dropIndexSql(tableName, before.name, dialect),
-		reverse: createIndexSql(tableName, before, dialect),
+		reverse: createIndexSql(tableName, before, dialect)
 	})
 	emitCreateIndex(tableName, after, dialect, stmts)
 }
@@ -349,13 +350,13 @@ function emitAddForeignKey(
 	tableName: string,
 	fk: ForeignKeyIR,
 	dialect: Dialect,
-	stmts: Stmt[],
+	stmts: Stmt[]
 ): void {
 	const name = fkConstraintName(tableName, fk)
 	stmts.push({
 		section: 'additive',
 		sql: addForeignKeySql(tableName, fk, dialect),
-		reverse: dropForeignKeySql(tableName, name, dialect),
+		reverse: dropForeignKeySql(tableName, name, dialect)
 	})
 }
 
@@ -364,16 +365,16 @@ function emitForeignKeyChange(
 	change: Change<ForeignKeyIR>,
 	dialect: Dialect,
 	stmts: Stmt[],
-	warnings: string[],
+	warnings: string[]
 ): void {
 	if (dialect === 'sqlite') {
 		warnings.push(
-			`"${tableName}": SQLite cannot ALTER foreign keys; FK change emitted as REVIEW (needs a table rebuild).`,
+			`"${tableName}": SQLite cannot ALTER foreign keys; FK change emitted as REVIEW (needs a table rebuild).`
 		)
 		stmts.push({
 			section: 'additive',
 			sql: `-- foreign key change on ${quote(tableName, dialect)}`,
-			review: 'SQLite cannot add/drop a foreign key in place — rebuild the table to apply it.',
+			review: 'SQLite cannot add/drop a foreign key in place — rebuild the table to apply it.'
 		})
 		return
 	}
@@ -388,7 +389,7 @@ function emitForeignKeyChange(
 		stmts.push({
 			section: 'additive',
 			sql: dropForeignKeySql(tableName, name, dialect),
-			reverse: addForeignKeySql(tableName, before, dialect),
+			reverse: addForeignKeySql(tableName, before, dialect)
 		})
 		return
 	}
@@ -398,7 +399,7 @@ function emitForeignKeyChange(
 	stmts.push({
 		section: 'additive',
 		sql: dropForeignKeySql(tableName, fkConstraintName(tableName, before), dialect),
-		reverse: addForeignKeySql(tableName, before, dialect),
+		reverse: addForeignKeySql(tableName, before, dialect)
 	})
 	emitAddForeignKey(tableName, after, dialect, stmts)
 }
@@ -418,7 +419,7 @@ export function buildCreateTableSql(
 	primaryKey: string[],
 	dialect: Dialect,
 	inlineForeignKeys: ForeignKeyIR[] = [],
-	warnings: string[] = [],
+	warnings: string[] = []
 ): string {
 	const lines = columns.map(function (col) {
 		return `    ${columnDefinition(col, dialect, primaryKey, warnings)}`
@@ -436,7 +437,7 @@ function columnDefinition(
 	col: ColumnIR,
 	dialect: Dialect,
 	primaryKey: string[],
-	warnings: string[],
+	warnings: string[]
 ): string {
 	const isSinglePk = primaryKey.length === 1 && primaryKey[0] === col.name
 	const intFamily = isIntFamily(col.type)
@@ -472,11 +473,17 @@ function columnDefinition(
 /** The DDL type token for a column (handles pg SERIAL + unknown→rawType). */
 function typeToken(col: ColumnIR, dialect: Dialect, warnings: string[]): string {
 	if (col.type === 'unknown') {
-		warnings.push(`column "${col.name}": unknown type, emitting raw type "${col.rawType}" verbatim.`)
+		warnings.push(
+			`column "${col.name}": unknown type, emitting raw type "${col.rawType}" verbatim.`
+		)
 		return col.rawType.length > 0 ? col.rawType : fallbackType(dialect)
 	}
 	if (dialect === 'postgres' && col.autoIncrement && isIntFamily(col.type)) {
-		return col.type === 'bigint' ? 'BIGSERIAL' : col.type === 'smallint' ? 'SMALLSERIAL' : 'SERIAL'
+		return col.type === 'bigint'
+			? 'BIGSERIAL'
+			: col.type === 'smallint'
+				? 'SMALLSERIAL'
+				: 'SERIAL'
 	}
 	if (col.type === 'vector') {
 		// pgvector needs an explicit dimension, e.g. VECTOR(1536). The live DB
@@ -490,14 +497,18 @@ function typeToken(col: ColumnIR, dialect: Dialect, warnings: string[]): string 
 			return `${SQL_TYPES[dialect][col.type]}(${col.typeParams})`
 		}
 		warnings.push(
-			`column "${col.name}": vector has no dimension; emitting "VECTOR" — add a dimension (e.g. vector(1536)) before applying.`,
+			`column "${col.name}": vector has no dimension; emitting "VECTOR" — add a dimension (e.g. vector(1536)) before applying.`
 		)
 		return SQL_TYPES[dialect][col.type]
 	}
 	// Carry length/precision through to the DDL when the base token has none,
 	// e.g. Postgres VARCHAR → VARCHAR(255), NUMERIC → NUMERIC(10,2). SQLite uses
 	// type affinity, so width is meaningless there.
-	if (dialect !== 'sqlite' && col.typeParams && (col.type === 'varchar' || col.type === 'decimal')) {
+	if (
+		dialect !== 'sqlite' &&
+		col.typeParams &&
+		(col.type === 'varchar' || col.type === 'decimal')
+	) {
 		const base = SQL_TYPES[dialect][col.type].replace(/\(.*\)$/, '')
 		return `${base}(${col.typeParams})`
 	}
@@ -583,7 +594,9 @@ function assemble(stmts: Stmt[], dialect: Dialect, warnings: string[]): Migratio
 	const up = renderUp(sections)
 	const down = renderDown(stmts, wrap)
 	if (dialect === 'mysql' && stmts.length > 0) {
-		warnings.push('MySQL does not support transactional DDL; statements are not wrapped in a transaction and a failure mid-migration leaves a partial state.')
+		warnings.push(
+			'MySQL does not support transactional DDL; statements are not wrapped in a transaction and a failure mid-migration leaves a partial state.'
+		)
 	}
 	return { up, down, warnings, sections }
 }
@@ -608,9 +621,7 @@ function buildMigrationSections(stmts: Stmt[], wrapped: boolean): MigrationSecti
 			? [DESTRUCTIVE_BANNER, ...destructive.map((s) => s.sql)].join('\n')
 			: ''
 	const review =
-		reviews.length > 0
-			? [REVIEW_HEADER, ...reviews.map(renderReview)].join('\n\n')
-			: ''
+		reviews.length > 0 ? [REVIEW_HEADER, ...reviews.map(renderReview)].join('\n\n') : ''
 
 	if (!safe && !destructiveSql && !review) {
 		return { wrapped: false, safe: '-- No changes.', destructive: '', review: '' }
@@ -660,16 +671,14 @@ function collectAddedColumns(table: TableDiff): ColumnIR[] {
 }
 
 function collectRemovedColumns(table: TableDiff): ColumnIR[] {
-	return table.columns
-		.filter((c) => c.before !== undefined)
-		.map((c) => c.before as ColumnIR)
+	return table.columns.filter((c) => c.before !== undefined).map((c) => c.before as ColumnIR)
 }
 
 function resolvePrimaryKey(
 	tableName: string,
 	target: TableIR | undefined,
 	columns: ColumnIR[],
-	warnings: string[],
+	warnings: string[]
 ): string[] {
 	if (target) {
 		return target.primaryKey
@@ -677,7 +686,7 @@ function resolvePrimaryKey(
 	const inferred = inferPrimaryKey(columns)
 	if (inferred.length > 0) {
 		warnings.push(
-			`table "${tableName}": no schema provided — inferred primary key (${inferred.join(', ')}) from autoIncrement column.`,
+			`table "${tableName}": no schema provided — inferred primary key (${inferred.join(', ')}) from autoIncrement column.`
 		)
 	} else {
 		warnings.push(`table "${tableName}": no primary key could be determined from the diff.`)
@@ -729,7 +738,7 @@ const SQL_TYPES: Record<Dialect, Record<Exclude<NormalizedType, 'unknown'>, stri
 		date: 'DATE',
 		time: 'TIME',
 		bytes: 'BYTEA',
-		vector: 'VECTOR',
+		vector: 'VECTOR'
 	},
 	mysql: {
 		int: 'INT',
@@ -749,7 +758,7 @@ const SQL_TYPES: Record<Dialect, Record<Exclude<NormalizedType, 'unknown'>, stri
 		date: 'DATE',
 		time: 'TIME',
 		bytes: 'BLOB',
-		vector: 'VECTOR',
+		vector: 'VECTOR'
 	},
 	sqlite: {
 		int: 'INTEGER',
@@ -771,6 +780,6 @@ const SQL_TYPES: Record<Dialect, Record<Exclude<NormalizedType, 'unknown'>, stri
 		bytes: 'BLOB',
 		// SQLite has no native vector type (sqlite-vec uses virtual tables);
 		// unreachable in practice since vector only normalizes under postgres.
-		vector: 'BLOB',
-	},
+		vector: 'BLOB'
+	}
 }

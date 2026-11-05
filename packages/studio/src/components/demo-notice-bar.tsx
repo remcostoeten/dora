@@ -30,8 +30,9 @@ export function DemoNoticeBar() {
 		<div className='flex shrink-0 items-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-300'>
 			<FlaskConical className='h-3.5 w-3.5 shrink-0' />
 			<span className='min-w-0 flex-1 truncate'>
-				<span className='font-semibold'>Demo view</span> — you're exploring Dora with mock data.
-				Connections, providers, and edits here are simulated and not saved to any real database.
+				<span className='font-semibold'>Demo view</span> — you're exploring Dora with mock
+				data. Connections, providers, and edits here are simulated and not saved to any real
+				database.
 			</span>
 			<button
 				type='button'

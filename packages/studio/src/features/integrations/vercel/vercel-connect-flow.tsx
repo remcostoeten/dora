@@ -232,7 +232,9 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 							{accountLabel ? (
 								<span>
 									Connected as{' '}
-									<span className='font-medium text-foreground'>{accountLabel}</span>
+									<span className='font-medium text-foreground'>
+										{accountLabel}
+									</span>
 								</span>
 							) : (
 								<span>Connected</span>
@@ -260,7 +262,10 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 			</div>
 
 			{authError ? (
-				<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+				<p
+					role='alert'
+					className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'
+				>
 					{authError}
 				</p>
 			) : null}
@@ -378,7 +383,10 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 							</div>
 						) : null}
 						{error ? (
-							<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+							<p
+								role='alert'
+								className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'
+							>
 								{error}
 							</p>
 						) : null}
@@ -457,9 +465,10 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 										className='h-9 bg-background/70'
 									/>
 									<p className='text-[11px] text-muted-foreground/70'>
-										Vercel marks this store&apos;s connection string as sensitive,
-										so it can&apos;t be read via the API. Copy POSTGRES_URL from
-										the store&apos;s settings and paste it here.
+										Vercel marks this store&apos;s connection string as
+										sensitive, so it can&apos;t be read via the API. Copy
+										POSTGRES_URL from the store&apos;s settings and paste it
+										here.
 									</p>
 								</div>
 							) : null}

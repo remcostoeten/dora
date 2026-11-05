@@ -11,7 +11,14 @@ import {
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@studio/shared/ui/table'
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow
+} from '@studio/shared/ui/table'
 import { Sparkles } from 'lucide-react'
 import { Spinner } from '@studio/shared/ui/spinner'
 import { useToast } from '@studio/shared/ui/use-toast'

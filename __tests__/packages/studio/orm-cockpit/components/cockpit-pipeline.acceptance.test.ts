@@ -28,38 +28,123 @@ const LIVE: DatabaseSchema = {
 			schema: 'public',
 			primary_key_columns: ['id'],
 			columns: [
-				{ name: 'id', data_type: 'int4', is_nullable: false, default_value: null, is_primary_key: true, is_auto_increment: true, foreign_key: null },
-				{ name: 'email', data_type: 'text', is_nullable: false, default_value: null, foreign_key: null },
-				{ name: 'name', data_type: 'text', is_nullable: true, default_value: null, foreign_key: null },
-				{ name: 'created_at', data_type: 'timestamp', is_nullable: false, default_value: 'now()', foreign_key: null },
+				{
+					name: 'id',
+					data_type: 'int4',
+					is_nullable: false,
+					default_value: null,
+					is_primary_key: true,
+					is_auto_increment: true,
+					foreign_key: null
+				},
+				{
+					name: 'email',
+					data_type: 'text',
+					is_nullable: false,
+					default_value: null,
+					foreign_key: null
+				},
+				{
+					name: 'name',
+					data_type: 'text',
+					is_nullable: true,
+					default_value: null,
+					foreign_key: null
+				},
+				{
+					name: 'created_at',
+					data_type: 'timestamp',
+					is_nullable: false,
+					default_value: 'now()',
+					foreign_key: null
+				}
 			],
-			indexes: [],
+			indexes: []
 		},
 		{
 			name: 'posts',
 			schema: 'public',
 			primary_key_columns: ['id'],
 			columns: [
-				{ name: 'id', data_type: 'int4', is_nullable: false, default_value: null, is_primary_key: true, is_auto_increment: true, foreign_key: null },
-				{ name: 'author_id', data_type: 'int4', is_nullable: false, default_value: null, foreign_key: { referenced_schema: 'public', referenced_table: 'users', referenced_column: 'id' } },
-				{ name: 'title', data_type: 'text', is_nullable: false, default_value: null, foreign_key: null },
-				{ name: 'body', data_type: 'text', is_nullable: true, default_value: null, foreign_key: null },
-				{ name: 'published_at', data_type: 'timestamp', is_nullable: true, default_value: null, foreign_key: null },
-				{ name: 'legacy_views', data_type: 'int4', is_nullable: true, default_value: '0', foreign_key: null },
+				{
+					name: 'id',
+					data_type: 'int4',
+					is_nullable: false,
+					default_value: null,
+					is_primary_key: true,
+					is_auto_increment: true,
+					foreign_key: null
+				},
+				{
+					name: 'author_id',
+					data_type: 'int4',
+					is_nullable: false,
+					default_value: null,
+					foreign_key: {
+						referenced_schema: 'public',
+						referenced_table: 'users',
+						referenced_column: 'id'
+					}
+				},
+				{
+					name: 'title',
+					data_type: 'text',
+					is_nullable: false,
+					default_value: null,
+					foreign_key: null
+				},
+				{
+					name: 'body',
+					data_type: 'text',
+					is_nullable: true,
+					default_value: null,
+					foreign_key: null
+				},
+				{
+					name: 'published_at',
+					data_type: 'timestamp',
+					is_nullable: true,
+					default_value: null,
+					foreign_key: null
+				},
+				{
+					name: 'legacy_views',
+					data_type: 'int4',
+					is_nullable: true,
+					default_value: '0',
+					foreign_key: null
+				}
 			],
-			indexes: [],
+			indexes: []
 		},
 		{
 			name: 'sessions',
 			schema: 'public',
 			primary_key_columns: ['id'],
 			columns: [
-				{ name: 'id', data_type: 'uuid', is_nullable: false, default_value: null, is_primary_key: true, foreign_key: null },
-				{ name: 'user_id', data_type: 'int4', is_nullable: false, default_value: null, foreign_key: { referenced_schema: 'public', referenced_table: 'users', referenced_column: 'id' } },
+				{
+					name: 'id',
+					data_type: 'uuid',
+					is_nullable: false,
+					default_value: null,
+					is_primary_key: true,
+					foreign_key: null
+				},
+				{
+					name: 'user_id',
+					data_type: 'int4',
+					is_nullable: false,
+					default_value: null,
+					foreign_key: {
+						referenced_schema: 'public',
+						referenced_table: 'users',
+						referenced_column: 'id'
+					}
+				}
 			],
-			indexes: [],
-		},
-	],
+			indexes: []
+		}
+	]
 }
 
 const DRIZZLE_SCHEMA = `
@@ -144,14 +229,20 @@ describe('Wave D acceptance — real schema drift → migration', function () {
 		const migration = generateMigrationSql(diff, 'postgres', { from: live, to: parsed.ir })
 
 		// Default copy is safe: adds the column, never drops.
-		const safe = buildPreviewSql(migration.up, { includeDestructive: false, includeReview: false })
+		const safe = buildPreviewSql(migration.up, {
+			includeDestructive: false,
+			includeReview: false
+		})
 		expect(safe).toContain('ADD COLUMN')
 		expect(safe).toContain('is_admin')
 		expect(safe).not.toContain('DROP COLUMN')
 		expect(safe).not.toContain('DROP TABLE')
 
 		// Destructive opt-in surfaces the drops.
-		const danger = buildPreviewSql(migration.up, { includeDestructive: true, includeReview: false })
+		const danger = buildPreviewSql(migration.up, {
+			includeDestructive: true,
+			includeReview: false
+		})
 		expect(danger).toContain('DROP COLUMN')
 		expect(danger).toContain('legacy_views')
 		expect(danger).toContain('DROP TABLE')
@@ -168,16 +259,22 @@ describe('Wave D acceptance — real schema drift → migration', function () {
 		const byName = new Map(diff.tables.map((t) => [t.name, t]))
 		expect(byName.get('users')?.columns.find((c) => c.name === 'is_admin')?.kind).toBe('added')
 		expect(byName.get('posts')?.columns.find((c) => c.name === 'legacy_views')?.kind).toBe(
-			'removed',
+			'removed'
 		)
 		expect(byName.get('sessions')?.kind).toBe('removed')
 
 		const migration = generateMigrationSql(diff, 'postgres', { from: live, to: parsed.ir })
 
-		const safe = buildPreviewSql(migration.up, { includeDestructive: false, includeReview: false })
+		const safe = buildPreviewSql(migration.up, {
+			includeDestructive: false,
+			includeReview: false
+		})
 		expect(safe).toContain('is_admin')
 		expect(safe).not.toContain('DROP TABLE')
-		const danger = buildPreviewSql(migration.up, { includeDestructive: true, includeReview: false })
+		const danger = buildPreviewSql(migration.up, {
+			includeDestructive: true,
+			includeReview: false
+		})
 		expect(danger).toContain('DROP TABLE')
 	})
 

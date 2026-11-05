@@ -156,7 +156,9 @@ export function ShortcutRecorder({
 							: `Edit shortcut for ${actionLabel}. Current shortcut: ${formatted}`
 					}
 					aria-pressed={isRecording}
-					variant={isRecording ? 'destructive' : conflictMessage ? 'destructive' : 'outline'}
+					variant={
+						isRecording ? 'destructive' : conflictMessage ? 'destructive' : 'outline'
+					}
 					size='sm'
 					className={cn(
 						'min-w-[120px] max-w-[260px] justify-between font-mono text-xs',

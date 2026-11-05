@@ -35,7 +35,9 @@ describe('buildChatPrompt', function () {
 		expect(prompt).toContain('- Active editor mode: SQL')
 		expect(prompt).toContain("SELECT * FROM messages WHERE message ILIKE '%quinten%';")
 		expect(prompt).toContain('SQL syntax notes:')
-		expect(prompt).toContain('SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT ... OFFSET ...')
+		expect(prompt).toContain(
+			'SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT ... OFFSET ...'
+		)
 		expect(prompt).toContain('User request:\nHow do I search this table?')
 	})
 })

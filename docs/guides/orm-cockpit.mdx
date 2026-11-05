@@ -9,7 +9,10 @@ live database, and shows you exactly where the two have drifted apart. When
 there is drift, Dora generates a dialect-correct migration you can review before
 anything touches the database.
 
-<Callout type='info'>The cockpit is read-first. It never alters your database on its own. It shows drift and generates SQL, and you decide what to run.</Callout>
+<Callout type='info'>
+	The cockpit is read-first. It never alters your database on its own. It shows drift and
+	generates SQL, and you decide what to run.
+</Callout>
 
 ## What it does
 
@@ -29,11 +32,11 @@ anything touches the database.
 Drift is grouped per table so you can scan it quickly. Each change is classified
 by how risky it is to apply:
 
-| Classification | Meaning | Examples |
-| --- | --- | --- |
-| **Safe** | Additive, non-destructive | Add a new table, add a nullable column |
-| **Review** | Could affect existing data | Change a column type, add a constraint |
-| **Destructive** | Removes or rewrites data | Drop a column, drop a table |
+| Classification  | Meaning                    | Examples                               |
+| --------------- | -------------------------- | -------------------------------------- |
+| **Safe**        | Additive, non-destructive  | Add a new table, add a nullable column |
+| **Review**      | Could affect existing data | Change a column type, add a constraint |
+| **Destructive** | Removes or rewrites data   | Drop a column, drop a table            |
 
 This lets you see at a glance whether a migration is a routine additive change or
 something that needs care.
@@ -48,7 +51,10 @@ they become part of the SQL handed to the query console.
 From there you run the SQL in Dora's console like any other query, with the
 generated statements in front of you the whole time. Nothing is applied silently.
 
-<Callout type='warn'>Destructive statements (dropping columns or tables) permanently remove data. Review the generated SQL and take a backup before running anything in the destructive group.</Callout>
+<Callout type='warn'>
+	Destructive statements (dropping columns or tables) permanently remove data. Review the
+	generated SQL and take a backup before running anything in the destructive group.
+</Callout>
 
 ## Supported ORMs
 

@@ -73,12 +73,7 @@ export function UpdateSection() {
 							Install &amp; restart
 						</Button>
 					) : (
-						<Button
-							size='sm'
-							variant='outline'
-							onClick={check}
-							disabled={isBusy}
-						>
+						<Button size='sm' variant='outline' onClick={check} disabled={isBusy}>
 							{status === 'checking' ? 'Checking…' : 'Check for updates'}
 						</Button>
 					)}

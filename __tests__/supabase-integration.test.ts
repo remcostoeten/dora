@@ -9,7 +9,7 @@ const PROJECT: SupabaseProject = {
 	region: 'eu-west-2',
 	status: 'ACTIVE_HEALTHY',
 	dbHost: 'db.abcdefghijklmnopqrst.supabase.co',
-	dbVersion: '15.1.0.147',
+	dbVersion: '15.1.0.147'
 }
 
 describe('buildSupabaseConnectionUrl', function () {
@@ -40,7 +40,12 @@ describe('buildSupabaseConnectionUrl', function () {
 
 	it('uses the resolved pooler host when provided (real cluster index)', function () {
 		expect(
-			buildSupabaseConnectionUrl(PROJECT, 'pw', 'session', 'aws-1-eu-west-2.pooler.supabase.com')
+			buildSupabaseConnectionUrl(
+				PROJECT,
+				'pw',
+				'session',
+				'aws-1-eu-west-2.pooler.supabase.com'
+			)
 		).toBe(
 			'postgresql://postgres.abcdefghijklmnopqrst:pw@aws-1-eu-west-2.pooler.supabase.com:5432/postgres?pgbouncer=true'
 		)
@@ -57,7 +62,7 @@ describe('Supabase connection is recognized in the sidebar', function () {
 	it('detects the supabase preset from a direct connection URL', function () {
 		const meta = describeConnectionSource({
 			type: 'postgres',
-			url: buildSupabaseConnectionUrl(PROJECT, 'pw', 'direct'),
+			url: buildSupabaseConnectionUrl(PROJECT, 'pw', 'direct')
 		})
 		expect(meta.preset).toBe('supabase')
 		expect(meta.kind).toBe('cloud-preset')
@@ -66,7 +71,7 @@ describe('Supabase connection is recognized in the sidebar', function () {
 	it('detects the supabase preset from a pooler connection URL', function () {
 		const meta = describeConnectionSource({
 			type: 'postgres',
-			url: buildSupabaseConnectionUrl(PROJECT, 'pw', 'transaction'),
+			url: buildSupabaseConnectionUrl(PROJECT, 'pw', 'transaction')
 		})
 		expect(meta.preset).toBe('supabase')
 		expect(meta.kind).toBe('cloud-preset')

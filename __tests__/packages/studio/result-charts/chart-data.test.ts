@@ -101,8 +101,7 @@ describe('result chart data', function () {
 		).toBe(3)
 
 		expect(
-			buildChartDataset({ rows, config: { ...base, aggregation: 'count' } }).points[0]
-				.total
+			buildChartDataset({ rows, config: { ...base, aggregation: 'count' } }).points[0].total
 		).toBe(2)
 	})
 
@@ -121,10 +120,11 @@ describe('result chart data', function () {
 			}
 		})
 
-		expect(dataset.series.map(function (series) { return series.key })).toEqual([
-			'EU · revenue',
-			'US · revenue'
-		])
+		expect(
+			dataset.series.map(function (series) {
+				return series.key
+			})
+		).toEqual(['EU · revenue', 'US · revenue'])
 		expect(dataset.points[0]).toEqual({
 			__x: 'Mon',
 			'EU · revenue': 10,

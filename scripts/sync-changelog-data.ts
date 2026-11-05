@@ -145,7 +145,12 @@ function inferType(release: ParsedRelease): ChangelogEntryType {
 		const group = release.groups.find(function (entry) {
 			return entry.name === groupName
 		})
-		if (group && group.items.some(function (item) { return !isVersionBump(item) })) {
+		if (
+			group &&
+			group.items.some(function (item) {
+				return !isVersionBump(item)
+			})
+		) {
 			return byGroupName[groupName]
 		}
 	}
@@ -405,10 +410,7 @@ function main(): void {
 	const entries = releases.map(toEntry)
 	const marketingReleases = releases.map(toMarketingRelease)
 	const desktopOutput = generateChangelogData(packageJson.version, entries)
-	const marketingOutput = generateMarketingChangelogData(
-		packageJson.version,
-		marketingReleases
-	)
+	const marketingOutput = generateMarketingChangelogData(packageJson.version, marketingReleases)
 
 	fs.mkdirSync(path.dirname(MARKETING_OUTPUT_PATH), { recursive: true })
 	fs.writeFileSync(DESKTOP_OUTPUT_PATH, desktopOutput)

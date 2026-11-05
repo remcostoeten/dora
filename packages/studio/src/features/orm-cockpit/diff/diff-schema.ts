@@ -17,20 +17,14 @@ import type {
 	IndexIR,
 	NormalizedType,
 	SchemaIR,
-	TableIR,
+	TableIR
 } from '@studio/features/orm-cockpit/ir/types'
-import type {
-	Change,
-	ColumnDiff,
-	Confidence,
-	SchemaDiff,
-	TableDiff,
-} from './types'
+import type { Change, ColumnDiff, Confidence, SchemaDiff, TableDiff } from './types'
 
 const CONFIDENCE_RANK: Record<Confidence, number> = {
 	safe: 0,
 	review: 1,
-	destructive: 2,
+	destructive: 2
 }
 
 function worst(a: Confidence, b: Confidence): Confidence {
@@ -53,7 +47,7 @@ const NUMERIC_RANK: Partial<Record<NormalizedType, number>> = {
 	bigint: 3,
 	float: 4,
 	double: 5,
-	decimal: 6,
+	decimal: 6
 }
 
 /** Types whose length/precision/dimensions participate in the diff. */
@@ -167,7 +161,7 @@ function diffColumn(before: ColumnIR | undefined, after: ColumnIR | undefined): 
 			name: after.name,
 			kind: 'added',
 			after,
-			confidence: isSafe ? 'safe' : 'destructive',
+			confidence: isSafe ? 'safe' : 'destructive'
 		}
 	}
 
@@ -177,7 +171,7 @@ function diffColumn(before: ColumnIR | undefined, after: ColumnIR | undefined): 
 			name: before.name,
 			kind: 'removed',
 			before,
-			confidence: 'destructive',
+			confidence: 'destructive'
 		}
 	}
 
@@ -226,7 +220,7 @@ function diffColumn(before: ColumnIR | undefined, after: ColumnIR | undefined): 
 		before: b,
 		after: a,
 		changedFields,
-		confidence: worstOf(confidences),
+		confidence: worstOf(confidences)
 	}
 }
 
@@ -348,7 +342,7 @@ function diffTable(before: TableIR | undefined, after: TableIR | undefined): Tab
 		const columns = sortColumnDiffs(
 			after.columns.map(function asAdded(col) {
 				return diffColumn(undefined, col)
-			}),
+			})
 		)
 		const indexes: Change<IndexIR>[] = after.indexes.map(function asAdded(idx) {
 			return { kind: 'added', after: idx }
@@ -362,7 +356,7 @@ function diffTable(before: TableIR | undefined, after: TableIR | undefined): Tab
 			columns,
 			indexes,
 			foreignKeys,
-			confidence: 'safe',
+			confidence: 'safe'
 		}
 	}
 
@@ -371,7 +365,7 @@ function diffTable(before: TableIR | undefined, after: TableIR | undefined): Tab
 		const columns = sortColumnDiffs(
 			before.columns.map(function asRemoved(col) {
 				return diffColumn(col, undefined)
-			}),
+			})
 		)
 		const indexes: Change<IndexIR>[] = before.indexes.map(function asRemoved(idx) {
 			return { kind: 'removed', before: idx }
@@ -385,7 +379,7 @@ function diffTable(before: TableIR | undefined, after: TableIR | undefined): Tab
 			columns,
 			indexes,
 			foreignKeys,
-			confidence: 'destructive',
+			confidence: 'destructive'
 		}
 	}
 
@@ -400,7 +394,7 @@ function diffTable(before: TableIR | undefined, after: TableIR | undefined): Tab
 			return c.confidence
 		}),
 		...indexes.map(indexConfidence),
-		...foreignKeys.map(fkConfidence),
+		...foreignKeys.map(fkConfidence)
 	]
 
 	return {
@@ -409,7 +403,7 @@ function diffTable(before: TableIR | undefined, after: TableIR | undefined): Tab
 		columns,
 		indexes,
 		foreignKeys,
-		confidence: worstOf(confidences),
+		confidence: worstOf(confidences)
 	}
 }
 
@@ -439,6 +433,6 @@ export function diffSchema(from: SchemaIR, to: SchemaIR): SchemaDiff {
 
 	return {
 		tables,
-		hasChanges: tables.length > 0,
+		hasChanges: tables.length > 0
 	}
 }

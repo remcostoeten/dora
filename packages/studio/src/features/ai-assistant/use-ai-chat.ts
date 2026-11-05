@@ -96,11 +96,11 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 			}
 			appendMessage(key, assistantMsg)
 
-			const currentMessages = [
-				...(useAiAssistantStore.getState().threads[key] ?? [])
-			].filter(function (m) {
-				return m.id !== assistantId
-			})
+			const currentMessages = [...(useAiAssistantStore.getState().threads[key] ?? [])].filter(
+				function (m) {
+					return m.id !== assistantId
+				}
+			)
 
 			const packed = buildChatPrompt(currentMessages, {
 				...context,
@@ -173,7 +173,10 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 						if (event.content && event.content.length > accumulated.length) {
 							accumulated = event.content
 							startTransition(function () {
-								setStreamingSnapshot({ messageId: assistantId, content: accumulated })
+								setStreamingSnapshot({
+									messageId: assistantId,
+									content: accumulated
+								})
 							})
 						}
 						break
@@ -201,7 +204,7 @@ export function useAiChat(connectionId: string | null): UseAiChatResult {
 					const message =
 						typeof result.error === 'string'
 							? result.error
-							: result.error?.detail ?? 'AI request failed'
+							: (result.error?.detail ?? 'AI request failed')
 					setError(message)
 					finishStream(accumulated, { error: message })
 					return

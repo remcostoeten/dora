@@ -42,12 +42,15 @@ const ENV_FILES = [
 	'.env.development',
 	'.env',
 	'.env.production.local',
-	'.env.production',
+	'.env.production'
 ]
 
 /** Parse a postgres/mysql/libsql/file URL into a {@link DbTarget}. */
 export function targetFromUrl(raw: string): DbTarget | null {
-	const cleaned = raw.trim().replace(/^["'`]/, '').replace(/["'`]$/, '')
+	const cleaned = raw
+		.trim()
+		.replace(/^["'`]/, '')
+		.replace(/["'`]$/, '')
 	let url: URL
 	try {
 		url = new URL(cleaned)
@@ -80,7 +83,7 @@ function networkTarget(engine: DbEngine, url: URL): DbTarget {
 		engine,
 		host: url.hostname.toLowerCase() || undefined,
 		port: url.port ? Number(url.port) : undefined,
-		database: database || undefined,
+		database: database || undefined
 	}
 }
 
@@ -102,7 +105,7 @@ export function targetFromConnection(conn: ConnectionShape): DbTarget | null {
 		engine,
 		host: conn.host?.toLowerCase() || undefined,
 		port: conn.port,
-		database: conn.database || undefined,
+		database: conn.database || undefined
 	}
 }
 
@@ -175,7 +178,9 @@ async function readEnvVar(
 /** Read a single `KEY=value` out of a `.env` file's text. */
 export function parseEnvVar(envText: string, key: string): string | null {
 	const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-	const match = envText.match(new RegExp(`^\\s*(?:export\\s+)?${escaped}\\s*=\\s*(.+?)\\s*$`, 'm'))
+	const match = envText.match(
+		new RegExp(`^\\s*(?:export\\s+)?${escaped}\\s*=\\s*(.+?)\\s*$`, 'm')
+	)
 	if (!match) {
 		return null
 	}

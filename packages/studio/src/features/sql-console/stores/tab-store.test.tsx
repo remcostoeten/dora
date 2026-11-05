@@ -11,7 +11,24 @@ function seed(connectionId: string, sql: string): void {
 	localStorage.setItem(
 		storageKey(connectionId),
 		JSON.stringify({
-			tabs: [{ id: `tab-${connectionId}`, title: 'Query 1', mode: 'sql', sqlContent: sql, drizzleContent: '', result: null, isExecuting: false, isDirty: false, viewMode: 'table', chartConfig: null, historyEntryId: null, connectionId, createdAt: 0, lastExecutedAt: null }],
+			tabs: [
+				{
+					id: `tab-${connectionId}`,
+					title: 'Query 1',
+					mode: 'sql',
+					sqlContent: sql,
+					drizzleContent: '',
+					result: null,
+					isExecuting: false,
+					isDirty: false,
+					viewMode: 'table',
+					chartConfig: null,
+					historyEntryId: null,
+					connectionId,
+					createdAt: 0,
+					lastExecutedAt: null
+				}
+			],
 			activeTabId: `tab-${connectionId}`
 		})
 	)
@@ -19,7 +36,7 @@ function seed(connectionId: string, sql: string): void {
 
 function ActiveQuery() {
 	const { activeTab } = useQueryTabs()
-	return <span data-testid="query">{activeTab?.sqlContent ?? ''}</span>
+	return <span data-testid='query'>{activeTab?.sqlContent ?? ''}</span>
 }
 
 function readStoredQuery(connectionId: string): string | undefined {
@@ -33,18 +50,18 @@ describe('QueryTabProvider connection switching', function () {
 		localStorage.clear()
 	})
 
-	it('does not overwrite the incoming connection\'s saved tabs', function () {
+	it("does not overwrite the incoming connection's saved tabs", function () {
 		seed('a', 'SELECT 1 FROM a')
 		seed('b', 'SELECT 2 FROM b')
 
 		const { rerender } = render(
-			<QueryTabProvider connectionId="a">
+			<QueryTabProvider connectionId='a'>
 				<ActiveQuery />
 			</QueryTabProvider>
 		)
 
 		rerender(
-			<QueryTabProvider connectionId="b">
+			<QueryTabProvider connectionId='b'>
 				<ActiveQuery />
 			</QueryTabProvider>
 		)
@@ -53,19 +70,19 @@ describe('QueryTabProvider connection switching', function () {
 		expect(readStoredQuery('a')).toBe('SELECT 1 FROM a')
 	})
 
-	it('loads the incoming connection\'s tabs into state', function () {
+	it("loads the incoming connection's tabs into state", function () {
 		seed('a', 'SELECT 1 FROM a')
 		seed('b', 'SELECT 2 FROM b')
 
 		const { rerender, getByTestId } = render(
-			<QueryTabProvider connectionId="a">
+			<QueryTabProvider connectionId='a'>
 				<ActiveQuery />
 			</QueryTabProvider>
 		)
 		expect(getByTestId('query').textContent).toBe('SELECT 1 FROM a')
 
 		rerender(
-			<QueryTabProvider connectionId="b">
+			<QueryTabProvider connectionId='b'>
 				<ActiveQuery />
 			</QueryTabProvider>
 		)

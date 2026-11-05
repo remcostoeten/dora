@@ -9,13 +9,13 @@ It works with a hosted provider (with an API key) or a fully local model.
 
 ## Providers
 
-| Provider | Needs an API key? | Runs locally? |
-| --- | --- | --- |
-| Groq | Yes | No |
-| OpenAI | Yes | No |
-| Anthropic | Yes | No |
-| Gemini | Yes | No |
-| Ollama | No | Yes |
+| Provider  | Needs an API key? | Runs locally? |
+| --------- | ----------------- | ------------- |
+| Groq      | Yes               | No            |
+| OpenAI    | Yes               | No            |
+| Anthropic | Yes               | No            |
+| Gemini    | Yes               | No            |
+| Ollama    | No                | Yes           |
 
 **Groq is the default**, using `llama-3.3-70b-versatile`, which is fast and has a generous
 free tier.
@@ -27,14 +27,17 @@ Open **Sidebar → AI keys**, pick a provider, and add a key. You can name a key
 variable before launching Dora and it is picked up automatically (a key saved in
 the app takes precedence):
 
-| Provider | Environment variable |
-| --- | --- |
-| Groq | `GROQ_API_KEY` |
-| OpenAI | `OPENAI_API_KEY` |
-| Anthropic | `ANTHROPIC_API_KEY` |
-| Gemini | `GEMINI_API_KEY` |
+| Provider  | Environment variable |
+| --------- | -------------------- |
+| Groq      | `GROQ_API_KEY`       |
+| OpenAI    | `OPENAI_API_KEY`     |
+| Anthropic | `ANTHROPIC_API_KEY`  |
+| Gemini    | `GEMINI_API_KEY`     |
 
-<Callout type='info'>Keys are encrypted at rest with AES-256-GCM; the master key lives in your OS keychain. See [Credentials & security](/docs/guides/security).</Callout>
+<Callout type='info'>
+	Keys are encrypted at rest with AES-256-GCM; the master key lives in your OS keychain. See
+	[Credentials & security](/docs/guides/security).
+</Callout>
 
 ## Run models locally with Ollama
 

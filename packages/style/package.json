@@ -6,8 +6,8 @@
 	"scripts": {
 		"lint": "cd ../.. && oxlint -c packages/style/.oxlintrc.json . && bun run packages/style/tools/run-lint-style.ts --strict",
 		"lint:fix": "cd ../.. && oxlint --fix -c packages/style/.oxlintrc.json . && bun run packages/style/tools/run-lint-style-fix.ts",
-		"format": "cd ../.. && oxfmt --check -c packages/style/.oxfmtrc.json .",
-		"format:fix": "cd ../.. && oxfmt --write -c packages/style/.oxfmtrc.json . && bun run packages/style/tools/run-fix-imports.ts",
+		"format": "cd ../.. && oxfmt --check . '!apps/marketing'",
+		"format:fix": "cd ../.. && oxfmt --write . '!apps/marketing' && bun run packages/style/tools/run-fix-imports.ts",
 		"fix": "bun run format:fix && bun run lint:fix",
 		"lint:style": "cd ../.. && tsx packages/style/tools/run-lint-style.ts",
 		"lint:style:fix": "cd ../.. && tsx packages/style/tools/run-lint-style-fix.ts",
@@ -15,7 +15,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "latest",
-		"oxfmt": "latest",
+		"oxfmt": "0.46.0",
 		"oxlint": "latest",
 		"ts-morph": "latest",
 		"tsx": "latest",

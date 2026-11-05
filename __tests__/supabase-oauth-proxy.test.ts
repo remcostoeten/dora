@@ -5,7 +5,7 @@ import {
 	encodeState,
 	isLoopbackUrl,
 	randomVerifier,
-	type StatePayload,
+	type StatePayload
 } from '../apps/marketing/src/app/api/oauth/supabase/_lib'
 
 const SECRET = 'test-state-secret-test-state-secret'
@@ -15,7 +15,7 @@ function payload(overrides: Partial<StatePayload> = {}): StatePayload {
 		v: randomVerifier(),
 		r: 'http://127.0.0.1:54321/callback',
 		t: Math.floor(Date.now() / 1000),
-		...overrides,
+		...overrides
 	}
 }
 

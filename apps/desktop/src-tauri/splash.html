@@ -55,11 +55,21 @@
 				height: 100%;
 			}
 
-			.logo .p1 { fill: var(--logo-primary); }
-			.logo .p2 { fill: var(--logo-secondary); }
-			.logo .p3 { fill: var(--logo-tertiary); }
-			.logo .p4 { fill: var(--logo-accent); }
-			.logo .p5 { fill: var(--logo-highlight); }
+			.logo .p1 {
+				fill: var(--logo-primary);
+			}
+			.logo .p2 {
+				fill: var(--logo-secondary);
+			}
+			.logo .p3 {
+				fill: var(--logo-tertiary);
+			}
+			.logo .p4 {
+				fill: var(--logo-accent);
+			}
+			.logo .p5 {
+				fill: var(--logo-highlight);
+			}
 		</style>
 	</head>
 
@@ -97,32 +107,88 @@
 			;(function () {
 				const themeMap = {
 					dark: {
-						bg: '#090909', bg2: '#121212', panel: '#161616', panel2: '#1e1e1e', border: '#2e2e2e',
-						logoPrimary: '#b35c5f', logoSecondary: '#fcc5c3', logoTertiary: '#e79898', logoAccent: '#e69797', logoHighlight: '#fcdddc'
+						bg: '#090909',
+						bg2: '#121212',
+						panel: '#161616',
+						panel2: '#1e1e1e',
+						border: '#2e2e2e',
+						logoPrimary: '#b35c5f',
+						logoSecondary: '#fcc5c3',
+						logoTertiary: '#e79898',
+						logoAccent: '#e69797',
+						logoHighlight: '#fcdddc'
 					},
 					light: {
-						bg: '#f6f6f6', bg2: '#ececec', panel: '#ffffff', panel2: '#f8f8f8', border: '#e2e2e2',
-						logoPrimary: '#737373', logoSecondary: '#404040', logoTertiary: '#525252', logoAccent: '#5c5c5c', logoHighlight: '#4a4a4a'
+						bg: '#f6f6f6',
+						bg2: '#ececec',
+						panel: '#ffffff',
+						panel2: '#f8f8f8',
+						border: '#e2e2e2',
+						logoPrimary: '#737373',
+						logoSecondary: '#404040',
+						logoTertiary: '#525252',
+						logoAccent: '#5c5c5c',
+						logoHighlight: '#4a4a4a'
 					},
 					midnight: {
-						bg: '#0b1020', bg2: '#141b31', panel: '#121a2d', panel2: '#1a233d', border: '#2e3860',
-						logoPrimary: '#6366f1', logoSecondary: '#a5b4fc', logoTertiary: '#818cf8', logoAccent: '#7c83ff', logoHighlight: '#c7d2fe'
+						bg: '#0b1020',
+						bg2: '#141b31',
+						panel: '#121a2d',
+						panel2: '#1a233d',
+						border: '#2e3860',
+						logoPrimary: '#6366f1',
+						logoSecondary: '#a5b4fc',
+						logoTertiary: '#818cf8',
+						logoAccent: '#7c83ff',
+						logoHighlight: '#c7d2fe'
 					},
 					forest: {
-						bg: '#0d1712', bg2: '#13231b', panel: '#122018', panel2: '#1a2d22', border: '#2d4a3b',
-						logoPrimary: '#059669', logoSecondary: '#a7f3d0', logoTertiary: '#34d399', logoAccent: '#10b981', logoHighlight: '#d1fae5'
+						bg: '#0d1712',
+						bg2: '#13231b',
+						panel: '#122018',
+						panel2: '#1a2d22',
+						border: '#2d4a3b',
+						logoPrimary: '#059669',
+						logoSecondary: '#a7f3d0',
+						logoTertiary: '#34d399',
+						logoAccent: '#10b981',
+						logoHighlight: '#d1fae5'
 					},
 					claude: {
-						bg: '#f7f0e8', bg2: '#f3e8dc', panel: '#fffaf5', panel2: '#f8eee4', border: '#e6d7c6',
-						logoPrimary: '#c66d1a', logoSecondary: '#fde6c8', logoTertiary: '#f3b478', logoAccent: '#e89a47', logoHighlight: '#fff1de'
+						bg: '#f7f0e8',
+						bg2: '#f3e8dc',
+						panel: '#fffaf5',
+						panel2: '#f8eee4',
+						border: '#e6d7c6',
+						logoPrimary: '#c66d1a',
+						logoSecondary: '#fde6c8',
+						logoTertiary: '#f3b478',
+						logoAccent: '#e89a47',
+						logoHighlight: '#fff1de'
 					},
 					'claude-dark': {
-						bg: '#1d1713', bg2: '#2a211b', panel: '#271e19', panel2: '#342822', border: '#4f3d31',
-						logoPrimary: '#c66d1a', logoSecondary: '#f3cfab', logoTertiary: '#d88b43', logoAccent: '#cb7724', logoHighlight: '#ffe2c6'
+						bg: '#1d1713',
+						bg2: '#2a211b',
+						panel: '#271e19',
+						panel2: '#342822',
+						border: '#4f3d31',
+						logoPrimary: '#c66d1a',
+						logoSecondary: '#f3cfab',
+						logoTertiary: '#d88b43',
+						logoAccent: '#cb7724',
+						logoHighlight: '#ffe2c6'
 					},
 					night: {
-						bg: '#000000', bg2: '#080808', panel: '#060606', panel2: '#101010', border: '#242424',
-						logoPrimary: '#b8b8b8', logoSecondary: '#5f5f5f', logoTertiary: '#8b8b8b', logoAccent: '#a3a3a3', logoHighlight: '#dadada'
+						bg: '#000000',
+						bg2: '#080808',
+						panel: '#060606',
+						panel2: '#101010',
+						border: '#242424',
+						logoPrimary: '#b8b8b8',
+						logoSecondary: '#5f5f5f',
+						logoTertiary: '#8b8b8b',
+						logoAccent: '#a3a3a3',
+						logoHighlight: '#dadada'
 					}
 				}
 
@@ -131,12 +197,18 @@
 						const raw = window.localStorage.getItem('dora-appearance')
 						if (raw) {
 							const parsed = JSON.parse(raw)
-							if (parsed && typeof parsed.theme === 'string' && themeMap[parsed.theme]) {
+							if (
+								parsed &&
+								typeof parsed.theme === 'string' &&
+								themeMap[parsed.theme]
+							) {
 								return parsed.theme
 							}
 						}
 					} catch (_e) {}
-					return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+					return window.matchMedia('(prefers-color-scheme: light)').matches
+						? 'light'
+						: 'dark'
 				}
 
 				const p = themeMap[getTheme()] || themeMap.dark

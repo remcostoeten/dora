@@ -207,19 +207,14 @@ describe('useDatabaseStudioEdits', function () {
 		})
 
 		expect(updateCell.mutateAsync).toHaveBeenCalledTimes(1)
-		expect(trackBatchCellMutation).toHaveBeenCalledWith(
-			'conn-1',
-			'users',
-			'id',
-			[
-				{
-					primaryKeyValue: 1,
-					columnName: 'name',
-					previousValue: 'Alpha',
-					newValue: 'Beta'
-				}
-			]
-		)
+		expect(trackBatchCellMutation).toHaveBeenCalledWith('conn-1', 'users', 'id', [
+			{
+				primaryKeyValue: 1,
+				columnName: 'name',
+				previousValue: 'Alpha',
+				newValue: 'Beta'
+			}
+		])
 		// Optimistic update keeps the new value on screen without a refetch.
 		expect(setTableData).toHaveBeenCalled()
 		expect(loadTableData).not.toHaveBeenCalled()

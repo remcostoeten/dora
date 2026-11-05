@@ -49,7 +49,6 @@ export function ProjectInfoPanel({ className, maxHeight = 400 }: Props) {
 							</a>
 						</div>
 					</div>
-
 				</div>
 			</SidebarPanelContent>
 		</SidebarPanel>

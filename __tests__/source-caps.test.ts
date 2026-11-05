@@ -2,7 +2,10 @@ import {
 	buildConnectionFromDataFiles,
 	buildConnectionFromDatabaseFile
 } from '@studio/features/connections/utils/data-files'
-import { describeConnectionSource, resolvePresetToEngine } from '@studio/features/connections/resolve-source'
+import {
+	describeConnectionSource,
+	resolvePresetToEngine
+} from '@studio/features/connections/resolve-source'
 import { getSourceCaps } from '@studio/features/connections/source-caps'
 import type { Connection } from '@studio/features/connections/types'
 import { describe, expect, it } from 'vitest'

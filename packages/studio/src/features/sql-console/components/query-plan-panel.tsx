@@ -211,18 +211,13 @@ function PlanTreeNode({
 	return (
 		<div>
 			<div
-				className={cn(
-					'border-l-2 py-1 pr-2',
-					costColorClass(node.cost, maxCost)
-				)}
+				className={cn('border-l-2 py-1 pr-2', costColorClass(node.cost, maxCost))}
 				style={{ paddingLeft: `${depth * 16 + 8}px` }}
 			>
 				<div className='font-mono text-xs text-sidebar-foreground'>{node.label}</div>
 				{hasMetrics && (
 					<div className='mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 font-mono text-[11px] text-muted-foreground'>
-						{node.cost !== undefined && (
-							<span>cost={node.cost.toLocaleString()}</span>
-						)}
+						{node.cost !== undefined && <span>cost={node.cost.toLocaleString()}</span>}
 						{node.rows !== undefined && <span>rows={node.rows.toLocaleString()}</span>}
 						{node.width !== undefined && <span>width={node.width}</span>}
 						{node.actualTime !== undefined && (
@@ -240,14 +235,7 @@ function PlanTreeNode({
 				)}
 			</div>
 			{node.children.map(function (child, index) {
-				return (
-					<PlanTreeNode
-						key={index}
-						node={child}
-						depth={depth + 1}
-						maxCost={maxCost}
-					/>
-				)
+				return <PlanTreeNode key={index} node={child} depth={depth + 1} maxCost={maxCost} />
 			})}
 		</div>
 	)

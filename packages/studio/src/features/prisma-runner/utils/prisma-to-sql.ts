@@ -283,7 +283,9 @@ function buildFieldCondition(
 				clauses.push(op === 'not' ? `${ident} IS NOT NULL` : `${ident} IS NULL`)
 				continue
 			}
-			clauses.push(`${ident} ${COMPARISON_OPS[op]} ${params.add(serializeValue(operand, dialect))}`)
+			clauses.push(
+				`${ident} ${COMPARISON_OPS[op]} ${params.add(serializeValue(operand, dialect))}`
+			)
 			continue
 		}
 		if (op === 'in' || op === 'notIn') {
@@ -901,7 +903,10 @@ export function prismaToSql(
 ): TranslationResult {
 	let source = code.trim()
 	if (!source) return { error: 'Enter a Prisma query to execute.' }
-	source = source.replace(/^await\s+/, '').replace(/;\s*$/, '').trim()
+	source = source
+		.replace(/^await\s+/, '')
+		.replace(/;\s*$/, '')
+		.trim()
 	source = source.replace(/^(?:const|let|var)\s+[A-Za-z0-9_$]+\s*=\s*/, '').trim()
 
 	if (/^prisma\.\$transaction\b/.test(source)) {

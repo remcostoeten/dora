@@ -39,9 +39,9 @@ export function useDataFileEntriesCatalog(
 					return result.data
 				},
 				enabled: enabled && connection.status === 'connected',
-				staleTime: 30_000,
+				staleTime: 30_000
 			}
-		}),
+		})
 	})
 
 	return useMemo(

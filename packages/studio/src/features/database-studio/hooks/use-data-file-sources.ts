@@ -5,7 +5,7 @@ import { useConnectionMutations } from '@studio/core/data-provider/hooks'
 import type { Connection } from '@studio/features/connections/types'
 import type {
 	DataFileSourceEntry,
-	DatabaseConnectResult,
+	DatabaseConnectResult
 } from '@studio/features/connections/types/data-file-source'
 import { describeConnectionSource } from '@studio/features/connections/resolve-source'
 import { frontendToBackendDatabaseInfo } from '@studio/features/connections/utils/mapping'
@@ -39,8 +39,7 @@ export function applyConnectResult(
 export function useDataFileSources(connection: Connection | undefined) {
 	const adapter = useAdapter()
 	const queryClient = useQueryClient()
-	const { updateConnection, connectToDatabase, disconnectFromDatabase } =
-		useConnectionMutations()
+	const { updateConnection, connectToDatabase, disconnectFromDatabase } = useConnectionMutations()
 	const connectionId = connection?.id
 	const isDataFileSession =
 		connection != null && describeConnectionSource(connection).kind === 'data-file'
@@ -53,7 +52,7 @@ export function useDataFileSources(connection: Connection | undefined) {
 			if (!res.ok) throw new Error(getAdapterError(res))
 			return res.data
 		},
-		enabled: Boolean(connectionId && isDataFileSession),
+		enabled: Boolean(connectionId && isDataFileSession)
 	})
 
 	const persistSources = useMutation({
@@ -62,12 +61,12 @@ export function useDataFileSources(connection: Connection | undefined) {
 			const nextConnection: Connection = {
 				...connection,
 				name: deriveDataFileName(fileSources),
-				fileSources,
+				fileSources
 			}
 			await updateConnection.mutateAsync({
 				id: connection.id,
 				name: nextConnection.name,
-				databaseType: frontendToBackendDatabaseInfo(nextConnection),
+				databaseType: frontendToBackendDatabaseInfo(nextConnection)
 			})
 			await disconnectFromDatabase.mutateAsync(connection.id)
 			const connectResult = await connectToDatabase.mutateAsync(connection.id)
@@ -77,7 +76,7 @@ export function useDataFileSources(connection: Connection | undefined) {
 			await queryClient.invalidateQueries({ queryKey: ['schema', connection.id] })
 			await queryClient.invalidateQueries({ queryKey: ['connections'] })
 			return connectResult
-		},
+		}
 	})
 
 	const retryRegistration = useMutation({
@@ -91,7 +90,7 @@ export function useDataFileSources(connection: Connection | undefined) {
 			await queryClient.invalidateQueries({ queryKey: ['schema', connectionId] })
 			await queryClient.invalidateQueries({ queryKey: ['connections'] })
 			return res.data
-		},
+		}
 	})
 
 	const removeSource = useMutation({
@@ -104,7 +103,7 @@ export function useDataFileSources(connection: Connection | undefined) {
 				throw new Error('Cannot remove the last data file source')
 			}
 			return persistSources.mutateAsync(nextSources)
-		},
+		}
 	})
 
 	const relocateSource = useMutation({
@@ -119,7 +118,7 @@ export function useDataFileSources(connection: Connection | undefined) {
 				return source === path ? replacement : source
 			})
 			return persistSources.mutateAsync(nextSources)
-		},
+		}
 	})
 
 	return {
@@ -132,6 +131,6 @@ export function useDataFileSources(connection: Connection | undefined) {
 			relocateSource.isPending,
 		retryRegistration,
 		removeSource,
-		relocateSource,
+		relocateSource
 	}
 }

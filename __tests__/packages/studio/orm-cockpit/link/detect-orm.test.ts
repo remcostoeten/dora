@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-	detectOrm,
-	type ProjectReader,
-} from '@studio/features/orm-cockpit/link/detect-orm'
+import { detectOrm, type ProjectReader } from '@studio/features/orm-cockpit/link/detect-orm'
 
 /**
  * Build a ProjectReader from a flat path→text map (paths are absolute). `listDir`
@@ -25,7 +22,7 @@ function makeReader(files: Record<string, string>): ProjectReader {
 				out.add(prefix + segment)
 			}
 			return Array.from(out)
-		},
+		}
 	}
 }
 
@@ -34,7 +31,7 @@ const ROOT = '/proj'
 describe('detectOrm — prisma', function () {
 	it('detects a prisma/schema.prisma project', async function () {
 		const reader = makeReader({
-			'/proj/prisma/schema.prisma': 'model User { id Int @id }',
+			'/proj/prisma/schema.prisma': 'model User { id Int @id }'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
@@ -47,7 +44,7 @@ describe('detectOrm — prisma', function () {
 		const reader = makeReader({
 			'/proj/prisma/schema/user.prisma': 'model User { id Int @id }',
 			'/proj/prisma/schema/post.prisma': 'model Post { id Int @id }',
-			'/proj/prisma/schema/readme.md': 'ignore me',
+			'/proj/prisma/schema/readme.md': 'ignore me'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
@@ -55,14 +52,14 @@ describe('detectOrm — prisma', function () {
 		expect(result.link.orm).toBe('prisma')
 		expect(result.link.schemaFiles.map((f) => f.path).sort()).toEqual([
 			'/proj/prisma/schema/post.prisma',
-			'/proj/prisma/schema/user.prisma',
+			'/proj/prisma/schema/user.prisma'
 		])
 	})
 
 	it('honors a package.json prisma.schema field', async function () {
 		const reader = makeReader({
 			'/proj/package.json': JSON.stringify({ prisma: { schema: 'db/custom.prisma' } }),
-			'/proj/db/custom.prisma': 'model User { id Int @id }',
+			'/proj/db/custom.prisma': 'model User { id Int @id }'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
@@ -75,7 +72,7 @@ describe('detectOrm — drizzle', function () {
 	it('reads the schema path out of drizzle.config.ts', async function () {
 		const reader = makeReader({
 			'/proj/drizzle.config.ts': "export default { schema: './src/db/schema.ts' }",
-			'/proj/src/db/schema.ts': "export const users = pgTable('users', {})",
+			'/proj/src/db/schema.ts': "export const users = pgTable('users', {})"
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
@@ -89,20 +86,20 @@ describe('detectOrm — drizzle', function () {
 		const reader = makeReader({
 			'/proj/drizzle.config.ts': "export default { schema: './src/db/schema/*.ts' }",
 			'/proj/src/db/schema/users.ts': 'export const users = {}',
-			'/proj/src/db/schema/posts.ts': 'export const posts = {}',
+			'/proj/src/db/schema/posts.ts': 'export const posts = {}'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
 		if (result.kind !== 'linked') return
 		expect(result.link.schemaFiles.map((f) => f.path).sort()).toEqual([
 			'/proj/src/db/schema/posts.ts',
-			'/proj/src/db/schema/users.ts',
+			'/proj/src/db/schema/users.ts'
 		])
 	})
 
 	it('falls back to common locations when there is no config', async function () {
 		const reader = makeReader({
-			'/proj/src/db/schema.ts': "export const users = pgTable('users', {})",
+			'/proj/src/db/schema.ts': "export const users = pgTable('users', {})"
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
@@ -118,14 +115,14 @@ describe('detectOrm — drizzle', function () {
 			'/proj/src/features/auth/auth.schema.ts': 'export const users = {}',
 			'/proj/src/features/entries/entries.schema.ts': 'export const entries = {}',
 			'/proj/src/features/auth/auth.service.ts': 'ignore me',
-			'/proj/src/db/client.ts': 'ignore me too',
+			'/proj/src/db/client.ts': 'ignore me too'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
 		if (result.kind !== 'linked') return
 		expect(result.link.schemaFiles.map((f) => f.path).sort()).toEqual([
 			'/proj/src/features/auth/auth.schema.ts',
-			'/proj/src/features/entries/entries.schema.ts',
+			'/proj/src/features/entries/entries.schema.ts'
 		])
 	})
 })
@@ -137,7 +134,7 @@ describe('detectOrm — monorepo workspaces', function () {
 			'/proj/apps/api/drizzle.config.ts':
 				"export default { schema: './src/features/**/*.schema.ts' }",
 			'/proj/apps/api/src/features/auth/auth.schema.ts': 'export const users = {}',
-			'/proj/apps/web/package.json': '{}',
+			'/proj/apps/web/package.json': '{}'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
@@ -146,7 +143,7 @@ describe('detectOrm — monorepo workspaces', function () {
 		expect(result.link.rootDir).toBe('/proj/apps/api')
 		expect(result.link.configPath).toBe('/proj/apps/api/drizzle.config.ts')
 		expect(result.link.schemaFiles.map((f) => f.path)).toEqual([
-			'/proj/apps/api/src/features/auth/auth.schema.ts',
+			'/proj/apps/api/src/features/auth/auth.schema.ts'
 		])
 	})
 
@@ -154,7 +151,7 @@ describe('detectOrm — monorepo workspaces', function () {
 		const reader = makeReader({
 			'/proj/pnpm-workspace.yaml': 'packages:\n  - "services/*"\n',
 			'/proj/services/db/drizzle.config.ts': "export default { schema: './schema.ts' }",
-			'/proj/services/db/schema.ts': 'export const users = {}',
+			'/proj/services/db/schema.ts': 'export const users = {}'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('linked')
@@ -166,14 +163,14 @@ describe('detectOrm — monorepo workspaces', function () {
 		const reader = makeReader({
 			'/proj/apps/api/drizzle.config.ts': "export default { schema: './schema.ts' }",
 			'/proj/apps/api/schema.ts': 'export const a = {}',
-			'/proj/apps/worker/prisma/schema.prisma': 'model B { id Int @id }',
+			'/proj/apps/worker/prisma/schema.prisma': 'model B { id Int @id }'
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('choice')
 		if (result.kind !== 'choice') return
 		expect(result.options.map((o) => o.rootDir).sort()).toEqual([
 			'/proj/apps/api',
-			'/proj/apps/worker',
+			'/proj/apps/worker'
 		])
 	})
 })
@@ -183,7 +180,7 @@ describe('detectOrm — ambiguous and empty', function () {
 		const reader = makeReader({
 			'/proj/prisma/schema.prisma': 'model User { id Int @id }',
 			'/proj/drizzle.config.ts': "export default { schema: './src/db/schema.ts' }",
-			'/proj/src/db/schema.ts': "export const users = pgTable('users', {})",
+			'/proj/src/db/schema.ts': "export const users = pgTable('users', {})"
 		})
 		const result = await detectOrm(ROOT, reader)
 		expect(result.kind).toBe('choice')

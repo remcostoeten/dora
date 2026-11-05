@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ColumnInfo, DatabaseSchema, TableInfo } from '@/lib/bindings'
-import {
-	prismaToSql,
-	type TranslationResult
-} from '@/features/prisma-runner/utils/prisma-to-sql'
+import { prismaToSql, type TranslationResult } from '@/features/prisma-runner/utils/prisma-to-sql'
 
 function col(name: string, overrides: Partial<ColumnInfo> = {}): ColumnInfo {
 	return {
@@ -99,7 +96,11 @@ describe('prismaToSql - findMany', function () {
 	it('rejects unknown select column', function () {
 		expect(
 			asError(
-				prismaToSql('prisma.user.findMany({ select: { nope: true } })', buildSchema, 'sqlite')
+				prismaToSql(
+					'prisma.user.findMany({ select: { nope: true } })',
+					buildSchema,
+					'sqlite'
+				)
 			).error
 		).toContain('nope')
 	})
@@ -194,7 +195,11 @@ describe('prismaToSql - where operators', function () {
 	})
 
 	it('rejects unknown column in where', function () {
-		const r = prismaToSql('prisma.user.findMany({ where: { nope: 1 } })', buildSchema, 'postgresql')
+		const r = prismaToSql(
+			'prisma.user.findMany({ where: { nope: 1 } })',
+			buildSchema,
+			'postgresql'
+		)
 		expect(asError(r).error).toContain('nope')
 	})
 
@@ -238,7 +243,7 @@ describe('prismaToSql - create / createMany / update / delete', function () {
 				'mysql'
 			)
 		)
-		expect(r.sql).toBe('INSERT INTO `users` (`email`) VALUES (\'a\'), (\'b\')')
+		expect(r.sql).toBe("INSERT INTO `users` (`email`) VALUES ('a'), ('b')")
 		expect(r.params).toEqual([])
 	})
 
@@ -256,7 +261,11 @@ describe('prismaToSql - create / createMany / update / delete', function () {
 
 	it('updateMany without where', function () {
 		const r = asSql(
-			prismaToSql('prisma.user.updateMany({ data: { active: false } })', buildSchema, 'sqlite')
+			prismaToSql(
+				'prisma.user.updateMany({ data: { active: false } })',
+				buildSchema,
+				'sqlite'
+			)
 		)
 		expect(r.sql).toBe('UPDATE "users" SET "active" = 0')
 		expect(r.params).toEqual([])
@@ -281,16 +290,20 @@ describe('prismaToSql - create / createMany / update / delete', function () {
 	})
 
 	it('delete requires where', function () {
-		expect(asError(prismaToSql('prisma.user.delete()', buildSchema, 'postgresql')).error).toContain(
-			'where'
-		)
+		expect(
+			asError(prismaToSql('prisma.user.delete()', buildSchema, 'postgresql')).error
+		).toContain('where')
 	})
 })
 
 describe('prismaToSql - include -> JOIN', function () {
 	it('single-level include emits LEFT JOIN', function () {
 		const r = asSql(
-			prismaToSql('prisma.user.findMany({ include: { post: true } })', buildSchema, 'postgresql')
+			prismaToSql(
+				'prisma.user.findMany({ include: { post: true } })',
+				buildSchema,
+				'postgresql'
+			)
 		)
 		expect(r.sql).toBe(
 			'SELECT "users".* FROM "users" LEFT JOIN "posts" ON "posts"."author_id" = "users"."id"'
@@ -312,7 +325,11 @@ describe('prismaToSql - include -> JOIN', function () {
 describe('prismaToSql - $queryRaw passthrough', function () {
 	it('passes through raw sql and extracts interpolations', function () {
 		const r = asSql(
-			prismaToSql('prisma.$queryRaw`SELECT * FROM users WHERE id = ${userId}`', buildSchema, 'postgresql')
+			prismaToSql(
+				'prisma.$queryRaw`SELECT * FROM users WHERE id = ${userId}`',
+				buildSchema,
+				'postgresql'
+			)
 		)
 		expect(r.sql).toBe('SELECT * FROM users WHERE id = $1')
 		expect(r.params).toEqual(['userId'])
@@ -320,7 +337,11 @@ describe('prismaToSql - $queryRaw passthrough', function () {
 
 	it('$executeRaw uses ? for sqlite', function () {
 		const r = asSql(
-			prismaToSql('prisma.$executeRaw`DELETE FROM users WHERE id = ${id}`', buildSchema, 'sqlite')
+			prismaToSql(
+				'prisma.$executeRaw`DELETE FROM users WHERE id = ${id}`',
+				buildSchema,
+				'sqlite'
+			)
 		)
 		expect(r.sql).toBe('DELETE FROM users WHERE id = ?')
 		expect(r.params).toEqual(['id'])

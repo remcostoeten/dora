@@ -85,10 +85,7 @@ function prependChangelogEntry(
 		return
 	}
 
-	fs.writeFileSync(
-		changelogPath,
-		existing.slice(0, insertAt) + entry + existing.slice(insertAt)
-	)
+	fs.writeFileSync(changelogPath, existing.slice(0, insertAt) + entry + existing.slice(insertAt))
 }
 
 function bumpVersion(version: string, type: 'major' | 'minor' | 'patch'): string {

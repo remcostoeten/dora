@@ -18,7 +18,7 @@ import type {
 	ColumnDiff,
 	Confidence,
 	SchemaDiff,
-	TableDiff,
+	TableDiff
 } from '@studio/features/orm-cockpit/diff/types'
 
 type Props = {
@@ -39,7 +39,10 @@ function ConfidenceChip({ confidence }: { confidence: Confidence }) {
 	return (
 		<Badge
 			variant='outline'
-			className={cn('h-5 px-1.5 text-[10px] font-medium capitalize', confidenceClass(confidence))}
+			className={cn(
+				'h-5 px-1.5 text-[10px] font-medium capitalize',
+				confidenceClass(confidence)
+			)}
 		>
 			{confidence}
 		</Badge>
@@ -104,8 +107,7 @@ function ColumnRow({ col }: { col: ColumnDiff }) {
 
 function TableCard({ table }: { table: TableDiff }) {
 	const [open, setOpen] = useState(table.confidence === 'destructive')
-	const changeCount =
-		table.columns.length + table.indexes.length + table.foreignKeys.length
+	const changeCount = table.columns.length + table.indexes.length + table.foreignKeys.length
 	const detail =
 		table.kind === 'added'
 			? 'new table'
@@ -128,7 +130,7 @@ function TableCard({ table }: { table: TableDiff }) {
 				<ChevronRight
 					className={cn(
 						'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
-						open && 'rotate-90',
+						open && 'rotate-90'
 					)}
 				/>
 				{kindIcon(table.kind)}
@@ -189,15 +191,7 @@ function TableCard({ table }: { table: TableDiff }) {
 }
 
 /** A labeled group of table diffs sharing a direction. */
-function DriftGroup({
-	title,
-	hint,
-	tables,
-}: {
-	title: string
-	hint: string
-	tables: TableDiff[]
-}) {
+function DriftGroup({ title, hint, tables }: { title: string; hint: string; tables: TableDiff[] }) {
 	if (tables.length === 0) {
 		return null
 	}

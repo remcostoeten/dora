@@ -1,14 +1,4 @@
-import {
-	Clock,
-	Trash2,
-	CheckCircle,
-	XCircle,
-	Pin,
-	PinOff,
-	Layers,
-	Download,
-	X,
-} from 'lucide-react'
+import { Clock, Trash2, CheckCircle, XCircle, Pin, PinOff, Layers, Download, X } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
@@ -22,7 +12,11 @@ type Props = {
 	getConnectionName?: (id: string) => string
 }
 
-export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConnectionName }: Props) {
+export function QueryHistoryPanel({
+	onSelectQuery,
+	currentConnectionId,
+	getConnectionName
+}: Props) {
 	const { history, clearHistory, removeFromHistory, pinItem, unpinItem } = useQueryHistory()
 	const [search, setSearch] = useState('')
 	const [groupByConnection, setGroupByConnection] = useState(false)
@@ -79,43 +73,46 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 		URL.revokeObjectURL(url)
 	}
 
-	const filtered = useMemo(function () {
-		const q = search.toLowerCase()
-		if (!q) return history
-		return history.filter(function (item) {
-			return (
-				item.query.toLowerCase().includes(q) ||
-				(item.error && item.error.toLowerCase().includes(q))
-			)
-		})
-	}, [history, search])
-
-	const visibleItems = useMemo(function () {
-		if (!currentConnectionId) return filtered
-		return filtered.filter(function (item) {
-			return item.connectionId === currentConnectionId || item.pinned
-		})
-	}, [filtered, currentConnectionId])
-
-	const pinnedItems = useMemo(
-		() => visibleItems.filter((i) => i.pinned),
-		[visibleItems]
-	)
-	const unpinnedItems = useMemo(
-		() => visibleItems.filter((i) => !i.pinned),
-		[visibleItems]
+	const filtered = useMemo(
+		function () {
+			const q = search.toLowerCase()
+			if (!q) return history
+			return history.filter(function (item) {
+				return (
+					item.query.toLowerCase().includes(q) ||
+					(item.error && item.error.toLowerCase().includes(q))
+				)
+			})
+		},
+		[history, search]
 	)
 
-	const groups = useMemo(function () {
-		if (!groupByConnection) return null
-		const map = new Map<string, QueryHistoryItem[]>()
-		unpinnedItems.forEach(function (item) {
-			const key = item.connectionId ?? '__unknown__'
-			if (!map.has(key)) map.set(key, [])
-			map.get(key)!.push(item)
-		})
-		return map
-	}, [groupByConnection, unpinnedItems])
+	const visibleItems = useMemo(
+		function () {
+			if (!currentConnectionId) return filtered
+			return filtered.filter(function (item) {
+				return item.connectionId === currentConnectionId || item.pinned
+			})
+		},
+		[filtered, currentConnectionId]
+	)
+
+	const pinnedItems = useMemo(() => visibleItems.filter((i) => i.pinned), [visibleItems])
+	const unpinnedItems = useMemo(() => visibleItems.filter((i) => !i.pinned), [visibleItems])
+
+	const groups = useMemo(
+		function () {
+			if (!groupByConnection) return null
+			const map = new Map<string, QueryHistoryItem[]>()
+			unpinnedItems.forEach(function (item) {
+				const key = item.connectionId ?? '__unknown__'
+				if (!map.has(key)) map.set(key, [])
+				map.get(key)!.push(item)
+			})
+			return map
+		},
+		[groupByConnection, unpinnedItems]
+	)
 
 	function renderItem(item: QueryHistoryItem) {
 		return (
@@ -125,7 +122,9 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 				tabIndex={0}
 				aria-label={`Load query: ${truncateQuery(item.query)}`}
 				className='group flex flex-col px-3 py-2 border-b border-sidebar-border/50 hover:bg-sidebar-accent/50 cursor-pointer transition-colors outline-none focus-visible:bg-focus'
-				onClick={function () { onSelectQuery(item) }}
+				onClick={function () {
+					onSelectQuery(item)
+				}}
 				onKeyDown={function (e) {
 					if (e.target !== e.currentTarget) return
 					if (e.key === 'Enter' || e.key === ' ') {
@@ -219,7 +218,9 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 							groupByConnection && 'text-primary bg-sidebar-accent'
 						)}
 						title='Group by connection'
-						onClick={function () { setGroupByConnection((v) => !v) }}
+						onClick={function () {
+							setGroupByConnection((v) => !v)
+						}}
 					>
 						<Layers className='h-3.5 w-3.5' />
 					</Button>
@@ -252,13 +253,17 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 					<Input
 						placeholder='Search history...'
 						value={search}
-						onChange={function (e) { setSearch(e.target.value) }}
+						onChange={function (e) {
+							setSearch(e.target.value)
+						}}
 						className='h-6 text-xs pr-6'
 					/>
 					{search && (
 						<button
 							className='absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
-							onClick={function () { setSearch('') }}
+							onClick={function () {
+								setSearch('')
+							}}
 						>
 							<X className='h-3 w-3' />
 						</button>
@@ -287,26 +292,31 @@ export function QueryHistoryPanel({ onSelectQuery, currentConnectionId, getConne
 						)}
 
 						{/* Unpinned — flat or grouped */}
-						{!groupByConnection ? (
-							unpinnedItems.map(renderItem)
-						) : (
-							groups && Array.from(groups.entries()).map(function ([key, items]) {
-								const label = connectionLabel(key === '__unknown__' ? null : key)
-								const collapsed = collapsedGroups.has(key)
-								return (
-									<div key={key}>
-										<button
-											className='w-full flex items-center justify-between px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-sidebar-accent/20 border-b border-sidebar-border hover:bg-sidebar-accent/40 transition-colors'
-											onClick={function () { toggleGroup(key) }}
-										>
-											<span>{label}</span>
-											<span>{collapsed ? '▸' : '▾'} {items.length}</span>
-										</button>
-										{!collapsed && items.map(renderItem)}
-									</div>
-								)
-							})
-						)}
+						{!groupByConnection
+							? unpinnedItems.map(renderItem)
+							: groups &&
+								Array.from(groups.entries()).map(function ([key, items]) {
+									const label = connectionLabel(
+										key === '__unknown__' ? null : key
+									)
+									const collapsed = collapsedGroups.has(key)
+									return (
+										<div key={key}>
+											<button
+												className='w-full flex items-center justify-between px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-sidebar-accent/20 border-b border-sidebar-border hover:bg-sidebar-accent/40 transition-colors'
+												onClick={function () {
+													toggleGroup(key)
+												}}
+											>
+												<span>{label}</span>
+												<span>
+													{collapsed ? '▸' : '▾'} {items.length}
+												</span>
+											</button>
+											{!collapsed && items.map(renderItem)}
+										</div>
+									)
+								})}
 					</div>
 				)}
 			</ScrollArea>

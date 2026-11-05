@@ -12,13 +12,16 @@ connection string and enables SSL, which Aiven requires.
    information** / **Overview** panel.
 2. Copy the **Service URI**:
 
-   ```text
-   postgres://avnadmin:<password>@<service>.aivencloud.com:<port>/defaultdb?sslmode=require
-   ```
+    ```text
+    postgres://avnadmin:<password>@<service>.aivencloud.com:<port>/defaultdb?sslmode=require
+    ```
 
-   For MySQL services the scheme is `mysql://` and the port differs.
+    For MySQL services the scheme is `mysql://` and the port differs.
 
 3. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URI,
    **Test connection**, and **Save**.
 
-<Callout type='info'>Aiven requires SSL (`sslmode=require`). Dora keeps the SSL setting that is in the URI, and enables SSL by default for `*.aivencloud.com` hosts.</Callout>
+<Callout type='info'>
+	Aiven requires SSL (`sslmode=require`). Dora keeps the SSL setting that is in the URI, and
+	enables SSL by default for `*.aivencloud.com` hosts.
+</Callout>

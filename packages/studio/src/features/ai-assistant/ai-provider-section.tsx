@@ -95,18 +95,25 @@ export function AiProviderSection() {
 	const [saving, setSaving] = useState(false)
 	const [message, setMessage] = useState<string | null>(null)
 
-	const groupedModels = useMemo(function () {
-		return groupModels(modelOptions)
-	}, [modelOptions])
+	const groupedModels = useMemo(
+		function () {
+			return groupModels(modelOptions)
+		},
+		[modelOptions]
+	)
 
-	const knownModelIds = useMemo(function () {
-		return new Set(modelOptions.map(function (option) {
-			return option.id
-		}))
-	}, [modelOptions])
+	const knownModelIds = useMemo(
+		function () {
+			return new Set(
+				modelOptions.map(function (option) {
+					return option.id
+				})
+			)
+		},
+		[modelOptions]
+	)
 
-	const usingCustomModel =
-		config.provider !== 'mock' && !knownModelIds.has(config.model)
+	const usingCustomModel = config.provider !== 'mock' && !knownModelIds.has(config.model)
 
 	const selectValue = usingCustomModel ? CUSTOM_MODEL_VALUE : config.model
 
@@ -130,38 +137,42 @@ export function AiProviderSection() {
 		[isTauri]
 	)
 
-	const load = useCallback(async function load() {
-		setLoading(true)
-		setMessage(null)
-		try {
-			if (!isTauri) {
-				const mock = buildMockAiStatus()
-				setConfig({
-					provider: mock.active_provider,
-					model: mock.active_model,
-					ollama_endpoint: DEFAULT_CONFIG.ollama_endpoint
-				})
-				publishAiSelection({
-					provider: mock.active_provider,
-					ollamaEndpoint: DEFAULT_CONFIG.ollama_endpoint
-				})
-				setModelOptions(buildMockProviderModels(mock.active_provider))
-				return
-			}
+	const load = useCallback(
+		async function load() {
+			setLoading(true)
+			setMessage(null)
+			try {
+				if (!isTauri) {
+					const mock = buildMockAiStatus()
+					setConfig({
+						provider: mock.active_provider,
+						model: mock.active_model,
+						ollama_endpoint: DEFAULT_CONFIG.ollama_endpoint
+					})
+					publishAiSelection({
+						provider: mock.active_provider,
+						ollamaEndpoint: DEFAULT_CONFIG.ollama_endpoint
+					})
+					setModelOptions(buildMockProviderModels(mock.active_provider))
+					return
+				}
 
-			const result = await commands.aiGetConfig()
-			if (result.status === 'ok') {
-				setConfig(result.data)
-				publishAiSelection({
-					provider: result.data.provider,
-					ollamaEndpoint: result.data.ollama_endpoint || DEFAULT_CONFIG.ollama_endpoint
-				})
-				await loadModels(result.data.provider)
+				const result = await commands.aiGetConfig()
+				if (result.status === 'ok') {
+					setConfig(result.data)
+					publishAiSelection({
+						provider: result.data.provider,
+						ollamaEndpoint:
+							result.data.ollama_endpoint || DEFAULT_CONFIG.ollama_endpoint
+					})
+					await loadModels(result.data.provider)
+				}
+			} finally {
+				setLoading(false)
 			}
-		} finally {
-			setLoading(false)
-		}
-	}, [isTauri, loadModels])
+		},
+		[isTauri, loadModels]
+	)
 
 	useEffect(
 		function loadOnMount() {
@@ -247,7 +258,11 @@ export function AiProviderSection() {
 							<SelectContent>
 								{PROVIDER_OPTIONS.map(function (option) {
 									return (
-										<SelectItem key={option.id} value={option.id} className='text-xs'>
+										<SelectItem
+											key={option.id}
+											value={option.id}
+											className='text-xs'
+										>
 											{option.label}
 										</SelectItem>
 									)
@@ -283,7 +298,10 @@ export function AiProviderSection() {
 									title='Refresh model list from provider'
 								>
 									<RefreshCw
-										className={cn('h-3 w-3', loadingModels ? 'animate-spin' : undefined)}
+										className={cn(
+											'h-3 w-3',
+											loadingModels ? 'animate-spin' : undefined
+										)}
 									/>
 									Refresh
 								</button>
@@ -378,8 +396,8 @@ export function AiProviderSection() {
 								className='h-8 font-mono text-xs'
 							/>
 							<span className='block text-[10px] text-muted-foreground'>
-								Where Dora reaches the Ollama server. Leave this alone unless you run
-								Ollama on another host or port.
+								Where Dora reaches the Ollama server. Leave this alone unless you
+								run Ollama on another host or port.
 							</span>
 						</label>
 					)}
@@ -397,7 +415,9 @@ export function AiProviderSection() {
 							<span
 								className={cn(
 									'text-[10px]',
-									message === 'Saved' ? 'text-emerald-500' : 'text-muted-foreground'
+									message === 'Saved'
+										? 'text-emerald-500'
+										: 'text-muted-foreground'
 								)}
 							>
 								{message}

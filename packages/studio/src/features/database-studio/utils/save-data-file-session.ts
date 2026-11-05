@@ -12,9 +12,7 @@ export function findExistingDuckDbFileConnection(
 	destinationPath: string
 ): Connection | undefined {
 	return connections.find(function (connection) {
-		return (
-			isNativeDuckDbFileConnection(connection) && connection.url === destinationPath
-		)
+		return isNativeDuckDbFileConnection(connection) && connection.url === destinationPath
 	})
 }
 
@@ -28,9 +26,9 @@ export function buildSavedDuckDbConnectionPayload(destinationPath: string) {
 		databaseType: {
 			DuckDB: {
 				db_path: destinationPath,
-				file_sources: [] as string[],
-			},
-		},
+				file_sources: [] as string[]
+			}
+		}
 	} as const
 }
 
@@ -49,13 +47,11 @@ export function formatSaveDataFileSessionToast(result: SaveDataFileSessionResult
 
 	return {
 		title: `Saved ${tableCount} ${tableLabel} to ${fileName}`,
-		description,
+		description
 	}
 }
 
-export function hasSkippedDataFileSources(
-	entries: { status: string }[]
-): boolean {
+export function hasSkippedDataFileSources(entries: { status: string }[]): boolean {
 	return entries.some(function (entry) {
 		return entry.status !== 'active'
 	})

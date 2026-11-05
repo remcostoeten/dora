@@ -13,14 +13,17 @@ from the connection string's scheme and port.
 2. Copy the **`DATABASE_URL`**. Use the **public** URL (a `*.proxy.rlwy.net` or
    `*.railway.app` host) when connecting from your machine:
 
-   ```text
-   postgresql://postgres:<password>@<host>.proxy.rlwy.net:<port>/railway
-   ```
+    ```text
+    postgresql://postgres:<password>@<host>.proxy.rlwy.net:<port>/railway
+    ```
 
 3. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URL,
    **Test connection**, and **Save**.
 
-<Callout type='warn'>The internal `*.railway.internal` host only resolves inside Railway's private network. From your laptop you must use the public proxy URL.</Callout>
+<Callout type='warn'>
+	The internal `*.railway.internal` host only resolves inside Railway's private network. From your
+	laptop you must use the public proxy URL.
+</Callout>
 
 Dora treats `5432` as PostgreSQL and `3306` as MySQL, and enables SSL for the
 public host. See [connection basics](/docs/connect).

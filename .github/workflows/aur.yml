@@ -1,133 +1,133 @@
 name: AUR
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag to publish to AUR (e.g. v0.26.6)."
-        required: true
-        type: string
-  workflow_call:
-    inputs:
-      tag:
-        description: "Release tag to publish to AUR (e.g. v0.26.6)."
-        required: true
-        type: string
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: 'Release tag to publish to AUR (e.g. v0.26.6).'
+                required: true
+                type: string
+    workflow_call:
+        inputs:
+            tag:
+                description: 'Release tag to publish to AUR (e.g. v0.26.6).'
+                required: true
+                type: string
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  publish-aur:
-    runs-on: ubuntu-latest
-    env:
-      AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-      AUR_KNOWN_HOSTS: ${{ secrets.AUR_KNOWN_HOSTS }}
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-        with:
-          fetch-depth: 0
-          ref: master
-
-      - name: Resolve release metadata
-        id: meta
+    publish-aur:
+        runs-on: ubuntu-latest
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          TAG="${{ inputs.tag }}"
-          VERSION="${TAG#v}"
+            AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+            AUR_KNOWN_HOSTS: ${{ secrets.AUR_KNOWN_HOSTS }}
+        steps:
+            - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+              with:
+                  fetch-depth: 0
+                  ref: master
 
-          ASSET_URL=""
-          for attempt in {1..60}; do
-            ASSET_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} --jq '.assets[] | select(.name == "dora-x86_64-unknown-linux-gnu.tar.gz") | .browser_download_url' | head -1)"
-            if [[ -n "${ASSET_URL}" ]]; then
-              break
-            fi
-            echo "Waiting for dora-x86_64-unknown-linux-gnu.tar.gz on ${TAG} (${attempt}/60)..."
-            sleep 30
-          done
+            - name: Resolve release metadata
+              id: meta
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  TAG="${{ inputs.tag }}"
+                  VERSION="${TAG#v}"
 
-          if [[ -z "${ASSET_URL}" ]]; then
-            echo "Missing release asset dora-x86_64-unknown-linux-gnu.tar.gz on ${TAG}. The Release workflow must publish only after Linux assets are uploaded." >&2
-            exit 1
-          fi
+                  ASSET_URL=""
+                  for attempt in {1..60}; do
+                    ASSET_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} --jq '.assets[] | select(.name == "dora-x86_64-unknown-linux-gnu.tar.gz") | .browser_download_url' | head -1)"
+                    if [[ -n "${ASSET_URL}" ]]; then
+                      break
+                    fi
+                    echo "Waiting for dora-x86_64-unknown-linux-gnu.tar.gz on ${TAG} (${attempt}/60)..."
+                    sleep 30
+                  done
 
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "asset_url=${ASSET_URL}" >> "$GITHUB_OUTPUT"
+                  if [[ -z "${ASSET_URL}" ]]; then
+                    echo "Missing release asset dora-x86_64-unknown-linux-gnu.tar.gz on ${TAG}. The Release workflow must publish only after Linux assets are uploaded." >&2
+                    exit 1
+                  fi
 
-      - name: Compute SHA256
-        id: checksum
-        run: |
-          set -euo pipefail
-          curl -fL "${{ steps.meta.outputs.asset_url }}" -o dora-x86_64-unknown-linux-gnu.tar.gz
-          SHA256="$(sha256sum dora-x86_64-unknown-linux-gnu.tar.gz | awk '{print $1}')"
-          echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
+                  echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+                  echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+                  echo "asset_url=${ASSET_URL}" >> "$GITHUB_OUTPUT"
 
-      - name: Update PKGBUILD
-        run: |
-          set -euo pipefail
-          VERSION="${{ steps.meta.outputs.version }}"
-          SHA256="${{ steps.checksum.outputs.sha256 }}"
+            - name: Compute SHA256
+              id: checksum
+              run: |
+                  set -euo pipefail
+                  curl -fL "${{ steps.meta.outputs.asset_url }}" -o dora-x86_64-unknown-linux-gnu.tar.gz
+                  SHA256="$(sha256sum dora-x86_64-unknown-linux-gnu.tar.gz | awk '{print $1}')"
+                  echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
 
-          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/aur/PKGBUILD
-          sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/aur/PKGBUILD
-          sed -i 's|releases/download/v[0-9][^/]*/dora-x86_64-unknown-linux-gnu.tar.gz|releases/download/v${pkgver}/dora-x86_64-unknown-linux-gnu.tar.gz|' packaging/aur/PKGBUILD
-          sed -i "s|^sha256sums=.*|sha256sums=('${SHA256}')|" packaging/aur/PKGBUILD
+            - name: Update PKGBUILD
+              run: |
+                  set -euo pipefail
+                  VERSION="${{ steps.meta.outputs.version }}"
+                  SHA256="${{ steps.checksum.outputs.sha256 }}"
 
-      - name: Generate .SRCINFO (Arch container)
-        run: |
-          set -euo pipefail
-          docker run --rm \
-            -v "$PWD/packaging/aur:/pkg" \
-            -w /pkg \
-            archlinux:latest \
-            bash -c 'pacman -Syu --noconfirm --needed base-devel \
-              && useradd -m builder \
-              && chown -R builder:builder /pkg \
-              && su builder -c "makepkg --printsrcinfo" > .SRCINFO'
+                  sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/aur/PKGBUILD
+                  sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/aur/PKGBUILD
+                  sed -i 's|releases/download/v[0-9][^/]*/dora-x86_64-unknown-linux-gnu.tar.gz|releases/download/v${pkgver}/dora-x86_64-unknown-linux-gnu.tar.gz|' packaging/aur/PKGBUILD
+                  sed -i "s|^sha256sums=.*|sha256sums=('${SHA256}')|" packaging/aur/PKGBUILD
 
-      - name: Commit packaging updates
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packaging/aur/PKGBUILD packaging/aur/.SRCINFO
-          if git diff --cached --quiet; then
-            echo "No packaging updates required."
-            exit 0
-          fi
-          git commit -m "chore(aur): update dora to ${{ steps.meta.outputs.version }}"
-          git push origin HEAD:master
+            - name: Generate .SRCINFO (Arch container)
+              run: |
+                  set -euo pipefail
+                  docker run --rm \
+                    -v "$PWD/packaging/aur:/pkg" \
+                    -w /pkg \
+                    archlinux:latest \
+                    bash -c 'pacman -Syu --noconfirm --needed base-devel \
+                      && useradd -m builder \
+                      && chown -R builder:builder /pkg \
+                      && su builder -c "makepkg --printsrcinfo" > .SRCINFO'
 
-      - name: Publish to AUR
-        if: ${{ env.AUR_SSH_PRIVATE_KEY != '' && env.AUR_KNOWN_HOSTS != '' }}
-        run: |
-          set -euo pipefail
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          printf '%s\n' "$AUR_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
+            - name: Commit packaging updates
+              run: |
+                  set -euo pipefail
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add packaging/aur/PKGBUILD packaging/aur/.SRCINFO
+                  if git diff --cached --quiet; then
+                    echo "No packaging updates required."
+                    exit 0
+                  fi
+                  git commit -m "chore(aur): update dora to ${{ steps.meta.outputs.version }}"
+                  git push origin HEAD:master
 
-          git clone ssh://aur@aur.archlinux.org/dora.git aur-repo
-          cp packaging/aur/PKGBUILD aur-repo/PKGBUILD
-          cp packaging/aur/.SRCINFO aur-repo/.SRCINFO
+            - name: Publish to AUR
+              if: ${{ env.AUR_SSH_PRIVATE_KEY != '' && env.AUR_KNOWN_HOSTS != '' }}
+              run: |
+                  set -euo pipefail
+                  mkdir -p ~/.ssh
+                  chmod 700 ~/.ssh
+                  printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+                  chmod 600 ~/.ssh/aur
+                  printf '%s\n' "$AUR_KNOWN_HOSTS" > ~/.ssh/known_hosts
+                  chmod 644 ~/.ssh/known_hosts
+                  export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
 
-          cd aur-repo
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add PKGBUILD .SRCINFO
-          if git diff --cached --quiet; then
-            echo "AUR package already up to date."
-            exit 0
-          fi
-          git commit -m "Update dora to ${{ steps.meta.outputs.version }}"
-          git push
+                  git clone ssh://aur@aur.archlinux.org/dora.git aur-repo
+                  cp packaging/aur/PKGBUILD aur-repo/PKGBUILD
+                  cp packaging/aur/.SRCINFO aur-repo/.SRCINFO
 
-      - name: AUR key not configured
-        if: ${{ env.AUR_SSH_PRIVATE_KEY == '' || env.AUR_KNOWN_HOSTS == '' }}
-        run: echo "AUR_SSH_PRIVATE_KEY or AUR_KNOWN_HOSTS is not configured; generated PKGBUILD/.SRCINFO but skipped AUR push."
+                  cd aur-repo
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add PKGBUILD .SRCINFO
+                  if git diff --cached --quiet; then
+                    echo "AUR package already up to date."
+                    exit 0
+                  fi
+                  git commit -m "Update dora to ${{ steps.meta.outputs.version }}"
+                  git push
+
+            - name: AUR key not configured
+              if: ${{ env.AUR_SSH_PRIVATE_KEY == '' || env.AUR_KNOWN_HOSTS == '' }}
+              run: echo "AUR_SSH_PRIVATE_KEY or AUR_KNOWN_HOSTS is not configured; generated PKGBUILD/.SRCINFO but skipped AUR push."

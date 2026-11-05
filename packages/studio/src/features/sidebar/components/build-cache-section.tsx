@@ -72,16 +72,22 @@ export function BuildCacheSection() {
 	const [message, setMessage] = useState<string | null>(null)
 	const [error, setError] = useState<string | null>(null)
 
-	const selectedBytes = useMemo(function () {
-		if (!stats) return 0
-		return stats.entries.reduce(function (total, entry) {
-			return selected.has(entry.name) ? total + entry.bytes : total
-		}, 0)
-	}, [selected, stats])
+	const selectedBytes = useMemo(
+		function () {
+			if (!stats) return 0
+			return stats.entries.reduce(function (total, entry) {
+				return selected.has(entry.name) ? total + entry.bytes : total
+			}, 0)
+		},
+		[selected, stats]
+	)
 
-	const removableEntries = useMemo(function () {
-		return stats?.entries.filter((entry) => entry.removable) ?? []
-	}, [stats])
+	const removableEntries = useMemo(
+		function () {
+			return stats?.entries.filter((entry) => entry.removable) ?? []
+		},
+		[stats]
+	)
 
 	const load = useCallback(async function load() {
 		setLoading(true)
@@ -184,7 +190,11 @@ export function BuildCacheSection() {
 							}}
 							title='Refresh build cache'
 						>
-							{loading ? <Spinner className='h-3.5 w-3.5' /> : <RefreshCw className='h-3.5 w-3.5' />}
+							{loading ? (
+								<Spinner className='h-3.5 w-3.5' />
+							) : (
+								<RefreshCw className='h-3.5 w-3.5' />
+							)}
 						</Button>
 						<Button
 							variant='ghost'

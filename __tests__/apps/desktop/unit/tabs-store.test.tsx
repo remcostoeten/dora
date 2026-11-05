@@ -4,173 +4,321 @@ import React from 'react'
 import { TabsProvider, useTabs } from '@/core/tabs/tabs-store'
 
 function wrapper({ children }: { children: React.ReactNode }) {
-  return <TabsProvider>{children}</TabsProvider>
+	return <TabsProvider>{children}</TabsProvider>
 }
 
 describe('useTabs', () => {
-  // Tabs persist to localStorage; clear it so each case starts isolated.
-  beforeEach(() => {
-    window.localStorage.clear()
-  })
+	// Tabs persist to localStorage; clear it so each case starts isolated.
+	beforeEach(() => {
+		window.localStorage.clear()
+	})
 
-  it('starts empty', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    expect(result.current.tabs).toHaveLength(0)
-    expect(result.current.activeTabId).toBeNull()
-  })
+	it('starts empty', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		expect(result.current.tabs).toHaveLength(0)
+		expect(result.current.activeTabId).toBeNull()
+	})
 
-  it('openTab adds a new tab and makes it active', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-    })
-    expect(result.current.tabs).toHaveLength(1)
-    expect(result.current.activeTabId).toBe(result.current.tabs[0].id)
-  })
+	it('openTab adds a new tab and makes it active', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+		})
+		expect(result.current.tabs).toHaveLength(1)
+		expect(result.current.activeTabId).toBe(result.current.tabs[0].id)
+	})
 
-  it('openTab focuses existing tab instead of duplicating', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-    })
-    expect(result.current.tabs).toHaveLength(1)
-    expect(result.current.activeTabId).toBe(result.current.tabs[0].id)
-  })
+	it('openTab focuses existing tab instead of duplicating', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+		})
+		expect(result.current.tabs).toHaveLength(1)
+		expect(result.current.activeTabId).toBe(result.current.tabs[0].id)
+	})
 
-  it('closeTab removes tab and activates adjacent', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.orders', tableName: 'orders', label: 'orders' })
-    })
-    const firstId = result.current.tabs[0].id
-    const secondId = result.current.tabs[1].id
-    act(() => { result.current.closeTab(firstId) })
-    expect(result.current.tabs).toHaveLength(1)
-    expect(result.current.activeTabId).toBe(secondId)
-  })
+	it('closeTab removes tab and activates adjacent', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.orders',
+				tableName: 'orders',
+				label: 'orders'
+			})
+		})
+		const firstId = result.current.tabs[0].id
+		const secondId = result.current.tabs[1].id
+		act(() => {
+			result.current.closeTab(firstId)
+		})
+		expect(result.current.tabs).toHaveLength(1)
+		expect(result.current.activeTabId).toBe(secondId)
+	})
 
-  it('closeTab on last tab sets activeTabId to null', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-    })
-    const id = result.current.tabs[0].id
-    act(() => { result.current.closeTab(id) })
-    expect(result.current.tabs).toHaveLength(0)
-    expect(result.current.activeTabId).toBeNull()
-  })
+	it('closeTab on last tab sets activeTabId to null', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+		})
+		const id = result.current.tabs[0].id
+		act(() => {
+			result.current.closeTab(id)
+		})
+		expect(result.current.tabs).toHaveLength(0)
+		expect(result.current.activeTabId).toBeNull()
+	})
 
-  it('closeTab on active tab activates the previous tab', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.orders', tableName: 'orders', label: 'orders' })
-    })
-    const firstId = result.current.tabs[0].id
-    const secondId = result.current.tabs[1].id
-    // second tab is currently active (last opened)
-    expect(result.current.activeTabId).toBe(secondId)
-    act(() => { result.current.closeTab(secondId) })
-    expect(result.current.tabs).toHaveLength(1)
-    expect(result.current.activeTabId).toBe(firstId)
-  })
+	it('closeTab on active tab activates the previous tab', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.orders',
+				tableName: 'orders',
+				label: 'orders'
+			})
+		})
+		const firstId = result.current.tabs[0].id
+		const secondId = result.current.tabs[1].id
+		// second tab is currently active (last opened)
+		expect(result.current.activeTabId).toBe(secondId)
+		act(() => {
+			result.current.closeTab(secondId)
+		})
+		expect(result.current.tabs).toHaveLength(1)
+		expect(result.current.activeTabId).toBe(firstId)
+	})
 
-  it('caps at 12 tabs, replacing the oldest', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      for (let i = 0; i < 13; i++) {
-        result.current.openTab({ connectionId: 'c1', tableId: `public.t${i}`, tableName: `t${i}`, label: `t${i}` })
-      }
-    })
-    expect(result.current.tabs).toHaveLength(12)
-    expect(result.current.tabs[0].label).toBe('t1')
-  })
+	it('caps at 12 tabs, replacing the oldest', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			for (let i = 0; i < 13; i++) {
+				result.current.openTab({
+					connectionId: 'c1',
+					tableId: `public.t${i}`,
+					tableName: `t${i}`,
+					label: `t${i}`
+				})
+			}
+		})
+		expect(result.current.tabs).toHaveLength(12)
+		expect(result.current.tabs[0].label).toBe('t1')
+	})
 
-  it('pins a tab and moves it before unpinned tabs', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.orders', tableName: 'orders', label: 'orders' })
-    })
-    const secondId = result.current.tabs[1].id
-    act(() => { result.current.togglePinTab(secondId) })
-    expect(result.current.tabs[0].id).toBe(secondId)
-    expect(result.current.tabs[0].pinned).toBe(true)
-  })
+	it('pins a tab and moves it before unpinned tabs', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.orders',
+				tableName: 'orders',
+				label: 'orders'
+			})
+		})
+		const secondId = result.current.tabs[1].id
+		act(() => {
+			result.current.togglePinTab(secondId)
+		})
+		expect(result.current.tabs[0].id).toBe(secondId)
+		expect(result.current.tabs[0].pinned).toBe(true)
+	})
 
-  it('closeOtherTabs keeps pinned tabs and the selected tab', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.orders', tableName: 'orders', label: 'orders' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.products', tableName: 'products', label: 'products' })
-    })
-    const usersId = result.current.tabs[0].id
-    const ordersId = result.current.tabs[1].id
-    act(() => {
-      result.current.togglePinTab(usersId)
-      result.current.closeOtherTabs(ordersId)
-    })
-    expect(result.current.tabs.map((tab) => tab.id)).toEqual([usersId, ordersId])
-    expect(result.current.activeTabId).toBe(ordersId)
-  })
+	it('closeOtherTabs keeps pinned tabs and the selected tab', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.orders',
+				tableName: 'orders',
+				label: 'orders'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.products',
+				tableName: 'products',
+				label: 'products'
+			})
+		})
+		const usersId = result.current.tabs[0].id
+		const ordersId = result.current.tabs[1].id
+		act(() => {
+			result.current.togglePinTab(usersId)
+			result.current.closeOtherTabs(ordersId)
+		})
+		expect(result.current.tabs.map((tab) => tab.id)).toEqual([usersId, ordersId])
+		expect(result.current.activeTabId).toBe(ordersId)
+	})
 
-  it('closes unpinned tabs to the left and right of a tab', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t1', tableName: 't1', label: 't1' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t2', tableName: 't2', label: 't2' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t3', tableName: 't3', label: 't3' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t4', tableName: 't4', label: 't4' })
-    })
-    const secondId = result.current.tabs[1].id
-    act(() => { result.current.closeTabsToLeft(secondId) })
-    expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2', 't3', 't4'])
-    act(() => { result.current.closeTabsToRight(secondId) })
-    expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2'])
-  })
+	it('closes unpinned tabs to the left and right of a tab', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t1',
+				tableName: 't1',
+				label: 't1'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t2',
+				tableName: 't2',
+				label: 't2'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t3',
+				tableName: 't3',
+				label: 't3'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t4',
+				tableName: 't4',
+				label: 't4'
+			})
+		})
+		const secondId = result.current.tabs[1].id
+		act(() => {
+			result.current.closeTabsToLeft(secondId)
+		})
+		expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2', 't3', 't4'])
+		act(() => {
+			result.current.closeTabsToRight(secondId)
+		})
+		expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2'])
+	})
 
-  it('reorderTab moves a tab to the target position', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t1', tableName: 't1', label: 't1' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t2', tableName: 't2', label: 't2' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t3', tableName: 't3', label: 't3' })
-    })
-    const t1 = result.current.tabs[0]
-    const t3 = result.current.tabs[2]
-    act(() => { result.current.reorderTab(t1.id, t3.id) })
-    expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2', 't3', 't1'])
-  })
+	it('reorderTab moves a tab to the target position', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t1',
+				tableName: 't1',
+				label: 't1'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t2',
+				tableName: 't2',
+				label: 't2'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t3',
+				tableName: 't3',
+				label: 't3'
+			})
+		})
+		const t1 = result.current.tabs[0]
+		const t3 = result.current.tabs[2]
+		act(() => {
+			result.current.reorderTab(t1.id, t3.id)
+		})
+		expect(result.current.tabs.map((tab) => tab.label)).toEqual(['t2', 't3', 't1'])
+	})
 
-  it('reorderTab keeps pinned tabs ahead of unpinned ones', () => {
-    const { result } = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t1', tableName: 't1', label: 't1' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t2', tableName: 't2', label: 't2' })
-      result.current.openTab({ connectionId: 'c1', tableId: 'public.t3', tableName: 't3', label: 't3' })
-    })
-    const pinned = result.current.tabs[0]
-    act(() => { result.current.togglePinTab(pinned.id) })
-    const unpinnedLast = result.current.tabs[result.current.tabs.length - 1]
-    act(() => { result.current.reorderTab(unpinnedLast.id, pinned.id) })
-    expect(result.current.tabs[0].id).toBe(pinned.id)
-  })
+	it('reorderTab keeps pinned tabs ahead of unpinned ones', () => {
+		const { result } = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t1',
+				tableName: 't1',
+				label: 't1'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t2',
+				tableName: 't2',
+				label: 't2'
+			})
+			result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.t3',
+				tableName: 't3',
+				label: 't3'
+			})
+		})
+		const pinned = result.current.tabs[0]
+		act(() => {
+			result.current.togglePinTab(pinned.id)
+		})
+		const unpinnedLast = result.current.tabs[result.current.tabs.length - 1]
+		act(() => {
+			result.current.reorderTab(unpinnedLast.id, pinned.id)
+		})
+		expect(result.current.tabs[0].id).toBe(pinned.id)
+	})
 
-  it('restores persisted tabs on a fresh provider', () => {
-    const first = renderHook(() => useTabs(), { wrapper })
-    act(() => {
-      first.result.current.openTab({ connectionId: 'c1', tableId: 'public.users', tableName: 'users', label: 'users' })
-      first.result.current.openTab({ connectionId: 'c1', tableId: 'public.orders', tableName: 'orders', label: 'orders' })
-    })
-    const activeId = first.result.current.activeTabId
-    first.unmount()
+	it('restores persisted tabs on a fresh provider', () => {
+		const first = renderHook(() => useTabs(), { wrapper })
+		act(() => {
+			first.result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.users',
+				tableName: 'users',
+				label: 'users'
+			})
+			first.result.current.openTab({
+				connectionId: 'c1',
+				tableId: 'public.orders',
+				tableName: 'orders',
+				label: 'orders'
+			})
+		})
+		const activeId = first.result.current.activeTabId
+		first.unmount()
 
-    // A brand-new provider reads the persisted state back from localStorage.
-    const second = renderHook(() => useTabs(), { wrapper })
-    expect(second.result.current.tabs.map((tab) => tab.label)).toEqual(['users', 'orders'])
-    expect(second.result.current.activeTabId).toBe(activeId)
-  })
+		// A brand-new provider reads the persisted state back from localStorage.
+		const second = renderHook(() => useTabs(), { wrapper })
+		expect(second.result.current.tabs.map((tab) => tab.label)).toEqual(['users', 'orders'])
+		expect(second.result.current.activeTabId).toBe(activeId)
+	})
 })

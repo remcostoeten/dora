@@ -1,114 +1,114 @@
 name: Snap
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
-        required: false
-        type: string
-      publish:
-        description: Publish the built snap to the Snap Store.
-        required: false
-        type: boolean
-        default: false
-      release_channel:
-        description: Snap Store channel to release to.
-        required: false
-        type: choice
-        default: stable
-        options:
-          - stable
-          - candidate
-          - beta
-          - edge
-  workflow_call:
-    inputs:
-      tag:
-        description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
-        required: false
-        type: string
-      publish:
-        description: Publish the built snap to the Snap Store.
-        required: false
-        type: boolean
-        default: false
-      # workflow_call has no `choice` input type; the dispatch UI keeps the
-      # dropdown, callers pass a plain string.
-      release_channel:
-        description: Snap Store channel to release to.
-        required: false
-        type: string
-        default: stable
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
+                required: false
+                type: string
+            publish:
+                description: Publish the built snap to the Snap Store.
+                required: false
+                type: boolean
+                default: false
+            release_channel:
+                description: Snap Store channel to release to.
+                required: false
+                type: choice
+                default: stable
+                options:
+                    - stable
+                    - candidate
+                    - beta
+                    - edge
+    workflow_call:
+        inputs:
+            tag:
+                description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
+                required: false
+                type: string
+            publish:
+                description: Publish the built snap to the Snap Store.
+                required: false
+                type: boolean
+                default: false
+            # workflow_call has no `choice` input type; the dispatch UI keeps the
+            # dropdown, callers pass a plain string.
+            release_channel:
+                description: Snap Store channel to release to.
+                required: false
+                type: string
+                default: stable
 
 permissions:
-  contents: write
+    contents: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
-  snap:
-    # This snap targets `base: core22`, so destructive-mode builds must stay on
-    # an Ubuntu 22.04 host. Building on newer runners leaks newer glibc symbols
-    # into the Rust binary, which then fails at runtime inside the core22 snap.
-    runs-on: ubuntu-22.04
-    env:
-      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+    snap:
+        # This snap targets `base: core22`, so destructive-mode builds must stay on
+        # an Ubuntu 22.04 host. Building on newer runners leaks newer glibc symbols
+        # into the Rust binary, which then fails at runtime inside the core22 snap.
+        runs-on: ubuntu-22.04
+        env:
+            SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        steps:
+            - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
-      - name: Resolve release metadata
-        id: meta
-        shell: bash
-        run: |
-          TAG="${{ inputs.tag }}"
+            - name: Resolve release metadata
+              id: meta
+              shell: bash
+              run: |
+                  TAG="${{ inputs.tag }}"
 
-          VERSION="$(python -c "import json; print(json.load(open('package.json'))['version'])")"
-          if [[ -n "$TAG" ]]; then
-            VERSION="${TAG#v}"
-          fi
+                  VERSION="$(python -c "import json; print(json.load(open('package.json'))['version'])")"
+                  if [[ -n "$TAG" ]]; then
+                    VERSION="${TAG#v}"
+                  fi
 
-          CHANNEL="${{ inputs.release_channel }}"
+                  CHANNEL="${{ inputs.release_channel }}"
 
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
-          echo "DORA_RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+                  echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+                  echo "DORA_RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
-      - name: Install Snapcraft
-        shell: bash
-        run: |
-          if snap list snapcraft >/dev/null 2>&1; then
-            sudo snap refresh snapcraft --channel=stable --classic
-          else
-            sudo snap install snapcraft --channel=stable --classic
-          fi
+            - name: Install Snapcraft
+              shell: bash
+              run: |
+                  if snap list snapcraft >/dev/null 2>&1; then
+                    sudo snap refresh snapcraft --channel=stable --classic
+                  else
+                    sudo snap install snapcraft --channel=stable --classic
+                  fi
 
-      - name: Build snap
-        id: build
-        shell: bash
-        run: |
-          rm -f ./*.snap
-          bash scripts/snapcraft.sh --sudo --destructive-mode
+            - name: Build snap
+              id: build
+              shell: bash
+              run: |
+                  rm -f ./*.snap
+                  bash scripts/snapcraft.sh --sudo --destructive-mode
 
-          SNAP_PATH="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -name '*.snap' | head -n 1)"
-          if [[ -z "$SNAP_PATH" ]]; then
-            echo "No .snap artifact was produced." >&2
-            exit 1
-          fi
+                  SNAP_PATH="$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -name '*.snap' | head -n 1)"
+                  if [[ -z "$SNAP_PATH" ]]; then
+                    echo "No .snap artifact was produced." >&2
+                    exit 1
+                  fi
 
-          echo "snap=$SNAP_PATH" >> "$GITHUB_OUTPUT"
+                  echo "snap=$SNAP_PATH" >> "$GITHUB_OUTPUT"
 
-      - name: Upload snap artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dora-snap-${{ steps.meta.outputs.version }}
-          path: ${{ steps.build.outputs.snap }}
+            - name: Upload snap artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: dora-snap-${{ steps.meta.outputs.version }}
+                  path: ${{ steps.build.outputs.snap }}
 
-      - name: Publish snap to Snap Store
-        if: ${{ env.SNAPCRAFT_STORE_CREDENTIALS != '' && inputs.publish }}
-        uses: snapcore/action-publish@v1 # no Node 22 version available yet
-        with:
-          snap: ${{ steps.build.outputs.snap }}
-          release: ${{ steps.meta.outputs.channel }}
+            - name: Publish snap to Snap Store
+              if: ${{ env.SNAPCRAFT_STORE_CREDENTIALS != '' && inputs.publish }}
+              uses: snapcore/action-publish@v1 # no Node 22 version available yet
+              with:
+                  snap: ${{ steps.build.outputs.snap }}
+                  release: ${{ steps.meta.outputs.channel }}

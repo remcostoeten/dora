@@ -20,13 +20,13 @@ export function useRowVirtualizer({ scrollContainerRef, rowCount, enabled }: Opt
 			return ROW_HEIGHT
 		},
 		overscan: OVERSCAN,
-		enabled,
+		enabled
 	})
 
 	return {
 		virtualizer,
 		measureElement: virtualizer.measureElement,
 		virtualRows: enabled ? virtualizer.getVirtualItems() : null,
-		totalSize: enabled ? virtualizer.getTotalSize() : null,
+		totalSize: enabled ? virtualizer.getTotalSize() : null
 	}
 }

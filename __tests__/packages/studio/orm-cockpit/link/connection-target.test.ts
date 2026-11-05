@@ -6,7 +6,7 @@ import {
 	parseEnvVar,
 	compareTargets,
 	resolveProjectTarget,
-	type DbTarget,
+	type DbTarget
 } from '@studio/features/orm-cockpit/link/connection-target'
 import type { ProjectReader } from '@studio/features/orm-cockpit/link/detect-orm'
 
@@ -17,17 +17,19 @@ function reader(files: Record<string, string>): ProjectReader {
 		},
 		async listDir() {
 			return []
-		},
+		}
 	}
 }
 
 describe('targetFromUrl', function () {
 	it('parses a postgres url into host/port/database', function () {
-		expect(targetFromUrl('postgres://user:pass@db.example.com:5432/remcostoeten?sslmode=require')).toEqual({
+		expect(
+			targetFromUrl('postgres://user:pass@db.example.com:5432/remcostoeten?sslmode=require')
+		).toEqual({
 			engine: 'postgres',
 			host: 'db.example.com',
 			port: 5432,
-			database: 'remcostoeten',
+			database: 'remcostoeten'
 		})
 	})
 
@@ -46,7 +48,7 @@ describe('targetFromUrl', function () {
 			engine: 'postgres',
 			host: '127.0.0.1',
 			port: 5433,
-			database: 'phoenix_app',
+			database: 'phoenix_app'
 		})
 	})
 
@@ -58,44 +60,49 @@ describe('targetFromUrl', function () {
 describe('targetFromConnection', function () {
 	it('builds a postgres target from the frontend connection model', function () {
 		expect(
-			targetFromConnection({ type: 'postgres', host: 'DB.Example.com', port: 5432, database: 'whatsapp' })
+			targetFromConnection({
+				type: 'postgres',
+				host: 'DB.Example.com',
+				port: 5432,
+				database: 'whatsapp'
+			})
 		).toEqual({ engine: 'postgres', host: 'db.example.com', port: 5432, database: 'whatsapp' })
 	})
 
 	it('treats sqlite/duckdb as file targets', function () {
 		expect(targetFromConnection({ type: 'duckdb', url: '/data/warehouse.duckdb' })).toEqual({
 			engine: 'sqlite',
-			file: '/data/warehouse.duckdb',
+			file: '/data/warehouse.duckdb'
 		})
 	})
 })
 
 describe('extractUrlReference', function () {
 	it('reads a drizzle env reference', function () {
-		expect(extractUrlReference("dbCredentials: { url: env.DATABASE_URL }")).toEqual({
+		expect(extractUrlReference('dbCredentials: { url: env.DATABASE_URL }')).toEqual({
 			kind: 'env',
-			value: 'DATABASE_URL',
+			value: 'DATABASE_URL'
 		})
 	})
 
 	it('reads a prisma env() reference', function () {
 		expect(extractUrlReference('datasource db {\n  url = env("DATABASE_URL")\n}')).toEqual({
 			kind: 'env',
-			value: 'DATABASE_URL',
+			value: 'DATABASE_URL'
 		})
 	})
 
 	it('reads a literal url', function () {
 		expect(extractUrlReference("url: 'postgres://u@h:5432/db'")).toEqual({
 			kind: 'literal',
-			value: 'postgres://u@h:5432/db',
+			value: 'postgres://u@h:5432/db'
 		})
 	})
 
 	it('reads process.env.X', function () {
 		expect(extractUrlReference('url: process.env.MY_DB_URL')).toEqual({
 			kind: 'env',
-			value: 'MY_DB_URL',
+			value: 'MY_DB_URL'
 		})
 	})
 })
@@ -125,7 +132,7 @@ describe('compareTargets', function () {
 		engine: 'postgres',
 		host,
 		port: 5432,
-		database,
+		database
 	})
 
 	it('matches identical host + database', function () {
@@ -153,10 +160,16 @@ describe('compareTargets', function () {
 
 	it('compares sqlite by file path', function () {
 		expect(
-			compareTargets({ engine: 'sqlite', file: '/a/x.db' }, { engine: 'sqlite', file: '/a/x.db' })
+			compareTargets(
+				{ engine: 'sqlite', file: '/a/x.db' },
+				{ engine: 'sqlite', file: '/a/x.db' }
+			)
 		).toBe('match')
 		expect(
-			compareTargets({ engine: 'sqlite', file: '/a/x.db' }, { engine: 'sqlite', file: '/a/y.db' })
+			compareTargets(
+				{ engine: 'sqlite', file: '/a/x.db' },
+				{ engine: 'sqlite', file: '/a/y.db' }
+			)
 		).toBe('mismatch')
 	})
 })
@@ -164,7 +177,7 @@ describe('compareTargets', function () {
 describe('resolveProjectTarget', function () {
 	it('resolves a drizzle env reference against the project .env', async function () {
 		const r = reader({
-			'/proj/.env': 'DATABASE_URL=postgres://u@host:5432/remcostoeten\n',
+			'/proj/.env': 'DATABASE_URL=postgres://u@host:5432/remcostoeten\n'
 		})
 		const target = await resolveProjectTarget(
 			'/proj',
@@ -176,21 +189,16 @@ describe('resolveProjectTarget', function () {
 			engine: 'postgres',
 			host: 'host',
 			port: 5432,
-			database: 'remcostoeten',
+			database: 'remcostoeten'
 		})
 	})
 
 	it('prefers .env.local over .env', async function () {
 		const r = reader({
 			'/proj/.env': 'DATABASE_URL=postgres://u@host/prod\n',
-			'/proj/.env.local': 'DATABASE_URL=postgres://u@host/local\n',
+			'/proj/.env.local': 'DATABASE_URL=postgres://u@host/local\n'
 		})
-		const target = await resolveProjectTarget(
-			'/proj',
-			'url: env.DATABASE_URL',
-			'drizzle',
-			r
-		)
+		const target = await resolveProjectTarget('/proj', 'url: env.DATABASE_URL', 'drizzle', r)
 		expect(target?.database).toBe('local')
 	})
 

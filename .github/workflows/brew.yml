@@ -1,145 +1,145 @@
 name: Homebrew
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing GitHub release tag like v0.26.6. Leave empty to use latest.
-        required: false
-        type: string
-      publish:
-        description: Push the updated Cask to remcostoeten/homebrew-dora.
-        required: false
-        type: boolean
-        default: false
-  workflow_call:
-    inputs:
-      tag:
-        description: Existing GitHub release tag like v0.26.6. Leave empty to use latest.
-        required: false
-        type: string
-      publish:
-        description: Push the updated Cask to remcostoeten/homebrew-dora.
-        required: false
-        type: boolean
-        default: false
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Existing GitHub release tag like v0.26.6. Leave empty to use latest.
+                required: false
+                type: string
+            publish:
+                description: Push the updated Cask to remcostoeten/homebrew-dora.
+                required: false
+                type: boolean
+                default: false
+    workflow_call:
+        inputs:
+            tag:
+                description: Existing GitHub release tag like v0.26.6. Leave empty to use latest.
+                required: false
+                type: string
+            publish:
+                description: Push the updated Cask to remcostoeten/homebrew-dora.
+                required: false
+                type: boolean
+                default: false
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  brew:
-    runs-on: ubuntu-latest
-    env:
-      HOMEBREW_TAP_REPO: remcostoeten/homebrew-dora
-      HOMEBREW_SSH_PRIVATE_KEY: ${{ secrets.HOMEBREW_SSH_PRIVATE_KEY }}
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-
-      - name: Setup bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-
-      - name: Resolve release metadata
-        id: meta
-        shell: bash
+    brew:
+        runs-on: ubuntu-latest
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${{ inputs.tag }}"
+            HOMEBREW_TAP_REPO: remcostoeten/homebrew-dora
+            HOMEBREW_SSH_PRIVATE_KEY: ${{ secrets.HOMEBREW_SSH_PRIVATE_KEY }}
+        steps:
+            - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
-          if [[ -z "$TAG" ]]; then
-            TAG="$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')"
-          fi
+            - name: Setup bun
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
 
-          VERSION="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            - name: Resolve release metadata
+              id: meta
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  TAG="${{ inputs.tag }}"
 
-      - name: Resolve DMG asset URL and compute SHA-256
-        id: dmg
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG="${{ steps.meta.outputs.tag }}"
+                  if [[ -z "$TAG" ]]; then
+                    TAG="$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')"
+                  fi
 
-          ARM_URL=""
-          for attempt in {1..60}; do
-            ARM_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
-              --jq '.assets[] | select(.name | endswith("_aarch64.dmg")) | .browser_download_url' \
-              | head -1)"
-            if [[ -n "$ARM_URL" ]]; then
-              break
-            fi
-            echo "Waiting for the Apple Silicon DMG asset on ${TAG} (${attempt}/60)..."
-            sleep 30
-          done
+                  VERSION="${TAG#v}"
+                  echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          if [[ -z "$ARM_URL" ]]; then
-            echo "Could not find the aarch64 DMG asset on release ${TAG}. The Release workflow must publish only after macOS assets are uploaded." >&2
-            exit 1
-          fi
+            - name: Resolve DMG asset URL and compute SHA-256
+              id: dmg
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  TAG="${{ steps.meta.outputs.tag }}"
 
-          echo "arm_url=$ARM_URL" >> "$GITHUB_OUTPUT"
+                  ARM_URL=""
+                  for attempt in {1..60}; do
+                    ARM_URL="$(gh api repos/${{ github.repository }}/releases/tags/${TAG} \
+                      --jq '.assets[] | select(.name | endswith("_aarch64.dmg")) | .browser_download_url' \
+                      | head -1)"
+                    if [[ -n "$ARM_URL" ]]; then
+                      break
+                    fi
+                    echo "Waiting for the Apple Silicon DMG asset on ${TAG} (${attempt}/60)..."
+                    sleep 30
+                  done
 
-          curl -sL "$ARM_URL" -o /tmp/dora_arm.dmg
-          ARM_SHA=$(shasum -a 256 /tmp/dora_arm.dmg | awk '{print $1}')
+                  if [[ -z "$ARM_URL" ]]; then
+                    echo "Could not find the aarch64 DMG asset on release ${TAG}. The Release workflow must publish only after macOS assets are uploaded." >&2
+                    exit 1
+                  fi
 
-          echo "arm_sha=$ARM_SHA" >> "$GITHUB_OUTPUT"
+                  echo "arm_url=$ARM_URL" >> "$GITHUB_OUTPUT"
 
-          echo "ARM SHA: $ARM_SHA"
+                  curl -sL "$ARM_URL" -o /tmp/dora_arm.dmg
+                  ARM_SHA=$(shasum -a 256 /tmp/dora_arm.dmg | awk '{print $1}')
 
-      - name: Generate Homebrew Cask
-        run: |
-          bun run release:homebrew -- \
-            --version=${{ steps.meta.outputs.version }} \
-            --tag=${{ steps.meta.outputs.tag }} \
-            --dmg-url-arm=${{ steps.dmg.outputs.arm_url }} \
-            --dmg-sha256-arm=${{ steps.dmg.outputs.arm_sha }}
+                  echo "arm_sha=$ARM_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Archive Cask file
-        run: |
-          tar -czf homebrew-cask-${{ steps.meta.outputs.version }}.tar.gz \
-            -C packaging/homebrew Casks
+                  echo "ARM SHA: $ARM_SHA"
 
-      - name: Upload Cask artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: homebrew-cask-${{ steps.meta.outputs.version }}
-          path: homebrew-cask-${{ steps.meta.outputs.version }}.tar.gz
+            - name: Generate Homebrew Cask
+              run: |
+                  bun run release:homebrew -- \
+                    --version=${{ steps.meta.outputs.version }} \
+                    --tag=${{ steps.meta.outputs.tag }} \
+                    --dmg-url-arm=${{ steps.dmg.outputs.arm_url }} \
+                    --dmg-sha256-arm=${{ steps.dmg.outputs.arm_sha }}
 
-      - name: Skip Homebrew publish when SSH key is not configured
-        if: ${{ env.HOMEBREW_SSH_PRIVATE_KEY == '' }}
-        shell: bash
-        run: echo "HOMEBREW_SSH_PRIVATE_KEY is not configured. Generated Cask only."
+            - name: Archive Cask file
+              run: |
+                  tar -czf homebrew-cask-${{ steps.meta.outputs.version }}.tar.gz \
+                    -C packaging/homebrew Casks
 
-      - name: Publish Cask to Homebrew tap
-        if: ${{ env.HOMEBREW_SSH_PRIVATE_KEY != '' && inputs.publish }}
-        shell: bash
-        run: |
-          set -euo pipefail
+            - name: Upload Cask artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: homebrew-cask-${{ steps.meta.outputs.version }}
+                  path: homebrew-cask-${{ steps.meta.outputs.version }}.tar.gz
 
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$HOMEBREW_SSH_PRIVATE_KEY" > ~/.ssh/homebrew
-          chmod 600 ~/.ssh/homebrew
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
+            - name: Skip Homebrew publish when SSH key is not configured
+              if: ${{ env.HOMEBREW_SSH_PRIVATE_KEY == '' }}
+              shell: bash
+              run: echo "HOMEBREW_SSH_PRIVATE_KEY is not configured. Generated Cask only."
 
-          export GIT_SSH_COMMAND="ssh -i ~/.ssh/homebrew -o IdentitiesOnly=yes"
+            - name: Publish Cask to Homebrew tap
+              if: ${{ env.HOMEBREW_SSH_PRIVATE_KEY != '' && inputs.publish }}
+              shell: bash
+              run: |
+                  set -euo pipefail
 
-          git clone git@github.com:${HOMEBREW_TAP_REPO}.git homebrew-tap
-          cp packaging/homebrew/Casks/dora.rb homebrew-tap/Casks/dora.rb
+                  mkdir -p ~/.ssh
+                  chmod 700 ~/.ssh
+                  printf '%s\n' "$HOMEBREW_SSH_PRIVATE_KEY" > ~/.ssh/homebrew
+                  chmod 600 ~/.ssh/homebrew
+                  ssh-keyscan github.com >> ~/.ssh/known_hosts
 
-          cd homebrew-tap
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  export GIT_SSH_COMMAND="ssh -i ~/.ssh/homebrew -o IdentitiesOnly=yes"
 
-          if git diff --quiet; then
-            echo "Homebrew Cask is already up to date."
-            exit 0
-          fi
+                  git clone git@github.com:${HOMEBREW_TAP_REPO}.git homebrew-tap
+                  cp packaging/homebrew/Casks/dora.rb homebrew-tap/Casks/dora.rb
 
-          git add Casks/dora.rb
-          git commit -m "Update dora to ${{ steps.meta.outputs.version }}"
-          git push
+                  cd homebrew-tap
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+                  if git diff --quiet; then
+                    echo "Homebrew Cask is already up to date."
+                    exit 0
+                  fi
+
+                  git add Casks/dora.rb
+                  git commit -m "Update dora to ${{ steps.meta.outputs.version }}"
+                  git push

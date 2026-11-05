@@ -14,9 +14,7 @@ const SUMMARY_RE = /^<.+ — .+>$/
 /** Matches the inline hex form `0x` followed by an even count of hex digits. */
 const HEX_RE = /^0x([0-9A-Fa-f]{2})*$/
 
-export type TBlobInfo =
-	| { kind: 'hex'; hex: string }
-	| { kind: 'summary'; label: string }
+export type TBlobInfo = { kind: 'hex'; hex: string } | { kind: 'summary'; label: string }
 
 /** Column types that store binary data, used as a hint alongside value shape. */
 function isBinaryColumnType(column?: ColumnDefinition): boolean {

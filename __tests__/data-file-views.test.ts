@@ -1,6 +1,6 @@
 import {
 	listDataFileEntries,
-	viewNameForPath,
+	viewNameForPath
 } from '@studio/features/connections/utils/data-file-views'
 import { describe, expect, it } from 'vitest'
 
@@ -21,24 +21,24 @@ describe('data-file-views', function () {
 		const entries = listDataFileEntries([
 			'/tmp/sales.csv',
 			'/tmp/events.json',
-			'/tmp/metrics.parquet',
+			'/tmp/metrics.parquet'
 		])
 
 		expect(entries).toHaveLength(3)
 		expect(entries[0]).toMatchObject({
 			path: '/tmp/sales.csv',
 			fileType: 'CSV',
-			viewName: 'sales',
+			viewName: 'sales'
 		})
 		expect(entries[1]).toMatchObject({
 			path: '/tmp/events.json',
 			fileType: 'JSON',
-			viewName: 'events',
+			viewName: 'events'
 		})
 		expect(entries[2]).toMatchObject({
 			path: '/tmp/metrics.parquet',
 			fileType: 'Parquet',
-			viewName: 'metrics',
+			viewName: 'metrics'
 		})
 	})
 })

@@ -24,7 +24,9 @@ export function EmptyState({ icon, title, description, action, className }: Prop
 			{icon && <div className='text-muted-foreground mb-4 opacity-50'>{icon}</div>}
 			<h3 className='text-lg font-medium text-foreground text-balance'>{title}</h3>
 			{description && (
-				<p className='text-muted-foreground text-sm mt-1 max-w-md text-pretty'>{description}</p>
+				<p className='text-muted-foreground text-sm mt-1 max-w-md text-pretty'>
+					{description}
+				</p>
 			)}
 			{action && (
 				<Button onClick={action.onClick} className='mt-4'>

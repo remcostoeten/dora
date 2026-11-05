@@ -1,132 +1,149 @@
-import { Copy, Check, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
-import { Button } from "@studio/shared/ui/button";
-import { toast } from "@studio/shared/ui/notifier";
-import type { DockerContainer } from "../types";
-import { maskPassword } from "../utilities/connection-string-builder";
-import { getContainerConnectionDetails } from "../utilities/container-connection";
-import { cn } from "@studio/shared/utils/cn";
+import { Copy, Check, Eye, EyeOff } from 'lucide-react'
+import { useState } from 'react'
+import { Button } from '@studio/shared/ui/button'
+import { toast } from '@studio/shared/ui/notifier'
+import type { DockerContainer } from '../types'
+import { maskPassword } from '../utilities/connection-string-builder'
+import { getContainerConnectionDetails } from '../utilities/container-connection'
+import { cn } from '@studio/shared/utils/cn'
 
 type Props = {
-  container: DockerContainer;
-};
+	container: DockerContainer
+}
 
 export function ConnectionDetails({ container }: Props) {
-  const [copied, setCopied] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+	const [copied, setCopied] = useState(false)
+	const [showPassword, setShowPassword] = useState(false)
 
-  const connection = getContainerConnectionDetails(container);
-  const displayUrl = showPassword ? connection.connectionUrl : maskPassword(connection.connectionUrl);
+	const connection = getContainerConnectionDetails(container)
+	const displayUrl = showPassword
+		? connection.connectionUrl
+		: maskPassword(connection.connectionUrl)
 
-  async function handleCopyEnv() {
-    try {
-      await navigator.clipboard.writeText(connection.connectionUrl);
-      setCopied(true);
-      setTimeout(function () {
-        setCopied(false);
-      }, 2000);
-    } catch (error) {
-      console.error("Failed to copy to clipboard", error);
-      toast.error("Failed to copy connection string", {
-        description: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+	async function handleCopyEnv() {
+		try {
+			await navigator.clipboard.writeText(connection.connectionUrl)
+			setCopied(true)
+			setTimeout(function () {
+				setCopied(false)
+			}, 2000)
+		} catch (error) {
+			console.error('Failed to copy to clipboard', error)
+			toast.error('Failed to copy connection string', {
+				description: error instanceof Error ? error.message : String(error)
+			})
+		}
+	}
 
-  function togglePasswordVisibility() {
-    setShowPassword(function (prev) {
-      return !prev;
-    });
-  }
+	function togglePasswordVisibility() {
+		setShowPassword(function (prev) {
+			return !prev
+		})
+	}
 
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Connection
-        </h4>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs" onClick={handleCopyEnv}>
-          {copied ? (
-            <>
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
-              Copied URL
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5" />
-              Copy URL
-            </>
-          )}
-        </Button>
-      </div>
+	return (
+		<div className='space-y-3'>
+			<div className='flex items-center justify-between'>
+				<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>
+					Connection
+				</h4>
+				<Button
+					variant='ghost'
+					size='sm'
+					className='h-7 gap-1.5 text-xs'
+					onClick={handleCopyEnv}
+				>
+					{copied ? (
+						<>
+							<Check className='h-3.5 w-3.5 text-emerald-500' />
+							Copied URL
+						</>
+					) : (
+						<>
+							<Copy className='h-3.5 w-3.5' />
+							Copy URL
+						</>
+					)}
+				</Button>
+			</div>
 
-      <div className="mt-2 text-sm">
-        <div className="rounded-lg border border-border overflow-hidden">
-          <ConnectionRow label="Host" value={connection.host} />
-          <ConnectionRow label="Port" value={String(connection.port)} />
-          <ConnectionRow label="User" value={connection.user} />
-          <div className="flex items-center justify-between py-2 px-3 border-b border-border/50 last:border-b-0 bg-muted/30 even:bg-transparent">
-            <span className="text-xs text-muted-foreground">Password</span>
-            <div className="flex items-center gap-1.5">
-              <code className="text-xs font-mono text-foreground">
-                {showPassword ? connection.password || "—" : connection.password ? "••••••••" : "—"}
-              </code>
-              <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="p-0.5 hover:text-foreground text-muted-foreground transition-colors rounded hover:bg-muted"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-3.5 w-3.5" />
-                ) : (
-                  <Eye className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-          </div>
-          <ConnectionRow label="Database" value={connection.database} isLast />
-        </div>
-      </div>
+			<div className='mt-2 text-sm'>
+				<div className='rounded-lg border border-border overflow-hidden'>
+					<ConnectionRow label='Host' value={connection.host} />
+					<ConnectionRow label='Port' value={String(connection.port)} />
+					<ConnectionRow label='User' value={connection.user} />
+					<div className='flex items-center justify-between py-2 px-3 border-b border-border/50 last:border-b-0 bg-muted/30 even:bg-transparent'>
+						<span className='text-xs text-muted-foreground'>Password</span>
+						<div className='flex items-center gap-1.5'>
+							<code className='text-xs font-mono text-foreground'>
+								{showPassword
+									? connection.password || '—'
+									: connection.password
+										? '••••••••'
+										: '—'}
+							</code>
+							<button
+								type='button'
+								onClick={togglePasswordVisibility}
+								aria-label={showPassword ? 'Hide password' : 'Show password'}
+								className='p-0.5 hover:text-foreground text-muted-foreground transition-colors rounded hover:bg-muted'
+							>
+								{showPassword ? (
+									<EyeOff className='h-3.5 w-3.5' />
+								) : (
+									<Eye className='h-3.5 w-3.5' />
+								)}
+							</button>
+						</div>
+					</div>
+					<ConnectionRow label='Database' value={connection.database} isLast />
+				</div>
+			</div>
 
-      <div className="pt-2">
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs text-muted-foreground">Connection URL</label>
-          <button
-            type="button"
-            onClick={togglePasswordVisibility}
-            aria-label={showPassword ? "Hide password in URL" : "Show password in URL"}
-            className="p-0.5 hover:text-foreground text-muted-foreground transition-colors rounded hover:bg-muted"
-          >
-            {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
-        </div>
-        <div className="p-2.5 rounded-lg bg-muted/50 border border-border/50 overflow-x-auto">
-          <code className="text-xs font-mono break-all text-foreground/80">{displayUrl}</code>
-        </div>
-      </div>
-    </div>
-  );
+			<div className='pt-2'>
+				<div className='flex items-center justify-between mb-1'>
+					<label className='text-xs text-muted-foreground'>Connection URL</label>
+					<button
+						type='button'
+						onClick={togglePasswordVisibility}
+						aria-label={showPassword ? 'Hide password in URL' : 'Show password in URL'}
+						className='p-0.5 hover:text-foreground text-muted-foreground transition-colors rounded hover:bg-muted'
+					>
+						{showPassword ? (
+							<EyeOff className='h-3.5 w-3.5' />
+						) : (
+							<Eye className='h-3.5 w-3.5' />
+						)}
+					</button>
+				</div>
+				<div className='p-2.5 rounded-lg bg-muted/50 border border-border/50 overflow-x-auto'>
+					<code className='text-xs font-mono break-all text-foreground/80'>
+						{displayUrl}
+					</code>
+				</div>
+			</div>
+		</div>
+	)
 }
 
 function ConnectionRow({
-  label,
-  value,
-  isLast,
+	label,
+	value,
+	isLast
 }: {
-  label: string;
-  value: string;
-  isLast?: boolean;
+	label: string
+	value: string
+	isLast?: boolean
 }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between py-2 px-3 bg-muted/30 even:bg-transparent",
-        !isLast && "border-b border-border/50",
-      )}
-    >
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <code className="text-xs font-mono text-foreground">{value}</code>
-    </div>
-  );
+	return (
+		<div
+			className={cn(
+				'flex items-center justify-between py-2 px-3 bg-muted/30 even:bg-transparent',
+				!isLast && 'border-b border-border/50'
+			)}
+		>
+			<span className='text-xs text-muted-foreground'>{label}</span>
+			<code className='text-xs font-mono text-foreground'>{value}</code>
+		</div>
+	)
 }

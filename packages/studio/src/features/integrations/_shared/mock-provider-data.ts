@@ -17,7 +17,9 @@ export type MockProviderConfig = {
 	buildConnection: (project: MockProviderProject) => Omit<Connection, 'id' | 'createdAt'>
 }
 
-function buildPostgresConnection(project: MockProviderProject): Omit<Connection, 'id' | 'createdAt'> {
+function buildPostgresConnection(
+	project: MockProviderProject
+): Omit<Connection, 'id' | 'createdAt'> {
 	return {
 		name: project.name,
 		type: 'postgres',
@@ -51,7 +53,12 @@ export const NEON_MOCK: MockProviderConfig = {
 	itemNoun: 'branch',
 	projects: [
 		{ id: 'wandering-sky-12', name: 'main', region: 'aws-us-east-2', detail: 'Primary' },
-		{ id: 'wandering-sky-12', name: 'preview/checkout', region: 'aws-us-east-2', detail: 'Branch' },
+		{
+			id: 'wandering-sky-12',
+			name: 'preview/checkout',
+			region: 'aws-us-east-2',
+			detail: 'Branch'
+		},
 		{ id: 'damp-frost-88', name: 'analytics', region: 'aws-eu-central-1', detail: 'Primary' }
 	],
 	buildConnection: buildPostgresConnection

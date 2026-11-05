@@ -239,7 +239,9 @@ function XataConnectFlowInner({ onComplete }: Props) {
 							{accountLabel ? (
 								<span>
 									Connected as{' '}
-									<span className='font-medium text-foreground'>{accountLabel}</span>
+									<span className='font-medium text-foreground'>
+										{accountLabel}
+									</span>
 								</span>
 							) : (
 								<span>Connected</span>
@@ -267,7 +269,10 @@ function XataConnectFlowInner({ onComplete }: Props) {
 			</div>
 
 			{authError ? (
-				<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+				<p
+					role='alert'
+					className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'
+				>
 					{authError}
 				</p>
 			) : null}
@@ -385,7 +390,10 @@ function XataConnectFlowInner({ onComplete }: Props) {
 							</div>
 						) : null}
 						{error ? (
-							<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+							<p
+								role='alert'
+								className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'
+							>
 								{error}
 							</p>
 						) : null}
@@ -424,7 +432,9 @@ function XataConnectFlowInner({ onComplete }: Props) {
 											{database.postgresEnabled ? '' : ' · Postgres disabled'}
 										</span>
 									</span>
-									{isSelected ? <Check className='h-4 w-4 text-emerald-500' /> : null}
+									{isSelected ? (
+										<Check className='h-4 w-4 text-emerald-500' />
+									) : null}
 								</button>
 							)
 						})}
@@ -437,8 +447,8 @@ function XataConnectFlowInner({ onComplete }: Props) {
 						>
 							{selectedUnreachable ? (
 								<p className='text-[11px] text-muted-foreground/70'>
-									Xata reports this database as not reachable over Postgres. Enable its
-									Postgres endpoint in the dashboard, then Refresh.
+									Xata reports this database as not reachable over Postgres.
+									Enable its Postgres endpoint in the dashboard, then Refresh.
 								</p>
 							) : null}
 							<Button

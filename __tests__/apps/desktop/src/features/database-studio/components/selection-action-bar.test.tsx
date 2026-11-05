@@ -8,34 +8,33 @@ vi.mock(
 	'framer-motion',
 	function () {
 		function createMotionComponent(tag: keyof HTMLElementTagNameMap) {
-			return forwardRef<HTMLElement, Record<string, unknown>>(function MotionComponent(
-				props,
-				ref
-			) {
-				const {
-					children,
-					layout,
-					transition,
-					initial,
-					animate,
-					exit,
-					layoutId,
-					variants,
-					whileHover,
-					whileTap,
-					...domProps
-				} = props
-				void layout
-				void transition
-				void initial
-				void animate
-				void exit
-				void layoutId
-				void variants
-				void whileHover
-				void whileTap
-				return React.createElement(tag, { ...domProps, ref }, children)
-			})
+			return forwardRef<HTMLElement, Record<string, unknown>>(
+				function MotionComponent(props, ref) {
+					const {
+						children,
+						layout,
+						transition,
+						initial,
+						animate,
+						exit,
+						layoutId,
+						variants,
+						whileHover,
+						whileTap,
+						...domProps
+					} = props
+					void layout
+					void transition
+					void initial
+					void animate
+					void exit
+					void layoutId
+					void variants
+					void whileHover
+					void whileTap
+					return React.createElement(tag, { ...domProps, ref }, children)
+				}
+			)
 		}
 
 		return {
@@ -139,7 +138,9 @@ describe('SelectionActionBar', function () {
 		await waitFor(function () {
 			expect(screen.getByRole('button', { name: /bulk edit 1 row/i })).toBeInTheDocument()
 		})
-		expect(screen.queryByRole('button', { name: /show \d+ more actions/i })).not.toBeInTheDocument()
+		expect(
+			screen.queryByRole('button', { name: /show \d+ more actions/i })
+		).not.toBeInTheDocument()
 
 		setElementWidth(host, 680)
 		act(function () {
@@ -152,8 +153,12 @@ describe('SelectionActionBar', function () {
 			expect(screen.getByRole('button', { name: /show 3 more actions/i })).toBeInTheDocument()
 		})
 		await waitFor(function () {
-			expect(screen.queryByRole('button', { name: /bulk edit 1 row/i })).not.toBeInTheDocument()
-			expect(screen.queryByRole('button', { name: /set null for 1 row/i })).not.toBeInTheDocument()
+			expect(
+				screen.queryByRole('button', { name: /bulk edit 1 row/i })
+			).not.toBeInTheDocument()
+			expect(
+				screen.queryByRole('button', { name: /set null for 1 row/i })
+			).not.toBeInTheDocument()
 		})
 
 		setElementWidth(host, 1500)

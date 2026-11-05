@@ -1,153 +1,153 @@
 name: Winget
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing GitHub release tag like v0.26.6.
-        required: true
-        type: string
-      submit_update:
-        description: Submit a wingetcreate update PR.
-        required: false
-        type: boolean
-        default: false
-  workflow_call:
-    inputs:
-      tag:
-        description: Existing GitHub release tag like v0.26.6.
-        required: true
-        type: string
-      submit_update:
-        description: Submit a wingetcreate update PR.
-        required: false
-        type: boolean
-        default: false
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Existing GitHub release tag like v0.26.6.
+                required: true
+                type: string
+            submit_update:
+                description: Submit a wingetcreate update PR.
+                required: false
+                type: boolean
+                default: false
+    workflow_call:
+        inputs:
+            tag:
+                description: Existing GitHub release tag like v0.26.6.
+                required: true
+                type: string
+            submit_update:
+                description: Submit a wingetcreate update PR.
+                required: false
+                type: boolean
+                default: false
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  generate-manifests:
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.meta.outputs.tag }}
-      version: ${{ steps.meta.outputs.version }}
-      installer_url: ${{ steps.meta.outputs.installer_url }}
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+    generate-manifests:
+        runs-on: ubuntu-latest
+        outputs:
+            tag: ${{ steps.meta.outputs.tag }}
+            version: ${{ steps.meta.outputs.version }}
+            installer_url: ${{ steps.meta.outputs.installer_url }}
+        steps:
+            - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+            - name: Setup bun
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
 
-      - name: Resolve release metadata
-        id: meta
-        shell: bash
+            - name: Resolve release metadata
+              id: meta
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  TAG="${{ inputs.tag }}"
+
+                  # Resolve the NSIS setup .exe URL from release assets (filename version may differ from tag)
+                  INSTALLER_URL=""
+                  for attempt in {1..60}; do
+                    INSTALLER_URL="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} \
+                      --jq '.assets[] | select(.name | endswith("_x64-setup.exe")) | .browser_download_url' \
+                      | head -1)"
+                    if [[ -n "$INSTALLER_URL" ]]; then
+                      break
+                    fi
+                    echo "Waiting for _x64-setup.exe asset on ${TAG} (${attempt}/60)..."
+                    sleep 30
+                  done
+
+                  if [[ -z "$INSTALLER_URL" ]]; then
+                    echo "No _x64-setup.exe asset found on release ${TAG}. The Release workflow must publish only after Windows assets are uploaded." >&2
+                    exit 1
+                  fi
+
+                  INSTALLER_FILE="$(basename "$INSTALLER_URL")"
+                  # Extract embedded version from filename
+                  VERSION="$(echo "$INSTALLER_FILE" | sed 's/Dora_\(.*\)_x64-setup\.exe/\1/')"
+                  CHECKSUMS_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/checksums-windows.txt"
+
+                  echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
+                  echo "installer_file=$INSTALLER_FILE" >> "$GITHUB_OUTPUT"
+                  echo "checksums_url=$CHECKSUMS_URL" >> "$GITHUB_OUTPUT"
+
+            - name: Download Windows checksums
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  for attempt in {1..60}; do
+                    if curl --fail --location --output checksums-windows.txt "${{ steps.meta.outputs.checksums_url }}"; then
+                      exit 0
+                    fi
+                    echo "Waiting for checksums-windows.txt (${attempt}/60)..."
+                    sleep 30
+                  done
+                  echo "Windows checksums are not available on ${{ steps.meta.outputs.tag }}." >&2
+                  exit 1
+
+            - name: Generate Winget manifests
+              run: |
+                  bun run release:winget -- \
+                    --version=${{ steps.meta.outputs.version }} \
+                    --tag=${{ steps.meta.outputs.tag }} \
+                    --installer-url=${{ steps.meta.outputs.installer_url }} \
+                    --checksums-file=checksums-windows.txt \
+                    --installer-file=${{ steps.meta.outputs.installer_file }} \
+                    --installer-type=nullsoft
+
+            - name: Archive Winget manifests
+              run: |
+                  tar -czf winget-manifests-${{ steps.meta.outputs.version }}.tar.gz \
+                    -C packaging/winget/manifests/${{ steps.meta.outputs.version }} .
+
+            - name: Upload Winget manifest artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: winget-manifests-${{ steps.meta.outputs.version }}
+                  path: winget-manifests-${{ steps.meta.outputs.version }}.tar.gz
+
+    submit-update:
+        needs: generate-manifests
+        if: ${{ inputs.submit_update }}
+        runs-on: windows-2022
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          TAG="${{ inputs.tag }}"
+            WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
+        steps:
+            - name: Skip when Winget token is not configured
+              if: ${{ env.WINGET_CREATE_GITHUB_TOKEN == '' }}
+              shell: pwsh
+              run: |
+                  Write-Host "WINGET_CREATE_GITHUB_TOKEN is not configured. Skipping automated Winget submission."
+                  exit 0
 
-          # Resolve the NSIS setup .exe URL from release assets (filename version may differ from tag)
-          INSTALLER_URL=""
-          for attempt in {1..60}; do
-            INSTALLER_URL="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} \
-              --jq '.assets[] | select(.name | endswith("_x64-setup.exe")) | .browser_download_url' \
-              | head -1)"
-            if [[ -n "$INSTALLER_URL" ]]; then
-              break
-            fi
-            echo "Waiting for _x64-setup.exe asset on ${TAG} (${attempt}/60)..."
-            sleep 30
-          done
+            - name: Download generated manifests
+              if: ${{ env.WINGET_CREATE_GITHUB_TOKEN != '' }}
+              uses: actions/download-artifact@v4
+              with:
+                  name: winget-manifests-${{ needs.generate-manifests.outputs.version }}
 
-          if [[ -z "$INSTALLER_URL" ]]; then
-            echo "No _x64-setup.exe asset found on release ${TAG}. The Release workflow must publish only after Windows assets are uploaded." >&2
-            exit 1
-          fi
-
-          INSTALLER_FILE="$(basename "$INSTALLER_URL")"
-          # Extract embedded version from filename
-          VERSION="$(echo "$INSTALLER_FILE" | sed 's/Dora_\(.*\)_x64-setup\.exe/\1/')"
-          CHECKSUMS_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/checksums-windows.txt"
-
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "installer_url=$INSTALLER_URL" >> "$GITHUB_OUTPUT"
-          echo "installer_file=$INSTALLER_FILE" >> "$GITHUB_OUTPUT"
-          echo "checksums_url=$CHECKSUMS_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Download Windows checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in {1..60}; do
-            if curl --fail --location --output checksums-windows.txt "${{ steps.meta.outputs.checksums_url }}"; then
-              exit 0
-            fi
-            echo "Waiting for checksums-windows.txt (${attempt}/60)..."
-            sleep 30
-          done
-          echo "Windows checksums are not available on ${{ steps.meta.outputs.tag }}." >&2
-          exit 1
-
-      - name: Generate Winget manifests
-        run: |
-          bun run release:winget -- \
-            --version=${{ steps.meta.outputs.version }} \
-            --tag=${{ steps.meta.outputs.tag }} \
-            --installer-url=${{ steps.meta.outputs.installer_url }} \
-            --checksums-file=checksums-windows.txt \
-            --installer-file=${{ steps.meta.outputs.installer_file }} \
-            --installer-type=nullsoft
-
-      - name: Archive Winget manifests
-        run: |
-          tar -czf winget-manifests-${{ steps.meta.outputs.version }}.tar.gz \
-            -C packaging/winget/manifests/${{ steps.meta.outputs.version }} .
-
-      - name: Upload Winget manifest artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: winget-manifests-${{ steps.meta.outputs.version }}
-          path: winget-manifests-${{ steps.meta.outputs.version }}.tar.gz
-
-  submit-update:
-    needs: generate-manifests
-    if: ${{ inputs.submit_update }}
-    runs-on: windows-2022
-    env:
-      WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_CREATE_GITHUB_TOKEN }}
-    steps:
-      - name: Skip when Winget token is not configured
-        if: ${{ env.WINGET_CREATE_GITHUB_TOKEN == '' }}
-        shell: pwsh
-        run: |
-          Write-Host "WINGET_CREATE_GITHUB_TOKEN is not configured. Skipping automated Winget submission."
-          exit 0
-
-      - name: Download generated manifests
-        if: ${{ env.WINGET_CREATE_GITHUB_TOKEN != '' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: winget-manifests-${{ needs.generate-manifests.outputs.version }}
-
-      - name: Submit Winget manifests
-        if: ${{ env.WINGET_CREATE_GITHUB_TOKEN != '' }}
-        shell: pwsh
-        run: |
-          # Submit the manifests generated by the generate-manifests job rather
-          # than `wingetcreate update`. This release migrates the package from an
-          # MSI to the NSIS/nullsoft installer, a structural change that `update`
-          # cannot map onto the prior msi manifest ("failed to match an existing
-          # installer"). `submit` publishes our freshly generated nullsoft
-          # manifests as a new version directly.
-          #
-          # The standalone wingetcreate.exe is used because Add-AppxPackage (for
-          # the msixbundle) is unsupported under PowerShell 7 on this runner.
-          New-Item -ItemType Directory -Force -Path winget-manifests | Out-Null
-          tar -xzf "winget-manifests-${{ needs.generate-manifests.outputs.version }}.tar.gz" -C winget-manifests
-          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
-          .\wingetcreate.exe submit winget-manifests `
-            -t "${env:WINGET_CREATE_GITHUB_TOKEN}"
+            - name: Submit Winget manifests
+              if: ${{ env.WINGET_CREATE_GITHUB_TOKEN != '' }}
+              shell: pwsh
+              run: |
+                  # Submit the manifests generated by the generate-manifests job rather
+                  # than `wingetcreate update`. This release migrates the package from an
+                  # MSI to the NSIS/nullsoft installer, a structural change that `update`
+                  # cannot map onto the prior msi manifest ("failed to match an existing
+                  # installer"). `submit` publishes our freshly generated nullsoft
+                  # manifests as a new version directly.
+                  #
+                  # The standalone wingetcreate.exe is used because Add-AppxPackage (for
+                  # the msixbundle) is unsupported under PowerShell 7 on this runner.
+                  New-Item -ItemType Directory -Force -Path winget-manifests | Out-Null
+                  tar -xzf "winget-manifests-${{ needs.generate-manifests.outputs.version }}.tar.gz" -C winget-manifests
+                  Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+                  .\wingetcreate.exe submit winget-manifests `
+                    -t "${env:WINGET_CREATE_GITHUB_TOKEN}"

@@ -9,7 +9,7 @@ if (!version) {
 const jsonFiles = [
 	'package.json',
 	'apps/desktop/package.json',
-	'apps/desktop/src-tauri/tauri.conf.json',
+	'apps/desktop/src-tauri/tauri.conf.json'
 ]
 
 for (const file of jsonFiles) {
@@ -21,16 +21,13 @@ for (const file of jsonFiles) {
 const cargoToml = fs.readFileSync('apps/desktop/src-tauri/Cargo.toml', 'utf8')
 fs.writeFileSync(
 	'apps/desktop/src-tauri/Cargo.toml',
-	cargoToml.replace(/^version = ".*"/m, `version = "${version}"`),
+	cargoToml.replace(/^version = ".*"/m, `version = "${version}"`)
 )
 
 const cargoLock = fs.readFileSync('apps/desktop/src-tauri/Cargo.lock', 'utf8')
 fs.writeFileSync(
 	'apps/desktop/src-tauri/Cargo.lock',
-	cargoLock.replace(
-		/(^name = "dora"\nversion = ")[^"]+(")/m,
-		`$1${version}$2`,
-	),
+	cargoLock.replace(/(^name = "dora"\nversion = ")[^"]+(")/m, `$1${version}$2`)
 )
 
 console.log(version)

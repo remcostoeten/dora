@@ -177,8 +177,8 @@ function MismatchBanner({
 				This project's <span className='font-mono'>DATABASE_URL</span> points at{' '}
 				<span className='font-medium'>{projectLabel}</span>, but you're comparing against{' '}
 				<span className='font-medium'>{connectionLabel}</span>. They look like different
-				databases — the diff below is likely meaningless. Switch the connection above, or proceed
-				if you know what you're doing.
+				databases — the diff below is likely meaningless. Switch the connection above, or
+				proceed if you know what you're doing.
 			</span>
 		</div>
 	)
@@ -438,10 +438,10 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 							Does this database match your code?
 						</h3>
 						<p className='mt-2 text-pretty text-center text-sm leading-relaxed text-muted-foreground'>
-							Link your Drizzle or Prisma project and Schema Diff shows exactly how your
-							code schema differs from{' '}
-							<span className='font-medium text-foreground/80'>{connectionName}</span>,
-							plus the SQL to reconcile them.
+							Link your Drizzle or Prisma project and Schema Diff shows exactly how
+							your code schema differs from{' '}
+							<span className='font-medium text-foreground/80'>{connectionName}</span>
+							, plus the SQL to reconcile them.
 						</p>
 						<Button onClick={cockpit.link} className='mt-6 gap-1.5'>
 							<FolderGit2 className='h-4 w-4' />

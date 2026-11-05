@@ -134,13 +134,14 @@ export function DatabaseStudioStructureView({
 						</thead>
 						<tbody>
 							{tableData.columns.map((col: ColumnDefinition) => (
-								<tr key={col.name} className='group border-b border-sidebar-border/50'>
+								<tr
+									key={col.name}
+									className='group border-b border-sidebar-border/50'
+								>
 									<td className='py-2 px-3 font-mono text-sidebar-foreground'>
 										{col.name}
 									</td>
-									<td className='py-2 px-3 font-mono text-primary'>
-										{col.type}
-									</td>
+									<td className='py-2 px-3 font-mono text-primary'>{col.type}</td>
 									<td className='py-2 px-3'>
 										{col.nullable ? (
 											<span className='text-muted-foreground'>Yes</span>

@@ -72,7 +72,7 @@ const EPHEMERAL_JOIN_COLUMNS = new Set([
 	'updated_at',
 	'deleted_at',
 	'sort_order',
-	'position',
+	'position'
 ])
 
 export function getTableId(tableName: string, schemaName?: string | null) {
@@ -114,18 +114,14 @@ function columnIndexed(table: TableInfo, columnName: string) {
 	)
 }
 
-function isColumnUnique(
-	table: TableInfo,
-	columnName: string,
-	globalUniqueColumns: Set<string>,
-) {
+function isColumnUnique(table: TableInfo, columnName: string, globalUniqueColumns: Set<string>) {
 	if (table.primary_key_columns?.includes(columnName)) return true
 	if (
 		table.indexes?.some(
 			(index) =>
 				(index.is_unique || index.is_primary) &&
 				index.column_names.length === 1 &&
-				index.column_names[0] === columnName,
+				index.column_names[0] === columnName
 		)
 	) {
 		return true
@@ -143,9 +139,9 @@ function isJoinTable(table: TableInfo, fkColumns: ColumnInfo[]) {
 		fkColumns.map((column) =>
 			getTableId(
 				column.foreign_key?.referenced_table ?? '',
-				column.foreign_key?.referenced_schema,
-			),
-		),
+				column.foreign_key?.referenced_schema
+			)
+		)
 	)
 	if (referencedTables.size < 2) return false
 
@@ -158,7 +154,7 @@ function isJoinTable(table: TableInfo, fkColumns: ColumnInfo[]) {
 		table.indexes?.some(
 			(index) =>
 				(index.is_unique || index.is_primary) &&
-				fkColumns.every((column) => index.column_names.includes(column.name)),
+				fkColumns.every((column) => index.column_names.includes(column.name))
 		) ?? false
 
 	return significantColumns.length === 0 && hasCompositeJoinKey
@@ -189,22 +185,19 @@ function getTableMatches(table: TableInfo, search: SearchQuery, hasSearch: boole
 					includesTerm(column.name, term) ||
 					includesTerm(column.data_type, term) ||
 					includesTerm(column.foreign_key?.referenced_table, term) ||
-					includesTerm(column.foreign_key?.referenced_column, term),
+					includesTerm(column.foreign_key?.referenced_column, term)
 			)
 		})
 		.map((column) => column.name)
 
 	const tableMatches = search.terms.every(
-		(term) => includesTerm(table.name, term) || includesTerm(table.schema, term),
+		(term) => includesTerm(table.name, term) || includesTerm(table.schema, term)
 	)
-	const columnOnlySearch =
-		Boolean(search.column) ||
-		Boolean(search.type) ||
-		search.flags.size > 0
+	const columnOnlySearch = Boolean(search.column) || Boolean(search.type) || search.flags.size > 0
 
 	return {
 		matches: matchedColumns.length > 0 || (!columnOnlySearch && tableMatches),
-		matchedColumns,
+		matchedColumns
 	}
 }
 
@@ -215,14 +208,14 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 			edges: [],
 			searchSummary: null,
 			directRelationMap: new Map(),
-			tableLookup: new Map(),
+			tableLookup: new Map()
 		}
 	}
 
 	const tables = schema.tables
 	const globalUniqueColumns = new Set(schema.unique_columns)
 	const tableLookup = new Map(
-		tables.map((table) => [getTableId(table.name, table.schema), table]),
+		tables.map((table) => [getTableId(table.name, table.schema), table])
 	)
 	const cols = Math.max(1, Math.ceil(Math.sqrt(tables.length)))
 	const hGap = NODE_WIDTH + 148
@@ -231,10 +224,13 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 		const tallestTable = Math.max(...rowTables.map((table) => table.columns.length), 1)
 		return HEADER_HEIGHT + tallestTable * ROW_HEIGHT + 112
 	})
-	const rowOffsets = rowHeights.reduce<number[]>((offsets, height, index) => {
-		offsets[index + 1] = offsets[index] + height
-		return offsets
-	}, [0])
+	const rowOffsets = rowHeights.reduce<number[]>(
+		(offsets, height, index) => {
+			offsets[index + 1] = offsets[index] + height
+			return offsets
+		},
+		[0]
+	)
 
 	const directRelationMap = new Map<string, Set<string>>()
 	tables.forEach((table) => {
@@ -243,7 +239,7 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 			if (!column.foreign_key) return
 			const targetId = getTableId(
 				column.foreign_key.referenced_table,
-				column.foreign_key.referenced_schema,
+				column.foreign_key.referenced_schema
 			)
 			if (!tableLookup.has(targetId)) return
 			if (!directRelationMap.has(sourceId)) directRelationMap.set(sourceId, new Set())
@@ -271,8 +267,8 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 				rowCountEstimate: table.row_count_estimate ?? null,
 				searchState: 'default',
 				matchedColumns: [],
-				pulseState: 'idle',
-			},
+				pulseState: 'idle'
+			}
 		}
 	})
 
@@ -305,7 +301,7 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 					type: MarkerType.ArrowClosed,
 					color: 'var(--sv-line-fk)',
 					width: 16,
-					height: 16,
+					height: 16
 				},
 				style: { stroke: 'var(--sv-line-fk)', strokeWidth: 1.8 },
 				data: {
@@ -315,11 +311,12 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 							: relationKind === 'one-to-one'
 								? '1:1'
 								: '1:N',
-					descriptor: relationKind === 'many-to-many'
-						? 'join table'
-						: relationKind === 'one-to-one'
-							? 'unique foreign key'
-							: 'foreign key',
+					descriptor:
+						relationKind === 'many-to-many'
+							? 'join table'
+							: relationKind === 'one-to-one'
+								? 'unique foreign key'
+								: 'foreign key',
 					sourceColumn: column.name,
 					targetColumn: fk.referenced_column,
 					sourceTableName: table.name,
@@ -329,8 +326,8 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 					isOptional: column.is_nullable,
 					isSelfReference: tableId === targetTableId,
 					isActive: false,
-					searchState: 'default',
-				},
+					searchState: 'default'
+				}
 			})
 		})
 	})
@@ -338,10 +335,7 @@ function buildBaseGraph(schema: DatabaseSchema | null): BaseGraph {
 	return { nodes, edges, searchSummary: null, directRelationMap, tableLookup }
 }
 
-export function useSchemaGraph(
-	schema: DatabaseSchema | null,
-	searchTerm: string,
-): SchemaGraph {
+export function useSchemaGraph(schema: DatabaseSchema | null, searchTerm: string): SchemaGraph {
 	const baseGraph = useMemo(() => buildBaseGraph(schema), [schema])
 
 	return useMemo(() => {
@@ -354,7 +348,7 @@ export function useSchemaGraph(
 			return {
 				nodes: baseGraph.nodes,
 				edges: baseGraph.edges,
-				searchSummary: null,
+				searchSummary: null
 			}
 		}
 
@@ -384,8 +378,8 @@ export function useSchemaGraph(
 				data: {
 					...node.data,
 					searchState,
-					matchedColumns: matchedColumnsByTable.get(node.id) ?? [],
-				},
+					matchedColumns: matchedColumnsByTable.get(node.id) ?? []
+				}
 			}
 		})
 
@@ -398,7 +392,7 @@ export function useSchemaGraph(
 						: 'dim'
 			return {
 				...edge,
-				data: edge.data ? { ...edge.data, searchState } : edge.data,
+				data: edge.data ? { ...edge.data, searchState } : edge.data
 			}
 		})
 
@@ -408,8 +402,8 @@ export function useSchemaGraph(
 			searchSummary: {
 				matchedTables: matchedTableIds.size,
 				relatedTables: relatedTableIds.size,
-				relationships: edges.filter((edge) => edge.data?.searchState !== 'dim').length,
-			},
+				relationships: edges.filter((edge) => edge.data?.searchState !== 'dim').length
+			}
 		}
 	}, [baseGraph, searchTerm])
 }

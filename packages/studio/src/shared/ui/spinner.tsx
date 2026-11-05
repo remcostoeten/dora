@@ -22,10 +22,7 @@ export function Spinner({ className, ...props }: Props) {
 			role='status'
 			aria-label='Loading'
 			{...props}
-			className={cn(
-				'relative inline-flex size-4 shrink-0 animate-spin',
-				className
-			)}
+			className={cn('relative inline-flex size-4 shrink-0 animate-spin', className)}
 		>
 			{BLADES.map((index) => (
 				<span
@@ -33,7 +30,7 @@ export function Spinner({ className, ...props }: Props) {
 					className='absolute left-1/2 top-1/2 h-[28%] w-[14%] rounded-full bg-current'
 					style={{
 						opacity: (index + 1) / BLADES.length,
-						transform: `translate(-50%, -50%) rotate(${index * 30}deg) translateY(-130%)`,
+						transform: `translate(-50%, -50%) rotate(${index * 30}deg) translateY(-130%)`
 					}}
 				/>
 			))}

@@ -14,11 +14,16 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"noImplicitAny": false,
-	"baseUrl": "..",
+		"baseUrl": "..",
 		"paths": {
 			"@/*": ["./packages/studio/src/*"],
 			"@studio/*": ["./packages/studio/src/*"]
 		}
 	},
-	"include": ["./**/*.ts", "./**/*.tsx", "../packages/studio/src/**/*.ts", "../packages/studio/src/**/*.tsx"]
+	"include": [
+		"./**/*.ts",
+		"./**/*.tsx",
+		"../packages/studio/src/**/*.ts",
+		"../packages/studio/src/**/*.tsx"
+	]
 }

@@ -107,8 +107,12 @@ export function AppearanceControls({ className }: { className?: string }) {
 			<section>
 				<div className='flex items-center justify-between mb-3'>
 					<div>
-						<h3 className='text-sm font-semibold text-sidebar-foreground'>Color Shift</h3>
-						<p className='text-xs text-muted-foreground mt-0.5'>Adjust the global hue</p>
+						<h3 className='text-sm font-semibold text-sidebar-foreground'>
+							Color Shift
+						</h3>
+						<p className='text-xs text-muted-foreground mt-0.5'>
+							Adjust the global hue
+						</p>
 					</div>
 					<span className='text-xs font-mono text-muted-foreground bg-sidebar-accent px-2 py-1 rounded'>
 						{settings.hueShift > 0 ? '+' : ''}
@@ -148,7 +152,9 @@ export function AppearanceControls({ className }: { className?: string }) {
 										: 'border-border hover:border-muted-foreground/50 hover:bg-muted/50 focus-visible:bg-focus'
 								)}
 							>
-								<span className='text-sm font-medium text-foreground'>{option.name}</span>
+								<span className='text-sm font-medium text-foreground'>
+									{option.name}
+								</span>
 								<span className='text-[10px] text-muted-foreground mt-0.5'>
 									{option.description}
 								</span>

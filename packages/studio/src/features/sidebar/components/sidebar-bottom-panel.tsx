@@ -61,11 +61,7 @@ export function SidebarBottomPanel({ table }: Props) {
 
 			<div className='flex max-h-48 flex-col overflow-y-auto py-1'>
 				{table.columns.map(function (col) {
-					const Icon = getColumnIcon(
-						col.data_type,
-						col.is_primary_key,
-						!!col.foreign_key
-					)
+					const Icon = getColumnIcon(col.data_type, col.is_primary_key, !!col.foreign_key)
 					const tooltip = getColumnTooltip(
 						col.data_type,
 						col.is_primary_key,

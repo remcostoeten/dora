@@ -26,14 +26,94 @@
 		<script>
 			;(function () {
 				var themeMap = {
-					dark: { bg: '#090909', bg2: '#121212', text: '#f1f1f1', muted: '#959595', accent: '#e5e5e5', accentSoft: 'rgba(229,229,229,0.2)', logo1: '#b35c5f', logo2: '#fcc5c3', logo3: '#e79898' },
-					light: { bg: '#f6f6f6', bg2: '#ececec', text: '#141414', muted: '#686868', accent: '#171717', accentSoft: 'rgba(23,23,23,0.11)', logo1: '#737373', logo2: '#404040', logo3: '#525252' },
-					midnight: { bg: '#0b1020', bg2: '#141b31', text: '#e8edff', muted: '#97a2c9', accent: '#818cf8', accentSoft: 'rgba(129,140,248,0.2)', logo1: '#6366f1', logo2: '#a5b4fc', logo3: '#818cf8' },
-					forest: { bg: '#0d1712', bg2: '#13231b', text: '#e6f7ef', muted: '#8ea99a', accent: '#34d399', accentSoft: 'rgba(52,211,153,0.18)', logo1: '#059669', logo2: '#a7f3d0', logo3: '#34d399' },
-					bloom: { bg: '#120d14', bg2: '#1c1420', text: '#f5e8f2', muted: '#b08ea8', accent: '#e879f9', accentSoft: 'rgba(232,121,249,0.18)', logo1: '#c026d3', logo2: '#f0abfc', logo3: '#e879f9' },
-					claude: { bg: '#f7f0e8', bg2: '#f3e8dc', text: '#34261d', muted: '#7f6756', accent: '#d97706', accentSoft: 'rgba(217,119,6,0.17)', logo1: '#c66d1a', logo2: '#fde6c8', logo3: '#f3b478' },
-					'claude-dark': { bg: '#1d1713', bg2: '#2a211b', text: '#f3e8dd', muted: '#b19a86', accent: '#b45309', accentSoft: 'rgba(180,83,9,0.2)', logo1: '#c66d1a', logo2: '#f3cfab', logo3: '#d88b43' },
-					night: { bg: '#000000', bg2: '#080808', text: '#f5f5f5', muted: '#8f8f8f', accent: '#f5f5f5', accentSoft: 'rgba(245,245,245,0.17)', logo1: '#b8b8b8', logo2: '#5f5f5f', logo3: '#8b8b8b' }
+					dark: {
+						bg: '#090909',
+						bg2: '#121212',
+						text: '#f1f1f1',
+						muted: '#959595',
+						accent: '#e5e5e5',
+						accentSoft: 'rgba(229,229,229,0.2)',
+						logo1: '#b35c5f',
+						logo2: '#fcc5c3',
+						logo3: '#e79898'
+					},
+					light: {
+						bg: '#f6f6f6',
+						bg2: '#ececec',
+						text: '#141414',
+						muted: '#686868',
+						accent: '#171717',
+						accentSoft: 'rgba(23,23,23,0.11)',
+						logo1: '#737373',
+						logo2: '#404040',
+						logo3: '#525252'
+					},
+					midnight: {
+						bg: '#0b1020',
+						bg2: '#141b31',
+						text: '#e8edff',
+						muted: '#97a2c9',
+						accent: '#818cf8',
+						accentSoft: 'rgba(129,140,248,0.2)',
+						logo1: '#6366f1',
+						logo2: '#a5b4fc',
+						logo3: '#818cf8'
+					},
+					forest: {
+						bg: '#0d1712',
+						bg2: '#13231b',
+						text: '#e6f7ef',
+						muted: '#8ea99a',
+						accent: '#34d399',
+						accentSoft: 'rgba(52,211,153,0.18)',
+						logo1: '#059669',
+						logo2: '#a7f3d0',
+						logo3: '#34d399'
+					},
+					bloom: {
+						bg: '#120d14',
+						bg2: '#1c1420',
+						text: '#f5e8f2',
+						muted: '#b08ea8',
+						accent: '#e879f9',
+						accentSoft: 'rgba(232,121,249,0.18)',
+						logo1: '#c026d3',
+						logo2: '#f0abfc',
+						logo3: '#e879f9'
+					},
+					claude: {
+						bg: '#f7f0e8',
+						bg2: '#f3e8dc',
+						text: '#34261d',
+						muted: '#7f6756',
+						accent: '#d97706',
+						accentSoft: 'rgba(217,119,6,0.17)',
+						logo1: '#c66d1a',
+						logo2: '#fde6c8',
+						logo3: '#f3b478'
+					},
+					'claude-dark': {
+						bg: '#1d1713',
+						bg2: '#2a211b',
+						text: '#f3e8dd',
+						muted: '#b19a86',
+						accent: '#b45309',
+						accentSoft: 'rgba(180,83,9,0.2)',
+						logo1: '#c66d1a',
+						logo2: '#f3cfab',
+						logo3: '#d88b43'
+					},
+					night: {
+						bg: '#000000',
+						bg2: '#080808',
+						text: '#f5f5f5',
+						muted: '#8f8f8f',
+						accent: '#f5f5f5',
+						accentSoft: 'rgba(245,245,245,0.17)',
+						logo1: '#b8b8b8',
+						logo2: '#5f5f5f',
+						logo3: '#8b8b8b'
+					}
 				}
 
 				function getTheme() {
@@ -41,13 +121,19 @@
 						var raw = window.localStorage.getItem('dora-appearance')
 						if (raw) {
 							var parsed = JSON.parse(raw)
-							if (parsed && typeof parsed.theme === 'string' && themeMap[parsed.theme]) {
+							if (
+								parsed &&
+								typeof parsed.theme === 'string' &&
+								themeMap[parsed.theme]
+							) {
 								return parsed.theme
 							}
 						}
 					} catch (_error) {}
 
-					return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
+					return window.matchMedia('(prefers-color-scheme: light)').matches
+						? 'light'
+						: 'dark'
 				}
 
 				var palette = themeMap[getTheme()] || themeMap.dark
@@ -201,7 +287,6 @@
 					transform: translateX(278%);
 				}
 			}
-
 		</style>
 	</head>
 
@@ -209,7 +294,11 @@
 		<div id="boot-screen" role="status" aria-label="Dora is starting">
 			<div class="boot-stage" aria-hidden="true">
 				<div class="boot-lockup">
-					<svg class="boot-logo" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+					<svg
+						class="boot-logo"
+						viewBox="0 0 1024 1024"
+						xmlns="http://www.w3.org/2000/svg"
+					>
 						<path
 							d="m515 153h13l18 2 22 6 16 8 15 9v2l5 2 13 13 4 5 4 7 6 10 5 11 4 13 2 13v8l8 1 16 4 24 9 16 7 16 8 14 8 8 5v2l4 1v2l4 1v2l4 2 9 8 11 14 9 18 3 12v87l-3 15-7 16-3 6 5 5 6 13 2 11v79l-5 18-7 14 1 5 7 11 3 9 1 7v75l-3 16-6 15-10 15-6 7-5 5-10 9-19 13-22 12-23 10-33 11-32 8-37 6-27 3-16 1h-54l-35-3-35-5-32-7-16-5-27-9-21-9-19-10-18-12-11-9-15-15-7-10-8-16-4-15-1-6v-73l4-17 8-13 1-3-8-16-4-15-1-9v-71l4-16 5-10 3-4-1-4-7-16-3-11-1-10v-77l3-17 6-14 10-14 17-17 14-10 21-12 21-10 19-7 19-6 28-7 23-4 10-2 24-3 20-5 16-7 8-6 6-7 3-6v-11l-4-6-7-6-7-3-16-2-5-4-2-4v-8l6-7 16-8 10-3z"
 							class="p1"

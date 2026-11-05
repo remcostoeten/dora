@@ -15,14 +15,17 @@ IP.
    **Connections → Networking → Authorized networks**.
 3. Build a URL with a database user and the public IP:
 
-   ```text
-   postgresql://<user>:<password>@<public-ip>:5432/<db>
-   ```
+    ```text
+    postgresql://<user>:<password>@<public-ip>:5432/<db>
+    ```
 
-   For MySQL use `mysql://` and port `3306`.
+    For MySQL use `mysql://` and port `3306`.
 
 4. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URL,
    **Test connection**, and **Save**. Enable the **SSL** toggle if the instance
    requires TLS.
 
-<Callout type='info'>Prefer not to expose a public IP? Run the **Cloud SQL Auth Proxy** locally and point Dora at `127.0.0.1` on the proxy's port. Dora connects to it like a local database.</Callout>
+<Callout type='info'>
+	Prefer not to expose a public IP? Run the **Cloud SQL Auth Proxy** locally and point Dora at
+	`127.0.0.1` on the proxy's port. Dora connects to it like a local database.
+</Callout>

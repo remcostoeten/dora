@@ -19,18 +19,18 @@ import { fromLiveSchema } from '@studio/features/orm-cockpit/ir/from-live-schema
 import {
 	linkProject,
 	detectProjectOrm,
-	resolveProjectDatabaseTarget,
+	resolveProjectDatabaseTarget
 } from '@studio/features/orm-cockpit/link/link-api'
 import { isWebDemo, DEMO_PROJECT_FOLDER } from '@studio/features/orm-cockpit/link/demo-project'
 import type {
 	DetectedOrm,
 	DetectOrmResult,
-	OrmLink,
+	OrmLink
 } from '@studio/features/orm-cockpit/link/detect-orm'
 import {
 	targetFromConnection,
 	compareTargets,
-	describeTarget,
+	describeTarget
 } from '@studio/features/orm-cockpit/link/connection-target'
 import type { Connection } from '@studio/features/connections/types'
 import { parseDrizzleSchema } from '@studio/features/orm-cockpit/parsers/drizzle/parse-drizzle-schema'
@@ -38,12 +38,12 @@ import { parsePrismaSchema } from '@studio/features/orm-cockpit/parsers/prisma/p
 import { diffSchema } from '@studio/features/orm-cockpit/diff/diff-schema'
 import {
 	filterManagedTables,
-	countManagedTables,
+	countManagedTables
 } from '@studio/features/orm-cockpit/diff/filter-managed-tables'
 import type { SchemaDiff } from '@studio/features/orm-cockpit/diff/types'
 import {
 	generateMigrationSql,
-	type MigrationResult,
+	type MigrationResult
 } from '@studio/features/orm-cockpit/migration/generate-sql'
 
 /** Map the connection's engine onto the small IR dialect set. */
@@ -139,7 +139,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 		function () {
 			setCompareConnectionId(connectionId)
 		},
-		[connectionId],
+		[connectionId]
 	)
 
 	const compareConnection = useMemo(
@@ -148,14 +148,14 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 				return c.id === compareConnectionId
 			})
 		},
-		[connections, compareConnectionId],
+		[connections, compareConnectionId]
 	)
 
 	const dialect = useMemo(
 		function () {
 			return deriveDialect(compareConnection?.type)
 		},
-		[compareConnection],
+		[compareConnection]
 	)
 
 	const [state, setState] = useState<OrmCockpitState>(function () {
@@ -172,7 +172,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			dialect,
 			hasConnection: Boolean(connectionId),
 			compareConnectionId: connectionId,
-			connectionMismatch: null,
+			connectionMismatch: null
 		}
 	})
 
@@ -192,11 +192,11 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 					...prev,
 					dialect,
 					hasConnection: Boolean(compareConnectionId),
-					compareConnectionId,
+					compareConnectionId
 				}
 			})
 		},
-		[dialect, compareConnectionId],
+		[dialect, compareConnectionId]
 	)
 
 	/** Introspect the live DB → IR. Returns null and reports via notes on failure. */
@@ -207,7 +207,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			if (!result.ok || !result.data) return null
 			return fromLiveSchema(result.data, dialect)
 		},
-		[adapter, compareConnectionId, dialect],
+		[adapter, compareConnectionId, dialect]
 	)
 
 	/** Parse a linked project's schema files into a code-side IR. */
@@ -221,7 +221,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			const text = link.schemaFiles.map((f) => f.text).join('\n\n')
 			return parsePrismaSchema(text)
 		},
-		[dialect],
+		[dialect]
 	)
 
 	/**
@@ -237,19 +237,21 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 				link.rootDir,
 				link.configPath,
 				link.orm,
-				link.schemaFiles.map((f) => f.text),
+				link.schemaFiles.map((f) => f.text)
 			)
 			if (compareTargets(projectTarget, connectionTarget) !== 'mismatch') {
 				return null
 			}
 			return {
-				projectLabel: projectTarget ? describeTarget(projectTarget) : 'a different database',
+				projectLabel: projectTarget
+					? describeTarget(projectTarget)
+					: 'a different database',
 				connectionLabel: connectionTarget
 					? describeTarget(connectionTarget)
-					: (compareConnection.name ?? 'the connected database'),
+					: (compareConnection.name ?? 'the connected database')
 			}
 		},
-		[compareConnection],
+		[compareConnection]
 	)
 
 	/** The full analyze chain: parse code → introspect live → diff. */
@@ -271,7 +273,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 						linked: { folder, orm: link.orm, link },
 						choices: null,
 						choiceFolder: null,
-						connectionMismatch: mismatch,
+						connectionMismatch: mismatch
 					}
 				})
 				return
@@ -281,7 +283,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			const notes: CockpitNote[] = [
 				...parsed.warnings.map(function (m): CockpitNote {
 					return { source: 'parse', message: m }
-				}),
+				})
 			]
 
 			setState(function (prev) {
@@ -296,16 +298,18 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 					liveIr,
 					diff,
 					notes,
-					connectionMismatch: mismatch,
+					connectionMismatch: mismatch
 				}
 			})
 
 			// Persist the linked folder for this connection (best-effort).
 			if (connectionId) {
-				void commands.setSetting(SETTING_PREFIX + connectionId, folder).catch(function () {})
+				void commands
+					.setSetting(SETTING_PREFIX + connectionId, folder)
+					.catch(function () {})
 			}
 		},
-		[parseLink, introspectLive, computeMismatch, connectionId, compareConnectionId],
+		[parseLink, introspectLive, computeMismatch, connectionId, compareConnectionId]
 	)
 
 	const startFromDetect = useCallback(
@@ -323,7 +327,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 						phase: 'choice',
 						error: null,
 						choices: result.options,
-						choiceFolder: folder,
+						choiceFolder: folder
 					}
 				})
 				return
@@ -333,7 +337,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			})
 			await analyze(folder, result.link, runId)
 		},
-		[analyze],
+		[analyze]
 	)
 
 	const link = useCallback(
@@ -351,7 +355,10 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 					return {
 						...prev,
 						phase: 'error',
-						error: error instanceof Error ? error.message : 'Failed to open the folder picker.',
+						error:
+							error instanceof Error
+								? error.message
+								: 'Failed to open the folder picker.'
 					}
 				})
 				return
@@ -366,7 +373,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			}
 			await startFromDetect(picked.folder, picked.result, runId)
 		},
-		[startFromDetect],
+		[startFromDetect]
 	)
 
 	const rescan = useCallback(
@@ -386,7 +393,10 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 					return {
 						...prev,
 						phase: 'error',
-						error: error instanceof Error ? error.message : 'Failed to re-scan the project.',
+						error:
+							error instanceof Error
+								? error.message
+								: 'Failed to re-scan the project.'
 					}
 				})
 				return
@@ -394,7 +404,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			if (runId !== runIdRef.current) return
 			await startFromDetect(folder, result, runId)
 		},
-		[state.linked, state.choiceFolder, startFromDetect],
+		[state.linked, state.choiceFolder, startFromDetect]
 	)
 
 	const chooseOrm = useCallback(
@@ -407,7 +417,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			})
 			await analyze(folder, chosen, runId)
 		},
-		[state.choiceFolder, analyze],
+		[state.choiceFolder, analyze]
 	)
 
 	// The live IR with managed/system tables filtered out (unless revealed), and
@@ -420,7 +430,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 				? filterManagedTables(state.liveIr, state.dialect, showExternal)
 				: null
 		},
-		[state.liveIr, state.dialect, showExternal],
+		[state.liveIr, state.dialect, showExternal]
 	)
 
 	const visibleDiff = useMemo(
@@ -428,14 +438,14 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			if (!liveForDiff || !state.codeIr) return state.diff
 			return diffSchema(liveForDiff, state.codeIr)
 		},
-		[liveForDiff, state.codeIr, state.diff],
+		[liveForDiff, state.codeIr, state.diff]
 	)
 
 	const hiddenCount = useMemo(
 		function () {
 			return state.liveIr ? countManagedTables(state.liveIr, state.dialect) : 0
 		},
-		[state.liveIr, state.dialect],
+		[state.liveIr, state.dialect]
 	)
 
 	const generate = useCallback(
@@ -443,13 +453,13 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			if (!visibleDiff) return null
 			const result = generateMigrationSql(visibleDiff, state.dialect, {
 				from: liveForDiff ?? undefined,
-				to: state.codeIr ?? undefined,
+				to: state.codeIr ?? undefined
 			})
 			// Fold generator warnings into the notes area, deduped against existing.
 			if (result.warnings.length > 0) {
 				setState(function (prev) {
 					const existing = new Set(
-						prev.notes.filter((n) => n.source === 'generate').map((n) => n.message),
+						prev.notes.filter((n) => n.source === 'generate').map((n) => n.message)
 					)
 					const fresh = result.warnings
 						.filter((m) => !existing.has(m))
@@ -461,7 +471,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			}
 			return result
 		},
-		[visibleDiff, state.dialect, liveForDiff, state.codeIr],
+		[visibleDiff, state.dialect, liveForDiff, state.codeIr]
 	)
 
 	const setCompareConnection = useCallback(function (id: string) {
@@ -482,7 +492,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 				liveIr: null,
 				diff: null,
 				notes: [],
-				connectionMismatch: null,
+				connectionMismatch: null
 			}
 		})
 	}, [])
@@ -537,7 +547,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 		},
 		// startFromDetect is stable enough; intentionally keyed on connection only.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[connectionId],
+		[connectionId]
 	)
 
 	// Re-diff the already-linked project when the comparison connection changes
@@ -557,7 +567,7 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 			void analyze(linked.folder, linked.link, runId)
 		},
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[compareConnectionId],
+		[compareConnectionId]
 	)
 
 	return {
@@ -571,6 +581,6 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 		showExternal,
 		setShowExternal,
 		hiddenCount,
-		setCompareConnection,
+		setCompareConnection
 	}
 }

@@ -28,7 +28,11 @@ type Args = {
 	deleteRows: { mutate: Function }
 	insertRow: { mutateAsync: Function; mutate: Function }
 	onLoadTableData: () => void
-	trackRowDeletion: (connectionId: string, tableName: string, rows: Record<string, unknown>[]) => string | null
+	trackRowDeletion: (
+		connectionId: string,
+		tableName: string,
+		rows: Record<string, unknown>[]
+	) => string | null
 	setTableData: React.Dispatch<React.SetStateAction<TableData | null>>
 	setSelectedRows: React.Dispatch<React.SetStateAction<Set<number>>>
 	setSelectedCells: React.Dispatch<React.SetStateAction<Set<string>>>
@@ -45,7 +49,9 @@ type Args = {
 	setDraftRow: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
 	setDraftInsertIndex: React.Dispatch<React.SetStateAction<number | null>>
 	setEditingRowState: React.Dispatch<React.SetStateAction<EditingRowState>>
-	setDuplicateInitialData: React.Dispatch<React.SetStateAction<Record<string, unknown> | undefined>>
+	setDuplicateInitialData: React.Dispatch<
+		React.SetStateAction<Record<string, unknown> | undefined>
+	>
 	setAddDialogMode: React.Dispatch<React.SetStateAction<'add' | 'duplicate' | 'edit'>>
 	setSelectedRowForDetail: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
 	setShowRowDetail: React.Dispatch<React.SetStateAction<boolean>>
@@ -92,40 +98,50 @@ export function useDatabaseStudioActions(args: Args) {
 		isDataFileSession = false
 	} = args
 
-	const notifyActionFailure = useCallback(function (title: string, error: unknown) {
-		toast({
-			title,
-			description: error instanceof Error ? error.message : 'An error occurred',
-			variant: 'destructive'
-		})
-	}, [toast])
-
-	const notifyMissingPrimaryKey = useCallback(function (actionLabel: string) {
-		if (isReadonlySource) {
+	const notifyActionFailure = useCallback(
+		function (title: string, error: unknown) {
 			toast({
-				title: `Cannot ${actionLabel}`,
-				description: isDataFileSession
-					? 'Data files open as readonly views. Save as DuckDB to edit rows.'
-					: 'This connection is read-only.',
+				title,
+				description: error instanceof Error ? error.message : 'An error occurred',
 				variant: 'destructive'
 			})
-			return
-		}
+		},
+		[toast]
+	)
 
-		toast({
-			title: `Cannot ${actionLabel}`,
-			description: 'This table has no primary key, so changes cannot be saved safely.',
-			variant: 'destructive'
-		})
-	}, [isDataFileSession, isReadonlySource, toast])
+	const notifyMissingPrimaryKey = useCallback(
+		function (actionLabel: string) {
+			if (isReadonlySource) {
+				toast({
+					title: `Cannot ${actionLabel}`,
+					description: isDataFileSession
+						? 'Data files open as readonly views. Save as DuckDB to edit rows.'
+						: 'This connection is read-only.',
+					variant: 'destructive'
+				})
+				return
+			}
 
-	const notifyPrimaryKeyNotGenerated = useCallback(function (actionLabel: string) {
-		toast({
-			title: `Cannot ${actionLabel}`,
-			description: 'This table has a primary key the database does not generate. Duplicate one row at a time and enter a new key.',
-			variant: 'destructive'
-		})
-	}, [toast])
+			toast({
+				title: `Cannot ${actionLabel}`,
+				description: 'This table has no primary key, so changes cannot be saved safely.',
+				variant: 'destructive'
+			})
+		},
+		[isDataFileSession, isReadonlySource, toast]
+	)
+
+	const notifyPrimaryKeyNotGenerated = useCallback(
+		function (actionLabel: string) {
+			toast({
+				title: `Cannot ${actionLabel}`,
+				description:
+					'This table has a primary key the database does not generate. Duplicate one row at a time and enter a new key.',
+				variant: 'destructive'
+			})
+		},
+		[toast]
+	)
 
 	const { highlightedRowIndexes, markRowsAdded } = useRecentlyAddedRows(
 		tableData,

@@ -20,7 +20,11 @@ export function generatePrismaTypes(schema: DatabaseSchema, modelMap: ModelMap):
 			if (!table) return null
 			return { modelKey, table, modelName: tableToModelName(table.name) }
 		})
-		.filter(function (entry): entry is { modelKey: string; table: TableInfo; modelName: string } {
+		.filter(function (entry): entry is {
+			modelKey: string
+			table: TableInfo
+			modelName: string
+		} {
 			return entry !== null
 		})
 
@@ -161,7 +165,11 @@ function columnTsType(column: ColumnInfo): string {
 
 function baseColumnTsType(dataType: string): string {
 	const normalized = dataType.toLowerCase()
-	if (/\b(bigint|int8|integer|int|int2|int4|serial|smallint|smallserial|bigserial)\b/.test(normalized)) {
+	if (
+		/\b(bigint|int8|integer|int|int2|int4|serial|smallint|smallserial|bigserial)\b/.test(
+			normalized
+		)
+	) {
 		return 'number'
 	}
 	if (/\b(float|float4|float8|double|real|numeric|decimal|money)\b/.test(normalized)) {

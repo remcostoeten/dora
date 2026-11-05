@@ -17,7 +17,7 @@ import { readDrizzleJournal } from '@studio/features/orm-cockpit/link/link-api'
 import { queryLastAppliedMigration } from '@studio/features/orm-cockpit/migration/query-applied'
 import {
 	reconcileMigrations,
-	type MigrationStatus,
+	type MigrationStatus
 } from '@studio/features/orm-cockpit/migration/migration-status'
 
 export type MigrationStatusState = {
@@ -42,7 +42,7 @@ export function useMigrationStatus({
 	configPath,
 	orm,
 	connectionId,
-	dialect,
+	dialect
 }: Args): MigrationStatusState {
 	const adapter = useAdapter()
 	const [loading, setLoading] = useState(false)
@@ -75,7 +75,7 @@ export function useMigrationStatus({
 
 				if (journal.entries.length === 0) {
 					setNote(
-						'No migration journal found. Run `drizzle-kit generate` to create migrations, or this project may use push-style sync (see the Drift tab).',
+						'No migration journal found. Run `drizzle-kit generate` to create migrations, or this project may use push-style sync (see the Drift tab).'
 					)
 					return
 				}
@@ -84,7 +84,7 @@ export function useMigrationStatus({
 				if (runId !== runIdRef.current) return
 
 				setStatus(
-					reconcileMigrations(journal.entries, applied.lastApplied, applied.tableMissing),
+					reconcileMigrations(journal.entries, applied.lastApplied, applied.tableMissing)
 				)
 			} finally {
 				if (runId === runIdRef.current) {
@@ -92,14 +92,14 @@ export function useMigrationStatus({
 				}
 			}
 		},
-		[adapter, folder, configPath, orm, connectionId, dialect],
+		[adapter, folder, configPath, orm, connectionId, dialect]
 	)
 
 	useEffect(
 		function () {
 			void load()
 		},
-		[load],
+		[load]
 	)
 
 	return { loading, status, note, reload: load }

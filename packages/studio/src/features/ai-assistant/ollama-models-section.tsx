@@ -170,7 +170,9 @@ export function OllamaModelsSection() {
 		if (!isTauri) {
 			setCatalog(function (current) {
 				return current.map(function (entry) {
-					return entry.name === model ? { ...entry, installed: false, size_bytes: null } : entry
+					return entry.name === model
+						? { ...entry, installed: false, size_bytes: null }
+						: entry
 				})
 			})
 			return
@@ -547,7 +549,8 @@ export function OllamaModelsSection() {
 				) : null}
 				{status ? (
 					<span className='text-muted-foreground'>
-						{status.installed_count} model{status.installed_count === 1 ? '' : 's'} installed
+						{status.installed_count} model{status.installed_count === 1 ? '' : 's'}{' '}
+						installed
 						{status.managed ? ' · managed by Dora' : ''}
 					</span>
 				) : null}
@@ -633,7 +636,9 @@ export function OllamaModelsSection() {
 							Cancel
 						</Button>
 					</div>
-					<div className='mb-1 text-[10px] text-muted-foreground'>{installState.message}</div>
+					<div className='mb-1 text-[10px] text-muted-foreground'>
+						{installState.message}
+					</div>
 					<div className='h-2 overflow-hidden rounded bg-sidebar-accent'>
 						<div
 							className='h-full bg-primary transition-all'
@@ -660,7 +665,9 @@ export function OllamaModelsSection() {
 							Cancel
 						</Button>
 					</div>
-					<div className='mb-1 text-[10px] text-muted-foreground'>{pullState.message}</div>
+					<div className='mb-1 text-[10px] text-muted-foreground'>
+						{pullState.message}
+					</div>
 					<div className='h-2 overflow-hidden rounded bg-sidebar-accent'>
 						<div
 							className='h-full bg-primary transition-all'

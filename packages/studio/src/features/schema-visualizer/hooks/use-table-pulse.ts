@@ -22,10 +22,14 @@ export function useTablePulse(): PulseMap {
 
 	function changeTypeToPulse(changeType: ChangeType): PulseState {
 		switch (changeType) {
-			case 'insert': return 'insert'
-			case 'update': return 'update'
-			case 'delete': return 'delete'
-			default: return 'idle'
+			case 'insert':
+				return 'insert'
+			case 'update':
+				return 'update'
+			case 'delete':
+				return 'delete'
+			default:
+				return 'idle'
 		}
 	}
 
@@ -38,50 +42,53 @@ export function useTablePulse(): PulseMap {
 		timeoutsRef.current.delete(tableName)
 	}, [])
 
-	useEffect(function processEvents() {
-		if (!recentEvents.length) return
+	useEffect(
+		function processEvents() {
+			if (!recentEvents.length) return
 
-		const newPulses = new Map<string, PulseState>()
+			const newPulses = new Map<string, PulseState>()
 
-		recentEvents.forEach(function (event) {
-			// Skip already-processed events
-			if (processedIdsRef.current.has(event.id)) return
-			processedIdsRef.current.add(event.id)
+			recentEvents.forEach(function (event) {
+				// Skip already-processed events
+				if (processedIdsRef.current.has(event.id)) return
+				processedIdsRef.current.add(event.id)
 
-			const pulse = changeTypeToPulse(event.changeType)
-			if (pulse !== 'idle') {
-				newPulses.set(event.tableName, pulse)
-			}
-		})
-
-		// Cap the processed IDs set so it doesn't grow forever
-		if (processedIdsRef.current.size > 500) {
-			const arr = Array.from(processedIdsRef.current)
-			processedIdsRef.current = new Set(arr.slice(arr.length - 200))
-		}
-
-		if (newPulses.size === 0) return
-
-		setPulseMap(function (prev) {
-			const next = new Map(prev)
-			newPulses.forEach(function (pulse, tableName) {
-				next.set(tableName, pulse)
+				const pulse = changeTypeToPulse(event.changeType)
+				if (pulse !== 'idle') {
+					newPulses.set(event.tableName, pulse)
+				}
 			})
-			return next
-		})
 
-		// Schedule auto-clear for each pulsing table
-		newPulses.forEach(function (_pulse, tableName) {
-			// Clear any existing timeout for this table
-			const existing = timeoutsRef.current.get(tableName)
-			if (existing) clearTimeout(existing)
+			// Cap the processed IDs set so it doesn't grow forever
+			if (processedIdsRef.current.size > 500) {
+				const arr = Array.from(processedIdsRef.current)
+				processedIdsRef.current = new Set(arr.slice(arr.length - 200))
+			}
 
-			const timeout = setTimeout(function () {
-				clearPulse(tableName)
-			}, PULSE_DURATION_MS)
-			timeoutsRef.current.set(tableName, timeout)
-		})
-	}, [recentEvents, clearPulse])
+			if (newPulses.size === 0) return
+
+			setPulseMap(function (prev) {
+				const next = new Map(prev)
+				newPulses.forEach(function (pulse, tableName) {
+					next.set(tableName, pulse)
+				})
+				return next
+			})
+
+			// Schedule auto-clear for each pulsing table
+			newPulses.forEach(function (_pulse, tableName) {
+				// Clear any existing timeout for this table
+				const existing = timeoutsRef.current.get(tableName)
+				if (existing) clearTimeout(existing)
+
+				const timeout = setTimeout(function () {
+					clearPulse(tableName)
+				}, PULSE_DURATION_MS)
+				timeoutsRef.current.set(tableName, timeout)
+			})
+		},
+		[recentEvents, clearPulse]
+	)
 
 	// Cleanup all timeouts on unmount
 	useEffect(function cleanupTimeouts() {

@@ -52,9 +52,7 @@ export const MOCK_SCHEMAS = PERF_FIXTURES
 	? { ...DEMO_SCHEMAS, ...buildPerfSchemas() }
 	: DEMO_SCHEMAS
 
-export const MOCK_SCRIPTS = PERF_FIXTURES
-	? [...DEMO_SCRIPTS, ...buildPerfScripts()]
-	: DEMO_SCRIPTS
+export const MOCK_SCRIPTS = PERF_FIXTURES ? [...DEMO_SCRIPTS, ...buildPerfScripts()] : DEMO_SCRIPTS
 const TAGS: Record<string, unknown>[] = [
 	{ id: 1, name: 'JavaScript', slug: 'javascript' },
 	{ id: 2, name: 'TypeScript', slug: 'typescript' },

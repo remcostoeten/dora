@@ -72,7 +72,9 @@ describe('Drizzle LSP Patterns', () => {
 			expect(getChainMode('db.update(')).toBe('update')
 			expect(getChainMode('db.update(users).set(')).toBe('update')
 			expect(
-				getChainMode("db.select().from('user').where('email', '=', 'x').update({ email: 'y' })")
+				getChainMode(
+					"db.select().from('user').where('email', '=', 'x').update({ email: 'y' })"
+				)
 			).toBe('update')
 		})
 

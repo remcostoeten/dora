@@ -12,14 +12,18 @@ and enables SSL automatically for `*.neon.tech` hosts.
    **Connection Details** on the dashboard).
 2. Copy the connection string. It looks like:
 
-   ```text
-   postgresql://<user>:<password>@<endpoint>.neon.tech/<db>?sslmode=require
-   ```
+    ```text
+    postgresql://<user>:<password>@<endpoint>.neon.tech/<db>?sslmode=require
+    ```
 
 3. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URL,
    **Test connection**, and **Save**.
 
-<Callout type='info'>**Pooled vs direct.** Neon's pooled host contains `-pooler` in the endpoint. Use it for serverless/short-lived connections; use the non-pooler host for sessions that need a direct connection. Both work in Dora.</Callout>
+<Callout type='info'>
+	**Pooled vs direct.** Neon's pooled host contains `-pooler` in the endpoint. Use it for
+	serverless/short-lived connections; use the non-pooler host for sessions that need a direct
+	connection. Both work in Dora.
+</Callout>
 
 ## With your Neon account
 

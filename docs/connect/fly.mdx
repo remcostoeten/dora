@@ -11,17 +11,17 @@ your machine usually means proxying it out first.
 
 1. Forward the database to your machine with the Fly CLI:
 
-   ```bash
-   fly proxy 5432 -a <your-postgres-app>
-   ```
+    ```bash
+    fly proxy 5432 -a <your-postgres-app>
+    ```
 
 2. In Dora connect to the forwarded port:
 
-   ```text
-   postgresql://postgres:<password>@localhost:5432/<db>
-   ```
+    ```text
+    postgresql://postgres:<password>@localhost:5432/<db>
+    ```
 
-   Get the password with `fly secrets list` / your app's `DATABASE_URL`.
+    Get the password with `fly secrets list` / your app's `DATABASE_URL`.
 
 ## Option B: a public host
 

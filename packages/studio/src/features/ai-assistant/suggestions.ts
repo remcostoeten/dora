@@ -16,7 +16,10 @@ const GENERIC_SUGGESTIONS = [
 ]
 
 const QUICK_ACTIONS = [
-	{ label: 'Seed data', prompt: 'Generate 10 realistic INSERT statements for the most important table.' },
+	{
+		label: 'Seed data',
+		prompt: 'Generate 10 realistic INSERT statements for the most important table.'
+	},
 	{ label: 'Schema design', prompt: 'Review my schema and suggest design improvements.' },
 	{ label: 'Debug SQL error', prompt: 'I have a SQL error. Help me debug it: ' },
 	{ label: 'Optimize query', prompt: 'How can I make this query faster? ' }
@@ -33,12 +36,7 @@ export function buildDynamicSuggestions(tables: SchemaTableLite[]): string[] {
 	out.push(`SELECT * FROM ${firstName} LIMIT 10`)
 
 	if (tables.length > 1) {
-		out.push(
-			`Compare row counts across ${tables
-				.slice(0, 3)
-				.map(qualified)
-				.join(', ')}`
-		)
+		out.push(`Compare row counts across ${tables.slice(0, 3).map(qualified).join(', ')}`)
 	}
 
 	out.push(`Insert one row of realistic fake data into ${firstName}`)

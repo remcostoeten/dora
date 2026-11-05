@@ -72,13 +72,17 @@ to define the VM without booting it.
 `vm init` writes a `.dora-vm.yaml` (see `tools/dora-runner/vm.example.yaml`).
 Key fields:
 
-| Field | Purpose | Default |
-| --- | --- | --- |
-| `name` | libvirt domain name | `dora-linux-test` |
-| `uri` | libvirt connection URI | `qemu:///session` |
-| `base_image` / `base_image_url` | base qcow2 template (auto-downloaded for Linux) | none |
-| `memory_mb` / `vcpus` / `disk_size_gb` | guest resources | `8192` / `4` / `80` |
-| `guest_run_command` | default command run in the guest | smoke test |
-| `agent_timeout_sec` | qemu-guest-agent timeout | `180` |
+| Field                                  | Purpose                                         | Default             |
+| -------------------------------------- | ----------------------------------------------- | ------------------- |
+| `name`                                 | libvirt domain name                             | `dora-linux-test`   |
+| `uri`                                  | libvirt connection URI                          | `qemu:///session`   |
+| `base_image` / `base_image_url`        | base qcow2 template (auto-downloaded for Linux) | none                |
+| `memory_mb` / `vcpus` / `disk_size_gb` | guest resources                                 | `8192` / `4` / `80` |
+| `guest_run_command`                    | default command run in the guest                | smoke test          |
+| `agent_timeout_sec`                    | qemu-guest-agent timeout                        | `180`               |
 
-<Callout type='info'>The VM commands are Linux-only and need a working libvirt/KVM setup; the CI commands need an authenticated `gh`. The TUI's build and release tasks shell out to the repo's own scripts, so run it from within a Dora checkout.</Callout>
+<Callout type='info'>
+	The VM commands are Linux-only and need a working libvirt/KVM setup; the CI commands need an
+	authenticated `gh`. The TUI's build and release tasks shell out to the repo's own scripts, so
+	run it from within a Dora checkout.
+</Callout>

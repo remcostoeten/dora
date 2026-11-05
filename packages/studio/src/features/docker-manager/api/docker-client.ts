@@ -306,7 +306,13 @@ export async function streamContainerLogs(
 		('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 	) {
 		const { Command } = await import('@tauri-apps/plugin-shell')
-		const command = Command.create('docker', ['logs', '-f', '--tail', String(tail), containerId])
+		const command = Command.create('docker', [
+			'logs',
+			'-f',
+			'--tail',
+			String(tail),
+			containerId
+		])
 
 		command.on('close', () => {})
 

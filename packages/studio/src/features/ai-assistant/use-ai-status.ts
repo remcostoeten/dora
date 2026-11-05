@@ -16,24 +16,27 @@ export function useAiStatus(enabled = true): UseAiStatusResult {
 	const [status, setStatus] = useState<AiStatus | null>(null)
 	const [loading, setLoading] = useState(false)
 
-	const refresh = useCallback(async function refresh() {
-		if (!enabled) return
+	const refresh = useCallback(
+		async function refresh() {
+			if (!enabled) return
 
-		if (isMock) {
-			setStatus(buildMockAiStatus())
-			return
-		}
-
-		setLoading(true)
-		try {
-			const result = await commands.aiGetStatus()
-			if (result.status === 'ok') {
-				setStatus(result.data)
+			if (isMock) {
+				setStatus(buildMockAiStatus())
+				return
 			}
-		} finally {
-			setLoading(false)
-		}
-	}, [enabled, isMock])
+
+			setLoading(true)
+			try {
+				const result = await commands.aiGetStatus()
+				if (result.status === 'ok') {
+					setStatus(result.data)
+				}
+			} finally {
+				setLoading(false)
+			}
+		},
+		[enabled, isMock]
+	)
 
 	useEffect(
 		function loadStatus() {

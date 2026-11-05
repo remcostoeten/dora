@@ -16,14 +16,7 @@ type Props = {
 }
 
 export function QueryTabBar({ onCloseTab }: Props) {
-	const {
-		tabs,
-		activeTabId,
-		setActiveTab,
-		addTab,
-		renameTab,
-		duplicateTab
-	} = useQueryTabs()
+	const { tabs, activeTabId, setActiveTab, addTab, renameTab, duplicateTab } = useQueryTabs()
 
 	const [editingTabId, setEditingTabId] = useState<string | null>(null)
 	const [editValue, setEditValue] = useState('')
@@ -32,29 +25,37 @@ export function QueryTabBar({ onCloseTab }: Props) {
 	const editInputRef = useRef<HTMLInputElement>(null)
 
 	// Check if we need scroll buttons
-	useEffect(function () {
-		function checkOverflow() {
-			const el = scrollContainerRef.current
-			if (el) {
-				setShowScrollButtons(el.scrollWidth > el.clientWidth)
+	useEffect(
+		function () {
+			function checkOverflow() {
+				const el = scrollContainerRef.current
+				if (el) {
+					setShowScrollButtons(el.scrollWidth > el.clientWidth)
+				}
 			}
-		}
 
-		checkOverflow()
-		const observer = new ResizeObserver(checkOverflow)
-		if (scrollContainerRef.current) {
-			observer.observe(scrollContainerRef.current)
-		}
-		return function () { observer.disconnect() }
-	}, [tabs.length])
+			checkOverflow()
+			const observer = new ResizeObserver(checkOverflow)
+			if (scrollContainerRef.current) {
+				observer.observe(scrollContainerRef.current)
+			}
+			return function () {
+				observer.disconnect()
+			}
+		},
+		[tabs.length]
+	)
 
 	// Focus input when editing
-	useEffect(function () {
-		if (editingTabId && editInputRef.current) {
-			editInputRef.current.focus()
-			editInputRef.current.select()
-		}
-	}, [editingTabId])
+	useEffect(
+		function () {
+			if (editingTabId && editInputRef.current) {
+				editInputRef.current.focus()
+				editInputRef.current.select()
+			}
+		},
+		[editingTabId]
+	)
 
 	function handleDoubleClick(tabId: string, title: string) {
 		setEditingTabId(tabId)
@@ -76,11 +77,16 @@ export function QueryTabBar({ onCloseTab }: Props) {
 		}
 	}
 
-	useEffect(function scrollActiveTabIntoView() {
-		const container = scrollContainerRef.current
-		const activeTab = container?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-		activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-	}, [activeTabId])
+	useEffect(
+		function scrollActiveTabIntoView() {
+			const container = scrollContainerRef.current
+			const activeTab = container?.querySelector<HTMLElement>(
+				'[role="tab"][aria-selected="true"]'
+			)
+			activeTab?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+		},
+		[activeTabId]
+	)
 
 	function focusTab(tabId: string) {
 		requestAnimationFrame(function () {
@@ -175,10 +181,18 @@ export function QueryTabBar({ onCloseTab }: Props) {
 											? 'bg-background text-foreground query-tab--active'
 											: 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
 									)}
-									onClick={function () { setActiveTab(tab.id) }}
-									onKeyDown={function (e) { handleTabKeyDown(e, index) }}
-									onMouseDown={function (e) { handleMiddleClick(e, tab.id) }}
-									onDoubleClick={function () { handleDoubleClick(tab.id, tab.title) }}
+									onClick={function () {
+										setActiveTab(tab.id)
+									}}
+									onKeyDown={function (e) {
+										handleTabKeyDown(e, index)
+									}}
+									onMouseDown={function (e) {
+										handleMiddleClick(e, tab.id)
+									}}
+									onDoubleClick={function () {
+										handleDoubleClick(tab.id, tab.title)
+									}}
 									title={tab.title}
 									data-tauri-drag-region='false'
 								>
@@ -203,8 +217,12 @@ export function QueryTabBar({ onCloseTab }: Props) {
 											ref={editInputRef}
 											className='bg-transparent border-none outline-none text-xs font-medium w-full min-w-[60px] text-foreground'
 											value={editValue}
-											onChange={function (e) { setEditValue(e.target.value) }}
-											onBlur={function () { handleRenameSubmit(tab.id) }}
+											onChange={function (e) {
+												setEditValue(e.target.value)
+											}}
+											onBlur={function () {
+												handleRenameSubmit(tab.id)
+											}}
 											onKeyDown={function (e) {
 												if (e.key === 'Enter') {
 													handleRenameSubmit(tab.id)
@@ -240,10 +258,18 @@ export function QueryTabBar({ onCloseTab }: Props) {
 								</button>
 							</ContextMenuTrigger>
 							<ContextMenuContent>
-								<ContextMenuItem onClick={function () { handleDoubleClick(tab.id, tab.title) }}>
+								<ContextMenuItem
+									onClick={function () {
+										handleDoubleClick(tab.id, tab.title)
+									}}
+								>
 									Rename Tab
 								</ContextMenuItem>
-								<ContextMenuItem onClick={function () { duplicateTab(tab.id) }}>
+								<ContextMenuItem
+									onClick={function () {
+										duplicateTab(tab.id)
+									}}
+								>
 									<Copy className='size-3.5' />
 									Duplicate Tab
 								</ContextMenuItem>
@@ -251,7 +277,9 @@ export function QueryTabBar({ onCloseTab }: Props) {
 								<ContextMenuItem
 									disabled={tabs.length <= 1}
 									variant='destructive'
-									onClick={function () { onCloseTab(tab.id) }}
+									onClick={function () {
+										onCloseTab(tab.id)
+									}}
 								>
 									<X className='size-3.5' />
 									Close Tab

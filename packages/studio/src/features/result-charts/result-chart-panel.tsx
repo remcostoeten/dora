@@ -109,7 +109,9 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 		},
 		[columns, rows]
 	)
-	const numericColumns = columnsByKind.filter(function (column) { return column.kind === 'number' })
+	const numericColumns = columnsByKind.filter(function (column) {
+		return column.kind === 'number'
+	})
 	const dimensionColumns = columnsByKind.filter(function (column) {
 		return column.kind === 'text' || column.kind === 'date' || column.kind === 'number'
 	})
@@ -153,7 +155,10 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 		const svg = chartRef.current?.querySelector('svg')
 		if (!svg) return
 		const source = new XMLSerializer().serializeToString(svg)
-		downloadBlob(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }), 'result-chart.svg')
+		downloadBlob(
+			new Blob([source], { type: 'image/svg+xml;charset=utf-8' }),
+			'result-chart.svg'
+		)
 	}
 
 	function exportPng() {
@@ -211,9 +216,15 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 								</SelectTrigger>
 								<SelectContent>
 									{CHART_TYPES.map(function (type) {
-										const disabled = !chartTypesForConfig(effectiveConfig).includes(type.value)
+										const disabled = !chartTypesForConfig(
+											effectiveConfig
+										).includes(type.value)
 										return (
-											<SelectItem key={type.value} value={type.value} disabled={disabled}>
+											<SelectItem
+												key={type.value}
+												value={type.value}
+												disabled={disabled}
+											>
 												{type.label}
 											</SelectItem>
 										)
@@ -266,7 +277,9 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 										</div>
 									) : (
 										numericColumns.map(function (column) {
-											const checked = effectiveConfig.yColumns.includes(column.name)
+											const checked = effectiveConfig.yColumns.includes(
+												column.name
+											)
 											const disabled =
 												effectiveConfig.type === 'pie' &&
 												!checked &&
@@ -276,7 +289,9 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 													key={column.name}
 													checked={checked}
 													disabled={disabled}
-													onCheckedChange={() => toggleYColumn(column.name)}
+													onCheckedChange={() =>
+														toggleYColumn(column.name)
+													}
 													onSelect={(event) => event.preventDefault()}
 													className='text-xs'
 												>
@@ -327,7 +342,10 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 								<SelectContent>
 									{AGGREGATIONS.map(function (aggregation) {
 										return (
-											<SelectItem key={aggregation.value} value={aggregation.value}>
+											<SelectItem
+												key={aggregation.value}
+												value={aggregation.value}
+											>
 												{aggregation.label}
 											</SelectItem>
 										)
@@ -381,7 +399,10 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 								{dataset.originalPointCount.toLocaleString()} aggregated points.
 							</div>
 						)}
-						<div ref={chartRef} className='min-h-0 flex-1 rounded-lg border border-sidebar-border bg-background p-3'>
+						<div
+							ref={chartRef}
+							className='min-h-0 flex-1 rounded-lg border border-sidebar-border bg-background p-3'
+						>
 							<ResponsiveContainer width='100%' height='100%'>
 								{renderChart(effectiveConfig, dataset)}
 							</ResponsiveContainer>
@@ -411,7 +432,10 @@ function formatYAxisLabel(yColumns: string[]): string {
 	return `${yColumns.length} metrics`
 }
 
-function renderChart(config: ResultChartConfig, dataset: NonNullable<ReturnType<typeof buildChartDataset>>) {
+function renderChart(
+	config: ResultChartConfig,
+	dataset: NonNullable<ReturnType<typeof buildChartDataset>>
+) {
 	if (config.type === 'pie') {
 		const firstSeries = dataset.series[0]
 		return (
@@ -428,10 +452,7 @@ function renderChart(config: ResultChartConfig, dataset: NonNullable<ReturnType<
 				>
 					{dataset.points.map(function (_point, index) {
 						return (
-							<Cell
-								key={index}
-								fill={SERIES_COLORS[index % SERIES_COLORS.length]}
-							/>
+							<Cell key={index} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
 						)
 					})}
 				</Pie>

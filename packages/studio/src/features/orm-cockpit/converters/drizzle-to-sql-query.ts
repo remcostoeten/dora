@@ -23,11 +23,11 @@ import {
 	type QueryIR,
 	type QueryValue,
 	type SelectQuery,
-	type UpdateQuery,
+	type UpdateQuery
 } from '@studio/features/orm-cockpit/converters/contract'
 import {
 	collectTableSymbols,
-	type TableSymbol,
+	type TableSymbol
 } from '@studio/features/orm-cockpit/converters/drizzle-to-sql-symbols'
 
 export type QueryParseResult =
@@ -40,7 +40,7 @@ const JOIN_STEPS: Record<string, JoinKind> = {
 	innerJoin: 'inner',
 	leftJoin: 'left',
 	rightJoin: 'right',
-	fullJoin: 'full',
+	fullJoin: 'full'
 }
 
 const COMPARISONS = new Set<string>(COMPARISON_OPERATORS)
@@ -66,7 +66,12 @@ export function parseDrizzleQuery(source: ts.SourceFile): QueryParseResult {
 	if (chains.length === 0) {
 		return {
 			ok: false,
-			errors: [{ code: 'parse-error', message: 'no Drizzle query-builder chain (`db.…`) was found' }],
+			errors: [
+				{
+					code: 'parse-error',
+					message: 'no Drizzle query-builder chain (`db.…`) was found'
+				}
+			]
 		}
 	}
 
@@ -74,17 +79,18 @@ export function parseDrizzleQuery(source: ts.SourceFile): QueryParseResult {
 		source,
 		symbols: collectTableSymbols(source),
 		errors: [],
-		warnings: [],
+		warnings: []
 	}
 	if (chains.length > 1) {
-		ctx.warnings.push(
-			`${chains.length} queries were found; only the first was converted.`,
-		)
+		ctx.warnings.push(`${chains.length} queries were found; only the first was converted.`)
 	}
 
 	const query = parseChain(chains[0], ctx)
 	if (!query || ctx.errors.length > 0) {
-		return { ok: false, errors: ctx.errors.length > 0 ? ctx.errors : [unsupported('query', chains[0], ctx)] }
+		return {
+			ok: false,
+			errors: ctx.errors.length > 0 ? ctx.errors : [unsupported('query', chains[0], ctx)]
+		}
 	}
 	return { ok: true, query, warnings: ctx.warnings }
 }
@@ -123,7 +129,11 @@ function unwindSteps(call: ts.CallExpression): TStep[] {
 	const steps: TStep[] = []
 	let current: ts.Expression = call
 	while (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression)) {
-		steps.unshift({ name: current.expression.name.text, args: current.arguments, node: current })
+		steps.unshift({
+			name: current.expression.name.text,
+			args: current.arguments,
+			node: current
+		})
 		current = current.expression.expression
 	}
 	return steps
@@ -162,7 +172,7 @@ function parseSelect(steps: TStep[], ctx: TCtx, isSubquery = false): SelectQuery
 		columns: [],
 		joins: [],
 		groupBy: [],
-		orderBy: [],
+		orderBy: []
 	}
 
 	for (const step of steps) {
@@ -250,7 +260,7 @@ function parseSelect(steps: TStep[], ctx: TCtx, isSubquery = false): SelectQuery
 	if (query.from.length === 0) {
 		ctx.errors.push({
 			code: 'parse-error',
-			message: 'select query has no .from() table',
+			message: 'select query has no .from() table'
 		})
 		return null
 	}
@@ -424,10 +434,16 @@ function parseInsertRows(step: TStep, ctx: TCtx): Record<string, QueryValue>[] |
 
 function parseAssignments(
 	arg: ts.Expression | undefined,
-	ctx: TCtx,
+	ctx: TCtx
 ): Record<string, QueryValue> | null {
 	if (!arg || !ts.isObjectLiteralExpression(arg)) {
-		ctx.errors.push(unsupported('a values/set argument that is not an object literal', arg ?? ctx.source, ctx))
+		ctx.errors.push(
+			unsupported(
+				'a values/set argument that is not an object literal',
+				arg ?? ctx.source,
+				ctx
+			)
+		)
 		return null
 	}
 	const out: Record<string, QueryValue> = {}
@@ -505,7 +521,10 @@ function parseCondition(arg: ts.Expression | undefined, ctx: TCtx): Condition | 
 				conditions.push(parsed)
 			}
 			if (conditions.length === 0) {
-				ctx.errors.push({ code: 'parse-error', message: `${op}() was called without conditions` })
+				ctx.errors.push({
+					code: 'parse-error',
+					message: `${op}() was called without conditions`
+				})
 				return null
 			}
 			return conditions.length === 1 ? conditions[0] : { op, conditions }
@@ -563,13 +582,15 @@ function parseCondition(arg: ts.Expression | undefined, ctx: TCtx): Condition | 
 	return {
 		op: op as 'eq' | 'ne' | 'gt' | 'gte' | 'lt' | 'lte' | 'like' | 'ilike',
 		column,
-		value: right,
+		value: right
 	}
 }
 
 function parseSubquery(arg: ts.Expression | undefined, ctx: TCtx): SelectQuery | null {
 	if (!arg || !ts.isCallExpression(arg) || chainRoot(arg) === null) {
-		ctx.errors.push(unsupported('exists() without a db.select() subquery', arg ?? ctx.source, ctx))
+		ctx.errors.push(
+			unsupported('exists() without a db.select() subquery', arg ?? ctx.source, ctx)
+		)
 		return null
 	}
 	const steps = unwindSteps(arg)
@@ -582,7 +603,7 @@ function parseSubquery(arg: ts.Expression | undefined, ctx: TCtx): SelectQuery |
 
 function parseComparisonValue(
 	arg: ts.Expression | undefined,
-	ctx: TCtx,
+	ctx: TCtx
 ): QueryValue | { kind: 'column'; ref: ColumnRef } | null {
 	// On the right of a comparison, `table.column` is the join-style column
 	// reference; deeper accesses (`req.body.id`) are runtime values.
@@ -595,7 +616,10 @@ function parseComparisonValue(
 
 function parseColumnRef(arg: ts.Expression | undefined, ctx: TCtx): ColumnRef | null {
 	if (!arg) {
-		ctx.errors.push({ code: 'parse-error', message: 'a column reference was expected but missing' })
+		ctx.errors.push({
+			code: 'parse-error',
+			message: 'a column reference was expected but missing'
+		})
 		return null
 	}
 	if (!ts.isPropertyAccessExpression(arg) || !ts.isIdentifier(arg.expression)) {
@@ -651,11 +675,16 @@ function parseValue(arg: ts.Expression | undefined, ctx: TCtx): QueryValue | nul
 
 function tableName(arg: ts.Expression | undefined, ctx: TCtx): string | null {
 	if (!arg) {
-		ctx.errors.push({ code: 'parse-error', message: 'a table argument was expected but missing' })
+		ctx.errors.push({
+			code: 'parse-error',
+			message: 'a table argument was expected but missing'
+		})
 		return null
 	}
 	if (!ts.isIdentifier(arg)) {
-		ctx.errors.push(unsupported('a table argument that is not an identifier (subquery or alias)', arg, ctx))
+		ctx.errors.push(
+			unsupported('a table argument that is not an identifier (subquery or alias)', arg, ctx)
+		)
 		return null
 	}
 	return ctx.symbols.get(arg.text)?.table ?? arg.text
@@ -666,7 +695,9 @@ function integerArg(step: TStep, ctx: TCtx): number | null {
 	if (arg && ts.isNumericLiteral(arg)) {
 		return Number(arg.text)
 	}
-	ctx.errors.push(unsupported(`.${step.name}() with a non-literal argument`, arg ?? step.node, ctx))
+	ctx.errors.push(
+		unsupported(`.${step.name}() with a non-literal argument`, arg ?? step.node, ctx)
+	)
 	return null
 }
 
@@ -682,7 +713,7 @@ function stripSelectQualifiers(query: SelectQuery): SelectQuery {
 		orderBy: query.orderBy.map(function (o) {
 			return { column: stripRef(o.column), direction: o.direction }
 		}),
-		where: query.where ? stripConditionQualifiers(query.where) : undefined,
+		where: query.where ? stripConditionQualifiers(query.where) : undefined
 	}
 }
 
@@ -690,7 +721,10 @@ function stripConditionQualifiers(condition: Condition): Condition {
 	switch (condition.op) {
 		case 'and':
 		case 'or':
-			return { op: condition.op, conditions: condition.conditions.map(stripConditionQualifiers) }
+			return {
+				op: condition.op,
+				conditions: condition.conditions.map(stripConditionQualifiers)
+			}
 		case 'not':
 			return { op: 'not', condition: stripConditionQualifiers(condition.condition) }
 		case 'exists':
@@ -701,14 +735,18 @@ function stripConditionQualifiers(condition: Condition): Condition {
 			return { op: condition.op, column: stripRef(condition.column) }
 		case 'inArray':
 		case 'notInArray':
-			return { op: condition.op, column: stripRef(condition.column), values: condition.values }
+			return {
+				op: condition.op,
+				column: stripRef(condition.column),
+				values: condition.values
+			}
 		case 'between':
 		case 'notBetween':
 			return {
 				op: condition.op,
 				column: stripRef(condition.column),
 				low: condition.low,
-				high: condition.high,
+				high: condition.high
 			}
 		default:
 			return {
@@ -717,7 +755,7 @@ function stripConditionQualifiers(condition: Condition): Condition {
 				value:
 					condition.value.kind === 'column'
 						? { kind: 'column', ref: stripRef(condition.value.ref) }
-						: condition.value,
+						: condition.value
 			}
 	}
 }
@@ -734,7 +772,7 @@ function unsupported(construct: string, node: ts.Node, ctx: TCtx): ConvertError 
 	return {
 		code: 'unsupported-construct',
 		message: `${construct} is not supported`,
-		line: lineOf(node, ctx),
+		line: lineOf(node, ctx)
 	}
 }
 

@@ -3,7 +3,7 @@ import {
 	EdgeLabelRenderer,
 	getSmoothStepPath,
 	type Edge,
-	type EdgeProps,
+	type EdgeProps
 } from '@xyflow/react'
 import { memo } from 'react'
 import { cn } from '@studio/shared/utils/cn'
@@ -28,16 +28,11 @@ function getEdgeVisuals(data: RelationshipEdgeData | undefined): EdgeVisuals {
 			strokeDasharray: undefined,
 			strokeOpacity: 0.7,
 			badgeClass: 'sv-edge-badge--primary',
-			iconChar: '→',
+			iconChar: '→'
 		}
 	}
 
-	const searchFade =
-		data.searchState === 'dim'
-			? 0.15
-			: data.searchState === 'context'
-				? 0.5
-				: 1
+	const searchFade = data.searchState === 'dim' ? 0.15 : data.searchState === 'context' ? 0.5 : 1
 
 	if (data.relationKind === 'many-to-many') {
 		return {
@@ -46,7 +41,7 @@ function getEdgeVisuals(data: RelationshipEdgeData | undefined): EdgeVisuals {
 			strokeDasharray: '7 5',
 			strokeOpacity: 0.55 * searchFade,
 			badgeClass: 'sv-edge-badge--warning',
-			iconChar: '⇔',
+			iconChar: '⇔'
 		}
 	}
 
@@ -57,7 +52,7 @@ function getEdgeVisuals(data: RelationshipEdgeData | undefined): EdgeVisuals {
 			strokeDasharray: undefined,
 			strokeOpacity: 0.72 * searchFade,
 			badgeClass: 'sv-edge-badge--success',
-			iconChar: '↔',
+			iconChar: '↔'
 		}
 	}
 
@@ -69,7 +64,7 @@ function getEdgeVisuals(data: RelationshipEdgeData | undefined): EdgeVisuals {
 		badgeClass: data.isOptional
 			? 'sv-edge-badge--primary sv-edge-badge--optional'
 			: 'sv-edge-badge--primary',
-		iconChar: '→',
+		iconChar: '→'
 	}
 }
 
@@ -84,7 +79,7 @@ function RelationshipEdgeInner({
 	style,
 	markerEnd,
 	data,
-	selected,
+	selected
 }: Props) {
 	const [edgePath, labelX, labelY] = getSmoothStepPath({
 		sourceX,
@@ -94,7 +89,7 @@ function RelationshipEdgeInner({
 		sourcePosition,
 		targetPosition,
 		borderRadius: data?.isSelfReference ? 24 : 18,
-		offset: data?.isSelfReference ? 42 : 28,
+		offset: data?.isSelfReference ? 42 : 28
 	})
 	const vis = getEdgeVisuals(data)
 	const isDim = data?.searchState === 'dim'
@@ -116,7 +111,7 @@ function RelationshipEdgeInner({
 					strokeLinejoin: 'round',
 					strokeWidth: isActive ? vis.strokeWidth + 0.9 : vis.strokeWidth,
 					strokeDasharray: vis.strokeDasharray,
-					filter: isActive ? 'drop-shadow(0 0 6px var(--sv-edge-active-glow))' : undefined,
+					filter: isActive ? 'drop-shadow(0 0 6px var(--sv-edge-active-glow))' : undefined
 				}}
 			/>
 
@@ -131,7 +126,7 @@ function RelationshipEdgeInner({
 					className={cn(
 						'sv-edge-flow',
 						isMatch && 'sv-edge-flow--match',
-						isActive && 'sv-edge-flow--active',
+						isActive && 'sv-edge-flow--active'
 					)}
 				/>
 			)}
@@ -147,13 +142,17 @@ function RelationshipEdgeInner({
 									? 0.2
 									: data.searchState === 'context'
 										? 0.65
-										: 1,
+										: 1
 						}}
 					>
-						<div className={cn('sv-edge-badge', vis.badgeClass, isActive && 'sv-edge-badge--active')}>
-							<span className='sv-edge-badge__cardinality'>
-								{data.cardinality}
-							</span>
+						<div
+							className={cn(
+								'sv-edge-badge',
+								vis.badgeClass,
+								isActive && 'sv-edge-badge--active'
+							)}
+						>
+							<span className='sv-edge-badge__cardinality'>{data.cardinality}</span>
 							{(selected || isActive) && (
 								<span className='sv-edge-badge__detail'>
 									<span className='sv-edge-badge__col'>{data.sourceColumn}</span>

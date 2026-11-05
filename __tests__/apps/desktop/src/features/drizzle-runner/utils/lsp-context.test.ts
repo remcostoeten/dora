@@ -5,9 +5,13 @@ import {
 	getScopeAtEnd,
 	getStatementPrefix,
 	isSafeIdentifier,
-	collectDeclaredIdentifiers,
+	collectDeclaredIdentifiers
 } from '@/features/drizzle-runner/utils/lsp-context'
-import { getTableMatch, getChainMode, isInsideFromParens } from '@/features/drizzle-runner/utils/lsp-patterns'
+import {
+	getTableMatch,
+	getChainMode,
+	isInsideFromParens
+} from '@/features/drizzle-runner/utils/lsp-patterns'
 
 function statementOf(prefix: string): string {
 	return getStatementPrefix(maskStringsAndComments(prefix))
@@ -82,7 +86,7 @@ describe('lsp-context', () => {
 	describe('getStatementPrefix', () => {
 		it('returns a single line unchanged (trimmed)', () => {
 			expect(getStatementPrefix('db.select().from(users).where(')).toBe(
-				'db.select().from(users).where(',
+				'db.select().from(users).where('
 			)
 		})
 

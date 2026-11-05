@@ -19,9 +19,9 @@ function comparableIr(source: string, dialect: Dialect): SchemaIR {
 			...table,
 			columns: table.columns.map(({ rawType: _rawType, ...column }) => ({
 				...column,
-				rawType: '',
-			})),
-		})),
+				rawType: ''
+			}))
+		}))
 	}
 }
 
@@ -64,7 +64,7 @@ describe('round-trip: drizzle → sql → drizzle (sql-to-drizzle fixtures)', fu
 			// cannot preserve declaration order; schemas round-trip semantically
 			// (identical IR), not byte-exactly.
 			expect(comparableIr(backToDrizzle.output, fixture.dialect)).toEqual(
-				comparableIr(fixture.drizzle, fixture.dialect),
+				comparableIr(fixture.drizzle, fixture.dialect)
 			)
 		})
 	}

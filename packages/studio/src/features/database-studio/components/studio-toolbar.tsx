@@ -229,7 +229,8 @@ export function StudioToolbar({
 									value={columnQuery}
 									onChange={(e) => setColumnQuery(e.target.value)}
 									onKeyDown={(e) => {
-										if (e.key !== 'ArrowDown' && e.key !== 'Escape') e.stopPropagation()
+										if (e.key !== 'ArrowDown' && e.key !== 'Escape')
+											e.stopPropagation()
 									}}
 									className='h-7 text-xs bg-transparent border-none shadow-none px-0'
 								/>

@@ -92,7 +92,10 @@ export function scanCode(text: string): ScanResult {
 			if (char === '\\') {
 				masked += '  '
 				i++
-			} else if ((state === 'single' && char === "'") || (state === 'double' && char === '"')) {
+			} else if (
+				(state === 'single' && char === "'") ||
+				(state === 'double' && char === '"')
+			) {
 				state = 'code'
 				masked += ' '
 			} else if (char === '\n') {
@@ -197,7 +200,7 @@ const DECLARATION_KEYWORDS = new Set([
 	'true',
 	'false',
 	'null',
-	'undefined',
+	'undefined'
 ])
 
 function addIdentifiersFromGroup(group: string, into: Set<string>): void {

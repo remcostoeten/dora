@@ -10,22 +10,25 @@ database **URL** and an **auth token**.
 
 1. Get the database URL with the Turso CLI:
 
-   ```bash
-   turso db show --url <your-database>
-   # libsql://<your-database>-<org>.turso.io
-   ```
+    ```bash
+    turso db show --url <your-database>
+    # libsql://<your-database>-<org>.turso.io
+    ```
 
 2. Create an auth token:
 
-   ```bash
-   turso db tokens create <your-database>
-   ```
+    ```bash
+    turso db tokens create <your-database>
+    ```
 
 3. In Dora press `Mod+Shift+N` and choose **LibSQL (Turso)**. Paste the
    `libsql://…` URL into the **Database URL** field and the token into
    **Auth token**, then **Test connection** and **Save**.
 
-<Callout type='info'>libSQL connections authenticate with the token rather than a TLS `sslmode`, so there is no SSL toggle to set. Treat the auth token like a password.</Callout>
+<Callout type='info'>
+	libSQL connections authenticate with the token rather than a TLS `sslmode`, so there is no SSL
+	toggle to set. Treat the auth token like a password.
+</Callout>
 
 ## With your Turso account
 

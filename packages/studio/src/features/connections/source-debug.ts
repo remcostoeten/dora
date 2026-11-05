@@ -28,7 +28,7 @@ export function resolveSourceDebugInfo(connection: ConnectionSourceInput): Sourc
 		isReadonly: caps.isReadonly,
 		visibleUiActions: getVisibleUiActions(caps),
 		meta,
-		caps,
+		caps
 	}
 }
 
@@ -46,7 +46,7 @@ export function logSourceDebugInfo(
 			engine: info.engine,
 			preset: info.preset,
 			wireFamily: info.wireFamily,
-			isReadonly: info.isReadonly,
+			isReadonly: info.isReadonly
 		})
 		console.log('visible UI actions:', info.visibleUiActions)
 		console.log('caps:', info.caps)

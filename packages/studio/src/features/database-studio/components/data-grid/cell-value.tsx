@@ -12,7 +12,9 @@ function JsonCell({ value }: { value: object }) {
 	const [expanded, setExpanded] = useState(false)
 	const isArray = Array.isArray(value)
 	const keys = isArray ? value.length : Object.keys(value).length
-	const summary = isArray ? `[${keys} item${keys !== 1 ? 's' : ''}]` : `{${keys} key${keys !== 1 ? 's' : ''}}`
+	const summary = isArray
+		? `[${keys} item${keys !== 1 ? 's' : ''}]`
+		: `{${keys} key${keys !== 1 ? 's' : ''}}`
 
 	if (!expanded) {
 		return (
@@ -31,11 +33,18 @@ function JsonCell({ value }: { value: object }) {
 	}
 
 	return (
-		<div className='text-xs font-mono' onClick={function (e) { e.stopPropagation() }}>
+		<div
+			className='text-xs font-mono'
+			onClick={function (e) {
+				e.stopPropagation()
+			}}
+		>
 			<button
 				tabIndex={-1}
 				className='flex items-center gap-1 text-warning hover:text-warning/80 transition-colors mb-1'
-				onClick={function () { setExpanded(false) }}
+				onClick={function () {
+					setExpanded(false)
+				}}
 			>
 				<ChevronDown className='w-3 h-3 shrink-0' />
 				<span>{summary}</span>
@@ -43,29 +52,29 @@ function JsonCell({ value }: { value: object }) {
 			<div className='max-h-48 overflow-auto rounded border border-sidebar-border bg-sidebar/60 p-2 space-y-0.5'>
 				{isArray
 					? (value as unknown[]).map(function (item, i) {
-						return (
-							<div key={i} className='flex gap-2'>
-								<span className='text-muted-foreground shrink-0'>{i}</span>
-								<span className='text-foreground break-all'>
-									{typeof item === 'object' && item !== null
-										? JSON.stringify(item)
-										: String(item)}
-								</span>
-							</div>
-						)
-					})
+							return (
+								<div key={i} className='flex gap-2'>
+									<span className='text-muted-foreground shrink-0'>{i}</span>
+									<span className='text-foreground break-all'>
+										{typeof item === 'object' && item !== null
+											? JSON.stringify(item)
+											: String(item)}
+									</span>
+								</div>
+							)
+						})
 					: Object.entries(value as Record<string, unknown>).map(function ([k, v]) {
-						return (
-							<div key={k} className='flex gap-2'>
-								<span className='text-primary/70 shrink-0'>{k}:</span>
-								<span className='text-foreground break-all'>
-									{typeof v === 'object' && v !== null
-										? JSON.stringify(v)
-										: String(v ?? 'null')}
-								</span>
-							</div>
-						)
-					})}
+							return (
+								<div key={k} className='flex gap-2'>
+									<span className='text-primary/70 shrink-0'>{k}:</span>
+									<span className='text-foreground break-all'>
+										{typeof v === 'object' && v !== null
+											? JSON.stringify(v)
+											: String(v ?? 'null')}
+									</span>
+								</div>
+							)
+						})}
 			</div>
 		</div>
 	)

@@ -5,7 +5,7 @@ import type {
 	IndexIR,
 	NormalizedType,
 	SchemaIR,
-	TableIR,
+	TableIR
 } from '@studio/features/orm-cockpit/ir/types'
 import { diffSchema } from '@studio/features/orm-cockpit/diff/diff-schema'
 
@@ -19,7 +19,7 @@ function col(name: string, type: NormalizedType, over: Partial<ColumnIR> = {}): 
 		nullable: over.nullable ?? false,
 		default: over.default ?? null,
 		autoIncrement: over.autoIncrement ?? false,
-		...(over.typeParams !== undefined ? { typeParams: over.typeParams } : {}),
+		...(over.typeParams !== undefined ? { typeParams: over.typeParams } : {})
 	}
 }
 
@@ -30,7 +30,7 @@ function table(name: string, columns: ColumnIR[], over: Partial<TableIR> = {}): 
 		primaryKey: over.primaryKey ?? [],
 		indexes: over.indexes ?? [],
 		foreignKeys: over.foreignKeys ?? [],
-		...(over.schema !== undefined ? { schema: over.schema } : {}),
+		...(over.schema !== undefined ? { schema: over.schema } : {})
 	}
 }
 
@@ -276,9 +276,7 @@ describe('diffSchema — indexes', function () {
 		const from = schema([table('t', [idCol])])
 		const to = schema([table('t', [idCol], { indexes: [idx('t_id_idx', ['id'])] })])
 		const diff = diffSchema(from, to)
-		expect(diff.tables[0].indexes).toEqual([
-			{ kind: 'added', after: idx('t_id_idx', ['id']) },
-		])
+		expect(diff.tables[0].indexes).toEqual([{ kind: 'added', after: idx('t_id_idx', ['id']) }])
 		expect(diff.tables[0].confidence).toBe('safe')
 	})
 
@@ -303,7 +301,12 @@ describe('diffSchema — indexes', function () {
 // ---- foreign keys ----------------------------------------------------------
 
 describe('diffSchema — foreign keys', function () {
-	function fk(columns: string[], refTable: string, refColumns: string[], over: Partial<ForeignKeyIR> = {}): ForeignKeyIR {
+	function fk(
+		columns: string[],
+		refTable: string,
+		refColumns: string[],
+		over: Partial<ForeignKeyIR> = {}
+	): ForeignKeyIR {
 		return { columns, refTable, refColumns, ...over }
 	}
 
@@ -311,8 +314,8 @@ describe('diffSchema — foreign keys', function () {
 		const from = schema([table('post', [idCol, col('author_id', 'int')])])
 		const to = schema([
 			table('post', [idCol, col('author_id', 'int')], {
-				foreignKeys: [fk(['author_id'], 'user', ['id'])],
-			}),
+				foreignKeys: [fk(['author_id'], 'user', ['id'])]
+			})
 		])
 		const diff = diffSchema(from, to)
 		expect(diff.tables[0].foreignKeys[0].kind).toBe('added')
@@ -322,8 +325,8 @@ describe('diffSchema — foreign keys', function () {
 	it('removed FK emits a removed Change', function () {
 		const from = schema([
 			table('post', [idCol, col('author_id', 'int')], {
-				foreignKeys: [fk(['author_id'], 'user', ['id'])],
-			}),
+				foreignKeys: [fk(['author_id'], 'user', ['id'])]
+			})
 		])
 		const to = schema([table('post', [idCol, col('author_id', 'int')])])
 		const diff = diffSchema(from, to)
@@ -333,13 +336,13 @@ describe('diffSchema — foreign keys', function () {
 	it('changed FK (onDelete differs, same columns+refTable) emits a changed Change', function () {
 		const from = schema([
 			table('post', [idCol, col('author_id', 'int')], {
-				foreignKeys: [fk(['author_id'], 'user', ['id'], { onDelete: 'cascade' })],
-			}),
+				foreignKeys: [fk(['author_id'], 'user', ['id'], { onDelete: 'cascade' })]
+			})
 		])
 		const to = schema([
 			table('post', [idCol, col('author_id', 'int')], {
-				foreignKeys: [fk(['author_id'], 'user', ['id'], { onDelete: 'restrict' })],
-			}),
+				foreignKeys: [fk(['author_id'], 'user', ['id'], { onDelete: 'restrict' })]
+			})
 		])
 		const diff = diffSchema(from, to)
 		expect(diff.tables[0].foreignKeys[0].kind).toBe('changed')
@@ -350,14 +353,12 @@ describe('diffSchema — foreign keys', function () {
 
 describe('diffSchema — table confidence is worst-of children', function () {
 	it('a destructive column drives the table to destructive despite safe siblings', function () {
-		const from = schema([
-			table('t', [idCol, col('legacy', 'text', { nullable: true })]),
-		])
+		const from = schema([table('t', [idCol, col('legacy', 'text', { nullable: true })])])
 		const to = schema([
 			table('t', [
 				idCol,
-				col('bio', 'text', { nullable: true }), // safe add
-			]),
+				col('bio', 'text', { nullable: true }) // safe add
+			])
 		])
 		const diff = diffSchema(from, to)
 		// bio added (safe) + legacy removed (destructive)
@@ -370,8 +371,8 @@ describe('diffSchema — table confidence is worst-of children', function () {
 			table('t', [
 				idCol,
 				col('c', 'int', { default: '1' }), // review
-				col('extra', 'text', { nullable: true }), // safe add
-			]),
+				col('extra', 'text', { nullable: true }) // safe add
+			])
 		])
 		const diff = diffSchema(from, to)
 		expect(diff.tables[0].confidence).toBe('review')
@@ -384,8 +385,11 @@ describe('diffSchema — output ordering', function () {
 	it('tables and columns come out sorted by name', function () {
 		const from = schema([])
 		const to = schema([
-			table('zebra', [col('beta', 'text', { nullable: true }), col('alpha', 'text', { nullable: true })]),
-			table('apple', [col('id', 'int')]),
+			table('zebra', [
+				col('beta', 'text', { nullable: true }),
+				col('alpha', 'text', { nullable: true })
+			]),
+			table('apple', [col('id', 'int')])
 		])
 		const diff = diffSchema(from, to)
 		expect(diff.tables.map((t) => t.name)).toEqual(['apple', 'zebra'])

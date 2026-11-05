@@ -79,7 +79,7 @@ export function buildMockChatResponse(prompt: string, connectionId: string | nul
 			'Here is a compact seed example for the demo data:',
 			'',
 			'```sql',
-			"INSERT INTO products (name, sku, price, status) VALUES",
+			'INSERT INTO products (name, sku, price, status) VALUES',
 			"  ('Desk Lamp Pro', 'LAMP-PRO-001', 89.00, 'active'),",
 			"  ('Cable Organizer', 'ORG-CBL-002', 19.50, 'active'),",
 			"  ('Notebook Stand', 'STAND-NB-003', 54.25, 'active');",
@@ -248,7 +248,9 @@ const MOCK_GEMINI: MockModelEntry[] = [
 	['gemini-2.0-flash', 'Gemini 2.0 Flash', 'fast']
 ]
 
-function entriesToOptions(entries: MockModelEntry[]): import('@studio/lib/bindings').AiModelOption[] {
+function entriesToOptions(
+	entries: MockModelEntry[]
+): import('@studio/lib/bindings').AiModelOption[] {
 	return entries.map(function ([id, label, tier]) {
 		return { id, label, tier }
 	})
