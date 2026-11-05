@@ -2,9 +2,11 @@
 	"$schema": "./node_modules/oxfmt/configuration_schema.json",
 	"useTabs": true,
 	"tabWidth": 4,
+	"printWidth": 100,
 	"endOfLine": "lf",
 	"singleQuote": true,
 	"jsxSingleQuote": true,
 	"semi": false,
-	"trailingComma": "none"
+	"trailingComma": "none",
+	"ignorePatterns": ["**/src-tauri/target/**", "**/*.md", "bun.lock"]
 }
