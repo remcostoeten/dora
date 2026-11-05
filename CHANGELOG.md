@@ -131,6 +131,51 @@ All notable changes to this project will be documented in this file.
 
 - refactor(marketing): send analytics to Spoar v2 only (#261) (#261)
 
+
+## [v0.43.0] - 2026-11-05
+
+### Bug Fixes
+
+- fix(marketing): respect the analytics opt-out flag for Spoar (#260) (#260)
+
+- fix(marketing): stop the homepage scrolling sideways and fix its phone layout (#262) (#262)
+
+- fix(ai): retry without temperature when newer models reject it (#268) (#268)
+
+- fix(shortcuts): stop hidden views from swallowing keys (#267) (#267)
+
+- fix(sql-console): run and save the text that is in the editor (#270) (#270)
+
+- fix(security): create the encryption key once under concurrent first use (#274) (#274)
+
+- fix(connections): accessible, faster new-connection dialog (#269) (#269)
+
+- fix(studio): stop per-keystroke queries and stale grid state (#266) (#266)
+
+- fix(sql-console): run the selection and keep AI inputs usable while streaming (#271) (#271)
+
+- fix(studio): keyboard query tabs and history, lighter palette and resize (#272) (#272)
+
+- fix(studio): smoother column resize, row details dialog, quieter Docker cards (#273) (#273)
+
+
+
+### CI/CD
+
+- ci(marketing): deploy the vinext build to Cloudflare Workers (#264) (#264)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.42.2
+
+
+
+### Features
+
+- feat(kv): Redis and Valkey key-value studio (#263) (#263)
+
 ## [Unreleased]
 
 ## [v0.41.0] - 2026-08-27
