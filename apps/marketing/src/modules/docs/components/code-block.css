@@ -1,0 +1,351 @@
+.code-block {
+    --code-border: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 9%,
+        transparent
+    );
+    --code-muted: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 45%,
+        transparent
+    );
+    --code-faint: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 22%,
+        transparent
+    );
+    --code-tint: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 5%,
+        transparent
+    );
+    --code-surface: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 2.5%,
+        var(--color-fd-background)
+    );
+    --code-gutter: calc(var(--spacing) * 4);
+
+    position: relative;
+    margin-block: calc(var(--spacing) * 5);
+    overflow: hidden;
+    border: 1px solid var(--code-border);
+    border-radius: var(--radius-xl);
+    background: var(--code-surface);
+    font-size: 13px;
+}
+
+.code-block-header {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing) * 2.5);
+    height: 40px;
+    padding-inline: calc(var(--spacing) * 3.5) calc(var(--spacing) * 2);
+    border-bottom: 1px solid var(--code-border);
+    background: color-mix(in oklab, var(--color-fd-foreground) 2%, transparent);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: color-mix(in oklab, var(--color-fd-foreground) 70%, transparent);
+}
+
+.code-block-language {
+    flex-shrink: 0;
+    padding: 1px 6px;
+    border: 1px solid var(--code-border);
+    border-radius: var(--radius-sm);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--code-muted);
+}
+
+.code-block-floating {
+    position: absolute;
+    top: calc(var(--spacing) * 2);
+    right: calc(var(--spacing) * 2);
+    z-index: 1;
+    background: var(--code-surface);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .code-block-floating:not(:focus-visible, [data-copied]) {
+        opacity: 0;
+        transition: opacity 150ms ease;
+    }
+
+    .code-block:hover .code-block-floating {
+        opacity: 1;
+    }
+}
+
+.code-block-viewport {
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--code-faint) transparent;
+}
+
+.code-block pre {
+    min-width: 100%;
+    width: max-content;
+    padding-block: calc(var(--spacing) * 3.5);
+    font-family: var(--font-mono);
+    line-height: 1.7;
+    outline: none;
+}
+
+.code-block pre code {
+    display: flex;
+    flex-direction: column;
+}
+
+.code-block code span {
+    color: var(--shiki-light);
+    font-style: var(--shiki-light-font-style);
+}
+
+.dark .code-block code span {
+    color: var(--shiki-dark);
+    font-style: var(--shiki-dark-font-style);
+}
+
+.code-block .line {
+    position: relative;
+    min-height: 1lh;
+    padding-inline: var(--code-gutter);
+}
+
+.code-block[data-line-numbers] {
+    counter-reset: line;
+}
+
+.code-block[data-line-numbers] .line {
+    counter-increment: line;
+    padding-left: calc(var(--code-gutter) + 2.25rem);
+}
+
+.code-block[data-line-numbers] .line::after {
+    content: counter(line);
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 2.25rem;
+    text-align: right;
+    color: var(--code-faint);
+}
+
+.code-block .highlighted {
+    background: var(--code-tint);
+}
+
+.code-block[data-line-numbers] .highlighted::after {
+    color: var(--code-muted);
+}
+
+.code-block .highlighted-word {
+    padding: 1px 3px;
+    margin: -1px -1px;
+    border-radius: var(--radius-sm);
+    background: var(--code-tint);
+    box-shadow: inset 0 0 0 1px var(--code-border);
+}
+
+.code-block .diff::before {
+    position: absolute;
+    left: calc(var(--spacing) * 1.5);
+    color: var(--code-muted);
+}
+
+.code-block .diff.add {
+    background: color-mix(in oklab, var(--color-fd-foreground) 6%, transparent);
+}
+
+.code-block .diff.add::before {
+    content: '+';
+}
+
+.code-block .diff.remove {
+    opacity: 0.45;
+}
+
+.code-block .diff.remove::before {
+    content: '−';
+}
+
+.code-block.has-focused .line:not(.focused) {
+    opacity: 0.35;
+    filter: blur(1.5px);
+    transition:
+        opacity 200ms ease,
+        filter 200ms ease;
+}
+
+.code-block.has-focused:hover .line:not(.focused) {
+    opacity: 1;
+    filter: none;
+}
+
+:where(button[data-copied]) > svg {
+    transition:
+        opacity 160ms var(--ease-snappy),
+        transform 160ms var(--ease-snappy);
+
+    @starting-style {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}
+
+.code-tabs {
+    margin-block: calc(var(--spacing) * 5);
+    overflow: hidden;
+    border: 1px solid
+        color-mix(in oklab, var(--color-fd-foreground) 9%, transparent);
+    border-radius: var(--radius-xl);
+    background: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 2.5%,
+        var(--color-fd-background)
+    );
+}
+
+.code-tabs-list {
+    gap: calc(var(--spacing) * 1);
+    height: 40px;
+    padding-inline: calc(var(--spacing) * 2);
+    border-bottom: 1px solid
+        color-mix(in oklab, var(--color-fd-foreground) 9%, transparent);
+    background: color-mix(in oklab, var(--color-fd-foreground) 2%, transparent);
+}
+
+.code-tabs-trigger {
+    height: 100%;
+    padding-inline: calc(var(--spacing) * 2);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: color-mix(in oklab, var(--color-fd-foreground) 50%, transparent);
+}
+
+.code-tabs-trigger[data-state='active'] {
+    color: var(--color-fd-foreground);
+}
+
+.code-tabs-trigger > div:first-child {
+    inset-inline: calc(var(--spacing) * 2);
+}
+
+.code-tabs-trigger[data-state='active'] > div:first-child {
+    background: var(--color-fd-foreground);
+}
+
+.code-tab .code-block {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .code-tabs-trigger:hover {
+        color: color-mix(in oklab, var(--color-fd-foreground) 80%, transparent);
+    }
+}
+
+.docs-tabs {
+    margin-block: calc(var(--spacing) * 5);
+    border-color: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 9%,
+        transparent
+    );
+    border-radius: var(--radius-xl);
+    background: color-mix(
+        in oklab,
+        var(--color-fd-foreground) 2.5%,
+        var(--color-fd-background)
+    );
+}
+
+.docs-tabs > [role='tablist'] {
+    gap: calc(var(--spacing) * 1);
+    height: 40px;
+    padding-inline: calc(var(--spacing) * 2);
+    border-bottom: 1px solid
+        color-mix(in oklab, var(--color-fd-foreground) 9%, transparent);
+    background: color-mix(in oklab, var(--color-fd-foreground) 2%, transparent);
+}
+
+.docs-tabs > [role='tablist'] > [role='tab'] {
+    height: 100%;
+    padding-inline: calc(var(--spacing) * 2);
+    padding-block: 0;
+    font-size: 13px;
+    color: color-mix(in oklab, var(--color-fd-foreground) 50%, transparent);
+}
+
+.docs-tabs > [role='tablist'] > [role='tab'][data-state='active'] {
+    border-bottom-color: var(--color-fd-foreground);
+    color: var(--color-fd-foreground);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .docs-tabs > [role='tablist'] > [role='tab']:hover {
+        color: color-mix(in oklab, var(--color-fd-foreground) 80%, transparent);
+    }
+}
+
+.docs-tab {
+    padding: calc(var(--spacing) * 4);
+    border-radius: 0;
+    background: transparent;
+}
+
+.docs-tab:has(> .contents:only-child > .code-block) {
+    padding: 0;
+}
+
+.docs-tab > .contents:only-child > .code-block {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.prop-code {
+    display: inline;
+    font-family: var(--font-mono);
+}
+
+span.prop-code-block {
+    display: block;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+span.prop-code-block code {
+    display: flex;
+    flex-direction: column;
+}
+
+.prop-code code {
+    font-family: inherit;
+}
+
+.prop-code code span {
+    color: var(--shiki-light);
+    font-style: var(--shiki-light-font-style);
+}
+
+.dark .prop-code code span {
+    color: var(--shiki-dark);
+    font-style: var(--shiki-dark-font-style);
+}
+
+.prop-code .line {
+    display: block;
+    min-height: 1lh;
+}
+
+span.prop-code:not(.prop-code-block) .line {
+    display: inline;
+}

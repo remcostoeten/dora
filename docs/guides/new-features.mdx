@@ -108,10 +108,10 @@ Reference table for accessing system metrics and export features.
 
 ### Export Capabilities
 
-| Feature           | Command         | Supported Formats | Frontend Logic                                                             |
-| :---------------- | :-------------- | :---------------- | :------------------------------------------------------------------------- |
-| **Table Export**  | `export_table`  | CSV, JSON, SQL    | Prompt user for format, then invoke command. Returns file path or content. |
-| **Database Dump** | `dump_database` | SQL               | Prompt user for target path, invoke command to stream dump.                |
+| Feature           | Command         | Supported Formats          | Frontend Logic                                                             |
+| :---------------- | :-------------- | :------------------------- | :------------------------------------------------------------------------- |
+| **Table Export**  | `export_table`  | CSV, JSON, SQL             | Prompt user for format, then invoke command. Returns file path or content. |
+| **Database Dump** | `dump_database` | SQL, SQLite, DuckDB folder | Prompt user for a file or, for DuckDB, a folder, then invoke the command.  |
 
 ---
 

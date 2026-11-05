@@ -13,11 +13,22 @@ keywords, and aggregate functions from the connected schema, so `users.` offers
 the real columns.
 
 - **Run the whole editor** with `Mod+Enter`.
-- **Run just the selection** with `Mod+Shift+Enter`, useful when the editor
-  holds several statements separated by semicolons.
+- **Run just the selection** with `Mod+Shift+Enter`. Select one statement in an
+  editor that holds several, and only that statement runs.
 - **Stop** a long-running query from the toolbar while it executes.
 - **Format** the SQL with `Mod+Shift+F`.
 - **Comment a line** with `Mod+/`, and **save the script** with `Mod+S`.
+
+Run, explain, format, and save always use the text that is in the editor at that
+moment, including the last keystrokes.
+
+## Query tabs
+
+Each query tab keeps its own SQL. With a tab focused, the arrow keys, `Home`, and
+`End` move between tabs, `Delete` closes the tab, and `F2` renames it.
+
+The divider between the editor and the results can be moved with the mouse, or
+with the arrow keys once it has focus.
 
 ## Results
 
@@ -35,7 +46,8 @@ dedicated panel.
 Press `Mod+H` to open history. Every query you run is recorded with a timestamp,
 a preview, its duration, and whether it succeeded. You can search history, group
 it by connection, pin queries you reuse, re-run any entry, and export or clear
-history.
+history. History rows work from the keyboard: focus one and press `Enter` or
+`Space` to load it.
 
 ## Ask the AI
 

@@ -1,5 +1,6 @@
 {
 	"title": "Connections",
+	"icon": "Cloud",
 	"pages": [
 		"posthog",
 		"supabase",
@@ -19,6 +20,8 @@
 		"cockroachdb",
 		"tidb",
 		"planetscale",
-		"turso"
+		"xata",
+		"turso",
+		"cloudflare-d1"
 	]
 }

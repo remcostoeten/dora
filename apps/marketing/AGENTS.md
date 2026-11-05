@@ -20,6 +20,21 @@ logic through pages.
 - Add every public page to `routeConfig`; don't hand-edit sitemap entries.
 - Keep SEO-critical pages as Server Components unless interactivity is required.
 
+## Docs
+
+- `/docs` is the docs-boilerplate UI ported into `src/modules` (`docs`,
+  `navigation`, `search`, `footer`) with its routes in `src/app/(docs)`. It
+  renders outside the marketing header and footer.
+- Content is the MDX in the repo-root `docs/` folder. A new top-level file or
+  folder must also be listed in `source.config.ts` and in a `meta.json`.
+- Docs settings (name, logo, footer, edit links) live in
+  `src/shared/config/docs-site.ts`. Folder icons in `meta.json` are names from
+  `src/shared/icons/icons.tsx`.
+- Docs styles are in `src/modules/docs/styles/docs.css` and only apply under
+  `.docs-root`. The docs are dark only.
+- Every page is also served as Markdown at `<url>.mdx`, and `/llms.txt` lists
+  them all.
+
 ## SEO rules
 
 - Every indexable route must have a unique title, description, canonical URL,

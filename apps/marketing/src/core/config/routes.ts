@@ -1,6 +1,5 @@
 import { getFeatureRouteEntries } from '@/core/config/features'
 import { getDocsRouteEntries } from '@/core/config/docs'
-import { getGuideRouteEntries } from '@/core/config/guides'
 
 export type TRouteConfig = {
     path: string
@@ -61,16 +60,6 @@ export const routeConfig = [
     },
     ...getDocsRouteEntries(),
     {
-        path: '/docs/go-cli-runner',
-        title: 'Dora manager executor',
-        description:
-            'Developer docs for the Dora manager executor: TUI usage, VM workflows, and CI dispatch commands.',
-        sitemap: true,
-        index: true,
-        priority: 0.55,
-        changeFrequency: 'monthly'
-    },
-    {
         path: '/privacy',
         title: 'Dora privacy',
         description: 'Read how Dora handles privacy and product data.',
@@ -88,8 +77,7 @@ export const routeConfig = [
         priority: 0,
         changeFrequency: 'never'
     },
-    ...getFeatureRouteEntries(),
-    ...getGuideRouteEntries()
+    ...getFeatureRouteEntries()
 ] satisfies TRouteConfig[]
 
 export function getRoute(path: string) {

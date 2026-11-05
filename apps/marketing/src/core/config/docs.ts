@@ -1,5 +1,5 @@
 import type { TRouteConfig } from '@/core/config/routes'
-import { source } from '@/lib/source'
+import { source } from '@/modules/docs/server/source'
 
 export function getDocsRouteEntries(): TRouteConfig[] {
     return source
@@ -11,7 +11,7 @@ export function getDocsRouteEntries(): TRouteConfig[] {
             description: page.data.description ?? 'Documentation for Dora.',
             sitemap: true,
             index: true,
-            priority: 0.55,
+            priority: page.url.startsWith('/docs/connect') ? 0.7 : 0.55,
             changeFrequency: 'monthly'
         }))
 }
