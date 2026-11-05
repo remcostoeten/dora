@@ -21,14 +21,17 @@ clipboard), credentials, port, and health. From the menu you can **start**,
 
 Click **+** to open the create dialog and pick:
 
-- a database engine (PostgreSQL, MySQL, MariaDB, or CockroachDB) and version,
+- an engine (PostgreSQL, MySQL, MariaDB, CockroachDB, Redis, or Valkey) and
+  version,
 - a container name (auto-suggested),
 - credentials (user, password, database),
 - a port (auto-assigned, with a "find free port" helper),
 - an optional volume mount for persistent data.
 
 Dora starts the container and it appears in the list, ready to connect to like
-any other database.
+any other database. Redis and Valkey containers show a connection URL instead of
+SQL credentials, and **Open in KV Studio** opens them in the
+[key-value studio](/docs/guides/key-value-studio).
 
 ## Seed, logs, and terminal
 

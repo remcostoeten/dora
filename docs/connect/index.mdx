@@ -4,7 +4,8 @@ description: How Dora connects to a database, from connection strings to automat
 ---
 
 Dora connects to any **PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, DuckDB,
-or libSQL** database. Almost every hosted provider gives you a standard
+or libSQL** database, and to **Redis and Valkey** through the
+[key-value studio](/docs/guides/key-value-studio). Almost every hosted provider gives you a standard
 connection string, and Dora handles the rest.
 
 ## Paste a connection string
@@ -15,6 +16,7 @@ paste a URL. Dora reads the scheme and host to figure out the rest:
 | Scheme                          | Engine                                         |
 | ------------------------------- | ---------------------------------------------- |
 | `postgresql://` / `postgres://` | PostgreSQL (or CockroachDB / Yugabyte by host) |
+| `ecto://`                       | PostgreSQL, as written by Elixir's Ecto        |
 | `mysql://`                      | MySQL or MariaDB                               |
 | `libsql://`                     | libSQL (Turso)                                 |
 | `sqlite://`                     | SQLite                                         |

@@ -1,0 +1,22 @@
+@theme {
+    --ease-hover: ease;
+    --ease-snappy: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@utility pressable {
+    transition-property: color, background-color, border-color, transform;
+    transition-duration: 150ms, 150ms, 150ms, 160ms;
+    transition-timing-function:
+        var(--ease-hover), var(--ease-hover), var(--ease-hover),
+        var(--ease-snappy);
+
+    &:active {
+        transform: scale(0.97);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :where(.pressable):active {
+        transform: none;
+    }
+}

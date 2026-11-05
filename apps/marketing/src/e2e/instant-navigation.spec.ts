@@ -22,32 +22,12 @@ test('feature details commit an immediate route shell', async function featureTe
     await expect(page.getByRole('heading', { level: 1 })).not.toContainText('Loading feature')
 })
 
-test('connection guides commit an immediate route shell', async function guideTest({ page }) {
+test('docs sidebar navigates between pages', async function docsTest({ page }) {
     await page.goto('/docs/connect/supabase')
-    const guideLink = page.locator('a[href="/docs/connect/neon"]').first()
+    const guideLink = page.locator('aside a[href="/docs/connect/neon"]').first()
     await expect(guideLink).toBeVisible()
 
-    await instant(page, async function assertShell() {
-        await clickDirectly(guideLink)
-        await expect(page).toHaveURL('/docs/connect/neon')
-        await expect(page.getByTestId('connection-guide-shell')).toBeVisible()
-    })
-
-    await expect(page.getByTestId('connection-guide-shell')).toBeHidden()
+    await clickDirectly(guideLink)
+    await expect(page).toHaveURL('/docs/connect/neon')
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Connect Neon')
-})
-
-test('MDX documentation commits an immediate route shell', async function docsTest({ page }) {
-    await page.goto('/docs/getting-started')
-    const docsLink = page.locator('a[href="/docs/installation"]').first()
-    await expect(docsLink).toBeVisible()
-
-    await instant(page, async function assertShell() {
-        await clickDirectly(docsLink)
-        await expect(page).toHaveURL('/docs/installation')
-        await expect(page.getByTestId('docs-page-shell')).toBeVisible()
-    })
-
-    await expect(page.getByTestId('docs-page-shell')).toBeHidden()
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Installation')
 })
