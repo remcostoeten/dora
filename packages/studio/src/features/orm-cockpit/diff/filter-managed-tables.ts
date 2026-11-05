@@ -41,7 +41,7 @@ const SYSTEM_SCHEMAS = new Set([
 	'net',
 	'supabase_functions',
 	'supabase_migrations',
-	'_analytics',
+	'_analytics'
 ])
 
 export function isManagedTable(table: TableIR, dialect: Dialect): boolean {
@@ -66,7 +66,7 @@ export function filterManagedTables(ir: SchemaIR, dialect: Dialect, show: boolea
 		...ir,
 		tables: ir.tables.filter(function (table) {
 			return !isManagedTable(table, dialect)
-		}),
+		})
 	}
 }
 

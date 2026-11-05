@@ -5,7 +5,7 @@ import type {
 	ForeignKeyIR,
 	IndexIR,
 	SchemaIR,
-	TableIR,
+	TableIR
 } from '@studio/features/orm-cockpit/ir/types'
 
 /**
@@ -60,9 +60,7 @@ export function parsePrismaSchema(text: string): { ir: SchemaIR; warnings: strin
 		if (block.kind !== 'model') {
 			continue
 		}
-		tables.push(
-			parseModel(block, { dialect, enumNames, modelNames, blocks, warnings }),
-		)
+		tables.push(parseModel(block, { dialect, enumNames, modelNames, blocks, warnings }))
 	}
 
 	tables.sort(byName)
@@ -134,7 +132,9 @@ function collectBlocks(lines: string[]): TBlock[] {
 }
 
 function matchBlockHeader(line: string): { kind: TBlockKind; name: string } | null {
-	const m = line.match(/^(datasource|generator|model|enum|type|view)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/)
+	const m = line.match(
+		/^(datasource|generator|model|enum|type|view)\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/
+	)
 	if (!m) {
 		return null
 	}
@@ -160,7 +160,7 @@ function providerToDialect(body: string[], warnings: string[]): Dialect {
 				return 'postgres'
 			default:
 				warnings.push(
-					`datasource provider "${m[1]}" is not a recognized SQL dialect; defaulting to postgres`,
+					`datasource provider "${m[1]}" is not a recognized SQL dialect; defaulting to postgres`
 				)
 				return 'postgres'
 		}
@@ -205,7 +205,7 @@ function parseModel(block: TBlock, ctx: TParseCtx): TableIR {
 				indexes.push({
 					name: `${tableName}_${field.column.name}_key`,
 					columns: [field.column.name],
-					unique: true,
+					unique: true
 				})
 			}
 		}
@@ -229,7 +229,7 @@ function parseModel(block: TBlock, ctx: TParseCtx): TableIR {
 			},
 			onIndex(index) {
 				indexes.push(index)
-			},
+			}
 		})
 	}
 
@@ -238,7 +238,7 @@ function parseModel(block: TBlock, ctx: TParseCtx): TableIR {
 		columns: columns.sort(byName),
 		primaryKey,
 		indexes: indexes.sort(byName),
-		foreignKeys: foreignKeys.sort(byForeignKey),
+		foreignKeys: foreignKeys.sort(byForeignKey)
 	}
 
 	if (ctx.dialect === 'postgres') {
@@ -283,14 +283,14 @@ function parseField(line: string, ctx: TParseCtx, modelName: string): TParsedFie
 			column: null,
 			isPrimaryKey: false,
 			isUnique: false,
-			foreignKey: fk,
+			foreignKey: fk
 		}
 	}
 
 	const isEnum = ctx.enumNames.has(baseType)
 	if (isEnum) {
 		ctx.warnings.push(
-			`field ${modelName}.${fieldName} uses enum type "${baseType}"; treated as text`,
+			`field ${modelName}.${fieldName} uses enum type "${baseType}"; treated as text`
 		)
 	}
 
@@ -298,7 +298,7 @@ function parseField(line: string, ctx: TParseCtx, modelName: string): TParsedFie
 	// table in the relational connectors; flag and skip producing a column.
 	if (isList) {
 		ctx.warnings.push(
-			`field ${modelName}.${fieldName} is a scalar list ("${baseType}[]"); skipped (not a single SQL column)`,
+			`field ${modelName}.${fieldName} is a scalar list ("${baseType}[]"); skipped (not a single SQL column)`
 		)
 		return {
 			fieldName,
@@ -307,18 +307,16 @@ function parseField(line: string, ctx: TParseCtx, modelName: string): TParsedFie
 			column: null,
 			isPrimaryKey: false,
 			isUnique: false,
-			foreignKey: null,
+			foreignKey: null
 		}
 	}
 
 	const native = readNativeType(attrs)
-	const normalized = isEnum
-		? 'text'
-		: mapPrismaScalar(baseType, native, ctx.dialect)
+	const normalized = isEnum ? 'text' : mapPrismaScalar(baseType, native, ctx.dialect)
 
 	if (normalized === 'unknown' && !isEnum) {
 		ctx.warnings.push(
-			`field ${modelName}.${fieldName} has unrecognized type "${baseType}${native ? ` @db.${native}` : ''}"; mapped to 'unknown'`,
+			`field ${modelName}.${fieldName} has unrecognized type "${baseType}${native ? ` @db.${native}` : ''}"; mapped to 'unknown'`
 		)
 	}
 
@@ -330,7 +328,7 @@ function parseField(line: string, ctx: TParseCtx, modelName: string): TParsedFie
 		rawType: native ? `${baseType} @db.${native}` : baseType,
 		nullable,
 		default: def.text,
-		autoIncrement: def.autoIncrement,
+		autoIncrement: def.autoIncrement
 	}
 
 	return {
@@ -340,16 +338,12 @@ function parseField(line: string, ctx: TParseCtx, modelName: string): TParsedFie
 		column,
 		isPrimaryKey: /@id\b/.test(attrs),
 		isUnique: /@unique\b/.test(attrs),
-		foreignKey: null,
+		foreignKey: null
 	}
 }
 
 /** Map a Prisma scalar (plus optional `@db.Native`) to a {@link NormalizedType}. */
-function mapPrismaScalar(
-	scalar: string,
-	native: string | null,
-	dialect: Dialect,
-): NormalizedType {
+function mapPrismaScalar(scalar: string, native: string | null, dialect: Dialect): NormalizedType {
 	// Native type refinements where clear.
 	if (native) {
 		const refined = refineNative(native)
@@ -387,8 +381,10 @@ function mapPrismaScalar(
 function refineNative(native: string): NormalizedType | null {
 	const t = native.toLowerCase()
 	if (t.startsWith('uuid')) return 'uuid'
-	if (t.startsWith('varchar') || t.startsWith('char') || t.startsWith('nvarchar')) return 'varchar'
-	if (t.startsWith('text') || t.startsWith('longtext') || t.startsWith('mediumtext')) return 'text'
+	if (t.startsWith('varchar') || t.startsWith('char') || t.startsWith('nvarchar'))
+		return 'varchar'
+	if (t.startsWith('text') || t.startsWith('longtext') || t.startsWith('mediumtext'))
+		return 'text'
 	if (t.startsWith('smallint')) return 'smallint'
 	if (t.startsWith('bigint')) return 'bigint'
 	if (t.startsWith('integer') || t.startsWith('int')) return 'int'
@@ -417,7 +413,7 @@ function parseDefault(
 	attrs: string,
 	ctx: TParseCtx,
 	modelName: string,
-	fieldName: string,
+	fieldName: string
 ): TDefault {
 	const m = attrs.match(/@default\(([\s\S]*?)\)\s*(?:@|$)/) ?? attrs.match(/@default\((.*)\)/)
 	if (!m) {
@@ -439,7 +435,7 @@ function parseDefault(
 	}
 	if (/^dbgenerated\(/.test(inner)) {
 		ctx.warnings.push(
-			`field ${modelName}.${fieldName} uses @default(dbgenerated(...)); default mapped to 'unknown'`,
+			`field ${modelName}.${fieldName} uses @default(dbgenerated(...)); default mapped to 'unknown'`
 		)
 		return { text: 'unknown', autoIncrement: false }
 	}
@@ -456,7 +452,7 @@ function parseDefault(
 	}
 
 	ctx.warnings.push(
-		`field ${modelName}.${fieldName} has unrecognized @default(${inner}); default mapped to 'unknown'`,
+		`field ${modelName}.${fieldName} has unrecognized @default(${inner}); default mapped to 'unknown'`
 	)
 	return { text: 'unknown', autoIncrement: false }
 }
@@ -468,7 +464,7 @@ function parseRelationFk(
 	attrs: string,
 	refModelName: string,
 	localModelName: string,
-	ctx: TParseCtx,
+	ctx: TParseCtx
 ): ForeignKeyIR | null {
 	const m = attrs.match(/@relation\(([\s\S]*)\)/)
 	if (!m) {
@@ -492,7 +488,7 @@ function parseRelationFk(
 		refTable: refTableName,
 		refColumns: references.map(function (ref) {
 			return resolveColumnName(refModelName, ref, ctx)
-		}),
+		})
 	}
 
 	const onDelete = readKeyword(inner, 'onDelete')
@@ -577,7 +573,7 @@ function applyBlockAttribute(line: string, h: TBlockAttrHandlers): void {
 		h.onIndex({
 			name: namedIndex(line, h.tableName, cols, 'key'),
 			columns: cols,
-			unique: true,
+			unique: true
 		})
 		return
 	}
@@ -588,7 +584,7 @@ function applyBlockAttribute(line: string, h: TBlockAttrHandlers): void {
 		h.onIndex({
 			name: namedIndex(line, h.tableName, cols, 'idx'),
 			columns: cols,
-			unique: false,
+			unique: false
 		})
 		return
 	}
@@ -599,7 +595,7 @@ function applyBlockAttribute(line: string, h: TBlockAttrHandlers): void {
 	// modeled; note them conservatively.
 	const attrName = line.match(/^@@[A-Za-z]+/)
 	h.ctx.warnings.push(
-		`model ${h.tableName}: block attribute "${attrName ? attrName[0] : line}" is not modeled and was ignored`,
+		`model ${h.tableName}: block attribute "${attrName ? attrName[0] : line}" is not modeled and was ignored`
 	)
 }
 

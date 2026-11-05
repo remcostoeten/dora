@@ -83,33 +83,56 @@ export function useAsyncRowCount(
 			})
 
 			debounceRef.current = setTimeout(function () {
-				resolveConnectionDialect(connectionId).then(function (dialect) {
-					if (abortRef.current) return
-
-					const query = `SELECT COUNT(*) AS total FROM ${getTableSqlIdentifier(
-						tableName,
-						dialect
-					)}`
-
-					adapter.executeQuery(connectionId, query).then(function (res) {
+				resolveConnectionDialect(connectionId)
+					.then(function (dialect) {
 						if (abortRef.current) return
 
-						if (res.ok && res.data.rows.length > 0) {
-							const row = res.data.rows[0]
-							const rawCount = row.total ?? row.count ?? row['COUNT(*)'] ?? row['count(*)']
-							const count = typeof rawCount === 'number' ? rawCount : parseInt(String(rawCount), 10)
+						const query = `SELECT COUNT(*) AS total FROM ${getTableSqlIdentifier(
+							tableName,
+							dialect
+						)}`
 
-							if (!isNaN(count)) {
-								cacheRef.current.set(key, { count, fetchedAt: Date.now() })
-								setState({ count, isLoading: false, error: null })
-							} else {
-								setState({ count: null, isLoading: false, error: 'Unexpected count format' })
-							}
-						} else {
-							const errorMsg = !res.ok ? getAdapterError(res) : 'No rows returned'
-							setState({ count: null, isLoading: false, error: errorMsg })
-						}
-					}).catch(function (err) {
+						adapter
+							.executeQuery(connectionId, query)
+							.then(function (res) {
+								if (abortRef.current) return
+
+								if (res.ok && res.data.rows.length > 0) {
+									const row = res.data.rows[0]
+									const rawCount =
+										row.total ?? row.count ?? row['COUNT(*)'] ?? row['count(*)']
+									const count =
+										typeof rawCount === 'number'
+											? rawCount
+											: parseInt(String(rawCount), 10)
+
+									if (!isNaN(count)) {
+										cacheRef.current.set(key, { count, fetchedAt: Date.now() })
+										setState({ count, isLoading: false, error: null })
+									} else {
+										setState({
+											count: null,
+											isLoading: false,
+											error: 'Unexpected count format'
+										})
+									}
+								} else {
+									const errorMsg = !res.ok
+										? getAdapterError(res)
+										: 'No rows returned'
+									setState({ count: null, isLoading: false, error: errorMsg })
+								}
+							})
+							.catch(function (err) {
+								if (abortRef.current) return
+								setState({
+									count: null,
+									isLoading: false,
+									error: err instanceof Error ? err.message : 'Unknown error'
+								})
+							})
+					})
+					.catch(function (err) {
 						if (abortRef.current) return
 						setState({
 							count: null,
@@ -117,59 +140,57 @@ export function useAsyncRowCount(
 							error: err instanceof Error ? err.message : 'Unknown error'
 						})
 					})
-				}).catch(function (err) {
-					if (abortRef.current) return
-					setState({
-						count: null,
-						isLoading: false,
-						error: err instanceof Error ? err.message : 'Unknown error'
-					})
-				})
 			}, 150)
 		},
 		[connectionId, tableName, enabled, adapter]
 	)
 
 	// Fetch on mount / dependency change
-	useEffect(function () {
-		fetchCount()
+	useEffect(
+		function () {
+			fetchCount()
 
-		return function () {
-			abortRef.current = true
-			if (debounceRef.current) {
-				clearTimeout(debounceRef.current)
+			return function () {
+				abortRef.current = true
+				if (debounceRef.current) {
+					clearTimeout(debounceRef.current)
+				}
 			}
-		}
-	}, [fetchCount])
+		},
+		[fetchCount]
+	)
 
 	// Invalidate cache on schema refresh events
-	useEffect(function () {
-		function onSchemaRefresh(event: Event) {
-			const customEvent = event as CustomEvent<{ connectionId?: string }>
-			const targetConnectionId = customEvent.detail?.connectionId
+	useEffect(
+		function () {
+			function onSchemaRefresh(event: Event) {
+				const customEvent = event as CustomEvent<{ connectionId?: string }>
+				const targetConnectionId = customEvent.detail?.connectionId
 
-			if (!targetConnectionId || targetConnectionId === connectionId) {
-				// Clear all cached counts for this connection
-				const keysToDelete: string[] = []
-				cacheRef.current.forEach(function (_value, cacheKey) {
-					if (!targetConnectionId || cacheKey.startsWith(targetConnectionId + ':')) {
-						keysToDelete.push(cacheKey)
-					}
-				})
-				keysToDelete.forEach(function (k) {
-					cacheRef.current.delete(k)
-				})
+				if (!targetConnectionId || targetConnectionId === connectionId) {
+					// Clear all cached counts for this connection
+					const keysToDelete: string[] = []
+					cacheRef.current.forEach(function (_value, cacheKey) {
+						if (!targetConnectionId || cacheKey.startsWith(targetConnectionId + ':')) {
+							keysToDelete.push(cacheKey)
+						}
+					})
+					keysToDelete.forEach(function (k) {
+						cacheRef.current.delete(k)
+					})
 
-				// Re-fetch
-				fetchCount()
+					// Re-fetch
+					fetchCount()
+				}
 			}
-		}
 
-		window.addEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
-		return function () {
-			window.removeEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
-		}
-	}, [connectionId, fetchCount])
+			window.addEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
+			return function () {
+				window.removeEventListener('dora-schema-refresh', onSchemaRefresh as EventListener)
+			}
+		},
+		[connectionId, fetchCount]
+	)
 
 	return {
 		count: state.count,

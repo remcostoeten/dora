@@ -10,16 +10,19 @@ from source.
 The fastest path is the downloads page, which always points at the latest
 release assets:
 
-<Callout type='info'>Get the latest build at [doradb.app/downloads](https://doradb.app/downloads), or browse every asset on the [GitHub releases page](https://github.com/remcostoeten/dora/releases/latest).</Callout>
+<Callout type='info'>
+	Get the latest build at [doradb.app/downloads](https://doradb.app/downloads), or browse every
+	asset on the [GitHub releases page](https://github.com/remcostoeten/dora/releases/latest).
+</Callout>
 
 ## Platform matrix
 
-| Platform | Architectures | Package | How to get it |
-| --- | --- | --- | --- |
-| macOS | Apple Silicon, Intel | `.dmg`, Homebrew Cask | [Downloads](https://doradb.app/downloads), GitHub releases, or Homebrew |
-| Windows | x64 | `.exe`, `.msi`, Winget | [Downloads](https://doradb.app/downloads), GitHub releases, or Winget |
-| Linux | x64 | `.AppImage`, `.deb`, `.rpm`, `.snap`, `.tar.gz`, APT | [Downloads](https://doradb.app/downloads), GitHub releases, or APT |
-| Arch Linux | x64 | AUR | `yay -S dora` |
+| Platform   | Architectures        | Package                                              | How to get it                                                           |
+| ---------- | -------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
+| macOS      | Apple Silicon, Intel | `.dmg`, Homebrew Cask                                | [Downloads](https://doradb.app/downloads), GitHub releases, or Homebrew |
+| Windows    | x64                  | `.exe`, `.msi`, Winget                               | [Downloads](https://doradb.app/downloads), GitHub releases, or Winget   |
+| Linux      | x64                  | `.AppImage`, `.deb`, `.rpm`, `.snap`, `.tar.gz`, APT | [Downloads](https://doradb.app/downloads), GitHub releases, or APT      |
+| Arch Linux | x64                  | AUR                                                  | `yay -S dora`                                                           |
 
 ## macOS
 
@@ -28,7 +31,11 @@ release assets:
 2. Open the DMG and drag **Dora** into your Applications folder.
 3. Launch Dora from Applications.
 
-<Callout type='warn'>If macOS reports that Dora "cannot be opened because the developer cannot be verified", right-click the app and choose **Open**, then confirm. This only needs to be done on first launch.</Callout>
+<Callout type='warn'>
+	If macOS reports that Dora "cannot be opened because the developer cannot be verified",
+	right-click the app and choose **Open**, then confirm. This only needs to be done on first
+	launch.
+</Callout>
 
 ### Homebrew
 
@@ -58,13 +65,13 @@ winget install RemcoStoeten.Dora
 
 Pick the package that fits your distribution:
 
-| Package | Install command |
-| --- | --- |
-| AppImage | `chmod +x Dora_*.AppImage && ./Dora_*.AppImage` |
-| Debian / Ubuntu | `sudo dpkg -i dora_*.deb` |
-| Fedora / RHEL | `sudo rpm -i dora-*.rpm` |
-| Snap | `sudo snap install dora` |
-| Archive | `tar -xzf dora_*.tar.gz` and run the extracted binary |
+| Package         | Install command                                       |
+| --------------- | ----------------------------------------------------- |
+| AppImage        | `chmod +x Dora_*.AppImage && ./Dora_*.AppImage`       |
+| Debian / Ubuntu | `sudo dpkg -i dora_*.deb`                             |
+| Fedora / RHEL   | `sudo rpm -i dora-*.rpm`                              |
+| Snap            | `sudo snap install dora`                              |
+| Archive         | `tar -xzf dora_*.tar.gz` and run the extracted binary |
 
 ### APT (Debian / Ubuntu)
 
@@ -102,7 +109,10 @@ dora --version
 To build Dora yourself you need the Rust toolchain (`cargo`) and Node.js with
 `pnpm`.
 
-<Callout type='info'>Building from source produces an unsigned binary intended for development. For day-to-day use, prefer a prebuilt release.</Callout>
+<Callout type='info'>
+	Building from source produces an unsigned binary intended for development. For day-to-day use,
+	prefer a prebuilt release.
+</Callout>
 
 1. **Clone the repository**:
 

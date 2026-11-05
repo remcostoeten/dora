@@ -1,9 +1,4 @@
-import type {
-	ColumnInfo,
-	DatabaseSchema,
-	IndexInfo,
-	TableInfo,
-} from '@studio/lib/bindings'
+import type { ColumnInfo, DatabaseSchema, IndexInfo, TableInfo } from '@studio/lib/bindings'
 import { normalizeDbType } from '@studio/features/orm-cockpit/ir/normalize-type'
 import type {
 	ColumnIR,
@@ -12,7 +7,7 @@ import type {
 	IndexIR,
 	NormalizedType,
 	SchemaIR,
-	TableIR,
+	TableIR
 } from '@studio/features/orm-cockpit/ir/types'
 
 /** Types whose length/precision/dimensions we compare (see ColumnIR.typeParams). */
@@ -73,7 +68,7 @@ function mapTable(table: TableInfo, dialect: Dialect): TableIR {
 		columns: columns.sort(byName),
 		primaryKey,
 		indexes,
-		foreignKeys: collectForeignKeys(table.columns),
+		foreignKeys: collectForeignKeys(table.columns)
 	}
 
 	// Preserve a meaningful schema; SQLite reports none.
@@ -93,7 +88,7 @@ function mapColumn(column: ColumnInfo, dialect: Dialect): ColumnIR {
 		typeParams: liveTypeParams(column.data_type, type),
 		nullable: column.is_nullable,
 		default: normalizeDefault(column.default_value),
-		autoIncrement: column.is_auto_increment ?? false,
+		autoIncrement: column.is_auto_increment ?? false
 	}
 }
 
@@ -101,7 +96,7 @@ function mapIndex(index: IndexInfo): IndexIR {
 	return {
 		name: index.name,
 		columns: index.column_names,
-		unique: index.is_unique,
+		unique: index.is_unique
 	}
 }
 
@@ -147,7 +142,7 @@ function collectForeignKeys(columns: ColumnInfo[]): ForeignKeyIR[] {
 			byRef.set(key, {
 				columns: [column.name],
 				refTable: fk.referenced_table,
-				refColumns: [fk.referenced_column],
+				refColumns: [fk.referenced_column]
 			})
 		}
 	}

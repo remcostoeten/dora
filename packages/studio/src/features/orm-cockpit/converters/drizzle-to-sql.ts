@@ -23,20 +23,20 @@ import type {
 	ConvertError,
 	ConvertOptions,
 	ConvertResult,
-	DrizzleToSql,
+	DrizzleToSql
 } from '@studio/features/orm-cockpit/converters/contract'
 import { emitSql } from '@studio/features/orm-cockpit/converters/emit-sql'
 import {
 	emitSchemaSql,
-	resolveForeignKeyTables,
+	resolveForeignKeyTables
 } from '@studio/features/orm-cockpit/converters/drizzle-to-sql-schema'
 import {
 	hasQueryChain,
-	parseDrizzleQuery,
+	parseDrizzleQuery
 } from '@studio/features/orm-cockpit/converters/drizzle-to-sql-query'
 import {
 	collectTableSymbols,
-	hasTableDefinitions,
+	hasTableDefinitions
 } from '@studio/features/orm-cockpit/converters/drizzle-to-sql-symbols'
 import { parseDrizzleSchema } from '@studio/features/orm-cockpit/parsers/drizzle/parse-drizzle-schema'
 
@@ -50,7 +50,13 @@ export function convertDrizzleToSql(source: string, options: ConvertOptions): Co
 
 	let file: ts.SourceFile
 	try {
-		file = ts.createSourceFile(INPUT_PATH, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+		file = ts.createSourceFile(
+			INPUT_PATH,
+			source,
+			ts.ScriptTarget.Latest,
+			true,
+			ts.ScriptKind.TS
+		)
 	} catch (error) {
 		return failure({ code: 'parse-error', message: describeError(error) })
 	}
@@ -64,7 +70,7 @@ export function convertDrizzleToSql(source: string, options: ConvertOptions): Co
 	if (surface === null) {
 		return failure({
 			code: 'parse-error',
-			message: 'no Drizzle table definitions or query-builder chain were found',
+			message: 'no Drizzle table definitions or query-builder chain were found'
 		})
 	}
 
@@ -76,12 +82,18 @@ function convertSchema(source: string, options: ConvertOptions): ConvertResult {
 	if (parsed.ir.tables.length === 0) {
 		return failure({
 			code: 'parse-error',
-			message: 'no Drizzle table definitions were found',
+			message: 'no Drizzle table definitions were found'
 		})
 	}
 
 	const warnings = [...parsed.warnings]
-	const file = ts.createSourceFile(INPUT_PATH, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+	const file = ts.createSourceFile(
+		INPUT_PATH,
+		source,
+		ts.ScriptTarget.Latest,
+		true,
+		ts.ScriptKind.TS
+	)
 	const ir = resolveForeignKeyTables(parsed.ir, tableNameByVar(file), warnings)
 	const output = emitSchemaSql(ir, options.dialect, warnings)
 
@@ -126,7 +138,7 @@ function firstSyntaxError(file: ts.SourceFile): ConvertError | null {
 	return {
 		code: 'parse-error',
 		message: ts.flattenDiagnosticMessageText(first.messageText, ' '),
-		line: file.getLineAndCharacterOfPosition(first.start).line + 1,
+		line: file.getLineAndCharacterOfPosition(first.start).line + 1
 	}
 }
 

@@ -13,16 +13,21 @@ yourself.
 2. From the **Connectivity & security** tab copy the **Endpoint** and **Port**.
 3. Assemble a URL with your master username, password, and database name:
 
-   ```text
-   postgresql://<user>:<password>@<endpoint>.rds.amazonaws.com:5432/<db>
-   ```
+    ```text
+    postgresql://<user>:<password>@<endpoint>.rds.amazonaws.com:5432/<db>
+    ```
 
-   For MySQL use `mysql://` and port `3306`.
+    For MySQL use `mysql://` and port `3306`.
 
 4. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URL,
    **Test connection**, and **Save**.
 
-<Callout type='warn'>Your RDS instance must be reachable from your machine: it needs **Public access = Yes** (or a VPN / bastion), and its **security group** must allow inbound traffic from your IP on the database port. To reach a private instance through a bastion, use Dora's [SSH tunnel](/docs/connect#ssh-tunnels).</Callout>
+<Callout type='warn'>
+	Your RDS instance must be reachable from your machine: it needs **Public access = Yes** (or a
+	VPN / bastion), and its **security group** must allow inbound traffic from your IP on the
+	database port. To reach a private instance through a bastion, use Dora's [SSH
+	tunnel](/docs/connect#ssh-tunnels).
+</Callout>
 
 Enable the **SSL** toggle if your instance enforces TLS (`rds.force_ssl`). You
 may also need the Amazon RDS CA certificate depending on your `sslmode`.

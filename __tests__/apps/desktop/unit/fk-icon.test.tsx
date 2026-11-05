@@ -12,12 +12,16 @@ describe('FKNavigateIcon', () => {
 	})
 
 	it('renders nothing when cellValue is null', () => {
-		const { container } = render(<FKNavigateIcon foreignKey={fk} cellValue={null} onNavigate={vi.fn()} />)
+		const { container } = render(
+			<FKNavigateIcon foreignKey={fk} cellValue={null} onNavigate={vi.fn()} />
+		)
 		expect(container.firstChild).toBeNull()
 	})
 
 	it('renders nothing when cellValue is undefined', () => {
-		const { container } = render(<FKNavigateIcon foreignKey={fk} cellValue={undefined} onNavigate={vi.fn()} />)
+		const { container } = render(
+			<FKNavigateIcon foreignKey={fk} cellValue={undefined} onNavigate={vi.fn()} />
+		)
 		expect(container.firstChild).toBeNull()
 	})
 

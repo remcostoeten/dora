@@ -341,7 +341,7 @@ function parseTrailingReturning(rest: string): boolean {
 	if (/^\.returning\s*\(\s*\)$/.test(trimmed)) return true
 	throw new Error(
 		'Unsupported chain segment. Only an optional .returning() may follow. ' +
-		'For onConflict / upsert / RETURNING projections, use db.execute(sql`...`).'
+			'For onConflict / upsert / RETURNING projections, use db.execute(sql`...`).'
 	)
 }
 
@@ -393,8 +393,8 @@ export function drizzleQueryToSql(source: string): string {
 		if (!tableName) {
 			throw new Error(
 				'Unsupported Drizzle table expression. Use a simple table name ' +
-				'(e.g. users, schema.users). For quoted or multi-part names, ' +
-				'use db.execute(sql`...`).'
+					'(e.g. users, schema.users). For quoted or multi-part names, ' +
+					'use db.execute(sql`...`).'
 			)
 		}
 
@@ -406,7 +406,7 @@ export function drizzleQueryToSql(source: string): string {
 		if (hardMethod) {
 			throw new Error(
 				`.${hardMethod[1]}() is not auto-translated. Use db.execute(sql\`...\`) ` +
-				'for joins, grouping, and set operations.'
+					'for joins, grouping, and set operations.'
 			)
 		}
 
@@ -420,8 +420,8 @@ export function drizzleQueryToSql(source: string): string {
 			if (!whereClause) {
 				throw new Error(
 					'Unsupported .where() expression. Use eq/ne/gt/gte/lt/lte/like/ilike/' +
-					'inArray/notInArray/isNull/isNotNull/between combined with and/or/not, ' +
-					'or db.execute(sql`...`).'
+						'inArray/notInArray/isNull/isNotNull/between combined with and/or/not, ' +
+						'or db.execute(sql`...`).'
 				)
 			}
 			strippedChain = strippedChain.replace(whereCall.full, '')
@@ -433,7 +433,7 @@ export function drizzleQueryToSql(source: string): string {
 			if (!terms) {
 				throw new Error(
 					'Unsupported .orderBy() expression. Use column references or ' +
-					'asc()/desc(), or db.execute(sql`...`).'
+						'asc()/desc(), or db.execute(sql`...`).'
 				)
 			}
 			orderByClause = terms.join(', ')
@@ -448,8 +448,8 @@ export function drizzleQueryToSql(source: string): string {
 		if (unsupportedChain) {
 			throw new Error(
 				'Unsupported Drizzle query. select().from(table) supports ' +
-				'.where(...), .orderBy(...), .limit(n), and .offset(n). ' +
-				'For more complex queries, use db.execute(sql`...`).'
+					'.where(...), .orderBy(...), .limit(n), and .offset(n). ' +
+					'For more complex queries, use db.execute(sql`...`).'
 			)
 		}
 
@@ -471,7 +471,7 @@ export function drizzleQueryToSql(source: string): string {
 		if (!tableName) {
 			throw new Error(
 				'Unsupported insert table expression. Use a simple table name, ' +
-				'or db.execute(sql`...`).'
+					'or db.execute(sql`...`).'
 			)
 		}
 		const open = query.indexOf('(', insertHead[0].length - 1)
@@ -484,7 +484,7 @@ export function drizzleQueryToSql(source: string): string {
 		if (!rows) {
 			throw new Error(
 				'Unsupported .values() payload. Use an object literal { column: value } ' +
-				'(or an array of them) with literal values. For expressions, use db.execute(sql`...`).'
+					'(or an array of them) with literal values. For expressions, use db.execute(sql`...`).'
 			)
 		}
 		const columnsSql = rows.columns.map(sqlIdentifier).join(', ')
@@ -494,15 +494,13 @@ export function drizzleQueryToSql(source: string): string {
 		return sql
 	}
 
-	const deleteHead = query.match(
-		/^(?:await\s+)?(?:db|tx)\.delete\s*\(\s*([^)]+?)\s*\)([\s\S]*)$/
-	)
+	const deleteHead = query.match(/^(?:await\s+)?(?:db|tx)\.delete\s*\(\s*([^)]+?)\s*\)([\s\S]*)$/)
 	if (deleteHead) {
 		const tableName = normalizeTableExpression(deleteHead[1])
 		if (!tableName) {
 			throw new Error(
 				'Unsupported delete table expression. Use a simple table name, ' +
-				'or db.execute(sql`...`).'
+					'or db.execute(sql`...`).'
 			)
 		}
 		const rest = deleteHead[2].trim()
@@ -510,14 +508,14 @@ export function drizzleQueryToSql(source: string): string {
 		if (!whereCall) {
 			throw new Error(
 				'db.delete(table) without .where() is rejected to avoid deleting every row. ' +
-				'Add .where(...), or use db.execute(sql`DELETE FROM ...`).'
+					'Add .where(...), or use db.execute(sql`DELETE FROM ...`).'
 			)
 		}
 		const condition = parseConditionExpression(whereCall.inner.trim())
 		if (!condition) {
 			throw new Error(
 				'Unsupported .where() expression in delete. Use eq/ne/.../and/or/not over ' +
-				'literal values, or db.execute(sql`...`).'
+					'literal values, or db.execute(sql`...`).'
 			)
 		}
 		const returning = parseTrailingReturning(rest.replace(whereCall.full, ''))
@@ -534,7 +532,7 @@ export function drizzleQueryToSql(source: string): string {
 		if (!tableName) {
 			throw new Error(
 				'Unsupported update table expression. Use a simple table name, ' +
-				'or db.execute(sql`...`).'
+					'or db.execute(sql`...`).'
 			)
 		}
 		const open = query.indexOf('(', updateHead[0].length - 1)
@@ -546,7 +544,7 @@ export function drizzleQueryToSql(source: string): string {
 		if (!assignments) {
 			throw new Error(
 				'Unsupported .set() payload. Use { column: value } with literal values, ' +
-				'or db.execute(sql`...`).'
+					'or db.execute(sql`...`).'
 			)
 		}
 		const rest = query.slice(open + setInner.length + 2).trim()
@@ -554,14 +552,14 @@ export function drizzleQueryToSql(source: string): string {
 		if (!whereCall) {
 			throw new Error(
 				'db.update(table).set({...}) without .where() is rejected to avoid updating ' +
-				'every row. Add .where(...), or use db.execute(sql`...`).'
+					'every row. Add .where(...), or use db.execute(sql`...`).'
 			)
 		}
 		const condition = parseConditionExpression(whereCall.inner.trim())
 		if (!condition) {
 			throw new Error(
 				'Unsupported .where() expression in update. Use eq/ne/.../and/or/not over ' +
-				'literal values, or db.execute(sql`...`).'
+					'literal values, or db.execute(sql`...`).'
 			)
 		}
 		const returning = parseTrailingReturning(rest.replace(whereCall.full, ''))
@@ -582,7 +580,7 @@ export function drizzleQueryToSql(source: string): string {
 		if (!tableName) {
 			throw new Error(
 				'Unsupported db.$count() table expression. Use a simple table name ' +
-				'(e.g. db.$count(users) or db.$count(users, eq(users.active, true))).'
+					'(e.g. db.$count(users) or db.$count(users, eq(users.active, true))).'
 			)
 		}
 		let sql = `SELECT count(*) FROM ${tableName}`
@@ -591,7 +589,7 @@ export function drizzleQueryToSql(source: string): string {
 			if (!condition) {
 				throw new Error(
 					'Unsupported db.$count() condition. Use eq/ne/.../and/or/not over ' +
-					'literal values, or db.execute(sql`...`).'
+						'literal values, or db.execute(sql`...`).'
 				)
 			}
 			sql += ` WHERE ${condition}`
@@ -601,9 +599,9 @@ export function drizzleQueryToSql(source: string): string {
 
 	throw new Error(
 		'Unsupported Drizzle query. Supported: sql`...`, (db|tx).execute(sql`...`), ' +
-		'select().from(table) (+ .where/.orderBy/.limit/.offset), ' +
-		'insert(table).values({...}), update(table).set({...}).where(...), ' +
-		'delete(table).where(...), and $count(table). ' +
-		'Append .toSQL() to any of these. For everything else, use db.execute(sql`...`).'
+			'select().from(table) (+ .where/.orderBy/.limit/.offset), ' +
+			'insert(table).values({...}), update(table).set({...}).where(...), ' +
+			'delete(table).where(...), and $count(table). ' +
+			'Append .toSQL() to any of these. For everything else, use db.execute(sql`...`).'
 	)
 }

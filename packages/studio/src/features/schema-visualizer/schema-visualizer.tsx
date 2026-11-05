@@ -11,11 +11,19 @@ import {
 	useReactFlow,
 	type Edge,
 	type Node,
-	type NodeTypes,
+	type NodeTypes
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { Network, AlertCircle } from 'lucide-react'
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+	useCallback,
+	useDeferredValue,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	type ReactNode
+} from 'react'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { convertSchemaToDrizzle } from '@studio/core/data-generation/sql-to-drizzle'
 import { useAdapter } from '@studio/core/data-provider'
@@ -33,7 +41,7 @@ import { SchemaToolbar, type SearchSuggestion } from './components/schema-toolba
 import {
 	useSchemaGraph,
 	type RelationshipEdgeData,
-	type TableNodeData,
+	type TableNodeData
 } from './hooks/use-schema-graph'
 import { useTablePulse } from './hooks/use-table-pulse'
 
@@ -58,11 +66,11 @@ type ExportPreviewState = {
 }
 
 const NODE_TYPES: NodeTypes = {
-	tableNode: TableNode,
+	tableNode: TableNode
 }
 
 const EDGE_TYPES: EdgeTypes = {
-	relationshipEdge: RelationshipEdge,
+	relationshipEdge: RelationshipEdge
 }
 
 function downloadTextFile(filename: string, content: string, type: string) {
@@ -105,7 +113,7 @@ const FALLBACK_PALETTE: DiagramPalette = {
 	title: '#f1f1f3',
 	columnName: '#d7d7dd',
 	columnType: '#85858f',
-	edge: '#7c6ff6',
+	edge: '#7c6ff6'
 }
 
 // CSS custom properties read via getComputedStyle come back as unresolved
@@ -137,7 +145,7 @@ function resolveDiagramPalette(): DiagramPalette {
 			title: resolve('hsl(var(--foreground))', FALLBACK_PALETTE.title),
 			columnName: resolve('var(--sv-text)', FALLBACK_PALETTE.columnName),
 			columnType: resolve('var(--sv-text-muted)', FALLBACK_PALETTE.columnType),
-			edge: resolve('var(--sv-line-one)', FALLBACK_PALETTE.edge),
+			edge: resolve('var(--sv-line-one)', FALLBACK_PALETTE.edge)
 		}
 	} finally {
 		probe.remove()
@@ -147,24 +155,21 @@ function resolveDiagramPalette(): DiagramPalette {
 function buildDiagramSvg(
 	nodes: Node<TableNodeData>[],
 	edges: Edge<RelationshipEdgeData>[],
-	palette: DiagramPalette = FALLBACK_PALETTE,
+	palette: DiagramPalette = FALLBACK_PALETTE
 ) {
 	const nodeWidth = 260
 	const headerHeight = 34
 	const rowHeight = 24
 	const padding = 80
 	const nodeHeights = new Map(
-		nodes.map((node) => [
-			node.id,
-			headerHeight + node.data.columns.length * rowHeight,
-		]),
+		nodes.map((node) => [node.id, headerHeight + node.data.columns.length * rowHeight])
 	)
 	const minX = Math.min(...nodes.map((node) => node.position.x), 0)
 	const minY = Math.min(...nodes.map((node) => node.position.y), 0)
 	const maxX = Math.max(...nodes.map((node) => node.position.x + nodeWidth), nodeWidth)
 	const maxY = Math.max(
 		...nodes.map((node) => node.position.y + (nodeHeights.get(node.id) ?? 120)),
-		120,
+		120
 	)
 	const width = maxX - minX + padding * 2
 	const height = maxY - minY + padding * 2
@@ -214,27 +219,24 @@ function getTableNodeHeight(node: Node<TableNodeData>) {
 	return TABLE_NODE_HEADER_HEIGHT + node.data.columns.length * TABLE_NODE_ROW_HEIGHT
 }
 
-function decorateNodesForSelection(
-	nodes: Node<TableNodeData>[],
-	selectedTableId: string | null,
-) {
+function decorateNodesForSelection(nodes: Node<TableNodeData>[], selectedTableId: string | null) {
 	if (!selectedTableId) return nodes
 	return nodes.map((node) => ({
 		...node,
-		selected: node.id === selectedTableId,
+		selected: node.id === selectedTableId
 	}))
 }
 
 function decorateEdgesForSelection(
 	edges: Edge<RelationshipEdgeData>[],
-	selectedTableId: string | null,
+	selectedTableId: string | null
 ) {
 	if (!selectedTableId) {
 		return edges.map((edge) => ({
 			...edge,
 			selected: false,
 			animated: false,
-			data: edge.data ? { ...edge.data, isActive: false } : edge.data,
+			data: edge.data ? { ...edge.data, isActive: false } : edge.data
 		}))
 	}
 
@@ -244,7 +246,7 @@ function decorateEdgesForSelection(
 			...edge,
 			selected: isRelated,
 			animated: isRelated,
-			data: edge.data ? { ...edge.data, isActive: isRelated } : edge.data,
+			data: edge.data ? { ...edge.data, isActive: isRelated } : edge.data
 		}
 	})
 }
@@ -254,7 +256,7 @@ function SchemaVisualizerInner({
 	selectedTableId,
 	onSelectTable,
 	onOpenTable,
-	windowControls,
+	windowControls
 }: Props) {
 	const adapter = useAdapter()
 	const reactFlow = useReactFlow<Node<TableNodeData>, Edge<RelationshipEdgeData>>()
@@ -320,7 +322,7 @@ function SchemaVisualizerInner({
 				}
 			}
 		},
-		[activeConnectionId, adapter],
+		[activeConnectionId, adapter]
 	)
 
 	useEffect(() => {
@@ -336,14 +338,14 @@ function SchemaVisualizerInner({
 	const {
 		nodes: graphNodes,
 		edges: graphEdges,
-		searchSummary,
+		searchSummary
 	} = useSchemaGraph(schema, deferredSearch)
 
 	const suggestions = useMemo((): SearchSuggestion[] => {
 		if (!schema) return []
 		const tableNames = schema.tables.map((t) => ({ label: t.name, type: 'table' as const }))
 		const columnNames = Array.from(
-			new Set(schema.tables.flatMap((t) => t.columns.map((c) => c.name))),
+			new Set(schema.tables.flatMap((t) => t.columns.map((c) => c.name)))
 		).map((name) => ({ label: name, type: 'column' as const }))
 		return [...tableNames, ...columnNames]
 	}, [schema])
@@ -358,17 +360,16 @@ function SchemaVisualizerInner({
 			const positions = JSON.parse(raw) as Record<string, { x: number; y: number }>
 			return graphNodes.map((node) => ({
 				...node,
-				position: positions[node.id] ?? node.position,
+				position: positions[node.id] ?? node.position
 			}))
 		} catch {
 			return graphNodes
 		}
 	}, [graphNodes, positionStorageKey])
 
-	const [nodes, setNodes, onNodesChange] = useNodesState<Node<TableNodeData>>(positionedGraphNodes)
-	const [edges, setEdges, onEdgesChange] = useEdgesState<
-		Edge<RelationshipEdgeData>
-	>(graphEdges)
+	const [nodes, setNodes, onNodesChange] =
+		useNodesState<Node<TableNodeData>>(positionedGraphNodes)
+	const [edges, setEdges, onEdgesChange] = useEdgesState<Edge<RelationshipEdgeData>>(graphEdges)
 
 	// ── Live Monitor Pulse ──────────────────────────────────────────────────
 	const pulseMap = useTablePulse()
@@ -385,21 +386,24 @@ function SchemaVisualizerInner({
 	}, [activeTableId, setNodes])
 
 	// Merge pulse state into nodes whenever pulseMap changes
-	useEffect(function applyPulseToNodes() {
-		setNodes(function (currentNodes) {
-			let changed = false
-			const nextNodes = currentNodes.map(function (node) {
-				const pulse = pulseMap.get(node.data.tableName) || 'idle'
-				if (pulse === node.data.pulseState) return node
-				changed = true
-				return {
-					...node,
-					data: { ...node.data, pulseState: pulse },
-				}
+	useEffect(
+		function applyPulseToNodes() {
+			setNodes(function (currentNodes) {
+				let changed = false
+				const nextNodes = currentNodes.map(function (node) {
+					const pulse = pulseMap.get(node.data.tableName) || 'idle'
+					if (pulse === node.data.pulseState) return node
+					changed = true
+					return {
+						...node,
+						data: { ...node.data, pulseState: pulse }
+					}
+				})
+				return changed ? nextNodes : currentNodes
 			})
-			return changed ? nextNodes : currentNodes
-		})
-	}, [pulseMap, setNodes])
+		},
+		[pulseMap, setNodes]
+	)
 
 	useEffect(() => {
 		setEdges(decorateEdgesForSelection(graphEdges, activeTableId))
@@ -422,7 +426,7 @@ function SchemaVisualizerInner({
 		const currentZoom = reactFlow.getZoom()
 		reactFlow.setCenter(x, y, {
 			zoom: Math.max(currentZoom, 0.72),
-			duration: 260,
+			duration: 260
 		})
 	}, [activeTableId, positionedGraphNodes, reactFlow])
 
@@ -447,7 +451,7 @@ function SchemaVisualizerInner({
 				tables: searchSummary.matchedTables,
 				relatedTables: searchSummary.relatedTables,
 				edges: searchSummary.relationships,
-				isSearchResult: true,
+				isSearchResult: true
 			}
 		}
 
@@ -455,7 +459,7 @@ function SchemaVisualizerInner({
 			tables: nodes.length,
 			relatedTables: 0,
 			edges: edges.length,
-			isSearchResult: false,
+			isSearchResult: false
 		}
 	}, [nodes.length, edges.length, searchSummary])
 	const schemaCount = useMemo(() => {
@@ -475,7 +479,7 @@ function SchemaVisualizerInner({
 		downloadTextFile(
 			'schema-diagram.svg',
 			buildDiagramSvg(nodes, edges, resolveDiagramPalette()),
-			'image/svg+xml',
+			'image/svg+xml'
 		)
 	}
 
@@ -507,7 +511,11 @@ function SchemaVisualizerInner({
 		if (!activeConnectionId) return
 		const result = await adapter.getDatabaseDDL(activeConnectionId)
 		if (!result.ok) {
-			toast({ title: 'Export failed', description: getAdapterError(result), variant: 'destructive' })
+			toast({
+				title: 'Export failed',
+				description: getAdapterError(result),
+				variant: 'destructive'
+			})
 			return
 		}
 		downloadTextFile('schema.sql', result.data, 'text/sql')
@@ -522,7 +530,11 @@ function SchemaVisualizerInner({
 		if (!activeConnectionId) return null
 		const result = await adapter.getDatabaseDDL(activeConnectionId)
 		if (!result.ok) {
-			toast({ title: 'Export failed', description: getAdapterError(result), variant: 'destructive' })
+			toast({
+				title: 'Export failed',
+				description: getAdapterError(result),
+				variant: 'destructive'
+			})
 			return null
 		}
 		return result.data
@@ -561,7 +573,7 @@ function SchemaVisualizerInner({
 			},
 			onDownload: function () {
 				downloadTextFile('schema.json', source, 'application/json')
-			},
+			}
 		})
 	}
 
@@ -576,7 +588,7 @@ function SchemaVisualizerInner({
 			source: '',
 			isLoading: true,
 			onCopy: function () {},
-			onDownload: function () {},
+			onDownload: function () {}
 		})
 
 		const source = await getSqlExportSource()
@@ -599,7 +611,7 @@ function SchemaVisualizerInner({
 			},
 			onDownload: function () {
 				downloadTextFile('schema.sql', source, 'text/sql')
-			},
+			}
 		})
 	}
 
@@ -620,7 +632,7 @@ function SchemaVisualizerInner({
 			},
 			onDownload: function () {
 				downloadTextFile('schema.ts', source, 'text/typescript')
-			},
+			}
 		})
 	}
 
@@ -628,7 +640,7 @@ function SchemaVisualizerInner({
 		if (!selectedTable) return
 		const tableId = getTableRefId({
 			name: selectedTable.tableName,
-			schema: selectedTable.schema || null,
+			schema: selectedTable.schema || null
 		})
 		onOpenTable?.(tableId, selectedTable.tableName)
 	}
@@ -646,7 +658,7 @@ function SchemaVisualizerInner({
 				acc[node.id] = node.position
 				return acc
 			},
-			{},
+			{}
 		)
 		localStorage.setItem(positionStorageKey, JSON.stringify(positions))
 	}
@@ -724,7 +736,9 @@ function SchemaVisualizerInner({
 							edges={edges}
 							onNodesChange={onNodesChange}
 							onEdgesChange={onEdgesChange}
-							onNodeClick={(_, node) => handleSelectTable(node as Node<TableNodeData>)}
+							onNodeClick={(_, node) =>
+								handleSelectTable(node as Node<TableNodeData>)
+							}
 							onNodeDragStop={(_, __, nextNodes) =>
 								handlePersistNodePositions(nextNodes ?? nodes)
 							}

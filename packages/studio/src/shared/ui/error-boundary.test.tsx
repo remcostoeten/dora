@@ -24,7 +24,7 @@ describe('ErrorBoundary resetKeys', () => {
 
 	it('renders the fallback when a child throws', () => {
 		render(
-			<ErrorBoundary feature="Test" resetKeys={['table-a']}>
+			<ErrorBoundary feature='Test' resetKeys={['table-a']}>
 				<Bomb shouldThrow />
 			</ErrorBoundary>
 		)
@@ -33,14 +33,14 @@ describe('ErrorBoundary resetKeys', () => {
 
 	it('clears the fallback when a reset key changes', () => {
 		const { rerender } = render(
-			<ErrorBoundary feature="Test" resetKeys={['table-a']}>
+			<ErrorBoundary feature='Test' resetKeys={['table-a']}>
 				<Bomb shouldThrow />
 			</ErrorBoundary>
 		)
 		expect(screen.getByText(/Something Went Wrong/i)).toBeInTheDocument()
 
 		rerender(
-			<ErrorBoundary feature="Test" resetKeys={['table-b']}>
+			<ErrorBoundary feature='Test' resetKeys={['table-b']}>
 				<Bomb shouldThrow={false} />
 			</ErrorBoundary>
 		)
@@ -49,13 +49,13 @@ describe('ErrorBoundary resetKeys', () => {
 
 	it('keeps the fallback when reset keys are unchanged', () => {
 		const { rerender } = render(
-			<ErrorBoundary feature="Test" resetKeys={['table-a']}>
+			<ErrorBoundary feature='Test' resetKeys={['table-a']}>
 				<Bomb shouldThrow />
 			</ErrorBoundary>
 		)
 
 		rerender(
-			<ErrorBoundary feature="Test" resetKeys={['table-a']}>
+			<ErrorBoundary feature='Test' resetKeys={['table-a']}>
 				<Bomb shouldThrow={false} />
 			</ErrorBoundary>
 		)

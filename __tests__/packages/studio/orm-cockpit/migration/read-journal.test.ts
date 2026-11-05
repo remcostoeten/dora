@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	parseJournal,
 	extractOutDir,
-	readJournalWithReader,
+	readJournalWithReader
 } from '@studio/features/orm-cockpit/migration/read-journal'
 import type { ProjectReader } from '@studio/features/orm-cockpit/link/detect-orm'
 
@@ -11,8 +11,8 @@ const JOURNAL = JSON.stringify({
 	dialect: 'postgresql',
 	entries: [
 		{ idx: 1, version: '7', when: 2000, tag: '0001_add_users', breakpoints: true },
-		{ idx: 0, version: '7', when: 1000, tag: '0000_init', breakpoints: true },
-	],
+		{ idx: 0, version: '7', when: 1000, tag: '0000_init', breakpoints: true }
+	]
 })
 
 describe('parseJournal', function () {
@@ -51,7 +51,7 @@ describe('readJournalWithReader', function () {
 			},
 			async listDir() {
 				return []
-			},
+			}
 		}
 	}
 

@@ -128,11 +128,9 @@ pkgname = dora
 async function main() {
 	const version = inferVersion()
 	const repoUrl = getFlagValue('repo-url') || 'https://github.com/remcostoeten/dora'
-	const appImageFile =
-		getFlagValue('appimage-file') || `Dora_${version}_amd64.AppImage`
+	const appImageFile = getFlagValue('appimage-file') || `Dora_${version}_amd64.AppImage`
 	const appImageUrl =
-		getFlagValue('appimage-url') ||
-		`${repoUrl}/releases/download/v${version}/${appImageFile}`
+		getFlagValue('appimage-url') || `${repoUrl}/releases/download/v${version}/${appImageFile}`
 	const explicitSha = getFlagValue('source-sha256')
 
 	const config: Config = {

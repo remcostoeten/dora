@@ -49,7 +49,7 @@ const DRIZZLE_CONFIG_NAMES = [
 	'drizzle.config.ts',
 	'drizzle.config.js',
 	'drizzle.config.mjs',
-	'drizzle.config.cjs',
+	'drizzle.config.cjs'
 ]
 
 // Best-effort fallbacks when there's no config or its schema path doesn't resolve.
@@ -76,7 +76,7 @@ const IGNORE_DIRS = new Set([
 	'out',
 	'.svelte-kit',
 	'.output',
-	'.vercel',
+	'.vercel'
 ])
 
 // Depth guard for recursive `**` walks — feature trees are shallow; this just
@@ -90,7 +90,7 @@ export async function detectOrm(folder: string, reader: ProjectReader): Promise<
 		roots.map(async function (root) {
 			const [drizzle, prisma] = await Promise.all([
 				detectDrizzle(root, reader),
-				detectPrisma(root, reader),
+				detectPrisma(root, reader)
 			])
 			return { root, drizzle, prisma }
 		})
@@ -110,7 +110,7 @@ export async function detectOrm(folder: string, reader: ProjectReader): Promise<
 		return {
 			kind: 'none',
 			message:
-				'No Drizzle or Prisma schema found in this folder (or its apps/* and packages/* workspaces). Expected a drizzle.config.* with a schema file, or a prisma/schema.prisma.',
+				'No Drizzle or Prisma schema found in this folder (or its apps/* and packages/* workspaces). Expected a drizzle.config.* with a schema file, or a prisma/schema.prisma.'
 		}
 	}
 	if (links.length === 1) {
@@ -242,7 +242,12 @@ async function detectDrizzle(folder: string, reader: ProjectReader): Promise<Orm
 	if (configPath === undefined && collected.isEmpty()) {
 		return null
 	}
-	return { orm: 'drizzle', schemaFiles: collected.values(), configPath, rootDir: cleanDir(folder) }
+	return {
+		orm: 'drizzle',
+		schemaFiles: collected.values(),
+		configPath,
+		rootDir: cleanDir(folder)
+	}
 }
 
 async function detectPrisma(folder: string, reader: ProjectReader): Promise<OrmLink | null> {

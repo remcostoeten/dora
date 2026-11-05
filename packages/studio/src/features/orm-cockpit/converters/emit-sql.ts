@@ -19,14 +19,14 @@ import type {
 	QueryIR,
 	QueryValue,
 	SelectQuery,
-	UpdateQuery,
+	UpdateQuery
 } from '@studio/features/orm-cockpit/converters/contract'
 
 const JOIN_KEYWORDS: Record<JoinKind, string> = {
 	inner: 'INNER JOIN',
 	left: 'LEFT JOIN',
 	right: 'RIGHT JOIN',
-	full: 'FULL JOIN',
+	full: 'FULL JOIN'
 }
 
 const COMPARISON_SYMBOLS: Record<string, string> = {
@@ -37,7 +37,7 @@ const COMPARISON_SYMBOLS: Record<string, string> = {
 	lt: '<',
 	lte: '<=',
 	like: 'LIKE',
-	ilike: 'ILIKE',
+	ilike: 'ILIKE'
 }
 
 /** Render a {@link QueryIR} as a single dialect-correct SQL statement. */
@@ -64,7 +64,7 @@ function emitSelect(query: SelectQuery, dialect: Dialect, warnings: string[]): s
 
 	for (const join of query.joins) {
 		parts.push(
-			`${JOIN_KEYWORDS[join.kind]} ${quote(join.table, dialect)} ON ${conditionSql(join.on, dialect, warnings)}`,
+			`${JOIN_KEYWORDS[join.kind]} ${quote(join.table, dialect)} ON ${conditionSql(join.on, dialect, warnings)}`
 		)
 	}
 	if (query.where) {
@@ -149,7 +149,9 @@ function conditionSql(condition: Condition, dialect: Dialect, warnings: string[]
 		case 'or': {
 			const keyword = condition.op.toUpperCase()
 			const parts = condition.conditions.map(function (c) {
-				return needsParens(c) ? `(${conditionSql(c, dialect, warnings)})` : conditionSql(c, dialect, warnings)
+				return needsParens(c)
+					? `(${conditionSql(c, dialect, warnings)})`
+					: conditionSql(c, dialect, warnings)
 			})
 			return parts.join(` ${keyword} `)
 		}
@@ -207,7 +209,9 @@ function columnSql(ref: ColumnRef, dialect: Dialect): string {
 	if (ref.column === '*') {
 		return ref.table ? `${quote(ref.table, dialect)}.*` : '*'
 	}
-	return ref.table ? `${quote(ref.table, dialect)}.${quote(ref.column, dialect)}` : quote(ref.column, dialect)
+	return ref.table
+		? `${quote(ref.table, dialect)}.${quote(ref.column, dialect)}`
+		: quote(ref.column, dialect)
 }
 
 function valueSql(value: QueryValue, dialect: Dialect, warnings: string[]): string {
@@ -225,7 +229,7 @@ function valueSql(value: QueryValue, dialect: Dialect, warnings: string[]): stri
 			return 'NULL'
 		case 'param':
 			warnings.push(
-				`"${value.name}" is a runtime value; emitted as the named placeholder ":${value.name}" — bind it before running.`,
+				`"${value.name}" is a runtime value; emitted as the named placeholder ":${value.name}" — bind it before running.`
 			)
 			return `:${value.name}`
 	}

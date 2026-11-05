@@ -121,7 +121,9 @@ describe('generateDrizzleTypes', function () {
 		expect(output).toContain(
 			"    'public.audit_logs': RelationalQuery<PublicAuditLogsRow, PublicAuditLogsColumns>;"
 		)
-		expect(output).toContain('findMany(options?: QueryFindManyOptions<TRow, TColumns>): Promise<TRow[]>;')
+		expect(output).toContain(
+			'findMany(options?: QueryFindManyOptions<TRow, TColumns>): Promise<TRow[]>;'
+		)
 		expect(output).toContain(
 			'findFirst(options?: QueryFindFirstOptions<TRow, TColumns>): Promise<TRow | undefined>;'
 		)
@@ -193,9 +195,13 @@ describe('generateDrizzleTypes', function () {
 	it('generates query helper and select builder declarations for inference', function () {
 		const output = generateDrizzleTypes(tables)
 
-		expect(output).toContain('declare function eq<T>(column: Column<T>, value: T): SQL<boolean>;')
+		expect(output).toContain(
+			'declare function eq<T>(column: Column<T>, value: T): SQL<boolean>;'
+		)
 		expect(output).toContain('declare function sql<T = unknown>')
-		expect(output).toContain('select<TSelection extends Record<string, AnyColumn | SQL<unknown> | AnyTable>>')
+		expect(output).toContain(
+			'select<TSelection extends Record<string, AnyColumn | SQL<unknown> | AnyTable>>'
+		)
 		expect(output).toContain(
 			"): QueryBuilder<TSelection extends undefined ? TTable['_']['inferSelect'] : SelectedFields<TSelection>>;"
 		)

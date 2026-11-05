@@ -14,7 +14,7 @@
 import {
 	DESTRUCTIVE_BANNER,
 	REVIEW_HEADER,
-	type MigrationSections,
+	type MigrationSections
 } from '@studio/features/orm-cockpit/migration/generate-sql'
 
 export { DESTRUCTIVE_BANNER, REVIEW_HEADER, type MigrationSections }
@@ -121,6 +121,6 @@ export function migrationHasGatedSections(source: string | MigrationSections): {
 	const sections = typeof source === 'string' ? splitMigrationSql(source) : source
 	return {
 		hasDestructive: sections.destructive.length > 0,
-		hasReview: sections.review.length > 0,
+		hasReview: sections.review.length > 0
 	}
 }

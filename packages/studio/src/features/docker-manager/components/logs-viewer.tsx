@@ -1,5 +1,11 @@
 import { useEffect, useRef, useMemo } from 'react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@studio/shared/ui/select'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue
+} from '@studio/shared/ui/select'
 import { LOG_TAIL_OPTIONS } from '../constants'
 
 type Props = {

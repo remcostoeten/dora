@@ -29,7 +29,7 @@ describe('drizzleQueryToSql', function () {
 	})
 
 	it('extracts bare sql templates', function () {
-		expect(drizzleQueryToSql("sql`SELECT * FROM messages LIMIT 1`")).toBe(
+		expect(drizzleQueryToSql('sql`SELECT * FROM messages LIMIT 1`')).toBe(
 			'SELECT * FROM messages LIMIT 1'
 		)
 	})
@@ -41,9 +41,9 @@ describe('drizzleQueryToSql', function () {
 	})
 
 	it('converts .where(eq(...)) with .limit(n)', function () {
-		expect(
-			drizzleQueryToSql('db.select().from(users).where(eq(users.id, 1)).limit(10)')
-		).toBe('SELECT * FROM users WHERE id = 1 LIMIT 10')
+		expect(drizzleQueryToSql('db.select().from(users).where(eq(users.id, 1)).limit(10)')).toBe(
+			'SELECT * FROM users WHERE id = 1 LIMIT 10'
+		)
 	})
 
 	it('converts multi-condition .where(and(...))', function () {
@@ -63,9 +63,9 @@ describe('drizzleQueryToSql', function () {
 	})
 
 	it('converts inArray and between conditions', function () {
-		expect(drizzleQueryToSql('db.select().from(users).where(inArray(users.id, [1, 2, 3]))')).toBe(
-			'SELECT * FROM users WHERE id IN (1, 2, 3)'
-		)
+		expect(
+			drizzleQueryToSql('db.select().from(users).where(inArray(users.id, [1, 2, 3]))')
+		).toBe('SELECT * FROM users WHERE id IN (1, 2, 3)')
 		expect(drizzleQueryToSql('db.select().from(users).where(between(users.age, 18, 65))')).toBe(
 			'SELECT * FROM users WHERE age BETWEEN 18 AND 65'
 		)
@@ -76,7 +76,9 @@ describe('drizzleQueryToSql', function () {
 			'SELECT * FROM messages ORDER BY createdAt'
 		)
 		expect(
-			drizzleQueryToSql('db.select().from(messages).orderBy(desc(messages.createdAt), asc(messages.id))')
+			drizzleQueryToSql(
+				'db.select().from(messages).orderBy(desc(messages.createdAt), asc(messages.id))'
+			)
 		).toBe('SELECT * FROM messages ORDER BY createdAt DESC, id ASC')
 	})
 
@@ -93,7 +95,9 @@ describe('drizzleQueryToSql', function () {
 			drizzleQueryToSql('db.select().from(messages).groupBy(messages.id)')
 		}).toThrow('.groupBy() is not auto-translated')
 		expect(function () {
-			drizzleQueryToSql('db.select().from(users).leftJoin(orders, eq(orders.userId, users.id))')
+			drizzleQueryToSql(
+				'db.select().from(users).leftJoin(orders, eq(orders.userId, users.id))'
+			)
 		}).toThrow('.leftJoin() is not auto-translated')
 	})
 
@@ -129,7 +133,9 @@ describe('drizzleQueryToSql', function () {
 
 	it('converts update with .returning()', function () {
 		expect(
-			drizzleQueryToSql('db.update(users).set({ name: "a" }).where(eq(users.id, 1)).returning()')
+			drizzleQueryToSql(
+				'db.update(users).set({ name: "a" }).where(eq(users.id, 1)).returning()'
+			)
 		).toBe("UPDATE users SET name = 'a' WHERE id = 1 RETURNING *")
 	})
 
@@ -138,13 +144,13 @@ describe('drizzleQueryToSql', function () {
 	})
 
 	it('strips .toSQL() from a query with .where()', function () {
-		expect(
-			drizzleQueryToSql('db.select().from(users).where(eq(users.id, 1)).toSQL()')
-		).toBe('SELECT * FROM users WHERE id = 1')
+		expect(drizzleQueryToSql('db.select().from(users).where(eq(users.id, 1)).toSQL()')).toBe(
+			'SELECT * FROM users WHERE id = 1'
+		)
 	})
 
 	it('accepts tx.execute(sql) patterns', function () {
-		expect(drizzleQueryToSql("tx.execute(sql`SELECT * FROM users`)")).toBe(
+		expect(drizzleQueryToSql('tx.execute(sql`SELECT * FROM users`)')).toBe(
 			'SELECT * FROM users'
 		)
 	})
@@ -169,15 +175,13 @@ describe('drizzleQueryToSql', function () {
 			drizzleQueryToSql(
 				"db.update(user).set({ name: 'New Name' }).where(eq(user.email, 'notprisma@gmail.com'))"
 			)
-		).toBe(
-			'UPDATE "user" SET name = \'New Name\' WHERE email = \'notprisma@gmail.com\''
-		)
+		).toBe("UPDATE \"user\" SET name = 'New Name' WHERE email = 'notprisma@gmail.com'")
 	})
 
 	it('converts simple update literals', function () {
 		expect(
 			drizzleQueryToSql(
-				"tx.update(users).set({ active: true, age: 42, deletedAt: null }).where(ne(users.id, 1))"
+				'tx.update(users).set({ active: true, age: 42, deletedAt: null }).where(ne(users.id, 1))'
 			)
 		).toBe('UPDATE users SET active = true, age = 42, deletedAt = NULL WHERE id != 1')
 	})

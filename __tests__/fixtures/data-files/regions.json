@@ -1,17 +1,17 @@
 [
-  {
-    "code": "EMEA",
-    "label": "Europe, Middle East & Africa",
-    "tz_offset": 1
-  },
-  {
-    "code": "APAC",
-    "label": "Asia-Pacific",
-    "tz_offset": 8
-  },
-  {
-    "code": "AMER",
-    "label": "Americas",
-    "tz_offset": -5
-  }
+	{
+		"code": "EMEA",
+		"label": "Europe, Middle East & Africa",
+		"tz_offset": 1
+	},
+	{
+		"code": "APAC",
+		"label": "Asia-Pacific",
+		"tz_offset": 8
+	},
+	{
+		"code": "AMER",
+		"label": "Americas",
+		"tz_offset": -5
+	}
 ]

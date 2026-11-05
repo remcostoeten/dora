@@ -117,10 +117,7 @@ export function getTableSqlIdentifier(
 		return quoteIdentifier(parts.tableName, '`')
 	}
 
-	if (
-		parts.schemaName &&
-		(dialect === undefined || dialectUsesSchemas(dialect))
-	) {
+	if (parts.schemaName && (dialect === undefined || dialectUsesSchemas(dialect))) {
 		return `${quoteIdentifier(parts.schemaName, '"')}.${quoteIdentifier(parts.tableName, '"')}`
 	}
 
@@ -150,11 +147,7 @@ export function getColumnSqlIdentifier(column: string, dialect?: TableDialect): 
 // `IF EXISTS` on the column is intentionally NOT emitted: Postgres supports it
 // but MySQL/SQLite do not, so a missing column surfaces as a clear error rather
 // than a silent no-op. The destructive confirm happens in the UI dialog.
-export function buildDropColumnSql(
-	table: string,
-	column: string,
-	dialect?: TableDialect
-): string {
+export function buildDropColumnSql(table: string, column: string, dialect?: TableDialect): string {
 	const tableId = getTableSqlIdentifier(table, dialect)
 	const columnId = getColumnSqlIdentifier(column, dialect)
 	return `ALTER TABLE ${tableId} DROP COLUMN ${columnId}`

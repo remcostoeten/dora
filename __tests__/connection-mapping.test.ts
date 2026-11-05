@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { Connection } from '@/features/connections/types'
-import { frontendToBackendDatabaseInfo, frontendToBackendSshConfig } from '@/features/connections/utils/mapping'
+import {
+	frontendToBackendDatabaseInfo,
+	frontendToBackendSshConfig
+} from '@/features/connections/utils/mapping'
 
 describe('connection mapping', function () {
 	it('preserves ssh config for postgres connections', function () {

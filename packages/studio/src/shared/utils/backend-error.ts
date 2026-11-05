@@ -8,11 +8,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function isBackendErrorShape(error: unknown): error is BackendErrorShape {
-	return (
-		isRecord(error) &&
-		typeof error.kind === 'string' &&
-		typeof error.detail === 'string'
-	)
+	return isRecord(error) && typeof error.kind === 'string' && typeof error.detail === 'string'
 }
 
 export function formatBackendError(error: unknown): string {

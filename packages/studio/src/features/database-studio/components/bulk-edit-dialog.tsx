@@ -11,7 +11,13 @@ import {
 } from '@studio/shared/ui/dialog'
 import { Input } from '@studio/shared/ui/input'
 import { Label } from '@studio/shared/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@studio/shared/ui/select'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue
+} from '@studio/shared/ui/select'
 import type { ColumnDefinition } from '../types'
 
 type Props = {

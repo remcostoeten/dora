@@ -138,7 +138,9 @@ export function ResultsPanel({ result, showJson }: Props) {
 								<tr
 									key={rowIndex}
 									data-index={rowIndex}
-									ref={shouldVirtualize ? rowVirtualizer.measureElement : undefined}
+									ref={
+										shouldVirtualize ? rowVirtualizer.measureElement : undefined
+									}
 									className='hover:bg-sidebar-accent/50 transition-colors'
 								>
 									{result.columns.map((col) => (

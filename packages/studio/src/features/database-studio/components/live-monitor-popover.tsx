@@ -65,7 +65,10 @@ export function LiveMonitorPopover({ config, onConfigChange, isPolling }: Props)
 							aria-label={config.enabled ? 'Live monitor active' : 'Live monitor off'}
 						>
 							<Activity
-								className={cn('h-4 w-4', config.enabled && isPolling && 'animate-pulse')}
+								className={cn(
+									'h-4 w-4',
+									config.enabled && isPolling && 'animate-pulse'
+								)}
 							/>
 							{config.enabled && (
 								<span className='absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400' />

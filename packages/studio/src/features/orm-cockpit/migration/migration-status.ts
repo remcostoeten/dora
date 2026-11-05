@@ -39,7 +39,7 @@ export type MigrationStatus = {
 export function reconcileMigrations(
 	entries: JournalEntry[],
 	lastApplied: number | null,
-	tableMissing: boolean,
+	tableMissing: boolean
 ): MigrationStatus {
 	let appliedCount = 0
 	const rows = entries.map(function (entry): MigrationStatusRow {
@@ -51,7 +51,7 @@ export function reconcileMigrations(
 			idx: entry.idx,
 			tag: entry.tag,
 			when: entry.when,
-			state: applied ? 'applied' : 'pending',
+			state: applied ? 'applied' : 'pending'
 		}
 	})
 
@@ -59,6 +59,6 @@ export function reconcileMigrations(
 		rows,
 		appliedCount,
 		pendingCount: rows.length - appliedCount,
-		tableMissing,
+		tableMissing
 	}
 }

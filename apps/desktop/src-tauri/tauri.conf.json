@@ -26,9 +26,7 @@
 			}
 		],
 		"security": {
-			"dangerousDisableAssetCspModification": [
-				"style-src"
-			],
+			"dangerousDisableAssetCspModification": ["style-src"],
 			"csp": "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https://ingestion.remcostoeten.nl; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
 		},
 		"macOSPrivateApi": true
@@ -44,17 +42,8 @@
 	"bundle": {
 		"active": true,
 		"createUpdaterArtifacts": true,
-		"externalBin": [
-			"binaries/duckdb_helper"
-		],
-		"targets": [
-			"app",
-			"deb",
-			"rpm",
-			"appimage",
-			"nsis",
-			"dmg"
-		],
+		"externalBin": ["binaries/duckdb_helper"],
+		"targets": ["app", "deb", "rpm", "appimage", "nsis", "dmg"],
 		"shortDescription": "Free, open source database client",
 		"longDescription": "Dora is a free, open source database client for PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1, and DuckDB, with inline editing, a SQL console, and Drizzle and Prisma query runners.",
 		"category": "Development",

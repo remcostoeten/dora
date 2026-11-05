@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildDryRunSql, getSqlStatementKind, splitSqlStatements, tokenizeSql } from './sql-code-utils'
+import {
+	buildDryRunSql,
+	getSqlStatementKind,
+	splitSqlStatements,
+	tokenizeSql
+} from './sql-code-utils'
 
 describe('sql-code-utils', function () {
 	it('splits statements without splitting semicolons inside strings', function () {
@@ -21,7 +26,11 @@ describe('sql-code-utils', function () {
 
 	it('tokenizes keywords and strings for lightweight highlighting', function () {
 		const tokens = tokenizeSql("SELECT * FROM messages WHERE message ILIKE '%quinten%'")
-		expect(tokens.some((token) => token.kind === 'keyword' && token.text === 'SELECT')).toBe(true)
-		expect(tokens.some((token) => token.kind === 'string' && token.text === "'%quinten%'")).toBe(true)
+		expect(tokens.some((token) => token.kind === 'keyword' && token.text === 'SELECT')).toBe(
+			true
+		)
+		expect(
+			tokens.some((token) => token.kind === 'string' && token.text === "'%quinten%'")
+		).toBe(true)
 	})
 })

@@ -16,10 +16,7 @@ as a first-class way to query.
 Write Drizzle queries against the connected database:
 
 ```ts
-db
-  .select()
-  .from(users)
-  .where(eq(users.plan, 'pro'))
+db.select().from(users).where(eq(users.plan, 'pro'))
 ```
 
 - **Schema-aware autocomplete.** Methods, tables, and columns complete from the
@@ -34,7 +31,7 @@ Write Prisma Client queries the same way:
 
 ```ts
 prisma.user.findMany({
-  where: { plan: 'pro' },
+	where: { plan: 'pro' }
 })
 ```
 
@@ -46,9 +43,12 @@ execution.
 
 The runners and the cockpit are complementary:
 
-- **ORM Runners** (this page): *query* the database using Drizzle or Prisma
+- **ORM Runners** (this page): _query_ the database using Drizzle or Prisma
   syntax.
-- **[ORM Cockpit](/docs/guides/orm-cockpit)**: compare your ORM *schema* to the
+- **[ORM Cockpit](/docs/guides/orm-cockpit)**: compare your ORM _schema_ to the
   live database and preview a migration for any drift.
 
-<Callout type='info'>Both runners show the compiled SQL before anything executes, so you always know exactly what is sent to the database.</Callout>
+<Callout type='info'>
+	Both runners show the compiled SQL before anything executes, so you always know exactly what is
+	sent to the database.
+</Callout>

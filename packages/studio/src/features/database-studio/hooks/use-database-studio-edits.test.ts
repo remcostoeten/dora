@@ -42,11 +42,19 @@ function setup(edits: Edit[], failFor: (payload: Record<string, unknown>) => boo
 		currentCacheKey: 'cache-key',
 		isDryEditMode: true,
 		pendingEdits: new Map(),
-		getEditsForTable: function () { return edits },
-		hasEdits: function () { return edits.length > 0 },
+		getEditsForTable: function () {
+			return edits
+		},
+		hasEdits: function () {
+			return edits.length > 0
+		},
 		addEdit: vi.fn(),
-		removeEdit: function (_tableId: string, key: string) { removed.push(key) },
-		clearEdits: function (tableId: string) { cleared.push(tableId) },
+		removeEdit: function (_tableId: string, key: string) {
+			removed.push(key)
+		},
+		clearEdits: function (tableId: string) {
+			cleared.push(tableId)
+		},
 		updateCell: {
 			mutate: vi.fn(),
 			mutateAsync: function (payload: Record<string, unknown>) {
@@ -55,18 +63,31 @@ function setup(edits: Edit[], failFor: (payload: Record<string, unknown>) => boo
 			}
 		},
 		setTableData: function (updater: unknown) {
-			tableData = typeof updater === 'function' ? (updater as (p: unknown) => typeof tableData)(tableData) : (updater as typeof tableData)
+			tableData =
+				typeof updater === 'function'
+					? (updater as (p: unknown) => typeof tableData)(tableData)
+					: (updater as typeof tableData)
 		},
 		setIsApplyingEdits: vi.fn(),
 		loadTableData: vi.fn(),
 		trackCellMutation: vi.fn(),
 		trackBatchCellMutation: vi.fn(),
 		notifyMissingPrimaryKey: vi.fn(),
-		notifyActionFailure: function (title: string, error: unknown) { failures.push({ title, error }) }
+		notifyActionFailure: function (title: string, error: unknown) {
+			failures.push({ title, error })
+		}
 	}
 
 	const { result } = renderHook(() => useDatabaseStudioEdits(args as never))
-	return { result, removed, cleared, failures, getTableData: function () { return tableData } }
+	return {
+		result,
+		removed,
+		cleared,
+		failures,
+		getTableData: function () {
+			return tableData
+		}
+	}
 }
 
 describe('handleApplyPendingEdits partial failure', function () {
@@ -76,22 +97,23 @@ describe('handleApplyPendingEdits partial failure', function () {
 			makeEdit(2, 'name', 'b', 'B'),
 			makeEdit(3, 'name', 'c', 'C')
 		]
-		const ctx = setup(edits, function (payload) { return payload.primaryKeyValue === 2 })
+		const ctx = setup(edits, function (payload) {
+			return payload.primaryKeyValue === 2
+		})
 
 		await act(async function () {
 			await ctx.result.current.handleApplyPendingEdits()
 		})
 
-		expect(ctx.removed).toEqual([
-			`${TABLE_ID}:1:name`,
-			`${TABLE_ID}:3:name`
-		])
+		expect(ctx.removed).toEqual([`${TABLE_ID}:1:name`, `${TABLE_ID}:3:name`])
 		expect(ctx.removed).not.toContain(`${TABLE_ID}:2:name`)
 	})
 
 	it('does not clear the whole buffer on partial failure', async function () {
 		const edits = [makeEdit(1, 'name', 'a', 'A'), makeEdit(2, 'name', 'b', 'B')]
-		const ctx = setup(edits, function (payload) { return payload.primaryKeyValue === 2 })
+		const ctx = setup(edits, function (payload) {
+			return payload.primaryKeyValue === 2
+		})
 
 		await act(async function () {
 			await ctx.result.current.handleApplyPendingEdits()
@@ -102,7 +124,9 @@ describe('handleApplyPendingEdits partial failure', function () {
 
 	it('names the failing row and column in the error', async function () {
 		const edits = [makeEdit(1, 'name', 'a', 'A'), makeEdit(2, 'email', 'b', 'B')]
-		const ctx = setup(edits, function (payload) { return payload.primaryKeyValue === 2 })
+		const ctx = setup(edits, function (payload) {
+			return payload.primaryKeyValue === 2
+		})
 
 		await act(async function () {
 			await ctx.result.current.handleApplyPendingEdits()
@@ -117,20 +141,32 @@ describe('handleApplyPendingEdits partial failure', function () {
 
 	it('reverts the failed cell on screen to its pre-edit value', async function () {
 		const edits = [makeEdit(1, 'name', 'a', 'A'), makeEdit(2, 'name', 'b', 'B')]
-		const ctx = setup(edits, function (payload) { return payload.primaryKeyValue === 2 })
+		const ctx = setup(edits, function (payload) {
+			return payload.primaryKeyValue === 2
+		})
 
 		await act(async function () {
 			await ctx.result.current.handleApplyPendingEdits()
 		})
 
 		const rows = ctx.getTableData().rows
-		expect(rows.find(function (r) { return r.id === 2 })?.name).toBe('b')
-		expect(rows.find(function (r) { return r.id === 1 })?.name).toBe('A')
+		expect(
+			rows.find(function (r) {
+				return r.id === 2
+			})?.name
+		).toBe('b')
+		expect(
+			rows.find(function (r) {
+				return r.id === 1
+			})?.name
+		).toBe('A')
 	})
 
 	it('clears the buffer in one go when all succeed', async function () {
 		const edits = [makeEdit(1, 'name', 'a', 'A'), makeEdit(2, 'name', 'b', 'B')]
-		const ctx = setup(edits, function () { return false })
+		const ctx = setup(edits, function () {
+			return false
+		})
 
 		await act(async function () {
 			await ctx.result.current.handleApplyPendingEdits()

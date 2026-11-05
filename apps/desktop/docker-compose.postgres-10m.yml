@@ -1,21 +1,21 @@
 services:
-  postgres-10m:
-    image: postgres:16
-    container_name: dora-postgres-10m
-    environment:
-      POSTGRES_USER: dora
-      POSTGRES_PASSWORD: dora
-      POSTGRES_DB: dora_10m
-    ports:
-      - "55432:5432"
-    volumes:
-      - dora-postgres-10m-data:/var/lib/postgresql/data
-      - ./scripts/postgres-10m:/seed:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dora -d dora_10m"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
+    postgres-10m:
+        image: postgres:16
+        container_name: dora-postgres-10m
+        environment:
+            POSTGRES_USER: dora
+            POSTGRES_PASSWORD: dora
+            POSTGRES_DB: dora_10m
+        ports:
+            - '55432:5432'
+        volumes:
+            - dora-postgres-10m-data:/var/lib/postgresql/data
+            - ./scripts/postgres-10m:/seed:ro
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U dora -d dora_10m']
+            interval: 5s
+            timeout: 5s
+            retries: 20
 
 volumes:
-  dora-postgres-10m-data:
+    dora-postgres-10m-data:

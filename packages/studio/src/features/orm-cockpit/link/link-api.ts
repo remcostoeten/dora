@@ -3,20 +3,20 @@ import {
 	detectOrm,
 	type DetectedOrm,
 	type DetectOrmResult,
-	type ProjectReader,
+	type ProjectReader
 } from '@studio/features/orm-cockpit/link/detect-orm'
 import {
 	readJournalWithReader,
-	type JournalEntry,
+	type JournalEntry
 } from '@studio/features/orm-cockpit/migration/read-journal'
 import {
 	resolveProjectTarget,
-	type DbTarget,
+	type DbTarget
 } from '@studio/features/orm-cockpit/link/connection-target'
 import {
 	isWebDemo,
 	demoDrizzleLink,
-	DEMO_PROJECT_FOLDER,
+	DEMO_PROJECT_FOLDER
 } from '@studio/features/orm-cockpit/link/demo-project'
 
 /**
@@ -56,7 +56,7 @@ export function createTauriProjectReader(): ProjectReader {
 			} catch {
 				return []
 			}
-		},
+		}
 	}
 }
 
@@ -79,7 +79,7 @@ export async function detectProjectOrm(folder: string): Promise<DetectOrmResult>
  */
 export async function readDrizzleJournal(
 	folder: string,
-	configPath?: string,
+	configPath?: string
 ): Promise<{ entries: JournalEntry[]; journalPath: string | null }> {
 	const reader = createTauriProjectReader()
 	const configText = configPath ? await reader.readFile(configPath) : null
@@ -102,7 +102,7 @@ export async function resolveProjectDatabaseTarget(
 	rootDir: string,
 	configPath: string | undefined,
 	orm: DetectedOrm,
-	schemaTexts: string[] = [],
+	schemaTexts: string[] = []
 ): Promise<DbTarget | null> {
 	const reader = createTauriProjectReader()
 	const base = configPath ? dirname(configPath) : rootDir

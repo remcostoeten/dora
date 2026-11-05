@@ -37,7 +37,7 @@ describe('overlayPendingEditsOnRows', function () {
 		expect(result[0]).toEqual({ id: 1, name: 'a' })
 	})
 
-	it('matches on the edit\'s own primary key column', function () {
+	it("matches on the edit's own primary key column", function () {
 		const rows = [{ uuid: 'k1', name: 'a' }]
 		const edit: PendingEdit = {
 			primaryKeyColumn: 'uuid',

@@ -12,14 +12,14 @@ connection string, and Dora handles the rest.
 Open the connection dialog (`Mod+Shift+N`), toggle **Use connection string**, and
 paste a URL. Dora reads the scheme and host to figure out the rest:
 
-| Scheme | Engine |
-| --- | --- |
+| Scheme                          | Engine                                         |
+| ------------------------------- | ---------------------------------------------- |
 | `postgresql://` / `postgres://` | PostgreSQL (or CockroachDB / Yugabyte by host) |
-| `mysql://` | MySQL or MariaDB |
-| `libsql://` | libSQL (Turso) |
-| `sqlite://` | SQLite |
-| `duckdb://` | DuckDB |
-| `posthog://` | PostHog (HogQL) |
+| `mysql://`                      | MySQL or MariaDB                               |
+| `libsql://`                     | libSQL (Turso)                                 |
+| `sqlite://`                     | SQLite                                         |
+| `duckdb://`                     | DuckDB                                         |
+| `posthog://`                    | PostHog (HogQL)                                |
 
 ## Automatic engine and SSL detection
 
@@ -37,7 +37,10 @@ settings for you:
 If you mistype a scheme (`postgrss://`), Dora suggests the closest valid one
 instead of failing silently.
 
-<Callout type='info'>You can always override detection. The SSL toggle and engine selector in the dialog take precedence over what Dora guesses.</Callout>
+<Callout type='info'>
+	You can always override detection. The SSL toggle and engine selector in the dialog take
+	precedence over what Dora guesses.
+</Callout>
 
 ## Connect from a provider account
 

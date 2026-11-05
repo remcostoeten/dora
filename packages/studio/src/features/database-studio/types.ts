@@ -66,7 +66,10 @@ export type FilterGroup = {
 
 /** Narrows a group member to a nested group (vs a leaf condition). */
 export function isFilterGroup(node: FilterCondition | FilterGroup): node is FilterGroup {
-	return typeof (node as FilterGroup).logic === 'string' && Array.isArray((node as FilterGroup).conditions)
+	return (
+		typeof (node as FilterGroup).logic === 'string' &&
+		Array.isArray((node as FilterGroup).conditions)
+	)
 }
 
 export type TableQueryParams = {

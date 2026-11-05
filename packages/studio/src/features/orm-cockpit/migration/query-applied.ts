@@ -26,7 +26,7 @@ function candidateQueries(dialect: Dialect): string[] {
 		return [
 			// Drizzle's default migrations schema, then a public-schema fallback.
 			'SELECT MAX(created_at) AS last_applied FROM drizzle."__drizzle_migrations"',
-			'SELECT MAX(created_at) AS last_applied FROM "__drizzle_migrations"',
+			'SELECT MAX(created_at) AS last_applied FROM "__drizzle_migrations"'
 		]
 	}
 	if (dialect === 'mysql') {
@@ -38,7 +38,7 @@ function candidateQueries(dialect: Dialect): string[] {
 export async function queryLastAppliedMigration(
 	adapter: DataAdapter,
 	connectionId: string,
-	dialect: Dialect,
+	dialect: Dialect
 ): Promise<AppliedResult> {
 	for (const sql of candidateQueries(dialect)) {
 		let ok = false

@@ -23,7 +23,11 @@ type Args = {
 	deleteRows: { mutate: Function }
 	insertRow: { mutateAsync: Function }
 	onLoadTableData: () => void
-	trackRowDeletion: (connectionId: string, tableName: string, rows: Record<string, unknown>[]) => string | null
+	trackRowDeletion: (
+		connectionId: string,
+		tableName: string,
+		rows: Record<string, unknown>[]
+	) => string | null
 	setTableData: React.Dispatch<React.SetStateAction<TableData | null>>
 	setSelectedRows: React.Dispatch<React.SetStateAction<Set<number>>>
 	setShowDeleteConfirmDialog: React.Dispatch<React.SetStateAction<boolean>>
@@ -37,7 +41,9 @@ type Args = {
 	setDraftRow: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
 	setDraftInsertIndex: React.Dispatch<React.SetStateAction<number | null>>
 	setEditingRowState: React.Dispatch<React.SetStateAction<EditingRowState>>
-	setDuplicateInitialData: React.Dispatch<React.SetStateAction<Record<string, unknown> | undefined>>
+	setDuplicateInitialData: React.Dispatch<
+		React.SetStateAction<Record<string, unknown> | undefined>
+	>
 	setAddDialogMode: React.Dispatch<React.SetStateAction<'add' | 'duplicate' | 'edit'>>
 	setShowAddDialog: React.Dispatch<React.SetStateAction<boolean>>
 	setSelectedRowForDetail: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
@@ -113,7 +119,20 @@ export function useDatabaseStudioRowActions(args: Args) {
 				}
 			)
 		},
-		[activeConnectionId, deleteRows, notifyActionFailure, onLoadTableData, setPendingSingleDeleteRow, setSelectedRows, setShowDeleteConfirmDialog, setTableData, tableData, tableId, tableRefName, trackRowDeletion]
+		[
+			activeConnectionId,
+			deleteRows,
+			notifyActionFailure,
+			onLoadTableData,
+			setPendingSingleDeleteRow,
+			setSelectedRows,
+			setShowDeleteConfirmDialog,
+			setTableData,
+			tableData,
+			tableId,
+			tableRefName,
+			trackRowDeletion
+		]
 	)
 
 	const duplicateRowIndexes = useCallback(
@@ -154,7 +173,19 @@ export function useDatabaseStudioRowActions(args: Args) {
 					notifyActionFailure('Failed to duplicate rows', error)
 				})
 		},
-		[activeConnectionId, insertRow, notifyActionFailure, notifyPrimaryKeyNotGenerated, onLoadTableData, onRowsAdded, setSelectedRows, setTableData, tableData, tableId, tableRefName]
+		[
+			activeConnectionId,
+			insertRow,
+			notifyActionFailure,
+			notifyPrimaryKeyNotGenerated,
+			onLoadTableData,
+			onRowsAdded,
+			setSelectedRows,
+			setTableData,
+			tableData,
+			tableId,
+			tableRefName
+		]
 	)
 
 	async function handleRowAction(

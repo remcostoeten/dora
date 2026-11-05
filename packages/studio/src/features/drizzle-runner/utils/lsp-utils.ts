@@ -312,7 +312,8 @@ function createTableEntry(table: SchemaTable, index: number) {
 	const insertTypeName = `${typeBase}Insert`
 	const tableTypeName = `${typeBase}Table`
 	const globalIdentifier = isIdentifier(table.name) ? table.name : null
-	const exportIdentifier = globalIdentifier || toIdentifier(lastNameSegment(table.name)) || `table${index + 1}`
+	const exportIdentifier =
+		globalIdentifier || toIdentifier(lastNameSegment(table.name)) || `table${index + 1}`
 	const columnDefs = table.columns
 		.map(function (column) {
 			return `    ${propertyKey(column.name)}: Column<${columnTsType(column)}, '${escapeTypeString(column.name)}'>;`
@@ -364,7 +365,11 @@ function baseColumnTsType(type: string): string {
 	if (/\b(bigint|bigserial|int8)\b/.test(normalized)) {
 		return 'bigint'
 	}
-	if (/\b(smallint|integer|int|int2|int4|serial|smallserial|float|float4|float8|double|decimal|numeric|real|money)\b/.test(normalized)) {
+	if (
+		/\b(smallint|integer|int|int2|int4|serial|smallserial|float|float4|float8|double|decimal|numeric|real|money)\b/.test(
+			normalized
+		)
+	) {
 		return 'number'
 	}
 	if (/\b(boolean|bool)\b/.test(normalized)) {

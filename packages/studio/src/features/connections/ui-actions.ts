@@ -21,7 +21,7 @@ const STUDIO_UI_ACTIONS: StudioUiAction[] = [
 	'ssh-tunnel',
 	'local-file',
 	'remote-url',
-	'attach-file',
+	'attach-file'
 ]
 
 export function isUiActionVisible(action: StudioUiAction, caps: SourceCaps): boolean {

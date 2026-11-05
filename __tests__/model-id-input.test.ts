@@ -13,12 +13,16 @@ describe('filterModelOptions', function () {
 	})
 
 	it('matches model ids and labels case-insensitively', function () {
-		expect(filterModelOptions(options, '4o mini').map(function (option) {
-			return option.id
-		})).toEqual(['gpt-4o-mini'])
+		expect(
+			filterModelOptions(options, '4o mini').map(function (option) {
+				return option.id
+			})
+		).toEqual(['gpt-4o-mini'])
 
-		expect(filterModelOptions(options, 'sonnet').map(function (option) {
-			return option.id
-		})).toEqual(['claude-sonnet-4-6'])
+		expect(
+			filterModelOptions(options, 'sonnet').map(function (option) {
+				return option.id
+			})
+		).toEqual(['claude-sonnet-4-6'])
 	})
 })

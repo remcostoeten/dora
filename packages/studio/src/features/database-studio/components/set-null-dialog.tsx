@@ -3,7 +3,13 @@ import { Spinner } from '@studio/shared/ui/spinner'
 import { useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Label } from '@studio/shared/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@studio/shared/ui/select'
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue
+} from '@studio/shared/ui/select'
 import type { ColumnDefinition } from '../types'
 import { StudioDialog } from './studio-dialog'
 

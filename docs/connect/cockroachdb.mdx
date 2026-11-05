@@ -13,11 +13,15 @@ enables SSL automatically.
 2. Choose your SQL user, select the **General connection string** / command-line
    option, and copy the URL:
 
-   ```text
-   postgresql://<user>:<password>@<host>.cockroachlabs.cloud:26257/<db>?sslmode=verify-full
-   ```
+    ```text
+    postgresql://<user>:<password>@<host>.cockroachlabs.cloud:26257/<db>?sslmode=verify-full
+    ```
 
 3. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URL,
    **Test connection**, and **Save**.
 
-<Callout type='info'>CockroachDB listens on port `26257`. Serverless clusters route by cluster name, so keep the full host and any `options` parameter that the console includes. SSL is required; download the cluster CA cert if your `sslmode` verifies it.</Callout>
+<Callout type='info'>
+	CockroachDB listens on port `26257`. Serverless clusters route by cluster name, so keep the full
+	host and any `options` parameter that the console includes. SSL is required; download the
+	cluster CA cert if your `sslmode` verifies it.
+</Callout>

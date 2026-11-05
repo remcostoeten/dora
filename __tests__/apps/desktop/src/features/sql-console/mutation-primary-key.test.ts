@@ -48,9 +48,7 @@ describe('resolveMutationPrimaryKey', function () {
 			sourceTable: 'staging_events',
 			resultColumns: ['id', 'payload'],
 			columnDefinitions: [makeColumn('id', false), makeColumn('payload', false)],
-			schemaTables: [
-				makeTable('staging_events', [{ name: 'id' }, { name: 'payload' }])
-			]
+			schemaTables: [makeTable('staging_events', [{ name: 'id' }, { name: 'payload' }])]
 		})
 		expect(resolution.kind).toBe('disabled')
 	})

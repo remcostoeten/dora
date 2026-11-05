@@ -7,14 +7,11 @@ export function useImportFilesIntoDuckdb() {
 
 	return useMutation({
 		mutationFn: async function (params: { connectionId: string; filePaths: string[] }) {
-			const res = await adapter.importFilesIntoDuckdb(
-				params.connectionId,
-				params.filePaths
-			)
+			const res = await adapter.importFilesIntoDuckdb(params.connectionId, params.filePaths)
 			if (!res.ok) {
 				throw new Error(getAdapterError(res))
 			}
 			return res.data
-		},
+		}
 	})
 }

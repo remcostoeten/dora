@@ -9,7 +9,7 @@ describe('source-debug', function () {
 			id: '1',
 			name: 'sales',
 			createdAt: 0,
-			...buildConnectionFromDataFiles(['/tmp/sales.csv']),
+			...buildConnectionFromDataFiles(['/tmp/sales.csv'])
 		}
 		const info = resolveSourceDebugInfo(conn)
 

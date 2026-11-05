@@ -165,7 +165,17 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 		id: 'safety',
 		title: 'Safety',
 		description: 'Destructive action confirmations and privacy',
-		keywords: ['delete', 'confirm', 'danger', 'privacy', 'mask', 'hide', 'ai', 'assistant', 'disable ai']
+		keywords: [
+			'delete',
+			'confirm',
+			'danger',
+			'privacy',
+			'mask',
+			'hide',
+			'ai',
+			'assistant',
+			'disable ai'
+		]
 	},
 	{
 		id: 'startup',
@@ -177,7 +187,15 @@ const SETTINGS_SECTIONS: SettingsSectionNav[] = [
 		id: 'interface',
 		title: 'Interface',
 		description: 'Selection bar, window controls, and toast behavior',
-		keywords: ['selection', 'toasts', 'ui', 'layout', 'window controls', 'traffic lights', 'titlebar']
+		keywords: [
+			'selection',
+			'toasts',
+			'ui',
+			'layout',
+			'window controls',
+			'traffic lights',
+			'titlebar'
+		]
 	},
 	{
 		id: 'updates',
@@ -231,7 +249,16 @@ const SETTING_SEARCH_ITEMS: SettingsSearchResult[] = [
 		description: 'Hide all cell values in tables and query results',
 		kind: 'setting',
 		focusId: 'safety-privacy-mask',
-		keywords: ['privacy', 'mask', 'hide', 'redact', 'blur', 'asterisk', 'sensitive', 'screenshot']
+		keywords: [
+			'privacy',
+			'mask',
+			'hide',
+			'redact',
+			'blur',
+			'asterisk',
+			'sensitive',
+			'screenshot'
+		]
 	},
 	{
 		id: 'setting-startup-connection-behavior',
@@ -328,11 +355,9 @@ function getShortcutSearchResults(
 			id: `shortcut-${name}`,
 			sectionId: 'shortcuts',
 			title: definition.description,
-			description: [
-				formatShortcutList(definition.combo),
-				definition.scope,
-				category
-			].filter(Boolean).join(' · '),
+			description: [formatShortcutList(definition.combo), definition.scope, category]
+				.filter(Boolean)
+				.join(' · '),
 			kind: 'shortcut',
 			focusId: `shortcut-${name}`,
 			shortcutName,
@@ -495,7 +520,8 @@ function SettingsNavButton({
 				</span>
 				{result.kind !== 'section' ? (
 					<span className='mt-1 block text-[10px] uppercase tracking-wider text-muted-foreground/70'>
-						{result.kind === 'shortcut' ? 'Shortcut' : 'Setting'} · {result.sectionTitle}
+						{result.kind === 'shortcut' ? 'Shortcut' : 'Setting'} ·{' '}
+						{result.sectionTitle}
 					</span>
 				) : null}
 			</span>
@@ -727,50 +753,83 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 		() => SETTINGS_SECTIONS.length - (showOllamaSection ? 0 : 1),
 		[showOllamaSection]
 	)
-	const totalSearchResultCount = useMemo(function () {
-		return getSettingsSearchResults(effectiveShortcuts).length
-	}, [effectiveShortcuts])
-	const searchResults = useMemo(function () {
-		const results = filterSettingsSearchResults(searchQuery, effectiveShortcuts)
-		if (showOllamaSection) return results
-		return results.filter(function (result) {
-			return result.sectionId !== 'ollama-models'
-		})
-	}, [searchQuery, effectiveShortcuts, showOllamaSection])
-	const visibleSections = useMemo(function () {
-		const visibleSectionIds = new Set(searchResults.map(function (result) {
-			return result.sectionId
-		}))
-		return SETTINGS_SECTIONS.filter(function (section) {
-			if (hideAi && AI_SECTION_IDS.has(section.id)) return false
-			return visibleSectionIds.has(section.id)
-		})
-	}, [searchResults, hideAi])
-	const visibleSectionIds = useMemo(function () {
-		return new Set(visibleSections.map(function (section) {
-			return section.id
-		}))
-	}, [visibleSections])
-	const shortcutSuggestionsByCategory = useMemo(function () {
-		const q = shortcutSearchQuery.trim().toLowerCase()
-		if (!q) return null
-		return Object.entries(SHORTCUT_CATEGORIES).map(function ([category, names]) {
-			const filtered = names.filter(function (name) {
-				const def = effectiveShortcuts[name]
-				if (!def) return false
-				const comboStr = Array.isArray(def.combo) ? def.combo.join(' ') : def.combo
-				return (
-					def.description.toLowerCase().includes(q) ||
-					comboStr.toLowerCase().includes(q)
-				)
+	const totalSearchResultCount = useMemo(
+		function () {
+			return getSettingsSearchResults(effectiveShortcuts).length
+		},
+		[effectiveShortcuts]
+	)
+	const searchResults = useMemo(
+		function () {
+			const results = filterSettingsSearchResults(searchQuery, effectiveShortcuts)
+			if (showOllamaSection) return results
+			return results.filter(function (result) {
+				return result.sectionId !== 'ollama-models'
 			})
-			return { category, names: filtered.map(function (n) { return { name: n, def: effectiveShortcuts[n] } }) }
-		}).filter(function (g) { return g.names.length > 0 })
-	}, [shortcutSearchQuery, effectiveShortcuts])
-	const shortcutSuggestions = useMemo(function () {
-		if (!shortcutSuggestionsByCategory) return []
-		return shortcutSuggestionsByCategory.flatMap(function (g) { return g.names })
-	}, [shortcutSuggestionsByCategory])
+		},
+		[searchQuery, effectiveShortcuts, showOllamaSection]
+	)
+	const visibleSections = useMemo(
+		function () {
+			const visibleSectionIds = new Set(
+				searchResults.map(function (result) {
+					return result.sectionId
+				})
+			)
+			return SETTINGS_SECTIONS.filter(function (section) {
+				if (hideAi && AI_SECTION_IDS.has(section.id)) return false
+				return visibleSectionIds.has(section.id)
+			})
+		},
+		[searchResults, hideAi]
+	)
+	const visibleSectionIds = useMemo(
+		function () {
+			return new Set(
+				visibleSections.map(function (section) {
+					return section.id
+				})
+			)
+		},
+		[visibleSections]
+	)
+	const shortcutSuggestionsByCategory = useMemo(
+		function () {
+			const q = shortcutSearchQuery.trim().toLowerCase()
+			if (!q) return null
+			return Object.entries(SHORTCUT_CATEGORIES)
+				.map(function ([category, names]) {
+					const filtered = names.filter(function (name) {
+						const def = effectiveShortcuts[name]
+						if (!def) return false
+						const comboStr = Array.isArray(def.combo) ? def.combo.join(' ') : def.combo
+						return (
+							def.description.toLowerCase().includes(q) ||
+							comboStr.toLowerCase().includes(q)
+						)
+					})
+					return {
+						category,
+						names: filtered.map(function (n) {
+							return { name: n, def: effectiveShortcuts[n] }
+						})
+					}
+				})
+				.filter(function (g) {
+					return g.names.length > 0
+				})
+		},
+		[shortcutSearchQuery, effectiveShortcuts]
+	)
+	const shortcutSuggestions = useMemo(
+		function () {
+			if (!shortcutSuggestionsByCategory) return []
+			return shortcutSuggestionsByCategory.flatMap(function (g) {
+				return g.names
+			})
+		},
+		[shortcutSuggestionsByCategory]
+	)
 	const selectedMatchIndex = activeMatchIndex >= 0 ? activeMatchIndex : 0
 
 	const focusSearchInput = useCallback(function () {
@@ -790,29 +849,36 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 			window.requestAnimationFrame(function () {
 				const section = sectionRefs.current[result.sectionId]
 				const target = result.focusId
-					? section?.querySelector<HTMLElement>(`[data-settings-focus="${result.focusId}"]`)
+					? section?.querySelector<HTMLElement>(
+							`[data-settings-focus="${result.focusId}"]`
+						)
 					: section
 				const focusable = target?.querySelector<HTMLElement>(
 					'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 				)
-				section?.querySelectorAll('[data-settings-search-target="true"]').forEach(function (node) {
-					node.removeAttribute('data-settings-search-target')
-				})
+				section
+					?.querySelectorAll('[data-settings-search-target="true"]')
+					.forEach(function (node) {
+						node.removeAttribute('data-settings-search-target')
+					})
 
 				target?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
 				target?.setAttribute('data-settings-search-target', 'true')
-				;(result.kind === 'section' ? target : focusable ?? target)?.focus()
-				})
+				;(result.kind === 'section' ? target : (focusable ?? target))?.focus()
 			})
+		})
 	}, [])
 
-	const focusSelectedSearchResult = useCallback(function () {
-		const target = searchResults[selectedMatchIndex] ?? searchResults[0]
-		if (!target) return
+	const focusSelectedSearchResult = useCallback(
+		function () {
+			const target = searchResults[selectedMatchIndex] ?? searchResults[0]
+			if (!target) return
 
-		setActiveMatchIndex(searchResults.indexOf(target))
-		focusSearchResult(target)
-	}, [focusSearchResult, searchResults, selectedMatchIndex])
+			setActiveMatchIndex(searchResults.indexOf(target))
+			focusSearchResult(target)
+		},
+		[focusSearchResult, searchResults, selectedMatchIndex]
+	)
 
 	const focusSectionByOffset = useCallback(
 		function (offset: number) {
@@ -897,7 +963,11 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 
 	useEffect(
 		function scrollActiveSectionIntoView() {
-			if (!initialSectionHandled.current && initialSection && sectionRefs.current[initialSection]) {
+			if (
+				!initialSectionHandled.current &&
+				initialSection &&
+				sectionRefs.current[initialSection]
+			) {
 				sectionRefs.current[initialSection]?.scrollIntoView({
 					behavior: 'smooth',
 					block: 'start'
@@ -967,40 +1037,46 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 		[shortcutSearchQuery]
 	)
 
-	useEffect(function bindSearchShortcut() {
-		function handleKeyDown(event: globalThis.KeyboardEvent) {
-			const isRecordingShortcut =
-				document.querySelector('[data-shortcut-recording="true"]') !== null
-			const isFindShortcut =
-				(event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f'
-			const isSlashShortcut =
-				!event.metaKey &&
-				!event.ctrlKey &&
-				!event.altKey &&
-				event.key === '/' &&
-				!isRecordingShortcut
+	useEffect(
+		function bindSearchShortcut() {
+			function handleKeyDown(event: globalThis.KeyboardEvent) {
+				const isRecordingShortcut =
+					document.querySelector('[data-shortcut-recording="true"]') !== null
+				const isFindShortcut =
+					(event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f'
+				const isSlashShortcut =
+					!event.metaKey &&
+					!event.ctrlKey &&
+					!event.altKey &&
+					event.key === '/' &&
+					!isRecordingShortcut
 
-			if (!isFindShortcut && !isSlashShortcut) {
-				return
+				if (!isFindShortcut && !isSlashShortcut) {
+					return
+				}
+
+				const searchInput = searchInputRef.current
+				if (
+					!searchInput ||
+					searchInput.closest('[hidden], [inert], [aria-hidden="true"]')
+				) {
+					return
+				}
+				if (isSlashShortcut && isTypingTarget(event.target)) {
+					return
+				}
+
+				event.preventDefault()
+				focusSearchInput()
 			}
 
-			const searchInput = searchInputRef.current
-			if (!searchInput || searchInput.closest('[hidden], [inert], [aria-hidden="true"]')) {
-				return
+			window.addEventListener('keydown', handleKeyDown)
+			return function () {
+				window.removeEventListener('keydown', handleKeyDown)
 			}
-			if (isSlashShortcut && isTypingTarget(event.target)) {
-				return
-			}
-
-			event.preventDefault()
-			focusSearchInput()
-		}
-
-		window.addEventListener('keydown', handleKeyDown)
-		return function () {
-			window.removeEventListener('keydown', handleKeyDown)
-		}
-	}, [focusSearchInput])
+		},
+		[focusSearchInput]
+	)
 
 	function registerSectionRef(id: SettingsSectionId) {
 		return function (node: HTMLElement | null) {
@@ -1046,29 +1122,32 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 				/>
 				<div className='min-h-0 flex-1 overflow-y-auto py-2'>
 					<div>
-							{searchResults.length > 0 ? (
-								searchResults.map(function (result) {
-									return (
-										<SettingsNavButton
-											key={result.id}
-											result={result}
-											active={searchResults[selectedMatchIndex]?.id === result.id}
-											query={searchQuery}
-											onClick={function () {
-												const nextIndex = searchResults.findIndex(function (item) {
+						{searchResults.length > 0 ? (
+							searchResults.map(function (result) {
+								return (
+									<SettingsNavButton
+										key={result.id}
+										result={result}
+										active={searchResults[selectedMatchIndex]?.id === result.id}
+										query={searchQuery}
+										onClick={function () {
+											const nextIndex = searchResults.findIndex(
+												function (item) {
 													return item.id === result.id
-												})
-												if (nextIndex >= 0) {
-													setActiveMatchIndex(nextIndex)
 												}
-												focusSearchResult(result)
-											}}
-										/>
-									)
+											)
+											if (nextIndex >= 0) {
+												setActiveMatchIndex(nextIndex)
+											}
+											focusSearchResult(result)
+										}}
+									/>
+								)
 							})
 						) : (
 							<div className='px-3 py-3 text-xs leading-relaxed text-muted-foreground'>
-								No settings match this search. Clear the query to see everything again.
+								No settings match this search. Clear the query to see everything
+								again.
 							</div>
 						)}
 					</div>
@@ -1085,7 +1164,8 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 							Application settings
 						</h1>
 						<p className='mt-0.5 text-xs text-muted-foreground'>
-							Appearance, editor behavior, shortcuts, AI keys, storage, and interface preferences
+							Appearance, editor behavior, shortcuts, AI keys, storage, and interface
+							preferences
 						</p>
 					</div>
 					{windowControls ? (
@@ -1105,7 +1185,8 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 											No matching settings
 										</div>
 										<p className='text-sm leading-relaxed text-muted-foreground'>
-											Search terms only hide sections in place. Clear the filter to restore the full settings view.
+											Search terms only hide sections in place. Clear the
+											filter to restore the full settings view.
 										</p>
 									</div>
 									<Button
@@ -1141,13 +1222,17 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 											data-settings-focus='editor-font-size'
 										>
 											<div className='flex items-center justify-between'>
-												<span className='text-sm text-sidebar-foreground'>Font size</span>
+												<span className='text-sm text-sidebar-foreground'>
+													Font size
+												</span>
 												<span className='text-sm font-mono text-sidebar-foreground'>
 													{settings.editorFontSize}px
 												</span>
 											</div>
 											<div className='flex items-center gap-3'>
-												<span className='text-xs text-muted-foreground'>A</span>
+												<span className='text-xs text-muted-foreground'>
+													A
+												</span>
 												<Slider
 													value={[settings.editorFontSize]}
 													onValueChange={function ([value]) {
@@ -1157,7 +1242,9 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													max={24}
 													step={1}
 												/>
-												<span className='text-base text-muted-foreground'>A</span>
+												<span className='text-base text-muted-foreground'>
+													A
+												</span>
 											</div>
 										</div>
 
@@ -1166,7 +1253,9 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 											tabIndex={-1}
 											data-settings-focus='editor-syntax-theme'
 										>
-											<div className='text-sm text-sidebar-foreground'>Syntax theme</div>
+											<div className='text-sm text-sidebar-foreground'>
+												Syntax theme
+											</div>
 											<Select
 												value={settings.editorTheme}
 												onValueChange={function (value) {
@@ -1180,15 +1269,25 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													<SelectValue placeholder='Select theme' />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value='auto'>Auto (System)</SelectItem>
-													<SelectItem value='vs'>Light (Default)</SelectItem>
-													<SelectItem value='vs-dark'>Dark (Default)</SelectItem>
+													<SelectItem value='auto'>
+														Auto (System)
+													</SelectItem>
+													<SelectItem value='vs'>
+														Light (Default)
+													</SelectItem>
+													<SelectItem value='vs-dark'>
+														Dark (Default)
+													</SelectItem>
 													<SelectSeparator />
 													<SelectItem value='dracula'>Dracula</SelectItem>
 													<SelectItem value='nord'>Nord</SelectItem>
 													<SelectItem value='monokai'>Monokai</SelectItem>
-													<SelectItem value='github-dark'>GitHub Dark</SelectItem>
-													<SelectItem value='github-light'>GitHub Light</SelectItem>
+													<SelectItem value='github-dark'>
+														GitHub Dark
+													</SelectItem>
+													<SelectItem value='github-light'>
+														GitHub Light
+													</SelectItem>
 												</SelectContent>
 											</Select>
 										</div>
@@ -1253,9 +1352,15 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 											{shortcutSuggestions[activeShortcutIndex] ? (
 												<div className='pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 overflow-hidden pl-8 pr-16'>
 													<div className='whitespace-pre text-xs leading-8'>
-														<span className='invisible'>{shortcutSearchQuery || ' '}</span>
+														<span className='invisible'>
+															{shortcutSearchQuery || ' '}
+														</span>
 														<span className='text-muted-foreground/45'>
-															{shortcutSuggestions[activeShortcutIndex].def.description.slice(shortcutSearchQuery.length)}
+															{shortcutSuggestions[
+																activeShortcutIndex
+															].def.description.slice(
+																shortcutSearchQuery.length
+															)}
 														</span>
 													</div>
 												</div>
@@ -1267,17 +1372,28 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													setShortcutSearchQuery(e.target.value)
 												}}
 												onKeyDown={function (e) {
-													if (e.key === 'Tab' && shortcutSuggestions.length > 0) {
+													if (
+														e.key === 'Tab' &&
+														shortcutSuggestions.length > 0
+													) {
 														e.preventDefault()
-														const suggestion = shortcutSuggestions[activeShortcutIndex] ?? shortcutSuggestions[0]
-														setShortcutSearchQuery(suggestion.def.description)
+														const suggestion =
+															shortcutSuggestions[
+																activeShortcutIndex
+															] ?? shortcutSuggestions[0]
+														setShortcutSearchQuery(
+															suggestion.def.description
+														)
 														setActiveShortcutIndex(0)
 														return
 													}
 													if (e.key === 'ArrowDown') {
 														e.preventDefault()
 														setActiveShortcutIndex(function (prev) {
-															return Math.min(prev + 1, shortcutSuggestions.length - 1)
+															return Math.min(
+																prev + 1,
+																shortcutSuggestions.length - 1
+															)
 														})
 														return
 													}
@@ -1305,15 +1421,22 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 												</button>
 											)}
 										</div>
-										{Object.entries(SHORTCUT_CATEGORIES).map(function ([category, names]) {
+										{Object.entries(SHORTCUT_CATEGORIES).map(function ([
+											category,
+											names
+										]) {
 											const q = shortcutSearchQuery.trim().toLowerCase()
 											const filtered = q
 												? names.filter(function (name) {
 														const def = effectiveShortcuts[name]
 														if (!def) return false
-														const comboStr = Array.isArray(def.combo) ? def.combo.join(' ') : def.combo
+														const comboStr = Array.isArray(def.combo)
+															? def.combo.join(' ')
+															: def.combo
 														return (
-															def.description.toLowerCase().includes(q) ||
+															def.description
+																.toLowerCase()
+																.includes(q) ||
 															comboStr.toLowerCase().includes(q)
 														)
 													})
@@ -1329,18 +1452,33 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 															const def = effectiveShortcuts[name]
 															if (!def) return null
 															const isDefault = !overrides[name]
-															const flatIndex = shortcutSuggestions.findIndex(function (s) {
-																return s.name === name
-															})
-															const isActive = flatIndex === activeShortcutIndex
+															const flatIndex =
+																shortcutSuggestions.findIndex(
+																	function (s) {
+																		return s.name === name
+																	}
+																)
+															const isActive =
+																flatIndex === activeShortcutIndex
 															return (
 																<div
 																	key={name}
 																	tabIndex={-1}
 																	data-settings-focus={`shortcut-${name}`}
-																	ref={isActive ? function (el) {
-																		if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-																	} : undefined}
+																	ref={
+																		isActive
+																			? function (el) {
+																					if (el)
+																						el.scrollIntoView(
+																							{
+																								block: 'nearest',
+																								behavior:
+																									'smooth'
+																							}
+																						)
+																				}
+																			: undefined
+																	}
 																	className={cn(
 																		'flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 transition-colors',
 																		isActive
@@ -1360,14 +1498,21 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 																	</div>
 																	<ShortcutRecorder
 																		value={def.combo}
-																		onChange={function (newCombo) {
-																			setShortcut(name, newCombo)
+																		onChange={function (
+																			newCombo
+																		) {
+																			setShortcut(
+																				name,
+																				newCombo
+																			)
 																		}}
 																		onReset={function () {
 																			resetShortcut(name)
 																		}}
 																		isDefault={isDefault}
-																		actionLabel={def.description}
+																		actionLabel={
+																			def.description
+																		}
 																	/>
 																</div>
 															)
@@ -1376,11 +1521,13 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 												</div>
 											)
 										})}
-										{shortcutSearchQuery.trim() && shortcutSuggestions.length === 0 && (
-											<div className='px-1 py-2 text-xs text-muted-foreground/70'>
-												No shortcuts match &ldquo;{shortcutSearchQuery.trim()}&rdquo;
-											</div>
-										)}
+										{shortcutSearchQuery.trim() &&
+											shortcutSuggestions.length === 0 && (
+												<div className='px-1 py-2 text-xs text-muted-foreground/70'>
+													No shortcuts match &ldquo;
+													{shortcutSearchQuery.trim()}&rdquo;
+												</div>
+											)}
 									</div>
 								</SectionCard>
 							) : null}
@@ -1513,7 +1660,10 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 												<Switch
 													checked={settings.confirmBeforeDelete}
 													onCheckedChange={function (checked) {
-														updateSetting('confirmBeforeDelete', checked)
+														updateSetting(
+															'confirmBeforeDelete',
+															checked
+														)
 													}}
 												/>
 											</div>
@@ -1529,9 +1679,10 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													Privacy mode
 												</div>
 												<div className='text-xs leading-tight text-muted-foreground'>
-													Hide all cell values in tables and query results with
-													••••••. Tables, columns, and queries stay visible; data
-													becomes read-only and can't be copied or exported.
+													Hide all cell values in tables and query results
+													with ••••••. Tables, columns, and queries stay
+													visible; data becomes read-only and can't be
+													copied or exported.
 												</div>
 											</div>
 											<div className='flex-shrink-0 pt-0.5'>
@@ -1554,17 +1705,21 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													Remember table contents
 												</div>
 												<div className='text-xs leading-tight text-muted-foreground'>
-													Cache the last viewed page of each table on this device
-													so tables reappear instantly after a restart. Row values
-													are stored in plain text; turning this off (or enabling
-													Privacy mode) removes the cache.
+													Cache the last viewed page of each table on this
+													device so tables reappear instantly after a
+													restart. Row values are stored in plain text;
+													turning this off (or enabling Privacy mode)
+													removes the cache.
 												</div>
 											</div>
 											<div className='flex-shrink-0 pt-0.5'>
 												<Switch
 													checked={settings.persistTableSnapshots}
 													onCheckedChange={function (checked) {
-														updateSetting('persistTableSnapshots', checked)
+														updateSetting(
+															'persistTableSnapshots',
+															checked
+														)
 													}}
 												/>
 											</div>
@@ -1580,10 +1735,10 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													Hide AI
 												</div>
 												<div className='text-xs leading-tight text-muted-foreground'>
-													Remove every AI entry point: the assistant panel and its
-													corner button, Cmd+K generation in the SQL console,
-													AI-powered explain/fix actions, and the AI sections in
-													these settings.
+													Remove every AI entry point: the assistant panel
+													and its corner button, Cmd+K generation in the
+													SQL console, AI-powered explain/fix actions, and
+													the AI sections in these settings.
 												</div>
 											</div>
 											<div className='flex-shrink-0 pt-0.5'>
@@ -1621,7 +1776,8 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 												Connection behavior
 											</div>
 											<div className='text-xs leading-tight text-muted-foreground'>
-												Auto-connect to the last used database, or start on an empty view
+												Auto-connect to the last used database, or start on
+												an empty view
 											</div>
 										</div>
 										<div className='min-w-[160px] flex-shrink-0 pt-0.5'>
@@ -1630,15 +1786,22 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 												onValueChange={function (value) {
 													const mode = value as 'auto' | 'empty'
 													updateSetting('startupConnectionMode', mode)
-													updateSetting('restoreLastConnection', mode === 'auto')
+													updateSetting(
+														'restoreLastConnection',
+														mode === 'auto'
+													)
 												}}
 											>
 												<SelectTrigger className='h-8 w-full text-xs'>
 													<SelectValue placeholder='Select startup mode' />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value='auto'>Auto-connect</SelectItem>
-													<SelectItem value='empty'>Start empty</SelectItem>
+													<SelectItem value='auto'>
+														Auto-connect
+													</SelectItem>
+													<SelectItem value='empty'>
+														Start empty
+													</SelectItem>
 												</SelectContent>
 											</Select>
 										</div>
@@ -1653,7 +1816,8 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 												Restore tabs on launch
 											</div>
 											<div className='text-xs leading-tight text-muted-foreground'>
-												Reopen your tabs from the last session. Pinned tabs always restore.
+												Reopen your tabs from the last session. Pinned tabs
+												always restore.
 											</div>
 										</div>
 										<div className='flex-shrink-0 pt-0.5'>
@@ -1708,8 +1872,12 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 														<SelectValue placeholder='Select style' />
 													</SelectTrigger>
 													<SelectContent>
-														<SelectItem value='floating'>Floating Pill</SelectItem>
-														<SelectItem value='static'>Static Bar</SelectItem>
+														<SelectItem value='floating'>
+															Floating Pill
+														</SelectItem>
+														<SelectItem value='static'>
+															Static Bar
+														</SelectItem>
 													</SelectContent>
 												</Select>
 											</div>
@@ -1725,8 +1893,8 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 													Window Controls
 												</div>
 												<div className='text-xs leading-tight text-muted-foreground'>
-													Choose between the custom buttons and macOS-style
-													traffic lights (desktop app only)
+													Choose between the custom buttons and
+													macOS-style traffic lights (desktop app only)
 												</div>
 											</div>
 											<div className='min-w-[120px] flex-shrink-0 pt-0.5'>
@@ -1743,7 +1911,9 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 														<SelectValue placeholder='Select style' />
 													</SelectTrigger>
 													<SelectContent>
-														<SelectItem value='custom'>Custom</SelectItem>
+														<SelectItem value='custom'>
+															Custom
+														</SelectItem>
 														<SelectItem value='macos'>macOS</SelectItem>
 													</SelectContent>
 												</Select>

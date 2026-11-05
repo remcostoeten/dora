@@ -113,6 +113,6 @@ export function describeConnectionSource(connection: ConnectionSourceInput): Sou
 		kind: inferSourceKind(connection, preset),
 		engine: connection.type,
 		preset,
-		isDataFileSession,
+		isDataFileSession
 	}
 }

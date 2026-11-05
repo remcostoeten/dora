@@ -27,7 +27,8 @@ function buildContextBlock(context: AiAssistantContext | undefined): string {
 	const lines: string[] = ['Current Dora UI context:']
 	const viewName = formatViewName(context.activeView)
 	if (viewName) lines.push(`- Active view: ${viewName}`)
-	if (context.activeConnectionId) lines.push(`- Active connection id: ${context.activeConnectionId}`)
+	if (context.activeConnectionId)
+		lines.push(`- Active connection id: ${context.activeConnectionId}`)
 	if (context.selectedTableId) lines.push(`- Selected table id: ${context.selectedTableId}`)
 	if (context.selectedTableName) lines.push(`- Selected table name: ${context.selectedTableName}`)
 
@@ -58,9 +59,15 @@ function buildContextBlock(context: AiAssistantContext | undefined): string {
 
 	lines.push('SQL syntax notes:')
 	lines.push('- Use the active database dialect for quoting, casts, and functions.')
-	lines.push('- Common query shape: SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT ... OFFSET ....')
-	lines.push('- Use JOIN ... ON ... for related tables, CTEs with WITH for multi-step queries, and subqueries when they improve clarity.')
-	lines.push('- Use INSERT INTO ... VALUES ..., UPDATE ... SET ... WHERE ..., and DELETE FROM ... WHERE ... for data changes.')
+	lines.push(
+		'- Common query shape: SELECT ... FROM ... WHERE ... GROUP BY ... HAVING ... ORDER BY ... LIMIT ... OFFSET ....'
+	)
+	lines.push(
+		'- Use JOIN ... ON ... for related tables, CTEs with WITH for multi-step queries, and subqueries when they improve clarity.'
+	)
+	lines.push(
+		'- Use INSERT INTO ... VALUES ..., UPDATE ... SET ... WHERE ..., and DELETE FROM ... WHERE ... for data changes.'
+	)
 
 	if (lines.length === 1) return ''
 	return lines.join('\n')
@@ -72,10 +79,7 @@ function buildContextBlock(context: AiAssistantContext | undefined): string {
  * `prompt`). The Rust chat-mode system prompt is aware of this `USER:` /
  * `ASSISTANT:` shape and will only respond to the trailing user turn.
  */
-export function buildChatPrompt(
-	messages: ChatMessage[],
-	context?: AiAssistantContext
-): string {
+export function buildChatPrompt(messages: ChatMessage[], context?: AiAssistantContext): string {
 	const trimmed = messages.filter(function (m) {
 		return m.content.trim().length > 0
 	})

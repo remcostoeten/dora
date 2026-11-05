@@ -90,8 +90,6 @@ export function demoDrizzleLink(): OrmLink {
 		orm: 'drizzle',
 		rootDir: DEMO_PROJECT_FOLDER,
 		configPath: `${DEMO_PROJECT_FOLDER}/drizzle.config.ts`,
-		schemaFiles: [
-			{ path: `${DEMO_PROJECT_FOLDER}/src/db/schema.ts`, text: SCHEMA_TEXT },
-		],
+		schemaFiles: [{ path: `${DEMO_PROJECT_FOLDER}/src/db/schema.ts`, text: SCHEMA_TEXT }]
 	}
 }

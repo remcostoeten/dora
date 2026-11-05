@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { commands } from '@studio/lib/bindings'
 import {
 	LOCAL_FILE_ERRORS,
-	mapImportFilesIntoDuckDbError,
+	mapImportFilesIntoDuckDbError
 } from '@studio/features/connections/local-file-errors'
 import {
 	AlertDialog,
@@ -13,7 +13,7 @@ import {
 	AlertDialogDescription,
 	AlertDialogFooter,
 	AlertDialogHeader,
-	AlertDialogTitle,
+	AlertDialogTitle
 } from '@studio/shared/ui/alert-dialog'
 import { DesktopOnlyButton } from '@studio/core/platform'
 import { useToast } from '@studio/shared/ui/use-toast'
@@ -24,7 +24,7 @@ import { useImportFilesIntoDuckdb } from '../hooks/use-import-files-into-duckdb'
 import {
 	detectImportNameCollisions,
 	formatImportFilesIntoDuckDbToast,
-	refreshStudioSchemaAfterImport,
+	refreshStudioSchemaAfterImport
 } from '../utils/import-files-into-duckdb'
 
 type Props = {
@@ -40,7 +40,7 @@ export function ImportFilesIntoDuckDbButton({
 	connectionLabel,
 	existingTableNames = [],
 	className,
-	disabled = false,
+	disabled = false
 }: Props) {
 	const { toast } = useToast()
 	const queryClient = useQueryClient()
@@ -52,7 +52,7 @@ export function ImportFilesIntoDuckDbButton({
 		try {
 			const result = await importFiles.mutateAsync({
 				connectionId,
-				filePaths,
+				filePaths
 			})
 
 			const schemaRefreshed = await refreshStudioSchemaAfterImport(queryClient, connectionId)
@@ -60,7 +60,7 @@ export function ImportFilesIntoDuckDbButton({
 				toast({
 					title: 'Import completed with a refresh warning',
 					description: LOCAL_FILE_ERRORS.schemaRefreshFailed,
-					variant: 'destructive',
+					variant: 'destructive'
 				})
 			}
 
@@ -68,14 +68,14 @@ export function ImportFilesIntoDuckDbButton({
 			toast({
 				title: message.title,
 				description: message.description,
-				variant: result.failed.length > 0 ? 'default' : 'success',
+				variant: result.failed.length > 0 ? 'default' : 'success'
 			})
 		} catch (error) {
 			const raw = error instanceof Error ? error.message : 'Import failed'
 			toast({
 				title: 'Could not import files',
 				description: mapImportFilesIntoDuckDbError(raw),
-				variant: 'destructive',
+				variant: 'destructive'
 			})
 		} finally {
 			setPendingPaths(null)
@@ -139,9 +139,12 @@ export function ImportFilesIntoDuckDbButton({
 						<AlertDialogDescription>
 							One or more imported files would use a table name that already exists (
 							{pendingPaths
-								? detectImportNameCollisions(pendingPaths, existingTableNames).join(', ')
+								? detectImportNameCollisions(pendingPaths, existingTableNames).join(
+										', '
+									)
 								: ''}
-							). Dora will create suffixed names (for example, sales_2) when importing.
+							). Dora will create suffixed names (for example, sales_2) when
+							importing.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

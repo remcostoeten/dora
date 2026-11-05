@@ -55,7 +55,12 @@ describe('databaseSchemaToPrisma', function () {
 							is_primary_key: true,
 							is_auto_increment: true
 						},
-						{ name: 'email', data_type: 'varchar', is_nullable: false, default_value: null },
+						{
+							name: 'email',
+							data_type: 'varchar',
+							is_nullable: false,
+							default_value: null
+						},
 						{
 							name: 'role',
 							data_type: 'varchar',
@@ -64,7 +69,12 @@ describe('databaseSchemaToPrisma', function () {
 						}
 					],
 					indexes: [
-						{ name: 'user_email_key', column_names: ['email'], is_unique: true, is_primary: false }
+						{
+							name: 'user_email_key',
+							column_names: ['email'],
+							is_unique: true,
+							is_primary: false
+						}
 					]
 				}
 			])
@@ -117,8 +127,18 @@ describe('databaseSchemaToPrisma', function () {
 					name: 'post_tags',
 					schema: 'public',
 					columns: [
-						{ name: 'post_id', data_type: 'int', is_nullable: false, default_value: null },
-						{ name: 'tag_id', data_type: 'int', is_nullable: false, default_value: null }
+						{
+							name: 'post_id',
+							data_type: 'int',
+							is_nullable: false,
+							default_value: null
+						},
+						{
+							name: 'tag_id',
+							data_type: 'int',
+							is_nullable: false,
+							default_value: null
+						}
 					],
 					primary_key_columns: ['post_id', 'tag_id']
 				}
@@ -136,9 +156,24 @@ describe('databaseSchemaToPrisma', function () {
 					schema: 'public',
 					columns: [
 						{ name: 'a', data_type: 'bigint', is_nullable: false, default_value: null },
-						{ name: 'b', data_type: 'boolean', is_nullable: false, default_value: null },
-						{ name: 'c', data_type: 'timestamp', is_nullable: false, default_value: null },
-						{ name: 'd', data_type: 'numeric', is_nullable: false, default_value: null },
+						{
+							name: 'b',
+							data_type: 'boolean',
+							is_nullable: false,
+							default_value: null
+						},
+						{
+							name: 'c',
+							data_type: 'timestamp',
+							is_nullable: false,
+							default_value: null
+						},
+						{
+							name: 'd',
+							data_type: 'numeric',
+							is_nullable: false,
+							default_value: null
+						},
 						{ name: 'e', data_type: 'jsonb', is_nullable: false, default_value: null }
 					]
 				}

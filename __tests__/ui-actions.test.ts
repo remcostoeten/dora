@@ -1,6 +1,6 @@
 import {
 	buildConnectionFromDataFiles,
-	buildConnectionFromDatabaseFile,
+	buildConnectionFromDatabaseFile
 } from '@studio/features/connections/utils/data-files'
 import { getSourceCaps } from '@studio/features/connections/source-caps'
 import type { Connection } from '@studio/features/connections/types'
@@ -8,7 +8,7 @@ import {
 	ATTACH_FILE_UI_IMPLEMENTED,
 	getVisibleUiActions,
 	isUiActionVisible,
-	type StudioUiAction,
+	type StudioUiAction
 } from '@studio/features/connections/ui-actions'
 import { describe, expect, it } from 'vitest'
 
@@ -17,7 +17,7 @@ function connection(overrides: Partial<Connection> & Pick<Connection, 'type'>): 
 		id: 'test-id',
 		name: 'Test',
 		createdAt: 0,
-		...overrides,
+		...overrides
 	}
 }
 
@@ -73,7 +73,7 @@ describe('ui-actions', function () {
 		const conn = connection({
 			type: 'libsql',
 			url: 'libsql://my-db.turso.io',
-			authToken: 'token',
+			authToken: 'token'
 		})
 		const caps = getSourceCaps(conn)
 
@@ -99,14 +99,16 @@ describe('ui-actions', function () {
 		for (const conn of [
 			connection(buildConnectionFromDatabaseFile('/tmp/app.sqlite3', 'sqlite')),
 			connection(buildConnectionFromDatabaseFile('/tmp/app.duckdb', 'duckdb')),
-			connection({ type: 'libsql', url: 'libsql://db.turso.io' }),
+			connection({ type: 'libsql', url: 'libsql://db.turso.io' })
 		]) {
 			expect(isUiActionVisible('ssh-tunnel', getSourceCaps(conn))).toBe(false)
 		}
 	})
 
 	it('shows attach-file for native DuckDB file connections', function () {
-		const duckdbFile = connection(buildConnectionFromDatabaseFile('/tmp/analytics.duckdb', 'duckdb'))
+		const duckdbFile = connection(
+			buildConnectionFromDatabaseFile('/tmp/analytics.duckdb', 'duckdb')
+		)
 		const caps = getSourceCaps(duckdbFile)
 
 		expect(ATTACH_FILE_UI_IMPLEMENTED).toBe(true)

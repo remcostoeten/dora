@@ -42,7 +42,7 @@ export function collectTableSymbols(source: ts.SourceFile): Map<string, TableSym
 			}
 			symbols.set(decl.name.text, {
 				table: tableName,
-				columns: collectColumns(args[1]),
+				columns: collectColumns(args[1])
 			})
 		}
 	})

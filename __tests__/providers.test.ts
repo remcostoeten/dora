@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { detectProviderName, isFlyPublicHost, parseConnectionUrl } from '@studio/features/connections/utils/providers'
+import {
+	detectProviderName,
+	isFlyPublicHost,
+	parseConnectionUrl
+} from '@studio/features/connections/utils/providers'
 
 describe('isFlyPublicHost', function () {
 	it('returns true for fly.dev hostnames', function () {
-		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.fly.dev:5432/postgres')).toBe(true)
+		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.fly.dev:5432/postgres')).toBe(
+			true
+		)
 	})
 
 	it('returns true for flympg hostnames', function () {
@@ -12,11 +18,15 @@ describe('isFlyPublicHost', function () {
 	})
 
 	it('returns false for .internal private Fly hosts', function () {
-		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.internal:5432/postgres')).toBe(false)
+		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.internal:5432/postgres')).toBe(
+			false
+		)
 	})
 
 	it('returns false for .flycast private Fly hosts', function () {
-		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.flycast:5432/postgres')).toBe(false)
+		expect(isFlyPublicHost('postgresql://postgres:pw@my-app-db.flycast:5432/postgres')).toBe(
+			false
+		)
 	})
 
 	it('returns false for non-Fly hosts', function () {
@@ -29,19 +39,17 @@ describe('isFlyPublicHost', function () {
 	})
 })
 
-	describe('detectProviderName', function () {
-		it('recognizes Xata connection strings minted by the integration', function () {
-			expect(
-				detectProviderName(
-					'postgresql://workspace:key@us-east-1.sql.xata.sh:5432/app:main?sslmode=require'
-				)
-			).toBe('Xata DB')
-		})
+describe('detectProviderName', function () {
+	it('recognizes Xata connection strings minted by the integration', function () {
+		expect(
+			detectProviderName(
+				'postgresql://workspace:key@us-east-1.sql.xata.sh:5432/app:main?sslmode=require'
+			)
+		).toBe('Xata DB')
+	})
 
 	it('detects MariaDB hosts as a MySQL-compatible provider', function () {
-		expect(
-			detectProviderName('mysql://user:pass@mariadb.internal:3306/app')
-		).toBe('MariaDB DB')
+		expect(detectProviderName('mysql://user:pass@mariadb.internal:3306/app')).toBe('MariaDB DB')
 	})
 
 	it('detects CockroachDB hosts as a Postgres-compatible provider', function () {
@@ -51,9 +59,7 @@ describe('isFlyPublicHost', function () {
 	})
 
 	it('detects CRDB shorthand hosts', function () {
-		expect(detectProviderName('postgresql://user:pass@crdb.prod.local/db')).toBe(
-			'CockroachDB'
-		)
+		expect(detectProviderName('postgresql://user:pass@crdb.prod.local/db')).toBe('CockroachDB')
 	})
 
 	it('detects CockroachDB from its default SQL port even with a postgres scheme', function () {
@@ -247,7 +253,9 @@ describe('managed provider detection', function () {
 
 describe('SSL defaults', function () {
 	it('defaults SSL on for a requiresSsl provider with no explicit ssl param', function () {
-		expect(parseConnectionUrl('postgresql://u:p@db.x.supabase.co:5432/postgres')?.ssl).toBe(true)
+		expect(parseConnectionUrl('postgresql://u:p@db.x.supabase.co:5432/postgres')?.ssl).toBe(
+			true
+		)
 	})
 
 	it('does not force SSL for AWS RDS (SSL optional)', function () {
@@ -259,25 +267,33 @@ describe('SSL defaults', function () {
 	})
 
 	it('does not force SSL on Fly.io private .internal hosts', function () {
-		const parsed = parseConnectionUrl('postgresql://postgres:pw@my-app-db.internal:5432/postgres')
+		const parsed = parseConnectionUrl(
+			'postgresql://postgres:pw@my-app-db.internal:5432/postgres'
+		)
 		expect(parsed?.type).toBe('postgres')
 		expect(parsed?.ssl ?? false).toBe(false)
 	})
 
 	it('does not force SSL on Fly.io .flycast private hosts', function () {
-		const parsed = parseConnectionUrl('postgresql://postgres:pw@my-app-db.flycast:5432/postgres')
+		const parsed = parseConnectionUrl(
+			'postgresql://postgres:pw@my-app-db.flycast:5432/postgres'
+		)
 		expect(parsed?.ssl ?? false).toBe(false)
 	})
 
 	it('does not force SSL on Railway private network', function () {
-		const parsed = parseConnectionUrl('postgresql://postgres:pw@postgres.railway.internal:5432/railway')
+		const parsed = parseConnectionUrl(
+			'postgresql://postgres:pw@postgres.railway.internal:5432/railway'
+		)
 		expect(parsed?.ssl ?? false).toBe(false)
 	})
 
 	it('respects an explicit sslmode=disable over a requiresSsl provider default? (explicit param still flags ssl true per existing behavior)', function () {
 		// Pre-existing behavior: any sslmode/ssl param flags ssl true. We only assert
 		// the requiresSsl default does not regress detection; explicit param wins the branch.
-		const parsed = parseConnectionUrl('postgresql://u:p@db.x.supabase.co:5432/postgres?sslmode=require')
+		const parsed = parseConnectionUrl(
+			'postgresql://u:p@db.x.supabase.co:5432/postgres?sslmode=require'
+		)
 		expect(parsed?.ssl).toBe(true)
 	})
 })

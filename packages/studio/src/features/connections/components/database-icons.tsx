@@ -8,7 +8,7 @@ import {
 	FileStack,
 	HardDrive,
 	Network,
-	Server,
+	Server
 } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 import type { LucideIcon } from 'lucide-react'
@@ -67,7 +67,7 @@ type DatabaseIconProps = {
 
 function DatabaseGlyph({
 	icon: Icon,
-	className,
+	className
 }: Props & {
 	icon: LucideIcon
 }) {

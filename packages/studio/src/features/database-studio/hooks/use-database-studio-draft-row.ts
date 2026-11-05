@@ -1,4 +1,9 @@
-import { appendRows, createDefaultValues, normalizeRowForInsert, normalizeValueForInsert } from '../utils/studio-data'
+import {
+	appendRows,
+	createDefaultValues,
+	normalizeRowForInsert,
+	normalizeValueForInsert
+} from '../utils/studio-data'
 import type { TableData } from '../types'
 
 type EditingRowState = {
@@ -22,7 +27,9 @@ type Args = {
 	setDraftRow: React.Dispatch<React.SetStateAction<Record<string, unknown> | null>>
 	setDraftInsertIndex: React.Dispatch<React.SetStateAction<number | null>>
 	setEditingRowState: React.Dispatch<React.SetStateAction<EditingRowState>>
-	setDuplicateInitialData: React.Dispatch<React.SetStateAction<Record<string, unknown> | undefined>>
+	setDuplicateInitialData: React.Dispatch<
+		React.SetStateAction<Record<string, unknown> | undefined>
+	>
 	setAddDialogMode: React.Dispatch<React.SetStateAction<'add' | 'duplicate' | 'edit'>>
 	setShowAddDialog: React.Dispatch<React.SetStateAction<boolean>>
 	notifyActionFailure: (title: string, error: unknown) => void

@@ -6,7 +6,7 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogHeader,
-	DialogTitle,
+	DialogTitle
 } from '@studio/shared/ui/dialog'
 
 const SQL_KEYWORDS = new Set([
@@ -36,7 +36,7 @@ const SQL_KEYWORDS = new Set([
 	'unique',
 	'update',
 	'values',
-	'varchar',
+	'varchar'
 ])
 
 const TS_KEYWORDS = new Set([
@@ -54,7 +54,7 @@ const TS_KEYWORDS = new Set([
 	'serial',
 	'text',
 	'timestamp',
-	'varchar',
+	'varchar'
 ])
 
 type PreviewLanguage = 'json' | 'sql' | 'typescript'
@@ -85,7 +85,13 @@ function renderJsonLine(line: string, lineIndex: number) {
 		}
 		const token = match[0]
 		let className = 'sv-code-token--string'
-		if (token.startsWith('"') && line.slice(match.index + token.length).trimStart().startsWith(':')) {
+		if (
+			token.startsWith('"') &&
+			line
+				.slice(match.index + token.length)
+				.trimStart()
+				.startsWith(':')
+		) {
 			className = 'sv-code-token--property'
 		} else if (/^(true|false|null)$/.test(token)) {
 			className = 'sv-code-token--literal'
@@ -95,7 +101,7 @@ function renderJsonLine(line: string, lineIndex: number) {
 		parts.push(
 			<span className={className} key={`${token}-${match.index}`}>
 				{token}
-			</span>,
+			</span>
 		)
 		lastIndex = match.index + token.length
 		match = regex.exec(line)
@@ -123,10 +129,12 @@ function renderHighlightedCode(source: string, language: PreviewLanguage) {
 	return lines.map((line, lineIndex) => {
 		const isComment = line.trimStart().startsWith('--') || line.trimStart().startsWith('//')
 		const parts: ReactNode[] = isComment
-			? [<span className='sv-code-token--comment' key='comment'>{line}</span>]
-			: line
-				.split(/(\b[\w]+\b|'[^']*'|"[^"]*"|`[^`]*`)/g)
-				.map((part, partIndex) => {
+			? [
+					<span className='sv-code-token--comment' key='comment'>
+						{line}
+					</span>
+				]
+			: line.split(/(\b[\w]+\b|'[^']*'|"[^"]*"|`[^`]*`)/g).map((part, partIndex) => {
 					if (!part) return null
 					if (/^(['"`]).*\1$/.test(part)) {
 						return (
@@ -171,7 +179,7 @@ export function SchemaExportPreviewDialog({
 	source,
 	isLoading = false,
 	onCopy,
-	onDownload,
+	onDownload
 }: Props) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -196,11 +204,7 @@ export function SchemaExportPreviewDialog({
 						<Copy className='h-4 w-4' />
 						Copy
 					</Button>
-					<Button
-						className='gap-2'
-						disabled={isLoading || !source}
-						onClick={onDownload}
-					>
+					<Button className='gap-2' disabled={isLoading || !source} onClick={onDownload}>
 						<Download className='h-4 w-4' />
 						Download
 					</Button>
@@ -208,9 +212,7 @@ export function SchemaExportPreviewDialog({
 
 				<pre className='sv-export-preview-dialog__code'>
 					<code>
-						{isLoading
-							? 'Loading preview...'
-							: renderHighlightedCode(source, language)}
+						{isLoading ? 'Loading preview...' : renderHighlightedCode(source, language)}
 					</code>
 				</pre>
 			</DialogContent>

@@ -173,9 +173,13 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 			<header className='flex shrink-0 items-center gap-3 border-b border-sidebar-border bg-sidebar-accent/10 px-4 py-2.5'>
 				<div className='flex min-w-0 items-center gap-2'>
 					<BarChart3 className='h-4 w-4 text-primary' />
-					<span className='truncate text-sm font-medium text-sidebar-foreground'>Analytics</span>
+					<span className='truncate text-sm font-medium text-sidebar-foreground'>
+						Analytics
+					</span>
 					{connectionName && (
-						<span className='truncate text-xs text-muted-foreground'>· {connectionName}</span>
+						<span className='truncate text-xs text-muted-foreground'>
+							· {connectionName}
+						</span>
 					)}
 				</div>
 
@@ -234,8 +238,12 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 									onClick={() => clearDrill(key)}
 									className='group flex items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar-accent/20 py-0.5 pl-2.5 pr-1.5 text-xs text-sidebar-foreground hover:border-primary/50'
 								>
-									<span className='text-muted-foreground'>{DRILL_LABELS[key]}</span>
-									<span className='max-w-[220px] truncate font-medium'>{value}</span>
+									<span className='text-muted-foreground'>
+										{DRILL_LABELS[key]}
+									</span>
+									<span className='max-w-[220px] truncate font-medium'>
+										{value}
+									</span>
 									<X className='h-3 w-3 text-muted-foreground group-hover:text-sidebar-foreground' />
 								</button>
 							))}
@@ -305,19 +313,46 @@ export function PosthogAnalytics({ connectionId, connectionName, windowControls 
 						className='h-[280px]'
 					>
 						<ResponsiveContainer width='100%' height='100%'>
-							<AreaChart data={activityData} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}>
+							<AreaChart
+								data={activityData}
+								margin={{ top: 8, right: 12, bottom: 0, left: -8 }}
+							>
 								<defs>
 									<linearGradient id='ph-events' x1='0' y1='0' x2='0' y2='1'>
-										<stop offset='5%' stopColor={SERIES_COLORS[0]} stopOpacity={0.35} />
-										<stop offset='95%' stopColor={SERIES_COLORS[0]} stopOpacity={0} />
+										<stop
+											offset='5%'
+											stopColor={SERIES_COLORS[0]}
+											stopOpacity={0.35}
+										/>
+										<stop
+											offset='95%'
+											stopColor={SERIES_COLORS[0]}
+											stopOpacity={0}
+										/>
 									</linearGradient>
 									<linearGradient id='ph-users' x1='0' y1='0' x2='0' y2='1'>
-										<stop offset='5%' stopColor={SERIES_COLORS[2]} stopOpacity={0.35} />
-										<stop offset='95%' stopColor={SERIES_COLORS[2]} stopOpacity={0} />
+										<stop
+											offset='5%'
+											stopColor={SERIES_COLORS[2]}
+											stopOpacity={0.35}
+										/>
+										<stop
+											offset='95%'
+											stopColor={SERIES_COLORS[2]}
+											stopOpacity={0}
+										/>
 									</linearGradient>
 								</defs>
-								<CartesianGrid stroke='hsl(var(--border))' strokeDasharray='3 3' vertical={false} />
-								<XAxis dataKey='day' tick={AXIS_TICK} tickFormatter={formatDayTick} />
+								<CartesianGrid
+									stroke='hsl(var(--border))'
+									strokeDasharray='3 3'
+									vertical={false}
+								/>
+								<XAxis
+									dataKey='day'
+									tick={AXIS_TICK}
+									tickFormatter={formatDayTick}
+								/>
 								<YAxis tick={AXIS_TICK} width={44} tickFormatter={formatCompact} />
 								<Tooltip contentStyle={TOOLTIP_STYLE} />
 								<Legend wrapperStyle={{ fontSize: 12 }} />
@@ -458,8 +493,16 @@ function BreakdownBarCard({
 			hint='Click a bar to filter'
 		>
 			<ResponsiveContainer width='100%' height='100%'>
-				<BarChart data={data} layout='vertical' margin={{ top: 4, right: 16, bottom: 4, left: 8 }}>
-					<CartesianGrid stroke='hsl(var(--border))' strokeDasharray='3 3' horizontal={false} />
+				<BarChart
+					data={data}
+					layout='vertical'
+					margin={{ top: 4, right: 16, bottom: 4, left: 8 }}
+				>
+					<CartesianGrid
+						stroke='hsl(var(--border))'
+						strokeDasharray='3 3'
+						horizontal={false}
+					/>
 					<XAxis type='number' tick={AXIS_TICK} tickFormatter={formatCompact} />
 					<YAxis
 						type='category'
@@ -585,7 +628,10 @@ function SitesCard({
 						<Skeleton className='h-8 w-2/3' />
 					</div>
 				) : error ? (
-					<CardMessage icon={<TriangleAlert className='h-6 w-6 text-amber-500' />} text={error} />
+					<CardMessage
+						icon={<TriangleAlert className='h-6 w-6 text-amber-500' />}
+						text={error}
+					/>
 				) : sites.length === 0 ? (
 					<CardMessage
 						icon={<Globe className='h-6 w-6 text-muted-foreground' />}
@@ -725,7 +771,9 @@ function ChartCard({
 			<div className='flex items-center gap-2 border-b border-sidebar-border px-4 py-2.5 text-xs font-medium text-sidebar-foreground'>
 				{title}
 				{hint && !isLoading && !error && !isEmpty && (
-					<span className='ml-auto text-[11px] font-normal text-muted-foreground'>{hint}</span>
+					<span className='ml-auto text-[11px] font-normal text-muted-foreground'>
+						{hint}
+					</span>
 				)}
 			</div>
 			<div className={cn('p-3', className)}>
@@ -734,7 +782,10 @@ function ChartCard({
 						<Skeleton className='h-full w-full rounded-md' />
 					</div>
 				) : error ? (
-					<CardMessage icon={<TriangleAlert className='h-6 w-6 text-amber-500' />} text={error} />
+					<CardMessage
+						icon={<TriangleAlert className='h-6 w-6 text-amber-500' />}
+						text={error}
+					/>
 				) : isEmpty ? (
 					<CardMessage
 						icon={<BarChart3 className='h-6 w-6 text-muted-foreground' />}
@@ -771,7 +822,8 @@ function drillValueOf(entry: unknown): string | undefined {
 
 /** Compacts large axis/tooltip numbers (12500 → 12.5K, 3_400_000 → 3.4M). */
 function formatCompact(value: number): string {
-	if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+	if (Math.abs(value) >= 1_000_000)
+		return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
 	if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, '')}K`
 	return String(value)
 }

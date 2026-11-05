@@ -65,8 +65,6 @@ describe('buildDropColumnSql', function () {
 	})
 
 	it('handles a bare table name with no dialect', function () {
-		expect(buildDropColumnSql('users', 'email')).toBe(
-			'ALTER TABLE "users" DROP COLUMN "email"'
-		)
+		expect(buildDropColumnSql('users', 'email')).toBe('ALTER TABLE "users" DROP COLUMN "email"')
 	})
 })

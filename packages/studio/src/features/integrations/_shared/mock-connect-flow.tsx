@@ -70,7 +70,11 @@ export function MockProviderConnectFlow({ config, onComplete }: Props) {
 					disabled={isConnecting}
 					className='w-full gap-2'
 				>
-					{isConnecting ? <Spinner className='h-3.5 w-3.5' /> : <PlugZap className='h-3.5 w-3.5' />}
+					{isConnecting ? (
+						<Spinner className='h-3.5 w-3.5' />
+					) : (
+						<PlugZap className='h-3.5 w-3.5' />
+					)}
 					{isConnecting ? 'Connecting…' : config.connectLabel}
 				</Button>
 			) : (
@@ -95,7 +99,12 @@ export function MockProviderConnectFlow({ config, onComplete }: Props) {
 											: 'border-border/60 bg-background/45 hover:border-border hover:bg-card/65'
 									)}
 								>
-									<span className={cn('h-2 w-2 shrink-0 rounded-full', ACCENT_DOT[config.accent])} />
+									<span
+										className={cn(
+											'h-2 w-2 shrink-0 rounded-full',
+											ACCENT_DOT[config.accent]
+										)}
+									/>
 									<span className='min-w-0 flex-1'>
 										<span className='block truncate text-sm font-medium text-foreground'>
 											{project.name}
@@ -105,7 +114,9 @@ export function MockProviderConnectFlow({ config, onComplete }: Props) {
 											{project.detail ? ` · ${project.detail}` : ''}
 										</span>
 									</span>
-									{isSelected ? <Check className='h-4 w-4 text-emerald-500' /> : null}
+									{isSelected ? (
+										<Check className='h-4 w-4 text-emerald-500' />
+									) : null}
 								</button>
 							)
 						})}

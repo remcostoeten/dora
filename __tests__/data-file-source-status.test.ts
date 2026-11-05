@@ -1,10 +1,8 @@
-import {
-	buildConnectionFromDataFiles,
-} from '@studio/features/connections/utils/data-files'
+import { buildConnectionFromDataFiles } from '@studio/features/connections/utils/data-files'
 import {
 	dataFileSourceStatusLabel,
 	hasActiveDataFileSources,
-	isActiveDataFileSource,
+	isActiveDataFileSource
 } from '@studio/features/connections/types/data-file-source'
 import type { DataFileSourceEntry } from '@studio/features/connections/types/data-file-source'
 import { listDataFileEntries } from '@studio/features/connections/utils/data-file-views'
@@ -24,15 +22,15 @@ describe('data-file source status helpers', function () {
 				viewName: 'a',
 				fileType: 'CSV',
 				status: 'active',
-				error: null,
+				error: null
 			},
 			{
 				path: '/tmp/b.csv',
 				viewName: 'b',
 				fileType: 'CSV',
 				status: 'missing',
-				error: 'File not found',
-			},
+				error: 'File not found'
+			}
 		]
 
 		expect(hasActiveDataFileSources(entries)).toBe(true)
@@ -41,7 +39,8 @@ describe('data-file source status helpers', function () {
 	})
 
 	it('falls back to client view names when backend entries are unavailable', function () {
-		const paths = buildConnectionFromDataFiles(['/tmp/sales.csv', '/tmp/events.json']).fileSources ?? []
+		const paths =
+			buildConnectionFromDataFiles(['/tmp/sales.csv', '/tmp/events.json']).fileSources ?? []
 		const guessed = listDataFileEntries(paths)
 
 		expect(guessed).toHaveLength(2)
@@ -50,10 +49,7 @@ describe('data-file source status helpers', function () {
 	})
 
 	it('keeps duplicate stems stable in fallback view names', function () {
-		const guessed = listDataFileEntries([
-			'/data/My Sales-2024.csv',
-			'/other/My Sales-2024.csv',
-		])
+		const guessed = listDataFileEntries(['/data/My Sales-2024.csv', '/other/My Sales-2024.csv'])
 
 		expect(guessed[0].viewName).toBe('my_sales_2024')
 		expect(guessed[1].viewName).toBe('my_sales_2024_2')

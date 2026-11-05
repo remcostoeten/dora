@@ -17,20 +17,9 @@ import {
 import { Skeleton, TableSkeleton } from '@studio/shared/ui/skeleton'
 import { cn } from '@studio/shared/utils/cn'
 
-type ViewId =
-	| 'database-studio'
-	| 'sql-console'
-	| 'schema-visualizer'
-	| 'docker'
-	| 'orm-cockpit'
+type ViewId = 'database-studio' | 'sql-console' | 'schema-visualizer' | 'docker' | 'orm-cockpit'
 
-function LoadingFrame({
-	children,
-	className
-}: {
-	children: ReactNode
-	className?: string
-}) {
+function LoadingFrame({ children, className }: { children: ReactNode; className?: string }) {
 	return (
 		<div
 			className={cn(
@@ -135,16 +124,28 @@ export function SqlConsoleLoadingShell() {
 						<div className='relative flex-1 bg-editor p-4'>
 							<div className='h-full rounded-xl border border-border/60 bg-black/20 p-4'>
 								<div className='space-y-3'>
-									{['w-5/12', 'w-8/12', 'w-6/12', 'w-7/12', 'w-4/12'].map(function (width, index) {
-										return <Skeleton key={index} className={cn('h-4 bg-white/10', width)} />
-									})}
+									{['w-5/12', 'w-8/12', 'w-6/12', 'w-7/12', 'w-4/12'].map(
+										function (width, index) {
+											return (
+												<Skeleton
+													key={index}
+													className={cn('h-4 bg-white/10', width)}
+												/>
+											)
+										}
+									)}
 								</div>
 							</div>
 						</div>
 						<div className='flex h-9 shrink-0 items-center justify-between gap-2 border-t border-sidebar-border bg-sidebar px-2'>
 							<div className='flex items-center gap-1'>
 								{['w-16', 'w-7', 'w-7', 'w-7'].map(function (width, index) {
-									return <Skeleton key={index} className={cn('h-7 rounded-md', width)} />
+									return (
+										<Skeleton
+											key={index}
+											className={cn('h-7 rounded-md', width)}
+										/>
+									)
 								})}
 							</div>
 							<Skeleton className='h-7 w-16 rounded-md' />
@@ -167,7 +168,10 @@ export function SqlConsoleLoadingShell() {
 					</div>
 					{Array.from({ length: 6 }).map(function (_, index) {
 						return (
-							<div key={index} className='rounded-lg border border-border/70 bg-card/60 p-3'>
+							<div
+								key={index}
+								className='rounded-lg border border-border/70 bg-card/60 p-3'
+							>
 								<Skeleton className='h-4 w-28' />
 								<Skeleton className='mt-2 h-3 w-20' />
 							</div>
@@ -291,7 +295,10 @@ export function DockerLoadingShell() {
 					<div className='space-y-3'>
 						{Array.from({ length: 5 }).map(function (_, index) {
 							return (
-								<div key={index} className='rounded-xl border border-border/70 bg-card/60 p-4'>
+								<div
+									key={index}
+									className='rounded-xl border border-border/70 bg-card/60 p-4'
+								>
 									<div className='flex items-start gap-3'>
 										<Skeleton className='h-10 w-10 rounded-md' />
 										<div className='min-w-0 flex-1 space-y-2'>
@@ -324,7 +331,10 @@ export function DockerLoadingShell() {
 						<div className='mt-6 grid gap-3 md:grid-cols-3'>
 							{Array.from({ length: 3 }).map(function (_, index) {
 								return (
-									<div key={index} className='rounded-xl border border-border/70 bg-background/60 p-4'>
+									<div
+										key={index}
+										className='rounded-xl border border-border/70 bg-background/60 p-4'
+									>
 										<Skeleton className='h-3.5 w-20' />
 										<Skeleton className='mt-3 h-6 w-16' />
 									</div>
@@ -450,18 +460,20 @@ export function SchemaDiffMigrationsSkeleton() {
 				<Skeleton className='ml-auto h-3 w-12' />
 			</div>
 			<div className='min-h-0 flex-1 overflow-hidden'>
-				{['w-40', 'w-32', 'w-44', 'w-36', 'w-28', 'w-40', 'w-32'].map(function (width, index) {
-					return (
-						<div
-							key={index}
-							className='flex items-center gap-3 border-b border-border/40 px-3 py-2'
-						>
-							<Skeleton className='h-4 w-4 shrink-0 rounded-full' />
-							<Skeleton className={cn('h-3.5', width)} />
-							<Skeleton className='ml-auto h-[18px] w-14 rounded' />
-						</div>
-					)
-				})}
+				{['w-40', 'w-32', 'w-44', 'w-36', 'w-28', 'w-40', 'w-32'].map(
+					function (width, index) {
+						return (
+							<div
+								key={index}
+								className='flex items-center gap-3 border-b border-border/40 px-3 py-2'
+							>
+								<Skeleton className='h-4 w-4 shrink-0 rounded-full' />
+								<Skeleton className={cn('h-3.5', width)} />
+								<Skeleton className='ml-auto h-[18px] w-14 rounded' />
+							</div>
+						)
+					}
+				)}
 			</div>
 		</div>
 	)

@@ -17,8 +17,8 @@ export function DatabaseStudioNoConnection({ onAddConnection }: NoConnectionProp
 				No Database Connected
 			</h2>
 			<p className='text-muted-foreground text-center max-w-sm mb-8 leading-relaxed text-sm'>
-				Select a connection from the sidebar to view its tables, or create a new
-				connection to get started.
+				Select a connection from the sidebar to view its tables, or create a new connection
+				to get started.
 			</p>
 
 			{onAddConnection && (
@@ -158,8 +158,7 @@ export function DatabaseStudioNoTable({
 				No Table Selected
 			</h1>
 			<p className='text-muted-foreground text-sm max-w-md leading-relaxed'>
-				Select a table from the sidebar to browse its records, structure, and
-				relationships.
+				Select a table from the sidebar to browse its records, structure, and relationships.
 				{connectionName ? (
 					<>
 						{' '}
@@ -172,8 +171,8 @@ export function DatabaseStudioNoTable({
 					<>
 						{' '}
 						<span className='text-foreground/85'>
-							This connection has {tableCount.toLocaleString()} {tableLabel} totaling an
-							estimated {formatRecordTotal(totalRecords)} {recordLabel}.
+							This connection has {tableCount.toLocaleString()} {tableLabel} totaling
+							an estimated {formatRecordTotal(totalRecords)} {recordLabel}.
 						</span>
 					</>
 				)}

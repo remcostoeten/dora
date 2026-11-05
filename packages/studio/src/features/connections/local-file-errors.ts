@@ -7,14 +7,13 @@ export const LOCAL_FILE_ERRORS = {
 		'A DuckDB file already exists at that path. Choose a different path or confirm overwrite.',
 	destinationParentMissing:
 		'The destination folder does not exist. Create the folder or choose another path.',
-	fileImportFailed: (path: string, reason: string) =>
-		`Could not import ${path}: ${reason}`,
+	fileImportFailed: (path: string, reason: string) => `Could not import ${path}: ${reason}`,
 	partialImportCompleted: (imported: number, failed: number) =>
 		`Imported ${imported} file${imported === 1 ? '' : 's'}. ${failed} failed — see details below.`,
 	schemaRefreshFailed:
 		'Files were imported, but the table list could not be refreshed. Reload the connection or switch away and back.',
 	saveFailed: (reason: string) => `Could not save as DuckDB: ${reason}`,
-	importFailed: (reason: string) => `Could not import files: ${reason}`,
+	importFailed: (reason: string) => `Could not import files: ${reason}`
 } as const
 
 export function mapSaveDataFileSessionError(raw: string): string {

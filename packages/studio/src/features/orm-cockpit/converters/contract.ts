@@ -94,7 +94,7 @@ export const COMPARISON_OPERATORS = [
 	'between',
 	'notBetween',
 	'isNull',
-	'isNotNull',
+	'isNotNull'
 ] as const
 
 export const LOGICAL_OPERATORS = ['and', 'or', 'not', 'exists', 'notExists'] as const
@@ -125,7 +125,10 @@ export type Condition =
 	| { op: 'inArray' | 'notInArray'; column: ColumnRef; values: QueryValue[] }
 	| { op: 'between' | 'notBetween'; column: ColumnRef; low: QueryValue; high: QueryValue }
 	| {
-			op: Exclude<ComparisonOperator, 'inArray' | 'notInArray' | 'between' | 'notBetween' | 'isNull' | 'isNotNull'>
+			op: Exclude<
+				ComparisonOperator,
+				'inArray' | 'notInArray' | 'between' | 'notBetween' | 'isNull' | 'isNotNull'
+			>
 			column: ColumnRef
 			/** A literal/param, or a column for column-to-column comparisons (join-style eq). */
 			value: QueryValue | { kind: 'column'; ref: ColumnRef }

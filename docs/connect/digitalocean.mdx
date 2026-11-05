@@ -13,11 +13,14 @@ engine from the connection string and enables SSL, which DigitalOcean requires.
 2. Switch the dropdown to **Connection string** and choose **Public network**
    (use **Private network** only from another Droplet in the same VPC). Copy:
 
-   ```text
-   postgresql://doadmin:<password>@<host>.db.ondigitalocean.com:25060/defaultdb?sslmode=require
-   ```
+    ```text
+    postgresql://doadmin:<password>@<host>.db.ondigitalocean.com:25060/defaultdb?sslmode=require
+    ```
 
 3. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URL,
    **Test connection**, and **Save**.
 
-<Callout type='info'>Managed PostgreSQL usually listens on port `25060` and requires `sslmode=require`. Dora preserves the SSL mode in the URL.</Callout>
+<Callout type='info'>
+	Managed PostgreSQL usually listens on port `25060` and requires `sslmode=require`. Dora
+	preserves the SSL mode in the URL.
+</Callout>

@@ -6,7 +6,7 @@ import { useConnectionMutations } from '@studio/core/data-provider/hooks'
 import { getAdapterError } from '@studio/core/data-provider/types'
 import {
 	buildSavedDuckDbConnectionPayload,
-	findExistingDuckDbFileConnection,
+	findExistingDuckDbFileConnection
 } from '../utils/save-data-file-session'
 
 type SaveParams = {
@@ -36,7 +36,7 @@ export function useSaveDataFileSession() {
 				throw new Error(getAdapterError(res))
 			}
 			return res.data
-		},
+		}
 	})
 
 	const openSavedConnection = useMutation({
@@ -55,11 +55,11 @@ export function useSaveDataFileSession() {
 			await queryClient.invalidateQueries({ queryKey: ['schema', savedConnection.id] })
 
 			return savedConnection
-		},
+		}
 	})
 
 	return {
 		saveSession,
-		openSavedConnection,
+		openSavedConnection
 	}
 }

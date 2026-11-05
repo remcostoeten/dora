@@ -8,12 +8,12 @@ adopt-info: dora
 title: Dora
 summary: Free, open source database client for PostgreSQL, MySQL, SQLite and more
 description: |
-  Dora is a free, open source desktop database client built with Tauri and Rust.
-  It connects to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso,
-  Cloudflare D1 and DuckDB, and opens CSV, JSON and Parquet files as tables.
-  Browse and inline-edit data, run SQL in a multi-tab console, write Drizzle and
-  Prisma queries against the live schema, and sign in to Supabase, Neon or Turso
-  instead of pasting a connection string.
+    Dora is a free, open source desktop database client built with Tauri and Rust.
+    It connects to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso,
+    Cloudflare D1 and DuckDB, and opens CSV, JSON and Parquet files as tables.
+    Browse and inline-edit data, run SQL in a multi-tab console, write Drizzle and
+    Prisma queries against the live schema, and sign in to Supabase, Neon or Turso
+    instead of pasting a connection string.
 license: GPL-3.0-only
 contact: https://github.com/remcostoeten/dora
 issues: https://github.com/remcostoeten/dora/issues
@@ -23,89 +23,89 @@ grade: stable
 confinement: strict
 
 layout:
-  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1:
-    bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1
+    /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1:
+        bind: $SNAP/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.1
 
 apps:
-  dora:
-    command: bin/launch
-    desktop: meta/gui/dora.desktop
-    plugs:
-      - desktop
-      - desktop-legacy
-      - home
-      - network
-      - opengl
-      - password-manager-service
-      - removable-media
-      - ssh-keys
-      - wayland
-      - x11
-    environment:
-      WEBKIT_DISABLE_DMABUF_RENDERER: '1'
+    dora:
+        command: bin/launch
+        desktop: meta/gui/dora.desktop
+        plugs:
+            - desktop
+            - desktop-legacy
+            - home
+            - network
+            - opengl
+            - password-manager-service
+            - removable-media
+            - ssh-keys
+            - wayland
+            - x11
+        environment:
+            WEBKIT_DISABLE_DMABUF_RENDERER: '1'
 
 parts:
-  dora:
-    plugin: nil
-    source: .
-    build-snaps:
-      - node/22/stable
-    build-packages:
-      - build-essential
-      - curl
-      - file
-      - libayatana-appindicator3-dev
-      - libgtk-3-dev
-      - libjavascriptcoregtk-4.1-dev
-      - librsvg2-dev
-      - libsoup-3.0-dev
-      - libssl-dev
-      - libwebkit2gtk-4.1-dev
-      - patchelf
-      - pkg-config
-      - unzip
-    stage-packages:
-      - libasound2
-      - libayatana-appindicator3-1
-      - libcanberra-gtk3-module
-      - libgtk-3-0
-      - libjavascriptcoregtk-4.1-0
-      - libnotify4
-      - libnss3
-      - librsvg2-2
-      - libsecret-1-0
-      - libsoup-3.0-0
-      - libssl3
-      - libwebkit2gtk-4.1-0
-      - libxss1
-      - zlib1g
-    override-build: |
-      set -eux
+    dora:
+        plugin: nil
+        source: .
+        build-snaps:
+            - node/22/stable
+        build-packages:
+            - build-essential
+            - curl
+            - file
+            - libayatana-appindicator3-dev
+            - libgtk-3-dev
+            - libjavascriptcoregtk-4.1-dev
+            - librsvg2-dev
+            - libsoup-3.0-dev
+            - libssl-dev
+            - libwebkit2gtk-4.1-dev
+            - patchelf
+            - pkg-config
+            - unzip
+        stage-packages:
+            - libasound2
+            - libayatana-appindicator3-1
+            - libcanberra-gtk3-module
+            - libgtk-3-0
+            - libjavascriptcoregtk-4.1-0
+            - libnotify4
+            - libnss3
+            - librsvg2-2
+            - libsecret-1-0
+            - libsoup-3.0-0
+            - libssl3
+            - libwebkit2gtk-4.1-0
+            - libxss1
+            - zlib1g
+        override-build: |
+            set -eux
 
-      export HOME="$CRAFT_PART_BUILD/home"
-      export BUN_INSTALL="$HOME/.bun"
-      export CARGO_HOME="$HOME/.cargo"
-      export RUSTUP_HOME="$HOME/.rustup"
-      export PATH="$BUN_INSTALL/bin:$CARGO_HOME/bin:$PATH"
-      export PATH="/snap/node/current/bin:$PATH"
+            export HOME="$CRAFT_PART_BUILD/home"
+            export BUN_INSTALL="$HOME/.bun"
+            export CARGO_HOME="$HOME/.cargo"
+            export RUSTUP_HOME="$HOME/.rustup"
+            export PATH="$BUN_INSTALL/bin:$CARGO_HOME/bin:$PATH"
+            export PATH="/snap/node/current/bin:$PATH"
 
-      mkdir -p "$BUN_INSTALL" "$CARGO_HOME" "$RUSTUP_HOME"
+            mkdir -p "$BUN_INSTALL" "$CARGO_HOME" "$RUSTUP_HOME"
 
-      curl -fsSL https://bun.sh/install | bash
-      curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
+            curl -fsSL https://bun.sh/install | bash
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal
 
-      export DORA_RELEASE_VERSION="${DORA_RELEASE_VERSION:-$(node -p "require('./apps/desktop/package.json').version")}"
-      craftctl set version="$DORA_RELEASE_VERSION"
+            export DORA_RELEASE_VERSION="${DORA_RELEASE_VERSION:-$(node -p "require('./apps/desktop/package.json').version")}"
+            craftctl set version="$DORA_RELEASE_VERSION"
 
-      bun install
-      (cd apps/desktop && node node_modules/vite/bin/vite.js build)
-      cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
-      # DuckDB runs out of process; the app resolves `duckdb_helper` next to its
-      # own binary, so the sidecar must ship alongside it.
-      cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --bin duckdb_helper --features duckdb-engine
+            bun install
+            (cd apps/desktop && node node_modules/vite/bin/vite.js build)
+            cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
+            # DuckDB runs out of process; the app resolves `duckdb_helper` next to its
+            # own binary, so the sidecar must ship alongside it.
+            cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --bin duckdb_helper --features duckdb-engine
 
-      install -Dm755 apps/desktop/src-tauri/target/release/dora "$CRAFT_PART_INSTALL/bin/dora"
-      install -Dm755 apps/desktop/src-tauri/target/release/duckdb_helper "$CRAFT_PART_INSTALL/bin/duckdb_helper"
-      install -Dm755 packaging/snap/local/launch "$CRAFT_PART_INSTALL/bin/launch"
-      install -Dm644 packaging/snap/gui/dora.desktop "$CRAFT_PART_INSTALL/meta/gui/dora.desktop"
-      install -Dm644 apps/desktop/src-tauri/icons/icon.png "$CRAFT_PART_INSTALL/meta/gui/icon.png"
+            install -Dm755 apps/desktop/src-tauri/target/release/dora "$CRAFT_PART_INSTALL/bin/dora"
+            install -Dm755 apps/desktop/src-tauri/target/release/duckdb_helper "$CRAFT_PART_INSTALL/bin/duckdb_helper"
+            install -Dm755 packaging/snap/local/launch "$CRAFT_PART_INSTALL/bin/launch"
+            install -Dm644 packaging/snap/gui/dora.desktop "$CRAFT_PART_INSTALL/meta/gui/dora.desktop"
+            install -Dm644 apps/desktop/src-tauri/icons/icon.png "$CRAFT_PART_INSTALL/meta/gui/icon.png"

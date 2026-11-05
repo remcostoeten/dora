@@ -12,7 +12,19 @@ describe('DRIZZLE_OPERATOR_SIGNATURES', function () {
 	})
 
 	it('covers the operators the completion provider offers', function () {
-		for (const name of ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'inArray', 'and', 'or']) {
+		for (const name of [
+			'eq',
+			'ne',
+			'gt',
+			'gte',
+			'lt',
+			'lte',
+			'like',
+			'ilike',
+			'inArray',
+			'and',
+			'or'
+		]) {
 			expect(DRIZZLE_OPERATOR_SIGNATURES[name]).toBeDefined()
 		}
 	})

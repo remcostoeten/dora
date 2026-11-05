@@ -25,8 +25,8 @@ describe('fromLiveSchema (postgres)', function () {
 					foreign_key: {
 						referenced_table: 'user',
 						referenced_column: 'id',
-						referenced_schema: 'public',
-					},
+						referenced_schema: 'public'
+					}
 				},
 				{
 					name: 'id',
@@ -35,7 +35,7 @@ describe('fromLiveSchema (postgres)', function () {
 					default_value: null,
 					is_primary_key: true,
 					is_auto_increment: true,
-					foreign_key: null,
+					foreign_key: null
 				},
 				{
 					name: 'created_at',
@@ -44,8 +44,8 @@ describe('fromLiveSchema (postgres)', function () {
 					default_value: 'now()',
 					is_primary_key: false,
 					is_auto_increment: false,
-					foreign_key: null,
-				},
+					foreign_key: null
+				}
 			],
 			indexes: [
 				{ name: 'post_pkey', column_names: ['id'], is_unique: true, is_primary: true },
@@ -53,9 +53,9 @@ describe('fromLiveSchema (postgres)', function () {
 					name: 'post_author_idx',
 					column_names: ['author_id'],
 					is_unique: false,
-					is_primary: false,
-				},
-			],
+					is_primary: false
+				}
+			]
 		},
 		{
 			name: 'user',
@@ -69,11 +69,11 @@ describe('fromLiveSchema (postgres)', function () {
 					default_value: null,
 					is_primary_key: true,
 					is_auto_increment: true,
-					foreign_key: null,
-				},
+					foreign_key: null
+				}
 			],
-			indexes: [],
-		},
+			indexes: []
+		}
 	])
 
 	const ir = fromLiveSchema(pg, 'postgres')
@@ -104,7 +104,7 @@ describe('fromLiveSchema (postgres)', function () {
 
 	it('folds per-column foreign keys into the IR', function () {
 		expect(ir.tables[0].foreignKeys).toEqual([
-			{ columns: ['author_id'], refTable: 'user', refColumns: ['id'] },
+			{ columns: ['author_id'], refTable: 'user', refColumns: ['id'] }
 		])
 	})
 
@@ -124,7 +124,7 @@ describe('fromLiveSchema (postgres type params)', function () {
 			default_value: null,
 			is_primary_key: false,
 			is_auto_increment: false,
-			foreign_key: null,
+			foreign_key: null
 		}
 	}
 
@@ -138,12 +138,12 @@ describe('fromLiveSchema (postgres type params)', function () {
 					pgColumn('a', 'character varying(255)'),
 					pgColumn('b', 'numeric(10,2)'),
 					pgColumn('c', 'vector(1536)'),
-					pgColumn('d', 'timestamp(6) with time zone'),
+					pgColumn('d', 'timestamp(6) with time zone')
 				],
-				indexes: [],
-			},
+				indexes: []
+			}
 		]),
-		'postgres',
+		'postgres'
 	)
 	const byName = Object.fromEntries(ir.tables[0].columns.map((c) => [c.name, c]))
 
@@ -172,7 +172,7 @@ describe('fromLiveSchema (sqlite)', function () {
 					default_value: null,
 					is_primary_key: true,
 					is_auto_increment: true,
-					foreign_key: null,
+					foreign_key: null
 				},
 				{
 					name: 'title',
@@ -181,11 +181,11 @@ describe('fromLiveSchema (sqlite)', function () {
 					default_value: '   ',
 					is_primary_key: false,
 					is_auto_increment: false,
-					foreign_key: null,
-				},
+					foreign_key: null
+				}
 			],
-			indexes: [],
-		},
+			indexes: []
+		}
 	])
 
 	const ir = fromLiveSchema(sqlite, 'sqlite')
@@ -221,8 +221,8 @@ describe('fromLiveSchema (composite foreign key)', function () {
 					foreign_key: {
 						referenced_table: 'account',
 						referenced_column: 'user_id',
-						referenced_schema: 'public',
-					},
+						referenced_schema: 'public'
+					}
 				},
 				{
 					name: 'org_id',
@@ -234,12 +234,12 @@ describe('fromLiveSchema (composite foreign key)', function () {
 					foreign_key: {
 						referenced_table: 'account',
 						referenced_column: 'org_id',
-						referenced_schema: 'public',
-					},
-				},
+						referenced_schema: 'public'
+					}
+				}
 			],
-			indexes: [],
-		},
+			indexes: []
+		}
 	])
 
 	it('groups multiple columns referencing the same table into one FK', function () {
@@ -248,8 +248,8 @@ describe('fromLiveSchema (composite foreign key)', function () {
 			{
 				columns: ['user_id', 'org_id'],
 				refTable: 'account',
-				refColumns: ['user_id', 'org_id'],
-			},
+				refColumns: ['user_id', 'org_id']
+			}
 		])
 	})
 

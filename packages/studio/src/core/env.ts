@@ -46,8 +46,7 @@ function asBool(value: unknown, fallback: boolean): boolean {
 	return value === '1' || value === 'true' || value === 'yes' || value === 'on'
 }
 
-export const ENV_MODE: string =
-	(VITE.MODE as string | undefined) ?? NODE.NODE_ENV ?? 'production'
+export const ENV_MODE: string = (VITE.MODE as string | undefined) ?? NODE.NODE_ENV ?? 'production'
 
 export const ENV_PROD: boolean = asBool(VITE.PROD, NODE.NODE_ENV === 'production')
 

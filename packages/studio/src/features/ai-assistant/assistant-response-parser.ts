@@ -25,11 +25,9 @@ function parseObject(value: unknown): ParsedAssistantSqlResponse | null {
 	const sql = asString(record.sql) || asString(record.query)
 	if (!sql) return null
 
-	const examples = [asString(record.example)]
-		.filter(Boolean)
-		.filter(function (example) {
-			return example !== sql
-		})
+	const examples = [asString(record.example)].filter(Boolean).filter(function (example) {
+		return example !== sql
+	})
 
 	return {
 		sql,

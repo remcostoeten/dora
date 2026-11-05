@@ -1,12 +1,10 @@
 export type {
 	DataFileSourceEntry,
 	DataFileSourceStatus,
-	DatabaseConnectResult,
+	DatabaseConnectResult
 } from '@studio/lib/bindings'
 
-export function isActiveDataFileSource(
-	entry: { status: string }
-): entry is { status: 'active' } {
+export function isActiveDataFileSource(entry: { status: string }): entry is { status: 'active' } {
 	return entry.status === 'active'
 }
 

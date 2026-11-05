@@ -6,7 +6,7 @@ import { useIsTauri } from '@studio/core/data-provider'
 import {
 	commands,
 	type CredentialStorageStatus,
-	type KeyringInstallPlan,
+	type KeyringInstallPlan
 } from '@studio/lib/bindings'
 import { useClipboard } from '@studio/shared/hooks/use-clipboard'
 import { Button } from '@studio/shared/ui/button'

@@ -54,7 +54,7 @@ const FILE_TYPE_LABELS: Record<string, string> = {
 	pq: 'Parquet',
 	json: 'JSON',
 	ndjson: 'NDJSON',
-	jsonl: 'JSON Lines',
+	jsonl: 'JSON Lines'
 }
 
 export function formatDataFileType(path: string): string {
@@ -71,7 +71,7 @@ export function listDataFileEntries(paths: string[]): DataFileEntry[] {
 		return {
 			path,
 			fileType: formatDataFileType(path),
-			viewName,
+			viewName
 		}
 	})
 }

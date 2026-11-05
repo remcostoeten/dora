@@ -7,7 +7,7 @@ import {
 	migrationHasGatedSections,
 	splitMigrationSql,
 	DESTRUCTIVE_BANNER,
-	REVIEW_HEADER,
+	REVIEW_HEADER
 } from '@studio/features/orm-cockpit/components/migration-sections'
 
 function col(name: string, type: ColumnIR['type'], nullable = false): ColumnIR {
@@ -27,7 +27,7 @@ describe('migration-sections (cockpit preview toggles)', function () {
 		// live has `users(id)`, code adds a nullable column → purely additive/safe.
 		const live = ir([table('users', [col('id', 'int', false)], ['id'])])
 		const code = ir([
-			table('users', [col('id', 'int', false), col('nickname', 'text', true)], ['id']),
+			table('users', [col('id', 'int', false), col('nickname', 'text', true)], ['id'])
 		])
 		const diff = diffSchema(live, code)
 		const migration = generateMigrationSql(diff, 'postgres', { from: live, to: code })
@@ -39,7 +39,7 @@ describe('migration-sections (cockpit preview toggles)', function () {
 
 		const preview = buildPreviewSql(migration.sections, {
 			includeDestructive: false,
-			includeReview: false,
+			includeReview: false
 		})
 		expect(preview.startsWith('BEGIN;')).toBe(true)
 		expect(preview.trimEnd().endsWith('COMMIT;')).toBe(true)
@@ -49,7 +49,7 @@ describe('migration-sections (cockpit preview toggles)', function () {
 	it('gates destructive statements behind an explicit opt-in', function () {
 		// code drops the `email` column → destructive.
 		const live = ir([
-			table('users', [col('id', 'int', false), col('email', 'text', false)], ['id']),
+			table('users', [col('id', 'int', false), col('email', 'text', false)], ['id'])
 		])
 		const code = ir([table('users', [col('id', 'int', false)], ['id'])])
 		const diff = diffSchema(live, code)
@@ -60,14 +60,14 @@ describe('migration-sections (cockpit preview toggles)', function () {
 
 		const withoutDestructive = buildPreviewSql(migration.sections, {
 			includeDestructive: false,
-			includeReview: false,
+			includeReview: false
 		})
 		expect(withoutDestructive).not.toContain('DROP COLUMN')
 		expect(withoutDestructive).not.toContain(DESTRUCTIVE_BANNER)
 
 		const withDestructive = buildPreviewSql(migration.sections, {
 			includeDestructive: true,
-			includeReview: false,
+			includeReview: false
 		})
 		expect(withDestructive).toContain('DROP COLUMN')
 		expect(withDestructive).toContain(DESTRUCTIVE_BANNER)
@@ -75,8 +75,12 @@ describe('migration-sections (cockpit preview toggles)', function () {
 
 	it('uncomments review statements only when opted in', function () {
 		// A type change Drizzle/diff treats as `review` (e.g. text → int is lossy).
-		const live = ir([table('t', [col('id', 'int', false), col('amount', 'text', false)], ['id'])])
-		const code = ir([table('t', [col('id', 'int', false), col('amount', 'int', false)], ['id'])])
+		const live = ir([
+			table('t', [col('id', 'int', false), col('amount', 'text', false)], ['id'])
+		])
+		const code = ir([
+			table('t', [col('id', 'int', false), col('amount', 'int', false)], ['id'])
+		])
 		const diff = diffSchema(live, code)
 		const migration = generateMigrationSql(diff, 'postgres', { from: live, to: code })
 
@@ -87,14 +91,14 @@ describe('migration-sections (cockpit preview toggles)', function () {
 			expect(migration.up).toContain(REVIEW_HEADER)
 			const off = buildPreviewSql(migration.sections, {
 				includeDestructive: false,
-				includeReview: false,
+				includeReview: false
 			})
 			// commented out by default — the bare ALTER must not appear uncommented.
 			expect(off).not.toMatch(/^\s*ALTER TABLE/m)
 
 			const on = buildPreviewSql(migration.sections, {
 				includeDestructive: false,
-				includeReview: true,
+				includeReview: true
 			})
 			expect(on).toMatch(/ALTER TABLE/)
 		}
@@ -103,7 +107,7 @@ describe('migration-sections (cockpit preview toggles)', function () {
 	it('returns the no-changes sentinel untouched', function () {
 		const preview = buildPreviewSql('-- No changes.', {
 			includeDestructive: false,
-			includeReview: false,
+			includeReview: false
 		})
 		expect(preview).toBe('-- No changes.')
 	})

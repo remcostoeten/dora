@@ -5,7 +5,7 @@ import { getSourceCaps } from '../source-caps'
 import {
 	resolveProviderLabel,
 	resolveSourceKindBadge,
-	shouldShowSourceKindBadge,
+	shouldShowSourceKindBadge
 } from '../source-labels'
 
 type Props = {
@@ -19,7 +19,7 @@ export function SourceBadges({
 	connection,
 	className,
 	compact = false,
-	showReadonly = true,
+	showReadonly = true
 }: Props) {
 	const meta = describeConnectionSource(connection)
 	const caps = getSourceCaps(connection, meta)
@@ -53,7 +53,8 @@ export function SourceBadges({
 					variant='outline'
 					className={cn(
 						'font-normal text-muted-foreground',
-						compact && 'rounded-sm px-1.5 py-0 text-[10px] leading-4 h-4 border-border/70'
+						compact &&
+							'rounded-sm px-1.5 py-0 text-[10px] leading-4 h-4 border-border/70'
 					)}
 				>
 					Readonly

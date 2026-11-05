@@ -162,10 +162,15 @@ function toAnalyticsMeta(
 	return result
 }
 
-function sanitizeValue(value: unknown, config: AnalyticsConfig, depth: number): AnalyticsMeta[string] {
+function sanitizeValue(
+	value: unknown,
+	config: AnalyticsConfig,
+	depth: number
+): AnalyticsMeta[string] {
 	if (depth > 4) return '[MaxDepth]'
 	if (value == null) return null
-	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
+		return value
 	if (value instanceof Date) return value.toISOString()
 	if (Array.isArray(value)) {
 		return value.map((item) => sanitizeValue(item, config, depth + 1) ?? null)

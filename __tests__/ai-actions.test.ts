@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import {
-	buildExplainQueryPrompt,
-	buildFixErrorPrompt
-} from '@/features/ai-assistant/ai-actions'
+import { buildExplainQueryPrompt, buildFixErrorPrompt } from '@/features/ai-assistant/ai-actions'
 
 describe('AI contextual prompt builders', () => {
 	it('builds an explain-query prompt', () => {

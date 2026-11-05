@@ -3,10 +3,7 @@ import { join } from 'node:path'
 
 const root = process.cwd()
 const appsDir = join(root, 'apps')
-const requiredFiles = [
-	join(root, 'vitest.config.ts'),
-	join(root, '__tests__', 'vitest.setup.ts')
-]
+const requiredFiles = [join(root, 'vitest.config.ts'), join(root, '__tests__', 'vitest.setup.ts')]
 const ignoredDirs = new Set(['.git', '.turbo', 'dist', 'node_modules', 'target'])
 const colocatedTests: string[] = []
 const missingFiles: string[] = []

@@ -1,17 +1,17 @@
 {
-  "version": 1,
-  "skills": {
-    "diffs": {
-      "source": "pierrecomputer/pierre",
-      "sourceType": "github",
-      "skillPath": "skills/diffs/SKILL.md",
-      "computedHash": "8ef57bbf5a8e3d2831d470dd45c03852f4d8b3ad007b6d269e0ce010e2c225a8"
-    },
-    "find-skills": {
-      "source": "vercel-labs/skills",
-      "sourceType": "github",
-      "skillPath": "skills/find-skills/SKILL.md",
-      "computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
-    }
-  }
+	"version": 1,
+	"skills": {
+		"diffs": {
+			"source": "pierrecomputer/pierre",
+			"sourceType": "github",
+			"skillPath": "skills/diffs/SKILL.md",
+			"computedHash": "8ef57bbf5a8e3d2831d470dd45c03852f4d8b3ad007b6d269e0ce010e2c225a8"
+		},
+		"find-skills": {
+			"source": "vercel-labs/skills",
+			"sourceType": "github",
+			"skillPath": "skills/find-skills/SKILL.md",
+			"computedHash": "b146008599c31057cef1c145774cea5d5afb30e8f43fa802e47a4b461419aaaf"
+		}
+	}
 }

@@ -21,7 +21,7 @@ export function SchemaOverviewPanel({
 	isSearchResult,
 	editMode,
 	showMinimap,
-	selectedTable,
+	selectedTable
 }: Props) {
 	return (
 		<aside className='sv-overview-panel'>
@@ -29,12 +29,14 @@ export function SchemaOverviewPanel({
 			<div className='sv-overview-panel__heading'>
 				<div>
 					<h2>{isSearchResult ? 'Filtered map' : 'Full map'}</h2>
-					<p>{tableCount} tables, {edgeCount} relationships</p>
+					<p>
+						{tableCount} tables, {edgeCount} relationships
+					</p>
 				</div>
 				<span
 					className={cn(
 						'sv-overview-panel__mode-badge',
-						isSearchResult && 'sv-overview-panel__mode-badge--search',
+						isSearchResult && 'sv-overview-panel__mode-badge--search'
 					)}
 				>
 					{isSearchResult ? 'Filtered map' : 'Full map'}
@@ -61,7 +63,9 @@ export function SchemaOverviewPanel({
 					<div className='sv-overview-panel__card-label'>Selected table</div>
 					{selectedTable ? (
 						<>
-							<div className='sv-overview-panel__card-title'>{selectedTable.tableName}</div>
+							<div className='sv-overview-panel__card-title'>
+								{selectedTable.tableName}
+							</div>
 							<div className='sv-overview-panel__card-copy'>
 								{selectedTable.columns.length} columns
 								{selectedTable.schema ? ` in ${selectedTable.schema}` : ''}

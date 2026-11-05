@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, Check, Copy, ExternalLink, LogOut, PlugZap, RefreshCw, Search } from 'lucide-react'
+import {
+	ArrowLeft,
+	Check,
+	Copy,
+	ExternalLink,
+	LogOut,
+	PlugZap,
+	RefreshCw,
+	Search
+} from 'lucide-react'
 import { Spinner } from '@studio/shared/ui/spinner'
 import { open } from '@tauri-apps/plugin-shell'
 import type { CloudflareAccount, CloudflareD1Database } from '@studio/lib/bindings'
@@ -233,7 +242,9 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 							{accountLabel ? (
 								<span>
 									Connected as{' '}
-									<span className='font-medium text-foreground'>{accountLabel}</span>
+									<span className='font-medium text-foreground'>
+										{accountLabel}
+									</span>
 								</span>
 							) : (
 								<span>Connected</span>
@@ -260,7 +271,10 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 			</div>
 
 			{authError ? (
-				<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+				<p
+					role='alert'
+					className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'
+				>
 					{authError}
 				</p>
 			) : null}
@@ -338,8 +352,8 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 					</div>
 					<p className='text-xs text-muted-foreground/70'>
 						Use a token with the <span className='font-medium'>D1 - Edit</span> and{' '}
-						<span className='font-medium'>Account Settings - Read</span> permissions. It is
-						validated, then encrypted and stored on this device only.
+						<span className='font-medium'>Account Settings - Read</span> permissions. It
+						is validated, then encrypted and stored on this device only.
 					</p>
 				</div>
 			) : !selectedAccount ? (
@@ -356,7 +370,9 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 							className='h-8 shrink-0 gap-1.5 border-border/70 px-3'
 							title='Re-fetch accounts from Cloudflare'
 						>
-							<RefreshCw className={cn('h-3.5 w-3.5', accountsLoading && 'animate-spin')} />
+							<RefreshCw
+								className={cn('h-3.5 w-3.5', accountsLoading && 'animate-spin')}
+							/>
 							Refresh
 						</Button>
 					</div>
@@ -450,7 +466,10 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 							</div>
 						) : null}
 						{error ? (
-							<p role='alert' className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'>
+							<p
+								role='alert'
+								className='border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300'
+							>
 								{error}
 							</p>
 						) : null}
@@ -486,7 +505,9 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 											{database.uuid}
 										</span>
 									</span>
-									{isSelected ? <Check className='h-4 w-4 text-emerald-500' /> : null}
+									{isSelected ? (
+										<Check className='h-4 w-4 text-emerald-500' />
+									) : null}
 								</button>
 							)
 						})}
@@ -494,7 +515,11 @@ function CloudflareConnectFlowInner({ onComplete }: Props) {
 
 					{selected ? (
 						<div className='sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border/60 bg-card/95 px-4 py-3 shadow-[0_-18px_32px_-28px_hsl(var(--foreground)/0.45)]'>
-							<Button type='button' onClick={handleCreateConnection} className='gap-2'>
+							<Button
+								type='button'
+								onClick={handleCreateConnection}
+								className='gap-2'
+							>
 								<PlugZap className='h-3.5 w-3.5' />
 								Create D1 Connection
 							</Button>

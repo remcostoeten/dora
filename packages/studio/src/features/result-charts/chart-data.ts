@@ -42,7 +42,12 @@ export function inferColumnKind(
 	if (values.length === 0) return 'unknown'
 	if (values.every(isNumericLike)) return 'number'
 	if (values.every(isDateLike)) return 'date'
-	if (values.every(function (value) { return typeof value === 'boolean' })) return 'boolean'
+	if (
+		values.every(function (value) {
+			return typeof value === 'boolean'
+		})
+	)
+		return 'boolean'
 	return 'text'
 }
 
@@ -58,9 +63,15 @@ export function suggestChartConfig(params: {
 	const kinds = columns.map(function (column) {
 		return { column, kind: inferColumnKind(column, rows) }
 	})
-	const numericColumns = kinds.filter(function (entry) { return entry.kind === 'number' })
-	const dateColumns = kinds.filter(function (entry) { return entry.kind === 'date' })
-	const textColumns = kinds.filter(function (entry) { return entry.kind === 'text' })
+	const numericColumns = kinds.filter(function (entry) {
+		return entry.kind === 'number'
+	})
+	const dateColumns = kinds.filter(function (entry) {
+		return entry.kind === 'date'
+	})
+	const textColumns = kinds.filter(function (entry) {
+		return entry.kind === 'text'
+	})
 
 	if (dateColumns.length > 0 && numericColumns.length > 0) {
 		return {
@@ -102,10 +113,16 @@ export function getChartDegenerateReason(params: {
 	if (columns.length === 0) return 'This result set has no columns to chart.'
 	if (!config) return 'Add at least one numeric column and a text, date, or numeric axis column.'
 
-	const names = new Set(columns.map(function (column) { return column.name }))
+	const names = new Set(
+		columns.map(function (column) {
+			return column.name
+		})
+	)
 	if (!names.has(config.xColumn)) return 'Choose an X column that exists in the result set.'
 	if (config.yColumns.length === 0) return 'Choose at least one numeric Y column.'
-	const missingY = config.yColumns.find(function (column) { return !names.has(column) })
+	const missingY = config.yColumns.find(function (column) {
+		return !names.has(column)
+	})
 	if (missingY) return `The Y column "${missingY}" is no longer in this result set.`
 
 	const hasUsableX = rows.some(function (row) {
@@ -164,7 +181,11 @@ export function buildChartDataset(params: {
 	})
 
 	const seriesKeys = Array.from(
-		new Set(Array.from(grouped.values()).map(function (bucket) { return bucket.seriesKey }))
+		new Set(
+			Array.from(grouped.values()).map(function (bucket) {
+				return bucket.seriesKey
+			})
+		)
 	)
 	const series: ResultChartSeries[] = seriesKeys.map(function (key) {
 		return { key, label: key }
@@ -196,11 +217,17 @@ export function chartTypesForConfig(config: ResultChartConfig): ResultChartType[
 }
 
 function isConfigUsable(config: ResultChartConfig, columns: ResultChartColumn[]) {
-	const names = new Set(columns.map(function (column) { return column.name }))
+	const names = new Set(
+		columns.map(function (column) {
+			return column.name
+		})
+	)
 	return (
 		names.has(config.xColumn) &&
 		config.yColumns.length > 0 &&
-		config.yColumns.every(function (column) { return names.has(column) }) &&
+		config.yColumns.every(function (column) {
+			return names.has(column)
+		}) &&
 		(!config.groupByColumn || names.has(config.groupByColumn))
 	)
 }

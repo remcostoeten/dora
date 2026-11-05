@@ -30,7 +30,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: true,
 		supportsSshTunnel: true,
 		supportsLiveMonitor: true,
-		isReadonly: false,
+		isReadonly: false
 	},
 	cockroach: {
 		canRunSql: true,
@@ -44,7 +44,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: true,
 		supportsSshTunnel: true,
 		supportsLiveMonitor: true,
-		isReadonly: false,
+		isReadonly: false
 	},
 	mysql: {
 		canRunSql: true,
@@ -58,7 +58,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: true,
 		supportsSshTunnel: true,
 		supportsLiveMonitor: true,
-		isReadonly: false,
+		isReadonly: false
 	},
 	mariadb: {
 		canRunSql: true,
@@ -72,7 +72,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: true,
 		supportsSshTunnel: true,
 		supportsLiveMonitor: true,
-		isReadonly: false,
+		isReadonly: false
 	},
 	sqlite: {
 		canRunSql: true,
@@ -86,7 +86,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: false,
 		supportsSshTunnel: false,
 		supportsLiveMonitor: true,
-		isReadonly: false,
+		isReadonly: false
 	},
 	duckdb: {
 		canRunSql: true,
@@ -100,7 +100,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: false,
 		supportsSshTunnel: false,
 		supportsLiveMonitor: false,
-		isReadonly: false,
+		isReadonly: false
 	},
 	libsql: {
 		canRunSql: true,
@@ -114,7 +114,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: true,
 		supportsSshTunnel: false,
 		supportsLiveMonitor: false,
-		isReadonly: false,
+		isReadonly: false
 	},
 	d1: {
 		// Cloudflare D1: SQLite over the REST API. No local file or SSH; live
@@ -130,7 +130,7 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: true,
 		supportsSshTunnel: false,
 		supportsLiveMonitor: false,
-		isReadonly: false,
+		isReadonly: false
 	},
 	posthog: {
 		// PostHog: HogQL over the Query API. Read-only analytics source — browse
@@ -147,8 +147,8 @@ const ENGINE_CAPS: Record<DbEngine, SourceCaps> = {
 		supportsRemoteUrl: true,
 		supportsSshTunnel: false,
 		supportsLiveMonitor: false,
-		isReadonly: true,
-	},
+		isReadonly: true
+	}
 }
 
 function applyDataFileSessionOverrides(caps: SourceCaps): SourceCaps {
@@ -158,7 +158,7 @@ function applyDataFileSessionOverrides(caps: SourceCaps): SourceCaps {
 		canImportFile: false,
 		canAttachFiles: false,
 		supportsLiveMonitor: false,
-		isReadonly: true,
+		isReadonly: true
 	}
 }
 

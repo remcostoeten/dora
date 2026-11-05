@@ -123,41 +123,99 @@ export const PROVIDER_CONFIGS: Record<DatabaseType, ProviderConfig> = {
  */
 export const PROVIDER_PATTERNS: ProviderPattern[] = [
 	// --- Postgres-wire managed providers (TLS required) ---
-	{ pattern: /supabase\.(co|com)/, displayName: 'Supabase DB', type: 'postgres', requiresSsl: true },
+	{
+		pattern: /supabase\.(co|com)/,
+		displayName: 'Supabase DB',
+		type: 'postgres',
+		requiresSsl: true
+	},
 	{ pattern: 'neon.tech', displayName: 'Neon DB', type: 'postgres', requiresSsl: true },
 	{ pattern: 'sql.xata.sh', displayName: 'Xata DB', type: 'postgres', requiresSsl: true },
 	// Vercel Postgres (Neon-backed)
-	{ pattern: /vercel-storage\.com|prisma-data/, displayName: 'Vercel Postgres', type: 'postgres', requiresSsl: true },
+	{
+		pattern: /vercel-storage\.com|prisma-data/,
+		displayName: 'Vercel Postgres',
+		type: 'postgres',
+		requiresSsl: true
+	},
 	{ pattern: 'render.com', displayName: 'Render DB', type: 'postgres', requiresSsl: true },
-	{ pattern: 'postgresbridge.com', displayName: 'Crunchy Bridge', type: 'postgres', requiresSsl: true },
-	{ pattern: /tsdb\.cloud\.timescale\.com|timescaledb/, displayName: 'Timescale Cloud', type: 'postgres', requiresSsl: true },
-	{ pattern: /yugabyte\.cloud|ybdb/, displayName: 'Yugabyte', type: 'postgres', requiresSsl: true },
+	{
+		pattern: 'postgresbridge.com',
+		displayName: 'Crunchy Bridge',
+		type: 'postgres',
+		requiresSsl: true
+	},
+	{
+		pattern: /tsdb\.cloud\.timescale\.com|timescaledb/,
+		displayName: 'Timescale Cloud',
+		type: 'postgres',
+		requiresSsl: true
+	},
+	{
+		pattern: /yugabyte\.cloud|ybdb/,
+		displayName: 'Yugabyte',
+		type: 'postgres',
+		requiresSsl: true
+	},
 
-	{ pattern: /fly\.dev|flympg/, displayName: 'Fly.io Postgres', type: 'postgres', requiresSsl: true },
+	{
+		pattern: /fly\.dev|flympg/,
+		displayName: 'Fly.io Postgres',
+		type: 'postgres',
+		requiresSsl: true
+	},
 
 	// --- Dual-engine managed providers (engine decided by protocol/port) ---
 	// Railway private network has no TLS; public endpoints require it.
 	{ pattern: 'railway.internal', displayName: 'Railway DB', requiresSsl: false },
-	{ pattern: /railway\.app|rlwy\.net|containers-us-west/, displayName: 'Railway DB', requiresSsl: true },
+	{
+		pattern: /railway\.app|rlwy\.net|containers-us-west/,
+		displayName: 'Railway DB',
+		requiresSsl: true
+	},
 	{ pattern: 'aivencloud.com', displayName: 'Aiven DB', requiresSsl: true },
 	// Azure split by engine (must precede any generic azure match).
-	{ pattern: 'postgres.database.azure.com', displayName: 'Azure Database for PostgreSQL', type: 'postgres', requiresSsl: true },
-	{ pattern: 'mysql.database.azure.com', displayName: 'Azure Database for MySQL', type: 'mysql', requiresSsl: true },
+	{
+		pattern: 'postgres.database.azure.com',
+		displayName: 'Azure Database for PostgreSQL',
+		type: 'postgres',
+		requiresSsl: true
+	},
+	{
+		pattern: 'mysql.database.azure.com',
+		displayName: 'Azure Database for MySQL',
+		type: 'mysql',
+		requiresSsl: true
+	},
 	{ pattern: 'azure', displayName: 'Azure DB', requiresSsl: true },
-	{ pattern: /db\.ondigitalocean\.com|ondigitalocean\.com/, displayName: 'DigitalOcean DB', requiresSsl: true },
+	{
+		pattern: /db\.ondigitalocean\.com|ondigitalocean\.com/,
+		displayName: 'DigitalOcean DB',
+		requiresSsl: true
+	},
 	// AWS RDS / Aurora — SSL optional; do not force it.
 	{ pattern: 'rds.amazonaws.com', displayName: 'AWS RDS', requiresSsl: false },
 	{ pattern: /aws.*rds/, displayName: 'AWS RDS', requiresSsl: false },
 
 	// --- MySQL-wire managed providers ---
 	{ pattern: 'planetscale', displayName: 'PlanetScale DB', type: 'mysql', requiresSsl: true },
-	{ pattern: /psdb\.cloud|connect\.psdb\.cloud/, displayName: 'PlanetScale DB', type: 'mysql', requiresSsl: true },
+	{
+		pattern: /psdb\.cloud|connect\.psdb\.cloud/,
+		displayName: 'PlanetScale DB',
+		type: 'mysql',
+		requiresSsl: true
+	},
 	{ pattern: 'tidbcloud.com', displayName: 'TiDB Cloud', type: 'mysql', requiresSsl: true },
 
 	// --- CockroachDB Cloud (cockroach dialect, TLS required) ---
 	// Must precede the broad gcp/google and cockroach engine patterns: cloud hostnames
 	// embed substrings like "gcp" and "cockroach".
-	{ pattern: 'cockroachlabs.cloud', displayName: 'CockroachDB Cloud', type: 'cockroach', requiresSsl: true },
+	{
+		pattern: 'cockroachlabs.cloud',
+		displayName: 'CockroachDB Cloud',
+		type: 'cockroach',
+		requiresSsl: true
+	},
 
 	// --- libSQL ---
 	{ pattern: /turso\.io|turso\.tech/, displayName: 'Turso DB', type: 'libsql' },
@@ -171,7 +229,12 @@ export const PROVIDER_PATTERNS: ProviderPattern[] = [
 
 	// Fly.io private network (.internal / .flycast over WireGuard) — no TLS. Kept last
 	// so named engine/provider hosts are recognized before this broad suffix match.
-	{ pattern: /\.flycast$|\.internal$/, displayName: 'Fly.io Postgres', type: 'postgres', requiresSsl: false }
+	{
+		pattern: /\.flycast$|\.internal$/,
+		displayName: 'Fly.io Postgres',
+		type: 'postgres',
+		requiresSsl: false
+	}
 ]
 
 /**

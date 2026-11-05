@@ -53,13 +53,10 @@ function writeFile(p: string, content: string | Buffer) {
 async function main() {
 	const version = inferVersion()
 	const repoUrl = getFlagValue('repo-url') || 'https://github.com/remcostoeten/dora'
-	const pagesBase =
-		getFlagValue('pages-base') || 'https://remco-stoeten.github.io/dora'
+	const pagesBase = getFlagValue('pages-base') || 'https://remco-stoeten.github.io/dora'
 	const outDir = path.resolve(getFlagValue('out-dir') || 'packaging/apt')
 	const debFile = getFlagValue('deb-file') || `Dora_${version}_amd64.deb`
-	const debUrl =
-		getFlagValue('deb-url') ||
-		`${repoUrl}/releases/download/v${version}/${debFile}`
+	const debUrl = getFlagValue('deb-url') || `${repoUrl}/releases/download/v${version}/${debFile}`
 
 	logHeader('Generating APT Repository Files')
 	logKeyValue('Version', version)
@@ -99,7 +96,7 @@ async function main() {
 		'Homepage: https://github.com/remcostoeten/dora',
 		'Description: Desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL',
 		' A native-feeling desktop database client built with Tauri.',
-		'',
+		''
 	].join('\n')
 
 	const packagesBuf = Buffer.from(packagesContent, 'utf8')
@@ -108,8 +105,14 @@ async function main() {
 	const { gzipSync } = await import('zlib')
 	const packagesGzBuf = gzipSync(packagesBuf)
 
-	writeFile(path.join(outDir, 'dists', 'stable', 'main', 'binary-amd64', 'Packages'), packagesContent)
-	writeFile(path.join(outDir, 'dists', 'stable', 'main', 'binary-amd64', 'Packages.gz'), packagesGzBuf)
+	writeFile(
+		path.join(outDir, 'dists', 'stable', 'main', 'binary-amd64', 'Packages'),
+		packagesContent
+	)
+	writeFile(
+		path.join(outDir, 'dists', 'stable', 'main', 'binary-amd64', 'Packages.gz'),
+		packagesGzBuf
+	)
 
 	// ── Release file ─────────────────────────────────────────────────────────
 	const now = new Date().toUTCString()
@@ -142,7 +145,7 @@ async function main() {
 		'SHA256:',
 		` ${pSha256} ${pSize} main/binary-amd64/Packages`,
 		` ${pgzSha256} ${pgzSize} main/binary-amd64/Packages.gz`,
-		'',
+		''
 	].join('\n')
 
 	writeFile(path.join(outDir, 'dists', 'stable', 'Release'), releaseContent)
@@ -168,10 +171,16 @@ async function main() {
 			writeFile(path.join(outDir, 'KEY.gpg'), pubKey)
 			logLevel('success', 'Release signed')
 		} catch (err) {
-			logLevel('warning', `GPG signing failed (skipping): ${err instanceof Error ? err.message : err}`)
+			logLevel(
+				'warning',
+				`GPG signing failed (skipping): ${err instanceof Error ? err.message : err}`
+			)
 		}
 	} else {
-		logLevel('warning', 'GPG_PRIVATE_KEY not set - Release will be unsigned (users need [trusted=yes])')
+		logLevel(
+			'warning',
+			'GPG_PRIVATE_KEY not set - Release will be unsigned (users need [trusted=yes])'
+		)
 	}
 
 	// ── User install instructions ─────────────────────────────────────────────

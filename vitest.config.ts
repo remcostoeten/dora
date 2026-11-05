@@ -53,7 +53,10 @@ export default defineConfig({
 				find: '@testing-library/user-event',
 				replacement: studioDep('@testing-library/user-event')
 			},
-			{ find: '@testing-library/jest-dom', replacement: studioDep('@testing-library/jest-dom') },
+			{
+				find: '@testing-library/jest-dom',
+				replacement: studioDep('@testing-library/jest-dom')
+			},
 			// React-context libraries the tests import directly from the root
 			// install — pin to studio so they share its React instance too.
 			{ find: '@tanstack/react-query', replacement: studioDep('@tanstack/react-query') },

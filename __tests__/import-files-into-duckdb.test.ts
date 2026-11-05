@@ -1,18 +1,18 @@
 import {
 	buildConnectionFromDataFiles,
-	buildConnectionFromDatabaseFile,
+	buildConnectionFromDatabaseFile
 } from '@studio/features/connections/utils/data-files'
 import { getSourceCaps } from '@studio/features/connections/source-caps'
 import type { Connection } from '@studio/features/connections/types'
 import {
 	ATTACH_FILE_UI_IMPLEMENTED,
 	getVisibleUiActions,
-	isUiActionVisible,
+	isUiActionVisible
 } from '@studio/features/connections/ui-actions'
 import {
 	detectImportNameCollisions,
 	formatImportFilesIntoDuckDbToast,
-	refreshStudioSchema,
+	refreshStudioSchema
 } from '@studio/features/database-studio/utils/import-files-into-duckdb'
 import { viewNameForPath } from '@studio/features/connections/utils/data-file-views'
 import type { ImportFilesIntoDuckDbResult } from '@studio/lib/bindings'
@@ -23,7 +23,7 @@ function connection(overrides: Partial<Connection> & Pick<Connection, 'type'>): 
 		id: 'test-id',
 		name: 'Test',
 		createdAt: 0,
-		...overrides,
+		...overrides
 	}
 }
 
@@ -44,7 +44,9 @@ describe('attach-file ui visibility', function () {
 	})
 
 	it('shows attach-file for native DuckDB file connections', function () {
-		const duckdbFile = connection(buildConnectionFromDatabaseFile('/tmp/analytics.duckdb', 'duckdb'))
+		const duckdbFile = connection(
+			buildConnectionFromDatabaseFile('/tmp/analytics.duckdb', 'duckdb')
+		)
 		const caps = getSourceCaps(duckdbFile)
 
 		expect(ATTACH_FILE_UI_IMPLEMENTED).toBe(true)
@@ -71,23 +73,23 @@ describe('import files into DuckDB helpers', function () {
 					name: 'sales',
 					sourcePath: '/tmp/sales.csv',
 					fileType: 'CSV',
-					rowCount: 10,
+					rowCount: 10
 				},
 				{
 					name: 'events',
 					sourcePath: '/tmp/events.csv',
 					fileType: 'CSV',
-					rowCount: 4,
+					rowCount: 4
 				},
 				{
 					name: 'users',
 					sourcePath: '/tmp/users.csv',
 					fileType: 'CSV',
-					rowCount: 2,
-				},
+					rowCount: 2
+				}
 			],
 			failed: [{ path: '/tmp/bad.json', fileType: 'JSON', error: 'Invalid JSON' }],
-			warnings: ['Failed to import 1 file(s)'],
+			warnings: ['Failed to import 1 file(s)']
 		}
 
 		const toast = formatImportFilesIntoDuckDbToast(result, 'analytics.duckdb')

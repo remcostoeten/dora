@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
 	isManagedTable,
 	filterManagedTables,
-	countManagedTables,
+	countManagedTables
 } from '@studio/features/orm-cockpit/diff/filter-managed-tables'
 import type { SchemaIR, TableIR } from '@studio/features/orm-cockpit/ir/types'
 
@@ -39,7 +39,7 @@ describe('filterManagedTables', function () {
 	const schema = ir([
 		table('users', 'public'),
 		table('__drizzle_migrations', 'public'),
-		table('objects', 'storage'),
+		table('objects', 'storage')
 	])
 
 	it('drops managed tables when not showing', function () {

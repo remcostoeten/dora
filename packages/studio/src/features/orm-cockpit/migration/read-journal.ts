@@ -91,7 +91,7 @@ export function extractOutDir(configText: string | null): string {
 export async function readJournalWithReader(
 	folder: string,
 	configText: string | null,
-	reader: ProjectReader,
+	reader: ProjectReader
 ): Promise<{ entries: JournalEntry[]; journalPath: string | null }> {
 	const outDir = extractOutDir(configText)
 	const journalPath = joinPath(folder, `${outDir}/meta/_journal.json`)

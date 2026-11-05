@@ -34,7 +34,7 @@ function parseLlmJson(raw: string): ParsedResult {
 				explanation: String(parsed.explanation ?? '').trim(),
 				warnings: Array.isArray(parsed.warnings)
 					? parsed.warnings.map((w: unknown) => String(w))
-					: [],
+					: []
 			}
 		} catch {
 			return null
@@ -62,7 +62,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 	const promptRef = useRef<HTMLTextAreaElement | null>(null)
 	const abortRef = useRef<{ cancelled: boolean; requestId: string | null }>({
 		cancelled: false,
-		requestId: null,
+		requestId: null
 	})
 
 	useEffect(
@@ -181,7 +181,11 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 				)
 				if (abortRef.current.cancelled) return
 				if (result.status === 'error') {
-					setError(typeof result.error === 'string' ? result.error : JSON.stringify(result.error))
+					setError(
+						typeof result.error === 'string'
+							? result.error
+							: JSON.stringify(result.error)
+					)
 					return
 				}
 				const parsed = parseLlmJson(accumulated)
@@ -269,9 +273,7 @@ export function AiCmdK({ open, onClose, onApplySql, activeConnectionId, isTauri 
 						{statusLabel}
 					</span>
 					<div className='ml-auto flex items-center gap-1'>
-						{isGenerating && (
-							<Spinner className='h-3.5 w-3.5 text-muted-foreground' />
-						)}
+						{isGenerating && <Spinner className='h-3.5 w-3.5 text-muted-foreground' />}
 						<Button
 							variant='ghost'
 							size='icon'

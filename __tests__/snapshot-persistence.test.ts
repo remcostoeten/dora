@@ -86,9 +86,7 @@ describe('snapshot persistence', () => {
 		}
 		vi.advanceTimersByTime(600)
 
-		const stored: TableSnapshot[] = JSON.parse(
-			window.localStorage.getItem(STORAGE_KEY) ?? '[]'
-		)
+		const stored: TableSnapshot[] = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]')
 		expect(stored).toHaveLength(20)
 		expect(stored[0].tableId).toBe('table-24')
 		expect(stored.map((s) => s.tableId)).not.toContain('table-0')

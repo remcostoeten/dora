@@ -26,8 +26,6 @@ describe('default-query-table', function () {
 
 	it('builds default starter queries', function () {
 		expect(buildDefaultSqlQuery('messages')).toBe('SELECT * FROM messages LIMIT 100;')
-		expect(buildDefaultDrizzleQuery('messages')).toBe(
-			'db.select().from(messages).limit(100);'
-		)
+		expect(buildDefaultDrizzleQuery('messages')).toBe('db.select().from(messages).limit(100);')
 	})
 })

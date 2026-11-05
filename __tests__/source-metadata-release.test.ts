@@ -1,15 +1,15 @@
 import {
 	buildConnectionFromDataFiles,
-	buildConnectionFromDatabaseFile,
+	buildConnectionFromDatabaseFile
 } from '@studio/features/connections/utils/data-files'
 import {
 	isDataFileSessionConnection,
-	isNativeDuckDbFileConnection,
+	isNativeDuckDbFileConnection
 } from '@studio/features/connections/source-caps'
 import {
 	LOCAL_FILE_ERRORS,
 	mapImportFilesIntoDuckDbError,
-	mapSaveDataFileSessionError,
+	mapSaveDataFileSessionError
 } from '@studio/features/connections/local-file-errors'
 import { isUiActionVisible } from '@studio/features/connections/ui-actions'
 import { getSourceCaps } from '@studio/features/connections/source-caps'
@@ -23,7 +23,7 @@ function connection(overrides: Partial<Connection> & Pick<Connection, 'type'>): 
 		id: 'test-id',
 		name: 'Test',
 		createdAt: 0,
-		...overrides,
+		...overrides
 	}
 }
 
@@ -79,11 +79,11 @@ describe('local file error copy', function () {
 					name: 'sales',
 					sourcePath: '/tmp/sales.csv',
 					fileType: 'CSV',
-					rowCount: 1,
-				},
+					rowCount: 1
+				}
 			],
 			failed: [{ path: '/tmp/bad.json', fileType: 'JSON', error: 'Invalid JSON' }],
-			warnings: [],
+			warnings: []
 		}
 
 		const toast = formatImportFilesIntoDuckDbToast(result, 'analytics.duckdb')

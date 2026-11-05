@@ -51,7 +51,16 @@ export function frontendToBackendSshConfig(conn: FrontendConnection) {
 }
 
 export function backendToFrontendConnection(conn: BackendConnection): FrontendConnection {
-	let type: 'postgres' | 'cockroach' | 'mysql' | 'mariadb' | 'sqlite' | 'duckdb' | 'libsql' | 'd1' | 'posthog' = 'sqlite'
+	let type:
+		| 'postgres'
+		| 'cockroach'
+		| 'mysql'
+		| 'mariadb'
+		| 'sqlite'
+		| 'duckdb'
+		| 'libsql'
+		| 'd1'
+		| 'posthog' = 'sqlite'
 	let host, port, user, database, url, authToken, sshConfig, poolerMode
 	let fileSources: string[] | undefined
 
@@ -157,18 +166,24 @@ export function backendToFrontendConnection(conn: BackendConnection): FrontendCo
 }
 
 export function frontendToBackendDatabaseInfo(conn: FrontendConnection): DatabaseInfo {
-	if (conn.type === 'postgres' || conn.type === 'cockroach' || conn.type === 'mysql' || conn.type === 'mariadb') {
+	if (
+		conn.type === 'postgres' ||
+		conn.type === 'cockroach' ||
+		conn.type === 'mysql' ||
+		conn.type === 'mariadb'
+	) {
 		let connectionString: string
 		if (conn.url) {
 			connectionString = conn.url
 		} else {
 			const isMySqlLike = conn.type === 'mysql' || conn.type === 'mariadb'
-			const user = conn.user || (isMySqlLike ? 'root' : conn.type === 'cockroach' ? 'root' : 'postgres')
+			const user =
+				conn.user ||
+				(isMySqlLike ? 'root' : conn.type === 'cockroach' ? 'root' : 'postgres')
 			const password = conn.password || ''
 			const host = conn.host || 'localhost'
 			const port =
-				conn.port ||
-				(conn.type === 'cockroach' ? 26257 : isMySqlLike ? 3306 : 5432)
+				conn.port || (conn.type === 'cockroach' ? 26257 : isMySqlLike ? 3306 : 5432)
 			const database =
 				conn.database ||
 				(conn.type === 'cockroach' ? 'defaultdb' : isMySqlLike ? 'mysql' : 'postgres')

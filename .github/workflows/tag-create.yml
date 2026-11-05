@@ -5,37 +5,37 @@ name: Create tag
 # (`bun run release` or Actions → Release dispatch).
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Tag to create (e.g. v0.25.0)
-        required: true
-        type: string
-      sha:
-        description: Commit SHA to tag (defaults to master HEAD)
-        required: false
-        type: string
+    workflow_dispatch:
+        inputs:
+            tag:
+                description: Tag to create (e.g. v0.25.0)
+                required: true
+                type: string
+            sha:
+                description: Commit SHA to tag (defaults to master HEAD)
+                required: false
+                type: string
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  create-tag:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
-        with:
-          fetch-depth: 0
-          ref: master
+    create-tag:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+              with:
+                  fetch-depth: 0
+                  ref: master
 
-      - name: Create and push tag
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          SHA="${{ inputs.sha || github.sha }}"
-          TAG="${{ inputs.tag }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG" "$SHA"
-          git push origin "$TAG"
-          echo "Tagged $SHA as $TAG"
+            - name: Create and push tag
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  SHA="${{ inputs.sha || github.sha }}"
+                  TAG="${{ inputs.tag }}"
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git tag "$TAG" "$SHA"
+                  git push origin "$TAG"
+                  echo "Tagged $SHA as $TAG"

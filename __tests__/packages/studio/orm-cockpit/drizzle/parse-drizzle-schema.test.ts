@@ -30,7 +30,7 @@ describe('parseDrizzleSchema (postgres, multi-file)', function () {
 	const result = parseDrizzleSchema(
 		[
 			{ path: 'schema/user.ts', text: PG_USERS },
-			{ path: 'schema/post.ts', text: PG_POSTS },
+			{ path: 'schema/post.ts', text: PG_POSTS }
 		],
 		'postgres'
 	)
@@ -49,7 +49,7 @@ describe('parseDrizzleSchema (postgres, multi-file)', function () {
 			'id',
 			'is_active',
 			'name',
-			'role',
+			'role'
 		])
 		expect(byName.id.type).toBe('int')
 		expect(byName.id.rawType).toBe('serial')
@@ -75,7 +75,7 @@ describe('parseDrizzleSchema (postgres, multi-file)', function () {
 	it('records .unique() as a single-column unique index', function () {
 		const user = result.ir.tables.find((t) => t.name === 'user')!
 		expect(user.indexes).toEqual([
-			{ name: 'user_email_unique', columns: ['email'], unique: true },
+			{ name: 'user_email_unique', columns: ['email'], unique: true }
 		])
 	})
 
@@ -91,8 +91,8 @@ describe('parseDrizzleSchema (postgres, multi-file)', function () {
 				columns: ['author_id'],
 				refTable: 'user',
 				refColumns: ['id'],
-				onDelete: 'cascade',
-			},
+				onDelete: 'cascade'
+			}
 		])
 	})
 
@@ -143,7 +143,7 @@ describe('parseDrizzleSchema (sqlite, table-level config)', function () {
 		const membership = result.ir.tables.find((t) => t.name === 'membership')!
 		expect(membership.indexes).toEqual([
 			{ name: 'membership_role_idx', columns: ['role'], unique: false },
-			{ name: 'membership_user_unique', columns: ['user_id'], unique: true },
+			{ name: 'membership_user_unique', columns: ['user_id'], unique: true }
 		])
 	})
 })
@@ -177,8 +177,8 @@ describe('parseDrizzleSchema (composite foreign key)', function () {
 				columns: ['pa', 'pb'],
 				refTable: 'parent',
 				refColumns: ['a', 'b'],
-				onDelete: 'restrict',
-			},
+				onDelete: 'restrict'
+			}
 		])
 	})
 })
@@ -193,9 +193,14 @@ export const thing = sqliteTable('thing', {
 
 describe('parseDrizzleSchema (dialect resolution)', function () {
 	it('warns but proceeds when the builder dialect disagrees with the arg', function () {
-		const result = parseDrizzleSchema([{ path: 'schema.ts', text: DIALECT_MISMATCH }], 'postgres')
+		const result = parseDrizzleSchema(
+			[{ path: 'schema.ts', text: DIALECT_MISMATCH }],
+			'postgres'
+		)
 		expect(result.ir.tables.map((t) => t.name)).toEqual(['thing'])
-		expect(result.warnings.some((w) => w.includes('sqliteTable') && w.includes('sqlite'))).toBe(true)
+		expect(result.warnings.some((w) => w.includes('sqliteTable') && w.includes('sqlite'))).toBe(
+			true
+		)
 	})
 })
 

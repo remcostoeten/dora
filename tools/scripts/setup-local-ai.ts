@@ -66,9 +66,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function installOllama(): Promise<boolean> {
-	const shouldInstall = await askQuestion(
-		'Install Ollama now? (Requires sudo) [y/N]'
-	)
+	const shouldInstall = await askQuestion('Install Ollama now? (Requires sudo) [y/N]')
 	if (shouldInstall.toLowerCase() !== 'y' && shouldInstall.toLowerCase() !== 'yes') {
 		log('Please install Ollama from https://ollama.com/download', colors.yellow)
 		return false

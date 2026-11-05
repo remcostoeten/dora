@@ -4,9 +4,7 @@ export function isInternalQueryTable(name: string): boolean {
 	return INTERNAL_TABLE_PATTERN.test(name.trim())
 }
 
-export function pickDefaultQueryTable<T extends { name: string }>(
-	tables: T[]
-): T | undefined {
+export function pickDefaultQueryTable<T extends { name: string }>(tables: T[]): T | undefined {
 	if (tables.length === 0) return undefined
 
 	const preferred = tables.find(function (table) {

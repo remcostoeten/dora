@@ -35,7 +35,12 @@ function isPassedAsArgument(varDecl: Node): boolean {
 		if (!parent) continue
 		if (parent.getKind() === SyntaxKind.CallExpression) {
 			const call = parent.asKindOrThrow(SyntaxKind.CallExpression)
-			if (call.getArguments().some(function (arg) { return arg === reference })) return true
+			if (
+				call.getArguments().some(function (arg) {
+					return arg === reference
+				})
+			)
+				return true
 		}
 		if (parent.getKind() === SyntaxKind.JsxExpression) return true
 	}
@@ -67,7 +72,8 @@ function collectViolations(): Violation[] {
 			if (varDecl.getKind() !== SyntaxKind.VariableDeclaration) continue
 
 			const varDeclList = varDecl.getParent()
-			if (!varDeclList || varDeclList.getKind() !== SyntaxKind.VariableDeclarationList) continue
+			if (!varDeclList || varDeclList.getKind() !== SyntaxKind.VariableDeclarationList)
+				continue
 
 			const varStmt = varDeclList.getParent()
 			if (!varStmt || varStmt.getKind() !== SyntaxKind.VariableStatement) continue
@@ -89,8 +95,12 @@ function collectViolations(): Violation[] {
 		}
 
 		const nonExported = [
-			...sourceFile.getInterfaces().filter(function (i) { return !i.isExported() }),
-			...sourceFile.getTypeAliases().filter(function (t) { return !t.isExported() })
+			...sourceFile.getInterfaces().filter(function (i) {
+				return !i.isExported()
+			}),
+			...sourceFile.getTypeAliases().filter(function (t) {
+				return !t.isExported()
+			})
 		]
 
 		// Only a file whose *single* non-exported type is a props type must call
@@ -130,12 +140,16 @@ function main(): void {
 
 	if (strict) {
 		for (const violation of violations) {
-			console.error(`${violation.file}:${violation.line}  [${violation.rule}] ${violation.detail}`)
+			console.error(
+				`${violation.file}:${violation.line}  [${violation.rule}] ${violation.detail}`
+			)
 		}
 	}
 
 	const summary = [...byRule.entries()]
-		.map(function ([rule, count]) { return `${rule}: ${count}` })
+		.map(function ([rule, count]) {
+			return `${rule}: ${count}`
+		})
 		.join(', ')
 
 	console.error(`run-lint-style: ${violations.length} violation(s) (${summary})`)

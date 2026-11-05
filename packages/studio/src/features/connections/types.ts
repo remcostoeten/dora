@@ -53,7 +53,9 @@ export type Connection = {
 import { isReadonlySource } from './source-caps'
 
 /** @deprecated Prefer `isReadonlySource()` or `getSourceCaps().isReadonly`. */
-export function isReadOnlyConnection(connection: Pick<Connection, 'type' | 'fileSources' | 'url'>): boolean {
+export function isReadOnlyConnection(
+	connection: Pick<Connection, 'type' | 'fileSources' | 'url'>
+): boolean {
 	return isReadonlySource(connection)
 }
 

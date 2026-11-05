@@ -1,408 +1,422 @@
-import { FolderOpen, Key } from "lucide-react";
-import { commands } from "@studio/lib/bindings";
-import { DesktopOnlyButton } from "@studio/core/platform";
-import { Button } from "@studio/shared/ui/button";
-import { Checkbox } from "@studio/shared/ui/checkbox";
-import { Input } from "@studio/shared/ui/input";
-import { Label } from "@studio/shared/ui/label";
-import { toast } from "@studio/shared/ui/notifier";
-import { Connection, DatabaseType } from "../../types";
-import { getSourceCaps } from "../../source-caps";
-import { isUiActionVisible } from "../../ui-actions";
-import { PROVIDER_CONFIGS, sanitizeConnectionUrl } from "../../utils/providers";
-import { SshTunnelConfigForm } from "./ssh-tunnel-config-form";
+import { FolderOpen, Key } from 'lucide-react'
+import { commands } from '@studio/lib/bindings'
+import { DesktopOnlyButton } from '@studio/core/platform'
+import { Button } from '@studio/shared/ui/button'
+import { Checkbox } from '@studio/shared/ui/checkbox'
+import { Input } from '@studio/shared/ui/input'
+import { Label } from '@studio/shared/ui/label'
+import { toast } from '@studio/shared/ui/notifier'
+import { Connection, DatabaseType } from '../../types'
+import { getSourceCaps } from '../../source-caps'
+import { isUiActionVisible } from '../../ui-actions'
+import { PROVIDER_CONFIGS, sanitizeConnectionUrl } from '../../utils/providers'
+import { SshTunnelConfigForm } from './ssh-tunnel-config-form'
 
 type Props = {
-  formData: Partial<Connection>;
-  updateField: (field: keyof Connection, value: unknown) => void;
-  setFormData: React.Dispatch<React.SetStateAction<Partial<Connection>>>;
-  useConnectionString: boolean;
-  setUseConnectionString: (use: boolean) => void;
-  invalidField?: string;
-  errorId: string;
-};
+	formData: Partial<Connection>
+	updateField: (field: keyof Connection, value: unknown) => void
+	setFormData: React.Dispatch<React.SetStateAction<Partial<Connection>>>
+	useConnectionString: boolean
+	setUseConnectionString: (use: boolean) => void
+	invalidField?: string
+	errorId: string
+}
 
 function capsFromForm(formData: Partial<Connection>) {
-  return getSourceCaps({
-    type: formData.type ?? "postgres",
-    fileSources: formData.fileSources,
-    url: formData.url,
-  });
+	return getSourceCaps({
+		type: formData.type ?? 'postgres',
+		fileSources: formData.fileSources,
+		url: formData.url
+	})
 }
 
 export function ConnectionForm({
-  formData,
-  updateField,
-  setFormData,
-  useConnectionString,
-  setUseConnectionString,
-  invalidField,
-  errorId,
+	formData,
+	updateField,
+	setFormData,
+	useConnectionString,
+	setUseConnectionString,
+	invalidField,
+	errorId
 }: Props) {
-  const caps = capsFromForm(formData);
-  const engine = formData.type ?? "postgres";
+	const caps = capsFromForm(formData)
+	const engine = formData.type ?? 'postgres'
 
-  function invalidProps(field: keyof Connection) {
-    if (invalidField !== field) return {};
-    return { "aria-invalid": true, "aria-describedby": errorId };
-  }
+	function invalidProps(field: keyof Connection) {
+		if (invalidField !== field) return {}
+		return { 'aria-invalid': true, 'aria-describedby': errorId }
+	}
 
-  async function handleBrowseFile() {
-    try {
-      const result =
-        engine === "duckdb"
-          ? await commands.openFile("Pick a DuckDB database file")
-          : await commands.openSqliteDb();
-      if (result.status === "ok" && result.data) {
-        updateField("url", result.data);
-      }
-    } catch (error) {
-      console.error("Failed to open file picker:", error);
-      toast.error("Failed to open file picker", {
-        description: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+	async function handleBrowseFile() {
+		try {
+			const result =
+				engine === 'duckdb'
+					? await commands.openFile('Pick a DuckDB database file')
+					: await commands.openSqliteDb()
+			if (result.status === 'ok' && result.data) {
+				updateField('url', result.data)
+			}
+		} catch (error) {
+			console.error('Failed to open file picker:', error)
+			toast.error('Failed to open file picker', {
+				description: error instanceof Error ? error.message : String(error)
+			})
+		}
+	}
 
-  if (engine === "libsql") {
-    return (
-      <div className="form-section space-y-4">
-        <div className="space-y-2">
-          <Label
-            htmlFor="libsql-url"
-            className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          >
-            Database URL
-          </Label>
-          <Input
-            id="libsql-url"
-            {...invalidProps("url")}
-            placeholder="libsql://your-database.turso.io"
-            value={formData.url || ""}
-            onChange={function (e) {
-              updateField("url", e.target.value);
-            }}
-            className="input-glow font-mono text-sm"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label
-            htmlFor="libsql-token"
-            className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-          >
-            Auth Token
-          </Label>
-          <Input
-            id="libsql-token"
-            type="password"
-            placeholder="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."
-            value={formData.authToken || ""}
-            onChange={function (e) {
-              updateField("authToken", e.target.value);
-            }}
-            className="input-glow font-mono text-sm"
-          />
-          <p className="text-xs text-muted-foreground">Get your token from the Turso dashboard</p>
-        </div>
-      </div>
-    );
-  }
+	if (engine === 'libsql') {
+		return (
+			<div className='form-section space-y-4'>
+				<div className='space-y-2'>
+					<Label
+						htmlFor='libsql-url'
+						className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+					>
+						Database URL
+					</Label>
+					<Input
+						id='libsql-url'
+						{...invalidProps('url')}
+						placeholder='libsql://your-database.turso.io'
+						value={formData.url || ''}
+						onChange={function (e) {
+							updateField('url', e.target.value)
+						}}
+						className='input-glow font-mono text-sm'
+					/>
+				</div>
+				<div className='space-y-2'>
+					<Label
+						htmlFor='libsql-token'
+						className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+					>
+						Auth Token
+					</Label>
+					<Input
+						id='libsql-token'
+						type='password'
+						placeholder='eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9...'
+						value={formData.authToken || ''}
+						onChange={function (e) {
+							updateField('authToken', e.target.value)
+						}}
+						className='input-glow font-mono text-sm'
+					/>
+					<p className='text-xs text-muted-foreground'>
+						Get your token from the Turso dashboard
+					</p>
+				</div>
+			</div>
+		)
+	}
 
-  if (isUiActionVisible("local-file", caps) && (engine === "sqlite" || engine === "duckdb")) {
-    const isDuckDb = engine === "duckdb";
-    return (
-      <div className="form-section space-y-2">
-        <Label
-          htmlFor="sqlite-path"
-          className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-        >
-          Database File
-        </Label>
-        <div className="flex gap-2">
-          <Input
-            id="sqlite-path"
-            {...invalidProps("url")}
-            placeholder={isDuckDb ? "/path/to/database.duckdb" : "/path/to/database.db"}
-            value={formData.url || ""}
-            onChange={function (e) {
-              updateField("url", e.target.value);
-            }}
-            className="flex-1 input-glow font-mono text-sm"
-          />
-          <DesktopOnlyButton
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={handleBrowseFile}
-            className="shrink-0"
-            title="Browse for file"
-            desktopHint="Desktop only"
-          >
-            <FolderOpen className="h-4 w-4" />
-          </DesktopOnlyButton>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {isDuckDb
-            ? "Select or enter the path to your DuckDB database file"
-            : "Select or enter the path to your SQLite database file"}
-        </p>
-      </div>
-    );
-  }
+	if (isUiActionVisible('local-file', caps) && (engine === 'sqlite' || engine === 'duckdb')) {
+		const isDuckDb = engine === 'duckdb'
+		return (
+			<div className='form-section space-y-2'>
+				<Label
+					htmlFor='sqlite-path'
+					className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+				>
+					Database File
+				</Label>
+				<div className='flex gap-2'>
+					<Input
+						id='sqlite-path'
+						{...invalidProps('url')}
+						placeholder={isDuckDb ? '/path/to/database.duckdb' : '/path/to/database.db'}
+						value={formData.url || ''}
+						onChange={function (e) {
+							updateField('url', e.target.value)
+						}}
+						className='flex-1 input-glow font-mono text-sm'
+					/>
+					<DesktopOnlyButton
+						type='button'
+						variant='outline'
+						size='icon'
+						onClick={handleBrowseFile}
+						className='shrink-0'
+						title='Browse for file'
+						desktopHint='Desktop only'
+					>
+						<FolderOpen className='h-4 w-4' />
+					</DesktopOnlyButton>
+				</div>
+				<p className='text-xs text-muted-foreground'>
+					{isDuckDb
+						? 'Select or enter the path to your DuckDB database file'
+						: 'Select or enter the path to your SQLite database file'}
+				</p>
+			</div>
+		)
+	}
 
-  if (isUiActionVisible("remote-url", caps) && isUiActionVisible("ssh-tunnel", caps)) {
-    return (
-      <div className="form-section space-y-4">
-        <div className="flex items-center gap-2 py-1">
-          <Checkbox
-            id="use-url"
-            checked={useConnectionString}
-            onCheckedChange={function (checked) {
-              setUseConnectionString(!!checked);
-              if (checked) {
-                updateField("url", "");
-              } else {
-                updateField("url", undefined);
-                updateField("host", "localhost");
-                const config = PROVIDER_CONFIGS[formData.type as DatabaseType];
-                updateField("port", config.defaultPort);
-              }
-            }}
-          />
-          <Label htmlFor="use-url" className="text-sm cursor-pointer">
-            Use connection string
-          </Label>
-        </div>
+	if (isUiActionVisible('remote-url', caps) && isUiActionVisible('ssh-tunnel', caps)) {
+		return (
+			<div className='form-section space-y-4'>
+				<div className='flex items-center gap-2 py-1'>
+					<Checkbox
+						id='use-url'
+						checked={useConnectionString}
+						onCheckedChange={function (checked) {
+							setUseConnectionString(!!checked)
+							if (checked) {
+								updateField('url', '')
+							} else {
+								updateField('url', undefined)
+								updateField('host', 'localhost')
+								const config = PROVIDER_CONFIGS[formData.type as DatabaseType]
+								updateField('port', config.defaultPort)
+							}
+						}}
+					/>
+					<Label htmlFor='use-url' className='text-sm cursor-pointer'>
+						Use connection string
+					</Label>
+				</div>
 
-        {useConnectionString ? (
-          <>
-            <div className="space-y-2">
-              <Label
-                htmlFor="connection-string"
-                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-              >
-                Connection String
-              </Label>
-              <Input
-                id="connection-string"
-            {...invalidProps("url")}
-                placeholder={`${formData.type}://user:password@host:port/database`}
-                value={formData.url || ""}
-                onChange={function (e) {
-                  updateField("url", sanitizeConnectionUrl(e.target.value));
-                }}
-                className="input-glow font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground">Paste your full connection URL</p>
-            </div>
+				{useConnectionString ? (
+					<>
+						<div className='space-y-2'>
+							<Label
+								htmlFor='connection-string'
+								className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+							>
+								Connection String
+							</Label>
+							<Input
+								id='connection-string'
+								{...invalidProps('url')}
+								placeholder={`${formData.type}://user:password@host:port/database`}
+								value={formData.url || ''}
+								onChange={function (e) {
+									updateField('url', sanitizeConnectionUrl(e.target.value))
+								}}
+								className='input-glow font-mono text-sm'
+							/>
+							<p className='text-xs text-muted-foreground'>
+								Paste your full connection URL
+							</p>
+						</div>
 
-            {formData.type === "postgres" && (
-              <div className="flex items-center gap-2 pt-1">
-                <Checkbox
-                  id="pooler-mode-url"
-                  checked={formData.poolerMode ?? false}
-                  onCheckedChange={function (checked) {
-                    updateField("poolerMode", checked);
-                  }}
-                />
-                <Label
-                  htmlFor="pooler-mode-url"
-                  className="text-sm text-muted-foreground cursor-pointer"
-                >
-                  Pooler-compatible mode
-                </Label>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2 space-y-2">
-                <Label
-                  htmlFor="host"
-                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  Host
-                </Label>
-                <Input
-                  id="host"
-            {...invalidProps("host")}
-                  placeholder="localhost"
-                  value={formData.host || ""}
-                  onChange={function (e) {
-                    updateField("host", e.target.value);
-                  }}
-                  className="input-glow"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="port"
-                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  Port
-                </Label>
-                <Input
-                  id="port"
-            {...invalidProps("port")}
-                  type="number"
-                  value={formData.port || ""}
-                  onChange={function (e) {
-                    const port = Number.parseInt(e.target.value, 10);
-                    updateField("port", Number.isNaN(port) ? undefined : port);
-                  }}
-                  className="input-glow"
-                />
-              </div>
-            </div>
+						{formData.type === 'postgres' && (
+							<div className='flex items-center gap-2 pt-1'>
+								<Checkbox
+									id='pooler-mode-url'
+									checked={formData.poolerMode ?? false}
+									onCheckedChange={function (checked) {
+										updateField('poolerMode', checked)
+									}}
+								/>
+								<Label
+									htmlFor='pooler-mode-url'
+									className='text-sm text-muted-foreground cursor-pointer'
+								>
+									Pooler-compatible mode
+								</Label>
+							</div>
+						)}
+					</>
+				) : (
+					<>
+						<div className='grid grid-cols-3 gap-3'>
+							<div className='col-span-2 space-y-2'>
+								<Label
+									htmlFor='host'
+									className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+								>
+									Host
+								</Label>
+								<Input
+									id='host'
+									{...invalidProps('host')}
+									placeholder='localhost'
+									value={formData.host || ''}
+									onChange={function (e) {
+										updateField('host', e.target.value)
+									}}
+									className='input-glow'
+								/>
+							</div>
+							<div className='space-y-2'>
+								<Label
+									htmlFor='port'
+									className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+								>
+									Port
+								</Label>
+								<Input
+									id='port'
+									{...invalidProps('port')}
+									type='number'
+									value={formData.port || ''}
+									onChange={function (e) {
+										const port = Number.parseInt(e.target.value, 10)
+										updateField('port', Number.isNaN(port) ? undefined : port)
+									}}
+									className='input-glow'
+								/>
+							</div>
+						</div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="user"
-                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  Username
-                </Label>
-                <Input
-                  id="user"
-            {...invalidProps("user")}
-                  placeholder="postgres"
-                  value={formData.user || ""}
-                  onChange={function (e) {
-                    updateField("user", e.target.value);
-                  }}
-                  className="input-glow"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label
-                  htmlFor="password"
-                  className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  Password
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password || ""}
-                  onChange={function (e) {
-                    updateField("password", e.target.value);
-                  }}
-                  className="input-glow"
-                />
-              </div>
-            </div>
+						<div className='grid grid-cols-2 gap-3'>
+							<div className='space-y-2'>
+								<Label
+									htmlFor='user'
+									className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+								>
+									Username
+								</Label>
+								<Input
+									id='user'
+									{...invalidProps('user')}
+									placeholder='postgres'
+									value={formData.user || ''}
+									onChange={function (e) {
+										updateField('user', e.target.value)
+									}}
+									className='input-glow'
+								/>
+							</div>
+							<div className='space-y-2'>
+								<Label
+									htmlFor='password'
+									className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+								>
+									Password
+								</Label>
+								<Input
+									id='password'
+									type='password'
+									placeholder='••••••••'
+									value={formData.password || ''}
+									onChange={function (e) {
+										updateField('password', e.target.value)
+									}}
+									className='input-glow'
+								/>
+							</div>
+						</div>
 
-            <div className="space-y-2">
-              <Label
-                htmlFor="database"
-                className="text-xs font-medium uppercase tracking-wider text-muted-foreground"
-              >
-                Database
-              </Label>
-              <Input
-                id="database"
-            {...invalidProps("database")}
-                placeholder="postgres"
-                value={formData.database || ""}
-                onChange={function (e) {
-                  updateField("database", e.target.value);
-                }}
-                className="input-glow"
-              />
-            </div>
+						<div className='space-y-2'>
+							<Label
+								htmlFor='database'
+								className='text-xs font-medium uppercase tracking-wider text-muted-foreground'
+							>
+								Database
+							</Label>
+							<Input
+								id='database'
+								{...invalidProps('database')}
+								placeholder='postgres'
+								value={formData.database || ''}
+								onChange={function (e) {
+									updateField('database', e.target.value)
+								}}
+								className='input-glow'
+							/>
+						</div>
 
-            <div className="flex items-center gap-2 pt-1">
-              <Checkbox
-                id="ssl"
-                checked={formData.ssl}
-                onCheckedChange={function (checked) {
-                  updateField("ssl", checked);
-                }}
-              />
-              <Label htmlFor="ssl" className="text-sm text-muted-foreground cursor-pointer">
-                Use SSL / TLS connection
-              </Label>
-            </div>
+						<div className='flex items-center gap-2 pt-1'>
+							<Checkbox
+								id='ssl'
+								checked={formData.ssl}
+								onCheckedChange={function (checked) {
+									updateField('ssl', checked)
+								}}
+							/>
+							<Label
+								htmlFor='ssl'
+								className='text-sm text-muted-foreground cursor-pointer'
+							>
+								Use SSL / TLS connection
+							</Label>
+						</div>
 
-            {formData.type === "postgres" && (
-              <div className="flex items-center gap-2 pt-1">
-                <Checkbox
-                  id="pooler-mode"
-                  checked={formData.poolerMode ?? false}
-                  onCheckedChange={function (checked) {
-                    updateField("poolerMode", checked);
-                  }}
-                />
-                <Label
-                  htmlFor="pooler-mode"
-                  className="text-sm text-muted-foreground cursor-pointer"
-                >
-                  Pooler-compatible mode
-                </Label>
-              </div>
-            )}
+						{formData.type === 'postgres' && (
+							<div className='flex items-center gap-2 pt-1'>
+								<Checkbox
+									id='pooler-mode'
+									checked={formData.poolerMode ?? false}
+									onCheckedChange={function (checked) {
+										updateField('poolerMode', checked)
+									}}
+								/>
+								<Label
+									htmlFor='pooler-mode'
+									className='text-sm text-muted-foreground cursor-pointer'
+								>
+									Pooler-compatible mode
+								</Label>
+							</div>
+						)}
 
-            <div className="border-t border-border/50 pt-4 mt-4 space-y-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="ssh-tunnel"
-                  checked={formData.sshConfig?.enabled ?? false}
-                  onCheckedChange={function (checked) {
-                    setFormData(function (prev) {
-                      return {
-                        ...prev,
-                        sshConfig: {
-                          enabled: !!checked,
-                          host: prev.sshConfig?.host || "",
-                          port: prev.sshConfig?.port || 22,
-                          username: prev.sshConfig?.username || "",
-                          authMethod: prev.sshConfig?.authMethod || "password",
-                          password: prev.sshConfig?.password || "",
-                          privateKeyPath: prev.sshConfig?.privateKeyPath || "",
-                          hostKeyFingerprint: prev.sshConfig?.hostKeyFingerprint || "",
-                        },
-                      };
-                    });
-                  }}
-                />
-                <Label
-                  htmlFor="ssh-tunnel"
-                  className="text-sm flex items-center gap-2 cursor-pointer"
-                >
-                  <Key className="h-4 w-4 text-muted-foreground" />
-                  Connect via SSH Tunnel
-                </Label>
-              </div>
-              {formData.sshConfig?.enabled && (
-                <SshTunnelConfigForm
-                  config={formData.sshConfig}
-                  invalidField={invalidField?.startsWith("ssh.") ? invalidField.slice(4) : undefined}
-                  errorId={errorId}
-                  onChange={function (sshConfig) {
-                    updateField("sshConfig", sshConfig);
-                  }}
-                />
-              )}
-            </div>
-          </>
-        )}
-        {formData.id && (
-          <label className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Checkbox
-              checked={formData.clearSavedPassword ?? false}
-              onCheckedChange={function (checked) {
-                updateField("clearSavedPassword", checked);
-              }}
-            />
-            Forget the previously saved password
-          </label>
-        )}
-      </div>
-    );
-  }
+						<div className='border-t border-border/50 pt-4 mt-4 space-y-4'>
+							<div className='flex items-center gap-2'>
+								<Checkbox
+									id='ssh-tunnel'
+									checked={formData.sshConfig?.enabled ?? false}
+									onCheckedChange={function (checked) {
+										setFormData(function (prev) {
+											return {
+												...prev,
+												sshConfig: {
+													enabled: !!checked,
+													host: prev.sshConfig?.host || '',
+													port: prev.sshConfig?.port || 22,
+													username: prev.sshConfig?.username || '',
+													authMethod:
+														prev.sshConfig?.authMethod || 'password',
+													password: prev.sshConfig?.password || '',
+													privateKeyPath:
+														prev.sshConfig?.privateKeyPath || '',
+													hostKeyFingerprint:
+														prev.sshConfig?.hostKeyFingerprint || ''
+												}
+											}
+										})
+									}}
+								/>
+								<Label
+									htmlFor='ssh-tunnel'
+									className='text-sm flex items-center gap-2 cursor-pointer'
+								>
+									<Key className='h-4 w-4 text-muted-foreground' />
+									Connect via SSH Tunnel
+								</Label>
+							</div>
+							{formData.sshConfig?.enabled && (
+								<SshTunnelConfigForm
+									config={formData.sshConfig}
+									invalidField={
+										invalidField?.startsWith('ssh.')
+											? invalidField.slice(4)
+											: undefined
+									}
+									errorId={errorId}
+									onChange={function (sshConfig) {
+										updateField('sshConfig', sshConfig)
+									}}
+								/>
+							)}
+						</div>
+					</>
+				)}
+				{formData.id && (
+					<label className='flex items-center gap-2 text-xs text-muted-foreground'>
+						<Checkbox
+							checked={formData.clearSavedPassword ?? false}
+							onCheckedChange={function (checked) {
+								updateField('clearSavedPassword', checked)
+							}}
+						/>
+						Forget the previously saved password
+					</label>
+				)}
+			</div>
+		)
+	}
 
-  return null;
+	return null
 }

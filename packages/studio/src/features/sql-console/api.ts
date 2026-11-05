@@ -34,7 +34,9 @@ export async function executeSqlQuery(
 			const fetchResult = await commands.fetchQuery(queryId)
 
 			if (fetchResult.status !== 'ok') {
-				throw new Error(`Failed to fetch query results: ${formatBackendError(fetchResult.error)}`)
+				throw new Error(
+					`Failed to fetch query results: ${formatBackendError(fetchResult.error)}`
+				)
 			}
 
 			pageInfo = fetchResult.data
@@ -73,7 +75,12 @@ export async function executeSqlQuery(
 						if (typeof col === 'string') {
 							return col
 						}
-						if (col && typeof col === 'object' && !Array.isArray(col) && typeof col.name === 'string') {
+						if (
+							col &&
+							typeof col === 'object' &&
+							!Array.isArray(col) &&
+							typeof col.name === 'string'
+						) {
 							return col.name
 						}
 						return String(col)

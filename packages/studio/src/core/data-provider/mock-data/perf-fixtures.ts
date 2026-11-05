@@ -62,11 +62,7 @@ function integer(random: () => number, min: number, max: number): number {
 	return min + Math.floor(random() * (max - min + 1))
 }
 
-function column(
-	name: string,
-	dataType: string,
-	options?: Partial<ColumnInfo>
-): ColumnInfo {
+function column(name: string, dataType: string, options?: Partial<ColumnInfo>): ColumnInfo {
 	return {
 		name,
 		data_type: dataType,
@@ -173,11 +169,7 @@ function buildPerfTables(): TableInfo[] {
 	const random = createRandom(0x5eed_1)
 	const tables: TableInfo[] = []
 	const generatedCount = PERF_TABLE_COUNT - 3
-	const widths = distributeColumns(
-		generatedCount,
-		PERF_COLUMN_COUNT - FIXED_COLUMN_COUNT,
-		random
-	)
+	const widths = distributeColumns(generatedCount, PERF_COLUMN_COUNT - FIXED_COLUMN_COUNT, random)
 
 	for (let index = 0; index < PERF_TABLE_COUNT; index += 1) {
 		const name = perfTableName(index)

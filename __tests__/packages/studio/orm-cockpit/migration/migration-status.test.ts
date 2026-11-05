@@ -5,7 +5,7 @@ import type { JournalEntry } from '@studio/features/orm-cockpit/migration/read-j
 const ENTRIES: JournalEntry[] = [
 	{ idx: 0, tag: '0000_init', when: 1000 },
 	{ idx: 1, tag: '0001_users', when: 2000 },
-	{ idx: 2, tag: '0002_posts', when: 3000 },
+	{ idx: 2, tag: '0002_posts', when: 3000 }
 ]
 
 describe('reconcileMigrations', function () {

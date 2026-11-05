@@ -10,7 +10,7 @@ import type { Dialect, SchemaIR, TableIR } from '@studio/features/orm-cockpit/ir
 import {
 	addForeignKeySql,
 	buildCreateTableSql,
-	createIndexSql,
+	createIndexSql
 } from '@studio/features/orm-cockpit/migration/generate-sql'
 
 /**
@@ -32,8 +32,8 @@ export function emitSchemaSql(ir: SchemaIR, dialect: Dialect, warnings: string[]
 				table.primaryKey,
 				dialect,
 				inlineFks ? table.foreignKeys : [],
-				warnings,
-			),
+				warnings
+			)
 		)
 		for (const idx of table.indexes) {
 			indexes.push(createIndexSql(table.name, idx, dialect))
@@ -66,7 +66,7 @@ export function emitSchemaSql(ir: SchemaIR, dialect: Dialect, warnings: string[]
 export function resolveForeignKeyTables(
 	ir: SchemaIR,
 	varToTable: Map<string, string>,
-	warnings: string[],
+	warnings: string[]
 ): SchemaIR {
 	const known = new Set(ir.tables.map((t) => t.name))
 	const tables: TableIR[] = ir.tables.map(function (table) {
@@ -81,10 +81,10 @@ export function resolveForeignKeyTables(
 					return { ...fk, refTable: resolved }
 				}
 				warnings.push(
-					`table "${table.name}": foreign key references "${fk.refTable}", which is not defined in this snippet; emitted as-is.`,
+					`table "${table.name}": foreign key references "${fk.refTable}", which is not defined in this snippet; emitted as-is.`
 				)
 				return fk
-			}),
+			})
 		}
 	})
 	return { dialect: ir.dialect, tables }

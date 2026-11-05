@@ -39,25 +39,25 @@ export function ModelIdInput({
 	const [open, setOpen] = useState(false)
 	const containerRef = useRef<HTMLDivElement>(null)
 
-	const suggestions = useMemo(function () {
-		return filterModelOptions(options, value)
-	}, [options, value])
-
-	useEffect(
-		function handleClickOutside() {
-			function onPointerDown(event: PointerEvent) {
-				if (!containerRef.current?.contains(event.target as Node)) {
-					setOpen(false)
-				}
-			}
-
-			document.addEventListener('pointerdown', onPointerDown)
-			return function () {
-				document.removeEventListener('pointerdown', onPointerDown)
-			}
+	const suggestions = useMemo(
+		function () {
+			return filterModelOptions(options, value)
 		},
-		[]
+		[options, value]
 	)
+
+	useEffect(function handleClickOutside() {
+		function onPointerDown(event: PointerEvent) {
+			if (!containerRef.current?.contains(event.target as Node)) {
+				setOpen(false)
+			}
+		}
+
+		document.addEventListener('pointerdown', onPointerDown)
+		return function () {
+			document.removeEventListener('pointerdown', onPointerDown)
+		}
+	}, [])
 
 	return (
 		<div ref={containerRef} className='relative'>

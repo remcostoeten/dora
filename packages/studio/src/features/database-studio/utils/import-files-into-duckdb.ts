@@ -40,7 +40,7 @@ export function formatImportFilesIntoDuckDbToast(
 	if (result.failed.length > 0) {
 		return {
 			title: `Imported ${count} ${fileLabel} into ${connectionLabel}`,
-			description: LOCAL_FILE_ERRORS.partialImportCompleted(count, result.failed.length),
+			description: LOCAL_FILE_ERRORS.partialImportCompleted(count, result.failed.length)
 		}
 	}
 
@@ -52,7 +52,7 @@ export function formatImportFilesIntoDuckDbToast(
 
 	return {
 		title: `Imported ${count} ${fileLabel} into ${connectionLabel}`,
-		description,
+		description
 	}
 }
 
@@ -60,7 +60,7 @@ export function refreshStudioSchema(connectionId: string) {
 	if (typeof window === 'undefined' || !connectionId) return
 	window.dispatchEvent(
 		new CustomEvent('dora-schema-refresh', {
-			detail: { connectionId },
+			detail: { connectionId }
 		})
 	)
 }

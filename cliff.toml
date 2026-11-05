@@ -22,20 +22,20 @@ trim = true
 [git]
 conventional_commits = false
 commit_parsers = [
-    { message = "^[Cc]hore\\(release\\)", skip = true },
-    { message = "^[Ww][Ii][Pp]", skip = true },
-    { message = "^[Mm]erge", skip = true },
-    { message = "^[Ff]eat", group = "Features" },
-    { message = "^[Ff]ix", group = "Bug Fixes" },
-    { message = "^[Dd]ocs", group = "Documentation" },
-    { message = "^[Pp]erf", group = "Performance" },
-    { message = "^[Rr]efactor", group = "Refactoring" },
-    { message = "^[Tt]est", group = "Testing" },
-    { message = "^[Cc]hore", group = "Chores" },
-    { message = "^[Cc][Ii]", group = "CI/CD" },
-    { message = "^[Ss]tyle", group = "Styling" },
-    { message = "^[Bb]uild", group = "Build" },
-    { message = ".*", group = "Other" },
+	{ message = "^[Cc]hore\\(release\\)", skip = true },
+	{ message = "^[Ww][Ii][Pp]", skip = true },
+	{ message = "^[Mm]erge", skip = true },
+	{ message = "^[Ff]eat", group = "Features" },
+	{ message = "^[Ff]ix", group = "Bug Fixes" },
+	{ message = "^[Dd]ocs", group = "Documentation" },
+	{ message = "^[Pp]erf", group = "Performance" },
+	{ message = "^[Rr]efactor", group = "Refactoring" },
+	{ message = "^[Tt]est", group = "Testing" },
+	{ message = "^[Cc]hore", group = "Chores" },
+	{ message = "^[Cc][Ii]", group = "CI/CD" },
+	{ message = "^[Ss]tyle", group = "Styling" },
+	{ message = "^[Bb]uild", group = "Build" },
+	{ message = ".*", group = "Other" }
 ]
 filter_commits = true
 tag_pattern = "v[0-9]+.*"

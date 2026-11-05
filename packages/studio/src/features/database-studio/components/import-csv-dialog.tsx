@@ -38,7 +38,9 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 
 		const MAX_FILE_SIZE_MB = 10
 		if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-			setParseError(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum size is ${MAX_FILE_SIZE_MB} MB.`)
+			setParseError(
+				`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum size is ${MAX_FILE_SIZE_MB} MB.`
+			)
 			if (fileInputRef.current) fileInputRef.current.value = ''
 			return
 		}
@@ -167,25 +169,24 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 								<thead className='bg-muted'>
 									<tr>
 										{csvHeaders.map((h) => (
-											<th
-												key={h}
-												className='px-2 py-1 text-left font-mono'
-											>
+											<th key={h} className='px-2 py-1 text-left font-mono'>
 												{h}
 											</th>
 										))}
 									</tr>
 								</thead>
 								<tbody>
-									{csvRows.slice(skipFirstRow ? 1 : 0, skipFirstRow ? 6 : 5).map((row, i) => (
-										<tr key={i} className='border-t'>
-											{row.map((cell, j) => (
-												<td key={j} className='px-2 py-1 font-mono'>
-													{cell}
-												</td>
-											))}
-										</tr>
-									))}
+									{csvRows
+										.slice(skipFirstRow ? 1 : 0, skipFirstRow ? 6 : 5)
+										.map((row, i) => (
+											<tr key={i} className='border-t'>
+												{row.map((cell, j) => (
+													<td key={j} className='px-2 py-1 font-mono'>
+														{cell}
+													</td>
+												))}
+											</tr>
+										))}
 								</tbody>
 							</table>
 						</div>
@@ -196,8 +197,7 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 							{csvHeaders.map((header) => {
 								const dbCol = mapping[header]
 								const colDef = nonPKColumns.find((c) => c.name === dbCol)
-								const sampleValue =
-									csvRows[0]?.[csvHeaders.indexOf(header)] ?? ''
+								const sampleValue = csvRows[0]?.[csvHeaders.indexOf(header)] ?? ''
 								const warning = colDef
 									? detectTypeMismatch(sampleValue, colDef.type)
 									: null
@@ -261,7 +261,11 @@ export function ImportCsvDialog({ open, onOpenChange, columns, onImport }: Props
 							<Button variant='outline' onClick={handleClose}>
 								Cancel
 							</Button>
-							<Button onClick={handleImport}>Import {skipFirstRow ? Math.max(0, csvRows.length - 1) : csvRows.length} rows</Button>
+							<Button onClick={handleImport}>
+								Import{' '}
+								{skipFirstRow ? Math.max(0, csvRows.length - 1) : csvRows.length}{' '}
+								rows
+							</Button>
 						</DialogFooter>
 					</div>
 				)}

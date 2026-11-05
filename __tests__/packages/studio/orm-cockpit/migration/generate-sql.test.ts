@@ -5,7 +5,7 @@ import type {
 	ForeignKeyIR,
 	IndexIR,
 	SchemaIR,
-	TableIR,
+	TableIR
 } from '@studio/features/orm-cockpit/ir/types'
 import { diffSchema } from '@studio/features/orm-cockpit/diff/diff-schema'
 import { generateMigrationSql } from '@studio/features/orm-cockpit/migration/generate-sql'
@@ -24,21 +24,21 @@ function col(name: string, type: ColumnIR['type'], opts: ColOpts = {}): ColumnIR
 		rawType: opts.rawType ?? type,
 		nullable: opts.nullable ?? false,
 		default: opts.default ?? null,
-		autoIncrement: opts.autoIncrement ?? false,
+		autoIncrement: opts.autoIncrement ?? false
 	}
 }
 
 function table(
 	name: string,
 	columns: ColumnIR[],
-	opts: { primaryKey?: string[]; indexes?: IndexIR[]; foreignKeys?: ForeignKeyIR[] } = {},
+	opts: { primaryKey?: string[]; indexes?: IndexIR[]; foreignKeys?: ForeignKeyIR[] } = {}
 ): TableIR {
 	return {
 		name,
 		columns: [...columns].sort((a, b) => a.name.localeCompare(b.name)),
 		primaryKey: opts.primaryKey ?? [],
 		indexes: opts.indexes ?? [],
-		foreignKeys: opts.foreignKeys ?? [],
+		foreignKeys: opts.foreignKeys ?? []
 	}
 }
 
@@ -59,10 +59,13 @@ describe('generateMigrationSql — CREATE TABLE', function () {
 				[
 					col('id', 'int', { autoIncrement: true }),
 					col('email', 'varchar', { nullable: false }),
-					col('created_at', 'timestamptz', { nullable: false, default: 'now()' }),
+					col('created_at', 'timestamptz', { nullable: false, default: 'now()' })
 				],
-				{ primaryKey: ['id'], indexes: [{ name: 'user_email_idx', columns: ['email'], unique: true }] },
-			),
+				{
+					primaryKey: ['id'],
+					indexes: [{ name: 'user_email_idx', columns: ['email'], unique: true }]
+				}
+			)
 		])
 		const { up, down } = migrate('postgres', from, to)
 
@@ -80,14 +83,10 @@ describe('generateMigrationSql — CREATE TABLE', function () {
 		const from = ir('sqlite', [])
 		const to = ir('sqlite', [
 			table('user', [col('id', 'int', { autoIncrement: true })], { primaryKey: ['id'] }),
-			table(
-				'post',
-				[col('id', 'int', { autoIncrement: true }), col('author_id', 'int')],
-				{
-					primaryKey: ['id'],
-					foreignKeys: [{ columns: ['author_id'], refTable: 'user', refColumns: ['id'] }],
-				},
-			),
+			table('post', [col('id', 'int', { autoIncrement: true }), col('author_id', 'int')], {
+				primaryKey: ['id'],
+				foreignKeys: [{ columns: ['author_id'], refTable: 'user', refColumns: ['id'] }]
+			})
 		])
 		const { up } = migrate('sqlite', from, to)
 
@@ -101,8 +100,8 @@ describe('generateMigrationSql — CREATE TABLE', function () {
 		const from = ir('mysql', [])
 		const to = ir('mysql', [
 			table('user', [col('id', 'bigint', { autoIncrement: true }), col('name', 'varchar')], {
-				primaryKey: ['id'],
-			}),
+				primaryKey: ['id']
+			})
 		])
 		const { up, warnings } = migrate('mysql', from, to)
 
@@ -117,12 +116,12 @@ describe('generateMigrationSql — CREATE TABLE', function () {
 			table('user', [col('id', 'int', { autoIncrement: true })], { primaryKey: ['id'] }),
 			table('post', [col('id', 'int', { autoIncrement: true }), col('author_id', 'int')], {
 				primaryKey: ['id'],
-				foreignKeys: [{ columns: ['author_id'], refTable: 'user', refColumns: ['id'] }],
-			}),
+				foreignKeys: [{ columns: ['author_id'], refTable: 'user', refColumns: ['id'] }]
+			})
 		])
 		const { up } = migrate('postgres', from, to)
 		expect(up).toContain(
-			'ALTER TABLE "post" ADD CONSTRAINT "post_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "user" ("id");',
+			'ALTER TABLE "post" ADD CONSTRAINT "post_author_id_fkey" FOREIGN KEY ("author_id") REFERENCES "user" ("id");'
 		)
 		// FK comes after the CREATE TABLE statements.
 		expect(up.indexOf('ADD CONSTRAINT')).toBeGreaterThan(up.indexOf('CREATE TABLE "post"'))
@@ -131,14 +130,18 @@ describe('generateMigrationSql — CREATE TABLE', function () {
 
 describe('generateMigrationSql — ALTER', function () {
 	const base = ir('postgres', [
-		table('user', [col('id', 'int', { autoIncrement: true })], { primaryKey: ['id'] }),
+		table('user', [col('id', 'int', { autoIncrement: true })], { primaryKey: ['id'] })
 	])
 
 	it('adds a nullable column as an additive change', function () {
 		const to = ir('postgres', [
-			table('user', [col('id', 'int', { autoIncrement: true }), col('age', 'int', { nullable: true })], {
-				primaryKey: ['id'],
-			}),
+			table(
+				'user',
+				[col('id', 'int', { autoIncrement: true }), col('age', 'int', { nullable: true })],
+				{
+					primaryKey: ['id']
+				}
+			)
 		])
 		const { up, down } = migrate('postgres', base, to)
 		expect(up).toContain('ALTER TABLE "user" ADD COLUMN "age" INTEGER;')
@@ -148,9 +151,13 @@ describe('generateMigrationSql — ALTER', function () {
 
 	it('flags an added NOT NULL column without default as destructive', function () {
 		const to = ir('postgres', [
-			table('user', [col('id', 'int', { autoIncrement: true }), col('age', 'int', { nullable: false })], {
-				primaryKey: ['id'],
-			}),
+			table(
+				'user',
+				[col('id', 'int', { autoIncrement: true }), col('age', 'int', { nullable: false })],
+				{
+					primaryKey: ['id']
+				}
+			)
 		])
 		const { up } = migrate('postgres', base, to)
 		expect(up).toContain('⚠ DESTRUCTIVE')
@@ -159,9 +166,16 @@ describe('generateMigrationSql — ALTER', function () {
 
 	it('emits DROP COLUMN under the destructive banner with a lossy down caveat', function () {
 		const from = ir('postgres', [
-			table('user', [col('id', 'int', { autoIncrement: true }), col('nickname', 'text', { nullable: true })], {
-				primaryKey: ['id'],
-			}),
+			table(
+				'user',
+				[
+					col('id', 'int', { autoIncrement: true }),
+					col('nickname', 'text', { nullable: true })
+				],
+				{
+					primaryKey: ['id']
+				}
+			)
 		])
 		const { up, down } = migrate('postgres', from, base)
 		expect(up).toContain('⚠ DESTRUCTIVE')
@@ -172,14 +186,28 @@ describe('generateMigrationSql — ALTER', function () {
 
 	it('comments out an uncertain (review) type change', function () {
 		const from = ir('postgres', [
-			table('m', [col('id', 'int', { autoIncrement: true }), col('data', 'unknown', { rawType: 'geometry' })], {
-				primaryKey: ['id'],
-			}),
+			table(
+				'm',
+				[
+					col('id', 'int', { autoIncrement: true }),
+					col('data', 'unknown', { rawType: 'geometry' })
+				],
+				{
+					primaryKey: ['id']
+				}
+			)
 		])
 		const to = ir('postgres', [
-			table('m', [col('id', 'int', { autoIncrement: true }), col('data', 'unknown', { rawType: 'geography' })], {
-				primaryKey: ['id'],
-			}),
+			table(
+				'm',
+				[
+					col('id', 'int', { autoIncrement: true }),
+					col('data', 'unknown', { rawType: 'geography' })
+				],
+				{
+					primaryKey: ['id']
+				}
+			)
 		])
 		const { up } = migrate('postgres', from, to)
 		expect(up).toContain('-- REVIEW:')
@@ -198,9 +226,13 @@ describe('generateMigrationSql — ALTER', function () {
 describe('generateMigrationSql — DROP TABLE and no-op', function () {
 	it('drops a removed table and recreates it (best-effort) in down', function () {
 		const from = ir('postgres', [
-			table('legacy', [col('id', 'int', { autoIncrement: true }), col('val', 'text', { nullable: true })], {
-				primaryKey: ['id'],
-			}),
+			table(
+				'legacy',
+				[col('id', 'int', { autoIncrement: true }), col('val', 'text', { nullable: true })],
+				{
+					primaryKey: ['id']
+				}
+			)
 		])
 		const to = ir('postgres', [])
 		const { up, down } = migrate('postgres', from, to)
@@ -212,7 +244,7 @@ describe('generateMigrationSql — DROP TABLE and no-op', function () {
 
 	it('returns a no-op message when there are no changes', function () {
 		const schema = ir('postgres', [
-			table('user', [col('id', 'int', { autoIncrement: true })], { primaryKey: ['id'] }),
+			table('user', [col('id', 'int', { autoIncrement: true })], { primaryKey: ['id'] })
 		])
 		const { up, down, warnings } = migrate('postgres', schema, schema)
 		expect(up).toBe('-- No changes.')
@@ -224,16 +256,16 @@ describe('generateMigrationSql — DROP TABLE and no-op', function () {
 describe('generateMigrationSql — index & FK changes on existing tables', function () {
 	const from = ir('postgres', [
 		table('user', [col('id', 'int', { autoIncrement: true }), col('email', 'varchar')], {
-			primaryKey: ['id'],
-		}),
+			primaryKey: ['id']
+		})
 	])
 
 	it('creates an added index and drops it in down', function () {
 		const to = ir('postgres', [
 			table('user', [col('id', 'int', { autoIncrement: true }), col('email', 'varchar')], {
 				primaryKey: ['id'],
-				indexes: [{ name: 'user_email_idx', columns: ['email'], unique: true }],
-			}),
+				indexes: [{ name: 'user_email_idx', columns: ['email'], unique: true }]
+			})
 		])
 		const { up, down } = migrate('postgres', from, to)
 		expect(up).toContain('CREATE UNIQUE INDEX "user_email_idx" ON "user" ("email");')
@@ -243,9 +275,16 @@ describe('generateMigrationSql — index & FK changes on existing tables', funct
 	it('infers a primary key from autoIncrement when no schema context is given', function () {
 		// Call the generator with only the diff (no context) to exercise degradation.
 		const to = ir('postgres', [
-			table('widget', [col('id', 'int', { autoIncrement: true }), col('label', 'text', { nullable: true })], {
-				primaryKey: ['id'],
-			}),
+			table(
+				'widget',
+				[
+					col('id', 'int', { autoIncrement: true }),
+					col('label', 'text', { nullable: true })
+				],
+				{
+					primaryKey: ['id']
+				}
+			)
 		])
 		const result = generateMigrationSql(diffSchema(ir('postgres', []), to), 'postgres')
 		expect(result.up).toContain('"id" SERIAL PRIMARY KEY')

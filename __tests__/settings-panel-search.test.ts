@@ -17,13 +17,17 @@ describe('settings panel search', function () {
 		expect(ollamaMatches).toContain('ai-provider')
 		expect(ollamaMatches).toContain('ollama-models')
 
-		expect(filterSections('api key').map(function (section) {
-			return section.id
-		})).toContain('ai-keys')
+		expect(
+			filterSections('api key').map(function (section) {
+				return section.id
+			})
+		).toContain('ai-keys')
 
-		expect(filterSections('keyboard').map(function (section) {
-			return section.id
-		})).toContain('shortcuts')
+		expect(
+			filterSections('keyboard').map(function (section) {
+				return section.id
+			})
+		).toContain('shortcuts')
 	})
 
 	it('matches individual shortcuts from the main settings search', function () {
@@ -36,9 +40,11 @@ describe('settings panel search', function () {
 				title: 'Reconnect to database'
 			})
 		)
-		expect(filterSections('reconnect').map(function (section) {
-			return section.id
-		})).toContain('shortcuts')
+		expect(
+			filterSections('reconnect').map(function (section) {
+				return section.id
+			})
+		).toContain('shortcuts')
 	})
 
 	it('matches individual settings from the main settings search', function () {
