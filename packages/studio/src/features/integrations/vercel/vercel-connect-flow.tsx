@@ -19,6 +19,11 @@ import {
 import { useVercelStores } from './use-vercel-stores'
 import { useIsTauri } from '@studio/core/data-provider'
 import { DesktopOnlyNotice } from '@studio/core/platform'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import {
+	ProjectIllustration,
+	SearchIllustration
+} from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	onComplete: (connection: Omit<Connection, 'id' | 'createdAt'>) => void
@@ -391,11 +396,28 @@ function VercelConnectFlowInner({ onComplete }: Props) {
 							</p>
 						) : null}
 						{!isLoading && !error && filteredStores.length === 0 ? (
-							<p className='px-1 py-3 text-xs text-muted-foreground'>
-								{stores.length === 0
-									? 'No Vercel projects found for this account. Add a Postgres store in the Vercel dashboard, then Refresh.'
-									: 'No projects match your search.'}
-							</p>
+							<EmptyState
+								size='xs'
+								headingLevel='h4'
+								loop
+								illustration={
+									stores.length === 0 ? (
+										<ProjectIllustration />
+									) : (
+										<SearchIllustration />
+									)
+								}
+								title={
+									stores.length === 0
+										? 'No Vercel projects found for this account'
+										: 'No matches'
+								}
+								description={
+									stores.length === 0
+										? 'Add a Postgres store in the Vercel dashboard, then Refresh.'
+										: 'Try a different search term.'
+								}
+							/>
 						) : null}
 						{filteredStores.map(function (store) {
 							const isSelected = selected?.projectId === store.projectId

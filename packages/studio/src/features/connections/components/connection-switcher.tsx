@@ -54,6 +54,11 @@ import {
 	resolveConnectionSearchText,
 	resolveProviderLabel
 } from '../source-labels'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import {
+	ProjectIllustration,
+	SearchIllustration
+} from '@studio/shared/ui/empty-state-illustrations'
 
 const KEEP_OPEN_AFTER_DELETE_MS = 600
 
@@ -679,11 +684,22 @@ export function ConnectionSwitcher({
 								)
 							})
 						) : (
-							<div className='px-2 py-6 text-xs text-center text-muted-foreground'>
-								{connections.length > 0
-									? 'No matching connections'
-									: 'No connections found'}
-							</div>
+							<EmptyState
+								size='xs'
+								headingLevel='h3'
+								illustration={
+									connections.length > 0 ? (
+										<SearchIllustration />
+									) : (
+										<ProjectIllustration />
+									)
+								}
+								title={
+									connections.length > 0
+										? 'No matching connections'
+										: 'No connections found'
+								}
+							/>
 						)}
 					</div>
 

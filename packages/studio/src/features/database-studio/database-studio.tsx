@@ -95,6 +95,8 @@ import type { ColumnDefinition } from './types'
 import type { BlobAction } from './components/cell-context-menu'
 import { bytesToBase64, bytesToHex } from './components/cells/blob-utils'
 import { useWorkspaceState } from '@studio/core/workspace-state'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { RecordIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 const TABLE_SKELETON_DELAY_MS = 150
 
@@ -1218,13 +1220,14 @@ export function DatabaseStudio({
 					</div>
 				)}
 				{!tableData && !isTableTransitioning && (
-					<div
-						className='flex items-center justify-center h-full'
+					<EmptyState
 						role='status'
 						aria-live='polite'
-					>
-						<div className='text-muted-foreground text-sm'>No data available</div>
-					</div>
+						size='sm'
+						illustration={<RecordIllustration />}
+						title='No data available'
+						description='This table returned nothing to show.'
+					/>
 				)}
 			</div>
 

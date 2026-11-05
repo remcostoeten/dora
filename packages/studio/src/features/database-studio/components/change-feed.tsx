@@ -6,6 +6,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@studio/shared/ui/popov
 import { Tooltip, TooltipTrigger, TooltipContent } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
 import type { ChangeEvent, ChangeType } from '@studio/core/live-monitor'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	events: ChangeEvent[]
@@ -114,13 +116,14 @@ export function ChangeFeed({ events, unreadCount, onClear, onMarkRead }: Props) 
 
 				<div ref={scrollRef} className='max-h-80 overflow-y-auto'>
 					{events.length === 0 ? (
-						<div className='flex flex-col items-center justify-center py-8 text-muted-foreground'>
-							<Bell className='h-8 w-8 mb-2 opacity-40' />
-							<span className='text-sm'>No changes detected</span>
-							<span className='text-xs mt-1 opacity-60'>
-								Enable live monitor to start tracking
-							</span>
-						</div>
+						<EmptyState
+							size='xs'
+							headingLevel='h3'
+							loop
+							illustration={<IconStack icon={<Bell />} />}
+							title='No changes detected'
+							description='Enable live monitor to start tracking.'
+						/>
 					) : (
 						<div className='divide-y divide-sidebar-border'>
 							{events.map(function (event) {

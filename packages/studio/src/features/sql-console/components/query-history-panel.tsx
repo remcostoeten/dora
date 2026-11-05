@@ -5,6 +5,8 @@ import { Input } from '@studio/shared/ui/input'
 import { ScrollArea } from '@studio/shared/ui/scroll-area'
 import { cn } from '@studio/shared/utils/cn'
 import { useQueryHistory, type QueryHistoryItem } from '../stores/query-history-store'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	onSelectQuery: (item: QueryHistoryItem) => void
@@ -273,12 +275,20 @@ export function QueryHistoryPanel({
 
 			<ScrollArea className='flex-1'>
 				{visibleItems.length === 0 ? (
-					<div className='flex flex-col items-center justify-center h-32 text-muted-foreground'>
-						<Clock className='h-8 w-8 mb-2 opacity-50' />
-						<span className='text-xs'>
-							{search ? 'No matches' : 'No query history'}
-						</span>
-					</div>
+					<EmptyState
+						size='xs'
+						headingLevel='h3'
+						loop
+						illustration={
+							search ? <SearchIllustration /> : <IconStack icon={<Clock />} />
+						}
+						title={search ? 'No matches' : 'No query history'}
+						description={
+							search
+								? 'Try a different search term.'
+								: 'Queries you run show up here.'
+						}
+					/>
 				) : (
 					<div className='flex flex-col'>
 						{/* Pinned section */}

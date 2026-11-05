@@ -30,6 +30,7 @@ import { useAdapter } from '@studio/core/data-provider'
 import { getAdapterError } from '@studio/core/data-provider/types'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack, ProjectIllustration } from '@studio/shared/ui/empty-state-illustrations'
 import { SchemaVisualizerCanvasLoadingState } from '@studio/shared/ui/view-loading-shell'
 import { getTableRefId } from '@studio/shared/utils/table-ref'
 import { RelationshipEdge } from './components/relationship-edge'
@@ -666,8 +667,10 @@ function SchemaVisualizerInner({
 	if (!activeConnectionId) {
 		return (
 			<EmptyState
-				icon={<Network className='h-16 w-16' />}
-				title='No Connection'
+				loop
+				pointer
+				illustration={<IconStack icon={<Network />} />}
+				title='No connection'
 				description='Select a database connection to visualize its schema.'
 			/>
 		)
@@ -725,8 +728,10 @@ function SchemaVisualizerInner({
 							<SchemaVisualizerCanvasLoadingState />
 						) : (
 							<EmptyState
-								icon={<Network className='h-16 w-16' />}
-								title='No Tables'
+								loop
+								pointer
+								illustration={<ProjectIllustration />}
+								title='No tables'
 								description='This database has no tables to visualize.'
 							/>
 						)

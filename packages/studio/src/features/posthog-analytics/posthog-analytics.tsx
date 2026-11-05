@@ -50,6 +50,8 @@ import {
 	type DrillKey
 } from './queries'
 import { useHogqlQuery } from './use-hogql-query'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { ChartIllustration, IconStack } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	connectionId: string
@@ -628,13 +630,10 @@ function SitesCard({
 						<Skeleton className='h-8 w-2/3' />
 					</div>
 				) : error ? (
-					<CardMessage
-						icon={<TriangleAlert className='h-6 w-6 text-amber-500' />}
-						text={error}
-					/>
+					<CardMessage kind='error' text={error} />
 				) : sites.length === 0 ? (
 					<CardMessage
-						icon={<Globe className='h-6 w-6 text-muted-foreground' />}
+						kind='empty'
 						text='No hostnames found. This project may not capture the $host property (e.g. non-web events).'
 					/>
 				) : (
@@ -782,15 +781,9 @@ function ChartCard({
 						<Skeleton className='h-full w-full rounded-md' />
 					</div>
 				) : error ? (
-					<CardMessage
-						icon={<TriangleAlert className='h-6 w-6 text-amber-500' />}
-						text={error}
-					/>
+					<CardMessage kind='error' text={error} />
 				) : isEmpty ? (
-					<CardMessage
-						icon={<BarChart3 className='h-6 w-6 text-muted-foreground' />}
-						text='No data in this time range.'
-					/>
+					<CardMessage kind='empty' text='No data in this time range.' />
 				) : (
 					children
 				)}
@@ -799,12 +792,23 @@ function ChartCard({
 	)
 }
 
-function CardMessage({ icon, text }: { icon: ReactNode; text: string }) {
+function CardMessage({ kind, text }: { kind: 'error' | 'empty'; text: string }) {
 	return (
-		<div className='flex h-full flex-col items-center justify-center gap-2 text-center'>
-			{icon}
-			<span className='max-w-md text-xs text-muted-foreground'>{text}</span>
-		</div>
+		<EmptyState
+			size='xs'
+			headingLevel='h3'
+			className='h-full'
+			loop={kind === 'empty'}
+			illustration={
+				kind === 'error' ? (
+					<IconStack icon={<TriangleAlert className='text-amber-500' />} />
+				) : (
+					<ChartIllustration />
+				)
+			}
+			title={kind === 'error' ? 'Could not load this chart' : 'Nothing to show'}
+			description={text}
+		/>
 	)
 }
 

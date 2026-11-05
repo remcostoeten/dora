@@ -47,6 +47,8 @@ import type {
 	ResultChartConfig,
 	ResultChartType
 } from './types'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { ChartIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	columns: ResultChartColumn[]
@@ -382,15 +384,14 @@ export function ResultChartPanel({ columns, rows, config, onConfigChange, title 
 
 			<div className='min-h-0 flex-1 p-4'>
 				{reason ? (
-					<div className='flex h-full items-center justify-center'>
-						<div className='max-w-md rounded-lg border border-sidebar-border bg-sidebar-accent/20 p-5 text-center'>
-							<BarChart3 className='mx-auto mb-3 h-8 w-8 text-muted-foreground' />
-							<div className='text-sm font-medium text-sidebar-foreground'>
-								Can't chart this result
-							</div>
-							<div className='mt-1 text-xs text-muted-foreground'>{reason}</div>
-						</div>
-					</div>
+					<EmptyState
+						size='sm'
+						headingLevel='h3'
+						loop
+						illustration={<ChartIllustration />}
+						title="Can't chart this result"
+						description={reason}
+					/>
 				) : dataset && effectiveConfig ? (
 					<div className='flex h-full min-h-0 flex-col gap-2'>
 						{dataset.wasDownsampled && (

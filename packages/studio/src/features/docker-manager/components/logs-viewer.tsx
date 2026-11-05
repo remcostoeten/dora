@@ -7,6 +7,8 @@ import {
 	SelectValue
 } from '@studio/shared/ui/select'
 import { LOG_TAIL_OPTIONS } from '../constants'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { RecordIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	logs: string
@@ -169,7 +171,14 @@ export function LogsViewer({ logs, isLoading, tailLines, onTailLinesChange }: Pr
 				{logs ? (
 					<HighlightedLogs logs={logs} />
 				) : (
-					<span className='text-zinc-500'>No logs available</span>
+					<EmptyState
+						size='xs'
+						headingLevel='h3'
+						className='h-full font-sans'
+						illustration={<RecordIllustration />}
+						title='No logs available'
+						description='Output appears here once the container writes to stdout or stderr.'
+					/>
 				)}
 			</div>
 		</div>

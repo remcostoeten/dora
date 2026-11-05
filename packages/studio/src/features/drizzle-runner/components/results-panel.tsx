@@ -6,6 +6,8 @@ import { ScrollArea } from '@studio/shared/ui/scroll-area'
 import { useSettings } from '@studio/core/settings'
 import { MASK_TOKEN, maskRowsForJson } from '@studio/core/privacy/mask'
 import { QueryResult } from '../types'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { RecordIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	result: QueryResult | null
@@ -37,9 +39,14 @@ export function ResultsPanel({ result, showJson }: Props) {
 
 	if (!result) {
 		return (
-			<div className='flex items-center justify-center h-full text-muted-foreground text-sm'>
-				Run a query to see results
-			</div>
+			<EmptyState
+				size='sm'
+				headingLevel='h3'
+				loop
+				illustration={<RecordIllustration />}
+				title='No results yet'
+				description='Run a query to see results here.'
+			/>
 		)
 	}
 
@@ -55,10 +62,13 @@ export function ResultsPanel({ result, showJson }: Props) {
 
 	if (result.rows.length === 0) {
 		return (
-			<div className='flex flex-col items-center justify-center h-full text-muted-foreground'>
-				<span className='text-sm'>No rows</span>
-				<span className='text-xs mt-1'>Query executed in {result.executionTime}ms</span>
-			</div>
+			<EmptyState
+				size='sm'
+				headingLevel='h3'
+				illustration={<RecordIllustration />}
+				title='No rows'
+				description={`Query executed in ${result.executionTime}ms.`}
+			/>
 		)
 	}
 

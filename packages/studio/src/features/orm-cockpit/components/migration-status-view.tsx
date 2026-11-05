@@ -7,6 +7,7 @@
 import { CheckCircle2, Clock, Info } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 import { SchemaDiffMigrationsSkeleton } from '@studio/shared/ui/view-loading-shell'
 import type { MigrationStatusState } from '@studio/features/orm-cockpit/components/use-migration-status'
 
@@ -18,7 +19,8 @@ export function MigrationStatusView({ state }: { state: MigrationStatusState }) 
 	if (!state.status) {
 		return (
 			<EmptyState
-				icon={<Info className='h-9 w-9' />}
+				loop
+				illustration={<IconStack icon={<Info />} />}
 				title='No migration status'
 				description={state.note ?? 'Nothing to show for this project.'}
 			/>

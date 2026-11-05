@@ -45,6 +45,8 @@ import {
 	getTableSqlIdentifier
 } from '@studio/shared/utils/table-ref'
 import { prefetchTableSnapshot } from '../database-studio/utils/table-snapshot'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 const DEFAULT_FILTERS: FilterState = {
 	showTables: true,
@@ -859,23 +861,30 @@ export function DatabaseSidebar({
 							</Button>
 						</div>
 					) : !schema ? (
-						<div className='flex flex-col items-center justify-center h-32 text-muted-foreground px-4'>
-							<DatabaseIcon className='h-8 w-8 mb-3 opacity-50' />
-							<span className='text-xs text-center mb-2'>No database connected</span>
-							<Button
-								variant='outline'
-								size='sm'
-								onClick={onAddConnection}
-								className='text-xs'
-							>
-								<Plus className='h-3 w-3 mr-1' />
-								Add Connection
-							</Button>
-						</div>
+						<EmptyState
+							size='xs'
+							headingLevel='h3'
+							loop
+							illustration={<IconStack icon={<DatabaseIcon />} />}
+							title='No database connected'
+							actions={[
+								{
+									id: 'add-connection',
+									label: 'Add connection',
+									icon: <Plus />,
+									variant: 'secondary',
+									onClick: onAddConnection
+								}
+							]}
+						/>
 					) : filteredTables.length === 0 ? (
-						<div className='flex flex-col items-center justify-center h-32 text-muted-foreground'>
-							<span className='text-xs'>No tables found</span>
-						</div>
+						<EmptyState
+							size='xs'
+							headingLevel='h3'
+							loop
+							illustration={<SearchIllustration />}
+							title='No tables found'
+						/>
 					) : (
 						<div className='relative'>
 							<TableList

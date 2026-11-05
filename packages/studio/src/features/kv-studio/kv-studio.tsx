@@ -1,7 +1,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import {
 	AlertTriangle,
-	Box,
 	ChevronRight,
 	Clock3,
 	Database,
@@ -33,6 +32,8 @@ import { cn } from '@studio/shared/utils/cn'
 import { commandName, formatTtl, groupKeysByNamespace, isDestructiveCommand } from './kv-utils'
 import type { KvAdapter, KvCommandResult, KvKeySummary, KvValue } from './types'
 import { ValueEditor } from './value-editor'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 type Props = {
 	adapter: KvAdapter
@@ -323,16 +324,20 @@ export function KvStudio({
 								))}
 							</div>
 						) : keys.length === 0 ? (
-							<div className='grid h-full place-items-center px-6 text-center'>
-								<div>
-									<KeyRound className='mx-auto mb-3 size-6 text-muted-foreground/60' />
-									<p className='text-sm font-medium'>No matching keys</p>
-									<p className='mt-1 text-xs text-muted-foreground'>
+							<EmptyState
+								size='xs'
+								headingLevel='h3'
+								className='h-full'
+								loop
+								illustration={<SearchIllustration />}
+								title='No matching keys'
+								description={
+									<>
 										Try a broader pattern such as{' '}
 										<code className='font-mono'>*</code>.
-									</p>
-								</div>
-							</div>
+									</>
+								}
+							/>
 						) : (
 							groups.map(function (group) {
 								return (
@@ -414,16 +419,13 @@ export function KvStudio({
 				<main className='flex min-h-0 min-w-0 flex-col'>
 					<div className='min-h-0 flex-1 overflow-auto'>
 						{!selectedKey ? (
-							<div className='grid h-full place-items-center px-8 text-center'>
-								<div className='max-w-sm'>
-									<Box className='mx-auto mb-4 size-8 text-muted-foreground/50' />
-									<h2 className='text-base font-semibold'>Inspect a key</h2>
-									<p className='mt-1 text-sm text-muted-foreground'>
-										Choose a key from the namespace rail to inspect its value,
-										change its TTL, or edit its contents.
-									</p>
-								</div>
-							</div>
+							<EmptyState
+								loop
+								pointer
+								illustration={<IconStack icon={<KeyRound />} />}
+								title='Inspect a key'
+								description='Choose a key from the namespace rail to inspect its value, change its TTL, or edit its contents.'
+							/>
 						) : (
 							<div className='flex min-h-full flex-col p-5'>
 								<div className='mb-4 flex flex-wrap items-start justify-between gap-3 border-b pb-4'>
@@ -554,9 +556,12 @@ export function KvStudio({
 								</form>
 								<div className='overflow-auto p-2'>
 									{history.length === 0 ? (
-										<div className='grid h-full place-items-center text-xs text-muted-foreground'>
-											Responses appear here
-										</div>
+										<EmptyState
+											size='xs'
+											headingLevel='h3'
+											title='No commands yet'
+											description='Responses appear here.'
+										/>
 									) : (
 										history.map(function (item, index) {
 											return (
