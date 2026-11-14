@@ -19,6 +19,9 @@
 
 use app_lib::database::adapter::{MySqlAdapter, WriteAdapter};
 use app_lib::database::dialect::MySqlDialect;
+use app_lib::database::services::connection::mysql_opts_with_pool_constraints;
+use app_lib::database::stmt_manager::StatementManager;
+use app_lib::database::types::{DatabaseClient, QueryStatus, StatementResult};
 use app_lib::kv::{
     classify_raw_command, KvBytes, KvConnection, KvConnectionConfig, KvDataType, KvKeySummary,
     KvReadRequest, KvReadResult, KvScanRequest, KvValue, RawCommandResult, RawCommandSafety,
@@ -137,6 +140,99 @@ async fn mariadb_full_mutation_lifecycle() {
     let url = std::env::var("DORA_MARIADB_URL")
         .unwrap_or_else(|_| "mysql://root:rootpass@127.0.0.1:3306/dora".into());
     mysql_family_lifecycle(&url, MySqlDialect::MariaDb).await;
+}
+
+// ---------------------------------------------------------------------------
+// Statement pipeline over a real MySQL-wire pool: the awaited read the grid
+// uses, the pool reuse that keeps a table open from paying a fresh connect,
+// and the failure path that used to leave a statement `Running`.
+// ---------------------------------------------------------------------------
+
+async fn mysql_statement(
+    manager: &StatementManager,
+    client: &DatabaseClient,
+    sql: &str,
+) -> StatementResult {
+    let ids = manager
+        .submit_query_for_connection(uuid::Uuid::nil(), client.clone(), sql)
+        .expect("statement should submit");
+    manager
+        .wait_for_statement(ids[0], Duration::from_secs(10))
+        .await
+        .expect("statement should be tracked")
+}
+
+async fn mysql_family_statement_pipeline(url: &str, dialect: MySqlDialect) {
+    let url = url::Url::parse(url).expect("invalid database URL");
+    let opts = mysql_opts_with_pool_constraints(&url, 4).expect("pool options should build");
+    let pool = Arc::new(mysql_async::Pool::new(opts));
+    let client = DatabaseClient::MySQL {
+        pool: pool.clone(),
+        dialect,
+    };
+    let manager = StatementManager::new();
+
+    let mut session_ids = BTreeSet::new();
+    for _ in 0..5 {
+        let read = mysql_statement(&manager, &client, "SELECT CONNECTION_ID() AS id").await;
+        assert_eq!(read.status, QueryStatus::Completed, "{:?}", read.error);
+        assert_eq!(
+            read.columns.as_ref().map(|columns| columns.get()),
+            Some(r#"["id"]"#)
+        );
+        assert_eq!(read.page_count, 1);
+        assert_eq!(read.rows_received, 1);
+        session_ids.insert(read.first_page.expect("a page of rows").get().to_string());
+    }
+    // Back-to-back reads can overlap the previous connection's return to the
+    // pool, so a second session may open. A pool that closed every returned
+    // connection would show five.
+    assert!(
+        session_ids.len() <= 2,
+        "reads should reuse pooled sessions, saw {session_ids:?}"
+    );
+
+    let failed = mysql_statement(
+        &manager,
+        &client,
+        "SELECT * FROM dora_live_table_that_does_not_exist LIMIT 50",
+    )
+    .await;
+    assert_eq!(failed.status, QueryStatus::Error);
+    let message = failed.error.expect("a failed statement carries its error");
+    assert!(
+        message.contains("dora_live_table_that_does_not_exist"),
+        "{message}"
+    );
+
+    drop(client);
+    Arc::try_unwrap(pool)
+        .expect("pool should have no other owner")
+        .disconnect()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn mysql_statement_pipeline_live() {
+    if !live_enabled() {
+        eprintln!("skipping mysql_statement_pipeline_live: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    let url = std::env::var("DORA_MYSQL_URL")
+        .unwrap_or_else(|_| "mysql://root:rootpass@127.0.0.1:3307/dora".into());
+    mysql_family_statement_pipeline(&url, MySqlDialect::MySql).await;
+}
+
+#[tokio::test]
+async fn mariadb_statement_pipeline_live() {
+    if !live_enabled() {
+        eprintln!("skipping mariadb_statement_pipeline_live: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    let url = std::env::var("DORA_MARIADB_URL")
+        .unwrap_or_else(|_| "mysql://root:rootpass@127.0.0.1:3306/dora".into());
+    mysql_family_statement_pipeline(&url, MySqlDialect::MariaDb).await;
 }
 
 // ---------------------------------------------------------------------------

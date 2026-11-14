@@ -57,13 +57,12 @@ export const DEFAULT_QUERY_SIGNATURE = buildQuerySignature(
 	EMPTY_FILTER_GROUP
 )
 
-/** The grid's view of a snapshot. Execution time is not snapshotted. */
 export function snapshotToTableData(snapshot: TableSnapshot): TableData {
 	return {
 		columns: snapshot.columns,
 		rows: snapshot.rows,
 		totalCount: snapshot.totalCount,
-		executionTime: 0
+		executionTime: snapshot.executionTime ?? 0
 	}
 }
 
@@ -170,7 +169,8 @@ export async function prefetchTableSnapshot(
 			filters: [],
 			conjunction: 'AND',
 			filterGroup: EMPTY_FILTER_GROUP,
-			fetchedAt: Date.now()
+			fetchedAt: Date.now(),
+			executionTime: data.executionTime
 		})
 	} catch {
 		// Prefetch is best-effort; ignore failures.

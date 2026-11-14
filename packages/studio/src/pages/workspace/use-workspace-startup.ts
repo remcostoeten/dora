@@ -10,8 +10,8 @@ import {
 	setActiveConnection,
 	setConnectionDialogDragActive,
 	setConnectionDialogDroppedPaths,
-	useActiveConnectionId,
-	useConnectionList
+	shallowArrayEqual,
+	useWorkspaceSelector
 } from '@studio/core/workspace-store'
 import { attachWheelZoom, initZoom } from '@studio/shared/lib/ui-zoom'
 import { getTableRefParts } from '@studio/shared/utils/table-ref'
@@ -31,8 +31,10 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 	const isTauri = useIsTauri()
 	const { settings, isLoading: isSettingsLoading } = useSettings()
 	const { isLoading: isConnectionsLoading, refetch: refetchConnections } = useConnections()
-	const connections = useConnectionList()
-	const activeConnectionId = useActiveConnectionId()
+	const connectionIds = useWorkspaceSelector(function (state) {
+		return state.connections.ids
+	}, shallowArrayEqual)
+	const activeConnectionIdAtRender = readWorkspace().tabs.activeConnectionId
 
 	const isLoading = isSettingsLoading || isConnectionsLoading
 
@@ -79,14 +81,10 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 			sessionHydratedRef.current = true
 			hydrateTabSession({
 				restoreUnpinned: settings.restoreTabsOnLaunch,
-				knownConnectionIds: new Set(
-					connections.map(function (connection) {
-						return connection.id
-					})
-				)
+				knownConnectionIds: new Set(connectionIds)
 			})
 		},
-		[isSettingsLoading, isConnectionsLoading, settings.restoreTabsOnLaunch, connections]
+		[isSettingsLoading, isConnectionsLoading, settings.restoreTabsOnLaunch, connectionIds]
 	)
 
 	const connectionInitializedRef = useRef(false)
@@ -99,7 +97,7 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 	useEffect(
 		function initializeConnection() {
 			if (isSettingsLoading || isConnectionsLoading) return
-			if (connections.length === 0) return
+			if (connectionIds.length === 0) return
 			if (connectionInitializedRef.current) return
 
 			function selectStartupConnection(connectionId: string) {
@@ -113,30 +111,26 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 				return
 			}
 
-			if (activeConnectionId || startupConnectionMode === 'empty') {
+			if (activeConnectionIdAtRender || startupConnectionMode === 'empty') {
 				connectionInitializedRef.current = true
 				return
 			}
 
-			if (settings.lastConnectionId) {
-				const lastConnection = connections.find(function (connection) {
-					return connection.id === settings.lastConnectionId
-				})
-				if (lastConnection) {
-					setActiveConnection(lastConnection.id)
-					if (settings.lastTableId) {
-						const { tableName } = getTableRefParts(settings.lastTableId)
-						openTab({
-							connectionId: lastConnection.id,
-							tableId: settings.lastTableId,
-							tableName,
-							label: tableName
-						})
-					}
-					requestAutoSelectFirstTable()
-					connectionInitializedRef.current = true
-					return
+			const lastConnectionId = settings.lastConnectionId
+			if (lastConnectionId && connectionIds.includes(lastConnectionId)) {
+				setActiveConnection(lastConnectionId)
+				if (settings.lastTableId) {
+					const { tableName } = getTableRefParts(settings.lastTableId)
+					openTab({
+						connectionId: lastConnectionId,
+						tableId: settings.lastTableId,
+						tableName,
+						label: tableName
+					})
 				}
+				requestAutoSelectFirstTable()
+				connectionInitializedRef.current = true
+				return
 			}
 
 			const isTauriRuntime =
@@ -150,25 +144,24 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 					getEnv('VITE_IS_WEB') === 'true')
 
 			if (isWebDemo) {
-				const demoConnection =
-					connections.find(function (connection) {
-						return connection.id === 'demo-ecommerce-001'
-					}) || connections[0]
-				if (demoConnection) {
-					selectStartupConnection(demoConnection.id)
+				const demoConnectionId = connectionIds.includes('demo-ecommerce-001')
+					? 'demo-ecommerce-001'
+					: connectionIds[0]
+				if (demoConnectionId) {
+					selectStartupConnection(demoConnectionId)
 					return
 				}
 			}
 
-			const firstConnection = connections[0]
-			if (firstConnection) selectStartupConnection(firstConnection.id)
+			const firstConnectionId = connectionIds[0]
+			if (firstConnectionId) selectStartupConnection(firstConnectionId)
 		},
 		[
 			isSettingsLoading,
 			isConnectionsLoading,
-			connections,
+			connectionIds,
 			urlConnection,
-			activeConnectionId,
+			activeConnectionIdAtRender,
 			startupConnectionMode,
 			settings.lastConnectionId,
 			settings.lastTableId

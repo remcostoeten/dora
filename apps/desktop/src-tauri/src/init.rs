@@ -60,6 +60,8 @@ pub fn build_window(app: &tauri::App) -> tauri::Result<()> {
     let window_builder = window_builder.transparent(false);
 
     let main_window = window_builder.build()?;
+    #[cfg(target_os = "linux")]
+    crate::linux_renderer::tune_webview(&main_window);
     // Config sets visible=false so we can paint the inline boot screen first.
     // Show here instead of waiting for frontend JS — WebKit can finish loading
     // while the window is hidden, which looks like a hang after startup logs.

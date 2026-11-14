@@ -1,4 +1,5 @@
 import React, {
+	memo,
 	useState,
 	useRef,
 	useEffect,
@@ -90,7 +91,7 @@ type Props = {
 	workspaceStateKey?: string
 }
 
-export function DataGrid({
+export const DataGrid = memo(function DataGrid({
 	columns,
 	rows,
 	selectedRows,
@@ -222,13 +223,15 @@ export function DataGrid({
 		[editingCell, handleSaveEdit, setFocusedCell]
 	)
 
-	const { handleRowClick, ensureRowSelectionForContextMenu } = useRowSelection({
+	const rowSelection = useRowSelection({
 		lastClickedRowRef,
 		onRowSelect,
 		onRowsSelect,
 		onSelectAll,
 		selectedRows
 	})
+	const handleRowClick = useStableCallback(rowSelection.handleRowClick)
+	const ensureRowSelectionForContextMenu = rowSelection.ensureRowSelectionForContextMenu
 
 	const contextMenu = useGridContextMenu({
 		onCellOpenChange: handleCellContextMenuChange,
@@ -316,7 +319,7 @@ export function DataGrid({
 			{ description: shortcuts.deselect.description }
 		)
 
-	function handleSort(columnName: string) {
+	const handleSort = useStableCallback(function handleSort(columnName: string) {
 		if (!onSortChange) return
 
 		if (sort?.column === columnName) {
@@ -328,7 +331,7 @@ export function DataGrid({
 		} else {
 			onSortChange({ column: columnName, direction: 'asc' })
 		}
-	}
+	})
 
 	const handleGridKeyDown = useGridKeyboard({
 		anchorCell,
@@ -504,4 +507,4 @@ export function DataGrid({
 			<ScrollHint containerRef={scrollContainerRef} />
 		</div>
 	)
-}
+})

@@ -1,16 +1,14 @@
-import { useCallback } from 'react'
+import { useMemo, useRef } from 'react'
 import { useIsTauri } from '@studio/core/data-provider'
 import { useConnectionMutations } from '@studio/core/data-provider/hooks'
-import { useSettings } from '@studio/core/settings'
+import { useSettings, type SettingsState } from '@studio/core/settings'
 import {
 	closeConnection,
 	closeTabsForConnection,
 	openConnectionDialog,
 	readWorkspace,
 	setActiveConnection,
-	setConnectionDialogOpen,
-	useConnectionList,
-	useOpenConnectionIds
+	setConnectionDialogOpen
 } from '@studio/core/workspace-store'
 import type { Connection } from '@studio/features/connections/types'
 import {
@@ -22,11 +20,19 @@ import {
 } from '@studio/features/connections/utils/data-files'
 import { frontendToBackendDatabaseInfo } from '@studio/features/connections/utils/mapping'
 import { commands } from '@studio/lib/bindings'
-import { useToast } from '@studio/shared/ui/use-toast'
+import { toast } from '@studio/shared/ui/use-toast'
 import { mapConnectionError } from '@studio/shared/utils/error-messages'
 import { requestAutoSelectFirstTable } from './auto-select'
 
-export type ConnectionActions = ReturnType<typeof useConnectionActions>
+export type ConnectionActions = ReturnType<typeof createConnectionActions>
+
+type Mutations = ReturnType<typeof useConnectionMutations>
+
+type Latest = {
+	isTauri: boolean
+	startupConnectionMode: SettingsState['startupConnectionMode']
+	mutations: Mutations
+}
 
 type DumpTarget = { kind: 'file'; extension: string; label: string } | { kind: 'directory' }
 
@@ -51,197 +57,193 @@ function sanitizeFileName(name: string): string {
 	return cleaned || 'dump'
 }
 
-export function useConnectionActions() {
-	const { toast } = useToast()
+/**
+ * @name useConnectionActions
+ * @description Returns the connection handlers as one object whose identity
+ * never changes. The handlers read the store, the settings and the mutations
+ * when they are called, so the hook subscribes to nothing that moves on a
+ * connection or view switch and never invalidates a memoized child.
+ *
+ * @example
+ * const actions = useConnectionActions()
+ * actions.handleConnectionSelect(connectionId)
+ */
+export function useConnectionActions(): ConnectionActions {
 	const isTauri = useIsTauri()
 	const { settings } = useSettings()
-	const connections = useConnectionList()
-	const openConnectionIds = useOpenConnectionIds()
-	const { addConnection, updateConnection, removeConnection, disconnectFromDatabase } =
-		useConnectionMutations()
+	const mutations = useConnectionMutations()
+	const latest = useRef<Latest>({
+		isTauri,
+		startupConnectionMode: settings.startupConnectionMode,
+		mutations
+	})
+	latest.current = { isTauri, startupConnectionMode: settings.startupConnectionMode, mutations }
 
-	const probeDatabaseFileKind = useCallback(
-		async function (path: string): Promise<DatabaseFileKind> {
-			if (!isTauri) return 'unknown'
-			const result = await commands.probeDatabaseFile(path)
-			return result.status === 'ok' ? result.data : 'unknown'
-		},
-		[isTauri]
-	)
+	return useMemo(function () {
+		return createConnectionActions(function readLatest() {
+			return latest.current
+		})
+	}, [])
+}
 
-	const resolveDatabaseType = useCallback(
-		function (path: string) {
-			return resolveDatabaseTypeForPath(path, probeDatabaseFileKind)
-		},
-		[probeDatabaseFileKind]
-	)
+function createConnectionActions(readLatest: () => Latest) {
+	function findConnection(connectionId: string): Connection | undefined {
+		return readWorkspace().connections.byId[connectionId]
+	}
 
-	const handleAddConnection = useCallback(
-		async function (connection: Omit<Connection, 'id' | 'status' | 'createdAt'>) {
-			try {
-				const dbInfo = frontendToBackendDatabaseInfo(connection as Connection)
-				const newConnection = await addConnection.mutateAsync({
-					name: connection.name,
-					databaseType: dbInfo
-				})
-				setConnectionDialogOpen(false)
-				setActiveConnection(newConnection.id)
-				requestAutoSelectFirstTable()
-				toast({
-					title: 'Connection Added',
-					description: `"${connection.name}" has been created and connected.`,
-					variant: 'success'
-				})
-			} catch (error) {
-				toast({
-					title: 'Failed to Add Connection',
-					description: mapConnectionError(
-						error instanceof Error ? error : new Error('Unknown error')
-					),
-					variant: 'destructive'
-				})
-			}
-		},
-		[addConnection, toast]
-	)
+	async function probeDatabaseFileKind(path: string): Promise<DatabaseFileKind> {
+		if (!readLatest().isTauri) return 'unknown'
+		const result = await commands.probeDatabaseFile(path)
+		return result.status === 'ok' ? result.data : 'unknown'
+	}
 
-	const handleUpdateConnection = useCallback(
-		async function (
-			editingConnectionId: string,
-			connection: Omit<Connection, 'id' | 'status' | 'createdAt'>
-		) {
-			try {
-				const dbInfo = frontendToBackendDatabaseInfo(connection as Connection)
-				await updateConnection.mutateAsync({
-					id: editingConnectionId,
-					name: connection.name,
-					databaseType: dbInfo,
-					clearPassword: connection.clearSavedPassword
-				})
-				setConnectionDialogOpen(false)
-				toast({
-					title: 'Connection Updated',
-					description: `"${connection.name}" has been updated.`,
-					variant: 'success'
-				})
-			} catch (error) {
-				toast({
-					title: 'Failed to Update Connection',
-					description: mapConnectionError(
-						error instanceof Error ? error : new Error('Unknown error')
-					),
-					variant: 'destructive'
-				})
-			}
-		},
-		[toast, updateConnection]
-	)
+	function resolveDatabaseType(path: string) {
+		return resolveDatabaseTypeForPath(path, probeDatabaseFileKind)
+	}
 
-	const handleDialogSave = useCallback(
-		async function (connectionData: Omit<Connection, 'id' | 'createdAt'>) {
-			const editingConnectionId =
-				readWorkspace().uiChrome.connectionDialog.editingConnectionId
-			if (editingConnectionId) {
-				await handleUpdateConnection(editingConnectionId, connectionData)
-			} else {
-				await handleAddConnection(connectionData)
-			}
-		},
-		[handleAddConnection, handleUpdateConnection]
-	)
-
-	const handleDeleteConnection = useCallback(
-		async function (connectionId: string) {
-			const connection = connections.find(function (candidate) {
-				return candidate.id === connectionId
+	async function handleAddConnection(
+		connection: Omit<Connection, 'id' | 'status' | 'createdAt'>
+	) {
+		try {
+			const dbInfo = frontendToBackendDatabaseInfo(connection as Connection)
+			const newConnection = await readLatest().mutations.addConnection.mutateAsync({
+				name: connection.name,
+				databaseType: dbInfo
 			})
-			if (!connection) return
-			try {
-				await removeConnection.mutateAsync(connection.id)
-				// Removing a connection also closes its tab group and clears it as
-				// active.
-				closeConnection(connection.id)
-				closeTabsForConnection(connection.id)
-				toast({
-					title: 'Connection Deleted',
-					description: `"${connection.name}" has been removed.`,
-					variant: 'success'
-				})
-			} catch (error) {
-				toast({
-					title: 'Failed to Delete Connection',
-					description: mapConnectionError(
-						error instanceof Error ? error : new Error('Unknown error')
-					),
-					variant: 'destructive'
-				})
-			}
-		},
-		[connections, removeConnection, toast]
-	)
-
-	const handleDumpConnection = useCallback(
-		async function (connectionId: string) {
-			const connection = connections.find(function (candidate) {
-				return candidate.id === connectionId
-			})
-			if (!connection) return
-
-			if (!isTauri) {
-				toast({
-					title: 'Dump unavailable',
-					description: 'Dumping a database requires the desktop app.',
-					variant: 'destructive'
-				})
-				return
-			}
-
-			const target = resolveDumpTarget(connection)
-			const { open, save } = await import('@tauri-apps/plugin-dialog')
-			const outputPath =
-				target.kind === 'directory'
-					? await open({ directory: true, title: `Dump ${connection.name} into folder` })
-					: await save({
-							title: `Dump ${connection.name}`,
-							defaultPath: `${sanitizeFileName(connection.name)}.${target.extension}`,
-							filters: [{ name: target.label, extensions: [target.extension] }]
-						})
-			if (!outputPath || typeof outputPath !== 'string') return
-
+			setConnectionDialogOpen(false)
+			setActiveConnection(newConnection.id)
+			requestAutoSelectFirstTable()
 			toast({
-				title: 'Dumping database',
-				description: `Writing ${connection.name} to ${outputPath}…`
+				title: 'Connection Added',
+				description: `"${connection.name}" has been created and connected.`,
+				variant: 'success'
 			})
+		} catch (error) {
+			toast({
+				title: 'Failed to Add Connection',
+				description: mapConnectionError(
+					error instanceof Error ? error : new Error('Unknown error')
+				),
+				variant: 'destructive'
+			})
+		}
+	}
 
-			try {
-				const result = await commands.dumpDatabase(connectionId, outputPath)
-				if (result.status !== 'ok') throw new Error(result.error.detail)
+	async function handleUpdateConnection(
+		editingConnectionId: string,
+		connection: Omit<Connection, 'id' | 'status' | 'createdAt'>
+	) {
+		try {
+			const dbInfo = frontendToBackendDatabaseInfo(connection as Connection)
+			await readLatest().mutations.updateConnection.mutateAsync({
+				id: editingConnectionId,
+				name: connection.name,
+				databaseType: dbInfo,
+				clearPassword: connection.clearSavedPassword
+			})
+			setConnectionDialogOpen(false)
+			toast({
+				title: 'Connection Updated',
+				description: `"${connection.name}" has been updated.`,
+				variant: 'success'
+			})
+		} catch (error) {
+			toast({
+				title: 'Failed to Update Connection',
+				description: mapConnectionError(
+					error instanceof Error ? error : new Error('Unknown error')
+				),
+				variant: 'destructive'
+			})
+		}
+	}
 
-				const sizeKb = (result.data.size_bytes / 1024).toFixed(1)
-				const rows = result.data.rows_dumped > 0 ? `, ${result.data.rows_dumped} rows` : ''
-				toast({
-					title: 'Dump complete',
-					description: `${result.data.tables_dumped} tables${rows} (${sizeKb} KB) → ${result.data.file_path}`,
-					variant: 'success'
-				})
-			} catch (error) {
-				toast({
-					title: 'Dump failed',
-					description: error instanceof Error ? error.message : 'Unknown error',
-					variant: 'destructive'
-				})
-			}
-		},
-		[connections, isTauri, toast]
-	)
+	async function handleDialogSave(connectionData: Omit<Connection, 'id' | 'createdAt'>) {
+		const editingConnectionId = readWorkspace().uiChrome.connectionDialog.editingConnectionId
+		if (editingConnectionId) {
+			await handleUpdateConnection(editingConnectionId, connectionData)
+		} else {
+			await handleAddConnection(connectionData)
+		}
+	}
 
-	const handleConnectionSelect = useCallback(
-		function (connectionId: string) {
-			setActiveConnection(connectionId)
-			if (settings.startupConnectionMode === 'auto') requestAutoSelectFirstTable()
-		},
-		[settings.startupConnectionMode]
-	)
+	async function handleDeleteConnection(connectionId: string) {
+		const connection = findConnection(connectionId)
+		if (!connection) return
+		try {
+			await readLatest().mutations.removeConnection.mutateAsync(connection.id)
+			closeConnection(connection.id)
+			closeTabsForConnection(connection.id)
+			toast({
+				title: 'Connection Deleted',
+				description: `"${connection.name}" has been removed.`,
+				variant: 'success'
+			})
+		} catch (error) {
+			toast({
+				title: 'Failed to Delete Connection',
+				description: mapConnectionError(
+					error instanceof Error ? error : new Error('Unknown error')
+				),
+				variant: 'destructive'
+			})
+		}
+	}
+
+	async function handleDumpConnection(connectionId: string) {
+		const connection = findConnection(connectionId)
+		if (!connection) return
+
+		if (!readLatest().isTauri) {
+			toast({
+				title: 'Dump unavailable',
+				description: 'Dumping a database requires the desktop app.',
+				variant: 'destructive'
+			})
+			return
+		}
+
+		const target = resolveDumpTarget(connection)
+		const { open, save } = await import('@tauri-apps/plugin-dialog')
+		const outputPath =
+			target.kind === 'directory'
+				? await open({ directory: true, title: `Dump ${connection.name} into folder` })
+				: await save({
+						title: `Dump ${connection.name}`,
+						defaultPath: `${sanitizeFileName(connection.name)}.${target.extension}`,
+						filters: [{ name: target.label, extensions: [target.extension] }]
+					})
+		if (!outputPath || typeof outputPath !== 'string') return
+
+		toast({
+			title: 'Dumping database',
+			description: `Writing ${connection.name} to ${outputPath}…`
+		})
+
+		try {
+			const result = await commands.dumpDatabase(connectionId, outputPath)
+			if (result.status !== 'ok') throw new Error(result.error.detail)
+
+			const sizeKb = (result.data.size_bytes / 1024).toFixed(1)
+			const rows = result.data.rows_dumped > 0 ? `, ${result.data.rows_dumped} rows` : ''
+			toast({
+				title: 'Dump complete',
+				description: `${result.data.tables_dumped} tables${rows} (${sizeKb} KB) → ${result.data.file_path}`,
+				variant: 'success'
+			})
+		} catch (error) {
+			toast({
+				title: 'Dump failed',
+				description: error instanceof Error ? error.message : 'Unknown error',
+				variant: 'destructive'
+			})
+		}
+	}
+
+	function handleConnectionSelect(connectionId: string) {
+		setActiveConnection(connectionId)
+		if (readLatest().startupConnectionMode === 'auto') requestAutoSelectFirstTable()
+	}
 
 	/**
 	 * Close a connection tab (issue #96): disconnect its backend session and drop
@@ -249,109 +251,90 @@ export function useConnectionActions() {
 	 * or the empty state when none remain. The connection itself is NOT deleted —
 	 * it stays in the saved connection list and can be reopened.
 	 */
-	const handleCloseConnection = useCallback(
-		function (connectionId: string) {
-			closeConnection(connectionId)
-			closeTabsForConnection(connectionId)
-			disconnectFromDatabase.mutate(connectionId)
-		},
-		[disconnectFromDatabase]
-	)
+	function handleCloseConnection(connectionId: string) {
+		closeConnection(connectionId)
+		closeTabsForConnection(connectionId)
+		readLatest().mutations.disconnectFromDatabase.mutate(connectionId)
+	}
 
-	const handleCloseOtherConnections = useCallback(
-		function (connectionId: string) {
-			openConnectionIds
-				.filter(function (id) {
-					return id !== connectionId
-				})
-				.forEach(handleCloseConnection)
-			setActiveConnection(connectionId)
-		},
-		[handleCloseConnection, openConnectionIds]
-	)
+	function handleCloseOtherConnections(connectionId: string) {
+		readWorkspace()
+			.tabs.openConnectionIds.filter(function (id) {
+				return id !== connectionId
+			})
+			.forEach(handleCloseConnection)
+		setActiveConnection(connectionId)
+	}
 
-	const handleCloseConnectionsToLeft = useCallback(
-		function (connectionId: string) {
-			const connectionIndex = openConnectionIds.indexOf(connectionId)
-			if (connectionIndex <= 0) return
-			openConnectionIds.slice(0, connectionIndex).forEach(handleCloseConnection)
-			setActiveConnection(connectionId)
-		},
-		[handleCloseConnection, openConnectionIds]
-	)
+	function handleCloseConnectionsToLeft(connectionId: string) {
+		const openConnectionIds = readWorkspace().tabs.openConnectionIds
+		const connectionIndex = openConnectionIds.indexOf(connectionId)
+		if (connectionIndex <= 0) return
+		openConnectionIds.slice(0, connectionIndex).forEach(handleCloseConnection)
+		setActiveConnection(connectionId)
+	}
 
-	const handleCloseConnectionsToRight = useCallback(
-		function (connectionId: string) {
-			const connectionIndex = openConnectionIds.indexOf(connectionId)
-			if (connectionIndex < 0 || connectionIndex >= openConnectionIds.length - 1) return
-			openConnectionIds.slice(connectionIndex + 1).forEach(handleCloseConnection)
-			setActiveConnection(connectionId)
-		},
-		[handleCloseConnection, openConnectionIds]
-	)
+	function handleCloseConnectionsToRight(connectionId: string) {
+		const openConnectionIds = readWorkspace().tabs.openConnectionIds
+		const connectionIndex = openConnectionIds.indexOf(connectionId)
+		if (connectionIndex < 0 || connectionIndex >= openConnectionIds.length - 1) return
+		openConnectionIds.slice(connectionIndex + 1).forEach(handleCloseConnection)
+		setActiveConnection(connectionId)
+	}
 
-	const handleEditConnection = useCallback(function (connectionId: string) {
+	function handleEditConnection(connectionId: string) {
 		openConnectionDialog(connectionId)
-	}, [])
+	}
 
-	const handleOpenNewConnection = useCallback(function () {
+	function handleOpenNewConnection() {
 		openConnectionDialog(null)
-	}, [])
+	}
 
-	const handleOpenDataFiles = useCallback(
-		async function (paths: string[]) {
-			const dataFiles = classifyDroppedPaths(paths).dataFiles
-			if (dataFiles.length === 0) return
-			await handleAddConnection(buildConnectionFromDataFiles(dataFiles))
-		},
-		[handleAddConnection]
-	)
+	async function handleOpenDataFiles(paths: string[]) {
+		const dataFiles = classifyDroppedPaths(paths).dataFiles
+		if (dataFiles.length === 0) return
+		await handleAddConnection(buildConnectionFromDataFiles(dataFiles))
+	}
 
-	const handlePickDataFiles = useCallback(
-		async function () {
-			try {
-				const result = await commands.openDataFiles()
-				if (result.status === 'ok' && result.data.length > 0) {
-					await handleOpenDataFiles(result.data)
-				}
-			} catch (error) {
-				toast({
-					title: 'Failed to open data files',
-					description: error instanceof Error ? error.message : String(error),
-					variant: 'destructive'
-				})
+	async function handlePickDataFiles() {
+		try {
+			const result = await commands.openDataFiles()
+			if (result.status === 'ok' && result.data.length > 0) {
+				await handleOpenDataFiles(result.data)
 			}
-		},
-		[handleOpenDataFiles, toast]
-	)
+		} catch (error) {
+			toast({
+				title: 'Failed to open data files',
+				description: error instanceof Error ? error.message : String(error),
+				variant: 'destructive'
+			})
+		}
+	}
 
-	const processImmediateFileDrop = useCallback(
-		async function (paths: string[]) {
-			const { dataFiles, databaseFiles, unsupported } = classifyDroppedPaths(paths)
+	async function processImmediateFileDrop(paths: string[]) {
+		const { dataFiles, databaseFiles, unsupported } = classifyDroppedPaths(paths)
 
-			if (unsupported.length > 0) {
-				toast({
-					title: 'Unsupported file type',
-					description: `Could not open: ${unsupported
-						.map(function (path) {
-							return path.split(/[\\/]/).pop() ?? path
-						})
-						.join(', ')}`,
-					variant: 'destructive'
-				})
-			}
+		if (unsupported.length > 0) {
+			toast({
+				title: 'Unsupported file type',
+				description: `Could not open: ${unsupported
+					.map(function (path) {
+						return path.split(/[\\/]/).pop() ?? path
+					})
+					.join(', ')}`,
+				variant: 'destructive'
+			})
+		}
 
-			if (dataFiles.length > 0) {
-				await handleOpenDataFiles(dataFiles)
-			}
+		if (dataFiles.length > 0) {
+			await handleOpenDataFiles(dataFiles)
+		}
 
-			for (const path of databaseFiles) {
-				const type = await resolveDatabaseType(path)
-				await handleAddConnection(buildConnectionFromDatabaseFile(path, type))
-			}
-		},
-		[handleAddConnection, handleOpenDataFiles, resolveDatabaseType, toast]
-	)
+		for (const path of databaseFiles) {
+			const type = await resolveDatabaseType(path)
+			await handleAddConnection(buildConnectionFromDatabaseFile(path, type))
+		}
+	}
 
 	return {
 		handleAddConnection,

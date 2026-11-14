@@ -1,4 +1,3 @@
-import { useCallback } from 'react'
 import { useIsTauri } from '@studio/core/data-provider'
 import { useSettings } from '@studio/core/settings'
 import { useEffectiveShortcuts, useShortcut } from '@studio/core/shortcuts'
@@ -13,10 +12,7 @@ import {
 	toggleCommandPalette,
 	toggleDatabasePanel,
 	openConnectionDialog,
-	useActiveConnectionId,
-	useActiveNavId,
-	useConnectionList,
-	useOpenConnectionIds
+	selectConnectionList
 } from '@studio/core/workspace-store'
 import { useAiAssistantStore } from '@studio/features/ai-assistant/store'
 import { resetZoom, toggleFullscreen, zoomIn, zoomOut } from '@studio/shared/lib/ui-zoom'
@@ -31,10 +27,6 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 	const shortcuts = useEffectiveShortcuts()
 	const isTauri = useIsTauri()
 	const { settings } = useSettings()
-	const connections = useConnectionList()
-	const activeConnectionId = useActiveConnectionId()
-	const activeNavId = useActiveNavId()
-	const openConnectionIds = useOpenConnectionIds()
 	const toggleAiAssistant = useAiAssistantStore(function (s) {
 		return s.toggleOpen
 	})
@@ -43,17 +35,15 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 	const $ = useShortcut()
 
 	// Cycle through open connection tabs (Ctrl+Shift+[ / Ctrl+Shift+]).
-	const cycleConnection = useCallback(
-		function (direction: 1 | -1) {
-			if (openConnectionIds.length < 2) return
-			const currentIndex = openConnectionIds.indexOf(activeConnectionId)
-			const baseIndex = currentIndex === -1 ? 0 : currentIndex
-			const nextIndex =
-				(baseIndex + direction + openConnectionIds.length) % openConnectionIds.length
-			setActiveConnection(openConnectionIds[nextIndex])
-		},
-		[activeConnectionId, openConnectionIds]
-	)
+	function cycleConnection(direction: 1 | -1) {
+		const { openConnectionIds, activeConnectionId } = readWorkspace().tabs
+		if (openConnectionIds.length < 2) return
+		const currentIndex = openConnectionIds.indexOf(activeConnectionId)
+		const baseIndex = currentIndex === -1 ? 0 : currentIndex
+		const nextIndex =
+			(baseIndex + direction + openConnectionIds.length) % openConnectionIds.length
+		setActiveConnection(openConnectionIds[nextIndex])
+	}
 
 	inputShortcut.bind(shortcuts.openCommandPalette.combo).on(toggleCommandPalette, {
 		description: shortcuts.openCommandPalette.description
@@ -76,7 +66,7 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 
 	$.bind(shortcuts.toggleRightSidebar.combo).on(
 		function () {
-			if (activeNavId === 'sql-console' || settings.hideAi) return
+			if (readWorkspace().uiChrome.activeNavId === 'sql-console' || settings.hideAi) return
 			toggleAiAssistant()
 		},
 		{ description: shortcuts.toggleRightSidebar.description }
@@ -84,6 +74,7 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 
 	$.bind(shortcuts.reconnect.combo).on(
 		function () {
+			const activeConnectionId = readWorkspace().tabs.activeConnectionId
 			if (activeConnectionId) actions.handleConnectionSelect(activeConnectionId)
 		},
 		{ description: shortcuts.reconnect.description }
@@ -200,12 +191,16 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 		.except('typing')
 		.on(
 			function () {
+				const workspace = readWorkspace()
 				const activeTabId =
-					activeNavId === 'database-studio' ? selectActiveTabId(readWorkspace()) : null
+					workspace.uiChrome.activeNavId === 'database-studio'
+						? selectActiveTabId(workspace)
+						: null
 				if (activeTabId) {
 					closeTab(activeTabId)
 					return
 				}
+				const activeConnectionId = workspace.tabs.activeConnectionId
 				if (activeConnectionId) actions.handleCloseConnection(activeConnectionId)
 			},
 			{ description: shortcuts.closeTab.description }
@@ -218,7 +213,7 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 		if (!definition) continue
 		$.bind(definition.combo).on(
 			function () {
-				const connection = connections[index]
+				const connection = selectConnectionList(readWorkspace())[index]
 				if (connection) actions.handleConnectionSelect(connection.id)
 			},
 			{ description: definition.description }

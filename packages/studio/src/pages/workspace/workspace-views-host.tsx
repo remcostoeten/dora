@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback } from 'react'
+import { lazy, memo, Suspense, useCallback, useRef, useState } from 'react'
 import { WindowControls } from '@studio/components/window-controls'
 import { useSettings } from '@studio/core/settings'
 import { useEffectiveShortcuts } from '@studio/core/shortcuts'
@@ -10,6 +10,8 @@ import {
 	openSettingsView,
 	openTab,
 	reorderTab,
+	selectActiveTableId,
+	selectConnectionList,
 	setActiveConnection,
 	setActiveNav,
 	setActiveTab,
@@ -25,6 +27,7 @@ import {
 	useWorkspaceSelector
 } from '@studio/core/workspace-store'
 import { WorkspaceView, WorkspaceViews } from '@studio/core/workspace-views'
+import { useStableHandlers } from '@studio/features/database-studio/hooks/use-stable-handlers'
 import { isDataFileSessionConnection } from '@studio/features/connections/source-caps'
 import type { Connection } from '@studio/features/connections/types'
 import { ConnectionTabBar } from '@studio/features/connection-tab-bar'
@@ -84,27 +87,36 @@ type Props = {
 	isTauri: boolean
 }
 
+type ViewProps = {
+	actions: ConnectionActions
+}
+
+function useIsActiveView(viewId: string): boolean {
+	return useWorkspaceSelector(function (state) {
+		return state.uiChrome.activeNavId === viewId
+	})
+}
+
+function useActiveTableIdWhileShown(viewId: string): string {
+	const lastSeenRef = useRef<string | null>(null)
+	return useWorkspaceSelector(function (state) {
+		if (lastSeenRef.current !== null && state.uiChrome.activeNavId !== viewId) {
+			return lastSeenRef.current
+		}
+		lastSeenRef.current = selectActiveTableId(state) ?? ''
+		return lastSeenRef.current
+	})
+}
+
 export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 	const activeNavId = useActiveNavId()
-	const connections = useConnectionList()
-	const activeConnectionId = useActiveConnectionId()
-	const activeConnection = useConnection(activeConnectionId)
-	const isPosthogConnection = activeConnection?.type === 'posthog'
-	const shortcuts = useEffectiveShortcuts()
-	const { settings, persistSetting } = useSettings()
-	const activeTab = useActiveTab()
-	const selectedTableId = activeTab?.tableId ?? ''
-	const selectedTableName = activeTab?.tableName ?? ''
+	const hasConnections = useWorkspaceSelector(function (state) {
+		return selectConnectionList(state).length > 0
+	})
+	const hasNoConnections = !hasConnections && !isLoading
 
-	const handleTableSelect = useCallback(
-		function (tableId: string, tableName: string) {
-			if (!activeConnectionId) return
-			openTab({ connectionId: activeConnectionId, tableId, tableName, label: tableName })
-		},
-		[activeConnectionId]
-	)
-
-	const hasNoConnections = connections.length === 0 && !isLoading
+	// Every action is always present, so the first object of stable proxies is valid for good.
+	const [stableActions] = useState(useStableHandlers(actions))
 
 	return (
 		<Suspense
@@ -128,118 +140,30 @@ export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 			<WorkspaceViews activeViewId={activeNavId}>
 				<WorkspaceView id='database-studio'>
 					{hasNoConnections ? (
-						<WorkspaceStartScreenWithTabs
-							shortcut={shortcuts.newConnection.combo}
-							canDropFiles={isTauri}
-							onAddConnection={actions.handleOpenNewConnection}
-						/>
+						<StartScreenHost actions={stableActions} isTauri={isTauri} />
 					) : (
-						<div className='flex flex-col flex-1 min-h-0'>
-							<WorkspaceConnectionTabBar actions={actions} />
-							<WorkspaceTabBar />
-							<ErrorBoundary feature='Database Studio'>
-								<DatabaseStudio
-									isActive={activeNavId === 'database-studio'}
-									tableId={selectedTableId}
-									tableName={selectedTableName}
-									initialRowPK={settings.lastRowPK}
-									onRowSelectionChange={function (pk) {
-										persistSetting('lastRowPK', pk)
-									}}
-									activeConnectionId={activeConnectionId}
-									onConnectionSelect={setActiveConnection}
-									onAddConnection={actions.handleOpenNewConnection}
-									onEditConnection={
-										activeConnectionId
-											? function () {
-													actions.handleEditConnection(activeConnectionId)
-												}
-											: undefined
-									}
-									onOpenSettings={function () {
-										openSettingsView(null, 'startup')
-									}}
-								/>
-							</ErrorBoundary>
-						</div>
+						<DatabaseStudioHost actions={stableActions} />
 					)}
 				</WorkspaceView>
 
 				<WorkspaceView id='sql-console'>
 					{hasNoConnections ? (
-						<WorkspaceStartScreenWithTabs
-							shortcut={shortcuts.newConnection.combo}
-							canDropFiles={isTauri}
-							onAddConnection={actions.handleOpenNewConnection}
-						/>
+						<StartScreenHost actions={stableActions} isTauri={isTauri} />
 					) : (
-						<div className='flex flex-col flex-1 min-h-0'>
-							<WorkspaceConnectionTabBar actions={actions} />
-							<ErrorBoundary feature='SQL Console'>
-								<SqlConsole
-									isActive={activeNavId === 'sql-console'}
-									activeConnectionId={activeConnectionId}
-									getConnectionName={function (id) {
-										return (
-											connections.find(function (connection) {
-												return connection.id === id
-											})?.name ?? id.slice(0, 8)
-										)
-									}}
-								/>
-							</ErrorBoundary>
-						</div>
+						<SqlConsoleHost actions={stableActions} />
 					)}
 				</WorkspaceView>
 
 				<WorkspaceView id='kv-studio'>
-					<ErrorBoundary feature='Redis / Valkey'>
-						<KvWorkspace
-							isActive={activeNavId === 'kv-studio'}
-							windowControls={<WindowControls />}
-						/>
-					</ErrorBoundary>
+					<KvWorkspaceHost />
 				</WorkspaceView>
 
 				<WorkspaceView id='analytics'>
-					<ErrorBoundary feature='Analytics'>
-						{isPosthogConnection && activeConnectionId ? (
-							<PosthogAnalytics
-								connectionId={activeConnectionId}
-								connectionName={activeConnection?.name}
-								windowControls={<WindowControls />}
-							/>
-						) : (
-							<div className='flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center'>
-								<p className='text-sm text-muted-foreground'>
-									Analytics is available for PostHog connections.
-								</p>
-								<button
-									onClick={function () {
-										setActiveNav('database-studio')
-									}}
-									className='rounded-md border border-border/70 px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:border-border hover:text-foreground'
-								>
-									Back to Data Viewer
-								</button>
-							</div>
-						)}
-					</ErrorBoundary>
+					<AnalyticsHost />
 				</WorkspaceView>
 
 				<WorkspaceView id='schema-visualizer'>
-					<ErrorBoundary feature='Schema Visualizer'>
-						<SchemaVisualizer
-							activeConnectionId={activeConnectionId}
-							selectedTableId={selectedTableId}
-							onSelectTable={handleTableSelect}
-							onOpenTable={function (tableId, tableName) {
-								handleTableSelect(tableId, tableName)
-								setActiveNav('database-studio')
-							}}
-							windowControls={<WindowControls />}
-						/>
-					</ErrorBoundary>
+					<SchemaVisualizerHost />
 				</WorkspaceView>
 
 				<WorkspaceView id='settings'>
@@ -249,63 +173,243 @@ export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 				</WorkspaceView>
 
 				<WorkspaceView id='orm-cockpit'>
-					<ErrorBoundary feature='Schema Diff'>
-						<OrmCockpitPanel
-							activeConnectionId={activeConnectionId}
-							windowControls={<WindowControls />}
-							onOpenInSqlConsole={function (sql) {
-								setActiveNav('sql-console')
-								window.setTimeout(function () {
-									window.dispatchEvent(
-										new CustomEvent('dora-open-sql-content', {
-											detail: { sql }
-										})
-									)
-								}, 0)
-							}}
-						/>
-					</ErrorBoundary>
+					<OrmCockpitHost />
 				</WorkspaceView>
 
 				<WorkspaceView id='docker'>
-					<ErrorBoundary feature='Docker Manager'>
-						<DockerView
-							windowControls={<WindowControls />}
-							onOpenInDataViewer={async function (container) {
-								if (isKeyValueContainer(container)) {
-									if (isTauri) {
-										const result = await openContainerInKvStudio(container)
-										if (result.status === 'error') {
-											toast({
-												title: 'Could not open Redis / Valkey',
-												description: result.message,
-												variant: 'destructive'
-											})
-											return
-										}
-									}
-									setActiveNav('kv-studio')
-									return
-								}
-								const details = getContainerConnectionDetails(container)
-								await actions.handleAddConnection({
-									name: container.name,
-									type: details.type,
-									host: details.host,
-									port: details.port,
-									user: details.user,
-									password: details.password,
-									database: details.database
-								})
-								setActiveNav('database-studio')
-							}}
-						/>
-					</ErrorBoundary>
+					<DockerHost actions={stableActions} isTauri={isTauri} />
 				</WorkspaceView>
 			</WorkspaceViews>
 		</Suspense>
 	)
 }
+
+const StartScreenHost = memo(function StartScreenHost({
+	actions,
+	isTauri
+}: ViewProps & { isTauri: boolean }) {
+	const shortcuts = useEffectiveShortcuts()
+	return (
+		<WorkspaceStartScreenWithTabs
+			shortcut={shortcuts.newConnection.combo}
+			canDropFiles={isTauri}
+			onAddConnection={actions.handleOpenNewConnection}
+		/>
+	)
+})
+
+function openStartupSettings() {
+	openSettingsView(null, 'startup')
+}
+
+const DatabaseStudioHost = memo(function DatabaseStudioHost({ actions }: ViewProps) {
+	const isActive = useIsActiveView('database-studio')
+	const activeConnectionId = useActiveConnectionId()
+	const activeTab = useActiveTab()
+	const { settings, persistSetting } = useSettings()
+
+	const handleRowSelectionChange = useCallback(
+		function (pk: string | number | null) {
+			persistSetting('lastRowPK', pk)
+		},
+		[persistSetting]
+	)
+
+	const handleEditConnection = useCallback(
+		function () {
+			actions.handleEditConnection(activeConnectionId)
+		},
+		[actions, activeConnectionId]
+	)
+
+	return (
+		<div className='flex flex-col flex-1 min-h-0'>
+			<WorkspaceConnectionTabBar actions={actions} />
+			<WorkspaceTabBar />
+			<ErrorBoundary feature='Database Studio'>
+				<DatabaseStudio
+					isActive={isActive}
+					tableId={activeTab?.tableId ?? ''}
+					tableName={activeTab?.tableName ?? ''}
+					initialRowPK={settings.lastRowPK}
+					onRowSelectionChange={handleRowSelectionChange}
+					activeConnectionId={activeConnectionId}
+					onConnectionSelect={setActiveConnection}
+					onAddConnection={actions.handleOpenNewConnection}
+					onEditConnection={activeConnectionId ? handleEditConnection : undefined}
+					onOpenSettings={openStartupSettings}
+				/>
+			</ErrorBoundary>
+		</div>
+	)
+})
+
+const SqlConsoleHost = memo(function SqlConsoleHost({ actions }: ViewProps) {
+	const isActive = useIsActiveView('sql-console')
+	const activeConnectionId = useActiveConnectionId()
+	const connections = useConnectionList()
+
+	const getConnectionName = useCallback(
+		function (id: string) {
+			return (
+				connections.find(function (connection) {
+					return connection.id === id
+				})?.name ?? id.slice(0, 8)
+			)
+		},
+		[connections]
+	)
+
+	return (
+		<div className='flex flex-col flex-1 min-h-0'>
+			<WorkspaceConnectionTabBar actions={actions} />
+			<ErrorBoundary feature='SQL Console'>
+				<SqlConsole
+					isActive={isActive}
+					activeConnectionId={activeConnectionId}
+					getConnectionName={getConnectionName}
+				/>
+			</ErrorBoundary>
+		</div>
+	)
+})
+
+const KvWorkspaceHost = memo(function KvWorkspaceHost() {
+	const isActive = useIsActiveView('kv-studio')
+	return (
+		<ErrorBoundary feature='Redis / Valkey'>
+			<KvWorkspace isActive={isActive} windowControls={<WindowControls />} />
+		</ErrorBoundary>
+	)
+})
+
+function backToDataViewer() {
+	setActiveNav('database-studio')
+}
+
+const AnalyticsHost = memo(function AnalyticsHost() {
+	const activeConnectionId = useActiveConnectionId()
+	const activeConnection = useConnection(activeConnectionId)
+	const isPosthogConnection = activeConnection?.type === 'posthog'
+
+	return (
+		<ErrorBoundary feature='Analytics'>
+			{isPosthogConnection && activeConnectionId ? (
+				<PosthogAnalytics
+					connectionId={activeConnectionId}
+					connectionName={activeConnection?.name}
+					windowControls={<WindowControls />}
+				/>
+			) : (
+				<div className='flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center'>
+					<p className='text-sm text-muted-foreground'>
+						Analytics is available for PostHog connections.
+					</p>
+					<button
+						onClick={backToDataViewer}
+						className='rounded-md border border-border/70 px-3 py-1.5 text-sm text-foreground/80 transition-colors hover:border-border hover:text-foreground'
+					>
+						Back to Data Viewer
+					</button>
+				</div>
+			)}
+		</ErrorBoundary>
+	)
+})
+
+const SchemaVisualizerHost = memo(function SchemaVisualizerHost() {
+	const activeConnectionId = useActiveConnectionId()
+	const selectedTableId = useActiveTableIdWhileShown('schema-visualizer')
+
+	const handleTableSelect = useCallback(
+		function (tableId: string, tableName: string) {
+			if (!activeConnectionId) return
+			openTab({ connectionId: activeConnectionId, tableId, tableName, label: tableName })
+		},
+		[activeConnectionId]
+	)
+
+	const handleOpenTable = useCallback(
+		function (tableId: string, tableName: string) {
+			handleTableSelect(tableId, tableName)
+			setActiveNav('database-studio')
+		},
+		[handleTableSelect]
+	)
+
+	return (
+		<ErrorBoundary feature='Schema Visualizer'>
+			<SchemaVisualizer
+				activeConnectionId={activeConnectionId}
+				selectedTableId={selectedTableId}
+				onSelectTable={handleTableSelect}
+				onOpenTable={handleOpenTable}
+				windowControls={<WindowControls />}
+			/>
+		</ErrorBoundary>
+	)
+})
+
+function openInSqlConsole(sql: string) {
+	setActiveNav('sql-console')
+	window.setTimeout(function () {
+		window.dispatchEvent(new CustomEvent('dora-open-sql-content', { detail: { sql } }))
+	}, 0)
+}
+
+const OrmCockpitHost = memo(function OrmCockpitHost() {
+	const activeConnectionId = useActiveConnectionId()
+	return (
+		<ErrorBoundary feature='Schema Diff'>
+			<OrmCockpitPanel
+				activeConnectionId={activeConnectionId}
+				windowControls={<WindowControls />}
+				onOpenInSqlConsole={openInSqlConsole}
+			/>
+		</ErrorBoundary>
+	)
+})
+
+const DockerHost = memo(function DockerHost({
+	actions,
+	isTauri
+}: ViewProps & { isTauri: boolean }) {
+	return (
+		<ErrorBoundary feature='Docker Manager'>
+			<DockerView
+				windowControls={<WindowControls />}
+				onOpenInDataViewer={async function (container) {
+					if (isKeyValueContainer(container)) {
+						if (isTauri) {
+							const result = await openContainerInKvStudio(container)
+							if (result.status === 'error') {
+								toast({
+									title: 'Could not open Redis / Valkey',
+									description: result.message,
+									variant: 'destructive'
+								})
+								return
+							}
+						}
+						setActiveNav('kv-studio')
+						return
+					}
+					const details = getContainerConnectionDetails(container)
+					await actions.handleAddConnection({
+						name: container.name,
+						type: details.type,
+						host: details.host,
+						port: details.port,
+						user: details.user,
+						password: details.password,
+						database: details.database
+					})
+					setActiveNav('database-studio')
+				}}
+			/>
+		</ErrorBoundary>
+	)
+})
 
 /**
  * The settings section the user asked for lives in the store, so opening
@@ -331,7 +435,7 @@ function WorkspaceSettingsView() {
  * which group is shown and naturally preserves each connection's open tabs,
  * active tab, filter and scroll state.
  */
-function WorkspaceTabBar() {
+const WorkspaceTabBar = memo(function WorkspaceTabBar() {
 	const visibleTabs = useVisibleTabs()
 	const activeTabId = useActiveTabId()
 	const showsConnectionTabBar = useShowsConnectionTabBar()
@@ -372,9 +476,9 @@ function WorkspaceTabBar() {
 			rightSlot={showsConnectionTabBar ? undefined : <WindowControls />}
 		/>
 	)
-}
+})
 
-function WorkspaceConnectionTabBar({ actions }: { actions: ConnectionActions }) {
+const WorkspaceConnectionTabBar = memo(function WorkspaceConnectionTabBar({ actions }: ViewProps) {
 	const connections = useConnectionList()
 	const openConnectionIds = useOpenConnectionIds()
 	const activeConnectionId = useActiveConnectionId()
@@ -409,7 +513,7 @@ function WorkspaceConnectionTabBar({ actions }: { actions: ConnectionActions }) 
 			rightSlot={<WindowControls />}
 		/>
 	)
-}
+})
 
 function useShowsConnectionTabBar(): boolean {
 	return useWorkspaceSelector(function (state) {

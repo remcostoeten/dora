@@ -1,33 +1,38 @@
 import { cleanup } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
-import { expect, afterEach, beforeAll } from 'vitest'
+import { afterEach } from 'vitest'
 
-// Polyfill localStorage for environments where happy-dom doesn't expose it as a global
-beforeAll(() => {
-	if (typeof localStorage === 'undefined') {
-		const store: Record<string, string> = {}
-		const localStorageMock = {
-			getItem: (key: string) => store[key] ?? null,
-			setItem: (key: string, value: string) => {
-				store[key] = String(value)
-			},
-			removeItem: (key: string) => {
-				delete store[key]
-			},
-			clear: () => {
-				Object.keys(store).forEach((k) => delete store[k])
-			},
-			get length() {
-				return Object.keys(store).length
-			},
-			key: (index: number) => Object.keys(store)[index] ?? null
-		}
-		Object.defineProperty(globalThis, 'localStorage', {
-			value: localStorageMock,
+class MemoryStorage {
+	getItem(key: string): string | null {
+		return Object.hasOwn(this, key) ? (this as unknown as Record<string, string>)[key] : null
+	}
+	setItem(key: string, value: string): void {
+		;(this as unknown as Record<string, string>)[key] = String(value)
+	}
+	removeItem(key: string): void {
+		delete (this as unknown as Record<string, string>)[key]
+	}
+	clear(): void {
+		for (const key of Object.keys(this)) this.removeItem(key)
+	}
+	key(index: number): string | null {
+		return Object.keys(this)[index] ?? null
+	}
+	get length(): number {
+		return Object.keys(this).length
+	}
+}
+
+// Node 25+ defines a global localStorage that is undefined without --localstorage-file, shadowing happy-dom's.
+for (const name of ['localStorage', 'sessionStorage'] as const) {
+	if (typeof globalThis[name]?.setItem !== 'function') {
+		Object.defineProperty(globalThis, name, {
+			value: new MemoryStorage(),
+			configurable: true,
 			writable: true
 		})
 	}
-})
+}
 
 // Cleanup after each test
 afterEach(() => {

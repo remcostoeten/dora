@@ -11,7 +11,6 @@ import type { LiveMonitorConfig, ChangeType } from '@studio/core/live-monitor'
 type Props = {
 	config: LiveMonitorConfig
 	onConfigChange: (config: LiveMonitorConfig) => void
-	isPolling: boolean
 }
 
 const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
@@ -31,7 +30,7 @@ function formatInterval(ms: number): string {
 	return `${ms / 1000}s`
 }
 
-export function LiveMonitorPopover({ config, onConfigChange, isPolling }: Props) {
+export function LiveMonitorPopover({ config, onConfigChange }: Props) {
 	function handleToggleEnabled(enabled: boolean) {
 		onConfigChange({ ...config, enabled })
 	}
@@ -64,12 +63,7 @@ export function LiveMonitorPopover({ config, onConfigChange, isPolling }: Props)
 							className={cn('h-7 w-7 relative', config.enabled && 'text-emerald-400')}
 							aria-label={config.enabled ? 'Live monitor active' : 'Live monitor off'}
 						>
-							<Activity
-								className={cn(
-									'h-4 w-4',
-									config.enabled && isPolling && 'animate-pulse'
-								)}
-							/>
+							<Activity className='h-4 w-4' />
 							{config.enabled && (
 								<span className='absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-400' />
 							)}

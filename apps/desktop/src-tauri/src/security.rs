@@ -6,7 +6,7 @@ use aes_gcm::{
 use anyhow::{Context, Result};
 use keyring::Entry;
 use std::fs;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
 use crate::credential_storage;
 
@@ -15,24 +15,44 @@ const KEY_NAME: &str = "dora_encryption_key";
 
 static KEY_CREATION: Mutex<()> = Mutex::new(());
 
+/// The key, once it has been read from its home store. Every `encrypt` and
+/// `decrypt` used to fetch it again, which on the OS keyring is a D-Bus round
+/// trip per call: listing N saved connections cost N keyring lookups.
+static CACHED_KEY: OnceLock<[u8; 32]> = OnceLock::new();
+
 fn get_or_create_key() -> Result<[u8; 32]> {
+    if let Some(key) = CACHED_KEY.get() {
+        return Ok(*key);
+    }
+
     // Without this, concurrent first calls each generate and store a different key.
     let _guard = KEY_CREATION
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(key) = CACHED_KEY.get() {
+        return Ok(*key);
+    }
+
     if !credential_storage::uses_os_keyring() {
-        return get_or_create_fallback_key();
+        let key = get_or_create_fallback_key()?;
+        return Ok(*CACHED_KEY.get_or_init(|| key));
     }
 
     get_or_create_keyring_key()
 }
 
+/// Only a key that came from the keyring itself is cached. A fallback-file key
+/// returned because the keyring failed this once is not, so the next call
+/// tries the keyring again exactly as before.
 fn get_or_create_keyring_key() -> Result<[u8; 32]> {
     let entry = Entry::new(SERVICE_NAME, KEY_NAME)
         .context("Failed to open OS keyring entry for Dora encryption key")?;
 
     match entry.get_password() {
-        Ok(hex_key) => decode_key_hex(&hex_key).context("Failed to decode stored encryption key"),
+        Ok(hex_key) => {
+            let key = decode_key_hex(&hex_key).context("Failed to decode stored encryption key")?;
+            Ok(*CACHED_KEY.get_or_init(|| key))
+        }
         Err(keyring::Error::NoEntry) => {
             let key = Aes256Gcm::generate_key(OsRng);
             let key_bytes: &[u8] = key.as_slice();
@@ -47,7 +67,7 @@ fn get_or_create_keyring_key() -> Result<[u8; 32]> {
 
             let mut key_arr = [0u8; 32];
             key_arr.copy_from_slice(key_bytes);
-            Ok(key_arr)
+            Ok(*CACHED_KEY.get_or_init(|| key_arr))
         }
         Err(error) => {
             log::debug!(
@@ -198,6 +218,21 @@ mod tests {
             String::from_utf8(plaintext_bytes).context("Decrypted data is not valid UTF-8")?;
 
         Ok(plaintext)
+    }
+
+    /// The key is fetched from its store once and reused, so a second call
+    /// must round-trip against the first without another lookup.
+    #[test]
+    fn the_key_is_cached_after_first_use() {
+        let secret = "postgresql://user:password@localhost:5432/mydb";
+
+        let encrypted = encrypt(secret).expect("encryption should succeed");
+        let cached = CACHED_KEY.get().copied();
+        let decrypted = decrypt(&encrypted).expect("decryption should succeed");
+
+        assert_eq!(decrypted, secret);
+        assert!(cached.is_some());
+        assert_eq!(CACHED_KEY.get().copied(), cached);
     }
 
     #[test]

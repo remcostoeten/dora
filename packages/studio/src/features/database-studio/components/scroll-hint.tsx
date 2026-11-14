@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { useEffect, useState, RefObject } from 'react'
+import { memo, useEffect, useState, RefObject } from 'react'
 import { ArrowLeft, ArrowRight, MousePointer2 } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 
@@ -10,28 +10,20 @@ type Props = {
 
 const STORAGE_KEY = 'dora_has_seen_scroll_hint'
 
-export function ScrollHint({ containerRef, className }: Props) {
+export const ScrollHint = memo(function ScrollHint({ containerRef, className }: Props) {
 	const [isVisible, setIsVisible] = useState(false)
 	const [hasOverflow, setHasOverflow] = useState(false)
 	const shouldReduceMotion = useReducedMotion()
 
 	useEffect(
-		function () {
+		function watchOverflow() {
 			const container = containerRef.current
-			if (!container) return
+			if (!container || localStorage.getItem(STORAGE_KEY)) return
 
-			function checkOverflow() {
-				if (container) {
-					const hasHorizontalScroll = container.scrollWidth > container.clientWidth
-					setHasOverflow(hasHorizontalScroll)
-				}
-			}
-
-			// Check initially
-			checkOverflow()
-
-			// check on resize
-			const resizeObserver = new ResizeObserver(checkOverflow)
+			// The observer reports once on observe, after layout, so nothing is measured synchronously.
+			const resizeObserver = new ResizeObserver(function checkOverflow() {
+				setHasOverflow(container.scrollWidth > container.clientWidth)
+			})
 			resizeObserver.observe(container)
 
 			return function () {
@@ -192,4 +184,4 @@ export function ScrollHint({ containerRef, className }: Props) {
 			)}
 		</AnimatePresence>
 	)
-}
+})

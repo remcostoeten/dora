@@ -80,6 +80,7 @@ export type TableSnapshot = {
 	conjunction?: FilterConjunction
 	filterGroup?: FilterGroup
 	fetchedAt: number
+	executionTime?: number
 }
 
 export type TableSnapshotsSlice = {

@@ -1,5 +1,5 @@
 import { X, Plus, Trash2, ChevronDown, FolderPlus } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { memo, useState, useRef, useEffect } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Input } from '@studio/shared/ui/input'
 import { cn } from '@studio/shared/utils/cn'
@@ -334,7 +334,12 @@ function GroupEditor({
 	)
 }
 
-export function FilterBar({ group, onGroupChange, columns, isVisible }: Props) {
+export const FilterBar = memo(function FilterBar({
+	group,
+	onGroupChange,
+	columns,
+	isVisible
+}: Props) {
 	const [newFilterColumn, setNewFilterColumn] = useState('')
 	const valueInputRef = useRef<HTMLInputElement>(null)
 
@@ -378,4 +383,4 @@ export function FilterBar({ group, onGroupChange, columns, isVisible }: Props) {
 			</div>
 		</div>
 	)
-}
+})

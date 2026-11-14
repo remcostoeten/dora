@@ -2,24 +2,29 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import * as React from 'react'
 import { cn } from '@studio/shared/utils/cn'
+import { getPortalContainer } from './portal-container'
 
 const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
-const DialogPortal = DialogPrimitive.Portal
 const DialogClose = DialogPrimitive.Close
 
-const DialogOverlay = React.forwardRef<
-	React.ElementRef<typeof DialogPrimitive.Overlay>,
-	React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(function DialogOverlay({ className, ...props }, ref) {
-	return (
-		<DialogPrimitive.Overlay
-			ref={ref}
-			className={cn('fixed inset-0 z-50 bg-background/80', className)}
-			{...props}
-		/>
-	)
-})
+function DialogPortal(props: React.ComponentProps<typeof DialogPrimitive.Portal>) {
+	return <DialogPrimitive.Portal container={getPortalContainer()} {...props} />
+}
+
+// A plain element instead of DialogPrimitive.Overlay, which mounts react-remove-scroll and restyles the whole document on open and close.
+const DialogOverlay = React.forwardRef<HTMLDivElement, React.ComponentPropsWithoutRef<'div'>>(
+	function DialogOverlay({ className, ...props }, ref) {
+		return (
+			<div
+				ref={ref}
+				data-dialog-overlay=''
+				className={cn('fixed inset-0 z-50 bg-background/80', className)}
+				{...props}
+			/>
+		)
+	}
+)
 
 const DialogContent = React.forwardRef<
 	React.ElementRef<typeof DialogPrimitive.Content>,
@@ -31,13 +36,13 @@ const DialogContent = React.forwardRef<
 			<DialogPrimitive.Content
 				ref={ref}
 				className={cn(
-					'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-sidebar-border bg-card p-6 shadow-lg duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 sm:rounded-lg',
+					'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-sidebar-border bg-card p-6 shadow-lg data-[state=open]:surface-enter sm:rounded-lg',
 					className
 				)}
 				{...props}
 			>
 				{children}
-				<DialogPrimitive.Close className='absolute right-4 top-4 grid h-6 w-6 place-items-center rounded-sm opacity-70 transition-[opacity,background-color] duration-150 hover:opacity-100 hover:bg-focus focus-visible:opacity-100 focus-visible:bg-focus-strong disabled:pointer-events-none'>
+				<DialogPrimitive.Close className='absolute right-4 top-4 grid h-6 w-6 place-items-center rounded-sm opacity-70 transition-[opacity,background-color] duration-75 hover:opacity-100 hover:bg-focus focus-visible:opacity-100 focus-visible:bg-focus-strong disabled:pointer-events-none'>
 					<X className='h-4 w-4' />
 					<span className='sr-only'>Close</span>
 				</DialogPrimitive.Close>

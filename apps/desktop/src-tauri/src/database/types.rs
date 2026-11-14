@@ -86,6 +86,23 @@ pub struct StatementInfo {
     pub error: Option<String>,
 }
 
+/// A statement the backend waited on: what `fetch_query` and `get_columns`
+/// report, in one response. `status` is `Running` or `Pending` only when the
+/// wait timed out before the statement finished.
+#[derive(Debug, Clone, Serialize, Type)]
+pub struct StatementResult {
+    pub query_id: QueryId,
+    pub status: QueryStatus,
+    #[specta(type = serde_json::Value)]
+    pub columns: Option<Box<RawValue>>,
+    #[specta(type = serde_json::Value)]
+    pub first_page: Option<Box<RawValue>>,
+    pub page_count: usize,
+    pub rows_received: usize,
+    pub affected_rows: Option<usize>,
+    pub error: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum QueryEvent {

@@ -95,6 +95,35 @@ yay -S dora
 paru -S dora
 ```
 
+### Rendering on Linux
+
+Dora draws its interface with WebKitGTK and picks the rendering path at
+startup:
+
+| Session                              | Path                                   |
+| ------------------------------------ | -------------------------------------- |
+| Wayland                              | Native Wayland window, GPU compositing |
+| X11, largest display up to 2560x1600 | GPU compositing through shared memory  |
+| X11 with a larger display            | Software rendering                     |
+| Flatpak, Snap or AppImage            | Software rendering                     |
+
+If a GPU path never paints a frame, Dora restarts itself with software
+rendering and keeps using it until the next update.
+
+Set `DORA_RENDERER` to choose a path yourself:
+
+```bash
+DORA_RENDERER=wayland dora    # native Wayland, GPU
+DORA_RENDERER=gpu dora        # X11, GPU through shared memory
+DORA_RENDERER=software dora   # X11, CPU only
+```
+
+`GDK_BACKEND` and `WEBKIT_DISABLE_DMABUF_RENDERER` are respected when you set
+them. The log names the path in use, in a line starting with `Linux renderer:`.
+
+On NVIDIA drivers WebKitGTK paces frames with a 60 Hz timer, so 60 fps is the
+ceiling there whatever the monitor's refresh rate.
+
 ## Verify the install
 
 Launch Dora and open **Settings → About** to confirm the version matches the

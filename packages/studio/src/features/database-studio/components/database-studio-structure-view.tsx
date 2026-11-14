@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { Columns, Trash2, X } from 'lucide-react'
-import type { ChangeEvent, LiveMonitorConfig } from '@studio/core/live-monitor'
 import { AddColumnDialog } from './add-column-dialog'
 import type { ColumnFormData } from './add-column-dialog'
 import { BottomStatusBar } from './bottom-status-bar'
@@ -9,6 +8,7 @@ import { DropColumnDialog } from './drop-column-dialog'
 import { DropTableDialog } from './drop-table-dialog'
 import { StudioToolbar } from './studio-toolbar'
 import type { ColumnDefinition, PaginationState, TableData, ViewMode } from '../types'
+import type { LoadingStore } from '../utils/loading-store'
 
 type Props = {
 	displayTableName: string
@@ -21,21 +21,12 @@ type Props = {
 	onExportSql?: () => void
 	onBackup?: () => void
 	onRestore?: () => void
-	isLoading: boolean
+	loadingStore: LoadingStore
 	onCopySchema: () => void
 	onCopyDrizzleSchema: () => void
-	liveMonitorConfig?: LiveMonitorConfig
-	onLiveMonitorConfigChange?: (config: LiveMonitorConfig) => void
-	isLiveMonitorPolling?: boolean
-	changeEvents?: ChangeEvent[]
-	unreadChangeCount?: number
-	onClearChangeEvents?: () => void
-	onMarkChangesRead?: () => void
+	showLiveMonitor: boolean
 	pagination: PaginationState
 	onPaginationChange: (pagination: PaginationState) => void
-	liveMonitorIntervalMs: number
-	lastPolledAt: number | null
-	liveMonitorError: string | null
 	showAddColumnDialog: boolean
 	onShowAddColumnDialogChange: (open: boolean) => void
 	onAddColumn?: (column: ColumnFormData) => void
@@ -57,21 +48,12 @@ export function DatabaseStudioStructureView({
 	onExportSql,
 	onBackup,
 	onRestore,
-	isLoading,
+	loadingStore,
 	onCopySchema,
 	onCopyDrizzleSchema,
-	liveMonitorConfig,
-	onLiveMonitorConfigChange,
-	isLiveMonitorPolling,
-	changeEvents,
-	unreadChangeCount,
-	onClearChangeEvents,
-	onMarkChangesRead,
+	showLiveMonitor,
 	pagination,
 	onPaginationChange,
-	liveMonitorIntervalMs,
-	lastPolledAt,
-	liveMonitorError,
 	showAddColumnDialog,
 	onShowAddColumnDialogChange,
 	onAddColumn,
@@ -88,7 +70,6 @@ export function DatabaseStudioStructureView({
 	return (
 		<div className='flex flex-col h-full bg-background'>
 			<StudioToolbar
-				tableName={displayTableName}
 				viewMode={viewMode}
 				onViewModeChange={onViewModeChange}
 				onRefresh={onRefresh}
@@ -97,16 +78,10 @@ export function DatabaseStudioStructureView({
 				onExportSql={onExportSql}
 				onBackup={onBackup}
 				onRestore={onRestore}
-				isLoading={isLoading}
+				loadingStore={loadingStore}
 				onCopySchema={onCopySchema}
 				onCopyDrizzleSchema={onCopyDrizzleSchema}
-				liveMonitorConfig={liveMonitorConfig}
-				onLiveMonitorConfigChange={onLiveMonitorConfigChange}
-				isLiveMonitorPolling={isLiveMonitorPolling}
-				changeEvents={changeEvents}
-				unreadChangeCount={unreadChangeCount}
-				onClearChangeEvents={onClearChangeEvents}
-				onMarkChangesRead={onMarkChangesRead}
+				showLiveMonitor={showLiveMonitor}
 			/>
 
 			<div className='flex-1 overflow-auto p-4'>
@@ -209,11 +184,7 @@ export function DatabaseStudioStructureView({
 				rowCount={tableData.rows.length}
 				totalCount={tableData.totalCount}
 				executionTime={tableData.executionTime}
-				liveMonitorEnabled={liveMonitorConfig?.enabled}
-				liveMonitorIntervalMs={liveMonitorIntervalMs}
-				lastPolledAt={lastPolledAt}
-				changesDetected={unreadChangeCount}
-				liveMonitorError={liveMonitorError}
+				showLiveMonitor={showLiveMonitor}
 			/>
 
 			{onAddColumn && (
