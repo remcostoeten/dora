@@ -241,7 +241,7 @@ export const PROVIDER_PATTERNS: ProviderPattern[] = [
  * Returns the first PROVIDER_PATTERNS entry whose pattern matches the hostname.
  * Order in PROVIDER_PATTERNS is significant: specific patterns precede broad ones.
  */
-function matchProviderPattern(hostname: string): ProviderPattern | undefined {
+export function matchProviderPattern(hostname: string): ProviderPattern | undefined {
 	const host = hostname.toLowerCase()
 	for (const pattern of PROVIDER_PATTERNS) {
 		const matches =

@@ -1,56 +1,30 @@
-import { memo, useState, useEffect, useCallback, useRef } from 'react'
-import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
-import { CheckCircle2, XCircle, DatabaseZap, FileSpreadsheet, Info, X, Monitor } from 'lucide-react'
-import { Spinner } from '@studio/shared/ui/spinner'
-import { commands, DatabaseInfo } from '@studio/lib/bindings'
+import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { FileSpreadsheet } from 'lucide-react'
 import { useIsTauri } from '@studio/core/data-provider'
-import { isDesktopOnlyError } from '@studio/core/platform/runtime'
-import { formatBackendError } from '@studio/shared/utils/backend-error'
-import { cn } from '@studio/shared/utils/cn'
-import { Button } from '@studio/shared/ui/button'
+import { Dialog, DialogContent } from '@studio/shared/ui/dialog'
 import { toast } from '@studio/shared/ui/notifier'
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogFooter,
-	DialogDescription
-} from '@studio/shared/ui/dialog'
-import { Input } from '@studio/shared/ui/input'
-import { Label } from '@studio/shared/ui/label'
-import { SupabaseConnectFlow } from '@studio/features/integrations/supabase/supabase-connect-flow'
-import { TursoConnectFlow } from '@studio/features/integrations/turso/turso-connect-flow'
-import { NeonConnectFlow } from '@studio/features/integrations/neon/neon-connect-flow'
-import { CloudflareConnectFlow } from '@studio/features/integrations/cloudflare/cloudflare-connect-flow'
-import { XataConnectFlow } from '@studio/features/integrations/xata/xata-connect-flow'
-import { PlanetscaleConnectFlow } from '@studio/features/integrations/planetscale/planetscale-connect-flow'
-import { VercelConnectFlow } from '@studio/features/integrations/vercel/vercel-connect-flow'
-import { PosthogConnectFlow } from '@studio/features/integrations/posthog/posthog-connect-flow'
-import { Connection, DatabaseType, SshAuthMethod } from '../types'
-import { getSourceCaps } from '../source-caps'
-import {
-	sanitizeConnectionUrl,
-	isValidConnectionUrl,
-	detectProviderName,
-	parseConnectionUrl,
-	buildConnectionString,
-	hasPostgresPoolerMode,
-	setPostgresPoolerMode,
-	isFlyPublicHost,
-	PROVIDER_CONFIGS
-} from '../utils/providers'
-import { validateConnection } from '../validation'
-import { ConnectionForm } from './connection-dialog/connection-form'
-import { DatabaseTypeSelector, type ProviderKey } from './connection-dialog/database-type-selector'
-import { DatabaseIcon, DATABASE_META } from './database-icons'
-import { classifyDroppedPaths, connectionNameFromPath } from '../utils/data-files'
+import type { Connection, DatabaseType } from '../types'
+import { classifyDroppedPaths } from '../utils/data-files'
+import type { NewConnection } from './connection-dialog/connection-mapping'
+import { detect, isActionable } from './connection-dialog/detect'
+import { ConnectionDialogFooter } from './connection-dialog/dialog-footer'
+import { ConnectionDialogHeader } from './connection-dialog/dialog-header'
+import { runConnectionTest } from './connection-dialog/run-connection-test'
+import { SourceStep } from './connection-dialog/source-step'
+import { createDialogStore, type DialogDeps, type DialogStore } from './connection-dialog/store'
+import { DialogStoreProvider, useDialog } from './connection-dialog/store-context'
+
+const DetailsStep = lazy(function loadDetailsStep() {
+	return import('./connection-dialog/details-step').then((module) => ({
+		default: module.DetailsStep
+	}))
+})
 
 type Props = {
 	open: boolean
 	onOpenChange: (open: boolean) => void
-	onSave: (connection: Omit<Connection, 'id' | 'createdAt'>) => void | Promise<void>
-	/** Opens data files — with paths from a drop, or opens the picker when omitted. */
+	onSave: (connection: NewConnection) => void | Promise<void>
+	/** Opens data files, with paths from a drop, or opens the picker when omitted. */
 	onOpenDataFiles?: (paths?: string[]) => void | Promise<void>
 	/** Resolve `.db` and other ambiguous database files via header probing. */
 	resolveDatabaseType?: (path: string) => Promise<DatabaseType>
@@ -60,21 +34,29 @@ type Props = {
 	initialValues?: Connection
 }
 
-const FORM_ID = 'connection-form'
-const FORM_ERROR_ID = 'connection-form-error'
+type Session = {
+	open: boolean
+	connectionId: string | null
+	store: DialogStore
+}
 
-function fieldElementId(field: string, formData: Partial<Connection>) {
-	if (field === 'url') {
-		if (formData.type === 'libsql') return 'libsql-url'
-		if (formData.type === 'sqlite' || formData.type === 'duckdb') return 'sqlite-path'
-		return 'connection-string'
+const PANE =
+	'flex min-h-0 flex-1 animate-in flex-col duration-150 fade-in-0 motion-reduce:animate-none'
+
+function startSession(
+	open: boolean,
+	original: Connection | undefined,
+	deps: { current: DialogDeps }
+): Session {
+	return {
+		open,
+		connectionId: original?.id ?? null,
+		store: createDialogStore({ original: original ?? null, deps })
 	}
-	if (field === 'ssh.password') {
-		return formData.sshConfig?.authMethod === 'keyfile' ? 'ssh-keyfile' : 'ssh-password'
-	}
-	if (field === 'ssh.hostKeyFingerprint') return 'ssh-host-key-fingerprint'
-	if (field.startsWith('ssh.')) return `ssh-${field.slice(4)}`
-	return field
+}
+
+function prefetchDetailsStep() {
+	void import('./connection-dialog/details-step')
 }
 
 export function ConnectionDialog({
@@ -88,1017 +70,293 @@ export function ConnectionDialog({
 	onDroppedFilePathsHandled,
 	initialValues
 }: Props) {
-	const [formData, setFormData] = useState<Partial<Connection>>({
-		type: 'postgres',
-		host: 'localhost',
-		port: 5432,
-		user: 'postgres',
-		database: 'postgres',
-		ssl: false,
-		poolerMode: false,
-		sshConfig: {
-			enabled: false,
-			host: '',
-			port: 22,
-			username: '',
-			authMethod: 'password' as SshAuthMethod,
-			password: '',
-			privateKeyPath: '',
-			hostKeyFingerprint: ''
-		},
-		...initialValues
-	})
-
-	const [isTesting, setIsTesting] = useState(false)
-	const [isSaving, setIsSaving] = useState(false)
-	const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle')
-	const [testMessage, setTestMessage] = useState('')
-	const [useConnectionString, setUseConnectionString] = useState(false)
-	const [validationError, setValidationError] = useState<{
-		field?: string
-		message?: string
-	} | null>(null)
-	const [isDropTargetActive, setIsDropTargetActive] = useState(false)
-	const [flyHintDismissed, setFlyHintDismissed] = useState(false)
-	// Provider integrations (Supabase, Turso) aren't real DatabaseTypes — they
-	// resolve to an engine connection but live outside formData.type. When one is
-	// active, the standard form is swapped for that provider's connect flow.
-	const [selectedIntegration, setSelectedIntegration] = useState<
-		| 'supabase'
-		| 'turso'
-		| 'neon'
-		| 'cloudflare'
-		| 'xata'
-		| 'planetscale'
-		| 'vercel'
-		| 'posthog'
-		| null
-	>(null)
-	const supabaseSelected = selectedIntegration === 'supabase'
-	const tursoSelected = selectedIntegration === 'turso'
-	const cloudflareSelected = selectedIntegration === 'cloudflare'
-	const xataSelected = selectedIntegration === 'xata'
-	const planetscaleSelected = selectedIntegration === 'planetscale'
-	const vercelSelected = selectedIntegration === 'vercel'
-	const posthogSelected = selectedIntegration === 'posthog'
-	const integrationSelected = selectedIntegration !== null
-	const [showDesktopOnlyHint, setShowDesktopOnlyHint] = useState(false)
-	const [providersExpanded, setProvidersExpanded] = useState(false)
 	const isTauri = useIsTauri()
-	const showDropOverlay = isDropTargetActive || externalDropActive
-	const formDataRef = useRef(formData)
-	const initialValuesRef = useRef(initialValues)
+	const deps = useRef<DialogDeps>({
+		onSave,
+		isTauri: () => isTauri,
+		testConnection: runConnectionTest
+	})
 
 	useEffect(() => {
-		formDataRef.current = formData
-		initialValuesRef.current = initialValues
+		deps.current = { onSave, isTauri: () => isTauri, testConnection: runConnectionTest }
 	})
 
-	const applyDatabaseFile = useCallback(
-		async function applyDatabaseFile(path: string) {
-			const type = resolveDatabaseType
-				? await resolveDatabaseType(path)
-				: path.toLowerCase().endsWith('.duckdb')
-					? 'duckdb'
-					: 'sqlite'
+	const [session, setSession] = useState(() => startSession(open, initialValues, deps))
+	const wantedId = initialValues?.id ?? null
+	if (open && (!session.open || session.connectionId !== wantedId)) {
+		setSession(startSession(true, initialValues, deps))
+	} else if (!open && session.open) {
+		setSession({ ...session, open: false })
+	}
+	const store = session.store
 
-			setFormData(function (prev) {
-				return {
-					...prev,
-					type,
-					url: path,
-					name: prev.name && prev.name !== '' ? prev.name : connectionNameFromPath(path),
-					fileSources: undefined
-				}
-			})
-			setUseConnectionString(false)
-			setTestStatus('idle')
-			setTestMessage('')
-		},
-		[resolveDatabaseType]
-	)
+	useEffect(() => {
+		if (!open) return
+		const handle = window.setTimeout(prefetchDetailsStep, 150)
+		return () => window.clearTimeout(handle)
+	}, [open])
 
-	useEffect(
-		function handleDroppedFiles() {
-			if (!open || !droppedFilePaths?.length) return
+	const handlePaths = useCallback(
+		async function handlePaths(paths: string[]) {
+			const { dataFiles, databaseFiles, unsupported } = classifyDroppedPaths(paths)
 
-			void (async function () {
-				const { dataFiles, databaseFiles, unsupported } =
-					classifyDroppedPaths(droppedFilePaths)
-
-				if (unsupported.length > 0) {
-					toast.error('Unsupported file type', {
-						description: unsupported
-							.map(function (p) {
-								return p.split(/[\\/]/).pop() ?? p
-							})
-							.join(', ')
-					})
-				}
-
-				if (dataFiles.length > 0 && databaseFiles.length > 0) {
-					toast.error('Drop one kind at a time', {
-						description:
-							'Drop either data files (CSV, Parquet, JSON) or a database file, not both.'
-					})
-					onDroppedFilePathsHandled?.()
-					return
-				}
-
-				if (dataFiles.length > 0) {
-					onDroppedFilePathsHandled?.()
-					if (onOpenDataFiles) {
-						await onOpenDataFiles(dataFiles)
-					}
-					return
-				}
-
-				if (databaseFiles.length > 1) {
-					toast.error('One database file at a time', {
-						description:
-							'Drop a single SQLite or DuckDB file to pre-fill this connection.'
-					})
-					onDroppedFilePathsHandled?.()
-					return
-				}
-
-				if (databaseFiles.length === 1) {
-					await applyDatabaseFile(databaseFiles[0])
-					onDroppedFilePathsHandled?.()
-					return
-				}
-
-				onDroppedFilePathsHandled?.()
-			})()
-		},
-		[open, droppedFilePaths, onDroppedFilePathsHandled, onOpenDataFiles, applyDatabaseFile]
-	)
-
-	useEffect(
-		function resetFormOnOpen() {
-			if (open) {
-				const initialValues = initialValuesRef.current
-				const initialCaps = initialValues
-					? getSourceCaps({
-							type: initialValues.type ?? 'postgres',
-							fileSources: initialValues.fileSources,
-							url: initialValues.url
-						})
-					: null
-				const hasUrl = !!initialValues?.url && !!initialCaps?.supportsSshTunnel
-				setFormData({
-					type: 'postgres',
-					host: 'localhost',
-					port: 5432,
-					user: 'postgres',
-					database: 'postgres',
-					ssl: false,
-					poolerMode: false,
-					...initialValues
+			if (unsupported.length > 0) {
+				toast.error('Unsupported file type', {
+					description: unsupported
+						.map((path) => path.split(/[\\/]/).pop() ?? path)
+						.join(', ')
 				})
-				setUseConnectionString(!!hasUrl)
-				setFlyHintDismissed(false)
-				setSelectedIntegration(null)
-				setTestStatus('idle')
-				setTestMessage('')
-				setValidationError(null)
-				setIsSaving(false)
+			}
+			if (dataFiles.length > 0 && databaseFiles.length > 0) {
+				toast.error('Drop one kind at a time', {
+					description:
+						'Drop either data files (CSV, Parquet, JSON) or a database file, not both.'
+				})
+				return
+			}
+			if (dataFiles.length > 0) {
+				await onOpenDataFiles?.(dataFiles)
+				return
+			}
+			if (databaseFiles.length > 1) {
+				toast.error('One database file at a time', {
+					description: 'Drop a single SQLite or DuckDB file to pre-fill this connection.'
+				})
+				return
+			}
+			if (databaseFiles.length === 1) {
+				const path = databaseFiles[0]
+				const type = resolveDatabaseType
+					? await resolveDatabaseType(path)
+					: path.toLowerCase().endsWith('.duckdb')
+						? 'duckdb'
+						: 'sqlite'
+				store.getState().applyDatabaseFile(type === 'duckdb' ? 'duckdb' : 'sqlite', path)
 			}
 		},
-		[open, initialValues?.id]
+		[onOpenDataFiles, resolveDatabaseType, store]
 	)
 
 	useEffect(
-		function handleClipboardPaste() {
+		function consumeExternalDrop() {
+			if (!open || !droppedFilePaths?.length || initialValues) return
+			void handlePaths(droppedFilePaths).finally(() => onDroppedFilePathsHandled?.())
+		},
+		[open, droppedFilePaths, initialValues, handlePaths, onDroppedFilePathsHandled]
+	)
+
+	useEffect(
+		function applyPastedConnectionUrl() {
 			if (!open) return
 
-			function handlePaste(e: ClipboardEvent) {
-				const pastedText = e.clipboardData?.getData('text')
-				if (!pastedText) return
+			function onPaste(event: ClipboardEvent) {
+				const target = event.target
+				if (
+					target instanceof HTMLInputElement ||
+					target instanceof HTMLTextAreaElement ||
+					(target instanceof HTMLElement && target.isContentEditable)
+				) {
+					return
+				}
+				const text = event.clipboardData?.getData('text')
+				if (!text) return
+				const found = detect(text)
+				const state = store.getState()
+				if (state.original || !isActionable(found) || found.kind === 'datafile') return
 
-				const sanitized = sanitizeConnectionUrl(pastedText)
-				if (!isValidConnectionUrl(sanitized)) return
-
-				e.preventDefault()
-
-				// Switch the form to the provider the URL belongs to, so the
-				// matching section (e.g. libSQL's Auth Token field) is shown
-				// without the user having to click the provider tab first.
-				const detectedType = parseConnectionUrl(sanitized)?.type
-
-				setFormData(function (prev) {
-					const nextType = detectedType ?? prev.type
-					const updates: Partial<Connection> = {
-						type: nextType,
-						url: sanitized,
-						host: undefined,
-						port: undefined,
-						user: undefined,
-						password: undefined,
-						database: undefined,
-						ssl: undefined
-					}
-					if (updates.url && (nextType === 'postgres' || nextType === 'cockroach')) {
-						updates.poolerMode = hasPostgresPoolerMode(updates.url)
-					}
-
-					if (!prev.name || prev.name === '') {
-						updates.name = detectProviderName(sanitized)
-					}
-
-					return { ...prev, ...updates }
-				})
-				// Host/port providers use the connection-string toggle; file/token
-				// providers (sqlite/libsql) have their own dedicated fields.
-				setUseConnectionString(
-					detectedType
-						? getSourceCaps({ type: detectedType, url: sanitized }).supportsSshTunnel
-						: false
-				)
-
-				// After libSQL switches in, move focus to the Auth Token field so
-				// the user can paste their token straight away.
-				if (detectedType === 'libsql') {
-					requestAnimationFrame(function () {
-						const tokenInput = document.getElementById('libsql-token')
-						if (tokenInput instanceof HTMLInputElement) {
-							tokenInput.focus()
-						}
-					})
+				event.preventDefault()
+				if (state.step === 'source') {
+					state.setQuery(text.trim())
+					state.requestFocus('omni')
+				} else {
+					state.applyDetection(found, 'url')
 				}
 			}
 
-			document.addEventListener('paste', handlePaste)
-			return function cleanup() {
-				document.removeEventListener('paste', handlePaste)
-			}
+			document.addEventListener('paste', onPaste)
+			return () => document.removeEventListener('paste', onPaste)
 		},
-		[open]
+		[open, store]
 	)
 
-	const updateField = useCallback(function updateField(field: keyof Connection, value: unknown) {
-		setFormData(function (prev) {
-			const newData = { ...prev, [field]: value }
+	const handleKeyDown = useCallback(
+		(event: React.KeyboardEvent) => {
+			const state = store.getState()
+			if (state.step !== 'details') return
+			const mod = event.metaKey || event.ctrlKey
 
-			if (field === 'type') {
-				const newType = value as DatabaseType
-				const config = PROVIDER_CONFIGS[newType]
-				if (config.defaultPort > 0) {
-					newData.port = config.defaultPort
-				}
-				newData.user = config.defaultUser || undefined
-				newData.database = config.defaultDatabase || undefined
-			}
-
-			return newData
-		})
-		setTestStatus('idle')
-		setValidationError((prev) => (prev?.field === field ? null : prev))
-	}, [])
-
-	const handleProviderSelect = useCallback(
-		function handleProviderSelect(key: ProviderKey) {
-			if (key === 'files') {
-				// Not a real engine — opens flat files as a read-only DuckDB
-				// connection via the native picker. Leaves formData.type untouched.
-				void onOpenDataFiles?.()
-				return
-			}
-			if (
-				key === 'supabase' ||
-				key === 'turso' ||
-				key === 'neon' ||
-				key === 'cloudflare' ||
-				key === 'xata' ||
-				key === 'planetscale' ||
-				key === 'vercel' ||
-				key === 'posthog'
+			if (mod && event.key === 'Enter') {
+				event.preventDefault()
+				void state.runTest()
+			} else if (mod && event.key.toLowerCase() === 's') {
+				event.preventDefault()
+				void state.save()
+			} else if (event.altKey && event.key === 'ArrowLeft') {
+				event.preventDefault()
+				state.back()
+			} else if (
+				event.key === 'Enter' &&
+				event.target instanceof HTMLInputElement &&
+				event.target.id.startsWith('cd-') &&
+				event.target.id !== 'cd-omni'
 			) {
-				setSelectedIntegration(key)
-				setProvidersExpanded(false)
-				setTestStatus('idle')
-				return
-			}
-			setSelectedIntegration(null)
-			updateField('type', key)
-			const caps = getSourceCaps({
-				type: key,
-				fileSources: formDataRef.current.fileSources,
-				url: formDataRef.current.url
-			})
-			if (!caps.supportsSshTunnel) {
-				setUseConnectionString(false)
+				event.preventDefault()
+				void state.save()
 			}
 		},
-		[onOpenDataFiles, updateField]
+		[store]
 	)
 
-	async function handleTestConnection() {
-		if (!isTauri) {
-			setShowDesktopOnlyHint(true)
-			setTestStatus('idle')
-			setTestMessage('')
-			window.setTimeout(function resetDesktopHint() {
-				setShowDesktopOnlyHint(false)
-			}, 2600)
-			return
-		}
-
-		setIsTesting(true)
-		setTestStatus('idle')
-		setTestMessage('')
-
-		try {
-			let databaseInfo: DatabaseInfo
-
-			if (formData.type === 'sqlite') {
-				if (!formData.url) {
-					setTestStatus('error')
-					setTestMessage('Database path is required')
-					setIsTesting(false)
-					return
-				}
-				databaseInfo = { SQLite: { db_path: formData.url } }
-			} else if (formData.type === 'duckdb') {
-				if (!formData.url) {
-					setTestStatus('error')
-					setTestMessage('Database path is required')
-					setIsTesting(false)
-					return
-				}
-				databaseInfo = { DuckDB: { db_path: formData.url } }
-			} else if (formData.type === 'libsql') {
-				if (!formData.url) {
-					setTestStatus('error')
-					setTestMessage('Database URL is required')
-					setIsTesting(false)
-					return
-				}
-				databaseInfo = {
-					LibSQL: {
-						url: formData.url,
-						auth_token: formData.authToken || null
-					}
-				}
-			} else {
-				let connectionString: string
-
-				if (useConnectionString && formData.url) {
-					connectionString = formData.url
-				} else {
-					if (!formData.host) {
-						setTestStatus('error')
-						setTestMessage('Host is required')
-						setIsTesting(false)
-						return
-					}
-
-					if (!formData.user) {
-						setTestStatus('error')
-						setTestMessage('Username is required')
-						setIsTesting(false)
-						return
-					}
-
-					if (!formData.database) {
-						setTestStatus('error')
-						setTestMessage('Database name is required')
-						setIsTesting(false)
-						return
-					}
-
-					connectionString = buildConnectionString({
-						type: formData.type as DatabaseType,
-						host: formData.host,
-						port: formData.port,
-						user: formData.user,
-						password: formData.password,
-						database: formData.database,
-						ssl: formData.ssl
-					})
-				}
-
-				const sshConfig = formData.sshConfig?.enabled
-					? {
-							host: formData.sshConfig.host,
-							port: formData.sshConfig.port,
-							username: formData.sshConfig.username,
-							private_key_path:
-								formData.sshConfig.authMethod === 'keyfile'
-									? formData.sshConfig.privateKeyPath || null
-									: null,
-							password:
-								formData.sshConfig.authMethod === 'password'
-									? formData.sshConfig.password || null
-									: null,
-							host_key_fingerprint:
-								formData.sshConfig.hostKeyFingerprint?.trim() || null
-						}
-					: null
-
-				if (formData.sshConfig?.enabled) {
-					// Basic validation for SSH config
-					if (!sshConfig?.host) {
-						setTestStatus('error')
-						setTestMessage('SSH Host is required')
-						setIsTesting(false)
-						return
-					}
-					if (!sshConfig?.username) {
-						setTestStatus('error')
-						setTestMessage('SSH Username is required')
-						setIsTesting(false)
-						return
-					}
-				}
-
-				if (formData.type === 'mysql') {
-					databaseInfo = {
-						MySQL: {
-							connection_string: connectionString,
-							ssh_config: sshConfig
-						}
-					}
-				} else if (formData.type === 'mariadb') {
-					databaseInfo = {
-						MariaDB: {
-							connection_string: connectionString,
-							ssh_config: sshConfig
-						}
-					}
-				} else if (formData.type === 'cockroach') {
-					connectionString = setPostgresPoolerMode(
-						connectionString,
-						formData.poolerMode ?? false
-					)
-					databaseInfo = {
-						CockroachDB: {
-							connection_string: connectionString,
-							ssh_config: sshConfig
-						}
-					}
-				} else {
-					connectionString = setPostgresPoolerMode(
-						connectionString,
-						formData.poolerMode ?? false
-					)
-					databaseInfo = {
-						Postgres: {
-							connection_string: connectionString,
-							ssh_config: sshConfig
-						}
-					}
-				}
+	const handleEscape = useCallback(
+		(event: KeyboardEvent) => {
+			const state = store.getState()
+			if (state.confirmSave) {
+				event.preventDefault()
+				state.cancelConfirm()
+			} else if (state.step === 'source' && state.query !== '') {
+				event.preventDefault()
+				state.setQuery('')
 			}
+		},
+		[store]
+	)
 
-			const result = await commands.testConnection(databaseInfo, initialValues?.id ?? null)
+	const handleProviderComplete = useCallback(
+		(connection: NewConnection) => {
+			void onSave(connection)
+			onOpenChange(false)
+		},
+		[onSave, onOpenChange]
+	)
 
-			if (result.status === 'ok' && result.data) {
-				setTestStatus('success')
-				setTestMessage('Connection successful!')
-			} else {
-				setTestStatus('error')
-				let errorMsg = 'Connection failed'
+	const handleCancel = useCallback(() => onOpenChange(false), [onOpenChange])
 
-				if (result.status === 'error') {
-					errorMsg = formatBackendError(result.error)
-				}
-
-				setTestMessage(errorMsg)
-			}
-		} catch (error) {
-			if (isDesktopOnlyError(error)) {
-				setShowDesktopOnlyHint(true)
-				setTestStatus('idle')
-				setTestMessage('')
-				window.setTimeout(function resetDesktopHint() {
-					setShowDesktopOnlyHint(false)
-				}, 2600)
-				return
-			}
-
-			setTestStatus('error')
-			let errorMsg = 'Unexpected error'
-			if (error instanceof Error) {
-				errorMsg = error.message
-			}
-			setTestMessage(errorMsg)
-		} finally {
-			setIsTesting(false)
-		}
-	}
-
-	async function handleSave(event: React.FormEvent<HTMLFormElement>) {
-		event.preventDefault()
-		if (isSaving) return
-
-		const validation = validateConnection(
-			formData as Record<string, unknown>,
-			useConnectionString
-		)
-
-		if (!validation.success) {
-			setValidationError({ field: validation.field, message: validation.error })
-			if (validation.field) {
-				document.getElementById(fieldElementId(validation.field, formData))?.focus()
-			}
-			return
-		}
-
-		setValidationError(null)
-		setIsSaving(true)
-		try {
-			await onSave(formData as Omit<Connection, 'id' | 'createdAt'>)
-		} finally {
-			setIsSaving(false)
-		}
-	}
-
-	const testConnectionRef = useRef(handleTestConnection)
-	useEffect(() => {
-		testConnectionRef.current = handleTestConnection
-	})
-	const handleTestClick = useCallback(() => {
-		void testConnectionRef.current()
-	}, [])
-
-	const selectedProvider = DATABASE_META[formData.type || 'postgres']
+	const dropEnabled = !initialValues && (!!onOpenDataFiles || !!resolveDatabaseType)
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent
-				className='flex max-h-[min(calc(100vh-2rem),880px)] flex-col gap-0 overflow-hidden rounded-none border-border/70 bg-background p-0 shadow-lg sm:max-w-[640px] [&_input]:rounded-none [&_button]:rounded-none'
-				onDragEnter={function (e) {
-					if (!onOpenDataFiles && !resolveDatabaseType) return
-					e.preventDefault()
-					setIsDropTargetActive(true)
-				}}
-				onDragOver={function (e) {
-					if (!onOpenDataFiles && !resolveDatabaseType) return
-					e.preventDefault()
-					setIsDropTargetActive(true)
-				}}
-				onDragLeave={function (e) {
-					if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
-					setIsDropTargetActive(false)
-				}}
-				onDrop={function (e) {
-					setIsDropTargetActive(false)
-					if (!onOpenDataFiles && !resolveDatabaseType) return
-					e.preventDefault()
-					e.stopPropagation()
-					const paths = Array.from(e.dataTransfer.files)
-						.map(function (file) {
-							const withPath = file as File & { path?: string }
-							return withPath.path ?? ''
-						})
-						.filter(Boolean)
-					if (paths.length === 0) return
-					void (async function () {
-						const { dataFiles, databaseFiles, unsupported } =
-							classifyDroppedPaths(paths)
-
-						if (unsupported.length > 0) {
-							toast.error('Unsupported file type', {
-								description: unsupported
-									.map(function (p) {
-										return p.split(/[\\/]/).pop() ?? p
-									})
-									.join(', ')
-							})
-						}
-
-						if (dataFiles.length > 0 && databaseFiles.length > 0) {
-							toast.error('Drop one kind at a time', {
-								description:
-									'Drop either data files (CSV, Parquet, JSON) or a database file, not both.'
-							})
-							return
-						}
-
-						if (dataFiles.length > 0) {
-							if (onOpenDataFiles) await onOpenDataFiles(dataFiles)
-							return
-						}
-
-						if (databaseFiles.length > 1) {
-							toast.error('One database file at a time', {
-								description:
-									'Drop a single SQLite or DuckDB file to pre-fill this connection.'
-							})
-							return
-						}
-
-						if (databaseFiles.length === 1) {
-							await applyDatabaseFile(databaseFiles[0])
-						}
-					})()
-				}}
+				onKeyDown={handleKeyDown}
+				onEscapeKeyDown={handleEscape}
+				className='flex h-[min(calc(100vh-2rem),668px)] flex-col gap-0 overflow-hidden rounded-none border-border/70 bg-background p-0 sm:max-w-[760px] [&_button]:rounded-none [&_input]:rounded-none [&_textarea]:rounded-none'
 			>
-				{showDropOverlay ? (
-					<div className='pointer-events-none absolute inset-0 z-50 flex items-center justify-center border-2 border-dashed border-[hsl(48_72%_52%)]/70 bg-background/85 backdrop-blur-[1px]'>
-						<div className='flex flex-col items-center gap-2 px-6 text-center'>
-							<FileSpreadsheet
-								className='h-8 w-8 text-[hsl(48_72%_52%)]'
-								strokeWidth={1.8}
-							/>
-							<p className='text-sm font-medium text-foreground'>
-								Drop to detect file type
-							</p>
-							<p className='text-xs text-muted-foreground'>
-								CSV, Parquet, JSON, SQLite, DuckDB, and related database files
-							</p>
-						</div>
-					</div>
-				) : null}
-				<DialogHeader className='border-b border-border/50 px-6 py-5 pr-12'>
-					<div className='flex items-start gap-4'>
-						<div className='flex h-11 w-11 shrink-0 items-center justify-center border border-border/70 bg-card shadow-sm'>
-							<DatabaseZap className='h-5 w-5 text-foreground/80' strokeWidth={1.8} />
-						</div>
-						<div className='min-w-0 flex-1'>
-							<div className='flex flex-wrap items-center gap-2'>
-								<DialogTitle className='text-lg font-semibold tracking-tight'>
-									{initialValues ? 'Edit connection' : 'Create connection'}
-								</DialogTitle>
-								<span className='inline-flex shrink-0 items-center gap-1.5 border border-border/65 bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground'>
-									<DatabaseIcon
-										type={formData.type || 'postgres'}
-										className='h-3.5 w-3.5'
-									/>
-									{selectedProvider.name}
-								</span>
-							</div>
-							<DialogDescription className='mt-1 text-sm text-muted-foreground'>
-								Paste a URL, drop a database or data file, or configure details
-								manually.
-							</DialogDescription>
-						</div>
-					</div>
-				</DialogHeader>
-
-				<div className='flex-1 space-y-5 overflow-y-auto px-6 py-5'>
-					{!integrationSelected ? (
-						<div className='border border-border/60 bg-card/45 p-4'>
-							<Label
-								htmlFor='name'
-								className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'
-							>
-								Connection Name
-							</Label>
-							<Input
-								id='name'
-								placeholder='e.g. Production Database'
-								value={formData.name || ''}
-								form={FORM_ID}
-								aria-invalid={validationError?.field === 'name' || undefined}
-								aria-describedby={
-									validationError?.field === 'name' ? FORM_ERROR_ID : undefined
-								}
-								onChange={function (e) {
-									updateField('name', e.target.value)
-								}}
-								className='input-glow mt-2 h-10 bg-background/70'
-								autoFocus
-							/>
-						</div>
-					) : null}
-
-					<div
-						data-testid='provider-type-section'
-						data-integration-selected={integrationSelected ? 'true' : 'false'}
-						data-collapsible-provider-selector={integrationSelected ? 'true' : 'false'}
-						className={cn(
-							'space-y-3 overflow-hidden border border-border/60 bg-card/35 p-4',
-							integrationSelected &&
-								!providersExpanded &&
-								'max-h-[118px] focus-within:max-h-none'
-						)}
+				<DialogStoreProvider value={store}>
+					<DropZone
+						enabled={dropEnabled}
+						external={externalDropActive}
+						onPaths={handlePaths}
 					>
-						<div className='flex items-start justify-between gap-3'>
-							<div>
-								<Label
-									id='database-type-label'
-									className='text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground'
-								>
-									Database Type
-								</Label>
-								<p className='mt-1 text-xs text-muted-foreground/75'>
-									Choose the engine Dora should use for validation and queries.
-								</p>
-							</div>
-							{integrationSelected ? (
-								<Button
-									type='button'
-									variant='ghost'
-									size='sm'
-									aria-expanded={providersExpanded}
-									onClick={() => setProvidersExpanded((expanded) => !expanded)}
-									className='h-7 shrink-0 px-2 text-xs text-muted-foreground'
-								>
-									{providersExpanded ? 'Show less' : 'Show all'}
-								</Button>
-							) : null}
-						</div>
-						<DatabaseTypeSelector
-							selectedType={selectedIntegration ?? formData.type ?? 'postgres'}
-							onSelect={handleProviderSelect}
-							showSupabase={!initialValues}
-							showTurso={!initialValues}
-							showNeon={!initialValues}
-							showCloudflare={!initialValues}
-							showXata={!initialValues}
-							showPlanetscale={!initialValues}
-							showVercel={!initialValues}
-							showPosthog={!initialValues}
-							showFiles={!!onOpenDataFiles}
-							compact={integrationSelected}
-							labelledBy='database-type-label'
+						<ConnectionDialogHeader />
+						<DialogBody
+							canOpenDataFiles={!!onOpenDataFiles}
+							onPickFiles={() => void onOpenDataFiles?.()}
+							onOpenDataFiles={(paths) => void onOpenDataFiles?.(paths)}
+							onProviderComplete={handleProviderComplete}
 						/>
-					</div>
-
-					{integrationSelected ? (
-						<div
-							data-testid='provider-flow-region'
-							data-active-provider={selectedIntegration}
-							className='min-h-0 flex-1'
-						>
-							{supabaseSelected ? (
-								<SupabaseConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							) : tursoSelected ? (
-								<TursoConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							) : cloudflareSelected ? (
-								<CloudflareConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							) : xataSelected ? (
-								<XataConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							) : planetscaleSelected ? (
-								<PlanetscaleConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							) : vercelSelected ? (
-								<VercelConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							) : posthogSelected ? (
-								<PosthogConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							) : (
-								<NeonConnectFlow
-									onComplete={function (connection) {
-										onSave(connection)
-										onOpenChange(false)
-									}}
-								/>
-							)}
-						</div>
-					) : (
-						<form id={FORM_ID} noValidate onSubmit={handleSave}>
-							<ConnectionForm
-								formData={formData}
-								updateField={updateField}
-								setFormData={setFormData}
-								useConnectionString={useConnectionString}
-								setUseConnectionString={setUseConnectionString}
-								invalidField={validationError?.field}
-								errorId={FORM_ERROR_ID}
-							/>
-						</form>
-					)}
-
-					{!integrationSelected && validationError?.message ? (
-						<p
-							id={FORM_ERROR_ID}
-							role='alert'
-							className='flex items-start gap-2 border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-700 dark:text-red-300'
-						>
-							<XCircle className='mt-0.5 h-3.5 w-3.5 shrink-0' strokeWidth={2.25} />
-							{validationError.message}
-						</p>
-					) : null}
-
-					{!integrationSelected &&
-						!flyHintDismissed &&
-						isFlyPublicHost(formData.url ?? '') && (
-							<div className='relative flex items-start gap-3 border border-blue-500/20 bg-blue-500/8 px-4 py-3 text-xs text-blue-700 dark:text-blue-300'>
-								<div className='pointer-events-none absolute inset-y-0 left-0 w-px bg-blue-500/50' />
-								<Info
-									className='mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500'
-									strokeWidth={2}
-								/>
-								<p className='flex-1 leading-5'>
-									Fly.io databases aren&apos;t reachable directly. Run{' '}
-									<code className='rounded bg-blue-500/12 px-1 font-mono text-[11px]'>
-										fly proxy 5432 -a &lt;your-app&gt;
-									</code>{' '}
-									then connect to{' '}
-									<span className='font-medium'>localhost:5432</span> — or use the{' '}
-									<span className='font-medium'>.internal</span>/
-									<span className='font-medium'>.flycast</span> host over a Fly
-									WireGuard tunnel.
-								</p>
-								<button
-									type='button'
-									onClick={function () {
-										setFlyHintDismissed(true)
-									}}
-									className='mt-0.5 shrink-0 text-blue-500/60 hover:text-blue-500 transition-colors'
-									title='Dismiss'
-									aria-label='Dismiss Fly.io hint'
-								>
-									<X className='h-3.5 w-3.5' />
-								</button>
-							</div>
-						)}
-				</div>
-
-				<DialogFooter className='border-t border-border/50 bg-muted/30 px-6 py-4'>
-					<div className='flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-						{integrationSelected ? (
-							<span className='text-xs text-muted-foreground/75'>
-								{supabaseSelected
-									? 'Authorize Supabase and pick a project to create the connection.'
-									: posthogSelected
-										? 'Add a personal API key to query your PostHog project with HogQL.'
-										: 'Add a token and pick a database to create the connection.'}
-							</span>
-						) : (
-							<TestConnectionButton
-								isTesting={isTesting}
-								status={testStatus}
-								message={testMessage}
-								showDesktopOnlyHint={showDesktopOnlyHint}
-								disabled={isTesting || !formData.type}
-								onClick={handleTestClick}
-							/>
-						)}
-						<div className='flex items-center gap-2'>
-							<Button
-								type='button'
-								variant='outline'
-								onClick={function () {
-									onOpenChange(false)
-								}}
-								className='border-border/70'
-							>
-								Cancel
-							</Button>
-							{!integrationSelected && (
-								<Button
-									type='submit'
-									form={FORM_ID}
-									disabled={isSaving}
-									className='gap-2'
-								>
-									{isSaving ? (
-										<>
-											<Spinner className='h-3.5 w-3.5' />
-											Saving...
-										</>
-									) : (
-										'Save Connection'
-									)}
-								</Button>
-							)}
-						</div>
-					</div>
-				</DialogFooter>
+						<ConnectionDialogFooter onCancel={handleCancel} />
+					</DropZone>
+				</DialogStoreProvider>
 			</DialogContent>
 		</Dialog>
 	)
 }
 
-const MotionButton = motion(Button)
-
-// Strong ease-out — mirrors the --ease-out token in styles.css.
-const EASE_OUT = [0.23, 1, 0.32, 1] as const
-
-type TTestPhase = 'idle' | 'testing' | 'success' | 'error' | 'desktop-only'
-
-type TTestConnectionButtonProps = {
-	isTesting: boolean
-	status: 'idle' | 'success' | 'error'
-	message: string
-	showDesktopOnlyHint?: boolean
-	disabled: boolean
-	onClick: () => void
+type BodyProps = {
+	canOpenDataFiles: boolean
+	onPickFiles: () => void
+	onOpenDataFiles: (paths: string[]) => void
+	onProviderComplete: (connection: NewConnection) => void
 }
 
-const TestConnectionButton = memo(function TestConnectionButton({
-	isTesting,
-	status,
-	message,
-	showDesktopOnlyHint = false,
-	disabled,
-	onClick
-}: TTestConnectionButtonProps) {
-	const phase: TTestPhase = showDesktopOnlyHint ? 'desktop-only' : isTesting ? 'testing' : status
+const DialogBody = memo(function DialogBody({
+	canOpenDataFiles,
+	onPickFiles,
+	onOpenDataFiles,
+	onProviderComplete
+}: BodyProps) {
+	const step = useDialog((state) => state.step)
 
-	const phaseContent: Record<TTestPhase, React.ReactNode> = {
-		idle: <span className='whitespace-nowrap'>Test Connection</span>,
-		testing: (
-			<>
-				<Spinner className='h-3.5 w-3.5' />
-				<span className='whitespace-nowrap'>Testing…</span>
-			</>
-		),
-		success: (
-			<>
-				<CheckCircle2 className='h-3.5 w-3.5 shrink-0' strokeWidth={2.25} />
-				<span className='whitespace-nowrap'>{message || 'Connection successful!'}</span>
-			</>
-		),
-		error: (
-			<>
-				<XCircle className='h-3.5 w-3.5 shrink-0' strokeWidth={2.25} />
-				<span className='truncate'>{message || 'Connection failed'}</span>
-			</>
-		),
-		'desktop-only': (
-			<>
-				<Monitor className='h-3.5 w-3.5 shrink-0' strokeWidth={2.25} />
-				<span className='whitespace-nowrap'>Desktop app only</span>
-			</>
+	if (step === 'source') {
+		return (
+			<div key='source' className={PANE}>
+				<SourceStep
+					canOpenDataFiles={canOpenDataFiles}
+					onPickFiles={onPickFiles}
+					onOpenDataFiles={onOpenDataFiles}
+				/>
+			</div>
 		)
 	}
 
-	const announcement =
-		phase === 'testing'
-			? 'Testing connection'
-			: phase === 'success'
-				? message || 'Connection successful'
-				: phase === 'error'
-					? message || 'Connection failed'
-					: phase === 'desktop-only'
-						? 'Testing connections is only available in the desktop app'
-						: ''
-
 	return (
-		<MotionConfig reducedMotion='user'>
-			<span className='sr-only' role='status' aria-live='polite'>
-				{announcement}
-			</span>
-			<MotionButton
-				layout
-				type='button'
-				variant='outline'
-				onClick={onClick}
-				disabled={disabled}
-				title={phase === 'error' ? message : undefined}
-				whileTap={disabled ? undefined : { scale: 0.97 }}
-				transition={{ layout: { duration: 0.32, ease: EASE_OUT } }}
-				className={cn(
-					'max-w-full gap-2 self-start overflow-hidden border-border/70 bg-background/65',
-					phase === 'desktop-only' &&
-						'desktop-only-hint border-primary/30 bg-primary/5 text-primary',
-					phase === 'success' &&
-						'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300',
-					phase === 'error' &&
-						'border-red-500/30 bg-red-500/10 text-red-700 hover:bg-red-500/15 dark:text-red-300'
-				)}
-			>
-				<AnimatePresence mode='popLayout' initial={false}>
-					<motion.span
-						key={phase}
-						initial={{ opacity: 0, y: 6, filter: 'blur(4px)' }}
-						animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-						exit={{ opacity: 0, y: -6, filter: 'blur(4px)' }}
-						transition={{ duration: 0.18, ease: EASE_OUT }}
-						className='flex min-w-0 items-center gap-2'
-					>
-						{phaseContent[phase]}
-					</motion.span>
-				</AnimatePresence>
-			</MotionButton>
-		</MotionConfig>
+		<div key='details' className={PANE}>
+			<Suspense fallback={null}>
+				<DetailsStep onProviderComplete={onProviderComplete} />
+			</Suspense>
+		</div>
 	)
 })
+
+type DropProps = {
+	enabled: boolean
+	external: boolean
+	onPaths: (paths: string[]) => Promise<void>
+	children: React.ReactNode
+}
+
+function DropZone({ enabled, external, onPaths, children }: DropProps) {
+	const [dragging, setDragging] = useState(false)
+	const depth = useRef(0)
+
+	function hasFiles(event: React.DragEvent) {
+		return Array.from(event.dataTransfer.types).includes('Files')
+	}
+
+	return (
+		<div
+			className='relative flex min-h-0 flex-1 flex-col'
+			onDragEnter={(event) => {
+				if (!enabled || !hasFiles(event)) return
+				depth.current += 1
+				setDragging(true)
+			}}
+			onDragOver={(event) => {
+				if (enabled && hasFiles(event)) event.preventDefault()
+			}}
+			onDragLeave={(event) => {
+				if (!enabled || !hasFiles(event)) return
+				depth.current = Math.max(0, depth.current - 1)
+				if (depth.current === 0) setDragging(false)
+			}}
+			onDrop={(event) => {
+				depth.current = 0
+				setDragging(false)
+				if (!enabled || !hasFiles(event)) return
+				event.preventDefault()
+				event.stopPropagation()
+				const paths = Array.from(event.dataTransfer.files)
+					.map((file) =>
+						'path' in file && typeof file.path === 'string' ? file.path : ''
+					)
+					.filter(Boolean)
+				if (paths.length > 0) void onPaths(paths)
+			}}
+		>
+			{children}
+			{enabled && (dragging || external) ? (
+				<div
+					aria-hidden='true'
+					className='pointer-events-none absolute inset-0 z-50 grid place-items-center border border-dashed border-foreground/35 bg-card/95'
+				>
+					<div className='grid justify-items-center gap-2.5 text-center'>
+						<FileSpreadsheet className='h-7 w-7 text-foreground/80' strokeWidth={1.8} />
+						<div className='text-base font-semibold'>Drop to detect file type</div>
+						<div className='font-mono text-xs text-muted-foreground'>
+							SQLite, DuckDB, CSV, Parquet or JSON
+						</div>
+					</div>
+				</div>
+			) : null}
+		</div>
+	)
+}
