@@ -5,6 +5,7 @@ import {
 import { writeStorageItem } from '@studio/shared/lib/safe-storage'
 import { noop } from '@studio/shared/utils/noop'
 import { putTableSnapshot } from './actions'
+import { configureSplashSnapshot } from './splash-snapshot'
 import { workspaceStore } from './store'
 import { readBootstrappedSettings } from './bootstrap'
 import type { TableSnapshot } from './types'
@@ -160,6 +161,7 @@ function clearStored(): void {
  * on every change. Turning it off removes the stored data.
  */
 export function configureTableSnapshotPersistence(nextEnabled: boolean): void {
+	configureSplashSnapshot(nextEnabled)
 	if (nextEnabled === enabled) return
 	enabled = nextEnabled
 

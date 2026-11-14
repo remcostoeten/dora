@@ -11,6 +11,13 @@ export {
 	initTableSnapshotPersistence
 } from './snapshot-persistence'
 export {
+	buildSplashSnapshot,
+	configureSplashSnapshot,
+	readSplashColors,
+	SPLASH_STORAGE_KEY
+} from './splash-snapshot'
+export type { SplashColors, SplashSnapshot } from './splash-snapshot'
+export {
 	createWorkspaceStore,
 	dispatchWorkspace,
 	readWorkspace,
