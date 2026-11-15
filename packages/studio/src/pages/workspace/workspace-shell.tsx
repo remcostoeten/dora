@@ -36,7 +36,7 @@ const Sidebar = memo(DatabaseSidebar)
 
 const AI_ASSISTANT_TOGGLE = <AiAssistantToggle />
 
-type ActionsProps = {
+type Props = {
 	actions: ConnectionActions
 }
 
@@ -88,7 +88,7 @@ function WorkspaceLiveMonitor({ children }: { children: ReactNode }) {
 	)
 }
 
-const WorkspaceShortcuts = memo(function WorkspaceShortcuts({ actions }: ActionsProps) {
+const WorkspaceShortcuts = memo(function WorkspaceShortcuts({ actions }: Props) {
 	useWorkspaceShortcuts({ actions })
 	return null
 })
@@ -128,7 +128,7 @@ function openTableInActiveConnection(tableId: string, tableName: string) {
 	openTab({ connectionId, tableId, tableName, label: tableName })
 }
 
-const WorkspaceDatabaseSidebar = memo(function WorkspaceDatabaseSidebar({ actions }: ActionsProps) {
+const WorkspaceDatabaseSidebar = memo(function WorkspaceDatabaseSidebar({ actions }: Props) {
 	const isVisible = useWorkspaceSelector(function (state) {
 		return (
 			VIEWS_WITH_DATABASE_PANEL.has(state.uiChrome.activeNavId) &&
