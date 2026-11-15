@@ -50,7 +50,7 @@ jobs:
                       ${{ runner.os }}-cargo-
 
             - name: Start database containers
-              run: docker compose -f docker-compose.databases.yml up -d --wait mysql mariadb redis valkey
+              run: docker compose -f docker-compose.databases.yml up -d --wait mysql mariadb redis valkey redis-tls redis-cluster
 
             - name: Run live adapter tests
               working-directory: apps/desktop/src-tauri

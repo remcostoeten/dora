@@ -127,6 +127,64 @@ services:
             retries: 10
             start_period: 5s
 
+    redis-tls:
+        image: redis:7-alpine
+        container_name: dora-redis-tls
+        restart: unless-stopped
+        command:
+            - redis-server
+            - --port
+            - '0'
+            - --tls-port
+            - '6390'
+            - --tls-cert-file
+            - /tls/server.crt
+            - --tls-key-file
+            - /tls/server.key
+            - --tls-ca-cert-file
+            - /tls/server.crt
+            - --tls-auth-clients
+            - 'no'
+            - --requirepass
+            - rootpass
+        ports:
+            - '127.0.0.1:6390:6390'
+        volumes:
+            - ./docker/redis-tls:/tls:ro
+        healthcheck:
+            test:
+                ['CMD', 'redis-cli', '--tls', '--insecure', '-p', '6390', '-a', 'rootpass', 'ping']
+            interval: 5s
+            timeout: 3s
+            retries: 10
+            start_period: 5s
+
+    redis-cluster:
+        image: redis:7-alpine
+        container_name: dora-redis-cluster
+        restart: unless-stopped
+        entrypoint:
+            - sh
+            - -c
+            - |
+                for port in 7000 7001 7002; do
+                  redis-server --port $$port --cluster-enabled yes --cluster-config-file nodes-$$port.conf \
+                    --cluster-announce-ip 127.0.0.1 --protected-mode no --save '' --appendonly no \
+                    --dir /tmp --daemonize yes
+                done
+                sleep 1
+                redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 \
+                  --cluster-replicas 0 --cluster-yes || true
+                exec tail -f /dev/null
+        ports:
+            - '127.0.0.1:7000-7002:7000-7002'
+        healthcheck:
+            test: ['CMD-SHELL', 'redis-cli -p 7000 cluster info | grep -q cluster_state:ok']
+            interval: 5s
+            timeout: 3s
+            retries: 20
+            start_period: 5s
+
 volumes:
     postgres-data:
     mysql-data:

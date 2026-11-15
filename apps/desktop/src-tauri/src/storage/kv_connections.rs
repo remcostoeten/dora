@@ -254,6 +254,7 @@ mod tests {
             name: "Local Valkey".into(),
             config: KvConnectionConfig {
                 url: "redis://:secret@127.0.0.1:6379/0".into(),
+                ..Default::default()
             },
             connected: false,
             last_connected_at: None,

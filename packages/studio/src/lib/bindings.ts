@@ -2877,7 +2877,11 @@ export type KvCommandHistoryEntry = {
 	status: string
 	error_message: string | null
 }
-export type KvConnectionConfig = { url: string }
+export type KvConnectionConfig = {
+	url: string
+	skipTlsVerify?: boolean
+	sshTunnel?: SshConfig | null
+}
 export type KvConnectionInfo = {
 	id: string
 	name: string
