@@ -107,7 +107,7 @@ describe('DockerView', () => {
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue([])
 
 		renderWithProviders(<DockerView />)
-		expect(screen.getByText('Docker Not Available')).toBeInTheDocument()
+		expect(screen.getByText('Docker not available')).toBeInTheDocument()
 		expect(screen.getByText('Connection failed')).toBeInTheDocument()
 	})
 
