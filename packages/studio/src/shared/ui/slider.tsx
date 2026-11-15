@@ -6,19 +6,28 @@ const Slider = React.forwardRef<
 	React.ElementRef<typeof SliderPrimitive.Root>,
 	React.ComponentPropsWithoutRef<typeof SliderPrimitive.Root>
 >(function Slider({ className, ...props }, ref) {
+	const [isFocusVisible, setIsFocusVisible] = React.useState(false)
+
 	return (
 		<SliderPrimitive.Root
 			ref={ref}
+			data-focus-visible={isFocusVisible ? '' : undefined}
 			className={cn(
 				'group relative flex w-full touch-none select-none items-center',
 				className
 			)}
 			{...props}
 		>
-			<SliderPrimitive.Track className='relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted transition-colors duration-150 group-has-[:focus-visible]:bg-focus-strong'>
+			<SliderPrimitive.Track className='relative h-1.5 w-full grow overflow-hidden rounded-full bg-muted transition-colors duration-75 group-data-[focus-visible]:bg-focus-strong'>
 				<SliderPrimitive.Range className='absolute h-full bg-primary' />
 			</SliderPrimitive.Track>
-			<SliderPrimitive.Thumb className='block h-4 w-4 rounded-full border border-primary/50 bg-foreground shadow-sm transition-colors duration-150 focus-visible:bg-foreground/75 disabled:pointer-events-none disabled:opacity-50' />
+			<SliderPrimitive.Thumb
+				className='block h-4 w-4 rounded-full border border-primary/50 bg-foreground shadow-sm transition-colors duration-75 focus-visible:bg-foreground/75 disabled:pointer-events-none disabled:opacity-50'
+				onFocus={(event) =>
+					setIsFocusVisible(event.currentTarget.matches(':focus-visible'))
+				}
+				onBlur={() => setIsFocusVisible(false)}
+			/>
 		</SliderPrimitive.Root>
 	)
 })

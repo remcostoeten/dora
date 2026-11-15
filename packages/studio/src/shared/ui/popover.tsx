@@ -3,6 +3,7 @@ import * as PopoverPrimitive from '@radix-ui/react-popover'
 import * as React from 'react'
 import { useIsMobile } from '@studio/shared/hooks/use-mobile'
 import { cn } from '@studio/shared/utils/cn'
+import { getPortalContainer } from './portal-container'
 
 const DRAWER_DISMISS_DISTANCE = 80
 const DRAWER_DISMISS_VELOCITY = 0.5
@@ -89,16 +90,15 @@ const PopoverContent = React.forwardRef<
 	}
 
 	return (
-		<PopoverPrimitive.Portal>
+		<PopoverPrimitive.Portal container={getPortalContainer()}>
 			<PopoverPrimitive.Content
 				ref={ref}
 				align={align}
 				sideOffset={sideOffset}
 				className={cn(
-					'z-50 w-72 rounded-md border border-sidebar-border bg-sidebar p-4 text-sidebar-foreground shadow-lg outline-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+					'z-50 w-72 rounded-md border border-sidebar-border bg-sidebar p-4 text-sidebar-foreground shadow-lg outline-hidden',
 					className
 				)}
-				style={{ transformOrigin: 'var(--radix-popover-content-transform-origin)' }}
 				{...props}
 			/>
 		</PopoverPrimitive.Portal>
@@ -157,12 +157,12 @@ const DrawerContent = React.forwardRef<HTMLDivElement, DrawerContentProps>(funct
 	}
 
 	return (
-		<DialogPrimitive.Portal>
-			<DialogPrimitive.Overlay className='fixed inset-0 z-50 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0' />
+		<DialogPrimitive.Portal container={getPortalContainer()}>
+			<div className='fixed inset-0 z-50 bg-black/50' />
 			<DialogPrimitive.Content
 				ref={setRefs}
 				aria-describedby={undefined}
-				className='fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col rounded-t-xl border-t border-sidebar-border bg-sidebar pb-[env(safe-area-inset-bottom)] text-sidebar-foreground shadow-lg outline-hidden duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom'
+				className='fixed inset-x-0 bottom-0 z-50 flex max-h-[85dvh] flex-col rounded-t-xl border-t border-sidebar-border bg-sidebar pb-[env(safe-area-inset-bottom)] text-sidebar-foreground shadow-lg outline-hidden'
 			>
 				<DialogPrimitive.Title className='sr-only'>Panel</DialogPrimitive.Title>
 				<div

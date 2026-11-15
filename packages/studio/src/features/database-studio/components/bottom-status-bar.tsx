@@ -1,9 +1,9 @@
-import { ChevronLeft, ChevronRight, Clock, Activity } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { memo, useState, useEffect, useRef } from 'react'
 import { Button } from '@studio/shared/ui/button'
 import { NumberInput } from '@studio/shared/ui/number-input'
-import { cn } from '@studio/shared/utils/cn'
 import { PaginationState } from '../types'
+import { LiveMonitorStatus } from './live-monitor-controls'
 
 type Props = {
 	pagination: PaginationState
@@ -11,35 +11,27 @@ type Props = {
 	rowCount: number
 	totalCount: number
 	executionTime: number
-	liveMonitorEnabled?: boolean
-	liveMonitorIntervalMs?: number
-	lastPolledAt?: number | null
-	changesDetected?: number
-	liveMonitorError?: string | null
+	showLiveMonitor?: boolean
+	isPending?: boolean
 }
 
-export function BottomStatusBar({
+export const BottomStatusBar = memo(function BottomStatusBar({
 	pagination,
 	onPaginationChange,
 	rowCount,
 	totalCount,
 	executionTime,
-	liveMonitorEnabled,
-	liveMonitorIntervalMs,
-	lastPolledAt,
-	changesDetected,
-	liveMonitorError
+	showLiveMonitor,
+	isPending = false
 }: Props) {
 	const [limitInput, setLimitInput] = useState(String(pagination.limit))
 	const [offsetInput, setOffsetInput] = useState(String(pagination.offset))
-
-	useEffect(
-		function () {
-			setLimitInput(String(pagination.limit))
-			setOffsetInput(String(pagination.offset))
-		},
-		[pagination]
-	)
+	const [syncedPagination, setSyncedPagination] = useState(pagination)
+	if (syncedPagination !== pagination) {
+		setSyncedPagination(pagination)
+		setLimitInput(String(pagination.limit))
+		setOffsetInput(String(pagination.offset))
+	}
 
 	const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -91,46 +83,14 @@ export function BottomStatusBar({
 			<div className='flex items-center gap-3 text-xs text-muted-foreground'>
 				<div className='flex items-center gap-1.5'>
 					<Clock className='h-3.5 w-3.5' />
-					<span>{executionTime}ms</span>
+					<span>{isPending ? '…' : `${executionTime}ms`}</span>
 				</div>
-				{liveMonitorEnabled !== undefined && (
-					<>
-						<div className='h-3 w-px bg-sidebar-border' />
-						<div className='flex items-center gap-1.5'>
-							<span
-								className={cn(
-									'h-1.5 w-1.5 rounded-full',
-									liveMonitorEnabled
-										? changesDetected && changesDetected > 0
-											? 'bg-amber-400'
-											: 'bg-emerald-400'
-										: 'bg-muted-foreground/40'
-								)}
-							/>
-							{liveMonitorEnabled ? (
-								liveMonitorError ? (
-									<span className='text-red-400' title={liveMonitorError}>
-										Live error
-									</span>
-								) : (
-									<span>
-										Live · {(liveMonitorIntervalMs || 5000) / 1000}s
-										{lastPolledAt && (
-											<span className='ml-1 opacity-60'>
-												· {new Date(lastPolledAt).toLocaleTimeString()}
-											</span>
-										)}
-									</span>
-								)
-							) : (
-								<span>Monitor off</span>
-							)}
-						</div>
-					</>
-				)}
+				{showLiveMonitor && <LiveMonitorStatus />}
 				<div className='h-3 w-px bg-sidebar-border' />
 				<span>
-					{totalCount === 0 ? (
+					{isPending ? (
+						'Loading rows'
+					) : totalCount === 0 ? (
 						'No rows'
 					) : (
 						<>
@@ -196,4 +156,4 @@ export function BottomStatusBar({
 			</div>
 		</div>
 	)
-}
+})

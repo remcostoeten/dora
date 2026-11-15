@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import type * as Monaco from 'monaco-editor'
 import type { Monaco as MonacoApi } from '@monaco-editor/react'
 import { preloadMonacoWorkers } from '@studio/monaco-workers'
+import { dropCostlyEditorFocusRule } from './focus-rule'
 
 export type EditorFamily = 'sql' | 'typescript'
 export type EditorMount = (editor: Monaco.editor.IStandaloneCodeEditor, monaco: MonacoApi) => void
@@ -33,9 +34,12 @@ let monacoPromise: Promise<MonacoApi> | null = null
 
 export function preloadEditorHost(): Promise<MonacoApi> {
 	if (!monacoPromise) {
-		monacoPromise = Promise.resolve(preloadMonacoWorkers()).then(() => {
-			return import('monaco-editor') as unknown as Promise<MonacoApi>
-		})
+		monacoPromise = Promise.resolve(preloadMonacoWorkers())
+			.then(() => import('monaco-editor') as unknown as Promise<MonacoApi>)
+			.then((monaco) => {
+				dropCostlyEditorFocusRule()
+				return monaco
+			})
 	}
 	return monacoPromise
 }

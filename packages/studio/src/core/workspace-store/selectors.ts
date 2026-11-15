@@ -32,6 +32,10 @@ export function selectActiveTab(state: WorkspaceState): Tab | null {
 	return state.tabs.tabs.find((tab) => tab.id === activeTabId) ?? null
 }
 
+export function selectActiveTableId(state: WorkspaceState): string | null {
+	return selectActiveTab(state)?.tableId ?? null
+}
+
 export function selectVisibleTabs(state: WorkspaceState): Tab[] {
 	return tabsForConnection(state.tabs.tabs, state.tabs.activeConnectionId)
 }
@@ -80,6 +84,10 @@ export function useActiveTabId(): string | null {
 
 export function useActiveTab(): Tab | null {
 	return useWorkspaceSelector(selectActiveTab)
+}
+
+export function useActiveTableId(): string | null {
+	return useWorkspaceSelector(selectActiveTableId)
 }
 
 export function useActiveNavId(): string {

@@ -16,6 +16,8 @@ pub mod http;
 mod init;
 mod integrations;
 pub mod kv;
+#[cfg(target_os = "linux")]
+pub mod linux_renderer;
 mod observability;
 mod ollama_installer;
 mod storage;
@@ -91,26 +93,6 @@ impl AppState {
     }
 }
 
-#[cfg(target_os = "linux")]
-fn configure_linux_webview_backend() {
-    // Tauri/Wry on Linux still goes through WebKit2GTK. Under Wayland, this app
-    // has been hitting `Gdk-Message: Error 71 (Protocol error) dispatching to
-    // Wayland display`, so force GTK onto X11 before the runtime initializes.
-    let current_backend = std::env::var_os("GDK_BACKEND");
-    if current_backend.as_deref() != Some(std::ffi::OsStr::new("x11")) {
-        std::env::set_var("GDK_BACKEND", "x11");
-        log::info!("Forced GDK_BACKEND=x11 on Linux to avoid Wayland WebKit crashes");
-    }
-
-    // WebKitGTK's DMABuf renderer can fail to allocate GBM buffers on some
-    // Linux GPU/compositor combinations, leaving startup stuck on messages like
-    // `Failed to create GBM buffer of size 1280x900: Invalid argument`.
-    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
-        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
-        log::info!("Disabled WebKit DMABuf renderer on Linux to avoid GBM buffer failures");
-    }
-}
-
 #[allow(clippy::missing_panics_doc)]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -123,7 +105,7 @@ pub fn run() {
     observability::init();
 
     #[cfg(target_os = "linux")]
-    configure_linux_webview_backend();
+    linux_renderer::log_decision();
 
     // Install ring as the default crypto provider for rustls
     rustls::crypto::ring::default_provider()
@@ -160,6 +142,14 @@ pub fn run() {
             log::info!("Creating main window");
             init::build_window(app)?;
             log::info!("Main window setup complete");
+            #[cfg(target_os = "linux")]
+            {
+                use tauri::Listener;
+                app.listen(linux_renderer::FIRST_PAINT_EVENT, |_| {
+                    linux_renderer::confirm_first_paint()
+                });
+                linux_renderer::watch_first_paint(app.handle().clone());
+            }
             init::build_menu(app)?;
 
             let handle = app.handle();
@@ -210,6 +200,7 @@ pub fn run() {
             database::commands::cancel_query,
             database::commands::cancel_queries,
             database::commands::start_query,
+            database::commands::run_query,
             database::commands::start_query_stream,
             database::commands::fetch_query,
             database::commands::fetch_page,

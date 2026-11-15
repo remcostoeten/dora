@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { readUrlParam, writeUrlParams } from '@studio/core/url-state/url-params'
 import {
 	getAppearanceSettings,
 	saveAppearanceSettings,
@@ -10,42 +10,31 @@ import {
 
 const THEME_PARAM = 'theme'
 
+function applyThemeFromUrl() {
+	const themeParam = readUrlParam(THEME_PARAM) as Theme | null
+	if (!themeParam) return
+
+	const currentSettings = getAppearanceSettings()
+	if (currentSettings.theme !== themeParam) {
+		const updated = saveAppearanceSettings({ theme: themeParam })
+		applyAppearanceToDOM(updated)
+	}
+}
+
 export function useThemeSync() {
-	const [searchParams, setSearchParams] = useSearchParams()
+	useEffect(function syncUrlToStore() {
+		applyThemeFromUrl()
+		window.addEventListener('popstate', applyThemeFromUrl)
+		return () => window.removeEventListener('popstate', applyThemeFromUrl)
+	}, [])
 
-	// Sync URL -> Store/DOM
-	useEffect(() => {
-		const themeParam = searchParams.get(THEME_PARAM) as Theme | null
-		if (!themeParam) return
-
-		const currentSettings = getAppearanceSettings()
-		if (currentSettings.theme !== themeParam) {
-			const updated = saveAppearanceSettings({ theme: themeParam })
-			applyAppearanceToDOM(updated)
-		}
-	}, [searchParams])
-
-	// Sync Store/Event -> URL
-	useEffect(() => {
+	useEffect(function syncStoreToUrl() {
 		function handleAppearanceChange(event: Event) {
 			const customEvent = event as CustomEvent<AppearanceSettings>
-			const newTheme = customEvent.detail.theme
-
-			setSearchParams(
-				(prev) => {
-					if (prev.get(THEME_PARAM) === newTheme) {
-						return prev
-					}
-
-					const newParams = new URLSearchParams(prev)
-					newParams.set(THEME_PARAM, newTheme)
-					return newParams
-				},
-				{ replace: true }
-			)
+			writeUrlParams({ [THEME_PARAM]: customEvent.detail.theme })
 		}
 
 		window.addEventListener('dora-appearance-change', handleAppearanceChange)
 		return () => window.removeEventListener('dora-appearance-change', handleAppearanceChange)
-	}, [setSearchParams])
+	}, [])
 }

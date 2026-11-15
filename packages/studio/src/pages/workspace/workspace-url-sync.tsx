@@ -1,7 +1,11 @@
-import { useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useSettings } from '@studio/core/settings'
-import { useActiveConnectionId, useActiveNavId, useActiveTab } from '@studio/core/workspace-store'
+import { writeUrlParams } from '@studio/core/url-state/url-params'
+import {
+	useActiveConnectionId,
+	useActiveNavId,
+	useActiveTableId
+} from '@studio/core/workspace-store'
 
 type Props = {
 	isLoading: boolean
@@ -9,42 +13,25 @@ type Props = {
 
 /**
  * Keeps the URL, the persisted "last table", and the capture-ready marker in
- * step with navigation. Renders nothing and subscribes to the active tab, the
- * nav id and the router on its own, so that a table switch or a location change
- * re-renders this leaf instead of the whole shell.
+ * step with navigation. Renders nothing and subscribes to the active table, the
+ * nav id and the connection on its own. The URL is written through
+ * `writeUrlParams`, not React Router, so a table or view switch re-renders this
+ * leaf and nothing below the router.
  */
 export function WorkspaceUrlSync({ isLoading }: Props) {
-	const [searchParams, setSearchParams] = useSearchParams()
 	const { persistSetting, isLoading: isSettingsLoading } = useSettings()
 	const activeConnectionId = useActiveConnectionId()
 	const activeNavId = useActiveNavId()
-	const activeTab = useActiveTab()
-	const selectedTableId = activeTab?.tableId ?? ''
+	const selectedTableId = useActiveTableId() ?? ''
 
-	const isUpdatingUrlRef = useRef(false)
 	useEffect(
 		function syncUrlParams() {
-			if (isUpdatingUrlRef.current) return
-
-			const viewChanged = activeNavId && searchParams.get('view') !== activeNavId
-			const tableChanged = selectedTableId && searchParams.get('table') !== selectedTableId
-			const connectionChanged =
-				activeConnectionId && searchParams.get('connection') !== activeConnectionId
-
-			if (!viewChanged && !tableChanged && !connectionChanged) return
-
-			const params = new URLSearchParams()
-			if (activeNavId) params.set('view', activeNavId)
-			if (selectedTableId) params.set('table', selectedTableId)
-			if (activeConnectionId) params.set('connection', activeConnectionId)
-
-			isUpdatingUrlRef.current = true
-			setSearchParams(params, { replace: true })
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
+			const patch: Record<string, string | null> = { table: selectedTableId || null }
+			if (activeNavId) patch.view = activeNavId
+			if (activeConnectionId) patch.connection = activeConnectionId
+			writeUrlParams(patch)
 		},
-		[activeNavId, selectedTableId, activeConnectionId, searchParams, setSearchParams]
+		[activeNavId, selectedTableId, activeConnectionId]
 	)
 
 	useEffect(

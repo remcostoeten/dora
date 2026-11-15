@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useLiveMonitor } from '@studio/core/live-monitor'
+import {
+	getLiveMonitorState,
+	setLiveMonitorActiveTable,
+	subscribeLiveMonitor
+} from '@studio/core/live-monitor'
 import { overlayPendingEditsOnRows, type PendingEdit } from '@studio/core/pending-edits'
-import { useNuqsState } from '@studio/core/url-state/use-nuqs-state'
+import { readStudioUrlState, writeStudioUrlState } from '@studio/core/url-state/studio-url-state'
 import {
 	dropTableSnapshot,
 	putTableSnapshot,
-	readTableSnapshot,
-	type TableSnapshot
+	readTableSnapshot
 } from '@studio/core/workspace-store'
 import { getAdapterError } from '@studio/core/data-provider/types'
 import { schemaQueryOptions } from '@studio/core/data-provider/schema-query'
@@ -17,8 +20,11 @@ import { toast } from '@studio/shared/ui/notifier'
 import type { DataAdapter } from '@studio/core/data-provider/types'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { enrichColumnsWithFKs } from '../utils/fk-enrichment'
+import { afterNextPaint } from '../utils/after-next-paint'
+import type { LoadingStore } from '../utils/loading-store'
+import { reconcileTableData } from '../utils/reconcile-table-data'
 import {
-	DEFAULT_QUERY_SIGNATURE,
+	readDefaultPageSnapshot,
 	schemaHasTable,
 	snapshotQuerySignature,
 	snapshotToTableData
@@ -36,6 +42,9 @@ import type {
 
 type Args = {
 	adapter: DataAdapter
+	isActive: boolean
+	workspaceStateKey: string
+	loadingStore: LoadingStore
 	activeConnectionId?: string
 	tableId: string | null
 	tableName: string | null
@@ -60,11 +69,8 @@ type Args = {
 	onRowSelectionChange?: (pk: string | number | null) => void
 	setTableData: (value: TableData | null) => void
 	setVisibleColumns: Dispatch<SetStateAction<Set<string>>>
-	setIsLoading: (value: boolean) => void
-	setIsTableTransitioning: (value: boolean) => void
-	setPagination: (value: PaginationState) => void
-	setSort: (value: SortDescriptor | undefined) => void
-	setFilters: (value: FilterDescriptor[]) => void
+	setIsTablePending: (value: boolean) => void
+	resetQueryState: () => void
 	setSelectedRows: Dispatch<SetStateAction<Set<number>>>
 	setSelectedCells: Dispatch<SetStateAction<Set<string>>>
 	setFocusedCell: Dispatch<SetStateAction<{ row: number; col: number } | null>>
@@ -78,6 +84,9 @@ type Args = {
 export function useDatabaseStudioSync(args: Args) {
 	const {
 		adapter,
+		isActive,
+		workspaceStateKey,
+		loadingStore,
 		activeConnectionId,
 		tableId,
 		tableName,
@@ -102,31 +111,18 @@ export function useDatabaseStudioSync(args: Args) {
 		onRowSelectionChange,
 		setTableData,
 		setVisibleColumns,
-		setIsLoading,
-		setIsTableTransitioning,
-		setPagination,
-		setSort,
-		setFilters,
+		setIsTablePending,
+		resetQueryState,
 		setSelectedRows,
-		setSelectedCells: setUrlSelectedCells,
-		setFocusedCell: setUrlFocusedCell,
+		setSelectedCells,
+		setFocusedCell,
 		setContextMenuState,
 		setDraftRow,
 		setDraftInsertIndex
 	} = args
 
-	const liveMonitor = useLiveMonitor()
 	const queryClient = useQueryClient()
-	const {
-		urlState,
-		setSelectedRow,
-		setSelectedCells,
-		setFocusedCell,
-		setContextMenu,
-		setAddRecordMode
-	} = useNuqsState()
 	const initializedFromUrlRef = useRef(false)
-	const isUpdatingUrlRef = useRef(false)
 	const loadRequestIdRef = useRef(0)
 	const restoredFromPKRef = useRef(false)
 	// The snapshot currently painted on screen, as `conn::table` plus the query
@@ -140,6 +136,8 @@ export function useDatabaseStudioSync(args: Args) {
 	// reloading on each keystroke of a dry edit would defeat the buffer.
 	const getEditsForTableRef = useRef(getEditsForTable)
 	getEditsForTableRef.current = getEditsForTable
+	const onRowSelectionChangeRef = useRef(onRowSelectionChange)
+	onRowSelectionChangeRef.current = onRowSelectionChange
 
 	const withPendingEdits = useCallback(function (
 		data: TableData,
@@ -151,23 +149,38 @@ export function useDatabaseStudioSync(args: Args) {
 		return { ...data, rows: overlayPendingEditsOnRows(data.rows, edits) }
 	}, [])
 
-	const stableUrlState = useMemo(
-		function () {
-			return urlState
-		},
-		[
-			urlState.selectedRow,
-			urlState.focusedCell?.row,
-			urlState.focusedCell?.col,
-			urlState.addRecordMode,
-			urlState.addRecordIndex
-		]
-	)
+	// The latest query state, readable from effects without subscribing to it.
+	const queryStateRef = useRef({ tableData })
+	queryStateRef.current = { tableData }
 
-	// The latest query state, readable from effects without subscribing to it:
-	// the table-change and load paths only need it to skip no-op resets.
-	const queryStateRef = useRef({ pagination, sort, filters, tableData })
-	queryStateRef.current = { pagination, sort, filters, tableData }
+	const [preparedViewKey, setPreparedViewKey] = useState(workspaceStateKey)
+	if (preparedViewKey !== workspaceStateKey) {
+		setPreparedViewKey(workspaceStateKey)
+		if (tableId && activeConnectionId) {
+			resetQueryState()
+			const snapshot = readDefaultPageSnapshot(activeConnectionId, tableId)
+			if (snapshot) {
+				const next = reconcileTableData(
+					tableData,
+					withPendingEdits(snapshotToTableData(snapshot), tableId)
+				)
+				if (next !== tableData) setTableData(next)
+				setVisibleColumns(function keepIfEqual(previous) {
+					return isSameStringSet(previous, snapshot.visibleColumns)
+						? previous
+						: new Set(snapshot.visibleColumns)
+				})
+				setIsTablePending(false)
+			} else {
+				setVisibleColumns(function keepIfEmpty(previous) {
+					return previous.size === 0 ? previous : new Set()
+				})
+				setIsTablePending(true)
+			}
+		}
+	}
+
+	const externalChangeRef = useRef(false)
 
 	const loadTableData = useCallback(async () => {
 		const requestId = loadRequestIdRef.current + 1
@@ -175,13 +188,12 @@ export function useDatabaseStudioSync(args: Args) {
 		const isCurrentRequest = function () {
 			return loadRequestIdRef.current === requestId
 		}
+		externalChangeRef.current = false
 
 		if (!tableId || !tableRefName || !activeConnectionId) {
-			setIsLoading(false)
+			loadingStore.set('idle')
 			return
 		}
-
-		setIsLoading(true)
 
 		const currentView = `${activeConnectionId}::${tableId}::${currentQuerySignature}`
 		const snapshot = readTableSnapshot(activeConnectionId, tableRefName)
@@ -197,8 +209,12 @@ export function useDatabaseStudioSync(args: Args) {
 		let paintedFromSnapshot = false
 		if (cached && currentView !== displayedViewRef.current) {
 			paintedFromSnapshot = true
-			const next = withPendingEdits(snapshotToTableData(cached), tableId)
-			if (!isSameTableData(queryStateRef.current.tableData, next)) setTableData(next)
+			const current = queryStateRef.current.tableData
+			const next = reconcileTableData(
+				current,
+				withPendingEdits(snapshotToTableData(cached), tableId)
+			)
+			if (next !== current) setTableData(next)
 			if (cached.visibleColumns.length > 0) {
 				setVisibleColumns(function keepIfEqual(previous) {
 					return isSameStringSet(previous, cached.visibleColumns)
@@ -206,9 +222,11 @@ export function useDatabaseStudioSync(args: Args) {
 						: new Set(cached.visibleColumns)
 				})
 			}
-			setIsTableTransitioning(false)
+			setIsTablePending(false)
 			displayedViewRef.current = currentView
 		}
+
+		loadingStore.set(paintedFromSnapshot ? 'revalidating' : 'loading')
 
 		// The schema fetch races the row fetch instead of gating it: it goes
 		// through the shared react-query entry (single-flight with useSchema)
@@ -230,7 +248,7 @@ export function useDatabaseStudioSync(args: Args) {
 			})
 			setTableData(null)
 			dropTableSnapshot(activeConnectionId, tableRefName)
-			setIsTableTransitioning(false)
+			setIsTablePending(false)
 		}
 
 		const fetchRows = function () {
@@ -247,14 +265,9 @@ export function useDatabaseStudioSync(args: Args) {
 		}
 
 		try {
-			// A snapshot paint must reach the screen before the refresh fetch is
-			// issued (the cached-switch render invariant): yield one macrotask so
-			// React commits the painted rows, then fire the fetch. Non-cached
-			// loads fetch immediately — there is nothing on screen to protect.
+			// Lets the snapshot paint reach the screen before the refresh fetch starts.
 			if (paintedFromSnapshot) {
-				await new Promise(function (resolve) {
-					setTimeout(resolve, 0)
-				})
+				await afterNextPaint()
 				if (!isCurrentRequest()) return
 			}
 
@@ -294,7 +307,9 @@ export function useDatabaseStudioSync(args: Args) {
 					)
 				}
 
-				setTableData(withPendingEdits(data, tableId))
+				const current = queryStateRef.current.tableData
+				const next = reconcileTableData(current, withPendingEdits(data, tableId))
+				if (next !== current) setTableData(next)
 				displayedViewRef.current = currentView
 				let nextVisibleColumns: string[] = []
 				if (data.columns.length > 0) {
@@ -307,13 +322,16 @@ export function useDatabaseStudioSync(args: Args) {
 						return prev
 					})
 				}
+				setIsTablePending(false)
 
+				const snapshotRows =
+					getEditsForTableRef.current(tableId).length > 0 ? data.rows : next.rows
 				const snapshotOf = function (columns: TableData['columns']) {
 					return {
 						connectionId: activeConnectionId,
 						tableId: tableRefName,
 						columns,
-						rows: data.rows,
+						rows: snapshotRows,
 						totalCount: data.totalCount,
 						visibleColumns: nextVisibleColumns,
 						offset: pagination.offset,
@@ -322,16 +340,17 @@ export function useDatabaseStudioSync(args: Args) {
 						filters,
 						conjunction: filterConjunction,
 						filterGroup,
-						fetchedAt: Date.now()
+						fetchedAt: Date.now(),
+						executionTime: next.executionTime
 					}
 				}
-				putTableSnapshot(snapshotOf(data.columns))
+				putTableSnapshot(snapshotOf(next.columns))
 
 				if (!resolvedSchema) {
 					// Cold path: rows are painted; apply the schema verdict and
 					// enrichment when it lands. A schema failure surfaces via
 					// the shared ['schema', id] query state, not a toast here.
-					setIsLoading(false)
+					loadingStore.set('idle')
 					let schema: DatabaseSchema | null = null
 					try {
 						schema = await schemaPromise
@@ -350,8 +369,13 @@ export function useDatabaseStudioSync(args: Args) {
 						schemaName ?? undefined
 					)
 					if (enriched !== data.columns) {
-						setTableData(withPendingEdits({ ...data, columns: enriched }, tableId))
-						putTableSnapshot(snapshotOf(enriched))
+						const shown = queryStateRef.current.tableData
+						const withForeignKeys = reconcileTableData(
+							shown,
+							withPendingEdits({ ...data, columns: enriched }, tableId)
+						)
+						if (withForeignKeys !== shown) setTableData(withForeignKeys)
+						putTableSnapshot(snapshotOf(withForeignKeys.columns))
 					}
 				}
 			} else {
@@ -380,7 +404,7 @@ export function useDatabaseStudioSync(args: Args) {
 				if (!cached) {
 					setTableData(null)
 				}
-				setIsTableTransitioning(false)
+				setIsTablePending(false)
 			}
 		} catch (error) {
 			if (!isCurrentRequest()) return
@@ -393,10 +417,10 @@ export function useDatabaseStudioSync(args: Args) {
 			if (!cached) {
 				setTableData(null)
 			}
-			setIsTableTransitioning(false)
+			setIsTablePending(false)
 		} finally {
 			if (isCurrentRequest()) {
-				setIsLoading(false)
+				loadingStore.set('idle')
 			}
 		}
 	}, [
@@ -406,11 +430,11 @@ export function useDatabaseStudioSync(args: Args) {
 		filters,
 		filterConjunction,
 		filterGroup,
+		loadingStore,
 		pagination.limit,
 		pagination.offset,
 		queryClient,
-		setIsLoading,
-		setIsTableTransitioning,
+		setIsTablePending,
 		setTableData,
 		setVisibleColumns,
 		sort,
@@ -428,95 +452,50 @@ export function useDatabaseStudioSync(args: Args) {
 
 	useEffect(
 		function syncActiveTable() {
-			liveMonitor.setActiveTable(tableRefName ?? null)
+			setLiveMonitorActiveTable(tableRefName ?? null)
 			return function () {
-				liveMonitor.setActiveTable(null)
+				setLiveMonitorActiveTable(null)
 			}
 		},
 		[tableRefName]
 	)
 
+	const canReloadForExternalChange = isActive && !draftRow && !isApplyingEdits && !hasPendingEdits
+
 	useEffect(
 		function reloadOnExternalChange() {
-			if (!liveMonitor.recentEvents.length) return
-			const hasChangeForThisTable = liveMonitor.recentEvents.some(function (e) {
-				return e.tableName === tableRefName || e.tableName === tableName
-			})
-			// Reloading while dry edits are buffered would repaint database values
-			// over them, leaving the pending-changes count describing writes the user
-			// can no longer see.
-			if (hasChangeForThisTable && !draftRow && !isApplyingEdits && !hasPendingEdits) {
+			function applyPendingChange() {
+				if (!externalChangeRef.current || !canReloadForExternalChange) return
 				loadTableData()
 			}
+
+			applyPendingChange()
+
+			let seenEvents = getLiveMonitorState().recentEvents
+			return subscribeLiveMonitor(function onLiveMonitorChange() {
+				const events = getLiveMonitorState().recentEvents
+				if (events === seenEvents) return
+				const lastSeenId = seenEvents[0]?.id
+				seenEvents = events
+				for (const event of events) {
+					if (event.id === lastSeenId) break
+					if (event.tableName === tableRefName || event.tableName === tableName) {
+						externalChangeRef.current = true
+						break
+					}
+				}
+				applyPendingChange()
+			})
 		},
-		[
-			liveMonitor.recentEvents,
-			draftRow,
-			isApplyingEdits,
-			hasPendingEdits,
-			loadTableData,
-			tableName,
-			tableRefName
-		]
+		[canReloadForExternalChange, loadTableData, tableName, tableRefName]
 	)
 
 	useEffect(
 		function handleTableChange() {
 			if (!tableId || !activeConnectionId) return
-			// Every set below is guarded: the per-table workspace state usually
-			// already holds these values, and an unconditional reset would cost a
-			// second full render on every cached switch.
-			const current = queryStateRef.current
-			if (current.pagination.limit !== 50 || current.pagination.offset !== 0) {
-				setPagination({ limit: 50, offset: 0 })
-			}
-			if (current.sort !== undefined) setSort(undefined)
-			if (current.filters.length > 0) setFilters([])
 			initializedFromUrlRef.current = false
-
-			const snapshot = readTableSnapshot(activeConnectionId, tableId)
-
-			if (snapshot && snapshotQuerySignature(snapshot) === DEFAULT_QUERY_SIGNATURE) {
-				const next = withPendingEdits(snapshotToTableData(snapshot), tableId)
-				if (!isSameTableData(current.tableData, next)) setTableData(next)
-				setVisibleColumns(function keepIfEqual(previous) {
-					return isSameStringSet(previous, snapshot.visibleColumns)
-						? previous
-						: new Set(snapshot.visibleColumns)
-				})
-				setIsTableTransitioning(false)
-				return
-			}
-
-			setVisibleColumns(function keepIfEmpty(previous) {
-				return previous.size === 0 ? previous : new Set()
-			})
-			setIsTableTransitioning(true)
 		},
-		[
-			activeConnectionId,
-			setFilters,
-			setIsTableTransitioning,
-			setPagination,
-			setSort,
-			setTableData,
-			setVisibleColumns,
-			tableId,
-			withPendingEdits
-		]
-	)
-
-	useEffect(
-		function clearTransitionOnLoad() {
-			if (!tableData) return
-			const timer = setTimeout(function () {
-				setIsTableTransitioning(false)
-			}, 50)
-			return function () {
-				clearTimeout(timer)
-			}
-		},
-		[setIsTableTransitioning, tableData]
+		[activeConnectionId, tableId]
 	)
 
 	useEffect(
@@ -524,17 +503,16 @@ export function useDatabaseStudioSync(args: Args) {
 			if (initializedFromUrlRef.current || !tableData) return
 			initializedFromUrlRef.current = true
 
-			if (stableUrlState.selectedRow !== null) {
-				if (
-					stableUrlState.selectedRow >= 0 &&
-					stableUrlState.selectedRow < tableData.rows.length
-				) {
-					setSelectedRows(new Set([stableUrlState.selectedRow]))
+			const urlState = readStudioUrlState()
+
+			if (urlState.selectedRow !== null) {
+				if (urlState.selectedRow >= 0 && urlState.selectedRow < tableData.rows.length) {
+					setSelectedRows(new Set([urlState.selectedRow]))
 				}
 			}
-			if (stableUrlState.selectedCells.size > 0) {
+			if (urlState.selectedCells.size > 0) {
 				const validCells = new Set<string>()
-				for (const cellKey of stableUrlState.selectedCells) {
+				for (const cellKey of urlState.selectedCells) {
 					const parts = cellKey.split(':')
 					if (parts.length === 2) {
 						const r = parseInt(parts[0], 10)
@@ -555,31 +533,31 @@ export function useDatabaseStudioSync(args: Args) {
 					setSelectedCells(validCells)
 				}
 			}
-			if (stableUrlState.focusedCell) {
-				const { row, col } = stableUrlState.focusedCell
+			if (urlState.focusedCell) {
+				const { row, col } = urlState.focusedCell
 				if (
 					row >= 0 &&
 					row < tableData.rows.length &&
 					col >= 0 &&
 					col < tableData.columns.length
 				) {
-					setFocusedCell(stableUrlState.focusedCell)
+					setFocusedCell(urlState.focusedCell)
 				}
 			}
-			if (stableUrlState.contextMenu) {
-				const { cell } = stableUrlState.contextMenu
+			if (urlState.contextMenu) {
+				const { cell } = urlState.contextMenu
 				if (cell.row >= 0 && cell.row < tableData.rows.length) {
-					setContextMenuState(stableUrlState.contextMenu)
+					setContextMenuState(urlState.contextMenu)
 				}
 			}
-			if (stableUrlState.addRecordMode && tableData) {
+			if (urlState.addRecordMode) {
 				if (
-					stableUrlState.addRecordIndex === null ||
-					(stableUrlState.addRecordIndex >= -1 &&
-						stableUrlState.addRecordIndex <= tableData.rows.length)
+					urlState.addRecordIndex === null ||
+					(urlState.addRecordIndex >= -1 &&
+						urlState.addRecordIndex <= tableData.rows.length)
 				) {
 					setDraftRow(createDefaultValues(tableData.columns))
-					setDraftInsertIndex(stableUrlState.addRecordIndex ?? -1)
+					setDraftInsertIndex(urlState.addRecordIndex ?? -1)
 				}
 			}
 		},
@@ -590,40 +568,37 @@ export function useDatabaseStudioSync(args: Args) {
 			setFocusedCell,
 			setSelectedCells,
 			setSelectedRows,
-			stableUrlState,
 			tableData
 		]
 	)
 
 	useEffect(
 		function syncSelectedRowToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
+			if (!initializedFromUrlRef.current) return
 			const firstSelected = selectedRows.size > 0 ? Array.from(selectedRows)[0] : null
-			if (firstSelected === stableUrlState.selectedRow) return
+			if (firstSelected === readStudioUrlState().selectedRow) return
 
-			isUpdatingUrlRef.current = true
-			setSelectedRow(firstSelected)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
+			writeStudioUrlState({ selectedRow: firstSelected })
 
-			if (onRowSelectionChange && tableData) {
-				if (firstSelected !== null && tableData.rows[firstSelected]) {
-					const primaryKeyColumn = tableData.columns.find(function (c) {
+			const notifyRowSelection = onRowSelectionChangeRef.current
+			const shown = queryStateRef.current.tableData
+			if (notifyRowSelection && shown) {
+				if (firstSelected !== null && shown.rows[firstSelected]) {
+					const primaryKeyColumn = shown.columns.find(function (c) {
 						return c.primaryKey
 					})
 					if (primaryKeyColumn) {
-						const pkValue = tableData.rows[firstSelected][primaryKeyColumn.name] as
+						const pkValue = shown.rows[firstSelected][primaryKeyColumn.name] as
 							| string
 							| number
-						onRowSelectionChange(pkValue)
+						notifyRowSelection(pkValue)
 					}
 				} else if (selectedRows.size === 0) {
-					onRowSelectionChange(null)
+					notifyRowSelection(null)
 				}
 			}
 		},
-		[selectedRows, onRowSelectionChange, setSelectedRow, stableUrlState.selectedRow, tableData]
+		[selectedRows]
 	)
 
 	useEffect(
@@ -655,113 +630,40 @@ export function useDatabaseStudioSync(args: Args) {
 
 	useEffect(
 		function syncCellsToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const currentCellsStr = Array.from(stableUrlState.selectedCells).sort().join(',')
-			const newCellsStr = Array.from(selectedCells).sort().join(',')
-			if (currentCellsStr === newCellsStr) return
-
-			isUpdatingUrlRef.current = true
-			setUrlSelectedCells(selectedCells)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
+			if (!initializedFromUrlRef.current) return
+			writeStudioUrlState({ selectedCells })
 		},
-		[selectedCells, setUrlSelectedCells, stableUrlState.selectedCells]
+		[selectedCells]
 	)
 
 	useEffect(
 		function syncFocusedCellToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const urlCell = stableUrlState.focusedCell
-			const isSame =
-				(urlCell === null && focusedCell === null) ||
-				(urlCell !== null &&
-					focusedCell !== null &&
-					urlCell.row === focusedCell.row &&
-					urlCell.col === focusedCell.col)
-			if (isSame) return
-
-			isUpdatingUrlRef.current = true
-			setUrlFocusedCell(focusedCell)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
+			if (!initializedFromUrlRef.current) return
+			writeStudioUrlState({ focusedCell })
 		},
-		[focusedCell, setUrlFocusedCell, stableUrlState.focusedCell]
+		[focusedCell]
 	)
 
 	useEffect(
 		function syncContextMenuToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const urlCtx = stableUrlState.contextMenu
-			const isSame =
-				(urlCtx === null && contextMenuState === null) ||
-				(urlCtx !== null &&
-					contextMenuState !== null &&
-					urlCtx.kind === contextMenuState.kind &&
-					urlCtx.cell.row === contextMenuState.cell.row &&
-					urlCtx.cell.col === contextMenuState.cell.col)
-			if (isSame) return
-
-			isUpdatingUrlRef.current = true
-			setContextMenu(contextMenuState)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
-			})
+			if (!initializedFromUrlRef.current) return
+			writeStudioUrlState({ contextMenu: contextMenuState })
 		},
-		[contextMenuState, setContextMenu, stableUrlState.contextMenu]
+		[contextMenuState]
 	)
 
 	useEffect(
 		function syncAddRecordToUrl() {
-			if (!initializedFromUrlRef.current || isUpdatingUrlRef.current) return
-
-			const isAddRecordActive = draftRow !== null
-			const isSame =
-				stableUrlState.addRecordMode === isAddRecordActive &&
-				stableUrlState.addRecordIndex === draftInsertIndex
-			if (isSame) return
-
-			isUpdatingUrlRef.current = true
-			setAddRecordMode(isAddRecordActive, draftInsertIndex)
-			requestAnimationFrame(function () {
-				isUpdatingUrlRef.current = false
+			if (!initializedFromUrlRef.current) return
+			writeStudioUrlState({
+				addRecordMode: draftRow !== null,
+				addRecordIndex: draftInsertIndex
 			})
 		},
-		[
-			draftInsertIndex,
-			draftRow,
-			setAddRecordMode,
-			stableUrlState.addRecordIndex,
-			stableUrlState.addRecordMode
-		]
+		[draftInsertIndex, draftRow]
 	)
 
-	return {
-		liveMonitor,
-		stableUrlState,
-		setSelectedRow,
-		setSelectedCells,
-		setFocusedCell,
-		setContextMenu,
-		setAddRecordMode,
-		initializedFromUrlRef,
-		isUpdatingUrlRef,
-		loadTableData
-	}
-}
-type MinimalSchema = Pick<DatabaseSchema, 'tables'>
-
-function isSameTableData(current: TableData | null, next: TableData): boolean {
-	return (
-		current !== null &&
-		current.rows === next.rows &&
-		current.columns === next.columns &&
-		current.totalCount === next.totalCount
-	)
+	return { loadTableData }
 }
 
 function isSameStringSet(current: Set<string>, next: readonly string[]): boolean {

@@ -1,6 +1,6 @@
+import { Check } from 'lucide-react'
 import React, { memo } from 'react'
 import type { VirtualItem } from '@tanstack/react-virtual'
-import { Checkbox } from '@studio/shared/ui/checkbox'
 import { cn } from '@studio/shared/utils/cn'
 import { ColumnDefinition } from '../../types'
 import { formatCellValue } from './cell-value'
@@ -87,7 +87,7 @@ const GridRow = memo(function GridRow({
 			: rowIndex % 2 === 1
 				? 'bg-muted/35 hover:bg-sidebar-accent/30'
 				: 'hover:bg-sidebar-accent/30'
-	const rowClasses = cn('group transition-colors cursor-pointer', rowBackgroundClasses)
+	const rowClasses = cn('group cursor-pointer', rowBackgroundClasses)
 	// The checkbox column is sticky, so it floats over other cells during
 	// horizontal scroll — it needs an OPAQUE background (the translucent row
 	// tints would let scrolled content bleed through). Use the solid, theme-aware
@@ -117,7 +117,7 @@ const GridRow = memo(function GridRow({
 		>
 			<td
 				className={cn(
-					'w-[30px] min-w-[30px] p-0 text-center align-middle border-b border-l border-r border-sidebar-border sticky left-0 z-20 transition-colors',
+					'w-[30px] min-w-[30px] p-0 text-center align-middle border-b border-l border-r border-sidebar-border sticky left-0 z-20',
 					stickyCellBackgroundClasses,
 					stickyCellAccentClasses
 				)}
@@ -127,19 +127,31 @@ const GridRow = memo(function GridRow({
 					onRowContextMenu(rowIndex)
 				}}
 			>
-				<Checkbox
-					checked={isRowSelected}
-					onCheckedChange={function (checked) {
-						onRowSelect(rowIndex, !!checked)
-					}}
-					className='h-4 w-4'
+				<button
+					type='button'
+					role='checkbox'
+					aria-checked={isRowSelected}
 					aria-label={`Select row ${rowIndex + 1}`}
-					// Keep the grid a single tab stop: the table owns roving
-					// keyboard focus (arrows navigate cells, Space toggles the
-					// row). A tabbable checkbox per row would make Tab hop
-					// checkboxes and skip the data cells.
+					data-state={isRowSelected ? 'checked' : 'unchecked'}
+					// Not a tab stop: the table owns roving focus and Space toggles the row.
 					tabIndex={-1}
-				/>
+					className='peer h-4 w-4 shrink-0 rounded-sm border border-muted-foreground bg-background data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:bg-focus-strong data-[state=checked]:focus-visible:bg-primary/75'
+					onClick={function () {
+						onRowSelect(rowIndex, !isRowSelected)
+					}}
+					onKeyDown={function (event) {
+						if (event.key === 'Enter') event.preventDefault()
+					}}
+				>
+					{isRowSelected && (
+						<span
+							data-state='checked'
+							className='flex items-center justify-center text-current pointer-events-none'
+						>
+							<Check className='h-3 w-3' />
+						</span>
+					)}
+				</button>
 			</td>
 			{columns.map(function (col, colIndex) {
 				const isEditing = editingColumnName === col.name

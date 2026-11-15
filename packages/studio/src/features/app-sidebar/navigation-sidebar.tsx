@@ -8,7 +8,7 @@ import {
 	ChartLine,
 	KeyRound
 } from 'lucide-react'
-import { useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
+import { memo, useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
@@ -21,6 +21,55 @@ type DatabasePanelToggle = {
 	isOpen: boolean
 	onToggle: () => void
 }
+
+const PanelToggle = memo(SidebarPanelToggle)
+
+const SQL_CONSOLE_ITEM: NavItem = { id: 'sql-console', label: 'SQL Console', icon: SquareTerminal }
+const DATA_VIEWER_ITEM: NavItem = { id: 'database-studio', label: 'Data Viewer', icon: Table2 }
+const KV_ITEM: NavItem = { id: 'kv-studio', label: 'Redis / Valkey', icon: KeyRound }
+const ANALYTICS_ITEM: NavItem = { id: 'analytics', label: 'Analytics', icon: ChartLine }
+const SCHEMA_ITEM: NavItem = { id: 'schema-visualizer', label: 'Schema', icon: Network }
+const SCHEMA_DIFF_ITEM: NavItem = { id: 'orm-cockpit', label: 'Schema Diff', icon: GitCompare }
+const DOCKER_ITEM: NavItem = { id: 'docker', label: 'Docker Manager', icon: Container }
+const SETTINGS_ITEM: NavItem = { id: 'settings', label: 'Settings', icon: Settings }
+
+const MAIN_NAV_ITEMS: NavItem[] = [
+	SQL_CONSOLE_ITEM,
+	DATA_VIEWER_ITEM,
+	KV_ITEM,
+	SCHEMA_ITEM,
+	SCHEMA_DIFF_ITEM,
+	DOCKER_ITEM
+]
+
+const MAIN_NAV_ITEMS_WITH_ANALYTICS: NavItem[] = [
+	SQL_CONSOLE_ITEM,
+	DATA_VIEWER_ITEM,
+	KV_ITEM,
+	ANALYTICS_ITEM,
+	SCHEMA_ITEM,
+	SCHEMA_DIFF_ITEM,
+	DOCKER_ITEM
+]
+
+const HomeButton = memo(function HomeButton({ onSelect }: { onSelect: (id: string) => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<button
+					type='button'
+					onClick={() => onSelect('database-studio')}
+					className='cursor-pointer hover:opacity-80 transition-opacity focus-visible:opacity-80 focus-visible:bg-focus rounded-md'
+					aria-label='Go to home'
+					title='Dora AI Home'
+				>
+					<DoraLogo size={28} variant='neutral' />
+				</button>
+			</TooltipTrigger>
+			<TooltipContent side='right'>Go to Home</TooltipContent>
+		</Tooltip>
+	)
+})
 
 type ContentProps = {
 	activeNavId?: string
@@ -41,62 +90,12 @@ function SidebarContent({
 	const isFloating = false
 	const navRef = useRef<HTMLElement>(null)
 
-	// Nav items configuration
-	const mainNavItems: NavItem[] = [
-		{
-			id: 'sql-console',
-			label: 'SQL Console',
-			icon: SquareTerminal,
-			onClick: () => onNavSelect?.('sql-console')
-		},
-		{
-			id: 'database-studio',
-			label: 'Data Viewer',
-			icon: Table2,
-			onClick: () => onNavSelect?.('database-studio')
-		},
-		{
-			id: 'kv-studio',
-			label: 'Redis / Valkey',
-			icon: KeyRound,
-			onClick: () => onNavSelect?.('kv-studio')
-		},
-		...(analyticsAvailable
-			? [
-					{
-						id: 'analytics',
-						label: 'Analytics',
-						icon: ChartLine,
-						onClick: () => onNavSelect?.('analytics')
-					}
-				]
-			: []),
-		{
-			id: 'schema-visualizer',
-			label: 'Schema',
-			icon: Network,
-			onClick: () => onNavSelect?.('schema-visualizer')
-		},
-		{
-			id: 'orm-cockpit',
-			label: 'Schema Diff',
-			icon: GitCompare,
-			onClick: () => onNavSelect?.('orm-cockpit')
-		},
-		{
-			id: 'docker',
-			label: 'Docker Manager',
-			icon: Container,
-			onClick: () => onNavSelect?.('docker')
-		}
-	]
-
-	const settingsNavItem: NavItem = {
-		id: 'settings',
-		label: 'Settings',
-		icon: Settings,
-		onClick: () => onNavSelect?.('settings')
-	}
+	const mainNavItems = analyticsAvailable ? MAIN_NAV_ITEMS_WITH_ANALYTICS : MAIN_NAV_ITEMS
+	const onNavSelectRef = useRef(onNavSelect)
+	onNavSelectRef.current = onNavSelect
+	const handleSelect = useCallback(function (id: string) {
+		onNavSelectRef.current?.(id)
+	}, [])
 
 	const handleKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
 		const nav = navRef.current
@@ -148,20 +147,7 @@ function SidebarContent({
 			aria-label='Main sidebar'
 		>
 			<div className='flex flex-col items-center justify-center pt-2 gap-4'>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<button
-							type='button'
-							onClick={() => onNavSelect?.('database-studio')}
-							className='cursor-pointer hover:opacity-80 transition-opacity focus-visible:opacity-80 focus-visible:bg-focus rounded-md'
-							aria-label='Go to home'
-							title='Dora AI Home'
-						>
-							<DoraLogo size={28} variant='neutral' />
-						</button>
-					</TooltipTrigger>
-					<TooltipContent side='right'>Go to Home</TooltipContent>
-				</Tooltip>
+				<HomeButton onSelect={handleSelect} />
 				<div
 					className='w-8 h-px bg-sidebar-border'
 					role='separator'
@@ -187,6 +173,7 @@ function SidebarContent({
 							key={item.id}
 							item={item}
 							isActive={activeNavId === item.id}
+							onNavigate={handleSelect}
 							variant={variant}
 						/>
 					))}
@@ -200,7 +187,7 @@ function SidebarContent({
 					{aiAssistantToggle}
 					{databasePanelToggle && (
 						<>
-							<SidebarPanelToggle
+							<PanelToggle
 								isOpen={databasePanelToggle.isOpen}
 								onToggle={databasePanelToggle.onToggle}
 								buttonClassName='h-10 w-10'
@@ -215,8 +202,9 @@ function SidebarContent({
 						</>
 					)}
 					<SidebarNavItem
-						item={settingsNavItem}
-						isActive={activeNavId === settingsNavItem.id}
+						item={SETTINGS_ITEM}
+						isActive={activeNavId === SETTINGS_ITEM.id}
+						onNavigate={handleSelect}
 						variant={variant}
 					/>
 				</div>

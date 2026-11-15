@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use tauri::State;
 use uuid::Uuid;
 
@@ -5,7 +7,7 @@ use crate::{
     database::{
         connection_repository::ConnectionRepository,
         services::query::QueryService,
-        types::{QueryEvent, QueryStatus, StatementInfo},
+        types::{QueryEvent, QueryStatus, StatementInfo, StatementResult},
     },
     error::Error,
     storage::QueryHistoryEntry,
@@ -54,6 +56,36 @@ pub async fn start_query(
     }
 
     Ok(query_ids)
+}
+
+/// Runs a query and replies once its first statement has finished, carrying
+/// the columns, the first page and the counts in that one response.
+#[tauri::command]
+#[specta::specta]
+pub async fn run_query(
+    connection_id: Uuid,
+    query: &str,
+    timeout_ms: u64,
+    state: State<'_, AppState>,
+    refresher: State<'_, crate::database::RowCountRefresher>,
+) -> Result<StatementResult, Error> {
+    let invalidates_schema = query_invalidates_schema(state.inner(), connection_id, query);
+    let svc = QueryService {
+        connection_repo: state.inner(),
+        storage: &state.storage,
+        stmt_manager: &state.stmt_manager,
+    };
+    let result = svc
+        .run_query(connection_id, query, Duration::from_millis(timeout_ms))
+        .await?;
+
+    if invalidates_schema {
+        state.schemas.remove(&connection_id);
+        crate::database::schema_persistence::forget_schema(&state.storage, connection_id);
+        refresher.cancel(connection_id);
+    }
+
+    Ok(result)
 }
 
 #[tauri::command]

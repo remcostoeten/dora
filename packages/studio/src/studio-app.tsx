@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { getPortalContainer } from '@studio/shared/ui/portal-container'
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v6'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { CredentialStorageNotice } from '@studio/components/credential-storage-notice'
@@ -30,6 +32,13 @@ function GlobalToaster() {
 	return <Toaster />
 }
 
+function PortalAnchor() {
+	useEffect(function keepAppRootFromBeingLastChild() {
+		getPortalContainer()
+	}, [])
+	return null
+}
+
 type Props = {
 	/** Force the in-memory mock adapter (web demo). Desktop leaves this false so Tauri is auto-detected. */
 	forceMock?: boolean
@@ -57,6 +66,7 @@ export function StudioApp({ forceMock = false, analyticsConfig, basename }: Prop
 						<DemoBanner />
 						<CredentialStorageNotice />
 						<div className='flex-1 overflow-hidden'>
+							<PortalAnchor />
 							<GlobalToaster />
 							<StorageQuotaNotice />
 							<NuqsAdapter>

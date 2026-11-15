@@ -1,9 +1,11 @@
 import { Plus, Database as DatabaseIcon } from 'lucide-react'
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { memo, useState, useMemo, useEffect, useCallback } from 'react'
+import { useIsFetching } from '@tanstack/react-query'
 import { SidebarTableSkeleton } from '@studio/shared/ui/skeleton'
 import { useToast } from '@studio/shared/ui/use-toast'
 import { toast as appToast } from '@studio/shared/ui/notifier'
 import { useAdapter, useSchema } from '@studio/core/data-provider'
+import { useActiveTableId } from '@studio/core/workspace-store'
 import { useIsTauri } from '@studio/core/data-provider/context'
 import { getAdapterError } from '@studio/core/data-provider/types'
 import type { DatabaseSchema, TableInfo } from '@studio/lib/bindings'
@@ -39,11 +41,14 @@ import { TableSearch, FilterState } from './components/table-search'
 import { useSidebarWidth, SIDEBAR_MIN_WIDTH, SIDEBAR_MAX_WIDTH } from './hooks/use-sidebar-width'
 import { Schema, TableItem } from './types'
 import { cn } from '@studio/shared/utils/cn'
+import { noop } from '@studio/shared/utils/noop'
 import {
 	getTableRefId,
 	getTableRefParts,
 	getTableSqlIdentifier
 } from '@studio/shared/utils/table-ref'
+import { useStableHandlers } from '../database-studio/hooks/use-stable-handlers'
+import { memoWhileClosed } from '../database-studio/utils/memo-while-closed'
 import { prefetchTableSnapshot } from '../database-studio/utils/table-snapshot'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { IconStack, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
@@ -52,6 +57,126 @@ const DEFAULT_FILTERS: FilterState = {
 	showTables: true,
 	showViews: true,
 	showMaterializedViews: true
+}
+
+const NO_SORTING_TABLES: string[] = []
+const NO_CONNECTIONS: Connection[] = []
+
+const QuietConnectionSwitcher = memo(ConnectionSwitcher)
+const QuietBottomToolbar = memo(BottomToolbar)
+const QuietRenameTableDialog = memoWhileClosed(RenameTableDialog)
+const QuietDropTableDialog = memoWhileClosed(DropTableDialog)
+const QuietTableInfoDialog = memoWhileClosed(TableInfoDialog)
+
+function useIsSchemaFetching(connectionId: string | undefined): boolean {
+	return useIsFetching({ queryKey: ['schema', connectionId] }) > 0
+}
+
+type SchemaFetchProps = {
+	connectionId?: string
+}
+
+function SchemaRefreshingBadge({ connectionId }: SchemaFetchProps) {
+	const isFetching = useIsSchemaFetching(connectionId)
+	if (!isFetching) return null
+	return (
+		<div className='absolute right-2 top-2 rounded bg-sidebar-accent/90 px-2 py-0.5 text-[10px] text-muted-foreground'>
+			Refreshing...
+		</div>
+	)
+}
+
+type SchemaTableSearchProps = SchemaFetchProps &
+	Omit<React.ComponentProps<typeof TableSearch>, 'isRefreshing'>
+
+function SchemaTableSearch({ connectionId, ...props }: SchemaTableSearchProps) {
+	const isFetching = useIsSchemaFetching(connectionId)
+	return <TableSearch {...props} isRefreshing={isFetching} />
+}
+
+type NoSchemaProps = SchemaFetchProps & {
+	schemaError: string | null
+	onRetry: () => void
+	onAddConnection: () => void
+}
+
+function NoSchemaState({ connectionId, schemaError, onRetry, onAddConnection }: NoSchemaProps) {
+	const isFetching = useIsSchemaFetching(connectionId)
+	if (isFetching) return <SidebarTableSkeleton rows={8} />
+	if (schemaError) return <SchemaErrorState schemaError={schemaError} onRetry={onRetry} />
+	return (
+		<EmptyState
+			size='xs'
+			headingLevel='h3'
+			loop
+			illustration={<IconStack icon={<DatabaseIcon />} />}
+			title='No database connected'
+			actions={[
+				{
+					id: 'add-connection',
+					label: 'Add connection',
+					icon: <Plus />,
+					variant: 'secondary',
+					onClick: onAddConnection
+				}
+			]}
+		/>
+	)
+}
+
+type SchemaErrorProps = {
+	schemaError: string
+	onRetry: () => void
+}
+
+function SchemaErrorState({ schemaError, onRetry }: SchemaErrorProps) {
+	return (
+		<div className='flex flex-col items-center justify-center h-40 px-4 py-6 gap-3'>
+			<div className='flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10'>
+				<svg
+					className='h-5 w-5 text-destructive'
+					xmlns='http://www.w3.org/2000/svg'
+					fill='none'
+					viewBox='0 0 24 24'
+					strokeWidth={1.5}
+					stroke='currentColor'
+				>
+					<path
+						strokeLinecap='round'
+						strokeLinejoin='round'
+						d='M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z'
+					/>
+				</svg>
+			</div>
+			<div className='text-center space-y-1'>
+				<h4 className='text-xs font-medium text-foreground'>Connection failed</h4>
+				<p className='text-xs text-muted-foreground max-w-[180px] leading-relaxed'>
+					{schemaError}
+				</p>
+			</div>
+			<Button variant='outline' size='sm' className='text-xs h-7 px-3 mt-1' onClick={onRetry}>
+				Try again
+			</Button>
+		</div>
+	)
+}
+
+type ActiveTablePanelProps = {
+	schema: DatabaseSchema
+}
+
+function ActiveTablePanel({ schema }: ActiveTablePanelProps) {
+	const activeTableId = useActiveTableId()
+	const activeTable = useMemo(
+		function () {
+			if (!activeTableId) return null
+			return schema.tables.find(function (table) {
+				return getTableRefId(table) === activeTableId
+			})
+		},
+		[schema, activeTableId]
+	)
+	return activeTable ? <SidebarBottomPanel table={activeTable} /> : null
 }
 
 type Props = {
@@ -75,24 +200,69 @@ type Props = {
 }
 
 export function DatabaseSidebar({
+	activeNavId,
+	autoSelectFirstTable,
+	connections,
+	activeConnectionId,
+	isSidebarOpen,
+	onNavSelect,
+	onTableSelect,
+	onAutoSelectComplete,
+	onConnectionSelect,
+	onAddConnection,
+	onManageConnections,
+	onViewConnection,
+	onEditConnection,
+	onDumpConnection,
+	onDeleteConnection,
+	onToggleSidebar
+}: Props = {}) {
+	const handlers = useStableHandlers({
+		onNavSelect,
+		onTableSelect,
+		onAutoSelectComplete,
+		onConnectionSelect,
+		onAddConnection,
+		onManageConnections,
+		onViewConnection,
+		onEditConnection,
+		onDumpConnection,
+		onDeleteConnection,
+		onToggleSidebar
+	})
+
+	return (
+		<DatabaseSidebarView
+			activeNavId={activeNavId}
+			autoSelectFirstTable={autoSelectFirstTable}
+			connections={connections}
+			activeConnectionId={activeConnectionId}
+			isSidebarOpen={isSidebarOpen}
+			{...handlers}
+		/>
+	)
+}
+
+type ViewProps = Omit<Props, 'selectedTableId'>
+
+const DatabaseSidebarView = memo(function DatabaseSidebarView({
 	activeNavId: controlledNavId,
 	onNavSelect,
 	onTableSelect,
-	selectedTableId,
 	autoSelectFirstTable,
 	onAutoSelectComplete,
-	connections = [],
+	connections = NO_CONNECTIONS,
 	activeConnectionId,
-	onConnectionSelect = function () {},
-	onAddConnection = function () {},
-	onManageConnections = function () {},
+	onConnectionSelect = noop,
+	onAddConnection = noop,
+	onManageConnections = noop,
 	onViewConnection,
 	onEditConnection,
 	onDumpConnection,
 	onDeleteConnection,
 	onToggleSidebar,
 	isSidebarOpen = true
-}: Props = {}) {
+}: ViewProps) {
 	const { toast } = useToast()
 	const adapter = useAdapter()
 	const isTauri = useIsTauri()
@@ -111,8 +281,6 @@ export function DatabaseSidebar({
 	const [selectedSchema, setSelectedSchema] = useState<Schema | undefined>()
 	const [searchValue, setSearchValue] = useState('')
 	const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS)
-	const [internalTableId, setInternalTableId] = useState<string | undefined>()
-	const activeTableId = selectedTableId ?? internalTableId
 	const [selectedTableIds, setSelectedTableIds] = useState<string[]>([])
 	const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
 	const [editingTableId, setEditingTableId] = useState<string | undefined>()
@@ -121,7 +289,6 @@ export function DatabaseSidebar({
 	// fetch here meant every connect ran connect + introspection twice.
 	const schemaQuery = useSchema(activeConnectionId)
 	const schema: DatabaseSchema | null = schemaQuery.data ?? null
-	const isLoadingSchema = schemaQuery.isFetching
 	const schemaError = schemaQuery.isError
 		? schemaQuery.error instanceof Error
 			? schemaQuery.error.message
@@ -246,15 +413,6 @@ export function DatabaseSidebar({
 		[schema, tables, searchValue, filters]
 	)
 
-	const activeTable = useMemo(
-		function () {
-			if (!schema || !activeTableId) return null
-			return schema.tables.find(function (t) {
-				return getTableRefId(t) === activeTableId
-			})
-		},
-		[schema, activeTableId]
-	)
 	const activeConnection = useMemo(
 		function () {
 			if (!activeConnectionId) return null
@@ -268,7 +426,6 @@ export function DatabaseSidebar({
 	)
 
 	function handleTableSelect(tableId: string) {
-		setInternalTableId(tableId)
 		if (onTableSelect) {
 			onTableSelect(tableId, getTableRefParts(tableId).tableName)
 		}
@@ -383,9 +540,6 @@ export function DatabaseSidebar({
 				// Keep the tree painted during the refetch; nulling it flashes an
 				// empty sidebar before the fresh schema arrives.
 				refreshSchema()
-				if (activeTableId === targetTableName) {
-					setInternalTableId(undefined)
-				}
 				toast({
 					title: 'Table dropped',
 					description: `"${targetTableName}" has been removed.`,
@@ -739,6 +893,45 @@ export function DatabaseSidebar({
 		}
 	}
 
+	function handleToolbarAction(action: string) {
+		if (action === 'settings') {
+			handleNavSelect('settings')
+		}
+	}
+
+	function handleRefreshClick() {
+		if (activeConnectionId) {
+			refreshSchema()
+		}
+	}
+
+	function handleRenameConfirm(newName: string) {
+		return handleRenameTable(targetTableName, newName)
+	}
+
+	const on = useStableHandlers({
+		tableSelect: handleTableSelect,
+		tableMultiSelect: handleTableMultiSelect,
+		contextAction: handleContextAction,
+		rightClickAction: handleRightClickAction,
+		tableRename: handleTableRename,
+		toolbarAction: handleToolbarAction,
+		refreshClick: handleRefreshClick,
+		renameConfirm: handleRenameConfirm,
+		dropTable: handleDropTable
+	})
+
+	const tableInfo = useMemo(
+		function () {
+			return (
+				schema?.tables.find(function (table) {
+					return getTableRefId(table) === tableInfoTarget
+				}) ?? null
+			)
+		},
+		[schema, tableInfoTarget]
+	)
+
 	const availableSchemas =
 		schema?.schemas.map(function (s) {
 			return {
@@ -780,7 +973,7 @@ export function DatabaseSidebar({
 
 			<div className='flex flex-col shrink-0'>
 				<div className='p-0'>
-					<ConnectionSwitcher
+					<QuietConnectionSwitcher
 						connections={connections}
 						activeConnectionId={activeConnectionId}
 						onConnectionSelect={onConnectionSelect}
@@ -804,79 +997,28 @@ export function DatabaseSidebar({
 						/>
 					)}
 
-					<TableSearch
+					<SchemaTableSearch
+						connectionId={activeConnectionId}
 						searchValue={searchValue}
 						onSearchChange={setSearchValue}
 						filters={filters}
 						onFiltersChange={setFilters}
-						isRefreshing={isLoadingSchema}
-						onRefresh={function () {
-							if (activeConnectionId) {
-								refreshSchema()
-							}
-						}}
+						onRefresh={on.refreshClick}
 					/>
 				</div>
 			)}
 
 			<div className='flex min-h-0 flex-1 flex-col'>
 				<ScrollArea className='min-h-0 flex-1' style={{ flex: 1 }}>
-					{isLoadingSchema && !schema ? (
-						<SidebarTableSkeleton rows={8} />
-					) : schemaError ? (
-						<div className='flex flex-col items-center justify-center h-40 px-4 py-6 gap-3'>
-							<div className='flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10'>
-								<svg
-									className='h-5 w-5 text-destructive'
-									xmlns='http://www.w3.org/2000/svg'
-									fill='none'
-									viewBox='0 0 24 24'
-									strokeWidth={1.5}
-									stroke='currentColor'
-								>
-									<path
-										strokeLinecap='round'
-										strokeLinejoin='round'
-										d='M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z'
-									/>
-								</svg>
-							</div>
-							<div className='text-center space-y-1'>
-								<h4 className='text-xs font-medium text-foreground'>
-									Connection failed
-								</h4>
-								<p className='text-xs text-muted-foreground max-w-[180px] leading-relaxed'>
-									{schemaError}
-								</p>
-							</div>
-							<Button
-								variant='outline'
-								size='sm'
-								className='text-xs h-7 px-3 mt-1'
-								onClick={function () {
-									refreshSchema()
-								}}
-							>
-								Try again
-							</Button>
-						</div>
-					) : !schema ? (
-						<EmptyState
-							size='xs'
-							headingLevel='h3'
-							loop
-							illustration={<IconStack icon={<DatabaseIcon />} />}
-							title='No database connected'
-							actions={[
-								{
-									id: 'add-connection',
-									label: 'Add connection',
-									icon: <Plus />,
-									variant: 'secondary',
-									onClick: onAddConnection
-								}
-							]}
+					{!schema ? (
+						<NoSchemaState
+							connectionId={activeConnectionId}
+							schemaError={schemaError}
+							onRetry={refreshSchema}
+							onAddConnection={onAddConnection}
 						/>
+					) : schemaError ? (
+						<SchemaErrorState schemaError={schemaError} onRetry={refreshSchema} />
 					) : filteredTables.length === 0 ? (
 						<EmptyState
 							size='xs'
@@ -889,28 +1031,23 @@ export function DatabaseSidebar({
 						<div className='relative'>
 							<TableList
 								tables={filteredTables}
-								activeTableId={activeTableId}
 								selectedTableIds={selectedTableIds}
 								isMultiSelectMode={isMultiSelectMode}
-								activeSortingTableIds={[]}
+								activeSortingTableIds={NO_SORTING_TABLES}
 								editingTableId={editingTableId}
-								onTableSelect={handleTableSelect}
+								onTableSelect={on.tableSelect}
 								onTablePrefetch={handleTablePrefetch}
-								onTableMultiSelect={handleTableMultiSelect}
-								onContextAction={handleContextAction}
-								onRightClickAction={handleRightClickAction}
-								onTableRename={handleTableRename}
+								onTableMultiSelect={on.tableMultiSelect}
+								onContextAction={on.contextAction}
+								onRightClickAction={on.rightClickAction}
+								onTableRename={on.tableRename}
 							/>
-							{isLoadingSchema && (
-								<div className='absolute right-2 top-2 rounded bg-sidebar-accent/90 px-2 py-0.5 text-[10px] text-muted-foreground'>
-									Refreshing...
-								</div>
-							)}
+							<SchemaRefreshingBadge connectionId={activeConnectionId} />
 						</div>
 					)}
 				</ScrollArea>
 
-				{activeTable ? <SidebarBottomPanel table={activeTable} /> : null}
+				{schema ? <ActiveTablePanel schema={schema} /> : null}
 			</div>
 
 			{isMultiSelectMode && selectedTableIds.length > 0 && (
@@ -920,36 +1057,29 @@ export function DatabaseSidebar({
 					onClose={function () {
 						setIsMultiSelectMode(false)
 						setSelectedTableIds([])
-						setInternalTableId(undefined)
 					}}
 				/>
 			)}
 
-			<BottomToolbar
+			<QuietBottomToolbar
 				onToggleSidebar={onToggleSidebar}
 				isSidebarOpen={isSidebarOpen}
-				onAction={function (action) {
-					if (action === 'settings') {
-						handleNavSelect('settings')
-					}
-				}}
+				onAction={on.toolbarAction}
 			/>
 
-			<RenameTableDialog
+			<QuietRenameTableDialog
 				open={showRenameDialog}
 				onOpenChange={setShowRenameDialog}
 				currentName={targetTableName}
-				onConfirm={function handleRenameConfirm(newName: string) {
-					return handleRenameTable(targetTableName, newName)
-				}}
+				onConfirm={on.renameConfirm}
 				isLoading={isDdlLoading}
 			/>
 
-			<DropTableDialog
+			<QuietDropTableDialog
 				open={showDropDialog}
 				onOpenChange={setShowDropDialog}
 				tableName={targetTableName}
-				onConfirm={handleDropTable}
+				onConfirm={on.dropTable}
 				isLoading={isDdlLoading}
 			/>
 
@@ -982,16 +1112,12 @@ export function DatabaseSidebar({
 			</AlertDialog>
 
 			{activeConnectionId && (
-				<TableInfoDialog
+				<QuietTableInfoDialog
 					open={showTableInfoDialog}
 					onOpenChange={setShowTableInfoDialog}
 					tableName={tableInfoTarget}
 					connectionId={activeConnectionId}
-					tableInfo={
-						schema?.tables.find(function (table) {
-							return getTableRefId(table) === tableInfoTarget
-						}) ?? null
-					}
+					tableInfo={tableInfo}
 					connectionType={activeConnection?.type ?? null}
 				/>
 			)}
@@ -1028,4 +1154,4 @@ export function DatabaseSidebar({
 			</AlertDialog>
 		</div>
 	)
-}
+})

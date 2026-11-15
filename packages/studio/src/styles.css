@@ -22,6 +22,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Tailwind writes `group-focus-within:` as `:where(.group):focus-within *`.
+ * WebKit keys focus invalidation on the classes of the compound that carries
+ * the pseudo-class and does not look inside `:where()`, so that form matched
+ * every element: each focus() and blur() walked the subtree of every ancestor
+ * up to <html> (10 to 55 ms on this DOM, paid again for every menu item the
+ * pointer crosses). With the class in the compound only `.group` elements are
+ * walked.
+ */
+@custom-variant group-focus-within (&:is(.group:focus-within *));
+
 @utility container {
 	margin-inline: auto;
 	padding-inline: 2rem;
@@ -103,27 +114,48 @@
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-sm: calc(var(--radius) - 4px);
 
-	--animate-collapsible-down: collapsible-down 0.2s ease-out;
-	--animate-collapsible-up: collapsible-up 0.2s ease-out;
+	/*
+	 * Motion policy for overlays. A dismissed surface is gone in the next frame:
+	 * `animate-out` resolves to no animation, so Radix Presence unmounts at once
+	 * instead of waiting for `animationend`. `animate-in` keeps tw-animate-css's
+	 * variables but drops its `filter: blur()` keyframe, which costs an offscreen
+	 * pass per frame in a software renderer.
+	 */
+	--animate-out: none;
+	--animate-in: surface-in var(--tw-animation-duration, var(--tw-duration, 0.1s))
+		var(--tw-ease, ease) var(--tw-animation-delay, 0s) var(--tw-animation-iteration-count, 1)
+		var(--tw-animation-direction, normal) var(--tw-animation-fill-mode, none);
 
-	@keyframes collapsible-down {
+	@keyframes surface-in {
 		from {
-			height: 0;
-		}
-
-		to {
-			height: var(--radix-collapsible-content-height);
+			opacity: var(--tw-enter-opacity, 1);
+			transform: translate3d(
+					var(--tw-enter-translate-x, 0),
+					var(--tw-enter-translate-y, 0),
+					0
+				)
+				scale3d(
+					var(--tw-enter-scale, 1),
+					var(--tw-enter-scale, 1),
+					var(--tw-enter-scale, 1)
+				)
+				rotate(var(--tw-enter-rotate, 0));
 		}
 	}
+}
 
-	@keyframes collapsible-up {
-		from {
-			height: var(--radix-collapsible-content-height);
-		}
+@keyframes surface-enter {
+	from {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+}
 
-		to {
-			height: 0;
-		}
+@utility surface-enter {
+	animation: surface-enter 100ms var(--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
 	}
 }
 
@@ -679,23 +711,19 @@
 	}
 
 	/*
-	 * Companion to the scroll fix above — the *other* Radix-overlay flash, this
-	 * one on close. Every overlay (popover, dropdown, context menu, dialog,
-	 * tooltip, select) plays a tw-animate-css `animate-out` exit when it closes.
-	 * That animation's fill-mode defaults to `none`, so the instant it finishes
-	 * the element snaps back to its base, fully-visible style and lingers there
-	 * for the one frame between `animationend` firing and React unmounting it:
-	 * Radix's <Presence> unmounts via an ordinary (async) state update — not
-	 * flushSync — and this app's heavy on-close re-renders widen that gap enough
-	 * to paint. The result reads as the overlay "reopening" for ~1 frame (~20ms)
-	 * before it vanishes. Holding the exit animation's final (hidden) frame keeps
-	 * that gap invisible. `--tw-animation-fill-mode` feeds tw-animate-css's
-	 * `animation` shorthand; the longhand covers a fallback to the classic
-	 * tailwindcss-animate plugin.
+	 * Radix modal layers write inherited values onto <body>, and every one of
+	 * them re-styles all of its descendants (60 to 170 ms in WebKitGTK on this
+	 * DOM, once on open and again on close):
+	 *
+	 * - `pointer-events: none` inline, to block the page behind a modal. The
+	 *   dialog overlay and the select backdrop already cover the window, so the
+	 *   value is pinned and the inline write changes nothing.
+	 * - `--removed-body-scroll-bar-size`, from react-remove-scroll. The body
+	 *   never scrolls, so the gap is always 0.
 	 */
-	[data-state='closed'] {
-		--tw-animation-fill-mode: forwards;
-		animation-fill-mode: forwards;
+	body {
+		pointer-events: auto !important;
+		--removed-body-scroll-bar-size: 0px !important;
 	}
 
 	body {
@@ -722,7 +750,6 @@
 		border-radius: 5px;
 		border: 3px solid transparent;
 		background-clip: content-box;
-		transition: background-color 0.2s;
 	}
 
 	::-webkit-scrollbar-thumb:hover {
@@ -790,23 +817,19 @@
 }
 
 @utility glass {
-	background: hsl(var(--popover) / 0.8);
-	backdrop-filter: blur(12px);
-	-webkit-backdrop-filter: blur(12px);
+	background: hsl(var(--popover) / 0.96);
 }
 
 @utility glass-subtle {
-	background: hsl(var(--popover) / 0.6);
-	backdrop-filter: blur(8px);
-	-webkit-backdrop-filter: blur(8px);
+	background: hsl(var(--popover) / 0.9);
 }
 
 @layer utilities {
 	.db-card {
 		@apply relative rounded-md border border-border/60 bg-background/40 p-3 cursor-pointer;
 		transition:
-			background-color 150ms var(--ease-out),
-			border-color 150ms var(--ease-out);
+			background-color 80ms var(--ease-out),
+			border-color 80ms var(--ease-out);
 	}
 
 	@media (hover: hover) and (pointer: fine) {
@@ -826,23 +849,7 @@
 
 	.db-card-icon {
 		@apply flex h-9 w-9 items-center justify-center rounded-md;
-		transition: transform 150ms var(--ease-out);
-	}
-
-	.form-section {
-		animation: formFadeIn 0.25s ease-out;
-	}
-
-	@keyframes formFadeIn {
-		from {
-			opacity: 0;
-			transform: translateY(8px);
-		}
-
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
+		transition: transform 80ms var(--ease-out);
 	}
 
 	.connection-status-success {
@@ -893,56 +900,29 @@
 
 	/* Async row count animations */
 	@keyframes asyncShimmer {
-		0% {
-			background-position: -100% 0;
-		}
-		100% {
-			background-position: 200% 0;
-		}
-	}
-
-	@keyframes asyncReveal {
-		0% {
-			opacity: 0;
-			transform: translateY(2px);
-		}
-		100% {
-			opacity: 1;
-			transform: translateY(0);
+		50% {
+			opacity: 0.45;
 		}
 	}
 
 	.async-count-shimmer {
-		background: linear-gradient(
-			90deg,
-			hsl(var(--muted) / 0.3) 0%,
-			hsl(var(--muted) / 0.6) 50%,
-			hsl(var(--muted) / 0.3) 100%
-		);
-		background-size: 200% 100%;
+		background: hsl(var(--muted) / 0.5);
 		animation: asyncShimmer 1.4s ease-in-out infinite;
-	}
-
-	.async-count-reveal {
-		animation: asyncReveal 0.3s ease-out forwards;
 	}
 
 	/*
 	 * A bright sheen that sweeps across the selected provider's SVG glyph only.
 	 * A white copy of the icon is clipped by a moving diagonal gradient mask, so
-	 * the streak follows the icon's shape rather than its bounding box. It fires,
-	 * then rests, for an intermittent "thunder" cadence.
+	 * the streak follows the icon's shape rather than its bounding box. It runs
+	 * once when a provider becomes selected: a mask animation that never ends
+	 * repaints the dialog on every frame for as long as it is open.
 	 */
 	@keyframes dbTypeIconGlint {
-		0% {
+		from {
 			-webkit-mask-position: 150% center;
 			mask-position: 150% center;
 		}
-		32% {
-			-webkit-mask-position: -50% center;
-			mask-position: -50% center;
-		}
-		100% {
+		to {
 			-webkit-mask-position: -50% center;
 			mask-position: -50% center;
 		}
@@ -950,7 +930,6 @@
 
 	.db-type-icon-glint {
 		display: inline-flex;
-		mix-blend-mode: screen;
 		-webkit-mask-image: linear-gradient(
 			105deg,
 			transparent 38%,
@@ -963,7 +942,7 @@
 		mask-size: 280% 100%;
 		-webkit-mask-repeat: no-repeat;
 		mask-repeat: no-repeat;
-		animation: dbTypeIconGlint 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+		animation: dbTypeIconGlint 1.1s cubic-bezier(0.4, 0, 0.2, 1) 120ms 1 both;
 	}
 
 	@keyframes desktopOnlyPulse {
@@ -985,7 +964,6 @@
 			display: none;
 		}
 
-		.form-section,
 		.desktop-only-hint {
 			animation: none;
 		}
@@ -1029,20 +1007,20 @@
 			color-mix(in srgb, hsl(var(--primary)) 16%, transparent) 50%,
 			transparent 65%
 		);
-		animation: desktopOnlyNoticeShimmer 3.2s ease-in-out infinite;
+		transform: translateX(-120%);
+		animation: desktopOnlyNoticeShimmer 3.2s ease-in-out 2;
 	}
 
 	/*
-	 * A single sheen that sweeps once across a skeleton group, then rests, for an
-	 * intermittent decorative cadence (not a constant loading pulse). Only the
-	 * overlay's transform animates, so it stays on the GPU.
+	 * A sheen that sweeps twice across a skeleton group and then stops. The group
+	 * is empty-state decoration, not a loading indicator, so it must not keep the
+	 * page painting while idle.
 	 */
 	@keyframes cockpitSkeletonSheen {
-		0% {
+		from {
 			transform: translateX(-130%);
 		}
-		42%,
-		100% {
+		to {
 			transform: translateX(130%);
 		}
 	}
@@ -1064,7 +1042,7 @@
 			transparent 70%
 		);
 		transform: translateX(-130%);
-		animation: cockpitSkeletonSheen 3.6s var(--ease-out) infinite;
+		animation: cockpitSkeletonSheen 1.5s var(--ease-out) 300ms 2;
 	}
 }
 
@@ -1082,33 +1060,15 @@
 }
 
 @keyframes tabIndicatorSlide {
-	0% {
+	from {
 		transform: scaleX(0);
 		opacity: 0;
-	}
-	100% {
-		transform: scaleX(1);
-		opacity: 1;
 	}
 }
 
 .query-tab-indicator {
-	animation: tabIndicatorSlide 0.2s var(--ease-out) forwards;
+	animation: tabIndicatorSlide 80ms var(--ease-out);
 	transform-origin: left;
-}
-
-@keyframes tabExecutePulse {
-	0%,
-	100% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.5;
-	}
-}
-
-.query-tab--executing {
-	animation: tabExecutePulse 1.5s ease-in-out infinite;
 }
 
 /* ================================================================
@@ -1124,7 +1084,7 @@
 	--sv-panel-bg: hsl(var(--popover) / 0.92);
 	--sv-panel-border: hsl(var(--border) / 0.82);
 	--sv-panel-border-soft: hsl(var(--border) / 0.52);
-	--sv-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+	--sv-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
 	--sv-accent-strong: hsl(var(--sidebar-foreground) / 0.34);
 	--sv-accent: hsl(var(--sidebar-foreground) / 0.22);
 	--sv-accent-soft: hsl(var(--sidebar-foreground) / 0.12);
@@ -1335,20 +1295,19 @@
 	stroke-dasharray: 4 6;
 	stroke: var(--sv-line-fk) !important;
 	stroke-width: 1.5px !important;
-	animation: sv-flow 1.4s linear infinite;
 	pointer-events: none;
 }
 
 .sv-edge-flow--match {
 	stroke: var(--sv-accent) !important;
 	stroke-dasharray: 6 6;
-	animation-duration: 1s;
 }
 
+/* Only the edges of the table in focus flow, and only for a few seconds: every edge animating forever repaints the canvas on each frame. */
 .sv-edge-flow--active {
 	stroke: hsl(var(--primary) / 0.72) !important;
 	stroke-dasharray: 7 5;
-	animation-duration: 0.9s;
+	animation: sv-flow 0.9s linear 6;
 }
 
 .schema-visualizer .react-flow__background {
@@ -1374,7 +1333,6 @@
 	border: 1px solid var(--sv-panel-border);
 	border-radius: 12px;
 	box-shadow: var(--sv-shadow);
-	backdrop-filter: blur(18px);
 	overflow: hidden;
 }
 
@@ -1383,7 +1341,6 @@
 	border: 1px solid var(--sv-panel-border);
 	border-radius: 12px;
 	box-shadow: var(--sv-shadow);
-	backdrop-filter: blur(18px);
 	overflow: hidden;
 }
 
@@ -1391,7 +1348,7 @@
 	background-color: transparent;
 	border-bottom: 1px solid var(--sv-panel-border-soft);
 	color: hsla(var(--sidebar-foreground), 0.78);
-	transition: background-color 0.15s ease;
+	transition: background-color 80ms ease;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1411,7 +1368,7 @@
 	border: 0 !important;
 	background: transparent !important;
 	border-radius: 50% !important;
-	transition: background-color 0.18s ease;
+	transition: background-color 80ms ease;
 }
 
 .sv-handle:hover {
@@ -1437,20 +1394,17 @@
 	border-radius: 12px;
 	border: 1px solid var(--sv-node-border);
 	background: var(--sv-node-bg);
-	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
 	transition:
-		opacity 0.2s ease,
-		border-color 0.2s ease,
-		transform 0.2s cubic-bezier(0.23, 1, 0.32, 1),
-		box-shadow 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+		opacity 100ms ease,
+		border-color 100ms ease;
 }
 
 .sv-table-node--selected {
 	border-color: var(--sv-accent-strong);
 	box-shadow:
 		0 0 0 1px var(--sv-accent-soft),
-		0 16px 36px rgba(0, 0, 0, 0.22);
-	transform: translateY(-1px);
+		0 2px 6px rgba(0, 0, 0, 0.28);
 }
 
 .sv-table-node--match {
@@ -1471,15 +1425,15 @@
 		box-shadow: 0 0 0 0 var(--sv-pulse-color, rgba(255, 255, 255, 0.4));
 	}
 	30% {
-		box-shadow: 0 0 18px 4px var(--sv-pulse-color, rgba(255, 255, 255, 0.4));
+		box-shadow: 0 0 0 3px var(--sv-pulse-color, rgba(255, 255, 255, 0.4));
 	}
 	100% {
-		box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
 	}
 }
 
 .sv-table-node--pulse {
-	animation: sv-pulse-glow 2s ease-out;
+	animation: sv-pulse-glow 0.9s ease-out;
 }
 
 .sv-table-node--pulse-insert {
@@ -1532,7 +1486,7 @@
 	gap: 12px;
 	padding: 6px 18px;
 	font-size: 12px;
-	transition: background-color 0.16s ease;
+	transition: background-color 80ms ease;
 }
 
 .sv-table-node__row:last-child {
@@ -1650,9 +1604,8 @@
 	font-size: 0.75rem;
 	outline: none;
 	transition:
-		border-color 0.16s ease,
-		box-shadow 0.16s ease,
-		background-color 0.16s ease;
+		border-color 80ms ease,
+		background-color 80ms ease;
 }
 
 .sv-toolbar__search-input:hover {
@@ -1693,7 +1646,7 @@
 .sv-edge-badge--active {
 	border-color: hsl(var(--primary) / 0.34);
 	background: hsl(var(--sidebar-background) / 0.94);
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
 }
 
 .sv-edge-badge__cardinality {
@@ -1746,7 +1699,6 @@
 	border-bottom: 0;
 	border-radius: 0;
 	background: hsl(var(--sidebar-background));
-	backdrop-filter: none;
 	box-shadow: inset 1px 0 0 hsl(var(--border) / 0.2);
 }
 
@@ -2158,8 +2110,9 @@
 
 /*
  * One light sheen sweeps across each block, phase-shifted per row via
- * --skeleton-delay so the shimmer cascades down the list. Only the overlay's
- * transform animates, so it stays on the GPU.
+ * --skeleton-delay so the shimmer cascades down the list. Rows are visible
+ * from their first frame: a staggered entrance kept the last rows of a loading
+ * shell invisible for most of a second.
  */
 @keyframes skeletonSheen {
 	0% {
@@ -2168,17 +2121,6 @@
 	55%,
 	100% {
 		transform: translateX(100%);
-	}
-}
-
-@keyframes skeletonEnter {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
 	}
 }
 
@@ -2206,14 +2148,9 @@
 	animation-delay: var(--skeleton-delay, 0ms);
 }
 
-.skeleton-row {
-	opacity: 0;
-	animation: skeletonEnter 240ms var(--ease-out) forwards;
-	animation-delay: var(--skeleton-delay, 0ms);
-}
-
 @media (prefers-reduced-motion: reduce) {
-	.sv-edge-flow {
+	.sv-edge-flow,
+	.skeleton::after {
 		animation: none;
 	}
 }

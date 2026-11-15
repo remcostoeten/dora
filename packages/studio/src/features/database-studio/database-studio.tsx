@@ -1,6 +1,5 @@
-import { TableSkeleton } from '@studio/shared/ui/skeleton'
-import { useDelayedFlag } from '@studio/shared/hooks/use-delayed-flag'
 import { useToast } from '@studio/shared/ui/use-toast'
+import { noop } from '@studio/shared/utils/noop'
 import { useAdapter, useDataMutation, useConnections, useSchema } from '@studio/core/data-provider'
 import { useConnectionPhase } from '@studio/core/data-provider/connection-phase'
 import { usePendingEdits } from '@studio/core/pending-edits'
@@ -18,17 +17,8 @@ import { isUiActionVisible } from '@studio/features/connections/ui-actions'
 import { DataFileSessionChrome } from './components/data-file-session-chrome'
 import { ImportFilesIntoDuckDbButton } from './components/import-files-into-duckdb-button'
 import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle
-} from '@studio/shared/ui/alert-dialog'
-import {
 	lazy,
+	memo,
 	Suspense,
 	useCallback,
 	useEffect,
@@ -42,7 +32,12 @@ import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
 import { DataGrid } from './components/data-grid'
 import type { ContextMenuState } from './components/data-grid'
+import { DeleteRowsDialog } from './components/delete-rows-dialog'
 import { DropTableDialog } from './components/drop-table-dialog'
+import { useStableHandlers } from './hooks/use-stable-handlers'
+import { createLoadingStore } from './utils/loading-store'
+import { memoWhileClosed } from './utils/memo-while-closed'
+import { TableLoadingSkeleton } from './components/table-loading-skeleton'
 import {
 	DatabaseStudioNoConnection,
 	DatabaseStudioNoTable,
@@ -98,7 +93,27 @@ import { useWorkspaceState } from '@studio/core/workspace-state'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { RecordIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
-const TABLE_SKELETON_DELAY_MS = 150
+const DEFAULT_PAGINATION: PaginationState = { limit: 50, offset: 0 }
+const NO_COLUMNS: ColumnDefinition[] = []
+
+const QuietAddRecordDialog = memoWhileClosed(AddRecordDialog)
+const QuietRowDetailPanel = memoWhileClosed(RowDetailPanel)
+const QuietDropTableDialog = memoWhileClosed(DropTableDialog)
+const QuietBulkEditDialog = memoWhileClosed(BulkEditDialog)
+const QuietSetNullDialog = memoWhileClosed(SetNullDialog)
+const QuietImportCsvDialog = memoWhileClosed(ImportCsvDialog)
+const QuietExportOptionsDialog = memoWhileClosed(ExportOptionsDialog)
+const QuietPendingChangesBar = memo(PendingChangesBar)
+
+type ConnectionLoadingProps = {
+	connectionId?: string
+	connectionName?: string
+}
+
+function ConnectionLoadingState({ connectionId, connectionName }: ConnectionLoadingProps) {
+	const phase = useConnectionPhase(connectionId)
+	return <DatabaseStudioConnectionLoading connectionName={connectionName} phase={phase} />
+}
 
 type Props = {
 	isActive?: boolean
@@ -135,7 +150,6 @@ export function DatabaseStudio({
 	const { toast } = useToast()
 	const { data: connections = [] } = useConnections()
 	const schemaQuery = useSchema(activeConnectionId)
-	const connectionPhase = useConnectionPhase(activeConnectionId)
 	const activeConnection = useMemo(
 		function () {
 			return connections.find(function (connection) {
@@ -171,14 +185,20 @@ export function DatabaseStudio({
 		},
 		[schemaQuery.data]
 	)
-	const importFilesAction =
-		canAttachFiles && activeConnectionId && activeConnection ? (
-			<ImportFilesIntoDuckDbButton
-				connectionId={activeConnectionId}
-				connectionLabel={activeConnection.name}
-				existingTableNames={existingTableNames}
-			/>
-		) : null
+	const activeConnectionName = activeConnection?.name
+	const importFilesAction = useMemo(
+		function () {
+			if (!canAttachFiles || !activeConnectionId || !activeConnectionName) return null
+			return (
+				<ImportFilesIntoDuckDbButton
+					connectionId={activeConnectionId}
+					connectionLabel={activeConnectionName}
+					existingTableNames={existingTableNames}
+				/>
+			)
+		},
+		[canAttachFiles, activeConnectionId, activeConnectionName, existingTableNames]
+	)
 
 	const withDataFileChrome = useCallback(
 		function wrapDataFileChrome(node: ReactNode) {
@@ -246,13 +266,15 @@ export function DatabaseStudio({
 		string,
 		unknown
 	> | null>(null)
-	const [isLoading, setIsLoading] = useState(false)
-	const [isTableTransitioning, setIsTableTransitioning] = useState(!initialSnapshot)
-	const showTableSkeleton = useDelayedFlag(isTableTransitioning, TABLE_SKELETON_DELAY_MS)
+	const [loadingStore] = useState(createLoadingStore)
+	const [isTablePending, setIsTablePending] = useWorkspaceState(
+		`${workspaceStateKey}:pending`,
+		() => !initialSnapshot
+	)
 	const [viewMode, setViewMode] = useState<ViewMode>('content')
 	const [chartConfig, setChartConfig] = useState<ResultChartConfig | null>(null)
 	const previousTableRef = useRef<{ columns: number; rows: number } | null>(null)
-	const [pagination, setPagination] = useState<PaginationState>({ limit: 50, offset: 0 })
+	const [pagination, setPagination] = useState<PaginationState>(DEFAULT_PAGINATION)
 	const [sort, setSort] = useState<SortDescriptor | undefined>()
 	const [filters, setFilters] = useState<FilterDescriptor[]>([])
 	const [filterConjunction, setFilterConjunction] = useState<FilterConjunction>('AND')
@@ -274,7 +296,6 @@ export function DatabaseStudio({
 	const [showImportDialog, setShowImportDialog] = useState(false)
 	const [isDdlLoading, setIsDdlLoading] = useState(false)
 
-	const [selectionAnnouncement, setSelectionAnnouncement] = useState('')
 	const [draftRow, setDraftRow] = useState<Record<string, unknown> | null>(null)
 	const [draftInsertIndex, setDraftInsertIndex] = useState<number | null>(null)
 
@@ -375,8 +396,22 @@ export function DatabaseStudio({
 		},
 		[pagination.limit, pagination.offset, sort, filters, filterConjunction, filterGroup]
 	)
-	const { liveMonitor, stableUrlState, loadTableData } = useDatabaseStudioSync({
+	function resetQueryState() {
+		if (pagination.limit !== 50 || pagination.offset !== 0) setPagination(DEFAULT_PAGINATION)
+		if (sort !== undefined) setSort(undefined)
+		if (filters.length > 0) {
+			setFilters([])
+			setFilterGroup(function (previous) {
+				return flatFiltersToGroup([], previous.logic)
+			})
+		}
+	}
+
+	const { loadTableData } = useDatabaseStudioSync({
 		adapter,
+		isActive,
+		workspaceStateKey,
+		loadingStore,
 		activeConnectionId,
 		tableId,
 		tableName,
@@ -401,11 +436,8 @@ export function DatabaseStudio({
 		onRowSelectionChange,
 		setTableData,
 		setVisibleColumns,
-		setIsLoading,
-		setIsTableTransitioning,
-		setPagination,
-		setSort,
-		setFilters: handleSetFiltersFromSync,
+		setIsTablePending,
+		resetQueryState,
 		setSelectedRows,
 		setSelectedCells,
 		setFocusedCell,
@@ -413,7 +445,6 @@ export function DatabaseStudio({
 		setDraftRow,
 		setDraftInsertIndex
 	})
-
 	useEffect(
 		function guardUnloadWithPendingEdits() {
 			if (!hasEdits()) return
@@ -436,14 +467,15 @@ export function DatabaseStudio({
 		}
 	}, [])
 
+	const tableColumns = tableData?.columns
 	const filteredColumns = useMemo(
 		function () {
-			if (!tableData) return []
-			return tableData.columns.filter(function (col) {
+			if (!tableColumns) return NO_COLUMNS
+			return tableColumns.filter(function (col) {
 				return visibleColumns.has(col.name)
 			})
 		},
-		[tableData, visibleColumns]
+		[tableColumns, visibleColumns]
 	)
 	const pendingEditsSet = useMemo(
 		function () {
@@ -625,30 +657,21 @@ export function DatabaseStudio({
 		]
 	)
 
-	useEffect(
-		function announceSelection() {
-			if (rowsForActions.size > 0) {
-				const count = rowsForActions.size
-				setSelectionAnnouncement(
-					`${count} row${count !== 1 ? 's' : ''} selected. Press Alt+T to access row actions.`
-				)
-			} else {
-				setSelectionAnnouncement('')
-			}
-		},
-		[rowsForActions.size]
-	)
+	const selectionAnnouncement =
+		rowsForActions.size > 0
+			? `${rowsForActions.size} row${rowsForActions.size !== 1 ? 's' : ''} selected. Press Alt+T to access row actions.`
+			: ''
 
 	useEffect(
 		function cachePreviousTableDimensions() {
-			if (tableData && !isLoading) {
+			if (tableData) {
 				previousTableRef.current = {
 					columns: tableData.columns.length,
 					rows: Math.min(tableData.rows.length, 12)
 				}
 			}
 		},
-		[tableData, isLoading]
+		[tableData]
 	)
 
 	useEffect(
@@ -714,9 +737,9 @@ export function DatabaseStudio({
 		.in('data-grid')
 		.on(
 			function () {
-				setSelectedRows(new Set())
+				setSelectedRows((current) => (current.size === 0 ? current : new Set()))
 				setFocusedCell(null)
-				setSelectedCells(new Set())
+				setSelectedCells((current) => (current.size === 0 ? current : new Set()))
 			},
 			{ description: shortcuts.deselect.description }
 		)
@@ -910,6 +933,148 @@ export function DatabaseStudio({
 		[hasActiveFilters, runExport]
 	)
 
+	function requestJsonExport() {
+		requestExport('json')
+	}
+
+	function requestCsvExport() {
+		requestExport('csv')
+	}
+
+	function requestSqlExport() {
+		requestExport('sql')
+	}
+
+	function openImportDialog() {
+		setShowImportDialog(true)
+	}
+
+	function handleAddDialogOpenChange(open: boolean) {
+		setShowAddDialog(open)
+		if (!open) {
+			setEditingRowState(null)
+			setDuplicateInitialData(undefined)
+			setAddDialogMode('add')
+		}
+	}
+
+	function closeRowDetail() {
+		setShowRowDetail(false)
+	}
+
+	function handleDeleteDialogChange(open: boolean) {
+		setShowDeleteConfirmDialog(open)
+		if (!open) {
+			setPendingSingleDeleteRow(null)
+		}
+	}
+
+	function handleConfirmDelete() {
+		const pendingRow = pendingSingleDeleteRow
+		setShowDeleteConfirmDialog(false)
+		setPendingSingleDeleteRow(null)
+		if (pendingRow && activeConnectionId && tableId) {
+			const snapshot = tableData
+			if (tableData) {
+				setTableData(
+					removeRowsByPrimaryKey(tableData, pendingRow.primaryKeyColumn, [
+						pendingRow.primaryKeyValue
+					])
+				)
+			}
+			deleteRows.mutate(
+				{
+					connectionId: activeConnectionId,
+					tableName: tableRefName ?? tableId,
+					primaryKeyColumn: pendingRow.primaryKeyColumn,
+					primaryKeyValues: [pendingRow.primaryKeyValue]
+				},
+				{
+					onSuccess: function onSingleDeleteSuccess() {
+						trackRowDeletion(activeConnectionId, tableRefName ?? tableId, [
+							pendingRow.row
+						])
+						loadTableData()
+					},
+					onError: function onSingleDeleteError(error) {
+						setTableData(snapshot)
+						notifyActionFailure('Failed to delete row', error)
+					}
+				}
+			)
+		} else {
+			deleteRowIndexes(Array.from(rowsForActions))
+		}
+	}
+
+	function handleBulkEditSubmit(columnName: string, newValue: unknown) {
+		const rowIndexes = Array.from(selectedRows)
+		setShowBulkEditDialog(false)
+		setSelectedRows(new Set())
+		handleBatchCellEdit(rowIndexes, columnName, newValue)
+	}
+
+	function handleSetNullSubmit(columnName: string) {
+		const rowIndexes = Array.from(selectedRows)
+		setShowSetNullDialog(false)
+		setSelectedRows(new Set())
+		handleBatchCellEdit(rowIndexes, columnName, null)
+	}
+
+	function handleExportDialogChange(open: boolean) {
+		if (!open) setExportDialogFormat(null)
+	}
+
+	function exportMatchingRows() {
+		if (exportDialogFormat) runExport(exportDialogFormat, false)
+	}
+
+	function exportAllRows() {
+		if (exportDialogFormat) runExport(exportDialogFormat, true)
+	}
+
+	const on = useStableHandlers({
+		refresh: loadTableData,
+		exportJson: canExportFile ? requestJsonExport : noop,
+		exportCsv: canExportFile ? requestCsvExport : undefined,
+		exportSql: canExportFile ? requestSqlExport : undefined,
+		backup: handleBackupDatabase,
+		restore: handleRestoreDatabase,
+		addRecord: canEditRows ? handleAddRecord : undefined,
+		importCsv: canImportFile ? openImportDialog : undefined,
+		toggleColumn: handleToggleColumn,
+		dryEditModeChange: canEditRows ? setDryEditMode : undefined,
+		copySchema: handleCopySchema,
+		copyDrizzleSchema: handleCopyDrizzleSchema,
+		rowSelect: handleRowSelect,
+		rowsSelect: handleRowsSelect,
+		selectAll: handleSelectAll,
+		filterAdd: handleFilterAdd,
+		blobAction: handleBlobAction,
+		cellEdit: canEditRows ? handleCellEdit : undefined,
+		deleteSelectedRows: canEditRows ? handleBulkDelete : undefined,
+		batchCellEdit: canEditRows ? handleBatchCellEdit : undefined,
+		rowAction: handleRowAction,
+		draftChange: handleDraftChange,
+		draftSave: handleDraftSave,
+		draftCancel: handleDraftCancel,
+		fkNavigate: handleFKNavigate,
+		applyPendingEdits: handleApplyPendingEdits,
+		discardPendingEdits: handleDiscardPendingEdits,
+		addDialogOpenChange: handleAddDialogOpenChange,
+		addRecordSubmit: handleAddRecordSubmit,
+		closeRowDetail,
+		dropTable: handleDropTable,
+		deleteDialogChange: handleDeleteDialogChange,
+		confirmDelete: handleConfirmDelete,
+		bulkEditSubmit: handleBulkEditSubmit,
+		setNullSubmit: handleSetNullSubmit,
+		importRows: handleImportRows,
+		exportDialogChange: handleExportDialogChange,
+		exportMatchingRows,
+		exportAllRows
+	})
+
 	// No connection selected
 	if (!activeConnectionId) {
 		return <DatabaseStudioNoConnection onAddConnection={onAddConnection} />
@@ -937,9 +1102,9 @@ export function DatabaseStudio({
 	if (!tableId) {
 		if (schemaQuery.isLoading && !schemaQuery.data) {
 			return withDataFileChrome(
-				<DatabaseStudioConnectionLoading
+				<ConnectionLoadingState
+					connectionId={activeConnectionId}
 					connectionName={activeConnection?.name}
-					phase={connectionPhase}
 				/>
 			)
 		}
@@ -968,45 +1133,18 @@ export function DatabaseStudio({
 				tableData={tableData}
 				viewMode={viewMode}
 				onViewModeChange={setViewMode}
-				onRefresh={loadTableData}
-				onExport={
-					canExportFile
-						? function () {
-								requestExport('json')
-							}
-						: function () {}
-				}
-				onExportCsv={
-					canExportFile
-						? function () {
-								requestExport('csv')
-							}
-						: undefined
-				}
-				onExportSql={
-					canExportFile
-						? function () {
-								requestExport('sql')
-							}
-						: undefined
-				}
-				onBackup={handleBackupDatabase}
-				onRestore={handleRestoreDatabase}
-				isLoading={isLoading}
-				onCopySchema={handleCopySchema}
-				onCopyDrizzleSchema={handleCopyDrizzleSchema}
-				liveMonitorConfig={showLiveMonitor ? liveMonitor.config : undefined}
-				onLiveMonitorConfigChange={showLiveMonitor ? liveMonitor.setConfig : undefined}
-				isLiveMonitorPolling={showLiveMonitor ? liveMonitor.isPolling : false}
-				changeEvents={showLiveMonitor ? liveMonitor.recentEvents : undefined}
-				unreadChangeCount={showLiveMonitor ? liveMonitor.unreadCount : undefined}
-				onClearChangeEvents={showLiveMonitor ? liveMonitor.clearEvents : undefined}
-				onMarkChangesRead={showLiveMonitor ? liveMonitor.markRead : undefined}
+				onRefresh={on.refresh}
+				onExport={on.exportJson}
+				onExportCsv={on.exportCsv}
+				onExportSql={on.exportSql}
+				onBackup={on.backup}
+				onRestore={on.restore}
+				loadingStore={loadingStore}
+				onCopySchema={on.copySchema}
+				onCopyDrizzleSchema={on.copyDrizzleSchema}
+				showLiveMonitor={showLiveMonitor}
 				pagination={pagination}
 				onPaginationChange={setPagination}
-				liveMonitorIntervalMs={liveMonitor.config.intervalMs}
-				lastPolledAt={liveMonitor.recentEvents[0]?.timestamp ?? null}
-				liveMonitorError={liveMonitor.monitorError}
 				showAddColumnDialog={showAddColumnDialog}
 				onShowAddColumnDialogChange={setShowAddColumnDialog}
 				onAddColumn={canEditRows ? handleAddColumn : undefined}
@@ -1019,64 +1157,37 @@ export function DatabaseStudio({
 		)
 	}
 
+	const toolbar = (
+		<StudioToolbar
+			viewMode={viewMode}
+			onViewModeChange={setViewMode}
+			onRefresh={on.refresh}
+			onExport={on.exportJson}
+			onExportCsv={on.exportCsv}
+			onExportSql={on.exportSql}
+			onBackup={on.backup}
+			onRestore={on.restore}
+			onAddRecord={on.addRecord}
+			onImportCsv={on.importCsv}
+			importFilesAction={importFilesAction}
+			loadingStore={loadingStore}
+			filterGroup={filterGroup}
+			onFilterGroupChange={handleFilterGroupChange}
+			columns={tableData?.columns}
+			visibleColumns={visibleColumns}
+			onToggleColumn={on.toggleColumn}
+			isDryEditMode={isDryEditMode}
+			onDryEditModeChange={on.dryEditModeChange}
+			onCopySchema={on.copySchema}
+			onCopyDrizzleSchema={on.copyDrizzleSchema}
+			showLiveMonitor={showLiveMonitor}
+		/>
+	)
+
 	if (viewMode === 'chart' && tableData) {
 		return withDataFileChrome(
 			<div className='flex h-full min-h-0 flex-col bg-background relative'>
-				<StudioToolbar
-					tableName={displayTableName}
-					viewMode={viewMode}
-					onViewModeChange={setViewMode}
-					onRefresh={loadTableData}
-					onExport={
-						canExportFile
-							? function () {
-									requestExport('json')
-								}
-							: function () {}
-					}
-					onExportCsv={
-						canExportFile
-							? function () {
-									requestExport('csv')
-								}
-							: undefined
-					}
-					onExportSql={
-						canExportFile
-							? function () {
-									requestExport('sql')
-								}
-							: undefined
-					}
-					onBackup={handleBackupDatabase}
-					onRestore={handleRestoreDatabase}
-					onAddRecord={canEditRows ? handleAddRecord : undefined}
-					onImportCsv={
-						canImportFile
-							? function () {
-									setShowImportDialog(true)
-								}
-							: undefined
-					}
-					importFilesAction={importFilesAction}
-					isLoading={isLoading}
-					filterGroup={filterGroup}
-					onFilterGroupChange={handleFilterGroupChange}
-					columns={tableData.columns}
-					visibleColumns={visibleColumns}
-					onToggleColumn={handleToggleColumn}
-					isDryEditMode={isDryEditMode}
-					onDryEditModeChange={canEditRows ? setDryEditMode : undefined}
-					onCopySchema={handleCopySchema}
-					onCopyDrizzleSchema={handleCopyDrizzleSchema}
-					liveMonitorConfig={showLiveMonitor ? liveMonitor.config : undefined}
-					onLiveMonitorConfigChange={showLiveMonitor ? liveMonitor.setConfig : undefined}
-					isLiveMonitorPolling={showLiveMonitor ? liveMonitor.isPolling : false}
-					changeEvents={showLiveMonitor ? liveMonitor.recentEvents : undefined}
-					unreadChangeCount={showLiveMonitor ? liveMonitor.unreadCount : undefined}
-					onClearChangeEvents={showLiveMonitor ? liveMonitor.clearEvents : undefined}
-					onMarkChangesRead={showLiveMonitor ? liveMonitor.markRead : undefined}
-				/>
+				{toolbar}
 				<div className='min-h-0 flex-1'>
 					<Suspense fallback={null}>
 						<ResultChartPanel
@@ -1092,95 +1203,41 @@ export function DatabaseStudio({
 		)
 	}
 
+	const isGridShown = Boolean(tableData) && !isTablePending
+	const pendingEditCount = getEditCount(tableId)
+
 	// Content view (default)
 	return withDataFileChrome(
 		<div className='flex h-full min-h-0 flex-col bg-background relative'>
 			<div role='status' aria-live='polite' aria-atomic='true' className='sr-only'>
 				{selectionAnnouncement}
 			</div>
-			<StudioToolbar
-				tableName={displayTableName}
-				viewMode={viewMode}
-				onViewModeChange={setViewMode}
-				onRefresh={loadTableData}
-				onExport={
-					canExportFile
-						? function () {
-								requestExport('json')
-							}
-						: function () {}
-				}
-				onExportCsv={
-					canExportFile
-						? function () {
-								requestExport('csv')
-							}
-						: undefined
-				}
-				onExportSql={
-					canExportFile
-						? function () {
-								requestExport('sql')
-							}
-						: undefined
-				}
-				onBackup={handleBackupDatabase}
-				onRestore={handleRestoreDatabase}
-				onAddRecord={canEditRows ? handleAddRecord : undefined}
-				onImportCsv={
-					canImportFile
-						? function () {
-								setShowImportDialog(true)
-							}
-						: undefined
-				}
-				importFilesAction={importFilesAction}
-				isLoading={isLoading}
-				filterGroup={filterGroup}
-				onFilterGroupChange={handleFilterGroupChange}
-				columns={tableData?.columns || []}
-				visibleColumns={visibleColumns}
-				onToggleColumn={handleToggleColumn}
-				isDryEditMode={isDryEditMode}
-				onDryEditModeChange={canEditRows ? setDryEditMode : undefined}
-				onCopySchema={handleCopySchema}
-				onCopyDrizzleSchema={handleCopyDrizzleSchema}
-				liveMonitorConfig={showLiveMonitor ? liveMonitor.config : undefined}
-				onLiveMonitorConfigChange={showLiveMonitor ? liveMonitor.setConfig : undefined}
-				isLiveMonitorPolling={showLiveMonitor ? liveMonitor.isPolling : false}
-				changeEvents={showLiveMonitor ? liveMonitor.recentEvents : undefined}
-				unreadChangeCount={showLiveMonitor ? liveMonitor.unreadCount : undefined}
-				onClearChangeEvents={showLiveMonitor ? liveMonitor.clearEvents : undefined}
-				onMarkChangesRead={showLiveMonitor ? liveMonitor.markRead : undefined}
-			/>
+			{toolbar}
 
 			<div
 				ref={gridContainerRef}
 				className='relative min-h-0 flex-1 overflow-hidden'
 				role='region'
 				aria-label={`Table data for ${displayTableName}`}
-				aria-busy={isLoading && !tableData}
+				aria-busy={isTablePending && !tableData}
 			>
-				{tableData && (
-					<div
-						className='h-full min-h-0'
-						style={{ opacity: isTableTransitioning ? 0 : 1 }}
-					>
+				{tableData && isGridShown && (
+					<div className='h-full min-h-0'>
 						<DataGrid
 							columns={filteredColumns}
 							rows={tableData.rows}
 							selectedRows={selectedRows}
-							onRowSelect={handleRowSelect}
-							onRowsSelect={handleRowsSelect}
-							onSelectAll={handleSelectAll}
+							onRowSelect={on.rowSelect}
+							onRowsSelect={on.rowsSelect}
+							onSelectAll={on.selectAll}
 							sort={sort}
 							onSortChange={setSort}
-							onFilterAdd={handleFilterAdd}
-							onBlobAction={handleBlobAction}
-							onCellEdit={canEditRows ? handleCellEdit : undefined}
-							onDeleteSelectedRows={canEditRows ? handleBulkDelete : undefined}
-							onBatchCellEdit={canEditRows ? handleBatchCellEdit : undefined}
-							onRowAction={handleRowAction}
+							onFilterAdd={on.filterAdd}
+							onBlobAction={on.blobAction}
+							onCellEdit={on.cellEdit}
+							onDeleteSelectedRows={on.deleteSelectedRows}
+							onBatchCellEdit={on.batchCellEdit}
+							onRowAction={on.rowAction}
 							canEditRows={canEditRows}
 							tableName={displayTableName}
 							selectedCells={selectedCells}
@@ -1189,37 +1246,26 @@ export function DatabaseStudio({
 							onFocusedCellChange={setFocusedCell}
 							onContextMenuChange={setContextMenuState}
 							draftRow={draftRow}
-							onDraftChange={handleDraftChange}
-							onDraftSave={handleDraftSave}
-							onDraftCancel={handleDraftCancel}
+							onDraftChange={on.draftChange}
+							onDraftSave={on.draftSave}
+							onDraftCancel={on.draftCancel}
 							pendingEdits={pendingEditsSet}
 							highlightedRows={highlightedRowIndexes}
 							draftInsertIndex={draftInsertIndex}
-							onFKNavigate={handleFKNavigate}
+							onFKNavigate={on.fkNavigate}
 							workspaceStateKey={workspaceStateKey}
 						/>
 					</div>
 				)}
-				{showTableSkeleton && (
-					<div
-						className='absolute inset-0 bg-background z-10'
-						role='status'
-						aria-live='polite'
-						aria-label='Loading table data'
-					>
-						<TableSkeleton
-							rows={previousTableRef.current?.rows || 12}
-							columns={
-								skeletonColumns ??
-								Math.min(
-									previousTableRef.current?.columns || visibleColumns.size || 6,
-									8
-								)
-							}
-						/>
-					</div>
-				)}
-				{!tableData && !isTableTransitioning && (
+				<TableLoadingSkeleton
+					active={isTablePending}
+					rows={previousTableRef.current?.rows || 12}
+					columns={
+						skeletonColumns ??
+						Math.min(previousTableRef.current?.columns || visibleColumns.size || 6, 8)
+					}
+				/>
+				{!tableData && !isTablePending && (
 					<EmptyState
 						role='status'
 						aria-live='polite'
@@ -1246,7 +1292,7 @@ export function DatabaseStudio({
 							onExportCsv={canExportFile ? handleExportCsv : undefined}
 							onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
 							onSave={canEditRows ? handleApplyPendingEdits : undefined}
-							pendingEditCount={tableId ? getEditCount(tableId) : 0}
+							pendingEditCount={pendingEditCount}
 							onClearSelection={handleClearSelection}
 							onEscapeToGrid={handleEscapeToGrid}
 							mode='static'
@@ -1254,22 +1300,18 @@ export function DatabaseStudio({
 					)}
 			</AnimatePresence>
 
-			{tableData && (
+			{(tableData || isTablePending) && (
 				<BottomStatusBar
 					pagination={pagination}
 					onPaginationChange={setPagination}
-					rowCount={tableData.rows.length}
-					totalCount={tableData.totalCount}
-					executionTime={tableData.executionTime}
-					liveMonitorEnabled={showLiveMonitor ? liveMonitor.config.enabled : undefined}
-					liveMonitorIntervalMs={liveMonitor.config.intervalMs}
-					lastPolledAt={liveMonitor.recentEvents[0]?.timestamp ?? null}
-					changesDetected={liveMonitor.unreadCount}
-					liveMonitorError={liveMonitor.monitorError}
+					rowCount={tableData?.rows.length ?? 0}
+					totalCount={tableData?.totalCount ?? 0}
+					executionTime={tableData?.executionTime ?? 0}
+					showLiveMonitor={showLiveMonitor}
+					isPending={!isGridShown}
 				/>
 			)}
 
-			{/* Render floating bar if mode is floating */}
 			<AnimatePresence>
 				{tableData &&
 					settings.selectionBarStyle === 'floating' &&
@@ -1285,7 +1327,7 @@ export function DatabaseStudio({
 							onSetNull={canEditRows ? handleOpenSetNull : undefined}
 							onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
 							onSave={canEditRows ? handleApplyPendingEdits : undefined}
-							pendingEditCount={tableId ? getEditCount(tableId) : 0}
+							pendingEditCount={pendingEditCount}
 							onClearSelection={handleClearSelection}
 							onEscapeToGrid={handleEscapeToGrid}
 							mode='floating'
@@ -1293,161 +1335,80 @@ export function DatabaseStudio({
 					)}
 			</AnimatePresence>
 
-			{tableId && canEditRows && (
-				<PendingChangesBar
-					editCount={getEditCount(tableId)}
+			{canEditRows && (
+				<QuietPendingChangesBar
+					editCount={pendingEditCount}
 					isApplying={isApplyingEdits}
-					onApply={handleApplyPendingEdits}
-					onCancel={handleDiscardPendingEdits}
+					onApply={on.applyPendingEdits}
+					onCancel={on.discardPendingEdits}
 				/>
 			)}
 
-			<AddRecordDialog
+			<QuietAddRecordDialog
 				open={showAddDialog}
-				onOpenChange={function handleAddDialogOpenChange(open) {
-					setShowAddDialog(open)
-					if (!open) {
-						setEditingRowState(null)
-						setDuplicateInitialData(undefined)
-						setAddDialogMode('add')
-					}
-				}}
-				columns={tableData?.columns || []}
-				onSubmit={handleAddRecordSubmit}
+				onOpenChange={on.addDialogOpenChange}
+				columns={tableData?.columns || NO_COLUMNS}
+				onSubmit={on.addRecordSubmit}
 				isLoading={insertRow.isPending || updateCell.isPending}
 				initialData={duplicateInitialData}
 				mode={addDialogMode}
 			/>
 
 			{tableData && selectedRowForDetail && (
-				<RowDetailPanel
+				<QuietRowDetailPanel
 					open={showRowDetail}
-					onClose={function closeRowDetail() {
-						setShowRowDetail(false)
-					}}
+					onClose={on.closeRowDetail}
 					row={selectedRowForDetail}
 					columns={tableData.columns}
 					tableName={displayTableName}
 				/>
 			)}
 
-			<DropTableDialog
+			<QuietDropTableDialog
 				open={showDropTableDialog}
 				onOpenChange={setShowDropTableDialog}
 				tableName={displayTableName || ''}
-				onConfirm={handleDropTable}
+				onConfirm={on.dropTable}
 				isLoading={isDdlLoading}
 			/>
 
-			<AlertDialog
+			<DeleteRowsDialog
 				open={showDeleteConfirmDialog}
-				onOpenChange={function handleDeleteDialogChange(open) {
-					setShowDeleteConfirmDialog(open)
-					if (!open) {
-						setPendingSingleDeleteRow(null)
-					}
-				}}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete{' '}
-							{pendingSingleDeleteRow
-								? '1 row'
-								: `${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}`}{' '}
-							from the database.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={function handleConfirmDelete(e) {
-								e.preventDefault()
-								const pendingRow = pendingSingleDeleteRow
-								setShowDeleteConfirmDialog(false)
-								setPendingSingleDeleteRow(null)
-								if (pendingRow && activeConnectionId && tableId) {
-									const snapshot = tableData
-									if (tableData) {
-										setTableData(
-											removeRowsByPrimaryKey(
-												tableData,
-												pendingRow.primaryKeyColumn,
-												[pendingRow.primaryKeyValue]
-											)
-										)
-									}
-									deleteRows.mutate(
-										{
-											connectionId: activeConnectionId,
-											tableName: tableRefName ?? tableId,
-											primaryKeyColumn: pendingRow.primaryKeyColumn,
-											primaryKeyValues: [pendingRow.primaryKeyValue]
-										},
-										{
-											onSuccess: function onSingleDeleteSuccess() {
-												trackRowDeletion(
-													activeConnectionId,
-													tableRefName ?? tableId,
-													[pendingRow.row]
-												)
-												loadTableData()
-											},
-											onError: function onSingleDeleteError(error) {
-												setTableData(snapshot)
-												notifyActionFailure('Failed to delete row', error)
-											}
-										}
-									)
-								} else {
-									deleteRowIndexes(Array.from(rowsForActions))
-								}
-							}}
-							className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
-						>
-							Delete
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+				onOpenChange={on.deleteDialogChange}
+				target={
+					pendingSingleDeleteRow
+						? '1 row'
+						: `${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}`
+				}
+				onConfirm={on.confirmDelete}
+			/>
 
 			{tableData && (
-				<BulkEditDialog
+				<QuietBulkEditDialog
 					open={showBulkEditDialog}
 					onOpenChange={setShowBulkEditDialog}
 					columns={tableData.columns}
 					selectedCount={selectedRows.size}
-					onSubmit={function handleBulkEditSubmit(columnName: string, newValue: unknown) {
-						const rowIndexes = Array.from(selectedRows)
-						setShowBulkEditDialog(false)
-						setSelectedRows(new Set())
-						handleBatchCellEdit(rowIndexes, columnName, newValue)
-					}}
+					onSubmit={on.bulkEditSubmit}
 				/>
 			)}
 
 			{tableData && (
-				<SetNullDialog
+				<QuietSetNullDialog
 					open={showSetNullDialog}
 					onOpenChange={setShowSetNullDialog}
 					columns={tableData.columns}
 					selectedCount={selectedRows.size}
-					onSubmit={function handleSetNullSubmit(columnName: string) {
-						const rowIndexes = Array.from(selectedRows)
-						setShowSetNullDialog(false)
-						setSelectedRows(new Set())
-						handleBatchCellEdit(rowIndexes, columnName, null)
-					}}
+					onSubmit={on.setNullSubmit}
 				/>
 			)}
 
 			{tableData && canImportFile && (
-				<ImportCsvDialog
+				<QuietImportCsvDialog
 					open={showImportDialog}
 					onOpenChange={setShowImportDialog}
 					columns={tableData.columns}
-					onImport={handleImportRows}
+					onImport={on.importRows}
 				/>
 			)}
 
@@ -1468,19 +1429,13 @@ export function DatabaseStudio({
 				</Suspense>
 			)}
 
-			<ExportOptionsDialog
+			<QuietExportOptionsDialog
 				open={exportDialogFormat !== null}
-				onOpenChange={function (open) {
-					if (!open) setExportDialogFormat(null)
-				}}
+				onOpenChange={on.exportDialogChange}
 				format={exportDialogFormat ?? 'json'}
 				matchingRowCount={tableData?.totalCount}
-				onExportMatching={function () {
-					if (exportDialogFormat) runExport(exportDialogFormat, false)
-				}}
-				onExportAll={function () {
-					if (exportDialogFormat) runExport(exportDialogFormat, true)
-				}}
+				onExportMatching={on.exportMatchingRows}
+				onExportAll={on.exportAllRows}
 			/>
 		</div>
 	)
