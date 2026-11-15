@@ -1,0 +1,42 @@
+---
+title: Connect Cloudflare D1
+description: Connect Dora to a Cloudflare D1 database with your account ID and a scoped API token.
+---
+
+Cloudflare D1 is SQLite running on Cloudflare's edge. There is no local
+database file and no connection string; D1 is reached over an HTTP API. Dora
+ships a native HTTP query engine that speaks that API directly, so you connect
+with an account ID and a scoped API token instead of a URL.
+
+Once authorized, Dora lists the D1 databases in your account and you pick one.
+The token is encrypted and stored only on your machine, and queries run against
+Cloudflare's API, not through Dora's servers.
+
+## With an API token
+
+1. In the Cloudflare dashboard, open **Workers & Pages**. Your **Account ID**
+   is shown in the right-hand sidebar. Copy it.
+2. Go to **My Profile**, **API Tokens**, **Create Token**. Use a custom token
+   with **D1** set to Edit and **Account Settings** set to Read for the
+   account that owns your databases. Dora needs Account Settings to list your
+   accounts.
+3. In Dora, create a new connection and pick **Cloudflare D1** from the
+   provider grid. Paste your account ID and API token:
+
+   ```text
+   Account ID:   [CLOUDFLARE_ACCOUNT_ID]
+   API token:    [D1_API_TOKEN]   (D1 Edit + Account Settings Read)
+   Database:     picked from your account inside Dora
+   ```
+
+4. Dora calls the D1 API and lists the databases in your account. Select one
+   and connect, and its tables load into the sidebar like any other database.
+
+## Notes
+
+- D1 has no connection string and no SSL toggle. All traffic goes over HTTPS
+  to Cloudflare's API.
+- The API token needs the D1 and Account Settings permissions. Set D1 to Read
+  for a browse-only connection.
+- Because D1 is SQLite, expect SQLite types and SQL dialect rather than
+  Postgres or MySQL behavior.

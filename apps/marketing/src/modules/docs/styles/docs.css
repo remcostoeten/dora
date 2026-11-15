@@ -1,0 +1,173 @@
+@theme {
+    --animate-fd-dialog-in: none;
+    --animate-fd-dialog-out: none;
+    --animate-fd-fade-in: none;
+    --animate-fd-fade-out: none;
+    --animate-fd-popover-in: fd-popover-in 160ms var(--ease-snappy);
+    --animate-fd-popover-out: fd-popover-out 120ms var(--ease-snappy);
+    --animate-fd-collapsible-down: fd-collapsible-down 220ms var(--ease-snappy);
+    --animate-fd-collapsible-up: fd-collapsible-up 160ms var(--ease-snappy);
+    --animate-fd-accordion-down: fd-accordion-down 240ms var(--ease-snappy);
+    --animate-fd-accordion-up: fd-accordion-up 180ms var(--ease-snappy);
+
+    @keyframes fd-popover-in {
+        from {
+            opacity: 0;
+            transform: scale(0.96);
+        }
+    }
+
+    @keyframes fd-popover-out {
+        to {
+            opacity: 0;
+            transform: scale(0.97);
+        }
+    }
+
+    @keyframes fd-accordion-down {
+        from {
+            height: 0;
+            opacity: 0;
+        }
+        to {
+            height: var(--radix-accordion-content-height);
+        }
+    }
+
+    @keyframes fd-accordion-up {
+        from {
+            height: var(--radix-accordion-content-height);
+        }
+        to {
+            height: 0;
+            opacity: 0;
+        }
+    }
+}
+
+/* Docs render on the Fumadocs palette; :has() reaches the portaled search dialog too */
+:root:has(.docs-root) {
+    --background: var(--color-fd-background);
+    --foreground: var(--color-fd-foreground);
+    --border: var(--color-fd-border);
+    --muted-foreground: var(--color-fd-muted-foreground);
+    --topbar-height: 48px;
+    --sidebar-width: min(22vw, 300px);
+}
+
+@media (min-width: 64rem) {
+    :root:has(.docs-root) {
+        --topbar-height: 44px;
+    }
+}
+
+.docs-layout {
+    --fd-sidebar-width: 0px;
+    --fd-toc-width: 0px;
+    --fd-layout-width: 100vw;
+    --fd-layout-offset: 0px;
+    --fd-page-width: 900px;
+    --fd-banner-height: var(--topbar-height);
+    padding-top: var(--topbar-height);
+}
+
+@media (min-width: 64rem) {
+    .docs-layout {
+        --fd-layout-width: min(calc(100vw - var(--sidebar-width)), 1200px);
+        padding-inline-start: var(--sidebar-width);
+    }
+}
+
+@media (min-width: 80rem) {
+    .docs-layout {
+        --fd-toc-width: 280px;
+    }
+}
+
+/* Fades the first 1rem and last 2rem of the sidebar scroll area */
+.sidebar-viewport {
+    mask-image: linear-gradient(
+        to bottom,
+        transparent,
+        white 1rem,
+        white calc(100% - 2rem),
+        transparent 100%
+    );
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(
+            in oklab,
+            var(--color-fd-foreground) 12%,
+            transparent
+        )
+        transparent;
+}
+
+@layer base {
+    .docs-root
+        :where(
+            a,
+            button,
+            summary,
+            [role='button'],
+            [role='tab'],
+            [tabindex]:not([tabindex='-1'])
+        ) {
+        outline-color: transparent;
+        transition-property:
+            color, background-color, border-color, fill, stroke;
+        transition-duration: 150ms;
+        transition-timing-function: var(--ease-hover);
+    }
+
+    /* A transparent outline stays visible in forced-colors mode */
+    .docs-root
+        :where(
+            a,
+            button,
+            summary,
+            [role='button'],
+            [role='tab'],
+            [tabindex]:not([tabindex='-1'])
+        ):focus-visible {
+        outline: 2px solid transparent;
+        outline-offset: 0;
+        color: var(--color-fd-foreground);
+        background-color: color-mix(
+            in oklab,
+            var(--color-fd-foreground) 7%,
+            transparent
+        );
+    }
+}
+
+/* Unlayered so it beats duration utilities: keyboard focus shows instantly */
+.docs-root :where(:focus-visible, :focus-visible *) {
+    transition-duration: 0s;
+}
+
+.docs-root :where(a.bg-fd-card) {
+    transition-property: color, background-color, border-color, transform;
+    transition-duration: 150ms, 150ms, 150ms, 160ms;
+    transition-timing-function:
+        var(--ease-hover), var(--ease-hover), var(--ease-hover),
+        var(--ease-snappy);
+}
+
+.docs-root :where(a.bg-fd-card):active {
+    transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root:has(.docs-root) {
+        --animate-fd-popover-in: fd-fade-in 120ms ease;
+        --animate-fd-popover-out: none;
+        --animate-fd-collapsible-down: none;
+        --animate-fd-collapsible-up: none;
+        --animate-fd-accordion-down: none;
+        --animate-fd-accordion-up: none;
+    }
+
+    .docs-root :where(a.bg-fd-card):active {
+        transform: none;
+    }
+}

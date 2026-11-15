@@ -1,0 +1,37 @@
+---
+title: Connect Xata
+description: Connect Dora to a Xata database through its direct Postgres endpoint and a connection string.
+---
+
+Xata is built on Postgres and exposes a direct Postgres wire endpoint, so Dora
+connects to it like any other Postgres database, with no Xata SDK required.
+
+Your API key acts as the password in the connection string, and the database
+and branch are part of the host path. Keep the key secret; Dora stores it
+encrypted on your device.
+
+## With a connection string
+
+1. In the Xata web app, open your database settings and make sure the direct
+   Postgres (wire protocol) endpoint is enabled for the branch you want to
+   connect to.
+2. Under **Account Settings**, generate an API key. It is used in place of a
+   password in the connection string.
+3. Copy the Postgres connection string shown in your workspace settings. It
+   includes your workspace, region, database and branch:
+
+   ```text
+   postgresql://[WORKSPACE]:[API_KEY]@[REGION].sql.xata.sh/[DBNAME]:[BRANCH]?sslmode=require
+   ```
+
+4. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the
+   string, then **Test connection** and **Save**. Your Xata tables load into
+   the sidebar.
+
+## Notes
+
+- Xata requires SSL. Keep `sslmode=require` in the connection string.
+- The branch is part of the host path (for example `main`). To inspect a
+  different branch, add a separate connection pointing at that branch.
+- Treat the API key like a password; it grants access to your data. Disconnect
+  in Dora to remove the stored credentials.

@@ -16,8 +16,23 @@ in a fast, virtualized grid that handles large tables without freezing.
 - **Follow foreign keys** by clicking the badge on a foreign-key cell to jump
   straight to the referenced row.
 
+## Keyboard
+
+With a cell focused:
+
+- **Arrow keys** move the focus, and **Shift+Arrow** extends the selection
+  rectangle.
+- **S** toggles the sort on that cell's column.
+- **Shift+F10** or the **Menu** key opens the cell context menu.
+- **Backspace** clears every selected cell, or the focused cell when nothing is
+  selected. Primary key cells are skipped.
+
 Cells are type-aware: numbers, booleans, `NULL`, and JSON render distinctly, and
-binary columns show a `BLOB` badge with view/copy/export actions.
+binary columns show a `BLOB` badge with view/copy/export actions. PostgreSQL
+arrays, ranges, enums, composites, `inet` and `cidr`, `tsvector`, and `pgvector`
+values are shown as readable values.
+
+Open **Row details** from a row to see every field of that row in a dialog.
 
 ## Filter
 
@@ -45,8 +60,20 @@ from the table header or context menu.
 ## Import and export
 
 - **Import CSV** from the toolbar: pick a file and map its columns to the table.
+  Dora detects whether the file uses commas, semicolons, or tabs, and strips a
+  UTF-8 byte order mark from the start of the file.
 - **Export** with `Mod+E` (or the toolbar) to CSV, JSON, or SQL `INSERT`
   statements. See the [Export guide](/docs/guides/export) for scope options.
+
+To copy the whole database to disk, see [Dump and restore](/docs/guides/database-dump).
+
+## Compare two CSV exports
+
+When a data-file session holds two or more CSV files, **Compare followers**
+lists the rows that are in the older file but missing from the newer one. Pick
+the older file, the newer file, and a column both files share, such as a user
+name or ID. A typical use is comparing two follower exports to see who
+unfollowed. The comparison stops at 10,000 rows.
 
 ## Watch a table change live
 
