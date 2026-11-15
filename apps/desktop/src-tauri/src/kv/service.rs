@@ -134,7 +134,12 @@ impl KvService {
             })?
             .map_err(describe)?;
 
-        let connection = if cluster_enabled(&mut single).await {
+        let is_cluster = timeout(duration, cluster_enabled(&mut single))
+            .await
+            .map_err(|_| Error::Timeout {
+                ms: duration.as_millis() as u64,
+            })?;
+        let connection = if is_cluster {
             if tunnel.is_some() {
                 return Err(Error::InvalidInput(
                     "This server runs in cluster mode. Cluster nodes hand out their own addresses, which a single SSH tunnel cannot reach, so connect without the tunnel (for example from inside the network or over a VPN).".to_string(),
@@ -593,8 +598,14 @@ async fn cluster_enabled(connection: &mut MultiplexedConnection) -> bool {
         .arg("cluster")
         .query_async(connection)
         .await;
-    info.map(|text| text.lines().any(|line| line.trim() == "cluster_enabled:1"))
-        .unwrap_or(false)
+    if let Ok(text) = info {
+        return text.lines().any(|line| line.trim() == "cluster_enabled:1");
+    }
+    let cluster_info: redis::RedisResult<String> = redis::cmd("CLUSTER")
+        .arg("INFO")
+        .query_async(connection)
+        .await;
+    cluster_info.is_ok()
 }
 
 async fn cluster_primaries(cluster: &mut ClusterConnection) -> Result<Vec<(String, u16)>> {

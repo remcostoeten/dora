@@ -38,8 +38,7 @@ impl client::Handler for Client {
         let fingerprint = server_public_key.fingerprint(HashAlg::Sha256).to_string();
 
         if let Some(expected) = self.expected_fingerprint.as_deref() {
-            let expected = expected.trim();
-            let matches = fingerprint.eq_ignore_ascii_case(expected);
+            let matches = fingerprint_body(&fingerprint) == fingerprint_body(expected.trim());
             if !matches {
                 log::error!(
                     "SSH host key mismatch for {}:{}: expected {}, received {}",
@@ -344,5 +343,13 @@ impl Drop for SshTunnel {
     fn drop(&mut self) {
         self.stop_signal.store(true, Ordering::Relaxed);
         let _ = self.handle.take();
+    }
+}
+
+/// SHA-256 fingerprints are base64, so only the optional `SHA256:` label may differ in case.
+fn fingerprint_body(fingerprint: &str) -> &str {
+    match fingerprint.split_once(':') {
+        Some((label, body)) if label.eq_ignore_ascii_case("sha256") => body,
+        _ => fingerprint,
     }
 }
