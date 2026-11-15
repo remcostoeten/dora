@@ -1,8 +1,17 @@
+use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
-use redis::{aio::MultiplexedConnection, Cmd, Value};
+use redis::{
+    aio::{ConnectionLike, MultiplexedConnection},
+    cluster::ClusterClientBuilder,
+    cluster_async::ClusterConnection,
+    cluster_routing::{MultipleNodeRoutingInfo, RoutingInfo, SingleNodeRoutingInfo},
+    Cmd, Pipeline, RedisFuture, Value,
+};
 use tokio::time::timeout;
 
+use crate::database::ssh_tunnel::SshTunnel;
 use crate::error::{Error, Result};
 
 use super::types::{
@@ -14,27 +23,153 @@ use super::types::{
 const DEFAULT_PAGE_SIZE: u32 = 100;
 const MAX_PAGE_SIZE: u32 = 1_000;
 const DEFAULT_CONNECT_TIMEOUT_MS: u64 = 10_000;
+const DEFAULT_REDIS_PORT: u16 = 6379;
+/// A cluster SCAN cursor packs the primary's index into the low bits, so one opaque u64 can resume on the right node.
+const CLUSTER_CURSOR_SPAN: u64 = 1_024;
+
+#[derive(Clone)]
+enum Link {
+    Single(MultiplexedConnection),
+    Cluster(ClusterConnection),
+}
+
+impl fmt::Debug for Link {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str(match self {
+            Link::Single(_) => "Link::Single",
+            Link::Cluster(_) => "Link::Cluster",
+        })
+    }
+}
+
+impl ConnectionLike for Link {
+    fn req_packed_command<'a>(&'a mut self, cmd: &'a Cmd) -> RedisFuture<'a, Value> {
+        match self {
+            Link::Single(connection) => connection.req_packed_command(cmd),
+            Link::Cluster(connection) => connection.req_packed_command(cmd),
+        }
+    }
+
+    fn req_packed_commands<'a>(
+        &'a mut self,
+        pipeline: &'a Pipeline,
+        offset: usize,
+        count: usize,
+    ) -> RedisFuture<'a, Vec<Value>> {
+        match self {
+            Link::Single(connection) => connection.req_packed_commands(pipeline, offset, count),
+            Link::Cluster(connection) => connection.req_packed_commands(pipeline, offset, count),
+        }
+    }
+
+    fn get_db(&self) -> i64 {
+        match self {
+            Link::Single(connection) => connection.get_db(),
+            Link::Cluster(connection) => connection.get_db(),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct KvService {
-    connection: MultiplexedConnection,
+    connection: Link,
+    _tunnel: Option<Arc<SshTunnel>>,
 }
 
 impl KvService {
     pub async fn connect(config: &KvConnectionConfig) -> Result<Self> {
-        validate_url(&config.url)?;
-        let client = redis::Client::open(config.url.as_str())
-            .map_err(|error| Error::ConnectionFailed(error.to_string()))?;
+        let mut url = parse_url(&config.url)?;
+        let tunnel = match &config.ssh_tunnel {
+            Some(ssh) => {
+                if url.scheme() == "rediss" && !config.skip_tls_verify {
+                    return Err(Error::InvalidInput(
+                        "TLS through an SSH tunnel connects to 127.0.0.1, so the certificate name can never match. Turn on \"Skip certificate verification\" to use rediss:// with a tunnel.".to_string(),
+                    ));
+                }
+                let remote_host = url
+                    .host_str()
+                    .ok_or_else(|| Error::InvalidInput("Redis URL has no host".to_string()))?
+                    .to_string();
+                let remote_port = url.port().unwrap_or(DEFAULT_REDIS_PORT);
+                let tunnel = SshTunnel::start(
+                    &ssh.host,
+                    ssh.port,
+                    &ssh.username,
+                    ssh.private_key_path
+                        .as_deref()
+                        .filter(|path| !path.is_empty()),
+                    ssh.password
+                        .as_deref()
+                        .filter(|password| !password.is_empty()),
+                    ssh.host_key_fingerprint.as_deref(),
+                    remote_host,
+                    remote_port,
+                )
+                .map_err(|error| Error::ConnectionFailed(format!("SSH tunnel: {error:#}")))?;
+                route_through_tunnel(&mut url, tunnel.local_port)?;
+                Some(Arc::new(tunnel))
+            }
+            None => None,
+        };
+        if config.skip_tls_verify && url.scheme() == "rediss" {
+            url.set_fragment(Some("insecure"));
+        }
+
         let duration = Duration::from_millis(DEFAULT_CONNECT_TIMEOUT_MS);
-        let connection = timeout(duration, client.get_multiplexed_async_connection())
+        let describe = |error: redis::RedisError| {
+            let error = map_connection_error(error);
+            match (&tunnel, error) {
+                (Some(_), Error::ConnectionFailed(message)) => Error::ConnectionFailed(format!(
+                    "could not reach Redis through the SSH tunnel ({message}). Check the SSH host, user, key and the Redis host as seen from the SSH server."
+                )),
+                (_, error) => error,
+            }
+        };
+        let client = redis::Client::open(url.as_str())
+            .map_err(|error| Error::ConnectionFailed(error.to_string()))?;
+        let mut single = timeout(duration, client.get_multiplexed_async_connection())
             .await
             .map_err(|_| Error::Timeout {
                 ms: duration.as_millis() as u64,
             })?
-            .map_err(map_connection_error)?;
-        let mut service = Self { connection };
+            .map_err(describe)?;
+
+        let is_cluster = timeout(duration, cluster_enabled(&mut single))
+            .await
+            .map_err(|_| Error::Timeout {
+                ms: duration.as_millis() as u64,
+            })?;
+        let connection = if is_cluster {
+            if tunnel.is_some() {
+                return Err(Error::InvalidInput(
+                    "This server runs in cluster mode. Cluster nodes hand out their own addresses, which a single SSH tunnel cannot reach, so connect without the tunnel (for example from inside the network or over a VPN).".to_string(),
+                ));
+            }
+            let cluster = ClusterClientBuilder::new(vec![url.as_str()])
+                .connection_timeout(duration)
+                .build()
+                .map_err(map_connection_error)?;
+            let connection = timeout(duration, cluster.get_async_connection())
+                .await
+                .map_err(|_| Error::Timeout {
+                    ms: duration.as_millis() as u64,
+                })?
+                .map_err(map_connection_error)?;
+            Link::Cluster(connection)
+        } else {
+            Link::Single(single)
+        };
+
+        let mut service = Self {
+            connection,
+            _tunnel: tunnel,
+        };
         service.probe().await?;
         Ok(service)
+    }
+
+    pub fn is_cluster(&self) -> bool {
+        matches!(self.connection, Link::Cluster(_))
     }
 
     pub async fn probe(&mut self) -> Result<()> {
@@ -52,13 +187,10 @@ impl KvService {
     }
 
     pub async fn scan(&mut self, request: KvScanRequest) -> Result<KvScanPage> {
-        let limit = page_size(request.limit);
-        let mut command = redis::cmd("SCAN");
-        command.arg(request.cursor.unwrap_or(0));
-        if let Some(pattern) = request.pattern.filter(|value| !value.is_empty()) {
-            command.arg("MATCH").arg(pattern);
+        if let Link::Cluster(cluster) = &mut self.connection {
+            return scan_cluster(cluster, request).await;
         }
-        command.arg("COUNT").arg(limit);
+        let command = scan_command(request.cursor.unwrap_or(0), request.pattern, request.limit);
         let (cursor, keys): (u64, Vec<Vec<u8>>) = command
             .query_async(&mut self.connection)
             .await
@@ -408,30 +540,11 @@ impl KvService {
         if keys.is_empty() {
             return Ok(Vec::new());
         }
-        let mut pipeline = redis::pipe();
-        for key in keys {
-            pipeline.cmd("TYPE").arg(key).cmd("PTTL").arg(key);
-        }
-        let values: Vec<Value> = pipeline
+        let values: Vec<Value> = metadata_pipeline(keys)
             .query_async(&mut self.connection)
             .await
             .map_err(map_driver_error)?;
-        if values.len() != keys.len() * 2 {
-            return Err(Error::Internal(
-                "Redis/Valkey returned incomplete key metadata".to_string(),
-            ));
-        }
-        values
-            .chunks_exact(2)
-            .map(|pair| {
-                let kind: String = redis::from_redis_value(&pair[0]).map_err(map_driver_error)?;
-                let ttl: i64 = redis::from_redis_value(&pair[1]).map_err(map_driver_error)?;
-                Ok((
-                    KvDataType::from_redis_name(&kind),
-                    if ttl >= 0 { Some(ttl) } else { None },
-                ))
-            })
-            .collect()
+        parse_metadata(keys, &values)
     }
 
     async fn integer_mutation(&mut self, command: &mut Cmd) -> Result<KvMutationResult> {
@@ -441,6 +554,175 @@ impl KvService {
             .map_err(map_driver_error)?;
         Ok(KvMutationResult { changed })
     }
+}
+
+fn scan_command(cursor: u64, pattern: Option<String>, limit: Option<u32>) -> Cmd {
+    let mut command = redis::cmd("SCAN");
+    command.arg(cursor);
+    if let Some(pattern) = pattern.filter(|value| !value.is_empty()) {
+        command.arg("MATCH").arg(pattern);
+    }
+    command.arg("COUNT").arg(page_size(limit));
+    command
+}
+
+fn metadata_pipeline(keys: &[Vec<u8>]) -> Pipeline {
+    let mut pipeline = redis::pipe();
+    for key in keys {
+        pipeline.cmd("TYPE").arg(key).cmd("PTTL").arg(key);
+    }
+    pipeline
+}
+
+fn parse_metadata(keys: &[Vec<u8>], values: &[Value]) -> Result<Vec<(KvDataType, Option<i64>)>> {
+    if values.len() != keys.len() * 2 {
+        return Err(Error::Internal(
+            "Redis/Valkey returned incomplete key metadata".to_string(),
+        ));
+    }
+    values
+        .chunks_exact(2)
+        .map(|pair| {
+            let kind: String = redis::from_redis_value(&pair[0]).map_err(map_driver_error)?;
+            let ttl: i64 = redis::from_redis_value(&pair[1]).map_err(map_driver_error)?;
+            Ok((
+                KvDataType::from_redis_name(&kind),
+                if ttl >= 0 { Some(ttl) } else { None },
+            ))
+        })
+        .collect()
+}
+
+async fn cluster_enabled(connection: &mut MultiplexedConnection) -> bool {
+    let info: redis::RedisResult<String> = redis::cmd("INFO")
+        .arg("cluster")
+        .query_async(connection)
+        .await;
+    if let Ok(text) = info {
+        return text.lines().any(|line| line.trim() == "cluster_enabled:1");
+    }
+    let cluster_info: redis::RedisResult<String> = redis::cmd("CLUSTER")
+        .arg("INFO")
+        .query_async(connection)
+        .await;
+    cluster_info.is_ok()
+}
+
+async fn cluster_primaries(cluster: &mut ClusterConnection) -> Result<Vec<(String, u16)>> {
+    let reply = cluster
+        .route_command(
+            redis::cmd("ECHO").arg("dora"),
+            RoutingInfo::MultiNode((MultipleNodeRoutingInfo::AllMasters, None)),
+        )
+        .await
+        .map_err(map_driver_error)?;
+    let Value::Map(entries) = reply else {
+        return Err(Error::Internal(
+            "Redis/Valkey cluster did not list its primaries".to_string(),
+        ));
+    };
+    let mut primaries = entries
+        .iter()
+        .map(|(address, _)| {
+            let address: String = redis::from_redis_value(address).map_err(map_driver_error)?;
+            split_address(&address)
+        })
+        .collect::<Result<Vec<_>>>()?;
+    primaries.sort();
+    Ok(primaries)
+}
+
+fn split_address(address: &str) -> Result<(String, u16)> {
+    address
+        .rsplit_once(':')
+        .and_then(|(host, port)| Some((host.to_string(), port.parse().ok()?)))
+        .ok_or_else(|| Error::Internal(format!("unexpected cluster node address {address}")))
+}
+
+fn split_cluster_cursor(cursor: u64) -> (usize, u64) {
+    (
+        (cursor % CLUSTER_CURSOR_SPAN) as usize,
+        cursor / CLUSTER_CURSOR_SPAN,
+    )
+}
+
+fn next_cluster_cursor(node: usize, node_cursor: u64, node_count: usize) -> Result<u64> {
+    if node_cursor != 0 {
+        return node_cursor
+            .checked_mul(CLUSTER_CURSOR_SPAN)
+            .map(|cursor| cursor + node as u64)
+            .ok_or_else(|| Error::Internal("cluster SCAN cursor overflowed".to_string()));
+    }
+    Ok(if node + 1 < node_count {
+        node as u64 + 1
+    } else {
+        0
+    })
+}
+
+async fn scan_cluster(
+    cluster: &mut ClusterConnection,
+    request: KvScanRequest,
+) -> Result<KvScanPage> {
+    let primaries = cluster_primaries(cluster).await?;
+    if primaries.len() as u64 > CLUSTER_CURSOR_SPAN {
+        return Err(Error::NotImplemented(
+            "clusters with more than 1024 primaries",
+        ));
+    }
+    let (node, node_cursor) = split_cluster_cursor(request.cursor.unwrap_or(0));
+    let Some((host, port)) = primaries.get(node).cloned() else {
+        return Err(Error::InvalidInput(
+            "the cluster topology changed during the scan, start it again".to_string(),
+        ));
+    };
+    let route = || SingleNodeRoutingInfo::ByAddress {
+        host: host.clone(),
+        port,
+    };
+
+    let reply = cluster
+        .route_command(
+            &scan_command(node_cursor, request.pattern, request.limit),
+            RoutingInfo::SingleNode(route()),
+        )
+        .await
+        .map_err(map_driver_error)?;
+    let (next, keys): (u64, Vec<Vec<u8>>) =
+        redis::from_redis_value(&reply).map_err(map_driver_error)?;
+
+    let metadata = if keys.is_empty() {
+        Vec::new()
+    } else {
+        let pipeline = metadata_pipeline(&keys);
+        let values = cluster
+            .route_pipeline(&pipeline, 0, keys.len() * 2, route())
+            .await
+            .map_err(map_driver_error)?;
+        parse_metadata(&keys, &values)?
+    };
+
+    Ok(KvScanPage {
+        cursor: next_cluster_cursor(node, next, primaries.len())?,
+        keys: keys
+            .into_iter()
+            .zip(metadata)
+            .map(|(key, (data_type, ttl_ms))| KvKeySummary {
+                key: KvBytes::from_bytes(key),
+                data_type,
+                ttl_ms,
+            })
+            .collect(),
+    })
+}
+
+fn route_through_tunnel(url: &mut url::Url, local_port: u16) -> Result<()> {
+    url.set_host(Some("127.0.0.1"))
+        .and_then(|_| {
+            url.set_port(Some(local_port))
+                .map_err(|_| url::ParseError::InvalidPort)
+        })
+        .map_err(|error| Error::InvalidInput(format!("invalid Redis URL: {error}")))
 }
 
 pub fn classify_raw_command(input: &str) -> Result<RawCommandSafety> {
@@ -527,15 +809,15 @@ pub fn parse_raw_command(input: &str) -> Result<Vec<Vec<u8>>> {
     Ok(args)
 }
 
-fn validate_url(value: &str) -> Result<()> {
-    let url = url::Url::parse(value)
+fn parse_url(value: &str) -> Result<url::Url> {
+    let url = url::Url::parse(value.trim())
         .map_err(|error| Error::InvalidInput(format!("invalid Redis URL: {error}")))?;
     if !matches!(url.scheme(), "redis" | "rediss") {
         return Err(Error::InvalidInput(
             "Redis URL must use redis:// or rediss://".to_string(),
         ));
     }
-    Ok(())
+    Ok(url)
 }
 
 fn page_size(value: Option<u32>) -> u32 {
@@ -643,8 +925,37 @@ mod tests {
 
     #[test]
     fn rejects_non_redis_urls() {
-        assert!(validate_url("redis://localhost:6379").is_ok());
-        assert!(validate_url("rediss://example.com").is_ok());
-        assert!(validate_url("postgres://localhost").is_err());
+        assert!(parse_url("redis://localhost:6379").is_ok());
+        assert!(parse_url("rediss://example.com").is_ok());
+        assert!(parse_url("postgres://localhost").is_err());
+    }
+
+    #[test]
+    fn cluster_cursor_walks_every_primary_then_finishes() {
+        assert_eq!(split_cluster_cursor(0), (0, 0));
+        assert_eq!(next_cluster_cursor(0, 17, 3).unwrap(), 17 * 1_024);
+        assert_eq!(split_cluster_cursor(17 * 1_024), (0, 17));
+        assert_eq!(next_cluster_cursor(0, 0, 3).unwrap(), 1);
+        assert_eq!(split_cluster_cursor(1), (1, 0));
+        assert_eq!(next_cluster_cursor(1, 9, 3).unwrap(), 9 * 1_024 + 1);
+        assert_eq!(split_cluster_cursor(9 * 1_024 + 1), (1, 9));
+        assert_eq!(next_cluster_cursor(2, 0, 3).unwrap(), 0);
+        assert!(next_cluster_cursor(0, u64::MAX, 3).is_err());
+    }
+
+    #[test]
+    fn tunnel_rewrites_host_and_keeps_credentials() {
+        let mut url = parse_url("rediss://default:secret@cache.internal:6380/2").unwrap();
+        route_through_tunnel(&mut url, 40123).unwrap();
+        assert_eq!(url.as_str(), "rediss://default:secret@127.0.0.1:40123/2");
+    }
+
+    #[test]
+    fn splits_cluster_node_addresses() {
+        assert_eq!(
+            split_address("10.0.0.4:7001").unwrap(),
+            ("10.0.0.4".to_string(), 7001)
+        );
+        assert!(split_address("no-port").is_err());
     }
 }
