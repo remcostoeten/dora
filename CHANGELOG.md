@@ -176,6 +176,51 @@ All notable changes to this project will be documented in this file.
 
 - feat(kv): Redis and Valkey key-value studio (#263) (#263)
 
+
+## [v0.44.0] - 2026-11-15
+
+### Bug Fixes
+
+- fix(ui): finish outgoing tooltip exit when the next one opens
+
+- fix(ci): match the Docker heading in docker-view test and pin Playwright jobs to ubuntu-24.04 (#283) (#283)
+
+
+
+### Chores
+
+- chore(aur): update dora to 0.43.0
+
+
+
+### Documentation
+
+- docs(release): curated notes for v0.44.0
+
+- docs(release): add Redis TLS, cluster and SSH tunnels to v0.44.0 notes
+
+
+
+### Features
+
+- feat(onboarding): polished tour spotlight and anchored card (#276) (#276)
+
+- feat(studio): illustrated empty states across the app (#278) (#278)
+
+- feat(connections): two-step connection dialog with URL detection
+
+- feat(desktop): paint the last session's shell on the launch splash (#281) (#281)
+
+- feat(docs): rebuild /docs on the docs-boilerplate UI (#279) (#279)
+
+- feat(kv): TLS without verification, cluster mode and SSH tunnels for Redis (#282) (#282)
+
+
+
+### Performance
+
+- perf: GPU rendering on Linux and single-commit interactions (#280) (#280)
+
 ## [Unreleased]
 
 ## [v0.41.0] - 2026-08-27
