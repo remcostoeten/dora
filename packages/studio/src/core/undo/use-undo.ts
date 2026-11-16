@@ -19,7 +19,7 @@ const MAX_UNDOABLE_DELETE_ROWS = 200
 
 export function useUndo(options: UndoOptions = {}) {
 	const { addAction, getLatestAction, removeAction, actions, timeoutDuration } = useUndoStore()
-	const { updateCell, insertRow } = useDataMutation()
+	const { updateCell, updateCells, insertRows } = useDataMutation()
 
 	const performUndo = useCallback(
 		async function (mutation: Mutation): Promise<boolean> {
@@ -35,29 +35,25 @@ export function useUndo(options: UndoOptions = {}) {
 					})
 					return true
 				} else if (mutation.type === 'batch-cell') {
-					await Promise.all(
-						mutation.cells.map(function (cell) {
-							return updateCell.mutateAsync({
-								connectionId: mutation.connectionId,
-								tableName: mutation.tableName,
-								primaryKeyColumn: mutation.primaryKeyColumn,
+					await updateCells.mutateAsync({
+						connectionId: mutation.connectionId,
+						tableName: mutation.tableName,
+						primaryKeyColumn: mutation.primaryKeyColumn,
+						cells: mutation.cells.map(function (cell) {
+							return {
 								primaryKeyValue: cell.primaryKeyValue,
 								columnName: cell.columnName,
 								newValue: cell.previousValue
-							})
+							}
 						})
-					)
+					})
 					return true
 				} else if (mutation.type === 'row-delete') {
-					await Promise.all(
-						mutation.rows.map(function (rowData) {
-							return insertRow.mutateAsync({
-								connectionId: mutation.connectionId,
-								tableName: mutation.tableName,
-								rowData
-							})
-						})
-					)
+					await insertRows.mutateAsync({
+						connectionId: mutation.connectionId,
+						tableName: mutation.tableName,
+						rows: mutation.rows
+					})
 					return true
 				}
 				return false
@@ -66,7 +62,7 @@ export function useUndo(options: UndoOptions = {}) {
 				return false
 			}
 		},
-		[updateCell, insertRow]
+		[updateCell, updateCells, insertRows]
 	)
 
 	const runUndo = useCallback(

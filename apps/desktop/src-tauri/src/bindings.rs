@@ -151,6 +151,8 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::set_setting,
         db_commands::insert_row,
         db_commands::update_cell,
+        db_commands::update_cells,
+        db_commands::insert_rows,
         db_commands::get_blob_bytes,
         db_commands::delete_rows,
         db_commands::duplicate_row,

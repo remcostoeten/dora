@@ -24,9 +24,10 @@ type Args = {
 	selectedRows: Set<number>
 	rowsForActions: Set<number>
 	settingsConfirmBeforeDelete: boolean
-	updateCell: { mutate: Function; mutateAsync: Function }
+	updateCells: { mutateAsync: Function }
 	deleteRows: { mutate: Function }
 	insertRow: { mutateAsync: Function; mutate: Function }
+	insertRows: { mutateAsync: Function }
 	onLoadTableData: () => void
 	trackRowDeletion: (
 		connectionId: string,
@@ -74,9 +75,10 @@ export function useDatabaseStudioActions(args: Args) {
 		selectedRows,
 		rowsForActions,
 		settingsConfirmBeforeDelete,
-		updateCell,
+		updateCells,
 		deleteRows,
 		insertRow,
+		insertRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -160,7 +162,7 @@ export function useDatabaseStudioActions(args: Args) {
 		rowsForActions,
 		settingsConfirmBeforeDelete,
 		deleteRows,
-		insertRow,
+		insertRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -181,7 +183,7 @@ export function useDatabaseStudioActions(args: Args) {
 		tableData,
 		settingsConfirmBeforeDelete,
 		deleteRows,
-		insertRow,
+		insertRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -210,7 +212,7 @@ export function useDatabaseStudioActions(args: Args) {
 		draftRow,
 		addDialogMode,
 		editingRowState,
-		updateCell,
+		updateCells,
 		insertRow,
 		onLoadTableData,
 		setTableData,

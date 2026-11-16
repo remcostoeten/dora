@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use crate::{
     database::{
         maintenance::{DumpResult, SoftDeleteResult, TruncateResult},
-        services::mutation::MutationResult,
+        services::mutation::{CellUpdate, MutationResult},
     },
     Error,
 };
@@ -35,6 +35,31 @@ pub trait WriteAdapter: Send + Sync {
         column: String,
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error>;
+
+    /// Applies many cell writes in one call. The default issues them
+    /// concurrently with no rollback, so a failure can leave part of the batch
+    /// applied; adapters that own a single connection override it to wrap the
+    /// batch in a transaction.
+    async fn update_cells(
+        &self,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        cells: Vec<CellUpdate>,
+    ) -> Result<MutationResult, Error> {
+        update_cells_concurrently(self, table, schema, pk_column, cells).await
+    }
+
+    /// Inserts many rows in one call, with the same contract as
+    /// [`WriteAdapter::update_cells`].
+    async fn insert_rows(
+        &self,
+        table: String,
+        schema: Option<String>,
+        rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    ) -> Result<MutationResult, Error> {
+        insert_rows_concurrently(self, table, schema, rows).await
+    }
 
     async fn delete_rows(
         &self,
@@ -105,6 +130,50 @@ pub trait WriteAdapter: Send + Sync {
         _column: String,
     ) -> Result<Vec<u8>, Error> {
         Err(Error::NotImplemented("WriteAdapter::get_blob_bytes"))
+    }
+}
+
+pub(super) async fn update_cells_concurrently<A: WriteAdapter + ?Sized>(
+    adapter: &A,
+    table: String,
+    schema: Option<String>,
+    pk_column: String,
+    cells: Vec<CellUpdate>,
+) -> Result<MutationResult, Error> {
+    let results = futures_util::future::try_join_all(cells.into_iter().map(|cell| {
+        adapter.update_cell(
+            table.clone(),
+            schema.clone(),
+            pk_column.clone(),
+            cell.primary_key_value,
+            cell.column_name,
+            cell.new_value,
+        )
+    }))
+    .await?;
+    Ok(batch_result("Updated", &results))
+}
+
+pub(super) async fn insert_rows_concurrently<A: WriteAdapter + ?Sized>(
+    adapter: &A,
+    table: String,
+    schema: Option<String>,
+    rows: Vec<serde_json::Map<String, serde_json::Value>>,
+) -> Result<MutationResult, Error> {
+    let results = futures_util::future::try_join_all(
+        rows.into_iter()
+            .map(|row| adapter.insert_row(table.clone(), schema.clone(), row)),
+    )
+    .await?;
+    Ok(batch_result("Inserted", &results))
+}
+
+fn batch_result(verb: &str, results: &[MutationResult]) -> MutationResult {
+    let affected = results.iter().map(|result| result.affected_rows).sum();
+    MutationResult {
+        success: affected > 0,
+        affected_rows: affected,
+        message: Some(format!("{} {} row(s)", verb, affected)),
     }
 }
 

@@ -11,10 +11,18 @@ import { scheduleSqlConsoleCommand } from '@studio/features/command-palette/even
 import { Button } from '@studio/shared/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
-import { Sparkles } from 'lucide-react'
+import { AiAssistantIcon } from '@studio/features/app-sidebar/rail-icons'
+
+function loadAiAssistantPanel() {
+	return import('@studio/features/ai-assistant/ai-assistant-panel')
+}
+
+function preloadAiAssistantPanel() {
+	void loadAiAssistantPanel().catch(function ignorePreloadFailure() {})
+}
 
 const AiAssistantPanel = lazy(function () {
-	return import('@studio/features/ai-assistant/ai-assistant-panel').then(function (m) {
+	return loadAiAssistantPanel().then(function (m) {
 		return { default: m.AiAssistantPanel }
 	})
 })
@@ -33,18 +41,20 @@ export function AiAssistantToggle() {
 					variant='ghost'
 					size='icon'
 					onClick={toggleOpen}
+					onPointerEnter={preloadAiAssistantPanel}
+					onFocus={preloadAiAssistantPanel}
 					aria-label={open ? 'Close AI assistant' : 'Open AI assistant'}
 					aria-expanded={open}
 					aria-controls='ai-assistant-panel'
 					role='menuitem'
 					className={cn(
-						'h-10 w-10 rounded-md text-sidebar-foreground transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
+						'h-10 w-10 rounded-md text-sidebar-foreground transition-[background-color,color,transform] duration-150 ease-[var(--ease-out)] active:scale-[0.96]',
 						open
 							? 'bg-sidebar-accent text-sidebar-accent-foreground'
 							: 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
 					)}
 				>
-					<Sparkles className='h-5 w-5' />
+					<AiAssistantIcon className='h-5 w-5' />
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent side='right'>

@@ -68,6 +68,12 @@ export type BootstrapSnapshot = {
 	schemas: Array<{ connectionId: string; schema: DatabaseSchema }>
 }
 
+export type CellWrite = {
+	primaryKeyValue: JsonValue
+	columnName: string
+	newValue: JsonValue
+}
+
 export type DataAdapter = {
 	bootstrap(): Promise<AdapterResult<BootstrapSnapshot>>
 	getConnections(): Promise<AdapterResult<Connection[]>>
@@ -126,11 +132,24 @@ export type DataAdapter = {
 		newValue: JsonValue
 	): Promise<AdapterResult<MutationResult>>
 
+	updateCells(
+		connectionId: string,
+		tableName: string,
+		primaryKeyColumn: string,
+		cells: CellWrite[]
+	): Promise<AdapterResult<MutationResult>>
+
 	deleteRows(
 		connectionId: string,
 		tableName: string,
 		primaryKeyColumn: string,
 		primaryKeyValues: JsonValue[]
+	): Promise<AdapterResult<MutationResult>>
+
+	insertRows(
+		connectionId: string,
+		tableName: string,
+		rows: Record<string, JsonValue>[]
 	): Promise<AdapterResult<MutationResult>>
 
 	insertRow(

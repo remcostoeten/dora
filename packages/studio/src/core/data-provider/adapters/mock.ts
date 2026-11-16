@@ -21,6 +21,7 @@ import type {
 } from '@studio/lib/bindings'
 import { MOCK_CONNECTIONS, MOCK_SCHEMAS, MOCK_TABLE_DATA, MOCK_SCRIPTS } from '../mock-data'
 import type {
+	CellWrite,
 	AdapterResult,
 	BootstrapSnapshot,
 	DataAdapter,
@@ -830,6 +831,65 @@ CREATE TABLE posts (
 				success: updated > 0,
 				affected_rows: updated,
 				message: updated > 0 ? 'Cell updated' : 'No matching row found'
+			})
+		},
+
+		async updateCells(
+			connectionId: string,
+			tableName: string,
+			primaryKeyColumn: string,
+			cells: CellWrite[]
+		): Promise<AdapterResult<MutationResult>> {
+			await randomDelay()
+
+			const rows = store.tables[resolveStoreKey(connectionId, tableName)]
+			if (!rows) {
+				return err('Table not found')
+			}
+
+			let updated = 0
+			for (const cell of cells) {
+				for (const row of rows) {
+					if (row[primaryKeyColumn] === cell.primaryKeyValue) {
+						row[cell.columnName] = cell.newValue
+						updated++
+					}
+				}
+			}
+
+			if (updated > 0) {
+				saveToStorage()
+			}
+
+			return ok({
+				success: updated > 0,
+				affected_rows: updated,
+				message: updated + ' row(s) updated'
+			})
+		},
+
+		async insertRows(
+			connectionId: string,
+			tableName: string,
+			rows: Record<string, JsonValue>[]
+		): Promise<AdapterResult<MutationResult>> {
+			await randomDelay()
+
+			const key = resolveStoreKey(connectionId, tableName)
+			if (!store.tables[key]) {
+				store.tables[key] = []
+				store.nextId[key] = 1
+			}
+
+			for (const rowData of rows) {
+				store.tables[key].push({ ...rowData, id: store.nextId[key]++ })
+			}
+			saveToStorage()
+
+			return ok({
+				success: rows.length > 0,
+				affected_rows: rows.length,
+				message: rows.length + ' row(s) inserted'
 			})
 		},
 

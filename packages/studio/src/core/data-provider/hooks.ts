@@ -19,7 +19,7 @@ import {
 } from '@studio/core/workspace-store'
 import { useAdapter, useIsTauri } from './context'
 import { schemaQueryOptions } from './schema-query'
-import { getAdapterError } from './types'
+import { getAdapterError, type CellWrite } from './types'
 
 const schemaRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -382,10 +382,79 @@ export function useDataMutation() {
 		}
 	})
 
+	const updateCells = useMutation({
+		mutationFn: async (params: {
+			connectionId: string
+			tableName: string
+			primaryKeyColumn: string
+			cells: { primaryKeyValue: unknown; columnName: string; newValue: unknown }[]
+		}) => {
+			if (params.cells.length === 0) return null
+			const res = await adapter.updateCells(
+				params.connectionId,
+				params.tableName,
+				params.primaryKeyColumn,
+				params.cells as CellWrite[]
+			)
+			if (!res.ok) throw new Error(getAdapterError(res))
+			return res.data
+		},
+		onMutate: function (batch) {
+			const snapshot = readTableSnapshot(batch.connectionId, batch.tableName)
+			if (!snapshot) return { previousRows: null }
+
+			patchTableSnapshotRows(
+				batch.connectionId,
+				batch.tableName,
+				snapshot.rows.map(function (row) {
+					const matching = batch.cells.filter(function (cell) {
+						return row[batch.primaryKeyColumn] === cell.primaryKeyValue
+					})
+					if (matching.length === 0) return row
+					const patched = { ...row }
+					for (const cell of matching) {
+						patched[cell.columnName] = cell.newValue
+					}
+					return patched
+				})
+			)
+			return { previousRows: snapshot.rows }
+		},
+		onError: function (_err, batch, context) {
+			if (context?.previousRows) {
+				patchTableSnapshotRows(batch.connectionId, batch.tableName, context.previousRows)
+			}
+		}
+	})
+
+	const insertRows = useMutation({
+		mutationFn: async (params: {
+			connectionId: string
+			tableName: string
+			rows: Record<string, unknown>[]
+		}) => {
+			if (params.rows.length === 0) return null
+			const res = await adapter.insertRows(
+				params.connectionId,
+				params.tableName,
+				params.rows as Record<string, JsonValue>[]
+			)
+			if (!res.ok) throw new Error(getAdapterError(res))
+			return res.data
+		},
+		onSettled: function (_data, _error, variables) {
+			// A failed batch can still have inserted rows on engines without a transaction.
+			dropTableSnapshot(variables.connectionId, variables.tableName)
+			scheduleSchemaRefresh(variables.connectionId)
+		}
+	})
+
 	return {
 		updateCell,
+		updateCells,
 		deleteRows,
-		insertRow
+		insertRow,
+		insertRows
 	}
 }
 

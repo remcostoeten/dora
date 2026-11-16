@@ -129,6 +129,32 @@ describe('docker-client', () => {
 			})
 		})
 
+		it('inspects all containers with a single docker call', async () => {
+			const ps = ['aaa', 'bbb', 'ccc']
+				.map((ID) => JSON.stringify({ ID }))
+				.join('\n')
+			const inspect = ['aaa', 'bbb', 'ccc'].map((Id) => ({
+				Id,
+				Name: `/${Id}`,
+				Config: { Image: 'postgres:16', Labels: {}, Env: [] },
+				State: { Status: 'running', Running: true, Paused: false },
+				Created: '2023-01-01T00:00:00Z',
+				HostConfig: { PortBindings: {} }
+			}))
+			mockExecute.mockResolvedValueOnce({ stdout: ps, stderr: '', code: 0 })
+			mockExecute.mockResolvedValueOnce({
+				stdout: JSON.stringify(inspect),
+				stderr: '',
+				code: 0
+			})
+
+			const containers = await listContainers()
+
+			expect(containers.map((c) => c.id)).toEqual(['aaa', 'bbb', 'ccc'])
+			expect(mockCreate).toHaveBeenCalledTimes(2)
+			expect(mockCreate).toHaveBeenLastCalledWith('docker', ['inspect', 'aaa', 'bbb', 'ccc'])
+		})
+
 		it('should handle empty container list', async () => {
 			mockExecute.mockResolvedValueOnce({ stdout: '', stderr: '', code: 0 })
 			const containers = await listContainers()

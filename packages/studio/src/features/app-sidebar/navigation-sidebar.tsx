@@ -1,20 +1,23 @@
-import {
-	SquareTerminal,
-	Table2,
-	Container,
-	Network,
-	Settings,
-	GitCompare,
-	ChartLine,
-	KeyRound
-} from 'lucide-react'
-import { memo, useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { memo, useCallback, useRef, KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
+import { preloadView } from './preload-views'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
 import { SidebarPanelToggle } from '@studio/features/sidebar/components/sidebar-panel-toggle'
 import { SidebarProvider, useSidebar } from './context'
 import { SidebarNavItem } from './nav-item'
+import {
+	AnalyticsIcon,
+	DataViewerIcon,
+	DockerIcon,
+	KvStudioIcon,
+	SchemaDiffIcon,
+	SchemaIcon,
+	SettingsIcon,
+	SqlConsoleIcon
+} from './rail-icons'
+import { useActiveIndicator } from './use-active-indicator'
 import type { NavItem, SidebarVariant } from './types'
 
 type DatabasePanelToggle = {
@@ -24,14 +27,14 @@ type DatabasePanelToggle = {
 
 const PanelToggle = memo(SidebarPanelToggle)
 
-const SQL_CONSOLE_ITEM: NavItem = { id: 'sql-console', label: 'SQL Console', icon: SquareTerminal }
-const DATA_VIEWER_ITEM: NavItem = { id: 'database-studio', label: 'Data Viewer', icon: Table2 }
-const KV_ITEM: NavItem = { id: 'kv-studio', label: 'Redis / Valkey', icon: KeyRound }
-const ANALYTICS_ITEM: NavItem = { id: 'analytics', label: 'Analytics', icon: ChartLine }
-const SCHEMA_ITEM: NavItem = { id: 'schema-visualizer', label: 'Schema', icon: Network }
-const SCHEMA_DIFF_ITEM: NavItem = { id: 'orm-cockpit', label: 'Schema Diff', icon: GitCompare }
-const DOCKER_ITEM: NavItem = { id: 'docker', label: 'Docker Manager', icon: Container }
-const SETTINGS_ITEM: NavItem = { id: 'settings', label: 'Settings', icon: Settings }
+const SQL_CONSOLE_ITEM: NavItem = { id: 'sql-console', label: 'SQL Console', icon: SqlConsoleIcon }
+const DATA_VIEWER_ITEM: NavItem = { id: 'database-studio', label: 'Data Viewer', icon: DataViewerIcon }
+const KV_ITEM: NavItem = { id: 'kv-studio', label: 'Redis / Valkey', icon: KvStudioIcon }
+const ANALYTICS_ITEM: NavItem = { id: 'analytics', label: 'Analytics', icon: AnalyticsIcon }
+const SCHEMA_ITEM: NavItem = { id: 'schema-visualizer', label: 'Schema', icon: SchemaIcon }
+const SCHEMA_DIFF_ITEM: NavItem = { id: 'orm-cockpit', label: 'Schema Diff', icon: SchemaDiffIcon }
+const DOCKER_ITEM: NavItem = { id: 'docker', label: 'Docker Manager', icon: DockerIcon }
+const SETTINGS_ITEM: NavItem = { id: 'settings', label: 'Settings', icon: SettingsIcon }
 
 const MAIN_NAV_ITEMS: NavItem[] = [
 	SQL_CONSOLE_ITEM,
@@ -89,10 +92,19 @@ function SidebarContent({
 	const { variant } = useSidebar()
 	const isFloating = false
 	const navRef = useRef<HTMLElement>(null)
+	const indicatorRef = useActiveIndicator(navRef, activeNavId, analyticsAvailable)
 
 	const mainNavItems = analyticsAvailable ? MAIN_NAV_ITEMS_WITH_ANALYTICS : MAIN_NAV_ITEMS
 	const onNavSelectRef = useRef(onNavSelect)
 	onNavSelectRef.current = onNavSelect
+	const queryClient = useQueryClient()
+	const handlePreload = useCallback(
+		function (event: SyntheticEvent<HTMLElement>) {
+			const id = event.currentTarget.dataset.navId
+			if (id) preloadView(id, queryClient)
+		},
+		[queryClient]
+	)
 	const handleSelect = useCallback(function (id: string) {
 		onNavSelectRef.current?.(id)
 	}, [])
@@ -157,11 +169,12 @@ function SidebarContent({
 			{/* Main Navigation */}
 			<nav
 				ref={navRef}
-				className='flex flex-1 flex-col gap-1 p-2'
+				className='relative flex flex-1 flex-col gap-1 p-2'
 				role='menubar'
 				aria-label='Main navigation'
 				onKeyDown={handleKeyDown}
 			>
+				<div ref={indicatorRef} className='rail-indicator' aria-hidden='true' />
 				{/* Primary nav items */}
 				<div
 					role='group'
@@ -175,6 +188,8 @@ function SidebarContent({
 							isActive={activeNavId === item.id}
 							onNavigate={handleSelect}
 							variant={variant}
+							onPointerEnter={handlePreload}
+							onFocus={handlePreload}
 						/>
 					))}
 				</div>
@@ -190,7 +205,7 @@ function SidebarContent({
 							<PanelToggle
 								isOpen={databasePanelToggle.isOpen}
 								onToggle={databasePanelToggle.onToggle}
-								buttonClassName='h-10 w-10'
+								buttonClassName='h-10 w-10 text-sidebar-foreground aria-pressed:bg-sidebar-accent aria-pressed:text-sidebar-accent-foreground'
 								className='h-5 w-5'
 								tooltipSide='right'
 							/>

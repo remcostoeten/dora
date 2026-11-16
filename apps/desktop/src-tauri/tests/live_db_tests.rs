@@ -327,6 +327,116 @@ async fn postgres_introspection_roundtrip() {
     pg_introspection_roundtrip(&url, app_lib::database::dialect::PgDialect::Postgres).await;
 }
 
+/// Batched grid writes on Postgres run pipelined inside one transaction: a
+/// clean batch commits as a whole and a batch with one bad write leaves no
+/// trace and no open transaction behind.
+#[tokio::test]
+async fn postgres_batched_writes_are_atomic() {
+    if !live_enabled() {
+        eprintln!("skipping postgres_batched_writes_are_atomic: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    use app_lib::database::adapter::PostgresAdapter;
+    use app_lib::database::services::mutation::CellUpdate;
+
+    let url = std::env::var("DORA_POSTGRES_URL")
+        .unwrap_or_else(|_| "postgres://postgres:rootpass@127.0.0.1:5432/dora".into());
+    let client = Arc::new(pg_client(&url).await);
+    client
+        .batch_execute(
+            "DROP TABLE IF EXISTS live_batch;
+             CREATE TABLE live_batch (id INT PRIMARY KEY, qty INT NOT NULL, label TEXT);
+             INSERT INTO live_batch
+             SELECT n, 0, 'row' FROM generate_series(1, 50) AS n;",
+        )
+        .await
+        .expect("fixture setup failed");
+    let adapter = PostgresAdapter::new(
+        client.clone(),
+        false,
+        app_lib::database::dialect::PgDialect::Postgres,
+    );
+
+    let cells = (1..=50)
+        .map(|id| CellUpdate {
+            primary_key_value: json!(id),
+            column_name: "qty".into(),
+            new_value: json!("7"),
+        })
+        .collect();
+    let result = adapter
+        .update_cells("live_batch".into(), None, "id".into(), cells)
+        .await
+        .expect("batch update failed");
+    assert_eq!(result.affected_rows, 50);
+
+    let mut cells: Vec<CellUpdate> = (1..=50)
+        .map(|id| CellUpdate {
+            primary_key_value: json!(id),
+            column_name: "qty".into(),
+            new_value: json!("9"),
+        })
+        .collect();
+    cells[25].new_value = json!("not a number");
+    assert!(adapter
+        .update_cells("live_batch".into(), None, "id".into(), cells)
+        .await
+        .is_err());
+
+    let sevens: i64 = client
+        .query_one("SELECT COUNT(*) FROM live_batch WHERE qty = 7", &[])
+        .await
+        .expect("count failed")
+        .get(0);
+    assert_eq!(sevens, 50, "failed batch must roll back completely");
+
+    let rows = (51..=60)
+        .map(|id| {
+            json!({ "id": id, "qty": 1, "label": "new" })
+                .as_object()
+                .unwrap()
+                .clone()
+        })
+        .collect();
+    let result = adapter
+        .insert_rows("live_batch".into(), None, rows)
+        .await
+        .expect("batch insert failed");
+    assert_eq!(result.affected_rows, 10);
+
+    let clashing = vec![
+        json!({ "id": 61, "qty": 1 }).as_object().unwrap().clone(),
+        json!({ "id": 1, "qty": 1 }).as_object().unwrap().clone(),
+    ];
+    assert!(adapter
+        .insert_rows("live_batch".into(), None, clashing)
+        .await
+        .is_err());
+
+    let total: i64 = client
+        .query_one("SELECT COUNT(*) FROM live_batch", &[])
+        .await
+        .expect("count failed")
+        .get(0);
+    assert_eq!(total, 60, "failed insert batch must roll back completely");
+
+    let deleted = adapter
+        .delete_rows(
+            "live_batch".into(),
+            None,
+            "id".into(),
+            vec![json!(59), json!(60)],
+        )
+        .await
+        .expect("delete by int4 key failed");
+    assert_eq!(deleted.affected_rows, 2);
+
+    client
+        .batch_execute("DROP TABLE live_batch;")
+        .await
+        .expect("fixture teardown failed");
+}
+
 #[tokio::test]
 async fn postgres_reltuples_estimates_after_analyze() {
     if !live_enabled() {

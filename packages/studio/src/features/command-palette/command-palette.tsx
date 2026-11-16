@@ -152,7 +152,7 @@ function CommandPaletteState({
 	const { data: dockerStatus } = useDockerAvailability()
 	const { data: containers = [] } = useContainers({
 		showExternal: true,
-		enabled: open && (dockerStatus?.available ?? false)
+		enabled: open && dockerStatus?.available !== false
 	})
 	const [tables, setTables] = useState<TableInfo[]>([])
 	const [snippets, setSnippets] = useState<SqlSnippet[]>([])

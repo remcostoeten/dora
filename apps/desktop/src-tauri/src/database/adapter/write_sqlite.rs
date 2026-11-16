@@ -3,16 +3,66 @@ use async_trait::async_trait;
 
 use super::grid_sql;
 use super::read::SqliteAdapter;
-use super::write::WriteAdapter;
+use super::write::{insert_rows_concurrently, update_cells_concurrently, WriteAdapter};
 use crate::database::maintenance;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
-    json_to_sqlite_value, sqlite_value_to_json, MutationResult,
+    json_to_sqlite_value, sqlite_value_to_json, CellUpdate, MutationResult,
 };
 use crate::Error;
 
+impl SqliteAdapter {
+    fn run_sql(&self, sql: &str) -> Result<(), Error> {
+        let conn = self
+            .connection()
+            .lock()
+            .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
+        conn.execute_batch(sql)?;
+        Ok(())
+    }
+
+    fn finish_transaction(
+        &self,
+        result: Result<MutationResult, Error>,
+    ) -> Result<MutationResult, Error> {
+        match result {
+            Ok(result) => {
+                self.run_sql("COMMIT")?;
+                Ok(result)
+            }
+            Err(error) => {
+                let _ = self.run_sql("ROLLBACK");
+                Err(error)
+            }
+        }
+    }
+}
+
 #[async_trait]
 impl WriteAdapter for SqliteAdapter {
+    async fn update_cells(
+        &self,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        cells: Vec<CellUpdate>,
+    ) -> Result<MutationResult, Error> {
+        self.run_sql("BEGIN")?;
+        let result = update_cells_concurrently(self, table, schema, pk_column, cells).await;
+        self.finish_transaction(result)
+    }
+
+    async fn insert_rows(
+        &self,
+        table: String,
+        schema: Option<String>,
+        rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    ) -> Result<MutationResult, Error> {
+        self.run_sql("BEGIN")?;
+        let result = insert_rows_concurrently(self, table, schema, rows).await;
+        self.finish_transaction(result)
+    }
+
     async fn update_cell(
         &self,
         table: String,
@@ -305,6 +355,86 @@ mod tests {
         .unwrap();
         let shared = Arc::new(Mutex::new(conn));
         (SqliteAdapter::new(shared.clone()), shared)
+    }
+
+    #[tokio::test]
+    async fn update_cells_applies_the_whole_batch() {
+        let (adapter, shared) = setup();
+        let cells = vec![
+            CellUpdate {
+                primary_key_value: json!(1),
+                column_name: "n".into(),
+                new_value: json!(7),
+            },
+            CellUpdate {
+                primary_key_value: json!(1),
+                column_name: "name".into(),
+                new_value: json!("batched"),
+            },
+        ];
+
+        let result = adapter
+            .update_cells("t".into(), None, "id".into(), cells)
+            .await
+            .unwrap();
+        assert_eq!(result.affected_rows, 2);
+
+        let conn = shared.lock().unwrap();
+        let (n, name): (i64, String) = conn
+            .query_row("SELECT n, name FROM t WHERE id = 1", [], |r| {
+                Ok((r.get(0)?, r.get(1)?))
+            })
+            .unwrap();
+        assert_eq!((n, name.as_str()), (7, "batched"));
+    }
+
+    #[tokio::test]
+    async fn update_cells_rolls_back_when_one_write_fails() {
+        let (adapter, shared) = setup();
+        let cells = vec![
+            CellUpdate {
+                primary_key_value: json!(1),
+                column_name: "n".into(),
+                new_value: json!(7),
+            },
+            CellUpdate {
+                primary_key_value: json!(1),
+                column_name: "missing_column".into(),
+                new_value: json!(1),
+            },
+        ];
+
+        let result = adapter
+            .update_cells("t".into(), None, "id".into(), cells)
+            .await;
+        assert!(result.is_err());
+
+        let conn = shared.lock().unwrap();
+        let n: i64 = conn
+            .query_row("SELECT n FROM t WHERE id = 1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 0);
+        assert!(conn.is_autocommit());
+    }
+
+    #[tokio::test]
+    async fn insert_rows_rolls_back_when_one_row_fails() {
+        let (adapter, shared) = setup();
+        let good = json!({ "id": 2, "name": "two" });
+        let duplicate_key = json!({ "id": 1, "name": "clash" });
+        let rows = vec![
+            good.as_object().unwrap().clone(),
+            duplicate_key.as_object().unwrap().clone(),
+        ];
+
+        let result = adapter.insert_rows("t".into(), None, rows).await;
+        assert!(result.is_err());
+
+        let conn = shared.lock().unwrap();
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM t", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1);
     }
 
     // SQLite (and libSQL, which shares its type-affinity model) must persist

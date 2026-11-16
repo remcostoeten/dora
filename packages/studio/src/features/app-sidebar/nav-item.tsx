@@ -6,7 +6,9 @@ import type { NavItem } from './types'
 
 const navItemVariants = cva(
 	[
-		'relative flex items-center justify-center transition-colors duration-150',
+		'relative flex items-center justify-center',
+		'transition-[background-color,color,transform] duration-150 ease-[var(--ease-out)]',
+		'active:scale-[0.96]',
 		'disabled:pointer-events-none disabled:opacity-40'
 	],
 	{
@@ -23,7 +25,7 @@ const navItemVariants = cva(
 			state: {
 				default:
 					'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:bg-focus focus-visible:text-sidebar-accent-foreground',
-				active: 'bg-sidebar-accent text-sidebar-accent-foreground focus-visible:bg-focus-strong',
+				active: 'text-sidebar-accent-foreground focus-visible:bg-focus-strong',
 				disabled: 'cursor-not-allowed opacity-40'
 			}
 		},

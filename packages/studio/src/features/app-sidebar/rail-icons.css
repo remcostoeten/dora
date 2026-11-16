@@ -1,0 +1,132 @@
+.rail-icon {
+	--rail-ease: cubic-bezier(0.23, 1, 0.32, 1);
+	--rail-ease-move: cubic-bezier(0.77, 0, 0.175, 1);
+	display: block;
+	flex: none;
+	overflow: visible;
+}
+
+.rail-icon .ri-sub {
+	opacity: 0.45;
+}
+
+.rail-icon .ri-dot {
+	fill: currentColor;
+	stroke: none;
+}
+
+.rail-icon .ri-fill {
+	fill: currentColor;
+	stroke: none;
+	opacity: 0;
+	transition: opacity 150ms var(--rail-ease);
+}
+
+:is([aria-current='page'], [aria-pressed='true'], [aria-expanded='true']) .rail-icon .ri-fill {
+	opacity: 0.22;
+}
+
+.rail-icon .ri-panel-fill {
+	transform-box: view-box;
+	transform-origin: 3px 12px;
+	transform: scaleX(0.4);
+	transition:
+		transform 200ms var(--rail-ease),
+		opacity 150ms var(--rail-ease);
+}
+
+.rail-icon .ri-panel-rows {
+	opacity: 0;
+	transition: opacity 150ms var(--rail-ease);
+}
+
+:is([aria-pressed='true']) .rail-icon .ri-panel-fill {
+	transform: none;
+}
+
+:is([aria-pressed='true']) .rail-icon .ri-panel-rows {
+	opacity: 0.45;
+}
+
+.rail-icon .ri-spark {
+	transform-box: fill-box;
+	transform-origin: center;
+	transform: scale(0.8);
+	opacity: 0.6;
+	transition:
+		transform 280ms var(--rail-ease-move),
+		opacity 160ms var(--rail-ease);
+}
+
+.rail-icon .ri-spark-dot {
+	opacity: 0.45;
+	transition: opacity 160ms var(--rail-ease);
+}
+
+:is([aria-expanded='true']) .rail-icon .ri-spark {
+	transform: scale(1) rotate(90deg);
+	opacity: 1;
+}
+
+:is([aria-expanded='true']) .rail-icon .ri-spark-dot {
+	opacity: 1;
+}
+
+.rail-icon .ri-gear {
+	transform-box: view-box;
+	transform-origin: 12px 12px;
+	transition: transform 280ms var(--rail-ease-move);
+}
+
+:is([aria-current='page']) .rail-icon .ri-gear {
+	transform: rotate(45deg);
+}
+
+[data-nav-id='kv-studio'][aria-current='page'] {
+	color: hsl(0 70% 64%);
+}
+
+.rail-indicator {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 2.5rem;
+	height: 2.5rem;
+	border-radius: 0.375rem;
+	background: hsl(var(--foreground) / 0.12);
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 150ms var(--ease-out),
+		background-color 150ms var(--ease-out);
+}
+
+.rail-indicator[data-visible='true'] {
+	opacity: 1;
+}
+
+.rail-indicator[data-active-id='kv-studio'] {
+	background: hsl(0 70% 55% / 0.16);
+}
+
+.rail-indicator[data-animate='true'] {
+	transition:
+		transform 200ms var(--ease-out),
+		opacity 150ms var(--ease-out),
+		background-color 150ms var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.rail-icon .ri-panel-fill,
+	.rail-icon .ri-spark,
+	.rail-icon .ri-gear {
+		transform: none !important;
+		transition: opacity 120ms ease;
+	}
+
+	.rail-indicator[data-animate='true'] {
+		transition:
+			opacity 120ms ease,
+			background-color 120ms ease;
+	}
+}

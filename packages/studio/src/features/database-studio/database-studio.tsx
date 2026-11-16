@@ -233,7 +233,7 @@ export function DatabaseStudio({
 		},
 		[schemaQuery.data]
 	)
-	const { updateCell, deleteRows, insertRow } = useDataMutation()
+	const { updateCell, updateCells, deleteRows, insertRow, insertRows } = useDataMutation()
 	const {
 		isDryEditMode,
 		setDryEditMode,
@@ -569,9 +569,10 @@ export function DatabaseStudio({
 		selectedRows,
 		rowsForActions,
 		settingsConfirmBeforeDelete: settings.confirmBeforeDelete,
-		updateCell,
+		updateCells,
 		deleteRows,
 		insertRow,
+		insertRows,
 		onLoadTableData: loadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -867,6 +868,7 @@ export function DatabaseStudio({
 		removeEdit,
 		clearEdits,
 		updateCell,
+		updateCells,
 		setTableData,
 		setIsApplyingEdits,
 		loadTableData,

@@ -1,11 +1,11 @@
-import type { LucideIcon } from 'lucide-react'
+import type { RailIcon } from './rail-icons'
 
 export type SidebarVariant = 'default' | 'floating'
 
 export type NavItem = {
 	id: string
 	label: string
-	icon: LucideIcon
+	icon: RailIcon
 	onClick?: () => void
 	disabled?: boolean
 	badge?: string | number

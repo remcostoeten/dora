@@ -20,11 +20,7 @@ import { PrismaRunner } from '@studio/features/prisma-runner'
 import type { SavedQuery } from '@studio/lib/bindings'
 
 import { DEFAULT_QUERY } from '../../features/drizzle-runner/data'
-import {
-	buildDefaultDrizzleQuery,
-	buildDefaultSqlQuery,
-	pickDefaultQueryTable
-} from '@studio/shared/utils/default-query-table'
+import { isBlankEditorContent, resolveSeedQueries } from './lib/seed-query'
 import { drizzleQueryToSql } from '../../features/drizzle-runner/utils/drizzle-query'
 import { AiCmdK } from './components/ai-cmd-k'
 import { ConsoleHeader, EditorActionBar } from './components/console-toolbar'
@@ -41,7 +37,7 @@ import {
 } from './sidebar-state'
 import { useQueryHistory } from './stores/query-history-store'
 import { QueryTabProvider, useQueryTabs } from './stores/tab-store'
-import { clearTableSnapshots } from '@studio/core/workspace-store'
+import { clearTableSnapshots, useActiveTab } from '@studio/core/workspace-store'
 import { isConnectionUnavailableError } from '@studio/shared/utils/error-messages'
 import { Skeleton } from '@studio/shared/ui/skeleton'
 import { toast } from '@studio/shared/ui/notifier'
@@ -227,7 +223,8 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		[tables]
 	)
 
-	const { addToHistory, updateChartConfig } = useQueryHistory()
+	const { history, addToHistory, updateChartConfig } = useQueryHistory()
+	const workspaceTab = useActiveTab()
 
 	const handleChartConfigChange = useCallback(
 		function (nextChartConfig: ResultChartConfig) {
@@ -311,32 +308,38 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 		[activeConnectionId, loadSnippets]
 	)
 
-	// One-shot per connection: seed the editors with a sensible default query
-	// once the schema first arrives. The ref guard keeps later schema
-	// invalidations (DDL, count updates) from clobbering the user's edits.
+	// One-shot per connection: once the schema first arrives, fill editors the
+	// user has not written in. Tabs restored from storage keep their content,
+	// and the ref guard keeps later schema invalidations from re-seeding.
 	const defaultQueryConnectionRef = useRef<string | null>(null)
 	useEffect(
-		function seedDefaultQueryForConnection() {
+		function seedBlankEditorsForConnection() {
 			if (!activeConnectionId) {
 				defaultQueryConnectionRef.current = null
-				setCurrentSqlQuery(DEFAULT_SQL)
-				setCurrentDrizzleQuery(DEFAULT_QUERY)
 				return
 			}
 			if (defaultQueryConnectionRef.current === activeConnectionId) return
 			if (!schemaQuery.data) return
+			if (activeTab.connectionId !== activeConnectionId) return
 			defaultQueryConnectionRef.current = activeConnectionId
 
-			const defaultTable = pickDefaultQueryTable(tables)
-			if (defaultTable) {
-				setCurrentSqlQuery(buildDefaultSqlQuery(defaultTable.name))
-				setCurrentDrizzleQuery(buildDefaultDrizzleQuery(defaultTable.name))
-			} else {
-				setCurrentSqlQuery(DEFAULT_SQL)
-				setCurrentDrizzleQuery(DEFAULT_QUERY)
+			const seed = resolveSeedQueries({
+				history,
+				connectionId: activeConnectionId,
+				tables,
+				selectedTableName:
+					workspaceTab?.connectionId === activeConnectionId
+						? workspaceTab.tableName
+						: null
+			})
+			if (seed.sql && isBlankEditorContent(activeTab.sqlContent, DEFAULT_SQL)) {
+				setCurrentSqlQuery(seed.sql)
+			}
+			if (seed.drizzle && isBlankEditorContent(activeTab.drizzleContent, DEFAULT_QUERY)) {
+				setCurrentDrizzleQuery(seed.drizzle)
 			}
 		},
-		[activeConnectionId, schemaQuery.data, tables]
+		[activeConnectionId, schemaQuery.data, tables, activeTab.id, activeTab.connectionId]
 	)
 
 	useEffect(

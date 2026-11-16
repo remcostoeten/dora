@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback } from 'react'
+import { lazy, Suspense, useCallback, useEffect } from 'react'
+import { preloadWhenIdle } from '@studio/shared/utils/preload-when-idle'
 import { useIsTauri } from '@studio/core/data-provider'
 import {
 	setActiveNav,
@@ -37,6 +38,13 @@ type Props = {
  * not the editor.
  */
 export function WorkspaceDialogs({ actions }: Props) {
+	useEffect(function preloadDialogChunks() {
+		return preloadWhenIdle([
+			() => import('@studio/features/connections/components/connection-dialog'),
+			() => import('@studio/features/command-palette')
+		])
+	}, [])
+
 	return (
 		<>
 			<ConnectionDialogHost actions={actions} />

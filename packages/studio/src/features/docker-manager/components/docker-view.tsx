@@ -205,11 +205,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 		[handleSearchFocus, isViewActive]
 	)
 
-	const {
-		data: dockerStatus,
-		isLoading: isCheckingDocker,
-		refetch: refetchDockerAvailability
-	} = useDockerAvailability()
+	const { data: dockerStatus, refetch: refetchDockerAvailability } = useDockerAvailability()
 	const {
 		data: allContainers = [],
 		isLoading: isLoadingContainers,
@@ -217,7 +213,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 		refetch: refetchContainers
 	} = useContainers({
 		showExternal: true,
-		enabled: isViewActive && (dockerStatus?.available ?? false)
+		enabled: isViewActive && dockerStatus?.available !== false
 	})
 
 	const visibleContainers = useMemo(
@@ -583,18 +579,7 @@ export function DockerView({ onOpenInDataViewer, windowControls }: Props) {
 		[allContainers, containerActions, onOpenInDataViewer]
 	)
 
-	if (isCheckingDocker) {
-		return (
-			<div className='flex-1 flex items-center justify-center'>
-				<div className='text-center'>
-					<Spinner className='mx-auto mb-4 h-10 w-10 text-muted-foreground' />
-					<p className='text-sm text-muted-foreground'>Checking Docker status...</p>
-				</div>
-			</div>
-		)
-	}
-
-	if (!dockerStatus?.available) {
+	if (dockerStatus && !dockerStatus.available) {
 		return (
 			<EmptyState
 				className='flex-1'

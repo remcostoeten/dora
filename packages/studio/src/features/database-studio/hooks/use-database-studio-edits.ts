@@ -43,6 +43,7 @@ type Args = {
 		) => void
 		mutateAsync: (payload: Record<string, unknown>) => Promise<unknown>
 	}
+	updateCells: { mutateAsync: Function }
 	setTableData: (
 		updater: TableData | null | ((prev: TableData | null) => TableData | null)
 	) => void
@@ -86,6 +87,7 @@ export function useDatabaseStudioEdits(args: Args) {
 		removeEdit,
 		clearEdits,
 		updateCell,
+		updateCells,
 		setTableData,
 		setIsApplyingEdits,
 		loadTableData,
@@ -396,19 +398,18 @@ export function useDatabaseStudioEdits(args: Args) {
 		})
 
 		try {
-			await Promise.all(
-				rowIndexes.map(async function (rowIndex) {
-					const row = tableData.rows[rowIndex]
-					return updateCell.mutateAsync({
-						connectionId: activeConnectionId,
-						tableName: tableRefName,
-						primaryKeyColumn: primaryKeyColumn.name,
-						primaryKeyValue: row[primaryKeyColumn.name],
-						columnName,
-						newValue
-					})
+			await updateCells.mutateAsync({
+				connectionId: activeConnectionId,
+				tableName: tableRefName,
+				primaryKeyColumn: primaryKeyColumn.name,
+				cells: cellsToTrack.map(function (cell) {
+					return {
+						primaryKeyValue: cell.primaryKeyValue,
+						columnName: cell.columnName,
+						newValue: cell.newValue
+					}
 				})
-			)
+			})
 
 			trackBatchCellMutation(
 				activeConnectionId,

@@ -17,13 +17,13 @@ function createTableData(): TableData {
 
 describe('useDatabaseStudioRowActions', function () {
 	let tableData: TableData
-	let insertRow: any
+	let insertRows: any
 	let deleteRows: any
 	let setDraftRow: any
 
 	beforeEach(function () {
 		tableData = createTableData()
-		insertRow = { mutateAsync: vi.fn().mockResolvedValue(undefined) }
+		insertRows = { mutateAsync: vi.fn().mockResolvedValue(undefined) }
 		deleteRows = { mutate: vi.fn() }
 		setDraftRow = vi.fn()
 	})
@@ -40,7 +40,7 @@ describe('useDatabaseStudioRowActions', function () {
 				tableData,
 				settingsConfirmBeforeDelete: false,
 				deleteRows,
-				insertRow,
+				insertRows,
 				onLoadTableData: vi.fn(),
 				setTableData,
 				setSelectedRows: vi.fn(),
@@ -72,8 +72,8 @@ describe('useDatabaseStudioRowActions', function () {
 		expect(optimistic.rows).toHaveLength(2)
 		expect(optimistic.rows[1]).toEqual({ name: 'Alpha' })
 		expect(optimistic.totalCount).toBe(2)
-		expect(insertRow.mutateAsync).toHaveBeenCalledTimes(1)
-		expect(insertRow.mutateAsync.mock.calls[0][0].rowData).toEqual({ name: 'Alpha' })
+		expect(insertRows.mutateAsync).toHaveBeenCalledTimes(1)
+		expect(insertRows.mutateAsync.mock.calls[0][0].rows).toEqual([{ name: 'Alpha' }])
 	})
 
 	it('optimistically appends duplicated rows before the inserts resolve', async function () {
@@ -92,7 +92,7 @@ describe('useDatabaseStudioRowActions', function () {
 		const setTableData = vi.fn()
 		const onLoadTableData = vi.fn()
 		let resolveInsert: (v?: unknown) => void = function () {}
-		insertRow = {
+		insertRows = {
 			mutateAsync: vi.fn().mockImplementation(function () {
 				return new Promise(function (resolve) {
 					resolveInsert = resolve
@@ -108,7 +108,7 @@ describe('useDatabaseStudioRowActions', function () {
 				tableData: multiRow,
 				settingsConfirmBeforeDelete: false,
 				deleteRows,
-				insertRow,
+				insertRows,
 				onLoadTableData,
 				setTableData,
 				setSelectedRows: vi.fn(),
@@ -138,7 +138,8 @@ describe('useDatabaseStudioRowActions', function () {
 		const optimistic = setTableData.mock.calls[0][0] as TableData
 		expect(optimistic.rows).toHaveLength(4)
 		expect(optimistic.totalCount).toBe(4)
-		expect(insertRow.mutateAsync).toHaveBeenCalledTimes(2)
+		expect(insertRows.mutateAsync).toHaveBeenCalledTimes(1)
+		expect(insertRows.mutateAsync.mock.calls[0][0].rows).toHaveLength(2)
 		// The reload only happens once the inserts settle, not before.
 		expect(onLoadTableData).not.toHaveBeenCalled()
 
@@ -169,7 +170,7 @@ describe('useDatabaseStudioRowActions', function () {
 				tableData: naturalKey,
 				settingsConfirmBeforeDelete: false,
 				deleteRows,
-				insertRow,
+				insertRows,
 				onLoadTableData: vi.fn(),
 				setSelectedRows: vi.fn(),
 				setShowDeleteConfirmDialog: vi.fn(),
@@ -222,7 +223,7 @@ describe('useDatabaseStudioRowActions', function () {
 				tableData: naturalKey,
 				settingsConfirmBeforeDelete: false,
 				deleteRows,
-				insertRow,
+				insertRows,
 				onLoadTableData: vi.fn(),
 				setTableData,
 				setSelectedRows: vi.fn(),
@@ -248,7 +249,7 @@ describe('useDatabaseStudioRowActions', function () {
 		})
 
 		expect(notifyPrimaryKeyNotGenerated).toHaveBeenCalledWith('duplicate rows')
-		expect(insertRow.mutateAsync).not.toHaveBeenCalled()
+		expect(insertRows.mutateAsync).not.toHaveBeenCalled()
 		expect(setTableData).not.toHaveBeenCalled()
 	})
 })

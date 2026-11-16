@@ -47,6 +47,7 @@ import {
 	getTableRefParts,
 	getTableSqlIdentifier
 } from '@studio/shared/utils/table-ref'
+import { pickDefaultQueryTable } from '@studio/shared/utils/default-query-table'
 import { useStableHandlers } from '../database-studio/hooks/use-stable-handlers'
 import { memoWhileClosed } from '../database-studio/utils/memo-while-closed'
 import { prefetchTableSnapshot } from '../database-studio/utils/table-snapshot'
@@ -363,7 +364,7 @@ const DatabaseSidebarView = memo(function DatabaseSidebarView({
 		function handleAutoSelectFirstTable() {
 			if (!autoSelectFirstTable || !schema || schema.tables.length === 0 || !onTableSelect)
 				return
-			const firstTable = schema.tables[0]
+			const firstTable = pickDefaultQueryTable(schema.tables) ?? schema.tables[0]
 			onTableSelect(getTableRefId(firstTable), firstTable.name)
 			if (onAutoSelectComplete) {
 				onAutoSelectComplete()
