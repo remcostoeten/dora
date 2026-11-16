@@ -1,16 +1,17 @@
-import {
-	SquareTerminal,
-	Table2,
-	Container,
-	Network,
-	Settings,
-	GitCompare,
-	ChartLine,
-	KeyRound
-} from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
 import { preloadView } from './preload-views'
+import { useActiveIndicator } from './use-active-indicator'
+import {
+	AnalyticsIcon,
+	DataViewerIcon,
+	DockerIcon,
+	KvStudioIcon,
+	SchemaDiffIcon,
+	SchemaIcon,
+	SettingsIcon,
+	SqlConsoleIcon
+} from './rail-icons'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
@@ -42,6 +43,7 @@ function SidebarContent({
 	const { variant } = useSidebar()
 	const isFloating = false
 	const navRef = useRef<HTMLElement>(null)
+	const indicatorRef = useActiveIndicator(navRef, activeNavId, analyticsAvailable)
 	const queryClient = useQueryClient()
 
 	// Nav items configuration
@@ -49,19 +51,19 @@ function SidebarContent({
 		{
 			id: 'sql-console',
 			label: 'SQL Console',
-			icon: SquareTerminal,
+			icon: SqlConsoleIcon,
 			onClick: () => onNavSelect?.('sql-console')
 		},
 		{
 			id: 'database-studio',
 			label: 'Data Viewer',
-			icon: Table2,
+			icon: DataViewerIcon,
 			onClick: () => onNavSelect?.('database-studio')
 		},
 		{
 			id: 'kv-studio',
 			label: 'Redis / Valkey',
-			icon: KeyRound,
+			icon: KvStudioIcon,
 			onClick: () => onNavSelect?.('kv-studio')
 		},
 		...(analyticsAvailable
@@ -69,7 +71,7 @@ function SidebarContent({
 					{
 						id: 'analytics',
 						label: 'Analytics',
-						icon: ChartLine,
+						icon: AnalyticsIcon,
 						onClick: () => onNavSelect?.('analytics')
 					}
 				]
@@ -77,19 +79,19 @@ function SidebarContent({
 		{
 			id: 'schema-visualizer',
 			label: 'Schema',
-			icon: Network,
+			icon: SchemaIcon,
 			onClick: () => onNavSelect?.('schema-visualizer')
 		},
 		{
 			id: 'orm-cockpit',
 			label: 'Schema Diff',
-			icon: GitCompare,
+			icon: SchemaDiffIcon,
 			onClick: () => onNavSelect?.('orm-cockpit')
 		},
 		{
 			id: 'docker',
 			label: 'Docker Manager',
-			icon: Container,
+			icon: DockerIcon,
 			onClick: () => onNavSelect?.('docker')
 		}
 	]
@@ -97,7 +99,7 @@ function SidebarContent({
 	const settingsNavItem: NavItem = {
 		id: 'settings',
 		label: 'Settings',
-		icon: Settings,
+		icon: SettingsIcon,
 		onClick: () => onNavSelect?.('settings')
 	}
 
@@ -174,11 +176,12 @@ function SidebarContent({
 			{/* Main Navigation */}
 			<nav
 				ref={navRef}
-				className='flex flex-1 flex-col gap-1 p-2'
+				className='relative flex flex-1 flex-col gap-1 p-2'
 				role='menubar'
 				aria-label='Main navigation'
 				onKeyDown={handleKeyDown}
 			>
+				<div ref={indicatorRef} className='rail-indicator' aria-hidden='true' />
 				{/* Primary nav items */}
 				<div
 					role='group'
@@ -208,7 +211,7 @@ function SidebarContent({
 							<SidebarPanelToggle
 								isOpen={databasePanelToggle.isOpen}
 								onToggle={databasePanelToggle.onToggle}
-								buttonClassName='h-10 w-10'
+								buttonClassName='h-10 w-10 text-sidebar-foreground aria-pressed:bg-sidebar-accent aria-pressed:text-sidebar-accent-foreground'
 								className='h-5 w-5'
 								tooltipSide='right'
 							/>

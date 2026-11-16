@@ -1,4 +1,4 @@
-import { PanelLeft } from 'lucide-react'
+import { PanelIcon } from '@studio/features/app-sidebar/rail-icons'
 import { Button } from '@studio/shared/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
@@ -36,13 +36,7 @@ export function SidebarPanelToggle({
 					aria-label={tooltip}
 					aria-pressed={isOpen}
 				>
-					<PanelLeft
-						className={cn(
-							'h-4 w-4 transition-transform duration-300',
-							!isOpen && 'rotate-180',
-							className
-						)}
-					/>
+					<PanelIcon className={cn('h-4 w-4', className)} />
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent side={tooltipSide} className='text-xs'>
