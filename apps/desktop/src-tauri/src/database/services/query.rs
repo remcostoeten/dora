@@ -1,10 +1,13 @@
 use serde_json::value::RawValue;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    database::{connection_repository::ConnectionRepository, stmt_manager::StatementManager},
+    database::{
+        connection_repository::ConnectionRepository, stmt_manager::StatementManager,
+        types::StatementResult,
+    },
     error::Error,
     storage::{ConnectionHistoryEntry, QueryHistoryEntry, SavedQuery, Storage},
 };
@@ -143,6 +146,29 @@ impl<'a> QueryService<'a> {
                 .submit_query_for_connection(connection_id, client, query)?;
 
         Ok(query_ids)
+    }
+
+    /// Runs `query` and waits for its first statement, so a grid read costs one
+    /// round trip instead of a start, a status poll and a column fetch. The
+    /// statement is tracked like any other, which keeps it cancellable by id,
+    /// by connection and by `cancel_active_queries`.
+    pub async fn run_query(
+        &self,
+        connection_id: Uuid,
+        query: &str,
+        timeout: Duration,
+    ) -> Result<StatementResult, Error> {
+        let client = self.connection_repo.get_client(connection_id)?;
+        let query_ids =
+            self.stmt_manager
+                .submit_query_for_connection(connection_id, client, query)?;
+        let query_id = *query_ids
+            .first()
+            .ok_or_else(|| Error::InvalidInput("Query contains no statement".to_string()))?;
+
+        self.stmt_manager
+            .wait_for_statement(query_id, timeout)
+            .await
     }
 
     pub async fn start_query_stream(

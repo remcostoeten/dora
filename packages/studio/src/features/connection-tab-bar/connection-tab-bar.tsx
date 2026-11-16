@@ -1,4 +1,12 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+	isValidElement,
+	memo,
+	useCallback,
+	useRef,
+	useState,
+	type MouseEvent,
+	type ReactNode
+} from 'react'
 import { Eye, Pencil, Plus, X, Trash2 } from 'lucide-react'
 import { cn } from '@studio/shared/utils/cn'
 import type { Connection } from '@studio/features/connections/types'
@@ -28,6 +36,22 @@ type Props = {
 	onCloseConnectionsToRight?: (connectionId: string) => void
 	onAddConnection: () => void
 	rightSlot?: ReactNode
+}
+
+type TabProps = {
+	connection: Connection
+	isActive: boolean
+	nameHint: string | null
+	onSelect: (connectionId: string) => void
+	onClose: (connectionId: string) => void
+	onArmContextMenu: (connectionId: string) => void
+}
+
+type MenuItemsProps = Omit<
+	Props,
+	'activeConnectionId' | 'onSelect' | 'onAddConnection' | 'rightSlot'
+> & {
+	connectionId: string
 }
 
 function statusColor(status: Connection['status']): string {
@@ -74,38 +98,170 @@ function disambiguateName(connection: Connection, connections: Connection[]): st
 	return `#${sameName.findIndex((item) => item.id === connection.id) + 1}`
 }
 
-function StatusDot({ status }: { status: Connection['status'] }) {
-	const prevStatusRef = useRef(status)
-	const [flash, setFlash] = useState<'success' | 'error' | null>(null)
+function isSameList(a: Connection[], b: Connection[]): boolean {
+	if (a === b) return true
+	if (a.length !== b.length) return false
+	return a.every((connection, index) => connection === b[index])
+}
 
-	useEffect(
-		function flashOnTransition() {
-			if (prevStatusRef.current === status) return
-			prevStatusRef.current = status
-			if (status === 'connected') setFlash('success')
-			else if (status === 'error') setFlash('error')
-			else setFlash(null)
-		},
-		[status]
+function isSameSlot(a: ReactNode, b: ReactNode): boolean {
+	if (a === b) return true
+	if (!isValidElement(a) || !isValidElement(b)) return false
+	if (a.type !== b.type || a.key !== b.key) return false
+	const aProps: Record<string, unknown> = a.props
+	const bProps: Record<string, unknown> = b.props
+	const keys = Object.keys(aProps)
+	if (keys.length !== Object.keys(bProps).length) return false
+	return keys.every((key) => Object.is(aProps[key], bProps[key]))
+}
+
+function isSameBar(previous: Props, next: Props): boolean {
+	return (
+		previous.activeConnectionId === next.activeConnectionId &&
+		previous.onSelect === next.onSelect &&
+		previous.onClose === next.onClose &&
+		previous.onViewConnection === next.onViewConnection &&
+		previous.onEditConnection === next.onEditConnection &&
+		previous.onCloseOtherConnections === next.onCloseOtherConnections &&
+		previous.onCloseConnectionsToLeft === next.onCloseConnectionsToLeft &&
+		previous.onCloseConnectionsToRight === next.onCloseConnectionsToRight &&
+		previous.onAddConnection === next.onAddConnection &&
+		isSameList(previous.connections, next.connections) &&
+		isSameSlot(previous.rightSlot, next.rightSlot)
 	)
+}
 
+function StatusDot({ status }: { status: Connection['status'] }) {
 	return (
 		<span
 			aria-hidden='true'
-			onAnimationEnd={function clearFlash() {
-				setFlash(null)
-			}}
 			className={cn(
-				'h-2 w-2 shrink-0 rounded-full transition-colors duration-300 ease-[var(--ease-out)]',
-				statusColor(status),
-				flash === 'success' && 'connection-status-success',
-				flash === 'error' && 'connection-status-error'
+				'h-2 w-2 shrink-0 rounded-full transition-colors duration-100 ease-[var(--ease-out)]',
+				statusColor(status)
 			)}
 		/>
 	)
 }
 
-export function ConnectionTabBar({
+const ConnectionTab = memo(function ConnectionTab({
+	connection,
+	isActive,
+	nameHint,
+	onSelect,
+	onClose,
+	onArmContextMenu
+}: TabProps) {
+	const fullLabel = nameHint ? `${connection.name} (${nameHint})` : connection.name
+
+	return (
+		<div
+			className={cn(
+				'relative flex items-center h-full shrink-0 border-r border-border transition-colors',
+				isActive
+					? 'bg-background text-foreground'
+					: 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
+			)}
+			data-tauri-drag-region='false'
+			onContextMenu={() => onArmContextMenu(connection.id)}
+			onPointerDown={(event) => {
+				if (event.pointerType !== 'mouse') onArmContextMenu(connection.id)
+			}}
+		>
+			<button
+				onClick={() => onSelect(connection.id)}
+				className='flex items-center gap-1.5 h-full px-2 pl-3 text-xs font-medium'
+				data-tauri-drag-region='false'
+				title={`${fullLabel} — ${statusLabel(connection.status)}`}
+				aria-current={isActive ? 'page' : undefined}
+				aria-label={`${fullLabel}, ${statusLabel(connection.status)}`}
+			>
+				<StatusDot status={connection.status} />
+				<span className='max-w-[140px] truncate'>{connection.name}</span>
+				{nameHint ? (
+					<span className='max-w-[90px] truncate font-normal text-muted-foreground'>
+						{nameHint}
+					</span>
+				) : null}
+			</button>
+			<button
+				aria-label={`Close ${connection.name}`}
+				onClick={(event) => {
+					event.stopPropagation()
+					onClose(connection.id)
+				}}
+				onAuxClick={(event) => {
+					if (event.button === 1) {
+						event.preventDefault()
+						onClose(connection.id)
+					}
+				}}
+				className='h-full px-1 pr-2 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground'
+				data-tauri-drag-region='false'
+			>
+				<X className='h-3 w-3' />
+			</button>
+		</div>
+	)
+})
+
+function ConnectionTabMenuItems({
+	connectionId,
+	connections,
+	onClose,
+	onViewConnection,
+	onEditConnection,
+	onCloseOtherConnections,
+	onCloseConnectionsToLeft,
+	onCloseConnectionsToRight
+}: MenuItemsProps) {
+	const connectionIndex = connections.findIndex((item) => item.id === connectionId)
+	const hasClosableLeftConnections = connectionIndex > 0
+	const hasClosableRightConnections =
+		connectionIndex >= 0 && connectionIndex < connections.length - 1
+	const hasClosableOtherConnections = connections.some((item) => item.id !== connectionId)
+
+	return (
+		<>
+			{onViewConnection ? (
+				<ContextMenuItem onClick={() => onViewConnection(connectionId)}>
+					<Eye className='h-4 w-4' />
+					View connection
+				</ContextMenuItem>
+			) : null}
+			{onEditConnection ? (
+				<ContextMenuItem onClick={() => onEditConnection(connectionId)}>
+					<Pencil className='h-4 w-4' />
+					Edit connection
+				</ContextMenuItem>
+			) : null}
+			{onViewConnection || onEditConnection ? <ContextMenuSeparator /> : null}
+			<ContextMenuItem onClick={() => onClose(connectionId)} variant='destructive'>
+				<Trash2 className='h-4 w-4' />
+				Close connection
+			</ContextMenuItem>
+			<ContextMenuItem
+				onClick={() => onCloseOtherConnections?.(connectionId)}
+				disabled={!onCloseOtherConnections || !hasClosableOtherConnections}
+			>
+				Close other connections
+			</ContextMenuItem>
+			<ContextMenuItem
+				onClick={() => onCloseConnectionsToLeft?.(connectionId)}
+				disabled={!onCloseConnectionsToLeft || !hasClosableLeftConnections}
+			>
+				Close connections to left
+			</ContextMenuItem>
+			<ContextMenuItem
+				onClick={() => onCloseConnectionsToRight?.(connectionId)}
+				disabled={!onCloseConnectionsToRight || !hasClosableRightConnections}
+			>
+				Close connections to right
+			</ContextMenuItem>
+		</>
+	)
+}
+
+export const ConnectionTabBar = memo(function ConnectionTabBar({
 	connections,
 	activeConnectionId,
 	onSelect,
@@ -118,141 +274,75 @@ export function ConnectionTabBar({
 	onAddConnection,
 	rightSlot
 }: Props) {
+	const [menuConnectionId, setMenuConnectionId] = useState<string | null>(null)
+	const armedConnectionIdRef = useRef<string | null>(null)
+	const armContextMenu = useCallback(function armContextMenu(connectionId: string) {
+		armedConnectionIdRef.current = connectionId
+	}, [])
+	const menuConnection =
+		menuConnectionId === null
+			? undefined
+			: connections.find((item) => item.id === menuConnectionId)
+
+	function handleBarContextMenu(event: MouseEvent) {
+		if (armedConnectionIdRef.current) return
+		event.preventDefault()
+	}
+
+	function handleMenuOpenChange(open: boolean) {
+		if (open) setMenuConnectionId(armedConnectionIdRef.current)
+	}
+
 	return (
 		<div
 			className='flex items-center h-8 border-b border-border bg-sidebar shrink-0 select-none'
 			data-tauri-drag-region='true'
 		>
-			<div className='flex h-full min-w-0 flex-1 items-center overflow-x-auto scrollbar-none'>
-				{connections.map((connection) => {
-					const isActive = connection.id === activeConnectionId
-					const connectionIndex = connections.findIndex(
-						(item) => item.id === connection.id
-					)
-					const hasClosableLeftConnections = connectionIndex > 0
-					const hasClosableRightConnections =
-						connectionIndex >= 0 && connectionIndex < connections.length - 1
-					const hasClosableOtherConnections = connections.some(
-						(item) => item.id !== connection.id
-					)
-					const nameHint = disambiguateName(connection, connections)
-					const fullLabel = nameHint
-						? `${connection.name} (${nameHint})`
-						: connection.name
-					return (
-						<ContextMenu key={connection.id}>
-							<ContextMenuTrigger asChild>
-								<div
-									className={cn(
-										'relative flex items-center h-full shrink-0 border-r border-border transition-colors',
-										isActive
-											? 'bg-background text-foreground'
-											: 'text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
-									)}
-									data-tauri-drag-region='false'
-								>
-									<button
-										onClick={() => onSelect(connection.id)}
-										className='flex items-center gap-1.5 h-full px-2 pl-3 text-xs font-medium'
-										data-tauri-drag-region='false'
-										title={`${fullLabel} — ${statusLabel(connection.status)}`}
-										aria-current={isActive ? 'page' : undefined}
-										aria-label={`${fullLabel}, ${statusLabel(connection.status)}`}
-									>
-										<StatusDot status={connection.status} />
-										<span className='max-w-[140px] truncate'>
-											{connection.name}
-										</span>
-										{nameHint ? (
-											<span className='max-w-[90px] truncate font-normal text-muted-foreground'>
-												{nameHint}
-											</span>
-										) : null}
-									</button>
-									<button
-										aria-label={`Close ${connection.name}`}
-										onClick={(e) => {
-											e.stopPropagation()
-											onClose(connection.id)
-										}}
-										onAuxClick={(e) => {
-											if (e.button === 1) {
-												e.preventDefault()
-												onClose(connection.id)
-											}
-										}}
-										className='h-full px-1 pr-2 rounded hover:bg-sidebar-accent text-muted-foreground hover:text-foreground'
-										data-tauri-drag-region='false'
-									>
-										<X className='h-3 w-3' />
-									</button>
-								</div>
-							</ContextMenuTrigger>
-							<ContextMenuContent className='w-52'>
-								{onViewConnection ? (
-									<ContextMenuItem
-										onClick={() => onViewConnection(connection.id)}
-									>
-										<Eye className='h-4 w-4' />
-										View connection
-									</ContextMenuItem>
-								) : null}
-								{onEditConnection ? (
-									<ContextMenuItem
-										onClick={() => onEditConnection(connection.id)}
-									>
-										<Pencil className='h-4 w-4' />
-										Edit connection
-									</ContextMenuItem>
-								) : null}
-								{onViewConnection || onEditConnection ? (
-									<ContextMenuSeparator />
-								) : null}
-								<ContextMenuItem
-									onClick={() => onClose(connection.id)}
-									variant='destructive'
-								>
-									<Trash2 className='h-4 w-4' />
-									Close connection
-								</ContextMenuItem>
-								<ContextMenuItem
-									onClick={() => onCloseOtherConnections?.(connection.id)}
-									disabled={
-										!onCloseOtherConnections || !hasClosableOtherConnections
-									}
-								>
-									Close other connections
-								</ContextMenuItem>
-								<ContextMenuItem
-									onClick={() => onCloseConnectionsToLeft?.(connection.id)}
-									disabled={
-										!onCloseConnectionsToLeft || !hasClosableLeftConnections
-									}
-								>
-									Close connections to left
-								</ContextMenuItem>
-								<ContextMenuItem
-									onClick={() => onCloseConnectionsToRight?.(connection.id)}
-									disabled={
-										!onCloseConnectionsToRight || !hasClosableRightConnections
-									}
-								>
-									Close connections to right
-								</ContextMenuItem>
-							</ContextMenuContent>
-						</ContextMenu>
-					)
-				})}
-				<button
-					aria-label='Add connection'
-					onClick={onAddConnection}
-					className='flex items-center justify-center h-full px-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
-					data-tauri-drag-region='false'
-					title='Add connection'
-				>
-					<Plus className='h-3.5 w-3.5' />
-				</button>
-			</div>
+			<ContextMenu onOpenChange={handleMenuOpenChange}>
+				<ContextMenuTrigger asChild onContextMenu={handleBarContextMenu}>
+					<div
+						className='flex h-full min-w-0 flex-1 items-center overflow-x-auto scrollbar-none'
+						onPointerDownCapture={() => {
+							armedConnectionIdRef.current = null
+						}}
+					>
+						{connections.map((connection) => (
+							<ConnectionTab
+								key={connection.id}
+								connection={connection}
+								isActive={connection.id === activeConnectionId}
+								nameHint={disambiguateName(connection, connections)}
+								onSelect={onSelect}
+								onClose={onClose}
+								onArmContextMenu={armContextMenu}
+							/>
+						))}
+						<button
+							aria-label='Add connection'
+							onClick={onAddConnection}
+							className='flex items-center justify-center h-full px-2 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/50'
+							data-tauri-drag-region='false'
+							title='Add connection'
+						>
+							<Plus className='h-3.5 w-3.5' />
+						</button>
+					</div>
+				</ContextMenuTrigger>
+				<ContextMenuContent className='w-52'>
+					{menuConnection ? (
+						<ConnectionTabMenuItems
+							connectionId={menuConnection.id}
+							connections={connections}
+							onClose={onClose}
+							onViewConnection={onViewConnection}
+							onEditConnection={onEditConnection}
+							onCloseOtherConnections={onCloseOtherConnections}
+							onCloseConnectionsToLeft={onCloseConnectionsToLeft}
+							onCloseConnectionsToRight={onCloseConnectionsToRight}
+						/>
+					) : null}
+				</ContextMenuContent>
+			</ContextMenu>
 			{rightSlot ? (
 				<div
 					className='flex h-full shrink-0 items-center border-l border-border px-1'
@@ -263,4 +353,4 @@ export function ConnectionTabBar({
 			) : null}
 		</div>
 	)
-}
+}, isSameBar)

@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
-import React, { useLayoutEffect, useRef, useState } from 'react'
+import React, { memo, useState } from 'react'
 import { Checkbox } from '@studio/shared/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
@@ -10,31 +10,19 @@ type ColumnHeaderLabelProps = {
 	type?: string
 }
 
-// Shows the full column name + type in a tooltip, but only when the header
-// label is actually clipped — measuring scrollWidth against clientWidth so we
-// don't add hover noise to columns that already fit.
 function ColumnHeaderLabel({ name, type }: ColumnHeaderLabelProps) {
-	const ref = useRef<HTMLDivElement>(null)
 	const [isTruncated, setIsTruncated] = useState(false)
 
-	useLayoutEffect(function measureOverflow() {
-		const el = ref.current
-		if (!el) return
-		function update() {
-			if (ref.current) {
-				setIsTruncated(ref.current.scrollWidth > ref.current.clientWidth)
-			}
-		}
-		update()
-		const observer = new ResizeObserver(update)
-		observer.observe(el)
-		return function cleanup() {
-			observer.disconnect()
-		}
-	}, [])
+	function measureOverflow(event: React.PointerEvent<HTMLDivElement>) {
+		const element = event.currentTarget
+		setIsTruncated(element.scrollWidth > element.clientWidth)
+	}
 
 	const label = (
-		<div ref={ref} className='flex items-center gap-1.5 overflow-hidden min-w-0'>
+		<div
+			className='flex items-center gap-1.5 overflow-hidden min-w-0'
+			onPointerEnter={measureOverflow}
+		>
 			<span className='text-foreground text-xs truncate min-w-0'>{name}</span>
 			{type && type !== 'unknown' && (
 				<span className='text-muted-foreground/50 text-[10px] font-normal font-mono lowercase truncate min-w-0 shrink-0'>
@@ -70,7 +58,7 @@ type GridHeaderProps = {
 	sort?: SortDescriptor
 }
 
-export function GridHeader({
+export const GridHeader = memo(function GridHeader({
 	allSelected,
 	columns,
 	getColumnWidth,
@@ -111,7 +99,7 @@ export function GridHeader({
 						<th
 							key={col.name}
 							className={cn(
-								'text-left font-medium border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0 h-9 cursor-pointer transition-colors hover:bg-sidebar-accent relative select-none min-w-[60px]',
+								'text-left font-medium border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0 h-9 cursor-pointer hover:bg-sidebar-accent relative select-none min-w-[60px]',
 								isSorted && 'bg-sidebar-accent',
 								resizingColumn === col.name && 'bg-sidebar-accent'
 							)}
@@ -138,13 +126,13 @@ export function GridHeader({
 										<ArrowDown className='h-3 w-3 text-primary shrink-0' />
 									)
 								) : (
-									<ArrowUpDown className='h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors shrink-0' />
+									<ArrowUpDown className='h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/50 shrink-0' />
 								)}
 							</div>
 
 							<div
 								className={cn(
-									'absolute right-0 top-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50 transition-colors',
+									'absolute right-0 top-0 w-1.5 h-full cursor-col-resize hover:bg-primary/50',
 									resizingColumn === col.name && 'bg-primary'
 								)}
 								onMouseDown={function (e) {
@@ -163,4 +151,4 @@ export function GridHeader({
 			</tr>
 		</thead>
 	)
-}
+})

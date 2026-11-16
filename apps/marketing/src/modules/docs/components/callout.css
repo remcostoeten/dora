@@ -1,0 +1,104 @@
+.callout {
+    --callout: var(--color-fd-foreground);
+    --callout-icon: var(--color-fd-foreground);
+
+    display: flex;
+    align-items: flex-start;
+    gap: calc(var(--spacing) * 2.5);
+    margin-block: calc(var(--spacing) * 5);
+    padding: calc(var(--spacing) * 3.5) calc(var(--spacing) * 4);
+    border: 1px solid color-mix(in oklab, var(--callout) 18%, transparent);
+    border-radius: var(--radius-xl);
+    background: color-mix(
+        in oklab,
+        var(--callout) 5%,
+        var(--color-fd-background)
+    );
+    font-size: 0.9375rem;
+    line-height: 1.6;
+}
+
+.callout[data-callout='info'] {
+    --callout: oklch(0.62 0.17 245);
+    --callout-icon: oklch(0.5 0.17 245);
+}
+
+.callout[data-callout='warn'] {
+    --callout: oklch(0.72 0.17 70);
+    --callout-icon: oklch(0.52 0.14 60);
+}
+
+.callout[data-callout='error'] {
+    --callout: oklch(0.62 0.22 25);
+    --callout-icon: oklch(0.52 0.21 25);
+}
+
+.callout[data-callout='success'] {
+    --callout: oklch(0.65 0.17 155);
+    --callout-icon: oklch(0.5 0.14 155);
+}
+
+.callout[data-callout='idea'] {
+    --callout: oklch(0.6 0.2 295);
+    --callout-icon: oklch(0.5 0.2 295);
+}
+
+.dark .callout[data-callout='info'] {
+    --callout-icon: oklch(0.78 0.12 245);
+}
+
+.dark .callout[data-callout='warn'] {
+    --callout-icon: oklch(0.85 0.14 80);
+}
+
+.dark .callout[data-callout='error'] {
+    --callout-icon: oklch(0.76 0.15 25);
+}
+
+.dark .callout[data-callout='success'] {
+    --callout-icon: oklch(0.8 0.14 155);
+}
+
+.dark .callout[data-callout='idea'] {
+    --callout-icon: oklch(0.78 0.13 295);
+}
+
+.callout-icon {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 1lh;
+    height: 1lh;
+    color: var(--callout-icon);
+}
+
+.callout-icon svg {
+    width: 1.125rem;
+    height: 1.125rem;
+}
+
+.callout-body {
+    min-width: 0;
+}
+
+.callout-title {
+    margin: 0;
+    font-weight: 600;
+    color: var(--color-fd-foreground);
+}
+
+.callout-content {
+    color: color-mix(in oklab, var(--color-fd-foreground) 78%, transparent);
+}
+
+.callout-title + .callout-content {
+    margin-top: calc(var(--spacing) * 0.5);
+}
+
+.callout-content > :first-child {
+    margin-top: 0;
+}
+
+.callout-content > :last-child {
+    margin-bottom: 0;
+}

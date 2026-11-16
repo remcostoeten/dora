@@ -145,3 +145,22 @@ bun perf --iterations 40      # more samples for a baseline
 Output goes to `packages/studio/perf-artifacts/<timestamp>.json`, with raw
 samples plus P50/P95/max per scenario. Baselines worth keeping get summarized
 into `docs/benchmarks/`.
+
+## Measuring the Linux engine
+
+The harness above runs in headless Chromium. The Linux desktop app runs in
+WebKitGTK, which lays out, paints and paces frames differently, so a budget met
+in Chromium can still miss there. `tools/webkit-rig` runs the same browser-mode
+Studio and fixtures inside a WebKitGTK webview and reports click-to-paint
+timings, React commits per interaction with the components that rendered,
+forced synchronous layouts and WebKit's own timeline. It needs no Rust build.
+
+```
+tools/webkit-rig/rig.sh build
+tools/webkit-rig/rig.sh serve apps/desktop/dist 4180 &
+tools/webkit-rig/rig.sh measure http://127.0.0.1:4180
+```
+
+See `tools/webkit-rig/README.md` for the other commands. Use it when a change
+touches what an interaction renders or paints, and record results next to the
+Chromium baselines in `docs/benchmarks/`.

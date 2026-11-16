@@ -321,6 +321,9 @@
 		<script src="/boot-splash.js"></script>
 
 		<div id="root"></div>
+		<!-- Overlays portal here, and the hidden tail keeps #root from ever being :last-child: appending after it would re-style the whole app. -->
+		<div id="dora-portals"></div>
+		<span id="dora-body-tail" hidden></span>
 		<script type="module" src="/src/main.tsx"></script>
 	</body>
 </html>

@@ -1,5 +1,6 @@
 {
 	"title": "Guides",
+	"icon": "Compass",
 	"pages": [
 		"---Working with data---",
 		"data-studio",
@@ -7,7 +8,9 @@
 		"schema-visualizer",
 		"charts",
 		"export",
+		"database-dump",
 		"live-monitoring",
+		"key-value-studio",
 		"---ORMs---",
 		"orm-cockpit",
 		"orm-runners",

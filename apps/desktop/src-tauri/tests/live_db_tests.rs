@@ -14,11 +14,16 @@
 //!
 //! The `*_kv_*` tests drive the Redis/Valkey key-value service the way the
 //! Tauri `kv_*` commands do. Redis is on 6379 and Valkey on 6380 (override with
-//! `DORA_REDIS_URL` / `DORA_VALKEY_URL`); each test works under its own key
-//! prefix and removes it afterwards with SCAN, never KEYS.
+//! `DORA_REDIS_URL` / `DORA_VALKEY_URL`). TLS Redis is on 6390 with a
+//! self-signed certificate and a three-primary cluster on 7000-7002
+//! (`DORA_REDIS_TLS_URL` / `DORA_REDIS_CLUSTER_URL`). Each test works under its
+//! own key prefix and removes it afterwards with SCAN, never KEYS.
 
 use app_lib::database::adapter::{MySqlAdapter, WriteAdapter};
 use app_lib::database::dialect::MySqlDialect;
+use app_lib::database::services::connection::mysql_opts_with_pool_constraints;
+use app_lib::database::stmt_manager::StatementManager;
+use app_lib::database::types::{DatabaseClient, QueryStatus, StatementResult};
 use app_lib::kv::{
     classify_raw_command, KvBytes, KvConnection, KvConnectionConfig, KvDataType, KvKeySummary,
     KvReadRequest, KvReadResult, KvScanRequest, KvValue, RawCommandResult, RawCommandSafety,
@@ -33,6 +38,11 @@ use std::time::Duration;
 
 fn live_enabled() -> bool {
     std::env::var("DORA_LIVE_DB_TESTS").ok().as_deref() == Some("1")
+}
+
+fn install_crypto_provider() {
+    // The app installs ring at startup; test binaries skip that path, and rediss:// needs a provider.
+    let _ = rustls::crypto::ring::default_provider().install_default();
 }
 
 async fn mysql_family_lifecycle(url: &str, dialect: MySqlDialect) {
@@ -137,6 +147,99 @@ async fn mariadb_full_mutation_lifecycle() {
     let url = std::env::var("DORA_MARIADB_URL")
         .unwrap_or_else(|_| "mysql://root:rootpass@127.0.0.1:3306/dora".into());
     mysql_family_lifecycle(&url, MySqlDialect::MariaDb).await;
+}
+
+// ---------------------------------------------------------------------------
+// Statement pipeline over a real MySQL-wire pool: the awaited read the grid
+// uses, the pool reuse that keeps a table open from paying a fresh connect,
+// and the failure path that used to leave a statement `Running`.
+// ---------------------------------------------------------------------------
+
+async fn mysql_statement(
+    manager: &StatementManager,
+    client: &DatabaseClient,
+    sql: &str,
+) -> StatementResult {
+    let ids = manager
+        .submit_query_for_connection(uuid::Uuid::nil(), client.clone(), sql)
+        .expect("statement should submit");
+    manager
+        .wait_for_statement(ids[0], Duration::from_secs(10))
+        .await
+        .expect("statement should be tracked")
+}
+
+async fn mysql_family_statement_pipeline(url: &str, dialect: MySqlDialect) {
+    let url = url::Url::parse(url).expect("invalid database URL");
+    let opts = mysql_opts_with_pool_constraints(&url, 4).expect("pool options should build");
+    let pool = Arc::new(mysql_async::Pool::new(opts));
+    let client = DatabaseClient::MySQL {
+        pool: pool.clone(),
+        dialect,
+    };
+    let manager = StatementManager::new();
+
+    let mut session_ids = BTreeSet::new();
+    for _ in 0..5 {
+        let read = mysql_statement(&manager, &client, "SELECT CONNECTION_ID() AS id").await;
+        assert_eq!(read.status, QueryStatus::Completed, "{:?}", read.error);
+        assert_eq!(
+            read.columns.as_ref().map(|columns| columns.get()),
+            Some(r#"["id"]"#)
+        );
+        assert_eq!(read.page_count, 1);
+        assert_eq!(read.rows_received, 1);
+        session_ids.insert(read.first_page.expect("a page of rows").get().to_string());
+    }
+    // Back-to-back reads can overlap the previous connection's return to the
+    // pool, so a second session may open. A pool that closed every returned
+    // connection would show five.
+    assert!(
+        session_ids.len() <= 2,
+        "reads should reuse pooled sessions, saw {session_ids:?}"
+    );
+
+    let failed = mysql_statement(
+        &manager,
+        &client,
+        "SELECT * FROM dora_live_table_that_does_not_exist LIMIT 50",
+    )
+    .await;
+    assert_eq!(failed.status, QueryStatus::Error);
+    let message = failed.error.expect("a failed statement carries its error");
+    assert!(
+        message.contains("dora_live_table_that_does_not_exist"),
+        "{message}"
+    );
+
+    drop(client);
+    Arc::try_unwrap(pool)
+        .expect("pool should have no other owner")
+        .disconnect()
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn mysql_statement_pipeline_live() {
+    if !live_enabled() {
+        eprintln!("skipping mysql_statement_pipeline_live: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    let url = std::env::var("DORA_MYSQL_URL")
+        .unwrap_or_else(|_| "mysql://root:rootpass@127.0.0.1:3307/dora".into());
+    mysql_family_statement_pipeline(&url, MySqlDialect::MySql).await;
+}
+
+#[tokio::test]
+async fn mariadb_statement_pipeline_live() {
+    if !live_enabled() {
+        eprintln!("skipping mariadb_statement_pipeline_live: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    let url = std::env::var("DORA_MARIADB_URL")
+        .unwrap_or_else(|_| "mysql://root:rootpass@127.0.0.1:3306/dora".into());
+    mysql_family_statement_pipeline(&url, MySqlDialect::MariaDb).await;
 }
 
 // ---------------------------------------------------------------------------
@@ -873,18 +976,40 @@ struct KvTarget {
     url_env: &'static str,
     default_url: &'static str,
     version_marker: &'static str,
+    skip_tls_verify: bool,
+    cluster: bool,
 }
 
 const REDIS_TARGET: KvTarget = KvTarget {
     url_env: "DORA_REDIS_URL",
     default_url: "redis://127.0.0.1:6379",
     version_marker: "redis_version:",
+    skip_tls_verify: false,
+    cluster: false,
 };
 
 const VALKEY_TARGET: KvTarget = KvTarget {
     url_env: "DORA_VALKEY_URL",
     default_url: "redis://127.0.0.1:6380",
     version_marker: "valkey_version:",
+    skip_tls_verify: false,
+    cluster: false,
+};
+
+const REDIS_TLS_TARGET: KvTarget = KvTarget {
+    url_env: "DORA_REDIS_TLS_URL",
+    default_url: "rediss://:rootpass@127.0.0.1:6390",
+    version_marker: "redis_version:",
+    skip_tls_verify: true,
+    cluster: false,
+};
+
+const REDIS_CLUSTER_TARGET: KvTarget = KvTarget {
+    url_env: "DORA_REDIS_CLUSTER_URL",
+    default_url: "redis://127.0.0.1:7000",
+    version_marker: "redis_version:",
+    skip_tls_verify: false,
+    cluster: true,
 };
 
 #[derive(Clone)]
@@ -922,6 +1047,11 @@ fn raw_text(result: RawCommandResult) -> String {
     match result {
         RawCommandResult::Text(text) => text,
         RawCommandResult::Bytes(bytes) => kv_utf8(&bytes),
+        RawCommandResult::Map(entries) if !entries.is_empty() => entries
+            .into_iter()
+            .map(|(_, reply)| raw_text(reply))
+            .collect::<Vec<_>>()
+            .join("\n"),
         other => panic!("expected a text reply, got {other:?}"),
     }
 }
@@ -1078,10 +1208,20 @@ where
         eprintln!("skipping {test}: DORA_LIVE_DB_TESTS != 1");
         return;
     }
+    install_crypto_provider();
     let url = std::env::var(target.url_env).unwrap_or_else(|_| target.default_url.into());
-    let mut service = KvConnection::connect(&KvConnectionConfig { url: url.clone() })
-        .await
-        .unwrap_or_else(|error| panic!("failed to connect to {url}: {error}"));
+    let mut service = KvConnection::connect(&KvConnectionConfig {
+        url: url.clone(),
+        skip_tls_verify: target.skip_tls_verify,
+        ..Default::default()
+    })
+    .await
+    .unwrap_or_else(|error| panic!("failed to connect to {url}: {error}"));
+    assert_eq!(
+        service.is_cluster(),
+        target.cluster,
+        "{url} was not detected as the expected topology"
+    );
     let context = KvContext {
         prefix: format!("dora-live:{test}:{}:", uuid::Uuid::new_v4().simple()),
         version_marker: target.version_marker,
@@ -1115,12 +1255,14 @@ async fn kv_connect_and_ping(mut service: KvConnection, context: KvContext) {
 
     let wrong_scheme = KvConnection::connect(&KvConnectionConfig {
         url: "postgres://127.0.0.1:5432".into(),
+        ..Default::default()
     })
     .await;
     assert!(wrong_scheme.is_err(), "non-redis scheme was accepted");
 
     let refused = KvConnection::connect(&KvConnectionConfig {
         url: "redis://127.0.0.1:1".into(),
+        ..Default::default()
     })
     .await;
     assert!(refused.is_err(), "closed port was reported as connected");
@@ -1852,3 +1994,90 @@ kv_live_tests!(VALKEY_TARGET, {
     valkey_kv_raw_commands => kv_raw_commands,
     valkey_kv_dangerous_command_guard => kv_dangerous_command_guard,
 });
+
+kv_live_tests!(REDIS_TLS_TARGET, {
+    redis_tls_kv_connect_and_ping => kv_connect_and_ping,
+    redis_tls_kv_string_set_get_and_ttl => kv_string_set_get_and_ttl,
+    redis_tls_kv_scan_pagination => kv_scan_pagination,
+    redis_tls_kv_raw_commands => kv_raw_commands,
+});
+
+kv_live_tests!(REDIS_CLUSTER_TARGET, {
+    redis_cluster_kv_connect_and_ping => kv_connect_and_ping,
+    redis_cluster_kv_string_set_get_and_ttl => kv_string_set_get_and_ttl,
+    redis_cluster_kv_string_binary_and_paging => kv_string_binary_and_paging,
+    redis_cluster_kv_hash_read_and_write => kv_hash_read_and_write,
+    redis_cluster_kv_list_read_and_write => kv_list_read_and_write,
+    redis_cluster_kv_set_read_and_write => kv_set_read_and_write,
+    redis_cluster_kv_sorted_set_read_and_write => kv_sorted_set_read_and_write,
+    redis_cluster_kv_large_collection_cursors => kv_large_collection_cursors,
+    redis_cluster_kv_scan_pagination => kv_scan_pagination,
+    redis_cluster_kv_delete_keys => kv_delete_keys,
+    redis_cluster_kv_raw_commands => kv_raw_commands,
+    redis_cluster_kv_dangerous_command_guard => kv_dangerous_command_guard,
+    redis_cluster_kv_scan_spans_every_primary => kv_scan_spans_every_primary,
+});
+
+async fn kv_scan_spans_every_primary(mut service: KvConnection, context: KvContext) {
+    let mut expected = BTreeSet::new();
+    for index in 0..60 {
+        let name = context.name(&format!("spread:{index}"));
+        service
+            .set_string(kv_text(&name), kv_text("x"), false)
+            .await
+            .unwrap();
+        expected.insert(name);
+    }
+    let (summaries, _) = kv_scan_all(&mut service, &context.name("spread:*"), 7).await;
+    let found: Vec<String> = summaries.iter().map(|s| kv_utf8(&s.key)).collect();
+    assert_eq!(
+        found.len(),
+        expected.len(),
+        "a key was returned twice or missed"
+    );
+    assert_eq!(found.into_iter().collect::<BTreeSet<_>>(), expected);
+
+    let size = raw_integer(service.execute_raw("DBSIZE", None).await.unwrap());
+    assert!(size >= 60, "DBSIZE should sum every primary, got {size}");
+}
+
+#[tokio::test]
+async fn redis_tls_rejects_an_untrusted_certificate() {
+    if !live_enabled() {
+        eprintln!("skipping redis_tls_rejects_an_untrusted_certificate: DORA_LIVE_DB_TESTS != 1");
+        return;
+    }
+    install_crypto_provider();
+    let url = std::env::var(REDIS_TLS_TARGET.url_env)
+        .unwrap_or_else(|_| REDIS_TLS_TARGET.default_url.into());
+    let refused = KvConnection::connect(&KvConnectionConfig {
+        url,
+        ..Default::default()
+    })
+    .await;
+    assert!(
+        refused.is_err(),
+        "a self-signed certificate was trusted without skipping verification"
+    );
+}
+
+#[tokio::test]
+async fn redis_tunnel_with_tls_requires_skipping_verification() {
+    let refused = KvConnection::connect(&KvConnectionConfig {
+        url: "rediss://cache.internal:6379".into(),
+        skip_tls_verify: false,
+        ssh_tunnel: Some(app_lib::database::types::SshConfig {
+            host: "bastion.invalid".into(),
+            port: 22,
+            username: "deploy".into(),
+            private_key_path: None,
+            password: None,
+            host_key_fingerprint: None,
+        }),
+    })
+    .await
+    .unwrap_err();
+    assert!(refused
+        .to_string()
+        .contains("Skip certificate verification"));
+}

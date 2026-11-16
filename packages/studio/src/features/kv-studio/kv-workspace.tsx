@@ -11,10 +11,15 @@ import {
 	DialogHeader,
 	DialogTitle
 } from '@studio/shared/ui/dialog'
-import { Input } from '@studio/shared/ui/input'
-import { Label } from '@studio/shared/ui/label'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
 import { cn } from '@studio/shared/utils/cn'
+import { KvConnectionFields } from './kv-connection-fields'
+import {
+	describeKvTarget,
+	EMPTY_KV_FORM,
+	type KvConnectionForm,
+	toKvConnectionConfig
+} from './kv-connection-form'
 import { KvStudio } from './kv-studio'
 import { takeRequestedKvConnection } from './kv-launch'
 import { createTauriKvAdapter } from './tauri-adapter'
@@ -60,8 +65,7 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 	const [isLoading, setIsLoading] = useState(true)
 	const [isConnecting, setIsConnecting] = useState(false)
 	const [dialogOpen, setDialogOpen] = useState(false)
-	const [name, setName] = useState('Local Redis')
-	const [url, setUrl] = useState('redis://127.0.0.1:6379/0')
+	const [form, setForm] = useState<KvConnectionForm>(EMPTY_KV_FORM)
 	const [error, setError] = useState<string | null>(null)
 
 	const loadConnections = useCallback(async function () {
@@ -118,7 +122,7 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 		event.preventDefault()
 		setIsConnecting(true)
 		setError(null)
-		const result = await commands.kvAddConnection(name, { url })
+		const result = await commands.kvAddConnection(form.name, toKvConnectionConfig(form))
 		if (result.status === 'error') {
 			setError(commandError(result.error))
 			setIsConnecting(false)
@@ -129,7 +133,17 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 		})
 		setSelectedId(result.data.id)
 		setDialogOpen(false)
+		setForm(EMPTY_KV_FORM)
 		setIsConnecting(false)
+	}
+
+	function openDialog() {
+		setError(null)
+		setDialogOpen(true)
+	}
+
+	function updateForm<K extends keyof KvConnectionForm>(field: K, value: KvConnectionForm[K]) {
+		setForm((current) => ({ ...current, [field]: value }))
 	}
 
 	async function removeConnection(connection: KvConnectionInfo) {
@@ -174,7 +188,7 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 					</select>
 					<ChevronDown className='pointer-events-none absolute right-2 top-1.5 size-3.5 text-muted-foreground' />
 				</div>
-				<Button variant='outline' size='sm' onClick={() => setDialogOpen(true)}>
+				<Button variant='outline' size='sm' onClick={openDialog}>
 					<Plus /> Add connection
 				</Button>
 				{selected && (
@@ -211,7 +225,7 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 							<p className='mt-1 text-sm text-muted-foreground'>
 								Use a local redis:// URL or a TLS-enabled rediss:// cloud endpoint.
 							</p>
-							<Button className='mt-4' onClick={() => setDialogOpen(true)}>
+							<Button className='mt-4' onClick={openDialog}>
 								<Plus /> Add connection
 							</Button>
 						</div>
@@ -229,7 +243,7 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 							/>
 							<h2 className='font-medium'>{selected.name}</h2>
 							<p className='mt-1 truncate font-mono text-xs text-muted-foreground'>
-								{selected.config.url.replace(/:\/\/[^@/]+@/, '://••••@')}
+								{describeKvTarget(selected.config)}
 							</p>
 							<Button
 								className='mt-4'
@@ -251,31 +265,21 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 						<DialogHeader>
 							<DialogTitle>Add Redis / Valkey connection</DialogTitle>
 							<DialogDescription>
-								Dora supports standard Redis URLs locally and over TLS in the cloud.
-								Credentials are encrypted at rest.
+								Local servers, hosted Redis over TLS, clusters and private networks
+								through an SSH tunnel. Credentials are encrypted at rest.
 							</DialogDescription>
 						</DialogHeader>
-						<div className='grid gap-4 py-5'>
-							<div className='grid gap-1.5'>
-								<Label htmlFor='kv-name'>Name</Label>
-								<Input
-									id='kv-name'
-									value={name}
-									onChange={(event) => setName(event.target.value)}
-									required
-								/>
-							</div>
-							<div className='grid gap-1.5'>
-								<Label htmlFor='kv-url'>Connection URL</Label>
-								<Input
-									id='kv-url'
-									className='font-mono'
-									value={url}
-									onChange={(event) => setUrl(event.target.value)}
-									placeholder='rediss://default:password@example.com:6379/0'
-									required
-								/>
-							</div>
+						{error && (
+							<p className='mt-4 rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-xs text-destructive'>
+								{error}
+							</p>
+						)}
+						<div className='grid max-h-[60vh] gap-4 overflow-y-auto py-5'>
+							<KvConnectionFields
+								form={form}
+								onChange={updateForm}
+								onError={setError}
+							/>
 						</div>
 						<DialogFooter>
 							<Button

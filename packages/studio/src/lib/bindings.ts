@@ -1332,6 +1332,25 @@ export const commands = {
 			else return { status: 'error', error: e as any }
 		}
 	},
+	/**
+	 * Runs a query and replies once its first statement has finished, carrying
+	 * the columns, the first page and the counts in that one response.
+	 */
+	async runQuery(
+		connectionId: string,
+		query: string,
+		timeoutMs: number
+	): Promise<Result<StatementResult, { kind: string; detail: string }>> {
+		try {
+			return {
+				status: 'ok',
+				data: await TAURI_INVOKE('run_query', { connectionId, query, timeoutMs })
+			}
+		} catch (e) {
+			if (e instanceof Error) throw e
+			else return { status: 'error', error: e as any }
+		}
+	},
 	async startQueryStream(
 		connectionId: string,
 		query: string,
@@ -2921,7 +2940,11 @@ export type KvCommandHistoryEntry = {
 	status: string
 	error_message: string | null
 }
-export type KvConnectionConfig = { url: string }
+export type KvConnectionConfig = {
+	url: string
+	skipTlsVerify?: boolean
+	sshTunnel?: SshConfig | null
+}
 export type KvConnectionInfo = {
 	id: string
 	name: string
@@ -3156,6 +3179,21 @@ export type StatementInfo = {
 	affected_rows: number | null
 	page_count: number
 	rows_received: number
+	error: string | null
+}
+/**
+ * A statement the backend waited on: what `fetch_query` and `get_columns`
+ * report, in one response. `status` is `Running` or `Pending` only when the
+ * wait timed out before the statement finished.
+ */
+export type StatementResult = {
+	query_id: number
+	status: QueryStatus
+	columns: JsonValue
+	first_page: JsonValue
+	page_count: number
+	rows_received: number
+	affected_rows: number | null
 	error: string | null
 }
 export type SupabaseOrganization = { id: string; name: string }

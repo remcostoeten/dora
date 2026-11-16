@@ -1,0 +1,67 @@
+---
+title: Redis and Valkey
+description: Browse keys, edit values, set TTLs, and run raw commands against Redis or Valkey in Dora's key-value studio.
+---
+
+Dora has a separate studio for Redis and Valkey. Valkey speaks the Redis
+protocol, so the same studio works for both. Open it from **Redis / Valkey** in
+the navigation sidebar.
+
+<Callout type='info'>
+	The key-value studio runs in the desktop app only. The web preview shows a placeholder.
+</Callout>
+
+## Connect
+
+Click **Connect Redis or Valkey**, give the connection a name, and paste its
+URL:
+
+```text
+redis://default:password@localhost:6379/0
+rediss://default:password@example.com:6379/0
+```
+
+Use `rediss://` for servers that require TLS. The number at the end of the URL
+picks the logical database and defaults to `0`. Connections are stored encrypted,
+like your SQL connections. See [Credentials & security](/docs/guides/security).
+
+Switch between saved connections with the selector in the header. Removing a
+connection only removes it from Dora, the server is not changed.
+
+## Browse keys
+
+Keys are listed with `SCAN`, one page at a time, so a large keyspace never
+blocks the server. Filter the list with a key pattern such as `user:*`, load the
+next page when you need more, and refresh to pick up keys written by other
+clients.
+
+## Inspect and edit a value
+
+Select a key to open it. Dora shows its type and value and lets you edit it:
+
+| Type       | Editing                                            |
+| ---------- | -------------------------------------------------- |
+| String     | Edit the text. JSON strings can be pretty-printed. |
+| Hash       | Add, edit, and remove fields.                      |
+| List       | Add, edit, remove, and reorder items.              |
+| Set        | Add and remove members.                            |
+| Sorted set | Add and remove members and edit their scores.      |
+
+Click **Save value** to write the change. Large hashes, lists, sets, and sorted
+sets load in pages.
+
+The **TTL** field shows the time to live in milliseconds. Leave it empty to make
+the key persistent. **Delete key** removes the key after you confirm.
+
+## Run commands
+
+The command bar runs any Redis command, for example `GET user:42`, and shows the
+response below. Earlier commands are kept in its history.
+
+`FLUSHALL` and `FLUSHDB` delete data from the whole server or database, so Dora
+asks you to type the command name before it runs either one.
+
+## Start a local server
+
+The [Docker Manager](/docs/guides/docker-manager) can create Redis and Valkey
+containers. Use **Open in KV Studio** on the container to connect to it.

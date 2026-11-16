@@ -1,8 +1,8 @@
-import { Key, Link, Hash, Type, TextQuote, Lock, Calendar, Layers, Check } from 'lucide-react'
+import { Key, Link, Hash, Type, TextQuote, Lock, Calendar, Layers } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@studio/shared/ui/popover'
 import { Badge } from '@studio/shared/ui/badge'
 import { TableInfo } from '@studio/lib/bindings'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
+import { LazyTooltip } from '@studio/features/database-studio/components/lazy-tooltip'
 import { cn } from '@studio/shared/utils/cn'
 
 // Temporary type extension until bindings are regenerated
@@ -73,23 +73,18 @@ export function SidebarBottomPanel({ table }: Props) {
 							key={col.name}
 							className='flex items-center gap-2 px-3 py-1.5 text-xs group hover:bg-sidebar-accent/50 transition-colors'
 						>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<Icon
-										className={cn(
-											'h-3 w-3 shrink-0 cursor-help',
-											col.is_primary_key
-												? 'text-amber-500'
-												: col.foreign_key
-													? 'text-blue-500'
-													: 'text-muted-foreground'
-										)}
-									/>
-								</TooltipTrigger>
-								<TooltipContent side='right' className='text-xs'>
-									{tooltip}
-								</TooltipContent>
-							</Tooltip>
+							<LazyTooltip content={tooltip} side='right' contentClassName='text-xs'>
+								<Icon
+									className={cn(
+										'h-3 w-3 shrink-0 cursor-help',
+										col.is_primary_key
+											? 'text-amber-500'
+											: col.foreign_key
+												? 'text-blue-500'
+												: 'text-muted-foreground'
+									)}
+								/>
+							</LazyTooltip>
 							<span
 								className={cn(
 									'font-medium truncate flex-1',

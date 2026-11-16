@@ -15,6 +15,16 @@ export async function revealMainWindow(): Promise<void> {
 	}
 }
 
+export async function reportFirstPaint(): Promise<void> {
+	if (!isTauri()) return
+	try {
+		const { emit } = await import('@tauri-apps/api/event')
+		await emit('renderer-ready')
+	} catch (error) {
+		console.warn('Failed to report the first paint:', error)
+	}
+}
+
 /** Fade out and remove the inline boot screen after the app has painted. */
 export function dismissBootScreen(): void {
 	const el = document.getElementById('boot-screen')

@@ -62,6 +62,11 @@ const nextConfig: NextConfig = {
     skipTrailingSlashRedirect: true,
     async rewrites() {
         return [
+            { source: '/docs.mdx', destination: '/llms.mdx/docs' },
+            {
+                source: '/docs/:path*.mdx',
+                destination: '/llms.mdx/docs/:path*'
+            },
             {
                 source: '/ingest/static/:path*',
                 destination: 'https://us-assets.i.posthog.com/static/:path*'

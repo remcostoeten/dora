@@ -1,6 +1,6 @@
 [package]
 name = "dora"
-version = "0.43.0"
+version = "0.44.0"
 description = ""
 authors = ["Remco Stoeten"]
 license = "GPLv3"
@@ -27,7 +27,7 @@ tauri-build = { version = "2.3.1", features = [] }
 
 [dependencies]
 serde_json = { version = "1.0", features = ["raw_value"] }
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 log = "0.4"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
@@ -96,7 +96,7 @@ percent-encoding = "2.3"
 aes-gcm = "0.10.3"
 async-trait = "0.1"
 base64 = "0.22"
-redis = { version = "0.27", default-features = false, features = ["aio", "tokio-rustls-comp"] }
+redis = { version = "0.27", default-features = false, features = ["aio", "tokio-rustls-comp", "tls-rustls-insecure", "cluster-async"] }
 libsql = { version = "0.9", default-features = false, features = [
 	"core",
 	"remote",
@@ -130,6 +130,9 @@ tar = "0.4"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 flate2 = "1.1"
 mimalloc = { version = "0.1", default-features = false }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"
 
 [profile.release]
 panic = "abort"

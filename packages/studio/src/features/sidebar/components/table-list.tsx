@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
+import { selectActiveTableId, useWorkspaceSelector } from '@studio/core/workspace-store'
 import { useStableCallback } from '@studio/shared/hooks/use-stable-callback'
 import { Button } from '@studio/shared/ui/button'
 import { Checkbox } from '@studio/shared/ui/checkbox'
@@ -69,7 +70,6 @@ function formatRowCount(count: number | string): string {
 type TableItemRowProps = {
 	item: TableItem
 	isSelected?: boolean
-	isActive?: boolean
 	isMultiSelectMode?: boolean
 	hasSorting?: boolean
 	isEditing?: boolean
@@ -84,15 +84,15 @@ type TableItemRowProps = {
 }
 
 /**
- * One sidebar row. Memoized: with 200 tables the list re-renders on every
- * navigation, and the rows whose props did not change must not. The row does
- * not own a context menu — it arms the list's shared one from `onContextMenu`
- * — and only mounts the "more actions" dropdown while it is open.
+ * One sidebar row. Memoized, and it reads whether it is the open table from
+ * the store on its own: a table switch renders the row that lost the highlight
+ * and the row that gained it, and neither the list nor the sidebar around it.
+ * The row does not own a context menu — it arms the list's shared one from
+ * `onContextMenu` — and only mounts the "more actions" dropdown while it is open.
  */
 const TableItemRow = memo(function TableItemRow({
 	item,
 	isSelected,
-	isActive,
 	isMultiSelectMode,
 	hasSorting,
 	isEditing,
@@ -105,6 +105,9 @@ const TableItemRow = memo(function TableItemRow({
 	onContextAction,
 	onArmContextMenu
 }: TableItemRowProps) {
+	const isActive = useWorkspaceSelector(function (state) {
+		return selectActiveTableId(state) === item.id
+	})
 	const [showContextMenu, setShowContextMenu] = useState(false)
 	const [isMenuClosing, setIsMenuClosing] = useState(false)
 	const closingTimerRef = useRef<number | undefined>(undefined)
@@ -154,9 +157,11 @@ const TableItemRow = memo(function TableItemRow({
 		}
 	}, [isEditing])
 
-	useEffect(() => {
+	const [syncedName, setSyncedName] = useState(item.name)
+	if (syncedName !== item.name) {
+		setSyncedName(item.name)
 		setEditValue(item.name)
-	}, [item.name])
+	}
 
 	function handleEditKeyDown(e: React.KeyboardEvent) {
 		if (e.key === 'Enter') {
@@ -225,7 +230,7 @@ const TableItemRow = memo(function TableItemRow({
 		<div>
 			<div
 				className={cn(
-					'group flex items-center gap-2 px-2 py-1.5 cursor-pointer transition-colors focus-visible:bg-focus-strong',
+					'group flex items-center gap-2 px-2 py-1.5 cursor-pointer focus-visible:bg-focus-strong',
 					isActive && 'bg-sidebar-accent',
 					!isActive && 'hover:bg-sidebar-accent/60'
 				)}
@@ -403,7 +408,6 @@ function TableRightClickMenuItems({ onAction }: TableRightClickMenuItemsProps) {
 
 type Props = {
 	tables: TableItem[]
-	activeTableId?: string
 	selectedTableIds?: string[]
 	isMultiSelectMode?: boolean
 	activeSortingTableIds?: string[]
@@ -418,9 +422,8 @@ type Props = {
 
 const NO_IDS: string[] = []
 
-export function TableList({
+export const TableList = memo(function TableList({
 	tables,
-	activeTableId,
 	selectedTableIds = NO_IDS,
 	isMultiSelectMode = false,
 	activeSortingTableIds = NO_IDS,
@@ -507,7 +510,6 @@ export function TableList({
 						<TableItemRow
 							key={table.id}
 							item={table}
-							isActive={activeTableId === table.id}
 							isSelected={selectedTableIds.includes(table.id)}
 							isMultiSelectMode={isMultiSelectMode}
 							hasSorting={activeSortingTableIds.includes(table.id)}
@@ -531,4 +533,4 @@ export function TableList({
 			</ContextMenuContent>
 		</ContextMenu>
 	)
-}
+})

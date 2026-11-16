@@ -1,12 +1,15 @@
-use std::sync::{
-    atomic::{AtomicU8, AtomicUsize, Ordering},
-    Arc, RwLock,
+use std::{
+    sync::{
+        atomic::{AtomicU8, AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
+    time::Duration,
 };
 
 use anyhow::Context;
 use serde_json::value::RawValue;
 use tauri::async_runtime::{spawn, spawn_blocking, JoinHandle};
-use tokio::sync::oneshot;
+use tokio::sync::{oneshot, watch};
 use tokio_postgres::{config::SslMode, NoTls};
 use uuid::Uuid;
 
@@ -19,27 +22,44 @@ use crate::{
         mysql,
         parser::ParsedStatement,
         postgres, sqlite,
-        types::{channel, DatabaseClient, Page, QueryEvent, QueryId, QueryStatus, StatementInfo},
+        types::{
+            channel, DatabaseClient, ExecSender, Page, QueryEvent, QueryId, QueryStatus,
+            StatementInfo, StatementResult,
+        },
         QueryExecEvent,
     },
     Error,
 };
 
-/// Logs the outcome of an executor task. A `Cancelled` error here is benign —
-/// it means the results channel's consumer was aborted (cancellation or a
-/// superseding query), so the executor's send failed. Those are logged at debug
-/// to avoid noisy error-level "channel closed" spam on every query cancel.
-fn log_query_exec_outcome(engine: &str, result: Result<(), Error>) {
-    if let Err(err) = result {
-        if matches!(err, Error::Cancelled) {
-            log::debug!(
-                "{} query stopped: results consumer dropped (cancelled)",
-                engine
-            );
-        } else {
-            log::error!("Error executing {} query: {}", engine, err);
-        }
+/// Logs the outcome of an executor task and makes sure a failure reaches the
+/// statement. A `Cancelled` error here is benign: it means the results
+/// channel's consumer was aborted (cancellation or a superseding query), so the
+/// executor's send failed. Those are logged at debug to avoid noisy error-level
+/// "channel closed" spam on every query cancel.
+///
+/// Several executors (MySQL, libSQL) return their error with `?` and never send
+/// `Finished`, which left the statement `Running` until the caller's 30 second
+/// give-up hid the real message. The error is sent here instead. An executor
+/// that did report its own failure already ended the listener with that first
+/// `Finished`, so this second one is never read.
+fn report_query_exec_outcome(engine: &str, result: Result<(), Error>, sender: &ExecSender) {
+    let Err(err) = result else {
+        return;
+    };
+    if matches!(err, Error::Cancelled) {
+        log::debug!(
+            "{} query stopped: results consumer dropped (cancelled)",
+            engine
+        );
+        return;
     }
+
+    log::error!("Error executing {} query: {}", engine, err);
+    let _ = sender.send(QueryExecEvent::Finished {
+        elapsed_ms: 0,
+        affected_rows: 0,
+        error: Some(err.to_string()),
+    });
 }
 
 /// Row-result storage for a statement. Only row-returning statements (a SELECT,
@@ -81,6 +101,82 @@ struct ExecState {
     sqlite_interrupt_handle: RwLock<Option<rusqlite::InterruptHandle>>,
     pg_cancel: RwLock<Option<PgCancel>>,
     event_channel: Option<tauri::ipc::Channel<QueryEvent>>,
+    /// Flips to `true` once the statement is `Completed` or `Error`, so a
+    /// caller can sleep until then instead of polling the status.
+    finished: watch::Sender<bool>,
+}
+
+impl ExecState {
+    fn is_finished(&self) -> bool {
+        let status = self.status.load(Ordering::Relaxed);
+        status == QueryStatus::Completed as u8 || status == QueryStatus::Error as u8
+    }
+
+    /// Moves the statement to its terminal state and wakes every waiter. The
+    /// first outcome wins: a cancellation is never overwritten by a late
+    /// executor event, and a finished statement is never re-marked. Returns
+    /// whether this call was the one that finished it.
+    fn finish(&self, outcome: Result<usize, String>) -> bool {
+        // The error lock doubles as the transition lock, so two finishers
+        // cannot interleave their writes.
+        let mut error = self.error.write().expect("RwLock poisoned");
+        if self.is_finished() {
+            return false;
+        }
+
+        match outcome {
+            Ok(affected_rows) => {
+                *self.rows_affected.write().expect("RwLock poisoned") = Some(affected_rows);
+                self.status
+                    .store(QueryStatus::Completed as u8, Ordering::Relaxed);
+            }
+            Err(message) => {
+                *error = Some(message);
+                self.status
+                    .store(QueryStatus::Error as u8, Ordering::Relaxed);
+            }
+        }
+        drop(error);
+
+        self.finished.send_replace(true);
+        true
+    }
+
+    fn info(&self) -> StatementInfo {
+        let (returns_values, first_page, page_count, rows_received) = match &self.result {
+            ExecResult::Rows {
+                pages,
+                rows_received,
+                ..
+            } => {
+                let pages = pages.read().expect("RwLock poisoned");
+                (
+                    true,
+                    pages.first().cloned(),
+                    pages.len(),
+                    *rows_received.read().expect("RwLock poisoned"),
+                )
+            }
+            ExecResult::NoRows => (false, None, 0, 0),
+        };
+
+        StatementInfo {
+            returns_values,
+            status: self.status.load(Ordering::Relaxed).into(),
+            first_page,
+            affected_rows: *self.rows_affected.read().expect("RwLock poisoned"),
+            page_count,
+            rows_received,
+            error: self.error.read().expect("RwLock poisoned").clone(),
+        }
+    }
+
+    fn columns(&self) -> Option<Box<RawValue>> {
+        match &self.result {
+            ExecResult::Rows { columns, .. } => columns.read().expect("RwLock poisoned").clone(),
+            ExecResult::NoRows => None,
+        }
+    }
 }
 
 /// Signals the database engine itself to stop a running statement: interrupts
@@ -123,6 +219,10 @@ fn signal_engine_cancel(entry: &ExecState) {
 /// analytics dashboard fires six at once) so a caller can never have its own
 /// results pruned out from under it while it is still polling.
 const MAX_RETAINED_QUERIES: usize = 64;
+
+/// Error recorded for a statement whose executor went away without reporting
+/// an outcome.
+const EXECUTOR_STOPPED_MESSAGE: &str = "Query failed: the executor stopped before it finished";
 
 /// Executes and keeps track of the execution of queries.
 pub struct StatementManager {
@@ -177,8 +277,9 @@ impl StatementManager {
             let Some(entry) = self.queries.get(query_id) else {
                 continue;
             };
-            let status = entry.status.load(Ordering::Relaxed);
-            if status != QueryStatus::Running as u8 && status != QueryStatus::Pending as u8 {
+            // Marked before the engine is signalled: an interrupted executor
+            // reports its own error, and that must not replace this one.
+            if !entry.finish(Err("Query cancelled".to_string())) {
                 continue;
             }
 
@@ -188,16 +289,12 @@ impl StatementManager {
                 handle.abort();
             }
 
-            *entry.error.write().expect("RwLock poisoned") = Some("Query cancelled".to_string());
             if let Some(channel) = &entry.event_channel {
                 let _ = channel.send(QueryEvent::Error {
                     query_id: *query_id,
                     message: "Query cancelled".to_string(),
                 });
             }
-            entry
-                .status
-                .store(QueryStatus::Error as u8, Ordering::Relaxed);
 
             if let Some((_, handle)) = self.listener_handles.remove(query_id) {
                 handle.abort();
@@ -311,36 +408,34 @@ impl StatementManager {
     /// Fetches some general data on a query execution.
     /// Useful for the front-end to poll the execution status, mainly when it is still trying to load the first page of results
     pub fn fetch_query(&self, query_id: QueryId) -> Result<StatementInfo, Error> {
-        let exec_state = self.get(query_id)?;
+        Ok(self.get(query_id)?.info())
+    }
 
-        let (returns_values, first_page, page_count, rows_received) = match &exec_state.result {
-            ExecResult::Rows {
-                pages,
-                rows_received,
-                ..
-            } => {
-                let pages = pages.read().expect("RwLock poisoned");
-                (
-                    true,
-                    pages.first().cloned(),
-                    pages.len(),
-                    *rows_received.read().expect("RwLock poisoned"),
-                )
-            }
-            ExecResult::NoRows => (false, None, 0, 0),
-        };
+    /// Sleeps until the statement is `Completed` or `Error`, then returns its
+    /// columns, first page and counts together, so a caller needs neither a
+    /// status poll nor a separate column fetch. When `timeout` elapses first
+    /// the statement keeps running and the snapshot still reports `Running`.
+    pub async fn wait_for_statement(
+        &self,
+        query_id: QueryId,
+        timeout: Duration,
+    ) -> Result<StatementResult, Error> {
+        // Cloned out so the map entry is not held across the await.
+        let exec_state = Arc::clone(&*self.get(query_id)?);
+        let mut finished = exec_state.finished.subscribe();
+        let _ = tokio::time::timeout(timeout, finished.wait_for(|done| *done)).await;
 
-        let info = StatementInfo {
-            returns_values,
-            status: exec_state.status.load(Ordering::Relaxed).into(),
-            first_page,
-            affected_rows: *exec_state.rows_affected.read().expect("RwLock poisoned"),
-            page_count,
-            rows_received,
-            error: exec_state.error.read().expect("RwLock poisoned").clone(),
-        };
-
-        Ok(info)
+        let info = exec_state.info();
+        Ok(StatementResult {
+            query_id,
+            status: info.status,
+            columns: exec_state.columns(),
+            first_page: info.first_page,
+            page_count: info.page_count,
+            rows_received: info.rows_received,
+            affected_rows: info.affected_rows,
+            error: info.error,
+        })
     }
 
     /// Fetches a page of results for a given query.
@@ -371,13 +466,7 @@ impl StatementManager {
     }
 
     pub fn get_columns(&self, query_id: QueryId) -> Result<Option<Box<RawValue>>, Error> {
-        let exec_state = self.get(query_id)?;
-        match &exec_state.result {
-            ExecResult::Rows { columns, .. } => {
-                Ok(columns.read().expect("RwLock poisoned").clone())
-            }
-            ExecResult::NoRows => Ok(None),
-        }
+        Ok(self.get(query_id)?.columns())
     }
 }
 
@@ -412,6 +501,7 @@ impl StatementManager {
             sqlite_interrupt_handle: RwLock::new(None),
             pg_cancel: RwLock::new(None),
             event_channel,
+            finished: watch::channel(false).0,
         };
 
         let exec_storage = Arc::new(exec_storage);
@@ -443,7 +533,7 @@ impl StatementManager {
                         dialect,
                     )
                     .await;
-                    log_query_exec_outcome("Postgres", result);
+                    report_query_exec_outcome("Postgres", result, &sender);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -462,14 +552,15 @@ impl StatementManager {
                     if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
                         return;
                     }
+                    let blocking_sender = sender.clone();
                     let result = spawn_blocking(move || {
                         let conn = connection.lock().expect("Mutex poisoned");
-                        sqlite::execute::execute_query(&conn, stmt, &sender)
+                        sqlite::execute::execute_query(&conn, stmt, &blocking_sender)
                     })
                     .await
                     .map_err(|error| Error::Internal(format!("SQLite query task failed: {error}")))
                     .and_then(|result| result);
-                    log_query_exec_outcome("SQLite", result);
+                    report_query_exec_outcome("SQLite", result, &sender);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -479,7 +570,8 @@ impl StatementManager {
                     if !wait_for_batch_turn(start_gate, &worker_storage, &sender).await {
                         return;
                     }
-                    log_query_exec_outcome("DuckDB", connection.execute_query(stmt, &sender).await);
+                    let result = connection.execute_query(stmt, &sender).await;
+                    report_query_exec_outcome("DuckDB", result, &sender);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -492,7 +584,7 @@ impl StatementManager {
                     let result =
                         crate::database::libsql::execute::execute_query(&connection, stmt, &sender)
                             .await;
-                    log_query_exec_outcome("LibSQL", result);
+                    report_query_exec_outcome("LibSQL", result, &sender);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -503,7 +595,7 @@ impl StatementManager {
                         return;
                     }
                     let result = mysql::execute::execute_query(&pool, stmt, &sender).await;
-                    log_query_exec_outcome("MySQL", result);
+                    report_query_exec_outcome("MySQL", result, &sender);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -515,7 +607,7 @@ impl StatementManager {
                     }
                     let adapter = crate::database::d1::D1Adapter::new(http);
                     let result = adapter.run_statement(stmt, &sender).await;
-                    log_query_exec_outcome("Cloudflare D1", result);
+                    report_query_exec_outcome("Cloudflare D1", result, &sender);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -527,7 +619,7 @@ impl StatementManager {
                     }
                     let adapter = crate::database::posthog::PosthogAdapter::new(http);
                     let result = adapter.run_statement(stmt, &sender).await;
-                    log_query_exec_outcome("PostHog", result);
+                    report_query_exec_outcome("PostHog", result, &sender);
                 });
                 self.execution_handles.insert(id, handle);
             }
@@ -594,17 +686,16 @@ impl StatementManager {
                         error,
                     } => {
                         if let Some(err) = error {
-                            if let Some(channel) = &exec_storage.event_channel {
-                                let _ = channel.send(QueryEvent::Error {
-                                    query_id: id,
-                                    message: err.clone(),
-                                });
+                            if exec_storage.finish(Err(err.clone())) {
+                                if let Some(channel) = &exec_storage.event_channel {
+                                    let _ = channel.send(QueryEvent::Error {
+                                        query_id: id,
+                                        message: err,
+                                    });
+                                }
                             }
-                            *exec_storage.error.write().expect("RwLock poisoned") = Some(err);
-                            exec_storage
-                                .status
-                                .store(QueryStatus::Error as u8, Ordering::Relaxed);
-                        } else {
+                        } else if exec_storage.finish(Ok(affected_rows)) {
+                            succeeded = true;
                             if let Some(channel) = &exec_storage.event_channel {
                                 let _ = channel.send(QueryEvent::Done {
                                     query_id: id,
@@ -612,17 +703,22 @@ impl StatementManager {
                                     elapsed_ms,
                                 });
                             }
-                            succeeded = true;
-                            exec_storage
-                                .status
-                                .store(QueryStatus::Completed as u8, Ordering::Relaxed);
-
-                            *exec_storage.rows_affected.write().expect("RwLock poisoned") =
-                                Some(affected_rows);
                         }
 
                         break;
                     }
+                }
+            }
+
+            // The executor dropped its sender without a `Finished` event (a row
+            // failed to serialize, or the task panicked). Without this the
+            // statement would report `Running` until the caller gave up.
+            if exec_storage.finish(Err(EXECUTOR_STOPPED_MESSAGE.to_string())) {
+                if let Some(channel) = &exec_storage.event_channel {
+                    let _ = channel.send(QueryEvent::Error {
+                        query_id: id,
+                        message: EXECUTOR_STOPPED_MESSAGE.to_string(),
+                    });
                 }
             }
 
@@ -648,7 +744,7 @@ impl StatementManager {
 async fn wait_for_batch_turn(
     start_gate: Option<oneshot::Receiver<bool>>,
     exec_storage: &ExecState,
-    sender: &crate::database::types::ExecSender,
+    sender: &ExecSender,
 ) -> bool {
     if let Some(start_gate) = start_gate {
         if !matches!(start_gate.await, Ok(true)) {
@@ -963,6 +1059,283 @@ mod tests {
         assert_ne!(untouched, QueryStatus::Error);
 
         stmt_manager.cancel_active_queries();
+    }
+
+    const SLOW_QUERY: &str = "WITH RECURSIVE t(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM t WHERE x < 100000000) SELECT count(*) FROM t;";
+
+    fn sqlite_client() -> DatabaseClient {
+        DatabaseClient::SQLite {
+            connection: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
+        }
+    }
+
+    /// The grid read used to start a statement, poll its status and then ask
+    /// for the columns. One wait must hand back all of it.
+    #[tokio::test]
+    async fn waiting_returns_columns_first_page_and_counts_together() {
+        let stmt_manager = StatementManager::new();
+        let ids = stmt_manager
+            .submit_query(
+                sqlite_client(),
+                "SELECT 1 AS id, 'ada' AS name UNION ALL SELECT 2, 'grace'",
+            )
+            .unwrap();
+
+        let result = stmt_manager
+            .wait_for_statement(ids[0], Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        assert_eq!(result.query_id, ids[0]);
+        assert_eq!(result.status, QueryStatus::Completed);
+        assert_eq!(result.error, None);
+        assert_eq!(
+            result.columns.as_ref().map(|columns| columns.get()),
+            Some(r#"["id","name"]"#)
+        );
+        assert_eq!(
+            result.first_page.as_ref().map(|page| page.get()),
+            Some(r#"[[1,"ada"],[2,"grace"]]"#)
+        );
+        assert_eq!(result.page_count, 1);
+        assert_eq!(result.rows_received, 2);
+        assert_eq!(result.affected_rows, Some(0));
+    }
+
+    /// Only the first page rides in the response. Later pages stay behind
+    /// `fetch_page`, so a wide read never becomes one oversized payload.
+    #[tokio::test]
+    async fn waiting_returns_only_the_first_page_of_a_larger_result() {
+        let stmt_manager = StatementManager::new();
+        let ids = stmt_manager
+            .submit_query(
+                sqlite_client(),
+                "WITH RECURSIVE t(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM t WHERE x < 501) SELECT x FROM t",
+            )
+            .unwrap();
+
+        let result = stmt_manager
+            .wait_for_statement(ids[0], Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        assert_eq!(result.status, QueryStatus::Completed);
+        assert_eq!(result.page_count, 2);
+        assert_eq!(result.rows_received, 501);
+        let first_page: Vec<Vec<i64>> =
+            serde_json::from_str(result.first_page.unwrap().get()).unwrap();
+        assert_eq!(first_page.len(), 500);
+        let second_page = stmt_manager.fetch_page(ids[0], 1).unwrap().unwrap();
+        assert_eq!(second_page.get(), "[[501]]");
+    }
+
+    #[tokio::test]
+    async fn waiting_reports_a_failed_statement_with_its_error() {
+        let stmt_manager = StatementManager::new();
+        let ids = stmt_manager
+            .submit_query(sqlite_client(), "SELECT * FROM missing_table")
+            .unwrap();
+
+        let result = stmt_manager
+            .wait_for_statement(ids[0], Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        assert_eq!(result.status, QueryStatus::Error);
+        assert_eq!(
+            result.error.as_deref(),
+            Some("Query failed: no such table: missing_table")
+        );
+        assert_eq!(result.first_page.map(|page| page.get().to_string()), None);
+    }
+
+    #[tokio::test]
+    async fn waiting_for_an_unknown_statement_is_an_error() {
+        let stmt_manager = StatementManager::new();
+
+        let result = stmt_manager
+            .wait_for_statement(42, Duration::from_millis(10))
+            .await;
+
+        assert!(result.is_err());
+    }
+
+    /// A timed-out wait is a give-up, not a cancel: the statement keeps
+    /// running and the snapshot says so.
+    #[tokio::test]
+    async fn waiting_gives_up_at_the_timeout_and_leaves_the_statement_running() {
+        let stmt_manager = StatementManager::new();
+        let ids = stmt_manager
+            .submit_query(sqlite_client(), SLOW_QUERY)
+            .unwrap();
+
+        let result = stmt_manager
+            .wait_for_statement(ids[0], Duration::from_millis(50))
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            result.status,
+            QueryStatus::Running | QueryStatus::Pending
+        ));
+        assert_eq!(result.error, None);
+        assert_ne!(
+            stmt_manager.get_query_status(ids[0]).unwrap(),
+            QueryStatus::Error
+        );
+
+        stmt_manager.cancel_active_queries();
+    }
+
+    /// A table switch cancels the previous read. The waiter must wake at once
+    /// with the load-bearing `Query cancelled`, and the error the interrupted
+    /// executor reports afterwards must not replace it.
+    #[tokio::test]
+    async fn cancelling_wakes_the_waiter_with_query_cancelled() {
+        let stmt_manager = StatementManager::new();
+        let ids = stmt_manager
+            .submit_query(sqlite_client(), SLOW_QUERY)
+            .unwrap();
+
+        let started = std::time::Instant::now();
+        let (result, ()) = tokio::join!(
+            stmt_manager.wait_for_statement(ids[0], Duration::from_secs(30)),
+            async {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                stmt_manager.cancel_queries(&ids);
+            }
+        );
+        let result = result.unwrap();
+
+        assert!(started.elapsed() < Duration::from_secs(5));
+        assert_eq!(result.status, QueryStatus::Error);
+        assert_eq!(result.error.as_deref(), Some("Query cancelled"));
+
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        let later = stmt_manager.fetch_query(ids[0]).unwrap();
+        assert_eq!(later.status, QueryStatus::Error);
+        assert_eq!(later.error.as_deref(), Some("Query cancelled"));
+    }
+
+    /// `9e999` is an infinite REAL, which the SQLite row writer cannot encode,
+    /// so the executor dies without a `Finished` event. That used to leave the
+    /// statement `Running` until the caller's 30 second give-up.
+    #[tokio::test]
+    async fn a_dead_executor_fails_the_statement_instead_of_leaving_it_running() {
+        let stmt_manager = StatementManager::new();
+        let ids = stmt_manager
+            .submit_query(sqlite_client(), "SELECT 9e999")
+            .unwrap();
+
+        let result = stmt_manager
+            .wait_for_statement(ids[0], Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        assert_eq!(result.status, QueryStatus::Error);
+        let error = result.error.expect("a dead executor must leave an error");
+        assert!(error.contains("SQLite query task failed"), "{error}");
+    }
+
+    /// MySQL and libSQL executors return their error with `?` instead of
+    /// sending `Finished`. The statement must still end with that error.
+    #[tokio::test]
+    async fn an_executor_error_without_a_finished_event_fails_the_statement() {
+        let (sender, mut receiver) = crate::database::types::channel();
+
+        super::report_query_exec_outcome(
+            "MySQL",
+            Err(crate::Error::Any(anyhow::anyhow!(
+                "MySQL query failed: Table 'dora.users' doesn't exist"
+            ))),
+            &sender,
+        );
+
+        match receiver.try_recv() {
+            Ok(crate::database::QueryExecEvent::Finished { error, .. }) => assert_eq!(
+                error.as_deref(),
+                Some("MySQL query failed: Table 'dora.users' doesn't exist")
+            ),
+            other => panic!("expected a Finished event, got {other:?}"),
+        }
+    }
+
+    /// A send that failed because the consumer went away is a cancellation,
+    /// and must not be turned into a statement error.
+    #[tokio::test]
+    async fn a_cancelled_executor_reports_nothing() {
+        let (sender, mut receiver) = crate::database::types::channel();
+
+        super::report_query_exec_outcome("MySQL", Err(crate::Error::Cancelled), &sender);
+        super::report_query_exec_outcome("MySQL", Ok(()), &sender);
+
+        assert!(receiver.try_recv().is_err());
+    }
+
+    /// The awaited read over a real Postgres connection: rows and columns in
+    /// one result, the server's own error text, and a cancel that reaches the
+    /// server instead of waiting out the sleep.
+    #[tokio::test]
+    async fn waiting_works_over_a_postgres_connection() -> anyhow::Result<()> {
+        let db = pgtemp::PgTempDB::async_new().await;
+        let (client, connection) =
+            tokio_postgres::connect(&db.connection_uri(), tokio_postgres::NoTls).await?;
+        tokio::task::spawn(connection);
+        client
+            .batch_execute(
+                "CREATE TABLE users (id INT PRIMARY KEY, name TEXT);
+                 INSERT INTO users VALUES (1, 'ada'), (2, 'grace'), (3, 'linus');",
+            )
+            .await?;
+        let client = DatabaseClient::Postgres {
+            client: Arc::new(client),
+            use_simple_query: false,
+            dialect: crate::database::dialect::PgDialect::Postgres,
+            ssl_mode: tokio_postgres::config::SslMode::Disable,
+        };
+        let stmt_manager = StatementManager::new();
+
+        let ids =
+            stmt_manager.submit_query(client.clone(), "SELECT * FROM users ORDER BY id LIMIT 2")?;
+        let read = stmt_manager
+            .wait_for_statement(ids[0], Duration::from_secs(10))
+            .await?;
+        assert_eq!(read.status, QueryStatus::Completed, "{:?}", read.error);
+        assert_eq!(
+            read.columns.as_ref().map(|columns| columns.get()),
+            Some(r#"["id","name"]"#)
+        );
+        assert_eq!(
+            read.first_page.as_ref().map(|page| page.get()),
+            Some(r#"[[1,"ada"],[2,"grace"]]"#)
+        );
+        assert_eq!(read.rows_received, 2);
+
+        let ids = stmt_manager.submit_query(client.clone(), "SELECT * FROM dropped_table")?;
+        let failed = stmt_manager
+            .wait_for_statement(ids[0], Duration::from_secs(10))
+            .await?;
+        assert_eq!(failed.status, QueryStatus::Error);
+        assert_eq!(
+            failed.error.as_deref(),
+            Some(r#"Database error: relation "dropped_table" does not exist"#)
+        );
+
+        let ids = stmt_manager.submit_query(client, "SELECT pg_sleep(30)")?;
+        let started = std::time::Instant::now();
+        let (cancelled, ()) = tokio::join!(
+            stmt_manager.wait_for_statement(ids[0], Duration::from_secs(30)),
+            async {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                stmt_manager.cancel_queries(&ids);
+            }
+        );
+        let cancelled = cancelled?;
+        assert!(started.elapsed() < Duration::from_secs(5));
+        assert_eq!(cancelled.status, QueryStatus::Error);
+        assert_eq!(cancelled.error.as_deref(), Some("Query cancelled"));
+
+        Ok(())
     }
 
     #[tokio::test]

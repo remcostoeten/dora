@@ -6,7 +6,10 @@ use crate::{
         duckdb::file_source::DataFileSourceEntry,
         duckdb::import_files::ImportFilesIntoDuckDbResult,
         duckdb::save_session::SaveDataFileSessionResult,
-        services::{connection::ConnectionService, query::QueryService},
+        services::{
+            connection::{record_last_connected, ConnectionService},
+            query::QueryService,
+        },
         types::{ConnectionInfo, DatabaseConnectResult, DatabaseInfo},
     },
     error::Error,
@@ -73,6 +76,7 @@ pub async fn update_connection_color(
 #[specta::specta]
 pub async fn connect_to_database(
     connection_id: Uuid,
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     monitor: State<'_, crate::database::ConnectionMonitor>,
     certificates: State<'_, crate::database::Certificates>,
@@ -81,8 +85,15 @@ pub async fn connect_to_database(
         connections: &state.connections,
         storage: &state.storage,
     };
-    svc.connect_to_database(&monitor, &certificates, connection_id)
-        .await
+    let outcome = svc
+        .open_connection(&monitor, &certificates, connection_id)
+        .await?;
+    if outcome.opened {
+        super::run_off_reply_path(&app, move |state| {
+            record_last_connected(&state.storage, connection_id);
+        });
+    }
+    Ok(outcome.result)
 }
 
 #[tauri::command]

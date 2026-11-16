@@ -13,9 +13,53 @@ export type ChangelogRelease = {
 	groups: ChangelogReleaseGroup[]
 }
 
-export const CURRENT_VERSION = "0.43.0"
+export const CURRENT_VERSION = "0.44.0"
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
+	{
+		version: "0.44.0",
+		date: "2026-11-15",
+		tagUrl: "https://github.com/remcostoeten/dora/releases/tag/v0.44.0",
+		groups: [
+			{
+				name: "Bug Fixes",
+				items: [
+				"fix(ui): finish outgoing tooltip exit when the next one opens",
+				"fix(ci): match the Docker heading in docker-view test and pin Playwright jobs to ubuntu-24.04 (#283) (#283)",
+				]
+			},
+			{
+				name: "Chores",
+				items: [
+				"chore(aur): update dora to 0.43.0",
+				]
+			},
+			{
+				name: "Documentation",
+				items: [
+				"docs(release): curated notes for v0.44.0",
+				"docs(release): add Redis TLS, cluster and SSH tunnels to v0.44.0 notes",
+				]
+			},
+			{
+				name: "Features",
+				items: [
+				"feat(onboarding): polished tour spotlight and anchored card (#276) (#276)",
+				"feat(studio): illustrated empty states across the app (#278) (#278)",
+				"feat(connections): two-step connection dialog with URL detection",
+				"feat(desktop): paint the last session's shell on the launch splash (#281) (#281)",
+				"feat(docs): rebuild /docs on the docs-boilerplate UI (#279) (#279)",
+				"feat(kv): TLS without verification, cluster mode and SSH tunnels for Redis (#282) (#282)",
+				]
+			},
+			{
+				name: "Performance",
+				items: [
+				"perf: GPU rendering on Linux and single-commit interactions (#280) (#280)",
+				]
+			}
+		]
+	},
 	{
 		version: "0.43.0",
 		date: "2026-11-05",

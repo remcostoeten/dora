@@ -1,5 +1,5 @@
 import { cva, VariantProps } from 'class-variance-authority'
-import { forwardRef } from 'react'
+import { forwardRef, memo } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
 import type { NavItem } from './types'
@@ -40,14 +40,16 @@ const navItemVariants = cva(
 export type NavItemProps = {
 	item: NavItem
 	isActive?: boolean
+	onNavigate?: (id: string) => void
 	tooltipSide?: 'top' | 'right' | 'bottom' | 'left'
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> &
 	VariantProps<typeof navItemVariants>
 
-export const SidebarNavItem = forwardRef<HTMLButtonElement, NavItemProps>(function SidebarNavItem(
+const NavItemButton = forwardRef<HTMLButtonElement, NavItemProps>(function SidebarNavItem(
 	{
 		item,
 		isActive = false,
+		onNavigate,
 		variant = 'default',
 		size = 'default',
 		tooltipSide = 'right',
@@ -67,7 +69,10 @@ export const SidebarNavItem = forwardRef<HTMLButtonElement, NavItemProps>(functi
 					type='button'
 					role='menuitem'
 					tabIndex={item.disabled ? -1 : 0}
-					onClick={item.onClick}
+					onClick={function () {
+						item.onClick?.()
+						onNavigate?.(item.id)
+					}}
 					disabled={item.disabled}
 					className={cn(navItemVariants({ variant, size, state }), className)}
 					aria-label={item.label}
@@ -84,3 +89,5 @@ export const SidebarNavItem = forwardRef<HTMLButtonElement, NavItemProps>(functi
 		</Tooltip>
 	)
 })
+
+export const SidebarNavItem = memo(NavItemButton)

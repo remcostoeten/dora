@@ -33,7 +33,8 @@ export default defineConfig({
 			'packages/*/src/**/*.test.{ts,tsx}',
 			'apps/*/src/**/*.test.{ts,tsx}'
 		],
-		exclude: ['**/node_modules/**', '**/dist/**'],
+		exclude: ['**/node_modules/**', '**/dist/**', 'apps/marketing/**'],
+		// apps/marketing unit tests use bun:test and run with `bun run test` there.
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'html'],

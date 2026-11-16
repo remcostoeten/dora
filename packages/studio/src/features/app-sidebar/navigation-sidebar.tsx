@@ -1,7 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
+import { memo, useCallback, useRef, KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
 import { preloadView } from './preload-views'
-import { useActiveIndicator } from './use-active-indicator'
+import { DoraLogo } from '@studio/components/dora-logo'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
+import { cn } from '@studio/shared/utils/cn'
+import { SidebarPanelToggle } from '@studio/features/sidebar/components/sidebar-panel-toggle'
+import { SidebarProvider, useSidebar } from './context'
+import { SidebarNavItem } from './nav-item'
 import {
 	AnalyticsIcon,
 	DataViewerIcon,
@@ -12,18 +17,62 @@ import {
 	SettingsIcon,
 	SqlConsoleIcon
 } from './rail-icons'
-import { DoraLogo } from '@studio/components/dora-logo'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
-import { cn } from '@studio/shared/utils/cn'
-import { SidebarPanelToggle } from '@studio/features/sidebar/components/sidebar-panel-toggle'
-import { SidebarProvider, useSidebar } from './context'
-import { SidebarNavItem } from './nav-item'
+import { useActiveIndicator } from './use-active-indicator'
 import type { NavItem, SidebarVariant } from './types'
 
 type DatabasePanelToggle = {
 	isOpen: boolean
 	onToggle: () => void
 }
+
+const PanelToggle = memo(SidebarPanelToggle)
+
+const SQL_CONSOLE_ITEM: NavItem = { id: 'sql-console', label: 'SQL Console', icon: SqlConsoleIcon }
+const DATA_VIEWER_ITEM: NavItem = { id: 'database-studio', label: 'Data Viewer', icon: DataViewerIcon }
+const KV_ITEM: NavItem = { id: 'kv-studio', label: 'Redis / Valkey', icon: KvStudioIcon }
+const ANALYTICS_ITEM: NavItem = { id: 'analytics', label: 'Analytics', icon: AnalyticsIcon }
+const SCHEMA_ITEM: NavItem = { id: 'schema-visualizer', label: 'Schema', icon: SchemaIcon }
+const SCHEMA_DIFF_ITEM: NavItem = { id: 'orm-cockpit', label: 'Schema Diff', icon: SchemaDiffIcon }
+const DOCKER_ITEM: NavItem = { id: 'docker', label: 'Docker Manager', icon: DockerIcon }
+const SETTINGS_ITEM: NavItem = { id: 'settings', label: 'Settings', icon: SettingsIcon }
+
+const MAIN_NAV_ITEMS: NavItem[] = [
+	SQL_CONSOLE_ITEM,
+	DATA_VIEWER_ITEM,
+	KV_ITEM,
+	SCHEMA_ITEM,
+	SCHEMA_DIFF_ITEM,
+	DOCKER_ITEM
+]
+
+const MAIN_NAV_ITEMS_WITH_ANALYTICS: NavItem[] = [
+	SQL_CONSOLE_ITEM,
+	DATA_VIEWER_ITEM,
+	KV_ITEM,
+	ANALYTICS_ITEM,
+	SCHEMA_ITEM,
+	SCHEMA_DIFF_ITEM,
+	DOCKER_ITEM
+]
+
+const HomeButton = memo(function HomeButton({ onSelect }: { onSelect: (id: string) => void }) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<button
+					type='button'
+					onClick={() => onSelect('database-studio')}
+					className='cursor-pointer hover:opacity-80 transition-opacity focus-visible:opacity-80 focus-visible:bg-focus rounded-md'
+					aria-label='Go to home'
+					title='Dora AI Home'
+				>
+					<DoraLogo size={28} variant='neutral' />
+				</button>
+			</TooltipTrigger>
+			<TooltipContent side='right'>Go to Home</TooltipContent>
+		</Tooltip>
+	)
+})
 
 type ContentProps = {
 	activeNavId?: string
@@ -44,64 +93,21 @@ function SidebarContent({
 	const isFloating = false
 	const navRef = useRef<HTMLElement>(null)
 	const indicatorRef = useActiveIndicator(navRef, activeNavId, analyticsAvailable)
+
+	const mainNavItems = analyticsAvailable ? MAIN_NAV_ITEMS_WITH_ANALYTICS : MAIN_NAV_ITEMS
+	const onNavSelectRef = useRef(onNavSelect)
+	onNavSelectRef.current = onNavSelect
 	const queryClient = useQueryClient()
-
-	// Nav items configuration
-	const mainNavItems: NavItem[] = [
-		{
-			id: 'sql-console',
-			label: 'SQL Console',
-			icon: SqlConsoleIcon,
-			onClick: () => onNavSelect?.('sql-console')
+	const handlePreload = useCallback(
+		function (event: SyntheticEvent<HTMLElement>) {
+			const id = event.currentTarget.dataset.navId
+			if (id) preloadView(id, queryClient)
 		},
-		{
-			id: 'database-studio',
-			label: 'Data Viewer',
-			icon: DataViewerIcon,
-			onClick: () => onNavSelect?.('database-studio')
-		},
-		{
-			id: 'kv-studio',
-			label: 'Redis / Valkey',
-			icon: KvStudioIcon,
-			onClick: () => onNavSelect?.('kv-studio')
-		},
-		...(analyticsAvailable
-			? [
-					{
-						id: 'analytics',
-						label: 'Analytics',
-						icon: AnalyticsIcon,
-						onClick: () => onNavSelect?.('analytics')
-					}
-				]
-			: []),
-		{
-			id: 'schema-visualizer',
-			label: 'Schema',
-			icon: SchemaIcon,
-			onClick: () => onNavSelect?.('schema-visualizer')
-		},
-		{
-			id: 'orm-cockpit',
-			label: 'Schema Diff',
-			icon: SchemaDiffIcon,
-			onClick: () => onNavSelect?.('orm-cockpit')
-		},
-		{
-			id: 'docker',
-			label: 'Docker Manager',
-			icon: DockerIcon,
-			onClick: () => onNavSelect?.('docker')
-		}
-	]
-
-	const settingsNavItem: NavItem = {
-		id: 'settings',
-		label: 'Settings',
-		icon: SettingsIcon,
-		onClick: () => onNavSelect?.('settings')
-	}
+		[queryClient]
+	)
+	const handleSelect = useCallback(function (id: string) {
+		onNavSelectRef.current?.(id)
+	}, [])
 
 	const handleKeyDown = useCallback((event: KeyboardEvent<HTMLElement>) => {
 		const nav = navRef.current
@@ -153,20 +159,7 @@ function SidebarContent({
 			aria-label='Main sidebar'
 		>
 			<div className='flex flex-col items-center justify-center pt-2 gap-4'>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<button
-							type='button'
-							onClick={() => onNavSelect?.('database-studio')}
-							className='cursor-pointer hover:opacity-80 transition-opacity focus-visible:opacity-80 focus-visible:bg-focus rounded-md'
-							aria-label='Go to home'
-							title='Dora AI Home'
-						>
-							<DoraLogo size={28} variant='neutral' />
-						</button>
-					</TooltipTrigger>
-					<TooltipContent side='right'>Go to Home</TooltipContent>
-				</Tooltip>
+				<HomeButton onSelect={handleSelect} />
 				<div
 					className='w-8 h-px bg-sidebar-border'
 					role='separator'
@@ -193,9 +186,10 @@ function SidebarContent({
 							key={item.id}
 							item={item}
 							isActive={activeNavId === item.id}
+							onNavigate={handleSelect}
 							variant={variant}
-							onPointerEnter={() => preloadView(item.id, queryClient)}
-							onFocus={() => preloadView(item.id, queryClient)}
+							onPointerEnter={handlePreload}
+							onFocus={handlePreload}
 						/>
 					))}
 				</div>
@@ -208,7 +202,7 @@ function SidebarContent({
 					{aiAssistantToggle}
 					{databasePanelToggle && (
 						<>
-							<SidebarPanelToggle
+							<PanelToggle
 								isOpen={databasePanelToggle.isOpen}
 								onToggle={databasePanelToggle.onToggle}
 								buttonClassName='h-10 w-10 text-sidebar-foreground aria-pressed:bg-sidebar-accent aria-pressed:text-sidebar-accent-foreground'
@@ -223,8 +217,9 @@ function SidebarContent({
 						</>
 					)}
 					<SidebarNavItem
-						item={settingsNavItem}
-						isActive={activeNavId === settingsNavItem.id}
+						item={SETTINGS_ITEM}
+						isActive={activeNavId === SETTINGS_ITEM.id}
+						onNavigate={handleSelect}
 						variant={variant}
 					/>
 				</div>

@@ -21,6 +21,7 @@ import type {
 import { commands } from '@studio/lib/bindings'
 import { Channel } from '@tauri-apps/api/core'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
+import { noop } from '@studio/shared/utils/noop'
 import {
 	buildDropColumnSql,
 	getTableRefParts,
@@ -105,6 +106,8 @@ const QUERY_STREAMING_ENABLED =
 	).env?.VITE_QUERY_STREAMING !== '0'
 
 type QueryPage = Extract<Awaited<ReturnType<typeof commands.fetchQuery>>, { status: 'ok' }>['data']
+
+type FirstPage = Pick<QueryPage, 'first_page' | 'page_count'>
 
 type QueryPollResult =
 	| { kind: 'completed'; pageInfo: QueryPage }
@@ -238,6 +241,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function createTauriAdapter(): DataAdapter {
 	const { rememberConnections, resolveConnectionDialect } = createConnectionDialectResolver()
+	const pendingConnects = new Map<string, Promise<unknown>>()
 
 	return {
 		async bootstrap(): Promise<AdapterResult<BootstrapSnapshot>> {
@@ -272,6 +276,7 @@ export function createTauriAdapter(): DataAdapter {
 		): Promise<AdapterResult<Connection>> {
 			const result = await commands.addConnection(name, databaseType, null)
 			if (result.status === 'ok') {
+				rememberConnections([result.data])
 				return ok(backendToFrontendConnection(result.data))
 			}
 			return err(formatError(result.error))
@@ -291,6 +296,7 @@ export function createTauriAdapter(): DataAdapter {
 				null
 			)
 			if (result.status === 'ok') {
+				rememberConnections([result.data])
 				return ok(backendToFrontendConnection(result.data))
 			}
 			return err(formatError(result.error))
@@ -307,11 +313,19 @@ export function createTauriAdapter(): DataAdapter {
 		async connectToDatabase(
 			connectionId: string
 		): Promise<AdapterResult<import('@studio/lib/bindings').DatabaseConnectResult>> {
-			const result = await commands.connectToDatabase(connectionId)
-			if (result.status === 'ok') {
-				return ok(result.data)
+			const pending = commands.connectToDatabase(connectionId)
+			pendingConnects.set(connectionId, pending)
+			try {
+				const result = await pending
+				if (result.status === 'ok') {
+					return ok(result.data)
+				}
+				return err(formatError(result.error))
+			} finally {
+				if (pendingConnects.get(connectionId) === pending) {
+					pendingConnects.delete(connectionId)
+				}
 			}
-			return err(formatError(result.error))
 		},
 
 		async getDataFileSourceStatus(connectionId: string) {
@@ -449,6 +463,8 @@ export function createTauriAdapter(): DataAdapter {
 			filterGroup?: FilterGroup
 		): Promise<AdapterResult<TableData>> {
 			const startTime = performance.now()
+			// Waits out an in-flight connect so the read is not failed and retried after the schema load.
+			await pendingConnects.get(connectionId)?.catch(noop)
 			const dialect = await resolveConnectionDialect(connectionId)
 			let query = `SELECT * FROM ${getTableSqlIdentifier(tableName, dialect)}`
 
@@ -468,54 +484,32 @@ export function createTauriAdapter(): DataAdapter {
 				query += ` OFFSET ${page * pageSize}`
 			}
 
-			const startResult = await commands.startQuery(connectionId, query)
+			const runResult = await commands.runQuery(connectionId, query, QUERY_POLL_TIMEOUT_MS)
 
-			if (startResult.status !== 'ok') {
-				console.error('[TauriAdapter] Query failed to start:', startResult.error)
-				return err(formatError(startResult.error))
+			if (runResult.status !== 'ok') {
+				console.error('[TauriAdapter] Query failed to start:', runResult.error)
+				return err(formatError(runResult.error))
 			}
 
-			// The Rust command returns Vec<usize>, effectively [query_id]
-			if (!startResult.data || startResult.data.length === 0) {
-				console.error('[TauriAdapter] Unexpected empty data from start_query:', startResult)
-				return err('Backend returned no query ID')
+			const statement = runResult.data
+			if (statement.status === 'Error') {
+				const message = statement.error || 'Query failed'
+				console.error('[TauriAdapter] Query execution error:', message)
+				return err(message)
 			}
-
-			const queryId = startResult.data[0]
-
-			const poll = await pollQueryToCompletion(queryId)
-			if (poll.kind === 'fetch-failed') {
-				return err('Failed to fetch query results')
-			}
-			if (poll.kind === 'timeout') {
+			if (statement.status !== 'Completed') {
 				return err(
 					`Query is still running after ${QUERY_POLL_TIMEOUT_MS / 1000}s. The database may be slow to respond (a serverless cold start, a large table, or a dropped connection). Try again or reconnect.`
 				)
 			}
-			if (poll.kind === 'error') {
-				console.error('[TauriAdapter] Query execution error:', poll.message)
-				return err(poll.message)
-			}
 
-			const pageInfo = poll.pageInfo
-
-			const columnsResult = await commands.getColumns(queryId)
-			if (columnsResult.status !== 'ok') {
-				console.error(
-					'[TauriAdapter] getColumns failed for query:',
-					queryId,
-					columnsResult.error
-				)
-				return err(formatError(columnsResult.error) || 'Failed to get columns')
-			}
-
-			const columns = parseColumns(columnsResult.data ?? [])
-			const rows = await readAllQueryRows(queryId, pageInfo, columns)
+			const columns = parseColumns(statement.columns ?? [])
+			const rows = await readAllQueryRows(statement.query_id, statement, columns)
 
 			return ok({
 				columns,
 				rows,
-				totalCount: pageInfo.affected_rows ?? 0,
+				totalCount: statement.affected_rows ?? 0,
 				executionTime: Math.round(performance.now() - startTime)
 			})
 		},
@@ -877,7 +871,7 @@ function parseColumns(data: JsonValue): ColumnDefinition[] {
  */
 async function readAllQueryRows(
 	queryId: number,
-	pageInfo: QueryPage,
+	pageInfo: FirstPage,
 	columns: ColumnDefinition[]
 ): Promise<Record<string, unknown>[]> {
 	const rows = parseQueryRows(pageInfo.first_page, columns)

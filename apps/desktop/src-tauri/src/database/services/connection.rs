@@ -29,7 +29,15 @@ use crate::{
 const MYSQL_POOL_MIN: usize = 0;
 const MYSQL_POOL_MAX: usize = 4;
 
-fn mysql_opts_with_pool_constraints(
+/// How long an idle pooled session survives. mysql_async's default is zero,
+/// and with a minimum of zero that closes every connection the moment it is
+/// returned, so each query paid a full connect and auth. Three minutes keeps a
+/// browsing session on one connection, still lets an idle Dora drop to nothing,
+/// and stays under the four minute idle cut-off common to cloud load balancers.
+const MYSQL_POOL_IDLE_TTL: std::time::Duration = std::time::Duration::from_secs(180);
+
+/// The pool options every MySQL-wire connection is opened with.
+pub fn mysql_opts_with_pool_constraints(
     mysql_url: &url::Url,
     max_connections: usize,
 ) -> Result<mysql_async::Opts, Error> {
@@ -39,7 +47,11 @@ fn mysql_opts_with_pool_constraints(
     let constraints = mysql_async::PoolConstraints::new(MYSQL_POOL_MIN, max_connections)
         .expect("MYSQL_POOL_MIN <= max_connections");
     Ok(mysql_async::OptsBuilder::from_opts(opts)
-        .pool_opts(mysql_async::PoolOpts::default().with_constraints(constraints))
+        .pool_opts(
+            mysql_async::PoolOpts::default()
+                .with_constraints(constraints)
+                .with_inactive_connection_ttl(MYSQL_POOL_IDLE_TTL),
+        )
         .into())
 }
 
@@ -131,6 +143,21 @@ fn duckdb_data_file_connect_result(
         connected,
         file_sources: Some(file_source_entries),
         error: None,
+    }
+}
+
+/// What [`ConnectionService::open_connection`] did. `opened` is true only when
+/// this call created the handle, not when the connection was already open.
+pub struct ConnectOutcome {
+    pub result: DatabaseConnectResult,
+    pub opened: bool,
+}
+
+/// Stamps `last_connected_at`. Best-effort: a failed write is logged and never
+/// fails the connect that triggered it.
+pub fn record_last_connected(storage: &Storage, connection_id: Uuid) {
+    if let Err(e) = storage.update_last_connected(&connection_id) {
+        log::warn!("Failed to update last connected timestamp: {}", e);
     }
 }
 
@@ -483,20 +510,37 @@ impl<'a> ConnectionService<'a> {
         Ok(())
     }
 
-    #[instrument(skip(self, monitor, certificates), fields(connection_id = %connection_id))]
+    /// Opens the connection and stamps `last_connected_at` before returning.
     pub async fn connect_to_database(
         &self,
         monitor: &ConnectionMonitor,
         certificates: &Certificates,
         connection_id: Uuid,
     ) -> Result<DatabaseConnectResult, Error> {
+        let outcome = self
+            .open_connection(monitor, certificates, connection_id)
+            .await?;
+        if outcome.opened {
+            record_last_connected(self.storage, connection_id);
+        }
+        Ok(outcome.result)
+    }
+
+    /// Opens the connection without writing to storage. The `last_connected_at`
+    /// stamp is a synced SQLite commit, so a caller that has a reply to send
+    /// writes it afterwards through [`record_last_connected`].
+    #[instrument(skip(self, monitor, certificates), fields(connection_id = %connection_id))]
+    pub async fn open_connection(
+        &self,
+        monitor: &ConnectionMonitor,
+        certificates: &Certificates,
+        connection_id: Uuid,
+    ) -> Result<ConnectOutcome, Error> {
+        // One row, one decrypt: loading every saved connection here decrypted
+        // all of them just to find this id.
         if !self.connections.contains_key(&connection_id) {
-            let stored_connections = self.storage.get_connections()?;
-            if let Some(stored_connection) =
-                stored_connections.iter().find(|c| c.id == connection_id)
-            {
-                let connection =
-                    DatabaseConnection::from_connection_info(stored_connection.clone());
+            if let Some(stored_connection) = self.storage.get_connection(&connection_id)? {
+                let connection = DatabaseConnection::from_connection_info(stored_connection);
                 self.connections.insert(connection_id, connection);
             }
         }
@@ -513,14 +557,32 @@ impl<'a> ConnectionService<'a> {
                     } if !file_sources.is_empty() => Some(file_source_entries.clone()),
                     _ => None,
                 };
-                return Ok(DatabaseConnectResult {
-                    connected: true,
-                    file_sources,
-                    error: None,
+                return Ok(ConnectOutcome {
+                    result: DatabaseConnectResult {
+                        connected: true,
+                        file_sources,
+                        error: None,
+                    },
+                    opened: false,
                 });
             }
         }
 
+        let result = self
+            .open_handle(monitor, certificates, connection_id)
+            .await?;
+        Ok(ConnectOutcome {
+            opened: result.connected,
+            result,
+        })
+    }
+
+    async fn open_handle(
+        &self,
+        monitor: &ConnectionMonitor,
+        certificates: &Certificates,
+        connection_id: Uuid,
+    ) -> Result<DatabaseConnectResult, Error> {
         let mut connection_entry = self
             .connections
             .get_mut(&connection_id)
@@ -636,10 +698,6 @@ impl<'a> ConnectionService<'a> {
                         connection.connected = true;
                         connection.detected_dialect = detected;
 
-                        if let Err(e) = self.storage.update_last_connected(&connection_id) {
-                            log::warn!("Failed to update last connected timestamp: {}", e);
-                        }
-
                         monitor.add_connection(connection_id, conn_check).await;
 
                         Ok(connect_result(true))
@@ -739,10 +797,6 @@ impl<'a> ConnectionService<'a> {
                         connection.connected = true;
                         connection.detected_dialect = detected;
 
-                        if let Err(e) = self.storage.update_last_connected(&connection_id) {
-                            log::warn!("Failed to update last connected timestamp: {}", e);
-                        }
-
                         Ok(connect_result(true))
                     }
                     Ok(Err(e)) => {
@@ -776,10 +830,6 @@ impl<'a> ConnectionService<'a> {
                 Ok(conn) => {
                     *sqlite_conn = Some(Arc::new(Mutex::new(conn)));
                     connection.connected = true;
-
-                    if let Err(e) = self.storage.update_last_connected(&connection_id) {
-                        log::warn!("Failed to update last connected timestamp: {}", e);
-                    }
 
                     log::info!("Successfully connected to SQLite database: {}", db_path);
                     Ok(connect_result(true))
@@ -834,10 +884,6 @@ impl<'a> ConnectionService<'a> {
                         *file_source_entries = registration.clone();
                         *duckdb_conn = Some(conn_handle);
                         connection.connected = true;
-
-                        if let Err(e) = self.storage.update_last_connected(&connection_id) {
-                            log::warn!("Failed to update last connected timestamp: {}", e);
-                        }
 
                         log::info!("Successfully connected to DuckDB database: {}", db_path);
                         if file_sources.is_empty() {
@@ -894,10 +940,6 @@ impl<'a> ConnectionService<'a> {
                             *libsql_conn = Some(Arc::new(conn));
                             connection.connected = true;
 
-                            if let Err(e) = self.storage.update_last_connected(&connection_id) {
-                                log::warn!("Failed to update last connected timestamp: {}", e);
-                            }
-
                             log::info!("Successfully connected to LibSQL database: {}", url_str);
                             Ok(connect_result(true))
                         }
@@ -946,10 +988,6 @@ impl<'a> ConnectionService<'a> {
                         *d1_conn = Some(Arc::new(http));
                         connection.connected = true;
 
-                        if let Err(e) = self.storage.update_last_connected(&connection_id) {
-                            log::warn!("Failed to update last connected timestamp: {}", e);
-                        }
-
                         log::info!("Successfully connected to Cloudflare D1: {}", url_str);
                         Ok(connect_result(true))
                     }
@@ -991,10 +1029,6 @@ impl<'a> ConnectionService<'a> {
                     Ok(_) => {
                         *posthog_conn = Some(Arc::new(http));
                         connection.connected = true;
-
-                        if let Err(e) = self.storage.update_last_connected(&connection_id) {
-                            log::warn!("Failed to update last connected timestamp: {}", e);
-                        }
 
                         log::info!("Successfully connected to PostHog: {}", url_str);
                         Ok(connect_result(true))
@@ -1671,7 +1705,26 @@ mod tests {
         postgres::connection_string::clean_postgres_connection_string, types::detect_pgbouncer_flag,
     };
 
-    use super::normalize_mysql_ssl_params;
+    use super::{
+        mysql_opts_with_pool_constraints, normalize_mysql_ssl_params, MYSQL_POOL_IDLE_TTL,
+        MYSQL_POOL_MAX,
+    };
+
+    /// A zero idle TTL makes mysql_async close a connection as soon as it is
+    /// returned to a pool whose minimum is zero, which turned every table open
+    /// into a fresh connect.
+    #[test]
+    fn mysql_pool_keeps_returned_connections_for_reuse() {
+        let url = url::Url::parse("mysql://root:rootpass@127.0.0.1:3307/dora").unwrap();
+
+        let opts = mysql_opts_with_pool_constraints(&url, MYSQL_POOL_MAX).unwrap();
+
+        let pool_opts = opts.pool_opts();
+        assert_eq!(pool_opts.constraints().min(), 0);
+        assert_eq!(pool_opts.constraints().max(), MYSQL_POOL_MAX);
+        assert_eq!(pool_opts.inactive_connection_ttl(), MYSQL_POOL_IDLE_TTL);
+        assert!(!MYSQL_POOL_IDLE_TTL.is_zero());
+    }
 
     fn normalized(raw: &str) -> String {
         normalize_mysql_ssl_params(&url::Url::parse(raw).unwrap()).to_string()

@@ -6,9 +6,11 @@ import {
 	hydrateWorkspaceFromBootstrap,
 	initTableSnapshotPersistence
 } from '@studio/core/workspace-store'
+import { dropCostlyEditorFocusRule } from '@studio/core/editor-host/focus-rule'
 import {
 	dismissBootScreen,
 	preloadBootAssets,
+	reportFirstPaint,
 	revealMainWindow,
 	warmEditorHost
 } from './boot-screen'
@@ -19,6 +21,8 @@ import '@remcostoeten/notifier/styles'
 async function boot() {
 	void revealMainWindow()
 	purgeLegacyDemoStore()
+
+	dropCostlyEditorFocusRule()
 
 	const settings = getAppearanceSettings()
 	applyAppearanceToDOM(settings)
@@ -41,7 +45,10 @@ async function boot() {
 	warmEditorHost()
 
 	requestAnimationFrame(() => {
-		requestAnimationFrame(dismissBootScreen)
+		requestAnimationFrame(() => {
+			dismissBootScreen()
+			void reportFirstPaint()
+		})
 	})
 }
 

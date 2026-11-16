@@ -1,0 +1,47 @@
+---
+title: Dump and restore
+description: Dump a whole database to a file or folder you can re-import, and restore a SQL dump into a connection.
+---
+
+A dump copies a whole database, schema and data, to your filesystem. Use it as a
+backup before a risky change, or to move a database to another server.
+
+## Dump a database
+
+Right-click a connection in the connection list and choose **Dump to File**. The
+option is only enabled while the connection is live. The same dump runs from
+**Backup database…** in the Data Studio toolbar menu.
+
+The output depends on the engine:
+
+| Engine     | Output                                               |
+| ---------- | ---------------------------------------------------- |
+| PostgreSQL | `.sql` file                                          |
+| MySQL      | `.sql` file                                          |
+| libSQL     | `.sql` file                                          |
+| SQLite     | `.sqlite` file, a copy of the database               |
+| DuckDB     | Folder with the schema and the data as Parquet files |
+
+## What a SQL dump contains
+
+PostgreSQL, MySQL, and libSQL dumps write the schema first, then the data, then
+the foreign keys, so rows load before any constraint is checked.
+
+- **PostgreSQL** dumps include the enum types the tables use and set every
+  sequence to its current value, so new rows get the next ID.
+- **MySQL** dumps use the table definitions from `SHOW CREATE TABLE` and turn
+  foreign key checks off while the data loads.
+- **libSQL** dumps load inside a single transaction.
+
+Binary values, timestamps, UUIDs, JSON, and arrays are written as values the
+database can read back.
+
+## Restore a dump
+
+Choose **Restore from backup…** in the Data Studio toolbar menu, pick a `.sql`
+file, and confirm. Dora runs the file against the connected database.
+
+<Callout type='warn'>
+	Restoring runs every statement in the file against the current connection. Restore into an empty
+	database, or one you can afford to overwrite.
+</Callout>

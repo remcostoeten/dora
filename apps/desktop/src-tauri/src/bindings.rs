@@ -120,6 +120,7 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::cancel_query,
         db_commands::cancel_queries,
         db_commands::start_query,
+        db_commands::run_query,
         db_commands::start_query_stream,
         db_commands::fetch_query,
         db_commands::fetch_page,

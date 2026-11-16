@@ -11,13 +11,13 @@ import {
 	Search
 } from 'lucide-react'
 import {
-	forwardRef,
-	useEffect,
+	memo,
+	useCallback,
 	useMemo,
 	useRef,
 	useState,
-	type ComponentPropsWithoutRef,
-	type KeyboardEvent
+	type KeyboardEvent,
+	type MouseEvent
 } from 'react'
 import {
 	ContextMenu,
@@ -62,6 +62,12 @@ import {
 
 const KEEP_OPEN_AFTER_DELETE_MS = 600
 
+const QUICK_DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
+	month: 'short',
+	day: 'numeric',
+	year: 'numeric'
+})
+
 function normalizeTimestamp(value: number | null | undefined): number | null {
 	if (!value) return null
 	return value < 1_000_000_000_000 ? value * 1000 : value
@@ -72,11 +78,28 @@ function formatQuickDate(value: number | null | undefined): string {
 	if (!normalized) return 'Never'
 	const date = new Date(normalized)
 	if (Number.isNaN(date.getTime())) return 'Unknown'
-	return date.toLocaleString(undefined, {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric'
-	})
+	return QUICK_DATE_FORMAT.format(date)
+}
+
+function revealRowInList(row: HTMLElement) {
+	const list = row.parentElement
+	if (!list) return
+	const listRect = list.getBoundingClientRect()
+	const rowRect = row.getBoundingClientRect()
+	if (rowRect.top < listRect.top) {
+		list.scrollTop -= listRect.top - rowRect.top
+	} else if (rowRect.bottom > listRect.bottom) {
+		list.scrollTop += rowRect.bottom - listRect.bottom
+	}
+}
+
+function stopEscapeFromReachingGlobalShortcuts(event: globalThis.KeyboardEvent) {
+	event.stopPropagation()
+}
+
+function keepTypingOutOfMenuTypeahead(event: KeyboardEvent) {
+	if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return
+	event.stopPropagation()
 }
 
 type Props = {
@@ -91,163 +114,232 @@ type Props = {
 	onDeleteConnection?: (id: string) => void
 }
 
-type ConnectionMenuRowProps = ComponentPropsWithoutRef<'div'> & {
+type RowProps = {
 	connection: Connection
 	isActive: boolean
 	rowSummary: string | null
 	rowHealth: DataFileHealth | null
+	onSelect: (id: string) => void
+	onArmContextMenu: (id: string) => void
+	onRegister: (id: string, node: HTMLDivElement | null) => void
 	onEditConnection?: (id: string) => void
-	onDeleteConnection?: (id: string) => void
-	onConfirmDelete: (id: string) => void
+	onConfirmDelete?: (id: string) => void
 }
 
-const ConnectionMenuRow = forwardRef<HTMLDivElement, ConnectionMenuRowProps>(
-	function ConnectionMenuRow(
-		{
-			connection,
-			isActive,
-			rowSummary,
-			rowHealth,
-			onEditConnection,
-			onDeleteConnection,
-			onConfirmDelete,
-			className,
-			onClick,
-			onKeyDown,
-			onContextMenuCapture,
-			...props
-		},
-		ref
-	) {
-		return (
+const ConnectionMenuRow = memo(function ConnectionMenuRow({
+	connection,
+	isActive,
+	rowSummary,
+	rowHealth,
+	onSelect,
+	onArmContextMenu,
+	onRegister,
+	onEditConnection,
+	onConfirmDelete
+}: RowProps) {
+	const lastConnected = formatQuickDate(connection.lastConnectedAt)
+
+	return (
+		<div
+			ref={(node) => onRegister(connection.id, node)}
+			role='menuitem'
+			tabIndex={0}
+			data-connection-id={connection.id}
+			aria-current={isActive ? 'true' : undefined}
+			aria-label={`${connection.name}, ${resolveProviderLabel(describeConnectionSource(connection))}, last connected ${lastConnected}`}
+			onContextMenu={() => onArmContextMenu(connection.id)}
+			onPointerDown={(event) => {
+				if (event.pointerType !== 'mouse') onArmContextMenu(connection.id)
+			}}
+			onClick={() => onSelect(connection.id)}
+			onKeyDown={(event) => {
+				if (event.key === 'Enter' || event.key === ' ') {
+					event.preventDefault()
+					onSelect(connection.id)
+				}
+			}}
+			className={cn(
+				'group/row gap-2.5 p-2 cursor-pointer overflow-hidden',
+				'flex items-center outline-hidden',
+				'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
+				'focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent',
+				isActive && 'bg-sidebar-accent/40'
+			)}
+		>
 			<div
-				ref={ref}
-				role='menuitem'
-				tabIndex={0}
-				data-connection-id={connection.id}
-				aria-current={isActive ? 'true' : undefined}
-				aria-label={`${connection.name}, ${resolveProviderLabel(describeConnectionSource(connection))}, last connected ${formatQuickDate(connection.lastConnectedAt)}`}
-				onContextMenuCapture={onContextMenuCapture}
-				onClick={onClick}
-				onKeyDown={onKeyDown}
 				className={cn(
-					'group/row gap-2.5 p-2 cursor-pointer overflow-hidden',
-					'flex items-center outline-hidden',
-					'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
-					'focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent',
-					isActive && 'bg-sidebar-accent/40',
-					className
+					'flex h-7 w-7 items-center justify-center rounded-md border shrink-0',
+					'transition-[border-color,background-color] duration-150 ease-[var(--ease-out)]',
+					connection.status === 'error'
+						? 'border-destructive/40 bg-destructive/5'
+						: isActive
+							? 'border-primary/30 bg-primary/5'
+							: 'border-border bg-background'
 				)}
-				{...props}
 			>
+				{connection.status === 'error' ? (
+					<AlertCircle className='h-3.5 w-3.5 text-destructive' />
+				) : (
+					<DatabaseTypeIcon
+						type={connection.type}
+						className='h-3.5 w-3.5 text-muted-foreground'
+					/>
+				)}
+			</div>
+			<div className='flex-1 min-w-0'>
 				<div
 					className={cn(
-						'flex h-7 w-7 items-center justify-center rounded-md border shrink-0',
-						'transition-[border-color,background-color] duration-150 ease-[var(--ease-out)]',
-						connection.status === 'error'
-							? 'border-destructive/40 bg-destructive/5'
-							: isActive
-								? 'border-primary/30 bg-primary/5'
-								: 'border-border bg-background'
+						'truncate text-sm',
+						isActive ? 'font-medium text-foreground' : 'text-foreground/90'
 					)}
 				>
-					{connection.status === 'error' ? (
-						<AlertCircle className='h-3.5 w-3.5 text-destructive' />
-					) : (
-						<DatabaseTypeIcon
-							type={connection.type}
-							className='h-3.5 w-3.5 text-muted-foreground'
-						/>
-					)}
+					{connection.name}
 				</div>
-				<div className='flex-1 min-w-0'>
-					<div
-						className={cn(
-							'truncate text-sm',
-							isActive ? 'font-medium text-foreground' : 'text-foreground/90'
-						)}
-					>
-						{connection.name}
-					</div>
-					<div className='truncate text-[10px] text-muted-foreground/80'>
-						{rowSummary ??
-							`${resolveConnectionLocationLabel(connection)} • ${formatQuickDate(connection.lastConnectedAt)}`}
-					</div>
-					<div className='mt-1 flex flex-wrap items-center gap-1'>
-						<SourceBadges connection={connection} compact showReadonly={false} />
-						{rowHealth && <DataFileHealthIndicator health={rowHealth} compact />}
-					</div>
+				<div className='truncate text-[10px] text-muted-foreground/80'>
+					{rowSummary ??
+						`${resolveConnectionLocationLabel(connection)} • ${lastConnected}`}
 				</div>
-				<div className='relative ml-auto flex items-center'>
-					<div className='flex items-center'>
-						{onEditConnection && (
-							<button
-								data-connection-action
-								type='button'
-								className={cn(
-									'flex h-6 w-6 items-center justify-center rounded-sm',
-									'text-muted-foreground',
-									'opacity-0 -translate-x-1 pointer-events-none',
-									'group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto',
-									'group-data-[highlighted]/row:opacity-100 group-data-[highlighted]/row:translate-x-0 group-data-[highlighted]/row:pointer-events-auto',
-									'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
-									'hover:text-foreground hover:bg-background/60',
-									'focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:pointer-events-auto focus-visible:text-foreground focus-visible:bg-focus-strong'
-								)}
-								onPointerDown={function (e) {
-									e.preventDefault()
-									e.stopPropagation()
-								}}
-								onClick={function (e) {
-									e.preventDefault()
-									e.stopPropagation()
-									onEditConnection(connection.id)
-								}}
-								title={`Edit ${connection.name}`}
-								aria-label={`Edit ${connection.name}`}
-							>
-								<Pencil className='h-3 w-3' />
-							</button>
-						)}
-						{onDeleteConnection && (
-							<button
-								data-connection-action
-								type='button'
-								className={cn(
-									'flex h-6 w-6 items-center justify-center rounded-sm',
-									'text-muted-foreground',
-									'opacity-0 -translate-x-1 pointer-events-none',
-									'group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto',
-									'group-data-[highlighted]/row:opacity-100 group-data-[highlighted]/row:translate-x-0 group-data-[highlighted]/row:pointer-events-auto',
-									'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
-									'hover:text-destructive hover:bg-background/60',
-									'focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:pointer-events-auto focus-visible:text-destructive focus-visible:bg-destructive/20'
-								)}
-								onPointerDown={function (e) {
-									e.preventDefault()
-									e.stopPropagation()
-								}}
-								onClick={function (e) {
-									e.preventDefault()
-									e.stopPropagation()
-									onConfirmDelete(connection.id)
-								}}
-								title={`Delete ${connection.name}`}
-								aria-label={`Delete ${connection.name}`}
-							>
-								<Trash2 className='h-3 w-3' />
-							</button>
-						)}
-					</div>
+				<div className='mt-1 flex flex-wrap items-center gap-1'>
+					<SourceBadges connection={connection} compact showReadonly={false} />
+					{rowHealth && <DataFileHealthIndicator health={rowHealth} compact />}
 				</div>
 			</div>
-		)
-	}
-)
+			<div className='relative ml-auto flex items-center'>
+				<div className='flex items-center'>
+					{onEditConnection && (
+						<button
+							data-connection-action
+							type='button'
+							className={cn(
+								'flex h-6 w-6 items-center justify-center rounded-sm',
+								'text-muted-foreground',
+								'opacity-0 -translate-x-1 pointer-events-none',
+								'group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto',
+								'group-data-[highlighted]/row:opacity-100 group-data-[highlighted]/row:translate-x-0 group-data-[highlighted]/row:pointer-events-auto',
+								'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
+								'hover:text-foreground hover:bg-background/60',
+								'focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:pointer-events-auto focus-visible:text-foreground focus-visible:bg-focus-strong'
+							)}
+							onPointerDown={(event) => {
+								event.preventDefault()
+								event.stopPropagation()
+							}}
+							onClick={(event) => {
+								event.preventDefault()
+								event.stopPropagation()
+								onEditConnection(connection.id)
+							}}
+							title={`Edit ${connection.name}`}
+							aria-label={`Edit ${connection.name}`}
+						>
+							<Pencil className='h-3 w-3' />
+						</button>
+					)}
+					{onConfirmDelete && (
+						<button
+							data-connection-action
+							type='button'
+							className={cn(
+								'flex h-6 w-6 items-center justify-center rounded-sm',
+								'text-muted-foreground',
+								'opacity-0 -translate-x-1 pointer-events-none',
+								'group-hover/row:opacity-100 group-hover/row:translate-x-0 group-hover/row:pointer-events-auto',
+								'group-data-[highlighted]/row:opacity-100 group-data-[highlighted]/row:translate-x-0 group-data-[highlighted]/row:pointer-events-auto',
+								'transition-[opacity,transform,color] duration-150 ease-[var(--ease-out)]',
+								'hover:text-destructive hover:bg-background/60',
+								'focus-visible:opacity-100 focus-visible:translate-x-0 focus-visible:pointer-events-auto focus-visible:text-destructive focus-visible:bg-destructive/20'
+							)}
+							onPointerDown={(event) => {
+								event.preventDefault()
+								event.stopPropagation()
+							}}
+							onClick={(event) => {
+								event.preventDefault()
+								event.stopPropagation()
+								onConfirmDelete(connection.id)
+							}}
+							title={`Delete ${connection.name}`}
+							aria-label={`Delete ${connection.name}`}
+						>
+							<Trash2 className='h-3 w-3' />
+						</button>
+					)}
+				</div>
+			</div>
+		</div>
+	)
+})
 
-type SwitcherProps = Props
+type ContextItemsProps = {
+	connection: Connection
+	onViewConnection?: (id: string) => void
+	onEditConnection?: (id: string) => void
+	onDumpConnection?: (id: string) => void
+	onConfirmDelete?: (id: string) => void
+	onCloseMenus: () => void
+}
 
-export function ConnectionSwitcher({
+function ConnectionContextItems({
+	connection,
+	onViewConnection,
+	onEditConnection,
+	onDumpConnection,
+	onConfirmDelete,
+	onCloseMenus
+}: ContextItemsProps) {
+	return (
+		<>
+			{onViewConnection && (
+				<ContextMenuItem
+					onSelect={() => {
+						onViewConnection(connection.id)
+						onCloseMenus()
+					}}
+				>
+					<Eye />
+					View Details
+				</ContextMenuItem>
+			)}
+			{onEditConnection && (
+				<ContextMenuItem
+					onSelect={() => {
+						onEditConnection(connection.id)
+						onCloseMenus()
+					}}
+				>
+					<Pencil />
+					Edit Connection
+				</ContextMenuItem>
+			)}
+			{onDumpConnection && (
+				<ContextMenuItem
+					disabled={connection.status !== 'connected'}
+					onSelect={() => {
+						onDumpConnection(connection.id)
+						onCloseMenus()
+					}}
+				>
+					<HardDriveDownload />
+					Dump to File
+				</ContextMenuItem>
+			)}
+			{onConfirmDelete && (
+				<>
+					<ContextMenuSeparator />
+					<ContextMenuItem
+						onSelect={() => onConfirmDelete(connection.id)}
+						variant='destructive'
+					>
+						<Trash2 />
+						Delete Connection
+					</ContextMenuItem>
+				</>
+			)}
+		</>
+	)
+}
+
+export const ConnectionSwitcher = memo(function ConnectionSwitcher({
 	connections,
 	activeConnectionId,
 	onConnectionSelect,
@@ -257,12 +349,17 @@ export function ConnectionSwitcher({
 	onEditConnection,
 	onDumpConnection,
 	onDeleteConnection
-}: SwitcherProps) {
+}: Props) {
 	const [searchQuery, setSearchQuery] = useState('')
 	const [dropdownOpen, setDropdownOpen] = useState(false)
-	const [, setContextMenuConnectionId] = useState<string | null>(null)
+	const [contextMenuConnectionId, setContextMenuConnectionId] = useState<string | null>(null)
 	const keepOpenUntilRef = useRef(0)
 	const connectionRowRefs = useRef(new Map<string, HTMLDivElement>())
+	const armedConnectionIdRef = useRef<string | null>(null)
+	const focusOnMountIdRef = useRef<string | null>(null)
+	const handlersRef = useRef({ onConnectionSelect, onDeleteConnection })
+	handlersRef.current = { onConnectionSelect, onDeleteConnection }
+
 	const activeConnection = connections.find((c) => c.id === activeConnectionId)
 	const status = activeConnection?.status || 'idle'
 	const catalogEnabled =
@@ -295,56 +392,71 @@ export function ConnectionSwitcher({
 		[connections, searchQuery, dataFileEntriesCatalog]
 	)
 
-	useEffect(
-		function focusActiveConnectionOnOpen() {
-			if (!dropdownOpen) return
+	const contextMenuConnection = contextMenuConnectionId
+		? connections.find((connection) => connection.id === contextMenuConnectionId)
+		: undefined
 
-			const frame = window.requestAnimationFrame(function () {
-				const activeIndex = filteredConnections.findIndex(function (connection) {
-					return connection.id === activeConnectionId
-				})
-				focusConnectionRow(activeIndex >= 0 ? activeIndex : 0)
-			})
+	const closeMenus = useCallback(function closeMenus() {
+		setDropdownOpen(false)
+		setSearchQuery('')
+		setContextMenuConnectionId(null)
+	}, [])
 
-			return function () {
-				window.cancelAnimationFrame(frame)
-			}
+	const selectConnection = useCallback(
+		function selectConnection(id: string) {
+			handlersRef.current.onConnectionSelect(id)
+			closeMenus()
 		},
-		[activeConnectionId, dropdownOpen, filteredConnections]
+		[closeMenus]
 	)
 
-	useEffect(
-		function clearSearchAfterClose() {
-			if (dropdownOpen) return
-			const timer = window.setTimeout(function () {
-				setSearchQuery('')
-				setContextMenuConnectionId(null)
-			}, 200)
-			return function () {
-				window.clearTimeout(timer)
-			}
-		},
-		[dropdownOpen]
-	)
-
-	function markKeepOpenAfterDelete() {
+	const confirmDelete = useCallback(function confirmDelete(id: string) {
 		keepOpenUntilRef.current = Date.now() + KEEP_OPEN_AFTER_DELETE_MS
-	}
+		handlersRef.current.onDeleteConnection?.(id)
+		setDropdownOpen(true)
+	}, [])
 
-	function confirmDelete(id: string) {
-		markKeepOpenAfterDelete()
-		onDeleteConnection?.(id)
+	const armContextMenu = useCallback(function armContextMenu(id: string) {
+		armedConnectionIdRef.current = id
+	}, [])
+
+	const registerRow = useCallback(function registerRow(id: string, node: HTMLDivElement | null) {
+		if (!node) {
+			connectionRowRefs.current.delete(id)
+			return
+		}
+		connectionRowRefs.current.set(id, node)
+		if (focusOnMountIdRef.current !== id) return
+		focusOnMountIdRef.current = null
+		node.focus({ preventScroll: true })
+		revealRowInList(node)
+	}, [])
+
+	function handleMenuOpenChange(open: boolean) {
+		if (!open && Date.now() < keepOpenUntilRef.current) {
+			setDropdownOpen(true)
+			return
+		}
+		if (!open) {
+			closeMenus()
+			return
+		}
+		const hasActiveRow = connections.some((connection) => connection.id === activeConnectionId)
+		focusOnMountIdRef.current = hasActiveRow
+			? (activeConnectionId ?? null)
+			: (connections[0]?.id ?? null)
 		setDropdownOpen(true)
 	}
 
-	function closeMenus() {
-		setContextMenuConnectionId(null)
-		setDropdownOpen(false)
+	function handleListContextMenu(event: MouseEvent) {
+		if (armedConnectionIdRef.current) return
+		event.preventDefault()
 	}
 
-	function selectConnection(id: string) {
-		onConnectionSelect(id)
-		closeMenus()
+	function handleContextMenuOpenChange(open: boolean) {
+		if (!open) return
+		setContextMenuConnectionId(armedConnectionIdRef.current)
+		setDropdownOpen(true)
 	}
 
 	function focusConnectionRow(index: number) {
@@ -425,7 +537,7 @@ export function ConnectionSwitcher({
 			currentIndex === -1 ? fallbackIndex : e.shiftKey ? currentIndex - 1 : currentIndex + 1
 
 		if (nextIndex < 0 || nextIndex >= tabStops.length) {
-			setDropdownOpen(false)
+			closeMenus()
 			return
 		}
 
@@ -435,299 +547,229 @@ export function ConnectionSwitcher({
 	}
 
 	return (
-		<>
-			<DropdownMenu
-				open={dropdownOpen}
-				onOpenChange={function handleMenuOpenChange(open) {
-					if (!open && Date.now() < keepOpenUntilRef.current) {
-						setDropdownOpen(true)
-						return
+		<DropdownMenu open={dropdownOpen} onOpenChange={handleMenuOpenChange}>
+			<DropdownMenuTrigger asChild>
+				<button
+					type='button'
+					aria-label={
+						activeConnection
+							? `Change database connection. Current connection: ${activeConnection.name}`
+							: 'Select database connection'
 					}
-					setDropdownOpen(open)
-				}}
-			>
-				<DropdownMenuTrigger asChild>
-					<button
-						type='button'
-						aria-label={
-							activeConnection
-								? `Change database connection. Current connection: ${activeConnection.name}`
-								: 'Select database connection'
-						}
-						aria-haspopup='menu'
+					aria-haspopup='menu'
+					className={cn(
+						'group/trigger relative w-full rounded-lg px-2 py-2 text-left',
+						'flex items-center gap-3',
+						'text-sidebar-foreground',
+						'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
+						'hover:bg-sidebar-accent',
+						'data-[state=open]:bg-sidebar-accent',
+						'focus-visible:bg-focus-strong'
+					)}
+				>
+					<div
 						className={cn(
-							'group/trigger relative w-full rounded-lg px-2 py-2 text-left',
-							'flex items-center gap-3',
-							'text-sidebar-foreground',
+							'flex h-9 w-9 items-center justify-center rounded-md shrink-0',
 							'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
-							'hover:bg-sidebar-accent',
-							'data-[state=open]:bg-sidebar-accent',
-							'focus-visible:bg-focus-strong'
+							status === 'error'
+								? 'bg-destructive/10 text-destructive'
+								: 'bg-primary/10 text-primary group-hover/trigger:bg-primary/15'
 						)}
 					>
-						<div
+						{status === 'error' ? (
+							<AlertCircle className='h-4 w-4' />
+						) : activeConnection ? (
+							<DatabaseTypeIcon type={activeConnection.type} className='h-4 w-4' />
+						) : (
+							<Database className='h-4 w-4' />
+						)}
+					</div>
+					<div className='grid flex-1 min-w-0 text-left text-sm leading-tight'>
+						<span
 							className={cn(
-								'flex h-9 w-9 items-center justify-center rounded-md shrink-0',
-								'transition-[background-color,color] duration-150 ease-[var(--ease-out)]',
-								status === 'error'
-									? 'bg-destructive/10 text-destructive'
-									: 'bg-primary/10 text-primary group-hover/trigger:bg-primary/15'
+								'truncate font-semibold',
+								status === 'error' ? 'text-destructive' : 'text-foreground'
 							)}
 						>
-							{status === 'error' ? (
-								<AlertCircle className='h-4 w-4' />
-							) : activeConnection ? (
-								<DatabaseTypeIcon
-									type={activeConnection.type}
-									className='h-4 w-4'
+							{activeConnection?.name || 'Select Database'}
+						</span>
+						{activeConnection && status !== 'error' ? (
+							<span className='mt-1 flex flex-wrap items-center gap-1'>
+								<SourceBadges
+									connection={activeConnection}
+									compact
+									showReadonly={false}
 								/>
-							) : (
-								<Database className='h-4 w-4' />
-							)}
-						</div>
-						<div className='grid flex-1 min-w-0 text-left text-sm leading-tight'>
-							<span
-								className={cn(
-									'truncate font-semibold',
-									status === 'error' ? 'text-destructive' : 'text-foreground'
-								)}
-							>
-								{activeConnection?.name || 'Select Database'}
-							</span>
-							{activeConnection && status !== 'error' ? (
-								<span className='mt-1 flex flex-wrap items-center gap-1'>
-									<SourceBadges
-										connection={activeConnection}
+								{activeDataFileHealth && (
+									<DataFileHealthIndicator
+										health={activeDataFileHealth}
 										compact
-										showReadonly={false}
 									/>
-									{activeDataFileHealth && (
-										<DataFileHealthIndicator
-											health={activeDataFileHealth}
-											compact
-										/>
-									)}
-								</span>
-							) : (
-								<span className='truncate text-xs text-muted-foreground'>
-									{activeConnection ? 'Connection failed' : 'No connection'}
-								</span>
-							)}
-						</div>
-						<ChevronsUpDown
-							className={cn(
-								'ml-auto h-4 w-4 shrink-0 text-muted-foreground',
-								'transition-[color,transform] duration-200 ease-[var(--ease-out)]',
-								'group-hover/trigger:text-foreground',
-								'group-data-[state=open]/trigger:text-foreground group-data-[state=open]/trigger:rotate-180'
-							)}
-						/>
-					</button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent
-					className='w-[var(--radix-dropdown-menu-trigger-width)] min-w-[var(--radix-dropdown-menu-trigger-width)] p-1'
-					align='start'
-					side='bottom'
-					sideOffset={6}
-					onCloseAutoFocus={function preventCloseFocusRing(e) {
-						e.preventDefault()
-					}}
-					onInteractOutside={function handleDropdownInteractOutside() {
-						keepOpenUntilRef.current = 0
-						setContextMenuConnectionId(null)
-					}}
-					onEscapeKeyDown={function handleDropdownEscape() {
-						keepOpenUntilRef.current = 0
-					}}
-					onKeyDownCapture={handleConnectionListKeyDownCapture}
-					onKeyDown={handleConnectionListKeyDown}
-				>
-					<div className='px-2 pt-1.5 pb-2 space-y-2'>
-						<div className='flex items-center justify-between'>
-							<DropdownMenuLabel className='p-0 text-[10px] uppercase tracking-wider font-medium text-muted-foreground'>
-								Databases
-							</DropdownMenuLabel>
-							<span className='text-[10px] tabular-nums text-muted-foreground/70'>
-								{searchQuery.trim()
-									? `${filteredConnections.length}/${connections.length}`
-									: connections.length}
+								)}
 							</span>
-						</div>
-						<div className='relative'>
-							<Search className='pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70' />
-							<Input
-								value={searchQuery}
-								onChange={function handleSearchChange(e) {
-									setSearchQuery(e.target.value)
-								}}
-								placeholder='Search connections...'
-								className='h-7 pl-7 text-xs'
-							/>
-						</div>
-					</div>
-
-					<div className='max-h-[320px] overflow-y-auto px-1'>
-						{filteredConnections.length > 0 ? (
-							filteredConnections.map(function renderConnection(connection) {
-								const isActive = connection.id === activeConnectionId
-								const rowEntries = dataFileEntriesCatalog.get(connection.id)
-								const rowIsDataFile = isDataFileConnection(connection)
-								const rowSummary = rowIsDataFile
-									? resolveDataFileConnectionSummary(connection, rowEntries)
-									: null
-								const rowHealth = rowIsDataFile
-									? resolveDataFileHealth({
-											entries: rowEntries,
-											connectionStatus: connection.status
-										})
-									: null
-								return (
-									<div key={connection.id}>
-										<ContextMenu modal={false}>
-											<ContextMenuTrigger asChild>
-												<ConnectionMenuRow
-													ref={function setConnectionRowRef(node) {
-														if (node) {
-															connectionRowRefs.current.set(
-																connection.id,
-																node
-															)
-														} else {
-															connectionRowRefs.current.delete(
-																connection.id
-															)
-														}
-													}}
-													connection={connection}
-													isActive={isActive}
-													rowSummary={rowSummary}
-													rowHealth={rowHealth}
-													onEditConnection={onEditConnection}
-													onDeleteConnection={onDeleteConnection}
-													onConfirmDelete={confirmDelete}
-													onContextMenuCapture={function handleConnectionContextMenu() {
-														setContextMenuConnectionId(connection.id)
-														setDropdownOpen(true)
-													}}
-													onClick={function handleConnectionClick() {
-														selectConnection(connection.id)
-													}}
-													onKeyDown={function handleRowKeyDown(e) {
-														if (e.key === 'Enter' || e.key === ' ') {
-															e.preventDefault()
-															selectConnection(connection.id)
-														}
-													}}
-												/>
-											</ContextMenuTrigger>
-											<ContextMenuContent
-												className='w-48'
-												onEscapeKeyDown={function handleContextEscape() {
-													setContextMenuConnectionId(null)
-												}}
-												onPointerDownOutside={function handleContextPointerOutside() {
-													setContextMenuConnectionId(null)
-												}}
-											>
-												{onViewConnection && (
-													<ContextMenuItem
-														onSelect={function viewConnection() {
-															onViewConnection(connection.id)
-															closeMenus()
-														}}
-													>
-														<Eye />
-														View Details
-													</ContextMenuItem>
-												)}
-												{onEditConnection && (
-													<ContextMenuItem
-														onSelect={function editConnection() {
-															onEditConnection(connection.id)
-															closeMenus()
-														}}
-													>
-														<Pencil />
-														Edit Connection
-													</ContextMenuItem>
-												)}
-												{onDumpConnection && (
-													<ContextMenuItem
-														disabled={connection.status !== 'connected'}
-														onSelect={function dumpConnection() {
-															onDumpConnection(connection.id)
-															closeMenus()
-														}}
-													>
-														<HardDriveDownload />
-														Dump to File
-													</ContextMenuItem>
-												)}
-												{onDeleteConnection && (
-													<>
-														<ContextMenuSeparator />
-														<ContextMenuItem
-															onSelect={function deleteConnection() {
-																confirmDelete(connection.id)
-																setContextMenuConnectionId(null)
-															}}
-															variant='destructive'
-														>
-															<Trash2 />
-															Delete Connection
-														</ContextMenuItem>
-													</>
-												)}
-											</ContextMenuContent>
-										</ContextMenu>
-									</div>
-								)
-							})
 						) : (
-							<EmptyState
-								size='xs'
-								headingLevel='h3'
-								illustration={
-									connections.length > 0 ? (
-										<SearchIllustration />
-									) : (
-										<ProjectIllustration />
-									)
-								}
-								title={
-									connections.length > 0
-										? 'No matching connections'
-										: 'No connections found'
-								}
-							/>
+							<span className='truncate text-xs text-muted-foreground'>
+								{activeConnection ? 'Connection failed' : 'No connection'}
+							</span>
 						)}
 					</div>
+					<ChevronsUpDown
+						className={cn(
+							'ml-auto h-4 w-4 shrink-0 text-muted-foreground',
+							'transition-[color,transform] duration-100 ease-[var(--ease-out)]',
+							'group-hover/trigger:text-foreground',
+							'group-data-[state=open]/trigger:text-foreground group-data-[state=open]/trigger:rotate-180'
+						)}
+					/>
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				className='w-[var(--radix-dropdown-menu-trigger-width)] min-w-[var(--radix-dropdown-menu-trigger-width)] p-1 data-[state=open]:animate-none! data-[state=closed]:animate-none!'
+				align='start'
+				side='bottom'
+				sideOffset={6}
+				onCloseAutoFocus={function preventCloseFocusRing(e) {
+					e.preventDefault()
+				}}
+				onInteractOutside={function handleDropdownInteractOutside() {
+					keepOpenUntilRef.current = 0
+				}}
+				onEscapeKeyDown={function handleDropdownEscape(event) {
+					keepOpenUntilRef.current = 0
+					stopEscapeFromReachingGlobalShortcuts(event)
+				}}
+				onKeyDownCapture={handleConnectionListKeyDownCapture}
+				onKeyDown={handleConnectionListKeyDown}
+			>
+				<div className='px-2 pt-1.5 pb-2 space-y-2'>
+					<div className='flex items-center justify-between'>
+						<DropdownMenuLabel className='p-0 text-[10px] uppercase tracking-wider font-medium text-muted-foreground'>
+							Databases
+						</DropdownMenuLabel>
+						<span className='text-[10px] tabular-nums text-muted-foreground/70'>
+							{searchQuery.trim()
+								? `${filteredConnections.length}/${connections.length}`
+								: connections.length}
+						</span>
+					</div>
+					<div className='relative'>
+						<Search className='pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/70' />
+						<Input
+							value={searchQuery}
+							onChange={function handleSearchChange(e) {
+								setSearchQuery(e.target.value)
+							}}
+							onKeyDown={keepTypingOutOfMenuTypeahead}
+							placeholder='Search connections...'
+							className='h-7 pl-7 text-xs'
+						/>
+					</div>
+				</div>
 
-					<DropdownMenuSeparator />
-
-					<DropdownMenuItem
-						data-connection-footer-action
-						onClick={onAddConnection}
-						className='gap-2.5 p-2 transition-[background-color,color] duration-150 ease-[var(--ease-out)]'
-					>
-						<div className='flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background'>
-							<Plus className='h-3.5 w-3.5 text-muted-foreground' />
+				<ContextMenu modal={false} onOpenChange={handleContextMenuOpenChange}>
+					<ContextMenuTrigger asChild onContextMenu={handleListContextMenu}>
+						<div
+							className='max-h-[320px] overflow-y-auto px-1'
+							onPointerDownCapture={() => {
+								armedConnectionIdRef.current = null
+							}}
+						>
+							{filteredConnections.length > 0 ? (
+								filteredConnections.map(function renderConnection(connection) {
+									const rowEntries = dataFileEntriesCatalog.get(connection.id)
+									const rowIsDataFile = isDataFileConnection(connection)
+									return (
+										<ConnectionMenuRow
+											key={connection.id}
+											connection={connection}
+											isActive={connection.id === activeConnectionId}
+											rowSummary={
+												rowIsDataFile
+													? resolveDataFileConnectionSummary(
+															connection,
+															rowEntries
+														)
+													: null
+											}
+											rowHealth={
+												rowIsDataFile
+													? resolveDataFileHealth({
+															entries: rowEntries,
+															connectionStatus: connection.status
+														})
+													: null
+											}
+											onSelect={selectConnection}
+											onArmContextMenu={armContextMenu}
+											onRegister={registerRow}
+											onEditConnection={onEditConnection}
+											onConfirmDelete={
+												onDeleteConnection ? confirmDelete : undefined
+											}
+										/>
+									)
+								})
+							) : (
+								<EmptyState
+									size='xs'
+									headingLevel='h3'
+									illustration={
+										connections.length > 0 ? (
+											<SearchIllustration />
+										) : (
+											<ProjectIllustration />
+										)
+									}
+									title={
+										connections.length > 0
+											? 'No matching connections'
+											: 'No connections found'
+									}
+								/>
+							)}
 						</div>
-						<span className='text-sm text-muted-foreground'>Add connection</span>
-					</DropdownMenuItem>
-
-					<DropdownMenuItem
-						data-connection-footer-action
-						onClick={onManageConnections}
-						className='gap-2.5 p-2 transition-[background-color,color] duration-150 ease-[var(--ease-out)]'
+					</ContextMenuTrigger>
+					<ContextMenuContent
+						className='w-48'
+						onEscapeKeyDown={stopEscapeFromReachingGlobalShortcuts}
 					>
-						<div className='flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background'>
-							<Settings className='h-3.5 w-3.5 text-muted-foreground' />
-						</div>
-						<span className='text-sm text-muted-foreground'>Manage connections</span>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
-		</>
+						{contextMenuConnection ? (
+							<ConnectionContextItems
+								connection={contextMenuConnection}
+								onViewConnection={onViewConnection}
+								onEditConnection={onEditConnection}
+								onDumpConnection={onDumpConnection}
+								onConfirmDelete={onDeleteConnection ? confirmDelete : undefined}
+								onCloseMenus={closeMenus}
+							/>
+						) : null}
+					</ContextMenuContent>
+				</ContextMenu>
+
+				<DropdownMenuSeparator />
+
+				<DropdownMenuItem
+					data-connection-footer-action
+					onClick={onAddConnection}
+					className='gap-2.5 p-2 transition-[background-color,color] duration-150 ease-[var(--ease-out)]'
+				>
+					<div className='flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background'>
+						<Plus className='h-3.5 w-3.5 text-muted-foreground' />
+					</div>
+					<span className='text-sm text-muted-foreground'>Add connection</span>
+				</DropdownMenuItem>
+
+				<DropdownMenuItem
+					data-connection-footer-action
+					onClick={onManageConnections}
+					className='gap-2.5 p-2 transition-[background-color,color] duration-150 ease-[var(--ease-out)]'
+				>
+					<div className='flex h-7 w-7 items-center justify-center rounded-md border border-border bg-background'>
+						<Settings className='h-3.5 w-3.5 text-muted-foreground' />
+					</div>
+					<span className='text-sm text-muted-foreground'>Manage connections</span>
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	)
-}
+})

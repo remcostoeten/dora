@@ -1,12 +1,17 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 
+use crate::database::types::SshConfig;
 use crate::error::{Error, Result};
 
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct KvConnectionConfig {
     pub url: String,
+    #[serde(default)]
+    pub skip_tls_verify: bool,
+    #[serde(default)]
+    pub ssh_tunnel: Option<SshConfig>,
 }
 
 pub type KvValueType = KvDataType;
