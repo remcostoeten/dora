@@ -1748,6 +1748,50 @@ export const commands = {
 			else return { status: 'error', error: e as any }
 		}
 	},
+	async updateCells(
+		connectionId: string,
+		tableName: string,
+		schemaName: string | null,
+		primaryKeyColumn: string,
+		cells: CellUpdate[]
+	): Promise<Result<MutationResult, { kind: string; detail: string }>> {
+		try {
+			return {
+				status: 'ok',
+				data: await TAURI_INVOKE('update_cells', {
+					connectionId,
+					tableName,
+					schemaName,
+					primaryKeyColumn,
+					cells
+				})
+			}
+		} catch (e) {
+			if (e instanceof Error) throw e
+			else return { status: 'error', error: e as any }
+		}
+	},
+	async insertRows(
+		connectionId: string,
+		tableName: string,
+		schemaName: string | null,
+		rows: Partial<{ [key in string]: JsonValue }>[]
+	): Promise<Result<MutationResult, { kind: string; detail: string }>> {
+		try {
+			return {
+				status: 'ok',
+				data: await TAURI_INVOKE('insert_rows', {
+					connectionId,
+					tableName,
+					schemaName,
+					rows
+				})
+			}
+		} catch (e) {
+			if (e instanceof Error) throw e
+			else return { status: 'error', error: e as any }
+		}
+	},
 	async updateCell(
 		connectionId: string,
 		tableName: string,
@@ -2913,6 +2957,15 @@ export type LiveMonitorSession = { monitorId: string; eventName: string }
 /**
  * Result of a mutation operation
  */
+/**
+ * One cell write inside a batched update. Rows are addressed by primary key,
+ * so a batch can touch many rows and several columns of one table.
+ */
+export type CellUpdate = {
+	primary_key_value: JsonValue
+	column_name: string
+	new_value: JsonValue
+}
 export type MutationResult = { success: boolean; affected_rows: number; message: string | null }
 export type NeonAccount = { email?: string; name?: string }
 /**

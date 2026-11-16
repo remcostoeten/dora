@@ -20,7 +20,7 @@ type Args = {
 	draftRow: Record<string, unknown> | null
 	addDialogMode: 'add' | 'duplicate' | 'edit'
 	editingRowState: EditingRowState
-	updateCell: { mutateAsync: Function }
+	updateCells: { mutateAsync: Function }
 	insertRow: { mutateAsync: Function; mutate: Function }
 	onLoadTableData: () => void
 	setTableData: React.Dispatch<React.SetStateAction<TableData | null>>
@@ -46,7 +46,7 @@ export function useDatabaseStudioDraftRow(args: Args) {
 		draftRow,
 		addDialogMode,
 		editingRowState,
-		updateCell,
+		updateCells,
 		insertRow,
 		onLoadTableData,
 		setTableData,
@@ -149,18 +149,19 @@ export function useDatabaseStudioDraftRow(args: Args) {
 				return { ...prev, rows: newRows }
 			})
 
-			Promise.all(
-				normalizedChanges.map(function updateChangedColumn(change) {
-					return updateCell.mutateAsync({
-						connectionId: activeConnectionId,
-						tableName: tableRefName,
-						primaryKeyColumn: editingRowState.primaryKeyColumn,
-						primaryKeyValue: editingRowState.primaryKeyValue,
-						columnName: change.column.name,
-						newValue: change.newValue
+			updateCells
+				.mutateAsync({
+					connectionId: activeConnectionId,
+					tableName: tableRefName,
+					primaryKeyColumn: editingRowState.primaryKeyColumn,
+					cells: normalizedChanges.map(function toCellWrite(change) {
+						return {
+							primaryKeyValue: editingRowState.primaryKeyValue,
+							columnName: change.column.name,
+							newValue: change.newValue
+						}
 					})
 				})
-			)
 				.then(function onEditSuccess() {
 					onLoadTableData()
 				})

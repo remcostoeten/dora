@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::{
     database::{
         maintenance::{DumpResult, SoftDeleteResult, TruncateResult},
-        services::mutation::{ExportFormat, MutationResult, MutationService},
+        services::mutation::{CellUpdate, ExportFormat, MutationResult, MutationService},
     },
     error::Error,
     AppState,
@@ -54,6 +54,41 @@ pub async fn update_cell(
         new_value,
     )
     .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_cells(
+    connection_id: Uuid,
+    table_name: String,
+    schema_name: Option<String>,
+    primary_key_column: String,
+    cells: Vec<CellUpdate>,
+    state: State<'_, AppState>,
+) -> Result<MutationResult, Error> {
+    let svc = mutation_service(state.inner());
+    svc.update_cells(
+        connection_id,
+        table_name,
+        schema_name,
+        primary_key_column,
+        cells,
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn insert_rows(
+    connection_id: Uuid,
+    table_name: String,
+    schema_name: Option<String>,
+    rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    state: State<'_, AppState>,
+) -> Result<MutationResult, Error> {
+    let svc = mutation_service(state.inner());
+    svc.insert_rows(connection_id, table_name, schema_name, rows)
+        .await
 }
 
 #[tauri::command]

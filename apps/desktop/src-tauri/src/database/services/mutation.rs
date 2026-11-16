@@ -34,6 +34,15 @@ pub struct MutationResult {
     pub message: Option<String>,
 }
 
+/// One cell write inside a batched update. Rows are addressed by primary key,
+/// so a batch can touch many rows and several columns of one table.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct CellUpdate {
+    pub primary_key_value: serde_json::Value,
+    pub column_name: String,
+    pub new_value: serde_json::Value,
+}
+
 pub struct MutationService<'a> {
     pub connection_repo: &'a dyn ConnectionRepository,
     pub schemas: &'a DashMap<Uuid, Arc<DatabaseSchema>>,
@@ -74,6 +83,52 @@ impl<'a> MutationService<'a> {
             )
             .await?;
         Ok(result)
+    }
+
+    /// Applies many cell writes to one table in a single call. Engines that
+    /// can do so safely run the batch in one transaction; the rest apply the
+    /// writes in order and stop at the first failure.
+    #[instrument(skip(self, cells), fields(connection_id = %connection_id, table = %table_name, count = cells.len()))]
+    pub async fn update_cells(
+        &self,
+        connection_id: Uuid,
+        table_name: String,
+        schema_name: Option<String>,
+        primary_key_column: String,
+        cells: Vec<CellUpdate>,
+    ) -> Result<MutationResult, Error> {
+        let (adapter, _) = self.write_adapter(connection_id)?;
+        adapter
+            .update_cells(table_name, schema_name, primary_key_column, cells)
+            .await
+    }
+
+    /// Inserts many rows into one table in a single call, with the same
+    /// transaction behaviour as [`Self::update_cells`].
+    #[instrument(skip(self, rows), fields(connection_id = %connection_id, table = %table_name, count = rows.len()))]
+    pub async fn insert_rows(
+        &self,
+        connection_id: Uuid,
+        table_name: String,
+        schema_name: Option<String>,
+        rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    ) -> Result<MutationResult, Error> {
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter
+            .insert_rows(table_name.clone(), schema_name.clone(), rows)
+            .await;
+        // A non-transactional engine may have inserted some rows before
+        // failing, so the cached count is only patched on a known outcome.
+        if let Ok(result) = &result {
+            crate::database::schema_cache::patch_row_count(
+                self.schemas,
+                cid,
+                &table_name,
+                schema_name.as_deref(),
+                crate::database::schema_cache::RowCountDelta::Add(result.affected_rows as i64),
+            );
+        }
+        result
     }
 
     /// Re-select a single binary cell and return its raw bytes (for

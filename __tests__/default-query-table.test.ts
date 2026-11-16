@@ -12,6 +12,26 @@ describe('default-query-table', function () {
 		expect(isInternalQueryTable('__drizzle_meta')).toBe(true)
 	})
 
+	it('treats migration bookkeeping from other tools as internal', function () {
+		for (const name of [
+			'_prisma_migrations',
+			'schema_migrations',
+			'knex_migrations_lock',
+			'flyway_schema_history',
+			'django_migrations',
+			'alembic_version',
+			'sqlite_sequence',
+			'migrations'
+		]) {
+			expect(isInternalQueryTable(name)).toBe(true)
+		}
+	})
+
+	it('keeps user tables that merely mention migrations', function () {
+		expect(isInternalQueryTable('migration_requests')).toBe(false)
+		expect(isInternalQueryTable('users')).toBe(false)
+	})
+
 	it('prefers the first non-internal table', function () {
 		const tables = [{ name: '__drizzle_migrations' }, { name: 'messages' }]
 

@@ -291,6 +291,8 @@ pub fn run() {
             database::commands::vercel_is_connected,
             // Mutation API commands
             database::commands::update_cell,
+            database::commands::update_cells,
+            database::commands::insert_rows,
             database::commands::get_blob_bytes,
             database::commands::delete_rows,
             database::commands::insert_row,

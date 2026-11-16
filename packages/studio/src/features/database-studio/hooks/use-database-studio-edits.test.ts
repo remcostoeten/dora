@@ -62,6 +62,7 @@ function setup(edits: Edit[], failFor: (payload: Record<string, unknown>) => boo
 				return Promise.resolve({ affected_rows: 1 })
 			}
 		},
+		updateCells: { mutateAsync: vi.fn().mockResolvedValue(null) },
 		setTableData: function (updater: unknown) {
 			tableData =
 				typeof updater === 'function'

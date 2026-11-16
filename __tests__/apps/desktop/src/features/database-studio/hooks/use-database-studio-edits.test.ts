@@ -19,6 +19,7 @@ describe('useDatabaseStudioEdits', function () {
 	let tableData: TableData
 	let setTableData: any
 	let updateCell: any
+	let updateCells: any
 	let clearEdits: any
 	let loadTableData: any
 	let trackCellMutation: any
@@ -44,6 +45,7 @@ describe('useDatabaseStudioEdits', function () {
 			mutate: vi.fn(),
 			mutateAsync: vi.fn().mockResolvedValue(undefined)
 		}
+		updateCells = { mutateAsync: vi.fn().mockResolvedValue(undefined) }
 		clearEdits = vi.fn()
 		loadTableData = vi.fn()
 		trackCellMutation = vi.fn()
@@ -69,6 +71,7 @@ describe('useDatabaseStudioEdits', function () {
 				removeEdit: vi.fn(),
 				clearEdits,
 				updateCell,
+				updateCells,
 				setTableData,
 				setIsApplyingEdits: vi.fn(),
 				loadTableData,
@@ -113,6 +116,7 @@ describe('useDatabaseStudioEdits', function () {
 				removeEdit: vi.fn(),
 				clearEdits,
 				updateCell,
+				updateCells,
 				setTableData,
 				setIsApplyingEdits: vi.fn(),
 				loadTableData,
@@ -160,6 +164,7 @@ describe('useDatabaseStudioEdits', function () {
 				removeEdit: vi.fn(),
 				clearEdits,
 				updateCell,
+				updateCells,
 				setTableData,
 				setIsApplyingEdits: vi.fn(),
 				loadTableData,
@@ -192,6 +197,7 @@ describe('useDatabaseStudioEdits', function () {
 				removeEdit: vi.fn(),
 				clearEdits,
 				updateCell,
+				updateCells,
 				setTableData,
 				setIsApplyingEdits: vi.fn(),
 				loadTableData,
@@ -206,7 +212,8 @@ describe('useDatabaseStudioEdits', function () {
 			await result.current.handleBatchCellEdit([0], 'name', 'Beta')
 		})
 
-		expect(updateCell.mutateAsync).toHaveBeenCalledTimes(1)
+		expect(updateCells.mutateAsync).toHaveBeenCalledTimes(1)
+		expect(updateCell.mutateAsync).not.toHaveBeenCalled()
 		expect(trackBatchCellMutation).toHaveBeenCalledWith('conn-1', 'users', 'id', [
 			{
 				primaryKeyValue: 1,

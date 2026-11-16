@@ -124,7 +124,6 @@ export async function listContainers(
 
 	const lines = result.stdout.trim().split('\n').filter(Boolean)
 
-	// Parallelize container inspection to avoid N+1
 	const containerIds: string[] = []
 	for (const line of lines) {
 		try {
@@ -135,17 +134,23 @@ export async function listContainers(
 		}
 	}
 
-	const inspectedContainers = await Promise.all(
-		containerIds.map(function (id) {
-			return getContainerDetails(id)
-		})
-	)
+	return inspectContainers(containerIds)
+}
 
-	const containers: DockerContainer[] = inspectedContainers.filter(
-		(container): container is DockerContainer => container !== null
-	)
+async function inspectContainers(containerIds: string[]): Promise<DockerContainer[]> {
+	if (containerIds.length === 0) {
+		return []
+	}
 
-	return containers
+	const result = await executeDockerCommand(['inspect', ...containerIds])
+
+	if (result.exitCode !== 0 && !result.stdout.trim()) {
+		throw new Error(result.stderr || 'Failed to inspect containers')
+	}
+
+	const inspectData: DockerInspectResult[] = JSON.parse(result.stdout)
+
+	return inspectData.map(parseInspectResult)
 }
 
 export async function getContainerDetails(containerId: string): Promise<DockerContainer | null> {

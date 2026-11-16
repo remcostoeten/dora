@@ -8,7 +8,9 @@ import {
 	ChartLine,
 	KeyRound
 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useRef, KeyboardEvent, type ReactNode } from 'react'
+import { preloadView } from './preload-views'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
@@ -40,6 +42,7 @@ function SidebarContent({
 	const { variant } = useSidebar()
 	const isFloating = false
 	const navRef = useRef<HTMLElement>(null)
+	const queryClient = useQueryClient()
 
 	// Nav items configuration
 	const mainNavItems: NavItem[] = [
@@ -188,6 +191,8 @@ function SidebarContent({
 							item={item}
 							isActive={activeNavId === item.id}
 							variant={variant}
+							onPointerEnter={() => preloadView(item.id, queryClient)}
+							onFocus={() => preloadView(item.id, queryClient)}
 						/>
 					))}
 				</div>

@@ -17,7 +17,7 @@ type Args = {
 	rowsForActions: Set<number>
 	settingsConfirmBeforeDelete: boolean
 	deleteRows: { mutate: Function }
-	insertRow: { mutateAsync: Function }
+	insertRows: { mutateAsync: Function }
 	onLoadTableData: () => void
 	trackRowDeletion: (
 		connectionId: string,
@@ -47,7 +47,7 @@ export function useDatabaseStudioBulkActions(args: Args) {
 		rowsForActions,
 		settingsConfirmBeforeDelete,
 		deleteRows,
-		insertRow,
+		insertRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -140,15 +140,12 @@ export function useDatabaseStudioBulkActions(args: Args) {
 			onRowsAdded()
 			setTableData(appendRows(tableData, rowsToDuplicate))
 			setSelectedRows(new Set())
-			Promise.all(
-				rowsToDuplicate.map((rowData) =>
-					insertRow.mutateAsync({
-						connectionId: activeConnectionId,
-						tableName: tableRefName,
-						rowData
-					})
-				)
-			)
+			insertRows
+				.mutateAsync({
+					connectionId: activeConnectionId,
+					tableName: tableRefName,
+					rows: rowsToDuplicate
+				})
 				.then(function () {
 					onLoadTableData()
 				})
@@ -159,7 +156,7 @@ export function useDatabaseStudioBulkActions(args: Args) {
 		},
 		[
 			activeConnectionId,
-			insertRow,
+			insertRows,
 			notifyActionFailure,
 			notifyPrimaryKeyNotGenerated,
 			onLoadTableData,

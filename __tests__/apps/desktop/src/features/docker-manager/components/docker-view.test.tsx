@@ -75,7 +75,7 @@ describe('DockerView', () => {
 		)
 	}
 
-	it('shows loading state when checking docker availability', () => {
+	it('renders the shell instead of blocking while docker availability is pending', () => {
 		vi.spyOn(useContainersModule, 'useDockerAvailability').mockReturnValue({
 			data: undefined,
 			isLoading: true
@@ -83,14 +83,14 @@ describe('DockerView', () => {
 
 		vi.spyOn(useContainersModule, 'useContainers').mockReturnValue({
 			data: [],
-			isLoading: false
+			isLoading: true
 		} as any)
 
-		// Mock useContainerSearch to return empty array
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue([])
 
 		renderWithProviders(<DockerView />)
-		expect(screen.getByText('Checking Docker status...')).toBeInTheDocument()
+		expect(screen.queryByText('Checking Docker status...')).not.toBeInTheDocument()
+		expect(screen.getByTestId('container-list')).toHaveTextContent('Loading containers...')
 	})
 
 	it('shows error when docker is not available', () => {
@@ -107,7 +107,7 @@ describe('DockerView', () => {
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue([])
 
 		renderWithProviders(<DockerView />)
-		expect(screen.getByText('Docker Not Available')).toBeInTheDocument()
+		expect(screen.getByText('Docker not available')).toBeInTheDocument()
 		expect(screen.getByText('Connection failed')).toBeInTheDocument()
 	})
 

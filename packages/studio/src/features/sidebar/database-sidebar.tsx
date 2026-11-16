@@ -44,6 +44,7 @@ import {
 	getTableRefParts,
 	getTableSqlIdentifier
 } from '@studio/shared/utils/table-ref'
+import { pickDefaultQueryTable } from '@studio/shared/utils/default-query-table'
 import { prefetchTableSnapshot } from '../database-studio/utils/table-snapshot'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { IconStack, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
@@ -196,7 +197,7 @@ export function DatabaseSidebar({
 		function handleAutoSelectFirstTable() {
 			if (!autoSelectFirstTable || !schema || schema.tables.length === 0 || !onTableSelect)
 				return
-			const firstTable = schema.tables[0]
+			const firstTable = pickDefaultQueryTable(schema.tables) ?? schema.tables[0]
 			onTableSelect(getTableRefId(firstTable), firstTable.name)
 			if (onAutoSelectComplete) {
 				onAutoSelectComplete()

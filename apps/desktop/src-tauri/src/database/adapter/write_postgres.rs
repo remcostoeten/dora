@@ -2,18 +2,41 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 
 use super::read::PostgresAdapter;
-use super::write::WriteAdapter;
+use super::write::{insert_rows_concurrently, update_cells_concurrently, WriteAdapter};
 use crate::database::adapter::DatabaseAdapter;
 use crate::database::ident::quote_ansi;
 use crate::database::maintenance;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
-    json_to_pg_param, pg_value_to_json, qualified_table_name, MutationResult,
+    json_to_pg_param, pg_value_to_json, qualified_table_name, CellUpdate, MutationResult,
 };
 use crate::Error;
 
 #[async_trait]
 impl WriteAdapter for PostgresAdapter {
+    async fn update_cells(
+        &self,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        cells: Vec<CellUpdate>,
+    ) -> Result<MutationResult, Error> {
+        self.client().batch_execute("BEGIN").await?;
+        let result = update_cells_concurrently(self, table, schema, pk_column, cells).await;
+        finish_transaction(self.client(), result).await
+    }
+
+    async fn insert_rows(
+        &self,
+        table: String,
+        schema: Option<String>,
+        rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    ) -> Result<MutationResult, Error> {
+        self.client().batch_execute("BEGIN").await?;
+        let result = insert_rows_concurrently(self, table, schema, rows).await;
+        finish_transaction(self.client(), result).await
+    }
+
     async fn update_cell(
         &self,
         table: String,
@@ -30,19 +53,23 @@ impl WriteAdapter for PostgresAdapter {
         // "error serializing parameter" when the Rust value is a String.
         // Routing through text works for ints, timestamps, bools, uuids, ….
         let col_type = pg_column_type(self.client(), &table, schema.as_deref(), &column).await?;
-        let query =
-            build_update_cell_sql(&table, schema.as_deref(), &column, &col_type, &pk_column);
-        let new_val_text: Option<String> = match &new_value {
-            serde_json::Value::Null => None,
-            serde_json::Value::String(s) => Some(s.clone()),
-            other => Some(other.to_string()),
-        };
-        let new_val_param: Box<dyn tokio_postgres::types::ToSql + Sync + Send> =
-            Box::new(new_val_text);
-        let pk_param = json_to_pg_param(&pk_value);
+        // The key is bound as text for the same reason: a JSON number arrives
+        // as i64 and a uuid as a string, neither of which tokio-postgres will
+        // serialize into an int4 or uuid key column.
+        let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
+        let query = build_update_cell_sql(
+            &table,
+            schema.as_deref(),
+            &column,
+            &col_type,
+            &pk_column,
+            &pk_type,
+        );
+        let new_val_text = json_to_pg_text(&new_value);
+        let pk_text = json_to_pg_text(&pk_value);
         let result = self
             .client()
-            .execute(&query, &[new_val_param.as_ref(), pk_param.as_ref()])
+            .execute(&query, &[&new_val_text, &pk_text])
             .await? as usize;
 
         Ok(MutationResult {
@@ -71,13 +98,21 @@ impl WriteAdapter for PostgresAdapter {
             });
         }
 
-        let query = build_delete_rows_sql(&table, schema.as_deref(), &pk_column, pk_values.len());
+        // Keys are bound as text and cast to the key column's type, like
+        // update_cell: a JSON number will not serialize into an int4 key.
+        let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
+        let query = build_delete_rows_sql(
+            &table,
+            schema.as_deref(),
+            &pk_column,
+            &pk_type,
+            pk_values.len(),
+        );
 
-        let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
-            pk_values.iter().map(|v| json_to_pg_param(v)).collect();
+        let params: Vec<Option<String>> = pk_values.iter().map(json_to_pg_text).collect();
         let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
             .iter()
-            .map(|p| p.as_ref() as &(dyn tokio_postgres::types::ToSql + Sync))
+            .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
             .collect();
 
         let total_deleted = self.client().execute(&query, &params_ref[..]).await? as usize;
@@ -327,23 +362,36 @@ fn build_update_cell_sql(
     column: &str,
     col_type: &str,
     pk_column: &str,
+    pk_type: &str,
 ) -> String {
     format!(
-        "UPDATE {} SET {} = $1::text::{} WHERE {} = $2",
+        "UPDATE {} SET {} = $1::text::{} WHERE {} = $2::text::{}",
         qualified_table_name(table, schema),
         quote_ansi(column),
         col_type,
-        quote_ansi(pk_column)
+        quote_ansi(pk_column),
+        pk_type
     )
+}
+
+fn json_to_pg_text(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::Null => None,
+        serde_json::Value::String(s) => Some(s.clone()),
+        other => Some(other.to_string()),
+    }
 }
 
 fn build_delete_rows_sql(
     table: &str,
     schema: Option<&str>,
     pk_column: &str,
+    pk_type: &str,
     pk_count: usize,
 ) -> String {
-    let placeholders: Vec<String> = (1..=pk_count).map(|i| format!("${}", i)).collect();
+    let placeholders: Vec<String> = (1..=pk_count)
+        .map(|i| format!("${}::text::{}", i, pk_type))
+        .collect();
     format!(
         "DELETE FROM {} WHERE {} IN ({})",
         qualified_table_name(table, schema),
@@ -364,6 +412,25 @@ fn build_insert_row_sql(
         quoted_columns.join(", "),
         placeholders.join(", ")
     )
+}
+
+/// Commits a batch that succeeded and rolls back one that failed. The writes
+/// are pipelined on the adapter's single connection, so they all land inside
+/// the transaction opened just before them.
+async fn finish_transaction(
+    client: &tokio_postgres::Client,
+    result: Result<MutationResult, Error>,
+) -> Result<MutationResult, Error> {
+    match result {
+        Ok(result) => {
+            client.batch_execute("COMMIT").await?;
+            Ok(result)
+        }
+        Err(error) => {
+            let _ = client.batch_execute("ROLLBACK").await;
+            Err(error)
+        }
+    }
 }
 
 async fn pg_column_type(
@@ -404,24 +471,24 @@ mod tests {
     #[test]
     fn update_cell_sql_quotes_identifiers_and_casts_via_text() {
         assert_eq!(
-            build_update_cell_sql("users", Some("public"), "name", "text", "id"),
-            "UPDATE \"public\".\"users\" SET \"name\" = $1::text::text WHERE \"id\" = $2"
+            build_update_cell_sql("users", Some("public"), "name", "text", "id", "uuid"),
+            "UPDATE \"public\".\"users\" SET \"name\" = $1::text::text WHERE \"id\" = $2::text::uuid"
         );
         assert_eq!(
-            build_update_cell_sql("we\"ird", None, "na\"me", "int4", "i\"d"),
-            "UPDATE \"we\"\"ird\" SET \"na\"\"me\" = $1::text::int4 WHERE \"i\"\"d\" = $2"
+            build_update_cell_sql("we\"ird", None, "na\"me", "int4", "i\"d", "int4"),
+            "UPDATE \"we\"\"ird\" SET \"na\"\"me\" = $1::text::int4 WHERE \"i\"\"d\" = $2::text::int4"
         );
     }
 
     #[test]
     fn delete_rows_sql_numbers_placeholders_and_quotes_identifiers() {
         assert_eq!(
-            build_delete_rows_sql("users", None, "id", 3),
-            "DELETE FROM \"users\" WHERE \"id\" IN ($1, $2, $3)"
+            build_delete_rows_sql("users", None, "id", "int4", 3),
+            "DELETE FROM \"users\" WHERE \"id\" IN ($1::text::int4, $2::text::int4, $3::text::int4)"
         );
         assert_eq!(
-            build_delete_rows_sql("t", Some("we\"ird"), "id", 1),
-            "DELETE FROM \"we\"\"ird\".\"t\" WHERE \"id\" IN ($1)"
+            build_delete_rows_sql("t", Some("we\"ird"), "id", "uuid", 1),
+            "DELETE FROM \"we\"\"ird\".\"t\" WHERE \"id\" IN ($1::text::uuid)"
         );
     }
 

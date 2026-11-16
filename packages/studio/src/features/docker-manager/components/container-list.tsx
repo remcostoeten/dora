@@ -1,3 +1,4 @@
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Container } from 'lucide-react'
 import { useRef } from 'react'
 import type { DockerContainer } from '../types'
@@ -9,6 +10,13 @@ import {
 } from './container-card-skeleton'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { IconStack, SearchIllustration } from '@studio/shared/ui/empty-state-illustrations'
+
+const ENTER_MOTION = {
+	initial: { opacity: 0, y: -8 },
+	animate: { opacity: 1, y: 0 },
+	exit: { opacity: 0, transition: { duration: 0.12 } },
+	transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] as const }
+}
 
 type Props = {
 	containers: DockerContainer[]
@@ -42,6 +50,7 @@ export function ContainerList({
 	pendingContainer = null
 }: Props) {
 	const listRef = useRef<HTMLDivElement>(null)
+	const reduceMotion = useReducedMotion()
 
 	function handleArrowNavigation(event: React.KeyboardEvent<HTMLDivElement>) {
 		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
@@ -147,24 +156,41 @@ export function ContainerList({
 			className='flex-1 overflow-y-auto'
 			onKeyDown={handleArrowNavigation}
 		>
-			<div className='p-3 space-y-2'>
-				{pendingContainer && <PendingContainerCard container={pendingContainer} />}
-				{containers.map(function (container) {
-					return (
-						<ContainerCard
-							key={container.id}
-							container={container}
-							isSelected={container.id === selectedContainerId}
-							onSelect={onSelectContainer}
-							onStart={onStartContainer}
-							onStop={onStopContainer}
-							onRestart={onRestartContainer}
-							onOpenInDataViewer={onOpenContainerInDataViewer}
-							onRemove={onRemoveContainer}
-							isActionPending={isActionPending}
-						/>
-					)
-				})}
+			<div className='p-3'>
+				<AnimatePresence initial={false}>
+					{pendingContainer && (
+						<motion.div
+							key='pending-container'
+							layout={reduceMotion ? false : 'position'}
+							{...(reduceMotion ? {} : ENTER_MOTION)}
+							className='pb-2'
+						>
+							<PendingContainerCard container={pendingContainer} />
+						</motion.div>
+					)}
+					{containers.map(function (container) {
+						return (
+							<motion.div
+								key={container.id}
+								layout={reduceMotion ? false : 'position'}
+								{...(reduceMotion ? {} : ENTER_MOTION)}
+								className='pb-2'
+							>
+								<ContainerCard
+									container={container}
+									isSelected={container.id === selectedContainerId}
+									onSelect={onSelectContainer}
+									onStart={onStartContainer}
+									onStop={onStopContainer}
+									onRestart={onRestartContainer}
+									onOpenInDataViewer={onOpenContainerInDataViewer}
+									onRemove={onRemoveContainer}
+									isActionPending={isActionPending}
+								/>
+							</motion.div>
+						)
+					})}
+				</AnimatePresence>
 			</div>
 		</div>
 	)

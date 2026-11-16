@@ -28,6 +28,7 @@ import {
 	type TableDialect
 } from '@studio/shared/utils/table-ref'
 import type {
+	CellWrite,
 	AdapterResult,
 	BootstrapSnapshot,
 	DataAdapter,
@@ -610,6 +611,50 @@ export function createTauriAdapter(): DataAdapter {
 				primaryKeyValue,
 				columnName,
 				newValue
+			)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async updateCells(
+			connectionId: string,
+			tableName: string,
+			primaryKeyColumn: string,
+			cells: CellWrite[]
+		): Promise<AdapterResult<MutationResult>> {
+			const tableRef = getTableRefParts(tableName)
+			const result = await commands.updateCells(
+				connectionId,
+				tableRef.tableName,
+				tableRef.schemaName,
+				primaryKeyColumn,
+				cells.map(function (cell) {
+					return {
+						primary_key_value: cell.primaryKeyValue,
+						column_name: cell.columnName,
+						new_value: cell.newValue
+					}
+				})
+			)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
+		async insertRows(
+			connectionId: string,
+			tableName: string,
+			rows: Record<string, JsonValue>[]
+		): Promise<AdapterResult<MutationResult>> {
+			const tableRef = getTableRefParts(tableName)
+			const result = await commands.insertRows(
+				connectionId,
+				tableRef.tableName,
+				tableRef.schemaName,
+				rows
 			)
 			if (result.status === 'ok') {
 				return ok(result.data)
