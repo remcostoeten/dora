@@ -12,7 +12,12 @@ import {
 	DialogTitle
 } from '@studio/shared/ui/dialog'
 import { formatBackendError } from '@studio/shared/utils/backend-error'
-import { cn } from '@studio/shared/utils/cn'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import {
+	ConnectingIllustration,
+	IconStack,
+	OfflineIllustration
+} from '@studio/shared/ui/empty-state-illustrations'
 import { KvConnectionFields } from './kv-connection-fields'
 import {
 	describeKvTarget,
@@ -42,17 +47,15 @@ function KvDesktopOnly({ windowControls }: Props) {
 				</div>
 				<div className='ml-auto'>{windowControls}</div>
 			</div>
-			<div className='grid min-h-0 flex-1 place-items-center px-6 text-center'>
-				<div className='max-w-sm'>
-					<div className='mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-[#d82c20]/10 text-[#d82c20]'>
-						<Server />
-					</div>
-					<h2 className='font-medium'>Available in the desktop app</h2>
-					<p className='mt-1 text-sm text-muted-foreground'>
-						Redis and Valkey connections open TCP sockets, which a browser cannot do.
-						Open Dora on your desktop to browse and edit keys.
-					</p>
-				</div>
+			<div className='min-h-0 flex-1'>
+				<EmptyState
+					size='lg'
+					loop
+					pointer
+					illustration={<IconStack icon={<Server />} />}
+					title='Available in the desktop app'
+					description='Redis and Valkey connections open TCP sockets, which a browser cannot do. Open Dora on your desktop to browse and edit keys.'
+				/>
 			</div>
 		</div>
 	)
@@ -216,44 +219,53 @@ export function KvWorkspace({ isActive = true, windowControls }: Props) {
 						<Loader2 className='animate-spin' /> Loading connections…
 					</div>
 				) : !selected ? (
-					<div className='grid h-full place-items-center px-6 text-center'>
-						<div className='max-w-sm'>
-							<div className='mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-[#d82c20]/10 text-[#d82c20]'>
-								<Server />
-							</div>
-							<h2 className='font-medium'>Connect Redis or Valkey</h2>
-							<p className='mt-1 text-sm text-muted-foreground'>
-								Use a local redis:// URL or a TLS-enabled rediss:// cloud endpoint.
-							</p>
-							<Button className='mt-4' onClick={openDialog}>
-								<Plus /> Add connection
-							</Button>
-						</div>
-					</div>
+					<EmptyState
+						size='lg'
+						loop
+						pointer
+						illustration={<IconStack icon={<Server />} />}
+						title={
+							connections.length > 0
+								? 'Select a connection'
+								: 'Connect Redis or Valkey'
+						}
+						description={
+							connections.length > 0
+								? 'Pick a saved connection above to browse its keys, or add another one.'
+								: 'Use a local redis:// URL or a TLS-enabled rediss:// cloud endpoint.'
+						}
+						actions={[
+							{
+								id: 'add-connection',
+								label: 'Add connection',
+								icon: <Plus />,
+								onClick: openDialog
+							}
+						]}
+					/>
 				) : !adapter ? (
-					<div className='grid h-full place-items-center px-6 text-center'>
-						<div className='max-w-sm'>
-							<div
-								className={cn(
-									'mx-auto mb-4 size-2 rounded-full',
-									isConnecting
-										? 'animate-pulse bg-amber-500'
-										: 'bg-muted-foreground'
-								)}
-							/>
-							<h2 className='font-medium'>{selected.name}</h2>
-							<p className='mt-1 truncate font-mono text-xs text-muted-foreground'>
-								{describeKvTarget(selected.config)}
-							</p>
-							<Button
-								className='mt-4'
-								disabled={isConnecting}
-								onClick={() => void connect(selected)}
-							>
-								{isConnecting && <Loader2 className='animate-spin' />} Connect
-							</Button>
-						</div>
-					</div>
+					<EmptyState
+						size='lg'
+						loop
+						illustration={
+							isConnecting ? <ConnectingIllustration /> : <OfflineIllustration />
+						}
+						title={selected.name}
+						description={
+							<span className='font-mono'>{describeKvTarget(selected.config)}</span>
+						}
+						actions={[
+							{
+								id: 'connect',
+								label: isConnecting ? 'Connecting' : 'Connect',
+								icon: isConnecting ? (
+									<Loader2 className='animate-spin' />
+								) : undefined,
+								disabled: isConnecting,
+								onClick: () => void connect(selected)
+							}
+						]}
+					/>
 				) : (
 					<KvStudio key={selected.id} adapter={adapter} connectionName={selected.name} />
 				)}
