@@ -656,6 +656,26 @@ export function createTauriAdapter(): DataAdapter {
 			return err(formatError(result.error))
 		},
 
+		async duplicateRows(
+			connectionId: string,
+			tableName: string,
+			primaryKeyColumn: string,
+			primaryKeyValues: JsonValue[]
+		): Promise<AdapterResult<MutationResult>> {
+			const tableRef = getTableRefParts(tableName)
+			const result = await commands.duplicateRows(
+				connectionId,
+				tableRef.tableName,
+				tableRef.schemaName,
+				primaryKeyColumn,
+				primaryKeyValues
+			)
+			if (result.status === 'ok') {
+				return ok(result.data)
+			}
+			return err(formatError(result.error))
+		},
+
 		async deleteRows(
 			connectionId: string,
 			tableName: string,

@@ -988,6 +988,26 @@
 		animation: settingsSectionHighlight 2.2s ease-in-out 1;
 	}
 
+	@keyframes settingsRowFlash {
+		0%,
+		25% {
+			background-color: hsl(var(--foreground) / 0.16);
+		}
+		100% {
+			background-color: transparent;
+		}
+	}
+
+	.settings-row-flash {
+		animation: settingsRowFlash 1.6s ease-out 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.settings-row-flash {
+			animation-duration: 0.01s;
+		}
+	}
+
 	@keyframes desktopOnlyNoticeShimmer {
 		0% {
 			transform: translateX(-120%);

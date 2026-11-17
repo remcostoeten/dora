@@ -1,8 +1,9 @@
 use anyhow::anyhow;
 use async_trait::async_trait;
 
+use super::grid_sql;
 use super::read::DuckDbAdapter;
-use super::write::WriteAdapter;
+use super::write::{duplicate_outcome, require_copyable_columns, WriteAdapter};
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::MutationResult;
 use crate::Error;
@@ -180,53 +181,32 @@ impl WriteAdapter for DuckDbAdapter {
         if self.is_read_only() {
             return Err(read_only_error());
         }
-        let mut row_data = {
-            let conn = self
-                .connection()
-                .lock()
-                .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
-            let query = format!(
-                "SELECT * FROM {} WHERE {} = ? LIMIT 1",
-                qualified_table(schema.as_deref(), &table),
-                quote_ident(&pk_column)
-            );
-            let pk_val = json_to_duckdb_value(&pk_value);
-            let mut stmt = conn.prepare(&query)?;
-            let mut rows = stmt.query(duckdb::params_from_iter([pk_val].iter()))?;
+        let conn = self
+            .connection()
+            .lock()
+            .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
+        let schema_name = schema.as_deref().filter(|s| !s.is_empty());
+        let columns: Vec<String> = conn
+            .prepare(
+                "SELECT column_name FROM duckdb_columns() \
+                 WHERE table_name = ? AND column_name <> ? AND schema_name = COALESCE(?, current_schema()) \
+                 ORDER BY column_index",
+            )?
+            .query_map(
+                duckdb::params![table, pk_column, schema_name],
+                |row| row.get::<_, String>(0),
+            )?
+            .collect::<Result<_, _>>()?;
+        require_copyable_columns(&columns)?;
 
-            let column_names: Vec<String> =
-                rows.as_ref().map(|s| s.column_names()).unwrap_or_default();
-
-            match rows.next()? {
-                Some(row) => {
-                    let mut data = serde_json::Map::new();
-                    for (idx, col_name) in column_names.iter().enumerate() {
-                        let value = row
-                            .get_ref(idx)
-                            .map(crate::database::duckdb::row_writer::value_ref_to_json)
-                            .unwrap_or(serde_json::Value::Null);
-                        data.insert(col_name.clone(), value);
-                    }
-                    data
-                }
-                None => {
-                    return Err(Error::Any(anyhow!(
-                        "No row found in \"{}\" where {} matches the provided primary key",
-                        table,
-                        pk_column
-                    )));
-                }
-            }
-        };
-
-        row_data.remove(&pk_column);
-        if row_data.is_empty() {
-            return Err(Error::Any(anyhow!(
-                "Cannot duplicate row because only the primary key column is available"
-            )));
-        }
-
-        self.insert_row(table, schema, row_data).await
+        let query = grid_sql::duplicate_row_sql(
+            &qualified_table(schema.as_deref(), &table),
+            &columns,
+            &pk_column,
+        );
+        let pk_val = json_to_duckdb_value(&pk_value);
+        let rows = conn.execute(&query, duckdb::params_from_iter([pk_val].iter()))?;
+        duplicate_outcome(rows, &table, &pk_column)
     }
 
     async fn truncate_table(

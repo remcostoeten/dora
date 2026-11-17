@@ -135,7 +135,7 @@ fn row_to_json_value(row: &libsql::Row, idx: i32) -> Result<serde_json::Value, E
 
     Ok(match value {
         Value::Null => serde_json::Value::Null,
-        Value::Integer(i) => serde_json::Value::from(i),
+        Value::Integer(i) => crate::database::safe_int::i64_to_json(i),
         Value::Real(f) => serde_json::Value::from(f),
         Value::Text(s) => serde_json::Value::from(s),
         Value::Blob(b) => {

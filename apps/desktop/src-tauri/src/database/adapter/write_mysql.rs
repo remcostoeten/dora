@@ -4,13 +4,12 @@ use mysql_async::prelude::Queryable;
 use mysql_async::{Params, Row as MySqlRow, Value as MySqlValue};
 
 use super::read::MySqlAdapter;
-use super::write::WriteAdapter;
+use super::write::{duplicate_outcome, require_copyable_columns, WriteAdapter};
 use crate::database::adapter::DatabaseAdapter;
 use crate::database::maintenance;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
-    json_to_mysql_value, mysql_qualified_table_name, mysql_quote_identifier, mysql_value_to_json,
-    MutationResult,
+    json_to_mysql_value, mysql_qualified_table_name, mysql_quote_identifier, MutationResult,
 };
 use crate::Error;
 
@@ -163,21 +162,69 @@ impl WriteAdapter for MySqlAdapter {
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
         let qualified_table = mysql_qualified_table_name(&table, schema.as_deref());
+        let mut conn = self
+            .pool()
+            .get_conn()
+            .await
+            .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
+        // Generated columns are skipped; MySQL reports '' and MariaDB NULL for ordinary ones.
+        let columns: Vec<String> = conn
+            .exec(
+                "SELECT COLUMN_NAME FROM information_schema.COLUMNS \
+                 WHERE TABLE_SCHEMA = COALESCE(?, DATABASE()) AND TABLE_NAME = ? AND COLUMN_NAME <> ? \
+                 AND (GENERATION_EXPRESSION IS NULL OR GENERATION_EXPRESSION = '') \
+                 ORDER BY ORDINAL_POSITION",
+                (schema.clone(), table.clone(), pk_column.clone()),
+            )
+            .await
+            .map_err(|e| Error::Any(anyhow!("MySQL duplicate lookup failed: {}", e)))?;
+        require_copyable_columns(&columns)?;
+
+        let column_list = columns
+            .iter()
+            .map(|column| mysql_quote_identifier(column))
+            .collect::<Vec<_>>()
+            .join(", ");
         let query = format!(
-            "SELECT * FROM {} WHERE {} = ? LIMIT 1",
+            "INSERT INTO {qualified_table} ({column_list}) SELECT {column_list} FROM {qualified_table} WHERE {} = ?",
+            mysql_quote_identifier(&pk_column)
+        );
+        conn.exec_drop(
+            query,
+            Params::Positional(vec![json_to_mysql_value(&pk_value)]),
+        )
+        .await
+        .map_err(|e| Error::Any(anyhow!("MySQL duplicate failed: {}", e)))?;
+        duplicate_outcome(conn.affected_rows() as usize, &table, &pk_column)
+    }
+
+    async fn get_blob_bytes(
+        &self,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        pk_value: serde_json::Value,
+        column: String,
+    ) -> Result<Vec<u8>, Error> {
+        let qualified_table = mysql_qualified_table_name(&table, schema.as_deref());
+        let query = format!(
+            "SELECT {} FROM {} WHERE {} = ? LIMIT 1",
+            mysql_quote_identifier(&column),
             qualified_table,
             mysql_quote_identifier(&pk_column)
         );
-        let params = Params::Positional(vec![json_to_mysql_value(&pk_value)]);
         let mut conn = self
             .pool()
             .get_conn()
             .await
             .map_err(|e| Error::Any(anyhow!("MySQL connect failed: {}", e)))?;
         let row: MySqlRow = conn
-            .exec_first(query, params)
+            .exec_first(
+                query,
+                Params::Positional(vec![json_to_mysql_value(&pk_value)]),
+            )
             .await
-            .map_err(|e| Error::Any(anyhow!("MySQL duplicate lookup failed: {}", e)))?
+            .map_err(|e| Error::Any(anyhow!("MySQL blob lookup failed: {}", e)))?
             .ok_or_else(|| {
                 Error::Any(anyhow!(
                     "No row found in {} where {} matches the provided primary key",
@@ -185,25 +232,10 @@ impl WriteAdapter for MySqlAdapter {
                     pk_column
                 ))
             })?;
-
-        let mut data = serde_json::Map::new();
-        for (idx, column) in row.columns_ref().iter().enumerate() {
-            let value = row
-                .as_ref(idx)
-                .cloned()
-                .map(mysql_value_to_json)
-                .unwrap_or(serde_json::Value::Null);
-            data.insert(column.name_str().to_string(), value);
+        match row.as_ref(0) {
+            Some(MySqlValue::Bytes(bytes)) => Ok(bytes.clone()),
+            _ => Ok(Vec::new()),
         }
-        data.remove(&pk_column);
-
-        if data.is_empty() {
-            return Err(Error::Any(anyhow!(
-                "Cannot duplicate row because only the primary key column is available"
-            )));
-        }
-
-        self.insert_row(table, schema, data).await
     }
 
     async fn truncate_table(

@@ -28,6 +28,7 @@ type Args = {
 	deleteRows: { mutate: Function }
 	insertRow: { mutateAsync: Function; mutate: Function }
 	insertRows: { mutateAsync: Function }
+	duplicateRows: { mutateAsync: Function }
 	onLoadTableData: () => void
 	trackRowDeletion: (
 		connectionId: string,
@@ -79,6 +80,7 @@ export function useDatabaseStudioActions(args: Args) {
 		deleteRows,
 		insertRow,
 		insertRows,
+		duplicateRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -163,6 +165,7 @@ export function useDatabaseStudioActions(args: Args) {
 		settingsConfirmBeforeDelete,
 		deleteRows,
 		insertRows,
+		duplicateRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -184,6 +187,7 @@ export function useDatabaseStudioActions(args: Args) {
 		settingsConfirmBeforeDelete,
 		deleteRows,
 		insertRows,
+		duplicateRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,

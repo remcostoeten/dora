@@ -3,13 +3,12 @@ use async_trait::async_trait;
 
 use super::grid_sql;
 use super::read::LibSqlAdapter;
-use super::write::WriteAdapter;
+use super::write::{duplicate_outcome, require_copyable_columns, WriteAdapter};
 use crate::database::adapter::DatabaseAdapter;
+use crate::database::ident::quote_ansi;
 use crate::database::maintenance;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
-use crate::database::services::mutation::{
-    json_to_libsql_value, libsql_value_to_json, MutationResult,
-};
+use crate::database::services::mutation::{json_to_libsql_value, MutationResult};
 use crate::Error;
 
 #[async_trait]
@@ -107,47 +106,41 @@ impl WriteAdapter for LibSqlAdapter {
     async fn duplicate_row(
         &self,
         table: String,
-        schema: Option<String>,
+        _schema: Option<String>,
         pk_column: String,
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let query = grid_sql::select_row_sql(&table, &pk_column);
-        let params = vec![json_to_libsql_value(&pk_value)];
         let mut rows = self
             .connection()
-            .query(&query, params)
+            .query(
+                grid_sql::COPYABLE_COLUMNS_SQL,
+                vec![
+                    libsql::Value::Text(table.clone()),
+                    libsql::Value::Text(pk_column.clone()),
+                ],
+            )
             .await
             .map_err(|e| Error::Any(anyhow!("LibSQL duplicate lookup failed: {}", e)))?;
-
-        let column_names: Vec<String> = (0..rows.column_count())
-            .filter_map(|idx| rows.column_name(idx as i32).map(|name| name.to_string()))
-            .collect();
-
-        let row = rows
+        let mut columns: Vec<String> = Vec::new();
+        while let Some(row) = rows
             .next()
             .await
-            .map_err(|e| Error::Any(anyhow!("LibSQL duplicate fetch failed: {}", e)))?
-            .ok_or_else(|| {
-                Error::Any(anyhow!(
-                    "No row found in \"{}\" where {} matches the provided primary key",
-                    table,
-                    pk_column
-                ))
-            })?;
-
-        let mut data = serde_json::Map::new();
-        for (idx, col_name) in column_names.iter().enumerate() {
-            data.insert(col_name.clone(), libsql_value_to_json(&row, idx as i32));
+            .map_err(|e| Error::Any(anyhow!("LibSQL duplicate lookup failed: {}", e)))?
+        {
+            if let Ok(libsql::Value::Text(name)) = row.get_value(0) {
+                columns.push(name);
+            }
         }
-        data.remove(&pk_column);
+        require_copyable_columns(&columns)?;
 
-        if data.is_empty() {
-            return Err(Error::Any(anyhow!(
-                "Cannot duplicate row because only the primary key column is available"
-            )));
-        }
-
-        self.insert_row(table, schema, data).await
+        let query = grid_sql::duplicate_row_sql(&quote_ansi(&table), &columns, &pk_column);
+        let copied = self
+            .connection()
+            .execute(&query, vec![json_to_libsql_value(&pk_value)])
+            .await
+            .map_err(|e| Error::Any(anyhow!("LibSQL duplicate failed: {}", e)))?
+            as usize;
+        duplicate_outcome(copied, &table, &pk_column)
     }
 
     async fn get_blob_bytes(

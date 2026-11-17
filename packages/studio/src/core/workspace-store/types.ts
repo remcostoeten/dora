@@ -6,7 +6,7 @@ import type {
 	FilterGroup,
 	SortDescriptor
 } from '@studio/features/database-studio/types'
-import type { SettingsSectionId } from '@studio/features/sidebar/components/settings-panel'
+import type { SettingsSectionId } from '@studio/features/settings/sections'
 import type { DatabaseSchema, SavedQuery, SnippetFolder } from '@studio/lib/bindings'
 
 /**

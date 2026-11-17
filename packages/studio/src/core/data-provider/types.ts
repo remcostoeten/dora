@@ -152,6 +152,13 @@ export type DataAdapter = {
 		rows: Record<string, JsonValue>[]
 	): Promise<AdapterResult<MutationResult>>
 
+	duplicateRows(
+		connectionId: string,
+		tableName: string,
+		primaryKeyColumn: string,
+		primaryKeyValues: JsonValue[]
+	): Promise<AdapterResult<MutationResult>>
+
 	insertRow(
 		connectionId: string,
 		tableName: string,

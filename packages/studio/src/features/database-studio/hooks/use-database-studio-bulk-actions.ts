@@ -3,7 +3,8 @@ import {
 	appendRows,
 	buildDuplicateRow,
 	canDuplicateWithoutInput,
-	removeRowsByPrimaryKey
+	removeRowsByPrimaryKey,
+	sendRowCopies
 } from '../utils/studio-data'
 import type { FilterDescriptor, TableData } from '../types'
 
@@ -18,6 +19,7 @@ type Args = {
 	settingsConfirmBeforeDelete: boolean
 	deleteRows: { mutate: Function }
 	insertRows: { mutateAsync: Function }
+	duplicateRows: { mutateAsync: Function }
 	onLoadTableData: () => void
 	trackRowDeletion: (
 		connectionId: string,
@@ -48,6 +50,7 @@ export function useDatabaseStudioBulkActions(args: Args) {
 		settingsConfirmBeforeDelete,
 		deleteRows,
 		insertRows,
+		duplicateRows,
 		onLoadTableData,
 		trackRowDeletion,
 		setTableData,
@@ -140,12 +143,14 @@ export function useDatabaseStudioBulkActions(args: Args) {
 			onRowsAdded()
 			setTableData(appendRows(tableData, rowsToDuplicate))
 			setSelectedRows(new Set())
-			insertRows
-				.mutateAsync({
-					connectionId: activeConnectionId,
-					tableName: tableRefName,
-					rows: rowsToDuplicate
-				})
+			sendRowCopies({
+				connectionId: activeConnectionId,
+				tableName: tableRefName ?? '',
+				tableData,
+				rowIndexes: Array.from(rowsForActions),
+				duplicateRows,
+				insertRows
+			})
 				.then(function () {
 					onLoadTableData()
 				})
@@ -156,6 +161,7 @@ export function useDatabaseStudioBulkActions(args: Args) {
 		},
 		[
 			activeConnectionId,
+			duplicateRows,
 			insertRows,
 			notifyActionFailure,
 			notifyPrimaryKeyNotGenerated,

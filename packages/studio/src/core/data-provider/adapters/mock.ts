@@ -893,6 +893,31 @@ CREATE TABLE posts (
 			})
 		},
 
+		async duplicateRows(
+			connectionId: string,
+			tableName: string,
+			primaryKeyColumn: string,
+			primaryKeyValues: JsonValue[]
+		): Promise<AdapterResult<MutationResult>> {
+			await randomDelay()
+
+			const key = resolveStoreKey(connectionId, tableName)
+			const rows = store.tables[key] ?? []
+			const copies = rows.filter((row) =>
+				primaryKeyValues.includes(row[primaryKeyColumn] as JsonValue)
+			)
+			for (const row of copies) {
+				rows.push({ ...row, [primaryKeyColumn]: store.nextId[key]++ })
+			}
+			saveToStorage()
+
+			return ok({
+				success: copies.length > 0,
+				affected_rows: copies.length,
+				message: copies.length + ' row(s) inserted'
+			})
+		},
+
 		async deleteRows(
 			connectionId: string,
 			tableName: string,

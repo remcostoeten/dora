@@ -1811,6 +1811,29 @@ export const commands = {
 			else return { status: 'error', error: e as any }
 		}
 	},
+	async duplicateRows(
+		connectionId: string,
+		tableName: string,
+		schemaName: string | null,
+		primaryKeyColumn: string,
+		primaryKeyValues: JsonValue[]
+	): Promise<Result<MutationResult, { kind: string; detail: string }>> {
+		try {
+			return {
+				status: 'ok',
+				data: await TAURI_INVOKE('duplicate_rows', {
+					connectionId,
+					tableName,
+					schemaName,
+					primaryKeyColumn,
+					primaryKeyValues
+				})
+			}
+		} catch (e) {
+			if (e instanceof Error) throw e
+			else return { status: 'error', error: e as any }
+		}
+	},
 	async updateCell(
 		connectionId: string,
 		tableName: string,

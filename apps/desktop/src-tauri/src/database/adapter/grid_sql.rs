@@ -53,6 +53,26 @@ pub fn select_blob_sql(table: &str, column: &str, pk_column: &str) -> String {
     )
 }
 
+/// Lists the columns a row copy may write: everything except the key, hidden
+/// columns and generated columns (`hidden` is 2 or 3 for those).
+pub const COPYABLE_COLUMNS_SQL: &str =
+    "SELECT name FROM pragma_table_xinfo(?) WHERE hidden = 0 AND name <> ? ORDER BY cid";
+
+/// Copies a row inside the database, so no value passes through JSON and
+/// blobs, big integers and dates arrive byte for byte. `quoted_table` is
+/// already quoted and qualified by the caller.
+pub fn duplicate_row_sql(quoted_table: &str, columns: &[String], pk_column: &str) -> String {
+    let column_list = columns
+        .iter()
+        .map(|column| quote_ansi(column))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "INSERT INTO {quoted_table} ({column_list}) SELECT {column_list} FROM {quoted_table} WHERE {} = ?",
+        quote_ansi(pk_column)
+    )
+}
+
 /// SQLite has no `TRUNCATE`; an unfiltered `DELETE` is the equivalent.
 pub fn delete_all_sql(table: &str) -> String {
     format!("DELETE FROM {}", quote_ansi(table))
@@ -61,6 +81,14 @@ pub fn delete_all_sql(table: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn duplicate_row_copies_listed_columns_inside_the_database() {
+        assert_eq!(
+            duplicate_row_sql("\"t\"", &["a".to_string(), "b\"b".to_string()], "id"),
+            "INSERT INTO \"t\" (\"a\", \"b\"\"b\") SELECT \"a\", \"b\"\"b\" FROM \"t\" WHERE \"id\" = ?"
+        );
+    }
 
     #[test]
     fn update_cell_quotes_all_identifiers() {

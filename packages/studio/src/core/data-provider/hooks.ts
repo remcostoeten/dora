@@ -449,12 +449,36 @@ export function useDataMutation() {
 		}
 	})
 
+	const duplicateRows = useMutation({
+		mutationFn: async (params: {
+			connectionId: string
+			tableName: string
+			primaryKeyColumn: string
+			primaryKeyValues: unknown[]
+		}) => {
+			if (params.primaryKeyValues.length === 0) return null
+			const res = await adapter.duplicateRows(
+				params.connectionId,
+				params.tableName,
+				params.primaryKeyColumn,
+				params.primaryKeyValues as JsonValue[]
+			)
+			if (!res.ok) throw new Error(getAdapterError(res))
+			return res.data
+		},
+		onSettled: function (_data, _error, variables) {
+			dropTableSnapshot(variables.connectionId, variables.tableName)
+			scheduleSchemaRefresh(variables.connectionId)
+		}
+	})
+
 	return {
 		updateCell,
 		updateCells,
 		deleteRows,
 		insertRow,
-		insertRows
+		insertRows,
+		duplicateRows
 	}
 }
 

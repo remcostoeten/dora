@@ -3,12 +3,14 @@ use async_trait::async_trait;
 
 use super::grid_sql;
 use super::read::SqliteAdapter;
-use super::write::{insert_rows_concurrently, update_cells_concurrently, WriteAdapter};
+use super::write::{
+    duplicate_outcome, duplicate_rows_in_order, insert_rows_concurrently, require_copyable_columns,
+    update_cells_concurrently, WriteAdapter,
+};
+use crate::database::ident::quote_ansi;
 use crate::database::maintenance;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
-use crate::database::services::mutation::{
-    json_to_sqlite_value, sqlite_value_to_json, CellUpdate, MutationResult,
-};
+use crate::database::services::mutation::{json_to_sqlite_value, CellUpdate, MutationResult};
 use crate::Error;
 
 impl SqliteAdapter {
@@ -60,6 +62,18 @@ impl WriteAdapter for SqliteAdapter {
     ) -> Result<MutationResult, Error> {
         self.run_sql("BEGIN")?;
         let result = insert_rows_concurrently(self, table, schema, rows).await;
+        self.finish_transaction(result)
+    }
+
+    async fn duplicate_rows(
+        &self,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        pk_values: Vec<serde_json::Value>,
+    ) -> Result<MutationResult, Error> {
+        self.run_sql("BEGIN")?;
+        let result = duplicate_rows_in_order(self, table, schema, pk_column, pk_values).await;
         self.finish_transaction(result)
     }
 
@@ -166,52 +180,24 @@ impl WriteAdapter for SqliteAdapter {
     async fn duplicate_row(
         &self,
         table: String,
-        schema: Option<String>,
+        _schema: Option<String>,
         pk_column: String,
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let mut row_data = {
-            let conn = self
-                .connection()
-                .lock()
-                .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
-            let query = grid_sql::select_row_sql(&table, &pk_column);
-            let pk_val = json_to_sqlite_value(&pk_value);
-            let mut stmt = conn.prepare(&query)?;
-            let column_names: Vec<String> = stmt
-                .column_names()
-                .into_iter()
-                .map(|n| n.to_string())
-                .collect();
-            let row_data = stmt.query_row([&pk_val as &dyn rusqlite::ToSql], |row| {
-                let mut data = serde_json::Map::new();
-                for (idx, col_name) in column_names.iter().enumerate() {
-                    data.insert(col_name.clone(), sqlite_value_to_json(row, idx));
-                }
-                Ok(data)
-            });
+        let conn = self
+            .connection()
+            .lock()
+            .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
+        let columns: Vec<String> = conn
+            .prepare(grid_sql::COPYABLE_COLUMNS_SQL)?
+            .query_map([&table, &pk_column], |row| row.get::<_, String>(0))?
+            .collect::<Result<_, _>>()?;
+        require_copyable_columns(&columns)?;
 
-            match row_data {
-                Ok(data) => data,
-                Err(rusqlite::Error::QueryReturnedNoRows) => {
-                    return Err(Error::Any(anyhow!(
-                        "No row found in \"{}\" where {} matches the provided primary key",
-                        table,
-                        pk_column
-                    )));
-                }
-                Err(error) => return Err(error.into()),
-            }
-        };
-
-        row_data.remove(&pk_column);
-        if row_data.is_empty() {
-            return Err(Error::Any(anyhow!(
-                "Cannot duplicate row because only the primary key column is available"
-            )));
-        }
-
-        self.insert_row(table, schema, row_data).await
+        let query = grid_sql::duplicate_row_sql(&quote_ansi(&table), &columns, &pk_column);
+        let pk_val = json_to_sqlite_value(&pk_value);
+        let rows = conn.execute(&query, [&pk_val as &dyn rusqlite::ToSql])?;
+        duplicate_outcome(rows, &table, &pk_column)
     }
 
     async fn get_blob_bytes(

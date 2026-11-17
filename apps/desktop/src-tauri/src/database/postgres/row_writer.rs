@@ -42,6 +42,14 @@ impl RowWriter {
         }
     }
 
+    /// Decodes a single cell with the same rules as the result grid, for
+    /// callers that need one value rather than a page of rows.
+    pub(crate) fn cell_to_json(row: &Row, column_index: usize) -> Option<serde_json::Value> {
+        let mut writer = Self::new(crate::database::dialect::PgDialect::default());
+        writer.write_pg_value_as_json(row, column_index).ok()?;
+        serde_json::from_str(&writer.buf).ok()
+    }
+
     pub fn add_row(&mut self, row: &Row) -> Result<(), anyhow::Error> {
         if self.row_count == 0 {
             self.buf.reserve(2);
@@ -146,7 +154,7 @@ impl RowWriter {
             }
             Type::INT8 => {
                 let value: i64 = row.try_get(column_index)?;
-                write!(&mut self.buf, "{}", value)?;
+                crate::database::safe_int::write_int(&mut self.buf, value as i128);
             }
 
             Type::FLOAT4 => {
@@ -213,7 +221,7 @@ impl RowWriter {
                     if i > 0 {
                         self.buf.push(',');
                     }
-                    write!(&mut self.buf, "{}", item)?;
+                    crate::database::safe_int::write_int(&mut self.buf, *item as i128);
                 }
                 self.buf.push(']');
             }

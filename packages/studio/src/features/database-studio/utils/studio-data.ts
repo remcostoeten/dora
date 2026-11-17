@@ -112,6 +112,50 @@ export function canDuplicateWithoutInput(columns: ColumnDefinition[]): boolean {
 	return columns.filter((c) => c.primaryKey).every(isGeneratedPrimaryKey)
 }
 
+type RowCopyRequest = {
+	connectionId: string
+	tableName: string
+	tableData: TableData
+	rowIndexes: number[]
+	duplicateRows: { mutateAsync: Function }
+	insertRows: { mutateAsync: Function }
+}
+
+/**
+ * @name sendRowCopies
+ * @description Duplicates rows by key inside the database, so binary data, big
+ * integers and dates are copied exactly instead of passing through the values
+ * the grid displays. Tables with a composite key fall back to inserting the
+ * grid values.
+ *
+ * @example
+ * await sendRowCopies({ connectionId, tableName, tableData, rowIndexes, duplicateRows, insertRows })
+ */
+export function sendRowCopies(request: RowCopyRequest): Promise<unknown> {
+	const { connectionId, tableName, tableData, rowIndexes, duplicateRows, insertRows } = request
+	const primaryKeys = tableData.columns.filter((column) => column.primaryKey)
+
+	if (primaryKeys.length === 1) {
+		const primaryKeyColumn = primaryKeys[0].name
+		return duplicateRows.mutateAsync({
+			connectionId,
+			tableName,
+			primaryKeyColumn,
+			primaryKeyValues: rowIndexes.map(
+				(rowIndex) => tableData.rows[rowIndex][primaryKeyColumn]
+			)
+		})
+	}
+
+	return insertRows.mutateAsync({
+		connectionId,
+		tableName,
+		rows: rowIndexes.map((rowIndex) =>
+			buildDuplicateRow(tableData.rows[rowIndex], tableData.columns)
+		)
+	})
+}
+
 export function normalizeValueForInsert(column: ColumnDefinition, value: unknown): unknown {
 	const type = column.type.toLowerCase()
 	const isIntegerType = type.includes('int') || type.includes('serial')

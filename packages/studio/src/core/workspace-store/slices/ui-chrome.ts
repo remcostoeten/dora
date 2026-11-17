@@ -1,4 +1,4 @@
-import type { SettingsSectionId } from '@studio/features/sidebar/components/settings-panel'
+import type { SettingsSectionId } from '@studio/features/settings/sections'
 import type { UiChromeSlice } from '../types'
 
 export type UiChromeAction =

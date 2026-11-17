@@ -11,7 +11,8 @@ use serde_json::Value;
 
 use super::grid_sql;
 use super::read::D1Adapter;
-use super::write::WriteAdapter;
+use super::write::{duplicate_outcome, require_copyable_columns, WriteAdapter};
+use crate::database::ident::quote_ansi;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::MutationResult;
 use crate::Error;
@@ -109,33 +110,28 @@ impl WriteAdapter for D1Adapter {
     async fn duplicate_row(
         &self,
         table: String,
-        schema: Option<String>,
+        _schema: Option<String>,
         pk_column: String,
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let query = grid_sql::select_row_sql(&table, &pk_column);
-        let (rows, _changes) = run(self, &query, vec![pk_value]).await?;
-        let row = rows.into_iter().next().ok_or_else(|| {
-            Error::Any(anyhow::anyhow!(
-                "No row found in \"{}\" where {} matches the provided primary key",
-                table,
-                pk_column
-            ))
-        })?;
+        let (rows, _changes) = run(
+            self,
+            grid_sql::COPYABLE_COLUMNS_SQL,
+            vec![
+                Value::String(table.clone()),
+                Value::String(pk_column.clone()),
+            ],
+        )
+        .await?;
+        let columns: Vec<String> = rows
+            .iter()
+            .filter_map(|row| row.get("name").and_then(Value::as_str).map(str::to_string))
+            .collect();
+        require_copyable_columns(&columns)?;
 
-        let mut data = serde_json::Map::new();
-        for (name, value) in row.0 {
-            data.insert(name, value);
-        }
-        data.remove(&pk_column);
-
-        if data.is_empty() {
-            return Err(Error::Any(anyhow::anyhow!(
-                "Cannot duplicate row because only the primary key column is available"
-            )));
-        }
-
-        self.insert_row(table, schema, data).await
+        let query = grid_sql::duplicate_row_sql(&quote_ansi(&table), &columns, &pk_column);
+        let (_rows, changes) = run(self, &query, vec![pk_value]).await?;
+        duplicate_outcome(changes, &table, &pk_column)
     }
 
     async fn truncate_table(

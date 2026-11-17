@@ -1,5 +1,5 @@
 import type { Connection } from '@studio/features/connections/types'
-import type { SettingsSectionId } from '@studio/features/sidebar/components/settings-panel'
+import type { SettingsSectionId } from '@studio/features/settings/sections'
 import type { DatabaseSchema, SavedQuery, SnippetFolder } from '@studio/lib/bindings'
 import type { HydrateSessionArgs } from './slices/tabs'
 import { workspaceStore } from './store'

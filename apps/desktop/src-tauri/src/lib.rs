@@ -284,6 +284,7 @@ pub fn run() {
             database::commands::update_cell,
             database::commands::update_cells,
             database::commands::insert_rows,
+            database::commands::duplicate_rows,
             database::commands::get_blob_bytes,
             database::commands::delete_rows,
             database::commands::insert_row,

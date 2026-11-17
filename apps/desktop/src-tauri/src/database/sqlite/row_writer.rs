@@ -38,7 +38,7 @@ impl RowWriter {
             }
 
             match row.get_ref(i)? {
-                ValueRef::Null => self.write_json_string("NULL"),
+                ValueRef::Null => self.buf.push_str("null"),
                 ValueRef::Integer(value) if value == 0 || value == 1 => {
                     let decltype = self.column_decltypes[i].as_deref();
                     let looks_like_bool = decltype
@@ -55,7 +55,9 @@ impl RowWriter {
                         write!(&mut self.buf, "{value}")?
                     }
                 }
-                ValueRef::Integer(value) => write!(&mut self.buf, "{value}")?,
+                ValueRef::Integer(value) => {
+                    crate::database::safe_int::write_int(&mut self.buf, value as i128)
+                }
                 ValueRef::Real(value) => write!(&mut self.buf, "{value}")?,
                 ValueRef::Text(value) => {
                     // If this is a JSON object or array, convert it so that it's picked up by JsonInspector in the front-end
@@ -263,7 +265,7 @@ mod tests {
     fn null_handling() -> Result<(), Error> {
         let conn = create_test_db()?;
         let result = execute_query_one_row(&conn, "SELECT null_col FROM test_data WHERE id = 1")?;
-        assert_eq!(result, serde_json::json!([["NULL"]]));
+        assert_eq!(result, serde_json::json!([[null]]));
         Ok(())
     }
 
@@ -327,10 +329,10 @@ mod tests {
         let conn = create_test_db()?;
 
         let result = execute_query_one_row(&conn, "SELECT large_int FROM test_data WHERE id = 1")?;
-        assert_eq!(result, serde_json::json!([[9223372036854775807i64]]));
+        assert_eq!(result, serde_json::json!([["9223372036854775807"]]));
 
         let result = execute_query_one_row(&conn, "SELECT large_int FROM test_data WHERE id = 2")?;
-        assert_eq!(result, serde_json::json!([[-9223372036854775808i64]]));
+        assert_eq!(result, serde_json::json!([["-9223372036854775808"]]));
 
         Ok(())
     }

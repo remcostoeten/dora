@@ -37,7 +37,7 @@ import {
 } from '@studio/features/docker-manager/utilities/container-connection'
 import { KvLoadingShell } from '@studio/features/kv-studio/kv-loading-shell'
 import { openContainerInKvStudio } from '@studio/features/kv-studio/kv-launch'
-import { SettingsView } from '@studio/features/sidebar/components/settings-panel'
+import { SettingsView } from '@studio/features/settings/settings-view'
 import { TabBar } from '@studio/features/tab-bar'
 import { ErrorBoundary } from '@studio/shared/ui/error-boundary'
 import { toast } from '@studio/shared/ui/use-toast'

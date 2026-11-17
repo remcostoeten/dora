@@ -2,13 +2,15 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 
 use super::read::PostgresAdapter;
-use super::write::{insert_rows_concurrently, update_cells_concurrently, WriteAdapter};
+use super::write::{
+    duplicate_rows_in_order, insert_rows_concurrently, update_cells_concurrently, WriteAdapter,
+};
 use crate::database::adapter::DatabaseAdapter;
 use crate::database::ident::quote_ansi;
 use crate::database::maintenance;
 use crate::database::maintenance::{DumpResult, SoftDeleteResult, TruncateResult};
 use crate::database::services::mutation::{
-    json_to_pg_param, pg_value_to_json, qualified_table_name, CellUpdate, MutationResult,
+    json_to_pg_text, pg_column_type, qualified_table_name, CellUpdate, MutationResult,
 };
 use crate::Error;
 
@@ -37,6 +39,18 @@ impl WriteAdapter for PostgresAdapter {
         finish_transaction(self.client(), result).await
     }
 
+    async fn duplicate_rows(
+        &self,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        pk_values: Vec<serde_json::Value>,
+    ) -> Result<MutationResult, Error> {
+        self.client().batch_execute("BEGIN").await?;
+        let result = duplicate_rows_in_order(self, table, schema, pk_column, pk_values).await;
+        finish_transaction(self.client(), result).await
+    }
+
     async fn update_cell(
         &self,
         table: String,
@@ -46,16 +60,7 @@ impl WriteAdapter for PostgresAdapter {
         column: String,
         new_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        // Bind the new value as text and let Postgres parse it into the
-        // column's type ($1::text::<type>). The UI edits cells as strings, so
-        // binding straight to a typed parameter ($1::int4 etc.) makes Postgres
-        // infer $1 as that type and tokio-postgres fails with
-        // "error serializing parameter" when the Rust value is a String.
-        // Routing through text works for ints, timestamps, bools, uuids, ….
         let col_type = pg_column_type(self.client(), &table, schema.as_deref(), &column).await?;
-        // The key is bound as text for the same reason: a JSON number arrives
-        // as i64 and a uuid as a string, neither of which tokio-postgres will
-        // serialize into an int4 or uuid key column.
         let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
         let query = build_update_cell_sql(
             &table,
@@ -65,8 +70,8 @@ impl WriteAdapter for PostgresAdapter {
             &pk_column,
             &pk_type,
         );
-        let new_val_text = json_to_pg_text(&new_value);
-        let pk_text = json_to_pg_text(&pk_value);
+        let new_val_text = json_to_pg_text(&new_value, &col_type);
+        let pk_text = json_to_pg_text(&pk_value, &pk_type);
         let result = self
             .client()
             .execute(&query, &[&new_val_text, &pk_text])
@@ -98,8 +103,6 @@ impl WriteAdapter for PostgresAdapter {
             });
         }
 
-        // Keys are bound as text and cast to the key column's type, like
-        // update_cell: a JSON number will not serialize into an int4 key.
         let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
         let query = build_delete_rows_sql(
             &table,
@@ -109,7 +112,10 @@ impl WriteAdapter for PostgresAdapter {
             pk_values.len(),
         );
 
-        let params: Vec<Option<String>> = pk_values.iter().map(json_to_pg_text).collect();
+        let params: Vec<Option<String>> = pk_values
+            .iter()
+            .map(|value| json_to_pg_text(value, &pk_type))
+            .collect();
         let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
             .iter()
             .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
@@ -138,11 +144,6 @@ impl WriteAdapter for PostgresAdapter {
             });
         }
 
-        // Bind every value as text and let Postgres parse it into the column's
-        // type via `$n::text::<type>` — same rationale as update_cell: the UI
-        // sends edits as strings, and a string bound straight to a typed param
-        // (e.g. a timestamp/uuid column) makes tokio-postgres fail with
-        // "error serializing parameter".
         let mut col_names_vec: Vec<String> = Vec::with_capacity(row_data.len());
         let mut placeholders_vec: Vec<String> = Vec::with_capacity(row_data.len());
         let mut params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> =
@@ -151,12 +152,7 @@ impl WriteAdapter for PostgresAdapter {
             let col_type = pg_column_type(self.client(), &table, schema.as_deref(), col).await?;
             col_names_vec.push(quote_ansi(col));
             placeholders_vec.push(format!("${}::text::{}", idx + 1, col_type));
-            let text: Option<String> = match value {
-                serde_json::Value::Null => None,
-                serde_json::Value::String(s) => Some(s.clone()),
-                other => Some(other.to_string()),
-            };
-            params.push(Box::new(text));
+            params.push(Box::new(json_to_pg_text(value, &col_type)));
         }
 
         let query =
@@ -182,38 +178,32 @@ impl WriteAdapter for PostgresAdapter {
         pk_column: String,
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error> {
-        let query = format!(
-            "SELECT * FROM {} WHERE {} = $1 LIMIT 1",
-            qualified_table_name(&table, schema.as_deref()),
-            quote_ansi(&pk_column)
-        );
-        let pk_param = json_to_pg_param(&pk_value);
-        let row = self
-            .client()
-            .query_opt(&query, &[pk_param.as_ref()])
-            .await?
-            .ok_or_else(|| {
-                Error::Any(anyhow!(
-                    "No row found in {} where {} matches the provided primary key",
-                    qualified_table_name(&table, schema.as_deref()),
-                    pk_column
-                ))
-            })?;
-
-        let mut data = serde_json::Map::new();
-        for (idx, column) in row.columns().iter().enumerate() {
-            data.insert(column.name().to_string(), pg_value_to_json(&row, idx));
-        }
-        data.remove(&pk_column);
-
-        if data.is_empty() {
+        let columns =
+            pg_copyable_columns(self.client(), &table, schema.as_deref(), &pk_column).await?;
+        if columns.is_empty() {
             return Err(Error::Any(anyhow!(
                 "Cannot duplicate row in {} because only the primary key column is available",
                 qualified_table_name(&table, schema.as_deref())
             )));
         }
+        let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
+        let query =
+            build_duplicate_row_sql(&table, schema.as_deref(), &columns, &pk_column, &pk_type);
+        let pk_text = json_to_pg_text(&pk_value, &pk_type);
+        let rows = self.client().execute(&query, &[&pk_text]).await? as usize;
+        if rows == 0 {
+            return Err(Error::Any(anyhow!(
+                "No row found in {} where {} matches the provided primary key",
+                qualified_table_name(&table, schema.as_deref()),
+                pk_column
+            )));
+        }
 
-        self.insert_row(table, schema, data).await
+        Ok(MutationResult {
+            success: true,
+            affected_rows: rows,
+            message: Some(format!("Inserted {} row(s)", rows)),
+        })
     }
 
     async fn get_blob_bytes(
@@ -224,16 +214,18 @@ impl WriteAdapter for PostgresAdapter {
         pk_value: serde_json::Value,
         column: String,
     ) -> Result<Vec<u8>, Error> {
+        let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
         let query = format!(
-            "SELECT {} FROM {} WHERE {} = $1 LIMIT 1",
+            "SELECT {} FROM {} WHERE {} = $1::text::{} LIMIT 1",
             quote_ansi(&column),
             qualified_table_name(&table, schema.as_deref()),
-            quote_ansi(&pk_column)
+            quote_ansi(&pk_column),
+            pk_type
         );
-        let pk_param = json_to_pg_param(&pk_value);
+        let pk_text = json_to_pg_text(&pk_value, &pk_type);
         let row = self
             .client()
-            .query_opt(&query, &[pk_param.as_ref()])
+            .query_opt(&query, &[&pk_text])
             .await?
             .ok_or_else(|| {
                 Error::Any(anyhow!(
@@ -280,11 +272,13 @@ impl WriteAdapter for PostgresAdapter {
         let col = soft_delete_column.ok_or_else(|| {
             Error::InvalidInput("soft_delete_column is required for adapter dispatch".into())
         })?;
+        let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
         maintenance::soft_delete_postgres(
             self.client(),
             &table,
             schema.as_deref(),
             &pk_column,
+            &pk_type,
             &pk_values,
             &col,
         )
@@ -299,11 +293,13 @@ impl WriteAdapter for PostgresAdapter {
         pk_values: Vec<serde_json::Value>,
         soft_delete_column: String,
     ) -> Result<MutationResult, Error> {
+        let pk_type = pg_column_type(self.client(), &table, schema.as_deref(), &pk_column).await?;
         let affected = maintenance::undo_soft_delete_postgres(
             self.client(),
             &table,
             schema.as_deref(),
             &pk_column,
+            &pk_type,
             &pk_values,
             &soft_delete_column,
         )
@@ -374,12 +370,55 @@ fn build_update_cell_sql(
     )
 }
 
-fn json_to_pg_text(value: &serde_json::Value) -> Option<String> {
-    match value {
-        serde_json::Value::Null => None,
-        serde_json::Value::String(s) => Some(s.clone()),
-        other => Some(other.to_string()),
-    }
+fn build_duplicate_row_sql(
+    table: &str,
+    schema: Option<&str>,
+    columns: &[String],
+    pk_column: &str,
+    pk_type: &str,
+) -> String {
+    let column_list = columns
+        .iter()
+        .map(|column| quote_ansi(column))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let qualified = qualified_table_name(table, schema);
+    format!(
+        "INSERT INTO {qualified} ({column_list}) SELECT {column_list} FROM {qualified} WHERE {} = $1::text::{}",
+        quote_ansi(pk_column),
+        pk_type
+    )
+}
+
+/// Lists the columns a row copy may write: everything except the key and the
+/// columns Postgres computes itself (generated and `GENERATED ALWAYS` identity).
+async fn pg_copyable_columns(
+    client: &tokio_postgres::Client,
+    table: &str,
+    schema: Option<&str>,
+    pk_column: &str,
+) -> Result<Vec<String>, Error> {
+    let schema = schema.unwrap_or("public");
+    let rows = client
+        .query(
+            r#"
+            SELECT a.attname::text
+            FROM pg_attribute a
+            JOIN pg_class c ON c.oid = a.attrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = $1
+              AND c.relname = $2
+              AND a.attname <> $3
+              AND a.attnum > 0
+              AND NOT a.attisdropped
+              AND a.attgenerated = ''
+              AND a.attidentity <> 'a'
+            ORDER BY a.attnum
+            "#,
+            &[&schema, &table, &pk_column],
+        )
+        .await?;
+    Ok(rows.iter().map(|row| row.get::<_, String>(0)).collect())
 }
 
 fn build_delete_rows_sql(
@@ -431,37 +470,6 @@ async fn finish_transaction(
             Err(error)
         }
     }
-}
-
-async fn pg_column_type(
-    client: &tokio_postgres::Client,
-    table: &str,
-    schema: Option<&str>,
-    column: &str,
-) -> Result<String, Error> {
-    let schema = schema.unwrap_or("public");
-    let row = client
-        .query_opt(
-            r#"
-            SELECT format_type(a.atttypid, a.atttypmod)
-            FROM pg_attribute a
-            JOIN pg_class c ON c.oid = a.attrelid
-            JOIN pg_namespace n ON n.oid = c.relnamespace
-            WHERE n.nspname = $1
-              AND c.relname = $2
-              AND a.attname = $3
-              AND a.attnum > 0
-              AND NOT a.attisdropped
-            "#,
-            &[&schema, &table, &column],
-        )
-        .await?;
-
-    let Some(row) = row else {
-        return Ok("text".to_string());
-    };
-
-    Ok(row.get::<_, String>(0))
 }
 
 #[cfg(test)]

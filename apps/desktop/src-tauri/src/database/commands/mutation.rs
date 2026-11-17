@@ -93,6 +93,27 @@ pub async fn insert_rows(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn duplicate_rows(
+    connection_id: Uuid,
+    table_name: String,
+    schema_name: Option<String>,
+    primary_key_column: String,
+    primary_key_values: Vec<serde_json::Value>,
+    state: State<'_, AppState>,
+) -> Result<MutationResult, Error> {
+    let svc = mutation_service(state.inner());
+    svc.duplicate_rows(
+        connection_id,
+        table_name,
+        schema_name,
+        primary_key_column,
+        primary_key_values,
+    )
+    .await
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn get_blob_bytes(
     connection_id: Uuid,
     table_name: String,

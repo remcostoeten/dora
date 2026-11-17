@@ -270,22 +270,8 @@ impl<'de> Deserialize<'de> for D1Row {
     }
 }
 
-/// Serializes one D1 JSON value into the grid's cell convention, matching the
-/// SQLite `RowWriter`: SQL `NULL` renders as the literal string `"NULL"`, and a
-/// JSON object/array value passes through unchanged (so the front-end
-/// `JsonInspector` picks it up). Scalars serialize as-is.
-fn cell_to_json(value: &Value) -> Value {
-    match value {
-        Value::Null => Value::String("NULL".to_string()),
-        // Objects/arrays and scalars pass straight through. D1 already returns
-        // native JSON types (numbers, bools, strings), so no string-to-JSON
-        // sniffing is needed — unlike SQLite, which stores JSON as TEXT.
-        other => other.clone(),
-    }
-}
-
-/// Builds a single page of rows (`Vec<Vec<Json>>`) for the given column order,
-/// applying the cell convention. Columns absent from a row decode as `NULL`.
+/// Builds a single page of rows (`Vec<Vec<Json>>`) for the given column order.
+/// Columns absent from a row decode as `null`.
 fn rows_to_page(rows: &[D1Row], columns: &[String]) -> Box<RawValue> {
     let page: Vec<Vec<Value>> = rows
         .iter()
@@ -293,8 +279,8 @@ fn rows_to_page(rows: &[D1Row], columns: &[String]) -> Box<RawValue> {
             columns
                 .iter()
                 .map(|column| match row.get(column) {
-                    Some(value) => cell_to_json(value),
-                    None => Value::String("NULL".to_string()),
+                    Some(value) => value.clone(),
+                    None => Value::Null,
                 })
                 .collect()
         })
@@ -463,8 +449,7 @@ mod tests {
         let columns = set.columns();
         assert_eq!(columns, vec!["id", "name", "note"]);
         let page = rows_to_page(&set.results, &columns);
-        // NULL renders as the literal string "NULL", matching the SQLite writer.
-        assert_eq!(page.get(), r#"[[1,"Alice","NULL"],[2,"NULL","hi"]]"#);
+        assert_eq!(page.get(), r#"[[1,"Alice",null],[2,null,"hi"]]"#);
     }
 
     #[test]

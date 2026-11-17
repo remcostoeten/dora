@@ -2,6 +2,7 @@ use mysql_async::prelude::Queryable;
 use mysql_async::{Params, Pool, Row, Value as MysqlValue};
 use serde::{Deserialize, Serialize};
 
+use crate::database::services::mutation::json_to_pg_text;
 use crate::database::services::schema_export;
 use crate::database::types::DatabaseSchema;
 use crate::Error;
@@ -69,6 +70,7 @@ pub async fn soft_delete_postgres(
     table_name: &str,
     schema_name: Option<&str>,
     primary_key_column: &str,
+    primary_key_type: &str,
     primary_key_values: &[serde_json::Value],
     soft_delete_column: &str,
 ) -> Result<SoftDeleteResult, Error> {
@@ -84,9 +86,8 @@ pub async fn soft_delete_postgres(
 
     let qualified_table = crate::database::ident::qualified_ansi(schema_name, table_name);
 
-    // Build parameterized query
     let placeholders: Vec<String> = (1..=primary_key_values.len())
-        .map(|i| format!("${}", i))
+        .map(|i| format!("${}::text::{}", i, primary_key_type))
         .collect();
 
     let query = format!(
@@ -97,14 +98,13 @@ pub async fn soft_delete_postgres(
         pk = quote_ansi(primary_key_column),
     );
 
-    // Convert values to params
-    let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = primary_key_values
+    let params: Vec<Option<String>> = primary_key_values
         .iter()
-        .map(|v| crate::database::commands::json_to_pg_param(v))
+        .map(|value| json_to_pg_text(value, primary_key_type))
         .collect();
     let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
         .iter()
-        .map(|p| p.as_ref() as &(dyn tokio_postgres::types::ToSql + Sync))
+        .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
         .collect();
 
     let affected = client
@@ -196,8 +196,30 @@ pub async fn soft_delete_mysql(
         .join(", ");
     let deleted_at = chrono::Utc::now().timestamp();
 
+    let mut conn = pool
+        .get_conn()
+        .await
+        .map_err(|e| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e)))?;
+    let column_type: Option<String> = conn
+        .exec_first(
+            "SELECT DATA_TYPE FROM information_schema.COLUMNS \
+             WHERE TABLE_SCHEMA = COALESCE(?, DATABASE()) AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+            (schema_name, table_name, soft_delete_column),
+        )
+        .await
+        .map_err(|e| Error::Any(anyhow::anyhow!("Soft delete failed: {}", e)))?;
+    // A DATETIME, TIMESTAMP or DATE column rejects a bare epoch integer.
+    let stamp = match column_type
+        .as_deref()
+        .map(str::to_ascii_lowercase)
+        .as_deref()
+    {
+        Some("datetime" | "timestamp" | "date") => "FROM_UNIXTIME(?)",
+        _ => "?",
+    };
+
     let query = format!(
-        "UPDATE {qualified_table} SET {} = ? WHERE {} IN ({}) AND {} IS NULL",
+        "UPDATE {qualified_table} SET {} = {stamp} WHERE {} IN ({}) AND {} IS NULL",
         mysql_quote_identifier(soft_delete_column),
         mysql_quote_identifier(primary_key_column),
         placeholders,
@@ -208,10 +230,6 @@ pub async fn soft_delete_mysql(
     params.push(MysqlValue::Int(deleted_at));
     params.extend(primary_key_values.iter().map(json_to_mysql_value));
 
-    let mut conn = pool
-        .get_conn()
-        .await
-        .map_err(|e| Error::Any(anyhow::anyhow!("MySQL connect failed: {}", e)))?;
     conn.exec_drop(query, Params::Positional(params))
         .await
         .map_err(|e| Error::Any(anyhow::anyhow!("Soft delete failed: {}", e)))?;
@@ -233,6 +251,7 @@ pub async fn undo_soft_delete_postgres(
     table_name: &str,
     schema_name: Option<&str>,
     primary_key_column: &str,
+    primary_key_type: &str,
     primary_key_values: &[serde_json::Value],
     soft_delete_column: &str,
 ) -> Result<usize, Error> {
@@ -243,7 +262,7 @@ pub async fn undo_soft_delete_postgres(
     let qualified_table = crate::database::ident::qualified_ansi(schema_name, table_name);
 
     let placeholders: Vec<String> = (1..=primary_key_values.len())
-        .map(|i| format!("${}", i))
+        .map(|i| format!("${}::text::{}", i, primary_key_type))
         .collect();
 
     let query = format!(
@@ -254,13 +273,13 @@ pub async fn undo_soft_delete_postgres(
         placeholders.join(", ")
     );
 
-    let params: Vec<Box<dyn tokio_postgres::types::ToSql + Sync + Send>> = primary_key_values
+    let params: Vec<Option<String>> = primary_key_values
         .iter()
-        .map(|v| crate::database::commands::json_to_pg_param(v))
+        .map(|value| json_to_pg_text(value, primary_key_type))
         .collect();
     let params_ref: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = params
         .iter()
-        .map(|p| p.as_ref() as &(dyn tokio_postgres::types::ToSql + Sync))
+        .map(|p| p as &(dyn tokio_postgres::types::ToSql + Sync))
         .collect();
 
     let affected = client

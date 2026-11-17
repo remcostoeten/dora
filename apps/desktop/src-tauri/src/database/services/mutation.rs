@@ -131,6 +131,37 @@ impl<'a> MutationService<'a> {
         result
     }
 
+    /// Copies many rows of one table inside the database, addressed by key.
+    #[instrument(skip(self, primary_key_values), fields(connection_id = %connection_id, table = %table_name, count = primary_key_values.len()))]
+    pub async fn duplicate_rows(
+        &self,
+        connection_id: Uuid,
+        table_name: String,
+        schema_name: Option<String>,
+        primary_key_column: String,
+        primary_key_values: Vec<serde_json::Value>,
+    ) -> Result<MutationResult, Error> {
+        let (adapter, cid) = self.write_adapter(connection_id)?;
+        let result = adapter
+            .duplicate_rows(
+                table_name.clone(),
+                schema_name.clone(),
+                primary_key_column,
+                primary_key_values,
+            )
+            .await;
+        if let Ok(result) = &result {
+            crate::database::schema_cache::patch_row_count(
+                self.schemas,
+                cid,
+                &table_name,
+                schema_name.as_deref(),
+                crate::database::schema_cache::RowCountDelta::Add(result.affected_rows as i64),
+            );
+        }
+        result
+    }
+
     /// Re-select a single binary cell and return its raw bytes (for
     /// "Copy as base64" / "Save to file", which need the original bytes the
     /// rendered display string no longer carries).
@@ -586,24 +617,70 @@ pub(crate) fn qualified_table_name(table_name: &str, schema_name: Option<&str>) 
     crate::database::ident::qualified_ansi(schema_name, table_name)
 }
 
-pub fn json_to_pg_param(
-    value: &serde_json::Value,
-) -> Box<dyn tokio_postgres::types::ToSql + Sync + Send> {
+/// Renders a JSON value as the text Postgres parses for `col_type`. Every
+/// grid write binds its parameters as text and casts them (`$n::text::<type>`),
+/// because the UI sends strings and numbers that tokio-postgres will not
+/// serialize into an int4, uuid or timestamp parameter directly.
+pub(crate) fn json_to_pg_text(value: &serde_json::Value, col_type: &str) -> Option<String> {
     match value {
-        serde_json::Value::Null => Box::new(Option::<String>::None),
-        serde_json::Value::Bool(b) => Box::new(*b),
-        serde_json::Value::Number(n) => {
-            if let Some(i) = n.as_i64() {
-                Box::new(i)
-            } else if let Some(f) = n.as_f64() {
-                Box::new(f)
-            } else {
-                Box::new(n.to_string())
-            }
+        serde_json::Value::Null => None,
+        serde_json::Value::String(s) => Some(s.clone()),
+        serde_json::Value::Array(items) if col_type.trim_end().ends_with("[]") => {
+            Some(pg_array_literal(items))
         }
-        serde_json::Value::String(s) => Box::new(s.clone()),
-        _ => Box::new(value.to_string()),
+        other => Some(other.to_string()),
     }
+}
+
+fn pg_array_literal(items: &[serde_json::Value]) -> String {
+    let elements: Vec<String> = items
+        .iter()
+        .map(|item| match item {
+            serde_json::Value::Null => "NULL".to_string(),
+            serde_json::Value::Array(nested) => pg_array_literal(nested),
+            serde_json::Value::Bool(_) | serde_json::Value::Number(_) => item.to_string(),
+            serde_json::Value::String(s) => pg_array_quote(s),
+            serde_json::Value::Object(_) => pg_array_quote(&item.to_string()),
+        })
+        .collect();
+    format!("{{{}}}", elements.join(","))
+}
+
+fn pg_array_quote(text: &str) -> String {
+    format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// Looks up a column's full type name (`integer`, `numeric(10,2)`, `text[]`)
+/// for the `$n::text::<type>` cast. Unknown columns fall back to `text`.
+pub(crate) async fn pg_column_type(
+    client: &tokio_postgres::Client,
+    table: &str,
+    schema: Option<&str>,
+    column: &str,
+) -> Result<String, Error> {
+    let schema = schema.unwrap_or("public");
+    let row = client
+        .query_opt(
+            r#"
+            SELECT format_type(a.atttypid, a.atttypmod)
+            FROM pg_attribute a
+            JOIN pg_class c ON c.oid = a.attrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = $1
+              AND c.relname = $2
+              AND a.attname = $3
+              AND a.attnum > 0
+              AND NOT a.attisdropped
+            "#,
+            &[&schema, &table, &column],
+        )
+        .await?;
+
+    let Some(row) = row else {
+        return Ok("text".to_string());
+    };
+
+    Ok(row.get::<_, String>(0))
 }
 
 pub fn json_to_sqlite_value(value: &serde_json::Value) -> rusqlite::types::Value {
@@ -896,14 +973,8 @@ pub(crate) fn pg_value_to_json(row: &tokio_postgres::Row, idx: usize) -> serde_j
         Type::JSON | Type::JSONB => row
             .get::<_, Option<serde_json::Value>>(idx)
             .unwrap_or(serde_json::Value::Null),
-        _ => {
-            // Try as string
-            row.try_get::<_, Option<String>>(idx)
-                .ok()
-                .flatten()
-                .map(serde_json::Value::String)
-                .unwrap_or(serde_json::Value::Null)
-        }
+        _ => crate::database::postgres::row_writer::RowWriter::cell_to_json(row, idx)
+            .unwrap_or(serde_json::Value::Null),
     }
 }
 

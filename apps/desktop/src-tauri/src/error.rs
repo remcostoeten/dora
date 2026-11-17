@@ -80,13 +80,28 @@ pub enum Error {
     Fmt(#[from] std::fmt::Error),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
-    #[error(transparent)]
+    #[error("{}", postgres_detail(.0))]
     Postgres(#[from] tokio_postgres::Error),
     #[error(transparent)]
     MySQL(#[from] mysql_async::Error),
     #[cfg(feature = "duckdb-engine")]
     #[error(transparent)]
     DuckDB(#[from] duckdb::Error),
+}
+
+/// tokio-postgres prints a server error as the bare words "db error" and keeps
+/// the real message on its source, so surface the server's own text.
+fn postgres_detail(error: &tokio_postgres::Error) -> String {
+    match error.as_db_error() {
+        Some(db_error) => match db_error.detail() {
+            Some(detail) => format!("{} ({})", db_error.message(), detail),
+            None => db_error.message().to_string(),
+        },
+        None => match std::error::Error::source(error) {
+            Some(source) => format!("{error}: {source}"),
+            None => error.to_string(),
+        },
+    }
 }
 
 impl<T: Debug> From<tokio::sync::mpsc::error::SendError<T>> for Error {

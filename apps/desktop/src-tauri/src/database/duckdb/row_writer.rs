@@ -40,24 +40,23 @@ impl RowWriter {
             }
 
             match row.get_ref(i)? {
-                ValueRef::Null => self.write_json_string("NULL"),
+                ValueRef::Null => self.buf.push_str("null"),
                 ValueRef::Boolean(value) => write!(&mut self.buf, "{value}")?,
                 ValueRef::TinyInt(value) => write!(&mut self.buf, "{value}")?,
                 ValueRef::SmallInt(value) => write!(&mut self.buf, "{value}")?,
                 ValueRef::Int(value) => write!(&mut self.buf, "{value}")?,
-                ValueRef::BigInt(value) => write!(&mut self.buf, "{value}")?,
+                ValueRef::BigInt(value) => {
+                    crate::database::safe_int::write_int(&mut self.buf, value as i128)
+                }
                 ValueRef::HugeInt(value) => {
-                    // HUGEINT/INT128 overflows JSON numbers; keep precision as a string
-                    if let Ok(v) = i64::try_from(value) {
-                        write!(&mut self.buf, "{v}")?
-                    } else {
-                        self.write_json_string(&value.to_string());
-                    }
+                    crate::database::safe_int::write_int(&mut self.buf, value)
                 }
                 ValueRef::UTinyInt(value) => write!(&mut self.buf, "{value}")?,
                 ValueRef::USmallInt(value) => write!(&mut self.buf, "{value}")?,
                 ValueRef::UInt(value) => write!(&mut self.buf, "{value}")?,
-                ValueRef::UBigInt(value) => write!(&mut self.buf, "{value}")?,
+                ValueRef::UBigInt(value) => {
+                    crate::database::safe_int::write_int(&mut self.buf, value as i128)
+                }
                 ValueRef::Float(value) => self.write_float(value as f64),
                 ValueRef::Double(value) => self.write_float(value),
                 ValueRef::Decimal(value) => {
@@ -169,15 +168,12 @@ pub(crate) fn value_ref_to_json(value: ValueRef<'_>) -> serde_json::Value {
         ValueRef::TinyInt(v) => serde_json::Value::from(v),
         ValueRef::SmallInt(v) => serde_json::Value::from(v),
         ValueRef::Int(v) => serde_json::Value::from(v),
-        ValueRef::BigInt(v) => serde_json::Value::from(v),
-        ValueRef::HugeInt(v) => match i64::try_from(v) {
-            Ok(v) => serde_json::Value::from(v),
-            Err(_) => serde_json::Value::from(v.to_string()),
-        },
+        ValueRef::BigInt(v) => crate::database::safe_int::i64_to_json(v),
+        ValueRef::HugeInt(v) => crate::database::safe_int::i128_to_json(v),
         ValueRef::UTinyInt(v) => serde_json::Value::from(v),
         ValueRef::USmallInt(v) => serde_json::Value::from(v),
         ValueRef::UInt(v) => serde_json::Value::from(v),
-        ValueRef::UBigInt(v) => serde_json::Value::from(v),
+        ValueRef::UBigInt(v) => crate::database::safe_int::u64_to_json(v),
         ValueRef::Float(v) => serde_json::Value::from(v),
         ValueRef::Double(v) => serde_json::Value::from(v),
         ValueRef::Decimal(v) => serde_json::Value::from(v.to_string()),
@@ -202,15 +198,12 @@ fn owned_value_to_json(value: &Value) -> serde_json::Value {
         Value::TinyInt(v) => serde_json::Value::from(*v),
         Value::SmallInt(v) => serde_json::Value::from(*v),
         Value::Int(v) => serde_json::Value::from(*v),
-        Value::BigInt(v) => serde_json::Value::from(*v),
-        Value::HugeInt(v) => match i64::try_from(*v) {
-            Ok(v) => serde_json::Value::from(v),
-            Err(_) => serde_json::Value::from(v.to_string()),
-        },
+        Value::BigInt(v) => crate::database::safe_int::i64_to_json(*v),
+        Value::HugeInt(v) => crate::database::safe_int::i128_to_json(*v),
         Value::UTinyInt(v) => serde_json::Value::from(*v),
         Value::USmallInt(v) => serde_json::Value::from(*v),
         Value::UInt(v) => serde_json::Value::from(*v),
-        Value::UBigInt(v) => serde_json::Value::from(*v),
+        Value::UBigInt(v) => crate::database::safe_int::u64_to_json(*v),
         Value::Float(v) => serde_json::Value::from(*v),
         Value::Double(v) => serde_json::Value::from(*v),
         Value::Decimal(v) => serde_json::Value::from(v.to_string()),
@@ -331,10 +324,7 @@ mod tests {
             &conn,
             "SELECT 42::INTEGER, 3.5::DOUBLE, 'hello', TRUE, NULL",
         );
-        assert_eq!(
-            result,
-            serde_json::json!([[42, 3.5, "hello", true, "NULL"]])
-        );
+        assert_eq!(result, serde_json::json!([[42, 3.5, "hello", true, null]]));
     }
 
     #[test]

@@ -23,6 +23,7 @@ pub mod maintenance;
 pub mod metadata;
 pub mod parser;
 pub mod row_count_refresher;
+mod safe_int;
 pub mod schema_cache;
 pub mod schema_persistence;
 pub mod services;

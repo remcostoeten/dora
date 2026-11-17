@@ -77,6 +77,19 @@ pub trait WriteAdapter: Send + Sync {
         pk_value: serde_json::Value,
     ) -> Result<MutationResult, Error>;
 
+    /// Copies many rows in one call, each inside the database. The default
+    /// stops at the first failure with no rollback; adapters that own a single
+    /// connection override it to wrap the batch in a transaction.
+    async fn duplicate_rows(
+        &self,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        pk_values: Vec<serde_json::Value>,
+    ) -> Result<MutationResult, Error> {
+        duplicate_rows_in_order(self, table, schema, pk_column, pk_values).await
+    }
+
     async fn truncate_table(
         &self,
         table: String,
@@ -131,6 +144,56 @@ pub trait WriteAdapter: Send + Sync {
     ) -> Result<Vec<u8>, Error> {
         Err(Error::NotImplemented("WriteAdapter::get_blob_bytes"))
     }
+}
+
+pub(super) async fn duplicate_rows_in_order<A: WriteAdapter + ?Sized>(
+    adapter: &A,
+    table: String,
+    schema: Option<String>,
+    pk_column: String,
+    pk_values: Vec<serde_json::Value>,
+) -> Result<MutationResult, Error> {
+    let mut copied = 0usize;
+    for pk_value in pk_values {
+        copied += adapter
+            .duplicate_row(table.clone(), schema.clone(), pk_column.clone(), pk_value)
+            .await?
+            .affected_rows;
+    }
+    Ok(MutationResult {
+        success: copied > 0,
+        affected_rows: copied,
+        message: Some(format!("Inserted {} row(s)", copied)),
+    })
+}
+
+/// Turns the row count of an in-database row copy into the command result.
+pub(super) fn duplicate_outcome(
+    rows: usize,
+    table: &str,
+    pk_column: &str,
+) -> Result<MutationResult, Error> {
+    if rows == 0 {
+        return Err(Error::Any(anyhow::anyhow!(
+            "No row found in \"{}\" where {} matches the provided primary key",
+            table,
+            pk_column
+        )));
+    }
+    Ok(MutationResult {
+        success: true,
+        affected_rows: rows,
+        message: Some(format!("Inserted {} row(s)", rows)),
+    })
+}
+
+pub(super) fn require_copyable_columns(columns: &[String]) -> Result<(), Error> {
+    if columns.is_empty() {
+        return Err(Error::Any(anyhow::anyhow!(
+            "Cannot duplicate row because only the primary key column is available"
+        )));
+    }
+    Ok(())
 }
 
 pub(super) async fn update_cells_concurrently<A: WriteAdapter + ?Sized>(

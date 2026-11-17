@@ -157,8 +157,8 @@ fn mysql_value_to_json(value: MysqlValue) -> serde_json::Value {
             Ok(s) => serde_json::Value::from(s),
             Err(e) => serde_json::Value::from(e.into_bytes()),
         },
-        MysqlValue::Int(i) => serde_json::Value::from(i),
-        MysqlValue::UInt(u) => serde_json::Value::from(u),
+        MysqlValue::Int(i) => crate::database::safe_int::i64_to_json(i),
+        MysqlValue::UInt(u) => crate::database::safe_int::u64_to_json(u),
         MysqlValue::Float(f) => serde_json::Value::from(f),
         MysqlValue::Double(d) => serde_json::Value::from(d),
         MysqlValue::Date(y, m, d, hh, mm, ss, micros) => serde_json::Value::from(format!(
