@@ -1,17 +1,40 @@
-/**
- * Renders the Drizzle migration status: the repo's journal entries, each tagged
- * applied (in the live DB) or pending. Read-only — applying migrations is a CLI
- * concern (`drizzle-kit migrate`); this just shows the gap.
- */
-
-import { CheckCircle2, Clock, Info } from 'lucide-react'
-import { cn } from '@studio/shared/utils/cn'
+import { Info } from 'lucide-react'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 import { SchemaDiffMigrationsSkeleton } from '@studio/shared/ui/view-loading-shell'
+import type { MigrationStatusRow } from '@studio/features/orm-cockpit/migration/migration-status'
 import type { MigrationStatusState } from '@studio/features/orm-cockpit/components/use-migration-status'
 
-export function MigrationStatusView({ state }: { state: MigrationStatusState }) {
+type Props = {
+	state: MigrationStatusState
+	connectionName: string
+}
+
+const DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
+	month: 'short',
+	day: 'numeric',
+	year: 'numeric',
+	hour: '2-digit',
+	minute: '2-digit'
+})
+
+function formatWhen(when: number): string {
+	return Number.isFinite(when) && when > 0 ? DATE_FORMAT.format(new Date(when)) : ''
+}
+
+function MigrationRow({ row }: { row: MigrationStatusRow }) {
+	return (
+		<li className='sd-mrow'>
+			<span className={`sd-dot is-${row.state}`} />
+			<span className='sd-mrow-nm'>{row.tag}.sql</span>
+			<span className='sd-mrow-st'>
+				{row.state === 'pending' ? 'pending' : formatWhen(row.when)}
+			</span>
+		</li>
+	)
+}
+
+export function MigrationStatusView({ state, connectionName }: Props) {
 	if (state.loading && !state.status) {
 		return <SchemaDiffMigrationsSkeleton />
 	}
@@ -28,56 +51,60 @@ export function MigrationStatusView({ state }: { state: MigrationStatusState }) 
 	}
 
 	const { rows, appliedCount, pendingCount, tableMissing } = state.status
+	const pending = rows.filter((r) => r.state === 'pending').reverse()
+	const applied = rows.filter((r) => r.state === 'applied').reverse()
 
 	return (
-		<div className='flex h-full flex-col'>
-			<div className='flex items-center gap-3 border-b border-border/60 px-3 py-2 text-xs'>
-				<span className='flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400'>
-					<CheckCircle2 className='h-3.5 w-3.5' />
-					{appliedCount} applied
-				</span>
-				<span className='flex items-center gap-1.5 text-amber-600 dark:text-amber-400'>
-					<Clock className='h-3.5 w-3.5' />
-					{pendingCount} pending
-				</span>
-				<span className='ml-auto text-muted-foreground'>{rows.length} total</span>
-			</div>
-
-			{tableMissing ? (
-				<p className='border-b border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300'>
-					No <span className='font-mono'>__drizzle_migrations</span> table in this
-					database — nothing has been applied here yet.
+		<div className='sd-mig'>
+			<div className='sd-mig-h'>
+				<span className='sd-eyebrow'>Migration journal</span>
+				<p className='sd-mig-say'>
+					{pendingCount > 0 ? (
+						<>
+							{appliedCount} applied,{' '}
+							{pendingCount === 1 ? '1 migration' : `${pendingCount} migrations`}{' '}
+							waiting to run.
+						</>
+					) : (
+						<>
+							All {appliedCount} migrations are applied.{' '}
+							<span className='sd-quiet'>The database matches your journal.</span>
+						</>
+					)}
 				</p>
-			) : null}
-
-			<ul className='min-h-0 flex-1 overflow-auto'>
-				{rows.map(function (row) {
-					const applied = row.state === 'applied'
-					return (
-						<li
-							key={row.idx}
-							className='flex items-center gap-3 border-b border-border/40 px-3 py-2 text-sm'
-						>
-							{applied ? (
-								<CheckCircle2 className='h-4 w-4 shrink-0 text-emerald-500' />
-							) : (
-								<Clock className='h-4 w-4 shrink-0 text-amber-500' />
-							)}
-							<span className='font-mono text-xs text-foreground'>{row.tag}</span>
-							<span
-								className={cn(
-									'ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium uppercase',
-									applied
-										? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-										: 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-								)}
-							>
-								{row.state}
-							</span>
-						</li>
-					)
-				})}
-			</ul>
+				<p className='sd-mig-sub'>
+					Compared against {connectionName}. Apply pending migrations with{' '}
+					<code>drizzle-kit migrate</code>; nothing runs from here.
+				</p>
+				{tableMissing ? (
+					<p className='sd-mig-sub'>
+						No <code>__drizzle_migrations</code> table in this database, so nothing has
+						been applied here yet.
+					</p>
+				) : null}
+			</div>
+			<div className='sd-mlist'>
+				{pending.length > 0 ? (
+					<>
+						<p className='sd-eyebrow sd-mgroup'>Pending</p>
+						<ul>
+							{pending.map((row) => (
+								<MigrationRow key={row.idx} row={row} />
+							))}
+						</ul>
+					</>
+				) : null}
+				{applied.length > 0 ? (
+					<>
+						<p className='sd-eyebrow sd-mgroup'>Applied</p>
+						<ul>
+							{applied.map((row) => (
+								<MigrationRow key={row.idx} row={row} />
+							))}
+						</ul>
+					</>
+				) : null}
+			</div>
 		</div>
 	)
 }
