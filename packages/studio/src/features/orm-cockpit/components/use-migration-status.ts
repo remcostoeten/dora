@@ -75,7 +75,7 @@ export function useMigrationStatus({
 
 				if (journal.entries.length === 0) {
 					setNote(
-						'No migration journal found. Run `drizzle-kit generate` to create migrations, or this project may use push-style sync (see the Drift tab).'
+						'No migration journal found. Run `drizzle-kit generate` to create migrations, or this project may use push-style sync (see the Differences tab).'
 					)
 					return
 				}

@@ -110,8 +110,8 @@ export type UseOrmCockpit = OrmCockpitState & {
 	rescan: () => Promise<void>
 	/** Resolve a `choice` by committing to one detected ORM. */
 	chooseOrm: (link: OrmLink) => Promise<void>
-	/** Generate migration SQL from the current diff on demand. */
-	generate: () => MigrationResult | null
+	/** Migration SQL for the current diff, regenerated whenever the diff changes. */
+	migration: MigrationResult | null
 	reset: () => void
 	/** Whether managed/system tables are included in the diff. */
 	showExternal: boolean
@@ -448,30 +448,26 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 		[state.liveIr, state.dialect]
 	)
 
-	const generate = useCallback(
+	const migration = useMemo(
 		function (): MigrationResult | null {
 			if (!visibleDiff) return null
-			const result = generateMigrationSql(visibleDiff, state.dialect, {
+			return generateMigrationSql(visibleDiff, state.dialect, {
 				from: liveForDiff ?? undefined,
 				to: state.codeIr ?? undefined
 			})
-			// Fold generator warnings into the notes area, deduped against existing.
-			if (result.warnings.length > 0) {
-				setState(function (prev) {
-					const existing = new Set(
-						prev.notes.filter((n) => n.source === 'generate').map((n) => n.message)
-					)
-					const fresh = result.warnings
-						.filter((m) => !existing.has(m))
-						.map(function (m): CockpitNote {
-							return { source: 'generate', message: m }
-						})
-					return fresh.length > 0 ? { ...prev, notes: [...prev.notes, ...fresh] } : prev
-				})
-			}
-			return result
 		},
 		[visibleDiff, state.dialect, liveForDiff, state.codeIr]
+	)
+
+	const notes = useMemo(
+		function (): CockpitNote[] {
+			if (!migration || migration.warnings.length === 0) return state.notes
+			const generated = migration.warnings.map(function (message): CockpitNote {
+				return { source: 'generate', message }
+			})
+			return [...state.notes.filter((n) => n.source !== 'generate'), ...generated]
+		},
+		[migration, state.notes]
 	)
 
 	const setCompareConnection = useCallback(function (id: string) {
@@ -573,10 +569,11 @@ export function useOrmCockpit(connectionId: string | undefined): UseOrmCockpit {
 	return {
 		...state,
 		diff: visibleDiff,
+		notes,
+		migration,
 		link,
 		rescan,
 		chooseOrm,
-		generate,
 		reset,
 		showExternal,
 		setShowExternal,

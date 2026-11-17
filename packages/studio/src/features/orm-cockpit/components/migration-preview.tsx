@@ -1,157 +1,279 @@
-/**
- * Migration preview — shows the SQL generated from the current diff and hands it
- * off. v1 is preview-only (plan 06): nothing is applied here. The copy/console
- * actions emit exactly what's shown, and destructive/review statements are
- * gated behind explicit opt-in toggles (default off) so a careless copy can't
- * drop data.
- */
-
-import { useMemo, useState } from 'react'
-import { Copy, Check, TerminalSquare, AlertTriangle } from 'lucide-react'
-import { File } from '@pierre/diffs/react'
-import { Button } from '@studio/shared/ui/button'
-import { useColorScheme } from '@studio/shared/hooks/use-color-scheme'
-import { Checkbox } from '@studio/shared/ui/checkbox'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Check, Copy, FileCode2, TerminalSquare } from 'lucide-react'
 import { toast } from '@studio/shared/ui/notifier'
 import { cn } from '@studio/shared/utils/cn'
-import type { MigrationResult } from '@studio/features/orm-cockpit/migration/generate-sql'
 import {
-	buildPreviewSql,
-	migrationHasGatedSections
-} from '@studio/features/orm-cockpit/components/migration-sections'
+	statementMatchesRef,
+	type MigrationPlan
+} from '@studio/features/orm-cockpit/components/migration-plan'
+import type { DiffRef } from '@studio/features/orm-cockpit/components/drift-view'
 
 type Props = {
-	migration: MigrationResult
-	/** Hand the generated SQL to the SQL console (preview → run there). */
+	plan: MigrationPlan
+	sourceLabel: string
+	hovered: DiffRef | null
+	pinned: DiffRef | null
+	includeDestructive: boolean
+	includeReview: boolean
+	onIncludeDestructiveChange: (include: boolean) => void
+	onIncludeReviewChange: (include: boolean) => void
+	onStatementHover: (ref: DiffRef | null) => void
 	onOpenInSqlConsole?: (sql: string) => void
 }
 
-const MIGRATION_THEMES = { light: 'pierre-light', dark: 'pierre-dark' } as const
+const KEYWORDS = new Set(
+	'CREATE TABLE ALTER ADD COLUMN DROP SET DATA TYPE NOT NULL DEFAULT PRIMARY KEY UNIQUE INDEX ON USING CONSTRAINT FOREIGN REFERENCES CASCADE UPDATE AS ENUM BEGIN COMMIT WITH TIME ZONE IF EXISTS INSERT INTO VALUES DELETE RENAME TO MODIFY CHANGE RESTRICT ACTION NO AUTO_INCREMENT AUTOINCREMENT'.split(
+		' '
+	)
+)
 
-export function MigrationPreview({ migration, onOpenInSqlConsole }: Props) {
-	const [includeDestructive, setIncludeDestructive] = useState(false)
-	const [includeReview, setIncludeReview] = useState(false)
+// Matches, in order: a line comment, a single-quoted string, a quoted identifier, a backticked identifier, a number, a word.
+const TOKEN = /(--.*$)|('(?:[^']|'')*')|("[^"]*")|(`[^`]*`)|(\b\d+\b)|(\b[A-Za-z_]+\b)/g
+
+function highlightLine(line: string): ReactNode[] {
+	const out: ReactNode[] = []
+	let last = 0
+	for (const match of line.matchAll(TOKEN)) {
+		const index = match.index ?? 0
+		if (index > last) out.push(line.slice(last, index))
+		const [token, comment, str, quoted, backticked, num, word] = match
+		let cls = ''
+		if (comment) cls = 'sd-k-cm'
+		else if (str) cls = 'sd-k-st'
+		else if (quoted || backticked || num) cls = 'sd-k-id'
+		else if (word && KEYWORDS.has(word.toUpperCase()) && word === word.toUpperCase())
+			cls = 'sd-k-kw'
+		out.push(
+			cls ? (
+				<span key={index} className={cls}>
+					{token}
+				</span>
+			) : (
+				token
+			)
+		)
+		last = index + token.length
+	}
+	if (last < line.length) out.push(line.slice(last))
+	return out
+}
+
+export function MigrationPreview({
+	plan,
+	sourceLabel,
+	hovered,
+	pinned,
+	includeDestructive,
+	includeReview,
+	onIncludeDestructiveChange,
+	onIncludeReviewChange,
+	onStatementHover,
+	onOpenInSqlConsole
+}: Props) {
 	const [copied, setCopied] = useState(false)
+	const scrollRef = useRef<HTMLDivElement>(null)
+	const statementCount = plan.statements.length
+	const destructiveCount = plan.statements.filter(
+		(s) => s.section === 'destructive' && s.review === null
+	).length
 
-	const gated = useMemo(
+	useEffect(
 		function () {
-			return migrationHasGatedSections(migration.sections)
+			if (!pinned || !scrollRef.current) return
+			const box = scrollRef.current
+			const target = Array.from(box.querySelectorAll<HTMLElement>('[data-stmt]')).find((el) =>
+				statementMatchesRef(
+					{ table: el.dataset.table ?? null, target: el.dataset.target || null },
+					pinned
+				)
+			)
+			if (!target) return
+			const tr = target.getBoundingClientRect()
+			const br = box.getBoundingClientRect()
+			if (tr.top < br.top + 8 || tr.bottom > br.bottom - 8) {
+				const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+				box.scrollTo({
+					top: box.scrollTop + tr.top - br.top - 48,
+					behavior: reduced ? 'auto' : 'smooth'
+				})
+			}
 		},
-		[migration.sections]
-	)
-
-	const sql = useMemo(
-		function () {
-			return buildPreviewSql(migration.sections, { includeDestructive, includeReview })
-		},
-		[migration.sections, includeDestructive, includeReview]
-	)
-	const file = useMemo(
-		function () {
-			return { name: 'migration.sql', contents: sql, language: 'sql' as const }
-		},
-		[sql]
-	)
-	const colorScheme = useColorScheme()
-	const fileOptions = useMemo(
-		function () {
-			return {
-				disableFileHeader: true,
-				overflow: 'scroll',
-				theme: MIGRATION_THEMES,
-				themeType: colorScheme
-			} as const
-		},
-		[colorScheme]
+		[pinned, plan]
 	)
 
 	async function handleCopy() {
 		try {
-			await navigator.clipboard.writeText(sql)
+			await navigator.clipboard.writeText(plan.text)
 			setCopied(true)
-			window.setTimeout(function () {
-				setCopied(false)
-			}, 1500)
+			window.setTimeout(() => setCopied(false), 1400)
 		} catch {
 			toast.error('Could not copy to clipboard')
 		}
 	}
 
-	return (
-		<div className='flex h-full flex-col'>
-			<div className='flex flex-wrap items-center gap-2 border-b border-border/60 px-3 py-2'>
-				<span className='text-xs font-medium text-muted-foreground'>
-					Generated SQL — review and run in the SQL console
-				</span>
-				<div className='ml-auto flex items-center gap-1'>
-					<Button
-						variant='ghost'
-						size='sm'
-						className='h-7 gap-1.5 text-xs'
-						onClick={handleCopy}
-					>
-						{copied ? (
-							<Check className='h-3.5 w-3.5 text-emerald-500' />
-						) : (
-							<Copy className='h-3.5 w-3.5' />
-						)}
-						{copied ? 'Copied' : 'Copy'}
-					</Button>
-					{onOpenInSqlConsole ? (
-						<Button
-							variant='outline'
-							size='sm'
-							className='h-7 gap-1.5 text-xs'
-							onClick={function () {
-								onOpenInSqlConsole(sql)
-							}}
-						>
-							<TerminalSquare className='h-3.5 w-3.5' />
-							Open in SQL console
-						</Button>
-					) : null}
-				</div>
-			</div>
+	const lineStarts: number[] = []
+	let lineCount = 0
+	for (const block of plan.blocks) {
+		lineStarts.push(lineCount)
+		if (block.kind !== 'gap') lineCount += block.sql.split('\n').length
+	}
 
-			{(gated.hasDestructive || gated.hasReview) && (
-				<div className='flex flex-wrap items-center gap-4 border-b border-border/60 bg-muted/30 px-3 py-2'>
-					{gated.hasReview ? (
-						<label className='flex cursor-pointer items-center gap-2 text-xs text-foreground'>
-							<Checkbox
+	return (
+		<div className='sd-sql'>
+			<div className='sd-sql-h'>
+				<span className='sd-eyebrow'>SQL preview</span>
+				<span className='sd-live'>
+					<span key={plan.text} className='sd-dot' />
+					live
+				</span>
+				<span className='sd-fn'>
+					<FileCode2 />
+					<span>{sourceLabel}</span>
+				</span>
+				<span className='sd-grow' />
+				<button
+					type='button'
+					className='sd-btn is-ghost'
+					onClick={handleCopy}
+					disabled={statementCount === 0}
+				>
+					{copied ? <Check /> : <Copy />}
+					{copied ? 'Copied' : 'Copy SQL'}
+				</button>
+			</div>
+			<div
+				ref={scrollRef}
+				className='sd-sql-scroll'
+				aria-live='polite'
+				onMouseLeave={() => onStatementHover(null)}
+			>
+				{plan.blocks.length === 0 ? (
+					<div className='sd-sql-empty'>
+						<div>
+							<p className='sd-sql-empty-t'>No statements</p>
+							<p className='sd-sql-empty-s'>
+								{plan.heldBackDestructive + plan.heldBackReview > 0
+									? 'Everything included is held back. Allow the statements below to add them.'
+									: 'Include at least one table on the left and its SQL appears here as you go.'}
+							</p>
+						</div>
+					</div>
+				) : (
+					plan.blocks.map(function (block, blockIndex) {
+						if (block.kind === 'gap') return <div key={block.key} className='sd-gap' />
+						const ref =
+							block.table !== null
+								? { table: block.table, target: block.target }
+								: null
+						const isHl =
+							block.kind === 'statement' && statementMatchesRef(block, hovered)
+						const isPin =
+							block.kind === 'statement' && statementMatchesRef(block, pinned)
+						return (
+							<div
+								key={block.key}
+								data-stmt={block.kind === 'statement' ? '' : undefined}
+								data-table={block.table ?? undefined}
+								data-target={block.target ?? undefined}
+								className={cn(
+									'sd-stmt',
+									block.destructive && 'is-destructive',
+									isHl && 'is-hl',
+									isPin && 'is-pin'
+								)}
+								onMouseEnter={() => onStatementHover(ref)}
+							>
+								{block.sql.split('\n').map(function (line, i) {
+									return (
+										<div key={i} className='sd-ln'>
+											<span className='sd-no'>
+												{lineStarts[blockIndex] + i + 1}
+											</span>
+											<span className='sd-code'>{highlightLine(line)}</span>
+										</div>
+									)
+								})}
+								{block.destructive ? (
+									<span className='sd-tag'>destructive</span>
+								) : block.review ? (
+									<span className='sd-tag is-review'>check</span>
+								) : null}
+							</div>
+						)
+					})
+				)}
+			</div>
+			{plan.heldBackDestructive > 0 ||
+			plan.heldBackReview > 0 ||
+			includeDestructive ||
+			includeReview ? (
+				<div className='sd-gate'>
+					{plan.heldBackReview > 0 || includeReview ? (
+						<label className='sd-gate-opt'>
+							<input
+								type='checkbox'
 								checked={includeReview}
-								onCheckedChange={function (v) {
-									setIncludeReview(v === true)
-								}}
+								onChange={(event) => onIncludeReviewChange(event.target.checked)}
 							/>
-							Include review statements
+							<span>
+								Enable statements that need a check
+								{plan.heldBackReview > 0 ? (
+									<span className='sd-quiet'>
+										{' '}
+										· {plan.heldBackReview} held back
+									</span>
+								) : null}
+							</span>
 						</label>
 					) : null}
-					{gated.hasDestructive ? (
-						<label className='flex cursor-pointer items-center gap-2 text-xs'>
-							<Checkbox
+					{plan.heldBackDestructive > 0 || includeDestructive ? (
+						<label className='sd-gate-opt'>
+							<input
+								type='checkbox'
 								checked={includeDestructive}
-								onCheckedChange={function (v) {
-									setIncludeDestructive(v === true)
-								}}
+								onChange={(event) =>
+									onIncludeDestructiveChange(event.target.checked)
+								}
 							/>
-							<span
-								className={cn(
-									'flex items-center gap-1 font-medium',
-									includeDestructive
-										? 'text-red-600 dark:text-red-400'
-										: 'text-muted-foreground'
-								)}
-							>
-								<AlertTriangle className='h-3.5 w-3.5' />
-								Include destructive statements
+							<span>
+								Allow destructive statements
+								{plan.heldBackDestructive > 0 ? (
+									<span className='sd-quiet'>
+										{' '}
+										· {plan.heldBackDestructive} held back
+									</span>
+								) : null}
 							</span>
 						</label>
 					) : null}
 				</div>
-			)}
-
-			<div className='min-h-0 flex-1 overflow-auto bg-background'>
-				<File file={file} options={fileOptions} className='text-xs leading-relaxed' />
+			) : null}
+			<div className='sd-sql-f'>
+				<span className='sd-info'>
+					{statementCount > 0 ? (
+						<>
+							<b>{statementCount}</b> statement{statementCount === 1 ? '' : 's'} ·{' '}
+							{destructiveCount > 0 ? (
+								<span className='sd-x'>{destructiveCount} destructive</span>
+							) : (
+								'nothing destructive'
+							)}
+						</>
+					) : (
+						'Nothing to run'
+					)}
+				</span>
+				{onOpenInSqlConsole ? (
+					<button
+						type='button'
+						className='sd-btn is-primary'
+						disabled={statementCount === 0}
+						onClick={() => onOpenInSqlConsole(plan.text)}
+					>
+						<TerminalSquare />
+						Open in SQL console
+					</button>
+				) : null}
 			</div>
 		</div>
 	)

@@ -1,62 +1,55 @@
-/**
- * ORM cockpit — link a project folder,
-	see how its schema drifts from the live
- * database,
-	and preview a migration that reconciles the two. Preview-only (plan
- * 06/07): nothing is applied from here; the generated SQL is handed off to the
- * SQL console where the normal prod-safety guardrails apply.
- *
- * This component is surface only — all orchestration lives in `useOrmCockpit`.
- */
-
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-	FolderGit2,
-	RefreshCw,
-	Database,
-	ChevronDown,
-	Wand2,
 	AlertCircle,
-	GitCompareArrows,
 	ArrowLeftRight,
+	Check,
+	CheckCircle2,
+	ChevronDown,
+	Database,
+	FolderGit2,
+	FolderPlus,
+	GitCompareArrows,
 	ListChecks,
-	ShieldCheck,
-	AlertTriangle,
-	Eye,
-	EyeOff,
-	CheckCircle2
+	RefreshCw,
+	ShieldCheck
 } from 'lucide-react'
 import { Spinner } from '@studio/shared/ui/spinner'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Button } from '@studio/shared/ui/button'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger
 } from '@studio/shared/ui/dropdown-menu'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 import { SchemaDiffBodySkeleton } from '@studio/shared/ui/view-loading-shell'
-import { CockpitEmptySkeleton } from './cockpit-empty-skeleton'
+import { useColorScheme } from '@studio/shared/hooks/use-color-scheme'
 import { cn } from '@studio/shared/utils/cn'
 import { useConnections } from '@studio/core/data-provider'
 import type { Connection } from '@studio/features/connections/types'
-import type { MigrationResult } from '@studio/features/orm-cockpit/migration/generate-sql'
+import type { TableDiff } from '@studio/features/orm-cockpit/diff/types'
+import { CockpitEmptySkeleton } from '@studio/features/orm-cockpit/components/cockpit-empty-skeleton'
 import { useOrmCockpit } from '@studio/features/orm-cockpit/components/use-orm-cockpit'
 import { useMigrationStatus } from '@studio/features/orm-cockpit/components/use-migration-status'
-import { DriftView } from '@studio/features/orm-cockpit/components/drift-view'
+import {
+	DriftView,
+	type DiffRef,
+	type RiskFilter
+} from '@studio/features/orm-cockpit/components/drift-view'
 import { MigrationPreview } from '@studio/features/orm-cockpit/components/migration-preview'
 import { MigrationStatusView } from '@studio/features/orm-cockpit/components/migration-status-view'
 import { ConverterPanel } from '@studio/features/orm-cockpit/components/converter-panel'
+import { buildMigrationPlan } from '@studio/features/orm-cockpit/components/migration-plan'
+import '@studio/features/orm-cockpit/orm-cockpit.css'
 
 type CockpitTab = 'drift' | 'migrations' | 'converter'
 
 type Props = {
 	activeConnectionId: string | undefined
-	/** Hand generated SQL to the SQL console (Index wires this to nav + event). */
 	onOpenInSqlConsole?: (sql: string) => void
-	/** Window controls slot, rendered in the header (matches other full views). */
 	windowControls?: React.ReactNode
 }
 
@@ -65,7 +58,6 @@ function shortFolder(path: string): string {
 	return parts.slice(-2).join('/') || path
 }
 
-/** The workspace path of a detected option, relative to the linked folder. */
 function relativeWorkspace(linkedFolder: string | null, rootDir: string): string | null {
 	if (!linkedFolder) {
 		return null
@@ -78,34 +70,20 @@ function relativeWorkspace(linkedFolder: string | null, rootDir: string): string
 	return root.startsWith(`${base}/`) ? root.slice(base.length + 1) : shortFolder(root)
 }
 
-/**
- * The always-visible "what is being compared against what" indicator:
- * `your code <folder>  ⟷  ● <database>`. Keeping this in the header means the
- * user never has to wonder which direction the diff runs or which DB it hit.
- */
-function CompareContext({
-	orm,
-	folder,
-	connectionName
-}: {
-	orm: string
-	folder: string
-	connectionName: string
-}) {
-	return (
-		<span className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-			<span>your code</span>
-			<span className='font-mono text-foreground/70' title={`${folder} · ${orm}`}>
-				{shortFolder(folder)}
-			</span>
-			<GitCompareArrows className='h-3 w-3' />
-			<Database className='h-3 w-3 text-emerald-500' />
-			<span className='font-mono text-foreground/70'>{connectionName}</span>
-		</span>
-	)
+function relativeFile(folder: string, path: string): string {
+	const base = folder.replace(/\/+$/, '')
+	return path.startsWith(`${base}/`) ? path.slice(base.length + 1) : shortFolder(path)
 }
 
-/** Picks which connection the linked project is diffed against. */
+function ormLabel(orm: string): string {
+	return orm === 'prisma' ? 'Prisma' : 'Drizzle'
+}
+
+function connectionDetail(connection: Connection): string {
+	const where = connection.host ?? connection.database ?? ''
+	return where ? `${connection.type} · ${where}` : connection.type
+}
+
 function ConnectionPicker({
 	connections,
 	selectedId,
@@ -117,45 +95,42 @@ function ConnectionPicker({
 	onSelect: (id: string) => void
 	disabled?: boolean
 }) {
-	const selected = connections?.find(function (c) {
-		return c.id === selectedId
-	})
+	const selected = connections?.find((c) => c.id === selectedId)
 	if (!connections || connections.length === 0) {
 		return null
 	}
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button
-					variant='ghost'
-					size='sm'
-					className='h-7 max-w-[180px] gap-1.5 text-xs'
-					disabled={disabled}
-				>
-					<Database className='h-3.5 w-3.5 text-emerald-500 shrink-0' />
-					<span className='truncate'>{selected?.name ?? 'Select connection'}</span>
-					<ChevronDown className='h-3 w-3 text-muted-foreground/70 shrink-0' />
-				</Button>
+				<button type='button' className='sd-chip' disabled={disabled}>
+					<Database className='sd-chip-ic' />
+					<span className='sd-chip-k'>database</span>
+					<span className='sd-chip-v'>{selected?.name ?? 'Select connection'}</span>
+					{selected ? <span className='sd-chip-s'>{selected.type}</span> : null}
+					<ChevronDown className='sd-chip-chev' />
+				</button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align='end' className='max-h-[280px] overflow-y-auto'>
+			<DropdownMenuContent align='start' className='max-h-[320px] w-72 overflow-y-auto'>
+				<DropdownMenuLabel className='sd-eyebrow'>Compare against</DropdownMenuLabel>
 				{connections.map(function (connection) {
 					return (
 						<DropdownMenuItem
 							key={connection.id}
-							onClick={function () {
-								onSelect(connection.id)
-							}}
-							className='gap-2 text-sm'
+							onClick={() => onSelect(connection.id)}
+							className='gap-2.5'
 						>
-							<Database
-								className={cn(
-									'h-3.5 w-3.5 shrink-0',
-									connection.id === selectedId
-										? 'text-emerald-500'
-										: 'text-muted-foreground'
-								)}
-							/>
-							<span className='truncate'>{connection.name}</span>
+							<Database className='h-3.5 w-3.5 shrink-0 text-muted-foreground' />
+							<span className='flex min-w-0 flex-1 flex-col'>
+								<span className='truncate text-xs font-medium text-foreground'>
+									{connection.name}
+								</span>
+								<span className='truncate font-mono text-[11px] text-muted-foreground'>
+									{connectionDetail(connection)}
+								</span>
+							</span>
+							{connection.id === selectedId ? (
+								<Check className='h-3.5 w-3.5 shrink-0 text-foreground' />
+							) : null}
 						</DropdownMenuItem>
 					)
 				})}
@@ -164,7 +139,55 @@ function ConnectionPicker({
 	)
 }
 
-/** Warns when the linked project resolves to a different database than the comparison. */
+function FolderPicker({
+	folder,
+	orm,
+	schemaFile,
+	onLink,
+	disabled
+}: {
+	folder: string
+	orm: string
+	schemaFile: string | null
+	onLink: () => void
+	disabled?: boolean
+}) {
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger asChild>
+				<button type='button' className='sd-chip' disabled={disabled} title={folder}>
+					<FolderGit2 className='sd-chip-ic' />
+					<span className='sd-chip-k'>code</span>
+					<span className='sd-chip-v'>{shortFolder(folder)}</span>
+					<span className='sd-chip-s'>{ormLabel(orm)}</span>
+					<ChevronDown className='sd-chip-chev' />
+				</button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent align='start' className='w-72'>
+				<DropdownMenuLabel className='sd-eyebrow'>Linked folder</DropdownMenuLabel>
+				<div className='flex items-center gap-2.5 px-2 py-1.5'>
+					<FolderGit2 className='h-3.5 w-3.5 shrink-0 text-muted-foreground' />
+					<span className='flex min-w-0 flex-1 flex-col'>
+						<span className='truncate text-xs font-medium text-foreground'>
+							{shortFolder(folder)}
+						</span>
+						<span className='truncate font-mono text-[11px] text-muted-foreground'>
+							{schemaFile ? `${schemaFile} · ` : ''}
+							{ormLabel(orm)}
+						</span>
+					</span>
+					<Check className='h-3.5 w-3.5 shrink-0 text-foreground' />
+				</div>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem onClick={onLink} className='gap-2.5 text-xs'>
+					<FolderPlus className='h-3.5 w-3.5 text-muted-foreground' />
+					Link different folder…
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
+	)
+}
+
 function MismatchBanner({
 	projectLabel,
 	connectionLabel
@@ -173,14 +196,13 @@ function MismatchBanner({
 	connectionLabel: string
 }) {
 	return (
-		<div className='flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-200'>
-			<AlertTriangle className='mt-0.5 h-4 w-4 shrink-0 text-amber-400' />
+		<div className='sd-banner'>
+			<span className='sd-dot is-review' />
 			<span>
-				This project's <span className='font-mono'>DATABASE_URL</span> points at{' '}
-				<span className='font-medium'>{projectLabel}</span>, but you're comparing against{' '}
-				<span className='font-medium'>{connectionLabel}</span>. They look like different
-				databases — the diff below is likely meaningless. Switch the connection above, or
-				proceed if you know what you're doing.
+				This project's <code>DATABASE_URL</code> points at <b>{projectLabel}</b>, but you're
+				comparing against <b>{connectionLabel}</b>. They look like different databases, so
+				the diff below is likely meaningless. Switch the database above, or proceed if you
+				know what you're doing.
 			</span>
 		</div>
 	)
@@ -194,12 +216,6 @@ function Code({ children }: { children: React.ReactNode }) {
 	)
 }
 
-/**
- * Sets expectations on the link screen. The cockpit is push-style: it reads
- * your schema source and the live DB and computes the diff itself — it does
- * NOT read the `drizzle/` migration files. Spelling that out here avoids the
- * common "why isn't it showing my migrations?" confusion.
- */
 function HowItWorks() {
 	const items = [
 		{
@@ -208,7 +224,7 @@ function HowItWorks() {
 			body: (
 				<>
 					reads your <Code>schema.ts</Code> / <Code>schema.prisma</Code> and the live
-					database, then generates fresh SQL — like <Code>drizzle-kit push</Code>.
+					database, then generates fresh SQL, like <Code>drizzle-kit push</Code>.
 				</>
 			)
 		},
@@ -227,8 +243,8 @@ function HowItWorks() {
 			label: 'Read-only',
 			body: (
 				<>
-					generated SQL opens in the SQL console, where the usual guardrails apply —
-					nothing is ever applied from here.
+					generated SQL opens in the SQL console, where the usual guardrails apply.
+					Nothing is ever applied from here.
 				</>
 			)
 		}
@@ -258,17 +274,32 @@ function HowItWorks() {
 	)
 }
 
+function toggleInMap(
+	map: ReadonlyMap<string, boolean>,
+	tables: TableDiff[],
+	value: boolean
+): Map<string, boolean> {
+	const next = new Map(map)
+	for (const table of tables) next.set(table.name, value)
+	return next
+}
+
 export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, windowControls }: Props) {
 	const cockpit = useOrmCockpit(activeConnectionId)
 	const { data: connections } = useConnections()
+	const colorScheme = useColorScheme()
 	const compareConnectionId = cockpit.compareConnectionId
 	const connectionName =
-		connections?.find(function (c) {
-			return c.id === compareConnectionId
-		})?.name ?? 'this database'
-	const [migration, setMigration] = useState<MigrationResult | null>(null)
+		connections?.find((c) => c.id === compareConnectionId)?.name ?? 'this database'
 	const [notesOpen, setNotesOpen] = useState(false)
 	const [tab, setTab] = useState<CockpitTab>('drift')
+	const [includeOverrides, setIncludeOverrides] = useState<Map<string, boolean>>(() => new Map())
+	const [openOverrides, setOpenOverrides] = useState<Map<string, boolean>>(() => new Map())
+	const [filter, setFilter] = useState<RiskFilter>('all')
+	const [hovered, setHovered] = useState<DiffRef | null>(null)
+	const [pinned, setPinned] = useState<DiffRef | null>(null)
+	const [includeDestructive, setIncludeDestructive] = useState(false)
+	const [includeReview, setIncludeReview] = useState(false)
 
 	const migrationStatus = useMigrationStatus({
 		folder: cockpit.linked?.folder ?? null,
@@ -280,66 +311,128 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 
 	const busy = cockpit.phase === 'linking' || cockpit.phase === 'analyzing'
 
-	function handleGenerate() {
-		const result = cockpit.generate()
-		setMigration(result)
+	function isIncluded(table: TableDiff): boolean {
+		return includeOverrides.get(table.name) ?? table.kind !== 'removed'
 	}
 
-	// Clear a stale preview whenever the diff changes underneath it.
+	function isOpen(table: TableDiff): boolean {
+		return (
+			openOverrides.get(table.name) ??
+			(table.kind === 'changed' && table.confidence !== 'safe')
+		)
+	}
+
+	const includedNames = useMemo(
+		function () {
+			const names = new Set<string>()
+			for (const table of cockpit.diff?.tables ?? []) {
+				if (includeOverrides.get(table.name) ?? table.kind !== 'removed') {
+					names.add(table.name)
+				}
+			}
+			return names
+		},
+		[cockpit.diff, includeOverrides]
+	)
+
+	const plan = useMemo(
+		function () {
+			return buildMigrationPlan(cockpit.migration?.statements ?? [], {
+				included: includedNames,
+				includeDestructive,
+				includeReview,
+				wrapped: cockpit.dialect === 'postgres'
+			})
+		},
+		[cockpit.migration, includedNames, includeDestructive, includeReview, cockpit.dialect]
+	)
+
+	const [sqlHovered, setSqlHovered] = useState<DiffRef | null>(null)
+	const linkedTables = useMemo(
+		function () {
+			return new Set(sqlHovered ? [sqlHovered.table] : [])
+		},
+		[sqlHovered]
+	)
+
 	useEffect(
 		function () {
-			setMigration(null)
+			setPinned(null)
+			setHovered(null)
 		},
 		[cockpit.diff]
 	)
 
+	useEffect(function () {
+		function onKey(event: KeyboardEvent) {
+			if (event.key === 'Escape') setPinned(null)
+		}
+		window.addEventListener('keydown', onKey)
+		return () => window.removeEventListener('keydown', onKey)
+	}, [])
+
+	const schemaFile = cockpit.linked?.link.schemaFiles[0]
+		? relativeFile(cockpit.linked.folder, cockpit.linked.link.schemaFiles[0].path)
+		: null
+	const analyzed = Boolean(cockpit.linked && cockpit.diff)
+
 	return (
-		<div className='flex h-full w-full flex-col bg-background text-sm'>
-			<header className='flex h-10 shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-2'>
-				<div className='flex items-center gap-2 px-2'>
-					<GitCompareArrows className='h-4 w-4 text-muted-foreground' />
-					<span className='font-semibold text-sidebar-foreground'>Schema Diff</span>
-					{cockpit.linked ? (
-						<CompareContext
-							orm={cockpit.linked.orm}
-							folder={cockpit.linked.folder}
-							connectionName={connectionName}
-						/>
+		<div className='orm-cockpit flex h-full w-full flex-col text-sm' data-scheme={colorScheme}>
+			<header className='sd-tb'>
+				<div className='sd-tb-l'>
+					<div className='sd-title'>
+						<GitCompareArrows className='sd-title-ic' />
+						Schema Diff
+					</div>
+					{cockpit.linked || (connections && connections.length > 0) ? (
+						<span className='sd-tb-div' />
 					) : null}
+					<div className='sd-pair'>
+						{cockpit.linked ? (
+							<>
+								<FolderPicker
+									folder={cockpit.linked.folder}
+									orm={cockpit.linked.orm}
+									schemaFile={schemaFile}
+									onLink={cockpit.link}
+									disabled={busy}
+								/>
+								<ArrowLeftRight
+									className='sd-pair-arrow'
+									aria-label='compared with'
+								/>
+							</>
+						) : null}
+						<ConnectionPicker
+							connections={connections}
+							selectedId={compareConnectionId}
+							onSelect={cockpit.setCompareConnection}
+							disabled={busy}
+						/>
+					</div>
 				</div>
-				<div className='flex items-center gap-1'>
-					<ConnectionPicker
-						connections={connections}
-						selectedId={compareConnectionId}
-						onSelect={cockpit.setCompareConnection}
-						disabled={busy}
-					/>
+				<div className='sd-tb-r'>
 					{cockpit.linked ? (
-						<Button
-							variant='ghost'
-							size='sm'
-							className='h-7 gap-1.5 text-xs'
+						<button
+							type='button'
+							className='sd-btn is-ghost'
 							onClick={cockpit.rescan}
 							disabled={busy}
 						>
-							{busy ? (
-								<Spinner className='h-3.5 w-3.5' />
-							) : (
-								<RefreshCw className='h-3.5 w-3.5' />
-							)}
+							{busy ? <Spinner className='h-3.5 w-3.5' /> : <RefreshCw />}
 							Refresh
-						</Button>
-					) : null}
-					<Button
-						variant='outline'
-						size='sm'
-						className='h-7 gap-1.5 text-xs'
-						onClick={cockpit.link}
-						disabled={busy}
-					>
-						<FolderGit2 className='h-3.5 w-3.5' />
-						{cockpit.linked ? 'Link different folder' : 'Link project'}
-					</Button>
+						</button>
+					) : (
+						<button
+							type='button'
+							className='sd-btn is-outline'
+							onClick={cockpit.link}
+							disabled={busy}
+						>
+							<FolderGit2 />
+							Link project
+						</button>
+					)}
 					{windowControls}
 				</div>
 			</header>
@@ -351,11 +444,9 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 				/>
 			) : null}
 
-			<div className='flex min-h-0 flex-1 flex-col'>
-				{renderTabBar()}
-				<div className='min-h-0 flex-1'>
-					{tab === 'converter' ? <ConverterPanel /> : renderBody()}
-				</div>
+			{renderTabBar()}
+			<div className='min-h-0 flex-1'>
+				{tab === 'converter' ? <ConverterPanel /> : renderBody()}
 			</div>
 		</div>
 	)
@@ -395,9 +486,7 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 								key={`${option.orm}:${option.rootDir}`}
 								variant='outline'
 								className='h-auto justify-start py-2 capitalize'
-								onClick={function () {
-									void cockpit.chooseOrm(option)
-								}}
+								onClick={() => void cockpit.chooseOrm(option)}
 							>
 								<FolderGit2 className='mr-2 h-4 w-4 shrink-0' />
 								<span className='flex flex-col items-start'>
@@ -424,7 +513,7 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 		if (cockpit.phase === 'error' && cockpit.error) {
 			return (
 				<EmptyState
-					illustration={<IconStack icon={<AlertCircle className='text-red-500' />} />}
+					illustration={<IconStack icon={<AlertCircle />} />}
 					title='Could not analyze the project'
 					description={cockpit.error}
 					actions={[{ id: 'link', label: 'Link a project', onClick: cockpit.link }]}
@@ -456,181 +545,162 @@ export function OrmCockpitPanel({ activeConnectionId, onOpenInSqlConsole, window
 			)
 		}
 
+		if (tab === 'migrations') {
+			return <MigrationStatusView state={migrationStatus} connectionName={connectionName} />
+		}
+
 		return (
-			<div className='flex h-full flex-col'>
-				{tab === 'migrations' ? (
-					<MigrationStatusView state={migrationStatus} />
-				) : (
-					<div className='flex min-h-0 flex-1 flex-col'>
-						{renderNotes()}
-						{renderDrift()}
-					</div>
-				)}
+			<div className='flex h-full min-h-0 flex-col'>
+				{renderNotes()}
+				{renderDrift()}
 			</div>
 		)
 	}
 
 	function renderTabBar() {
-		const analyzed = Boolean(cockpit.linked && cockpit.diff)
-		const tabs: Array<{ id: CockpitTab; label: string; icon: React.ReactNode }> = [
+		const pending = migrationStatus.status?.pendingCount ?? 0
+		const tabs: Array<{
+			id: CockpitTab
+			label: string
+			icon: React.ReactNode
+			count?: string
+		}> = [
 			{
 				id: 'drift',
 				label: 'Differences',
-				icon: <GitCompareArrows className='h-3.5 w-3.5' />
+				icon: <GitCompareArrows />,
+				count: cockpit.diff?.hasChanges ? String(cockpit.diff.tables.length) : undefined
 			},
 			...(analyzed
 				? [
 						{
 							id: 'migrations' as CockpitTab,
 							label: 'Migrations',
-							icon: <ListChecks className='h-3.5 w-3.5' />
+							icon: <ListChecks />,
+							count: pending > 0 ? `${pending} pending` : undefined
 						}
 					]
 				: []),
-			{
-				id: 'converter',
-				label: 'Converter',
-				icon: <ArrowLeftRight className='h-3.5 w-3.5' />
-			}
+			{ id: 'converter', label: 'Converter', icon: <ArrowLeftRight /> }
 		]
 		return (
-			<div className='flex shrink-0 items-center gap-1 border-b border-border/60 px-2 py-1'>
+			<div className='sd-tabs' role='tablist' aria-label='Schema Diff'>
 				{tabs.map(function (t) {
-					const active = tab === t.id
 					return (
 						<button
 							key={t.id}
 							type='button'
-							onClick={function () {
-								setTab(t.id)
-							}}
-							className={cn(
-								'flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-medium transition-colors',
-								active
-									? 'bg-muted text-foreground'
-									: 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-							)}
+							role='tab'
+							aria-selected={tab === t.id}
+							className='sd-tab'
+							onClick={() => setTab(t.id)}
 						>
 							{t.icon}
 							{t.label}
+							{t.count ? <span className='sd-tab-cnt'>{t.count}</span> : null}
 						</button>
 					)
 				})}
+				{cockpit.linked && schemaFile ? (
+					<span className='sd-tabs-r'>
+						<span className='sd-mono'>{schemaFile}</span>
+						<span>·</span>
+						<span>{ormLabel(cockpit.linked.orm)}</span>
+					</span>
+				) : null}
 			</div>
 		)
 	}
 
 	function renderDrift() {
-		if (!cockpit.diff) {
+		const diff = cockpit.diff
+		if (!diff) {
 			return null
 		}
-		if (!cockpit.diff.hasChanges) {
+		if (!diff.hasChanges) {
 			return (
 				<EmptyState
-					illustration={
-						<IconStack icon={<CheckCircle2 className='text-emerald-500' />} />
-					}
+					illustration={<IconStack icon={<CheckCircle2 />} />}
 					title='In sync'
 					description={`Your code schema matches ${connectionName}. No changes needed.`}
 				/>
 			)
 		}
+		const systemTables =
+			cockpit.hiddenCount > 0 || cockpit.showExternal
+				? {
+						hidden: cockpit.hiddenCount,
+						shown: cockpit.showExternal,
+						onToggle: () => cockpit.setShowExternal(!cockpit.showExternal)
+					}
+				: null
 		return (
-			<PanelGroup direction='horizontal' className='min-h-0 flex-1'>
-				<Panel defaultSize={50} minSize={30}>
-					<div className='flex h-full flex-col'>
-						<div className='flex items-center justify-between border-b border-border/60 px-3 py-2'>
-							<div className='flex items-center gap-2'>
-								<span className='text-xs font-medium text-muted-foreground'>
-									{connectionName}
-								</span>
-								{cockpit.hiddenCount > 0 || cockpit.showExternal ? (
-									<button
-										type='button'
-										onClick={function () {
-											cockpit.setShowExternal(!cockpit.showExternal)
-										}}
-										className='flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-										title='Migration bookkeeping and provider/system tables (e.g. Supabase auth, storage) are hidden by default.'
-									>
-										{cockpit.showExternal ? (
-											<EyeOff className='h-3 w-3' />
-										) : (
-											<Eye className='h-3 w-3' />
-										)}
-										{cockpit.showExternal
-											? 'Hide system tables'
-											: `Show ${cockpit.hiddenCount} system table${cockpit.hiddenCount === 1 ? '' : 's'}`}
-									</button>
-								) : null}
-							</div>
-							<Button
-								size='sm'
-								className='h-7 gap-1.5 bg-emerald-600 text-xs text-white hover:bg-emerald-700'
-								onClick={handleGenerate}
-							>
-								<Wand2 className='h-3.5 w-3.5' />
-								Generate migration
-							</Button>
-						</div>
-						<div className='min-h-0 flex-1 overflow-auto p-3'>
-							<DriftView diff={cockpit.diff} />
-						</div>
-					</div>
-				</Panel>
-				<PanelResizeHandle className='w-1 bg-sidebar-border hover:bg-primary/20' />
-				<Panel defaultSize={50} minSize={30}>
-					{migration ? (
-						<MigrationPreview
-							migration={migration}
-							onOpenInSqlConsole={onOpenInSqlConsole}
-						/>
-					) : (
-						<EmptyState
-							size='sm'
-							loop
-							illustration={<IconStack icon={<Wand2 />} />}
-							title='No migration generated yet'
-							description='Generate a migration from the drift on the left to preview the SQL.'
-						/>
-					)}
-				</Panel>
-			</PanelGroup>
+			<div className='sd-diff'>
+				<DriftView
+					diff={diff}
+					plan={plan}
+					connectionName={connectionName}
+					included={isIncluded}
+					onIncludeChange={(tables, include) =>
+						setIncludeOverrides((prev) => toggleInMap(prev, tables, include))
+					}
+					isOpen={isOpen}
+					onOpenChange={(tables, open) =>
+						setOpenOverrides((prev) => toggleInMap(prev, tables, open))
+					}
+					filter={filter}
+					onFilterChange={setFilter}
+					hovered={hovered}
+					pinned={pinned}
+					linkedTables={linkedTables}
+					linkedRef={sqlHovered}
+					onHover={setHovered}
+					onPin={(ref) =>
+						setPinned((prev) =>
+							prev && prev.table === ref.table && prev.target === ref.target
+								? null
+								: ref
+						)
+					}
+					systemTables={systemTables}
+				/>
+				<MigrationPreview
+					plan={plan}
+					sourceLabel={`code → ${connectionName}`}
+					hovered={hovered}
+					pinned={pinned}
+					includeDestructive={includeDestructive}
+					includeReview={includeReview}
+					onIncludeDestructiveChange={setIncludeDestructive}
+					onIncludeReviewChange={setIncludeReview}
+					onStatementHover={setSqlHovered}
+					onOpenInSqlConsole={onOpenInSqlConsole}
+				/>
+			</div>
 		)
 	}
 
 	function renderNotes() {
 		if (cockpit.notes.length === 0) return null
 		return (
-			<div className='border-b border-amber-500/30 bg-amber-500/5'>
+			<div className='sd-notes'>
 				<button
 					type='button'
-					onClick={function () {
-						setNotesOpen(function (v) {
-							return !v
-						})
-					}}
-					className='flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-amber-700 hover:bg-amber-500/10 dark:text-amber-300'
+					onClick={() => setNotesOpen((v) => !v)}
+					className='sd-notes-btn'
 					aria-expanded={notesOpen}
 				>
-					<ChevronDown
-						className={cn(
-							'h-3.5 w-3.5 transition-transform',
-							!notesOpen && '-rotate-90'
-						)}
-					/>
-					<AlertCircle className='h-3.5 w-3.5' />
-					{cockpit.notes.length} note{cockpit.notes.length === 1 ? '' : 's'} from parse /
-					diff / generate
+					<ChevronDown className={cn('sd-notes-chev', !notesOpen && 'is-closed')} />
+					<span className='sd-dot is-review' />
+					{cockpit.notes.length} note{cockpit.notes.length === 1 ? '' : 's'} from parse,
+					diff and generate
 				</button>
 				{notesOpen ? (
-					<ul className='max-h-40 overflow-auto px-3 pb-2 text-xs text-muted-foreground'>
+					<ul className='sd-notes-list'>
 						{cockpit.notes.map(function (note, i) {
 							return (
-								<li key={i} className='flex gap-2 py-0.5'>
-									<span className='shrink-0 font-mono uppercase text-[10px] text-amber-600/80 dark:text-amber-400/80'>
-										{note.source}
-									</span>
+								<li key={i}>
+									<span className='sd-notes-src'>{note.source}</span>
 									<span className='min-w-0'>{note.message}</span>
 								</li>
 							)

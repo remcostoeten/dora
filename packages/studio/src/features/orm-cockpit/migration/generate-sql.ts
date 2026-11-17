@@ -44,21 +44,32 @@ export type MigrationSections = {
 	review: string
 }
 
+export type MigrationStatementSection = 'create' | 'additive' | 'destructive'
+
+export type MigrationStatement = {
+	table: string
+	target: string | null
+	section: MigrationStatementSection
+	sql: string
+	review: string | null
+}
+
 export type MigrationResult = {
 	up: string
 	down: string
 	warnings: string[]
 	sections: MigrationSections
+	statements: MigrationStatement[]
 }
 
 export const DESTRUCTIVE_BANNER = '-- ⚠ DESTRUCTIVE: drops or rewrites data — review before running'
 export const REVIEW_HEADER =
 	'-- The following changes need review and are commented out. Enable them deliberately.'
 
-type Section = 'create' | 'additive' | 'destructive'
-
 type Stmt = {
-	section: Section
+	section: MigrationStatementSection
+	table?: string
+	target?: string
 	/** Forward SQL. */
 	sql: string
 	/** Best-effort reverse SQL for the `down` script, if reversible. */
@@ -81,6 +92,7 @@ export function generateMigrationSql(
 	const fromMap = indexByName(context.from?.tables ?? [])
 
 	for (const table of diff.tables) {
+		const start = stmts.length
 		if (table.kind === 'added') {
 			emitCreateTable(table, dialect, toMap.get(table.name), stmts, warnings)
 		} else if (table.kind === 'removed') {
@@ -88,6 +100,7 @@ export function generateMigrationSql(
 		} else {
 			emitAlterTable(table, dialect, stmts, warnings)
 		}
+		stampStatements(stmts, start, { table: table.name })
 	}
 
 	return assemble(stmts, dialect, warnings)
@@ -174,6 +187,7 @@ function emitAlterTable(
 	warnings: string[]
 ): void {
 	for (const col of table.columns) {
+		const start = stmts.length
 		if (col.kind === 'added') {
 			emitAddColumn(table.name, col, dialect, stmts)
 		} else if (col.kind === 'removed') {
@@ -181,13 +195,66 @@ function emitAlterTable(
 		} else {
 			emitAlterColumn(table.name, col, dialect, stmts, warnings)
 		}
+		stampStatements(stmts, start, { target: columnTarget(col.name) })
 	}
 
 	for (const change of table.indexes) {
+		const start = stmts.length
 		emitIndexChange(table.name, change, dialect, stmts)
+		stampStatements(stmts, start, { target: indexTarget(change) })
 	}
 	for (const change of table.foreignKeys) {
+		const start = stmts.length
 		emitForeignKeyChange(table.name, change, dialect, stmts, warnings)
+		stampStatements(stmts, start, { target: foreignKeyTarget(change) })
+	}
+}
+
+/**
+ * @name columnTarget
+ * @description Builds the stable reference a migration statement carries for the
+ * column it changes, so the cockpit can link a diff row to its SQL.
+ *
+ * @example
+ * columnTarget('email') // 'column:email'
+ */
+export function columnTarget(name: string): string {
+	return `column:${name}`
+}
+
+/**
+ * @name indexTarget
+ * @description Builds the stable reference for an index change.
+ *
+ * @example
+ * indexTarget({ kind: 'added', after: index }) // 'index:users_email_idx'
+ */
+export function indexTarget(change: Change<IndexIR>): string {
+	return `index:${change.after?.name ?? change.before?.name ?? ''}`
+}
+
+/**
+ * @name foreignKeyTarget
+ * @description Builds the stable reference for a foreign key change, keyed on its
+ * local columns and referenced table.
+ *
+ * @example
+ * foreignKeyTarget({ kind: 'added', after: fk }) // 'fk:customer_id>customers'
+ */
+export function foreignKeyTarget(change: Change<ForeignKeyIR>): string {
+	const fk = change.after ?? change.before
+	return `fk:${(fk?.columns ?? []).join(',')}>${fk?.refTable ?? ''}`
+}
+
+function stampStatements(
+	stmts: Stmt[],
+	start: number,
+	stamp: { table?: string; target?: string }
+): void {
+	for (let i = start; i < stmts.length; i++) {
+		const stmt = stmts[i]
+		if (stamp.table !== undefined && stmt.table === undefined) stmt.table = stamp.table
+		if (stamp.target !== undefined && stmt.target === undefined) stmt.target = stamp.target
 	}
 }
 
@@ -598,7 +665,25 @@ function assemble(stmts: Stmt[], dialect: Dialect, warnings: string[]): Migratio
 			'MySQL does not support transactional DDL; statements are not wrapped in a transaction and a failure mid-migration leaves a partial state.'
 		)
 	}
-	return { up, down, warnings, sections }
+	return { up, down, warnings, sections, statements: orderStatements(stmts) }
+}
+
+function orderStatements(stmts: Stmt[]): MigrationStatement[] {
+	const ordered = [
+		...stmts.filter((s) => s.section === 'create' && !s.review),
+		...stmts.filter((s) => s.section === 'additive' && !s.review),
+		...stmts.filter((s) => s.section === 'destructive' && !s.review),
+		...stmts.filter((s) => s.review)
+	]
+	return ordered.map(function (s): MigrationStatement {
+		return {
+			table: s.table ?? '',
+			target: s.target ?? null,
+			section: s.section,
+			sql: s.sql,
+			review: s.review ?? null
+		}
+	})
 }
 
 function buildMigrationSections(stmts: Stmt[], wrapped: boolean): MigrationSections {
