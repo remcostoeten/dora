@@ -1,9 +1,7 @@
 id: io.github.remcostoeten.dora
 runtime: org.gnome.Platform
-runtime-version: '48'
+runtime-version: '51'
 sdk: org.gnome.Sdk
-sdk-extensions:
-    - org.freedesktop.Sdk.Extension.rust-stable
 command: dora
 finish-args:
     - --socket=x11
@@ -16,54 +14,29 @@ finish-args:
     - --talk-name=org.freedesktop.secrets
     - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
 
+# Wraps the released .deb so the Flatpak runs the exact binary `tauri build`
+# produced. A bare `cargo build` skips Tauri's custom-protocol feature and
+# ships a dev build that loads http://localhost:1420.
 modules:
-    - name: bun-install
-      buildsystem: simple
-      sources:
-          - type: archive
-            url: https://github.com/oven-sh/bun/releases/download/bun-v1.1.38/bun-linux-x64-baseline.zip
-            sha256: 353e2e6d4086a09eeee984d2ed61736dcd905838ede51b82689fd7b3e95def90
-      build-commands:
-          - install -Dm755 bun /app/bin/bun-install
-
-    - name: bun
-      buildsystem: simple
-      sources:
-          - type: archive
-            url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.13/bun-linux-x64-baseline.zip
-            sha256: 9d8a24292a7068090205daac0a5a223f5f69736f5287e37bf88d3b4031edc750
-      build-commands:
-          - install -Dm755 bun /app/bin/bun
-
     - name: dora
       buildsystem: simple
-      build-options:
-          build-args:
-              - --share=network
-          env:
-              PATH: /app/bin:/usr/lib/sdk/rust-stable/bin:/usr/bin:/bin
-              CARGO_HOME: /run/build/dora/cargo
-              RUSTUP_HOME: /run/build/dora/rustup
-      build-commands:
-          - bun-install install --frozen-lockfile
-          - bun run --cwd apps/desktop build
-          - cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
-          # DuckDB runs out of process; the app resolves `duckdb_helper` next to its
-          # own binary, so the sidecar must ship alongside it.
-          - cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --bin
-            duckdb_helper --features duckdb-engine
-          - install -Dm755 apps/desktop/src-tauri/target/release/dora /app/bin/dora
-          - install -Dm755 apps/desktop/src-tauri/target/release/duckdb_helper /app/bin/duckdb_helper
-          - install -Dm644 packaging/flatpak/io.github.remcostoeten.dora.desktop
-            /app/share/applications/io.github.remcostoeten.dora.desktop
-          - install -Dm644 apps/desktop/src-tauri/icons/128x128.png
-            /app/share/icons/hicolor/128x128/apps/io.github.remcostoeten.dora.png
-          - install -Dm644 apps/desktop/src-tauri/icons/64x64.png
-            /app/share/icons/hicolor/64x64/apps/io.github.remcostoeten.dora.png
-          - install -Dm644 apps/desktop/src-tauri/icons/32x32.png
-            /app/share/icons/hicolor/32x32/apps/io.github.remcostoeten.dora.png
-          - install -Dm644 packaging/flatpak/io.github.remcostoeten.dora.metainfo.xml
-            /app/share/metainfo/io.github.remcostoeten.dora.metainfo.xml
       sources:
-          - type: dir
-            path: ../..
+          - type: file
+            path: dora.deb
+          - type: file
+            path: io.github.remcostoeten.dora.desktop
+          - type: file
+            path: io.github.remcostoeten.dora.metainfo.xml
+      build-commands:
+          - ar -x dora.deb
+          - tar -xf data.tar.*
+          - install -Dm755 usr/bin/dora /app/bin/dora
+          - install -Dm755 usr/bin/duckdb_helper /app/bin/duckdb_helper
+          - install -Dm644 io.github.remcostoeten.dora.desktop /app/share/applications/io.github.remcostoeten.dora.desktop
+          - |
+              for icon in usr/share/icons/hicolor/*/apps/dora.png; do
+                size="$(basename "$(dirname "$(dirname "$icon")")")"
+                case "$size" in *@*) continue ;; esac
+                install -Dm644 "$icon" "/app/share/icons/hicolor/${size}/apps/io.github.remcostoeten.dora.png"
+              done
+          - install -Dm644 io.github.remcostoeten.dora.metainfo.xml /app/share/metainfo/io.github.remcostoeten.dora.metainfo.xml

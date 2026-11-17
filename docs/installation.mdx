@@ -17,29 +17,30 @@ release assets:
 
 ## Platform matrix
 
-| Platform   | Architectures        | Package                                              | How to get it                                                           |
-| ---------- | -------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------- |
-| macOS      | Apple Silicon, Intel | `.dmg`, Homebrew Cask                                | [Downloads](https://doradb.app/downloads), GitHub releases, or Homebrew |
-| Windows    | x64                  | `.exe`, `.msi`, Winget                               | [Downloads](https://doradb.app/downloads), GitHub releases, or Winget   |
-| Linux      | x64                  | `.AppImage`, `.deb`, `.rpm`, `.snap`, `.tar.gz`, APT | [Downloads](https://doradb.app/downloads), GitHub releases, or APT      |
-| Arch Linux | x64                  | AUR                                                  | `yay -S dora`                                                           |
+| Platform   | Architectures        | Package                                            | Package managers             |
+| ---------- | -------------------- | -------------------------------------------------- | ---------------------------- |
+| macOS      | Apple Silicon, Intel | Universal `.dmg`                                   | Homebrew                     |
+| Windows    | x64, ARM64           | Setup `.exe`                                       | Winget, Scoop                |
+| Linux      | x86_64, ARM64        | `.AppImage`, `.deb`, `.rpm`, `.flatpak`, `.tar.gz` | APT, DNF, Flatpak, Snap, Nix |
+| Arch Linux | x86_64, ARM64        | AUR                                                | `yay -S dora`                |
+
+ARM64 builds for Windows and Linux ship when that release built them; x64 and
+x86_64 ship with every release.
 
 ## macOS
 
-1. Download the DMG that matches your chip: **Apple Silicon** (M1 and newer) or
-   **Intel**. If you are unsure, click the Apple menu and check "About This Mac".
+1. Download the universal DMG. It runs natively on Apple Silicon and Intel.
 2. Open the DMG and drag **Dora** into your Applications folder.
 3. Launch Dora from Applications.
 
 <Callout type='warn'>
-	If macOS reports that Dora "cannot be opened because the developer cannot be verified",
-	right-click the app and choose **Open**, then confirm. This only needs to be done on first
-	launch.
+	Dora is not notarized, so macOS blocks the first launch. Open Dora once, close the warning, then
+	go to **System Settings → Privacy & Security** and click **Open Anyway** next to the message
+	about Dora. This only needs to be done once. Homebrew installs skip this step because the cask
+	clears the quarantine flag.
 </Callout>
 
 ### Homebrew
-
-Dora is also published as a Homebrew Cask via a dedicated tap:
 
 ```bash
 brew install --cask remcostoeten/dora/dora
@@ -47,18 +48,22 @@ brew install --cask remcostoeten/dora/dora
 
 ## Windows
 
-1. Download the **Windows EXE** setup installer (recommended) or the **MSI**
-   package for managed deployments.
+1. Download the setup installer for your architecture (x64 or ARM64).
 2. Run the installer. If SmartScreen warns about an unrecognized app, choose
    **More info** then **Run anyway**.
 3. Launch Dora from the Start menu.
 
 ### Winget
 
-Dora is published to the Windows Package Manager as `RemcoStoeten.Dora`:
-
 ```powershell
 winget install RemcoStoeten.Dora
+```
+
+### Scoop
+
+```powershell
+scoop bucket add dora https://github.com/remcostoeten/dora-packages
+scoop install dora/dora
 ```
 
 ## Linux
@@ -68,20 +73,49 @@ Pick the package that fits your distribution:
 | Package         | Install command                                       |
 | --------------- | ----------------------------------------------------- |
 | AppImage        | `chmod +x Dora_*.AppImage && ./Dora_*.AppImage`       |
-| Debian / Ubuntu | `sudo dpkg -i dora_*.deb`                             |
-| Fedora / RHEL   | `sudo rpm -i dora-*.rpm`                              |
+| Debian / Ubuntu | `sudo apt install ./Dora_*.deb`                       |
+| Fedora / RHEL   | `sudo dnf install ./Dora-*.rpm`                       |
+| Flatpak bundle  | `flatpak install --user ./Dora-*.flatpak`             |
 | Snap            | `sudo snap install dora`                              |
-| Archive         | `tar -xzf dora_*.tar.gz` and run the extracted binary |
+| Archive         | `tar -xzf dora-*.tar.gz` and run the extracted binary |
+
+The repositories below give you updates through your package manager instead of
+re-downloading each release. All of them are signed with the same key,
+[KEY.gpg](https://remcostoeten.github.io/dora/KEY.gpg).
 
 ### APT (Debian / Ubuntu)
 
-Dora also publishes a hosted APT repository, so you get updates through
-`apt` instead of re-downloading the `.deb` each release:
+```bash
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://remcostoeten.github.io/dora/KEY.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg
+echo "deb [signed-by=/etc/apt/keyrings/dora.gpg] https://remcostoeten.github.io/dora stable main" | sudo tee /etc/apt/sources.list.d/dora.list
+sudo apt update && sudo apt install dora
+```
+
+### DNF (Fedora / RHEL / openSUSE)
 
 ```bash
-curl -fsSL https://remco-stoeten.github.io/dora/KEY.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg
-echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/dora.gpg] https://remco-stoeten.github.io/dora stable main" | sudo tee /etc/apt/sources.list.d/dora.list
-sudo apt update && sudo apt install dora
+sudo curl -fsSL -o /etc/yum.repos.d/dora.repo https://remcostoeten.github.io/dora/rpm/dora.repo
+sudo dnf install dora
+```
+
+On openSUSE, add the same file with `sudo zypper addrepo https://remcostoeten.github.io/dora/rpm/dora.repo`.
+
+### Flatpak
+
+```bash
+flatpak install --user https://remcostoeten.github.io/dora/flatpak/io.github.remcostoeten.dora.flatpakref
+```
+
+The ref adds the Dora remote and, when it is missing, Flathub for the GNOME
+runtime. Updates then arrive through `flatpak update`.
+
+### Nix
+
+```bash
+nix profile install github:remcostoeten/dora-packages
+# or try it without installing
+nix run github:remcostoeten/dora-packages
 ```
 
 ### Arch Linux (AUR)

@@ -99,7 +99,9 @@ parts:
 
             bun install
             (cd apps/desktop && node node_modules/vite/bin/vite.js build)
-            cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release
+            # Without custom-protocol Tauri compiles in dev mode and loads devUrl
+            # (http://localhost:1420) instead of the embedded frontend.
+            cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --features tauri/custom-protocol
             # DuckDB runs out of process; the app resolves `duckdb_helper` next to its
             # own binary, so the sidecar must ship alongside it.
             cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --release --bin duckdb_helper --features duckdb-engine

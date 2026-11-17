@@ -1,47 +1,30 @@
 import crypto from 'crypto'
-import { execSync } from 'child_process'
+import { execFileSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import { gzipSync } from 'zlib'
 import { logHeader, logKeyValue, logLevel } from './_shared'
 
-function getFlagValue(flag: string): string | undefined {
+type Deb = {
+	file: string
+	buffer: Buffer
+	arch: string
+	control: string
+}
+
+const PAGES_BASE = 'https://remcostoeten.github.io/dora'
+
+function getFlagValues(flag: string): string[] {
 	const prefix = `--${flag}=`
-	const arg = process.argv.find((v) => v.startsWith(prefix))
-	return arg ? arg.slice(prefix.length) : undefined
+	return process.argv.filter((v) => v.startsWith(prefix)).map((v) => v.slice(prefix.length))
 }
 
-function inferVersion(): string {
-	const explicit = getFlagValue('version')
-	if (explicit) return explicit
-	try {
-		const tag = execSync('git describe --tags --abbrev=0', { encoding: 'utf8' }).trim()
-		if (!tag) throw new Error('no tags')
-		return tag.startsWith('v') ? tag.slice(1) : tag
-	} catch {
-		throw new Error('Could not infer version. Provide --version=...')
-	}
+function getFlagValue(flag: string): string | undefined {
+	return getFlagValues(flag)[0]
 }
 
-async function fetchBuffer(url: string): Promise<Buffer> {
-	const res = await fetch(url)
-	if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`)
-	return Buffer.from(await res.arrayBuffer())
-}
-
-function sha256hex(buf: Buffer): string {
-	return crypto.createHash('sha256').update(buf).digest('hex')
-}
-
-function sha256base64(buf: Buffer): string {
-	return crypto.createHash('sha256').update(buf).digest('base64')
-}
-
-function md5hex(buf: Buffer): string {
-	return crypto.createHash('md5').update(buf).digest('hex')
-}
-
-function sha1hex(buf: Buffer): string {
-	return crypto.createHash('sha1').update(buf).digest('hex')
+function hash(algorithm: string, buf: Buffer): string {
+	return crypto.createHash(algorithm).update(buf).digest('hex')
 }
 
 function writeFile(p: string, content: string | Buffer) {
@@ -50,150 +33,136 @@ function writeFile(p: string, content: string | Buffer) {
 	logLevel('success', `Wrote ${p}`)
 }
 
-async function main() {
-	const version = inferVersion()
-	const repoUrl = getFlagValue('repo-url') || 'https://github.com/remcostoeten/dora'
-	const pagesBase = getFlagValue('pages-base') || 'https://remco-stoeten.github.io/dora'
-	const outDir = path.resolve(getFlagValue('out-dir') || 'packaging/apt')
-	const debFile = getFlagValue('deb-file') || `Dora_${version}_amd64.deb`
-	const debUrl = getFlagValue('deb-url') || `${repoUrl}/releases/download/v${version}/${debFile}`
+async function loadDeb(source: string, tmpDir: string): Promise<Deb> {
+	let localPath = source
+	if (/^https?:\/\//.test(source)) {
+		const res = await fetch(source)
+		if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${source}`)
+		localPath = path.join(tmpDir, decodeURIComponent(source.split('/').pop() as string))
+		fs.writeFileSync(localPath, Buffer.from(await res.arrayBuffer()))
+	}
+	const control = execFileSync('dpkg-deb', ['-f', localPath], { encoding: 'utf8' }).trimEnd()
+	const arch = execFileSync('dpkg-deb', ['-f', localPath, 'Architecture'], {
+		encoding: 'utf8'
+	}).trim()
+	return { file: path.basename(localPath), buffer: fs.readFileSync(localPath), arch, control }
+}
 
-	logHeader('Generating APT Repository Files')
-	logKeyValue('Version', version)
-	logKeyValue('.deb URL', debUrl)
-	logKeyValue('Output', outDir)
-
-	// Download the .deb to compute sizes and hashes
-	logLevel('info', 'Downloading .deb to compute hashes…')
-	const debBuf = await fetchBuffer(debUrl)
-	const debSize = debBuf.length
-	const debSha256 = sha256hex(debBuf)
-	const debSha1 = sha1hex(debBuf)
-	const debMd5 = md5hex(debBuf)
-
-	logKeyValue('Size', String(debSize))
-	logKeyValue('SHA-256', debSha256)
-
-	// Write the .deb into the pool
-	const poolPath = path.join(outDir, 'pool', 'main', debFile)
-	writeFile(poolPath, debBuf)
-
-	// ── Packages index ───────────────────────────────────────────────────────
-	const packagesContent = [
-		'Package: dora',
-		`Version: ${version}`,
-		'Architecture: amd64',
-		'Maintainer: Remco Stoeten <aukjestoetencrypto@gmail.com>',
-		`Installed-Size: ${Math.ceil(debSize / 1024)}`,
-		'Depends: libgtk-3-0, libwebkit2gtk-4.1-0, libayatana-appindicator3-1, libsecret-1-0',
-		`Filename: pool/main/${debFile}`,
-		`Size: ${debSize}`,
-		`MD5sum: ${debMd5}`,
-		`SHA1: ${debSha1}`,
-		`SHA256: ${debSha256}`,
-		'Section: utils',
-		'Priority: optional',
-		'Homepage: https://github.com/remcostoeten/dora',
-		'Description: Desktop database studio for PostgreSQL, MySQL, SQLite, and LibSQL',
-		' A native-feeling desktop database client built with Tauri.',
+function packagesEntry(deb: Deb): string {
+	return [
+		deb.control,
+		`Filename: pool/main/${deb.file}`,
+		`Size: ${deb.buffer.length}`,
+		`MD5sum: ${hash('md5', deb.buffer)}`,
+		`SHA1: ${hash('sha1', deb.buffer)}`,
+		`SHA256: ${hash('sha256', deb.buffer)}`,
 		''
 	].join('\n')
+}
 
-	const packagesBuf = Buffer.from(packagesContent, 'utf8')
-
-	// Gzip compress
-	const { gzipSync } = await import('zlib')
-	const packagesGzBuf = gzipSync(packagesBuf)
-
-	writeFile(
-		path.join(outDir, 'dists', 'stable', 'main', 'binary-amd64', 'Packages'),
-		packagesContent
-	)
-	writeFile(
-		path.join(outDir, 'dists', 'stable', 'main', 'binary-amd64', 'Packages.gz'),
-		packagesGzBuf
-	)
-
-	// ── Release file ─────────────────────────────────────────────────────────
-	const now = new Date().toUTCString()
-
-	const pMd5 = md5hex(packagesBuf)
-	const pSha1 = sha1hex(packagesBuf)
-	const pSha256 = sha256hex(packagesBuf)
-	const pSize = packagesBuf.length
-
-	const pgzMd5 = md5hex(packagesGzBuf)
-	const pgzSha1 = sha1hex(packagesGzBuf)
-	const pgzSha256 = sha256hex(packagesGzBuf)
-	const pgzSize = packagesGzBuf.length
-
-	const releaseContent = [
+function releaseFile(indexes: { name: string; buf: Buffer }[], archs: string[]): string {
+	const section = (label: string, algorithm: string) => [
+		`${label}:`,
+		...indexes.map((i) => ` ${hash(algorithm, i.buf)} ${i.buf.length} ${i.name}`)
+	]
+	return [
 		'Origin: Dora',
 		'Label: Dora',
 		'Suite: stable',
 		'Codename: stable',
-		`Date: ${now}`,
-		'Architectures: amd64',
+		`Date: ${new Date().toUTCString()}`,
+		`Architectures: ${archs.join(' ')}`,
 		'Components: main',
 		'Description: Dora apt repository',
-		'MD5Sum:',
-		` ${pMd5} ${pSize} main/binary-amd64/Packages`,
-		` ${pgzMd5} ${pgzSize} main/binary-amd64/Packages.gz`,
-		'SHA1:',
-		` ${pSha1} ${pSize} main/binary-amd64/Packages`,
-		` ${pgzSha1} ${pgzSize} main/binary-amd64/Packages.gz`,
-		'SHA256:',
-		` ${pSha256} ${pSize} main/binary-amd64/Packages`,
-		` ${pgzSha256} ${pgzSize} main/binary-amd64/Packages.gz`,
+		...section('MD5Sum', 'md5'),
+		...section('SHA1', 'sha1'),
+		...section('SHA256', 'sha256'),
 		''
 	].join('\n')
+}
 
-	writeFile(path.join(outDir, 'dists', 'stable', 'Release'), releaseContent)
-
-	// ── GPG signing (if key available) ───────────────────────────────────────
+function sign(outDir: string) {
 	const gpgKey = process.env.GPG_PRIVATE_KEY
-	if (gpgKey) {
-		logLevel('info', 'Signing Release with GPG…')
-		try {
-			// Import key into temp keyring
-			execSync(`echo "${gpgKey}" | gpg --batch --import`, { stdio: 'pipe' })
-			const releasePath = path.join(outDir, 'dists', 'stable', 'Release')
-			execSync(
-				`gpg --batch --yes --armor --detach-sign --output "${releasePath}.gpg" "${releasePath}"`,
-				{ stdio: 'pipe' }
-			)
-			execSync(
-				`gpg --batch --yes --clearsign --output "${path.join(outDir, 'dists', 'stable', 'InRelease')}" "${releasePath}"`,
-				{ stdio: 'pipe' }
-			)
-			// Export public key
-			const pubKey = execSync('gpg --armor --export', { encoding: 'utf8' })
-			writeFile(path.join(outDir, 'KEY.gpg'), pubKey)
-			logLevel('success', 'Release signed')
-		} catch (err) {
-			logLevel(
-				'warning',
-				`GPG signing failed (skipping): ${err instanceof Error ? err.message : err}`
-			)
-		}
-	} else {
-		logLevel(
-			'warning',
-			'GPG_PRIVATE_KEY not set - Release will be unsigned (users need [trusted=yes])'
-		)
+	if (!gpgKey) {
+		logLevel('warning', 'GPG_PRIVATE_KEY not set, the Release file stays unsigned')
+		return
+	}
+	const home = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'dora-apt-gpg-'))
+	fs.chmodSync(home, 0o700)
+	function gpg(args: string[], input?: string): string {
+		return execFileSync('gpg', ['--homedir', home, '--batch', '--yes', ...args], {
+			input,
+			encoding: 'utf8'
+		})
+	}
+	gpg(['--import'], gpgKey)
+	const releasePath = path.join(outDir, 'dists', 'stable', 'Release')
+	gpg(['--armor', '--detach-sign', '--output', `${releasePath}.gpg`, releasePath])
+	gpg(['--clearsign', '--output', path.join(outDir, 'dists', 'stable', 'InRelease'), releasePath])
+	writeFile(path.join(outDir, 'KEY.gpg'), gpg(['--armor', '--export']))
+	fs.rmSync(home, { recursive: true, force: true })
+	logLevel('success', 'Release signed')
+}
+
+async function latestReleaseDebUrls(): Promise<string[]> {
+	const res = await fetch('https://api.github.com/repos/remcostoeten/dora/releases/latest')
+	if (!res.ok) throw new Error(`HTTP ${res.status} reading the latest release`)
+	const release = (await res.json()) as {
+		assets: { name: string; browser_download_url: string }[]
+	}
+	const urls = release.assets
+		.filter((asset) => asset.name.endsWith('.deb'))
+		.map((asset) => asset.browser_download_url)
+	if (urls.length === 0) throw new Error('The latest release has no .deb assets')
+	return urls
+}
+
+async function main() {
+	const outDir = path.resolve(getFlagValue('out-dir') || 'packaging/apt')
+	const explicit = [...getFlagValues('deb'), ...getFlagValues('deb-url')]
+	const sources = explicit.length > 0 ? explicit : await latestReleaseDebUrls()
+
+	logHeader('Generating APT Repository Files')
+	logKeyValue('Output', outDir)
+
+	const tmpDir = fs.mkdtempSync(path.join(fs.realpathSync('/tmp'), 'dora-apt-'))
+	const debs = await Promise.all(sources.map((source) => loadDeb(source, tmpDir)))
+	const names = debs.map((deb) => deb.file)
+	const duplicate = names.find((name, index) => names.indexOf(name) !== index)
+	if (duplicate) {
+		throw new Error(`Two packages share the pool filename ${duplicate}`)
 	}
 
-	// ── User install instructions ─────────────────────────────────────────────
-	const keyLine = gpgKey
-		? `curl -fsSL ${pagesBase}/KEY.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg`
-		: `# (unsigned repo — add [trusted=yes] if prompted)`
-	const sourceEntry = gpgKey
-		? `echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/dora.gpg] ${pagesBase} stable main" | sudo tee /etc/apt/sources.list.d/dora.list`
-		: `echo "deb [arch=amd64 trusted=yes] ${pagesBase} stable main" | sudo tee /etc/apt/sources.list.d/dora.list`
+	const indexes: { name: string; buf: Buffer }[] = []
+	const archs = [...new Set(debs.map((deb) => deb.arch))].sort()
+	for (const arch of archs) {
+		const forArch = debs.filter((deb) => deb.arch === arch)
+		const packages = Buffer.from(forArch.map(packagesEntry).join('\n'), 'utf8')
+		const packagesGz = gzipSync(packages)
+		const dir = path.join(outDir, 'dists', 'stable', 'main', `binary-${arch}`)
+		writeFile(path.join(dir, 'Packages'), packages)
+		writeFile(path.join(dir, 'Packages.gz'), packagesGz)
+		indexes.push({ name: `main/binary-${arch}/Packages`, buf: packages })
+		indexes.push({ name: `main/binary-${arch}/Packages.gz`, buf: packagesGz })
+	}
+
+	for (const deb of debs) {
+		logKeyValue(deb.arch, deb.file)
+		writeFile(path.join(outDir, 'pool', 'main', deb.file), deb.buffer)
+	}
+
+	writeFile(path.join(outDir, 'dists', 'stable', 'Release'), releaseFile(indexes, archs))
+	sign(outDir)
 
 	logHeader('Install instructions for users')
-	logLevel('info', keyLine)
-	logLevel('info', sourceEntry)
+	logLevel(
+		'info',
+		`curl -fsSL ${PAGES_BASE}/KEY.gpg | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg`
+	)
+	logLevel(
+		'info',
+		`echo "deb [signed-by=/etc/apt/keyrings/dora.gpg] ${PAGES_BASE} stable main" | sudo tee /etc/apt/sources.list.d/dora.list`
+	)
 	logLevel('info', 'sudo apt update && sudo apt install dora')
 }
 

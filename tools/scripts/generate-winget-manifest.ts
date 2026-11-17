@@ -18,6 +18,8 @@ type Config = {
 	licenseUrl: string
 	manifestVersion: string
 	installerType: string
+	arm64InstallerUrl?: string
+	arm64InstallerSha256?: string
 }
 
 function getFlagValue(flag: string): string | undefined {
@@ -97,6 +99,14 @@ ManifestVersion: ${config.manifestVersion}
 `
 }
 
+function arm64Installer(config: Config): string {
+	if (!config.arm64InstallerUrl || !config.arm64InstallerSha256) return ''
+	return `- Architecture: arm64
+  InstallerUrl: ${config.arm64InstallerUrl}
+  InstallerSha256: ${config.arm64InstallerSha256}
+`
+}
+
 function createInstallerManifest(config: Config): string {
 	return `# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.${config.manifestVersion}.schema.json
 
@@ -109,7 +119,7 @@ Installers:
 - Architecture: x64
   InstallerUrl: ${config.installerUrl}
   InstallerSha256: ${config.installerSha256}
-ManifestType: installer
+${arm64Installer(config)}ManifestType: installer
 ManifestVersion: ${config.manifestVersion}
 `
 }
@@ -153,7 +163,9 @@ function main() {
 			getFlagValue('license-url') ||
 			'https://github.com/remcostoeten/dora/blob/master/LICENSE',
 		manifestVersion: getFlagValue('manifest-version') || '1.9.0',
-		installerType: getFlagValue('installer-type') || 'nullsoft'
+		installerType: getFlagValue('installer-type') || 'nullsoft',
+		arm64InstallerUrl: getFlagValue('arm64-installer-url'),
+		arm64InstallerSha256: getFlagValue('arm64-installer-sha256')?.toUpperCase()
 	}
 
 	logHeader('Generating Winget Manifest')

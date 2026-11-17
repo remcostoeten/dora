@@ -25,20 +25,10 @@ const HERO_STAGGER = 100
 type OsPlatform = 'mac-arm' | 'mac-x64' | 'windows' | 'linux'
 
 const PRIMARY: Record<OsPlatform, TDownload & { os: string }> = {
-    'mac-arm': {
-        os: 'macOS',
-        label: 'Apple Silicon',
-        suffix: '.dmg',
-        archPattern: /(?:aarch64|arm64)/i
-    },
-    'mac-x64': {
-        os: 'macOS',
-        label: 'Intel',
-        suffix: '.dmg',
-        archPattern: /(?:x64|x86_64|amd64)/i
-    },
-    windows: { os: 'Windows', label: 'Windows', suffix: '.exe' },
-    linux: { os: 'Linux', label: 'AppImage', suffix: '.AppImage' }
+    'mac-arm': { os: 'macOS', label: 'macOS', suffix: '.dmg' },
+    'mac-x64': { os: 'macOS', label: 'macOS', suffix: '.dmg' },
+    windows: { os: 'Windows', label: 'Windows', suffix: '_x64-setup.exe' },
+    linux: { os: 'Linux', label: 'AppImage', suffix: '_amd64.AppImage' }
 }
 
 const PLATFORM_GROUPS = [
@@ -46,34 +36,36 @@ const PLATFORM_GROUPS = [
         os: 'macOS',
         platforms: ['mac-arm', 'mac-x64'] as OsPlatform[],
         downloads: [
-            {
-                label: 'Apple Silicon',
-                suffix: '.dmg',
-                archPattern: /(?:aarch64|arm64)/i
-            } as TDownload,
-            {
-                label: 'Intel',
-                suffix: '.dmg',
-                archPattern: /(?:x64|x86_64|amd64)/i
-            } as TDownload
+            { label: 'Apple Silicon and Intel', suffix: '.dmg' } as TDownload
         ]
     },
     {
         os: 'Windows',
         platforms: ['windows'] as OsPlatform[],
         downloads: [
-            { label: '.exe', suffix: '.exe' } as TDownload,
-            { label: '.msi', suffix: '.msi' } as TDownload
+            { label: 'x64', suffix: '_x64-setup.exe' } as TDownload,
+            { label: 'ARM64', suffix: '_arm64-setup.exe' } as TDownload
         ]
     },
     {
         os: 'Linux',
         platforms: ['linux'] as OsPlatform[],
         downloads: [
-            { label: 'AppImage', suffix: '.AppImage' } as TDownload,
-            { label: '.deb', suffix: '.deb' } as TDownload,
-            { label: '.rpm', suffix: '.rpm' } as TDownload,
-            { label: '.tar.gz', suffix: '.tar.gz' } as TDownload
+            {
+                label: 'AppImage x86_64',
+                suffix: '_amd64.AppImage'
+            } as TDownload,
+            { label: '.deb x86_64', suffix: '_amd64.deb' } as TDownload,
+            { label: '.rpm x86_64', suffix: '.x86_64.rpm' } as TDownload,
+            {
+                label: '.tar.gz x86_64',
+                suffix: 'x86_64-unknown-linux-gnu.tar.gz'
+            } as TDownload,
+            {
+                label: 'AppImage ARM64',
+                suffix: '_aarch64.AppImage'
+            } as TDownload,
+            { label: '.deb ARM64', suffix: '_arm64.deb' } as TDownload
         ]
     }
 ]

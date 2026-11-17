@@ -1,6 +1,6 @@
 ---
 name: dora-release-cut
-description: Cutting a Dora release and recovering a broken one. Use when shipping a new version, changing what a version bump writes, changing the release or release-dispatch workflow or any of the six channel workflows (AUR, Homebrew, APT, Winget, Snap, Flatpak), changing the updater manifest or its signing, or diagnosing a tag that produced no build, a missing release asset, or a channel that did not publish. Not for what the app bundles at runtime and not for release-note prose.
+description: Cutting a Dora release and recovering a broken one. Use when shipping a new version, changing what a version bump writes, changing the release or release-dispatch workflow or any of the channel workflows (AUR, Homebrew, Linux repositories, Winget, Snap, Flatpak, Scoop and Nix, Chocolatey), changing the updater manifest or its signing, or diagnosing a tag that produced no build, a missing release asset, or a channel that did not publish. Not for what the app bundles at runtime and not for release-note prose.
 ---
 
 # Cutting a release
@@ -28,7 +28,7 @@ Source gives no answer. Ask before deciding.
 - Whether the `WINGET_PACKAGE_READY` repository variable matters.
   `docs/distribution/release-guide.md` tells you to set it; no workflow reads it.
 - Whether a channel that skipped its publish step for a missing secret should
-  count as a failed release. Four workflows deliberately exit 0 in that case.
+  count as a failed release. Six workflows deliberately exit 0 in that case.
 
 ## Workflow
 
@@ -61,7 +61,7 @@ of the release CI will actually cut.
 **Only three things about a release are manual: the bump level, the optional
 curated notes file, and the store secrets.** Version files, `CHANGELOG.md`,
 in-app changelog data, the commit, the tag, every platform build, checksums, the
-GitHub release, `latest.json`, the README bump and all six channels are scripted.
+GitHub release, `latest.json`, the README bump and every channel are scripted.
 `bun run release:aur`, `bun run release:homebrew`, `bun run release:winget`,
 `bun run release:apt`, `bun run release:flatpak:build` and
 `bun run release:snap:build` exist to reproduce a channel's output locally. CI
@@ -107,21 +107,23 @@ another workflow, so `.github/workflows/release.yml` never starts. A missing
 store secret: the channel job goes green having published nothing.
 
 **Publish order is fixed and one-way.** `preflight` → the Linux, Windows and
-macOS builds in parallel → `publish-release` → `post-release` and all six channel
-jobs in parallel. Only `publish-release` creates the GitHub release, and every
+macOS builds in parallel → `publish-release` → `post-release` and every channel
+job in parallel, except `publish-apt`, which also waits for `build-flatpak`. Only `publish-release` creates the GitHub release, and every
 channel that consumes an asset polls the published release for up to thirty
 minutes before failing. Never start a channel before its release exists.
 
 **The asset set is gated twice, both gates in `.github/workflows/release.yml`.**
-A count of at least 11 files, and seven required patterns: `.exe`, `.exe.sig`,
-`.AppImage`, `.AppImage.sig`, `.dmg`, `.app.tar.gz`, `.app.tar.gz.sig`. A green
-`publish-release` proves those seven exist. It proves nothing about the `.deb`,
-`.rpm`, the Linux tarball or the checksum files — their absence surfaces later as
-a failing channel job, not here.
+A count of at least 11 files, and twelve required patterns: the x86_64 set
+(`_x64-setup.exe` and its `.sig`, `_amd64.AppImage` and its `.sig`, `_amd64.deb`,
+`.x86_64.rpm`, the x86_64 tarball, `checksums-linux.txt`, `checksums-windows.txt`)
+and the macOS set (`_universal.dmg`, `.app.tar.gz` and its `.sig`). The aarch64
+Linux and arm64 Windows legs are `continue-on-error` and never required, so
+`publish-release` runs whenever macOS succeeded and lets this gate decide.
 
 **The updater manifest is verified by construction, not by inspection.**
 `tools/scripts/generate-latest-json.ts` asserts that `linux-x86_64`,
-`windows-x86_64` and `darwin-aarch64` all resolved from a `.sig` file and throws
+`windows-x86_64`, `darwin-aarch64` and `darwin-x86_64` (both from the universal
+`.app.tar.gz`) all resolved from a `.sig` file and throws
 otherwise, so a platform dropping out fails the publish instead of shipping a
 manifest silently missing it.
 
@@ -132,7 +134,16 @@ deletes the `.app` and macOS never reaches the manifest. `preflight` fails on
 either, and on a missing `deb`, `rpm`, `appimage`, `nsis` or `dmg`.
 
 **Recovery is per-channel, never per-release.** Re-run only the failed channel
-through its own `workflow_dispatch` with the same tag. Every channel workflow
+through its own `workflow_dispatch` with the same tag, and set `publish` to true
+where the workflow has that input (`apt.yml`, `brew.yml`, `snap.yml`,
+`packages.yml`, `chocolatey.yml`), and `submit_update` to true for `winget.yml`;
+all default to false. A failed `build-flatpak` also skips `publish-apt`, so
+after recovering the Flatpak, dispatch `apt.yml` with `publish` true as well,
+but only when that tag is still the latest release: `apt.yml` replaces the whole
+Pages site, so deploying an older tag would roll APT, DNF and Flatpak back.
+`packages.yml` follows the same rule: it replaces the contents of
+`dora-packages`, so when the failed tag is no longer the latest, dispatch it
+with the latest tag instead. Every channel workflow
 keeps that trigger, and every commit or push step inside them is a no-op when
 nothing changed, so a re-run is safe.
 
@@ -153,10 +164,12 @@ files do not match it, which `preflight` rejects.
 `workflow_call` job inside it, so a green run means every channel ran. There is
 no reason to read each channel workflow's separate history.
 
-**Green does not mean published for AUR, Homebrew, Winget and Snap.** Each skips
-its publish step when its secret is unset and still exits 0. Confirm the
-downstream artifact itself — the AUR repo commit, the tap commit, the winget-pkgs
-PR, the Snap Store revision. APT and Flatpak have no such skip.
+**Green does not mean published for AUR, Homebrew, Winget, Snap, Scoop and Nix,
+and Chocolatey.** Each skips its publish step when its secret is unset and still
+exits 0. Confirm the downstream artifact itself — the AUR repo commit, the tap
+commit, the winget-pkgs PR, the Snap Store revision, the `dora-packages` commit,
+the Chocolatey package version. The Linux repositories and Flatpak have no such
+skip.
 
 **Master moves by two or three commits per release.** `chore(release): <tag>`
 from prepare, the README commit from `post-release`, and
@@ -167,8 +180,12 @@ changed. A release where master moved once did not finish.
 
 - Editing a version file, writing the CHANGELOG section, creating the tag, or
   creating the GitHub release by hand.
-- Adding an Intel macOS or MSI asset based on an obsolete release assumption;
-  the workflow has three platform jobs, NSIS on Windows and an 11-asset gate.
+- Adding a separate Intel macOS or an MSI asset; macOS ships one universal DMG
+  and Windows ships NSIS only.
+- Building a Linux channel with a bare `cargo build`. Without
+  `--features tauri/custom-protocol` Tauri compiles in dev mode and the app
+  loads `http://localhost:1420`. Wrap the released `.deb` instead, or pass the
+  feature.
 - Adding `.github/release-notes/<tag>.md` after the tag was pushed.
 - Re-dispatching Release dispatch to retry anything, which cuts a second version.
 - Re-running the whole Release run to fix a single channel.
@@ -208,11 +225,11 @@ what each channel consumes, produces and is checked by.
 - No version file, CHANGELOG section, tag, or GitHub release was produced by hand.
 - A curated `.github/release-notes/<tag>.md` was committed before the tag push, or
   git-cliff output was accepted deliberately.
-- The Release run for the tag is green end to end, including all six channel jobs.
-- The release carries the seven required patterns and a `latest.json` listing
-  `linux-x86_64`, `windows-x86_64` and `darwin-aarch64`.
-- For AUR, Homebrew, Winget and Snap, the downstream artifact was checked, not
-  just the job status.
+- The Release run for the tag is green end to end, including every channel job.
+- The release carries the twelve required patterns and a `latest.json` listing
+  `linux-x86_64`, `windows-x86_64`, `darwin-aarch64` and `darwin-x86_64`.
+- For AUR, Homebrew, Winget, Snap, Scoop and Nix, and Chocolatey, the
+  downstream artifact was checked, not just the job status.
 - Master carries the release commit and the README commit.
 - Any failed channel was recovered through its own `workflow_dispatch` with the
   same tag, not by re-tagging or re-running the release.

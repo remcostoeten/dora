@@ -1,100 +1,135 @@
 name: Flatpak
 
+# Wraps the released .deb in a Flatpak and attaches one bundle per architecture
+# to the GitHub release. The Linux repositories workflow then imports those
+# bundles into the signed Flatpak remote on GitHub Pages.
 on:
     workflow_dispatch:
         inputs:
             tag:
-                description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
+                description: Existing GitHub release tag like v0.26.6. Leave empty for the latest release.
                 required: false
                 type: string
     workflow_call:
         inputs:
             tag:
-                description: Existing GitHub release tag like v0.26.6. Leave empty for artifact-only builds.
+                description: Existing GitHub release tag like v0.26.6. Leave empty for the latest release.
                 required: false
                 type: string
+    pull_request:
+        paths:
+            - packaging/flatpak/**
+            - .github/workflows/flatpak.yml
 
 permissions:
     contents: write
 
 env:
     FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-    FLATPAK_APP_ID: io.github.remcostoeten.dora
-    FLATPAK_RUNTIME_VERSION: '48'
 
 jobs:
     flatpak:
-        runs-on: ubuntu-24.04
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - arch: x86_64
+                      deb_arch: amd64
+                      runner: ubuntu-24.04
+                      optional: false
+                    - arch: aarch64
+                      deb_arch: arm64
+                      runner: ubuntu-24.04-arm
+                      optional: true
+        runs-on: ${{ matrix.runner }}
+        continue-on-error: ${{ matrix.optional }}
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         steps:
             - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
 
-            - name: Resolve release metadata
+            - name: Resolve release and download the .deb
               id: meta
               shell: bash
               run: |
+                  set -euo pipefail
                   TAG="${{ inputs.tag }}"
+                  if [[ -z "$TAG" ]]; then
+                    TAG="$(gh api repos/${{ github.repository }}/releases/latest --jq '.tag_name')"
+                  fi
+                  VERSION="${TAG#v}"
+                  ASSET="Dora_${VERSION}_${{ matrix.deb_arch }}.deb"
 
-                  VERSION="$(python -c "import json; print(json.load(open('package.json'))['version'])")"
-                  if [[ -n "$TAG" ]]; then
-                    VERSION="${TAG#v}"
+                  # The x86_64 .deb is required; the arm64 one only exists when that build succeeded.
+                  ATTEMPTS=60
+                  if [[ "${{ matrix.optional }}" == "true" ]]; then ATTEMPTS=1; fi
+                  FOUND=""
+                  for attempt in $(seq 1 "$ATTEMPTS"); do
+                    if gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].name' | grep -qx "$ASSET"; then
+                      FOUND=1
+                      break
+                    fi
+                    echo "Waiting for ${ASSET} on ${TAG} (${attempt}/${ATTEMPTS})..."
+                    sleep 30
+                  done
+
+                  if [[ -z "$FOUND" ]]; then
+                    if [[ "${{ matrix.optional }}" == "true" ]]; then
+                      echo "::notice::${ASSET} is not on ${TAG}; skipping the ${{ matrix.arch }} Flatpak."
+                      echo "skip=true" >> "$GITHUB_OUTPUT"
+                      exit 0
+                    fi
+                    echo "${ASSET} is missing from release ${TAG}." >&2
+                    exit 1
                   fi
 
-                  echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-                  echo "DORA_RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+                  gh release download "$TAG" --repo "${{ github.repository }}" --pattern "$ASSET" --dir dist
+                  DATE="$(gh release view "$TAG" --repo "${{ github.repository }}" --json publishedAt --jq '.publishedAt[:10]')"
+                  {
+                    echo "tag=$TAG"
+                    echo "version=$VERSION"
+                    echo "deb=dist/$ASSET"
+                    echo "date=$DATE"
+                    echo "skip=false"
+                  } >> "$GITHUB_OUTPUT"
 
-            - name: Install Flatpak dependencies
+            - name: Install Flatpak tooling
+              if: steps.meta.outputs.skip != 'true'
               shell: bash
               run: |
                   sudo apt-get update
                   sudo apt-get install -y appstream desktop-file-utils flatpak flatpak-builder
-                  flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-            - name: Install Flatpak runtimes
-              shell: bash
-              run: |
-                  flatpak install --user --noninteractive --assumeyes \
-                    org.gnome.Platform//${FLATPAK_RUNTIME_VERSION} \
-                    org.gnome.Sdk//${FLATPAK_RUNTIME_VERSION} \
-                    org.freedesktop.Sdk.Extension.rust-stable//24.08
 
             - name: Validate Flatpak metadata
+              if: steps.meta.outputs.skip != 'true'
               shell: bash
               run: |
-                  desktop-file-validate "packaging/flatpak/${FLATPAK_APP_ID}.desktop"
-                  appstreamcli validate --no-net "packaging/flatpak/${FLATPAK_APP_ID}.metainfo.xml"
+                  desktop-file-validate packaging/flatpak/io.github.remcostoeten.dora.desktop
+                  sed -e 's/@VERSION@/${{ steps.meta.outputs.version }}/' -e 's/@DATE@/${{ steps.meta.outputs.date }}/' \
+                    packaging/flatpak/io.github.remcostoeten.dora.metainfo.xml > /tmp/metainfo.xml
+                  appstreamcli validate --no-net /tmp/metainfo.xml
 
             - name: Build Flatpak
               id: build
+              if: steps.meta.outputs.skip != 'true'
               shell: bash
               run: |
-                  REPO_DIR="${{ github.workspace }}/.flatpak-repo"
-                  BUILD_DIR="${{ github.workspace }}/.flatpak-build"
-                  MANIFEST="packaging/flatpak/${FLATPAK_APP_ID}.yml"
-
-                  flatpak-builder \
-                    --user \
-                    --force-clean \
-                    --ccache \
-                    --repo="$REPO_DIR" \
-                    "$BUILD_DIR" \
-                    "$MANIFEST"
-
-                  BUNDLE="Dora-${{ steps.meta.outputs.version }}-x86_64.flatpak"
-                  flatpak build-bundle "$REPO_DIR" "$BUNDLE" "$FLATPAK_APP_ID"
-
-                  echo "bundle=$BUNDLE" >> "$GITHUB_OUTPUT"
-                  echo "repo=$REPO_DIR" >> "$GITHUB_OUTPUT"
+                  set -euo pipefail
+                  bash packaging/flatpak/build-flatpak.sh \
+                    "${{ steps.meta.outputs.deb }}" \
+                    "${{ steps.meta.outputs.version }}" \
+                    "${{ steps.meta.outputs.date }}" \
+                    out
+                  echo "bundle=out/Dora-${{ steps.meta.outputs.version }}-${{ matrix.arch }}.flatpak" >> "$GITHUB_OUTPUT"
 
             - name: Upload Flatpak artifact
+              if: steps.meta.outputs.skip != 'true'
               uses: actions/upload-artifact@v4
               with:
-                  name: dora-flatpak-${{ steps.meta.outputs.version }}
+                  name: dora-flatpak-${{ matrix.arch }}-${{ steps.meta.outputs.version }}
                   path: ${{ steps.build.outputs.bundle }}
 
-            - name: Upload Flatpak repo artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: dora-flatpak-repo-${{ steps.meta.outputs.version }}
-                  path: ${{ steps.build.outputs.repo }}
-                  include-hidden-files: true
+            - name: Attach bundle to the release
+              if: steps.meta.outputs.skip != 'true' && github.event_name != 'pull_request'
+              shell: bash
+              run: gh release upload "${{ steps.meta.outputs.tag }}" "${{ steps.build.outputs.bundle }}" --repo "${{ github.repository }}" --clobber

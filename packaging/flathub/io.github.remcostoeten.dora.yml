@@ -1,0 +1,47 @@
+id: io.github.remcostoeten.dora
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+command: dora
+finish-args:
+    - --socket=fallback-x11
+    - --socket=wayland
+    - --share=ipc
+    - --share=network
+    - --device=dri
+    - --filesystem=home
+    - --socket=ssh-auth
+    - --talk-name=org.freedesktop.secrets
+    - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
+
+modules:
+    - name: dora
+      buildsystem: simple
+      sources:
+          - type: file
+            dest-filename: dora.deb
+            only-arches: [x86_64]
+            url: https://github.com/remcostoeten/dora/releases/download/v0.44.0/Dora_0.44.0_amd64.deb
+            sha256: 3655f5e86ae12429b097ba06f90273ac0d6ecb2194e524afc02670283611b671
+            x-checker-data:
+                type: json
+                url: https://api.github.com/repos/remcostoeten/dora/releases/latest
+                version-query: .tag_name | sub("^v"; "")
+                url-query: '.assets[] | select(.name == "Dora_" + $version + "_amd64.deb") | .browser_download_url'
+          - type: file
+            path: io.github.remcostoeten.dora.desktop
+          - type: file
+            path: io.github.remcostoeten.dora.metainfo.xml
+      build-commands:
+          - ar -x dora.deb
+          - tar -xf data.tar.*
+          - install -Dm755 usr/bin/dora /app/bin/dora
+          - install -Dm755 usr/bin/duckdb_helper /app/bin/duckdb_helper
+          - install -Dm644 io.github.remcostoeten.dora.desktop /app/share/applications/io.github.remcostoeten.dora.desktop
+          - |
+              for icon in usr/share/icons/hicolor/*/apps/dora.png; do
+                size="$(basename "$(dirname "$(dirname "$icon")")")"
+                case "$size" in *@*) continue ;; esac
+                install -Dm644 "$icon" "/app/share/icons/hicolor/${size}/apps/io.github.remcostoeten.dora.png"
+              done
+          - install -Dm644 io.github.remcostoeten.dora.metainfo.xml /app/share/metainfo/io.github.remcostoeten.dora.metainfo.xml

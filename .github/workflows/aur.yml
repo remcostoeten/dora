@@ -59,22 +59,47 @@ jobs:
 
             - name: Compute SHA256
               id: checksum
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
                   curl -fL "${{ steps.meta.outputs.asset_url }}" -o dora-x86_64-unknown-linux-gnu.tar.gz
-                  SHA256="$(sha256sum dora-x86_64-unknown-linux-gnu.tar.gz | awk '{print $1}')"
-                  echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
+                  echo "x86_64=$(sha256sum dora-x86_64-unknown-linux-gnu.tar.gz | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+                  # The aarch64 build is best effort; the package only claims the arch when it shipped.
+                  ARM_URL="$(gh api repos/${{ github.repository }}/releases/tags/${{ steps.meta.outputs.tag }} \
+                    --jq '.assets[] | select(.name == "dora-aarch64-unknown-linux-gnu.tar.gz") | .browser_download_url' | head -1)"
+                  ARM_SHA=""
+                  if [[ -n "${ARM_URL}" ]]; then
+                    curl -fL "${ARM_URL}" -o dora-aarch64-unknown-linux-gnu.tar.gz
+                    ARM_SHA="$(sha256sum dora-aarch64-unknown-linux-gnu.tar.gz | awk '{print $1}')"
+                  fi
+                  echo "aarch64=${ARM_SHA}" >> "$GITHUB_OUTPUT"
 
             - name: Update PKGBUILD
               run: |
                   set -euo pipefail
                   VERSION="${{ steps.meta.outputs.version }}"
-                  SHA256="${{ steps.checksum.outputs.sha256 }}"
+                  X86_SHA="${{ steps.checksum.outputs.x86_64 }}"
+                  ARM_SHA="${{ steps.checksum.outputs.aarch64 }}"
+                  PKG=packaging/aur/PKGBUILD
 
-                  sed -i "s/^pkgver=.*/pkgver=${VERSION}/" packaging/aur/PKGBUILD
-                  sed -i "s/^pkgrel=.*/pkgrel=1/" packaging/aur/PKGBUILD
-                  sed -i 's|releases/download/v[0-9][^/]*/dora-x86_64-unknown-linux-gnu.tar.gz|releases/download/v${pkgver}/dora-x86_64-unknown-linux-gnu.tar.gz|' packaging/aur/PKGBUILD
-                  sed -i "s|^sha256sums=.*|sha256sums=('${SHA256}')|" packaging/aur/PKGBUILD
+                  sed -i "s/^pkgver=.*/pkgver=${VERSION}/" "$PKG"
+                  sed -i "s/^pkgrel=.*/pkgrel=1/" "$PKG"
+                  sed -i "s|^sha256sums_x86_64=.*|sha256sums_x86_64=('${X86_SHA}')|" "$PKG"
+
+                  if [[ -n "$ARM_SHA" ]]; then
+                    sed -i "s/^arch=.*/arch=('x86_64' 'aarch64')/" "$PKG"
+                    if grep -q '^sha256sums_aarch64=' "$PKG"; then
+                      sed -i "s|^sha256sums_aarch64=.*|sha256sums_aarch64=('${ARM_SHA}')|" "$PKG"
+                    else
+                      sed -i "/^sha256sums_x86_64=/a sha256sums_aarch64=('${ARM_SHA}')" "$PKG"
+                      sed -i '/^source_x86_64=/a source_aarch64=("${pkgname}-${pkgver}-aarch64.tar.gz::https://github.com/remcostoeten/dora/releases/download/v${pkgver}/dora-aarch64-unknown-linux-gnu.tar.gz")' "$PKG"
+                    fi
+                  else
+                    sed -i "s/^arch=.*/arch=('x86_64')/" "$PKG"
+                    sed -i '/^source_aarch64=/d; /^sha256sums_aarch64=/d' "$PKG"
+                  fi
 
             - name: Generate .SRCINFO (Arch container)
               run: |

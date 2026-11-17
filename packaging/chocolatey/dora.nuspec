@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>dora</id>
+    <version>@VERSION@</version>
+    <title>Dora</title>
+    <authors>Remco Stoeten</authors>
+    <owners>remcostoeten</owners>
+    <projectUrl>https://github.com/remcostoeten/dora</projectUrl>
+    <projectSourceUrl>https://github.com/remcostoeten/dora</projectSourceUrl>
+    <packageSourceUrl>https://github.com/remcostoeten/dora/tree/master/packaging/chocolatey</packageSourceUrl>
+    <bugTrackerUrl>https://github.com/remcostoeten/dora/issues</bugTrackerUrl>
+    <releaseNotes>https://github.com/remcostoeten/dora/releases/tag/v@VERSION@</releaseNotes>
+    <iconUrl>https://cdn.jsdelivr.net/gh/remcostoeten/dora@master/apps/desktop/src-tauri/icons/128x128.png</iconUrl>
+    <licenseUrl>https://github.com/remcostoeten/dora/blob/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <tags>database sql postgres mysql sqlite libsql duckdb tauri foss</tags>
+    <summary>Free, open source database client</summary>
+    <description>Dora is a free, open source desktop database client built with Tauri and Rust. It connects to PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, libSQL/Turso, Cloudflare D1 and DuckDB, and opens CSV, JSON and Parquet files as tables.</description>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

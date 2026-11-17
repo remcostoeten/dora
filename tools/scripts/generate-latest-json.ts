@@ -14,7 +14,7 @@
  *     --notes-file=/tmp/release-notes.md \
  *     --repo=remcostoeten/dora \
  *     --output=/tmp/latest.json \
- *     [--require-platforms=linux-x86_64,windows-x86_64,darwin-aarch64]
+ *     [--require-platforms=linux-x86_64,windows-x86_64,darwin-aarch64,darwin-x86_64]
  */
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -29,7 +29,12 @@ export type UpdaterManifest = {
 }
 
 /** Platforms every release must ship an updater artifact for. */
-export const REQUIRED_PLATFORMS = ['linux-x86_64', 'windows-x86_64', 'darwin-aarch64'] as const
+export const REQUIRED_PLATFORMS = [
+	'linux-x86_64',
+	'windows-x86_64',
+	'darwin-aarch64',
+	'darwin-x86_64'
+] as const
 
 function arg(name: string, fallback = ''): string {
 	const hit = process.argv.find((a) => a.startsWith(`--${name}=`))
@@ -47,20 +52,27 @@ export function walk(dir: string): string[] {
 }
 
 /**
- * Maps an updater artifact filename to its platform key, or null when the file
- * is not an updater target (e.g. .deb, .rpm, .dmg, .msi installers).
+ * @name platformsFor
+ * @description Maps an updater artifact filename to the platform keys it serves. The
+ * universal macOS tarball covers both darwin keys; installers that are not updater
+ * targets (.deb, .rpm, .dmg) map to none.
+ * @example platformsFor('Dora_0.45.0_aarch64.AppImage') // ['linux-aarch64']
  */
-export function platformFor(file: string): string | null {
-	if (file.endsWith('.AppImage')) return 'linux-x86_64'
-	if (file.endsWith('.app.tar.gz')) return 'darwin-aarch64'
-	if (file.endsWith('-setup.exe') || file.endsWith('.exe')) return 'windows-x86_64'
-	return null
+export function platformsFor(file: string): string[] {
+	const name = file.split('/').pop() ?? file
+	if (name.endsWith('.app.tar.gz')) return ['darwin-aarch64', 'darwin-x86_64']
+	if (name.endsWith('.AppImage')) {
+		return [/_(aarch64|arm64)\.AppImage$/.test(name) ? 'linux-aarch64' : 'linux-x86_64']
+	}
+	if (name.endsWith('.exe')) {
+		return [name.endsWith('_arm64-setup.exe') ? 'windows-aarch64' : 'windows-x86_64']
+	}
+	return []
 }
 
 /**
  * Collects one updater entry per platform from the `.sig` files in `files`.
- * NSIS `-setup.exe` and bare `.exe` both map to windows — the first match wins
- * deterministically.
+ * When two artifacts map to the same platform the first one wins.
  */
 export function collectPlatforms(
 	files: string[],
@@ -71,14 +83,14 @@ export function collectPlatforms(
 
 	for (const sig of files.filter((f) => f.endsWith('.sig'))) {
 		const artifact = sig.slice(0, -'.sig'.length)
-		const platform = platformFor(artifact)
-		if (!platform) continue
-		if (platforms[platform]) continue
+		const keys = platformsFor(artifact).filter((key) => !platforms[key])
+		if (keys.length === 0) continue
 		const filename = artifact.split('/').pop() as string
-		platforms[platform] = {
+		const entry = {
 			signature: read(sig).trim(),
 			url: `https://github.com/${options.repo}/releases/download/${options.tag}/${encodeURIComponent(filename)}`
 		}
+		for (const key of keys) platforms[key] = entry
 	}
 
 	return platforms
@@ -103,7 +115,8 @@ export function assertPlatformsPresent(
 			'Each platform needs its signed updater artifact in the assets dir:',
 			'  linux-x86_64   -> *.AppImage + *.AppImage.sig',
 			'  windows-x86_64 -> *-setup.exe + *-setup.exe.sig',
-			'  darwin-aarch64 -> *.app.tar.gz + *.app.tar.gz.sig (needs the "app" bundle target)'
+			'  darwin-*       -> *.app.tar.gz + *.app.tar.gz.sig (universal build, needs the "app" bundle target)',
+			'  linux-aarch64 and windows-aarch64 are optional and come from the arm64 builds'
 		].join('\n')
 	)
 }

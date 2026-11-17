@@ -10,7 +10,7 @@ pkgbase = dora
 	depends = libayatana-appindicator
 	depends = openssl
 	depends = libsoup3
-	source = dora-0.44.0.tar.gz::https://github.com/remcostoeten/dora/releases/download/v0.44.0/dora-x86_64-unknown-linux-gnu.tar.gz
-	sha256sums = 00cb61fdec9c2c690775b22a666bd23baf89019491b832abe98a2b23c9421520
+	source_x86_64 = dora-0.44.0-x86_64.tar.gz::https://github.com/remcostoeten/dora/releases/download/v0.44.0/dora-x86_64-unknown-linux-gnu.tar.gz
+	sha256sums_x86_64 = 00cb61fdec9c2c690775b22a666bd23baf89019491b832abe98a2b23c9421520
 
 pkgname = dora
