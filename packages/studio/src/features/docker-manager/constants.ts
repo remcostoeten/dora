@@ -192,3 +192,36 @@ PGPORT={port}
 PGUSER={user}
 PGPASSWORD={password}
 PGDATABASE={database}`
+
+export const CONTAINER_TEMPLATES: ReadonlyArray<{
+	id: string
+	title: string
+	provider: DatabaseProvider
+	version: string
+	image: string
+}> = [
+	{ id: 'pg17', title: 'Postgres 17', provider: 'postgres', version: '17', image: 'postgres:17' },
+	{ id: 'pg16', title: 'Postgres 16', provider: 'postgres', version: '16', image: 'postgres:16' },
+	{ id: 'mysql84', title: 'MySQL 8.4', provider: 'mysql', version: '8.4', image: 'mysql:8.4' },
+	{
+		id: 'mariadb114',
+		title: 'MariaDB 11.4',
+		provider: 'mariadb',
+		version: '11.4',
+		image: 'mariadb:11.4'
+	},
+	{
+		id: 'redis7',
+		title: 'Redis 7',
+		provider: 'redis',
+		version: '7-alpine',
+		image: 'redis:7-alpine'
+	},
+	{
+		id: 'valkey8',
+		title: 'Valkey 8',
+		provider: 'valkey',
+		version: '8-alpine',
+		image: 'valkey/valkey:8-alpine'
+	}
+]

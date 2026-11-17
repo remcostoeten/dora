@@ -131,11 +131,11 @@ describe('DockerView', () => {
 		vi.spyOn(useContainersModule, 'useContainerSearch').mockReturnValue(mockContainers as any)
 
 		renderWithProviders(<DockerView />)
-		expect(screen.getByText('Containers: 1')).toBeInTheDocument()
+		expect(screen.getByText('Containers: 2')).toBeInTheDocument()
 		expect(screen.getByText('Docker')).toBeInTheDocument()
 	})
 
-	it('opens the create panel when "New" is clicked', () => {
+	it('opens the create drawer when "New container" is clicked', () => {
 		vi.spyOn(useContainersModule, 'useDockerAvailability').mockReturnValue({
 			data: { available: true },
 			isLoading: false
@@ -150,10 +150,10 @@ describe('DockerView', () => {
 
 		renderWithProviders(<DockerView />)
 
-		const newButton = screen.getByText('New')
-		fireEvent.click(newButton)
+		expect(screen.queryByTestId('create-panel')).not.toBeInTheDocument()
+		fireEvent.click(screen.getByText('New container'))
 
 		expect(screen.getByTestId('create-panel')).toBeInTheDocument()
-		expect(screen.queryByTestId('container-details')).not.toBeInTheDocument()
+		expect(screen.getByRole('dialog')).toBeInTheDocument()
 	})
 })

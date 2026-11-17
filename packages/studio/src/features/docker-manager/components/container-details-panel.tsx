@@ -1,241 +1,314 @@
 import {
-	Play,
-	Square,
-	RotateCcw,
-	Trash2,
 	ExternalLink,
 	FileCode,
-	TerminalSquare
+	Hash,
+	Loader2,
+	MoreHorizontal,
+	Package,
+	Play,
+	Plug,
+	RotateCw,
+	Square,
+	TerminalSquare,
+	Trash2
 } from 'lucide-react'
-import { Package } from 'lucide-react'
 import { useState } from 'react'
-import { Button } from '@studio/shared/ui/button'
-import { useContainerActions, useRemoveContainer } from '../api/mutations/use-container-actions'
-import type { DockerContainer } from '../types'
-import { ConnectionDetails } from './connection-details'
-import { KeyValueConnectionDetails } from './key-value-connection-details'
-import { ContainerMetrics } from './container-metrics'
-import { SeedView } from './seed-view'
-import { StatusBadge } from './status-badge'
-import { ComposeExportDialog } from './compose-export-dialog'
-import { RemoveContainerDialog } from './remove-container-dialog'
-import { RemoveContainerOptions } from '../types'
-import { isKeyValueContainer } from '../utilities/container-connection'
-import { cn } from '@studio/shared/utils/cn'
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger
+} from '@studio/shared/ui/dropdown-menu'
 import { EmptyState } from '@studio/shared/ui/empty-state'
 import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
+import { toast } from '@studio/shared/ui/notifier'
+import { PROJECT_LABEL_KEY } from '../constants'
+import type { ContainerActionType, DockerContainer } from '../types'
+import { isKeyValueContainer } from '../utilities/container-connection'
+import { formatImage, formatShortAge, getContainerStatus } from '../utilities/container-status'
+import { ComposeExportDialog } from './compose-export-dialog'
+import { ConfigCard } from './config-card'
+import { ConnectionCard } from './connection-card'
+import { OutputCard } from './output-card'
+import type { OutputTab } from './output-card'
+import { ResourcesCard } from './resources-card'
+import { SeedView } from './seed-view'
+import { StatusDot } from './status-dot'
 
 type Props = {
 	container: DockerContainer | null
+	pendingAction: ContainerActionType | null
+	onAction: (containerId: string, action: ContainerActionType) => void
+	onRemove: (container: DockerContainer) => void
 	onOpenInDataViewer?: (container: DockerContainer) => void
-	onOpenTerminal?: (container: DockerContainer) => void
-	onRemoveComplete?: () => void
+	outputTab: OutputTab
+	onOutputTabChange: (tab: OutputTab) => void
+}
+
+const COMPOSE_PROJECT_LABEL = 'com.docker.compose.project'
+
+function formatTimestamp(timestamp: number): string {
+	return new Date(timestamp).toLocaleString(undefined, {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit'
+	})
 }
 
 export function ContainerDetailsPanel({
 	container,
+	pendingAction,
+	onAction,
+	onRemove,
 	onOpenInDataViewer,
-	onOpenTerminal,
-	onRemoveComplete
+	outputTab,
+	onOutputTabChange
 }: Props) {
 	const [showExportDialog, setShowExportDialog] = useState(false)
-	const [showRemoveDialog, setShowRemoveDialog] = useState(false)
-
-	const containerActions = useContainerActions()
-	const removeContainer = useRemoveContainer({
-		onSuccess: function () {
-			if (onRemoveComplete) {
-				onRemoveComplete()
-			}
-		}
-	})
+	const [showSecrets, setShowSecrets] = useState(false)
 
 	if (!container) {
 		return (
 			<EmptyState
-				className='flex-1 border-l border-border'
+				className='h-full'
 				size='sm'
 				headingLevel='h3'
 				loop
 				pointer
 				illustration={<IconStack icon={<Package />} />}
-				title='Select a container'
-				description='Click on a container from the list to view its details and available actions.'
+				title='No container selected'
+				description='Adjust the filters or create a new container.'
 			/>
 		)
 	}
 
 	const activeContainer = container
 	const isRunning = activeContainer.state === 'running'
+	const isBusy = pendingAction !== null
 	const isKeyValue = isKeyValueContainer(activeContainer)
+	const status = getContainerStatus(activeContainer.state, activeContainer.health, pendingAction)
+	const shortId = activeContainer.id.slice(0, 12)
+	const composeProject =
+		activeContainer.labels[COMPOSE_PROJECT_LABEL] ?? activeContainer.labels[PROJECT_LABEL_KEY]
+	const persistentVolumes = activeContainer.volumes.filter((volume) => !volume.isEphemeral)
 
-	function handleStart() {
-		containerActions.mutate({ containerId: activeContainer.id, action: 'start' })
+	let stateMeta = `Created ${formatShortAge(activeContainer.createdAt)} ago`
+	if (activeContainer.state === 'created') stateMeta += ', never started'
+	if (isBusy) stateMeta = `${status.label}…`
+
+	function runAction(action: ContainerActionType) {
+		onAction(activeContainer.id, action)
 	}
 
-	function handleStop() {
-		containerActions.mutate({ containerId: activeContainer.id, action: 'stop' })
-	}
-
-	function handleRestart() {
-		containerActions.mutate({ containerId: activeContainer.id, action: 'restart' })
-	}
-
-	function handleRemove() {
-		setShowRemoveDialog(true)
-	}
-
-	function handleConfirmRemove(options: RemoveContainerOptions) {
-		removeContainer.mutate({
-			containerId: activeContainer.id,
-			options
-		})
-		setShowRemoveDialog(false)
-	}
-
-	function handleOpenInViewer() {
-		if (onOpenInDataViewer) {
-			onOpenInDataViewer(activeContainer)
+	async function handleCopyId() {
+		try {
+			await navigator.clipboard.writeText(activeContainer.id)
+			toast.success('Container ID copied')
+		} catch (error) {
+			toast.error('Failed to copy container ID', {
+				description: error instanceof Error ? error.message : String(error)
+			})
 		}
 	}
 
+	const infoRows: Array<[string, string]> = [
+		['Created', formatTimestamp(activeContainer.createdAt)],
+		['Health check', activeContainer.health === 'none' ? 'none' : activeContainer.health],
+		[
+			'Storage',
+			persistentVolumes.length > 0
+				? `${persistentVolumes.length} persistent ${persistentVolumes.length === 1 ? 'volume' : 'volumes'}`
+				: 'ephemeral'
+		],
+		['Compose project', composeProject || '—'],
+		['Container ID', shortId]
+	]
+
 	return (
-		<div className='w-80 min-h-0 flex flex-col border-l border-border bg-card overflow-hidden'>
-			<div className='shrink-0 p-4 border-b border-border'>
-				<div className='flex items-start justify-between gap-2'>
-					<div className='min-w-0'>
-						<h3 className='font-medium text-sm truncate'>{container.name}</h3>
-						<div className='mt-1 text-xs text-muted-foreground'>
-							{container.image}:{container.imageTag}
+		<>
+			<header className='dk-dh'>
+				<div className='dk-dh-l'>
+					<div className='dk-dh-title'>
+						<h2 className='dk-dh-name dk-mono'>{activeContainer.name}</h2>
+						{activeContainer.origin === 'external' && (
+							<span className='dk-ext' title='Not created by Dora'>
+								external
+							</span>
+						)}
+					</div>
+					<div className='dk-dh-meta'>
+						<span className='dk-st' role='status'>
+							<StatusDot tone={status.tone} />
+							{status.label}
+						</span>
+						<span className='dk-sep' />
+						<span>{stateMeta}</span>
+						<span className='dk-sep' />
+						<span className='dk-mono'>{formatImage(activeContainer)}</span>
+						<span className='dk-sep' />
+						<span className='dk-mono dk-faint'>{shortId}</span>
+					</div>
+				</div>
+				<div className='dk-acts'>
+					{(isRunning || isBusy) && (
+						<button
+							type='button'
+							className='dk-ibtn'
+							onClick={() => runAction('restart')}
+							disabled={isBusy}
+							aria-label='Restart container'
+							title='Restart'
+						>
+							<RotateCw className='h-[15px] w-[15px]' aria-hidden='true' />
+						</button>
+					)}
+					{isBusy ? (
+						<button type='button' className='dk-btn' data-variant='secondary' disabled>
+							<Loader2 className='dk-spin h-3.5 w-3.5' aria-hidden='true' />
+							{status.label}…
+						</button>
+					) : isRunning ? (
+						<button
+							type='button'
+							className='dk-btn'
+							data-variant='secondary'
+							onClick={() => runAction('stop')}
+						>
+							<Square className='h-3 w-3' aria-hidden='true' />
+							Stop
+						</button>
+					) : (
+						<button
+							type='button'
+							className='dk-btn'
+							data-variant='primary'
+							onClick={() => runAction('start')}
+						>
+							<Play className='h-3 w-3' aria-hidden='true' />
+							Start
+						</button>
+					)}
+					<button
+						type='button'
+						className='dk-btn'
+						data-variant={isRunning && !isBusy ? 'primary' : 'secondary'}
+						onClick={() => onOpenInDataViewer?.(activeContainer)}
+						disabled={!isRunning || isBusy}
+						title={isRunning ? undefined : 'Start the container first'}
+					>
+						{isKeyValue ? (
+							<ExternalLink className='h-3.5 w-3.5' aria-hidden='true' />
+						) : (
+							<Plug className='h-3.5 w-3.5' aria-hidden='true' />
+						)}
+						{isKeyValue ? 'Open in KV Studio' : 'Open in Dora'}
+					</button>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button type='button' className='dk-ibtn' aria-label='More actions'>
+								<MoreHorizontal className='h-4 w-4' aria-hidden='true' />
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align='end' className='dk-menu'>
+							<DropdownMenuItem
+								disabled={!isRunning}
+								onSelect={() => onOutputTabChange('shell')}
+							>
+								<TerminalSquare className='mr-2 h-3.5 w-3.5' aria-hidden='true' />
+								Open shell
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => setShowExportDialog(true)}>
+								<FileCode className='mr-2 h-3.5 w-3.5' aria-hidden='true' />
+								Export compose file
+							</DropdownMenuItem>
+							<DropdownMenuItem onSelect={() => void handleCopyId()}>
+								<Hash className='mr-2 h-3.5 w-3.5' aria-hidden='true' />
+								Copy container ID
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								disabled={isBusy}
+								onSelect={() => onRemove(activeContainer)}
+								className='text-destructive-foreground focus:text-destructive-foreground'
+							>
+								<Trash2 className='mr-2 h-3.5 w-3.5' aria-hidden='true' />
+								<span className='flex flex-col'>
+									Remove container
+									<span className='dk-menu-s'>
+										{activeContainer.volumes.length > 0
+											? 'You choose whether volumes are kept'
+											: 'No volumes attached'}
+									</span>
+								</span>
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+				</div>
+			</header>
+
+			<div className='dk-dg'>
+				<ConnectionCard
+					container={activeContainer}
+					showSecrets={showSecrets}
+					onToggleSecrets={() => setShowSecrets((value) => !value)}
+					onStart={() => runAction('start')}
+					isActionPending={isBusy}
+				/>
+				<ResourcesCard container={activeContainer} />
+				<ConfigCard container={activeContainer} showSecrets={showSecrets} />
+				<section className='dk-card' style={{ gridArea: 'info' }} aria-label='Container'>
+					<div className='dk-card-h'>
+						<span className='dk-eyebrow'>Container</span>
+						<span className='dk-card-r'>
+							<span className='dk-meta dk-mono'>
+								{activeContainer.origin === 'external'
+									? 'external'
+									: 'managed by Dora'}
+							</span>
+						</span>
+					</div>
+					<div className='dk-card-b'>
+						<div className='dk-info'>
+							{infoRows.map(([label, value]) => (
+								<div key={label} className='contents'>
+									<span className='dk-info-k'>{label}</span>
+									<span className='dk-info-v dk-mono' title={value}>
+										{value}
+									</span>
+								</div>
+							))}
 						</div>
 					</div>
-					<StatusBadge state={container.state} health={container.health} />
-				</div>
-
-				<div className='mt-3 flex items-center gap-1'>
-					{!isRunning ? (
-						<Button
-							variant='outline'
-							size='icon-sm'
-							aria-label='Start container'
-							title='Start'
-							onClick={handleStart}
-							disabled={containerActions.isPending}
-						>
-							<Play className='h-3.5 w-3.5' />
-						</Button>
-					) : (
-						<Button
-							variant='outline'
-							size='icon-sm'
-							aria-label='Stop container'
-							title='Stop'
-							onClick={handleStop}
-							disabled={containerActions.isPending}
-						>
-							<Square className='h-3.5 w-3.5' />
-						</Button>
-					)}
-
-					<Button
-						variant='outline'
-						size='icon-sm'
-						aria-label='Restart container'
-						title='Restart'
-						onClick={handleRestart}
-						disabled={containerActions.isPending || !isRunning}
-					>
-						<RotateCcw className='h-3.5 w-3.5' />
-					</Button>
-
-					<Button
-						variant='outline'
-						size='icon-sm'
-						aria-label='Open terminal'
-						title='Terminal'
-						onClick={function () {
-							if (onOpenTerminal) {
-								onOpenTerminal(container)
-							}
-						}}
-						disabled={!isRunning}
-					>
-						<TerminalSquare className='h-3.5 w-3.5' />
-					</Button>
-
-					<Button
-						variant='outline'
-						size='icon-sm'
-						aria-label='Export compose file'
-						title='Export'
-						onClick={() => setShowExportDialog(true)}
-					>
-						<FileCode className='h-3.5 w-3.5' />
-					</Button>
-
-					<Button
-						variant='outline'
-						size='icon-sm'
-						aria-label='Remove container'
-						title='Remove'
-						className='ml-auto text-destructive hover:text-destructive'
-						onClick={handleRemove}
-						disabled={removeContainer.isPending}
-					>
-						<Trash2 className='h-3.5 w-3.5' />
-					</Button>
-				</div>
-			</div>
-
-			<div className='flex-1 min-h-0 overflow-y-auto'>
-				<div className='p-4 border-b border-border'>
-					{isKeyValue ? (
-						<KeyValueConnectionDetails container={container} />
-					) : (
-						<ConnectionDetails container={container} />
-					)}
-				</div>
-
-				<div className={cn('p-4', !isKeyValue && 'border-b border-border')}>
-					<ContainerMetrics container={container} />
-				</div>
-
+				</section>
+				<OutputCard
+					container={activeContainer}
+					tab={isRunning ? outputTab : 'logs'}
+					onTabChange={onOutputTabChange}
+				/>
 				{!isKeyValue && (
-					<div className='p-4'>
-						<h4 className='text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3'>
-							Seed Data
-						</h4>
-						<SeedView container={container} />
-					</div>
+					<section
+						className='dk-card'
+						style={{ gridArea: 'seed' }}
+						aria-label='Seed data'
+					>
+						<div className='dk-card-h'>
+							<span className='dk-eyebrow'>Seed data</span>
+						</div>
+						<div className='dk-card-b'>
+							<SeedView container={activeContainer} />
+						</div>
+					</section>
 				)}
 			</div>
 
-			<div className='shrink-0 border-t border-border p-3'>
-				<Button
-					variant='default'
-					size='sm'
-					className='w-full h-8 gap-1.5'
-					onClick={handleOpenInViewer}
-					disabled={!isRunning}
-				>
-					<ExternalLink className='h-3.5 w-3.5' />
-					{isKeyValue ? 'Open in KV Studio' : 'Open in Data Viewer'}
-				</Button>
-			</div>
-
 			<ComposeExportDialog
-				container={container}
+				container={activeContainer}
 				open={showExportDialog}
 				onOpenChange={setShowExportDialog}
 			/>
-
-			<RemoveContainerDialog
-				containerName={container.name}
-				open={showRemoveDialog}
-				onOpenChange={setShowRemoveDialog}
-				onConfirm={handleConfirmRemove}
-				isRemoving={removeContainer.isPending}
-			/>
-		</div>
+		</>
 	)
 }
