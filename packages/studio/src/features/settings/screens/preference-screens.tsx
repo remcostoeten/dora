@@ -107,7 +107,7 @@ export function StartupScreen() {
 							updateSetting('restoreLastConnection', mode === 'auto')
 						}}
 					>
-						<SelectTrigger id='startup-connection-select' className='h-8 w-44 text-xs'>
+						<SelectTrigger id='startup-connection-select' className='h-7 w-48 text-xs'>
 							<SelectValue placeholder='Select startup mode' />
 						</SelectTrigger>
 						<SelectContent>

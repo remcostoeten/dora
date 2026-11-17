@@ -34,7 +34,13 @@ import {
 } from '@studio/shared/ui/select'
 import { Spinner } from '@studio/shared/ui/spinner'
 import { cn } from '@studio/shared/utils/cn'
-import { RadioGrid, SettingCard, SettingGroup, SettingRow } from '../components/setting-primitives'
+import {
+	RadioGrid,
+	SettingCard,
+	SettingGroup,
+	SettingRow,
+	UnfilteredOnly
+} from '../components/setting-primitives'
 import type { SettingsSectionId } from '../sections'
 
 type ProviderKind = 'cloud' | 'local' | 'demo'
@@ -465,18 +471,20 @@ export function AiProviderScreen({ onNavigate }: Props) {
 							})}
 						</RadioGrid>
 					</SettingRow>
-					<div className='border-t border-border px-4 py-3'>
-						<div className='flex items-start gap-2.5 rounded-md bg-foreground/[0.04] px-3 py-2.5 text-xs text-muted-foreground'>
-							<Info className='mt-px h-3.5 w-3.5 shrink-0' />
-							<span
-								className={cn(
-									KEYLESS_PROVIDERS.has(config.provider) && 'text-foreground'
-								)}
-							>
-								{kind.hint}
-							</span>
+					<UnfilteredOnly>
+						<div className='settings-row'>
+							<div className='flex items-start gap-2.5 text-[11.5px] leading-snug text-muted-foreground'>
+								<Info className='mt-px h-3.5 w-3.5 shrink-0' />
+								<span
+									className={cn(
+										KEYLESS_PROVIDERS.has(config.provider) && 'text-foreground'
+									)}
+								>
+									{kind.hint}
+								</span>
+							</div>
 						</div>
-					</div>
+					</UnfilteredOnly>
 				</SettingCard>
 			</SettingGroup>
 
@@ -492,7 +500,7 @@ export function AiProviderScreen({ onNavigate }: Props) {
 							<Input
 								value={config.model}
 								disabled
-								className='h-8 w-56 font-mono text-xs'
+								className='h-7 w-56 font-mono text-xs'
 							/>
 						) : (
 							<Select
@@ -502,7 +510,7 @@ export function AiProviderScreen({ onNavigate }: Props) {
 							>
 								<SelectTrigger
 									id='ai-provider-model-select'
-									className='h-8 w-64 font-mono text-xs'
+									className='h-7 w-64 font-mono text-xs'
 								>
 									<SelectValue placeholder='Select model' />
 								</SelectTrigger>
@@ -537,7 +545,7 @@ export function AiProviderScreen({ onNavigate }: Props) {
 								onClick={() => void loadModels(config.provider)}
 								aria-label='Refresh models'
 								title='Refresh model list from provider'
-								className='h-8 w-8'
+								className='h-7 w-7'
 							>
 								<RefreshCw
 									className={cn('h-3.5 w-3.5', loadingModels && 'animate-spin')}
@@ -565,7 +573,7 @@ export function AiProviderScreen({ onNavigate }: Props) {
 								}
 								options={modelOptions}
 								placeholder='Start typing a model id…'
-								className='h-8 w-64 font-mono text-xs'
+								className='h-7 w-64 font-mono text-xs'
 							/>
 						</SettingRow>
 					) : null}
@@ -594,7 +602,7 @@ export function AiProviderScreen({ onNavigate }: Props) {
 								}
 								placeholder={DEFAULT_OLLAMA_ENDPOINT}
 								spellCheck={false}
-								className='h-8 w-64 font-mono text-xs'
+								className='h-7 w-64 font-mono text-xs'
 							/>
 						</SettingRow>
 					) : null}
@@ -685,48 +693,52 @@ export function AiProviderScreen({ onNavigate }: Props) {
 				</SettingCard>
 			</SettingGroup>
 
-			<div className='sticky bottom-4 mt-5 flex items-center gap-2.5 rounded-lg border border-border bg-popover py-2 pl-3.5 pr-2 shadow-lg'>
-				<div
-					role='status'
-					className={cn(
-						'flex min-w-0 flex-1 items-center gap-2 text-[12.5px]',
-						dirty || message === 'Saved' ? 'text-foreground' : 'text-muted-foreground'
-					)}
-				>
-					{dirty ? (
-						<span className='h-1.5 w-1.5 shrink-0 rounded-full bg-warning' />
-					) : null}
-					{!dirty && message === 'Saved' ? (
-						<Check className='h-3.5 w-3.5 shrink-0' />
-					) : null}
-					<span className='truncate'>
-						{saving
-							? 'Saving…'
-							: dirty
-								? valid
-									? 'Unsaved changes'
-									: 'Unsaved changes. Fix the highlighted field to save.'
-								: (message ?? 'All changes saved')}
-					</span>
+			<UnfilteredOnly>
+				<div className='sticky bottom-4 mt-5 flex items-center gap-2.5 rounded-lg border border-border bg-popover py-2 pl-3.5 pr-2 shadow-lg'>
+					<div
+						role='status'
+						className={cn(
+							'flex min-w-0 flex-1 items-center gap-2 text-[12.5px]',
+							dirty || message === 'Saved'
+								? 'text-foreground'
+								: 'text-muted-foreground'
+						)}
+					>
+						{dirty ? (
+							<span className='h-1.5 w-1.5 shrink-0 rounded-full bg-warning' />
+						) : null}
+						{!dirty && message === 'Saved' ? (
+							<Check className='h-3.5 w-3.5 shrink-0' />
+						) : null}
+						<span className='truncate'>
+							{saving
+								? 'Saving…'
+								: dirty
+									? valid
+										? 'Unsaved changes'
+										: 'Unsaved changes. Fix the highlighted field to save.'
+									: (message ?? 'All changes saved')}
+						</span>
+					</div>
+					<Button
+						variant='ghost'
+						size='sm'
+						disabled={!dirty || saving}
+						onClick={discard}
+						className='h-7 text-xs text-muted-foreground hover:text-foreground'
+					>
+						Discard
+					</Button>
+					<Button
+						size='sm'
+						disabled={!isTauri || !dirty || !valid || saving}
+						onClick={() => void save()}
+						className='h-7 text-xs'
+					>
+						{saving ? <Spinner className='h-3 w-3' /> : 'Save provider'}
+					</Button>
 				</div>
-				<Button
-					variant='ghost'
-					size='sm'
-					disabled={!dirty || saving}
-					onClick={discard}
-					className='h-7 text-xs text-muted-foreground hover:text-foreground'
-				>
-					Discard
-				</Button>
-				<Button
-					size='sm'
-					disabled={!isTauri || !dirty || !valid || saving}
-					onClick={() => void save()}
-					className='h-7 text-xs'
-				>
-					{saving ? <Spinner className='h-3 w-3' /> : 'Save provider'}
-				</Button>
-			</div>
+			</UnfilteredOnly>
 		</>
 	)
 }
