@@ -1,4 +1,3 @@
-import { BarChart3, FileSpreadsheet } from 'lucide-react'
 import {
 	Neon as NeonIcon,
 	Planetscale as PlanetscaleIcon,
@@ -7,9 +6,11 @@ import {
 	Vercel as VercelIcon,
 	Xata as XataIcon
 } from '@studio/components/provider.icons'
-import { DATABASE_META, DatabaseIcon, CloudflareD1Icon } from '../database-icons'
+import { DATABASE_META } from '../database-icons'
 import type { DatabaseType } from '../../types'
 import type { IntegrationKey, SourceId, SourceKind } from './model'
+import { ProviderMotionIcon } from './provider-motion/provider-motion-icon'
+import type { ProviderIconName } from './provider-motion/registry'
 
 export type GroupId = 'server' | 'local' | 'cloud'
 
@@ -46,7 +47,7 @@ const INTEGRATIONS: readonly IntegrationKey[] = [
 const ICON_CLASS = 'h-[17px] w-[17px]'
 
 function engine(
-	id: DatabaseType,
+	id: DatabaseType & ProviderIconName,
 	group: GroupId,
 	kind: SourceKind,
 	accent: string,
@@ -61,7 +62,7 @@ function engine(
 		kind,
 		accent,
 		haystack: `${meta.name} ${meta.description} ${keywords}`.toLowerCase(),
-		icon: <DatabaseIcon type={id} className={ICON_CLASS} />
+		icon: <ProviderMotionIcon name={id} className={ICON_CLASS} />
 	}
 }
 
@@ -101,7 +102,7 @@ export const SOURCES: readonly Source[] = [
 		kind: 'files',
 		accent: '38 80% 55%',
 		haystack: 'files csv, parquet, json, read-only ndjson spreadsheet',
-		icon: <FileSpreadsheet className={ICON_CLASS} strokeWidth={1.8} />
+		icon: <ProviderMotionIcon name='files' className={ICON_CLASS} />
 	},
 	provider(
 		'supabase',
@@ -157,7 +158,7 @@ export const SOURCES: readonly Source[] = [
 		'Add a token, pick a database',
 		'28 90% 55%',
 		'sqlite workers d1',
-		<CloudflareD1Icon className={ICON_CLASS} />
+		<ProviderMotionIcon name='cloudflare' className={ICON_CLASS} />
 	),
 	provider(
 		'posthog',
@@ -165,7 +166,7 @@ export const SOURCES: readonly Source[] = [
 		'Add an API key, query with HogQL',
 		'20 90% 55%',
 		'analytics hogql events',
-		<BarChart3 className={ICON_CLASS} strokeWidth={1.8} />
+		<ProviderMotionIcon name='posthog' className={ICON_CLASS} />
 	)
 ]
 
@@ -179,7 +180,7 @@ const MANAGED_SOURCE: Source = {
 	kind: 'managed',
 	accent: null,
 	haystack: '',
-	icon: <DatabaseIcon type='d1' className={ICON_CLASS} />
+	icon: <ProviderMotionIcon name='d1' className={ICON_CLASS} />
 }
 
 /**
