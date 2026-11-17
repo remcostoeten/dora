@@ -244,3 +244,34 @@ export function searchSettings(
 		(result) => searchText(result).includes(needle)
 	)
 }
+
+export type SettingsSearchFilter = {
+	sections: ReadonlySet<SettingsSectionId>
+	rows: ReadonlyMap<SettingsSectionId, ReadonlySet<string>>
+	total: number
+}
+
+/**
+ * @name buildSearchFilter
+ * @description Groups search results per section for in-place filtering. A section with
+ * matching settings or shortcuts shows only those rows; a section that only matched on its
+ * own title or keywords has no row entry and shows everything.
+ *
+ * @example
+ * const filter = buildSearchFilter(searchSettings('vim'))
+ * filter.rows.get('editor') // Set { 'editor-vim-keybindings' }
+ */
+export function buildSearchFilter(results: SettingsSearchResult[]): SettingsSearchFilter {
+	const sections = new Set<SettingsSectionId>()
+	const rows = new Map<SettingsSectionId, Set<string>>()
+	for (const result of results) {
+		sections.add(result.sectionId)
+		if (result.kind === 'section') continue
+		const focusIds = rows.get(result.sectionId) ?? new Set<string>()
+		focusIds.add(result.focusId)
+		rows.set(result.sectionId, focusIds)
+	}
+	let total = 0
+	for (const id of sections) total += rows.get(id)?.size ?? 1
+	return { sections, rows, total }
+}

@@ -6,11 +6,13 @@ import { UpdateSection } from '@studio/features/updater/update-section'
 import { AiKeysSection } from '@studio/features/sidebar/components/ai-keys-section'
 import { BuildCacheSection } from '@studio/features/sidebar/components/build-cache-section'
 import { StorageSection } from '@studio/features/sidebar/components/storage-section'
-import { SettingCard } from '../components/setting-primitives'
+import { SettingCard, isRowVisible, useSettingsFilter } from '../components/setting-primitives'
 
 function Embedded({ children, focusId }: { children: ReactNode; focusId?: string }) {
+	const filter = useSettingsFilter()
+	if (!isRowVisible(filter, focusId)) return null
 	return (
-		<SettingCard className='p-4'>
+		<SettingCard className='settings-embedded'>
 			<div tabIndex={-1} data-settings-focus={focusId} className='outline-none'>
 				{children}
 			</div>

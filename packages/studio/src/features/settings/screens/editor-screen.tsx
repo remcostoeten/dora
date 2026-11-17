@@ -12,7 +12,12 @@ import {
 import { Slider } from '@studio/shared/ui/slider'
 import { Switch } from '@studio/shared/ui/switch'
 import { EditorPreview } from '../components/editor-preview'
-import { SettingCard, SettingGroup, SettingRow } from '../components/setting-primitives'
+import {
+	SettingCard,
+	SettingGroup,
+	SettingRow,
+	UnfilteredOnly
+} from '../components/setting-primitives'
 import { useAppearanceSettings } from '../use-appearance'
 
 const FONT_SIZE_LIMITS = { min: 10, max: 24 }
@@ -33,15 +38,6 @@ export function EditorScreen() {
 
 	return (
 		<>
-			<SettingGroup label='Preview' help='Updates as you change the settings below.'>
-				<EditorPreview
-					fontSize={settings.editorFontSize}
-					theme={settings.editorTheme}
-					vim={settings.enableVimMode}
-					appIsLight={appearance.theme === 'light'}
-				/>
-			</SettingGroup>
-
 			<SettingGroup label='Text'>
 				<SettingCard>
 					<SettingRow
@@ -53,7 +49,7 @@ export function EditorScreen() {
 						<span className='text-[11px] text-muted-foreground'>A</span>
 						<Slider
 							aria-labelledby='editor-font-size-label'
-							className='w-48'
+							className='w-40'
 							value={[settings.editorFontSize]}
 							min={FONT_SIZE_LIMITS.min}
 							max={FONT_SIZE_LIMITS.max}
@@ -80,7 +76,7 @@ export function EditorScreen() {
 						>
 							<SelectTrigger
 								id='editor-syntax-theme-select'
-								className='h-8 w-56 text-xs'
+								className='h-7 w-48 text-xs'
 							>
 								<SelectValue placeholder='Select theme' />
 							</SelectTrigger>
@@ -117,18 +113,31 @@ export function EditorScreen() {
 				</SettingCard>
 			</SettingGroup>
 
-			<div className='mt-5 flex justify-end'>
-				<Button
-					variant='ghost'
-					size='sm'
-					disabled={isDefault}
-					onClick={resetEditor}
-					className='h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground'
+			<UnfilteredOnly>
+				<SettingGroup
+					label='Preview'
+					help='Updates as you change the settings above.'
+					action={
+						<Button
+							variant='ghost'
+							size='sm'
+							disabled={isDefault}
+							onClick={resetEditor}
+							className='h-6 gap-1.5 px-2 text-[11.5px] text-muted-foreground hover:text-foreground'
+						>
+							<RotateCcw className='h-3 w-3' />
+							Reset editor
+						</Button>
+					}
 				>
-					<RotateCcw className='h-3.5 w-3.5' />
-					Reset to defaults
-				</Button>
-			</div>
+					<EditorPreview
+						fontSize={settings.editorFontSize}
+						theme={settings.editorTheme}
+						vim={settings.enableVimMode}
+						appIsLight={appearance.theme === 'light'}
+					/>
+				</SettingGroup>
+			</UnfilteredOnly>
 		</>
 	)
 }

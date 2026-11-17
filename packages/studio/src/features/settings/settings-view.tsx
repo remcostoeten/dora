@@ -5,14 +5,16 @@ import {
 	useRef,
 	useState,
 	type KeyboardEvent,
-	type ReactNode
+	type ReactNode,
+	type RefObject
 } from 'react'
+import { SearchX } from 'lucide-react'
 import { useSettings } from '@studio/core/settings'
 import { useEffectiveShortcuts } from '@studio/core/shortcuts'
 import { useAiSelection } from '@studio/features/ai-assistant/ai-selection-store'
-import { SearchResults } from './components/search-results'
+import { Highlight, SettingsFilterProvider } from './components/setting-primitives'
 import { SettingsNav } from './components/settings-nav'
-import { searchSettings, type SettingsSearchResult } from './search'
+import { buildSearchFilter, searchSettings } from './search'
 import {
 	AI_SECTION_IDS,
 	SETTINGS_GROUPS,
@@ -33,6 +35,7 @@ import {
 } from './screens/embedded-screens'
 import { InterfaceScreen, SafetyScreen, StartupScreen } from './screens/preference-screens'
 import { ShortcutsScreen } from './screens/shortcuts-screen'
+import './settings.css'
 
 type Props = {
 	windowControls?: ReactNode
@@ -40,10 +43,19 @@ type Props = {
 	highlightSection?: SettingsSectionId
 }
 
+type ScrollRequest = {
+	id: SettingsSectionId
+	highlight: boolean
+}
+
 const FOCUSABLE =
 	'button:not([disabled]), input:not([disabled]), [role="slider"], [role="switch"], [role="radio"][aria-checked="true"]'
 
 const ALL_SECTION_IDS = SETTINGS_GROUPS.flatMap((group) => group.items)
+
+const DEFERRED_SECTIONS: ReadonlySet<SettingsSectionId> = new Set(['updates', 'build-cache'])
+
+const SPY_OFFSET = 32
 
 function isTypingTarget(target: EventTarget | null) {
 	if (!(target instanceof HTMLElement)) return false
@@ -53,11 +65,46 @@ function isTypingTarget(target: EventTarget | null) {
 	)
 }
 
-function flashRow(row: HTMLElement) {
-	row.classList.remove('settings-row-flash')
-	void row.offsetWidth
-	row.classList.add('settings-row-flash')
-	window.setTimeout(() => row.classList.remove('settings-row-flash'), 1700)
+function flash(node: HTMLElement, className: string, duration: number) {
+	node.classList.remove(className)
+	void node.offsetWidth
+	node.classList.add(className)
+	window.setTimeout(() => node.classList.remove(className), duration)
+}
+
+function sectionNode(body: HTMLElement | null, id: SettingsSectionId) {
+	return body?.querySelector<HTMLElement>(`[data-settings-section="${id}"]`) ?? null
+}
+
+function DeferredMount({
+	force,
+	rootRef,
+	children
+}: {
+	force: boolean
+	rootRef: RefObject<HTMLDivElement>
+	children: ReactNode
+}) {
+	const [seen, setSeen] = useState(false)
+	const placeholderRef = useRef<HTMLDivElement>(null)
+	const shown = force || seen
+
+	useEffect(() => {
+		if (shown) return
+		const node = placeholderRef.current
+		if (!node) return
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) setSeen(true)
+			},
+			{ root: rootRef.current, rootMargin: '240px 0px' }
+		)
+		observer.observe(node)
+		return () => observer.disconnect()
+	}, [shown, rootRef])
+
+	if (shown) return <>{children}</>
+	return <div ref={placeholderRef} className='settings-card h-24' />
 }
 
 export function SettingsView({ windowControls, initialSection, highlightSection }: Props = {}) {
@@ -68,103 +115,124 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 		initialSection ?? 'editor'
 	)
 	const [query, setQuery] = useState('')
-	const [activeResult, setActiveResult] = useState(0)
-	const [shortcutQuery, setShortcutQuery] = useState('')
+	const [forcedUpTo, setForcedUpTo] = useState(-1)
+	const [scrollRequest, setScrollRequest] = useState<ScrollRequest | null>(
+		initialSection ? { id: initialSection, highlight: false } : null
+	)
 	const searchRef = useRef<HTMLInputElement>(null)
 	const bodyRef = useRef<HTMLDivElement>(null)
-	const screenRef = useRef<HTMLDivElement>(null)
-	const pendingFocus = useRef<string | null>(null)
+	const quietUntil = useRef(0)
 
 	const searching = query.trim().length > 0
-	const hideAi = settings.hideAi
-	const showLocalModels = aiSelection.provider === 'ollama' || activeSection === 'ollama-models'
+	const showLocalModels =
+		aiSelection.provider === 'ollama' ||
+		initialSection === 'ollama-models' ||
+		highlightSection === 'ollama-models'
 
-	const visibleSections = useMemo(() => {
-		const visible = ALL_SECTION_IDS.filter((id) => {
-			if (hideAi && AI_SECTION_IDS.has(id)) return false
-			if (id === 'ollama-models') return showLocalModels
-			return true
-		})
-		return new Set(visible)
-	}, [hideAi, showLocalModels])
-
-	const results = useMemo(
+	const sections = useMemo(
 		() =>
-			searchSettings(query, shortcuts).filter((result) =>
-				visibleSections.has(result.sectionId)
-			),
-		[query, shortcuts, visibleSections]
+			ALL_SECTION_IDS.filter((id) => {
+				if (settings.hideAi && AI_SECTION_IDS.has(id)) return false
+				if (id === 'ollama-models') return showLocalModels
+				return true
+			}),
+		[settings.hideAi, showLocalModels]
 	)
+
+	const filter = useMemo(() => {
+		if (!searching) return null
+		const visible = new Set(sections)
+		const results = searchSettings(query, shortcuts).filter((result) =>
+			visible.has(result.sectionId)
+		)
+		return buildSearchFilter(results)
+	}, [searching, query, shortcuts, sections])
 
 	const matchCounts = useMemo(() => {
+		if (!filter) return null
 		const counts = new Map<SettingsSectionId, number>()
-		for (const result of results) {
-			counts.set(result.sectionId, (counts.get(result.sectionId) ?? 0) + 1)
-		}
+		for (const id of filter.sections) counts.set(id, filter.rows.get(id)?.size ?? 0)
 		return counts
-	}, [results])
+	}, [filter])
 
-	const navSections = useMemo(
-		() => (searching ? new Set(matchCounts.keys()) : visibleSections),
-		[searching, matchCounts, visibleSections]
-	)
+	const rendered = filter ? sections.filter((id) => filter.sections.has(id)) : sections
 
-	const section = SETTINGS_SECTIONS[activeSection]
+	const scrollToSection = useCallback((id: SettingsSectionId) => {
+		const body = bodyRef.current
+		const node = sectionNode(body, id)
+		if (!body || !node) return null
+		quietUntil.current = performance.now() + 120
+		const offset = node.getBoundingClientRect().top - body.getBoundingClientRect().top
+		body.scrollTo({ top: body.scrollTop + offset })
+		return node
+	}, [])
 
-	useEffect(() => {
-		setActiveResult(0)
-	}, [query])
-
-	useEffect(() => {
-		if (!visibleSections.has(activeSection)) setActiveSection('editor')
-	}, [activeSection, visibleSections])
-
-	useEffect(() => {
-		if (initialSection) setActiveSection(initialSection)
-	}, [initialSection])
-
-	useEffect(() => {
-		if (!highlightSection) return
-		setActiveSection(highlightSection)
-		let removeTimer = 0
-		const frame = window.requestAnimationFrame(() => {
-			const node = screenRef.current
-			if (!node) return
-			node.classList.add('settings-section-highlight')
-			removeTimer = window.setTimeout(
-				() => node.classList.remove('settings-section-highlight'),
-				2400
-			)
-		})
-		return () => {
-			window.cancelAnimationFrame(frame)
-			window.clearTimeout(removeTimer)
+	const updateActive = useCallback(() => {
+		if (performance.now() < quietUntil.current) return
+		const body = bodyRef.current
+		if (!body) return
+		const nodes = Array.from(body.querySelectorAll<HTMLElement>('[data-settings-section]'))
+		if (nodes.length === 0) return
+		const threshold = body.getBoundingClientRect().top + SPY_OFFSET
+		let current = nodes[0]
+		for (const node of nodes) {
+			if (node.getBoundingClientRect().top <= threshold) current = node
 		}
-	}, [highlightSection])
+		if (body.scrollTop + body.clientHeight >= body.scrollHeight - 2) {
+			current = nodes[nodes.length - 1]
+		}
+		const id = current.dataset.settingsSection as SettingsSectionId | undefined
+		if (id) setActiveSection(id)
+	}, [])
 
 	useEffect(() => {
-		const targetId = pendingFocus.current
-		if (!targetId || searching) return
-		let attempts = 0
+		const body = bodyRef.current
+		if (!body) return
 		let frame = 0
-		function seek() {
-			const row = bodyRef.current?.querySelector<HTMLElement>(
-				`[data-settings-focus="${targetId}"]`
-			)
-			if (!row) {
-				attempts += 1
-				if (attempts < 40) frame = window.requestAnimationFrame(seek)
-				return
-			}
-			pendingFocus.current = null
-			row.scrollIntoView({ block: 'center' })
-			flashRow(row)
-			const control = row.querySelector<HTMLElement>(FOCUSABLE)
-			;(control ?? row).focus({ preventScroll: true })
+		function onScroll() {
+			window.cancelAnimationFrame(frame)
+			frame = window.requestAnimationFrame(updateActive)
 		}
-		frame = window.requestAnimationFrame(seek)
+		body.addEventListener('scroll', onScroll, { passive: true })
+		return () => {
+			body.removeEventListener('scroll', onScroll)
+			window.cancelAnimationFrame(frame)
+		}
+	}, [updateActive])
+
+	useEffect(() => {
+		if (!scrollRequest) return
+		const frame = window.requestAnimationFrame(() => {
+			const node = scrollToSection(scrollRequest.id)
+			if (node && scrollRequest.highlight) flash(node, 'settings-section-highlight', 2400)
+		})
 		return () => window.cancelAnimationFrame(frame)
-	}, [activeSection, searching])
+	}, [scrollRequest, scrollToSection])
+
+	const requestSection = useCallback((id: SettingsSectionId, highlight: boolean) => {
+		setForcedUpTo((current) => Math.max(current, ALL_SECTION_IDS.indexOf(id)))
+		setActiveSection(id)
+		setScrollRequest({ id, highlight })
+	}, [])
+
+	useEffect(() => {
+		if (initialSection) requestSection(initialSection, false)
+	}, [initialSection, requestSection])
+
+	useEffect(() => {
+		if (highlightSection) requestSection(highlightSection, true)
+	}, [highlightSection, requestSection])
+
+	useEffect(() => {
+		if (!searching) return
+		bodyRef.current?.scrollTo({ top: 0 })
+		const frame = window.requestAnimationFrame(updateActive)
+		return () => window.cancelAnimationFrame(frame)
+	}, [query, searching, updateActive])
+
+	useEffect(() => {
+		if (!sections.includes(activeSection)) setActiveSection(sections[0] ?? 'editor')
+	}, [activeSection, sections])
 
 	useEffect(() => {
 		function handleKeyDown(event: globalThis.KeyboardEvent) {
@@ -184,20 +252,26 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 		return () => window.removeEventListener('keydown', handleKeyDown)
 	}, [])
 
-	const goToSection = useCallback((id: SettingsSectionId) => {
-		pendingFocus.current = null
-		setQuery('')
-		setActiveSection(id)
-		bodyRef.current?.scrollTo({ top: 0 })
-	}, [])
+	const goToSection = useCallback(
+		(id: SettingsSectionId) => {
+			if (!searching) {
+				requestSection(id, false)
+				return
+			}
+			setActiveSection(id)
+			scrollToSection(id)
+		},
+		[requestSection, scrollToSection, searching]
+	)
 
-	const openResult = useCallback((result: SettingsSearchResult) => {
-		if (result.kind === 'shortcut') setShortcutQuery(result.title)
-		pendingFocus.current = result.kind === 'section' ? null : result.focusId
-		setQuery('')
-		setActiveSection(result.sectionId)
-		if (result.kind === 'section') bodyRef.current?.scrollTo({ top: 0 })
-	}, [])
+	function jumpToFirstMatch() {
+		const row = bodyRef.current?.querySelector<HTMLElement>('[data-settings-focus]')
+		if (!row) return
+		row.scrollIntoView({ block: 'center' })
+		flash(row, 'settings-row-flash', 1700)
+		const control = row.querySelector<HTMLElement>(FOCUSABLE)
+		;(control ?? row).focus({ preventScroll: true })
+	}
 
 	function handleSearchKeyDown(event: KeyboardEvent<HTMLInputElement>) {
 		if (event.key === 'Escape') {
@@ -206,27 +280,20 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 			setQuery('')
 			return
 		}
-		if (results.length === 0) return
-		if (event.key === 'ArrowDown') {
+		if (event.key === 'Enter' || event.key === 'ArrowDown') {
 			event.preventDefault()
-			setActiveResult((index) => (index + 1) % results.length)
-		} else if (event.key === 'ArrowUp') {
-			event.preventDefault()
-			setActiveResult((index) => (index - 1 + results.length) % results.length)
-		} else if (event.key === 'Enter') {
-			event.preventDefault()
-			openResult(results[Math.min(activeResult, results.length - 1)])
+			jumpToFirstMatch()
 		}
 	}
 
-	function renderScreen() {
-		switch (activeSection) {
+	function renderScreen(id: SettingsSectionId) {
+		switch (id) {
 			case 'editor':
 				return <EditorScreen />
 			case 'appearance':
 				return <AppearanceScreen />
 			case 'shortcuts':
-				return <ShortcutsScreen query={shortcutQuery} onQueryChange={setShortcutQuery} />
+				return <ShortcutsScreen />
 			case 'interface':
 				return <InterfaceScreen />
 			case 'ai-provider':
@@ -250,70 +317,130 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 		}
 	}
 
-	const crumb = searching ? 'Search' : groupLabelOf(activeSection)
-	const title = searching ? 'Search results' : section.title
-	const description = searching
-		? `${results.length} ${results.length === 1 ? 'match' : 'matches'} for “${query.trim()}”`
-		: section.description
+	function renderSection(id: SettingsSectionId) {
+		const section = SETTINGS_SECTIONS[id]
+		const rows = filter ? (filter.rows.get(id) ?? null) : null
+		const screen = renderScreen(id)
+		const number = String(sections.indexOf(id) + 1).padStart(2, '0')
+		return (
+			<section key={id} data-settings-section={id} className='settings-section'>
+				<header className='flex items-end gap-3 pb-3.5'>
+					<div className='min-w-0 flex-1'>
+						<span className='settings-eyebrow mb-1.5 block'>{groupLabelOf(id)}</span>
+						<h3 className='text-sm font-semibold tracking-tight text-foreground'>
+							<Highlight text={section.title} query={query} />
+						</h3>
+						<p className='mt-0.5 text-xs text-muted-foreground'>
+							{section.description}
+						</p>
+					</div>
+					<span className='pb-[3px] font-mono text-[11px] text-muted-foreground/60'>
+						{number}
+					</span>
+				</header>
+				<SettingsFilterProvider value={{ query, rows }}>
+					{DEFERRED_SECTIONS.has(id) ? (
+						<DeferredMount
+							force={forcedUpTo >= ALL_SECTION_IDS.indexOf(id)}
+							rootRef={bodyRef}
+						>
+							{screen}
+						</DeferredMount>
+					) : (
+						screen
+					)}
+				</SettingsFilterProvider>
+			</section>
+		)
+	}
+
+	const crumbSection = SETTINGS_SECTIONS[activeSection]
 
 	return (
-		<div className='flex h-full min-h-0 overflow-hidden bg-background'>
+		<div className='settings-view flex h-full min-h-0 overflow-hidden bg-background'>
 			<SettingsNav
 				query={query}
 				onQueryChange={setQuery}
 				onSearchKeyDown={handleSearchKeyDown}
 				searchRef={searchRef}
 				activeSection={activeSection}
-				visibleSections={navSections}
+				sections={sections}
 				matchCounts={matchCounts}
+				total={filter?.total ?? 0}
 				onSelect={goToSection}
 			/>
 
 			<main className='flex min-h-0 min-w-0 flex-1 flex-col'>
-				<header
-					className='shrink-0 border-b border-border py-4'
-					data-tauri-drag-region='true'
-				>
-					<div className='mx-auto flex w-full max-w-[880px] items-start gap-4 px-8'>
-						<div className='min-w-0 flex-1'>
-							<div className='mb-0.5 text-[11.5px] text-muted-foreground'>
-								{crumb}
-							</div>
-							<h1 className='text-[17px] font-semibold tracking-tight text-foreground'>
-								{title}
-							</h1>
-							<p className='mt-0.5 text-[12.5px] text-muted-foreground'>
-								{description}
-							</p>
-						</div>
-						{windowControls ? (
-							<div className='shrink-0' data-tauri-drag-region='false'>
-								{windowControls}
-							</div>
-						) : null}
+				<header className='settings-topbar' data-tauri-drag-region='true'>
+					<div className='flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground'>
+						<span>Settings</span>
+						<span className='text-muted-foreground/50'>/</span>
+						{searching ? (
+							<span className='font-medium text-foreground'>Search</span>
+						) : (
+							<>
+								<span>{groupLabelOf(activeSection)}</span>
+								<span className='text-muted-foreground/50'>/</span>
+								<span className='font-medium text-foreground'>
+									{crumbSection.title}
+								</span>
+							</>
+						)}
 					</div>
+					{windowControls ? (
+						<div className='ml-auto shrink-0' data-tauri-drag-region='false'>
+							{windowControls}
+						</div>
+					) : null}
 				</header>
 
-				<div ref={bodyRef} className='@container min-h-0 flex-1 overflow-y-auto'>
-					<div
-						key={searching ? 'search' : activeSection}
-						ref={screenRef}
-						className='mx-auto w-full max-w-[880px] px-8 pb-10 pt-6 animate-in fade-in-0 slide-in-from-bottom-1 duration-150 motion-reduce:animate-none'
-					>
+				<div
+					ref={bodyRef}
+					data-settings-searching={searching ? 'true' : undefined}
+					className='settings-body @container min-h-0 flex-1 overflow-y-auto'
+				>
+					<div className='w-full max-w-[860px] px-8 pb-28 pt-5'>
 						{searching ? (
-							<SearchResults
-								query={query}
-								results={results}
-								activeIndex={activeResult}
-								onOpen={openResult}
-								onHover={setActiveResult}
-								onClear={() => {
-									setQuery('')
-									searchRef.current?.focus()
-								}}
-							/>
+							<p className='text-xs text-muted-foreground'>
+								{filter && filter.total > 0
+									? `${filter.total} ${filter.total === 1 ? 'match' : 'matches'} for “${query.trim()}”`
+									: null}
+							</p>
 						) : (
-							renderScreen()
+							<div>
+								<h2 className='text-[15px] font-semibold tracking-tight text-foreground'>
+									Application settings
+								</h2>
+								<p className='mt-0.5 text-xs text-muted-foreground'>
+									Editor behavior, appearance, shortcuts, AI, storage and updates.
+								</p>
+							</div>
+						)}
+
+						{rendered.length === 0 ? (
+							<div className='flex flex-col items-center py-16 text-center'>
+								<span className='grid h-9 w-9 place-items-center rounded-lg bg-secondary text-muted-foreground'>
+									<SearchX className='h-4 w-4' />
+								</span>
+								<h4 className='mt-3 text-[13px] font-semibold text-foreground'>
+									No settings match “{query.trim()}”
+								</h4>
+								<p className='mt-1 text-xs text-muted-foreground'>
+									Try a broader term like “theme”, “key” or “cache”.
+								</p>
+								<button
+									type='button'
+									onClick={() => {
+										setQuery('')
+										searchRef.current?.focus()
+									}}
+									className='settings-button mt-3.5'
+								>
+									Clear search
+								</button>
+							</div>
+						) : (
+							rendered.map(renderSection)
 						)}
 					</div>
 				</div>
