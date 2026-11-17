@@ -125,13 +125,20 @@ through the channel you already use:
 ### macOS (Homebrew)
 
 ```bash
-brew install remcostoeten/tap/dora
+brew install --cask remcostoeten/dora/dora
 ```
 
-### Windows (Winget)
+### Windows
 
 ```powershell
 winget install RemcoStoeten.Dora
+```
+
+Or with Scoop:
+
+```powershell
+scoop bucket add dora https://github.com/remcostoeten/dora-packages
+scoop install dora/dora
 ```
 
 ### Arch Linux (AUR)
@@ -143,23 +150,47 @@ yay -S dora
 ### Debian / Ubuntu (APT)
 
 ```bash
-curl -fsSL https://remco-stoeten.github.io/dora/KEY.gpg \
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://remcostoeten.github.io/dora/KEY.gpg \
   | sudo gpg --dearmor -o /etc/apt/keyrings/dora.gpg
-echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/dora.gpg] \
-  https://remco-stoeten.github.io/dora stable main" \
+echo "deb [signed-by=/etc/apt/keyrings/dora.gpg] https://remcostoeten.github.io/dora stable main" \
   | sudo tee /etc/apt/sources.list.d/dora.list
 sudo apt update && sudo apt install dora
 ```
 
-### Linux (Snap)
+### Fedora / RHEL / openSUSE (DNF)
+
+```bash
+sudo curl -fsSL -o /etc/yum.repos.d/dora.repo https://remcostoeten.github.io/dora/rpm/dora.repo
+sudo dnf install dora
+```
+
+### Flatpak
+
+```bash
+flatpak install --user https://remcostoeten.github.io/dora/flatpak/io.github.remcostoeten.dora.flatpakref
+```
+
+### Snap
 
 ```bash
 sudo snap install dora
 ```
 
-Flatpak, AppImage, `.deb`, `.rpm`, `.dmg`, and `.msi` builds are on the
-[releases page](https://github.com/remcostoeten/dora/releases/latest). macOS
-builds cover Apple Silicon and Intel; Windows and Linux are x64.
+### Nix
+
+```bash
+nix profile install github:remcostoeten/dora-packages
+```
+
+The [releases page](https://github.com/remcostoeten/dora/releases/latest) has
+the universal macOS `.dmg` (Apple Silicon and Intel), the Windows installer, and
+the AppImage, `.deb`, `.rpm`, Flatpak bundle and `.tar.gz` for Linux. Windows
+and Linux builds are x64, with ARM64 builds alongside them when that release
+built them. Dora is not code-signed. On macOS, open it once, then click **Open
+Anyway** under System Settings → Privacy & Security (the Homebrew cask handles
+this for you). On Windows, choose **More info** and then **Run anyway** if
+SmartScreen warns.
 
 ## Privacy
 

@@ -78,6 +78,19 @@ jobs:
                   echo "installer_file=$INSTALLER_FILE" >> "$GITHUB_OUTPUT"
                   echo "checksums_url=$CHECKSUMS_URL" >> "$GITHUB_OUTPUT"
 
+                  # The arm64 build is best effort, so it is listed only when the release carries it.
+                  ARM64_URL="$(gh api repos/${GITHUB_REPOSITORY}/releases/tags/${TAG} \
+                    --jq '.assets[] | select(.name | endswith("_arm64-setup.exe")) | .browser_download_url' \
+                    | head -1)"
+                  ARM64_SHA=""
+                  if [[ -n "$ARM64_URL" ]]; then
+                    curl -fsSL "$ARM64_URL" -o arm64-setup.exe
+                    ARM64_SHA="$(sha256sum arm64-setup.exe | awk '{print $1}')"
+                    rm -f arm64-setup.exe
+                  fi
+                  echo "arm64_url=$ARM64_URL" >> "$GITHUB_OUTPUT"
+                  echo "arm64_sha=$ARM64_SHA" >> "$GITHUB_OUTPUT"
+
             - name: Download Windows checksums
               shell: bash
               run: |
@@ -100,7 +113,9 @@ jobs:
                     --installer-url=${{ steps.meta.outputs.installer_url }} \
                     --checksums-file=checksums-windows.txt \
                     --installer-file=${{ steps.meta.outputs.installer_file }} \
-                    --installer-type=nullsoft
+                    --installer-type=nullsoft \
+                    --arm64-installer-url=${{ steps.meta.outputs.arm64_url }} \
+                    --arm64-installer-sha256=${{ steps.meta.outputs.arm64_sha }}
 
             - name: Archive Winget manifests
               run: |

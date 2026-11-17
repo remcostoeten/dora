@@ -45,6 +45,7 @@
 		"release:aur": "bun tools/scripts/generate-aur-package.ts",
 		"release:homebrew": "bun tools/scripts/generate-homebrew-cask.ts",
 		"release:apt": "bun tools/scripts/generate-apt-repo.ts",
+		"release:packages": "bun tools/scripts/generate-package-manifests.ts",
 		"release:flatpak:build": "bash packaging/flatpak/build-flatpak.sh",
 		"release:snap:build": "bash scripts/snapcraft.sh --use-lxd",
 		"release:snap:build:destructive": "bash scripts/snapcraft.sh --sudo --destructive-mode",

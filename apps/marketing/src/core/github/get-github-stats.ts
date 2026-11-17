@@ -52,7 +52,17 @@ export interface CommitData {
 
 export interface PackageInfo {
     name: string
-    platform: 'snap' | 'github' | 'brew' | 'aur' | 'apt' | 'winget'
+    platform:
+        | 'snap'
+        | 'github'
+        | 'brew'
+        | 'aur'
+        | 'apt'
+        | 'dnf'
+        | 'flatpak'
+        | 'nix'
+        | 'winget'
+        | 'scoop'
     command?: string
     version?: string
     downloads?: number
@@ -190,7 +200,30 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
                 name: 'APT',
                 platform: 'apt',
                 command: 'apt install dora',
-                url: `https://github.com/${REPO_OWNER}/${REPO_NAME}/releases`
+                url: 'https://remcostoeten.github.io/dora/'
+            },
+            // DNF (Fedora/RHEL/openSUSE)
+            {
+                name: 'DNF',
+                platform: 'dnf',
+                command: 'dnf install dora',
+                url: 'https://remcostoeten.github.io/dora/'
+            },
+            // Flatpak (any Linux)
+            {
+                name: 'Flatpak',
+                platform: 'flatpak',
+                command:
+                    'flatpak install --user https://remcostoeten.github.io/dora/flatpak/io.github.remcostoeten.dora.flatpakref',
+                url: 'https://remcostoeten.github.io/dora/'
+            },
+            // Nix flake (NixOS/Nix)
+            {
+                name: 'Nix',
+                platform: 'nix',
+                command:
+                    'nix profile install github:remcostoeten/dora-packages',
+                url: 'https://github.com/remcostoeten/dora-packages'
             },
             // Winget (Windows)
             {
@@ -198,6 +231,13 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
                 platform: 'winget',
                 command: 'winget install RemcoStoeten.Dora',
                 url: 'https://github.com/microsoft/winget-pkgs'
+            },
+            // Scoop (Windows)
+            {
+                name: 'Scoop',
+                platform: 'scoop',
+                command: 'scoop install dora/dora',
+                url: 'https://github.com/remcostoeten/dora-packages'
             },
             // GitHub Releases (all platforms)
             {
@@ -290,14 +330,11 @@ export async function getGitHubStats(): Promise<GitHubStatsData | null> {
             latestRelease?.html_url ||
             `https://github.com/${REPO_OWNER}/${REPO_NAME}`
         const latestReleaseDate = latestRelease?.published_at
-            ? new Date(latestRelease.published_at).toLocaleDateString(
-                  'en-US',
-                  {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                  }
-              )
+            ? new Date(latestRelease.published_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric'
+              })
             : null
 
         const latestCommit = allCommits[0]

@@ -6,8 +6,8 @@ import { logHeader, logKeyValue, logLevel } from './_shared'
 type Config = {
 	version: string
 	tag: string
-	dmgUrlArm: string
-	dmgSha256Arm: string
+	dmgUrl: string
+	dmgSha256: string
 	outDir: string
 	name: string
 	desc: string
@@ -46,16 +46,36 @@ function writeFile(filePath: string, contents: string) {
 function createCaskFile(config: Config): string {
 	return `cask "dora" do
   version "${config.version}"
-  sha256 "${config.dmgSha256Arm}"
+  sha256 "${config.dmgSha256}"
 
-  url "https://github.com/remcostoeten/dora/releases/download/v\#{version}/Dora_\#{version}_aarch64.dmg"
+  url "${config.dmgUrl}"
   name "${config.name}"
   desc "${config.desc}"
   homepage "${config.homepage}"
 
-  depends_on arch: :arm64
+  livecheck do
+    url :url
+    strategy :github_latest
+  end
+
+  depends_on macos: ">= :big_sur"
 
   app "Dora.app"
+
+  # Dora is not notarized, so Gatekeeper would refuse to open a quarantined copy.
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-dr", "com.apple.quarantine", "#{appdir}/Dora.app"],
+                   sudo: false
+  end
+
+  zap trash: [
+    "~/Library/Application Support/com.Dora.dev",
+    "~/Library/Caches/com.Dora.dev",
+    "~/Library/Preferences/com.Dora.dev.plist",
+    "~/Library/Saved Application State/com.Dora.dev.savedState",
+    "~/Library/WebKit/com.Dora.dev",
+  ]
 end
 `
 }
@@ -67,29 +87,29 @@ async function main() {
 	const baseUrl =
 		getFlagValue('base-url') || 'https://github.com/remcostoeten/dora/releases/download'
 
-	const dmgUrlArm = getFlagValue('dmg-url-arm') || `${baseUrl}/${tag}/Dora_${version}_aarch64.dmg`
+	const dmgUrl = getFlagValue('dmg-url') || `${baseUrl}/${tag}/Dora_${version}_universal.dmg`
 
-	const explicitShaArm = getFlagValue('dmg-sha256-arm')
+	const explicitSha = getFlagValue('dmg-sha256')
 
 	const config: Config = {
 		version,
 		tag,
-		dmgUrlArm,
-		dmgSha256Arm: explicitShaArm || (await sha256FromUrl(dmgUrlArm)),
+		dmgUrl,
+		dmgSha256: explicitSha || (await sha256FromUrl(dmgUrl)),
 		outDir: path.resolve(
 			getFlagValue('out-dir') || path.join('packaging', 'homebrew', 'Casks')
 		),
 		name: getFlagValue('name') || 'Dora',
 		desc:
 			getFlagValue('desc') ||
-			'Lightweight Rust database manager for PostgreSQL, LibSQL, SQLite, and MySQL',
+			'Database client for PostgreSQL, MySQL, SQLite, libSQL, D1 and DuckDB',
 		homepage: getFlagValue('homepage') || 'https://github.com/remcostoeten/dora'
 	}
 
 	logHeader('Generating Homebrew Cask')
 	logKeyValue('Version', config.version)
 	logKeyValue('Tag', config.tag)
-	logKeyValue('DMG ARM', config.dmgUrlArm)
+	logKeyValue('DMG', config.dmgUrl)
 	logKeyValue('Output', config.outDir)
 
 	writeFile(path.join(config.outDir, 'dora.rb'), createCaskFile(config))

@@ -31,60 +31,69 @@ export const RELEASE_GROUPS: TGroup[] = [
     {
         title: 'macOS',
         description:
-            'Download signed DMG installers for Apple Silicon and Intel Macs.',
+            'One universal DMG for Apple Silicon and Intel Macs. Dora is not notarized: after the first launch, choose Open Anyway under System Settings, Privacy & Security.',
         downloads: [
             {
-                label: 'Apple Silicon DMG',
-                suffix: '.dmg',
-                archPattern: /(?:aarch64|arm64)/i
-            },
-            {
-                label: 'Intel DMG',
-                suffix: '.dmg',
-                archPattern: /(?:x64|x86_64|amd64)/i
+                label: 'Universal DMG',
+                suffix: '.dmg'
             }
         ]
     },
     {
         title: 'Windows',
-        description:
-            'Install Dora with the Windows setup executable or MSI package.',
+        description: 'Setup installers for x64 and ARM64 Windows 10 and 11.',
         downloads: [
             {
-                label: 'Windows EXE',
-                suffix: '.exe'
+                label: 'Installer (x64)',
+                suffix: '_x64-setup.exe'
             },
             {
-                label: 'Windows MSI',
-                suffix: '.msi'
+                label: 'Installer (ARM64)',
+                suffix: '_arm64-setup.exe'
             }
         ]
     },
     {
         title: 'Linux',
         description:
-            'Use AppImage, Debian, RPM, Snap, or archive packages from GitHub Releases.',
+            'AppImage, Debian, RPM, Flatpak and archive packages for x86_64 and ARM64.',
         downloads: [
             {
-                label: 'AppImage',
-                suffix: '.AppImage'
+                label: 'AppImage (x86_64)',
+                suffix: '_amd64.AppImage'
             },
             {
-                label: 'Debian package',
-                suffix: '.deb'
+                label: 'AppImage (ARM64)',
+                suffix: '_aarch64.AppImage'
             },
             {
-                label: 'RPM package',
-                suffix: '.rpm'
+                label: 'Debian package (amd64)',
+                suffix: '_amd64.deb'
             },
             {
-                label: 'Snap package',
+                label: 'Debian package (arm64)',
+                suffix: '_arm64.deb'
+            },
+            {
+                label: 'RPM package (x86_64)',
+                suffix: '.x86_64.rpm'
+            },
+            {
+                label: 'RPM package (aarch64)',
+                suffix: '.aarch64.rpm'
+            },
+            {
+                label: 'Flatpak bundle (x86_64)',
+                suffix: '-x86_64.flatpak'
+            },
+            {
+                label: 'Linux archive (x86_64)',
+                suffix: 'x86_64-unknown-linux-gnu.tar.gz'
+            },
+            {
+                label: 'Snap Store',
                 suffix: '.snap',
-                fallbackHref: LATEST_RELEASE_URL
-            },
-            {
-                label: 'Linux archive',
-                suffix: '.tar.gz'
+                fallbackHref: 'https://snapcraft.io/dora'
             }
         ]
     }

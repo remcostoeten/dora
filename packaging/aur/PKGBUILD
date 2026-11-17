@@ -8,13 +8,11 @@ arch=('x86_64')
 url='https://github.com/remcostoeten/dora'
 license=('GPL3')
 depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator' 'openssl' 'libsoup3')
-source=(
-  "${pkgname}-${pkgver}.tar.gz::https://github.com/remcostoeten/dora/releases/download/v${pkgver}/dora-x86_64-unknown-linux-gnu.tar.gz"
-)
-sha256sums=('00cb61fdec9c2c690775b22a666bd23baf89019491b832abe98a2b23c9421520')
+source_x86_64=("${pkgname}-${pkgver}-x86_64.tar.gz::https://github.com/remcostoeten/dora/releases/download/v${pkgver}/dora-x86_64-unknown-linux-gnu.tar.gz")
+sha256sums_x86_64=('00cb61fdec9c2c690775b22a666bd23baf89019491b832abe98a2b23c9421520')
 
 package() {
-  cd "$srcdir/dora-x86_64-unknown-linux-gnu"
+  cd "$srcdir/dora-${CARCH}-unknown-linux-gnu"
 
   install -Dm755 dora "$pkgdir/usr/bin/dora"
 
