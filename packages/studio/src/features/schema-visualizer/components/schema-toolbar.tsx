@@ -1,17 +1,17 @@
-import { useReactFlow } from '@xyflow/react'
-import { motion } from 'framer-motion'
 import {
+	Database,
 	Download,
-	MousePointer2,
-	Maximize2,
+	Hand,
 	Map as MapIcon,
+	Maximize,
+	Move,
+	PanelLeft,
+	PanelRight,
 	RefreshCw,
 	Search,
 	X
 } from 'lucide-react'
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
-import { Button } from '@studio/shared/ui/button'
-import { Spinner } from '@studio/shared/ui/spinner'
+import type { ReactNode, RefObject } from 'react'
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -22,340 +22,192 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
 
-export type SearchSuggestion = {
-	label: string
-	type: 'table' | 'column'
-}
-
 type Props = {
+	searchInputRef: RefObject<HTMLInputElement>
 	search: string
-	onSearchChange: (v: string) => void
-	suggestions: SearchSuggestion[]
+	onSearchChange: (value: string) => void
+	searchMeta: string | null
+	schemaLabel: string
+	summary: string
+	showNav: boolean
+	onToggleNav: () => void
+	showDetails: boolean
+	onToggleDetails: () => void
 	showMinimap: boolean
 	onToggleMinimap: () => void
 	editMode: boolean
-	onToggleEditMode: () => void
+	onEditModeChange: (value: boolean) => void
+	onFit: () => void
 	onRefresh: () => void
 	onPreviewJson: () => void
 	onExportSvg: () => void
 	onExportPng: () => void
 	onPreviewSql: () => void
 	onPreviewDrizzle: () => void
-	tableCount: number
-	relatedTableCount: number
-	edgeCount: number
-	isSearchResult: boolean
+	canExport: boolean
 	isLoading: boolean
 	rightSlot?: ReactNode
 }
 
-type ToolbarIconButtonProps = {
-	label: string
-	children: ReactNode
-	className?: string
-	disabled?: boolean
-	onClick?: () => void
-}
-
-let lastTooltipOpenedAt = 0
-
-function ToolbarIconButton({
+function IconButton({
 	label,
-	children,
-	className,
+	active,
 	disabled,
-	onClick
-}: ToolbarIconButtonProps) {
-	const [open, setOpen] = useState(false)
-	const closeTimerRef = useRef<number | null>(null)
-	const openTimerRef = useRef<number | null>(null)
-
-	const clearTimers = useCallback(function clearTimers() {
-		if (openTimerRef.current !== null) {
-			window.clearTimeout(openTimerRef.current)
-			openTimerRef.current = null
-		}
-		if (closeTimerRef.current !== null) {
-			window.clearTimeout(closeTimerRef.current)
-			closeTimerRef.current = null
-		}
-	}, [])
-
-	const scheduleOpen = useCallback(
-		function scheduleOpen(immediate: boolean) {
-			clearTimers()
-			const delay = immediate ? 0 : Date.now() - lastTooltipOpenedAt < 1400 ? 70 : 450
-
-			openTimerRef.current = window.setTimeout(function () {
-				lastTooltipOpenedAt = Date.now()
-				setOpen(true)
-				openTimerRef.current = null
-			}, delay)
-		},
-		[clearTimers]
-	)
-
-	const scheduleClose = useCallback(
-		function scheduleClose(delay = 0) {
-			clearTimers()
-			closeTimerRef.current = window.setTimeout(function () {
-				setOpen(false)
-				closeTimerRef.current = null
-			}, delay)
-		},
-		[clearTimers]
-	)
-
-	useEffect(
-		function cleanup() {
-			return function () {
-				clearTimers()
-			}
-		},
-		[clearTimers]
-	)
-
+	onClick,
+	children
+}: {
+	label: string
+	active?: boolean
+	disabled?: boolean
+	onClick: () => void
+	children: ReactNode
+}) {
 	return (
-		<Tooltip open={open}>
+		<Tooltip>
 			<TooltipTrigger asChild>
-				<motion.span
-					className='inline-flex'
-					onPointerEnter={() => scheduleOpen(false)}
-					onPointerLeave={() => scheduleClose()}
-					onPointerDown={() => scheduleOpen(true)}
-					onPointerUp={(event) => {
-						if (event.pointerType !== 'mouse') {
-							scheduleClose(900)
-						}
-					}}
-					onFocus={() => scheduleOpen(true)}
-					onBlur={() => scheduleClose()}
-					whileHover={disabled ? undefined : { y: -1 }}
-					whileTap={disabled ? undefined : { scale: 0.97 }}
-					transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }}
+				<button
+					type='button'
+					className={cn('sv-ibtn', active && 'is-active')}
+					aria-label={label}
+					aria-pressed={active}
+					disabled={disabled}
+					onClick={onClick}
 				>
-					<Button
-						variant='ghost'
-						size='icon'
-						className={cn('h-7 w-7 origin-center will-change-transform', className)}
-						aria-label={label}
-						disabled={disabled}
-						onClick={onClick}
-					>
-						{children}
-					</Button>
-				</motion.span>
+					{children}
+				</button>
 			</TooltipTrigger>
-			<TooltipContent
-				side='bottom'
-				sideOffset={8}
-				className='rounded-md border-sidebar-border/80 bg-sidebar px-2 py-1 text-[11px] text-sidebar-foreground'
-			>
+			<TooltipContent side='bottom' sideOffset={6} className='text-[11px]'>
 				{label}
 			</TooltipContent>
 		</Tooltip>
 	)
 }
 
-function SearchBox({
-	search,
-	onSearchChange,
-	suggestions
-}: {
-	search: string
-	onSearchChange: (v: string) => void
-	suggestions: SearchSuggestion[]
-}) {
-	const [focused, setFocused] = useState(false)
-	const [activeIndex, setActiveIndex] = useState(-1)
-	const wrapperRef = useRef<HTMLDivElement>(null)
-	const inputRef = useRef<HTMLInputElement>(null)
-
-	const filtered =
-		search.trim().length > 0
-			? suggestions
-					.filter((s) => s.label.toLowerCase().includes(search.toLowerCase()))
-					.slice(0, 10)
-			: []
-
-	const showDropdown = focused && filtered.length > 0
-
-	function select(label: string) {
-		onSearchChange(label)
-		setFocused(false)
-		setActiveIndex(-1)
-		inputRef.current?.blur()
-	}
-
-	function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-		if (!showDropdown) return
-		if (e.key === 'ArrowDown') {
-			e.preventDefault()
-			setActiveIndex((i) => Math.min(i + 1, filtered.length - 1))
-		} else if (e.key === 'ArrowUp') {
-			e.preventDefault()
-			setActiveIndex((i) => Math.max(i - 1, -1))
-		} else if (e.key === 'Enter' && activeIndex >= 0) {
-			e.preventDefault()
-			select(filtered[activeIndex].label)
-		} else if (e.key === 'Escape') {
-			setFocused(false)
-			setActiveIndex(-1)
-		}
-	}
-
-	useEffect(
-		function resetActiveOnChange() {
-			setActiveIndex(-1)
-		},
-		[search]
-	)
-
-	useEffect(function handleClickOutside() {
-		function onMouseDown(e: MouseEvent) {
-			if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-				setFocused(false)
-				setActiveIndex(-1)
-			}
-		}
-		document.addEventListener('mousedown', onMouseDown)
-		return () => document.removeEventListener('mousedown', onMouseDown)
-	}, [])
-
-	return (
-		<div ref={wrapperRef} className='relative w-64'>
-			<div className='relative flex items-center'>
-				<Search className='pointer-events-none absolute left-2 h-3 w-3 text-muted-foreground' />
-				<input
-					ref={inputRef}
-					value={search}
-					onChange={(e) => onSearchChange(e.target.value)}
-					onFocus={() => setFocused(true)}
-					onKeyDown={handleKeyDown}
-					placeholder='Search tables or columns…'
-					className='sv-toolbar__search-input placeholder:text-muted-foreground'
-				/>
-				{search && (
-					<button
-						className='absolute right-1.5 text-muted-foreground transition-colors hover:text-foreground'
-						onClick={() => {
-							onSearchChange('')
-							inputRef.current?.focus()
-						}}
-						tabIndex={-1}
-					>
-						<X className='h-3 w-3' />
-					</button>
-				)}
-			</div>
-
-			{showDropdown && (
-				<div className='absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-md border border-sidebar-border bg-sidebar shadow-lg'>
-					{filtered.map((s, i) => (
-						<button
-							key={`${s.type}:${s.label}`}
-							className={cn(
-								'flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-xs transition-colors',
-								i === activeIndex
-									? 'bg-sidebar-accent text-sidebar-foreground'
-									: 'text-sidebar-foreground hover:bg-sidebar-accent/60'
-							)}
-							onMouseDown={(e) => {
-								e.preventDefault()
-								select(s.label)
-							}}
-						>
-							<span
-								className={cn(
-									'shrink-0 rounded px-1 py-0.5 text-[9px] font-medium uppercase tracking-wider',
-									s.type === 'table'
-										? 'bg-[hsl(214_72%_58%/0.15)] text-[hsl(214_72%_68%)]'
-										: 'bg-[hsl(168_52%_48%/0.15)] text-[hsl(168_52%_60%)]'
-								)}
-							>
-								{s.type === 'table' ? 'tbl' : 'col'}
-							</span>
-							<span className='truncate font-mono'>{s.label}</span>
-						</button>
-					))}
-				</div>
-			)}
-		</div>
-	)
-}
-
 export function SchemaToolbar({
+	searchInputRef,
 	search,
 	onSearchChange,
-	suggestions,
+	searchMeta,
+	schemaLabel,
+	summary,
+	showNav,
+	onToggleNav,
+	showDetails,
+	onToggleDetails,
 	showMinimap,
 	onToggleMinimap,
 	editMode,
-	onToggleEditMode,
+	onEditModeChange,
+	onFit,
 	onRefresh,
 	onPreviewJson,
 	onExportSvg,
 	onExportPng,
 	onPreviewSql,
 	onPreviewDrizzle,
-	tableCount,
-	relatedTableCount,
-	edgeCount,
-	isSearchResult,
+	canExport,
 	isLoading,
 	rightSlot
 }: Props) {
-	const { fitView } = useReactFlow()
-	const summary = isSearchResult
-		? `${tableCount} matches${relatedTableCount > 0 ? ` • ${relatedTableCount} related` : ''} • ${edgeCount} relationships`
-		: `${tableCount} tables • ${edgeCount} relationships`
-
 	return (
-		<div className='sv-toolbar' data-tauri-drag-region='true'>
-			<div className='sv-toolbar__search-group' data-tauri-drag-region='false'>
-				<div className='sv-toolbar__copy'>
-					<div className='sv-toolbar__label'>Explore the map</div>
-					<div className='sv-toolbar__summary'>{summary}</div>
+		<header className='sv-toolbar' data-tauri-drag-region='true'>
+			<div className='sv-toolbar__left' data-tauri-drag-region='false'>
+				<IconButton label='Table list' active={showNav} onClick={onToggleNav}>
+					<PanelLeft className='h-4 w-4' />
+				</IconButton>
+				<div className='sv-toolbar__title' title={summary}>
+					<Database className='h-3.5 w-3.5 shrink-0 text-muted-foreground' />
+					<span className='sv-toolbar__schema'>{schemaLabel}</span>
+					<span className='sv-toolbar__summary'>{summary}</span>
 				</div>
-				<SearchBox
-					search={search}
-					onSearchChange={onSearchChange}
-					suggestions={suggestions}
-				/>
 			</div>
 
-			<div className='sv-toolbar__actions' data-tauri-drag-region='false'>
-				<ToolbarIconButton
-					label='Fit schema to viewport'
-					onClick={() => fitView({ padding: 0.12, duration: 220 })}
+			<label className='sv-search' data-tauri-drag-region='false' title='Search (/)'>
+				<Search className='h-3.5 w-3.5 shrink-0' />
+				<input
+					ref={searchInputRef}
+					value={search}
+					onChange={(event) => onSearchChange(event.target.value)}
+					onKeyDown={(event) => {
+						if (event.key === 'Escape') {
+							event.preventDefault()
+							if (search) onSearchChange('')
+							else event.currentTarget.blur()
+						}
+					}}
+					placeholder='Search tables, columns, types'
+					autoComplete='off'
+					spellCheck={false}
+					aria-label='Search tables, columns and types'
+				/>
+				{search ? (
+					<>
+						{searchMeta && <span className='sv-search__meta'>{searchMeta}</span>}
+						<button
+							type='button'
+							className='sv-search__clear'
+							aria-label='Clear search'
+							onClick={() => {
+								onSearchChange('')
+								searchInputRef.current?.focus()
+							}}
+						>
+							<X className='h-[13px] w-[13px]' />
+						</button>
+					</>
+				) : (
+					<kbd className='sv-kbd'>/</kbd>
+				)}
+			</label>
+
+			<div className='sv-toolbar__right' data-tauri-drag-region='false'>
+				<div className='sv-seg' role='radiogroup' aria-label='Interaction mode'>
+					<button
+						type='button'
+						role='radio'
+						aria-checked={!editMode}
+						className={cn(!editMode && 'is-active')}
+						title='Read only: drag to pan (E)'
+						onClick={() => onEditModeChange(false)}
+					>
+						<Hand className='h-3.5 w-3.5' />
+						<span className='sv-seg__label'>View</span>
+					</button>
+					<button
+						type='button'
+						role='radio'
+						aria-checked={editMode}
+						className={cn(editMode && 'is-active')}
+						title='Edit layout: drag tables (E)'
+						onClick={() => onEditModeChange(true)}
+					>
+						<Move className='h-3.5 w-3.5' />
+						<span className='sv-seg__label'>Arrange</span>
+					</button>
+				</div>
+				<IconButton label='Minimap (M)' active={showMinimap} onClick={onToggleMinimap}>
+					<MapIcon className='h-4 w-4' />
+				</IconButton>
+				<IconButton label='Fit view (F)' onClick={onFit}>
+					<Maximize className='h-4 w-4' />
+				</IconButton>
+				<IconButton
+					label={isLoading ? 'Reloading schema…' : 'Reload schema'}
+					disabled={isLoading}
+					onClick={onRefresh}
 				>
-					<Maximize2 className='h-3.5 w-3.5' />
-				</ToolbarIconButton>
-				<ToolbarIconButton
-					label={editMode ? 'Disable edit mode' : 'Enable edit mode'}
-					className={cn(editMode && 'sv-toolbar__toggle--active')}
-					onClick={onToggleEditMode}
-				>
-					<MousePointer2 className='h-3.5 w-3.5' />
-				</ToolbarIconButton>
-				<ToolbarIconButton
-					label={showMinimap ? 'Hide minimap' : 'Show minimap'}
-					className={cn(showMinimap && 'sv-toolbar__toggle--active')}
-					onClick={onToggleMinimap}
-				>
-					<MapIcon className='h-3.5 w-3.5' />
-				</ToolbarIconButton>
+					<RefreshCw className={cn('h-4 w-4', isLoading && 'sv-spin')} />
+				</IconButton>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
-						<Button
-							variant='ghost'
-							size='icon'
-							className='h-7 w-7'
+						<button
+							type='button'
+							className='sv-ibtn'
 							aria-label='Export schema'
-							disabled={tableCount === 0}
+							disabled={!canExport}
 						>
-							<Download className='h-3.5 w-3.5' />
-						</Button>
+							<Download className='h-4 w-4' />
+						</button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align='end' className='w-44 shadow-none'>
 						<DropdownMenuItem onClick={onExportSvg}>Export SVG</DropdownMenuItem>
@@ -369,24 +221,16 @@ export function SchemaToolbar({
 						<DropdownMenuItem onClick={onPreviewJson}>Export JSON</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-				<ToolbarIconButton
-					label={isLoading ? 'Refreshing schema…' : 'Refresh schema'}
-					disabled={isLoading}
-					onClick={onRefresh}
-				>
-					{isLoading ? (
-						<Spinner className='h-3.5 w-3.5' />
-					) : (
-						<RefreshCw className='h-3.5 w-3.5' />
-					)}
-				</ToolbarIconButton>
+				<IconButton label='Details panel' active={showDetails} onClick={onToggleDetails}>
+					<PanelRight className='h-4 w-4' />
+				</IconButton>
 				{rightSlot ? (
 					<>
-						<div className='mx-1 h-5 w-px bg-sidebar-border' />
+						<span className='sv-toolbar__divider' />
 						{rightSlot}
 					</>
 				) : null}
 			</div>
-		</div>
+		</header>
 	)
 }

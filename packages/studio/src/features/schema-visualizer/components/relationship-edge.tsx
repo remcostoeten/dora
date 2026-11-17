@@ -1,170 +1,124 @@
-import {
-	BaseEdge,
-	EdgeLabelRenderer,
-	getSmoothStepPath,
-	type Edge,
-	type EdgeProps
-} from '@xyflow/react'
-import { memo } from 'react'
+import { useInternalNode, type Edge, type EdgeProps, type InternalNode } from '@xyflow/react'
+import { memo, type CSSProperties } from 'react'
 import { cn } from '@studio/shared/utils/cn'
-import type { RelationshipEdgeData } from '../hooks/use-schema-graph'
+import {
+	NODE_HEADER_HEIGHT,
+	NODE_LIST_PADDING_TOP,
+	NODE_ROW_HEIGHT,
+	type RelationshipEdgeData
+} from '../hooks/use-schema-graph'
 
 type Props = EdgeProps<Edge<RelationshipEdgeData, 'relationshipEdge'>>
 
-type EdgeVisuals = {
-	strokeColor: string
-	strokeWidth: number
-	strokeDasharray: string | undefined
-	strokeOpacity: number
-	badgeClass: string
-	iconChar: string
+type Geometry = {
+	path: string
+	start: [number, number]
+	end: [number, number]
 }
 
-function getEdgeVisuals(data: RelationshipEdgeData | undefined): EdgeVisuals {
-	if (!data) {
-		return {
-			strokeColor: 'var(--sv-line-fk)',
-			strokeWidth: 1.8,
-			strokeDasharray: undefined,
-			strokeOpacity: 0.7,
-			badgeClass: 'sv-edge-badge--primary',
-			iconChar: '→'
-		}
-	}
-
-	const searchFade = data.searchState === 'dim' ? 0.15 : data.searchState === 'context' ? 0.5 : 1
-
-	if (data.relationKind === 'many-to-many') {
-		return {
-			strokeColor: 'var(--sv-line-many)',
-			strokeWidth: 1.8,
-			strokeDasharray: '7 5',
-			strokeOpacity: 0.55 * searchFade,
-			badgeClass: 'sv-edge-badge--warning',
-			iconChar: '⇔'
-		}
-	}
-
-	if (data.relationKind === 'one-to-one') {
-		return {
-			strokeColor: 'var(--sv-line-one)',
-			strokeWidth: 1.8,
-			strokeDasharray: undefined,
-			strokeOpacity: 0.72 * searchFade,
-			badgeClass: 'sv-edge-badge--success',
-			iconChar: '↔'
-		}
-	}
-
+function getBox(node: InternalNode) {
+	const position = node.internals.positionAbsolute
 	return {
-		strokeColor: 'var(--sv-line-fk)',
-		strokeWidth: 1.7,
-		strokeDasharray: data.isOptional ? '6 4 2 4' : undefined,
-		strokeOpacity: (data.isOptional ? 0.4 : 0.65) * searchFade,
-		badgeClass: data.isOptional
-			? 'sv-edge-badge--primary sv-edge-badge--optional'
-			: 'sv-edge-badge--primary',
-		iconChar: '→'
+		x: position.x,
+		y: position.y,
+		width: node.measured.width ?? (node.data as { width?: number }).width ?? 240
 	}
 }
 
-function RelationshipEdgeInner({
-	id,
-	sourceX,
-	sourceY,
-	targetX,
-	targetY,
-	sourcePosition,
-	targetPosition,
-	style,
-	markerEnd,
-	data,
-	selected
-}: Props) {
-	const [edgePath, labelX, labelY] = getSmoothStepPath({
-		sourceX,
-		sourceY,
-		targetX,
-		targetY,
-		sourcePosition,
-		targetPosition,
-		borderRadius: data?.isSelfReference ? 24 : 18,
-		offset: data?.isSelfReference ? 42 : 28
-	})
-	const vis = getEdgeVisuals(data)
-	const isDim = data?.searchState === 'dim'
-	const isMatch = data?.searchState === 'match'
-	const isActive = Boolean(data?.isActive)
-	const showFlow = !isDim && Boolean(data)
+function rowCenter(y: number, index: number) {
+	return y + 1 + NODE_HEADER_HEIGHT + NODE_LIST_PADDING_TOP + index * NODE_ROW_HEIGHT + 12
+}
+
+function getGeometry(
+	source: InternalNode,
+	target: InternalNode,
+	data: RelationshipEdgeData
+): Geometry {
+	const a = getBox(source)
+	const b = getBox(target)
+	const ay = rowCenter(a.y, data.sourceColumnIndex)
+	const by = rowCenter(b.y, data.targetColumnIndex)
+
+	if (source.id === target.id) {
+		const x = a.x + a.width
+		return {
+			path: `M${x} ${ay} C${x + 60} ${ay}, ${x + 60} ${by}, ${x} ${by}`,
+			start: [x, ay],
+			end: [x, by]
+		}
+	}
+
+	let sx: number
+	let ex: number
+	let sd: number
+	let ed: number
+	if (b.x > a.x + a.width + 20) {
+		sx = a.x + a.width
+		ex = b.x
+		sd = 1
+		ed = -1
+	} else if (b.x + b.width + 20 < a.x) {
+		sx = a.x
+		ex = b.x + b.width
+		sd = -1
+		ed = 1
+	} else {
+		sx = a.x + a.width
+		ex = b.x + b.width
+		sd = 1
+		ed = 1
+	}
+	const curve = sd === ed ? 56 + Math.abs(by - ay) * 0.12 : Math.max(44, Math.abs(ex - sx) * 0.45)
+	return {
+		path: `M${sx} ${ay} C${sx + sd * curve} ${ay}, ${ex + ed * curve} ${by}, ${ex} ${by}`,
+		start: [sx, ay],
+		end: [ex, by]
+	}
+}
+
+function RelationshipEdgeInner({ id, source, target, data }: Props) {
+	const sourceNode = useInternalNode(source)
+	const targetNode = useInternalNode(target)
+	if (!sourceNode || !targetNode || !data) return null
+
+	const geometry = getGeometry(sourceNode, targetNode, data)
+	const travel = Math.hypot(
+		geometry.end[0] - geometry.start[0],
+		geometry.end[1] - geometry.start[1]
+	)
+	const duration = Math.min(3.4, Math.max(1.3, travel / 130)).toFixed(2)
+	const style = data.hue ? ({ '--sv-edge-color': `var(--sv-${data.hue})` } as CSSProperties) : {}
 
 	return (
-		<>
-			<BaseEdge
-				id={id}
-				path={edgePath}
-				markerEnd={markerEnd}
-				style={{
-					...style,
-					stroke: vis.strokeColor,
-					strokeOpacity: vis.strokeOpacity,
-					strokeLinecap: 'round',
-					strokeLinejoin: 'round',
-					strokeWidth: isActive ? vis.strokeWidth + 0.9 : vis.strokeWidth,
-					strokeDasharray: vis.strokeDasharray,
-					filter: isActive ? 'drop-shadow(0 0 6px var(--sv-edge-active-glow))' : undefined
-				}}
+		<g
+			className={cn(
+				'sv-edge',
+				data.isActive && 'sv-edge--active',
+				(data.isDimmed || data.searchState === 'dim') && 'sv-edge--dim',
+				data.searchState === 'context' && 'sv-edge--context'
+			)}
+			style={style}
+			data-edge-id={id}
+		>
+			<path className='sv-edge__rail' d={geometry.path} />
+			<path className='sv-edge__line' d={geometry.path} />
+			<circle
+				className='sv-edge__end'
+				cx={geometry.start[0]}
+				cy={geometry.start[1]}
+				r={2.5}
 			/>
-
-			{showFlow && (
-				<path
-					d={edgePath}
-					fill='none'
-					stroke={vis.strokeColor}
-					strokeWidth={vis.strokeWidth - 0.2}
-					strokeLinecap='round'
-					strokeOpacity={isActive ? 0.9 : isMatch ? 0.7 : 0.32}
-					className={cn(
-						'sv-edge-flow',
-						isMatch && 'sv-edge-flow--match',
-						isActive && 'sv-edge-flow--active'
-					)}
-				/>
+			<circle className='sv-edge__end' cx={geometry.end[0]} cy={geometry.end[1]} r={2.5} />
+			{data.isActive && (
+				<circle className='sv-edge__packet' r={3}>
+					<animateMotion
+						dur={`${duration}s`}
+						repeatCount='indefinite'
+						path={geometry.path}
+					/>
+				</circle>
 			)}
-
-			{data && (selected || isActive) && (
-				<EdgeLabelRenderer>
-					<div
-						className='pointer-events-none absolute'
-						style={{
-							transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-							opacity:
-								data.searchState === 'dim'
-									? 0.2
-									: data.searchState === 'context'
-										? 0.65
-										: 1
-						}}
-					>
-						<div
-							className={cn(
-								'sv-edge-badge',
-								vis.badgeClass,
-								isActive && 'sv-edge-badge--active'
-							)}
-						>
-							<span className='sv-edge-badge__cardinality'>{data.cardinality}</span>
-							{(selected || isActive) && (
-								<span className='sv-edge-badge__detail'>
-									<span className='sv-edge-badge__col'>{data.sourceColumn}</span>
-									<span className='sv-edge-badge__arrow'>{vis.iconChar}</span>
-									<span className='sv-edge-badge__col'>{data.targetColumn}</span>
-								</span>
-							)}
-						</div>
-					</div>
-				</EdgeLabelRenderer>
-			)}
-		</>
+		</g>
 	)
 }
 
