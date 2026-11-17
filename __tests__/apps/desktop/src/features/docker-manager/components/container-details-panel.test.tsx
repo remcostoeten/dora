@@ -31,7 +31,14 @@ function renderPanel(container: DockerContainer) {
 	return render(
 		<QueryClientProvider client={queryClient}>
 			<TooltipProvider>
-				<ContainerDetailsPanel container={container} />
+				<ContainerDetailsPanel
+					container={container}
+					pendingAction={null}
+					onAction={() => {}}
+					onRemove={() => {}}
+					outputTab='logs'
+					onOutputTabChange={() => {}}
+				/>
 			</TooltipProvider>
 		</QueryClientProvider>
 	)
@@ -43,9 +50,9 @@ describe('ContainerDetailsPanel', () => {
 			makeContainer({ ports: [{ hostPort: 5433, containerPort: 5432, protocol: 'tcp' }] })
 		)
 
-		expect(screen.getByRole('button', { name: /open in data viewer/i })).toBeInTheDocument()
+		expect(screen.getByRole('button', { name: /open in dora/i })).toBeInTheDocument()
 		expect(screen.queryByText(/open in kv studio/i)).not.toBeInTheDocument()
-		expect(screen.getByText('Seed Data')).toBeInTheDocument()
+		expect(screen.getByText('Seed data')).toBeInTheDocument()
 		expect(screen.getByText('Database')).toBeInTheDocument()
 	})
 
@@ -62,10 +69,10 @@ describe('ContainerDetailsPanel', () => {
 		)
 
 		expect(screen.getByRole('button', { name: /open in kv studio/i })).toBeInTheDocument()
-		expect(screen.queryByText(/open in data viewer/i)).not.toBeInTheDocument()
-		expect(screen.queryByText('Seed Data')).not.toBeInTheDocument()
+		expect(screen.queryByText(/open in dora/i)).not.toBeInTheDocument()
+		expect(screen.queryByText('Seed data')).not.toBeInTheDocument()
 		expect(screen.queryByText('Password')).not.toBeInTheDocument()
 		expect(screen.queryByText('Database')).not.toBeInTheDocument()
-		expect(screen.getByText('redis://127.0.0.1:6390/0')).toBeInTheDocument()
+		expect(screen.getByTitle('redis://127.0.0.1:6390/0')).toBeInTheDocument()
 	})
 })

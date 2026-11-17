@@ -1,11 +1,9 @@
-import { RotateCcw, Send, TerminalSquare, XCircle, Eraser, Zap } from 'lucide-react'
+import { RotateCcw, XCircle, Eraser, Zap } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Button } from '@studio/shared/ui/button'
-import { Input } from '@studio/shared/ui/input'
-import { cn } from '@studio/shared/utils/cn'
 import { openContainerTerminal } from '../api/container-service'
 import type { ContainerTerminalSession, DockerContainer } from '../types'
 import { detectKeyValueProvider } from '../utilities/container-connection'
+import { StatusDot } from './status-dot'
 
 type Props = {
 	container: DockerContainer
@@ -287,123 +285,92 @@ export function ContainerTerminal({ container, enabled }: Props) {
 
 	if (!isRunning) {
 		return (
-			<div className='flex h-full items-center justify-center rounded-lg border border-border/70 bg-muted/20 p-4 text-center'>
-				<div className='space-y-1'>
-					<p className='text-sm font-medium'>Terminal is unavailable</p>
-					<p className='text-xs text-muted-foreground'>
-						Start this container to open a real shell session.
-					</p>
+			<div className='dk-shell'>
+				<div className='dk-t-empty'>
+					Terminal is unavailable. Start this container to open a shell session.
 				</div>
 			</div>
 		)
 	}
 
+	const isConnected = Boolean(sessionRef.current)
+	const stateTone =
+		terminalState === 'connected'
+			? 'ok'
+			: terminalState === 'connecting'
+				? 'busy'
+				: terminalState === 'error'
+					? 'bad'
+					: 'off'
+
 	return (
-		<div className='flex h-full flex-col'>
-			<div className='mb-2 flex items-center justify-between gap-2'>
-				<div className='flex items-center gap-2'>
-					<TerminalSquare
-						className='h-3.5 w-3.5 text-muted-foreground'
-						aria-hidden='true'
-					/>
-					<span className='text-xs font-medium'>Container Terminal</span>
-					<span
-						className={cn(
-							'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
-							terminalState === 'connected' &&
-								'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
-							terminalState === 'connecting' &&
-								'border-amber-500/30 bg-amber-500/10 text-amber-500',
-							terminalState === 'error' &&
-								'border-destructive/30 bg-destructive/10 text-destructive',
-							(terminalState === 'disconnected' || terminalState === 'idle') &&
-								'border-zinc-500/30 bg-zinc-500/10 text-zinc-400'
-						)}
-					>
-						{terminalState}
-					</span>
-				</div>
-
-				<div className='flex items-center gap-1'>
-					<Button
-						type='button'
-						size='icon-sm'
-						variant='outline'
-						onClick={clearOutput}
-						aria-label='Clear terminal output'
-					>
-						<Eraser className='h-3.5 w-3.5' aria-hidden='true' />
-					</Button>
-
-					<Button
-						type='button'
-						size='icon-sm'
-						variant='outline'
-						onClick={handleInterrupt}
-						disabled={!sessionRef.current}
-						aria-label='Send Ctrl+C'
-					>
-						<Zap className='h-3.5 w-3.5' aria-hidden='true' />
-					</Button>
-
-					<Button
-						type='button'
-						size='icon-sm'
-						variant='outline'
-						onClick={handleConnectToggle}
-						aria-label={sessionRef.current ? 'Disconnect terminal' : 'Connect terminal'}
-					>
-						{sessionRef.current ? (
-							<XCircle className='h-3.5 w-3.5' aria-hidden='true' />
-						) : (
-							<RotateCcw className='h-3.5 w-3.5' aria-hidden='true' />
-						)}
-					</Button>
-				</div>
-			</div>
-
+		<div className='dk-shell'>
 			<div
 				ref={outputRef}
 				role='log'
 				aria-label='Container terminal output'
 				aria-live='polite'
-				className='flex-1 overflow-auto rounded-lg border border-border/70 bg-zinc-950 p-3 text-xs font-mono text-zinc-200'
+				className='dk-shell-out dk-mono'
 			>
-				{output ? (
-					<pre className='whitespace-pre-wrap break-words'>{output}</pre>
-				) : (
-					<p className='text-zinc-400'>No terminal output yet.</p>
-				)}
+				{output || <span className='dk-faint'>docker exec -it {container.name} sh</span>}
 			</div>
 
-			<form onSubmit={handleSendCommand} className='mt-2 flex items-center gap-2'>
-				<Input
+			<form onSubmit={handleSendCommand} className='dk-shell-in dk-mono'>
+				<span className='dk-state-chip' title={`Terminal ${terminalState}`}>
+					<StatusDot tone={stateTone} label={`Terminal ${terminalState}`} />
+					{container.id.slice(0, 12)}:/#
+				</span>
+				<input
 					ref={inputRef}
 					value={command}
 					name='terminal_command'
 					autoComplete='off'
+					spellCheck={false}
 					placeholder={
 						keyValueProvider
-							? `Type command (example: ${keyValueProvider}-cli ping)...`
-							: 'Type command (example: psql -U postgres -d postgres, mysql -u root)...'
+							? `${keyValueProvider}-cli ping`
+							: 'psql -U postgres, mysql -u root, ls'
 					}
-					onChange={function (event) {
-						setCommand(event.target.value)
-					}}
+					onChange={(event) => setCommand(event.target.value)}
 					onKeyDown={handleCommandHistory}
-					disabled={!sessionRef.current}
-					className='h-8 text-xs'
+					disabled={!isConnected}
 					aria-label='Terminal command input'
 				/>
-				<Button
-					type='submit'
-					size='sm'
-					className='h-8 gap-1.5'
-					disabled={!sessionRef.current || !command.trim()}
+				<button
+					type='button'
+					className='dk-ibtn'
+					data-size='sm'
+					onClick={clearOutput}
+					aria-label='Clear terminal output'
+					title='Clear'
 				>
-					<Send className='h-3.5 w-3.5' aria-hidden='true' />
-					Run
-				</Button>
+					<Eraser className='h-3.5 w-3.5' aria-hidden='true' />
+				</button>
+				<button
+					type='button'
+					className='dk-ibtn'
+					data-size='sm'
+					onClick={handleInterrupt}
+					disabled={!isConnected}
+					aria-label='Send Ctrl+C'
+					title='Send Ctrl+C'
+				>
+					<Zap className='h-3.5 w-3.5' aria-hidden='true' />
+				</button>
+				<button
+					type='button'
+					className='dk-ibtn'
+					data-size='sm'
+					onClick={handleConnectToggle}
+					aria-label={isConnected ? 'Disconnect terminal' : 'Connect terminal'}
+					title={isConnected ? 'Disconnect' : 'Reconnect'}
+				>
+					{isConnected ? (
+						<XCircle className='h-3.5 w-3.5' aria-hidden='true' />
+					) : (
+						<RotateCcw className='h-3.5 w-3.5' aria-hidden='true' />
+					)}
+				</button>
 			</form>
 		</div>
 	)

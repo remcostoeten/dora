@@ -1,19 +1,11 @@
-import { RefreshCw, Eye, EyeOff, ChevronDown, ChevronRight, X } from 'lucide-react'
+import { Eye, EyeOff, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Spinner } from '@studio/shared/ui/spinner'
-import { useState, useEffect } from 'react'
-import { Button } from '@studio/shared/ui/button'
-import { Input } from '@studio/shared/ui/input'
-import { Label } from '@studio/shared/ui/label'
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue
-} from '@studio/shared/ui/select'
 import { Switch } from '@studio/shared/ui/switch'
 import { toast } from '@studio/shared/ui/notifier'
 import {
+	CONTAINER_TEMPLATES,
 	DATABASE_PROVIDERS,
 	POSTGRES_VERSIONS,
 	MARIADB_VERSIONS,
@@ -37,7 +29,19 @@ import {
 	DEFAULT_COCKROACH_USER,
 	DEFAULT_COCKROACH_DATABASE,
 	DEFAULT_REDIS_VERSION,
-	DEFAULT_VALKEY_VERSION
+	DEFAULT_VALKEY_VERSION,
+	POSTGRES_IMAGE,
+	MARIADB_IMAGE,
+	MYSQL_IMAGE,
+	COCKROACH_IMAGE,
+	REDIS_IMAGE,
+	VALKEY_IMAGE,
+	POSTGRES_CONTAINER_PORT,
+	MARIADB_CONTAINER_PORT,
+	MYSQL_CONTAINER_PORT,
+	COCKROACH_CONTAINER_PORT,
+	REDIS_CONTAINER_PORT,
+	VALKEY_CONTAINER_PORT
 } from '../constants'
 import type {
 	DatabaseContainerBaseConfig,
@@ -51,15 +55,14 @@ import {
 	generateVolumeName
 } from '../utilities/container-naming'
 import { findFreePort } from '../utilities/port-utils'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@studio/shared/ui/collapsible'
 
-const VERSION_LABELS: Record<DatabaseProvider, string> = {
-	postgres: 'PostgreSQL Version',
-	mariadb: 'MariaDB Version',
-	mysql: 'MySQL Version',
-	cockroach: 'CockroachDB Version',
-	redis: 'Redis Version',
-	valkey: 'Valkey Version'
+const PROVIDER_SHORT_LABELS: Record<DatabaseProvider, string> = {
+	postgres: 'Postgres',
+	mariadb: 'MariaDB',
+	mysql: 'MySQL',
+	cockroach: 'Cockroach',
+	redis: 'Redis',
+	valkey: 'Valkey'
 }
 
 const PROVIDER_HINTS: Record<DatabaseProvider, string> = {
@@ -70,6 +73,27 @@ const PROVIDER_HINTS: Record<DatabaseProvider, string> = {
 	redis: 'Redis uses append-only persistence for local development.',
 	valkey: 'Valkey uses append-only persistence and supports Redis clients.'
 }
+
+const PROVIDER_IMAGES: Record<DatabaseProvider, string> = {
+	postgres: POSTGRES_IMAGE,
+	mariadb: MARIADB_IMAGE,
+	mysql: MYSQL_IMAGE,
+	cockroach: COCKROACH_IMAGE,
+	redis: REDIS_IMAGE,
+	valkey: VALKEY_IMAGE
+}
+
+const CONTAINER_PORTS: Record<DatabaseProvider, number> = {
+	postgres: POSTGRES_CONTAINER_PORT,
+	mariadb: MARIADB_CONTAINER_PORT,
+	mysql: MYSQL_CONTAINER_PORT,
+	cockroach: COCKROACH_CONTAINER_PORT,
+	redis: REDIS_CONTAINER_PORT,
+	valkey: VALKEY_CONTAINER_PORT
+}
+
+const CPU_OPTIONS = [0.5, 1, 2, 4]
+const MEMORY_OPTIONS = [256, 512, 1024, 2048]
 
 function isKeyValueProvider(provider: DatabaseProvider) {
 	return provider === 'redis' || provider === 'valkey'
@@ -147,12 +171,17 @@ function getVersionOptions(provider: DatabaseProvider) {
 	}
 }
 
+function formatMemory(megabytes: number) {
+	return megabytes >= 1024 ? `${megabytes / 1024} GB` : `${megabytes} MB`
+}
+
 type Props = {
 	onClose: () => void
 	onSubmit: (config: DatabaseContainerConfig) => void
 	existingContainers: DockerContainer[]
 	isSubmitting?: boolean
 	initialProvider?: DatabaseProvider
+	initialVersion?: string
 }
 
 export function CreateContainerPanel({
@@ -160,18 +189,15 @@ export function CreateContainerPanel({
 	onSubmit,
 	existingContainers,
 	isSubmitting = false,
-	initialProvider = 'postgres'
+	initialProvider = 'postgres',
+	initialVersion
 }: Props) {
 	const initialDefaults = getProviderDefaults(initialProvider)
-	const [name, setName] = useState(function () {
-		return suggestContainerName(
-			existingContainers.map(function (c) {
-				return c.name
-			})
-		)
-	})
+	const [name, setName] = useState(() =>
+		suggestContainerName(existingContainers.map((container) => container.name))
+	)
 	const [provider, setProvider] = useState<DatabaseProvider>(initialProvider)
-	const [version, setVersion] = useState(initialDefaults.version)
+	const [version, setVersion] = useState(initialVersion ?? initialDefaults.version)
 	const [hostPort, setHostPort] = useState(initialDefaults.port)
 	const [user, setUser] = useState(initialDefaults.user)
 	const [password, setPassword] = useState(initialDefaults.password)
@@ -180,10 +206,8 @@ export function CreateContainerPanel({
 	const [showPassword, setShowPassword] = useState(false)
 	const [isFindingPort, setIsFindingPort] = useState(false)
 	const [nameError, setNameError] = useState<string | null>(null)
-
 	const [cpuLimit, setCpuLimit] = useState<number | undefined>(undefined)
 	const [memoryLimit, setMemoryLimit] = useState<number | undefined>(undefined)
-	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
 	useEffect(function findInitialPort() {
 		void initFreePort(getProviderDefaults(initialProvider).port)
@@ -192,14 +216,10 @@ export function CreateContainerPanel({
 	useEffect(
 		function closeOnEscape() {
 			function onKeyDown(event: KeyboardEvent) {
-				if (event.key === 'Escape') {
-					onClose()
-				}
+				if (event.key === 'Escape') onClose()
 			}
 			document.addEventListener('keydown', onKeyDown)
-			return function () {
-				document.removeEventListener('keydown', onKeyDown)
-			}
+			return () => document.removeEventListener('keydown', onKeyDown)
 		},
 		[onClose]
 	)
@@ -207,8 +227,7 @@ export function CreateContainerPanel({
 	async function initFreePort(preferredPort: number) {
 		setIsFindingPort(true)
 		try {
-			const port = await findFreePort(preferredPort, preferredPort, preferredPort + 100)
-			setHostPort(port)
+			setHostPort(await findFreePort(preferredPort, preferredPort, preferredPort + 100))
 		} catch {
 			setHostPort(preferredPort)
 		} finally {
@@ -216,25 +235,23 @@ export function CreateContainerPanel({
 		}
 	}
 
-	function applyProviderDefaults(nextProvider: DatabaseProvider) {
+	function applyProvider(nextProvider: DatabaseProvider, nextVersion?: string) {
 		const defaults = getProviderDefaults(nextProvider)
 		setProvider(nextProvider)
-		setVersion(defaults.version)
+		setVersion(nextVersion ?? defaults.version)
 		setUser(defaults.user)
 		setPassword(defaults.password)
 		setDatabase(defaults.database)
 		setEphemeral(!isKeyValueProvider(nextProvider))
-		void initFreePort(defaults.port)
+		if (nextProvider !== provider) void initFreePort(defaults.port)
 	}
 
 	async function handleFindFreePort() {
 		setIsFindingPort(true)
 		try {
 			const defaults = getProviderDefaults(provider)
-			const port = await findFreePort(defaults.port, defaults.port, defaults.port + 100)
-			setHostPort(port)
+			setHostPort(await findFreePort(defaults.port, defaults.port, defaults.port + 100))
 		} catch (error) {
-			console.error('Failed to find free port:', error)
 			toast.error('Failed to find free port', {
 				description: error instanceof Error ? error.message : String(error)
 			})
@@ -289,7 +306,7 @@ export function CreateContainerPanel({
 		}
 	}
 
-	function handleSubmit(event: React.FormEvent) {
+	function handleSubmit(event: FormEvent) {
 		event.preventDefault()
 
 		const validation = validateContainerName(name)
@@ -310,285 +327,297 @@ export function CreateContainerPanel({
 		)
 	}
 
+	const portOwner = existingContainers.find((container) =>
+		container.ports.some((port) => port.hostPort === hostPort)
+	)
+	const image = `${PROVIDER_IMAGES[provider]}:${version}`
+
 	return (
-		<div className='flex-1 flex flex-col min-w-0 border-l border-border bg-background'>
-			<div className='flex h-10 shrink-0 items-center justify-between border-b border-border px-3'>
-				<div className='min-w-0'>
-					<h2 className='truncate text-sm font-semibold'>New Database Container</h2>
+		<>
+			<header className='dk-dr-h'>
+				<div>
+					<div className='dk-eyebrow'>New container</div>
+					<h2 id='dk-create-title'>Local database</h2>
 				</div>
-				<Button
+				<button
 					type='button'
-					size='icon-sm'
-					variant='ghost'
+					className='dk-ibtn'
 					onClick={onClose}
 					aria-label='Close create panel'
 				>
-					<X className='h-4 w-4' />
-				</Button>
-			</div>
+					<X className='h-4 w-4' aria-hidden='true' />
+				</button>
+			</header>
 
-			<form onSubmit={handleSubmit} className='flex-1 min-h-0 flex flex-col'>
-				<div className='flex-1 min-h-0 overflow-y-auto p-4 space-y-4'>
-					<div className='space-y-2'>
-						<Label htmlFor='name'>Container Name</Label>
-						<Input
-							id='name'
+			<form
+				id='dk-create-form'
+				className='dk-dr-b'
+				onSubmit={handleSubmit}
+				noValidate
+				autoComplete='off'
+			>
+				<section>
+					<span className='dk-sec-h dk-eyebrow'>Quick start</span>
+					<div className='dk-tpls'>
+						{CONTAINER_TEMPLATES.map((template) => (
+							<button
+								key={template.id}
+								type='button'
+								className='dk-tpl'
+								aria-pressed={
+									provider === template.provider && version === template.version
+								}
+								onClick={() => applyProvider(template.provider, template.version)}
+							>
+								<span className='dk-tpl-t'>{template.title}</span>
+								<span className='dk-tpl-s dk-mono'>{template.image}</span>
+							</button>
+						))}
+					</div>
+				</section>
+
+				<section>
+					<span className='dk-sec-h dk-eyebrow'>Engine</span>
+					<div className='dk-seg dk-prov' role='radiogroup' aria-label='Database engine'>
+						{DATABASE_PROVIDERS.map((item) => (
+							<button
+								key={item.value}
+								type='button'
+								role='radio'
+								aria-checked={provider === item.value}
+								aria-pressed={provider === item.value}
+								title={item.description}
+								onClick={() => applyProvider(item.value)}
+							>
+								{PROVIDER_SHORT_LABELS[item.value]}
+							</button>
+						))}
+					</div>
+					<div className='dk-fld'>
+						<label className='dk-fld-l' htmlFor='dk-create-image'>
+							Image
+						</label>
+						<select
+							id='dk-create-image'
+							className='dk-inp dk-mono'
+							value={version}
+							onChange={(event) => setVersion(event.target.value)}
+						>
+							{getVersionOptions(provider).map((option) => (
+								<option key={option.value} value={option.value}>
+									{PROVIDER_IMAGES[provider]}:{option.value}
+								</option>
+							))}
+						</select>
+						<small className='dk-hint'>{PROVIDER_HINTS[provider]}</small>
+					</div>
+				</section>
+
+				<section>
+					<span className='dk-sec-h dk-eyebrow'>Container</span>
+					<div className='dk-fld'>
+						<label className='dk-fld-l' htmlFor='dk-create-name'>
+							Name
+						</label>
+						<input
+							id='dk-create-name'
+							className='dk-inp dk-mono'
 							value={name}
 							autoFocus
-							onChange={function (e) {
-								handleNameChange(e.target.value)
-							}}
+							spellCheck={false}
+							aria-invalid={Boolean(nameError)}
+							onChange={(event) => handleNameChange(event.target.value)}
 							placeholder='my_database'
 						/>
-						{nameError && <p className='text-xs text-destructive'>{nameError}</p>}
-						<p className='text-xs text-muted-foreground'>
-							Use lowercase letters, numbers, `_` or `-`.
-						</p>
+						{nameError ? (
+							<small className='dk-err'>{nameError}</small>
+						) : (
+							<small className='dk-hint'>Lowercase letters, numbers, _ or -.</small>
+						)}
 					</div>
-
-					<div className='space-y-2'>
-						<Label htmlFor='provider'>Database Provider</Label>
-						<Select
-							value={provider}
-							onValueChange={function (value) {
-								applyProviderDefaults(value as DatabaseProvider)
-							}}
-						>
-							<SelectTrigger id='provider'>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{DATABASE_PROVIDERS.map(function (item) {
-									return (
-										<SelectItem key={item.value} value={item.value}>
-											{item.label}
-										</SelectItem>
-									)
-								})}
-							</SelectContent>
-						</Select>
-					</div>
-
-					<div className='space-y-2'>
-						<Label htmlFor='version'>{VERSION_LABELS[provider]}</Label>
-						<Select value={version} onValueChange={setVersion}>
-							<SelectTrigger id='version'>
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{getVersionOptions(provider).map(function (version) {
-									return (
-										<SelectItem key={version.value} value={version.value}>
-											{version.label}
-										</SelectItem>
-									)
-								})}
-							</SelectContent>
-						</Select>
-					</div>
-
-					<div className='space-y-2'>
-						<Label htmlFor='port'>Host Port</Label>
-						<div className='flex gap-2'>
-							<Input
-								id='port'
-								type='number'
-								min={1024}
-								max={65535}
+					<div className='dk-fld'>
+						<label className='dk-fld-l' htmlFor='dk-create-port'>
+							Host port
+						</label>
+						<div className='dk-inline'>
+							<input
+								id='dk-create-port'
+								className='dk-inp dk-mono'
+								inputMode='numeric'
 								value={hostPort}
-								onChange={function (e) {
+								aria-invalid={Boolean(portOwner)}
+								onChange={(event) =>
 									setHostPort(
-										parseInt(e.target.value, 10) ||
+										parseInt(event.target.value, 10) ||
 											getProviderDefaults(provider).port
 									)
-								}}
-								className='flex-1'
+								}
 							/>
-							<Button
+							<span className='dk-to dk-mono'>→ {CONTAINER_PORTS[provider]}</span>
+							<button
 								type='button'
-								variant='outline'
-								size='icon'
-								aria-label='Find free port'
+								className='dk-btn'
+								data-variant='secondary'
 								onClick={handleFindFreePort}
 								disabled={isFindingPort}
 							>
-								<RefreshCw
-									className={`h-4 w-4 ${isFindingPort ? 'animate-spin' : ''}`}
-								/>
-							</Button>
+								{isFindingPort && <Spinner className='h-3.5 w-3.5' />}
+								Find free port
+							</button>
 						</div>
-						<p className='text-xs text-muted-foreground'>Auto-detected free port</p>
-					</div>
-
-					{!isKeyValueProvider(provider) && (
-						<>
-							<div className='grid grid-cols-2 gap-4'>
-								<div className='space-y-2'>
-									<Label htmlFor='user'>Username</Label>
-									<Input
-										id='user'
-										value={user}
-										onChange={function (e) {
-											setUser(e.target.value)
-										}}
-									/>
-								</div>
-
-								<div className='space-y-2'>
-									<Label htmlFor='password'>
-										{provider === 'cockroach'
-											? 'Password (unused)'
-											: 'Password'}
-									</Label>
-									{provider === 'cockroach' ? (
-										<div className='rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground'>
-											CockroachDB runs in insecure mode for local development,
-											so a password is not required.
-										</div>
-									) : (
-										<div className='relative'>
-											<Input
-												id='password'
-												type={showPassword ? 'text' : 'password'}
-												value={password}
-												onChange={function (e) {
-													setPassword(e.target.value)
-												}}
-												className='pr-9'
-											/>
-											<button
-												type='button'
-												aria-label={
-													showPassword ? 'Hide password' : 'Show password'
-												}
-												onClick={function () {
-													setShowPassword(function (p) {
-														return !p
-													})
-												}}
-												className='absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground'
-											>
-												{showPassword ? (
-													<EyeOff className='h-4 w-4' />
-												) : (
-													<Eye className='h-4 w-4' />
-												)}
-											</button>
-										</div>
-									)}
-								</div>
-							</div>
-
-							<div className='space-y-2'>
-								<Label htmlFor='database'>Database Name</Label>
-								<Input
-									id='database'
-									value={database}
-									onChange={function (e) {
-										setDatabase(e.target.value)
-									}}
-								/>
-							</div>
-						</>
-					)}
-
-					<p className='text-xs text-muted-foreground'>{PROVIDER_HINTS[provider]}</p>
-
-					<div className='flex items-center justify-between py-2'>
-						<div>
-							<Label htmlFor='ephemeral' className='text-sm font-medium'>
-								Ephemeral Storage
-							</Label>
-							<p className='text-xs text-muted-foreground'>
-								Data will be lost when container is removed
-							</p>
-						</div>
-						<Switch id='ephemeral' checked={ephemeral} onCheckedChange={setEphemeral} />
-					</div>
-
-					{!ephemeral && (
-						<p className='text-xs text-muted-foreground px-2 py-1.5 bg-muted/50 rounded'>
-							Volume: {generateVolumeName(name || 'container')}
-						</p>
-					)}
-
-					<Collapsible
-						open={isAdvancedOpen}
-						onOpenChange={setIsAdvancedOpen}
-						className='space-y-2'
-					>
-						<CollapsibleTrigger asChild>
-							<Button
-								variant='ghost'
-								size='sm'
-								className='p-0 h-auto hover:bg-transparent text-muted-foreground hover:text-foreground flex items-center gap-1'
-							>
-								{isAdvancedOpen ? (
-									<ChevronDown className='h-4 w-4' />
-								) : (
-									<ChevronRight className='h-4 w-4' />
-								)}
-								Advanced Options
-							</Button>
-						</CollapsibleTrigger>
-						<CollapsibleContent>
-							<div className='grid grid-cols-2 gap-4 pt-2'>
-								<div className='space-y-2'>
-									<Label htmlFor='cpu'>CPU Limit (cores)</Label>
-									<Input
-										id='cpu'
-										type='number'
-										step='0.1'
-										min='0.1'
-										placeholder='e.g. 1.0'
-										value={cpuLimit ?? ''}
-										onChange={(e) =>
-											setCpuLimit(
-												e.target.value
-													? parseFloat(e.target.value)
-													: undefined
-											)
-										}
-									/>
-								</div>
-								<div className='space-y-2'>
-									<Label htmlFor='memory'>Memory Limit (MB)</Label>
-									<Input
-										id='memory'
-										type='number'
-										min='64'
-										placeholder='e.g. 512'
-										value={memoryLimit ?? ''}
-										onChange={(e) =>
-											setMemoryLimit(
-												e.target.value
-													? parseInt(e.target.value)
-													: undefined
-											)
-										}
-									/>
-								</div>
-							</div>
-						</CollapsibleContent>
-					</Collapsible>
-				</div>
-
-				<div className='flex shrink-0 items-center justify-end gap-2 border-t border-border p-3'>
-					<Button type='button' variant='outline' onClick={onClose}>
-						Cancel
-					</Button>
-					<Button type='submit' disabled={isSubmitting || Boolean(nameError)}>
-						{isSubmitting ? (
-							<>
-								<Spinner className='mr-2 h-4 w-4' />
-								Creating...
-							</>
-						) : (
-							'Create Container'
+						{portOwner && (
+							<small className='dk-err'>
+								Port {hostPort} is published by {portOwner.name}.
+							</small>
 						)}
-					</Button>
-				</div>
+					</div>
+				</section>
+
+				{!isKeyValueProvider(provider) && (
+					<section>
+						<span className='dk-sec-h dk-eyebrow'>Credentials</span>
+						<div className='dk-fgrid'>
+							<label className='dk-fld'>
+								<span className='dk-fld-l'>User</span>
+								<input
+									className='dk-inp dk-mono'
+									value={user}
+									spellCheck={false}
+									onChange={(event) => setUser(event.target.value)}
+								/>
+							</label>
+							<label className='dk-fld'>
+								<span className='dk-fld-l'>Database</span>
+								<input
+									className='dk-inp dk-mono'
+									value={database}
+									spellCheck={false}
+									onChange={(event) => setDatabase(event.target.value)}
+								/>
+							</label>
+						</div>
+						{provider === 'cockroach' ? (
+							<p className='dk-hint' style={{ marginTop: 12 }}>
+								CockroachDB runs in insecure mode for local development, so no
+								password is needed.
+							</p>
+						) : (
+							<div className='dk-fld'>
+								<label className='dk-fld-l' htmlFor='dk-create-password'>
+									Password
+								</label>
+								<div className='dk-pwrap'>
+									<input
+										id='dk-create-password'
+										className='dk-inp dk-mono'
+										type={showPassword ? 'text' : 'password'}
+										value={password}
+										spellCheck={false}
+										onChange={(event) => setPassword(event.target.value)}
+									/>
+									<button
+										type='button'
+										className='dk-ibtn'
+										data-size='sm'
+										aria-label={
+											showPassword ? 'Hide password' : 'Show password'
+										}
+										onClick={() => setShowPassword((value) => !value)}
+									>
+										{showPassword ? (
+											<EyeOff className='h-3.5 w-3.5' aria-hidden='true' />
+										) : (
+											<Eye className='h-3.5 w-3.5' aria-hidden='true' />
+										)}
+									</button>
+								</div>
+							</div>
+						)}
+					</section>
+				)}
+
+				<section>
+					<span className='dk-sec-h dk-eyebrow'>Storage</span>
+					<div className='dk-trow'>
+						<label className='dk-trow-b' htmlFor='dk-create-ephemeral'>
+							<span className='dk-trow-t'>Ephemeral storage</span>
+							<span className='dk-trow-s'>
+								{ephemeral
+									? 'Data is lost when the container is removed'
+									: `Persists in volume ${generateVolumeName(name || 'container')}`}
+							</span>
+						</label>
+						<Switch
+							id='dk-create-ephemeral'
+							checked={ephemeral}
+							onCheckedChange={setEphemeral}
+						/>
+					</div>
+				</section>
+
+				<section>
+					<span className='dk-sec-h dk-eyebrow'>Limits</span>
+					<div className='dk-fgrid'>
+						<label className='dk-fld'>
+							<span className='dk-fld-l'>CPU</span>
+							<select
+								className='dk-inp dk-mono'
+								value={cpuLimit ?? ''}
+								onChange={(event) =>
+									setCpuLimit(
+										event.target.value ? Number(event.target.value) : undefined
+									)
+								}
+							>
+								<option value=''>No limit</option>
+								{CPU_OPTIONS.map((option) => (
+									<option key={option} value={option}>
+										{option} {option === 1 ? 'core' : 'cores'}
+									</option>
+								))}
+							</select>
+						</label>
+						<label className='dk-fld'>
+							<span className='dk-fld-l'>Memory</span>
+							<select
+								className='dk-inp dk-mono'
+								value={memoryLimit ?? ''}
+								onChange={(event) =>
+									setMemoryLimit(
+										event.target.value ? Number(event.target.value) : undefined
+									)
+								}
+							>
+								<option value=''>No limit</option>
+								{MEMORY_OPTIONS.map((option) => (
+									<option key={option} value={option}>
+										{formatMemory(option)}
+									</option>
+								))}
+							</select>
+						</label>
+					</div>
+				</section>
 			</form>
-		</div>
+
+			<footer className='dk-dr-f'>
+				<span className='dk-preview dk-mono' title={image}>
+					{image} → localhost:{hostPort}
+				</span>
+				<button type='button' className='dk-btn' data-variant='ghost' onClick={onClose}>
+					Cancel
+				</button>
+				<button
+					type='submit'
+					form='dk-create-form'
+					className='dk-btn'
+					data-variant='primary'
+					disabled={isSubmitting || Boolean(nameError)}
+				>
+					{isSubmitting && <Spinner className='h-3.5 w-3.5' />}
+					{isSubmitting ? 'Creating…' : 'Create container'}
+				</button>
+			</footer>
+		</>
 	)
 }

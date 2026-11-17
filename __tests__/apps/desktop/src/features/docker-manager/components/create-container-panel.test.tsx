@@ -30,28 +30,28 @@ describe('CreateContainerPanel', () => {
 	it('keeps the SQL credential fields and ephemeral default for Postgres', async () => {
 		await renderPanel('postgres')
 
-		expect(screen.getByLabelText('PostgreSQL Version')).toBeInTheDocument()
-		expect(screen.getByLabelText('Username')).toBeInTheDocument()
+		expect(screen.getByLabelText('Image')).toHaveValue('16')
+		expect(screen.getByLabelText('User')).toBeInTheDocument()
 		expect(screen.getByLabelText('Password')).toBeInTheDocument()
-		expect(screen.getByLabelText('Database Name')).toBeInTheDocument()
+		expect(screen.getByLabelText('Database')).toBeInTheDocument()
 		expect(screen.getByRole('switch', { name: /ephemeral storage/i })).toBeChecked()
 	})
 
 	it.each([
-		['redis', 'Redis Version', '7-alpine', 'redisVersion'],
-		['valkey', 'Valkey Version', '8-alpine', 'valkeyVersion']
+		['redis', '7-alpine', 'redisVersion'],
+		['valkey', '8-alpine', 'valkeyVersion']
 	] as const)(
 		'creates a persistent %s template without SQL credentials',
-		async (provider, versionLabel, version, versionKey) => {
+		async (provider, version, versionKey) => {
 			const onSubmit = await renderPanel(provider)
 
-			expect(screen.getByLabelText(versionLabel)).toBeInTheDocument()
-			expect(screen.queryByLabelText('Username')).not.toBeInTheDocument()
+			expect(screen.getByLabelText('Image')).toHaveValue(version)
+			expect(screen.queryByLabelText('User')).not.toBeInTheDocument()
 			expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
-			expect(screen.queryByLabelText('Database Name')).not.toBeInTheDocument()
+			expect(screen.queryByLabelText('Database')).not.toBeInTheDocument()
 			expect(screen.getByRole('switch', { name: /ephemeral storage/i })).not.toBeChecked()
 
-			fireEvent.click(screen.getByRole('button', { name: 'Create Container' }))
+			fireEvent.click(screen.getByRole('button', { name: 'Create container' }))
 
 			await waitFor(() => {
 				expect(onSubmit).toHaveBeenCalledTimes(1)

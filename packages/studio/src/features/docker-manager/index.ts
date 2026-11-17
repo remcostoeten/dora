@@ -1,6 +1,5 @@
 export { DockerView } from './components/docker-view'
 export { SandboxIndicator } from './components/sandbox-indicator'
-export { StatusBadge } from './components/status-badge'
 
 export { useContainers, useDockerAvailability } from './api/queries/use-containers'
 export { useContainerLogs } from './api/queries/use-container-logs'
