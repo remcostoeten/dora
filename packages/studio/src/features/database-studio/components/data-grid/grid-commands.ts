@@ -35,17 +35,29 @@ import {
 	getSelectionSpan
 } from './selection'
 import { CellPosition } from './types'
+import { COLUMN_RESIZE_STEP } from './column-width'
+
+export type GridRegion = 'cell' | 'header'
 
 export type GridCommandContext = {
 	allSelected: boolean
 	anchorCell: CellPosition | null
 	columns: ColumnDefinition[]
 	focusedCell: CellPosition | null
+	region: GridRegion
 	rows: Record<string, unknown>[]
 	selectedCellsSet: Set<string>
 	selectedRows: Set<number>
 	applyCellEdits?: (edits: CellEdit[]) => void
+	autoFitColumn: (columnName: string, columnType?: string) => void
 	cancelPendingNavigation: () => void
+	enterHeader: () => void
+	leaveHeader: (rowIndex: number) => void
+	moveHeaderTo: (colIndex: number) => void
+	onFilterColumn?: (columnName: string) => void
+	onHideColumn?: (columnName: string) => void
+	onSortDirection?: (columnName: string, direction: 'asc' | 'desc') => void
+	resizeColumnBy: (columnName: string, delta: number) => void
 	getPageSize: () => number
 	moveTo: (target: CellPosition, extend: boolean) => void
 	notify: (notice: GridNotice) => void
@@ -78,6 +90,7 @@ export type GridCommandOutcome = 'handled' | 'pass'
 export type GridCommand = {
 	id: ShortcutName
 	needsCell: boolean
+	regions: GridRegion | 'both'
 	blockedByMask: boolean
 	run: (context: GridCommandContext) => GridCommandOutcome
 }
@@ -86,12 +99,14 @@ type CellRun = (context: GridCommandContext, cell: CellPosition) => GridCommandO
 
 type CommandFlags = {
 	blockedByMask?: boolean
+	regions?: GridRegion | 'both'
 }
 
 function cellCommand(id: ShortcutName, run: CellRun, flags: CommandFlags = {}): GridCommand {
 	return {
 		id,
 		needsCell: true,
+		regions: flags.regions ?? 'cell',
 		blockedByMask: flags.blockedByMask ?? false,
 		run: function (context) {
 			if (!context.focusedCell) return 'pass'
@@ -108,6 +123,7 @@ function gridCommand(
 	return {
 		id,
 		needsCell: false,
+		regions: flags.regions ?? 'both',
 		blockedByMask: flags.blockedByMask ?? false,
 		run: function (context) {
 			return run(context) ?? 'handled'
@@ -119,35 +135,118 @@ function getBounds(context: GridCommandContext) {
 	return { rowCount: context.rows.length, colCount: context.columns.length }
 }
 
+const ANYWHERE: CommandFlags = { regions: 'both' }
+
 function stepCommand(id: ShortcutName, direction: GridDirection, extend: boolean): GridCommand {
-	return cellCommand(id, function (context, cell) {
-		const target = getStepTarget(cell, direction, getBounds(context))
-		if (!isSameCell(target, cell)) context.moveTo(target, extend)
-	})
+	return cellCommand(
+		id,
+		function (context, cell) {
+			const bounds = getBounds(context)
+			if (context.region === 'header') {
+				if (extend || direction === 'up') return
+				if (direction === 'down') context.leaveHeader(0)
+				else context.moveHeaderTo(getStepTarget(cell, direction, bounds).col)
+				return
+			}
+			if (direction === 'up' && cell.row === 0 && !extend) {
+				context.enterHeader()
+				return
+			}
+			const target = getStepTarget(cell, direction, bounds)
+			if (!isSameCell(target, cell)) context.moveTo(target, extend)
+		},
+		ANYWHERE
+	)
 }
 
 function edgeCommand(id: ShortcutName, direction: GridDirection, extend: boolean): GridCommand {
-	return cellCommand(id, function (context, cell) {
-		context.moveTo(getEdgeTarget(cell, direction, getBounds(context)), extend)
-	})
+	return cellCommand(
+		id,
+		function (context, cell) {
+			const target = getEdgeTarget(cell, direction, getBounds(context))
+			if (context.region === 'header') {
+				if (extend || direction === 'up') return
+				if (direction === 'down') context.leaveHeader(target.row)
+				else context.moveHeaderTo(target.col)
+				return
+			}
+			context.moveTo(target, extend)
+		},
+		ANYWHERE
+	)
 }
 
 function pageCommand(id: ShortcutName, direction: 'up' | 'down', extend: boolean): GridCommand {
-	return cellCommand(id, function (context, cell) {
-		const target = getPageTarget(cell, direction, context.getPageSize(), getBounds(context))
-		if (!isSameCell(target, cell)) context.moveTo(target, extend)
-	})
+	return cellCommand(
+		id,
+		function (context, cell) {
+			if (context.region === 'header') {
+				if (direction === 'down' && !extend) context.leaveHeader(0)
+				return
+			}
+			const target = getPageTarget(cell, direction, context.getPageSize(), getBounds(context))
+			if (!isSameCell(target, cell)) context.moveTo(target, extend)
+		},
+		ANYWHERE
+	)
 }
 
 function cornerCommand(id: ShortcutName, corner: 'first' | 'last', extend: boolean): GridCommand {
-	return cellCommand(id, function (context) {
-		const bounds = getBounds(context)
-		const target =
-			corner === 'first'
-				? { row: 0, col: 0 }
-				: { row: bounds.rowCount - 1, col: bounds.colCount - 1 }
-		context.moveTo(target, extend)
-	})
+	return cellCommand(
+		id,
+		function (context) {
+			const bounds = getBounds(context)
+			if (context.region === 'header') {
+				if (extend) return
+				if (corner === 'first') context.moveHeaderTo(0)
+				else context.leaveHeader(bounds.rowCount - 1)
+				return
+			}
+			const target =
+				corner === 'first'
+					? { row: 0, col: 0 }
+					: { row: bounds.rowCount - 1, col: bounds.colCount - 1 }
+			context.moveTo(target, extend)
+		},
+		ANYWHERE
+	)
+}
+
+function sortDirectionCommand(id: ShortcutName, direction: 'asc' | 'desc'): GridCommand {
+	return cellCommand(
+		id,
+		function (context, cell) {
+			if (!context.onSortDirection) return 'pass'
+			context.onSortDirection(context.columns[cell.col].name, direction)
+		},
+		ANYWHERE
+	)
+}
+
+function resizeCommand(id: ShortcutName, delta: number): GridCommand {
+	return cellCommand(
+		id,
+		function (context, cell) {
+			context.resizeColumnBy(context.columns[cell.col].name, delta)
+		},
+		ANYWHERE
+	)
+}
+
+function columnIntentCommand(
+	id: ShortcutName,
+	pick: (context: GridCommandContext) => ((columnName: string) => void) | undefined,
+	regions: GridRegion | 'both'
+): GridCommand {
+	return cellCommand(
+		id,
+		function (context, cell) {
+			const intent = pick(context)
+			if (!intent) return 'pass'
+			intent(context.columns[cell.col].name)
+		},
+		{ regions }
+	)
 }
 
 function pagingCommand(id: ShortcutName, direction: 'next' | 'prev'): GridCommand {
@@ -248,6 +347,10 @@ function insertRowCommand(id: ShortcutName, position: 'above' | 'below'): GridCo
 
 function deselectProgressively(context: GridCommandContext) {
 	context.cancelPendingNavigation()
+	if (context.region === 'header') {
+		context.leaveHeader(0)
+		return
+	}
 	const cell = context.focusedCell
 	if (cell && context.selectedCellsSet.size > 1) {
 		context.updateCellSelection(new Set([getCellKey(cell.row, cell.col)]))
@@ -297,6 +400,28 @@ function pasteIntoFocusedCell(context: GridCommandContext, cell: CellPosition) {
 }
 
 export const GRID_COMMANDS: readonly GridCommand[] = [
+	cellCommand(
+		'gridHeaderSort',
+		function (context, cell) {
+			context.onSortColumn?.(context.columns[cell.col].name)
+		},
+		{ regions: 'header' }
+	),
+	columnIntentCommand('gridHideColumn', (context) => context.onHideColumn, 'header'),
+	columnIntentCommand('gridFilterColumn', (context) => context.onFilterColumn, 'header'),
+	columnIntentCommand('filterRows', (context) => context.onFilterColumn, 'both'),
+	sortDirectionCommand('gridSortAscending', 'asc'),
+	sortDirectionCommand('gridSortDescending', 'desc'),
+	resizeCommand('gridNarrowColumn', -COLUMN_RESIZE_STEP),
+	resizeCommand('gridWidenColumn', COLUMN_RESIZE_STEP),
+	cellCommand(
+		'gridAutoFitColumn',
+		function (context, cell) {
+			const column = context.columns[cell.col]
+			context.autoFitColumn(column.name, column.type)
+		},
+		ANYWHERE
+	),
 	stepCommand('gridMoveUp', 'up', false),
 	stepCommand('gridMoveDown', 'down', false),
 	stepCommand('gridMoveLeft', 'left', false),
@@ -342,7 +467,7 @@ export const GRID_COMMANDS: readonly GridCommand[] = [
 			if (context.selectedRows.size === 0 && !context.focusedCell) return 'pass'
 			context.onDeleteSelectedRows?.()
 		},
-		{ blockedByMask: true }
+		{ blockedByMask: true, regions: 'cell' }
 	),
 	cellCommand(
 		'gridOpenRowMenu',
@@ -371,9 +496,13 @@ export const GRID_COMMANDS: readonly GridCommand[] = [
 	cellCommand('gridToggleRow', toggleSelectionRows),
 	cellCommand('gridSelectRowCells', selectRowCells),
 	cellCommand('gridSelectColumnCells', selectColumnCells),
-	cellCommand('gridSortColumn', function (context, cell) {
-		context.onSortColumn?.(context.columns[cell.col].name)
-	}),
+	cellCommand(
+		'gridSortColumn',
+		function (context, cell) {
+			context.onSortColumn?.(context.columns[cell.col].name)
+		},
+		ANYWHERE
+	),
 	gridCommand('selectAll', function (context) {
 		context.onSelectAll(!context.allSelected)
 	}),
@@ -419,16 +548,18 @@ export function buildGridKeymap(
  * grid command.
  *
  * @example
- * const command = resolveGridCommand(event, keymap, focusedCell !== null)
+ * const command = resolveGridCommand(event, keymap, focusedCell !== null, 'cell')
  * if (command) command.run(context)
  */
 export function resolveGridCommand(
 	event: KeyboardEvent,
 	keymap: readonly GridKeymapEntry[],
-	hasFocusedCell: boolean
+	hasFocusedCell: boolean,
+	region: GridRegion = 'cell'
 ): GridCommand | null {
 	for (const entry of keymap) {
 		if (entry.command.needsCell && !hasFocusedCell) continue
+		if (entry.command.regions !== 'both' && entry.command.regions !== region) continue
 		if (matchesAnyShortcut(event, entry.shortcuts)) return entry.command
 	}
 	return null

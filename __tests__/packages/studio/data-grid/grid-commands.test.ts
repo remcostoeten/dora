@@ -71,6 +71,47 @@ describe('resolveGridCommand', function () {
 	})
 })
 
+describe('resolveGridCommand in the header row', function () {
+	const keymap = buildGridKeymap(getEffectiveShortcuts())
+
+	it('gives Enter and the header letters their header meaning', function () {
+		expect(resolveGridCommand(keydown('Enter'), keymap, true, 'header')?.id).toBe(
+			'gridHeaderSort'
+		)
+		expect(resolveGridCommand(keydown('h'), keymap, true, 'header')?.id).toBe('gridHideColumn')
+		expect(resolveGridCommand(keydown('f'), keymap, true, 'header')?.id).toBe(
+			'gridFilterColumn'
+		)
+	})
+
+	it('keeps header letters out of the body and cell commands out of the header', function () {
+		expect(resolveGridCommand(keydown('h'), keymap, true, 'cell')).toBeNull()
+		expect(resolveGridCommand(keydown('f'), keymap, true, 'cell')).toBeNull()
+		expect(resolveGridCommand(keydown('Enter'), keymap, true, 'cell')?.id).toBe('editCell')
+		expect(resolveGridCommand(keydown('Delete'), keymap, true, 'header')).toBeNull()
+		expect(resolveGridCommand(keydown('d'), keymap, true, 'header')).toBeNull()
+		expect(resolveGridCommand(keydown('Backspace'), keymap, true, 'header')).toBeNull()
+	})
+
+	it('shares sort, resize and navigation between both regions', function () {
+		for (const region of ['cell', 'header'] as const) {
+			expect(resolveGridCommand(keydown('s'), keymap, true, region)?.id).toBe(
+				'gridSortColumn'
+			)
+			expect(
+				resolveGridCommand(keydown('ArrowUp', { altKey: true }), keymap, true, region)?.id
+			).toBe('gridSortAscending')
+			expect(
+				resolveGridCommand(keydown('ArrowRight', { altKey: true }), keymap, true, region)
+					?.id
+			).toBe('gridWidenColumn')
+			expect(resolveGridCommand(keydown('ArrowLeft'), keymap, true, region)?.id).toBe(
+				'gridMoveLeft'
+			)
+		}
+	})
+})
+
 describe('getSequencePrefixes', function () {
 	it('collects the first key of chords written with a space or with then', function () {
 		expect(

@@ -53,6 +53,14 @@ describe('shortcuts', function () {
 		expect(formatted.toLowerCase()).toContain('d')
 	})
 
+	it('lets a header-only shortcut reuse a combo of a cell shortcut', function () {
+		expect(findShortcutConflict('gridHeaderSort', 'enter', APP_SHORTCUTS)).toBeNull()
+		expect(findShortcutConflict('gridHideColumn', 'f', APP_SHORTCUTS)?.name).toBe(
+			'gridFilterColumn'
+		)
+		expect(findShortcutConflict('editCell', 'space', APP_SHORTCUTS)?.name).toBe('gridToggleRow')
+	})
+
 	it('prevents conflicting shortcut overrides in the store', function () {
 		const listener = vi.fn()
 		window.addEventListener('dora-shortcut-conflict', listener)

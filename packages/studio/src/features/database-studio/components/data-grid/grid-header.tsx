@@ -4,6 +4,7 @@ import { Checkbox } from '@studio/shared/ui/checkbox'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
 import { cn } from '@studio/shared/utils/cn'
 import { ColumnDefinition, SortDescriptor } from '../../types'
+import { getHeaderCellId } from './selection'
 
 type ColumnHeaderLabelProps = {
 	name: string
@@ -48,6 +49,8 @@ function ColumnHeaderLabel({ name, type }: ColumnHeaderLabelProps) {
 type GridHeaderProps = {
 	allSelected: boolean
 	columns: ColumnDefinition[]
+	focusedCol: number | null
+	gridId: string
 	getColumnWidth: (columnName: string) => number | undefined
 	onResizeDoubleClick: (e: React.MouseEvent, columnName: string, columnType?: string) => void
 	onResizeStart: (e: React.MouseEvent, columnName: string) => void
@@ -61,6 +64,8 @@ type GridHeaderProps = {
 export const GridHeader = memo(function GridHeader({
 	allSelected,
 	columns,
+	focusedCol,
+	gridId,
 	getColumnWidth,
 	onResizeDoubleClick,
 	onResizeStart,
@@ -98,9 +103,13 @@ export const GridHeader = memo(function GridHeader({
 					return (
 						<th
 							key={col.name}
+							id={getHeaderCellId(gridId, colIndex)}
+							data-header-col={colIndex}
 							className={cn(
 								'text-left font-medium border-b border-r border-sidebar-border bg-sidebar-accent/50 last:border-r-0 h-9 cursor-pointer hover:bg-sidebar-accent relative select-none min-w-[60px]',
 								isSorted && 'bg-sidebar-accent',
+								focusedCol === colIndex &&
+									'bg-sidebar-accent shadow-[inset_0_0_0_1px_hsl(var(--sidebar-foreground)/0.4)]',
 								resizingColumn === col.name && 'bg-sidebar-accent'
 							)}
 							style={width ? { width } : undefined}

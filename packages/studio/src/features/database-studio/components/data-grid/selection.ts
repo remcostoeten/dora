@@ -36,6 +36,18 @@ export function getCellId(gridId: string, row: number, col: number): string {
 }
 
 /**
+ * @name getHeaderCellId
+ * @description Builds the DOM id of a column header cell, used for
+ * `aria-activedescendant` while the header row holds the roving focus.
+ *
+ * @example
+ * getHeaderCellId('data-grid-r1', 3) // 'data-grid-r1-header-3'
+ */
+export function getHeaderCellId(gridId: string, col: number): string {
+	return `${gridId}-header-${col}`
+}
+
+/**
  * @name getCellsInRectangle
  * @description Returns the keys of every cell in the rectangle spanned by two
  * corner cells, in any order.

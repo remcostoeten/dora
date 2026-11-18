@@ -1,9 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type React from 'react'
 import { useWorkspaceState } from '@studio/core/workspace-state'
+import { DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH, getResizedWidth } from './column-width'
 
-export const MIN_COLUMN_WIDTH = 100
-export const DEFAULT_COLUMN_WIDTH = 150
+export { DEFAULT_COLUMN_WIDTH, MIN_COLUMN_WIDTH }
+
+function measureHeaderWidth(columnName: string, columnType?: string): number | null {
+	const canvas = document.createElement('canvas')
+	const ctx = canvas.getContext('2d')
+	if (!ctx) return null
+
+	ctx.font = '12px Inter, system-ui, sans-serif'
+	const nameWidth = ctx.measureText(columnName).width
+
+	let typeWidth = 0
+	if (columnType && columnType !== 'unknown') {
+		ctx.font = "10px 'JetBrains Mono', monospace"
+		typeWidth = ctx.measureText(columnType).width
+	}
+
+	const sortIconWidth = 16
+	const padding = 32
+	const gap = typeWidth > 0 ? 8 : 0
+	const optimalWidth = Math.ceil(nameWidth + typeWidth + sortIconWidth + padding + gap)
+	return Math.max(MIN_COLUMN_WIDTH, optimalWidth)
+}
 
 export function useColumnResize(workspaceStateKey: string) {
 	const [columnWidths, setColumnWidths] = useWorkspaceState(
@@ -86,49 +107,44 @@ export function useColumnResize(workspaceStateKey: string) {
 		[resizingColumn]
 	)
 
-	const handleResizeDoubleClick = useCallback(function (
-		e: React.MouseEvent,
-		columnName: string,
-		columnType?: string
-	) {
-		e.preventDefault()
-		e.stopPropagation()
-
-		const canvas = document.createElement('canvas')
-		const ctx = canvas.getContext('2d')
-		if (!ctx) {
+	const autoFitColumn = useCallback(
+		function (columnName: string, columnType?: string) {
+			const fittedWidth = measureHeaderWidth(columnName, columnType)
 			setColumnWidths(function (prev) {
+				if (fittedWidth !== null) return { ...prev, [columnName]: fittedWidth }
 				const next = { ...prev }
 				delete next[columnName]
 				return next
 			})
-			return
-		}
+		},
+		[setColumnWidths]
+	)
 
-		ctx.font = '12px Inter, system-ui, sans-serif'
-		const nameWidth = ctx.measureText(columnName).width
+	const handleResizeDoubleClick = useCallback(
+		function (e: React.MouseEvent, columnName: string, columnType?: string) {
+			e.preventDefault()
+			e.stopPropagation()
+			autoFitColumn(columnName, columnType)
+		},
+		[autoFitColumn]
+	)
 
-		let typeWidth = 0
-		if (columnType && columnType !== 'unknown') {
-			ctx.font = "10px 'JetBrains Mono', monospace"
-			typeWidth = ctx.measureText(columnType).width
-		}
-
-		const sortIconWidth = 16
-		const padding = 32
-		const gap = typeWidth > 0 ? 8 : 0
-		const optimalWidth = Math.ceil(nameWidth + typeWidth + sortIconWidth + padding + gap)
-		const finalWidth = Math.max(MIN_COLUMN_WIDTH, optimalWidth)
-
-		setColumnWidths(function (prev) {
-			return { ...prev, [columnName]: finalWidth }
-		})
-	}, [])
+	const resizeColumnBy = useCallback(
+		function (columnName: string, delta: number) {
+			setColumnWidths(function (prev) {
+				const current = prev[columnName] ?? DEFAULT_COLUMN_WIDTH
+				return { ...prev, [columnName]: getResizedWidth(current, delta) }
+			})
+		},
+		[setColumnWidths]
+	)
 
 	return {
 		resizingColumn,
 		getColumnWidth,
 		handleResizeStart,
-		handleResizeDoubleClick
+		handleResizeDoubleClick,
+		autoFitColumn,
+		resizeColumnBy
 	}
 }
