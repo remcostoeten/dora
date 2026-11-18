@@ -556,7 +556,7 @@ snapcraft export-login --snaps=dora \
 **App ID:** `io.github.remcostoeten.dora`  
 **Manifest:** `packaging/flatpak/io.github.remcostoeten.dora.yml`
 
-The manifest wraps the released `.deb`, so the Flatpak runs the binary `tauri build` produced. CI attaches `Dora-<version>-x86_64.flatpak` (and `-aarch64` when the arm64 `.deb` exists) to each GitHub release. Local build helper: `bun run release:flatpak:build`, which builds from the latest release `.deb` when given no arguments.
+The manifest wraps the released `.deb`, so the Flatpak runs the binary `tauri build` produced. CI uploads `Dora-<version>-x86_64.flatpak` (and `-aarch64` when the arm64 `.deb` exists) as run artifacts, because published releases are immutable; `apt.yml` imports them. Local build helper: `bun run release:flatpak:build`, which builds from the latest release `.deb` when given no arguments.
 
 ### Flathub
 

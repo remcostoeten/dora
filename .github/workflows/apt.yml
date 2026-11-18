@@ -3,9 +3,9 @@ name: Linux repositories
 # Builds the whole GitHub Pages site at https://remcostoeten.github.io/dora:
 #   /         signed APT repository (amd64, arm64 when built)
 #   /rpm/     signed DNF/YUM repository (x86_64, aarch64 when built)
-#   /flatpak/ signed Flatpak remote, imported from the release's .flatpak bundles
+#   /flatpak/ signed Flatpak remote, imported from the Flatpak workflow's run artifacts
 # A Pages deploy replaces the whole site, so all three are rebuilt together from
-# the release assets every time.
+# the release assets and Flatpak artifacts every time.
 on:
     workflow_dispatch:
         inputs:
@@ -18,6 +18,10 @@ on:
                 required: false
                 type: boolean
                 default: false
+            flatpak_run_id:
+                description: Run id holding the dora-flatpak-* artifacts. Leave empty to use this run.
+                required: false
+                type: string
     workflow_call:
         inputs:
             tag:
@@ -29,8 +33,13 @@ on:
                 required: false
                 type: boolean
                 default: false
+            flatpak_run_id:
+                description: Run id holding the dora-flatpak-* artifacts. Leave empty to use this run.
+                required: false
+                type: string
 
 permissions:
+    actions: read
     contents: read
     pages: write
     id-token: write
@@ -77,7 +86,7 @@ jobs:
                   set -euo pipefail
                   TAG="${{ steps.meta.outputs.tag }}"
                   VERSION="${{ steps.meta.outputs.version }}"
-                  REQUIRED=("Dora_${VERSION}_amd64.deb" "Dora-${VERSION}-1.x86_64.rpm" "Dora-${VERSION}-x86_64.flatpak")
+                  REQUIRED=("Dora_${VERSION}_amd64.deb" "Dora-${VERSION}-1.x86_64.rpm")
 
                   for attempt in {1..60}; do
                     NAMES="$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].name')"
@@ -96,6 +105,19 @@ jobs:
 
                   gh release download "$TAG" --repo "${{ github.repository }}" --dir assets \
                     --pattern '*.deb' --pattern '*.rpm' --pattern '*.flatpak'
+
+                  if ! compgen -G "assets/Dora-${VERSION}-x86_64.flatpak" > /dev/null; then
+                    RUN_ID="${{ inputs.flatpak_run_id }}"
+                    RUN_ID="${RUN_ID:-${{ github.run_id }}}"
+                    for attempt in {1..60}; do
+                      rm -rf flatpak-artifacts
+                      gh run download "$RUN_ID" --repo "${{ github.repository }}" --pattern 'dora-flatpak-*' --dir flatpak-artifacts 2>/dev/null || true
+                      compgen -G "flatpak-artifacts/*/Dora-${VERSION}-x86_64.flatpak" > /dev/null && break
+                      echo "Waiting for the x86_64 Flatpak artifact of run ${RUN_ID} (${attempt}/60)..."
+                      sleep 30
+                    done
+                    cp flatpak-artifacts/*/Dora-"${VERSION}"-*.flatpak assets/
+                  fi
                   ls -la assets
 
             - name: Import the signing key

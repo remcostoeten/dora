@@ -145,8 +145,10 @@ none: a missing certificate only warns, a partial set fails the job. See
 - Consumes `Dora_<version>_amd64.deb` (and `_arm64.deb` on the optional arm leg)
   and wraps it with `packaging/flatpak/build-flatpak.sh` against GNOME runtime 51.
   The build fails when a library is unresolved inside the runtime.
-- Attaches `Dora-<version>-<arch>.flatpak` to the release; `apt.yml` imports it
-  into the Pages remote.
+- Uploads `Dora-<version>-<arch>.flatpak` as a `dora-flatpak-*` run artifact
+  (published releases are immutable, so nothing can be attached to them);
+  `apt.yml` downloads the artifacts of its own run, or of `flatpak_run_id` when
+  dispatched, and imports them into the Pages remote.
 - Flathub is a separate one-time submission; see `packaging/flathub/README.md`.
 
 ### Scoop and Nix — `.github/workflows/packages.yml`

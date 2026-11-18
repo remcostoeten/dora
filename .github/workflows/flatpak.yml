@@ -1,8 +1,9 @@
 name: Flatpak
 
-# Wraps the released .deb in a Flatpak and attaches one bundle per architecture
-# to the GitHub release. The Linux repositories workflow then imports those
-# bundles into the signed Flatpak remote on GitHub Pages.
+# Wraps the released .deb in a Flatpak and uploads one bundle per architecture as
+# a run artifact. Published releases are immutable, so bundles cannot be attached
+# to them. The Linux repositories workflow imports the artifacts into the signed
+# Flatpak remote on GitHub Pages.
 on:
     workflow_dispatch:
         inputs:
@@ -128,8 +129,3 @@ jobs:
               with:
                   name: dora-flatpak-${{ matrix.arch }}-${{ steps.meta.outputs.version }}
                   path: ${{ steps.build.outputs.bundle }}
-
-            - name: Attach bundle to the release
-              if: steps.meta.outputs.skip != 'true' && github.event_name != 'pull_request'
-              shell: bash
-              run: gh release upload "${{ steps.meta.outputs.tag }}" "${{ steps.build.outputs.bundle }}" --repo "${{ github.repository }}" --clobber

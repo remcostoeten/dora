@@ -596,6 +596,7 @@ jobs:
         needs: [publish-release, build-flatpak]
         if: ${{ !cancelled() && needs.publish-release.result == 'success' && needs.build-flatpak.result == 'success' }}
         permissions:
+            actions: read
             contents: read
             pages: write
             id-token: write
