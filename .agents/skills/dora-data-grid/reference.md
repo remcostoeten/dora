@@ -26,7 +26,7 @@ Detail behind `SKILL.md`. Rendering only.
 | `components/data-grid/use-row-virtualizer.ts` | The virtualizer wrapper |
 | `components/data-grid/use-right-drag-scroll.ts` | Right-button drag to scroll horizontally |
 | `components/data-grid/use-context-menu-reporting.ts` | Reports menu open state and coordinates upward |
-| `components/data-grid/selection.ts` | `getCellKey`, `getCellsInRectangle` |
+| `components/data-grid/selection.ts` | `getCellKey`, `parseCellKey`, `getCellsInRectangle`, `getSelectionSpan`, `getRowCells`, `getColumnCells`, `getRowToggle` |
 | `components/data-grid/types.ts` | `EditingCell`, `CellPosition`, `ContextMenuState` |
 | `components/cells/` | `BlobCell`, `DateCell`, `IpCell`, `TokenCell`, `blob-utils.ts` |
 | `types.ts` | `ColumnDefinition`, `TableData`, `SortDescriptor`, `FilterDescriptor` |
@@ -118,12 +118,15 @@ With a cell focused:
 | mod+g | Open the go-to-cell prompt |
 | alt+PageUp, alt+PageDown | Previous and next page of results, through `onPageChange` |
 | Shift plus arrows | Extend a rectangular cell selection from the anchor |
+| Shift plus PageUp, PageDown, Home, End; mod+shift plus arrows, Home, End | Extend the selection by a page, to the row edge, or to the grid edge |
+| shift+Space | Select every cell in the row, or in every row the selection spans |
+| ctrl+Space | Select every cell in the column, or in every column the selection spans |
 | Tab and shift+Tab | Move one cell, wrapping across rows; Tab escapes the grid at the last cell |
 | Enter, F2, `e` | Open the editor on the focused cell |
 | Delete, `d` | Delete the selected rows, falling back to the focused row |
 | Backspace | Write `getColumnDefault` into every selected cell, falling back to the focused cell; primary keys are skipped |
 | Escape | Progressive: collapse a multi-cell selection, then drop the row selection, then clear focus |
-| Space | Toggle the focused row; with shift, select the range from the last clicked row |
+| Space | Check or uncheck the focused row; with a selection that spans several rows, all of them |
 | `s` | Cycle the focused column's sort state |
 | Shift+F10 or Context Menu | Open the focused cell's action menu |
 | `c`, mod+c | Copy the selection, or the focused cell, as TSV |
@@ -139,6 +142,14 @@ which is why the grid takes `rowNumberOffset` and `totalRowCount`. A row in the
 loaded page is focused in place and reaches the DOM through the virtualizer's
 `scrollToIndex`; a row on another page leaves as `onRequestRow`, and the owner
 changes the page and focuses the cell once the rows arrive.
+
+Space and shift+Space are two different selections. Space drives the row
+checkboxes (`selectedRows`), which is what delete, duplicate and export act on.
+shift+Space and ctrl+Space build a cell selection, which is what copy, clear
+and fill act on. Checking a range of rows from the keyboard is shift+arrows
+followed by Space. ctrl+Space is `ctrl` on every platform, because cmd+Space
+belongs to macOS. Selecting a row or column leaves the anchor where it was, so
+the next shift+arrow goes back to a rectangle from that anchor.
 
 Navigation is coalesced through a single `requestAnimationFrame`, cancelled on
 Escape and on unmount, so a held arrow key does not queue a state write per

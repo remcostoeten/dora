@@ -1,6 +1,6 @@
 import { ColumnDefinition } from '../../types'
 import { noop } from '@studio/shared/utils/noop'
-import { getCellKey } from './selection'
+import { getCellKey, parseCellKey } from './selection'
 import { CellPosition } from './types'
 
 /**
@@ -19,10 +19,7 @@ export function getCellsToClear(
 		selectedCellsSet.size > 0
 			? selectedCellsSet
 			: new Set([getCellKey(focusedCell.row, focusedCell.col)])
-	return Array.from(keys, function (key) {
-		const [row, col] = key.split(':').map(Number)
-		return { row, col }
-	})
+	return Array.from(keys, parseCellKey)
 }
 
 export function copySelectionToClipboard(
@@ -32,10 +29,7 @@ export function copySelectionToClipboard(
 	columns: ColumnDefinition[]
 ) {
 	if (selectedCellsSet.size > 0) {
-		const cellsArray = Array.from(selectedCellsSet).map(function (key) {
-			const [row, col] = key.split(':').map(Number)
-			return { row, col }
-		})
+		const cellsArray = Array.from(selectedCellsSet, parseCellKey)
 		cellsArray.sort(function (a, b) {
 			return a.row === b.row ? a.col - b.col : a.row - b.row
 		})

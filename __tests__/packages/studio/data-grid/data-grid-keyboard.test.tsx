@@ -122,7 +122,7 @@ describe('DataGrid keyboard', function () {
 		expect(spies.onCellEdit).toHaveBeenCalledWith(0, 'email', null)
 	})
 
-	it('toggles rows with Space and checks the focused row with Shift+Space', async function () {
+	it('toggles the focused row with Space', async function () {
 		const user = userEvent.setup()
 		const spies = createGridSpies()
 		render(<GridHarness spies={spies} />)
@@ -133,10 +133,6 @@ describe('DataGrid keyboard', function () {
 
 		await user.keyboard(' ')
 		expect(screen.getByRole('checkbox', { name: 'Select row 1' })).not.toBeChecked()
-
-		await user.keyboard('{ArrowDown}{ArrowDown}{Shift>} {/Shift}')
-		expect(screen.getByRole('checkbox', { name: 'Select row 3' })).toBeChecked()
-		expect(screen.getByRole('checkbox', { name: 'Select row 2' })).not.toBeChecked()
 	})
 
 	it('runs select all and delete exactly once per key press', async function () {

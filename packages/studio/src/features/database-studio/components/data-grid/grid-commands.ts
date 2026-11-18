@@ -16,7 +16,13 @@ import {
 	isSameCell,
 	type GridDirection
 } from './grid-navigation'
-import { getCellKey } from './selection'
+import {
+	getCellKey,
+	getColumnCells,
+	getRowCells,
+	getRowToggle,
+	getSelectionSpan
+} from './selection'
 import { CellPosition } from './types'
 
 export type GridCommandContext = {
@@ -24,7 +30,6 @@ export type GridCommandContext = {
 	anchorCell: CellPosition | null
 	columns: ColumnDefinition[]
 	focusedCell: CellPosition | null
-	lastClickedRow: number | null
 	rows: Record<string, unknown>[]
 	selectedCellsSet: Set<string>
 	selectedRows: Set<number>
@@ -169,23 +174,25 @@ function deselectProgressively(context: GridCommandContext) {
 	}
 }
 
-function toggleFocusedRow(context: GridCommandContext, cell: CellPosition) {
-	context.onRowSelect(cell.row, !context.selectedRows.has(cell.row))
+function toggleSelectionRows(context: GridCommandContext, cell: CellPosition) {
+	const span = getSelectionSpan(context.selectedCellsSet, cell, 'row')
+	const toggle = getRowToggle(span, context.selectedRows)
+	if (toggle.rowIndexes.length > 1 && context.onRowsSelect) {
+		context.onRowsSelect(toggle.rowIndexes, toggle.checked)
+	} else {
+		context.onRowSelect(cell.row, !context.selectedRows.has(cell.row))
+	}
 	context.setLastClickedRow(cell.row)
 }
 
-function selectRowRange(context: GridCommandContext, cell: CellPosition) {
-	if (context.lastClickedRow === null || !context.onRowsSelect) {
-		toggleFocusedRow(context, cell)
-		return
-	}
-	const start = Math.min(context.lastClickedRow, cell.row)
-	const end = Math.max(context.lastClickedRow, cell.row)
-	const range: number[] = []
-	for (let rowIndex = start; rowIndex <= end; rowIndex++) {
-		range.push(rowIndex)
-	}
-	context.onRowsSelect(range, true)
+function selectRowCells(context: GridCommandContext, cell: CellPosition) {
+	const span = getSelectionSpan(context.selectedCellsSet, cell, 'row')
+	context.updateCellSelection(getRowCells(span, context.columns.length))
+}
+
+function selectColumnCells(context: GridCommandContext, cell: CellPosition) {
+	const span = getSelectionSpan(context.selectedCellsSet, cell, 'col')
+	context.updateCellSelection(getColumnCells(span, context.rows.length))
 }
 
 function pasteIntoFocusedCell(context: GridCommandContext, cell: CellPosition) {
@@ -219,6 +226,10 @@ export const GRID_COMMANDS: readonly GridCommand[] = [
 	edgeCommand('gridExtendBottom', 'down', true),
 	edgeCommand('gridExtendRowStart', 'left', true),
 	edgeCommand('gridExtendRowEnd', 'right', true),
+	pageCommand('gridExtendPageUp', 'up', true),
+	pageCommand('gridExtendPageDown', 'down', true),
+	cornerCommand('gridExtendFirstCell', 'first', true),
+	cornerCommand('gridExtendLastCell', 'last', true),
 	tabCommand('gridNextCell', false),
 	tabCommand('gridPrevCell', true),
 	cellCommand('editCell', editFocusedCell, { blockedByMask: true }),
@@ -239,8 +250,9 @@ export const GRID_COMMANDS: readonly GridCommand[] = [
 	),
 	cellCommand('gridClearCells', clearSelectedCells, { blockedByMask: true }),
 	gridCommand('deselect', deselectProgressively),
-	cellCommand('gridToggleRow', toggleFocusedRow),
-	cellCommand('gridSelectRowRange', selectRowRange),
+	cellCommand('gridToggleRow', toggleSelectionRows),
+	cellCommand('gridSelectRowCells', selectRowCells),
+	cellCommand('gridSelectColumnCells', selectColumnCells),
 	cellCommand('gridSortColumn', function (context, cell) {
 		context.onSortColumn?.(context.columns[cell.col].name)
 	}),

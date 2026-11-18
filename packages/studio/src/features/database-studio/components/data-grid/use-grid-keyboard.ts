@@ -174,7 +174,6 @@ export function useGridKeyboard({
 				anchorCell,
 				columns,
 				focusedCell,
-				lastClickedRow: lastClickedRowRef.current,
 				rows,
 				selectedCellsSet,
 				selectedRows,
