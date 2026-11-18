@@ -12,7 +12,11 @@ Detail behind `SKILL.md`. Rendering only.
 | `components/data-grid/cell-value.tsx` | `formatCellValue` and the inline `JsonCell` |
 | `components/data-grid/draft-row.tsx` | The insert draft row and its own keyboard handling |
 | `components/data-grid/use-cell-editing.ts` | Editor state, commit, cancel, blur guards, Tab-and-move |
-| `components/data-grid/use-grid-keyboard.ts` | The whole keyboard map, clipboard copy and paste |
+| `components/data-grid/use-grid-keyboard.ts` | Dispatches a key event to the command table |
+| `components/data-grid/grid-commands.ts` | `GRID_COMMANDS`, the keymap as data, plus `buildGridKeymap` and `resolveGridCommand` |
+| `components/data-grid/grid-navigation.ts` | Pure target-cell functions for steps, edges and Tab |
+| `components/data-grid/grid-clipboard.ts` | `parseClipboardGrid`, clipboard copy and paste |
+| `components/data-grid/grid-events.ts` | `isDataGridEvent`, `isTextEntryEvent` |
 | `components/data-grid/use-cell-selection.ts` | Cell selection set and its by-row index |
 | `components/data-grid/use-row-selection.ts` | Click, shift-range and context-menu row selection |
 | `components/data-grid/use-focused-cell.ts` | Roving focus position |
@@ -91,7 +95,14 @@ accepts the hex form when the column type looks binary (`blob`, `bytea`,
 
 ## Keyboard map
 
-With a cell focused, from `use-grid-keyboard.ts`:
+The keymap is data. `GRID_COMMANDS` in `grid-commands.ts` lists every command
+by the name of its entry in the `data-grid` scope of `APP_SHORTCUTS`
+(`packages/studio/src/core/shortcuts/shortcuts.ts`), so the defaults below are
+the registry defaults, a user remap applies inside the grid, and the settings
+shortcuts screen lists them. A combo matches on its exact modifiers. A new
+command is a registry entry plus a `GRID_COMMANDS` entry, never a `switch` arm.
+
+With a cell focused:
 
 | Key | Effect |
 | --- | --- |
@@ -120,8 +131,15 @@ an empty string for null and undefined. `parseClipboardGrid` normalizes CRLF and
 bare CR, drops one trailing newline so a copied block does not overwrite the row
 below the paste target, and keeps interior blank lines positional.
 
-Outside the grid element, the `selectAll` and `deselect` shortcuts are bound
-through `useShortcut` under the `data-grid` scope, both `.except('typing')`.
+The grid is the only handler for keys pressed inside it. The window-level
+`selectAll`, `deselect` and `deleteRows` bindings in `data-grid.tsx` and
+`database-studio.tsx` carry `.except(isDataGridEvent)`, because the shortcut
+library does not look at `defaultPrevented` and would otherwise run the action a
+second time. They still serve focus that sits elsewhere in the studio.
+
+The key after a chord prefix such as `g` is never a grid command, so `g d`
+goes to the dashboard without also deleting rows. Keys from the cell editor and
+the draft row inputs are ignored through `isTextEntryEvent`.
 
 ## Edit commit state machine
 

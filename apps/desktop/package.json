@@ -43,7 +43,7 @@
 		"@radix-ui/react-tooltip": "^1.2.7",
 		"@remcostoeten/analytics": "^1.7.0",
 		"@remcostoeten/notifier": "^1.0.0",
-		"@remcostoeten/use-shortcut": "^2.3.0",
+		"@remcostoeten/use-shortcut": "^2.5.1",
 		"@tanstack/react-query": "^5.83.0",
 		"@tanstack/react-virtual": "^3.13.24",
 		"@tauri-apps/api": "^2.9.1",

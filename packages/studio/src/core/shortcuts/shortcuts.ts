@@ -270,6 +270,84 @@ export const APP_SHORTCUTS = {
 		combo: 'mod+shift+m',
 		description: 'Start live monitor',
 		scope: 'data-grid'
+	},
+
+	gridMoveUp: { combo: 'up', description: 'Move up one cell', scope: 'data-grid' },
+	gridMoveDown: { combo: 'down', description: 'Move down one cell', scope: 'data-grid' },
+	gridMoveLeft: { combo: 'left', description: 'Move left one cell', scope: 'data-grid' },
+	gridMoveRight: { combo: 'right', description: 'Move right one cell', scope: 'data-grid' },
+	gridJumpTop: { combo: 'mod+up', description: 'Jump to the first row', scope: 'data-grid' },
+	gridJumpBottom: { combo: 'mod+down', description: 'Jump to the last row', scope: 'data-grid' },
+	gridJumpRowStart: {
+		combo: 'mod+left',
+		description: 'Jump to the first column',
+		scope: 'data-grid'
+	},
+	gridJumpRowEnd: {
+		combo: 'mod+right',
+		description: 'Jump to the last column',
+		scope: 'data-grid'
+	},
+	gridExtendUp: { combo: 'shift+up', description: 'Extend selection up', scope: 'data-grid' },
+	gridExtendDown: {
+		combo: 'shift+down',
+		description: 'Extend selection down',
+		scope: 'data-grid'
+	},
+	gridExtendLeft: {
+		combo: 'shift+left',
+		description: 'Extend selection left',
+		scope: 'data-grid'
+	},
+	gridExtendRight: {
+		combo: 'shift+right',
+		description: 'Extend selection right',
+		scope: 'data-grid'
+	},
+	gridExtendTop: {
+		combo: 'mod+shift+up',
+		description: 'Extend selection to the first row',
+		scope: 'data-grid'
+	},
+	gridExtendBottom: {
+		combo: 'mod+shift+down',
+		description: 'Extend selection to the last row',
+		scope: 'data-grid'
+	},
+	gridExtendRowStart: {
+		combo: 'mod+shift+left',
+		description: 'Extend selection to the first column',
+		scope: 'data-grid'
+	},
+	gridExtendRowEnd: {
+		combo: 'mod+shift+right',
+		description: 'Extend selection to the last column',
+		scope: 'data-grid'
+	},
+	gridNextCell: { combo: 'tab', description: 'Move to the next cell', scope: 'data-grid' },
+	gridPrevCell: {
+		combo: 'shift+tab',
+		description: 'Move to the previous cell',
+		scope: 'data-grid'
+	},
+	gridClearCells: {
+		combo: 'backspace',
+		description: 'Clear selected cells',
+		scope: 'data-grid'
+	},
+	gridToggleRow: { combo: 'space', description: 'Toggle row selection', scope: 'data-grid' },
+	gridSelectRowRange: {
+		combo: 'shift+space',
+		description: 'Select rows from the last selected row',
+		scope: 'data-grid'
+	},
+	gridSortColumn: { combo: 's', description: 'Sort focused column', scope: 'data-grid' },
+	gridCopyCells: { combo: ['c', 'mod+c'], description: 'Copy cells', scope: 'data-grid' },
+	gridPasteCells: { combo: ['v', 'mod+v'], description: 'Paste cells', scope: 'data-grid' },
+	gridOpenCellMenu: {
+		combo: ['shift+f10', 'contextmenu'],
+		description: 'Open cell menu',
+		scope: 'data-grid'
 	}
 } as const satisfies Record<string, ShortcutDefinition>
 
@@ -338,6 +416,33 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'insertRow',
 		'exportTable',
 		'startLiveMonitor'
+	],
+	'Data Grid': [
+		'gridMoveUp',
+		'gridMoveDown',
+		'gridMoveLeft',
+		'gridMoveRight',
+		'gridJumpTop',
+		'gridJumpBottom',
+		'gridJumpRowStart',
+		'gridJumpRowEnd',
+		'gridExtendUp',
+		'gridExtendDown',
+		'gridExtendLeft',
+		'gridExtendRight',
+		'gridExtendTop',
+		'gridExtendBottom',
+		'gridExtendRowStart',
+		'gridExtendRowEnd',
+		'gridNextCell',
+		'gridPrevCell',
+		'gridClearCells',
+		'gridToggleRow',
+		'gridSelectRowRange',
+		'gridSortColumn',
+		'gridCopyCells',
+		'gridPasteCells',
+		'gridOpenCellMenu'
 	],
 	Global: ['save']
 }
@@ -471,15 +576,17 @@ export function findShortcutConflict(
 	return null
 }
 
+type ExceptCondition = ExceptPreset | ExceptPredicate | Array<ExceptPreset | ExceptPredicate>
+
 type BoundShortcutState = {
-	except?: ExceptPreset | ExceptPreset[] | ExceptPredicate
+	except?: ExceptCondition
 	scopes?: ShortcutScope
 }
 
 type BoundShortcutChain = {
 	on: (handler: ShortcutHandler, options?: HandlerOptions) => ShortcutResult
 	handle: (options: HandlerOptions & { handler: ShortcutHandler }) => ShortcutResult
-	except: (condition: ExceptPreset | ExceptPreset[] | ExceptPredicate) => BoundShortcutChain
+	except: (condition: ExceptCondition) => BoundShortcutChain
 	in: (scopes: ShortcutScope) => BoundShortcutChain
 }
 
@@ -520,10 +627,7 @@ function mergeScopes(a?: ShortcutScope, b?: ShortcutScope): ShortcutScope | unde
 	return Array.from(new Set(mergedScopes))
 }
 
-function evaluateExceptCondition(
-	event: KeyboardEvent,
-	condition: ExceptPreset | ExceptPreset[] | ExceptPredicate
-): boolean {
+function evaluateExceptCondition(event: KeyboardEvent, condition: ExceptCondition): boolean {
 	if (typeof condition === 'function') {
 		return condition(event)
 	}
@@ -562,9 +666,9 @@ function evaluateExceptCondition(
 }
 
 function mergeExceptConditions(
-	a?: ExceptPreset | ExceptPreset[] | ExceptPredicate,
-	b?: ExceptPreset | ExceptPreset[] | ExceptPredicate
-): ExceptPreset | ExceptPreset[] | ExceptPredicate | undefined {
+	a?: ExceptCondition,
+	b?: ExceptCondition
+): ExceptCondition | undefined {
 	if (!a) return b
 	if (!b) return a
 

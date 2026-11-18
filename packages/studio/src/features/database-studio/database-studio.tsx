@@ -31,6 +31,7 @@ import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
 import { DataGrid } from './components/data-grid'
+import { isDataGridEvent } from './components/data-grid/grid-events'
 import type { ContextMenuState } from './components/data-grid'
 import { DeleteRowsDialog } from './components/delete-rows-dialog'
 import { DropTableDialog } from './components/drop-table-dialog'
@@ -726,7 +727,7 @@ export function DatabaseStudio({
 
 	$.bind(shortcuts.deleteRows.combo)
 		.in('data-grid')
-		.except('typing')
+		.except(['typing', isDataGridEvent])
 		.on(
 			function () {
 				if (rowsForActions.size > 0) {
@@ -738,6 +739,7 @@ export function DatabaseStudio({
 
 	$.bind(shortcuts.deselect.combo)
 		.in('data-grid')
+		.except(isDataGridEvent)
 		.on(
 			function () {
 				setSelectedRows((current) => (current.size === 0 ? current : new Set()))

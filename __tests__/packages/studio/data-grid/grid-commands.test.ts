@@ -1,0 +1,105 @@
+import { describe, expect, it } from 'vitest'
+import { APP_SHORTCUTS, getEffectiveShortcuts } from '@studio/core/shortcuts'
+import {
+	GRID_COMMANDS,
+	SEQUENCE_TIMEOUT_MS,
+	buildGridKeymap,
+	getSequencePrefixes,
+	isBareKey,
+	isSequenceContinuation,
+	resolveGridCommand
+} from '@studio/features/database-studio/components/data-grid/grid-commands'
+
+function keydown(key: string, init: KeyboardEventInit = {}) {
+	return new KeyboardEvent('keydown', { key, ...init })
+}
+
+describe('GRID_COMMANDS', function () {
+	it('registers every command in the data-grid scope of the shortcut registry', function () {
+		for (const command of GRID_COMMANDS) {
+			expect(APP_SHORTCUTS[command.id].scope).toBe('data-grid')
+		}
+	})
+
+	it('lists each command once', function () {
+		const ids = GRID_COMMANDS.map(function (command) {
+			return command.id
+		})
+		expect(new Set(ids).size).toBe(ids.length)
+	})
+})
+
+describe('resolveGridCommand', function () {
+	const keymap = buildGridKeymap(getEffectiveShortcuts())
+
+	it('matches the default combos', function () {
+		expect(resolveGridCommand(keydown('ArrowDown'), keymap, true)?.id).toBe('gridMoveDown')
+		expect(resolveGridCommand(keydown('ArrowDown', { shiftKey: true }), keymap, true)?.id).toBe(
+			'gridExtendDown'
+		)
+		expect(resolveGridCommand(keydown('ArrowDown', { ctrlKey: true }), keymap, true)?.id).toBe(
+			'gridJumpBottom'
+		)
+		expect(resolveGridCommand(keydown('F2'), keymap, true)?.id).toBe('editCell')
+		expect(resolveGridCommand(keydown(' '), keymap, true)?.id).toBe('gridToggleRow')
+		expect(resolveGridCommand(keydown('F10', { shiftKey: true }), keymap, true)?.id).toBe(
+			'gridOpenCellMenu'
+		)
+		expect(resolveGridCommand(keydown('ContextMenu'), keymap, true)?.id).toBe(
+			'gridOpenCellMenu'
+		)
+	})
+
+	it('requires the exact modifiers of a combo', function () {
+		expect(resolveGridCommand(keydown('Enter', { ctrlKey: true }), keymap, true)).toBeNull()
+		expect(resolveGridCommand(keydown('Delete', { ctrlKey: true }), keymap, true)).toBeNull()
+		expect(resolveGridCommand(keydown('F10'), keymap, true)).toBeNull()
+	})
+
+	it('skips cell commands while no cell is focused', function () {
+		expect(resolveGridCommand(keydown('s'), keymap, false)).toBeNull()
+		expect(resolveGridCommand(keydown('a', { ctrlKey: true }), keymap, false)?.id).toBe(
+			'selectAll'
+		)
+		expect(resolveGridCommand(keydown('Escape'), keymap, false)?.id).toBe('deselect')
+	})
+
+	it('follows a user remap from the registry', function () {
+		const remapped = buildGridKeymap(getEffectiveShortcuts({ gridSortColumn: 'x' }))
+		expect(resolveGridCommand(keydown('x'), remapped, true)?.id).toBe('gridSortColumn')
+		expect(resolveGridCommand(keydown('s'), remapped, true)).toBeNull()
+	})
+})
+
+describe('getSequencePrefixes', function () {
+	it('collects the first key of chords written with a space or with then', function () {
+		expect(
+			getSequencePrefixes({
+				a: { combo: 'g d' },
+				b: { combo: ['mod+k', 'x then y'] },
+				c: { combo: 'mod+shift+p' }
+			})
+		).toEqual(new Set(['g', 'x']))
+	})
+
+	it('finds the go-to chords of the default registry', function () {
+		expect(getSequencePrefixes(APP_SHORTCUTS)).toEqual(new Set(['g']))
+	})
+})
+
+describe('isSequenceContinuation', function () {
+	it('is true only inside the sequence timeout', function () {
+		expect(isSequenceContinuation(null, 100)).toBe(false)
+		expect(isSequenceContinuation(100, 100 + SEQUENCE_TIMEOUT_MS)).toBe(true)
+		expect(isSequenceContinuation(100, 101 + SEQUENCE_TIMEOUT_MS)).toBe(false)
+	})
+})
+
+describe('isBareKey', function () {
+	it('accepts lone printable keys and rejects named or modified ones', function () {
+		expect(isBareKey(keydown('g'))).toBe(true)
+		expect(isBareKey(keydown('G', { shiftKey: true }))).toBe(true)
+		expect(isBareKey(keydown('g', { ctrlKey: true }))).toBe(false)
+		expect(isBareKey(keydown('Enter'))).toBe(false)
+	})
+})

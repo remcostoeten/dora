@@ -19,6 +19,7 @@ import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
 import { NoColumnsState } from './data-grid/empty-states'
 import { GridBody } from './data-grid/grid-body'
 import { GridContextMenu, useGridContextMenu } from './data-grid/grid-context-menu'
+import { isDataGridEvent } from './data-grid/grid-events'
 import { GridHeader } from './data-grid/grid-header'
 import { getCellId, getCellsInRectangle } from './data-grid/selection'
 import { CellPosition, ContextMenuState } from './data-grid/types'
@@ -293,13 +294,12 @@ export const DataGrid = memo(function DataGrid({
 		[isDragging]
 	)
 
-	/* ... existing code ... */
 	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
 
 	$.bind(shortcuts.selectAll.combo)
 		.in('data-grid')
-		.except('typing')
+		.except(['typing', isDataGridEvent])
 		.on(
 			function () {
 				onSelectAll(!allSelected)
@@ -309,7 +309,7 @@ export const DataGrid = memo(function DataGrid({
 
 	$.bind(shortcuts.deselect.combo)
 		.in('data-grid')
-		.except('typing')
+		.except(['typing', isDataGridEvent])
 		.on(
 			function () {
 				if (selectedRows.size > 0) {
@@ -353,6 +353,7 @@ export const DataGrid = memo(function DataGrid({
 		selectedRows,
 		setAnchorCell,
 		setFocusedCell,
+		shortcuts,
 		startCellEdit: handleCellDoubleClick,
 		updateCellSelection
 	})
@@ -437,6 +438,7 @@ export const DataGrid = memo(function DataGrid({
 						aria-readonly={masked || !onCellEdit}
 						tabIndex={0}
 						onKeyDown={handleGridKeyDown}
+						data-dora-grid=''
 					>
 						<colgroup>
 							<col style={{ width: 30, minWidth: 30 }} />
