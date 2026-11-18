@@ -1,5 +1,6 @@
-import { useReactFlow, useViewport } from '@xyflow/react'
+import { useReactFlow, useStoreApi } from '@xyflow/react'
 import { Maximize, Minus, Plus } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 export type EdgeStyle = 'flow' | 'dashed' | 'solid'
 
@@ -9,6 +10,35 @@ type Props = {
 	editMode: boolean
 	onResetLayout: () => void
 	onFit: () => void
+}
+
+const ZOOM_SETTLE_MS = 120
+
+function toPercent(zoom: number) {
+	return Math.round(zoom * 100)
+}
+
+function useSettledZoomPercent() {
+	const store = useStoreApi()
+	const [percent, setPercent] = useState(() => toPercent(store.getState().transform[2]))
+
+	useEffect(() => {
+		let timer: number | undefined
+		const unsubscribe = store.subscribe((state, previous) => {
+			if (state.transform[2] === previous.transform[2]) return
+			window.clearTimeout(timer)
+			timer = window.setTimeout(
+				() => setPercent(toPercent(store.getState().transform[2])),
+				ZOOM_SETTLE_MS
+			)
+		})
+		return () => {
+			window.clearTimeout(timer)
+			unsubscribe()
+		}
+	}, [store])
+
+	return percent
 }
 
 const EDGE_STYLE_LABEL: Record<EdgeStyle, string> = {
@@ -24,7 +54,7 @@ export function SchemaZoombar({
 	onResetLayout,
 	onFit
 }: Props) {
-	const { zoom } = useViewport()
+	const zoomPercent = useSettledZoomPercent()
 	const reactFlow = useReactFlow()
 
 	return (
@@ -44,7 +74,7 @@ export function SchemaZoombar({
 				title='Reset to 100% (0)'
 				onClick={() => reactFlow.zoomTo(1, { duration: 200 })}
 			>
-				{Math.round(zoom * 100)}%
+				{zoomPercent}%
 			</button>
 			<button
 				type='button'

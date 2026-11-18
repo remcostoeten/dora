@@ -1,6 +1,4 @@
 import {
-	Background,
-	BackgroundVariant,
 	type EdgeTypes,
 	MiniMap,
 	ReactFlow,
@@ -35,6 +33,7 @@ import { SchemaVisualizerCanvasLoadingState } from '@studio/shared/ui/view-loadi
 import { cn } from '@studio/shared/utils/cn'
 import { getTableRefId } from '@studio/shared/utils/table-ref'
 import { RelationshipEdge } from './components/relationship-edge'
+import { SchemaDots } from './components/schema-dots'
 import { SchemaDetailsPanel, type DetailsTab } from './components/schema-details-panel'
 import { SchemaExportPreviewDialog } from './components/schema-export-preview-dialog'
 import { SchemaTableNav } from './components/schema-table-nav'
@@ -225,6 +224,7 @@ function buildDiagramSvg(
 }
 
 const FIT_OPTIONS = { padding: 0.12, duration: 220 }
+const CULLING_NODE_THRESHOLD = 60
 const EDGE_STYLES: EdgeStyle[] = ['flow', 'dashed', 'solid']
 const PREFS_KEY = 'dora:schema-visualizer:prefs'
 
@@ -336,6 +336,7 @@ function SchemaVisualizerInner({
 	const reactFlow = useReactFlow<Node<TableNodeData>, Edge<RelationshipEdgeData>>()
 	const { toast } = useToast()
 	const rootRef = useRef<HTMLDivElement>(null)
+	const canvasRef = useRef<HTMLDivElement>(null)
 	const colorScheme = useColorScheme()
 	const searchInputRef = useRef<HTMLInputElement>(null)
 	const [schema, setSchema] = useState<DatabaseSchema | null>(null)
@@ -636,6 +637,10 @@ function SchemaVisualizerInner({
 		return () => window.removeEventListener('keydown', onKeyDown)
 	}, [])
 
+	function setCanvasMoving(isMoving: boolean) {
+		canvasRef.current?.classList.toggle('sv-canvas--moving', isMoving)
+	}
+
 	function handleExportSvg() {
 		downloadTextFile(
 			'schema-diagram.svg',
@@ -858,6 +863,7 @@ function SchemaVisualizerInner({
 				)}
 
 				<div
+					ref={canvasRef}
 					className={cn('sv-canvas', editMode && 'sv-canvas--editing')}
 					data-edges={prefs.edgeStyle}
 				>
@@ -892,16 +898,20 @@ function SchemaVisualizerInner({
 								setActiveTableId(node.id)
 								onSelectTable?.(node.data.tableId, node.data.tableName)
 							}}
-							onNodeDragStop={(_, __, nextNodes) =>
+							onNodeDragStart={() => setCanvasMoving(true)}
+							onNodeDragStop={(_, __, nextNodes) => {
+								setCanvasMoving(false)
 								handlePersistNodePositions(nextNodes ?? [])
-							}
+							}}
+							onMoveStart={() => setCanvasMoving(true)}
+							onMoveEnd={() => setCanvasMoving(false)}
 							onPaneClick={clearSelection}
 							nodeTypes={NODE_TYPES}
 							edgeTypes={EDGE_TYPES}
 							nodesDraggable={editMode}
 							nodesConnectable={false}
 							elementsSelectable={false}
-							onlyRenderVisibleElements
+							onlyRenderVisibleElements={nodes.length > CULLING_NODE_THRESHOLD}
 							fitView
 							fitViewOptions={{ padding: 0.12 }}
 							minZoom={0.1}
@@ -909,7 +919,7 @@ function SchemaVisualizerInner({
 							proOptions={{ hideAttribution: true }}
 							colorMode={colorScheme}
 						>
-							<Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+							<SchemaDots />
 							<SchemaZoombar
 								edgeStyle={prefs.edgeStyle}
 								onCycleEdgeStyle={cycleEdgeStyle}

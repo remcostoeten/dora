@@ -27,7 +27,7 @@ import { WorkspaceUrlSync } from './workspace-url-sync'
 import { WorkspaceViewsHost } from './workspace-views-host'
 
 /** Views that render the database panel alongside them. */
-const VIEWS_WITH_DATABASE_PANEL = new Set(['sql-console', 'database-studio', 'schema-visualizer'])
+const VIEWS_WITH_DATABASE_PANEL = new Set(['sql-console', 'database-studio'])
 
 const UrlSync = memo(WorkspaceUrlSync)
 const ViewsHost = memo(WorkspaceViewsHost)

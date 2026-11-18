@@ -1681,9 +1681,7 @@
 	border: 1px solid var(--sv-border);
 	border-radius: 8px;
 	background: hsl(var(--card));
-	box-shadow:
-		0 1px 0 rgb(0 0 0 / 0.4),
-		0 10px 28px -14px rgb(0 0 0 / 0.8);
+	box-shadow: 0 1px 0 rgb(0 0 0 / 0.4);
 	transition: opacity 160ms var(--ease-out);
 }
 
@@ -1889,20 +1887,24 @@
 	}
 }
 
-.sv-canvas[data-edges='flow'] .sv-edge__line {
-	animation: sv-edge-flow 1.4s linear infinite;
-}
-
 .sv-canvas[data-edges='flow'] .sv-edge--active .sv-edge__line {
-	animation-duration: 0.7s;
+	animation: sv-edge-flow 0.7s linear infinite;
 }
 
 .sv-canvas[data-edges='flow'] .sv-edge--active .sv-edge__packet {
 	opacity: 1;
 }
 
-.sv-canvas[data-edges='flow'] .sv-edge--dim .sv-edge__line {
+.sv-canvas--moving .sv-edge__line {
 	animation-play-state: paused;
+}
+
+.sv-canvas--moving .sv-edge__packet {
+	display: none;
+}
+
+.sv-canvas--moving .sv-dots {
+	visibility: hidden;
 }
 
 .sv-canvas[data-edges='solid'] .sv-edge__line {
@@ -1914,12 +1916,16 @@
 }
 
 
-.schema-visualizer .react-flow__background {
-	color: hsl(var(--foreground) / 0.075);
-}
-
-.schema-visualizer .react-flow__background-pattern circle {
-	fill: hsl(var(--foreground) / 0.075);
+.sv-dots {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+	background-image: radial-gradient(
+		circle,
+		hsl(var(--foreground) / 0.075) var(--sv-dot-radius, 0.6px),
+		transparent calc(var(--sv-dot-radius, 0.6px) + 0.5px)
+	);
 }
 
 .schema-visualizer .react-flow__attribution {
@@ -2669,7 +2675,7 @@ button.sv-check:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.sv-canvas[data-edges='flow'] .sv-edge__line {
+	.sv-canvas[data-edges='flow'] .sv-edge--active .sv-edge__line {
 		animation: none;
 	}
 
