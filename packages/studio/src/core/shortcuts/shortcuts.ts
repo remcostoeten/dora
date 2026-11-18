@@ -334,12 +334,12 @@ export const APP_SHORTCUTS = {
 		scope: 'data-grid'
 	},
 	gridExtendRowStart: {
-		combo: 'mod+shift+left',
+		combo: ['mod+shift+left', 'shift+home'],
 		description: 'Extend selection to the first column',
 		scope: 'data-grid'
 	},
 	gridExtendRowEnd: {
-		combo: 'mod+shift+right',
+		combo: ['mod+shift+right', 'shift+end'],
 		description: 'Extend selection to the last column',
 		scope: 'data-grid'
 	},
@@ -354,10 +354,35 @@ export const APP_SHORTCUTS = {
 		description: 'Clear selected cells',
 		scope: 'data-grid'
 	},
-	gridToggleRow: { combo: 'space', description: 'Toggle row selection', scope: 'data-grid' },
-	gridSelectRowRange: {
+	gridToggleRow: { combo: 'space', description: 'Check or uncheck rows', scope: 'data-grid' },
+	gridSelectRowCells: {
 		combo: 'shift+space',
-		description: 'Select rows from the last selected row',
+		description: 'Select every cell in the row',
+		scope: 'data-grid'
+	},
+	gridSelectColumnCells: {
+		combo: 'ctrl+space',
+		description: 'Select every cell in the column',
+		scope: 'data-grid'
+	},
+	gridExtendPageUp: {
+		combo: 'shift+pageup',
+		description: 'Extend selection up one screen',
+		scope: 'data-grid'
+	},
+	gridExtendPageDown: {
+		combo: 'shift+pagedown',
+		description: 'Extend selection down one screen',
+		scope: 'data-grid'
+	},
+	gridExtendFirstCell: {
+		combo: 'mod+shift+home',
+		description: 'Extend selection to the first cell',
+		scope: 'data-grid'
+	},
+	gridExtendLastCell: {
+		combo: 'mod+shift+end',
+		description: 'Extend selection to the last cell',
 		scope: 'data-grid'
 	},
 	gridSortColumn: { combo: 's', description: 'Sort focused column', scope: 'data-grid' },
@@ -464,7 +489,12 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gridPrevCell',
 		'gridClearCells',
 		'gridToggleRow',
-		'gridSelectRowRange',
+		'gridSelectRowCells',
+		'gridSelectColumnCells',
+		'gridExtendPageUp',
+		'gridExtendPageDown',
+		'gridExtendFirstCell',
+		'gridExtendLastCell',
 		'gridSortColumn',
 		'gridCopyCells',
 		'gridPasteCells',
