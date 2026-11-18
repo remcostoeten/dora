@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type React from 'react'
 import type { ShortcutDefinition, ShortcutName } from '@studio/core/shortcuts'
 import { ColumnDefinition } from '../../types'
+import type { RowAction } from '../row-context-menu'
 import {
 	buildGridKeymap,
 	getSequencePrefixes,
@@ -10,6 +11,7 @@ import {
 	resolveGridCommand,
 	type GridCommandContext
 } from './grid-commands'
+import type { CellEdit, GridNotice } from './grid-edits'
 import { isTextEntryEvent } from './grid-events'
 import { clampToBounds } from './grid-navigation'
 import { getCellKey, getCellsInRectangle } from './selection'
@@ -18,15 +20,24 @@ import { CellPosition, EditingCell } from './types'
 type UseGridKeyboardArgs = {
 	anchorCell: CellPosition | null
 	allSelected: boolean
+	applyCellEdits?: (edits: CellEdit[]) => void
 	columns: ColumnDefinition[]
 	editingCell: EditingCell | null
 	focusedCell: CellPosition | null
 	getPageSize: () => number
 	lastClickedRowRef: React.MutableRefObject<number | null>
 	masked?: boolean
-	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
+	notify: (notice: GridNotice) => void
 	onDeleteSelectedRows?: () => void
+	onInsertRow?: (rowIndex: number, position: 'above' | 'below') => void
 	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
+	onOpenRowMenu?: (rowIndex: number) => void
+	onRowAction?: (
+		action: RowAction,
+		row: Record<string, unknown>,
+		rowIndex: number,
+		batchIndexes?: number[]
+	) => void
 	onPageChange?: (direction: 'next' | 'prev') => void
 	onSortColumn?: (columnName: string) => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
@@ -55,16 +66,20 @@ const INITIAL_FOCUS_KEYS = new Set([
 export function useGridKeyboard({
 	anchorCell,
 	allSelected,
+	applyCellEdits,
 	columns,
 	editingCell,
 	focusedCell,
 	getPageSize,
 	lastClickedRowRef,
 	masked,
-	onCellEdit,
+	notify,
 	onDeleteSelectedRows,
+	onInsertRow,
 	onOpenCellMenu,
+	onOpenRowMenu,
 	onPageChange,
+	onRowAction,
 	onSortColumn,
 	onRowsSelect,
 	onRowSelect,
@@ -177,13 +192,17 @@ export function useGridKeyboard({
 				rows,
 				selectedCellsSet,
 				selectedRows,
+				applyCellEdits,
 				cancelPendingNavigation,
 				getPageSize,
 				moveTo,
-				onCellEdit,
+				notify,
 				onDeleteSelectedRows,
+				onInsertRow,
 				onOpenCellMenu,
+				onOpenRowMenu,
 				onPageChange,
+				onRowAction,
 				onRowSelect,
 				onRowsSelect,
 				onSelectAll,
@@ -202,6 +221,7 @@ export function useGridKeyboard({
 		[
 			anchorCell,
 			allSelected,
+			applyCellEdits,
 			columns,
 			editingCell,
 			focusedCell,
@@ -209,10 +229,13 @@ export function useGridKeyboard({
 			keymap,
 			lastClickedRowRef,
 			masked,
-			onCellEdit,
+			notify,
 			onDeleteSelectedRows,
+			onInsertRow,
 			onOpenCellMenu,
+			onOpenRowMenu,
 			onPageChange,
+			onRowAction,
 			onSortColumn,
 			onRowsSelect,
 			onRowSelect,

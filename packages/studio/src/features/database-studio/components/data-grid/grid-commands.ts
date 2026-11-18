@@ -6,8 +6,18 @@ import {
 	type ShortcutName
 } from '@studio/core/shortcuts'
 import { ColumnDefinition } from '../../types'
-import { getColumnDefault } from '../../utils/studio-data'
-import { copySelectionToClipboard, getCellsToClear, pasteClipboardIntoGrid } from './grid-clipboard'
+import type { RowAction } from '../row-context-menu'
+import { copySelectionToClipboard, getCellsToClear, readClipboardGrid } from './grid-clipboard'
+import {
+	describePasteDrop,
+	describeSetNullRefusal,
+	planClear,
+	planFillDown,
+	planPaste,
+	planSetNull,
+	type CellEdit,
+	type GridNotice
+} from './grid-edits'
 import {
 	getEdgeTarget,
 	getPageTarget,
@@ -33,10 +43,19 @@ export type GridCommandContext = {
 	rows: Record<string, unknown>[]
 	selectedCellsSet: Set<string>
 	selectedRows: Set<number>
+	applyCellEdits?: (edits: CellEdit[]) => void
 	cancelPendingNavigation: () => void
 	getPageSize: () => number
 	moveTo: (target: CellPosition, extend: boolean) => void
-	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
+	notify: (notice: GridNotice) => void
+	onInsertRow?: (rowIndex: number, position: 'above' | 'below') => void
+	onOpenRowMenu?: (rowIndex: number) => void
+	onRowAction?: (
+		action: RowAction,
+		row: Record<string, unknown>,
+		rowIndex: number,
+		batchIndexes?: number[]
+	) => void
 	onDeleteSelectedRows?: () => void
 	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
 	onPageChange?: (direction: 'next' | 'prev') => void
@@ -149,12 +168,54 @@ function editFocusedCell(context: GridCommandContext, cell: CellPosition) {
 }
 
 function clearSelectedCells(context: GridCommandContext, cell: CellPosition) {
-	if (!context.onCellEdit) return
-	for (const target of getCellsToClear(context.selectedCellsSet, cell)) {
-		const column = context.columns[target.col]
-		if (!column || column.primaryKey || !context.rows[target.row]) continue
-		context.onCellEdit(target.row, column.name, getColumnDefault(column))
+	if (!context.applyCellEdits) return 'pass'
+	const cells = getCellsToClear(context.selectedCellsSet, cell)
+	context.applyCellEdits(planClear(cells, context.columns, context.rows))
+}
+
+function setSelectedCellsNull(context: GridCommandContext, cell: CellPosition) {
+	if (!context.applyCellEdits) return 'pass'
+	const cells = getCellsToClear(context.selectedCellsSet, cell)
+	const plan = planSetNull(cells, context.columns, context.rows)
+	const refusal = describeSetNullRefusal(plan.refusedColumns)
+	if (refusal) context.notify({ level: 'warning', message: refusal })
+	if (plan.edits.length > 0) context.applyCellEdits(plan.edits)
+}
+
+function fillDown(context: GridCommandContext, cell: CellPosition) {
+	if (!context.applyCellEdits) return 'pass'
+	const edits = planFillDown(context.selectedCellsSet, cell, context.columns, context.rows)
+	if (edits.length === 0) {
+		context.notify({ level: 'info', message: 'Nothing to fill down' })
+		return
 	}
+	context.applyCellEdits(edits)
+}
+
+function runRowAction(action: RowAction, includeSelection: boolean): CellRun {
+	return function (context, cell) {
+		const row = context.rows[cell.row]
+		if (!context.onRowAction || !row) return 'pass'
+		const isBatch =
+			includeSelection && context.selectedRows.size > 1 && context.selectedRows.has(cell.row)
+		context.onRowAction(
+			action,
+			row,
+			cell.row,
+			isBatch ? Array.from(context.selectedRows) : undefined
+		)
+	}
+}
+
+function insertRowCommand(id: ShortcutName, position: 'above' | 'below'): GridCommand {
+	return cellCommand(
+		id,
+		function (context, cell) {
+			if (!context.onInsertRow) return 'pass'
+			context.onInsertRow(cell.row, position)
+		},
+		{ blockedByMask: true }
+	)
 }
 
 function deselectProgressively(context: GridCommandContext) {
@@ -196,8 +257,15 @@ function selectColumnCells(context: GridCommandContext, cell: CellPosition) {
 }
 
 function pasteIntoFocusedCell(context: GridCommandContext, cell: CellPosition) {
-	if (!context.onCellEdit) return 'pass'
-	pasteClipboardIntoGrid(cell, context.rows.length, context.columns, context.onCellEdit)
+	const applyCellEdits = context.applyCellEdits
+	if (!applyCellEdits) return 'pass'
+	readClipboardGrid().then((pasteRows) => {
+		if (!pasteRows) return
+		const plan = planPaste(pasteRows, cell, context.rows.length, context.columns)
+		const dropped = describePasteDrop(plan)
+		if (dropped) context.notify({ level: 'warning', message: dropped })
+		if (plan.edits.length > 0) applyCellEdits(plan.edits)
+	})
 }
 
 export const GRID_COMMANDS: readonly GridCommand[] = [
@@ -248,6 +316,20 @@ export const GRID_COMMANDS: readonly GridCommand[] = [
 		},
 		{ blockedByMask: true }
 	),
+	cellCommand(
+		'gridOpenRowMenu',
+		function (context, cell) {
+			context.onOpenRowMenu?.(cell.row)
+		},
+		{ blockedByMask: true }
+	),
+	cellCommand('gridEditRow', runRowAction('edit', false), { blockedByMask: true }),
+	cellCommand('gridViewRow', runRowAction('view', false), { blockedByMask: true }),
+	cellCommand('gridDuplicateRow', runRowAction('duplicate', true), { blockedByMask: true }),
+	insertRowCommand('insertRow', 'below'),
+	insertRowCommand('gridInsertRowAbove', 'above'),
+	cellCommand('gridSetNull', setSelectedCellsNull, { blockedByMask: true }),
+	cellCommand('gridFillDown', fillDown, { blockedByMask: true }),
 	cellCommand('gridClearCells', clearSelectedCells, { blockedByMask: true }),
 	gridCommand('deselect', deselectProgressively),
 	cellCommand('gridToggleRow', toggleSelectionRows),

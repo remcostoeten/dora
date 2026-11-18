@@ -117,9 +117,11 @@ describe('DataGrid keyboard', function () {
 		await focusFirstCell(user)
 		await user.keyboard('{Shift>}{ArrowRight}{ArrowRight}{/Shift}{Backspace}')
 
-		expect(spies.onCellEdit).toHaveBeenCalledTimes(2)
-		expect(spies.onCellEdit).toHaveBeenCalledWith(0, 'name', '')
-		expect(spies.onCellEdit).toHaveBeenCalledWith(0, 'email', null)
+		expect(spies.onCellsEdit).toHaveBeenCalledTimes(1)
+		expect(spies.onCellsEdit).toHaveBeenCalledWith([
+			{ rowIndex: 0, columnName: 'name', value: '' },
+			{ rowIndex: 0, columnName: 'email', value: null }
+		])
 	})
 
 	it('toggles the focused row with Space', async function () {
@@ -191,6 +193,7 @@ describe('DataGrid keyboard', function () {
 		expect(getActiveCell()).toHaveAttribute('data-cell-key', '0:1')
 		expect(screen.queryByRole('textbox')).toBeNull()
 		expect(spies.onCellEdit).not.toHaveBeenCalled()
+		expect(spies.onCellsEdit).not.toHaveBeenCalled()
 		expect(spies.onDeleteSelectedRows).not.toHaveBeenCalled()
 	})
 

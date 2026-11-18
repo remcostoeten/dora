@@ -19,7 +19,12 @@ export function createPeople(count: number): Record<string, unknown>[] {
 
 export function createGridSpies() {
 	return {
+		onBatchCellEdit: vi.fn(),
 		onCellEdit: vi.fn(),
+		onCellsEdit: vi.fn(),
+		onInsertRow: vi.fn(),
+		onNotify: vi.fn(),
+		onRowAction: vi.fn(),
 		onDeleteSelectedRows: vi.fn(),
 		onFocusedCellChange: vi.fn(),
 		onPageChange: vi.fn(),
@@ -84,6 +89,11 @@ export function GridHarness({ spies, rows, columns, ...overrides }: HarnessProps
 				setSort(next)
 			}}
 			onCellEdit={spies.onCellEdit}
+			onCellsEdit={spies.onCellsEdit}
+			onBatchCellEdit={spies.onBatchCellEdit}
+			onRowAction={spies.onRowAction}
+			onInsertRow={spies.onInsertRow}
+			onNotify={spies.onNotify}
 			onDeleteSelectedRows={spies.onDeleteSelectedRows}
 			{...overrides}
 		/>

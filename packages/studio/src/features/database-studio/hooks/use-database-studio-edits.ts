@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
 import { createEditKey } from '@studio/core/pending-edits/pending-edits-store'
+import { resolveCellChanges, type RequestedCellEdit } from '../utils/cell-changes'
 import { patchSnapshotRows } from '../utils/table-snapshot'
 import { normalizeValueForInsert } from '../utils/studio-data'
 import type { TableData } from '../types'
@@ -354,47 +355,44 @@ export function useDatabaseStudioEdits(args: Args) {
 		loadTableData()
 	}
 
-	async function handleBatchCellEdit(
-		rowIndexes: number[],
-		columnName: string,
-		newValue: unknown
-	) {
+	async function handleCellsEdit(edits: RequestedCellEdit[]) {
 		if (!tableId || !activeConnectionId || !tableData) return
 
 		const primaryKeyColumn = tableData.columns.find(function (c) {
 			return c.primaryKey
 		})
 		if (!primaryKeyColumn) {
-			notifyMissingPrimaryKey('apply bulk edits')
+			notifyMissingPrimaryKey('edit cells')
 			return
 		}
 
-		const cellsToTrack = rowIndexes.map(function (rowIndex) {
-			const row = tableData.rows[rowIndex]
-			return {
-				primaryKeyValue: row[primaryKeyColumn.name],
-				columnName,
-				previousValue: row[columnName],
-				newValue
-			}
-		})
+		const primaryKeyColumnName = primaryKeyColumn.name
+		const changes = resolveCellChanges(edits, tableData, primaryKeyColumnName)
+		if (changes.length === 0) return
 
-		const editedPrimaryKeyValues = new Set(
-			cellsToTrack.map(function (cell) {
-				return cell.primaryKeyValue
-			})
-		)
+		if (isDryEditMode) {
+			for (const change of changes) {
+				handleCellEdit(change.rowIndex, change.columnName, change.requestedValue)
+			}
+			return
+		}
 
 		const snapshot = tableData
+		function applyChangesToRow(row: Record<string, unknown>) {
+			const matching = changes.filter(function (change) {
+				return row[primaryKeyColumnName] === change.primaryKeyValue
+			})
+			if (matching.length === 0) return row
+			const patched = { ...row }
+			for (const change of matching) {
+				patched[change.columnName] = change.newValue
+			}
+			return patched
+		}
+
 		setTableData(function (prev) {
 			if (!prev) return prev
-			const newRows = prev.rows.map(function (row) {
-				if (editedPrimaryKeyValues.has(row[primaryKeyColumn.name])) {
-					return { ...row, [columnName]: newValue }
-				}
-				return row
-			})
-			return { ...prev, rows: newRows }
+			return { ...prev, rows: prev.rows.map(applyChangesToRow) }
 		})
 
 		try {
@@ -402,11 +400,11 @@ export function useDatabaseStudioEdits(args: Args) {
 				connectionId: activeConnectionId,
 				tableName: tableRefName,
 				primaryKeyColumn: primaryKeyColumn.name,
-				cells: cellsToTrack.map(function (cell) {
+				cells: changes.map(function (change) {
 					return {
-						primaryKeyValue: cell.primaryKeyValue,
-						columnName: cell.columnName,
-						newValue: cell.newValue
+						primaryKeyValue: change.primaryKeyValue,
+						columnName: change.columnName,
+						newValue: change.newValue
 					}
 				})
 			})
@@ -415,27 +413,35 @@ export function useDatabaseStudioEdits(args: Args) {
 				activeConnectionId,
 				tableRefName,
 				primaryKeyColumn.name,
-				cellsToTrack
+				changes.map(function (change) {
+					return {
+						primaryKeyValue: change.primaryKeyValue,
+						columnName: change.columnName,
+						previousValue: change.previousValue,
+						newValue: change.newValue
+					}
+				})
 			)
-			// Keep the optimistic values on screen — no refetch (mirrors
-			// handleCellEdit). Patch the cached page so reopening the table later
-			// shows the new values instead of the stale pre-edit ones.
-			patchSnapshotRows(activeConnectionId, tableRefName, function (cachedRow) {
-				if (editedPrimaryKeyValues.has(cachedRow[primaryKeyColumn.name])) {
-					return { ...cachedRow, [columnName]: newValue }
-				}
-				return cachedRow
-			})
+			patchSnapshotRows(activeConnectionId, tableRefName, applyChangesToRow)
 		} catch (error) {
 			setTableData(snapshot)
 			notifyActionFailure('Failed to update cells', error)
 		}
 	}
 
+	function handleBatchCellEdit(rowIndexes: number[], columnName: string, newValue: unknown) {
+		return handleCellsEdit(
+			rowIndexes.map(function (rowIndex) {
+				return { rowIndex, columnName, value: newValue }
+			})
+		)
+	}
+
 	return {
 		handleCellEdit,
 		handleApplyPendingEdits,
 		handleDiscardPendingEdits,
-		handleBatchCellEdit
+		handleBatchCellEdit,
+		handleCellsEdit
 	}
 }

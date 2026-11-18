@@ -227,7 +227,7 @@ export const APP_SHORTCUTS = {
 		scope: 'data-grid'
 	},
 	deselect: {
-		combo: ['escape', 'mod+d'],
+		combo: 'escape',
 		description: 'Deselect all',
 		scope: 'data-grid'
 	},
@@ -257,8 +257,8 @@ export const APP_SHORTCUTS = {
 		scope: 'data-grid'
 	},
 	insertRow: {
-		combo: 'mod+shift+i',
-		description: 'Insert row',
+		combo: ['mod+shift+i', 'o', 'insert'],
+		description: 'Insert row below',
 		scope: 'data-grid'
 	},
 	exportTable: {
@@ -392,6 +392,30 @@ export const APP_SHORTCUTS = {
 		combo: ['shift+f10', 'contextmenu'],
 		description: 'Open cell menu',
 		scope: 'data-grid'
+	},
+	gridOpenRowMenu: {
+		combo: ['alt+shift+f10', 'shift+contextmenu'],
+		description: 'Open row menu',
+		scope: 'data-grid'
+	},
+	gridEditRow: { combo: 'alt+enter', description: 'Edit row', scope: 'data-grid' },
+	gridViewRow: { combo: 'shift+enter', description: 'View row details', scope: 'data-grid' },
+	gridDuplicateRow: { combo: 'mod+shift+d', description: 'Duplicate row', scope: 'data-grid' },
+	gridInsertRowAbove: {
+		combo: ['shift+o', 'shift+insert'],
+		description: 'Insert row above',
+		scope: 'data-grid'
+	},
+	gridSetNull: {
+		combo: 'mod+backspace',
+		description: 'Set selected cells to NULL',
+		scope: 'data-grid'
+	},
+	gridFillDown: { combo: 'mod+d', description: 'Fill down', scope: 'data-grid' },
+	gridFillSelection: {
+		combo: 'mod+shift+enter',
+		description: 'Commit the edit into all selected cells',
+		scope: 'data-grid'
 	}
 } as const satisfies Record<string, ShortcutDefinition>
 
@@ -498,7 +522,15 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gridSortColumn',
 		'gridCopyCells',
 		'gridPasteCells',
-		'gridOpenCellMenu'
+		'gridOpenCellMenu',
+		'gridOpenRowMenu',
+		'gridEditRow',
+		'gridViewRow',
+		'gridDuplicateRow',
+		'gridInsertRowAbove',
+		'gridSetNull',
+		'gridFillDown',
+		'gridFillSelection'
 	],
 	Global: ['save']
 }
