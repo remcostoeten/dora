@@ -268,13 +268,12 @@ impl WriteAdapter for DuckDbAdapter {
         let column = soft_delete_column.ok_or_else(|| {
             Error::InvalidInput("soft_delete_column is required for adapter dispatch".into())
         })?;
-        let deleted_at = chrono::Utc::now().timestamp();
         if pk_values.is_empty() {
             return Ok(SoftDeleteResult {
                 success: true,
                 affected_rows: 0,
                 message: Some("No rows to soft delete".to_string()),
-                deleted_at,
+                deleted_at: chrono::Utc::now().timestamp(),
                 undo_window_seconds: 30,
             });
         }
@@ -294,6 +293,7 @@ impl WriteAdapter for DuckDbAdapter {
         let params: Vec<duckdb::types::Value> =
             pk_values.iter().map(json_to_duckdb_value).collect();
         let affected = conn.execute(&query, duckdb::params_from_iter(params.iter()))?;
+        let deleted_at = chrono::Utc::now().timestamp();
 
         Ok(SoftDeleteResult {
             success: affected > 0,
