@@ -4,6 +4,7 @@ import { useConnections, useSchemaRowCountListener } from '@studio/core/data-pro
 import { ENV_MODE, getEnv } from '@studio/core/env'
 import { useSettings } from '@studio/core/settings'
 import {
+	closeConnection,
 	hydrateTabSession,
 	openTab,
 	readWorkspace,
@@ -106,7 +107,7 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 				connectionInitializedRef.current = true
 			}
 
-			if (urlConnection) {
+			if (urlConnection && connectionIds.includes(urlConnection)) {
 				selectStartupConnection(urlConnection)
 				return
 			}
@@ -166,6 +167,24 @@ export function useWorkspaceStartup({ onFileDrop }: Args) {
 			settings.lastConnectionId,
 			settings.lastTableId
 		]
+	)
+
+	const previousConnectionIdsRef = useRef<string[] | null>(null)
+	useEffect(
+		function closeRemovedConnections() {
+			if (isConnectionsLoading) return
+			const previous = previousConnectionIdsRef.current
+			previousConnectionIdsRef.current = connectionIds
+			if (!previous) return
+
+			const { activeConnectionId, openConnectionIds } = readWorkspace().tabs
+			const shown = new Set([...openConnectionIds, activeConnectionId])
+			for (const connectionId of shown) {
+				if (!connectionId || connectionIds.includes(connectionId)) continue
+				if (previous.includes(connectionId)) closeConnection(connectionId)
+			}
+		},
+		[isConnectionsLoading, connectionIds]
 	)
 
 	useEffect(function applyPersistedZoom() {
