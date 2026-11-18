@@ -256,28 +256,94 @@ impl WriteAdapter for DuckDbAdapter {
 
     async fn soft_delete_rows(
         &self,
-        _table: String,
-        _schema: Option<String>,
-        _pk_column: String,
-        _pk_values: Vec<serde_json::Value>,
-        _soft_delete_column: Option<String>,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        pk_values: Vec<serde_json::Value>,
+        soft_delete_column: Option<String>,
     ) -> Result<SoftDeleteResult, Error> {
-        Err(Error::NotImplemented(
-            "WriteAdapter::soft_delete_rows for DuckDB",
-        ))
+        if self.is_read_only() {
+            return Err(read_only_error());
+        }
+        let column = soft_delete_column.ok_or_else(|| {
+            Error::InvalidInput("soft_delete_column is required for adapter dispatch".into())
+        })?;
+        if pk_values.is_empty() {
+            return Ok(SoftDeleteResult {
+                success: true,
+                affected_rows: 0,
+                message: Some("No rows to soft delete".to_string()),
+                deleted_at: chrono::Utc::now().timestamp(),
+                undo_window_seconds: 30,
+            });
+        }
+
+        let conn = self
+            .connection()
+            .lock()
+            .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
+        let placeholders: Vec<&str> = pk_values.iter().map(|_| "?").collect();
+        let query = format!(
+            "UPDATE {} SET {col} = CURRENT_TIMESTAMP WHERE {} IN ({}) AND {col} IS NULL",
+            qualified_table(schema.as_deref(), &table),
+            quote_ident(&pk_column),
+            placeholders.join(", "),
+            col = quote_ident(&column)
+        );
+        let params: Vec<duckdb::types::Value> =
+            pk_values.iter().map(json_to_duckdb_value).collect();
+        let affected = conn.execute(&query, duckdb::params_from_iter(params.iter()))?;
+        let deleted_at = chrono::Utc::now().timestamp();
+
+        Ok(SoftDeleteResult {
+            success: affected > 0,
+            affected_rows: affected,
+            message: Some(format!("Soft deleted {} row(s)", affected)),
+            deleted_at,
+            undo_window_seconds: 30,
+        })
     }
 
     async fn undo_soft_delete(
         &self,
-        _table: String,
-        _schema: Option<String>,
-        _pk_column: String,
-        _pk_values: Vec<serde_json::Value>,
-        _soft_delete_column: String,
+        table: String,
+        schema: Option<String>,
+        pk_column: String,
+        pk_values: Vec<serde_json::Value>,
+        soft_delete_column: String,
     ) -> Result<MutationResult, Error> {
-        Err(Error::NotImplemented(
-            "WriteAdapter::undo_soft_delete for DuckDB",
-        ))
+        if self.is_read_only() {
+            return Err(read_only_error());
+        }
+        if pk_values.is_empty() {
+            return Ok(MutationResult {
+                success: true,
+                affected_rows: 0,
+                message: Some("No rows to restore".to_string()),
+            });
+        }
+
+        let conn = self
+            .connection()
+            .lock()
+            .map_err(|_| Error::Internal("Mutex poisoned".into()))?;
+        let placeholders: Vec<&str> = pk_values.iter().map(|_| "?").collect();
+        let query = format!(
+            "UPDATE {} SET {} = NULL WHERE {} IN ({})",
+            qualified_table(schema.as_deref(), &table),
+            quote_ident(&soft_delete_column),
+            quote_ident(&pk_column),
+            placeholders.join(", ")
+        );
+        let params: Vec<duckdb::types::Value> =
+            pk_values.iter().map(json_to_duckdb_value).collect();
+        let affected = conn.execute(&query, duckdb::params_from_iter(params.iter()))?;
+
+        Ok(MutationResult {
+            success: affected > 0,
+            affected_rows: affected,
+            message: Some(format!("Restored {} row(s)", affected)),
+        })
     }
 
     async fn dump_database(&self, output_path: String) -> Result<DumpResult, Error> {
