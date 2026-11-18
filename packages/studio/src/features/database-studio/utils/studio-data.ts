@@ -318,8 +318,15 @@ export function splitSqlStatements(sql: string): string[] {
 	return statements
 }
 
-/** Renders a single value as a SQL literal for an INSERT statement. */
-function toSqlLiteral(value: unknown): string {
+/**
+ * @name toSqlLiteral
+ * @description Renders a single value as a SQL literal for generated
+ * statements. Strings and JSON are single-quoted with quotes doubled.
+ *
+ * @example
+ * toSqlLiteral("O'Brien") // "'O''Brien'"
+ */
+export function toSqlLiteral(value: unknown): string {
 	if (value === null || value === undefined) return 'NULL'
 	if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'NULL'
 	if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE'

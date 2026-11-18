@@ -416,7 +416,35 @@ export const APP_SHORTCUTS = {
 		combo: 'mod+shift+enter',
 		description: 'Commit the edit into all selected cells',
 		scope: 'data-grid'
-	}
+	},
+	gridToggleDryMode: {
+		combo: 'mod+shift+e',
+		description: 'Toggle dry run mode',
+		scope: 'data-grid'
+	},
+	gridApplyEdits: { combo: 'mod+s', description: 'Apply staged edits', scope: 'data-grid' },
+	gridDiscardEdits: {
+		combo: 'mod+shift+backspace',
+		description: 'Discard staged edits',
+		scope: 'data-grid'
+	},
+	gridRevertCell: {
+		combo: 'alt+backspace',
+		description: 'Revert the staged edit in the cell',
+		scope: 'data-grid'
+	},
+	gridRevertRow: {
+		combo: 'alt+shift+backspace',
+		description: 'Revert the staged edits in the row',
+		scope: 'data-grid'
+	},
+	gridPreviewSql: {
+		combo: 'mod+shift+p',
+		description: 'Preview staged edits as SQL',
+		scope: 'data-grid'
+	},
+	gridUndo: { combo: 'mod+z', description: 'Undo', scope: 'data-grid' },
+	gridRedo: { combo: ['mod+shift+z', 'mod+y'], description: 'Redo', scope: 'data-grid' }
 } as const satisfies Record<string, ShortcutDefinition>
 
 export type ShortcutName = keyof typeof APP_SHORTCUTS
@@ -530,7 +558,15 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gridInsertRowAbove',
 		'gridSetNull',
 		'gridFillDown',
-		'gridFillSelection'
+		'gridFillSelection',
+		'gridToggleDryMode',
+		'gridApplyEdits',
+		'gridDiscardEdits',
+		'gridRevertCell',
+		'gridRevertRow',
+		'gridPreviewSql',
+		'gridUndo',
+		'gridRedo'
 	],
 	Global: ['save']
 }

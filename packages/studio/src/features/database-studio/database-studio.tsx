@@ -5,8 +5,14 @@ import { useConnectionPhase } from '@studio/core/data-provider/connection-phase'
 import { usePendingEdits } from '@studio/core/pending-edits'
 import { openTab } from '@studio/core/workspace-store'
 import { useSettings } from '@studio/core/settings'
-import { useEffectiveShortcuts, useShortcut, useActiveScope } from '@studio/core/shortcuts'
-import { useUndo } from '@studio/core/undo'
+import {
+	formatShortcutList,
+	useEffectiveShortcuts,
+	useShortcut,
+	useActiveScope,
+	type ShortcutName
+} from '@studio/core/shortcuts'
+import { pickUndoTarget, useUndo } from '@studio/core/undo'
 import type { Mutation } from '@studio/core/undo'
 import { getTableRefId, getTableRefParts } from '@studio/shared/utils/table-ref'
 import {
@@ -31,15 +37,18 @@ import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
 import { DataGrid } from './components/data-grid'
-import type { GridNotice } from './components/data-grid/grid-edits'
+import type { GridNotice, StagedAction } from './components/data-grid/grid-edits'
 import { isDataGridEvent } from './components/data-grid/grid-events'
 import type { ContextMenuState } from './components/data-grid'
 import { DeleteRowsDialog } from './components/delete-rows-dialog'
+import { DiscardEditsDialog } from './components/discard-edits-dialog'
+import { PendingSqlPreviewDialog } from './components/pending-sql-preview-dialog'
 import { DropTableDialog } from './components/drop-table-dialog'
 import { useStableHandlers } from './hooks/use-stable-handlers'
 import { createLoadingStore } from './utils/loading-store'
 import { memoWhileClosed } from './utils/memo-while-closed'
 import { getDraftInsertIndex, getOffsetForRow, getPagedOffset } from './utils/pagination'
+import { buildPendingEditsSql, toTableDialect } from './utils/pending-edits-sql'
 import { TableLoadingSkeleton } from './components/table-loading-skeleton'
 import {
 	DatabaseStudioNoConnection,
@@ -98,6 +107,7 @@ import { RecordIllustration } from '@studio/shared/ui/empty-state-illustrations'
 
 const DEFAULT_PAGINATION: PaginationState = { limit: 50, offset: 0 }
 const NO_COLUMNS: ColumnDefinition[] = []
+const NO_STATEMENTS: string[] = []
 
 const QuietAddRecordDialog = memoWhileClosed(AddRecordDialog)
 const QuietRowDetailPanel = memoWhileClosed(RowDetailPanel)
@@ -242,7 +252,11 @@ export function DatabaseStudio({
 		isDryEditMode,
 		setDryEditMode,
 		addEdit,
+		addEdits,
 		removeEdit,
+		revertEdits,
+		undoStagedEdit,
+		redoStagedEdit,
 		pendingEdits,
 		getEditsForTable,
 		getEditCount,
@@ -296,6 +310,8 @@ export function DatabaseStudio({
 	} | null>(null)
 	const [showBulkEditDialog, setShowBulkEditDialog] = useState(false)
 	const [showSetNullDialog, setShowSetNullDialog] = useState(false)
+	const [showDiscardEditsDialog, setShowDiscardEditsDialog] = useState(false)
+	const [showSqlPreviewDialog, setShowSqlPreviewDialog] = useState(false)
 	const [showDataSeederDialog, setShowDataSeederDialog] = useState(false)
 	const [showImportDialog, setShowImportDialog] = useState(false)
 	const [isDdlLoading, setIsDdlLoading] = useState(false)
@@ -575,10 +591,11 @@ export function DatabaseStudio({
 		[setTableData]
 	)
 
-	const { trackCellMutation, trackBatchCellMutation, trackRowDeletion } = useUndo({
-		onUndoComplete: loadTableData,
-		onUndoApply: applyUndoOptimistically
-	})
+	const { trackCellMutation, trackBatchCellMutation, trackRowDeletion, undoLatest, redoLatest } =
+		useUndo({
+			onUndoComplete: loadTableData,
+			onUndoApply: applyUndoOptimistically
+		})
 
 	const {
 		handleBulkDelete,
@@ -776,6 +793,28 @@ export function DatabaseStudio({
 			{ description: shortcuts.deleteRows.description }
 		)
 
+	const stagedBindings: Array<[ShortcutName, StagedAction]> = [
+		['gridToggleDryMode', 'toggle-dry-mode'],
+		['gridApplyEdits', 'apply'],
+		['gridDiscardEdits', 'discard'],
+		['gridPreviewSql', 'preview'],
+		['gridUndo', 'undo'],
+		['gridRedo', 'redo']
+	]
+	for (const [name, action] of stagedBindings) {
+		$.bind(shortcuts[name].combo)
+			.in('data-grid')
+			.except(['typing', isDataGridEvent])
+			.on(
+				function (event) {
+					if (!canEditRows) return
+					event.preventDefault()
+					handleStagedAction(action)
+				},
+				{ description: shortcuts[name].description }
+			)
+	}
+
 	$.bind(shortcuts.deselect.combo)
 		.in('data-grid')
 		.except(['typing', isDataGridEvent])
@@ -898,7 +937,10 @@ export function DatabaseStudio({
 		handleApplyPendingEdits,
 		handleDiscardPendingEdits,
 		handleBatchCellEdit,
-		handleCellsEdit
+		handleCellsEdit,
+		handleRevertStaged,
+		handleUndoStaged,
+		handleRedoStaged
 	} = useDatabaseStudioEdits({
 		activeConnectionId,
 		tableId,
@@ -909,8 +951,12 @@ export function DatabaseStudio({
 		getEditsForTable,
 		hasEdits,
 		addEdit,
+		addEdits,
 		removeEdit,
+		revertEdits,
 		clearEdits,
+		undoStagedEdit,
+		redoStagedEdit,
 		updateCell,
 		updateCells,
 		setTableData,
@@ -1037,9 +1083,12 @@ export function DatabaseStudio({
 				},
 				{
 					onSuccess: function onSingleDeleteSuccess() {
-						trackRowDeletion(activeConnectionId, tableRefName ?? tableId, [
-							pendingRow.row
-						])
+						trackRowDeletion(
+							activeConnectionId,
+							tableRefName ?? tableId,
+							[pendingRow.row],
+							pendingRow.primaryKeyColumn
+						)
 						loadTableData()
 					},
 					onError: function onSingleDeleteError(error) {
@@ -1051,6 +1100,70 @@ export function DatabaseStudio({
 		} else {
 			deleteRowIndexes(Array.from(rowsForActions))
 		}
+	}
+
+	function handleUndoRedo(direction: 'undo' | 'redo') {
+		if (pickUndoTarget(isDryEditMode) === 'committed') {
+			void (direction === 'undo' ? undoLatest() : redoLatest())
+			return
+		}
+		const changed = direction === 'undo' ? handleUndoStaged() : handleRedoStaged()
+		toast({
+			title: changed
+				? direction === 'undo'
+					? 'Undid the last staged edit'
+					: 'Redid the staged edit'
+				: `No staged edit to ${direction}`
+		})
+	}
+
+	function handleStagedAction(action: StagedAction) {
+		if (!tableId) return
+		const stagedCount = getEditCount(tableId)
+		switch (action) {
+			case 'toggle-dry-mode':
+				setDryEditMode(!isDryEditMode)
+				toast({ title: isDryEditMode ? 'Dry run mode off' : 'Dry run mode on' })
+				break
+			case 'apply':
+				if (stagedCount === 0) {
+					toast({ title: 'No staged edits to apply' })
+					break
+				}
+				void handleApplyPendingEdits()
+				break
+			case 'discard':
+				if (stagedCount === 0) {
+					toast({ title: 'No staged edits to discard' })
+					break
+				}
+				setShowDiscardEditsDialog(true)
+				break
+			case 'preview':
+				setShowSqlPreviewDialog(true)
+				break
+			case 'undo':
+			case 'redo':
+				handleUndoRedo(action)
+				break
+		}
+	}
+
+	function handleGridRevertStaged(rowIndex: number, columnName: string | null) {
+		const reverted = handleRevertStaged(rowIndex, columnName)
+		toast({
+			title:
+				reverted === 0
+					? columnName
+						? 'No staged edit in this cell'
+						: 'No staged edits in this row'
+					: `Reverted ${reverted} staged ${reverted === 1 ? 'edit' : 'edits'}`
+		})
+	}
+
+	function handleConfirmDiscardEdits() {
+		setShowDiscardEditsDialog(false)
+		handleDiscardPendingEdits()
 	}
 
 	function handleInsertRowAt(rowIndex: number, position: 'above' | 'below') {
@@ -1126,6 +1239,8 @@ export function DatabaseStudio({
 		cellsEdit: canEditRows ? handleCellsEdit : undefined,
 		insertRow: canEditRows ? handleInsertRowAt : undefined,
 		gridNotify: handleGridNotify,
+		stagedAction: canEditRows ? handleStagedAction : undefined,
+		revertStaged: canEditRows ? handleGridRevertStaged : undefined,
 		rowAction: handleRowAction,
 		draftChange: handleDraftChange,
 		draftSave: handleGridDraftSave,
@@ -1333,6 +1448,8 @@ export function DatabaseStudio({
 							onCellsEdit={on.cellsEdit}
 							onInsertRow={on.insertRow}
 							onNotify={on.gridNotify}
+							onStagedAction={on.stagedAction}
+							onRevertStaged={on.revertStaged}
 						/>
 					</div>
 				)}
@@ -1420,6 +1537,8 @@ export function DatabaseStudio({
 					isApplying={isApplyingEdits}
 					onApply={on.applyPendingEdits}
 					onCancel={on.discardPendingEdits}
+					applyShortcut={formatShortcutList(shortcuts.gridApplyEdits.combo)}
+					discardShortcut={formatShortcutList(shortcuts.gridDiscardEdits.combo)}
 				/>
 			)}
 
@@ -1449,6 +1568,30 @@ export function DatabaseStudio({
 				tableName={displayTableName || ''}
 				onConfirm={on.dropTable}
 				isLoading={isDdlLoading}
+			/>
+
+			<DiscardEditsDialog
+				open={showDiscardEditsDialog}
+				onOpenChange={setShowDiscardEditsDialog}
+				editCount={tableId ? getEditCount(tableId) : 0}
+				onConfirm={handleConfirmDiscardEdits}
+				onReturnFocus={handleEscapeToGrid}
+			/>
+
+			<PendingSqlPreviewDialog
+				open={showSqlPreviewDialog}
+				onOpenChange={setShowSqlPreviewDialog}
+				statements={
+					showSqlPreviewDialog && tableId
+						? buildPendingEditsSql(
+								getEditsForTable(tableId),
+								tableRefName ?? tableId,
+								toTableDialect(activeConnection?.type)
+							)
+						: NO_STATEMENTS
+				}
+				onApply={canEditRows ? on.applyPendingEdits : undefined}
+				onReturnFocus={handleEscapeToGrid}
 			/>
 
 			<DeleteRowsDialog

@@ -1,6 +1,12 @@
-import { useEffect } from 'react'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
 import { createEditKey } from '@studio/core/pending-edits/pending-edits-store'
+import {
+	applyStagedPatches,
+	getRevertPatches,
+	getStagedPatches,
+	type StagedCellPatch,
+	type StagedEntry
+} from '@studio/core/pending-edits/staged-history'
 import { resolveCellChanges, type RequestedCellEdit } from '../utils/cell-changes'
 import { patchSnapshotRows } from '../utils/table-snapshot'
 import { normalizeValueForInsert } from '../utils/studio-data'
@@ -31,12 +37,16 @@ type Args = {
 	tableRefName: string | null
 	tableData: TableData | null
 	isDryEditMode: boolean
-	pendingEdits: Map<string, { oldValue: unknown }>
+	pendingEdits: Map<string, PendingEdit>
 	getEditsForTable: (tableId: string) => PendingEdit[]
 	hasEdits: (tableId: string) => boolean
 	addEdit: (tableId: string, edit: PendingEdit) => void
+	addEdits: (tableId: string, edits: PendingEdit[]) => void
 	removeEdit: (tableId: string, key: string) => void
+	revertEdits: (tableId: string, keys: string[]) => void
 	clearEdits: (tableId: string) => void
+	undoStagedEdit: (tableId: string) => StagedEntry | null
+	redoStagedEdit: (tableId: string) => StagedEntry | null
 	updateCell: {
 		mutate: (
 			payload: Record<string, unknown>,
@@ -83,10 +93,13 @@ export function useDatabaseStudioEdits(args: Args) {
 		isDryEditMode,
 		pendingEdits,
 		getEditsForTable,
-		hasEdits,
 		addEdit,
+		addEdits,
 		removeEdit,
+		revertEdits,
 		clearEdits,
+		undoStagedEdit,
+		redoStagedEdit,
 		updateCell,
 		updateCells,
 		setTableData,
@@ -127,7 +140,7 @@ export function useDatabaseStudioEdits(args: Args) {
 			const oldValue = existingEdit ? existingEdit.oldValue : row[columnName]
 
 			if (areValuesEqual(oldValue, normalizedNewValue)) {
-				removeEdit(tableId, key)
+				revertEdits(tableId, [key])
 				setTableData(function (prev) {
 					if (!prev) return prev
 					const newRows = [...prev.rows]
@@ -210,53 +223,57 @@ export function useDatabaseStudioEdits(args: Args) {
 		)
 	}
 
-	useEffect(
-		function bindDryEditUndo() {
-			function handleKeyDown(e: KeyboardEvent) {
-				if (!(e.ctrlKey || e.metaKey) || e.key !== 'z' || e.shiftKey) return
-				if (!isDryEditMode || !tableId || !hasEdits(tableId)) return
+	function paintStagedPatches(patches: StagedCellPatch[]) {
+		setTableData(function (prev) {
+			if (!prev) return prev
+			return { ...prev, rows: applyStagedPatches(prev.rows, patches) }
+		})
+	}
 
-				const target = e.target as HTMLElement
-				const isInput =
-					target.tagName === 'INPUT' ||
-					target.tagName === 'TEXTAREA' ||
-					target.isContentEditable
-				if (isInput) return
+	function handleUndoStaged(): boolean {
+		if (!tableId) return false
+		const entry = undoStagedEdit(tableId)
+		if (!entry) return false
+		paintStagedPatches(getStagedPatches(entry, 'undo'))
+		return true
+	}
 
-				e.preventDefault()
-				e.stopPropagation()
+	function handleRedoStaged(): boolean {
+		if (!tableId) return false
+		const entry = redoStagedEdit(tableId)
+		if (!entry) return false
+		paintStagedPatches(getStagedPatches(entry, 'redo'))
+		return true
+	}
 
-				const edits = getEditsForTable(tableId)
-				const lastEdit = edits[edits.length - 1]
-				if (!lastEdit) return
+	function handleRevertStaged(rowIndex: number, columnName: string | null): number {
+		if (!tableId || !tableData) return 0
+		const row = tableData.rows[rowIndex]
+		const primaryKeyColumn = tableData.columns.find(function (c) {
+			return c.primaryKey
+		})
+		if (!row || !primaryKeyColumn) return 0
 
-				const key = createEditKey(tableId, lastEdit.primaryKeyValue, lastEdit.columnName)
-				removeEdit(tableId, key)
-				setTableData(function (prev) {
-					if (!prev) return prev
-					// Resolve by primary key, not a stored page position: after a
-					// sort, filter or page change that index points at a different row.
-					const index = prev.rows.findIndex(function (row) {
-						return row[lastEdit.primaryKeyColumn] === lastEdit.primaryKeyValue
-					})
-					if (index === -1) return prev
-
-					const newRows = [...prev.rows]
-					newRows[index] = {
-						...newRows[index],
-						[lastEdit.columnName]: lastEdit.oldValue
-					}
-					return { ...prev, rows: newRows }
+		const columnNames = columnName
+			? [columnName]
+			: tableData.columns.map(function (column) {
+					return column.name
 				})
-			}
+		const keys: string[] = []
+		const reverted: PendingEdit[] = []
+		for (const name of columnNames) {
+			const key = createEditKey(tableId, row[primaryKeyColumn.name], name)
+			const edit = pendingEdits.get(key)
+			if (!edit) continue
+			keys.push(key)
+			reverted.push(edit)
+		}
+		if (keys.length === 0) return 0
 
-			window.addEventListener('keydown', handleKeyDown, true)
-			return function () {
-				window.removeEventListener('keydown', handleKeyDown, true)
-			}
-		},
-		[isDryEditMode, tableId, hasEdits, getEditsForTable, removeEdit, setTableData]
-	)
+		revertEdits(tableId, keys)
+		paintStagedPatches(getRevertPatches(reverted))
+		return keys.length
+	}
 
 	async function handleApplyPendingEdits() {
 		if (!activeConnectionId || !tableId) return
@@ -371,9 +388,34 @@ export function useDatabaseStudioEdits(args: Args) {
 		if (changes.length === 0) return
 
 		if (isDryEditMode) {
+			const staged: PendingEdit[] = []
+			const backToOriginal: string[] = []
+			const patches: StagedCellPatch[] = []
 			for (const change of changes) {
-				handleCellEdit(change.rowIndex, change.columnName, change.requestedValue)
+				const key = createEditKey(tableId, change.primaryKeyValue, change.columnName)
+				const existing = pendingEdits.get(key)
+				const oldValue = existing ? existing.oldValue : change.previousValue
+				patches.push({
+					primaryKeyColumn: primaryKeyColumnName,
+					primaryKeyValue: change.primaryKeyValue,
+					columnName: change.columnName,
+					value: change.newValue
+				})
+				if (areValuesEqual(oldValue, change.newValue)) {
+					backToOriginal.push(key)
+					continue
+				}
+				staged.push({
+					primaryKeyColumn: primaryKeyColumnName,
+					primaryKeyValue: change.primaryKeyValue,
+					columnName: change.columnName,
+					oldValue,
+					newValue: change.newValue
+				})
 			}
+			if (backToOriginal.length > 0) revertEdits(tableId, backToOriginal)
+			if (staged.length > 0) addEdits(tableId, staged)
+			paintStagedPatches(patches)
 			return
 		}
 
@@ -442,6 +484,9 @@ export function useDatabaseStudioEdits(args: Args) {
 		handleApplyPendingEdits,
 		handleDiscardPendingEdits,
 		handleBatchCellEdit,
-		handleCellsEdit
+		handleCellsEdit,
+		handleRevertStaged,
+		handleUndoStaged,
+		handleRedoStaged
 	}
 }

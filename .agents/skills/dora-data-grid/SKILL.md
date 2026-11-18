@@ -148,9 +148,10 @@ issues one update per edit through `Promise.allSettled`, drops only the edits
 that landed so a retry does not re-issue accepted writes, reverts the failed
 cells to `oldValue` on screen, and patches the cache rather than reloading.
 `handleDiscardPendingEdits` clears the buffer and reloads, because what is on
-screen is optimistic and nothing else can undo it. Undo removes the last buffered
-edit and resolves its row by primary key, never by a stored index — after a sort,
-filter or page change that index points somewhere else. `overlayPendingEditsOnRows`
+screen is optimistic and nothing else can undo it. Undo and redo walk the buffer's
+own history of staged steps and resolve each row by primary key, never by a
+stored index — after a sort, filter or page change that index points somewhere
+else. `overlayPendingEditsOnRows`
 in `packages/studio/src/core/pending-edits/overlay.ts` repaints the buffer over
 freshly loaded rows for the same reason.
 

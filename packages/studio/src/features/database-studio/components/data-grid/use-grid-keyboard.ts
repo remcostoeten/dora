@@ -11,7 +11,7 @@ import {
 	resolveGridCommand,
 	type GridCommandContext
 } from './grid-commands'
-import type { CellEdit, GridNotice } from './grid-edits'
+import type { CellEdit, GridNotice, StagedAction } from './grid-edits'
 import { isTextEntryEvent } from './grid-events'
 import { clampToBounds } from './grid-navigation'
 import { getCellKey, getCellsInRectangle } from './selection'
@@ -39,6 +39,8 @@ type UseGridKeyboardArgs = {
 		batchIndexes?: number[]
 	) => void
 	onPageChange?: (direction: 'next' | 'prev') => void
+	onRevertStaged?: (rowIndex: number, columnName: string | null) => void
+	onStagedAction?: (action: StagedAction) => void
 	onSortColumn?: (columnName: string) => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
 	onRowSelect: (rowIndex: number, checked: boolean) => void
@@ -79,6 +81,8 @@ export function useGridKeyboard({
 	onOpenCellMenu,
 	onOpenRowMenu,
 	onPageChange,
+	onRevertStaged,
+	onStagedAction,
 	onRowAction,
 	onSortColumn,
 	onRowsSelect,
@@ -202,6 +206,8 @@ export function useGridKeyboard({
 				onOpenCellMenu,
 				onOpenRowMenu,
 				onPageChange,
+				onRevertStaged,
+				onStagedAction,
 				onRowAction,
 				onRowSelect,
 				onRowsSelect,
@@ -235,6 +241,8 @@ export function useGridKeyboard({
 			onOpenCellMenu,
 			onOpenRowMenu,
 			onPageChange,
+			onRevertStaged,
+			onStagedAction,
 			onRowAction,
 			onSortColumn,
 			onRowsSelect,

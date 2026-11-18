@@ -33,7 +33,8 @@ type Args = {
 	trackRowDeletion: (
 		connectionId: string,
 		tableName: string,
-		rows: Record<string, unknown>[]
+		rows: Record<string, unknown>[],
+		primaryKeyColumn?: string
 	) => string | null
 	setTableData: React.Dispatch<React.SetStateAction<TableData | null>>
 	setSelectedRows: React.Dispatch<React.SetStateAction<Set<number>>>

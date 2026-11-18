@@ -16,7 +16,8 @@ import {
 	planPaste,
 	planSetNull,
 	type CellEdit,
-	type GridNotice
+	type GridNotice,
+	type StagedAction
 } from './grid-edits'
 import {
 	getEdgeTarget,
@@ -59,6 +60,8 @@ export type GridCommandContext = {
 	onDeleteSelectedRows?: () => void
 	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
 	onPageChange?: (direction: 'next' | 'prev') => void
+	onRevertStaged?: (rowIndex: number, columnName: string | null) => void
+	onStagedAction?: (action: StagedAction) => void
 	onRowSelect: (rowIndex: number, checked: boolean) => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
 	onSelectAll: (checked: boolean) => void
@@ -207,6 +210,31 @@ function runRowAction(action: RowAction, includeSelection: boolean): CellRun {
 	}
 }
 
+function stagedCommand(id: ShortcutName, action: StagedAction): GridCommand {
+	return gridCommand(
+		id,
+		function (context) {
+			if (!context.onStagedAction) return 'pass'
+			context.onStagedAction(action)
+		},
+		{ blockedByMask: true }
+	)
+}
+
+function revertCommand(id: ShortcutName, scope: 'cell' | 'row'): GridCommand {
+	return cellCommand(
+		id,
+		function (context, cell) {
+			if (!context.onRevertStaged) return 'pass'
+			context.onRevertStaged(
+				cell.row,
+				scope === 'cell' ? context.columns[cell.col].name : null
+			)
+		},
+		{ blockedByMask: true }
+	)
+}
+
 function insertRowCommand(id: ShortcutName, position: 'above' | 'below'): GridCommand {
 	return cellCommand(
 		id,
@@ -330,6 +358,14 @@ export const GRID_COMMANDS: readonly GridCommand[] = [
 	insertRowCommand('gridInsertRowAbove', 'above'),
 	cellCommand('gridSetNull', setSelectedCellsNull, { blockedByMask: true }),
 	cellCommand('gridFillDown', fillDown, { blockedByMask: true }),
+	stagedCommand('gridToggleDryMode', 'toggle-dry-mode'),
+	stagedCommand('gridApplyEdits', 'apply'),
+	stagedCommand('gridDiscardEdits', 'discard'),
+	stagedCommand('gridPreviewSql', 'preview'),
+	stagedCommand('gridUndo', 'undo'),
+	stagedCommand('gridRedo', 'redo'),
+	revertCommand('gridRevertCell', 'cell'),
+	revertCommand('gridRevertRow', 'row'),
 	cellCommand('gridClearCells', clearSelectedCells, { blockedByMask: true }),
 	gridCommand('deselect', deselectProgressively),
 	cellCommand('gridToggleRow', toggleSelectionRows),

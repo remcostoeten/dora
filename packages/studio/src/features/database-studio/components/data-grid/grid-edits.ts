@@ -14,6 +14,8 @@ export type GridNotice = {
 	message: string
 }
 
+export type StagedAction = 'toggle-dry-mode' | 'apply' | 'discard' | 'preview' | 'undo' | 'redo'
+
 type Rows = Record<string, unknown>[]
 
 function pluralize(count: number, noun: string): string {

@@ -18,6 +18,7 @@ export type StudioDialogProps = {
 	footer?: ReactNode
 	className?: string // For DialogContent override
 	contentClassName?: string // For inner content wrapper
+	onCloseAutoFocus?: (event: Event) => void
 }
 
 export function StudioDialog({
@@ -28,11 +29,15 @@ export function StudioDialog({
 	children,
 	footer,
 	className,
-	contentClassName
+	contentClassName,
+	onCloseAutoFocus
 }: StudioDialogProps) {
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className={cn('sm:max-w-[425px]', className)}>
+			<DialogContent
+				className={cn('sm:max-w-[425px]', className)}
+				onCloseAutoFocus={onCloseAutoFocus}
+			>
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					{description && <DialogDescription>{description}</DialogDescription>}

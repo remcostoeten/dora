@@ -138,6 +138,12 @@ With a cell focused:
 | mod+Backspace | Set the selected cells to NULL; non-nullable columns and primary keys are refused with a notice |
 | mod+d | Fill down: the top selected row into the cells below it, or the row above into a single row |
 | mod+shift+Enter, while editing | Commit the editor value into every selected cell through `onBatchCellEdit` |
+| mod+shift+e | Toggle dry run mode |
+| mod+s | Apply the staged edits |
+| mod+shift+Backspace | Discard the staged edits, behind a confirm dialog |
+| alt+Backspace, alt+shift+Backspace | Revert the staged edit in the focused cell, or every staged edit in the focused row |
+| mod+shift+p | Show the staged edits as SQL |
+| mod+z; mod+shift+z, mod+y | Undo and redo |
 | `c`, mod+c | Copy the selection, or the focused cell, as TSV |
 | `v`, mod+v | Paste TSV from the focused cell, clipped to the existing row and column count; a clipped paste reports how much was dropped |
 | mod+a | Toggle select all |
@@ -169,6 +175,21 @@ with `resolveCellChanges`, stages them in dry mode and otherwise issues one
 so a batch edit no longer bypasses dry mode. Anything the user has to be told
 (a refused NULL, a clipped paste) leaves as `onNotify`; the grid shows no toast
 of its own.
+
+Dry run, apply, discard, preview, undo and redo leave the grid as
+`onStagedAction`, and revert as `onRevertStaged`. The owner binds the same
+registry entries at window level, skipping grid events, so they also work from
+the toolbar. There is one undo dispatcher: `pickUndoTarget` in
+`packages/studio/src/core/undo/use-undo.ts` sends undo and redo to the staged
+steps while dry mode is on and to the committed mutations otherwise. Neither
+`useUndo` nor the edits hook listens for keys of its own. Committed redo keeps
+the 10 second window of undo, is cleared by any new mutation, and a redone row
+delete targets the primary keys the rows were deleted with.
+
+The SQL preview is built by `buildPendingEditsSql`
+(`packages/studio/src/features/database-studio/utils/pending-edits-sql.ts`). It
+is a rendering: staged edits are applied one bound-parameter update at a time,
+so the dialog calls the statements equivalent, not literal.
 
 The menus are opened from the keyboard by dispatching a `contextmenu` event on
 the focused cell or on the row's checkbox cell, so the mouse and keyboard paths
@@ -273,7 +294,16 @@ window.
    individually when any failed, or the whole table's buffer is cleared when none
    did; failed cells revert to `oldValue` and the toast names each failed row and
    column.
-5. Discard: clear the buffer, then reload.
-6. Reload while edits are buffered: `overlayPendingEditsOnRows` repaints them by
+5. Discard: clear the buffer, then reload. From the keyboard it sits behind a
+   confirm dialog whose default focus is "Keep editing".
+6. Revert: `handleRevertStaged` removes the staged edit of one cell, or of
+   every cell in a row, resolves the row by primary key and repaints `oldValue`.
+7. Undo and redo: the buffer keeps an undo and a redo stack of staged steps
+   (`packages/studio/src/core/pending-edits/staged-history.ts`). A step is one
+   user action, so a multi-cell clear or paste is undone in one go, and a revert
+   is itself undoable. `revertEdits` is the undoable removal; `removeEdit` and
+   `clearEdits` are not, and drop the table's history, because an applied or
+   discarded edit must never come back through undo.
+8. Reload while edits are buffered: `overlayPendingEditsOnRows` repaints them by
    primary key, so buffered edits for rows that are not on the current page stay
    buffered and untouched.
