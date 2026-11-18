@@ -24,6 +24,13 @@ type UseGridKeyboardArgs = {
 	columns: ColumnDefinition[]
 	editingCell: EditingCell | null
 	focusedCell: CellPosition | null
+	isHeaderFocused: boolean
+	setHeaderFocused: (focused: boolean) => void
+	autoFitColumn: (columnName: string, columnType?: string) => void
+	resizeColumnBy: (columnName: string, delta: number) => void
+	onFilterColumn?: (columnName: string) => void
+	onHideColumn?: (columnName: string) => void
+	onSortDirection?: (columnName: string, direction: 'asc' | 'desc') => void
 	getPageSize: () => number
 	lastClickedRowRef: React.MutableRefObject<number | null>
 	masked?: boolean
@@ -73,6 +80,13 @@ export function useGridKeyboard({
 	editingCell,
 	focusedCell,
 	getPageSize,
+	isHeaderFocused,
+	setHeaderFocused,
+	autoFitColumn,
+	resizeColumnBy,
+	onFilterColumn,
+	onHideColumn,
+	onSortDirection,
 	lastClickedRowRef,
 	masked,
 	notify,
@@ -172,7 +186,20 @@ export function useGridKeyboard({
 				return
 			}
 
-			const command = resolveGridCommand(event, keymap, focusedCell !== null)
+			const region = isHeaderFocused && focusedCell ? 'header' : 'cell'
+
+			function leaveHeader(rowIndex: number) {
+				setHeaderFocused(false)
+				if (!focusedCell) return
+				moveTo({ row: Math.max(0, rowIndex), col: focusedCell.col }, false)
+			}
+
+			function moveHeaderTo(colIndex: number) {
+				if (!focusedCell) return
+				setFocusedCell({ row: focusedCell.row, col: colIndex })
+			}
+
+			const command = resolveGridCommand(event, keymap, focusedCell !== null, region)
 
 			if (!command) {
 				if (!isBareKey(event)) return
@@ -199,6 +226,15 @@ export function useGridKeyboard({
 				applyCellEdits,
 				cancelPendingNavigation,
 				getPageSize,
+				region,
+				autoFitColumn,
+				resizeColumnBy,
+				onFilterColumn,
+				onHideColumn,
+				onSortDirection,
+				enterHeader: () => setHeaderFocused(true),
+				leaveHeader,
+				moveHeaderTo,
 				moveTo,
 				notify,
 				onDeleteSelectedRows,
@@ -232,6 +268,13 @@ export function useGridKeyboard({
 			editingCell,
 			focusedCell,
 			getPageSize,
+			isHeaderFocused,
+			setHeaderFocused,
+			autoFitColumn,
+			resizeColumnBy,
+			onFilterColumn,
+			onHideColumn,
+			onSortDirection,
 			keymap,
 			lastClickedRowRef,
 			masked,

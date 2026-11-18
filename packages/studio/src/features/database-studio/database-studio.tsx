@@ -480,6 +480,23 @@ export function DatabaseStudio({
 		[hasEdits]
 	)
 
+	const shouldFocusFilterValueRef = useRef(false)
+
+	useEffect(
+		function focusNewFilterValue() {
+			if (!shouldFocusFilterValueRef.current) return
+			shouldFocusFilterValueRef.current = false
+			const frame = requestAnimationFrame(() => {
+				const inputs = Array.from(
+					document.querySelectorAll<HTMLInputElement>('input[aria-label="Filter value"]')
+				).filter((input) => !input.closest('[hidden], [aria-hidden="true"]'))
+				inputs[inputs.length - 1]?.focus()
+			})
+			return () => cancelAnimationFrame(frame)
+		},
+		[filters]
+	)
+
 	const pendingGridFocusRef = useRef<{ row: number; col: number } | null>(null)
 	const pagedFromDataRef = useRef<TableData | null>(null)
 
@@ -1166,6 +1183,23 @@ export function DatabaseStudio({
 		handleDiscardPendingEdits()
 	}
 
+	function handleGridHideColumn(columnName: string) {
+		if (filteredColumns.length <= 1) {
+			toast({ title: 'Cannot hide the last visible column', variant: 'destructive' })
+			return
+		}
+		handleToggleColumn(columnName, false)
+		toast({
+			title: `Hid column ${columnName}`,
+			description: 'Show it again from the columns menu in the toolbar.'
+		})
+	}
+
+	function handleGridFilterColumn(columnName: string) {
+		handleFilterAdd({ column: columnName, operator: 'eq', value: '' })
+		shouldFocusFilterValueRef.current = true
+	}
+
 	function handleInsertRowAt(rowIndex: number, position: 'above' | 'below') {
 		if (!tableData) return
 		handleAddRecord()
@@ -1450,6 +1484,8 @@ export function DatabaseStudio({
 							onNotify={on.gridNotify}
 							onStagedAction={on.stagedAction}
 							onRevertStaged={on.revertStaged}
+							onHideColumn={handleGridHideColumn}
+							onFilterColumn={handleGridFilterColumn}
 						/>
 					</div>
 				)}

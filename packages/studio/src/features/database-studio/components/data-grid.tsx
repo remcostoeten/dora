@@ -41,7 +41,7 @@ import {
 import { isDataGridEvent } from './data-grid/grid-events'
 import { GridHeader } from './data-grid/grid-header'
 import { getVisibleRowCount } from './data-grid/grid-navigation'
-import { getCellId, getCellKey, getCellsInRectangle } from './data-grid/selection'
+import { getCellId, getCellKey, getCellsInRectangle, getHeaderCellId } from './data-grid/selection'
 import { CellPosition, ContextMenuState } from './data-grid/types'
 import { useCellEditing } from './data-grid/use-cell-editing'
 import { useCellSelection } from './data-grid/use-cell-selection'
@@ -119,6 +119,8 @@ type Props = {
 	onNotify?: (notice: GridNotice) => void
 	onStagedAction?: (action: StagedAction) => void
 	onRevertStaged?: (rowIndex: number, columnName: string | null) => void
+	onHideColumn?: (columnName: string) => void
+	onFilterColumn?: (columnName: string) => void
 }
 
 const HEADER_HEIGHT = 36
@@ -162,7 +164,9 @@ export const DataGrid = memo(function DataGrid({
 	onInsertRow,
 	onNotify: onNotifyProp,
 	onStagedAction,
-	onRevertStaged
+	onRevertStaged,
+	onHideColumn,
+	onFilterColumn
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
 	const gridId = `data-grid-${useId().replace(/:/g, '')}`
@@ -181,8 +185,14 @@ export const DataGrid = memo(function DataGrid({
 	const { settings } = useSettings()
 	const masked = settings.privacyMaskData
 
-	const { resizingColumn, getColumnWidth, handleResizeStart, handleResizeDoubleClick } =
-		useColumnResize(workspaceStateKey)
+	const {
+		resizingColumn,
+		getColumnWidth,
+		handleResizeStart,
+		handleResizeDoubleClick,
+		autoFitColumn,
+		resizeColumnBy
+	} = useColumnResize(workspaceStateKey)
 
 	const allSelected = rows.length > 0 && selectedRows.size === rows.length
 	const someSelected = selectedRows.size > 0 && selectedRows.size < rows.length
@@ -212,6 +222,8 @@ export const DataGrid = memo(function DataGrid({
 		})?.name
 	}, [columns])
 	const [anchorCell, setAnchorCell] = useState<CellPosition | null>(null)
+	const [isHeaderFocusRequested, setHeaderFocused] = useState(false)
+	const isHeaderFocused = isHeaderFocusRequested && focusedCell !== null
 	const [isDragging, setIsDragging] = useState(false)
 	const [dragStart, setDragStart] = useState<CellPosition | null>(null)
 
@@ -269,6 +281,7 @@ export const DataGrid = memo(function DataGrid({
 
 			// Simplified logic: Just set focus and let event bubble to row for selection
 			const cellPos: CellPosition = { row: rowIndex, col: colIndex }
+			setHeaderFocused(false)
 			setFocusedCell(cellPos)
 			setAnchorCell(cellPos)
 		},
@@ -450,6 +463,13 @@ export const DataGrid = memo(function DataGrid({
 		}
 	}, [shortcuts])
 
+	const handleSortDirection = useStableCallback(function handleSortDirection(
+		columnName: string,
+		direction: 'asc' | 'desc'
+	) {
+		onSortChange?.({ column: columnName, direction })
+	})
+
 	const handleGridKeyDown = useGridKeyboard({
 		anchorCell,
 		allSelected,
@@ -457,6 +477,13 @@ export const DataGrid = memo(function DataGrid({
 		columns,
 		editingCell,
 		focusedCell,
+		isHeaderFocused,
+		setHeaderFocused,
+		autoFitColumn,
+		resizeColumnBy,
+		onFilterColumn,
+		onHideColumn,
+		onSortDirection: onSortChange ? handleSortDirection : undefined,
 		getPageSize,
 		lastClickedRowRef,
 		masked,
@@ -488,10 +515,15 @@ export const DataGrid = memo(function DataGrid({
 		return <NoColumnsState />
 	}
 
-	const activeCellId =
-		focusedCell && rows[focusedCell.row] && columns[focusedCell.col]
+	const activeCellId = getActiveDescendantId()
+
+	function getActiveDescendantId() {
+		if (!focusedCell || !columns[focusedCell.col]) return undefined
+		if (isHeaderFocused) return getHeaderCellId(gridId, focusedCell.col)
+		return rows[focusedCell.row]
 			? getCellId(gridId, focusedCell.row, focusedCell.col)
 			: undefined
+	}
 
 	return (
 		<div className='relative h-full min-h-0 w-full overflow-hidden'>
@@ -586,6 +618,8 @@ export const DataGrid = memo(function DataGrid({
 						<GridHeader
 							allSelected={allSelected}
 							columns={columns}
+							focusedCol={isHeaderFocused && focusedCell ? focusedCell.col : null}
+							gridId={gridId}
 							getColumnWidth={getColumnWidth}
 							onResizeDoubleClick={handleResizeDoubleClick}
 							onResizeStart={handleResizeStart}
@@ -603,7 +637,7 @@ export const DataGrid = memo(function DataGrid({
 							editInputRef={editInputRef}
 							editingCell={editingCell}
 							editValue={editValue}
-							focusedCell={focusedCell}
+							focusedCell={isHeaderFocused ? null : focusedCell}
 							getColumnWidth={getColumnWidth}
 							onCellContextMenu={contextMenu.armCell}
 							onRowContextMenu={contextMenu.armRow}

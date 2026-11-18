@@ -7,7 +7,7 @@ Detail behind `SKILL.md`. Rendering only.
 | File under `packages/studio/src/features/database-studio/` | Owns |
 | --- | --- |
 | `components/data-grid.tsx` | Prop contract, the scroll container and `<table>`, the virtualization threshold, wiring every hook together |
-| `components/data-grid/grid-header.tsx` | Header row, sort affordance, resize handle, truncation-only tooltip |
+| `components/data-grid/grid-header.tsx` | Header row, sort affordance, resize handle, focus ring, truncation-only tooltip |
 | `components/data-grid/grid-body.tsx` | `GridRow` (memoized), spacer rows, draft-row placement, empty state |
 | `components/data-grid/cell-value.tsx` | `formatCellValue` and the inline `JsonCell` |
 | `components/data-grid/draft-row.tsx` | The insert draft row and its own keyboard handling |
@@ -23,7 +23,8 @@ Detail behind `SKILL.md`. Rendering only.
 | `components/data-grid/use-cell-selection.ts` | Cell selection set and its by-row index |
 | `components/data-grid/use-row-selection.ts` | Click, shift-range and context-menu row selection |
 | `components/data-grid/use-focused-cell.ts` | Roving focus position |
-| `components/data-grid/use-column-resize.ts` | Widths, drag resize, canvas auto-fit |
+| `components/data-grid/use-column-resize.ts` | Widths, drag resize, keyboard resize, canvas auto-fit |
+| `components/data-grid/column-width.ts` | Width constants and `getResizedWidth` |
 | `components/data-grid/use-row-virtualizer.ts` | The virtualizer wrapper |
 | `components/data-grid/use-right-drag-scroll.ts` | Right-button drag to scroll horizontally |
 | `components/data-grid/use-context-menu-reporting.ts` | Reports menu open state and coordinates upward |
@@ -50,6 +51,8 @@ Groups:
   `onDeleteSelectedRows`, `onRowAction`, `onInsertRow`, `onBlobAction`,
   `onFKNavigate`. Omitting one disables that affordance.
 - **Notices** — `onNotify`, for outcomes the owner turns into a toast.
+- **Column intent** — `onHideColumn`, `onFilterColumn`. The owner holds the
+  visible column set and the filters.
 - **Draft row** — `draftRow`, `draftInsertIndex`, `onDraftChange`, `onDraftSave`,
   `onDraftCancel`. `draftInsertIndex` of null, undefined or `-1` puts the draft
   at the top; any other value puts it after that row index.
@@ -144,6 +147,30 @@ With a cell focused:
 | alt+Backspace, alt+shift+Backspace | Revert the staged edit in the focused cell, or every staged edit in the focused row |
 | mod+shift+p | Show the staged edits as SQL |
 | mod+z; mod+shift+z, mod+y | Undo and redo |
+| alt+Up, alt+Down | Sort the focused column ascending or descending |
+| alt+Left, alt+Right, alt+0 | Narrow or widen the focused column by 10px, fit it to its header |
+| mod+shift+f | Add a filter on the focused column and focus its value |
+
+The header row is part of the roving focus. ArrowUp from the first row enters
+it, and `aria-activedescendant` then points at the column header. From a header
+cell:
+
+| Key | Effect |
+| --- | --- |
+| Left, Right, Home, End | Move between header cells |
+| Down, Escape | Return to the first row of that column |
+| Enter, `s` | Cycle the sort state |
+| alt+Up, alt+Down | Sort ascending or descending |
+| alt+Left, alt+Right, alt+0 | Resize by 10px, fit to the header |
+| `h` | Hide the column |
+| `f` | Add a filter on the column and focus its value |
+
+A command declares the region it runs in: `cell`, `header` or `both`. Row and
+cell mutations are `cell` only, so Delete, `d`, Backspace and Enter-to-edit do
+nothing in the header. A header-only entry in the registry carries
+`context: 'header'`, which is what lets `enter`, `h` and `f` exist beside the
+cell commands without a conflict. The header cells are not tab stops; the
+table stays the single tab stop.
 | `c`, mod+c | Copy the selection, or the focused cell, as TSV |
 | `v`, mod+v | Paste TSV from the focused cell, clipped to the existing row and column count; a clipped paste reports how much was dropped |
 | mod+a | Toggle select all |

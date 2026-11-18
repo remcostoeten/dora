@@ -26,7 +26,9 @@ export function createGridSpies() {
 		onNotify: vi.fn(),
 		onRowAction: vi.fn(),
 		onDeleteSelectedRows: vi.fn(),
+		onFilterColumn: vi.fn(),
 		onFocusedCellChange: vi.fn(),
+		onHideColumn: vi.fn(),
 		onPageChange: vi.fn(),
 		onRequestRow: vi.fn(),
 		onRevertStaged: vi.fn(),
@@ -98,6 +100,8 @@ export function GridHarness({ spies, rows, columns, ...overrides }: HarnessProps
 			onNotify={spies.onNotify}
 			onStagedAction={spies.onStagedAction}
 			onRevertStaged={spies.onRevertStaged}
+			onHideColumn={spies.onHideColumn}
+			onFilterColumn={spies.onFilterColumn}
 			onDeleteSelectedRows={spies.onDeleteSelectedRows}
 			{...overrides}
 		/>

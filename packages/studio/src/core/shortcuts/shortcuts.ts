@@ -28,6 +28,7 @@ export type ShortcutDefinition = {
 	combo: string | string[]
 	description: string
 	scope?: 'global' | 'data-grid' | 'sql-console' | 'editor'
+	context?: 'header'
 }
 
 export const APP_SHORTCUTS = {
@@ -253,7 +254,7 @@ export const APP_SHORTCUTS = {
 	},
 	filterRows: {
 		combo: 'mod+shift+f',
-		description: 'Filter rows',
+		description: 'Filter the focused column',
 		scope: 'data-grid'
 	},
 	insertRow: {
@@ -443,6 +444,41 @@ export const APP_SHORTCUTS = {
 		description: 'Preview staged edits as SQL',
 		scope: 'data-grid'
 	},
+	gridSortAscending: {
+		combo: 'alt+up',
+		description: 'Sort column ascending',
+		scope: 'data-grid'
+	},
+	gridSortDescending: {
+		combo: 'alt+down',
+		description: 'Sort column descending',
+		scope: 'data-grid'
+	},
+	gridNarrowColumn: { combo: 'alt+left', description: 'Narrow column', scope: 'data-grid' },
+	gridWidenColumn: { combo: 'alt+right', description: 'Widen column', scope: 'data-grid' },
+	gridAutoFitColumn: {
+		combo: 'alt+0',
+		description: 'Fit column to its header',
+		scope: 'data-grid'
+	},
+	gridHeaderSort: {
+		combo: 'enter',
+		description: 'Sort column (header)',
+		scope: 'data-grid',
+		context: 'header'
+	},
+	gridHideColumn: {
+		combo: 'h',
+		description: 'Hide column (header)',
+		scope: 'data-grid',
+		context: 'header'
+	},
+	gridFilterColumn: {
+		combo: 'f',
+		description: 'Filter column (header)',
+		scope: 'data-grid',
+		context: 'header'
+	},
 	gridUndo: { combo: 'mod+z', description: 'Undo', scope: 'data-grid' },
 	gridRedo: { combo: ['mod+shift+z', 'mod+y'], description: 'Redo', scope: 'data-grid' }
 } as const satisfies Record<string, ShortcutDefinition>
@@ -565,6 +601,14 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gridRevertCell',
 		'gridRevertRow',
 		'gridPreviewSql',
+		'gridSortAscending',
+		'gridSortDescending',
+		'gridNarrowColumn',
+		'gridWidenColumn',
+		'gridAutoFitColumn',
+		'gridHeaderSort',
+		'gridHideColumn',
+		'gridFilterColumn',
 		'gridUndo',
 		'gridRedo'
 	],
@@ -656,13 +700,11 @@ export function formatShortcutList(combo: string | string[]): string {
 		.join(' / ')
 }
 
-function shortcutScopesConflict(
-	a?: ShortcutDefinition['scope'],
-	b?: ShortcutDefinition['scope']
-): boolean {
-	if (!a || !b) return true
-	if (a === 'global' || b === 'global') return true
-	return a === b
+function shortcutScopesConflict(a: ShortcutDefinition, b: ShortcutDefinition): boolean {
+	if (!a.scope || !b.scope) return true
+	if (a.scope === 'global' || b.scope === 'global') return true
+	if (a.scope !== b.scope) return false
+	return a.context === b.context
 }
 
 export function findShortcutConflict(
@@ -683,7 +725,7 @@ export function findShortcutConflict(
 
 	for (const [otherName, definition] of Object.entries(shortcuts)) {
 		if (otherName === name) continue
-		if (!shortcutScopesConflict(current.scope, definition.scope)) continue
+		if (!shortcutScopesConflict(current, definition)) continue
 
 		for (const otherCombo of toShortcutList(definition.combo)) {
 			const normalized = normalizeShortcut(otherCombo)
