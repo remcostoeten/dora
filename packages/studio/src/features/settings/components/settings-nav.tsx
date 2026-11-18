@@ -1,6 +1,8 @@
 import { Search, X } from 'lucide-react'
 import type { KeyboardEvent, RefObject } from 'react'
 import { SETTINGS_GROUPS, SETTINGS_SECTIONS, type SettingsSectionId } from '../sections'
+import { UpdateDot } from '@studio/features/updater/update-dot'
+import { useUpdateIndicatorMode } from '@studio/features/updater/use-update-indicator'
 import { Kbd } from './setting-primitives'
 
 type Props = {
@@ -52,6 +54,7 @@ export function SettingsNav({
 	total,
 	onSelect
 }: Props) {
+	const updateMode = useUpdateIndicatorMode()
 	const searching = matchCounts !== null
 	const visible = new Set(sections)
 	const groups = SETTINGS_GROUPS.map((group) => ({
@@ -126,6 +129,20 @@ export function SettingsNav({
 								>
 									<Icon className='h-[14px] w-[14px] shrink-0' />
 									<span className='min-w-0 flex-1 truncate'>{section.title}</span>
+									{id === 'updates' &&
+									(updateMode === 'available' ||
+										updateMode === 'snoozed' ||
+										updateMode === 'error') ? (
+										<UpdateDot
+											variant={
+												updateMode === 'available'
+													? 'new'
+													: updateMode === 'snoozed'
+														? 'snoozed'
+														: 'error'
+											}
+										/>
+									) : null}
 									{count ? (
 										<span className='font-mono text-[10.5px] tabular-nums text-muted-foreground'>
 											{count}

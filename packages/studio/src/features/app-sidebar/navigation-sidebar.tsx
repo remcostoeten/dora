@@ -1,5 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { memo, useCallback, useRef, KeyboardEvent, type ReactNode, type SyntheticEvent } from 'react'
+import {
+	memo,
+	useCallback,
+	useRef,
+	KeyboardEvent,
+	type ReactNode,
+	type SyntheticEvent
+} from 'react'
 import { preloadView } from './preload-views'
 import { DoraLogo } from '@studio/components/dora-logo'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@studio/shared/ui/tooltip'
@@ -18,6 +25,7 @@ import {
 	SqlConsoleIcon
 } from './rail-icons'
 import { useActiveIndicator } from './use-active-indicator'
+import { UpdateIndicator } from '@studio/features/updater/update-indicator'
 import type { NavItem, SidebarVariant } from './types'
 
 type DatabasePanelToggle = {
@@ -28,7 +36,11 @@ type DatabasePanelToggle = {
 const PanelToggle = memo(SidebarPanelToggle)
 
 const SQL_CONSOLE_ITEM: NavItem = { id: 'sql-console', label: 'SQL Console', icon: SqlConsoleIcon }
-const DATA_VIEWER_ITEM: NavItem = { id: 'database-studio', label: 'Data Viewer', icon: DataViewerIcon }
+const DATA_VIEWER_ITEM: NavItem = {
+	id: 'database-studio',
+	label: 'Data Viewer',
+	icon: DataViewerIcon
+}
 const KV_ITEM: NavItem = { id: 'kv-studio', label: 'Redis / Valkey', icon: KvStudioIcon }
 const ANALYTICS_ITEM: NavItem = { id: 'analytics', label: 'Analytics', icon: AnalyticsIcon }
 const SCHEMA_ITEM: NavItem = { id: 'schema-visualizer', label: 'Schema', icon: SchemaIcon }
@@ -200,6 +212,7 @@ function SidebarContent({
 					className='mx-auto mt-auto flex flex-col items-center gap-1'
 				>
 					{aiAssistantToggle}
+					<UpdateIndicator />
 					{databasePanelToggle && (
 						<>
 							<PanelToggle

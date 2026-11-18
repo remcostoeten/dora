@@ -14,6 +14,8 @@ import {
 } from '@studio/core/workspace-store'
 import { NavigationSidebar, SidebarProvider } from '@studio/features/app-sidebar'
 import { OnboardingTour } from '@studio/features/onboarding'
+import { UpdateOverlays } from '@studio/features/updater/update-overlays'
+import { UpdateScheduler } from '@studio/features/updater/update-scheduler'
 import { DatabaseSidebar } from '@studio/features/sidebar/database-sidebar'
 import { clearAutoSelectFirstTable, shouldAutoSelectFirstTable } from './auto-select'
 import { AiAssistantPanelHost, AiAssistantToggle } from './ai-assistant-host'
@@ -52,6 +54,7 @@ export function WorkspaceShell() {
 		<WorkspaceLiveMonitor>
 			<UrlSync isLoading={isLoading} />
 			<WorkspaceShortcuts actions={actions} />
+			<UpdateScheduler />
 			<SidebarProvider>
 				<div className='flex flex-col h-full w-full bg-background overflow-hidden'>
 					<div className='flex flex-1 overflow-hidden'>
@@ -69,6 +72,8 @@ export function WorkspaceShell() {
 						<Dialogs actions={actions} />
 
 						<Onboarding />
+
+						<UpdateOverlays />
 
 						{/* Keeps `main` from being the last child: WebKit restyles the previous last child's subtree when a sibling mounts after it. */}
 						<span hidden />

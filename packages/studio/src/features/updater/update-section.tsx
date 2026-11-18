@@ -1,37 +1,35 @@
-import { useEffect } from 'react'
+import { AlertCircle, ArrowDownToLine, Check } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
 import { isTauriRuntime } from '@studio/core/platform'
 import { Button } from '@studio/shared/ui/button'
+import { Spinner } from '@studio/shared/ui/spinner'
+import { Switch } from '@studio/shared/ui/switch'
+import { cn } from '@studio/shared/utils/cn'
 
-import { useAppUpdater } from './use-app-updater'
+import { ReleaseNotes } from './release-notes'
+import { UpdateDot } from './update-dot'
+import { formatBytes, formatLastChecked } from './update-policy'
+import { useDownloadFraction, useUpdateIndicatorMode } from './use-update-indicator'
+import { useUpdaterStore } from './updater-store'
 
-function formatBytes(bytes: number): string {
-	if (bytes < 1024) return `${bytes} B`
-	const units = ['KB', 'MB', 'GB']
-	let value = bytes / 1024
-	let unit = 0
-	while (value >= 1024 && unit < units.length - 1) {
-		value /= 1024
-		unit += 1
-	}
-	return `${value.toFixed(1)} ${units[unit]}`
+function useMinuteClock(): number {
+	const [now, setNow] = useState(Date.now)
+	useEffect(function tickEveryMinute() {
+		const timer = setInterval(() => setNow(Date.now()), 60_000)
+		return () => clearInterval(timer)
+	}, [])
+	return now
 }
 
 export function UpdateSection() {
-	const { status, available, progress, error, check, install } = useAppUpdater()
-	const isDesktop = isTauriRuntime()
+	const store = useUpdaterStore()
+	const mode = useUpdateIndicatorMode()
+	const fraction = useDownloadFraction()
+	const now = useMinuteClock()
+	const { status, available, progress, error, errorSource, lastCheckedAt } = store
 
-	// Check once on mount so an available update surfaces without user action.
-	useEffect(
-		function () {
-			if (isDesktop) {
-				void check()
-			}
-		},
-		[isDesktop, check]
-	)
-
-	if (!isDesktop) {
+	if (!isTauriRuntime()) {
 		return (
 			<div className='text-xs leading-tight text-muted-foreground'>
 				Automatic updates are available in the desktop app.
@@ -39,61 +37,179 @@ export function UpdateSection() {
 		)
 	}
 
-	const isBusy = status === 'checking' || status === 'downloading'
-	const percent =
-		progress && progress.contentLength
-			? Math.min(100, Math.round((progress.downloaded / progress.contentLength) * 100))
-			: null
+	const checkedLine = `Last checked ${formatLastChecked(lastCheckedAt, now)}`
+	const isBusy = status === 'checking' || status === 'downloading' || status === 'installed'
+	const isError = status === 'error'
+	const hasUpdate = status === 'available' && available !== null
+
+	const headline = (() => {
+		if (status === 'checking') return 'Checking for updates'
+		if (status === 'downloading') return `Downloading version ${available?.version}`
+		if (status === 'installed') return `Version ${available?.version} is installed`
+		if (isError && errorSource === 'download')
+			return `The download of ${available?.version} failed`
+		if (isError) return 'Could not check for updates'
+		if (hasUpdate) return `Version ${available.version} is available`
+		return lastCheckedAt === null ? 'Update status unknown' : 'Dora is up to date'
+	})()
+
+	const subline = (() => {
+		if (status === 'downloading') return 'Dora restarts when the download finishes.'
+		if (status === 'installed') return 'Restarting Dora.'
+		if (isError && errorSource === 'download') {
+			return 'Nothing was installed. The current version keeps running.'
+		}
+		if (hasUpdate && mode === 'snoozed')
+			return `${checkedLine} · Reminder paused until tomorrow`
+		return checkedLine
+	})()
+
+	const checkLabel =
+		status === 'checking'
+			? 'Checking'
+			: isError && errorSource === 'check'
+				? 'Try again'
+				: 'Check for updates'
 
 	return (
-		<div className='space-y-3'>
-			<div className='flex items-start justify-between gap-4'>
-				<div className='flex-1'>
-					<div className='text-sm text-sidebar-foreground'>App updates</div>
-					<div className='text-xs leading-tight text-muted-foreground'>
-						{status === 'checking' && 'Checking for updates…'}
-						{status === 'up-to-date' && "You're on the latest version."}
-						{status === 'available' &&
-							available &&
-							`Version ${available.version} is available (you have ${available.currentVersion}).`}
-						{status === 'downloading' &&
-							(percent !== null
-								? `Downloading update… ${percent}%`
-								: progress
-									? `Downloading update… ${formatBytes(progress.downloaded)}`
-									: 'Downloading update…')}
-						{status === 'installed' && 'Update installed — restarting…'}
-						{status === 'error' && (error ?? 'Something went wrong.')}
-						{status === 'idle' && 'Check whether a newer version is available.'}
+		<div className='space-y-4'>
+			<div className='flex items-center gap-3'>
+				<div
+					className={cn(
+						'relative grid h-[34px] w-[34px] shrink-0 place-items-center rounded-md bg-secondary text-foreground',
+						isError && 'text-destructive-foreground'
+					)}
+				>
+					{isBusy && status !== 'downloading' ? (
+						<Spinner className='h-4 w-4' />
+					) : isError ? (
+						<AlertCircle className='h-[17px] w-[17px]' />
+					) : hasUpdate || status === 'downloading' ? (
+						<ArrowDownToLine className='h-[17px] w-[17px]' />
+					) : (
+						<Check className='h-[17px] w-[17px]' />
+					)}
+					{mode === 'available' || mode === 'snoozed' ? (
+						<UpdateDot
+							variant={mode === 'available' ? 'new' : 'snoozed'}
+							className='absolute -right-0.5 -top-0.5'
+						/>
+					) : null}
+				</div>
+				<div className='min-w-0 flex-1'>
+					<div className='text-sm font-medium text-foreground'>{headline}</div>
+					<div className='mt-0.5 text-xs leading-tight text-muted-foreground'>
+						{subline}
 					</div>
 				</div>
-				<div className='flex flex-shrink-0 gap-2 pt-0.5'>
-					{status === 'available' ? (
-						<Button size='sm' onClick={install} disabled={isBusy}>
-							Install &amp; restart
-						</Button>
-					) : (
-						<Button size='sm' variant='outline' onClick={check} disabled={isBusy}>
-							{status === 'checking' ? 'Checking…' : 'Check for updates'}
-						</Button>
-					)}
-				</div>
+				<Button
+					size='sm'
+					variant='outline'
+					onClick={() => void store.check()}
+					disabled={isBusy}
+				>
+					{checkLabel}
+				</Button>
 			</div>
 
-			{percent !== null && status === 'downloading' ? (
-				<div className='h-1.5 w-full overflow-hidden rounded-full bg-muted'>
-					<div
-						className='h-full rounded-full bg-primary transition-[width]'
-						style={{ width: `${percent}%` }}
-					/>
+			{hasUpdate || status === 'downloading' || (isError && errorSource === 'download') ? (
+				<div className='space-y-3 border-t border-border pt-3.5'>
+					{available ? (
+						<div className='flex items-baseline gap-2.5'>
+							<span className='font-mono text-[13px] font-semibold'>
+								{available.version}
+							</span>
+							<span className='text-[11.5px] text-muted-foreground'>
+								{available.date
+									? `Released ${new Date(available.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`
+									: null}
+								{progress?.contentLength
+									? ` · ${formatBytes(progress.contentLength)}`
+									: ''}
+							</span>
+						</div>
+					) : null}
+
+					{hasUpdate ? <ReleaseNotes notes={available.notes} /> : null}
+
+					{status === 'downloading' || (isError && errorSource === 'download') ? (
+						<div>
+							<div className='h-[5px] overflow-hidden rounded-full bg-muted'>
+								<div
+									className={cn(
+										'h-full origin-left rounded-full transition-transform duration-200 ease-out',
+										isError ? 'bg-destructive-foreground' : 'bg-warning'
+									)}
+									style={{ transform: `scaleX(${fraction})` }}
+								/>
+							</div>
+							<div className='mt-1.5 flex justify-between font-mono text-[11px] text-muted-foreground'>
+								<span>
+									{progress?.contentLength
+										? `${formatBytes(progress.downloaded)} of ${formatBytes(progress.contentLength)}`
+										: formatBytes(progress?.downloaded ?? 0)}
+								</span>
+								<span className='text-foreground'>
+									{progress?.contentLength
+										? `${Math.round(fraction * 100)}%`
+										: ''}
+								</span>
+							</div>
+						</div>
+					) : null}
+
+					{isError && error ? (
+						<div className='break-words rounded-md bg-muted/45 px-2 py-1.5 font-mono text-[11px] text-secondary-foreground'>
+							{error}
+						</div>
+					) : null}
+
+					<div className='flex flex-wrap items-center gap-1.5'>
+						{hasUpdate || (isError && errorSource === 'download') ? (
+							<Button size='sm' onClick={() => void store.install()}>
+								{isError ? 'Retry download' : 'Install & restart'}
+							</Button>
+						) : null}
+						{hasUpdate && mode === 'available' ? (
+							<Button size='sm' variant='outline' onClick={store.snoozeUpdate}>
+								Later
+							</Button>
+						) : null}
+						{hasUpdate && mode === 'snoozed' ? (
+							<>
+								<Button size='sm' variant='outline' onClick={store.clearSnooze}>
+									Stop snoozing
+								</Button>
+								<span className='text-[11.5px] text-muted-foreground'>
+									The indicator stays, without the dot.
+								</span>
+							</>
+						) : null}
+					</div>
 				</div>
 			) : null}
 
-			{status === 'available' && available?.notes ? (
-				<div className='max-h-32 overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-muted/40 p-2 text-xs leading-relaxed text-muted-foreground'>
-					{available.notes}
+			{isError && errorSource === 'check' && error ? (
+				<div className='break-words rounded-md bg-muted/45 px-2 py-1.5 font-mono text-[11px] text-secondary-foreground'>
+					{error}
 				</div>
 			) : null}
+
+			<div className='flex items-center gap-4 border-t border-border pt-3.5'>
+				<div className='min-w-0 flex-1'>
+					<div className='text-[13px] text-foreground'>Check automatically</div>
+					<div className='mt-px text-xs leading-snug text-muted-foreground'>
+						{store.autoCheck
+							? 'At launch and every 6 hours while Dora is open.'
+							: 'Automatic checks are off. Dora only checks when you ask.'}
+					</div>
+				</div>
+				<Switch
+					checked={store.autoCheck}
+					onCheckedChange={store.setAutoCheck}
+					aria-label='Check for updates automatically'
+				/>
+			</div>
 		</div>
 	)
 }

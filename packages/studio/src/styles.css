@@ -2743,3 +2743,26 @@ button.sv-check:focus-visible {
 		animation: none;
 	}
 }
+
+.update-cue-ring {
+	opacity: 0;
+	pointer-events: none;
+	animation: update-cue-ring 900ms var(--ease-out) 2;
+}
+
+@keyframes update-cue-ring {
+	from {
+		opacity: 0.6;
+		transform: scale(1);
+	}
+	to {
+		opacity: 0;
+		transform: scale(3.4);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.update-cue-ring {
+		animation: none;
+	}
+}
