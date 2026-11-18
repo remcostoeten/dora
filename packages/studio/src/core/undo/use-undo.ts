@@ -1,7 +1,14 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import { toast } from '@studio/shared/ui/notifier'
 import { useDataMutation } from '@studio/core/data-provider'
-import { useUndoStore, Mutation, CellMutation, BatchCellMutation, RowDeletion } from './undo-store'
+import {
+	useUndoStore,
+	Mutation,
+	CellMutation,
+	BatchCellMutation,
+	RowDeletion,
+	UndoableAction
+} from './undo-store'
 
 type UndoOptions = {
 	onUndoComplete?: () => void
@@ -34,9 +41,60 @@ export function describeBatchCellMutation(cells: Array<{ newValue: unknown }>): 
 	return allNull ? `${base} to NULL` : base
 }
 
+/**
+ * @name invertMutation
+ * @description Swaps the previous and new values of a cell mutation, so the
+ * optimistic repaint written for undo can also paint a redo. A row deletion
+ * has no inverse here and is returned unchanged.
+ *
+ * @example
+ * invertMutation({ type: 'cell', previousValue: 'a', newValue: 'b', ...rest })
+ * // { type: 'cell', previousValue: 'b', newValue: 'a', ...rest }
+ */
+export function invertMutation(mutation: Mutation): Mutation {
+	if (mutation.type === 'cell') {
+		return {
+			...mutation,
+			previousValue: mutation.newValue,
+			newValue: mutation.previousValue
+		}
+	}
+	if (mutation.type === 'batch-cell') {
+		return {
+			...mutation,
+			cells: mutation.cells.map(function (cell) {
+				return { ...cell, previousValue: cell.newValue, newValue: cell.previousValue }
+			})
+		}
+	}
+	return mutation
+}
+
+/**
+ * @name pickUndoTarget
+ * @description Decides what undo and redo act on: the staged edits while dry
+ * mode is on, the committed mutations otherwise.
+ *
+ * @example
+ * pickUndoTarget(true) // 'staged'
+ */
+export function pickUndoTarget(isDryEditMode: boolean): 'staged' | 'committed' {
+	return isDryEditMode ? 'staged' : 'committed'
+}
+
 export function useUndo(options: UndoOptions = {}) {
-	const { addAction, getLatestAction, removeAction, actions, timeoutDuration } = useUndoStore()
-	const { updateCell, updateCells, insertRows } = useDataMutation()
+	const {
+		addAction,
+		addRedoAction,
+		getLatestAction,
+		getLatestRedoAction,
+		removeAction,
+		removeRedoAction,
+		actions,
+		redoActions,
+		timeoutDuration
+	} = useUndoStore()
+	const { updateCell, updateCells, insertRows, deleteRows } = useDataMutation()
 
 	const performUndo = useCallback(
 		async function (mutation: Mutation): Promise<boolean> {
@@ -94,6 +152,18 @@ export function useUndo(options: UndoOptions = {}) {
 		[performUndo, options]
 	)
 
+	const undoAction = useCallback(
+		async function (action: UndoableAction): Promise<boolean> {
+			const success = await runUndo(action.mutation)
+			if (success) {
+				removeAction(action.id)
+				addRedoAction(action.description, action.mutation)
+			}
+			return success
+		},
+		[addRedoAction, removeAction, runUndo]
+	)
+
 	const undoLatest = useCallback(
 		async function () {
 			const latestAction = getLatestAction()
@@ -102,9 +172,8 @@ export function useUndo(options: UndoOptions = {}) {
 				return false
 			}
 
-			const success = await runUndo(latestAction.mutation)
+			const success = await undoAction(latestAction)
 			if (success) {
-				removeAction(latestAction.id)
 				toast.success('Undo successful', {
 					description: `Reverted: ${latestAction.description}`
 				})
@@ -113,7 +182,89 @@ export function useUndo(options: UndoOptions = {}) {
 			}
 			return success
 		},
-		[getLatestAction, removeAction, runUndo]
+		[getLatestAction, undoAction]
+	)
+
+	const performRedo = useCallback(
+		async function (mutation: Mutation): Promise<boolean> {
+			try {
+				if (mutation.type === 'cell') {
+					await updateCell.mutateAsync({
+						connectionId: mutation.connectionId,
+						tableName: mutation.tableName,
+						primaryKeyColumn: mutation.primaryKeyColumn,
+						primaryKeyValue: mutation.primaryKeyValue,
+						columnName: mutation.columnName,
+						newValue: mutation.newValue
+					})
+					return true
+				}
+				if (mutation.type === 'batch-cell') {
+					await updateCells.mutateAsync({
+						connectionId: mutation.connectionId,
+						tableName: mutation.tableName,
+						primaryKeyColumn: mutation.primaryKeyColumn,
+						cells: mutation.cells.map(function (cell) {
+							return {
+								primaryKeyValue: cell.primaryKeyValue,
+								columnName: cell.columnName,
+								newValue: cell.newValue
+							}
+						})
+					})
+					return true
+				}
+				const primaryKeyColumn = mutation.primaryKeyColumn
+				if (!primaryKeyColumn) return false
+				await deleteRows.mutateAsync({
+					connectionId: mutation.connectionId,
+					tableName: mutation.tableName,
+					primaryKeyColumn,
+					primaryKeyValues: mutation.rows.map(function (row) {
+						return row[primaryKeyColumn]
+					})
+				})
+				return true
+			} catch (error) {
+				console.error('Failed to redo:', error)
+				return false
+			}
+		},
+		[updateCell, updateCells, deleteRows]
+	)
+
+	const redoLatest = useCallback(
+		async function () {
+			const latestRedo = getLatestRedoAction()
+			if (!latestRedo) {
+				toast.info('Nothing to redo')
+				return false
+			}
+			if (
+				latestRedo.mutation.type === 'row-delete' &&
+				!latestRedo.mutation.primaryKeyColumn
+			) {
+				toast.error('Cannot redo this delete', {
+					description: 'The deleted rows were recorded without a primary key.'
+				})
+				return false
+			}
+
+			options.onUndoApply?.(invertMutation(latestRedo.mutation))
+			const success = await performRedo(latestRedo.mutation)
+			options.onUndoComplete?.()
+			if (success) {
+				removeRedoAction(latestRedo.id)
+				addAction(latestRedo.description, latestRedo.mutation, { keepRedo: true })
+				toast.success('Redo successful', {
+					description: `Reapplied: ${latestRedo.description}`
+				})
+			} else {
+				toast.error('Failed to redo')
+			}
+			return success
+		},
+		[addAction, getLatestRedoAction, options, performRedo, removeRedoAction]
 	)
 
 	const trackCellMutation = useCallback(
@@ -148,13 +299,7 @@ export function useUndo(options: UndoOptions = {}) {
 					kbd: 'Ctrl+Z',
 					onClick: function () {
 						const action = useUndoStore.getState().getAction(actionId)
-						if (action) {
-							runUndo(action.mutation).then(function (success) {
-								if (success) {
-									removeAction(actionId)
-								}
-							})
-						}
+						if (action) undoAction(action)
 					}
 				},
 				duration: timeoutDuration
@@ -162,7 +307,7 @@ export function useUndo(options: UndoOptions = {}) {
 
 			return actionId
 		},
-		[addAction, runUndo, removeAction, timeoutDuration, options]
+		[addAction, undoAction, timeoutDuration]
 	)
 
 	const trackBatchCellMutation = useCallback(
@@ -195,13 +340,7 @@ export function useUndo(options: UndoOptions = {}) {
 					kbd: 'Ctrl+Z',
 					onClick: function () {
 						const action = useUndoStore.getState().getAction(actionId)
-						if (action) {
-							runUndo(action.mutation).then(function (success) {
-								if (success) {
-									removeAction(actionId)
-								}
-							})
-						}
+						if (action) undoAction(action)
 					}
 				},
 				duration: timeoutDuration
@@ -209,14 +348,15 @@ export function useUndo(options: UndoOptions = {}) {
 
 			return actionId
 		},
-		[addAction, runUndo, removeAction, timeoutDuration, options]
+		[addAction, undoAction, timeoutDuration]
 	)
 
 	const trackRowDeletion = useCallback(
 		function (
 			connectionId: string,
 			tableName: string,
-			rows: Record<string, unknown>[]
+			rows: Record<string, unknown>[],
+			primaryKeyColumn?: string
 		): string | null {
 			if (rows.length === 0) return null
 
@@ -231,7 +371,8 @@ export function useUndo(options: UndoOptions = {}) {
 				type: 'row-delete',
 				connectionId,
 				tableName,
-				rows
+				rows,
+				primaryKeyColumn
 			}
 
 			const actionId = addAction(description, mutation)
@@ -243,13 +384,7 @@ export function useUndo(options: UndoOptions = {}) {
 					kbd: 'Ctrl+Z',
 					onClick: function () {
 						const action = useUndoStore.getState().getAction(actionId)
-						if (action) {
-							runUndo(action.mutation).then(function (success) {
-								if (success) {
-									removeAction(actionId)
-								}
-							})
-						}
+						if (action) undoAction(action)
 					}
 				},
 				duration: timeoutDuration
@@ -257,36 +392,7 @@ export function useUndo(options: UndoOptions = {}) {
 
 			return actionId
 		},
-		[addAction, runUndo, removeAction, timeoutDuration, options]
-	)
-
-	useEffect(
-		function () {
-			function handleKeyDown(e: KeyboardEvent) {
-				if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-					const target = e.target as HTMLElement
-					const isInInput =
-						target.tagName === 'INPUT' ||
-						target.tagName === 'TEXTAREA' ||
-						target.isContentEditable ||
-						target.getAttribute('data-no-shortcuts') === 'true'
-
-					if (isInInput) return
-
-					const latestAction = getLatestAction()
-					if (latestAction) {
-						e.preventDefault()
-						undoLatest()
-					}
-				}
-			}
-
-			window.addEventListener('keydown', handleKeyDown)
-			return function () {
-				window.removeEventListener('keydown', handleKeyDown)
-			}
-		},
-		[getLatestAction, undoLatest]
+		[addAction, undoAction, timeoutDuration]
 	)
 
 	return {
@@ -294,6 +400,8 @@ export function useUndo(options: UndoOptions = {}) {
 		trackBatchCellMutation,
 		trackRowDeletion,
 		undoLatest,
+		redoLatest,
+		hasRedoableActions: redoActions.length > 0,
 		hasUndoableActions: actions.length > 0,
 		undoableActionCount: actions.length
 	}

@@ -26,7 +26,7 @@ describe('useDatabaseStudioEdits', function () {
 	let trackBatchCellMutation: any
 	let notifyMissingPrimaryKey: any
 	let notifyActionFailure: any
-	let pendingEdits: Map<string, { oldValue: unknown }>
+	let pendingEdits: Map<string, any>
 	let edits: Array<{
 		primaryKeyColumn: string
 		primaryKeyValue: unknown
@@ -137,20 +137,25 @@ describe('useDatabaseStudioEdits', function () {
 		expect(loadTableData).not.toHaveBeenCalled()
 	})
 
-	it('restores the previous edit value on ctrl-z', function () {
-		edits = [
-			{
-				primaryKeyColumn: 'id',
-				primaryKeyValue: 1,
-				columnName: 'name',
-				oldValue: 'Alpha',
-				newValue: 'Beta',
-				rowIndex: 0
-			}
-		]
-		pendingEdits.set('users:1:name', { oldValue: 'Alpha' })
+	it('repaints the previous value when a staged edit is undone and the new one on redo', function () {
+		const staged = {
+			primaryKeyColumn: 'id',
+			primaryKeyValue: 1,
+			columnName: 'name',
+			oldValue: 'Alpha',
+			newValue: 'Beta'
+		}
+		const entry = {
+			tableId: 'users',
+			changes: [{ key: 'users:1:name', before: null, after: staged }]
+		}
+		tableData.rows[0].name = 'Beta'
+		const revertEdits = vi.fn()
+		const removeEdit = vi.fn()
+		const undoStagedEdit = vi.fn().mockReturnValueOnce(entry).mockReturnValue(null)
+		const redoStagedEdit = vi.fn().mockReturnValueOnce(entry).mockReturnValue(null)
 
-		renderHook(function () {
+		const { result } = renderHook(function () {
 			return useDatabaseStudioEdits({
 				activeConnectionId: 'conn-1',
 				tableId: 'users',
@@ -161,8 +166,12 @@ describe('useDatabaseStudioEdits', function () {
 				getEditsForTable: () => edits,
 				hasEdits: () => true,
 				addEdit: vi.fn(),
-				removeEdit: vi.fn(),
+				addEdits: vi.fn(),
+				removeEdit,
+				revertEdits,
 				clearEdits,
+				undoStagedEdit,
+				redoStagedEdit,
 				updateCell,
 				updateCells,
 				setTableData,
@@ -175,11 +184,149 @@ describe('useDatabaseStudioEdits', function () {
 			})
 		})
 
+		let changed = false
 		act(function () {
-			window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }))
+			changed = result.current.handleUndoStaged()
+		})
+		expect(changed).toBe(true)
+		expect(undoStagedEdit).toHaveBeenCalledWith('users')
+		expect(tableData.rows[0].name).toBe('Alpha')
+
+		act(function () {
+			changed = result.current.handleRedoStaged()
+		})
+		expect(changed).toBe(true)
+		expect(tableData.rows[0].name).toBe('Beta')
+
+		act(function () {
+			changed = result.current.handleUndoStaged()
+		})
+		expect(changed).toBe(false)
+	})
+
+	it('reverts one staged cell or every staged cell of a row by primary key', function () {
+		const nameEdit = {
+			primaryKeyColumn: 'id',
+			primaryKeyValue: 1,
+			columnName: 'name',
+			oldValue: 'Alpha',
+			newValue: 'Beta'
+		}
+		pendingEdits.set('users:1:name', nameEdit)
+		tableData.rows[0].name = 'Beta'
+		const revertEdits = vi.fn()
+		const removeEdit = vi.fn()
+		const undoStagedEdit = vi.fn()
+		const redoStagedEdit = vi.fn()
+
+		const { result } = renderHook(function () {
+			return useDatabaseStudioEdits({
+				activeConnectionId: 'conn-1',
+				tableId: 'users',
+				tableRefName: 'users',
+				tableData,
+				isDryEditMode: true,
+				pendingEdits,
+				getEditsForTable: () => edits,
+				hasEdits: () => true,
+				addEdit: vi.fn(),
+				addEdits: vi.fn(),
+				removeEdit,
+				revertEdits,
+				clearEdits,
+				undoStagedEdit,
+				redoStagedEdit,
+				updateCell,
+				updateCells,
+				setTableData,
+				setIsApplyingEdits: vi.fn(),
+				loadTableData,
+				trackCellMutation,
+				trackBatchCellMutation,
+				notifyMissingPrimaryKey,
+				notifyActionFailure
+			})
 		})
 
+		let reverted = -1
+		act(function () {
+			reverted = result.current.handleRevertStaged(0, 'id')
+		})
+		expect(reverted).toBe(0)
+		expect(revertEdits).not.toHaveBeenCalled()
+
+		act(function () {
+			reverted = result.current.handleRevertStaged(0, null)
+		})
+		expect(reverted).toBe(1)
+		expect(revertEdits).toHaveBeenCalledWith('users', ['users:1:name'])
 		expect(tableData.rows[0].name).toBe('Alpha')
+	})
+
+	it('drops only the edits that landed after a partial apply', async function () {
+		edits = [
+			{
+				primaryKeyColumn: 'id',
+				primaryKeyValue: 1,
+				columnName: 'name',
+				oldValue: 'Alpha',
+				newValue: 'Beta',
+				rowIndex: 0
+			},
+			{
+				primaryKeyColumn: 'id',
+				primaryKeyValue: 1,
+				columnName: 'email',
+				oldValue: 'old@example.com',
+				newValue: 'new@example.com',
+				rowIndex: 0
+			}
+		]
+		updateCell.mutateAsync = vi
+			.fn()
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('constraint failed'))
+		const revertEdits = vi.fn()
+		const removeEdit = vi.fn()
+		const undoStagedEdit = vi.fn()
+		const redoStagedEdit = vi.fn()
+
+		const { result } = renderHook(function () {
+			return useDatabaseStudioEdits({
+				activeConnectionId: 'conn-1',
+				tableId: 'users',
+				tableRefName: 'users',
+				tableData,
+				isDryEditMode: true,
+				pendingEdits,
+				getEditsForTable: () => edits,
+				hasEdits: () => true,
+				addEdit: vi.fn(),
+				addEdits: vi.fn(),
+				removeEdit,
+				revertEdits,
+				clearEdits,
+				undoStagedEdit,
+				redoStagedEdit,
+				updateCell,
+				updateCells,
+				setTableData,
+				setIsApplyingEdits: vi.fn(),
+				loadTableData,
+				trackCellMutation,
+				trackBatchCellMutation,
+				notifyMissingPrimaryKey,
+				notifyActionFailure
+			})
+		})
+
+		await act(async function () {
+			await result.current.handleApplyPendingEdits()
+		})
+
+		expect(removeEdit.mock.calls).toEqual([['users', 'users:1:name']])
+		expect(clearEdits).not.toHaveBeenCalled()
+		expect(notifyActionFailure).toHaveBeenCalledTimes(1)
 	})
 
 	it('tracks batch edits after successful bulk update', async function () {
@@ -227,7 +374,7 @@ describe('useDatabaseStudioEdits', function () {
 		expect(loadTableData).not.toHaveBeenCalled()
 	})
 	it('stages batch edits instead of writing them while dry mode is on', async function () {
-		const addEdit = vi.fn()
+		const addEdits = vi.fn()
 		const { result } = renderHook(function () {
 			return useDatabaseStudioEdits({
 				activeConnectionId: 'conn-1',
@@ -238,7 +385,9 @@ describe('useDatabaseStudioEdits', function () {
 				pendingEdits,
 				getEditsForTable: () => edits,
 				hasEdits: () => false,
-				addEdit,
+				addEdit: vi.fn(),
+				addEdits,
+				revertEdits: vi.fn(),
 				removeEdit: vi.fn(),
 				clearEdits,
 				updateCell,
@@ -259,13 +408,16 @@ describe('useDatabaseStudioEdits', function () {
 
 		expect(updateCells.mutateAsync).not.toHaveBeenCalled()
 		expect(updateCell.mutate).not.toHaveBeenCalled()
-		expect(addEdit).toHaveBeenCalledWith('users', {
-			primaryKeyColumn: 'id',
-			primaryKeyValue: 1,
-			columnName: 'name',
-			oldValue: 'Alpha',
-			newValue: 'Beta'
-		})
+		expect(addEdits).toHaveBeenCalledWith('users', [
+			{
+				primaryKeyColumn: 'id',
+				primaryKeyValue: 1,
+				columnName: 'name',
+				oldValue: 'Alpha',
+				newValue: 'Beta'
+			}
+		])
+		expect(tableData.rows[0].name).toBe('Beta')
 	})
 
 	it('refuses a batch edit on a table without a primary key', async function () {

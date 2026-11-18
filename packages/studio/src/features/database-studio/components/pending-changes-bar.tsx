@@ -11,9 +11,19 @@ type Props = {
 	onApply: () => void
 	onCancel: () => void
 	className?: string
+	applyShortcut?: string
+	discardShortcut?: string
 }
 
-export function PendingChangesBar({ editCount, isApplying, onApply, onCancel, className }: Props) {
+export function PendingChangesBar({
+	editCount,
+	isApplying,
+	onApply,
+	onCancel,
+	className,
+	applyShortcut,
+	discardShortcut
+}: Props) {
 	const open = editCount > 0
 	const { present, state } = usePresence(open, 200)
 	const lastCountRef = useRef(editCount)
@@ -51,6 +61,7 @@ export function PendingChangesBar({ editCount, isApplying, onApply, onCancel, cl
 							size='sm'
 							onClick={onCancel}
 							disabled={isApplying}
+							title={discardShortcut ? `Discard (${discardShortcut})` : undefined}
 							className='gap-1.5'
 						>
 							<X className='h-4 w-4' />
@@ -60,6 +71,7 @@ export function PendingChangesBar({ editCount, isApplying, onApply, onCancel, cl
 							size='sm'
 							onClick={onApply}
 							disabled={isApplying}
+							title={applyShortcut ? `Apply changes (${applyShortcut})` : undefined}
 							className='gap-1.5'
 						>
 							{isApplying ? (

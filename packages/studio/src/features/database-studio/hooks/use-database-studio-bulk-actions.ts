@@ -24,7 +24,8 @@ type Args = {
 	trackRowDeletion: (
 		connectionId: string,
 		tableName: string,
-		rows: Record<string, unknown>[]
+		rows: Record<string, unknown>[],
+		primaryKeyColumn?: string
 	) => string | null
 	setTableData: React.Dispatch<React.SetStateAction<TableData | null>>
 	setSelectedRows: React.Dispatch<React.SetStateAction<Set<number>>>
@@ -88,7 +89,12 @@ export function useDatabaseStudioBulkActions(args: Args) {
 				},
 				{
 					onSuccess: function () {
-						trackRowDeletion(activeConnectionId, tableRefName ?? '', deletedRows)
+						trackRowDeletion(
+							activeConnectionId,
+							tableRefName ?? '',
+							deletedRows,
+							primaryKeyColumn.name
+						)
 						onLoadTableData()
 						setShowDeleteConfirmDialog(false)
 					},

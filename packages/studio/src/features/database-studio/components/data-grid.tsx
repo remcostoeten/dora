@@ -35,7 +35,8 @@ import {
 	describeSetNullRefusal,
 	planSetNull,
 	type CellEdit,
-	type GridNotice
+	type GridNotice,
+	type StagedAction
 } from './data-grid/grid-edits'
 import { isDataGridEvent } from './data-grid/grid-events'
 import { GridHeader } from './data-grid/grid-header'
@@ -116,6 +117,8 @@ type Props = {
 	onCellsEdit?: (edits: CellEdit[]) => void
 	onInsertRow?: (rowIndex: number, position: 'above' | 'below') => void
 	onNotify?: (notice: GridNotice) => void
+	onStagedAction?: (action: StagedAction) => void
+	onRevertStaged?: (rowIndex: number, columnName: string | null) => void
 }
 
 const HEADER_HEIGHT = 36
@@ -157,7 +160,9 @@ export const DataGrid = memo(function DataGrid({
 	onPageChange,
 	onCellsEdit: onCellsEditProp,
 	onInsertRow,
-	onNotify: onNotifyProp
+	onNotify: onNotifyProp,
+	onStagedAction,
+	onRevertStaged
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
 	const gridId = `data-grid-${useId().replace(/:/g, '')}`
@@ -461,6 +466,8 @@ export const DataGrid = memo(function DataGrid({
 		onOpenCellMenu: contextMenu.openCellMenuFromKeyboard,
 		onOpenRowMenu: contextMenu.openRowMenuFromKeyboard,
 		onPageChange,
+		onRevertStaged,
+		onStagedAction,
 		onRowAction,
 		onSortColumn: handleSort,
 		onRowsSelect,

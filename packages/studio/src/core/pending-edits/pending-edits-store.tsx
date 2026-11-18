@@ -1,31 +1,33 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 
-export type PendingEdit = {
-	primaryKeyColumn: string
-	primaryKeyValue: unknown
-	columnName: string
-	oldValue: unknown
-	newValue: unknown
-}
+import {
+	createEditKey,
+	dropEdits as dropStagedEdits,
+	redoStaged,
+	revertEdits as revertStagedEdits,
+	stageEdits,
+	undoStaged,
+	type PendingEdit,
+	type StagedEntry,
+	type StagedState
+} from './staged-history'
+
+export { createEditKey, type PendingEdit }
 
 type PendingEditsContextValue = {
 	isDryEditMode: boolean
 	setDryEditMode: (enabled: boolean) => void
 	pendingEdits: Map<string, PendingEdit>
 	addEdit: (tableId: string, edit: PendingEdit) => void
+	addEdits: (tableId: string, edits: PendingEdit[]) => void
 	removeEdit: (tableId: string, key: string) => void
+	revertEdits: (tableId: string, keys: string[]) => void
 	clearEdits: (tableId?: string) => void
+	undoStagedEdit: (tableId: string) => StagedEntry | null
+	redoStagedEdit: (tableId: string) => StagedEntry | null
 	getEditsForTable: (tableId: string) => PendingEdit[]
 	getEditCount: (tableId?: string) => number
 	hasEdits: (tableId?: string) => boolean
-}
-
-export function createEditKey(
-	tableId: string,
-	primaryKeyValue: unknown,
-	columnName: string
-): string {
-	return `${tableId}:${String(primaryKeyValue)}:${columnName}`
 }
 
 type Props = {
@@ -36,9 +38,8 @@ export function PendingEditsProvider({ children }: Props) {
 	return children
 }
 
-type ConnectionEditState = {
+type ConnectionEditState = StagedState & {
 	isDryEditMode: boolean
-	pendingEdits: Map<string, PendingEdit>
 }
 
 const connectionEditStates = new Map<string, ConnectionEditState>()
@@ -46,7 +47,9 @@ const connectionEditListeners = new Map<string, Set<() => void>>()
 
 const EMPTY_EDIT_STATE: ConnectionEditState = {
 	isDryEditMode: false,
-	pendingEdits: new Map()
+	pendingEdits: new Map(),
+	undoStack: [],
+	redoStack: []
 }
 
 function getConnectionEditState(connectionId: string): ConnectionEditState {
@@ -90,13 +93,24 @@ export function usePendingEdits(connectionId = ''): PendingEditsContextValue {
 		[connectionId]
 	)
 
-	const addEdit = useCallback(
-		(tableId: string, edit: PendingEdit) => {
+	const addEdits = useCallback(
+		(tableId: string, edits: PendingEdit[]) => {
 			updateConnectionEditState(connectionId, (current) => {
-				const next = new Map(current.pendingEdits)
-				const key = createEditKey(tableId, edit.primaryKeyValue, edit.columnName)
-				next.set(key, edit)
-				return { ...current, pendingEdits: next }
+				return { ...current, ...stageEdits(current, tableId, edits) }
+			})
+		},
+		[connectionId]
+	)
+
+	const addEdit = useCallback(
+		(tableId: string, edit: PendingEdit) => addEdits(tableId, [edit]),
+		[addEdits]
+	)
+
+	const revertEdits = useCallback(
+		(tableId: string, keys: string[]) => {
+			updateConnectionEditState(connectionId, (current) => {
+				return { ...current, ...revertStagedEdits(current, tableId, keys) }
 			})
 		},
 		[connectionId]
@@ -105,9 +119,7 @@ export function usePendingEdits(connectionId = ''): PendingEditsContextValue {
 	const removeEdit = useCallback(
 		(tableId: string, key: string) => {
 			updateConnectionEditState(connectionId, (current) => {
-				const next = new Map(current.pendingEdits)
-				next.delete(key)
-				return { ...current, pendingEdits: next }
+				return { ...current, ...dropStagedEdits(current, tableId, [key]) }
 			})
 		},
 		[connectionId]
@@ -116,17 +128,28 @@ export function usePendingEdits(connectionId = ''): PendingEditsContextValue {
 	const clearEdits = useCallback(
 		(tableId?: string) => {
 			updateConnectionEditState(connectionId, (current) => {
-				if (tableId) {
-					const next = new Map(current.pendingEdits)
-					for (const key of current.pendingEdits.keys()) {
-						if (key.startsWith(tableId + ':')) {
-							next.delete(key)
-						}
-					}
-					return { ...current, pendingEdits: next }
-				}
-				return { ...current, pendingEdits: new Map() }
+				return { ...current, ...dropStagedEdits(current, tableId) }
 			})
+		},
+		[connectionId]
+	)
+
+	const undoStagedEdit = useCallback(
+		(tableId: string) => {
+			const step = undoStaged(getConnectionEditState(connectionId), tableId)
+			if (!step.entry) return null
+			updateConnectionEditState(connectionId, (current) => ({ ...current, ...step.state }))
+			return step.entry
+		},
+		[connectionId]
+	)
+
+	const redoStagedEdit = useCallback(
+		(tableId: string) => {
+			const step = redoStaged(getConnectionEditState(connectionId), tableId)
+			if (!step.entry) return null
+			updateConnectionEditState(connectionId, (current) => ({ ...current, ...step.state }))
+			return step.entry
 		},
 		[connectionId]
 	)
@@ -173,8 +196,12 @@ export function usePendingEdits(connectionId = ''): PendingEditsContextValue {
 			setDryEditMode,
 			pendingEdits: state.pendingEdits,
 			addEdit,
+			addEdits,
 			removeEdit,
+			revertEdits,
 			clearEdits,
+			undoStagedEdit,
+			redoStagedEdit,
 			getEditsForTable,
 			getEditCount,
 			hasEdits
@@ -183,8 +210,12 @@ export function usePendingEdits(connectionId = ''): PendingEditsContextValue {
 			state.isDryEditMode,
 			state.pendingEdits,
 			addEdit,
+			addEdits,
 			removeEdit,
+			revertEdits,
 			clearEdits,
+			undoStagedEdit,
+			redoStagedEdit,
 			getEditsForTable,
 			getEditCount,
 			hasEdits
