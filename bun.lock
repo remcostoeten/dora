@@ -56,7 +56,7 @@
         "@radix-ui/react-tooltip": "^1.2.7",
         "@remcostoeten/analytics": "^1.7.0",
         "@remcostoeten/notifier": "^1.0.0",
-        "@remcostoeten/use-shortcut": "^2.3.0",
+        "@remcostoeten/use-shortcut": "^2.5.1",
         "@tanstack/react-query": "^5.83.0",
         "@tanstack/react-virtual": "^3.13.24",
         "@tauri-apps/api": "^2.9.1",
@@ -114,7 +114,7 @@
         "@dora/studio": "workspace:*",
         "@react-three/drei": "^10.7.7",
         "@react-three/fiber": "^9.6.1",
-        "@remcostoeten/use-shortcut": "^2.3.0",
+        "@remcostoeten/use-shortcut": "^2.5.1",
         "@spoar/sdk": "^2.0.0-next.2",
         "@types/mdx": "^2.0.14",
         "@vinext/cloudflare": "^1.1.1",
@@ -199,7 +199,7 @@
         "@radix-ui/react-tooltip": "^1.2.7",
         "@remcostoeten/analytics": "^1.7.0",
         "@remcostoeten/notifier": "^1.0.0",
-        "@remcostoeten/use-shortcut": "^2.3.0",
+        "@remcostoeten/use-shortcut": "^2.5.1",
         "@tanstack/react-query": "^5.83.0",
         "@tanstack/react-virtual": "^3.13.24",
         "@vercel/analytics": "^1.6.1",
@@ -713,7 +713,7 @@
 
     "@remcostoeten/notifier": ["@remcostoeten/notifier@1.0.0", "", { "peerDependencies": { "motion": ">=12.0.0", "react": ">=18.0.0", "react-dom": ">=18.0.0" } }, "sha512-s9xnwfH7Cz7lWnmOZwce6a8e7VCy1zoZTgVxoSYYuxJobN0Cg45ApCw3HSgzfYCzVNHQkSRHcMwp4ZdSdrzRfQ=="],
 
-    "@remcostoeten/use-shortcut": ["@remcostoeten/use-shortcut@2.3.0", "", { "peerDependencies": { "react": ">=18.0.0" } }, "sha512-PFUDYVgmsoIeoK1zYwa2crUdCZ0Tj+qx2K9DiTIo24xEJvwmz42IEt6A33N6Egfw8AsmM0/eSiVkHkXkqie7pQ=="],
+    "@remcostoeten/use-shortcut": ["@remcostoeten/use-shortcut@2.5.1", "", { "peerDependencies": { "react": ">=18.0.0" } }, "sha512-0HGCt99LBlfzsjO/GjXj/oKsP0RnFpDKRl5BmhsS2jiwMAngbjtSNiQehkbV+ivsWo9Jk56g+rHcH25GztgBkw=="],
 
     "@remix-run/router": ["@remix-run/router@1.23.2", "", {}, "sha512-Ic6m2U/rMjTkhERIa/0ZtXJP17QUi2CbWE7cqx4J58M8aA3QTfW+2UlQ4psvTX9IO1RfNVhK3pcpdjej7L+t2w=="],
 
