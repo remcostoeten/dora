@@ -279,13 +279,32 @@ export const APP_SHORTCUTS = {
 	gridJumpTop: { combo: 'mod+up', description: 'Jump to the first row', scope: 'data-grid' },
 	gridJumpBottom: { combo: 'mod+down', description: 'Jump to the last row', scope: 'data-grid' },
 	gridJumpRowStart: {
-		combo: 'mod+left',
+		combo: ['mod+left', 'home'],
 		description: 'Jump to the first column',
 		scope: 'data-grid'
 	},
 	gridJumpRowEnd: {
-		combo: 'mod+right',
+		combo: ['mod+right', 'end'],
 		description: 'Jump to the last column',
+		scope: 'data-grid'
+	},
+	gridFirstCell: { combo: 'mod+home', description: 'Jump to the first cell', scope: 'data-grid' },
+	gridLastCell: { combo: 'mod+end', description: 'Jump to the last cell', scope: 'data-grid' },
+	gridPageUp: { combo: 'pageup', description: 'Move up one screen of rows', scope: 'data-grid' },
+	gridPageDown: {
+		combo: 'pagedown',
+		description: 'Move down one screen of rows',
+		scope: 'data-grid'
+	},
+	gridGoToCell: { combo: 'mod+g', description: 'Go to cell', scope: 'data-grid' },
+	gridNextPage: {
+		combo: 'alt+pagedown',
+		description: 'Next page of results',
+		scope: 'data-grid'
+	},
+	gridPrevPage: {
+		combo: 'alt+pageup',
+		description: 'Previous page of results',
 		scope: 'data-grid'
 	},
 	gridExtendUp: { combo: 'shift+up', description: 'Extend selection up', scope: 'data-grid' },
@@ -426,6 +445,13 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gridJumpBottom',
 		'gridJumpRowStart',
 		'gridJumpRowEnd',
+		'gridFirstCell',
+		'gridLastCell',
+		'gridPageUp',
+		'gridPageDown',
+		'gridGoToCell',
+		'gridNextPage',
+		'gridPrevPage',
 		'gridExtendUp',
 		'gridExtendDown',
 		'gridExtendLeft',

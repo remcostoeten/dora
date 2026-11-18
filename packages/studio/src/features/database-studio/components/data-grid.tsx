@@ -17,11 +17,13 @@ import {
 import { cn } from '@studio/shared/utils/cn'
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
 import { NoColumnsState } from './data-grid/empty-states'
+import { GoToCellPrompt } from './data-grid/go-to-cell-prompt'
 import { GridBody } from './data-grid/grid-body'
 import { GridContextMenu, useGridContextMenu } from './data-grid/grid-context-menu'
 import { isDataGridEvent } from './data-grid/grid-events'
 import { GridHeader } from './data-grid/grid-header'
-import { getCellId, getCellsInRectangle } from './data-grid/selection'
+import { getVisibleRowCount } from './data-grid/grid-navigation'
+import { getCellId, getCellKey, getCellsInRectangle } from './data-grid/selection'
 import { CellPosition, ContextMenuState } from './data-grid/types'
 import { useCellEditing } from './data-grid/use-cell-editing'
 import { useCellSelection } from './data-grid/use-cell-selection'
@@ -38,7 +40,7 @@ import {
 import { BlobAction } from './cell-context-menu'
 import { RowAction } from './row-context-menu'
 import { ScrollHint } from './scroll-hint'
-import { useRowVirtualizer } from './data-grid/use-row-virtualizer'
+import { ROW_HEIGHT, useRowVirtualizer } from './data-grid/use-row-virtualizer'
 import { readWorkspaceState, writeWorkspaceState } from '@studio/core/workspace-state'
 
 export type { ContextMenuState }
@@ -90,7 +92,13 @@ type Props = {
 		schema?: string
 	) => void
 	workspaceStateKey?: string
+	rowNumberOffset?: number
+	totalRowCount?: number
+	onRequestRow?: (absoluteRowIndex: number, colIndex: number) => void
+	onPageChange?: (direction: 'next' | 'prev') => void
 }
+
+const HEADER_HEIGHT = 36
 
 export const DataGrid = memo(function DataGrid({
 	columns,
@@ -122,7 +130,11 @@ export const DataGrid = memo(function DataGrid({
 	highlightedRows,
 	draftInsertIndex,
 	onFKNavigate: onFKNavigateProp,
-	workspaceStateKey = 'data-grid'
+	workspaceStateKey = 'data-grid',
+	rowNumberOffset = 0,
+	totalRowCount,
+	onRequestRow,
+	onPageChange
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
 	const gridId = `data-grid-${useId().replace(/:/g, '')}`
@@ -333,21 +345,48 @@ export const DataGrid = memo(function DataGrid({
 		}
 	})
 
+	const [isGoToOpen, setIsGoToOpen] = useState(false)
+
+	const openGoToPrompt = useCallback(() => setIsGoToOpen(true), [])
+
+	const closeGoToPrompt = useCallback((restoreGridFocus: boolean) => {
+		setIsGoToOpen(false)
+		if (restoreGridFocus) gridRef.current?.focus()
+	}, [])
+
+	const getPageSize = useCallback(() => {
+		return getVisibleRowCount(
+			scrollContainerRef.current?.clientHeight ?? 0,
+			ROW_HEIGHT,
+			HEADER_HEIGHT
+		)
+	}, [])
+
+	function focusCell(cell: CellPosition) {
+		setFocusedCell(cell)
+		setAnchorCell(cell)
+		lastClickedRowRef.current = cell.row
+		updateCellSelection(new Set([getCellKey(cell.row, cell.col)]))
+	}
+
 	const handleGridKeyDown = useGridKeyboard({
 		anchorCell,
 		allSelected,
 		columns,
 		editingCell,
 		focusedCell,
+		getPageSize,
 		lastClickedRowRef,
 		masked,
 		onCellEdit,
 		onDeleteSelectedRows,
 		onOpenCellMenu: contextMenu.armCell,
+		onPageChange,
 		onSortColumn: handleSort,
 		onRowsSelect,
 		onRowSelect,
 		onSelectAll,
+		openGoToPrompt,
 		rows,
 		selectedCellsSet,
 		selectedRows,
@@ -506,6 +545,29 @@ export const DataGrid = memo(function DataGrid({
 					</table>
 				</GridContextMenu>
 			</div>
+			{isGoToOpen && (
+				<GoToCellPrompt
+					context={{
+						columns,
+						focusedCell,
+						loadedRowCount: rows.length,
+						rowNumberOffset,
+						totalRowCount: totalRowCount ?? rowNumberOffset + rows.length
+					}}
+					onClose={closeGoToPrompt}
+					onGo={(target) => {
+						closeGoToPrompt(true)
+						if (target.isLoaded) {
+							focusCell({
+								row: target.absoluteRow - rowNumberOffset,
+								col: target.col
+							})
+							return
+						}
+						onRequestRow?.(target.absoluteRow, target.col)
+					}}
+				/>
+			)}
 			<ScrollHint containerRef={scrollContainerRef} />
 		</div>
 	)

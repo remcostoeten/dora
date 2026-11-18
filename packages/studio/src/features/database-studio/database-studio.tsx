@@ -38,6 +38,7 @@ import { DropTableDialog } from './components/drop-table-dialog'
 import { useStableHandlers } from './hooks/use-stable-handlers'
 import { createLoadingStore } from './utils/loading-store'
 import { memoWhileClosed } from './utils/memo-while-closed'
+import { getOffsetForRow, getPagedOffset } from './utils/pagination'
 import { TableLoadingSkeleton } from './components/table-loading-skeleton'
 import {
 	DatabaseStudioNoConnection,
@@ -462,12 +463,49 @@ export function DatabaseStudio({
 		[hasEdits]
 	)
 
+	const pendingGridFocusRef = useRef<{ row: number; col: number } | null>(null)
+	const pagedFromDataRef = useRef<TableData | null>(null)
+
+	function handleGridRequestRow(absoluteRowIndex: number, colIndex: number) {
+		const offset = getOffsetForRow(absoluteRowIndex, pagination.limit)
+		pendingGridFocusRef.current = { row: absoluteRowIndex - offset, col: colIndex }
+		pagedFromDataRef.current = tableData
+		setPagination({ ...pagination, offset })
+	}
+
+	function handleGridPageChange(direction: 'next' | 'prev') {
+		const offset = getPagedOffset(pagination, direction, tableData?.totalCount ?? 0)
+		if (offset === pagination.offset) return
+		pagedFromDataRef.current = tableData
+		setPagination({ ...pagination, offset })
+	}
+
 	const handleEscapeToGrid = useCallback(function () {
 		const grid = gridContainerRef.current?.querySelector<HTMLElement>('table[role="grid"]')
 		if (grid) {
 			grid.focus()
 		}
 	}, [])
+
+	useEffect(
+		function restoreGridFocusAfterPaging() {
+			const pagedFrom = pagedFromDataRef.current
+			if (isTablePending || !tableData || !pagedFrom || pagedFrom === tableData) return
+			pagedFromDataRef.current = null
+			const pending = pendingGridFocusRef.current
+			pendingGridFocusRef.current = null
+			if (pending && tableData.rows.length > 0) {
+				const cell = {
+					row: Math.min(pending.row, tableData.rows.length - 1),
+					col: pending.col
+				}
+				setFocusedCell(cell)
+				setSelectedCells(new Set([`${cell.row}:${cell.col}`]))
+			}
+			handleEscapeToGrid()
+		},
+		[isTablePending, tableData, handleEscapeToGrid, setFocusedCell, setSelectedCells]
+	)
 
 	const tableColumns = tableData?.columns
 	const filteredColumns = useMemo(
@@ -739,7 +777,7 @@ export function DatabaseStudio({
 
 	$.bind(shortcuts.deselect.combo)
 		.in('data-grid')
-		.except(isDataGridEvent)
+		.except(['typing', isDataGridEvent])
 		.on(
 			function () {
 				setSelectedRows((current) => (current.size === 0 ? current : new Set()))
@@ -1260,6 +1298,10 @@ export function DatabaseStudio({
 							draftInsertIndex={draftInsertIndex}
 							onFKNavigate={on.fkNavigate}
 							workspaceStateKey={workspaceStateKey}
+							rowNumberOffset={pagination.offset}
+							totalRowCount={tableData.totalCount}
+							onRequestRow={handleGridRequestRow}
+							onPageChange={handleGridPageChange}
 						/>
 					</div>
 				)}

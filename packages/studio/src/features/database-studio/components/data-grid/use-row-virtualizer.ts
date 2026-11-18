@@ -1,7 +1,7 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { RefObject } from 'react'
 
-const ROW_HEIGHT = 34 // px — matches the td py-1.5 + content height
+export const ROW_HEIGHT = 34
 const OVERSCAN = 12
 
 type Options = {

@@ -10,6 +10,7 @@ import { getColumnDefault } from '../../utils/studio-data'
 import { copySelectionToClipboard, getCellsToClear, pasteClipboardIntoGrid } from './grid-clipboard'
 import {
 	getEdgeTarget,
+	getPageTarget,
 	getStepTarget,
 	getTabTarget,
 	isSameCell,
@@ -28,14 +29,17 @@ export type GridCommandContext = {
 	selectedCellsSet: Set<string>
 	selectedRows: Set<number>
 	cancelPendingNavigation: () => void
+	getPageSize: () => number
 	moveTo: (target: CellPosition, extend: boolean) => void
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
 	onDeleteSelectedRows?: () => void
 	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
+	onPageChange?: (direction: 'next' | 'prev') => void
 	onRowSelect: (rowIndex: number, checked: boolean) => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
 	onSelectAll: (checked: boolean) => void
 	onSortColumn?: (columnName: string) => void
+	openGoToPrompt: () => void
 	setFocusedCell: (cell: CellPosition | null) => void
 	setLastClickedRow: (rowIndex: number) => void
 	startCellEdit: (rowIndex: number, columnName: string, currentValue: unknown) => void
@@ -98,6 +102,31 @@ function stepCommand(id: ShortcutName, direction: GridDirection, extend: boolean
 function edgeCommand(id: ShortcutName, direction: GridDirection, extend: boolean): GridCommand {
 	return cellCommand(id, function (context, cell) {
 		context.moveTo(getEdgeTarget(cell, direction, getBounds(context)), extend)
+	})
+}
+
+function pageCommand(id: ShortcutName, direction: 'up' | 'down', extend: boolean): GridCommand {
+	return cellCommand(id, function (context, cell) {
+		const target = getPageTarget(cell, direction, context.getPageSize(), getBounds(context))
+		if (!isSameCell(target, cell)) context.moveTo(target, extend)
+	})
+}
+
+function cornerCommand(id: ShortcutName, corner: 'first' | 'last', extend: boolean): GridCommand {
+	return cellCommand(id, function (context) {
+		const bounds = getBounds(context)
+		const target =
+			corner === 'first'
+				? { row: 0, col: 0 }
+				: { row: bounds.rowCount - 1, col: bounds.colCount - 1 }
+		context.moveTo(target, extend)
+	})
+}
+
+function pagingCommand(id: ShortcutName, direction: 'next' | 'prev'): GridCommand {
+	return gridCommand(id, function (context) {
+		if (!context.onPageChange) return 'pass'
+		context.onPageChange(direction)
 	})
 }
 
@@ -173,6 +202,15 @@ export const GRID_COMMANDS: readonly GridCommand[] = [
 	edgeCommand('gridJumpBottom', 'down', false),
 	edgeCommand('gridJumpRowStart', 'left', false),
 	edgeCommand('gridJumpRowEnd', 'right', false),
+	cornerCommand('gridFirstCell', 'first', false),
+	cornerCommand('gridLastCell', 'last', false),
+	pageCommand('gridPageUp', 'up', false),
+	pageCommand('gridPageDown', 'down', false),
+	gridCommand('gridGoToCell', function (context) {
+		context.openGoToPrompt()
+	}),
+	pagingCommand('gridNextPage', 'next'),
+	pagingCommand('gridPrevPage', 'prev'),
 	stepCommand('gridExtendUp', 'up', true),
 	stepCommand('gridExtendDown', 'down', true),
 	stepCommand('gridExtendLeft', 'left', true),

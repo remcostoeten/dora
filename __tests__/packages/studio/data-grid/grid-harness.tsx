@@ -21,6 +21,9 @@ export function createGridSpies() {
 	return {
 		onCellEdit: vi.fn(),
 		onDeleteSelectedRows: vi.fn(),
+		onFocusedCellChange: vi.fn(),
+		onPageChange: vi.fn(),
+		onRequestRow: vi.fn(),
 		onSelectAll: vi.fn(),
 		onSortChange: vi.fn()
 	}
@@ -69,7 +72,12 @@ export function GridHarness({ spies, rows, columns, ...overrides }: HarnessProps
 			selectedCells={selectedCells}
 			onCellSelectionChange={setSelectedCells}
 			initialFocusedCell={focusedCell}
-			onFocusedCellChange={setFocusedCell}
+			onFocusedCellChange={(cell) => {
+				spies.onFocusedCellChange(cell)
+				setFocusedCell(cell)
+			}}
+			onPageChange={spies.onPageChange}
+			onRequestRow={spies.onRequestRow}
 			sort={sort}
 			onSortChange={(next) => {
 				spies.onSortChange(next)
