@@ -115,3 +115,43 @@ export function clampToBounds(cell: CellPosition, bounds: GridBounds): CellPosit
 export function isSameCell(a: CellPosition, b: CellPosition): boolean {
 	return a.row === b.row && a.col === b.col
 }
+
+export const DEFAULT_PAGE_ROWS = 10
+
+/**
+ * @name getVisibleRowCount
+ * @description Returns how many whole rows fit in the scroll viewport below
+ * the sticky header, which is the distance PageUp and PageDown move. Falls
+ * back to `DEFAULT_PAGE_ROWS` when the viewport has no measured height.
+ *
+ * @example
+ * getVisibleRowCount(376, 34, 36) // 10
+ */
+export function getVisibleRowCount(
+	viewportHeight: number,
+	rowHeight: number,
+	headerHeight: number
+): number {
+	if (viewportHeight <= 0 || rowHeight <= 0) return DEFAULT_PAGE_ROWS
+	return Math.max(1, Math.floor((viewportHeight - headerHeight) / rowHeight))
+}
+
+/**
+ * @name getPageTarget
+ * @description Returns the cell one page of rows above or below `from`,
+ * clamped to the first and last row.
+ *
+ * @example
+ * getPageTarget({ row: 3, col: 1 }, 'down', 10, { rowCount: 50, colCount: 4 })
+ * // { row: 13, col: 1 }
+ */
+export function getPageTarget(
+	from: CellPosition,
+	direction: 'up' | 'down',
+	pageSize: number,
+	bounds: GridBounds
+): CellPosition {
+	const delta = direction === 'down' ? pageSize : -pageSize
+	const row = Math.min(Math.max(from.row + delta, 0), bounds.rowCount - 1)
+	return { row, col: from.col }
+}

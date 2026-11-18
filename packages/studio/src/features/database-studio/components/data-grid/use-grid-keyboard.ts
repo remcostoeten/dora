@@ -21,15 +21,18 @@ type UseGridKeyboardArgs = {
 	columns: ColumnDefinition[]
 	editingCell: EditingCell | null
 	focusedCell: CellPosition | null
+	getPageSize: () => number
 	lastClickedRowRef: React.MutableRefObject<number | null>
 	masked?: boolean
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
 	onDeleteSelectedRows?: () => void
 	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
+	onPageChange?: (direction: 'next' | 'prev') => void
 	onSortColumn?: (columnName: string) => void
 	onRowsSelect?: (rowIndices: number[], checked: boolean) => void
 	onRowSelect: (rowIndex: number, checked: boolean) => void
 	onSelectAll: (checked: boolean) => void
+	openGoToPrompt: () => void
 	rows: Record<string, unknown>[]
 	selectedCellsSet: Set<string>
 	selectedRows: Set<number>
@@ -55,15 +58,18 @@ export function useGridKeyboard({
 	columns,
 	editingCell,
 	focusedCell,
+	getPageSize,
 	lastClickedRowRef,
 	masked,
 	onCellEdit,
 	onDeleteSelectedRows,
 	onOpenCellMenu,
+	onPageChange,
 	onSortColumn,
 	onRowsSelect,
 	onRowSelect,
 	onSelectAll,
+	openGoToPrompt,
 	rows,
 	selectedCellsSet,
 	selectedRows,
@@ -173,14 +179,17 @@ export function useGridKeyboard({
 				selectedCellsSet,
 				selectedRows,
 				cancelPendingNavigation,
+				getPageSize,
 				moveTo,
 				onCellEdit,
 				onDeleteSelectedRows,
 				onOpenCellMenu,
+				onPageChange,
 				onRowSelect,
 				onRowsSelect,
 				onSelectAll,
 				onSortColumn,
+				openGoToPrompt,
 				setFocusedCell,
 				setLastClickedRow: (rowIndex) => {
 					lastClickedRowRef.current = rowIndex
@@ -197,16 +206,19 @@ export function useGridKeyboard({
 			columns,
 			editingCell,
 			focusedCell,
+			getPageSize,
 			keymap,
 			lastClickedRowRef,
 			masked,
 			onCellEdit,
 			onDeleteSelectedRows,
 			onOpenCellMenu,
+			onPageChange,
 			onSortColumn,
 			onRowsSelect,
 			onRowSelect,
 			onSelectAll,
+			openGoToPrompt,
 			rows,
 			selectedCellsSet,
 			selectedRows,

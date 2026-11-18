@@ -14,7 +14,9 @@ Detail behind `SKILL.md`. Rendering only.
 | `components/data-grid/use-cell-editing.ts` | Editor state, commit, cancel, blur guards, Tab-and-move |
 | `components/data-grid/use-grid-keyboard.ts` | Dispatches a key event to the command table |
 | `components/data-grid/grid-commands.ts` | `GRID_COMMANDS`, the keymap as data, plus `buildGridKeymap` and `resolveGridCommand` |
-| `components/data-grid/grid-navigation.ts` | Pure target-cell functions for steps, edges and Tab |
+| `components/data-grid/grid-navigation.ts` | Pure target-cell functions for steps, edges, pages and Tab |
+| `components/data-grid/grid-go-to.ts` | `parseGoToQuery`, `findColumnIndex`, `resolveGoToTarget` |
+| `components/data-grid/go-to-cell-prompt.tsx` | The go-to-cell prompt |
 | `components/data-grid/grid-clipboard.ts` | `parseClipboardGrid`, clipboard copy and paste |
 | `components/data-grid/grid-events.ts` | `isDataGridEvent`, `isTextEntryEvent` |
 | `components/data-grid/use-cell-selection.ts` | Cell selection set and its by-row index |
@@ -52,6 +54,9 @@ Groups:
 - **Presentation of staged state** — `pendingEdits`, a `Set` of
   `pkValue:columnName`.
 - **Menus** — `onContextMenuChange`.
+- **Paging** — `rowNumberOffset`, `totalRowCount`, `onRequestRow`,
+  `onPageChange`. The grid only reports the intent; the owner holds
+  `pagination` and fetches.
 
 ## Column definition
 
@@ -108,6 +113,10 @@ With a cell focused:
 | --- | --- |
 | First arrow, Tab or Enter with no focus | Focus lands on the top-left cell |
 | Arrows | Move one cell; with ctrl or cmd, jump to the edge |
+| PageUp, PageDown | Move by the number of rows that fit in the viewport |
+| Home, End | First and last column of the row; with ctrl or cmd, first and last cell |
+| mod+g | Open the go-to-cell prompt |
+| alt+PageUp, alt+PageDown | Previous and next page of results, through `onPageChange` |
 | Shift plus arrows | Extend a rectangular cell selection from the anchor |
 | Tab and shift+Tab | Move one cell, wrapping across rows; Tab escapes the grid at the last cell |
 | Enter, F2, `e` | Open the editor on the focused cell |
@@ -121,6 +130,15 @@ With a cell focused:
 | `v`, mod+v | Paste TSV from the focused cell, clipped to the existing row and column count |
 | mod+a | Toggle select all |
 | Any other lone printable key | Swallowed |
+
+The go-to-cell prompt (`go-to-cell-prompt.tsx`, logic in `grid-go-to.ts`) takes
+a row (`120`), a column (`email`, fuzzy matched, or a 1-based position), or
+both (`120:email`, `120,3`); a leading separator (`:2024`) forces a column
+whose name is a number. Row numbers are 1-based and absolute across pages,
+which is why the grid takes `rowNumberOffset` and `totalRowCount`. A row in the
+loaded page is focused in place and reaches the DOM through the virtualizer's
+`scrollToIndex`; a row on another page leaves as `onRequestRow`, and the owner
+changes the page and focuses the cell once the rows arrive.
 
 Navigation is coalesced through a single `requestAnimationFrame`, cancelled on
 Escape and on unmount, so a held arrow key does not queue a state write per

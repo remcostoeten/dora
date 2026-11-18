@@ -2,12 +2,43 @@ import { describe, expect, it } from 'vitest'
 import {
 	clampToBounds,
 	getEdgeTarget,
+	getPageTarget,
 	getStepTarget,
 	getTabTarget,
+	getVisibleRowCount,
 	isSameCell
 } from '@studio/features/database-studio/components/data-grid/grid-navigation'
 
 const bounds = { rowCount: 5, colCount: 3 }
+
+describe('getVisibleRowCount', function () {
+	it('counts whole rows below the header', function () {
+		expect(getVisibleRowCount(376, 34, 36)).toBe(10)
+		expect(getVisibleRowCount(380, 34, 36)).toBe(10)
+	})
+
+	it('never returns less than one row', function () {
+		expect(getVisibleRowCount(40, 34, 36)).toBe(1)
+	})
+
+	it('falls back to ten rows when the viewport is not measured', function () {
+		expect(getVisibleRowCount(0, 34, 36)).toBe(10)
+	})
+})
+
+describe('getPageTarget', function () {
+	const tall = { rowCount: 50, colCount: 3 }
+
+	it('moves by one page and keeps the column', function () {
+		expect(getPageTarget({ row: 3, col: 1 }, 'down', 10, tall)).toEqual({ row: 13, col: 1 })
+		expect(getPageTarget({ row: 23, col: 1 }, 'up', 10, tall)).toEqual({ row: 13, col: 1 })
+	})
+
+	it('clamps to the first and last row', function () {
+		expect(getPageTarget({ row: 45, col: 0 }, 'down', 10, tall)).toEqual({ row: 49, col: 0 })
+		expect(getPageTarget({ row: 4, col: 0 }, 'up', 10, tall)).toEqual({ row: 0, col: 0 })
+	})
+})
 
 describe('getStepTarget', function () {
 	it('moves one cell in each direction', function () {
