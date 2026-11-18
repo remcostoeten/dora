@@ -10,7 +10,7 @@ import React, {
 } from 'react'
 import {
 	formatShortcut,
-	parseShortcuts,
+	formatShortcutList,
 	toShortcutList,
 	useShortcut,
 	useEffectiveShortcuts,
@@ -25,6 +25,7 @@ import { cn } from '@studio/shared/utils/cn'
 import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
 import { NoColumnsState } from './data-grid/empty-states'
 import { GoToCellPrompt } from './data-grid/go-to-cell-prompt'
+import { GridCheatSheetDialog } from './data-grid/grid-cheat-sheet-dialog'
 import { GridBody } from './data-grid/grid-body'
 import {
 	GridContextMenu,
@@ -47,6 +48,7 @@ import { useCellEditing } from './data-grid/use-cell-editing'
 import { useCellSelection } from './data-grid/use-cell-selection'
 import { useContextMenuReporting } from './data-grid/use-context-menu-reporting'
 import { useFocusedCell } from './data-grid/use-focused-cell'
+import { useGridAnnouncer, type GridLiveMessage } from './data-grid/use-grid-announcer'
 import { useGridKeyboard } from './data-grid/use-grid-keyboard'
 import { useRightDragScroll } from './data-grid/use-right-drag-scroll'
 import { useRowSelection } from './data-grid/use-row-selection'
@@ -121,6 +123,7 @@ type Props = {
 	onRevertStaged?: (rowIndex: number, columnName: string | null) => void
 	onHideColumn?: (columnName: string) => void
 	onFilterColumn?: (columnName: string) => void
+	liveMessage?: GridLiveMessage
 }
 
 const HEADER_HEIGHT = 36
@@ -166,7 +169,8 @@ export const DataGrid = memo(function DataGrid({
 	onStagedAction,
 	onRevertStaged,
 	onHideColumn,
-	onFilterColumn
+	onFilterColumn,
+	liveMessage
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
 	const gridId = `data-grid-${useId().replace(/:/g, '')}`
@@ -239,11 +243,6 @@ export const DataGrid = memo(function DataGrid({
 	})
 
 	const shortcuts = useEffectiveShortcuts()
-	const fillShortcuts = useMemo(
-		() => parseShortcuts(toShortcutList(shortcuts.gridFillSelection.combo)),
-		[shortcuts.gridFillSelection.combo]
-	)
-
 	const {
 		editingCell,
 		editValue,
@@ -253,10 +252,10 @@ export const DataGrid = memo(function DataGrid({
 		handleSaveEdit,
 		handleSelectCommit,
 		handleEditBlur,
-		handleEditKeyDown
+		handleEditKeyDown,
+		commitFillSelection
 	} = useCellEditing({
 		columns,
-		fillShortcuts,
 		gridRef,
 		onBatchCellEdit,
 		onCellEdit,
@@ -429,12 +428,29 @@ export const DataGrid = memo(function DataGrid({
 		}
 	}, [onCellEdit, onCellsEdit])
 
+	const { message: liveText, announce } = useGridAnnouncer({
+		columns,
+		focusedCell,
+		isHeaderFocused,
+		liveMessage,
+		masked,
+		rowNumberOffset,
+		rows,
+		selectedCellCount: selectedCellsSet.size,
+		selectedRowCount: selectedRows.size,
+		sort
+	})
+
 	const notify = useCallback(
 		(notice: GridNotice) => {
+			announce(notice.message)
 			onNotify?.(notice)
 		},
-		[onNotify]
+		[announce, onNotify]
 	)
+
+	const [isHelpOpen, setIsHelpOpen] = useState(false)
+	const openHelp = useCallback(() => setIsHelpOpen(true), [])
 
 	function setCellsNull(cells: CellPosition[]) {
 		if (!applyCellEdits) return
@@ -501,6 +517,8 @@ export const DataGrid = memo(function DataGrid({
 		onRowSelect,
 		onSelectAll,
 		openGoToPrompt,
+		openHelp,
+		commitFillSelection,
 		rows,
 		selectedCellsSet,
 		selectedRows,
@@ -528,10 +546,12 @@ export const DataGrid = memo(function DataGrid({
 	return (
 		<div className='relative h-full min-h-0 w-full overflow-hidden'>
 			<div id={instructionsId} className='sr-only'>
-				Use arrow keys to move between cells. Hold Shift with an arrow key to select a
-				rectangle. Press Enter, F2, or E to edit, Backspace to clear selected cells, Delete
-				to delete selected rows, Space to select a row, S to sort the focused column, and
-				Shift+F10 to open cell actions.
+				Use the arrow keys to move between cells. Press{' '}
+				{formatShortcutList(shortcuts.gridShowHelp.combo)} for the list of keyboard
+				shortcuts.
+			</div>
+			<div role='status' aria-live='polite' aria-atomic='true' className='sr-only'>
+				{liveText}
 			</div>
 			<div
 				ref={scrollContainerRef}
@@ -678,6 +698,7 @@ export const DataGrid = memo(function DataGrid({
 						totalRowCount: totalRowCount ?? rowNumberOffset + rows.length
 					}}
 					onClose={closeGoToPrompt}
+					onAnnounce={announce}
 					onGo={(target) => {
 						closeGoToPrompt(true)
 						if (target.isLoaded) {
@@ -691,6 +712,12 @@ export const DataGrid = memo(function DataGrid({
 					}}
 				/>
 			)}
+			<GridCheatSheetDialog
+				open={isHelpOpen}
+				onOpenChange={setIsHelpOpen}
+				onReturnFocus={() => gridRef.current?.focus()}
+				shortcuts={shortcuts}
+			/>
 			<ScrollHint containerRef={scrollContainerRef} />
 		</div>
 	)

@@ -112,6 +112,37 @@ describe('resolveGridCommand in the header row', function () {
 	})
 })
 
+describe('resolveGridCommand in the cell editor', function () {
+	const keymap = buildGridKeymap(getEffectiveShortcuts())
+
+	it('runs only the editing commands while a cell is being edited', function () {
+		expect(
+			resolveGridCommand(
+				keydown('Enter', { ctrlKey: true, shiftKey: true }),
+				keymap,
+				true,
+				'editing'
+			)?.id
+		).toBe('gridFillSelection')
+		expect(
+			resolveGridCommand(keydown('?', { shiftKey: true }), keymap, true, 'editing')
+		).toBeNull()
+		expect(resolveGridCommand(keydown('d'), keymap, true, 'editing')).toBeNull()
+		expect(
+			resolveGridCommand(keydown('z', { ctrlKey: true }), keymap, true, 'editing')
+		).toBeNull()
+	})
+
+	it('opens help with a question mark outside the editor', function () {
+		expect(resolveGridCommand(keydown('?', { shiftKey: true }), keymap, true)?.id).toBe(
+			'gridShowHelp'
+		)
+		expect(resolveGridCommand(keydown('?', { shiftKey: true }), keymap, false)?.id).toBe(
+			'gridShowHelp'
+		)
+	})
+})
+
 describe('getSequencePrefixes', function () {
 	it('collects the first key of chords written with a space or with then', function () {
 		expect(

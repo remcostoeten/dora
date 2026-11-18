@@ -20,6 +20,8 @@ Detail behind `SKILL.md`. Rendering only.
 | `components/data-grid/grid-clipboard.ts` | `parseClipboardGrid`, clipboard copy and paste |
 | `components/data-grid/grid-events.ts` | `isDataGridEvent`, `isTextEntryEvent` |
 | `components/data-grid/grid-edits.ts` | Pure planners for clear, set NULL, fill down, paste and fill selection |
+| `components/data-grid/grid-cheat-sheet.ts`, `grid-cheat-sheet-dialog.tsx` | The cheat sheet built from the command table |
+| `components/data-grid/grid-announce.ts`, `use-grid-announcer.ts` | Announcement wording and the live region state |
 | `components/data-grid/use-cell-selection.ts` | Cell selection set and its by-row index |
 | `components/data-grid/use-row-selection.ts` | Click, shift-range and context-menu row selection |
 | `components/data-grid/use-focused-cell.ts` | Roving focus position |
@@ -51,6 +53,8 @@ Groups:
   `onDeleteSelectedRows`, `onRowAction`, `onInsertRow`, `onBlobAction`,
   `onFKNavigate`. Omitting one disables that affordance.
 - **Notices** — `onNotify`, for outcomes the owner turns into a toast.
+- **Announcements** — `liveMessage`, an `{ id, text }` the owner bumps to have
+  an outcome read out.
 - **Column intent** — `onHideColumn`, `onFilterColumn`. The owner holds the
   visible column set and the filters.
 - **Draft row** — `draftRow`, `draftInsertIndex`, `onDraftChange`, `onDraftSave`,
@@ -105,7 +109,9 @@ accepts the hex form when the column type looks binary (`blob`, `bytea`,
 
 ## Keyboard map
 
-The keymap is data. `GRID_COMMANDS` in `grid-commands.ts` lists every command
+The keymap is data. `GRID_COMMAND_SECTIONS` in `grid-commands.ts` groups the
+commands for the cheat sheet, and `GRID_COMMANDS` is the same list flattened
+for dispatch. It lists every command
 by the name of its entry in the `data-grid` scope of `APP_SHORTCUTS`
 (`packages/studio/src/core/shortcuts/shortcuts.ts`), so the defaults below are
 the registry defaults, a user remap applies inside the grid, and the settings
@@ -150,6 +156,7 @@ With a cell focused:
 | alt+Up, alt+Down | Sort the focused column ascending or descending |
 | alt+Left, alt+Right, alt+0 | Narrow or widen the focused column by 10px, fit it to its header |
 | mod+shift+f | Add a filter on the focused column and focus its value |
+| `?` | Open the cheat sheet |
 
 The header row is part of the roving focus. ArrowUp from the first row enters
 it, and `aria-activedescendant` then points at the column header. From a header
@@ -242,6 +249,29 @@ The key after a chord prefix such as `g` is never a grid command, so `g d`
 goes to the dashboard without also deleting rows. Keys from the cell editor and
 the draft row inputs are ignored through `isTextEntryEvent`.
 
+## Cheat sheet and announcements
+
+`?` opens `GridCheatSheetDialog`. `buildCheatSheet` in `grid-cheat-sheet.ts`
+derives it from `GRID_COMMAND_SECTIONS` and the effective shortcuts, so it
+cannot list a command the grid does not run or miss one it does, and it shows
+remapped combos. A command that is not in the table is not a grid command;
+that is why the fill-selection commit is an `editing` region command instead
+of a check inside the editor's key handler.
+
+The grid renders one polite live region. `useGridAnnouncer` writes to it:
+
+- the focused cell as "column, row N, value", with the row number absolute
+  across pages, `NULL` and `empty` told apart, and `hidden` in privacy mode.
+  `describeCellValue` checks `masked` before it looks at the value, and the
+  hook does not pass the value at all while masked;
+- the focused column header and its sort state;
+- the size of a multi-cell selection and the number of checked rows;
+- notices from commands (a refused NULL, a clipped paste) and the go-to prompt;
+- outcomes the owner sends through the `liveMessage` prop: edits staged, edits
+  applied, rows deleted, undo and redo, dry run on and off.
+
+Do not add a second live region for the grid, in the grid or in the owner.
+
 ## Edit commit state machine
 
 `useCellEditing` holds `editingCell`, `editValue`, and three refs that make the
@@ -317,7 +347,8 @@ window.
    success the cached page is patched too — deliberately not reloaded, because a
    reload repaints the stale page first and reads as a flash back to the old
    value. On failure the cell reverts.
-4. Apply: `Promise.allSettled` over the buffer; fulfilled edits are removed
+4. Apply: `Promise.allSettled` over the buffer; the edits that landed become
+   one undoable committed batch; fulfilled edits are removed
    individually when any failed, or the whole table's buffer is cleared when none
    did; failed cells revert to `oldValue` and the toast names each failed row and
    column.

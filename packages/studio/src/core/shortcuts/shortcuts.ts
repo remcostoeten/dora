@@ -479,6 +479,11 @@ export const APP_SHORTCUTS = {
 		scope: 'data-grid',
 		context: 'header'
 	},
+	gridShowHelp: {
+		combo: 'shift+slash',
+		description: 'Show grid keyboard shortcuts',
+		scope: 'data-grid'
+	},
 	gridUndo: { combo: 'mod+z', description: 'Undo', scope: 'data-grid' },
 	gridRedo: { combo: ['mod+shift+z', 'mod+y'], description: 'Redo', scope: 'data-grid' }
 } as const satisfies Record<string, ShortcutDefinition>
@@ -610,7 +615,8 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gridHideColumn',
 		'gridFilterColumn',
 		'gridUndo',
-		'gridRedo'
+		'gridRedo',
+		'gridShowHelp'
 	],
 	Global: ['save']
 }
