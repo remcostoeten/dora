@@ -37,7 +37,7 @@ import {
 import { CellPosition } from './types'
 import { COLUMN_RESIZE_STEP } from './column-width'
 
-export type GridRegion = 'cell' | 'header'
+export type GridRegion = 'cell' | 'header' | 'editing'
 
 export type GridCommandContext = {
 	allSelected: boolean
@@ -51,6 +51,7 @@ export type GridCommandContext = {
 	applyCellEdits?: (edits: CellEdit[]) => void
 	autoFitColumn: (columnName: string, columnType?: string) => void
 	cancelPendingNavigation: () => void
+	commitFillSelection?: () => void
 	enterHeader: () => void
 	leaveHeader: (rowIndex: number) => void
 	moveHeaderTo: (colIndex: number) => void
@@ -79,6 +80,7 @@ export type GridCommandContext = {
 	onSelectAll: (checked: boolean) => void
 	onSortColumn?: (columnName: string) => void
 	openGoToPrompt: () => void
+	openHelp: () => void
 	setFocusedCell: (cell: CellPosition | null) => void
 	setLastClickedRow: (rowIndex: number) => void
 	startCellEdit: (rowIndex: number, columnName: string, currentValue: unknown) => void
@@ -399,122 +401,196 @@ function pasteIntoFocusedCell(context: GridCommandContext, cell: CellPosition) {
 	})
 }
 
-export const GRID_COMMANDS: readonly GridCommand[] = [
-	cellCommand(
-		'gridHeaderSort',
-		function (context, cell) {
-			context.onSortColumn?.(context.columns[cell.col].name)
-		},
-		{ regions: 'header' }
-	),
-	columnIntentCommand('gridHideColumn', (context) => context.onHideColumn, 'header'),
-	columnIntentCommand('gridFilterColumn', (context) => context.onFilterColumn, 'header'),
-	columnIntentCommand('filterRows', (context) => context.onFilterColumn, 'both'),
-	sortDirectionCommand('gridSortAscending', 'asc'),
-	sortDirectionCommand('gridSortDescending', 'desc'),
-	resizeCommand('gridNarrowColumn', -COLUMN_RESIZE_STEP),
-	resizeCommand('gridWidenColumn', COLUMN_RESIZE_STEP),
-	cellCommand(
-		'gridAutoFitColumn',
-		function (context, cell) {
-			const column = context.columns[cell.col]
-			context.autoFitColumn(column.name, column.type)
-		},
-		ANYWHERE
-	),
-	stepCommand('gridMoveUp', 'up', false),
-	stepCommand('gridMoveDown', 'down', false),
-	stepCommand('gridMoveLeft', 'left', false),
-	stepCommand('gridMoveRight', 'right', false),
-	edgeCommand('gridJumpTop', 'up', false),
-	edgeCommand('gridJumpBottom', 'down', false),
-	edgeCommand('gridJumpRowStart', 'left', false),
-	edgeCommand('gridJumpRowEnd', 'right', false),
-	cornerCommand('gridFirstCell', 'first', false),
-	cornerCommand('gridLastCell', 'last', false),
-	pageCommand('gridPageUp', 'up', false),
-	pageCommand('gridPageDown', 'down', false),
-	gridCommand('gridGoToCell', function (context) {
-		context.openGoToPrompt()
-	}),
-	pagingCommand('gridNextPage', 'next'),
-	pagingCommand('gridPrevPage', 'prev'),
-	stepCommand('gridExtendUp', 'up', true),
-	stepCommand('gridExtendDown', 'down', true),
-	stepCommand('gridExtendLeft', 'left', true),
-	stepCommand('gridExtendRight', 'right', true),
-	edgeCommand('gridExtendTop', 'up', true),
-	edgeCommand('gridExtendBottom', 'down', true),
-	edgeCommand('gridExtendRowStart', 'left', true),
-	edgeCommand('gridExtendRowEnd', 'right', true),
-	pageCommand('gridExtendPageUp', 'up', true),
-	pageCommand('gridExtendPageDown', 'down', true),
-	cornerCommand('gridExtendFirstCell', 'first', true),
-	cornerCommand('gridExtendLastCell', 'last', true),
-	tabCommand('gridNextCell', false),
-	tabCommand('gridPrevCell', true),
-	cellCommand('editCell', editFocusedCell, { blockedByMask: true }),
-	cellCommand(
-		'gridOpenCellMenu',
-		function (context, cell) {
-			context.onOpenCellMenu?.(cell.row, cell.col)
-		},
-		{ blockedByMask: true }
-	),
-	gridCommand(
-		'deleteRows',
-		function (context) {
-			if (context.selectedRows.size === 0 && !context.focusedCell) return 'pass'
-			context.onDeleteSelectedRows?.()
-		},
-		{ blockedByMask: true, regions: 'cell' }
-	),
-	cellCommand(
-		'gridOpenRowMenu',
-		function (context, cell) {
-			context.onOpenRowMenu?.(cell.row)
-		},
-		{ blockedByMask: true }
-	),
-	cellCommand('gridEditRow', runRowAction('edit', false), { blockedByMask: true }),
-	cellCommand('gridViewRow', runRowAction('view', false), { blockedByMask: true }),
-	cellCommand('gridDuplicateRow', runRowAction('duplicate', true), { blockedByMask: true }),
-	insertRowCommand('insertRow', 'below'),
-	insertRowCommand('gridInsertRowAbove', 'above'),
-	cellCommand('gridSetNull', setSelectedCellsNull, { blockedByMask: true }),
-	cellCommand('gridFillDown', fillDown, { blockedByMask: true }),
-	stagedCommand('gridToggleDryMode', 'toggle-dry-mode'),
-	stagedCommand('gridApplyEdits', 'apply'),
-	stagedCommand('gridDiscardEdits', 'discard'),
-	stagedCommand('gridPreviewSql', 'preview'),
-	stagedCommand('gridUndo', 'undo'),
-	stagedCommand('gridRedo', 'redo'),
-	revertCommand('gridRevertCell', 'cell'),
-	revertCommand('gridRevertRow', 'row'),
-	cellCommand('gridClearCells', clearSelectedCells, { blockedByMask: true }),
-	gridCommand('deselect', deselectProgressively),
-	cellCommand('gridToggleRow', toggleSelectionRows),
-	cellCommand('gridSelectRowCells', selectRowCells),
-	cellCommand('gridSelectColumnCells', selectColumnCells),
-	cellCommand(
-		'gridSortColumn',
-		function (context, cell) {
-			context.onSortColumn?.(context.columns[cell.col].name)
-		},
-		ANYWHERE
-	),
-	gridCommand('selectAll', function (context) {
-		context.onSelectAll(!context.allSelected)
-	}),
-	cellCommand(
-		'gridCopyCells',
-		function (context, cell) {
-			copySelectionToClipboard(context.selectedCellsSet, cell, context.rows, context.columns)
-		},
-		{ blockedByMask: true }
-	),
-	cellCommand('gridPasteCells', pasteIntoFocusedCell, { blockedByMask: true })
+export type GridCommandSection = {
+	title: string
+	commands: readonly GridCommand[]
+}
+
+export const GRID_COMMAND_SECTIONS: readonly GridCommandSection[] = [
+	{
+		title: 'Move',
+		commands: [
+			stepCommand('gridMoveUp', 'up', false),
+			stepCommand('gridMoveDown', 'down', false),
+			stepCommand('gridMoveLeft', 'left', false),
+			stepCommand('gridMoveRight', 'right', false),
+			edgeCommand('gridJumpTop', 'up', false),
+			edgeCommand('gridJumpBottom', 'down', false),
+			edgeCommand('gridJumpRowStart', 'left', false),
+			edgeCommand('gridJumpRowEnd', 'right', false),
+			cornerCommand('gridFirstCell', 'first', false),
+			cornerCommand('gridLastCell', 'last', false),
+			pageCommand('gridPageUp', 'up', false),
+			pageCommand('gridPageDown', 'down', false),
+			tabCommand('gridNextCell', false),
+			tabCommand('gridPrevCell', true),
+			gridCommand('gridGoToCell', function (context) {
+				context.openGoToPrompt()
+			}),
+			pagingCommand('gridNextPage', 'next'),
+			pagingCommand('gridPrevPage', 'prev')
+		]
+	},
+	{
+		title: 'Select',
+		commands: [
+			stepCommand('gridExtendUp', 'up', true),
+			stepCommand('gridExtendDown', 'down', true),
+			stepCommand('gridExtendLeft', 'left', true),
+			stepCommand('gridExtendRight', 'right', true),
+			edgeCommand('gridExtendTop', 'up', true),
+			edgeCommand('gridExtendBottom', 'down', true),
+			edgeCommand('gridExtendRowStart', 'left', true),
+			edgeCommand('gridExtendRowEnd', 'right', true),
+			pageCommand('gridExtendPageUp', 'up', true),
+			pageCommand('gridExtendPageDown', 'down', true),
+			cornerCommand('gridExtendFirstCell', 'first', true),
+			cornerCommand('gridExtendLastCell', 'last', true),
+			cellCommand('gridSelectRowCells', selectRowCells),
+			cellCommand('gridSelectColumnCells', selectColumnCells),
+			cellCommand('gridToggleRow', toggleSelectionRows),
+			gridCommand('selectAll', function (context) {
+				context.onSelectAll(!context.allSelected)
+			}),
+			gridCommand('deselect', deselectProgressively)
+		]
+	},
+	{
+		title: 'Edit cells',
+		commands: [
+			cellCommand('editCell', editFocusedCell, { blockedByMask: true }),
+			gridCommand(
+				'gridFillSelection',
+				function (context) {
+					if (!context.commitFillSelection) return 'pass'
+					context.commitFillSelection()
+				},
+				{ blockedByMask: true, regions: 'editing' }
+			),
+			cellCommand('gridClearCells', clearSelectedCells, { blockedByMask: true }),
+			cellCommand('gridSetNull', setSelectedCellsNull, { blockedByMask: true }),
+			cellCommand('gridFillDown', fillDown, { blockedByMask: true }),
+			cellCommand(
+				'gridCopyCells',
+				function (context, cell) {
+					copySelectionToClipboard(
+						context.selectedCellsSet,
+						cell,
+						context.rows,
+						context.columns
+					)
+				},
+				{ blockedByMask: true }
+			),
+			cellCommand('gridPasteCells', pasteIntoFocusedCell, { blockedByMask: true }),
+			cellCommand(
+				'gridOpenCellMenu',
+				function (context, cell) {
+					context.onOpenCellMenu?.(cell.row, cell.col)
+				},
+				{ blockedByMask: true }
+			)
+		]
+	},
+	{
+		title: 'Rows',
+		commands: [
+			cellCommand(
+				'gridOpenRowMenu',
+				function (context, cell) {
+					context.onOpenRowMenu?.(cell.row)
+				},
+				{ blockedByMask: true }
+			),
+			cellCommand('gridEditRow', runRowAction('edit', false), { blockedByMask: true }),
+			cellCommand('gridViewRow', runRowAction('view', false), { blockedByMask: true }),
+			cellCommand('gridDuplicateRow', runRowAction('duplicate', true), {
+				blockedByMask: true
+			}),
+			insertRowCommand('insertRow', 'below'),
+			insertRowCommand('gridInsertRowAbove', 'above'),
+			gridCommand(
+				'deleteRows',
+				function (context) {
+					if (context.selectedRows.size === 0 && !context.focusedCell) return 'pass'
+					context.onDeleteSelectedRows?.()
+				},
+				{ blockedByMask: true, regions: 'cell' }
+			)
+		]
+	},
+	{
+		title: 'Dry run and undo',
+		commands: [
+			stagedCommand('gridToggleDryMode', 'toggle-dry-mode'),
+			stagedCommand('gridApplyEdits', 'apply'),
+			stagedCommand('gridDiscardEdits', 'discard'),
+			revertCommand('gridRevertCell', 'cell'),
+			revertCommand('gridRevertRow', 'row'),
+			stagedCommand('gridPreviewSql', 'preview'),
+			stagedCommand('gridUndo', 'undo'),
+			stagedCommand('gridRedo', 'redo')
+		]
+	},
+	{
+		title: 'Columns',
+		commands: [
+			cellCommand(
+				'gridSortColumn',
+				function (context, cell) {
+					context.onSortColumn?.(context.columns[cell.col].name)
+				},
+				ANYWHERE
+			),
+			sortDirectionCommand('gridSortAscending', 'asc'),
+			sortDirectionCommand('gridSortDescending', 'desc'),
+			resizeCommand('gridNarrowColumn', -COLUMN_RESIZE_STEP),
+			resizeCommand('gridWidenColumn', COLUMN_RESIZE_STEP),
+			cellCommand(
+				'gridAutoFitColumn',
+				function (context, cell) {
+					const column = context.columns[cell.col]
+					context.autoFitColumn(column.name, column.type)
+				},
+				ANYWHERE
+			),
+			columnIntentCommand('filterRows', (context) => context.onFilterColumn, 'both')
+		]
+	},
+	{
+		title: 'Header row',
+		commands: [
+			cellCommand(
+				'gridHeaderSort',
+				function (context, cell) {
+					context.onSortColumn?.(context.columns[cell.col].name)
+				},
+				{ regions: 'header' }
+			),
+			columnIntentCommand('gridHideColumn', (context) => context.onHideColumn, 'header'),
+			columnIntentCommand('gridFilterColumn', (context) => context.onFilterColumn, 'header')
+		]
+	},
+	{
+		title: 'Help',
+		commands: [
+			gridCommand('gridShowHelp', function (context) {
+				context.openHelp()
+			})
+		]
+	}
 ]
+
+const REGION_PRIORITY: Record<GridCommand['regions'], number> = {
+	header: 0,
+	editing: 0,
+	cell: 1,
+	both: 2
+}
+
+export const GRID_COMMANDS: readonly GridCommand[] = GRID_COMMAND_SECTIONS.flatMap(
+	(section) => section.commands
+).sort((a, b) => REGION_PRIORITY[a.regions] - REGION_PRIORITY[b.regions])
 
 export type GridKeymapEntry = {
 	command: GridCommand
@@ -542,6 +618,19 @@ export function buildGridKeymap(
 }
 
 /**
+ * @name runsInRegion
+ * @description Whether a command runs where the focus is. `both` covers the
+ * body cells and the header row, never the cell editor.
+ *
+ * @example
+ * runsInRegion(command, 'header')
+ */
+export function runsInRegion(command: GridCommand, region: GridRegion): boolean {
+	if (command.regions === 'both') return region !== 'editing'
+	return command.regions === region
+}
+
+/**
  * @name resolveGridCommand
  * @description Finds the first command whose combo matches the key event and
  * that can run in the current focus state. Returns null when the key is not a
@@ -559,7 +648,7 @@ export function resolveGridCommand(
 ): GridCommand | null {
 	for (const entry of keymap) {
 		if (entry.command.needsCell && !hasFocusedCell) continue
-		if (entry.command.regions !== 'both' && entry.command.regions !== region) continue
+		if (!runsInRegion(entry.command, region)) continue
 		if (matchesAnyShortcut(event, entry.shortcuts)) return entry.command
 	}
 	return null

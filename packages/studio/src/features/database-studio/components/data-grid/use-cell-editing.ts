@@ -1,7 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import type React from 'react'
 import { ColumnDefinition } from '../../types'
-import { matchesAnyShortcut, parseShortcuts } from '@studio/core/shortcuts'
 import { planFillSelection } from './grid-edits'
 import { getCellKey } from './selection'
 import { CellPosition, EditingCell } from './types'
@@ -15,7 +14,6 @@ function valueToEditString(value: unknown): string {
 
 type UseCellEditingArgs = {
 	columns: ColumnDefinition[]
-	fillShortcuts: ReturnType<typeof parseShortcuts>
 	gridRef: React.RefObject<HTMLTableElement>
 	onBatchCellEdit?: (rowIndexes: number[], columnName: string, newValue: unknown) => void
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
@@ -28,7 +26,6 @@ type UseCellEditingArgs = {
 
 export function useCellEditing({
 	columns,
-	fillShortcuts,
 	gridRef,
 	onBatchCellEdit,
 	onCellEdit,
@@ -242,10 +239,8 @@ export function useCellEditing({
 
 	const handleEditKeyDown = useCallback(
 		function (e: React.KeyboardEvent) {
-			if (matchesAnyShortcut(e.nativeEvent, fillShortcuts)) {
-				e.preventDefault()
-				commitEdit({ clear: true, refocus: true, fill: true })
-			} else if (e.key === 'Enter') {
+			const hasCommandModifier = e.ctrlKey || e.metaKey || e.altKey
+			if (e.key === 'Enter' && !hasCommandModifier) {
 				e.preventDefault()
 				handleSaveEdit()
 			} else if (e.key === 'Escape') {
@@ -256,7 +251,7 @@ export function useCellEditing({
 				handleSaveEditAndMove(e.shiftKey ? 'prev' : 'next')
 			}
 		},
-		[commitEdit, fillShortcuts, handleCancelEdit, handleSaveEdit, handleSaveEditAndMove]
+		[handleCancelEdit, handleSaveEdit, handleSaveEditAndMove]
 	)
 
 	// Focus synchronously after the editor mounts (useLayoutEffect, not a
@@ -289,9 +284,17 @@ export function useCellEditing({
 		[editingCell]
 	)
 
+	const commitFillSelection = useCallback(
+		function () {
+			commitEdit({ clear: true, refocus: true, fill: true })
+		},
+		[commitEdit]
+	)
+
 	return {
 		editingCell,
 		setEditingCell,
+		commitFillSelection,
 		editValue,
 		setEditValue,
 		editInputRef,

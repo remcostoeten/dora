@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Input } from '@studio/shared/ui/input'
 import { cn } from '@studio/shared/utils/cn'
 import { resolveGoToTarget, type GoToContext, type GoToResult } from './grid-go-to'
@@ -7,14 +7,26 @@ type Props = {
 	context: GoToContext
 	onGo: (target: Extract<GoToResult, { status: 'ok' }>) => void
 	onClose: (restoreGridFocus: boolean) => void
+	onAnnounce: (text: string) => void
 }
 
 const HINT = 'Row (120), column (email), or both (120:email, 120,3)'
 
-export function GoToCellPrompt({ context, onGo, onClose }: Props) {
+function describeResult(result: GoToResult): string {
+	if (result.status === 'empty') return HINT
+	if (result.status === 'error') return result.message
+	return result.isLoaded ? result.label : `${result.label} (loads another page)`
+}
+
+export function GoToCellPrompt({ context, onGo, onClose, onAnnounce }: Props) {
 	const [query, setQuery] = useState('')
 	const hintId = useId()
 	const result = resolveGoToTarget(query, context)
+	const hint = describeResult(result)
+
+	useEffect(() => {
+		onAnnounce(hint)
+	}, [hint, onAnnounce])
 
 	return (
 		<div
@@ -49,16 +61,12 @@ export function GoToCellPrompt({ context, onGo, onClose }: Props) {
 			/>
 			<p
 				id={hintId}
-				role='status'
 				className={cn(
 					'mt-1.5 px-1 text-xs text-muted-foreground',
 					result.status === 'error' && 'text-red-500'
 				)}
 			>
-				{result.status === 'empty' && HINT}
-				{result.status === 'error' && result.message}
-				{result.status === 'ok' &&
-					(result.isLoaded ? result.label : `${result.label} (loads another page)`)}
+				{hint}
 			</p>
 		</div>
 	)

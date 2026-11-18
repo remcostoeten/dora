@@ -168,21 +168,28 @@ first blur it sees.
 
 **Bare printable keys are commands, not text.** With a cell focused, `e` and
 `F2` and `Enter` open the editor, `d` deletes, `c` copies, `v` pastes, `s` sorts,
-Space toggles the row, Backspace clears to the inferred default, and the default
-branch swallows every other lone printable key so it neither types nor escapes
-to a document-level shortcut. Editing is only ever entered explicitly. Adding a
-new bare-letter command means checking it against that list first.
+`o` opens a draft row, Space toggles the row, Backspace clears to the inferred
+default, and every other lone printable key is swallowed so it neither types nor
+escapes to a document-level shortcut. Editing is only ever entered explicitly.
+The keymap lives in `GRID_COMMAND_SECTIONS`
+(`packages/studio/src/features/database-studio/components/data-grid/grid-commands.ts`),
+keyed by entries in the `data-grid` scope of the shortcut registry. A new
+command is a registry entry plus a table entry with the region it runs in, and
+a new bare-letter command means checking it against that table and against the
+`g` chords first.
 
 **The grid is one tab stop with roving focus.** The `<table>` is the only
 tabbable node; the row checkboxes and the FK icon carry `tabIndex={-1}`, and
-`focusedCell` is the roving position. Any new interactive element inside a cell
+`focusedCell` is the roving position. The header row is part of it: ArrowUp
+from the first row moves the focus to the column header. Any new interactive element inside a cell
 is `tabIndex={-1}` or Tab stops walking cells.
 
 **Privacy mode is a hard read-only, checked first.** `formatCellValue` returns
 the fixed `MASK_TOKEN` before it looks at the value, so neither the value nor its
 length leaks, and `useGridKeyboard` blocks edit, copy, paste and delete while
 `masked` is set. A new cell renderer honours `masked` as its first branch; a new
-command checks it before acting.
+command sets `blockedByMask`, and nothing the grid announces may contain a
+masked value.
 
 **A cell key is `row:col`, produced by `getCellKey`.** The same string is the
 `data-cell-key` attribute, the member of the selection `Set`, and what

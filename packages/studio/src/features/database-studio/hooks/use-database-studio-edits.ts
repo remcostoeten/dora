@@ -335,6 +335,22 @@ export function useDatabaseStudioEdits(args: Args) {
 				return patched
 			})
 
+			if (applied.length > 0) {
+				trackBatchCellMutation(
+					activeConnectionId,
+					tableRefName,
+					applied[0].primaryKeyColumn,
+					applied.map(function (edit) {
+						return {
+							primaryKeyValue: edit.primaryKeyValue,
+							columnName: edit.columnName,
+							previousValue: edit.oldValue,
+							newValue: edit.newValue
+						}
+					})
+				)
+			}
+
 			if (failed.length > 0) {
 				// Put the failed cells back to their pre-edit values on screen so
 				// the grid stops showing writes the database rejected.

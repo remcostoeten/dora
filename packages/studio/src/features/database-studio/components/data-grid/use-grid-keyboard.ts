@@ -53,6 +53,8 @@ type UseGridKeyboardArgs = {
 	onRowSelect: (rowIndex: number, checked: boolean) => void
 	onSelectAll: (checked: boolean) => void
 	openGoToPrompt: () => void
+	openHelp: () => void
+	commitFillSelection: () => void
 	rows: Record<string, unknown>[]
 	selectedCellsSet: Set<string>
 	selectedRows: Set<number>
@@ -103,6 +105,8 @@ export function useGridKeyboard({
 	onRowSelect,
 	onSelectAll,
 	openGoToPrompt,
+	openHelp,
+	commitFillSelection,
 	rows,
 	selectedCellsSet,
 	selectedRows,
@@ -129,7 +133,14 @@ export function useGridKeyboard({
 	return useCallback(
 		function handleGridKeyDown(e: React.KeyboardEvent) {
 			const event = e.nativeEvent
-			if (editingCell || isTextEntryEvent(event)) return
+			if (editingCell) {
+				const editingCommand = resolveGridCommand(event, keymap, true, 'editing')
+				if (!editingCommand || (editingCommand.blockedByMask && masked)) return
+				e.preventDefault()
+				commitFillSelection()
+				return
+			}
+			if (isTextEntryEvent(event)) return
 
 			function cancelPendingNavigation() {
 				if (pendingNavFrameRef.current === null) return
@@ -250,6 +261,8 @@ export function useGridKeyboard({
 				onSelectAll,
 				onSortColumn,
 				openGoToPrompt,
+				openHelp,
+				commitFillSelection,
 				setFocusedCell,
 				setLastClickedRow: (rowIndex) => {
 					lastClickedRowRef.current = rowIndex
@@ -292,6 +305,8 @@ export function useGridKeyboard({
 			onRowSelect,
 			onSelectAll,
 			openGoToPrompt,
+			openHelp,
+			commitFillSelection,
 			rows,
 			selectedCellsSet,
 			selectedRows,

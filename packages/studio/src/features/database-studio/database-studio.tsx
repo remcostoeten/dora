@@ -37,7 +37,13 @@ import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
 import { DataGrid } from './components/data-grid'
+import {
+	describeApplyOutcome,
+	describeDeletedRows,
+	describeStagedCount
+} from './components/data-grid/grid-announce'
 import type { GridNotice, StagedAction } from './components/data-grid/grid-edits'
+import type { GridLiveMessage } from './components/data-grid/use-grid-announcer'
 import { isDataGridEvent } from './components/data-grid/grid-events'
 import type { ContextMenuState } from './components/data-grid'
 import { DeleteRowsDialog } from './components/delete-rows-dialog'
@@ -608,11 +614,55 @@ export function DatabaseStudio({
 		[setTableData]
 	)
 
-	const { trackCellMutation, trackBatchCellMutation, trackRowDeletion, undoLatest, redoLatest } =
-		useUndo({
-			onUndoComplete: loadTableData,
-			onUndoApply: applyUndoOptimistically
-		})
+	const [gridLiveMessage, setGridLiveMessage] = useState<GridLiveMessage>()
+	const gridLiveIdRef = useRef(0)
+	const announceToGrid = useCallback(function announceToGrid(text: string) {
+		gridLiveIdRef.current += 1
+		setGridLiveMessage({ id: gridLiveIdRef.current, text })
+	}, [])
+
+	const stagedEditCount = tableId ? getEditCount(tableId) : 0
+	const stagedTrackerRef = useRef({ count: stagedEditCount, applying: false, beforeApply: 0 })
+	useEffect(
+		function announceStagedEdits() {
+			const tracker = stagedTrackerRef.current
+			if (isApplyingEdits) {
+				if (!tracker.applying) tracker.beforeApply = tracker.count
+				tracker.applying = true
+				tracker.count = stagedEditCount
+				return
+			}
+			if (tracker.applying) {
+				tracker.applying = false
+				announceToGrid(describeApplyOutcome(tracker.beforeApply, stagedEditCount))
+			} else if (stagedEditCount !== tracker.count) {
+				announceToGrid(describeStagedCount(stagedEditCount))
+			}
+			tracker.count = stagedEditCount
+		},
+		[announceToGrid, isApplyingEdits, stagedEditCount]
+	)
+
+	const {
+		trackCellMutation,
+		trackBatchCellMutation,
+		trackRowDeletion: trackRowDeletionForUndo,
+		undoLatest,
+		redoLatest
+	} = useUndo({
+		onUndoComplete: loadTableData,
+		onUndoApply: applyUndoOptimistically
+	})
+
+	function trackRowDeletion(
+		connectionId: string,
+		deletedFrom: string,
+		rows: Record<string, unknown>[],
+		primaryKeyColumn?: string
+	) {
+		announceToGrid(describeDeletedRows(rows.length))
+		return trackRowDeletionForUndo(connectionId, deletedFrom, rows, primaryKeyColumn)
+	}
 
 	const {
 		handleBulkDelete,
@@ -733,11 +783,6 @@ export function DatabaseStudio({
 			notifyActionFailure
 		]
 	)
-
-	const selectionAnnouncement =
-		rowsForActions.size > 0
-			? `${rowsForActions.size} row${rowsForActions.size !== 1 ? 's' : ''} selected. Press Alt+T to access row actions.`
-			: ''
 
 	useEffect(
 		function cachePreviousTableDimensions() {
@@ -1121,17 +1166,23 @@ export function DatabaseStudio({
 
 	function handleUndoRedo(direction: 'undo' | 'redo') {
 		if (pickUndoTarget(isDryEditMode) === 'committed') {
-			void (direction === 'undo' ? undoLatest() : redoLatest())
+			const run = direction === 'undo' ? undoLatest() : redoLatest()
+			void run.then(function (succeeded) {
+				if (!succeeded) return
+				announceToGrid(
+					direction === 'undo' ? 'Undid the last change' : 'Redid the last change'
+				)
+			})
 			return
 		}
 		const changed = direction === 'undo' ? handleUndoStaged() : handleRedoStaged()
-		toast({
-			title: changed
-				? direction === 'undo'
-					? 'Undid the last staged edit'
-					: 'Redid the staged edit'
-				: `No staged edit to ${direction}`
-		})
+		const title = changed
+			? direction === 'undo'
+				? 'Undid the last staged edit'
+				: 'Redid the staged edit'
+			: `No staged edit to ${direction}`
+		toast({ title })
+		announceToGrid(title)
 	}
 
 	function handleStagedAction(action: StagedAction) {
@@ -1141,6 +1192,7 @@ export function DatabaseStudio({
 			case 'toggle-dry-mode':
 				setDryEditMode(!isDryEditMode)
 				toast({ title: isDryEditMode ? 'Dry run mode off' : 'Dry run mode on' })
+				announceToGrid(isDryEditMode ? 'Dry run mode off' : 'Dry run mode on')
 				break
 			case 'apply':
 				if (stagedCount === 0) {
@@ -1168,14 +1220,10 @@ export function DatabaseStudio({
 
 	function handleGridRevertStaged(rowIndex: number, columnName: string | null) {
 		const reverted = handleRevertStaged(rowIndex, columnName)
-		toast({
-			title:
-				reverted === 0
-					? columnName
-						? 'No staged edit in this cell'
-						: 'No staged edits in this row'
-					: `Reverted ${reverted} staged ${reverted === 1 ? 'edit' : 'edits'}`
-		})
+		if (reverted > 0) return
+		const title = columnName ? 'No staged edit in this cell' : 'No staged edits in this row'
+		toast({ title })
+		announceToGrid(title)
 	}
 
 	function handleConfirmDiscardEdits() {
@@ -1430,9 +1478,6 @@ export function DatabaseStudio({
 	// Content view (default)
 	return withDataFileChrome(
 		<div className='flex h-full min-h-0 flex-col bg-background relative'>
-			<div role='status' aria-live='polite' aria-atomic='true' className='sr-only'>
-				{selectionAnnouncement}
-			</div>
 			{toolbar}
 
 			<div
@@ -1486,6 +1531,7 @@ export function DatabaseStudio({
 							onRevertStaged={on.revertStaged}
 							onHideColumn={handleGridHideColumn}
 							onFilterColumn={handleGridFilterColumn}
+							liveMessage={gridLiveMessage}
 						/>
 					</div>
 				)}
