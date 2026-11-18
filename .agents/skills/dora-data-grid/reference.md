@@ -19,6 +19,7 @@ Detail behind `SKILL.md`. Rendering only.
 | `components/data-grid/go-to-cell-prompt.tsx` | The go-to-cell prompt |
 | `components/data-grid/grid-clipboard.ts` | `parseClipboardGrid`, clipboard copy and paste |
 | `components/data-grid/grid-events.ts` | `isDataGridEvent`, `isTextEntryEvent` |
+| `components/data-grid/grid-edits.ts` | Pure planners for clear, set NULL, fill down, paste and fill selection |
 | `components/data-grid/use-cell-selection.ts` | Cell selection set and its by-row index |
 | `components/data-grid/use-row-selection.ts` | Click, shift-range and context-menu row selection |
 | `components/data-grid/use-focused-cell.ts` | Roving focus position |
@@ -45,9 +46,10 @@ Groups:
 - **Sort and filter** — `sort`, `onSortChange`, `onFilterAdd`. The grid computes
   the next sort state in `handleSort` (asc, then desc, then cleared) and reports
   it; it never sorts rows itself.
-- **Mutation intent** — `onCellEdit`, `onBatchCellEdit`, `onDeleteSelectedRows`,
-  `onRowAction`, `onBlobAction`, `onFKNavigate`. Omitting one disables that
-  affordance.
+- **Mutation intent** — `onCellEdit`, `onCellsEdit`, `onBatchCellEdit`,
+  `onDeleteSelectedRows`, `onRowAction`, `onInsertRow`, `onBlobAction`,
+  `onFKNavigate`. Omitting one disables that affordance.
+- **Notices** — `onNotify`, for outcomes the owner turns into a toast.
 - **Draft row** — `draftRow`, `draftInsertIndex`, `onDraftChange`, `onDraftSave`,
   `onDraftCancel`. `draftInsertIndex` of null, undefined or `-1` puts the draft
   at the top; any other value puts it after that row index.
@@ -125,12 +127,19 @@ With a cell focused:
 | Enter, F2, `e` | Open the editor on the focused cell |
 | Delete, `d` | Delete the selected rows, falling back to the focused row |
 | Backspace | Write `getColumnDefault` into every selected cell, falling back to the focused cell; primary keys are skipped |
-| Escape | Progressive: collapse a multi-cell selection, then drop the row selection, then clear focus |
+| Escape | Progressive: collapse a multi-cell selection, then drop the row selection, then clear focus. mod+d no longer deselects |
 | Space | Check or uncheck the focused row; with a selection that spans several rows, all of them |
 | `s` | Cycle the focused column's sort state |
-| Shift+F10 or Context Menu | Open the focused cell's action menu |
+| Shift+F10 or Context Menu | Open the focused cell's action menu on its first item |
+| alt+shift+F10 or shift+Context Menu | Open the focused row's action menu on its first item |
+| alt+Enter, shift+Enter | Edit row in the row editor, view row details |
+| mod+shift+d | Duplicate the row, or every checked row when the focused row is one of them |
+| `o`, Insert, mod+shift+i; shift+`o`, shift+Insert | Open the draft row below or above the focused row |
+| mod+Backspace | Set the selected cells to NULL; non-nullable columns and primary keys are refused with a notice |
+| mod+d | Fill down: the top selected row into the cells below it, or the row above into a single row |
+| mod+shift+Enter, while editing | Commit the editor value into every selected cell through `onBatchCellEdit` |
 | `c`, mod+c | Copy the selection, or the focused cell, as TSV |
-| `v`, mod+v | Paste TSV from the focused cell, clipped to the existing row and column count |
+| `v`, mod+v | Paste TSV from the focused cell, clipped to the existing row and column count; a clipped paste reports how much was dropped |
 | mod+a | Toggle select all |
 | Any other lone printable key | Swallowed |
 
@@ -150,6 +159,21 @@ and fill act on. Checking a range of rows from the keyboard is shift+arrows
 followed by Space. ctrl+Space is `ctrl` on every platform, because cmd+Space
 belongs to macOS. Selecting a row or column leaves the anchor where it was, so
 the next shift+arrow goes back to a rectangle from that anchor.
+
+Edits that do not come from the cell editor (clear, set NULL, fill down,
+paste) are planned by pure functions in `grid-edits.ts` and leave through
+`onCellsEdit` as one batch, falling back to one `onCellEdit` per cell when the
+owner passes none. The owner's `handleCellsEdit` resolves them to primary keys
+with `resolveCellChanges`, stages them in dry mode and otherwise issues one
+`updateCells` call with one undo entry. `handleBatchCellEdit` is the same path,
+so a batch edit no longer bypasses dry mode. Anything the user has to be told
+(a refused NULL, a clipped paste) leaves as `onNotify`; the grid shows no toast
+of its own.
+
+The menus are opened from the keyboard by dispatching a `contextmenu` event on
+the focused cell or on the row's checkbox cell, so the mouse and keyboard paths
+share one arming mechanism. Items show their shortcut from the registry. On
+close, focus goes back to the grid unless the action opened the cell editor.
 
 Navigation is coalesced through a single `requestAnimationFrame`, cancelled on
 Escape and on unmount, so a held arrow key does not queue a state write per

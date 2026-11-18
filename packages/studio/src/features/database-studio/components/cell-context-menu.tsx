@@ -1,7 +1,12 @@
-import { ContextMenuItem, ContextMenuSeparator } from '@studio/shared/ui/context-menu'
+import {
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuShortcut
+} from '@studio/shared/ui/context-menu'
 import { Binary, Copy, FileDown, FileJson, Filter, Pencil, Trash2 } from 'lucide-react'
 import { ColumnDefinition } from '../types'
 import { detectBlob } from './cells/blob-utils'
+import type { MenuShortcutHints } from './data-grid/grid-context-menu'
 
 type CellAction = 'copy' | 'copy-json' | 'filter-by-value' | 'edit' | 'set-null' | 'set-null-batch'
 
@@ -23,6 +28,7 @@ type Props = {
 	hasFilter?: boolean
 	/** Hides the mutating items (edit cell, set to NULL) for readonly sources. */
 	canEdit?: boolean
+	shortcutHints?: MenuShortcutHints
 	onAction?: (
 		action: CellAction,
 		value: unknown,
@@ -50,6 +56,7 @@ export function CellContextMenuItems({
 	selectedRows,
 	hasFilter = false,
 	canEdit = true,
+	shortcutHints,
 	onAction,
 	onBlobAction
 }: Props) {
@@ -104,6 +111,9 @@ export function CellContextMenuItems({
 					<ContextMenuItem onClick={handleEdit}>
 						<Pencil />
 						<span>Edit cell</span>
+						{shortcutHints?.editCell && (
+							<ContextMenuShortcut>{shortcutHints.editCell}</ContextMenuShortcut>
+						)}
 					</ContextMenuItem>
 					<ContextMenuSeparator />
 				</>
@@ -111,6 +121,9 @@ export function CellContextMenuItems({
 			<ContextMenuItem onClick={handleCopy}>
 				<Copy />
 				<span>Copy value</span>
+				{shortcutHints?.copyCells && (
+					<ContextMenuShortcut>{shortcutHints.copyCells}</ContextMenuShortcut>
+				)}
 			</ContextMenuItem>
 			{isComplexType && (
 				<ContextMenuItem onClick={handleCopyJson}>
@@ -162,6 +175,9 @@ export function CellContextMenuItems({
 								? `Set to NULL (${selectedRows!.size} rows)`
 								: 'Set to NULL'}
 						</span>
+						{shortcutHints?.setNull && (
+							<ContextMenuShortcut>{shortcutHints.setNull}</ContextMenuShortcut>
+						)}
 					</ContextMenuItem>
 				</>
 			)}

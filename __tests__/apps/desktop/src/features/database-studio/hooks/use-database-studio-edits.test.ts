@@ -226,4 +226,86 @@ describe('useDatabaseStudioEdits', function () {
 		expect(setTableData).toHaveBeenCalled()
 		expect(loadTableData).not.toHaveBeenCalled()
 	})
+	it('stages batch edits instead of writing them while dry mode is on', async function () {
+		const addEdit = vi.fn()
+		const { result } = renderHook(function () {
+			return useDatabaseStudioEdits({
+				activeConnectionId: 'conn-1',
+				tableId: 'users',
+				tableRefName: 'users',
+				tableData,
+				isDryEditMode: true,
+				pendingEdits,
+				getEditsForTable: () => edits,
+				hasEdits: () => false,
+				addEdit,
+				removeEdit: vi.fn(),
+				clearEdits,
+				updateCell,
+				updateCells,
+				setTableData,
+				setIsApplyingEdits: vi.fn(),
+				loadTableData,
+				trackCellMutation,
+				trackBatchCellMutation,
+				notifyMissingPrimaryKey,
+				notifyActionFailure
+			})
+		})
+
+		await act(async function () {
+			await result.current.handleBatchCellEdit([0], 'name', 'Beta')
+		})
+
+		expect(updateCells.mutateAsync).not.toHaveBeenCalled()
+		expect(updateCell.mutate).not.toHaveBeenCalled()
+		expect(addEdit).toHaveBeenCalledWith('users', {
+			primaryKeyColumn: 'id',
+			primaryKeyValue: 1,
+			columnName: 'name',
+			oldValue: 'Alpha',
+			newValue: 'Beta'
+		})
+	})
+
+	it('refuses a batch edit on a table without a primary key', async function () {
+		const { result } = renderHook(function () {
+			return useDatabaseStudioEdits({
+				activeConnectionId: 'conn-1',
+				tableId: 'users',
+				tableRefName: 'users',
+				tableData: {
+					...tableData,
+					columns: tableData.columns.map(function (column) {
+						return { ...column, primaryKey: false }
+					})
+				},
+				isDryEditMode: false,
+				pendingEdits,
+				getEditsForTable: () => edits,
+				hasEdits: () => false,
+				addEdit: vi.fn(),
+				removeEdit: vi.fn(),
+				clearEdits,
+				updateCell,
+				updateCells,
+				setTableData,
+				setIsApplyingEdits: vi.fn(),
+				loadTableData,
+				trackCellMutation,
+				trackBatchCellMutation,
+				notifyMissingPrimaryKey,
+				notifyActionFailure
+			})
+		})
+
+		await act(async function () {
+			await result.current.handleCellsEdit([
+				{ rowIndex: 0, columnName: 'name', value: 'Beta' }
+			])
+		})
+
+		expect(notifyMissingPrimaryKey).toHaveBeenCalledWith('edit cells')
+		expect(updateCells.mutateAsync).not.toHaveBeenCalled()
+	})
 })

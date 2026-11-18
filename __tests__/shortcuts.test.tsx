@@ -69,11 +69,11 @@ describe('shortcuts', function () {
 	})
 
 	it('preserves multi-combo overrides as arrays in effective shortcuts', function () {
-		useShortcutStore.getState().setShortcut('deselect', ['x', 'mod+d'])
+		useShortcutStore.getState().setShortcut('deselect', ['x', 'mod+j'])
 
-		expect(useShortcutStore.getState().overrides.deselect).toEqual(['x', 'mod+d'])
+		expect(useShortcutStore.getState().overrides.deselect).toEqual(['x', 'mod+j'])
 		expect(getEffectiveShortcuts(useShortcutStore.getState().overrides).deselect.combo).toEqual(
-			['x', 'mod+d']
+			['x', 'mod+j']
 		)
 	})
 

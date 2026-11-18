@@ -17,6 +17,23 @@ type UndoOptions = {
 // would bloat the store. The delete still happens; it is just not undoable.
 const MAX_UNDOABLE_DELETE_ROWS = 200
 
+/**
+ * @name describeBatchCellMutation
+ * @description Words the undo entry for a batch of cell updates, naming NULL
+ * only when every cell was set to it.
+ *
+ * @example
+ * describeBatchCellMutation([{ newValue: null }, { newValue: null }])
+ * // 'Updated 2 cells to NULL'
+ */
+export function describeBatchCellMutation(cells: Array<{ newValue: unknown }>): string {
+	const base = `Updated ${cells.length} cell${cells.length === 1 ? '' : 's'}`
+	const allNull = cells.every(function (cell) {
+		return cell.newValue === null
+	})
+	return allNull ? `${base} to NULL` : base
+}
+
 export function useUndo(options: UndoOptions = {}) {
 	const { addAction, getLatestAction, removeAction, actions, timeoutDuration } = useUndoStore()
 	const { updateCell, updateCells, insertRows } = useDataMutation()
@@ -168,7 +185,7 @@ export function useUndo(options: UndoOptions = {}) {
 				cells
 			}
 
-			const description = `Updated ${cells.length} cell${cells.length > 1 ? 's' : ''} to NULL`
+			const description = describeBatchCellMutation(cells)
 			const actionId = addAction(description, mutation)
 
 			toast.success(description, {

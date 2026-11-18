@@ -29,3 +29,18 @@ export function getPagedOffset(
 export function getOffsetForRow(absoluteRowIndex: number, limit: number): number {
 	return Math.floor(absoluteRowIndex / limit) * limit
 }
+
+/**
+ * @name getDraftInsertIndex
+ * @description Returns the `draftInsertIndex` that places the draft row above
+ * or below a row. The grid renders the draft after row `index - 1`, and `-1`
+ * means the top of the grid.
+ *
+ * @example
+ * getDraftInsertIndex(3, 'below') // 4
+ * getDraftInsertIndex(0, 'above') // -1
+ */
+export function getDraftInsertIndex(rowIndex: number, position: 'above' | 'below'): number {
+	if (position === 'below') return rowIndex + 1
+	return rowIndex === 0 ? -1 : rowIndex
+}

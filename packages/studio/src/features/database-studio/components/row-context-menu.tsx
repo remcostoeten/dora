@@ -2,11 +2,13 @@ import { Eye, Pencil, CopyPlus, Trash2, FileDown, FileJson, FileCode } from 'luc
 import {
 	ContextMenuItem,
 	ContextMenuSeparator,
+	ContextMenuShortcut,
 	ContextMenuSub,
 	ContextMenuSubTrigger,
 	ContextMenuSubContent
 } from '@studio/shared/ui/context-menu'
 import { ColumnDefinition } from '../types'
+import type { MenuShortcutHints } from './data-grid/grid-context-menu'
 
 type RowAction = 'view' | 'edit' | 'duplicate' | 'delete' | 'export-json' | 'export-sql'
 
@@ -25,6 +27,7 @@ type Props = {
 	selectedRows?: Set<number>
 	/** Hides the mutating items (edit, duplicate, delete) for readonly sources. */
 	canEdit?: boolean
+	shortcutHints?: MenuShortcutHints
 }
 
 /**
@@ -39,7 +42,8 @@ export function RowContextMenuItems({
 	allRows,
 	onAction,
 	selectedRows,
-	canEdit = true
+	canEdit = true,
+	shortcutHints
 }: Props) {
 	const isSelected = selectedRows?.has(rowIndex)
 	const batchCount = isSelected && selectedRows ? selectedRows.size : 0
@@ -111,6 +115,9 @@ export function RowContextMenuItems({
 			>
 				<Eye />
 				<span>View details</span>
+				{shortcutHints?.viewRow && (
+					<ContextMenuShortcut>{shortcutHints.viewRow}</ContextMenuShortcut>
+				)}
 			</ContextMenuItem>
 			{canEdit && (
 				<>
@@ -121,6 +128,9 @@ export function RowContextMenuItems({
 					>
 						<Pencil />
 						<span>Edit row</span>
+						{shortcutHints?.editRow && (
+							<ContextMenuShortcut>{shortcutHints.editRow}</ContextMenuShortcut>
+						)}
 					</ContextMenuItem>
 					<ContextMenuItem
 						onClick={function () {
@@ -129,6 +139,9 @@ export function RowContextMenuItems({
 					>
 						<CopyPlus />
 						<span>{isBatch ? `Duplicate ${batchCount} rows` : 'Duplicate below'}</span>
+						{shortcutHints?.duplicateRow && (
+							<ContextMenuShortcut>{shortcutHints.duplicateRow}</ContextMenuShortcut>
+						)}
 					</ContextMenuItem>
 				</>
 			)}
@@ -166,6 +179,9 @@ export function RowContextMenuItems({
 					>
 						<Trash2 />
 						<span>{isBatch ? `Delete ${batchCount} rows` : 'Delete row'}</span>
+						{shortcutHints?.deleteRows && (
+							<ContextMenuShortcut>{shortcutHints.deleteRows}</ContextMenuShortcut>
+						)}
 					</ContextMenuItem>
 				</>
 			)}

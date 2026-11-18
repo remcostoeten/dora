@@ -31,6 +31,7 @@ import { AddRecordDialog } from './components/add-record-dialog'
 import { BottomStatusBar } from './components/bottom-status-bar'
 import { BulkEditDialog } from './components/bulk-edit-dialog'
 import { DataGrid } from './components/data-grid'
+import type { GridNotice } from './components/data-grid/grid-edits'
 import { isDataGridEvent } from './components/data-grid/grid-events'
 import type { ContextMenuState } from './components/data-grid'
 import { DeleteRowsDialog } from './components/delete-rows-dialog'
@@ -38,7 +39,7 @@ import { DropTableDialog } from './components/drop-table-dialog'
 import { useStableHandlers } from './hooks/use-stable-handlers'
 import { createLoadingStore } from './utils/loading-store'
 import { memoWhileClosed } from './utils/memo-while-closed'
-import { getOffsetForRow, getPagedOffset } from './utils/pagination'
+import { getDraftInsertIndex, getOffsetForRow, getPagedOffset } from './utils/pagination'
 import { TableLoadingSkeleton } from './components/table-loading-skeleton'
 import {
 	DatabaseStudioNoConnection,
@@ -896,7 +897,8 @@ export function DatabaseStudio({
 		handleCellEdit,
 		handleApplyPendingEdits,
 		handleDiscardPendingEdits,
-		handleBatchCellEdit
+		handleBatchCellEdit,
+		handleCellsEdit
 	} = useDatabaseStudioEdits({
 		activeConnectionId,
 		tableId,
@@ -1051,6 +1053,29 @@ export function DatabaseStudio({
 		}
 	}
 
+	function handleInsertRowAt(rowIndex: number, position: 'above' | 'below') {
+		if (!tableData) return
+		handleAddRecord()
+		setDraftInsertIndex(getDraftInsertIndex(rowIndex, position))
+	}
+
+	function handleGridDraftCancel() {
+		handleDraftCancel()
+		handleEscapeToGrid()
+	}
+
+	function handleGridDraftSave() {
+		handleDraftSave()
+		handleEscapeToGrid()
+	}
+
+	function handleGridNotify(notice: GridNotice) {
+		toast({
+			title: notice.message,
+			variant: notice.level === 'warning' ? 'destructive' : 'default'
+		})
+	}
+
 	function handleBulkEditSubmit(columnName: string, newValue: unknown) {
 		const rowIndexes = Array.from(selectedRows)
 		setShowBulkEditDialog(false)
@@ -1098,10 +1123,13 @@ export function DatabaseStudio({
 		cellEdit: canEditRows ? handleCellEdit : undefined,
 		deleteSelectedRows: canEditRows ? handleBulkDelete : undefined,
 		batchCellEdit: canEditRows ? handleBatchCellEdit : undefined,
+		cellsEdit: canEditRows ? handleCellsEdit : undefined,
+		insertRow: canEditRows ? handleInsertRowAt : undefined,
+		gridNotify: handleGridNotify,
 		rowAction: handleRowAction,
 		draftChange: handleDraftChange,
-		draftSave: handleDraftSave,
-		draftCancel: handleDraftCancel,
+		draftSave: handleGridDraftSave,
+		draftCancel: handleGridDraftCancel,
 		fkNavigate: handleFKNavigate,
 		applyPendingEdits: handleApplyPendingEdits,
 		discardPendingEdits: handleDiscardPendingEdits,
@@ -1302,6 +1330,9 @@ export function DatabaseStudio({
 							totalRowCount={tableData.totalCount}
 							onRequestRow={handleGridRequestRow}
 							onPageChange={handleGridPageChange}
+							onCellsEdit={on.cellsEdit}
+							onInsertRow={on.insertRow}
+							onNotify={on.gridNotify}
 						/>
 					</div>
 				)}

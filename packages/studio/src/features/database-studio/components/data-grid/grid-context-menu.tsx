@@ -1,8 +1,9 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@studio/shared/ui/context-menu'
 import { ColumnDefinition, FilterDescriptor } from '../../types'
 import { BlobAction, CellContextMenuItems } from '../cell-context-menu'
 import { RowAction, RowContextMenuItems } from '../row-context-menu'
+import { CellPosition } from './types'
 
 /**
  * One Radix context menu for the whole grid.
@@ -21,10 +22,35 @@ export type GridMenuTarget =
 
 const EMPTY_ROW_SET: ReadonlySet<number> = new Set<number>()
 
+export type MenuShortcutHints = {
+	editCell?: string
+	copyCells?: string
+	setNull?: string
+	viewRow?: string
+	editRow?: string
+	duplicateRow?: string
+	deleteRows?: string
+}
+
 type Reporting = {
+	gridRef: React.RefObject<HTMLTableElement>
 	onCellOpenChange: (open: boolean, row: number, col: number) => void
 	onRowOpenChange: (open: boolean, row: number) => void
 	ensureRowSelection: (rowIndex: number) => void
+}
+
+const FIRST_MENU_ITEM = '[data-slot="context-menu-content"] [role="menuitem"]:not([data-disabled])'
+
+function dispatchContextMenu(element: Element) {
+	const rect = element.getBoundingClientRect()
+	element.dispatchEvent(
+		new MouseEvent('contextmenu', {
+			bubbles: true,
+			cancelable: true,
+			clientX: rect.left + rect.width / 2,
+			clientY: rect.top + rect.height / 2
+		})
+	)
 }
 
 /**
@@ -34,11 +60,14 @@ type Reporting = {
  * armed it — header, spacer rows — suppresses the menu).
  */
 export function useGridContextMenu({
+	gridRef,
 	onCellOpenChange,
 	onRowOpenChange,
 	ensureRowSelection
 }: Reporting) {
 	const [target, setTarget] = useState<GridMenuTarget | null>(null)
+	const [isOpen, setIsOpen] = useState(false)
+	const openedFromKeyboardRef = useRef(false)
 	const armedRef = useRef<GridMenuTarget | null>(null)
 	const currentRef = useRef<GridMenuTarget | null>(null)
 
@@ -63,8 +92,43 @@ export function useGridContextMenu({
 		setTarget(armed)
 	}, [])
 
+	const openCellMenuFromKeyboard = useCallback(
+		function openCellMenuFromKeyboard(rowIndex: number, colIndex: number) {
+			const grid = gridRef.current
+			if (!grid) return
+			openedFromKeyboardRef.current = true
+			const cell = grid.querySelector(`[data-cell-key="${rowIndex}:${colIndex}"]`)
+			if (!cell) armCell(rowIndex, colIndex)
+			dispatchContextMenu(cell ?? grid)
+		},
+		[armCell, gridRef]
+	)
+
+	const openRowMenuFromKeyboard = useCallback(
+		function openRowMenuFromKeyboard(rowIndex: number) {
+			const grid = gridRef.current
+			if (!grid) return
+			openedFromKeyboardRef.current = true
+			const rowHandle = grid.querySelector(`tr[data-index="${rowIndex}"] > td`)
+			if (!rowHandle) armRow(rowIndex)
+			dispatchContextMenu(rowHandle ?? grid)
+		},
+		[armRow, gridRef]
+	)
+
+	useEffect(
+		function focusFirstItemWhenOpenedFromKeyboard() {
+			if (!isOpen || !openedFromKeyboardRef.current) return
+			openedFromKeyboardRef.current = false
+			document.querySelector<HTMLElement>(FIRST_MENU_ITEM)?.focus()
+		},
+		[isOpen, target]
+	)
+
 	const handleOpenChange = useCallback(
 		function handleOpenChange(open: boolean) {
+			setIsOpen(open)
+			if (!open) openedFromKeyboardRef.current = false
 			const current = currentRef.current
 			if (!current) return
 			if (current.kind === 'cell') {
@@ -77,7 +141,15 @@ export function useGridContextMenu({
 		[onCellOpenChange, onRowOpenChange, ensureRowSelection]
 	)
 
-	return { target, armCell, armRow, handleTriggerContextMenu, handleOpenChange }
+	return {
+		target,
+		armCell,
+		armRow,
+		openCellMenuFromKeyboard,
+		openRowMenuFromKeyboard,
+		handleTriggerContextMenu,
+		handleOpenChange
+	}
 }
 
 type Props = {
@@ -92,8 +164,10 @@ type Props = {
 	onTriggerContextMenu: (event: React.MouseEvent) => void
 	onOpenChange: (open: boolean) => void
 	onFilterAdd?: (filter: FilterDescriptor) => void
-	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
-	onBatchCellEdit?: (rowIndexes: number[], columnName: string, newValue: unknown) => void
+	onSetCellsNull?: (cells: CellPosition[]) => void
+	isEditing: () => boolean
+	onRestoreGridFocus: () => void
+	shortcutHints?: MenuShortcutHints
 	startCellEdit: (rowIndex: number, columnName: string, currentValue: unknown) => void
 	onBlobAction?: (
 		action: BlobAction,
@@ -110,10 +184,6 @@ type Props = {
 	children: React.ReactNode
 }
 
-function preventCloseAutoFocus(event: Event) {
-	event.preventDefault()
-}
-
 export function GridContextMenu({
 	target,
 	disabled = false,
@@ -125,8 +195,10 @@ export function GridContextMenu({
 	onTriggerContextMenu,
 	onOpenChange,
 	onFilterAdd,
-	onCellEdit,
-	onBatchCellEdit,
+	onSetCellsNull,
+	isEditing,
+	onRestoreGridFocus,
+	shortcutHints,
 	startCellEdit,
 	onBlobAction,
 	onRowAction,
@@ -144,12 +216,12 @@ export function GridContextMenu({
 				{children}
 			</ContextMenuTrigger>
 			<ContextMenuContent
-				className='w-[180px]'
-				// "Edit cell" opens an inline <input>; letting Radix refocus the
-				// trigger would blur that input the instant it mounts and close
-				// the editor. Row actions keep the default so keyboard focus
-				// returns to the grid.
-				onCloseAutoFocus={target?.kind === 'cell' ? preventCloseAutoFocus : undefined}
+				className='w-[220px]'
+				// Radix refocusing the trigger would blur an editor that "Edit cell" just mounted.
+				onCloseAutoFocus={(event) => {
+					event.preventDefault()
+					if (!isEditing()) onRestoreGridFocus()
+				}}
 			>
 				{target?.kind === 'cell' && targetRow && targetColumn ? (
 					<CellContextMenuItems
@@ -160,20 +232,22 @@ export function GridContextMenu({
 						selectedRows={menuSelectedRows}
 						hasFilter={!!onFilterAdd}
 						canEdit={canEditRows}
+						shortcutHints={shortcutHints}
 						onBlobAction={onBlobAction}
 						onAction={function (action, value, column, batchAction) {
 							if (action === 'filter-by-value' && onFilterAdd) {
 								onFilterAdd({ column: column.name, operator: 'eq', value })
 							} else if (action === 'edit') {
 								startCellEdit(target.rowIndex, column.name, value)
-							} else if (action === 'set-null' && onCellEdit) {
-								onCellEdit(target.rowIndex, column.name, null)
-							} else if (
-								action === 'set-null-batch' &&
-								batchAction &&
-								onBatchCellEdit
-							) {
-								onBatchCellEdit(batchAction.rowIndexes, column.name, null)
+							} else if (action === 'set-null') {
+								onSetCellsNull?.([{ row: target.rowIndex, col: target.colIndex }])
+							} else if (action === 'set-null-batch' && batchAction) {
+								onSetCellsNull?.(
+									batchAction.rowIndexes.map((row) => ({
+										row,
+										col: target.colIndex
+									}))
+								)
 							}
 						}}
 					/>
@@ -187,6 +261,7 @@ export function GridContextMenu({
 						allRows={rows}
 						selectedRows={menuSelectedRows}
 						canEdit={canEditRows}
+						shortcutHints={shortcutHints}
 						onAction={onRowAction}
 					/>
 				) : null}

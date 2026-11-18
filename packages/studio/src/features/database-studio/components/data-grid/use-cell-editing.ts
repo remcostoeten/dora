@@ -1,6 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import type React from 'react'
 import { ColumnDefinition } from '../../types'
+import { matchesAnyShortcut, parseShortcuts } from '@studio/core/shortcuts'
+import { planFillSelection } from './grid-edits'
 import { getCellKey } from './selection'
 import { CellPosition, EditingCell } from './types'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
@@ -13,9 +15,12 @@ function valueToEditString(value: unknown): string {
 
 type UseCellEditingArgs = {
 	columns: ColumnDefinition[]
+	fillShortcuts: ReturnType<typeof parseShortcuts>
 	gridRef: React.RefObject<HTMLTableElement>
+	onBatchCellEdit?: (rowIndexes: number[], columnName: string, newValue: unknown) => void
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
 	rows: Record<string, unknown>[]
+	selectedCellsSet: Set<string>
 	setAnchorCell: (cell: CellPosition | null) => void
 	setFocusedCell: (cell: CellPosition | null) => void
 	updateCellSelection: (cells: Set<string>) => void
@@ -23,9 +28,12 @@ type UseCellEditingArgs = {
 
 export function useCellEditing({
 	columns,
+	fillShortcuts,
 	gridRef,
+	onBatchCellEdit,
 	onCellEdit,
 	rows,
+	selectedCellsSet,
 	setAnchorCell,
 	setFocusedCell,
 	updateCellSelection
@@ -38,6 +46,8 @@ export function useCellEditing({
 	const originalEditValueRef = useRef<string>('')
 	const editingCellRef = useRef(editingCell)
 	editingCellRef.current = editingCell
+	const selectedCellsRef = useRef(selectedCellsSet)
+	selectedCellsRef.current = selectedCellsSet
 	const skipNextBlurSaveRef = useRef(false)
 	// True for a short window right after the editor mounts. A blur that fires
 	// in this window is a spurious focus-steal (Radix context-menu close
@@ -90,9 +100,23 @@ export function useCellEditing({
 	)
 
 	const commitEdit = useCallback(
-		function ({ clear, refocus }: { clear: boolean; refocus: boolean }) {
+		function ({ clear, refocus, fill }: { clear: boolean; refocus: boolean; fill?: boolean }) {
 			const cell = editingCellRef.current
 			const value = editValueRef.current
+			if (fill && cell && onBatchCellEdit && selectedCellsRef.current.size > 1) {
+				const editedCol = columns.findIndex((column) => column.name === cell.columnName)
+				const targets = new Set(selectedCellsRef.current)
+				targets.add(getCellKey(cell.rowIndex, editedCol))
+				for (const target of planFillSelection(targets, columns)) {
+					onBatchCellEdit(target.rowIndexes, target.columnName, value)
+				}
+				editingCellRef.current = null
+				setEditingCell(null)
+				setEditValue('')
+				originalEditValueRef.current = ''
+				if (refocus) refocusGrid()
+				return
+			}
 			if (!cell || areValuesEqual(value, originalEditValueRef.current)) {
 				if (clear) {
 					editingCellRef.current = null
@@ -119,7 +143,7 @@ export function useCellEditing({
 				refocusGrid()
 			}
 		},
-		[onCellEdit, refocusGrid]
+		[columns, onBatchCellEdit, onCellEdit, refocusGrid]
 	)
 
 	// Explicit commit — Enter key, or clicking another cell. Always saves.
@@ -218,7 +242,10 @@ export function useCellEditing({
 
 	const handleEditKeyDown = useCallback(
 		function (e: React.KeyboardEvent) {
-			if (e.key === 'Enter') {
+			if (matchesAnyShortcut(e.nativeEvent, fillShortcuts)) {
+				e.preventDefault()
+				commitEdit({ clear: true, refocus: true, fill: true })
+			} else if (e.key === 'Enter') {
 				e.preventDefault()
 				handleSaveEdit()
 			} else if (e.key === 'Escape') {
@@ -229,7 +256,7 @@ export function useCellEditing({
 				handleSaveEditAndMove(e.shiftKey ? 'prev' : 'next')
 			}
 		},
-		[handleCancelEdit, handleSaveEdit, handleSaveEditAndMove]
+		[commitEdit, fillShortcuts, handleCancelEdit, handleSaveEdit, handleSaveEditAndMove]
 	)
 
 	// Focus synchronously after the editor mounts (useLayoutEffect, not a

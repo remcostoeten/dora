@@ -8,7 +8,14 @@ import React, {
 	useMemo,
 	useCallback
 } from 'react'
-import { useShortcut, useEffectiveShortcuts } from '@studio/core/shortcuts'
+import {
+	formatShortcut,
+	parseShortcuts,
+	toShortcutList,
+	useShortcut,
+	useEffectiveShortcuts,
+	type ShortcutName
+} from '@studio/core/shortcuts'
 import { useSettings } from '@studio/core/settings'
 import {
 	useStableCallback,
@@ -19,7 +26,17 @@ import { ColumnDefinition, SortDescriptor, FilterDescriptor } from '../types'
 import { NoColumnsState } from './data-grid/empty-states'
 import { GoToCellPrompt } from './data-grid/go-to-cell-prompt'
 import { GridBody } from './data-grid/grid-body'
-import { GridContextMenu, useGridContextMenu } from './data-grid/grid-context-menu'
+import {
+	GridContextMenu,
+	useGridContextMenu,
+	type MenuShortcutHints
+} from './data-grid/grid-context-menu'
+import {
+	describeSetNullRefusal,
+	planSetNull,
+	type CellEdit,
+	type GridNotice
+} from './data-grid/grid-edits'
 import { isDataGridEvent } from './data-grid/grid-events'
 import { GridHeader } from './data-grid/grid-header'
 import { getVisibleRowCount } from './data-grid/grid-navigation'
@@ -96,6 +113,9 @@ type Props = {
 	totalRowCount?: number
 	onRequestRow?: (absoluteRowIndex: number, colIndex: number) => void
 	onPageChange?: (direction: 'next' | 'prev') => void
+	onCellsEdit?: (edits: CellEdit[]) => void
+	onInsertRow?: (rowIndex: number, position: 'above' | 'below') => void
+	onNotify?: (notice: GridNotice) => void
 }
 
 const HEADER_HEIGHT = 36
@@ -134,7 +154,10 @@ export const DataGrid = memo(function DataGrid({
 	rowNumberOffset = 0,
 	totalRowCount,
 	onRequestRow,
-	onPageChange
+	onPageChange,
+	onCellsEdit: onCellsEditProp,
+	onInsertRow,
+	onNotify: onNotifyProp
 }: Props) {
 	const lastClickedRowRef = useRef<number | null>(null)
 	const gridId = `data-grid-${useId().replace(/:/g, '')}`
@@ -147,6 +170,8 @@ export const DataGrid = memo(function DataGrid({
 	const onSelectAll = useStableCallback(onSelectAllProp)
 	const onCellEdit = useStableOptionalCallback(onCellEditProp)
 	const onFKNavigate = useStableOptionalCallback(onFKNavigateProp)
+	const onCellsEdit = useStableOptionalCallback(onCellsEditProp)
+	const onNotify = useStableOptionalCallback(onNotifyProp)
 
 	const { settings } = useSettings()
 	const masked = settings.privacyMaskData
@@ -196,6 +221,12 @@ export const DataGrid = memo(function DataGrid({
 		enabled: rows.length > VIRTUALIZE_THRESHOLD
 	})
 
+	const shortcuts = useEffectiveShortcuts()
+	const fillShortcuts = useMemo(
+		() => parseShortcuts(toShortcutList(shortcuts.gridFillSelection.combo)),
+		[shortcuts.gridFillSelection.combo]
+	)
+
 	const {
 		editingCell,
 		editValue,
@@ -208,9 +239,12 @@ export const DataGrid = memo(function DataGrid({
 		handleEditKeyDown
 	} = useCellEditing({
 		columns,
+		fillShortcuts,
 		gridRef,
+		onBatchCellEdit,
 		onCellEdit,
 		rows,
+		selectedCellsSet,
 		setAnchorCell,
 		setFocusedCell,
 		updateCellSelection
@@ -247,6 +281,7 @@ export const DataGrid = memo(function DataGrid({
 	const ensureRowSelectionForContextMenu = rowSelection.ensureRowSelectionForContextMenu
 
 	const contextMenu = useGridContextMenu({
+		gridRef,
 		onCellOpenChange: handleCellContextMenuChange,
 		onRowOpenChange: handleRowContextMenuChange,
 		ensureRowSelection: ensureRowSelectionForContextMenu
@@ -306,7 +341,6 @@ export const DataGrid = memo(function DataGrid({
 		[isDragging]
 	)
 
-	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
 
 	$.bind(shortcuts.selectAll.combo)
@@ -369,19 +403,65 @@ export const DataGrid = memo(function DataGrid({
 		updateCellSelection(new Set([getCellKey(cell.row, cell.col)]))
 	}
 
+	const applyCellEdits = useMemo(() => {
+		if (onCellsEdit) return onCellsEdit
+		if (!onCellEdit) return undefined
+		return (edits: CellEdit[]) => {
+			for (const edit of edits) onCellEdit(edit.rowIndex, edit.columnName, edit.value)
+		}
+	}, [onCellEdit, onCellsEdit])
+
+	const notify = useCallback(
+		(notice: GridNotice) => {
+			onNotify?.(notice)
+		},
+		[onNotify]
+	)
+
+	function setCellsNull(cells: CellPosition[]) {
+		if (!applyCellEdits) return
+		const plan = planSetNull(cells, columns, rows)
+		const refusal = describeSetNullRefusal(plan.refusedColumns)
+		if (refusal) notify({ level: 'warning', message: refusal })
+		if (plan.edits.length > 0) applyCellEdits(plan.edits)
+	}
+
+	const editingCellRef = useRef(editingCell)
+	editingCellRef.current = editingCell
+
+	const shortcutHints = useMemo<MenuShortcutHints>(() => {
+		function hint(name: ShortcutName) {
+			const [combo] = toShortcutList(shortcuts[name].combo)
+			return combo ? formatShortcut(combo) : undefined
+		}
+		return {
+			editCell: hint('editCell'),
+			copyCells: hint('gridCopyCells'),
+			setNull: hint('gridSetNull'),
+			viewRow: hint('gridViewRow'),
+			editRow: hint('gridEditRow'),
+			duplicateRow: hint('gridDuplicateRow'),
+			deleteRows: hint('deleteRows')
+		}
+	}, [shortcuts])
+
 	const handleGridKeyDown = useGridKeyboard({
 		anchorCell,
 		allSelected,
+		applyCellEdits,
 		columns,
 		editingCell,
 		focusedCell,
 		getPageSize,
 		lastClickedRowRef,
 		masked,
-		onCellEdit,
+		notify,
 		onDeleteSelectedRows,
-		onOpenCellMenu: contextMenu.armCell,
+		onInsertRow,
+		onOpenCellMenu: contextMenu.openCellMenuFromKeyboard,
+		onOpenRowMenu: contextMenu.openRowMenuFromKeyboard,
 		onPageChange,
+		onRowAction,
 		onSortColumn: handleSort,
 		onRowsSelect,
 		onRowSelect,
@@ -456,8 +536,10 @@ export const DataGrid = memo(function DataGrid({
 					onTriggerContextMenu={contextMenu.handleTriggerContextMenu}
 					onOpenChange={contextMenu.handleOpenChange}
 					onFilterAdd={onFilterAdd}
-					onCellEdit={onCellEdit}
-					onBatchCellEdit={onBatchCellEdit}
+					onSetCellsNull={applyCellEdits ? setCellsNull : undefined}
+					isEditing={() => editingCellRef.current !== null}
+					onRestoreGridFocus={() => gridRef.current?.focus()}
+					shortcutHints={shortcutHints}
 					startCellEdit={handleCellDoubleClick}
 					onBlobAction={onBlobAction}
 					onRowAction={onRowAction}

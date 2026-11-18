@@ -1,5 +1,4 @@
 import { ColumnDefinition } from '../../types'
-import { noop } from '@studio/shared/utils/noop'
 import { getCellKey, parseCellKey } from './selection'
 import { CellPosition } from './types'
 
@@ -91,31 +90,17 @@ export function parseClipboardGrid(clipboardText: string): string[][] {
 		})
 }
 
-function isEmptyPasteRow(pasteRow: string[]): boolean {
-	return pasteRow.length === 1 && pasteRow[0] === ''
-}
-
-export function pasteClipboardIntoGrid(
-	focusedCell: CellPosition,
-	rowCount: number,
-	columns: ColumnDefinition[],
-	onCellEdit: (rowIndex: number, columnName: string, newValue: unknown) => void
-) {
-	navigator.clipboard
+/**
+ * @name readClipboardGrid
+ * @description Reads the clipboard and parses it into a grid of cell values.
+ * Resolves to null when the clipboard is empty or cannot be read.
+ *
+ * @example
+ * const pasteRows = await readClipboardGrid()
+ */
+export function readClipboardGrid(): Promise<string[][] | null> {
+	return navigator.clipboard
 		.readText()
-		.then(function (clipboardText) {
-			if (!clipboardText) return
-			const pasteRows = parseClipboardGrid(clipboardText)
-			pasteRows.forEach(function (pasteRow, pasteRowIndex) {
-				if (isEmptyPasteRow(pasteRow)) return
-				const targetRow = focusedCell.row + pasteRowIndex
-				if (targetRow >= rowCount) return
-				pasteRow.forEach(function (pasteValue, pasteColIndex) {
-					const targetCol = focusedCell.col + pasteColIndex
-					if (targetCol >= columns.length) return
-					onCellEdit(targetRow, columns[targetCol].name, pasteValue)
-				})
-			})
-		})
-		.catch(noop)
+		.then((clipboardText) => (clipboardText ? parseClipboardGrid(clipboardText) : null))
+		.catch(() => null)
 }
