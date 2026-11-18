@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { chmodSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 
@@ -71,6 +71,14 @@ if (target === UNIVERSAL_MACOS) {
 	const parts = UNIVERSAL_PARTS.map((part) => buildHelper(part, host, true))
 	run('lipo', ['-create', '-output', dest, ...parts])
 	console.log(`Merged ${parts.length} helper slices into ${dest}`)
+
+	// tauri only stages sidecars into the per-arch target dirs, but the bundler reads them from the universal dir
+	const universalReleaseDir = join(srcTauri, 'target', UNIVERSAL_MACOS, 'release')
+	const staged = join(universalReleaseDir, 'duckdb_helper')
+	mkdirSync(universalReleaseDir, { recursive: true })
+	copyFileSync(dest, staged)
+	chmodSync(staged, 0o755)
+	console.log(`Staged universal helper at ${staged}`)
 } else {
 	const source = buildHelper(target, host, false)
 	copyFileSync(source, dest)
