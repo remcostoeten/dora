@@ -19,6 +19,7 @@ import {
 	DataViewerIcon,
 	DockerIcon,
 	KvStudioIcon,
+	PerformanceIcon,
 	SchemaDiffIcon,
 	SchemaIcon,
 	SettingsIcon,
@@ -46,6 +47,7 @@ const ANALYTICS_ITEM: NavItem = { id: 'analytics', label: 'Analytics', icon: Ana
 const SCHEMA_ITEM: NavItem = { id: 'schema-visualizer', label: 'Schema', icon: SchemaIcon }
 const SCHEMA_DIFF_ITEM: NavItem = { id: 'orm-cockpit', label: 'Schema Diff', icon: SchemaDiffIcon }
 const DOCKER_ITEM: NavItem = { id: 'docker', label: 'Docker Manager', icon: DockerIcon }
+const PERFORMANCE_ITEM: NavItem = { id: 'performance', label: 'Performance', icon: PerformanceIcon }
 const SETTINGS_ITEM: NavItem = { id: 'settings', label: 'Settings', icon: SettingsIcon }
 
 const MAIN_NAV_ITEMS: NavItem[] = [
@@ -54,7 +56,8 @@ const MAIN_NAV_ITEMS: NavItem[] = [
 	KV_ITEM,
 	SCHEMA_ITEM,
 	SCHEMA_DIFF_ITEM,
-	DOCKER_ITEM
+	DOCKER_ITEM,
+	PERFORMANCE_ITEM
 ]
 
 const MAIN_NAV_ITEMS_WITH_ANALYTICS: NavItem[] = [
@@ -64,8 +67,21 @@ const MAIN_NAV_ITEMS_WITH_ANALYTICS: NavItem[] = [
 	ANALYTICS_ITEM,
 	SCHEMA_ITEM,
 	SCHEMA_DIFF_ITEM,
-	DOCKER_ITEM
+	DOCKER_ITEM,
+	PERFORMANCE_ITEM
 ]
+
+/**
+ * @name getRailNavIds
+ * @description Returns the icon rail's view ids in on-screen order, top to bottom, Settings last.
+ * @example getRailNavIds(false)[0] // 'sql-console'
+ */
+export function getRailNavIds(analyticsAvailable: boolean) {
+	const items = analyticsAvailable ? MAIN_NAV_ITEMS_WITH_ANALYTICS : MAIN_NAV_ITEMS
+	return [...items, SETTINGS_ITEM].map(function (item) {
+		return item.id
+	})
+}
 
 const HomeButton = memo(function HomeButton({ onSelect }: { onSelect: (id: string) => void }) {
 	return (

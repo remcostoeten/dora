@@ -75,6 +75,11 @@ const KvWorkspace = lazy(function () {
 		return { default: m.KvWorkspace }
 	})
 })
+const PerformanceView = lazy(function () {
+	return import('@studio/features/performance').then(function (m) {
+		return { default: m.PerformanceView }
+	})
+})
 const PosthogAnalytics = lazy(function () {
 	return import('@studio/features/posthog-analytics').then(function (m) {
 		return { default: m.PosthogAnalytics }
@@ -178,6 +183,12 @@ export function WorkspaceViewsHost({ actions, isLoading, isTauri }: Props) {
 
 				<WorkspaceView id='docker'>
 					<DockerHost actions={stableActions} isTauri={isTauri} />
+				</WorkspaceView>
+
+				<WorkspaceView id='performance'>
+					<ErrorBoundary feature='Performance'>
+						<PerformanceView windowControls={<WindowControls />} />
+					</ErrorBoundary>
 				</WorkspaceView>
 			</WorkspaceViews>
 		</Suspense>

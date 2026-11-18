@@ -7,6 +7,7 @@ const VIEW_CHUNKS: Record<string, () => Promise<unknown>> = {
 	'schema-visualizer': () => import('@studio/features/schema-visualizer'),
 	'orm-cockpit': () => import('@studio/features/orm-cockpit/components/orm-cockpit-panel'),
 	'kv-studio': () => import('@studio/features/kv-studio/kv-workspace'),
+	performance: () => import('@studio/features/performance'),
 	analytics: () => import('@studio/features/posthog-analytics')
 }
 

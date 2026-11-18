@@ -85,10 +85,12 @@ pub async fn connect_to_database(
         connections: &state.connections,
         storage: &state.storage,
     };
+    let started = std::time::Instant::now();
     let outcome = svc
         .open_connection(&monitor, &certificates, connection_id)
         .await?;
     if outcome.opened {
+        crate::database::perf_metrics::record("connection_open", started, connection_id);
         super::run_off_reply_path(&app, move |state| {
             record_last_connected(&state.storage, connection_id);
         });

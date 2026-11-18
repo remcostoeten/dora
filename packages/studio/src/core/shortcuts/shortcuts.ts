@@ -126,6 +126,16 @@ export const APP_SHORTCUTS = {
 	gotoConnections: { combo: 'g c', description: 'Go to connections', scope: 'global' },
 	gotoEditor: { combo: 'g e', description: 'Go to SQL editor', scope: 'global' },
 	gotoDocker: { combo: 'g k', description: 'Go to Docker', scope: 'global' },
+	gotoPerformance: { combo: 'g p', description: 'Go to performance', scope: 'global' },
+	gotoRailItem1: { combo: 'shift+1', description: 'Go to icon rail item 1', scope: 'global' },
+	gotoRailItem2: { combo: 'shift+2', description: 'Go to icon rail item 2', scope: 'global' },
+	gotoRailItem3: { combo: 'shift+3', description: 'Go to icon rail item 3', scope: 'global' },
+	gotoRailItem4: { combo: 'shift+4', description: 'Go to icon rail item 4', scope: 'global' },
+	gotoRailItem5: { combo: 'shift+5', description: 'Go to icon rail item 5', scope: 'global' },
+	gotoRailItem6: { combo: 'shift+6', description: 'Go to icon rail item 6', scope: 'global' },
+	gotoRailItem7: { combo: 'shift+7', description: 'Go to icon rail item 7', scope: 'global' },
+	gotoRailItem8: { combo: 'shift+8', description: 'Go to icon rail item 8', scope: 'global' },
+	gotoRailItem9: { combo: 'shift+9', description: 'Go to icon rail item 9', scope: 'global' },
 
 	// ── SQL Console ──────────────────────────────────────────────────────────
 	runQuery: {
@@ -517,7 +527,19 @@ export const SHORTCUT_CATEGORIES: Record<string, ShortcutName[]> = {
 		'gotoSettings',
 		'gotoConnections',
 		'gotoEditor',
-		'gotoDocker'
+		'gotoDocker',
+		'gotoPerformance'
+	],
+	'Icon Rail (Shift → number)': [
+		'gotoRailItem1',
+		'gotoRailItem2',
+		'gotoRailItem3',
+		'gotoRailItem4',
+		'gotoRailItem5',
+		'gotoRailItem6',
+		'gotoRailItem7',
+		'gotoRailItem8',
+		'gotoRailItem9'
 	],
 	View: ['zoomIn', 'zoomOut', 'zoomReset', 'toggleFullscreen'],
 	'SQL Console': [

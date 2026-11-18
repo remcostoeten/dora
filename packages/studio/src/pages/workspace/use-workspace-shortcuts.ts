@@ -15,6 +15,7 @@ import {
 	selectConnectionList
 } from '@studio/core/workspace-store'
 import { useAiAssistantStore } from '@studio/features/ai-assistant/store'
+import { getRailNavIds, useRailShortcuts } from '@studio/features/app-sidebar'
 import { resetZoom, toggleFullscreen, zoomIn, zoomOut } from '@studio/shared/lib/ui-zoom'
 import { commands } from '@studio/lib/bindings'
 import type { ConnectionActions } from './use-connection-actions'
@@ -134,6 +135,35 @@ export function useWorkspaceShortcuts({ actions }: Args) {
 			},
 			{ description: shortcuts.gotoDocker.description }
 		)
+
+	$.bind(shortcuts.gotoPerformance.combo)
+		.except('typing')
+		.on(
+			function () {
+				setActiveNav('performance')
+			},
+			{ description: shortcuts.gotoPerformance.description }
+		)
+
+	useRailShortcuts(
+		[
+			shortcuts.gotoRailItem1.combo,
+			shortcuts.gotoRailItem2.combo,
+			shortcuts.gotoRailItem3.combo,
+			shortcuts.gotoRailItem4.combo,
+			shortcuts.gotoRailItem5.combo,
+			shortcuts.gotoRailItem6.combo,
+			shortcuts.gotoRailItem7.combo,
+			shortcuts.gotoRailItem8.combo,
+			shortcuts.gotoRailItem9.combo
+		],
+		function (index) {
+			const workspace = readWorkspace()
+			const activeType = workspace.connections.byId[workspace.tabs.activeConnectionId]?.type
+			const navId = getRailNavIds(activeType === 'posthog')[index]
+			if (navId) setActiveNav(navId)
+		}
+	)
 
 	// Cycle through open connection tab groups (issue #96).
 	$.bind(shortcuts.prevConnection.combo)

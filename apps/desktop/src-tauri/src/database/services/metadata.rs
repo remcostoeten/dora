@@ -137,6 +137,7 @@ impl<'a> MetadataService<'a> {
 
         let target = self.introspect_target(connection_id)?;
 
+        let started = std::time::Instant::now();
         let schema = match target {
             IntrospectTarget::Postgres { client, dialect } => {
                 postgres::schema::get_database_schema(&client, dialect).await?
@@ -157,6 +158,7 @@ impl<'a> MetadataService<'a> {
             }
         };
 
+        crate::database::perf_metrics::record("schema_introspection", started, connection_id);
         let schema = Arc::new(schema);
         self.schemas.insert(connection_id, schema.clone());
 

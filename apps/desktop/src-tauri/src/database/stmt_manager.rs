@@ -93,6 +93,7 @@ struct PgCancel {
 
 /// The storage/state for an individual statement being executed
 struct ExecState {
+    started: std::time::Instant,
     connection_id: Uuid,
     status: AtomicU8,
     error: RwLock<Option<String>>,
@@ -138,6 +139,7 @@ impl ExecState {
         }
         drop(error);
 
+        crate::database::perf_metrics::record("query_total", self.started, self.connection_id);
         self.finished.send_replace(true);
         true
     }
@@ -273,6 +275,7 @@ impl StatementManager {
     /// Cancels only the given statements, so one SQL-console tab can cancel its
     /// own query without killing queries running in other tabs.
     pub fn cancel_queries(&self, query_ids: &[QueryId]) {
+        let started = std::time::Instant::now();
         for query_id in query_ids {
             let Some(entry) = self.queries.get(query_id) else {
                 continue;
@@ -283,6 +286,7 @@ impl StatementManager {
                 continue;
             }
 
+            crate::database::perf_metrics::record("query_cancel", started, entry.connection_id);
             signal_engine_cancel(&entry);
 
             if let Some((_, handle)) = self.execution_handles.remove(query_id) {
@@ -493,6 +497,7 @@ impl StatementManager {
         };
 
         let exec_storage = ExecState {
+            started: std::time::Instant::now(),
             connection_id,
             status: AtomicU8::new(QueryStatus::Pending as u8),
             error: RwLock::new(None),
@@ -667,6 +672,13 @@ impl StatementManager {
                         } = &exec_storage.result
                         {
                             pages.write().expect("RwLock poisoned").push(page);
+                            if page_index == 0 {
+                                crate::database::perf_metrics::record(
+                                    "query_first_rows",
+                                    exec_storage.started,
+                                    exec_storage.connection_id,
+                                );
+                            }
                             *rows_received.write().expect("RwLock poisoned") += page_amount;
                             if let Some(channel) = &exec_storage.event_channel {
                                 let _ = channel.send(QueryEvent::Progress {

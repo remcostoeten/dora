@@ -121,7 +121,10 @@ function CommandPaletteHost({ actions }: Props) {
 	if (!palette.everOpened) return null
 
 	const paletteNavId =
-		activeNavId === 'docker' || activeNavId === 'sql-console' || activeNavId === 'settings'
+		activeNavId === 'docker' ||
+		activeNavId === 'sql-console' ||
+		activeNavId === 'performance' ||
+		activeNavId === 'settings'
 			? activeNavId
 			: 'database-studio'
 

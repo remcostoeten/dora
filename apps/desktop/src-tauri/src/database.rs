@@ -40,3 +40,4 @@ pub use live_monitor::{
 pub use row_count_refresher::RowCountRefresher;
 
 use crate::database::types::QueryExecEvent;
+pub mod perf_metrics;

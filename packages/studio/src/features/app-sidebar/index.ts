@@ -1,4 +1,5 @@
-export { NavigationSidebar, useSidebar } from './navigation-sidebar'
+export { NavigationSidebar, getRailNavIds, useSidebar } from './navigation-sidebar'
+export { matchesRailCombo, useRailShortcuts } from './rail-shortcuts'
 export { SidebarProvider } from './context'
 export { SidebarNavItem } from './nav-item'
 export type { NavItem, SidebarVariant, SidebarState, SidebarContextValue } from './types'

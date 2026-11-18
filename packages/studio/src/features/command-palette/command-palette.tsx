@@ -4,6 +4,7 @@ import {
 	CornerDownLeft,
 	Database,
 	FolderTree,
+	Gauge,
 	History,
 	Keyboard,
 	PanelLeft,
@@ -46,7 +47,7 @@ import { useIsMobile } from '@studio/shared/hooks/use-mobile'
 
 export type { CommandPaletteItem } from './command-palette-model'
 
-type NavigationTarget = 'database-studio' | 'sql-console' | 'docker' | 'settings'
+type NavigationTarget = 'database-studio' | 'sql-console' | 'docker' | 'performance' | 'settings'
 
 type Props = {
 	open: boolean
@@ -106,6 +107,7 @@ function getItemIcon(item: CommandPaletteItem): LucideIcon {
 	if (tokens.includes('sql') || tokens.includes('console') || tokens.includes('query'))
 		return TerminalSquare
 	if (tokens.includes('docker') || tokens.includes('container')) return Container
+	if (tokens.includes('performance') || tokens.includes('benchmark')) return Gauge
 	if (tokens.includes('settings') || tokens.includes('preferences')) return Settings
 	if (tokens.includes('sidebar') || tokens.includes('panel')) return PanelLeft
 	if (tokens.includes('history')) return History
@@ -314,6 +316,17 @@ function CommandPaletteState({
 			onSelect: () => {
 				onOpenChange(false)
 				onNavigate('docker')
+			}
+		})
+		result.push({
+			id: 'nav.performance',
+			title: 'Go to Performance',
+			group: 'Navigation',
+			keywords: ['timings', 'latency', 'memory', 'benchmark'],
+			shortcut: 'g p',
+			onSelect: () => {
+				onOpenChange(false)
+				onNavigate('performance')
 			}
 		})
 		result.push({

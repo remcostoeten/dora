@@ -293,6 +293,8 @@ pub fn run() {
             database::commands::export_table,
             // Metadata commands
             database::commands::get_database_metadata,
+            crate::database::perf_metrics::get_perf_report,
+            crate::database::perf_metrics::clear_perf_samples,
             // Soft delete commands
             database::commands::soft_delete_rows,
             database::commands::undo_soft_delete,

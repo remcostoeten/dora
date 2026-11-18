@@ -73,7 +73,10 @@ export function SqlConsoleIcon({ className }: Props) {
 export function DataViewerIcon({ className }: Props) {
 	return (
 		<RailSvg className={className}>
-			<path className='ri-fill' d='M3 9.5V7.5A3.5 3.5 0 0 1 6.5 4h11A3.5 3.5 0 0 1 21 7.5v2Z' />
+			<path
+				className='ri-fill'
+				d='M3 9.5V7.5A3.5 3.5 0 0 1 6.5 4h11A3.5 3.5 0 0 1 21 7.5v2Z'
+			/>
 			<rect x='3' y='4' width='18' height='16' rx='3.5' />
 			<path d='M3 9.5h18' />
 			<path className='ri-sub' d='M9.5 9.5V20M3 14.75h18' />
@@ -141,7 +144,10 @@ export function SchemaDiffIcon({ className }: Props) {
 export function DockerIcon({ className }: Props) {
 	return (
 		<RailSvg className={className}>
-			<path className='ri-fill' d='M4.5 9.5h15v8A2.5 2.5 0 0 1 17 20H7a2.5 2.5 0 0 1-2.5-2.5Z' />
+			<path
+				className='ri-fill'
+				d='M4.5 9.5h15v8A2.5 2.5 0 0 1 17 20H7a2.5 2.5 0 0 1-2.5-2.5Z'
+			/>
 			<path d='M4.5 9.5v8A2.5 2.5 0 0 0 7 20h10a2.5 2.5 0 0 0 2.5-2.5v-8' />
 			<path className='ri-sub' d='M9 12.75v4.25M12 12.75v4.25M15 12.75v4.25' />
 			<rect x='3' y='5' width='18' height='4.5' rx='1.5' />
@@ -149,8 +155,18 @@ export function DockerIcon({ className }: Props) {
 	)
 }
 
+export function PerformanceIcon({ className }: Props) {
+	return (
+		<RailSvg className={className}>
+			<path className='ri-fill' d='M4 19.5v-6h4v6ZM10 19.5v-10h4v10ZM16 19.5V5h4v14.5Z' />
+			<path d='M4 19.5v-6h4v6M10 19.5v-10h4v10M16 19.5V5h4v14.5M3 19.5h18' />
+		</RailSvg>
+	)
+}
+
 export function AiAssistantIcon({ className }: Props) {
-	const star = 'M10 6c.45 3.85 2.15 5.55 6 6-3.85.45-5.55 2.15-6 6-.45-3.85-2.15-5.55-6-6 3.85-.45 5.55-2.15 6-6Z'
+	const star =
+		'M10 6c.45 3.85 2.15 5.55 6 6-3.85.45-5.55 2.15-6 6-.45-3.85-2.15-5.55-6-6 3.85-.45 5.55-2.15 6-6Z'
 
 	return (
 		<RailSvg className={className}>

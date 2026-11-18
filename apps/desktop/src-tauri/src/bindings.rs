@@ -166,6 +166,8 @@ pub fn generate_bindings() -> Builder<tauri::Wry> {
         db_commands::execute_batch,
         db_commands::get_database_schema,
         db_commands::get_database_metadata,
+        crate::database::perf_metrics::get_perf_report,
+        crate::database::perf_metrics::clear_perf_samples,
         db_commands::seed_table,
         db_commands::parse_sql,
         db_commands::build_sql,

@@ -26,6 +26,7 @@ required-features = ["duckdb-engine"]
 tauri-build = { version = "2.3.1", features = [] }
 
 [dependencies]
+sysinfo = { version = "0.37", default-features = false, features = ["system"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 serde = { version = "1.0", features = ["derive", "rc"] }
 log = "0.4"
