@@ -221,6 +221,43 @@ All notable changes to this project will be documented in this file.
 
 - perf: GPU rendering on Linux and single-commit interactions (#280) (#280)
 
+
+## [v0.45.0] - 2026-11-18
+
+### Chores
+
+- chore(aur): update dora to 0.44.0
+
+
+
+### Documentation
+
+- docs(release): draft notes for v0.45.0
+
+- docs(release): add settings, schema diff, docker and distribution changes to v0.45.0 notes
+
+
+
+### Features
+
+- feat(studio): new side rail icons, splash snapshot and batched row writes (#284) (#284)
+
+- feat(kv): use the shared illustrated empty states in the Redis / Valkey workspace
+
+- feat(connections): animated provider glyphs in the source picker
+
+- feat(schema-map): redesign the schema visualizer
+
+- feat: settings view redesign, safe 64-bit integers and batched row duplication
+
+- feat(settings): redesign the settings view (#286) (#286)
+
+- feat(orm-cockpit): redesign the schema diff view (#287) (#287)
+
+- feat(docker): redesign the containers view (#288) (#288)
+
+- feat(release): ship every channel and the arm64 builds (#285) (#285)
+
 ## [Unreleased]
 
 ## [v0.41.0] - 2026-08-27
