@@ -45,6 +45,7 @@ import {
 import type { GridNotice, StagedAction } from './components/data-grid/grid-edits'
 import type { GridLiveMessage } from './components/data-grid/use-grid-announcer'
 import { isDataGridEvent } from './components/data-grid/grid-events'
+import { getActionRowIndexes } from './components/data-grid/selection'
 import type { ContextMenuState } from './components/data-grid'
 import { DeleteRowsDialog } from './components/delete-rows-dialog'
 import { DiscardEditsDialog } from './components/discard-edits-dialog'
@@ -569,11 +570,10 @@ export function DatabaseStudio({
 		[tableId, pendingEdits, getEditsForTable]
 	)
 
-	const rowsForActions = useMemo(() => {
-		if (selectedRows.size > 0) return selectedRows
-		if (focusedCell) return new Set([focusedCell.row])
-		return new Set<number>()
-	}, [selectedRows, focusedCell])
+	const rowsForActions = useMemo(
+		() => getActionRowIndexes(selectedRows, selectedCells, focusedCell),
+		[selectedRows, selectedCells, focusedCell]
+	)
 
 	const applyUndoOptimistically = useCallback(
 		function applyUndoOptimistically(mutation: Mutation) {
@@ -825,23 +825,30 @@ export function DatabaseStudio({
 			{ description: shortcuts.exportTable.description }
 		)
 
+	function handleFocusActionBar() {
+		const toolbar = toolbarRef.current
+		if (rowsForActions.size === 0 || !toolbar) {
+			announceToGrid('Select a row or cell first to use the action bar')
+			return
+		}
+		const firstButton = toolbar.querySelector<HTMLElement>('button:not([disabled])')
+		;(firstButton ?? toolbar).focus()
+	}
+
+	function handleBarDelete() {
+		handleEscapeToGrid()
+		handleBulkDelete()
+	}
+
+	function handleBarClearSelection() {
+		handleClearSelection()
+		handleEscapeToGrid()
+	}
+
 	$.bind(shortcuts.focusToolbar.combo)
 		.in('data-grid')
-		.on(
-			function () {
-				if (rowsForActions.size > 0 && toolbarRef.current) {
-					toolbarRef.current.focus()
-					// Optionally find the first button and focus it?
-					// For now, focusing the container (which has accessible children) is a good start,
-					// but usually we want to focus the first interactive element.
-					const firstButton = toolbarRef.current.querySelector('button')
-					if (firstButton) {
-						;(firstButton as HTMLElement).focus()
-					}
-				}
-			},
-			{ description: shortcuts.focusToolbar.description }
-		)
+		.except(['typing', isDataGridEvent])
+		.on(handleFocusActionBar, { description: shortcuts.focusToolbar.description })
 
 	$.bind(shortcuts.deleteRows.combo)
 		.in('data-grid')
@@ -1272,14 +1279,14 @@ export function DatabaseStudio({
 	}
 
 	function handleBulkEditSubmit(columnName: string, newValue: unknown) {
-		const rowIndexes = Array.from(selectedRows)
+		const rowIndexes = Array.from(rowsForActions)
 		setShowBulkEditDialog(false)
 		setSelectedRows(new Set())
 		handleBatchCellEdit(rowIndexes, columnName, newValue)
 	}
 
 	function handleSetNullSubmit(columnName: string) {
-		const rowIndexes = Array.from(selectedRows)
+		const rowIndexes = Array.from(rowsForActions)
 		setShowSetNullDialog(false)
 		setSelectedRows(new Set())
 		handleBatchCellEdit(rowIndexes, columnName, null)
@@ -1317,6 +1324,7 @@ export function DatabaseStudio({
 		blobAction: handleBlobAction,
 		cellEdit: canEditRows ? handleCellEdit : undefined,
 		deleteSelectedRows: canEditRows ? handleBulkDelete : undefined,
+		focusActionBar: handleFocusActionBar,
 		batchCellEdit: canEditRows ? handleBatchCellEdit : undefined,
 		cellsEdit: canEditRows ? handleCellsEdit : undefined,
 		insertRow: canEditRows ? handleInsertRowAt : undefined,
@@ -1502,6 +1510,7 @@ export function DatabaseStudio({
 							onBlobAction={on.blobAction}
 							onCellEdit={on.cellEdit}
 							onDeleteSelectedRows={on.deleteSelectedRows}
+							onFocusActionBar={on.focusActionBar}
 							onBatchCellEdit={on.batchCellEdit}
 							onRowAction={on.rowAction}
 							canEditRows={canEditRows}
@@ -1562,7 +1571,7 @@ export function DatabaseStudio({
 						<SelectionActionBar
 							ref={toolbarRef}
 							selectedCount={rowsForActions.size}
-							onDelete={canEditRows ? handleBulkDelete : undefined}
+							onDelete={canEditRows ? handleBarDelete : undefined}
 							onCopy={privacyMaskData ? undefined : handleBulkCopy}
 							onSetNull={canEditRows ? handleOpenSetNull : undefined}
 							onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
@@ -1571,7 +1580,8 @@ export function DatabaseStudio({
 							onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
 							onSave={canEditRows ? handleApplyPendingEdits : undefined}
 							pendingEditCount={pendingEditCount}
-							onClearSelection={handleClearSelection}
+							onClearSelection={handleBarClearSelection}
+							focusShortcut={formatShortcutList(shortcuts.focusToolbar.combo)}
 							onEscapeToGrid={handleEscapeToGrid}
 							mode='static'
 						/>
@@ -1597,7 +1607,7 @@ export function DatabaseStudio({
 						<SelectionActionBar
 							ref={toolbarRef}
 							selectedCount={rowsForActions.size}
-							onDelete={canEditRows ? handleBulkDelete : undefined}
+							onDelete={canEditRows ? handleBarDelete : undefined}
 							onCopy={privacyMaskData ? undefined : handleBulkCopy}
 							onDuplicate={canEditRows ? handleBulkDuplicate : undefined}
 							onExportJson={canExportFile ? handleExportJson : undefined}
@@ -1606,7 +1616,8 @@ export function DatabaseStudio({
 							onBulkEdit={canEditRows ? handleOpenBulkEdit : undefined}
 							onSave={canEditRows ? handleApplyPendingEdits : undefined}
 							pendingEditCount={pendingEditCount}
-							onClearSelection={handleClearSelection}
+							onClearSelection={handleBarClearSelection}
+							focusShortcut={formatShortcutList(shortcuts.focusToolbar.combo)}
 							onEscapeToGrid={handleEscapeToGrid}
 							mode='floating'
 						/>
@@ -1682,7 +1693,7 @@ export function DatabaseStudio({
 				target={
 					pendingSingleDeleteRow
 						? '1 row'
-						: `${selectedRows.size} selected row${selectedRows.size !== 1 ? 's' : ''}`
+						: `${rowsForActions.size} row${rowsForActions.size !== 1 ? 's' : ''}`
 				}
 				onConfirm={on.confirmDelete}
 			/>
@@ -1692,7 +1703,7 @@ export function DatabaseStudio({
 					open={showBulkEditDialog}
 					onOpenChange={setShowBulkEditDialog}
 					columns={tableData.columns}
-					selectedCount={selectedRows.size}
+					selectedCount={rowsForActions.size}
 					onSubmit={on.bulkEditSubmit}
 				/>
 			)}
@@ -1702,7 +1713,7 @@ export function DatabaseStudio({
 					open={showSetNullDialog}
 					onOpenChange={setShowSetNullDialog}
 					columns={tableData.columns}
-					selectedCount={selectedRows.size}
+					selectedCount={rowsForActions.size}
 					onSubmit={on.setNullSubmit}
 				/>
 			)}

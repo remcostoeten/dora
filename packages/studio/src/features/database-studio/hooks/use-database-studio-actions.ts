@@ -176,6 +176,7 @@ export function useDatabaseStudioActions(args: Args) {
 		setShowDeleteConfirmDialog,
 		setFilters,
 		notifyPrimaryKeyNotGenerated,
+		notifyMissingPrimaryKey,
 		notifyActionFailure,
 		onRowsAdded: markRowsAdded
 	})

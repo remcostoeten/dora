@@ -64,6 +64,14 @@ describe('resolveGridCommand', function () {
 		expect(resolveGridCommand(keydown('Escape'), keymap, false)?.id).toBe('deselect')
 	})
 
+	it('jumps to the action bar on Alt+T and F6, from a cell or the header', function () {
+		expect(resolveGridCommand(keydown('t', { altKey: true }), keymap, true)?.id).toBe(
+			'focusToolbar'
+		)
+		expect(resolveGridCommand(keydown('F6'), keymap, false)?.id).toBe('focusToolbar')
+		expect(resolveGridCommand(keydown('F6'), keymap, true, 'header')?.id).toBe('focusToolbar')
+	})
+
 	it('follows a user remap from the registry', function () {
 		const remapped = buildGridKeymap(getEffectiveShortcuts({ gridSortColumn: 'x' }))
 		expect(resolveGridCommand(keydown('x'), remapped, true)?.id).toBe('gridSortColumn')

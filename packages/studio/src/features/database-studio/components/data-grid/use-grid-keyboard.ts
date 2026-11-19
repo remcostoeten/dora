@@ -36,6 +36,7 @@ type UseGridKeyboardArgs = {
 	masked?: boolean
 	notify: (notice: GridNotice) => void
 	onDeleteSelectedRows?: () => void
+	onFocusActionBar?: () => void
 	onInsertRow?: (rowIndex: number, position: 'above' | 'below') => void
 	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
 	onOpenRowMenu?: (rowIndex: number) => void
@@ -93,6 +94,7 @@ export function useGridKeyboard({
 	masked,
 	notify,
 	onDeleteSelectedRows,
+	onFocusActionBar,
 	onInsertRow,
 	onOpenCellMenu,
 	onOpenRowMenu,
@@ -249,6 +251,7 @@ export function useGridKeyboard({
 				moveTo,
 				notify,
 				onDeleteSelectedRows,
+				onFocusActionBar,
 				onInsertRow,
 				onOpenCellMenu,
 				onOpenRowMenu,
@@ -293,6 +296,7 @@ export function useGridKeyboard({
 			masked,
 			notify,
 			onDeleteSelectedRows,
+			onFocusActionBar,
 			onInsertRow,
 			onOpenCellMenu,
 			onOpenRowMenu,

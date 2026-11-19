@@ -253,8 +253,8 @@ export const APP_SHORTCUTS = {
 		scope: 'data-grid'
 	},
 	focusToolbar: {
-		combo: 'alt+t',
-		description: 'Focus toolbar',
+		combo: ['alt+t', 'f6'],
+		description: 'Jump to the selection action bar',
 		scope: 'data-grid'
 	},
 	refreshTable: {

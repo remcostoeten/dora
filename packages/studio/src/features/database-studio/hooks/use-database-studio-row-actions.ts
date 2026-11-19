@@ -90,8 +90,12 @@ export function useDatabaseStudioRowActions(args: Args) {
 
 	const deleteRowIndexes = useCallback(
 		function deleteRowIndexes(rowIndexes: number[]) {
-			const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
-			if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
+			if (!activeConnectionId || !tableId || !tableData) return
+			const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
+			if (!primaryKeyColumn) {
+				notifyMissingPrimaryKey('delete rows')
+				return
+			}
 
 			const deletedRows = rowIndexes.map(function (targetRowIndex) {
 				return tableData.rows[targetRowIndex]
@@ -132,6 +136,7 @@ export function useDatabaseStudioRowActions(args: Args) {
 			activeConnectionId,
 			deleteRows,
 			notifyActionFailure,
+			notifyMissingPrimaryKey,
 			onLoadTableData,
 			setPendingSingleDeleteRow,
 			setSelectedRows,

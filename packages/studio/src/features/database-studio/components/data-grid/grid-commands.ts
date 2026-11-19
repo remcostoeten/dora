@@ -71,6 +71,7 @@ export type GridCommandContext = {
 		batchIndexes?: number[]
 	) => void
 	onDeleteSelectedRows?: () => void
+	onFocusActionBar?: () => void
 	onOpenCellMenu?: (rowIndex: number, colIndex: number) => void
 	onPageChange?: (direction: 'next' | 'prev') => void
 	onRevertStaged?: (rowIndex: number, columnName: string | null) => void
@@ -516,7 +517,11 @@ export const GRID_COMMAND_SECTIONS: readonly GridCommandSection[] = [
 					context.onDeleteSelectedRows?.()
 				},
 				{ blockedByMask: true, regions: 'cell' }
-			)
+			),
+			gridCommand('focusToolbar', function (context) {
+				if (!context.onFocusActionBar) return 'pass'
+				context.onFocusActionBar()
+			})
 		]
 	},
 	{

@@ -35,6 +35,7 @@ type Props = {
 	pendingEditCount?: number
 	onClearSelection: () => void
 	onEscapeToGrid?: () => void
+	focusShortcut?: string
 	mode?: 'floating' | 'static'
 }
 
@@ -128,6 +129,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 		pendingEditCount = 0,
 		onClearSelection,
 		onEscapeToGrid,
+		focusShortcut,
 		mode = 'floating'
 	},
 	ref
@@ -391,7 +393,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 				}
 			}}
 			role='toolbar'
-			aria-label={`${rowLabel} selected — row actions. Use arrow keys to navigate between actions.`}
+			aria-label={`${rowLabel} selected, row actions. Use arrow keys to move between actions and Escape to return to the grid.`}
 			tabIndex={-1}
 			className={cn(
 				mode === 'floating' ? floatingClasses : staticClasses,
@@ -405,7 +407,6 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 					<>
 						<span
 							className='flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold tabular-nums px-1.5'
-							title={`${rowLabel} selected — press Alt+T to focus this toolbar`}
 							aria-hidden='true'
 						>
 							{selectedCount}
@@ -416,7 +417,7 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 						</span>
 					</>
 				) : (
-					<div className='flex items-center gap-2 text-sm text-foreground/70'>
+					<div className='flex items-center gap-2 text-sm text-foreground/70 whitespace-nowrap'>
 						<span
 							className='flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/15 text-primary text-[11px] font-semibold tabular-nums px-1.5'
 							aria-hidden='true'
@@ -428,6 +429,16 @@ export const SelectionActionBar = forwardRef<HTMLDivElement, Props>(function Sel
 							row{selectedCount !== 1 ? 's' : ''} selected
 						</span>
 					</div>
+				)}
+				{focusShortcut && (
+					<span
+						className='hidden lg:inline-flex items-center gap-1 text-[10px] text-muted-foreground/70 whitespace-nowrap'
+						title={`Press ${focusShortcut} to reach these actions from the grid, Escape to go back`}
+						aria-hidden='true'
+					>
+						<ShortcutBadge>{focusShortcut}</ShortcutBadge>
+						to focus
+					</span>
 				)}
 			</div>
 

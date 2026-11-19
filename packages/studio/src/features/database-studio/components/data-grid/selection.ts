@@ -145,3 +145,28 @@ export function getRowToggle(
 	}
 	return { rowIndexes, checked: !rowIndexes.every((rowIndex) => selectedRows.has(rowIndex)) }
 }
+
+/**
+ * @name getActionRowIndexes
+ * @description Resolves the rows the selection bar and the delete command act
+ * on: the checked rows when there are any, otherwise every row the cell
+ * selection spans, otherwise the focused cell's row.
+ *
+ * @example
+ * getActionRowIndexes(new Set(), new Set(['2:0', '4:1']), { row: 4, col: 1 })
+ * // Set { 2, 4 }
+ */
+export function getActionRowIndexes(
+	selectedRows: Set<number>,
+	selectedCells: Set<string>,
+	focusedCell: CellPosition | null
+): Set<number> {
+	if (selectedRows.size > 0) return selectedRows
+	if (selectedCells.size > 1) {
+		const rows = new Set<number>()
+		for (const key of selectedCells) rows.add(parseCellKey(key).row)
+		return rows
+	}
+	if (focusedCell) return new Set([focusedCell.row])
+	return new Set<number>()
+}

@@ -34,6 +34,7 @@ type Args = {
 	setShowDeleteConfirmDialog: React.Dispatch<React.SetStateAction<boolean>>
 	setFilters: React.Dispatch<React.SetStateAction<FilterDescriptor[]>>
 	notifyPrimaryKeyNotGenerated: (actionLabel: string) => void
+	notifyMissingPrimaryKey: (actionLabel: string) => void
 	notifyActionFailure: (title: string, error: unknown) => void
 	/** Snapshots the current rows so the inserted ones can be highlighted. */
 	onRowsAdded: () => void
@@ -61,14 +62,19 @@ export function useDatabaseStudioBulkActions(args: Args) {
 		setShowDeleteConfirmDialog,
 		setFilters,
 		notifyPrimaryKeyNotGenerated,
+		notifyMissingPrimaryKey,
 		notifyActionFailure,
 		onRowsAdded
 	} = args
 
 	const handleBulkDelete = useCallback(
 		function () {
-			const primaryKeyColumn = tableData?.columns.find((c) => c.primaryKey)
-			if (!primaryKeyColumn || !activeConnectionId || !tableId || !tableData) return
+			if (!activeConnectionId || !tableId || !tableData) return
+			const primaryKeyColumn = tableData.columns.find((c) => c.primaryKey)
+			if (!primaryKeyColumn) {
+				notifyMissingPrimaryKey('delete rows')
+				return
+			}
 			if (settingsConfirmBeforeDelete) {
 				setShowDeleteConfirmDialog(true)
 				return
@@ -109,6 +115,7 @@ export function useDatabaseStudioBulkActions(args: Args) {
 			activeConnectionId,
 			deleteRows,
 			notifyActionFailure,
+			notifyMissingPrimaryKey,
 			onLoadTableData,
 			rowsForActions,
 			setSelectedRows,

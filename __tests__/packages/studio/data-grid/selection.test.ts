@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+	getActionRowIndexes,
 	getCellKey,
 	getCellsInRectangle,
 	getColumnCells,
@@ -61,5 +62,30 @@ describe('getRowToggle', function () {
 			rowIndexes: [1, 2, 3],
 			checked: false
 		})
+	})
+})
+
+describe('getActionRowIndexes', function () {
+	it('prefers the checked rows', function () {
+		const rows = getActionRowIndexes(new Set([1, 3]), new Set(['5:0', '6:0']), {
+			row: 6,
+			col: 0
+		})
+		expect(Array.from(rows)).toEqual([1, 3])
+	})
+
+	it('covers every row a multi-cell selection spans', function () {
+		const rows = getActionRowIndexes(new Set(), new Set(['2:0', '2:1', '4:1']), {
+			row: 4,
+			col: 1
+		})
+		expect(Array.from(rows).sort()).toEqual([2, 4])
+	})
+
+	it('falls back to the focused row, then to nothing', function () {
+		expect(
+			Array.from(getActionRowIndexes(new Set(), new Set(['3:2']), { row: 3, col: 2 }))
+		).toEqual([3])
+		expect(getActionRowIndexes(new Set(), new Set(), null).size).toBe(0)
 	})
 })

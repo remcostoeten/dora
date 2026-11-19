@@ -82,6 +82,7 @@ type Props = {
 	) => void
 	onCellEdit?: (rowIndex: number, columnName: string, newValue: unknown) => void
 	onDeleteSelectedRows?: () => void
+	onFocusActionBar?: () => void
 	onBatchCellEdit?: (rowIndexes: number[], columnName: string, newValue: unknown) => void
 	onRowAction?: (
 		action: RowAction,
@@ -141,6 +142,7 @@ export const DataGrid = memo(function DataGrid({
 	onBlobAction,
 	onCellEdit: onCellEditProp,
 	onDeleteSelectedRows,
+	onFocusActionBar,
 	onBatchCellEdit,
 	onRowAction,
 	canEditRows = true,
@@ -505,6 +507,7 @@ export const DataGrid = memo(function DataGrid({
 		masked,
 		notify,
 		onDeleteSelectedRows,
+		onFocusActionBar,
 		onInsertRow,
 		onOpenCellMenu: contextMenu.openCellMenuFromKeyboard,
 		onOpenRowMenu: contextMenu.openRowMenuFromKeyboard,
