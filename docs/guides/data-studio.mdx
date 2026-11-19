@@ -26,6 +26,7 @@ With a cell focused:
 - **Shift+F10** or the **Menu** key opens the cell context menu.
 - **Backspace** clears every selected cell, or the focused cell when nothing is
   selected. Primary key cells are skipped.
+- **Mod+G** jumps to a cell, and **?** lists every grid shortcut.
 
 Cells are type-aware: numbers, booleans, `NULL`, and JSON render distinctly, and
 binary columns show a `BLOB` badge with view/copy/export actions. PostgreSQL
@@ -36,7 +37,7 @@ Open **Row details** from a row to see every field of that row in a dialog.
 
 ## Filter
 
-Press `Mod+F` to open the filter bar. Build one or more conditions from a
+Press `Mod+Shift+F` to filter the focused column. Build one or more conditions from a
 column, an operator (`=`, `≠`, `>`, `<`, contains, and others), and a value, and
 combine them with AND/OR. Filters apply to what you see, and to what you
 [export](/docs/guides/export).
@@ -46,7 +47,8 @@ combine them with AND/OR. Filters apply to what you see, and to what you
 - **Edit a cell** by clicking it and typing; the change commits when you press
   Enter or click away. Pending edits are highlighted until saved.
 - **Add a row** with `Mod+Shift+I`, fill the draft row, and save.
-- **Delete** selected rows with `Backspace` / `Delete`.
+- **Delete** selected rows with `Delete`, `Shift+Backspace`, or `D`.
+- **Undo** the last change with `Mod+Z` and redo it with `Mod+Shift+Z`.
 - **Bulk edit** multiple selected rows at once from the row context menu.
 
 There are also dialogs to **add or drop a column** and **drop a table**, reached
@@ -54,7 +56,7 @@ from the table header or context menu.
 
 <Callout type='warn'>
 	Edits, deletes, and dropping columns or tables run real SQL against the connected database.
-	There is no undo, so take a backup before destructive changes.
+	Dropping a column or table cannot be undone, so take a backup before destructive changes.
 </Callout>
 
 ## Import and export
@@ -77,6 +79,6 @@ unfollowed. The comparison stops at 10,000 rows.
 
 ## Watch a table change live
 
-Open the live monitor with `Mod+Shift+M` to see inserts, updates, and deletes
+Open the live monitor from the activity icon in the toolbar to see inserts, updates, and deletes
 made by other clients in near-real time. See
 [Live change monitoring](/docs/guides/live-monitoring).

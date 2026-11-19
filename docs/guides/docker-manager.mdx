@@ -19,7 +19,8 @@ clipboard), credentials, port, and health. From the menu you can **start**,
 
 ## Create a container
 
-Click **+** to open the create dialog and pick:
+Click **New container** to open the create panel. Start from a quick-start
+template or pick:
 
 - an engine (PostgreSQL, MySQL, MariaDB, CockroachDB, Redis, or Valkey) and
   version,
@@ -35,11 +36,12 @@ SQL credentials, and **Open in KV Studio** opens them in the
 
 ## Seed, logs, and terminal
 
-- **Seed** a container by dragging a `.sql` file onto its **Seed** tab.
-- **Logs** stream in the logs panel, with search, tail length, and download.
+- **Seed** a container by dragging a `.sql` file onto the **Seed data** section
+  of its details panel.
+- **Logs** stream in the details panel, with a selectable tail length.
 - **Terminal** opens an interactive shell inside the container.
 
 ## Export as Compose
 
-From a container's menu, **Export as Compose** generates a `docker-compose.yml`
+From a container's menu, **Export compose file** generates a `docker-compose.yml`
 you can copy or download to reproduce the container elsewhere.

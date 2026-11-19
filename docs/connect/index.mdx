@@ -4,14 +4,16 @@ description: How Dora connects to a database, from connection strings to automat
 ---
 
 Dora connects to any **PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, DuckDB,
-or libSQL** database, and to **Redis and Valkey** through the
+libSQL, or Cloudflare D1** database, and to **Redis and Valkey** through the
 [key-value studio](/docs/guides/key-value-studio). Almost every hosted provider gives you a standard
 connection string, and Dora handles the rest.
 
 ## Paste a connection string
 
-Open the connection dialog (`Mod+Shift+N`), toggle **Use connection string**, and
-paste a URL. Dora reads the scheme and host to figure out the rest:
+Open the connection dialog (`Mod+Shift+N`) and paste a URL into the search box.
+Dora shows what it detected, and Enter continues to the details step, where you
+can switch between **Fields** and **Connection string**. Dora reads the scheme
+and host to figure out the rest:
 
 | Scheme                          | Engine                                         |
 | ------------------------------- | ---------------------------------------------- |
@@ -21,6 +23,7 @@ paste a URL. Dora reads the scheme and host to figure out the rest:
 | `libsql://`                     | libSQL (Turso)                                 |
 | `sqlite://`                     | SQLite                                         |
 | `duckdb://`                     | DuckDB                                         |
+| `d1://`                         | Cloudflare D1                                  |
 | `posthog://`                    | PostHog (HogQL)                                |
 
 ## Automatic engine and SSL detection
@@ -40,8 +43,8 @@ If you mistype a scheme (`postgrss://`), Dora suggests the closest valid one
 instead of failing silently.
 
 <Callout type='info'>
-	You can always override detection. The SSL toggle and engine selector in the dialog take
-	precedence over what Dora guesses.
+	You can always override detection. The **Require SSL** switch and the source you pick in the
+	dialog take precedence over what Dora guesses.
 </Callout>
 
 ## Connect from a provider account
@@ -54,12 +57,14 @@ dialog. The provider-specific pages note where this is available.
 
 ## SSH tunnels
 
-To reach a Postgres or MySQL database on a private network, enable **SSH tunnel**
-in the connection dialog and provide:
+To reach a PostgreSQL, CockroachDB, MySQL, or MariaDB database on a private
+network, enable **SSH tunnel** in the connection dialog and provide:
 
 - SSH host, port (default `22`), and username,
-- an authentication method: **private key file** or **password** (Dora also
-  falls back to your SSH agent if neither is given).
+- an authentication method: **key file** or **password**. On macOS and Linux
+  Dora falls back to your SSH agent if neither is given,
+- optionally the **host key fingerprint** (`SHA256:…`), so Dora refuses a server
+  whose key does not match.
 
 Dora opens the tunnel before connecting and tears it down on disconnect. Your
 database host and port stay as they are on the private network. Dora forwards

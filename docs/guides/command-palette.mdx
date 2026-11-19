@@ -20,10 +20,11 @@ go to settings. Start typing to filter; a breadcrumb shows where you are.
 | ------------------- | ----------------- |
 | Run query           | `Mod+Enter`       |
 | Run selected SQL    | `Mod+Shift+Enter` |
-| Format SQL          | `Mod+Shift+F`     |
-| Open query history  | `Mod+H`           |
+| Open query history  | `Mod+Shift+H`     |
+| Generate SQL with AI | `Mod+I`          |
 | Save script         | `Mod+S`           |
 | Find in editor      | `Mod+F`           |
+| Replace in editor   | `Mod+H`           |
 | Toggle line comment | `Mod+/`           |
 
 ### Navigation
@@ -35,18 +36,28 @@ go to settings. Start typing to filter; a breadcrumb shows where you are.
 | Toggle sidebar        | `Mod+B`       |
 | Settings              | `Mod+,`       |
 | Close current tab     | `Mod+W`       |
+| Toggle AI assistant   | `Mod+Shift+B` |
+| Reconnect             | `Mod+Shift+R` |
+| Switch to connection 1 to 9 | `Mod+1` to `Mod+9` |
+| Previous / next connection | `Ctrl+Shift+[` / `Ctrl+Shift+]` |
+| Open icon rail item 1 to 9 | `Shift+1` to `Shift+9` |
+| Zoom in / out / reset | `Mod+=` / `Mod+-` / `Mod+0` |
 | Close dialog / cancel | `Escape`      |
 
 ### Data Studio
 
 | Action                 | Shortcut               |
 | ---------------------- | ---------------------- |
-| Refresh table          | `Mod+R`                |
-| Filter rows            | `Mod+F`                |
-| Insert row             | `Mod+Shift+I`          |
-| Delete selected row(s) | `Backspace` / `Delete` |
+| Refresh table          | `Mod+R` / `F5`         |
+| Filter the focused column | `Mod+Shift+F`       |
+| Insert row             | `Mod+Shift+I` / `O`    |
+| Duplicate row          | `Mod+Shift+D`          |
+| Delete selected row(s) | `Delete` / `Shift+Backspace` / `D` |
+| Clear selected cells   | `Backspace`            |
+| Go to cell             | `Mod+G`                |
+| Undo / redo            | `Mod+Z` / `Mod+Shift+Z` |
 | Export table           | `Mod+E`                |
-| Live monitor           | `Mod+Shift+M`          |
+| Show every grid shortcut | `?`                  |
 
 ### Go to (press `G`, then the next key)
 
@@ -55,10 +66,13 @@ go to settings. Start typing to filter; a breadcrumb shows where you are.
 | Dashboard   | `G` then `D` |
 | Settings    | `G` then `S` |
 | Connections | `G` then `C` |
+| SQL editor  | `G` then `E` |
+| Docker      | `G` then `K` |
+| Performance | `G` then `P` |
 
 ## Customize shortcuts
 
-Open **Settings → Keyboard Shortcuts** to rebind anything. Click a shortcut's
+Open **Settings → Shortcuts** to rebind anything. Click a shortcut's
 binding, press the new combination, and Dora records it. You can search by
 action or key, filter by category, and reset to defaults. Dora warns you about
 conflicts. Your overrides are saved across sessions.

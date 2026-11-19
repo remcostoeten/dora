@@ -21,7 +21,7 @@ release assets:
 | ---------- | -------------------- | -------------------------------------------------- | ---------------------------- |
 | macOS      | Apple Silicon, Intel | Universal `.dmg`                                   | Homebrew                     |
 | Windows    | x64, ARM64           | Setup `.exe`                                       | Winget, Scoop                |
-| Linux      | x86_64, ARM64        | `.AppImage`, `.deb`, `.rpm`, `.flatpak`, `.tar.gz` | APT, DNF, Flatpak, Snap, Nix |
+| Linux      | x86_64, ARM64        | `.AppImage`, `.deb`, `.rpm`, `.tar.gz`             | APT, DNF, Flatpak, Snap, Nix |
 | Arch Linux | x86_64, ARM64        | AUR                                                | `yay -S dora`                |
 
 ARM64 builds for Windows and Linux ship when that release built them; x64 and
@@ -75,7 +75,6 @@ Pick the package that fits your distribution:
 | AppImage        | `chmod +x Dora_*.AppImage && ./Dora_*.AppImage`       |
 | Debian / Ubuntu | `sudo apt install ./Dora_*.deb`                       |
 | Fedora / RHEL   | `sudo dnf install ./Dora-*.rpm`                       |
-| Flatpak bundle  | `flatpak install --user ./Dora-*.flatpak`             |
 | Snap            | `sudo snap install dora`                              |
 | Archive         | `tar -xzf dora-*.tar.gz` and run the extracted binary |
 
@@ -160,7 +159,7 @@ ceiling there whatever the monitor's refresh rate.
 
 ## Verify the install
 
-Launch Dora and open **Settings → About** to confirm the version matches the
+Launch Dora and open **Settings → Updates** to confirm the version matches the
 release you downloaded. On Linux you can also check the binary:
 
 ```bash
@@ -169,8 +168,7 @@ dora --version
 
 ## Build from source
 
-To build Dora yourself you need the Rust toolchain (`cargo`) and Node.js with
-`pnpm`.
+To build Dora yourself you need the Rust toolchain (`cargo`) and [Bun](https://bun.sh).
 
 <Callout type='info'>
 	Building from source produces an unsigned binary intended for development. For day-to-day use,
@@ -186,17 +184,17 @@ To build Dora yourself you need the Rust toolchain (`cargo`) and Node.js with
 2. **Install dependencies**:
 
     ```bash
-    pnpm install
+    bun install
     ```
 
 3. **Run the desktop app**:
 
     ```bash
-    pnpm desktop:dev
+    bun run desktop:dev
     ```
 
 4. **Run these docs locally**:
 
     ```bash
-    pnpm docs:dev
+    bun run --cwd apps/marketing dev
     ```

@@ -9,7 +9,7 @@ keep refreshing.
 
 ## Turn it on
 
-In the [Data Studio](/docs/guides/data-studio), press `Mod+Shift+M` or click the
+In the [Data Studio](/docs/guides/data-studio), click the
 activity icon in the toolbar to open the live-monitor popover. From there you
 can:
 
@@ -25,7 +25,10 @@ detected, color-coded by type.
 - **PostgreSQL** uses `LISTEN`/`NOTIFY`. Dora installs a notification trigger the
   first time you start monitoring, so changes surface almost instantly. If the
   trigger cannot be installed, Dora falls back to polling.
-- **SQLite and libSQL** are polled: Dora re-reads the table every interval.
+- **CockroachDB** has no `LISTEN`/`NOTIFY`, so it is polled.
+- **MySQL, MariaDB, SQLite, libSQL, and DuckDB** are polled: Dora re-reads the
+  table every interval.
+- **Cloudflare D1 and PostHog** connections cannot be monitored.
 
 Monitoring follows the table you are viewing: switch tables and the monitor
 applies to the new one.

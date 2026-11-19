@@ -10,7 +10,7 @@
 
 <p align="center">
   A native database workbench for PostgreSQL, MySQL, MariaDB, CockroachDB,<br />
-  SQLite, libSQL/Turso, Cloudflare D1, DuckDB, and CSV/JSON/Parquet files.<br />
+  SQLite, libSQL/Turso, Cloudflare D1, DuckDB, Redis, Valkey, and CSV/JSON/Parquet files.<br />
   Rust and Tauri, so the installer is tens of megabytes, not hundreds.<br />
   Free and open source: no paid edition, no subscription, no feature gate.<br />
   <a href="https://doradb.app/downloads"><strong>doradb.app/downloads</strong></a> · <a href="https://doradb.app/docs">docs</a>
@@ -22,7 +22,7 @@
   <img src="https://shieldcn.dev/badge/license-GPLv3-black.svg?font=jetbrains-mono" alt="license GPLv3" />
   <img src="https://shieldcn.dev/badge/core-Rust-black.svg?font=jetbrains-mono&logo=rust" alt="core Rust" />
   <img src="https://shieldcn.dev/badge/shell-Tauri-black.svg?font=jetbrains-mono&logo=tauri" alt="shell Tauri" />
-  <img src="https://shieldcn.dev/badge/engines-8-black.svg?font=jetbrains-mono" alt="8 engines" />
+  <img src="https://shieldcn.dev/badge/engines-10-black.svg?font=jetbrains-mono" alt="10 engines" />
 </p>
 
 <p align="center">
@@ -41,7 +41,7 @@ keyboard-first.
 
 - Browse, sort, filter, and **inline-edit** rows, with a dry-run mode that stages changes before they hit the database
 - A multi-tab SQL console on Monaco, with autocomplete, Vim keybindings, and tabs that survive a relaunch
-- **Schema-grounded AI SQL** on `⌘I` / `Ctrl+I`, through OpenAI, Anthropic, Gemini, Groq, or a fully offline Ollama
+- **Schema-grounded AI SQL** on `⌘I` / `Ctrl+I`, through OpenAI, Anthropic, Gemini, Groq, DeepSeek, Kimi, GLM, Qwen, OpenRouter, or a fully offline Ollama
 - Write **Drizzle and Prisma queries** natively, with schema-aware autocomplete and a SQL preview
 - Diff a Drizzle or Prisma schema against the live database and generate the reconciling migration, destructive statements gated behind an explicit toggle
 - Query CSV, JSON, Parquet, TSV, and NDJSON as tables, join across files, and materialize a session into a real DuckDB file
@@ -79,6 +79,7 @@ the parts that differ handled per dialect rather than lowest-common-denominator.
 | libSQL / Turso | Local files and remote databases alike |
 | Cloudflare D1 | Over Cloudflare's HTTP query API, no local file |
 | DuckDB | Local `.duckdb` files, import CSV/JSON/Parquet as real tables |
+| Redis · Valkey | Key-value studio with TLS, cluster mode, and SSH tunneling |
 | CSV · TSV · JSON · NDJSON · Parquet | DuckDB-backed sessions: query, cross-file joins, export, save as DuckDB to edit |
 
 ### Sign in instead of hunting for a connection string
@@ -113,8 +114,8 @@ Fly.io · Railway · Render · Aiven · DigitalOcean · Crunchy Bridge · Timesc
 AWS RDS/Aurora · Azure Database · Google Cloud SQL · CockroachDB Cloud ·
 TiDB Cloud · Yugabyte
 
-Or skip the server entirely: spin up a local PostgreSQL, MySQL, MariaDB, or
-CockroachDB container from inside the app, seed it, and open it in the data
+Or skip the server entirely: spin up a local PostgreSQL, MySQL, MariaDB,
+CockroachDB, Redis, or Valkey container from inside the app, seed it, and open it in the data
 viewer without touching a terminal.
 
 ## Install
@@ -185,7 +186,7 @@ nix profile install github:remcostoeten/dora-packages
 
 The [releases page](https://github.com/remcostoeten/dora/releases/latest) has
 the universal macOS `.dmg` (Apple Silicon and Intel), the Windows installer, and
-the AppImage, `.deb`, `.rpm`, Flatpak bundle and `.tar.gz` for Linux. Windows
+the AppImage, `.deb`, `.rpm` and `.tar.gz` for Linux. Windows
 and Linux builds are x64, with ARM64 builds alongside them when that release
 built them. Dora is not code-signed. On macOS, open it once, then click **Open
 Anyway** under System Settings → Privacy & Security (the Homebrew cask handles
@@ -228,7 +229,7 @@ Rust tests are `cargo test` inside `apps/desktop/src-tauri`. Use `bun run test`
 rather than a bare `bun test`, which picks up Vitest and Playwright specs its
 own runner cannot execute. CI runs lint, type checks, frontend and Rust tests, a
 production build, and a browser boot smoke test, with a separate workflow
-exercising the adapters against real MySQL and MariaDB servers.
+exercising the adapters against real MySQL, MariaDB, Redis, and Valkey servers.
 
 <br/>
 

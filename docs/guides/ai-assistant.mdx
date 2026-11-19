@@ -1,6 +1,6 @@
 ---
 title: AI Assistant
-description: Generate, explain, and fix SQL with Groq, OpenAI, Anthropic, Gemini, or a local Ollama model, with your keys encrypted at rest.
+description: Generate, explain, and fix SQL with a hosted provider such as Groq, OpenAI, Anthropic, or Gemini, or a local Ollama model, with your keys encrypted at rest.
 ---
 
 Dora's AI assistant helps you write SQL from a description, explain an existing
@@ -15,6 +15,11 @@ It works with a hosted provider (with an API key) or a fully local model.
 | OpenAI    | Yes               | No            |
 | Anthropic | Yes               | No            |
 | Gemini    | Yes               | No            |
+| DeepSeek  | Yes               | No            |
+| Kimi      | Yes               | No            |
+| GLM       | Yes               | No            |
+| Qwen      | Yes               | No            |
+| OpenRouter | Yes              | No            |
 | Ollama    | No                | Yes           |
 
 **Groq is the default**, using `llama-3.3-70b-versatile`, which is fast and has a generous
@@ -22,7 +27,7 @@ free tier.
 
 ## Configure a provider
 
-Open **Sidebar → AI keys**, pick a provider, and add a key. You can name a key,
+Open **Settings → AI Keys**, pick a provider, and add a key. You can name a key,
 **Test** it, and choose a model. Alternatively, set the matching environment
 variable before launching Dora and it is picked up automatically (a key saved in
 the app takes precedence):
@@ -33,6 +38,11 @@ the app takes precedence):
 | OpenAI    | `OPENAI_API_KEY`     |
 | Anthropic | `ANTHROPIC_API_KEY`  |
 | Gemini    | `GEMINI_API_KEY`     |
+| DeepSeek  | `DEEPSEEK_API_KEY`   |
+| Kimi      | `KIMI_API_KEY`       |
+| GLM       | `GLM_API_KEY`        |
+| Qwen      | `QWEN_API_KEY`       |
+| OpenRouter | `OPENROUTER_API_KEY` |
 
 <Callout type='info'>
 	Keys are encrypted at rest with AES-256-GCM; the master key lives in your OS keychain. See
@@ -45,7 +55,7 @@ the app takes precedence):
 data leaves your computer.
 
 1. Install Ollama (Dora can detect it and guide a managed install from
-   **Sidebar → AI keys → Ollama**).
+   **Settings → Local models**).
 2. Start it and pull a model: `ollama pull llama3.2`.
 3. Select **Ollama** as the provider. The default model is `llama3.2`.
 
@@ -70,5 +80,5 @@ send it again.
 ## Hide AI
 
 Turn on **Settings → Safety → Hide AI** to remove every AI entry point: the
-assistant panel and its sidebar item, `Mod+K` generation in the SQL Console, the
+assistant panel and its sidebar item, `Mod+I` generation in the SQL Console, the
 explain and fix actions, and the AI sections in settings. It is off by default.

@@ -10,9 +10,9 @@ the middle.
 ## Connection credentials
 
 Saved connections are stored in a local SQLite database in your app data
-directory. Connection passwords are not persisted in plaintext. For a saved
-connection you re-enter the password when needed rather than having it written to
-disk unprotected.
+directory. The connection details, including the password, are encrypted with
+**AES-256-GCM** before they are written, using the same master key as the AI
+provider keys below. Redis and Valkey connections are stored the same way.
 
 <Callout type='info'>
 	Treat connection strings as secrets: they often embed a username and password. Anyone with read
@@ -38,12 +38,12 @@ them.
 
 To reach a database that is not exposed to the internet, use an
 [SSH tunnel](/docs/connect#ssh-tunnels). Dora authenticates with a
-private key file, a password, or your SSH agent, opens the tunnel before
+private key file, a password, or your SSH agent (macOS and Linux), opens the tunnel before
 connecting, and closes it on disconnect, so your database stays unexposed.
 
 ## Cloud provider tokens
 
 Account [integrations](/docs/connect#connect-from-a-provider-account)
-(Supabase, Neon, Vercel, PlanetScale, Xata, Cloudflare, Turso) store the
+(Supabase, Neon, Vercel, PlanetScale, Xata, Cloudflare, PostHog, Turso) store the
 provider token in the same secure storage and use it only to list your databases
 and build connections.

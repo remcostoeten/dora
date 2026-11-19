@@ -13,8 +13,8 @@ then [install Dora](/docs/installation) for your platform.
 
 ## Connect a database
 
-Dora connects to any PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, DuckDB, or
-libSQL host. Paste a connection string and Dora detects the engine and SSL mode
+Dora connects to any PostgreSQL, MySQL, MariaDB, CockroachDB, SQLite, DuckDB,
+libSQL, or Cloudflare D1 database, and to Redis and Valkey. Paste a connection string and Dora detects the engine and SSL mode
 automatically. See [connection basics](/docs/connect).
 
 Provider-specific guides:
@@ -36,7 +36,10 @@ Provider-specific guides:
 - [CockroachDB Cloud](/docs/connect/cockroachdb)
 - [TiDB Cloud](/docs/connect/tidb)
 - [PlanetScale](/docs/connect/planetscale)
+- [Xata](/docs/connect/xata)
 - [Turso](/docs/connect/turso)
+- [Cloudflare D1](/docs/connect/cloudflare-d1)
+- [PostHog](/docs/connect/posthog)
 
 ## Guides
 
@@ -47,18 +50,22 @@ Working with data:
 - [Schema Visualizer](/docs/guides/schema-visualizer): an ERD of your database
 - [Charts](/docs/guides/charts): visualize query results
 - [Export](/docs/guides/export): CSV, JSON, and SQL
+- [Dump and restore](/docs/guides/database-dump): copy a whole database to disk
 - [Live change monitoring](/docs/guides/live-monitoring): watch a table update
+- [Redis and Valkey](/docs/guides/key-value-studio): browse and edit keys
 
 ORMs:
 
 - [ORM Cockpit](/docs/guides/orm-cockpit): schema drift and migration preview
 - [ORM Runners](/docs/guides/orm-runners): run Drizzle and Prisma queries
+- [Drizzle ↔ SQL converter](/docs/features/drizzle-sql-converter): translate schemas both ways
 
 Productivity:
 
 - [Command Palette & shortcuts](/docs/guides/command-palette)
-- [AI Assistant](/docs/guides/ai-assistant): SQL help with Groq, OpenAI, Anthropic, Gemini, or Ollama
+- [AI Assistant](/docs/guides/ai-assistant): SQL help from a hosted provider or a local Ollama model
 - [Docker Manager](/docs/guides/docker-manager): run local database containers
+- [Analytics](/docs/features/analytics): a PostHog dashboard and HogQL client
 
 ## Reference
 

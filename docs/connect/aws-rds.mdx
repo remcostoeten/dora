@@ -19,8 +19,8 @@ yourself.
 
     For MySQL use `mysql://` and port `3306`.
 
-4. In Dora press `Mod+Shift+N`, toggle **Use connection string**, paste the URL,
-   **Test connection**, and **Save**.
+4. In Dora press `Mod+Shift+N`, paste the URL, press Enter,
+   **Test connection**, and **Save connection**.
 
 <Callout type='warn'>
 	Your RDS instance must be reachable from your machine: it needs **Public access = Yes** (or a
@@ -29,5 +29,5 @@ yourself.
 	tunnel](/docs/connect#ssh-tunnels).
 </Callout>
 
-Enable the **SSL** toggle if your instance enforces TLS (`rds.force_ssl`). You
+Enable the **Require SSL** switch if your instance enforces TLS (`rds.force_ssl`). You
 may also need the Amazon RDS CA certificate depending on your `sslmode`.

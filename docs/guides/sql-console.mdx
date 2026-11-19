@@ -16,7 +16,7 @@ the real columns.
 - **Run just the selection** with `Mod+Shift+Enter`. Select one statement in an
   editor that holds several, and only that statement runs.
 - **Stop** a long-running query from the toolbar while it executes.
-- **Format** the SQL with `Mod+Shift+F`.
+- **Format** the SQL from the toolbar.
 - **Comment a line** with `Mod+/`, and **save the script** with `Mod+S`.
 
 Run, explain, format, and save always use the text that is in the editor at that
@@ -43,7 +43,7 @@ dedicated panel.
 
 ## Query history
 
-Press `Mod+H` to open history. Every query you run is recorded with a timestamp,
+Press `Mod+Shift+H` to open history. Every query you run is recorded with a timestamp,
 a preview, its duration, and whether it succeeded. You can search history, group
 it by connection, pin queries you reuse, re-run any entry, and export or clear
 history. History rows work from the keyboard: focus one and press `Enter` or
@@ -55,6 +55,6 @@ Open the assistant from the console to generate SQL from a description, explain
 the current query, or fix an error. See [AI Assistant](/docs/guides/ai-assistant).
 
 <Callout type='info'>
-	Prefer your ORM? The console can switch to a Drizzle mode, and Dora also has dedicated [Drizzle
+	Prefer your ORM? The console can switch to a Drizzle (`Alt+D`) or Prisma (`Alt+P`) mode, and Dora also has dedicated [Drizzle
 	and Prisma runners](/docs/guides/orm-runners).
 </Callout>
