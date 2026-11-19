@@ -1,6 +1,9 @@
 @import 'tailwindcss';
 @import 'fumadocs-ui/css/black.css';
 @import 'fumadocs-ui/css/preset.css';
+/* Vite's postcss-import drops the preset's own imports of these because they follow its @plugin line */
+@import 'fumadocs-ui/css/generated/docs.css';
+@import 'fumadocs-ui/css/generated/shared.css';
 @import 'tw-animate-css';
 @import '../shared/styles/core.css';
 @import '../modules/docs/styles/docs.css';
