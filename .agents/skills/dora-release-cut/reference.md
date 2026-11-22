@@ -7,7 +7,7 @@ Companion to `SKILL.md`. Everything here is read off
 
 | Phase | Job | Workflow | Runner | Needs |
 | --- | --- | --- | --- | --- |
-| 0 | `prepare` | `release-dispatch.yml` | ubuntu-latest | manual dispatch |
+| 0 | release | Release Render | your machine | **New release** in the app |
 | 1 | `preflight` | `release.yml` | ubuntu-latest | tag push `v*.*.*` |
 | 2 | `release-linux` | `release.yml` | ubuntu-latest, ubuntu-24.04-arm (optional) | `preflight` |
 | 2 | `release-windows` | `release.yml` | windows-2022, windows-11-arm (optional) | `preflight` |
@@ -23,8 +23,8 @@ Companion to `SKILL.md`. Everything here is read off
 | 4 | `publish-packages` | `packages.yml` | ubuntu-latest + windows-2022 | `publish-release` |
 | 4 | `publish-chocolatey` | `chocolatey.yml` | windows-2022 | `publish-release` |
 
-`concurrency` is `release-dispatch` for phase 0 and `release-<tag>` for the rest,
-both with `cancel-in-progress: false`.
+`concurrency` is `release-<tag>` for phases 1 to 4, with
+`cancel-in-progress: false`.
 
 ## Release assets by build job
 
@@ -178,14 +178,16 @@ none: a missing certificate only warns, a partial set fails the job. See
 | Retry one channel | that workflow's `workflow_dispatch`, same tag |
 | Tag an existing SHA during recovery | `.github/workflows/tag-create.yml` |
 | See readiness without changing anything | `bun run release:guide` |
-| Rehearse the bump locally | `bun run release:prepare` (commits and tags locally) |
+| Rehearse the release | **Dry run** in Release Render (changes nothing) |
 | Regenerate notes between two tags | `bun run generate:releasetext` |
 | Rebuild a channel's output locally | `bun run release:aur`, `release:homebrew`, `release:winget`, `release:apt`, `release:packages`, `release:flatpak:build`, `release:snap:build` |
 | Isolated OS environments for packaging debugging | `bun run vm:lab` |
 
 ## Release notes selection
 
-`publish-release` uses `.github/release-notes/<tag>.md` when it exists. Otherwise
+`publish-release` uses `.github/release-notes/<tag>.md` when it exists. A Release
+Render release always leaves that file in place: a curated file committed before
+the release is kept, otherwise the app writes its generated notes there. Otherwise
 it resolves the previous tag from `git tag --list 'v*' --sort=-version:refname`
 and runs `git-cliff <prev>..<tag>`, configured by `cliff.toml`. Either way the
 chosen text is both the release body and the `notes` field of `latest.json`, so

@@ -1,8 +1,8 @@
 name: Create tag
 
 # Emergency-only: tag an existing commit without bumping versions or
-# regenerating CHANGELOG.md. For normal releases use release-dispatch.yml
-# (`bun run release` or Actions → Release dispatch).
+# regenerating CHANGELOG.md. Cut normal releases from Release Render, which
+# reads release-render.json.
 
 on:
     workflow_dispatch:

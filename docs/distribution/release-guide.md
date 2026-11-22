@@ -10,28 +10,26 @@ Dora ships through a tag-triggered GitHub Actions pipeline. You create and push 
 
 ## Quick start
 
-From your machine (requires `gh` CLI):
+Releases are cut from the Release Render desktop app. It reads [`release-render.json`](../../release-render.json) at the repository root, which sets the release branch (`master`), the tag prefix (`v`), the version files, the notes file, the release commit message and the prepare step.
+
+1. Open the Dora checkout in Release Render.
+2. Choose **Dry run** to see every file it would write and every command it would run.
+3. Choose **New release**, pick the bump (the dialog suggests one from the conventional commits since the last tag), optionally edit the notes, type `yes` and choose **Tag and push**.
+
+The release:
+
+1. Bumps `package.json`, `apps/desktop/package.json`, `apps/desktop/src-tauri/Cargo.toml` (and the `dora` entry in its `Cargo.lock`) and `apps/desktop/src-tauri/tauri.conf.json`
+2. Runs `bash scripts/release-changelog.sh <tag> <previous-tag>`, which prepends a `git-cliff` section to `CHANGELOG.md` (via `cliff.toml`) above `## [Unreleased]` and syncs the in-app changelog data with `bun scripts/sync-changelog-data.ts`
+3. Writes `.github/release-notes/<tag>.md`, unless that file already exists
+4. Commits `chore(release): vX.Y.Z`, creates an annotated tag, and pushes `master` and the tag together
+5. Starts the **Release** workflow through the tag push, and follows its runs in the **Logs** view
+
+Releasing locally needs `git-cliff`, `bun` and `python3` on `PATH`.
+
+Run the test suites before releasing:
 
 ```bash
-bun run release          # patch bump (default)
-bun run release minor    # minor bump
-bun run release major    # major bump
-```
-
-That dispatches the **Release dispatch** workflow, which:
-
-1. Bumps version files on `master`
-2. Prepends a `git-cliff` section to `CHANGELOG.md` (via `cliff.toml`)
-3. Syncs in-app changelog TypeScript data
-4. Commits, tags, and pushes
-5. Triggers the **Release** workflow to build and publish assets
-
-You can also start it from GitHub: **Actions → Release dispatch → Run workflow**.
-
-For a local dry-run without pushing:
-
-```bash
-bash scripts/release-prepare.sh patch
+bun run ship
 ```
 
 For an interactive preflight (branch, dirty tree, version sync, GitHub auth):
@@ -47,8 +45,7 @@ bun run release:guide
 
 ```mermaid
 flowchart TD
-  dispatch["bun run release / Release dispatch"]
-  prepare[release-dispatch: bump + changelog + tag]
+  prepare["Release Render: bump + changelog + tag"]
   tag["push tag v*.*.*"]
   preflight[preflight]
   linux[release-linux]
@@ -65,7 +62,7 @@ flowchart TD
   packages[publish-packages]
   choco[publish-chocolatey]
 
-  dispatch --> prepare --> tag
+  prepare --> tag
   tag --> preflight
   preflight --> linux
   preflight --> windows
@@ -89,7 +86,7 @@ flowchart TD
 
 | Phase | Job | Runs on | Purpose |
 | --- | --- | --- | --- |
-| 0 | `release-dispatch` | `ubuntu-latest` | Bump versions, `CHANGELOG.md`, tag, push |
+| 0 | Release Render | your machine | Bump versions, `CHANGELOG.md`, notes file, tag, push |
 | 1 | `preflight` | `ubuntu-latest` | Validate metadata before any build |
 | 2 | `release-linux` | `ubuntu-latest`, `ubuntu-24.04-arm` | Linux installers + tarball, x86_64 and aarch64 |
 | 2 | `release-windows` | `windows-2022`, `windows-11-arm` | Windows NSIS `.exe` + updater signature, x64 and arm64 |
@@ -104,13 +101,13 @@ The phase-5 jobs call `aur.yml`, `brew.yml`, `apt.yml`, `winget.yml`, `snap.yml`
 
 ---
 
-## Phase 0: Dispatch the release
+## Phase 0: Cut the release
 
 1. Ensure `master` contains everything you want to ship.
-2. Working tree is clean locally (CI enforces this too).
-3. Run `bun run release` (or dispatch **Release dispatch** in GitHub Actions).
+2. Open the checkout in Release Render. When the branch is not `master` or the tree has uncommitted changes, the release dialog asks whether to release in place (stash, switch, switch back) or from a separate checkout.
+3. Choose **New release** and **Tag and push**.
 
-The dispatch job bumps `package.json`, desktop/Tauri/Cargo versions, prepends a `git-cliff` entry to `CHANGELOG.md`, syncs in-app changelog data, commits `chore(release): vX.Y.Z`, creates the tag, and pushes `master` + the tag.
+Release Render bumps `package.json` and the desktop, Tauri and Cargo versions, runs `scripts/release-changelog.sh` to prepend a `git-cliff` entry to `CHANGELOG.md` and sync the in-app changelog data, writes the notes file, commits `chore(release): vX.Y.Z`, creates the tag, and pushes `master` and the tag atomically.
 
 Tags must match `vMAJOR.MINOR.PATCH` (plain semver, no suffix). Pushing the tag starts the `Release` workflow.
 
@@ -233,7 +230,7 @@ Runs on `master` after the release is published.
    - Replaces `<version>` placeholder
    - Updates any previously hardcoded semver strings
 
-`CHANGELOG.md` and in-app changelog data are already committed by **Release dispatch** before the tag is pushed.
+`CHANGELOG.md` and in-app changelog data are already committed by the release commit before the tag is pushed.
 
 2. **Commits and pushes** to `master` when README changed:
 
@@ -402,18 +399,19 @@ Release notes are generated by **git-cliff** using [`cliff.toml`](../../cliff.to
 
 `chore(release)`, WIP, and merge commits are skipped.
 
-For releases that need a fuller human summary, add `.github/release-notes/<tag>.md` before dispatching. The publish job uses that file instead of git-cliff output.
+For releases that need a fuller human summary, commit `.github/release-notes/<tag>.md` before releasing. Release Render uses that file as the release notes and leaves it unchanged, unless you edit the notes in the release dialog. When the file does not exist, Release Render writes its generated notes there, and the publish job uses the file either way. The publish job only falls back to git-cliff output when no notes file exists for the tag.
 
 ---
 
 ## Pre-release checklist
 
-Before dispatching:
+Before releasing:
 
 - [ ] All intended changes are merged to `master`
 - [ ] Working tree is clean (`git status`)
 - [ ] Commit messages since the last tag use recognizable prefixes (`feat`, `fix`, `docs`, …)
-- [ ] GitHub CLI auth works if running `bun run release` locally
+- [ ] `git-cliff`, `bun` and `python3` are on `PATH`
+- [ ] `bun run ship` passes
 
 Optional: run `bun run release:guide` for an automated sanity check.
 
@@ -429,9 +427,9 @@ Optional: run `bun run release:guide` for an automated sanity check.
 
 **Repo updates**
 
-- New `CHANGELOG.md` entry (from Release dispatch, before the tag)
+- New `CHANGELOG.md` entry (from the release commit, before the tag)
 - Updated `README.md` version strings (from `post-release`)
-- Regenerated TypeScript changelog data (from Release dispatch)
+- Regenerated TypeScript changelog data (from the release commit)
 
 **Downstream**
 

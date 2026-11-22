@@ -1,0 +1,15 @@
+{
+	"branch": "master",
+	"remote": "origin",
+	"prefix": "v",
+	"prepare": "bash scripts/release-changelog.sh {tag} {previous}",
+	"commit": "chore(release): {tag}",
+	"notesFile": ".github/release-notes/{tag}.md",
+	"versionFiles": [
+		"package.json",
+		"apps/desktop/package.json",
+		"apps/desktop/src-tauri/Cargo.toml",
+		"apps/desktop/src-tauri/tauri.conf.json"
+	],
+	"publish": "none"
+}
