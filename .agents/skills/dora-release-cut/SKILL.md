@@ -1,6 +1,6 @@
 ---
 name: dora-release-cut
-description: Cutting a Dora release and recovering a broken one. Use when shipping a new version, changing what a version bump writes, changing the release or release-dispatch workflow or any of the channel workflows (AUR, Homebrew, Linux repositories, Winget, Snap, Flatpak, Scoop and Nix, Chocolatey), changing the updater manifest or its signing, or diagnosing a tag that produced no build, a missing release asset, or a channel that did not publish. Not for what the app bundles at runtime and not for release-note prose.
+description: Cutting a Dora release and recovering a broken one. Use when shipping a new version, changing what a version bump writes, changing the release workflow, release-render.json or scripts/release-changelog.sh, or any of the channel workflows (AUR, Homebrew, Linux repositories, Winget, Snap, Flatpak, Scoop and Nix, Chocolatey), changing the updater manifest or its signing, or diagnosing a tag that produced no build, a missing release asset, or a channel that did not publish. Not for what the app bundles at runtime and not for release-note prose.
 ---
 
 # Cutting a release
@@ -9,22 +9,23 @@ description: Cutting a Dora release and recovering a broken one. Use when shippi
 
 This skill owns the path from "master is ready" to "every channel has the new
 version", and the recovery when part of that path fails. It owns the version
-sources of truth, the dispatch entry points, the CI pipeline's gates, and the
+sources of truth, the release entry points, the CI pipeline's gates, and the
 per-channel publish and verify story.
 
 It does not own what goes into the bundle, what the updater plugin does at
 runtime, or how release notes are worded.
 
-Entry points: `scripts/release.sh`, `scripts/ship.sh`, `scripts/release-prepare.sh`,
-`tools/scripts/release-guide.sh`. Pipeline: `.github/workflows/release-dispatch.yml`
-then `.github/workflows/release.yml`.
+Entry points: the Release Render desktop app, which reads `release-render.json`
+and runs `scripts/release-changelog.sh` as its prepare step, plus `scripts/ship.sh`
+and `tools/scripts/release-guide.sh`. Pipeline: Release Render pushes the tag, then
+`.github/workflows/release.yml`.
 
 ## Unencodable
 
 Source gives no answer. Ask before deciding.
 
-- Which bump level a given release deserves. `git-cliff --bumped-version` accepts
-  whatever it is told; nothing derives it from the commits.
+- Which bump level a given release deserves. Release Render preselects one from
+  the conventional commits since the last tag, but the choice is the releaser's.
 - Whether the `WINGET_PACKAGE_READY` repository variable matters.
   `docs/distribution/release-guide.md` tells you to set it; no workflow reads it.
 - Whether a channel that skipped its publish step for a missing secret should
@@ -32,29 +33,31 @@ Source gives no answer. Ask before deciding.
 
 ## Workflow
 
-**Rule: a release is one command and one CI run. Do not perform any part of it by
-hand.** From a clean, pushed `master`:
+**Rule: a release is one Release Render release and one CI run. Do not perform any
+part of it by hand.** With everything merged to `master`:
 
 ```bash
 bun run release:guide
 bun run ship
 ```
 
-`ship` runs the TypeScript and Rust suites, refuses on a dirty tree or unpushed
-commits, then calls `bun run release`, which dispatches Release dispatch with
-`gh`. `bun run ship --no-release` is the tests-only half; `bun run release minor`
-and `bun run release major` skip the tests. From there you watch exactly one
-thing: the Release run for the new tag.
+`ship` runs the TypeScript and Rust suites and nothing else. Then open the
+checkout in Release Render, choose **Dry run** to see every file and command,
+and **New release** to cut it. The app bumps the version files, runs
+`scripts/release-changelog.sh`, writes the notes file, commits, tags, and pushes
+`master` and the tag atomically. From there you watch exactly one thing: the
+Release run for the new tag, which the app follows in its **Logs** view.
 
 **Rule: curated release notes must exist before the tag is pushed.** Add
 `.github/release-notes/<tag>.md` for the tag you are about to create and commit
-it first. `publish-release` reads that file if it is there and falls back to
-git-cliff output; there is no later hook.
+it first. Release Render then uses that file as the release notes and leaves it
+unchanged, unless the notes are edited in the release dialog. Without it, the app
+writes its generated notes to that path in the release commit. `publish-release`
+reads that file and falls back to git-cliff output only when it is missing; there
+is no later hook.
 
-**Rule: `bun run release:prepare` is a local rehearsal, not a dry run.** It bumps
-the version files, rewrites `CHANGELOG.md`, commits and tags locally. Reset the
-commit and delete the tag before dispatching, or your tree is permanently ahead
-of the release CI will actually cut.
+**Rule: rehearse with Dry run.** Release Render's **Dry run** lists every file it
+would write and every command it would run, and changes nothing.
 
 ## Invariants
 
@@ -70,15 +73,17 @@ calls the Homebrew, Winget and APT generators itself; it never calls
 `sed` in-workflow. Running any of them locally and committing the result
 publishes nothing.
 
-**Five files carry the version and one script writes all five.**
-`scripts/bump-version.mjs` writes, in order: `package.json`,
-`apps/desktop/package.json`, `apps/desktop/src-tauri/tauri.conf.json`,
-`apps/desktop/src-tauri/Cargo.toml`, then the `dora` entry in
-`apps/desktop/src-tauri/Cargo.lock`. Never edit one of them directly.
+**Five files carry the version and Release Render writes all five.**
+`release-render.json` lists `package.json`, `apps/desktop/package.json`,
+`apps/desktop/src-tauri/Cargo.toml` and `apps/desktop/src-tauri/tauri.conf.json`
+as version files, and the app updates the `dora` entry in
+`apps/desktop/src-tauri/Cargo.lock` with the Cargo manifest. Never edit one of
+them directly. `scripts/bump-version.mjs` writes the same five and is no longer
+part of the release path.
 
-**The tag is decided before any file is written.** `scripts/release-prepare.sh`
-asks `git-cliff --bumped-version` for the next tag, then bumps the files to match
-it. Files follow the tag, never the reverse.
+**The tag is decided before any file is written.** Release Render bumps the
+newest `v` tag by the chosen level, then writes the files to match it. Files
+follow the tag, never the reverse.
 
 **Build-time authority is tag == desktop package == Tauri config == Cargo.**
 `preflight` fails on any mismatch between those four. Root `package.json`
@@ -86,24 +91,23 @@ disagreeing is only a warning there — but it is the version
 `.github/workflows/snap.yml` and `.github/workflows/flatpak.yml` fall back to
 when dispatched without a tag, so it must not be left behind.
 
-**Prepare writes in a fixed order and lands as exactly one commit.** Bumped tag →
-version files → a new section prepended above `## [Unreleased]` in `CHANGELOG.md`
-→ in-app changelog data via `scripts/sync-changelog-data.ts`
+**A release writes in a fixed order and lands as exactly one commit.** Bumped tag →
+version files → `scripts/release-changelog.sh`, which prepends a new section above
+`## [Unreleased]` in `CHANGELOG.md` and writes the in-app changelog data via
+`scripts/sync-changelog-data.ts`
 (`packages/studio/src/features/sidebar/changelog-data.ts` and
-`apps/marketing/src/core/content/changelog-data.ts`) → one commit
-`chore(release): <tag>` → the tag → push master, then push the tag.
+`apps/marketing/src/core/content/changelog-data.ts`) → the notes file → one commit
+`chore(release): <tag>` → an annotated tag → one atomic push of master and the tag.
 
-**Local prerequisites are an authenticated `gh` and a clean, pushed tree.**
-`git-cliff` is needed only on the local path; CI installs it. The tree checks are
-enforced twice, in `scripts/ship.sh` locally and in `scripts/release-prepare.sh`
-on the runner, because the remote builds from origin and would otherwise publish
-code you never pushed.
+**Local prerequisites are `git-cliff`, `bun` and `python3` on `PATH`.** The
+prepare step needs all three. Release Render refuses to release when the remote
+moved since the plan or `master` has commits that are not on the remote, because
+the remote builds from origin and would otherwise publish code you never pushed.
 
 **A missing CI secret fails at a different place for each secret.** No
 `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: builds pass,
 no `.sig` files are produced, and `publish-release` dies at the updater manifest.
-No `RELEASE_PAT`: the tag is pushed with `GITHUB_TOKEN`, which cannot trigger
-another workflow, so `.github/workflows/release.yml` never starts. A missing
+A missing
 store secret: the channel job goes green having published nothing.
 
 **Publish order is fixed and one-way.** `preflight` → the Linux, Windows and
@@ -153,8 +157,9 @@ carries assets. So re-running the whole Release run to fix one channel goes red
 before it reaches that channel. If `publish-release` itself is what failed, get
 the release back to zero assets (delete it) and re-run the run.
 
-**A tag with no Release run means `RELEASE_PAT` was absent.** Delete and re-push
-the tag. Do not dispatch Release dispatch again — that bumps a second version.
+**A tag with no Release run was not pushed by a credential that can start
+workflows, or does not match `v*.*.*`.** Delete and re-push the tag. Do not cut
+another release to retry, which bumps a second version.
 
 **`.github/workflows/tag-create.yml` is recovery-only.** It tags an existing SHA
 and bumps nothing, so using it for a normal release produces a tag whose version
@@ -172,7 +177,7 @@ the Chocolatey package version. The Linux repositories and Flatpak have no such
 skip.
 
 **Master moves by two or three commits per release.** `chore(release): <tag>`
-from prepare, the README commit from `post-release`, and
+from Release Render, the README commit from `post-release`, and
 `chore(aur): update dora to <version>` from the AUR job when the PKGBUILD
 changed. A release where master moved once did not finish.
 
@@ -187,7 +192,7 @@ changed. A release where master moved once did not finish.
   loads `http://localhost:1420`. Wrap the released `.deb` instead, or pass the
   feature.
 - Adding `.github/release-notes/<tag>.md` after the tag was pushed.
-- Re-dispatching Release dispatch to retry anything, which cuts a second version.
+- Cutting another release to retry anything, which cuts a second version.
 - Re-running the whole Release run to fix a single channel.
 - Dropping `app` from the bundle targets, or turning off `createUpdaterArtifacts`,
   which removes macOS from the updater without failing any build.
@@ -198,29 +203,28 @@ changed. A release where master moved once did not finish.
 - Running `bun run release:aur` locally and committing the PKGBUILD, expecting
   that to reach AUR.
 - Using `.github/workflows/tag-create.yml` for a normal release.
-- Leaving the local commit and tag from `bun run release:prepare` in place.
 
 ## Verification
 
-Before dispatching, from the repository root:
+Before releasing, from the repository root:
 
 ```bash
 bun run release:guide
-bun run ship --no-release
+bun run ship
 ```
 
 `release:guide` reports branch, worktree cleanliness, the four versions side by
 side, the latest tag, whether the remote tag and GitHub release already exist,
-and whether `gh` is authenticated. `ship --no-release` is the same test pass the
-release path runs before dispatching.
+and whether `gh` is authenticated. `ship` is the test pass to run before
+releasing. Then run **Dry run** in Release Render.
 
-After dispatching, verification is the Release run plus the four downstream
+After releasing, verification is the Release run plus the four downstream
 artifacts listed under the green-is-not-published rule. See `reference.md` for
 what each channel consumes, produces and is checked by.
 
 ## Definition of done
 
-- The version came from `scripts/bump-version.mjs`, all five files agree, and the
+- The version came from a Release Render release, all five files agree, and the
   tag matches the desktop, Tauri and Cargo versions.
 - No version file, CHANGELOG section, tag, or GitHub release was produced by hand.
 - A curated `.github/release-notes/<tag>.md` was committed before the tag push, or

@@ -61,12 +61,6 @@ var releaseNotesScripts = []scriptDef{
 		inputType:   "version",
 	},
 	{
-		label:       "Full Release Script",
-		description: "Run scripts/release.sh (full pipeline)",
-		command:     "bash",
-		args:        []string{"scripts/release.sh"},
-	},
-	{
 		label:       "Release Guide",
 		description: "Show interactive release guide",
 		command:     "bash",
@@ -356,7 +350,6 @@ var ciWorkflows = []ciWorkflow{
 	{label: "macOS CI", description: "Build and test on macOS runner", workflow: "ci-mac.yml"},
 	{label: "Linux CI", description: "Main CI pipeline", workflow: "ci.yml"},
 	{label: "Release", description: "Full release pipeline", workflow: "release.yml"},
-	{label: "Release dispatch", description: "Bump version, changelog, tag, and publish", workflow: "release-dispatch.yml"},
 	{label: "APT repo", description: "Publish to APT repository", workflow: "apt.yml"},
 	{label: "AUR", description: "Push to Arch User Repository", workflow: "aur.yml"},
 	{label: "Homebrew", description: "Update Homebrew cask", workflow: "brew.yml"},
