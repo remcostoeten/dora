@@ -1,3 +1,4 @@
+pub mod agent;
 pub mod ai;
 pub mod bootstrap;
 pub mod connections;
@@ -15,6 +16,7 @@ pub mod snippet_folders;
 pub mod snippets;
 pub mod storage;
 
+pub use agent::*;
 pub use ai::*;
 pub use bootstrap::*;
 pub use connections::*;

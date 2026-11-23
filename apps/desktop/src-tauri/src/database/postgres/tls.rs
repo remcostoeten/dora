@@ -22,7 +22,7 @@ impl Certificates {
         spawn(async move {
             let now = Instant::now();
             let certificates = load_certificates().await;
-            println!("Certificates loaded in {:?}ms", now.elapsed().as_millis());
+            log::debug!("Certificates loaded in {:?}ms", now.elapsed().as_millis());
 
             // rustls wants an Arc in `with_root_certificates` so let's just create it once here
             // ¯\_(ツ)_/¯

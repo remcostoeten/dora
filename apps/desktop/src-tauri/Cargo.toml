@@ -80,6 +80,7 @@ futures-util = "0.3.31"
 rustls-pemfile = "2.2.0"
 bytes = "1.10.1"
 hex = "0.4.3"
+sha2 = "0.10"
 
 # Type-safe Tauri command bindings
 specta = { version = "=2.0.0-rc.22", features = ["derive", "serde_json", "uuid", "chrono"] }
@@ -107,7 +108,8 @@ libsql = { version = "0.9", default-features = false, features = [
 russh = "0.61"
 mysql_async = "0.36"
 duckdb = { version = "1", features = ["bundled"], optional = true }
-sqlparser = { version = "0.52", features = ["serde"] }
+sqlparser = { version = "0.52", features = ["serde", "visitor"] }
+rmcp = { version = "3.11", features = ["transport-io"] }
 fake = { version = "3", features = ["derive"] }
 rand = "0.9"
 bcrypt = "0.15"

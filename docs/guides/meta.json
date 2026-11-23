@@ -18,6 +18,7 @@
 		"command-palette",
 		"ai-assistant",
 		"docker-manager",
+		"agent-access",
 		"---Reference & internals---",
 		"security",
 		"mock-data",

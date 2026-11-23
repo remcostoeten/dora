@@ -9,6 +9,7 @@ import { DemoNoticeBar } from '@studio/components/demo-notice-bar'
 import { StorageQuotaNotice } from '@studio/components/storage-quota-notice'
 import { Toaster } from '@studio/shared/ui/notifier'
 import { useSettings } from '@studio/core/settings'
+import { AgentProposalsWatcher } from '@studio/features/agent-access'
 import type { AnalyticsConfig } from '@studio/features/analytics'
 import { ThemeSync } from '@studio/features/sidebar/components/theme-sync'
 import { AppProviders } from '@studio/providers'
@@ -69,6 +70,7 @@ export function StudioApp({ forceMock = false, analyticsConfig, basename }: Prop
 							<PortalAnchor />
 							<GlobalToaster />
 							<StorageQuotaNotice />
+							<AgentProposalsWatcher />
 							<NuqsAdapter>
 								<ThemeSync />
 								<Routes>

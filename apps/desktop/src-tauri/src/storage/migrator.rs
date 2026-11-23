@@ -24,8 +24,13 @@ impl Migrator {
                 include_str!("../../migrations/013.sql"),
                 include_str!("../../migrations/014.sql"),
                 include_str!("../../migrations/015.sql"),
+                include_str!("../../migrations/016.sql"),
             ],
         }
+    }
+
+    pub(super) fn target_version(&self) -> i32 {
+        self.migrations.len() as i32
     }
 
     pub(super) fn migrate(&self, conn: &mut Connection) -> anyhow::Result<()> {

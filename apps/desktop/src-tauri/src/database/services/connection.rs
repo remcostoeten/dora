@@ -36,6 +36,10 @@ const MYSQL_POOL_MAX: usize = 4;
 /// and stays under the four minute idle cut-off common to cloud load balancers.
 const MYSQL_POOL_IDLE_TTL: std::time::Duration = std::time::Duration::from_secs(180);
 
+tokio::task_local! {
+    pub static MYSQL_SESSION_SETUP: Vec<String>;
+}
+
 /// The pool options every MySQL-wire connection is opened with.
 pub fn mysql_opts_with_pool_constraints(
     mysql_url: &url::Url,
@@ -46,12 +50,16 @@ pub fn mysql_opts_with_pool_constraints(
         .map_err(|e| Error::Any(anyhow::anyhow!("Invalid MySQL URL: {}", e)))?;
     let constraints = mysql_async::PoolConstraints::new(MYSQL_POOL_MIN, max_connections)
         .expect("MYSQL_POOL_MIN <= max_connections");
+    let session_setup = MYSQL_SESSION_SETUP
+        .try_with(Clone::clone)
+        .unwrap_or_default();
     Ok(mysql_async::OptsBuilder::from_opts(opts)
         .pool_opts(
             mysql_async::PoolOpts::default()
                 .with_constraints(constraints)
                 .with_inactive_connection_ttl(MYSQL_POOL_IDLE_TTL),
         )
+        .setup(session_setup)
         .into())
 }
 

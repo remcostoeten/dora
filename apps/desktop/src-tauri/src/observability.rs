@@ -9,6 +9,19 @@
 
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
+pub fn init_stderr() {
+    let filter = EnvFilter::try_from_env("DORA_MCP_LOG").unwrap_or_else(|_| EnvFilter::new("warn"));
+    let fmt_layer = fmt::layer()
+        .with_writer(std::io::stderr)
+        .with_ansi(false)
+        .with_target(true);
+    let registry = tracing_subscriber::registry().with(filter).with(fmt_layer);
+
+    if registry.try_init().is_ok() {
+        let _ = tracing_log::LogTracer::init();
+    }
+}
+
 /// Must be called exactly once, before `tauri::Builder::default().run()`.
 /// Second call is a no-op (returns `Err` from `set_global_default`).
 pub fn init() {

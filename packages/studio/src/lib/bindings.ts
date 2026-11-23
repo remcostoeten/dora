@@ -1223,6 +1223,78 @@ async setSetting(key: string, value: string) : Promise<Result<null, { kind: stri
     else return { status: "error", error: e  as any };
 }
 },
+async getAgentSettings() : Promise<Result<AgentSettings, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_agent_settings") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setAgentEnabled(enabled: boolean) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_agent_enabled", { enabled }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAgentConnections() : Promise<Result<AgentConnectionRow[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_agent_connections") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setAgentGrant(connectionId: string, connectionKind: AgentConnectionKind, permission: AgentPermission | null) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_agent_grant", { connectionId, connectionKind, permission }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAgentProposals(limit: number | null) : Promise<Result<AgentProposal[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_agent_proposals", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async approveAgentProposal(proposalId: string, confirmation: string | null) : Promise<Result<AgentProposal, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("approve_agent_proposal", { proposalId, confirmation }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async rejectAgentProposal(proposalId: string) : Promise<Result<null, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("reject_agent_proposal", { proposalId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listAgentActivity(limit: number | null) : Promise<Result<AgentActivityEntry[], { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_agent_activity", { limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getAgentSetupInfo() : Promise<Result<AgentSetupInfo, { kind: string; detail: string }>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_agent_setup_info") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
 async insertRow(connectionId: string, tableName: string, schemaName: string | null, rowData: Partial<{ [key in string]: JsonValue }>) : Promise<Result<MutationResult, { kind: string; detail: string }>> {
     try {
     return { status: "ok", data: await TAURI_INVOKE("insert_row", { connectionId, tableName, schemaName, rowData }) };
@@ -1751,6 +1823,15 @@ async cleanBuildCache(request: BuildCacheCleanRequest) : Promise<Result<BuildCac
 /** user-defined types **/
 
 export type AIResponse = { content: string; suggested_queries: string[] | null; tokens_used: number | null; provider: string }
+export type AgentActivityEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null; agent_client: string | null; agent_proposal_id: string | null }
+export type AgentConnectionKind = "sql" | "kv"
+export type AgentConnectionRow = { id: string; name: string; kind: AgentConnectionKind; engine: string; permission: AgentPermission | null; read_enforcement: ReadEnforcement; can_write: boolean; unavailable_reason: string | null }
+export type AgentPermission = "read" | "propose" | "read_write"
+export type AgentProposal = { id: string; connection_id: string; statements: string[]; statements_hash: string; summary: string; risk: AgentProposalRisk; status: AgentProposalStatus; agent_client: string | null; created_at: number; expires_at: number; decided_at: number | null; finished_at: number | null; affected_rows: number | null; error_message: string | null }
+export type AgentProposalRisk = "standard" | "destructive"
+export type AgentProposalStatus = "pending" | "approved" | "rejected" | "running" | "applied" | "failed" | "expired"
+export type AgentSettings = { enabled: boolean; privacy_mode: boolean }
+export type AgentSetupInfo = { command: string; args: string[]; claude_code: string; cursor_json: string }
 export type AiApiKeyRecord = { id: number; provider: string; label: string; is_active: boolean; last_tested: number | null; last_status: string | null; created_at: number; updated_at: number }
 export type AiKeyTestResult = { ok: boolean; message: string }
 export type AiModelOption = { id: string; label: string; tier: string }
@@ -2026,6 +2107,7 @@ export type QueryEvent = { type: "columns"; query_id: number; columns: JsonValue
 export type QueryHistoryEntry = { id: number; connection_id: string; query_text: string; executed_at: number; duration_ms: number | null; status: string; row_count: number; error_message: string | null }
 export type QueryStatus = "Pending" | "Running" | "Completed" | "Error"
 export type RawCommandResult = { type: "null" } | { type: "integer"; value: number } | { type: "double"; value: number } | { type: "boolean"; value: boolean } | { type: "text"; value: string } | { type: "bytes"; value: KvBytes } | { type: "array"; value: RawCommandResult[] } | { type: "map"; value: ([RawCommandResult, RawCommandResult])[] } | { type: "set"; value: RawCommandResult[] }
+export type ReadEnforcement = "engine" | "policy_only" | "api"
 export type RegisteredDatabase = { name: string; path: string; active: boolean }
 export type SaveDataFileSessionResult = { path: string; tables: SavedDataFileTable[]; skipped: SkippedDataFileSource[]; warnings: string[] }
 export type SavedDataFileTable = { name: string; sourcePath: string; rowCount: number | null }

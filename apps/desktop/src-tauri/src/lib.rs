@@ -18,6 +18,7 @@ mod integrations;
 pub mod kv;
 #[cfg(target_os = "linux")]
 pub mod linux_renderer;
+pub mod mcp;
 mod observability;
 mod ollama_installer;
 mod storage;
@@ -119,6 +120,9 @@ pub fn run() {
             std::process::exit(1);
         }
     };
+    if let Err(error) = app_state.storage.recover_interrupted_agent_proposals() {
+        log::warn!("Failed to recover agent proposals: {error}");
+    }
     let certificates = database::Certificates::new();
 
     tauri::Builder::default()
@@ -223,6 +227,15 @@ pub fn run() {
             database::commands::get_session_state,
             database::commands::get_setting,
             database::commands::set_setting,
+            database::commands::get_agent_settings,
+            database::commands::set_agent_enabled,
+            database::commands::list_agent_connections,
+            database::commands::set_agent_grant,
+            database::commands::list_agent_proposals,
+            database::commands::approve_agent_proposal,
+            database::commands::reject_agent_proposal,
+            database::commands::list_agent_activity,
+            database::commands::get_agent_setup_info,
             database::commands::get_connection_history,
             database::commands::supabase_save_token,
             database::commands::supabase_oauth_connect,

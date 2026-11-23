@@ -38,14 +38,14 @@ fn take_finished(connections: &mut HashMap<ConnectionId, ConnectionCheck>) -> Ve
 
 #[derive(Clone)]
 pub struct ConnectionMonitor {
-    app: tauri::AppHandle,
+    app: Option<tauri::AppHandle>,
     connections: Arc<RwLock<HashMap<ConnectionId, ConnectionCheck>>>,
 }
 
 impl ConnectionMonitor {
     pub fn new(app: tauri::AppHandle) -> Self {
         let monitor = Self {
-            app,
+            app: Some(app),
             connections: Arc::new(RwLock::new(HashMap::new())),
         };
 
@@ -53,6 +53,28 @@ impl ConnectionMonitor {
         tauri::async_runtime::spawn(async move { polling_monitor.poll().await });
 
         monitor
+    }
+
+    /// @name headless
+    /// @description Creates a monitor with no app handle or polling task. The
+    /// owner drains ended connections through `take_dropped`.
+    ///
+    /// @example
+    /// let monitor = ConnectionMonitor::headless();
+    pub fn headless() -> Self {
+        Self {
+            app: None,
+            connections: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    /// @name take_dropped
+    /// @description Removes and returns the connections whose server task ended.
+    ///
+    /// @example
+    /// let dropped = monitor.take_dropped().await;
+    pub async fn take_dropped(&self) -> Vec<Uuid> {
+        take_finished(&mut *self.connections.write().await)
     }
 
     pub async fn add_connection(&self, connection_id: Uuid, conn_check: ConnectionCheck) {
@@ -74,7 +96,10 @@ impl ConnectionMonitor {
     }
 
     fn persist_disconnect(&self, connection_id: Uuid) {
-        let Some(state_manager) = self.app.try_state::<AppState>() else {
+        let Some(app) = self.app.as_ref() else {
+            return;
+        };
+        let Some(state_manager) = app.try_state::<AppState>() else {
             log::error!("No state manager found!");
             return;
         };
@@ -119,13 +144,13 @@ impl ConnectionMonitor {
 
     fn notify_disconnect(&self, connection_id: Uuid) {
         self.persist_disconnect(connection_id);
-        if let Some(refresher) = self.app.try_state::<crate::database::RowCountRefresher>() {
+        let Some(app) = self.app.as_ref() else {
+            return;
+        };
+        if let Some(refresher) = app.try_state::<crate::database::RowCountRefresher>() {
             refresher.cancel(connection_id);
         }
-        match self
-            .app
-            .emit_to(EventTarget::App, "end-of-connection", connection_id)
-        {
+        match app.emit_to(EventTarget::App, "end-of-connection", connection_id) {
             Ok(()) => {
                 log::info!("End-of-connection event emitted for connection {connection_id}");
             }
