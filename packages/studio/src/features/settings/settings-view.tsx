@@ -1,3 +1,4 @@
+import { AgentAccessScreen } from '@studio/features/agent-access'
 import {
 	useCallback,
 	useEffect,
@@ -308,6 +309,8 @@ export function SettingsView({ windowControls, initialSection, highlightSection 
 				return <StartupScreen />
 			case 'safety':
 				return <SafetyScreen />
+			case 'agent-access':
+				return <AgentAccessScreen />
 			case 'storage':
 				return <StorageScreen />
 			case 'updates':

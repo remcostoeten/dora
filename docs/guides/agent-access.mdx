@@ -1,0 +1,65 @@
+---
+title: Agent access (MCP)
+description: Let coding agents such as Claude Code and Cursor use your saved Dora connections through MCP.
+---
+
+Dora can run as a local MCP server. Agents start it over stdio and only reach the connections you grant. There is no network listener.
+
+## Set up
+
+1. Open **Settings**, then **Agent access**.
+2. Turn on **Enable agent access**.
+3. Choose a permission for each connection.
+4. Copy the Claude Code or Cursor snippet from the **Setup** section.
+
+For Claude Code on a regular install:
+
+```bash
+claude mcp add dora -- dora --mcp-stdio
+```
+
+For Cursor:
+
+```json
+{
+  "mcpServers": {
+    "dora": {
+      "command": "dora",
+      "args": ["--mcp-stdio"]
+    }
+  }
+}
+```
+
+AppImage, Flatpak, Snap, macOS and Windows use a different command. The **Setup** section shows the right one for your install.
+
+## Permissions
+
+| Permission | What an agent can do |
+| --- | --- |
+| Off | Nothing. The connection is hidden. |
+| Read | Inspect schema and run bounded read queries. |
+| Propose | Read, and propose changes that you approve in Dora. |
+| Read and write | Read, propose, and run non-destructive writes directly. |
+
+`DROP`, `TRUNCATE`, `ALTER`, `GRANT`, `REVOKE`, and `UPDATE` or `DELETE` without a real `WHERE` never run directly. They become a proposal, and you type the connection name to approve it.
+
+PIN-protected connections are not available to agents. DuckDB is not available yet. Redis and Valkey support read access only.
+
+## Limits
+
+- `run_query` accepts one statement and returns at most 1000 rows and 256 KiB.
+- Cells over 8 KiB are truncated.
+- Queries time out after 60 seconds at most.
+- Functions are allowlisted. Functions that read files, sleep, change settings or stop other sessions are refused.
+- With Privacy mode on, agents can read schema but no row data.
+
+## Read-only enforcement
+
+On most connections Dora also puts the database session in read-only mode. Connections through a transaction pooler, remote libSQL and Cloudflare D1 rely on Dora's statement checks only, and Dora asks you to confirm that first.
+
+For shared or production databases, connect with a dedicated read-only database role.
+
+## Audit
+
+Agent queries, refusals and writes are saved in Dora's query history with an agent marker. **Settings**, **Agent access** shows recent activity.

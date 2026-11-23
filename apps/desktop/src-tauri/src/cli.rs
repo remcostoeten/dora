@@ -14,6 +14,7 @@ const ISSUES_URL: &str = "https://github.com/remcostoeten/dora/issues";
 
 pub enum StartupAction {
     RunApp,
+    RunMcpStdio,
     Exit(i32),
 }
 
@@ -90,6 +91,7 @@ pub fn handle_args(args: impl IntoIterator<Item = String>) -> StartupAction {
         "--downloads" => open_named_url("downloads page", DOWNLOADS_URL, color),
         "--github" | "--repo" => open_named_url("GitHub repository", GITHUB_URL, color),
         "--issues" => open_named_url("issue tracker", ISSUES_URL, color),
+        "--mcp-stdio" => StartupAction::RunMcpStdio,
         unknown => {
             print_error(
                 &format!("unknown option: {unknown}\nRun `dora --help` for usage."),
@@ -151,6 +153,11 @@ fn print_help(color: bool) {
     );
     println!(
         "      {green}--issues{reset}      Open the issue tracker",
+        green = theme.green,
+        reset = theme.reset
+    );
+    println!(
+        "      {green}--mcp-stdio{reset}   Run the MCP server for coding agents over stdio",
         green = theme.green,
         reset = theme.reset
     );

@@ -15,7 +15,7 @@ One spec per initiative, written so an individual agent can pick a file up and e
 |---|------|--------|------------|
 | 01 | [DuckDB provider](01-duckdb-provider.md) | `[-]` | none |
 | 02 | [File-as-database (CSV/Parquet/JSON)](02-file-as-database.md) | `[x]` | 01 |
-| 03 | [MCP server](03-mcp-server.md) | `[ ]` | none |
+| 03 | [MCP server](03-mcp-server.md) | `[-]` | none |
 | 04 | [MSSQL provider](04-mssql-provider.md) | `[ ]` | none |
 | 05 | [ORM migration awareness + Prisma runner](05-orm-migration-awareness.md) | `[-]` | none |
 | 06 | [Schema + data diff](06-schema-data-diff.md) | `[-]` | none |

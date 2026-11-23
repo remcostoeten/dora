@@ -99,6 +99,20 @@ const SETTING_ENTRIES: SettingEntry[] = [
 		keywords: ['ping', 'latency']
 	},
 	{
+		sectionId: 'agent-access',
+		title: 'Enable agent access',
+		description: 'Let coding agents use granted connections through MCP',
+		focusId: 'agent-access-enabled',
+		keywords: ['mcp', 'agent', 'claude', 'cursor', 'codex']
+	},
+	{
+		sectionId: 'agent-access',
+		title: 'Connection permissions',
+		description: 'Choose what agents can do per connection',
+		focusId: 'agent-access-connections',
+		keywords: ['read', 'write', 'propose', 'grant']
+	},
+	{
 		sectionId: 'safety',
 		title: 'Confirm before delete',
 		description: 'Show confirmation for destructive actions',

@@ -141,12 +141,22 @@ impl Storage {
     }
 
     pub fn remove_kv_connection(&self, id: &Uuid) -> Result<()> {
-        let conn = self
+        let mut conn = self
             .conn
             .lock()
             .map_err(|_| Error::Internal("lock poisoned".into()))?;
-        conn.execute("DELETE FROM kv_connections WHERE id = ?1", [id.to_string()])
+        let tx = conn
+            .transaction()
+            .context("Failed to start key-value connection removal")?;
+        tx.execute(
+            "DELETE FROM agent_connection_grants WHERE connection_id = ?1 AND connection_kind = 'kv'",
+            [id.to_string()],
+        )
+        .context("Failed to remove agent grant")?;
+        tx.execute("DELETE FROM kv_connections WHERE id = ?1", [id.to_string()])
             .context("Failed to remove key-value connection")?;
+        tx.commit()
+            .context("Failed to commit key-value connection removal")?;
         Ok(())
     }
 

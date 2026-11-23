@@ -211,15 +211,24 @@ impl Storage {
     }
 
     pub fn remove_connection(&self, connection_id: &Uuid) -> Result<()> {
-        let conn = self
+        let mut conn = self
             .conn
             .lock()
             .map_err(|_| crate::Error::Internal("lock poisoned".into()))?;
-        conn.execute(
+        let tx = conn
+            .transaction()
+            .context("Failed to start connection removal")?;
+        tx.execute(
+            "DELETE FROM agent_connection_grants WHERE connection_id = ?1 AND connection_kind = 'sql'",
+            [connection_id.to_string()],
+        )
+        .context("Failed to remove agent grant")?;
+        tx.execute(
             "DELETE FROM connections WHERE id = ?1",
             [connection_id.to_string()],
         )
         .context("Failed to remove connection")?;
+        tx.commit().context("Failed to commit connection removal")?;
         Ok(())
     }
 

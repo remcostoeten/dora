@@ -1,3 +1,4 @@
+mod agent;
 mod ai_keys;
 mod ai_usage;
 mod connection_history;
@@ -11,6 +12,10 @@ mod settings;
 mod snippet_folders;
 mod types;
 
+pub use agent::{
+    hash_agent_statements, AgentActivityEntry, AgentConnectionKind, AgentPermission,
+    AgentProposal, AgentProposalRisk, AgentProposalStatus, NewAgentHistoryEntry, NewAgentProposal,
+};
 pub use ai_keys::AiApiKeyRecord;
 pub use ai_usage::{AiUsageInsert, AiUsageRow};
 pub use kv_connections::{KvCommandHistoryEntry, KvConnectionInfo};
@@ -54,6 +59,39 @@ impl Storage {
         }
 
         Ok(storage)
+    }
+
+    /// @name open_existing
+    /// @description Opens existing app storage without running migrations, so a
+    /// headless process can never migrate storage under a running GUI.
+    ///
+    /// @example
+    /// let storage = Storage::open_existing(path)?;
+    pub fn open_existing(db_path: PathBuf) -> Result<Self> {
+        if !db_path.exists() {
+            return Err(crate::Error::Any(anyhow::anyhow!(
+                "Dora storage does not exist yet. Open Dora once, then try again."
+            )));
+        }
+
+        let mut conn = Connection::open(&db_path)
+            .with_context(|| format!("Failed to open SQLite database at {}", db_path.display()))?;
+        Self::init_pragmas(&mut conn)?;
+
+        let current_version: i32 = conn
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .context("Failed to read storage version")?;
+        let target_version = Migrator::new().target_version();
+        if current_version != target_version {
+            return Err(crate::Error::Any(anyhow::anyhow!(
+                "Dora storage is at version {current_version}, this binary expects {target_version}. Open the current version of Dora once, then try again."
+            )));
+        }
+
+        Ok(Self {
+            conn: Mutex::new(conn),
+            active_path: Mutex::new(db_path),
+        })
     }
 
     fn init_pragmas(conn: &mut Connection) -> Result<()> {
