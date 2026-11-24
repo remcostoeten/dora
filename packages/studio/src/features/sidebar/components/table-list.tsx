@@ -89,6 +89,8 @@ type TableItemRowProps = {
  * and the row that gained it, and neither the list nor the sidebar around it.
  * The row does not own a context menu — it arms the list's shared one from
  * `onContextMenu` — and only mounts the "more actions" dropdown while it is open.
+ * Its actions button mounts on the first hover or focus, so a schema switch does
+ * not render one per row.
  */
 const TableItemRow = memo(function TableItemRow({
 	item,
@@ -109,6 +111,7 @@ const TableItemRow = memo(function TableItemRow({
 		return selectActiveTableId(state) === item.id
 	})
 	const [showContextMenu, setShowContextMenu] = useState(false)
+	const [isEngaged, setIsEngaged] = useState(false)
 	const [isMenuClosing, setIsMenuClosing] = useState(false)
 	const closingTimerRef = useRef<number | undefined>(undefined)
 	const [editValue, setEditValue] = useState(item.name)
@@ -240,8 +243,14 @@ const TableItemRow = memo(function TableItemRow({
 				aria-selected={isMultiSelectMode ? isSelected : undefined}
 				aria-label={`${item.name}, ${item.type}, ${formatRowCount(item.rowCount)} rows`}
 				onClick={() => onSelect(item.id)}
-				onMouseEnter={() => onPrefetch(item.id)}
-				onFocus={() => onPrefetch(item.id)}
+				onMouseEnter={() => {
+					setIsEngaged(true)
+					onPrefetch(item.id)
+				}}
+				onFocus={() => {
+					setIsEngaged(true)
+					onPrefetch(item.id)
+				}}
 				onKeyDown={handleRowKeyDown}
 				onContextMenu={() => onArmContextMenu(item.id)}
 			>
@@ -316,9 +325,9 @@ const TableItemRow = memo(function TableItemRow({
 					>
 						{actionsButton}
 					</TableContextMenu>
-				) : (
+				) : isEngaged ? (
 					actionsButton
-				)}
+				) : null}
 			</div>
 
 			{hasSortedColumns && (
