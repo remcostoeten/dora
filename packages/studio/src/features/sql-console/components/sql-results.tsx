@@ -1,4 +1,3 @@
-import Editor from '@monaco-editor/react'
 import {
 	Table2,
 	Braces,
@@ -43,6 +42,11 @@ import { useToast } from '@studio/shared/ui/use-toast'
 import { remeasureMonacoFonts } from '@studio/shared/lib/font-loader'
 import { cn } from '@studio/shared/utils/cn'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
+const Editor = lazy(function () {
+	return import('@studio/monaco-workers').then(function () {
+		return import('@monaco-editor/react')
+	})
+})
 const ResultChartPanel = lazy(function () {
 	return import('@studio/features/result-charts/result-chart-panel').then(function (m) {
 		return { default: m.ResultChartPanel }
@@ -609,27 +613,29 @@ export function SqlResults({
 					</div>
 				) : viewMode === 'json' ? (
 					<div className='relative h-full w-full'>
-						<Editor
-							height='100%'
-							defaultLanguage='json'
-							value={resultJsonText}
-							theme='vs-dark'
-							onMount={(_editor, monaco) => remeasureMonacoFonts(monaco)}
-							options={{
-								readOnly: true,
-								minimap: { enabled: false },
-								fontSize: 13,
-								lineNumbers: 'on',
-								scrollBeyondLastLine: false,
-								automaticLayout: true,
-								tabSize: 2,
-								folding: true,
-								wordWrap: 'on',
-								padding: { top: 12, bottom: 12 },
-								renderLineHighlight: 'none',
-								fontFamily: "'JetBrains Mono', 'Fira Code', monospace"
-							}}
-						/>
+						<Suspense fallback={<div className='h-full w-full bg-editor' />}>
+							<Editor
+								height='100%'
+								defaultLanguage='json'
+								value={resultJsonText}
+								theme='vs-dark'
+								onMount={(_editor, monaco) => remeasureMonacoFonts(monaco)}
+								options={{
+									readOnly: true,
+									minimap: { enabled: false },
+									fontSize: 13,
+									lineNumbers: 'on',
+									scrollBeyondLastLine: false,
+									automaticLayout: true,
+									tabSize: 2,
+									folding: true,
+									wordWrap: 'on',
+									padding: { top: 12, bottom: 12 },
+									renderLineHighlight: 'none',
+									fontFamily: "'JetBrains Mono', 'Fira Code', monospace"
+								}}
+							/>
+						</Suspense>
 						<Button
 							variant='ghost'
 							size='icon'

@@ -54,9 +54,16 @@ export async function preloadBootAssets(): Promise<void> {
  * must never sit between app launch and the first paint of the shell.
  */
 export function warmEditorHost(): void {
-	Promise.resolve()
-		.then(() => preloadEditorHost())
-		.catch((error) => {
-			console.warn('Failed to warm the editor host:', error)
+	requestAnimationFrame(() => {
+		requestAnimationFrame(() => {
+			window.setTimeout(() => {
+				Promise.all([
+					preloadEditorHost(),
+					import('@studio/features/sql-console/sql-console')
+				]).catch((error) => {
+					console.warn('Failed to warm the editor host:', error)
+				})
+			}, 0)
 		})
+	})
 }
