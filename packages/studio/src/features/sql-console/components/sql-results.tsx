@@ -39,6 +39,7 @@ import {
 import { Input } from '@studio/shared/ui/input'
 import { ScrollArea } from '@studio/shared/ui/scroll-area'
 import { useToast } from '@studio/shared/ui/use-toast'
+import { layoutWhileVisible } from '@studio/core/editor-host'
 import { remeasureMonacoFonts } from '@studio/shared/lib/font-loader'
 import { cn } from '@studio/shared/utils/cn'
 import { areValuesEqual } from '@studio/shared/utils/value-equality'
@@ -619,14 +620,19 @@ export function SqlResults({
 								defaultLanguage='json'
 								value={resultJsonText}
 								theme='vs-dark'
-								onMount={(_editor, monaco) => remeasureMonacoFonts(monaco)}
+								onMount={(editor, monaco) => {
+									remeasureMonacoFonts(monaco)
+									editor.onDidDispose(
+										layoutWhileVisible(editor, editor.getContainerDomNode())
+									)
+								}}
 								options={{
 									readOnly: true,
 									minimap: { enabled: false },
 									fontSize: 13,
 									lineNumbers: 'on',
 									scrollBeyondLastLine: false,
-									automaticLayout: true,
+									automaticLayout: false,
 									tabSize: 2,
 									folding: true,
 									wordWrap: 'on',

@@ -7,6 +7,7 @@
 
 import Editor from '@monaco-editor/react'
 import { useEffect, useRef, useState } from 'react'
+import { layoutWhileVisible } from '@studio/core/editor-host'
 import { useSetting } from '@studio/core/settings'
 import { isBuiltinTheme, loadTheme, type MonacoTheme } from '@studio/core/settings/editor-themes'
 import { remeasureMonacoFonts } from '@studio/shared/lib/font-loader'
@@ -94,8 +95,9 @@ export function ConverterEditor({ value, language, readOnly, placeholder, onChan
 			onChange={(next) => {
 				onChange?.(next ?? '')
 			}}
-			onMount={async (_editor, monaco) => {
+			onMount={async (editor, monaco) => {
 				remeasureMonacoFonts(monaco)
+				editor.onDidDispose(layoutWhileVisible(editor, editor.getContainerDomNode()))
 				if (!isBuiltinTheme(theme) && !loadedThemes.current.has(theme)) {
 					const data = await loadTheme(theme as MonacoTheme)
 					if (data) {
@@ -111,7 +113,7 @@ export function ConverterEditor({ value, language, readOnly, placeholder, onChan
 				fontSize,
 				lineNumbers: 'on',
 				scrollBeyondLastLine: false,
-				automaticLayout: true,
+				automaticLayout: false,
 				tabSize: 2,
 				wordBasedSuggestions: 'off',
 				quickSuggestions: false,

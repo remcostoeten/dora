@@ -103,12 +103,25 @@ function getOrCreateEditor(
 	container.className = 'h-full w-full'
 	const editor = monaco.editor.create(container, { ...options, automaticLayout: false })
 	const hostedEditor = { container, editor, ownerId: null }
-	observeVisibleSize(hostedEditor)
+	layoutWhileVisible(editor, container)
 	editors.set(family, hostedEditor)
 	return hostedEditor
 }
 
-function observeVisibleSize(hostedEditor: HostedEditor) {
+/**
+ * @name layoutWhileVisible
+ * @description Replaces Monaco's `automaticLayout` for an editor whose view can be
+ * hidden with `display: none`. It relayouts only when the container has a real,
+ * changed size, so hiding and showing the view costs no Monaco layout.
+ *
+ * @example
+ * const editor = monaco.editor.create(container, { automaticLayout: false })
+ * const stop = layoutWhileVisible(editor, container)
+ */
+export function layoutWhileVisible(
+	editor: Monaco.editor.IStandaloneCodeEditor,
+	container: HTMLElement
+): () => void {
 	let width = 0
 	let height = 0
 	const observer = new ResizeObserver((entries) => {
@@ -117,9 +130,12 @@ function observeVisibleSize(hostedEditor: HostedEditor) {
 		if (box.width === width && box.height === height) return
 		width = box.width
 		height = box.height
-		hostedEditor.editor.layout({ width, height })
+		editor.layout({ width, height })
 	})
-	observer.observe(hostedEditor.container)
+	observer.observe(container)
+	return function () {
+		observer.disconnect()
+	}
 }
 
 export function PersistentEditor({
