@@ -430,7 +430,7 @@ export const ConnectionSwitcher = memo(function ConnectionSwitcher({
 		focusOnMountIdRef.current = null
 		node.focus({ preventScroll: true })
 		requestAnimationFrame(function () {
-			if (node.isConnected) revealRowInList(node)
+			if (node.isConnected && document.activeElement === node) revealRowInList(node)
 		})
 	}, [])
 

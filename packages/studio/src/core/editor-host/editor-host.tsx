@@ -122,15 +122,13 @@ export function layoutWhileVisible(
 	editor: Monaco.editor.IStandaloneCodeEditor,
 	container: HTMLElement
 ): () => void {
-	let width = 0
-	let height = 0
 	const observer = new ResizeObserver((entries) => {
 		const box = entries[entries.length - 1]?.contentRect
 		if (!box || box.width === 0 || box.height === 0) return
-		if (box.width === width && box.height === height) return
-		width = box.width
-		height = box.height
-		editor.layout({ width, height })
+		const current = editor.getLayoutInfo()
+		if (Math.abs(box.width - current.width) < 1 && Math.abs(box.height - current.height) < 1)
+			return
+		editor.layout({ width: box.width, height: box.height })
 	})
 	observer.observe(container)
 	return function () {

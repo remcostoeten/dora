@@ -4,6 +4,7 @@ import {
 	isValidElement,
 	useContext,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 	type ReactElement,
@@ -134,7 +135,7 @@ export function WorkspaceViews({ activeViewId, children }: Props) {
 		})
 	}, [activeViewId])
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const sources = sourcesRef.current
 		sources.forEach((source, viewId) => {
 			if (viewId !== activeViewId) source.setActive(false)
