@@ -48,8 +48,13 @@ export function useActiveIndicator(
 
 	useLayoutEffect(() => {
 		const followsPointer = performance.now() - lastPointerAt.current < POINTER_WINDOW_MS
-		place(followsPointer && hasPlaced.current)
-		hasPlaced.current = true
+		if (!hasPlaced.current) {
+			place(false)
+			hasPlaced.current = true
+			return
+		}
+		const frameId = requestAnimationFrame(() => place(followsPointer))
+		return () => cancelAnimationFrame(frameId)
 	}, [place, layoutKey])
 
 	useEffect(() => {

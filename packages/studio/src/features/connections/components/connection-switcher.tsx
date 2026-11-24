@@ -429,7 +429,9 @@ export const ConnectionSwitcher = memo(function ConnectionSwitcher({
 		if (focusOnMountIdRef.current !== id) return
 		focusOnMountIdRef.current = null
 		node.focus({ preventScroll: true })
-		revealRowInList(node)
+		requestAnimationFrame(function () {
+			if (node.isConnected) revealRowInList(node)
+		})
 	}, [])
 
 	function handleMenuOpenChange(open: boolean) {
