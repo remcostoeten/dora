@@ -9,7 +9,8 @@ import { askAi, buildExplainQueryPrompt } from '@studio/features/ai-assistant/ai
 import { getAdapterError } from '@studio/core/data-provider/types'
 import type { QueryResult } from '@studio/core/data-provider/types'
 import { collectQueryRows } from '@studio/core/data-provider/query-row-source'
-import { useShortcut, useActiveScope, useEffectiveShortcuts } from '@studio/core/shortcuts'
+import { useShortcut, useEffectiveShortcuts } from '@studio/core/shortcuts'
+import { useWhileViewActive } from '@studio/core/workspace-views'
 import {
 	SQL_CONSOLE_PALETTE_EVENT,
 	type SqlConsolePaletteCommand
@@ -87,7 +88,6 @@ function isTextEntryTarget(event: KeyboardEvent): boolean {
 }
 
 type Props = {
-	isActive?: boolean
 	activeConnectionId?: string
 	getConnectionName?: (id: string) => string
 }
@@ -100,7 +100,7 @@ export function SqlConsole(props: Props) {
 	)
 }
 
-function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionName }: Props) {
+function SqlConsoleInner({ activeConnectionId, getConnectionName }: Props) {
 	const adapter = useAdapter()
 	const isTauri = useIsTauri()
 	const { settings: appSettings } = useSettings()
@@ -1081,7 +1081,10 @@ function SqlConsoleInner({ isActive = true, activeConnectionId, getConnectionNam
 
 	const $ = useShortcut()
 	const sqlShortcuts = useEffectiveShortcuts()
-	useActiveScope($, 'sql-console', isActive)
+	useWhileViewActive(() => {
+		$.enableScope('sql-console')
+		return () => $.disableScope('sql-console')
+	})
 
 	$.bind(sqlShortcuts.runQuery.combo)
 		.in('sql-console')

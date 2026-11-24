@@ -169,4 +169,33 @@ describe('configureSplashSnapshot', () => {
 		configureSplashSnapshot(false)
 		expect(window.localStorage.getItem(SPLASH_STORAGE_KEY)).toBeNull()
 	})
+
+	it('resolves the theme colors once per theme instead of on every write', () => {
+		const computedStyle = vi.mocked(window.getComputedStyle)
+		configureSplashSnapshot(true)
+		vi.advanceTimersByTime(600)
+		const firstReads = computedStyle.mock.calls.length
+		expect(firstReads).toBeGreaterThan(0)
+
+		openTab({
+			connectionId: 'demo',
+			tableId: 'public.orders',
+			tableName: 'orders',
+			label: 'orders'
+		})
+		vi.advanceTimersByTime(600)
+		expect(computedStyle.mock.calls.length).toBe(firstReads)
+		expect(
+			JSON.parse(window.localStorage.getItem(SPLASH_STORAGE_KEY) ?? '{}').activeTable
+		).toBe('orders')
+
+		document.documentElement.classList.add('splash-test-theme')
+		try {
+			openCustomers()
+			vi.advanceTimersByTime(600)
+			expect(computedStyle.mock.calls.length).toBeGreaterThan(firstReads)
+		} finally {
+			document.documentElement.classList.remove('splash-test-theme')
+		}
+	})
 })

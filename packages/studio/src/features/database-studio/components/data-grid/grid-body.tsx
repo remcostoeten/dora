@@ -161,13 +161,15 @@ const GridRow = memo(function GridRow({
 				const isDirty = primaryKeyColumnName
 					? pendingEdits?.has(`${row[primaryKeyColumnName]}:${col.name}`)
 					: false
+				const needsCellLayer = isEditing || isFocused || isDirty
 
 				return (
 					<td
 						id={getCellId(gridId, rowIndex, colIndex)}
 						key={col.name}
 						className={cn(
-							'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm overflow-hidden cursor-cell px-3 py-1.5 relative whitespace-nowrap text-ellipsis max-w-[300px] group/cell',
+							'border-b border-r border-sidebar-border last:border-r-0 font-mono text-sm cursor-cell px-3 py-1.5 whitespace-nowrap text-ellipsis max-w-[300px] group/cell',
+							needsCellLayer && 'relative overflow-hidden',
 							isSelected && !isEditing && 'bg-muted-foreground/10',
 							isFocused &&
 								!isEditing &&
@@ -234,8 +236,8 @@ const GridRow = memo(function GridRow({
 								className='w-full h-full bg-focus-strong font-mono text-sm -mx-3 -my-1.5 px-3 py-1.5 box-content'
 							/>
 						) : (
-							<div className='flex items-center min-w-0 relative'>
-								<span className='truncate flex-1'>
+							<div className={cn('flex items-center min-w-0', isDirty && 'relative')}>
+								<span className='truncate flex-1 min-w-0 supports-[overflow:clip]:overflow-clip'>
 									{formatCellValue(row[col.name], col, masked)}
 								</span>
 								{col.foreignKey && onFKNavigate && !masked && (

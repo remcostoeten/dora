@@ -214,7 +214,6 @@ function openStartupSettings() {
 }
 
 const DatabaseStudioHost = memo(function DatabaseStudioHost({ actions }: ViewProps) {
-	const isActive = useIsActiveView('database-studio')
 	const activeConnectionId = useActiveConnectionId()
 	const activeTab = useActiveTab()
 	const { settings, persistSetting } = useSettings()
@@ -239,7 +238,6 @@ const DatabaseStudioHost = memo(function DatabaseStudioHost({ actions }: ViewPro
 			<WorkspaceTabBar />
 			<ErrorBoundary feature='Database Studio'>
 				<DatabaseStudio
-					isActive={isActive}
 					tableId={activeTab?.tableId ?? ''}
 					tableName={activeTab?.tableName ?? ''}
 					initialRowPK={settings.lastRowPK}
@@ -256,7 +254,6 @@ const DatabaseStudioHost = memo(function DatabaseStudioHost({ actions }: ViewPro
 })
 
 const SqlConsoleHost = memo(function SqlConsoleHost({ actions }: ViewProps) {
-	const isActive = useIsActiveView('sql-console')
 	const activeConnectionId = useActiveConnectionId()
 	const connections = useConnectionList()
 
@@ -276,7 +273,6 @@ const SqlConsoleHost = memo(function SqlConsoleHost({ actions }: ViewProps) {
 			<WorkspaceConnectionTabBar actions={actions} />
 			<ErrorBoundary feature='SQL Console'>
 				<SqlConsole
-					isActive={isActive}
 					activeConnectionId={activeConnectionId}
 					getConnectionName={getConnectionName}
 				/>

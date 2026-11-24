@@ -83,8 +83,11 @@ export function SourceStep({ canOpenDataFiles, onPickFiles, onOpenDataFiles }: S
 	const activeId = showingList ? visible[activeIndex]?.id : undefined
 
 	useEffect(() => {
-		if (activeId)
+		if (!activeId) return
+		const frameId = requestAnimationFrame(() => {
 			document.getElementById(`cd-opt-${activeId}`)?.scrollIntoView({ block: 'nearest' })
+		})
+		return () => cancelAnimationFrame(frameId)
 	}, [activeId])
 
 	const choose = useCallback(

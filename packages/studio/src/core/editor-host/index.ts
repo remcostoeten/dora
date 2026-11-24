@@ -2,6 +2,7 @@ export {
 	PersistentEditor,
 	getEditorModels,
 	getSelectedEditorText,
+	layoutWhileVisible,
 	preloadEditorHost,
 	type EditorFamily,
 	type EditorMount

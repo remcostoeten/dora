@@ -18,6 +18,7 @@ import { isConnectionUnavailableError } from '@studio/shared/utils/error-message
 import { noop } from '@studio/shared/utils/noop'
 import { toast } from '@studio/shared/ui/notifier'
 import type { DataAdapter } from '@studio/core/data-provider/types'
+import type { ViewActivity } from '@studio/core/workspace-views'
 import type { DatabaseSchema } from '@studio/lib/bindings'
 import { enrichColumnsWithFKs } from '../utils/fk-enrichment'
 import { afterNextPaint } from '../utils/after-next-paint'
@@ -42,7 +43,7 @@ import type {
 
 type Args = {
 	adapter: DataAdapter
-	isActive: boolean
+	activity: ViewActivity
 	workspaceStateKey: string
 	loadingStore: LoadingStore
 	activeConnectionId?: string
@@ -84,7 +85,7 @@ type Args = {
 export function useDatabaseStudioSync(args: Args) {
 	const {
 		adapter,
-		isActive,
+		activity,
 		workspaceStateKey,
 		loadingStore,
 		activeConnectionId,
@@ -460,19 +461,24 @@ export function useDatabaseStudioSync(args: Args) {
 		[tableRefName]
 	)
 
-	const canReloadForExternalChange = isActive && !draftRow && !isApplyingEdits && !hasPendingEdits
+	const canReloadForExternalChange = !draftRow && !isApplyingEdits && !hasPendingEdits
 
 	useEffect(
 		function reloadOnExternalChange() {
 			function applyPendingChange() {
-				if (!externalChangeRef.current || !canReloadForExternalChange) return
+				if (
+					!externalChangeRef.current ||
+					!canReloadForExternalChange ||
+					!activity.isActive()
+				)
+					return
 				loadTableData()
 			}
 
 			applyPendingChange()
 
 			let seenEvents = getLiveMonitorState().recentEvents
-			return subscribeLiveMonitor(function onLiveMonitorChange() {
+			const stopWatchingLiveMonitor = subscribeLiveMonitor(function onLiveMonitorChange() {
 				const events = getLiveMonitorState().recentEvents
 				if (events === seenEvents) return
 				const lastSeenId = seenEvents[0]?.id
@@ -486,8 +492,13 @@ export function useDatabaseStudioSync(args: Args) {
 				}
 				applyPendingChange()
 			})
+			const stopWatchingActivity = activity.subscribe(applyPendingChange)
+			return function () {
+				stopWatchingActivity()
+				stopWatchingLiveMonitor()
+			}
 		},
-		[canReloadForExternalChange, loadTableData, tableName, tableRefName]
+		[activity, canReloadForExternalChange, loadTableData, tableName, tableRefName]
 	)
 
 	useEffect(

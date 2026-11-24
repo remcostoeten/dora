@@ -49,6 +49,7 @@ let enabled = false
 let unsubscribe: (() => void) | null = null
 let writeTimer: ReturnType<typeof setTimeout> | null = null
 let lastWritten: string | null = null
+let themeColors: { theme: string; colors: SplashColors } | null = null
 
 function storage(): Storage | null {
 	try {
@@ -162,6 +163,20 @@ export function buildSplashSnapshot(
 	}
 }
 
+function themeSignature(): string {
+	const root = document.documentElement
+	return `${root.className}|${root.getAttribute('style') ?? ''}`
+}
+
+function readThemeColors(): SplashColors | null {
+	if (typeof document === 'undefined') return null
+	const theme = themeSignature()
+	if (themeColors?.theme === theme) return themeColors.colors
+	const colors = readSplashColors()
+	themeColors = colors ? { theme, colors } : null
+	return colors
+}
+
 function clearStored(): void {
 	const store = storage()
 	if (!store) return
@@ -175,7 +190,7 @@ function clearStored(): void {
 
 function writeNow(): void {
 	if (!storage()) return
-	const colors = readSplashColors()
+	const colors = readThemeColors()
 	const snapshot = colors ? buildSplashSnapshot(workspaceStore.getState(), colors) : null
 	if (!snapshot) {
 		if (lastWritten !== null) clearStored()
@@ -241,6 +256,7 @@ export function configureSplashSnapshot(nextEnabled: boolean): void {
 		}
 		removeFlushListeners()
 		clearStored()
+		themeColors = null
 		return
 	}
 

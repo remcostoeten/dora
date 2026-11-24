@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import type * as Monaco from 'monaco-editor'
 import type { Monaco as MonacoApi } from '@monaco-editor/react'
-import { preloadMonacoWorkers } from '@studio/monaco-workers'
 import { dropCostlyEditorFocusRule } from './focus-rule'
 
 export type EditorFamily = 'sql' | 'typescript'
@@ -34,11 +33,18 @@ let monacoPromise: Promise<MonacoApi> | null = null
 
 export function preloadEditorHost(): Promise<MonacoApi> {
 	if (!monacoPromise) {
-		monacoPromise = Promise.resolve(preloadMonacoWorkers())
-			.then(() => import('monaco-editor') as unknown as Promise<MonacoApi>)
+		monacoPromise = import('@studio/monaco-workers')
+			.then(({ preloadMonacoWorkers }) => {
+				preloadMonacoWorkers()
+				return import('monaco-editor') as unknown as Promise<MonacoApi>
+			})
 			.then((monaco) => {
 				dropCostlyEditorFocusRule()
 				return monaco
+			})
+			.catch((error) => {
+				monacoPromise = null
+				throw error
 			})
 	}
 	return monacoPromise
@@ -95,10 +101,39 @@ function getOrCreateEditor(
 
 	const container = document.createElement('div')
 	container.className = 'h-full w-full'
-	const editor = monaco.editor.create(container, options)
+	const editor = monaco.editor.create(container, { ...options, automaticLayout: false })
 	const hostedEditor = { container, editor, ownerId: null }
+	layoutWhileVisible(editor, container)
 	editors.set(family, hostedEditor)
 	return hostedEditor
+}
+
+/**
+ * @name layoutWhileVisible
+ * @description Replaces Monaco's `automaticLayout` for an editor whose view can be
+ * hidden with `display: none`. It relayouts only when the container has a real,
+ * changed size, so hiding and showing the view costs no Monaco layout.
+ *
+ * @example
+ * const editor = monaco.editor.create(container, { automaticLayout: false })
+ * const stop = layoutWhileVisible(editor, container)
+ */
+export function layoutWhileVisible(
+	editor: Monaco.editor.IStandaloneCodeEditor,
+	container: HTMLElement
+): () => void {
+	const observer = new ResizeObserver((entries) => {
+		const box = entries[entries.length - 1]?.contentRect
+		if (!box || box.width === 0 || box.height === 0) return
+		const current = editor.getLayoutInfo()
+		if (Math.abs(box.width - current.width) < 1 && Math.abs(box.height - current.height) < 1)
+			return
+		editor.layout({ width: box.width, height: box.height })
+	})
+	observer.observe(container)
+	return function () {
+		observer.disconnect()
+	}
 }
 
 export function PersistentEditor({
@@ -137,13 +172,12 @@ export function PersistentEditor({
 			const hostedEditor = getOrCreateEditor(monaco, family, {
 				...options,
 				model,
-				theme,
-				automaticLayout: true
+				theme
 			})
 
 			hostedEditor.ownerId = ownerId
 			mountRef.current.appendChild(hostedEditor.container)
-			hostedEditor.editor.updateOptions(options)
+			hostedEditor.editor.updateOptions({ ...options, automaticLayout: false })
 			hostedEditor.editor.setModel(model)
 			modelRef.current = model
 			if (theme) monaco.editor.setTheme(theme)
@@ -187,7 +221,7 @@ export function PersistentEditor({
 	useEffect(() => {
 		const hostedEditor = editors.get(family)
 		if (!hostedEditor || hostedEditor.ownerId !== ownerIdRef.current) return
-		hostedEditor.editor.updateOptions(options)
+		hostedEditor.editor.updateOptions({ ...options, automaticLayout: false })
 	}, [family, options])
 
 	useEffect(() => {
