@@ -1,1 +1,7 @@
-export { WorkspaceView, WorkspaceViews } from './workspace-views'
+export {
+	useViewActivity,
+	useWhileViewActive,
+	WorkspaceView,
+	WorkspaceViews,
+	type ViewActivity
+} from './workspace-views'

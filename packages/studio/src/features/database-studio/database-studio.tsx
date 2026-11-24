@@ -4,12 +4,12 @@ import { useAdapter, useDataMutation, useConnections, useSchema } from '@studio/
 import { useConnectionPhase } from '@studio/core/data-provider/connection-phase'
 import { usePendingEdits } from '@studio/core/pending-edits'
 import { openTab } from '@studio/core/workspace-store'
+import { useViewActivity, useWhileViewActive } from '@studio/core/workspace-views'
 import { useSettings } from '@studio/core/settings'
 import {
 	formatShortcutList,
 	useEffectiveShortcuts,
 	useShortcut,
-	useActiveScope,
 	type ShortcutName
 } from '@studio/core/shortcuts'
 import { pickUndoTarget, useUndo } from '@studio/core/undo'
@@ -136,7 +136,6 @@ function ConnectionLoadingState({ connectionId, connectionName }: ConnectionLoad
 }
 
 type Props = {
-	isActive?: boolean
 	tableId: string | null
 	tableName: string | null
 	activeConnectionId?: string
@@ -149,7 +148,6 @@ type Props = {
 }
 
 export function DatabaseStudio({
-	isActive = true,
 	tableId,
 	tableName,
 	activeConnectionId,
@@ -434,9 +432,10 @@ export function DatabaseStudio({
 		}
 	}
 
+	const activity = useViewActivity()
 	const { loadTableData } = useDatabaseStudioSync({
 		adapter,
-		isActive,
+		activity,
 		workspaceStateKey,
 		loadingStore,
 		activeConnectionId,
@@ -805,7 +804,10 @@ export function DatabaseStudio({
 
 	const shortcuts = useEffectiveShortcuts()
 	const $ = useShortcut()
-	useActiveScope($, 'data-grid', isActive)
+	useWhileViewActive(() => {
+		$.enableScope('data-grid')
+		return () => $.disableScope('data-grid')
+	})
 
 	$.bind(shortcuts.refreshTable.combo)
 		.in('data-grid')

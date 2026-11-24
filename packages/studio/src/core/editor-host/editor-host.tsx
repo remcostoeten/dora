@@ -101,10 +101,25 @@ function getOrCreateEditor(
 
 	const container = document.createElement('div')
 	container.className = 'h-full w-full'
-	const editor = monaco.editor.create(container, options)
+	const editor = monaco.editor.create(container, { ...options, automaticLayout: false })
 	const hostedEditor = { container, editor, ownerId: null }
+	observeVisibleSize(hostedEditor)
 	editors.set(family, hostedEditor)
 	return hostedEditor
+}
+
+function observeVisibleSize(hostedEditor: HostedEditor) {
+	let width = 0
+	let height = 0
+	const observer = new ResizeObserver((entries) => {
+		const box = entries[entries.length - 1]?.contentRect
+		if (!box || box.width === 0 || box.height === 0) return
+		if (box.width === width && box.height === height) return
+		width = box.width
+		height = box.height
+		hostedEditor.editor.layout({ width, height })
+	})
+	observer.observe(hostedEditor.container)
 }
 
 export function PersistentEditor({
@@ -143,13 +158,12 @@ export function PersistentEditor({
 			const hostedEditor = getOrCreateEditor(monaco, family, {
 				...options,
 				model,
-				theme,
-				automaticLayout: true
+				theme
 			})
 
 			hostedEditor.ownerId = ownerId
 			mountRef.current.appendChild(hostedEditor.container)
-			hostedEditor.editor.updateOptions(options)
+			hostedEditor.editor.updateOptions({ ...options, automaticLayout: false })
 			hostedEditor.editor.setModel(model)
 			modelRef.current = model
 			if (theme) monaco.editor.setTheme(theme)
@@ -193,7 +207,7 @@ export function PersistentEditor({
 	useEffect(() => {
 		const hostedEditor = editors.get(family)
 		if (!hostedEditor || hostedEditor.ownerId !== ownerIdRef.current) return
-		hostedEditor.editor.updateOptions(options)
+		hostedEditor.editor.updateOptions({ ...options, automaticLayout: false })
 	}, [family, options])
 
 	useEffect(() => {
