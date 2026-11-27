@@ -53,6 +53,7 @@ const nextConfig: NextConfig = {
     partialPrefetching: true,
     experimental: {
         inlineCss: true,
+        globalNotFound: true,
         exposeTestingApiInProductionBuild:
             process.env.NEXT_INSTANT_NAVIGATION_TEST === '1',
         instantInsights: {

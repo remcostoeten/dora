@@ -854,27 +854,6 @@
     }
 }
 
-.studio-mount {
-    opacity: 0;
-    transition: opacity 220ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.studio-mount[data-visible='true'] {
-    opacity: 1;
-}
-
-.deferred-label {
-    opacity: 0;
-    animation: deferredLabelIn 160ms cubic-bezier(0.23, 1, 0.32, 1) 300ms
-        forwards;
-}
-
-@keyframes deferredLabelIn {
-    to {
-        opacity: 1;
-    }
-}
-
 .overlay-backdrop {
     opacity: 0;
     transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -1014,7 +993,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .studio-mount,
     .overlay-backdrop,
     .overlay-panel,
     .overlay-panel[data-visible='true'],
@@ -1037,9 +1015,5 @@
     .hosted-provider-tooltip {
         transform: none;
         filter: none;
-    }
-
-    .deferred-label {
-        animation-duration: 100ms;
     }
 }

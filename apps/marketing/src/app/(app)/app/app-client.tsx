@@ -1,6 +1,6 @@
 'use client'
 
-import { StudioApp, createAnalyticsConfig } from '@dora/studio'
+import { StudioApp, createAnalyticsConfig, prepareStudio } from '@dora/studio'
 import { useEffect, useState } from 'react'
 
 const analyticsConfig = createAnalyticsConfig({
@@ -20,7 +20,12 @@ const analyticsConfig = createAnalyticsConfig({
     }
 })
 
-export function AppClient() {
+export async function loadAppClient() {
+    await prepareStudio()
+    return AppClient
+}
+
+function AppClient() {
     const [visible, setVisible] = useState(false)
 
     useEffect(() => {
