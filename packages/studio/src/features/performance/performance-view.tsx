@@ -1,10 +1,14 @@
+import { Gauge } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useIsTauri } from '@studio/core/data-provider'
 import { commands, type PerfReport, type PerfSample, type PerfSummary } from '@studio/lib/bindings'
 import {
 	SettingCard,
 	SettingGroup,
 	SettingRow
 } from '@studio/features/settings/components/setting-primitives'
+import { EmptyState } from '@studio/shared/ui/empty-state'
+import { IconStack } from '@studio/shared/ui/empty-state-illustrations'
 import '@studio/features/settings/settings.css'
 
 const METRICS = [
@@ -86,6 +90,37 @@ type Props = {
 }
 
 export function PerformanceView({ windowControls }: Props) {
+	const isTauri = useIsTauri()
+
+	return (
+		<div className='settings-view flex h-full min-h-0 flex-col overflow-hidden bg-background'>
+			<header className='settings-topbar' data-tauri-drag-region='true'>
+				<span className='text-xs font-medium text-foreground'>Performance</span>
+				{windowControls ? (
+					<div className='ml-auto shrink-0' data-tauri-drag-region='false'>
+						{windowControls}
+					</div>
+				) : null}
+			</header>
+			{isTauri ? (
+				<PerformanceReport />
+			) : (
+				<div className='min-h-0 flex-1'>
+					<EmptyState
+						size='lg'
+						loop
+						pointer
+						illustration={<IconStack icon={<Gauge />} />}
+						title='Available in the desktop app'
+						description='Timings and memory use are recorded by the desktop backend. Open Dora on your desktop to see them.'
+					/>
+				</div>
+			)}
+		</div>
+	)
+}
+
+function PerformanceReport() {
 	const [report, setReport] = useState<PerfReport | null>(null)
 	const [message, setMessage] = useState('')
 	const [busy, setBusy] = useState(true)
@@ -135,126 +170,116 @@ export function PerformanceView({ windowControls }: Props) {
 	const summaries = report?.summary ?? {}
 
 	return (
-		<div className='settings-view flex h-full min-h-0 flex-col overflow-hidden bg-background'>
-			<header className='settings-topbar' data-tauri-drag-region='true'>
-				<span className='text-xs font-medium text-foreground'>Performance</span>
-				{windowControls ? (
-					<div className='ml-auto shrink-0' data-tauri-drag-region='false'>
-						{windowControls}
-					</div>
-				) : null}
-			</header>
-			<div className='settings-body @container min-h-0 flex-1 overflow-y-auto'>
-				<div className='w-full max-w-[860px] px-8 pb-28 pt-5'>
-					<h2 className='text-[15px] font-semibold tracking-tight text-foreground'>
-						Performance
-					</h2>
-					<p className='mt-0.5 text-xs text-muted-foreground'>
-						Timings recorded by the backend and the memory Dora uses.
-					</p>
-					<SettingGroup label='Memory'>
-						<SettingCard>
-							<SettingRow
-								focusId='performance-memory'
-								label='Process tree memory'
-								help='Dora together with its webview and helper processes'
+		<div className='settings-body @container min-h-0 flex-1 overflow-y-auto'>
+			<div className='w-full max-w-[860px] px-8 pb-28 pt-5'>
+				<h2 className='text-[15px] font-semibold tracking-tight text-foreground'>
+					Performance
+				</h2>
+				<p className='mt-0.5 text-xs text-muted-foreground'>
+					Timings recorded by the backend and the memory Dora uses.
+				</p>
+				<SettingGroup label='Memory'>
+					<SettingCard>
+						<SettingRow
+							focusId='performance-memory'
+							label='Process tree memory'
+							help='Dora together with its webview and helper processes'
+						>
+							<span className='font-mono text-[12px] tabular-nums text-foreground'>
+								{report ? formatMemory(report.process_rss_bytes) : '...'}
+							</span>
+						</SettingRow>
+					</SettingCard>
+				</SettingGroup>
+
+				<SettingGroup
+					label='Timings'
+					help='Milliseconds, over the latest 500 samples'
+					action={
+						<div className='flex gap-2'>
+							<button
+								type='button'
+								className='settings-button'
+								disabled={busy}
+								onClick={() => refresh(false)}
 							>
-								<span className='font-mono text-[12px] tabular-nums text-foreground'>
-									{report ? formatMemory(report.process_rss_bytes) : '...'}
-								</span>
-							</SettingRow>
-						</SettingCard>
-					</SettingGroup>
-
-					<SettingGroup
-						label='Timings'
-						help='Milliseconds, over the latest 500 samples'
-						action={
-							<div className='flex gap-2'>
-								<button
-									type='button'
-									className='settings-button'
-									disabled={busy}
-									onClick={() => refresh(false)}
-								>
-									Refresh
-								</button>
-								<button
-									type='button'
-									className='settings-button'
-									disabled={busy || !hasSamples}
-									onClick={() => refresh(true)}
-								>
-									Clear
-								</button>
-								<button
-									type='button'
-									className='settings-button'
-									disabled={busy || !report}
-									onClick={copyReport}
-								>
-									Copy JSON
-								</button>
-							</div>
-						}
-					>
-						<SettingCard>
-							{hasSamples ? (
-								METRICS.map((metric) => {
-									const summary = summaries[metric.id]
-									return (
-										<SettingRow
-											key={metric.id}
-											focusId={'performance-' + metric.id}
-											label={metric.label}
-											help={metric.help}
-										>
-											{summary ? (
-												<SummaryStats summary={summary} />
-											) : (
-												<span className='text-[11.5px] text-muted-foreground'>
-													No samples
-												</span>
-											)}
-										</SettingRow>
-									)
-								})
-							) : (
-								<SettingRow
-									focusId='performance-empty'
-									label='No samples recorded'
-									help='Open a connection and run a query, then refresh.'
-								/>
-							)}
-						</SettingCard>
-					</SettingGroup>
-
-					{recent.length > 0 ? (
-						<SettingGroup label='Recent samples'>
-							<SettingCard>
-								{recent.map((sample, index) => (
+								Refresh
+							</button>
+							<button
+								type='button'
+								className='settings-button'
+								disabled={busy || !hasSamples}
+								onClick={() => refresh(true)}
+							>
+								Clear
+							</button>
+							<button
+								type='button'
+								className='settings-button'
+								disabled={busy || !report}
+								onClick={copyReport}
+							>
+								Copy JSON
+							</button>
+						</div>
+					}
+				>
+					<SettingCard>
+						{hasSamples ? (
+							METRICS.map((metric) => {
+								const summary = summaries[metric.id]
+								return (
 									<SettingRow
-										key={sample.timestamp_ms + '-' + index}
-										focusId={'performance-recent-' + index}
-										label={labelOf(sample.metric)}
-										help={describeSample(sample)}
+										key={metric.id}
+										focusId={'performance-' + metric.id}
+										label={metric.label}
+										help={metric.help}
 									>
-										<span className='font-mono text-[12px] tabular-nums text-foreground'>
-											{formatMs(sample.duration_ms)} ms
-										</span>
+										{summary ? (
+											<SummaryStats summary={summary} />
+										) : (
+											<span className='text-[11.5px] text-muted-foreground'>
+												No samples
+											</span>
+										)}
 									</SettingRow>
-								))}
-							</SettingCard>
-						</SettingGroup>
-					) : null}
+								)
+							})
+						) : (
+							<SettingRow
+								focusId='performance-empty'
+								label='No samples recorded'
+								help='Open a connection and run a query, then refresh.'
+							/>
+						)}
+					</SettingCard>
+				</SettingGroup>
 
-					<p
-						role='status'
-						className='mt-3 min-h-4 px-0.5 text-[11.5px] text-muted-foreground'
-					>
-						{message}
-					</p>
-				</div>
+				{recent.length > 0 ? (
+					<SettingGroup label='Recent samples'>
+						<SettingCard>
+							{recent.map((sample, index) => (
+								<SettingRow
+									key={sample.timestamp_ms + '-' + index}
+									focusId={'performance-recent-' + index}
+									label={labelOf(sample.metric)}
+									help={describeSample(sample)}
+								>
+									<span className='font-mono text-[12px] tabular-nums text-foreground'>
+										{formatMs(sample.duration_ms)} ms
+									</span>
+								</SettingRow>
+							))}
+						</SettingCard>
+					</SettingGroup>
+				) : null}
+
+				<p
+					role='status'
+					className='mt-3 min-h-4 px-0.5 text-[11.5px] text-muted-foreground'
+				>
+					{message}
+				</p>
 			</div>
 		</div>
 	)

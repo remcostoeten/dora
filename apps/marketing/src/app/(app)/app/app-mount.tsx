@@ -15,25 +15,28 @@ function isCaptureSession() {
  * server-rendered or prerendered. `ssr: false` (only allowed inside a client
  * component) guarantees it loads in the browser.
  */
-const AppClient = dynamic(() => import('./app-client').then((m) => m.AppClient), {
-    ssr: false,
-    loading: function Loading() {
-        if (isCaptureSession()) {
+const AppClient = dynamic(
+    () => import('./app-client').then((m) => m.loadAppClient()),
+    {
+        ssr: false,
+        loading: function Loading() {
+            if (isCaptureSession()) {
+                return (
+                    <div
+                        className="h-screen w-full bg-background"
+                        aria-hidden="true"
+                    />
+                )
+            }
+
             return (
-                <div
-                    className="h-screen w-full bg-background"
-                    aria-hidden="true"
-                />
+                <div className="deferred-label flex h-screen w-full items-center justify-center bg-background text-sm text-muted-foreground">
+                    Loading Dora…
+                </div>
             )
         }
-
-        return (
-            <div className="deferred-label flex h-screen w-full items-center justify-center bg-background text-sm text-muted-foreground">
-                Loading Dora…
-            </div>
-        )
     }
-})
+)
 
 export default function AppMount() {
     return <AppClient />

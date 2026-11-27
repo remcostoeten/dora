@@ -14,6 +14,8 @@ logic through pages.
 - Use `bunx` instead of `npx` and `bun run` instead of package-manager aliases.
 - Keep source files in `src/`.
 - Use App Router route groups with parentheses for URL-neutral organization.
+- `src/app/(site)` and `src/app/(app)` have separate root layouts. Keep the
+  marketing stylesheet out of `(app)`, and import studio styles in its layout.
 - Keep site identity in `src/core/config/site.ts`.
 - Keep public route policy in `src/core/config/routes.ts`.
 - Generate route metadata through `src/core/config/seo.ts`.
@@ -23,8 +25,8 @@ logic through pages.
 ## Docs
 
 - `/docs` is the docs-boilerplate UI ported into `src/modules` (`docs`,
-  `navigation`, `search`, `footer`) with its routes in `src/app/(docs)`. It
-  renders outside the marketing header and footer.
+  `navigation`, `search`, `footer`) with its routes in
+  `src/app/(site)/(docs)`. It renders outside the marketing header and footer.
 - Content is the MDX in the repo-root `docs/` folder. A new top-level file or
   folder must also be listed in `source.config.ts` and in a `meta.json`.
 - Docs settings (name, logo, footer, edit links) live in
